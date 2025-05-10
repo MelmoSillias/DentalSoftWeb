@@ -1,0 +1,335 @@
+{% extends 'appbase.html.twig' %}
+
+{% block title %}Hello AdminController!{% endblock %}
+
+{% block stylesheets %}
+    <link href="{{ asset('sb-admin/vendor/fontawesome-free/css/all.min.css') }}" rel="stylesheet">
+    <link href="{{ asset('sb-admin/vendor/datatables/datatables.min.css') }}" rel="stylesheet">
+    <link href="{{ asset('sb-admin/css/sb-admin-2.min.css') }}" rel="stylesheet">
+   
+{% endblock %}
+
+{% block main %}
+<div class="container-fluid px-4">
+    <div class="d-block justify-content-between align-items-center flex-wrap mt-4 mb-3">
+        <h1 class="h3 mb-2 text-gray-800">Patients</h1>
+        <ol class="breadcrumb mb-0">
+            <li class="breadcrumb-item"><i class="fas fa-home me-1"></i></li>
+            <li class="breadcrumb-item active">Liste des patients</li>
+        </ol>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-2 d-flex justify-content-between align-items-center flex-wrap">
+            <span class="fw-bold">Liste des patients</span>
+            <button class="btn btn-success btn-sm mt-2 mt-sm-0" data-bs-toggle="modal" data-bs-target="#addPatientModal">
+                <i class="fas fa-user-plus me-1"></i> Nouveau Patient
+            </button>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-light table-striped table-bordered table-hover align-middle w-100 my-2" id="patientTable">
+                    <thead class="text-center">
+                        <tr>
+                            <th>Nom</th>
+                            <th>Prénom</th>
+                            <th>Âge</th>
+                            <th>Sexe</th>
+                            <th>Téléphone</th>
+                            <th>Adresse</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Rows dynamiques -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Patient Modal -->
+<div class="modal fade" id="addPatientModal" tabindex="-1" aria-labelledby="addPatientModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addPatientModalLabel">Ajouter un Patient</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <div class="modal-body">
+                <form id="patientForm">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="nom" class="form-label">Nom <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="nom" name="nom" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="prenom" class="form-label">Prénom <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="prenom" name="prenom" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="dateNaissance" class="form-label">Date de Naissance</label>
+                            <input type="date" class="form-control" id="dateNaissance" name="dateNaissance">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="sexe" class="form-label">Sexe <span class="text-danger">*</span></label>
+                            <select class="form-select" id="sexe" name="sexe" required>
+                                <option value="">-- Sélectionner --</option>
+                                <option value="Homme">Homme</option>
+                                <option value="Femme">Femme</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="telephone" class="form-label">Téléphone <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="telephone" name="telephone" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="adresse" class="form-label">Adresse</label>
+                            <input type="text" class="form-control" id="adresse" name="adresse">
+                        </div>
+                    </div>
+                    <hr class="my-3">
+
+                    <h6 class="fw-bold text-primary">Informations Médicales</h6>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="groupeSanguin" class="form-label">Groupe Sanguin</label>
+                            <select class="form-select" id="groupeSanguin" name="groupeSanguin">
+                                <option value="">-- Non spécifié --</option>
+                                <option value="A+">A+</option>
+                                <option value="A−">A−</option>
+                                <option value="B+">B+</option>
+                                <option value="B−">B−</option>
+                                <option value="AB+">AB+</option>
+                                <option value="AB−">AB−</option>
+                                <option value="O+">O+</option>
+                                <option value="O−">O−</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <h6 class="fw-bold text-primary">Contact d'Urgence</h6>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="urgenceNom" class="form-label">Nom</label>
+                            <input type="text" class="form-control" id="urgenceNom" name="urgenceNom">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="urgenceLien" class="form-label">Lien de Parenté</label>
+                            <input type="text" class="form-control" id="urgenceLien" name="urgenceLien">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="urgenceTel" class="form-label">Téléphone</label>
+                            <input type="text" class="form-control" id="urgenceTel" name="urgenceTel">
+                        </div>
+                    </div>
+
+                    <div class="text-end">
+                        <button type="submit" class="btn btn-success">Enregistrer</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Edit Patient Modal -->
+<div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editModalLabel">Modifier le Patient</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editPatientForm">
+                    <input type="hidden" id="editPatientId">
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="editNom" class="form-label">Nom <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="editNom" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="editPrenom" class="form-label">Prénom <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="editPrenom" required>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="editTelephone" class="form-label">Téléphone <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="editTelephone" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="editAdresse" class="form-label">Adresse</label>
+                            <input type="text" class="form-control" id="editAdresse">
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="editGroupeSanguin" class="form-label">Groupe Sanguin</label>
+                            <select class="form-select" id="editGroupeSanguin">
+                                <option value="">-- Aucun --</option>
+                                <option value="A+">A+</option>
+                                <option value="A-">A-</option>
+                                <option value="B+">B+</option>
+                                <option value="B-">B-</option>
+                                <option value="AB+">AB+</option>
+                                <option value="AB-">AB-</option>
+                                <option value="O+">O+</option>
+                                <option value="O-">O-</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Contact d'Urgence</label>
+                            <input type="text" class="form-control mb-2" id="editUrgenceNom" placeholder="Nom">
+                            <input type="text" class="form-control mb-2" id="editUrgenceTelephone" placeholder="Téléphone">
+                            <input type="text" class="form-control" id="editUrgenceLien" placeholder="Lien de parenté">
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">Enregistrer</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Medical Details Modal -->
+<div class="modal fade" id="detailsModal" tabindex="-1" aria-labelledby="detailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="detailsModalLabel">Dossier Médical</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <div class="modal-body" id="detailsModalBody">
+                Chargement en cours...
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- New RDV Modal -->
+<div class="modal fade" id="rdvModal" tabindex="-1" aria-labelledby="rdvModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="rdvModalLabel">Nouveau Rendez-vous</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <div class="modal-body">
+                <form id="rdvForm">
+                    <input type="hidden" id="rdvPatientId">
+                    <div class="mb-3">
+                        <label for="rdvPatientName" class="form-label">Nom du Patient</label>
+                        <input type="text" class="form-control" id="rdvPatientName" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label for="rdvDate" class="form-label">Date</label>
+                        <input type="date" class="form-control" id="rdvDate" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="rdvTime" class="form-label">Heure</label>
+                        <select class="form-select" id="rdvTime" required>
+                            {% for hour in 0..23 %}
+                                <option value="{{ hour }}:00">{{ hour }}:00</option>
+                                <option value="{{ hour }}:15">{{ hour }}:15</option>
+                                <option value="{{ hour }}:30">{{ hour }}:30</option>
+                                <option value="{{ hour }}:45">{{ hour }}:45</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="rdvSalle" class="form-label">Salle</label>
+                        <select class="form-select" id="rdvSalle" required>
+                            {% for salle in salles %}
+                                <option value="{{ salle.id }}">{{ salle.nom }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="rdvDoctor" class="form-label">Médecin</label>
+                        <select class="form-select" id="rdvDoctor" required>
+                            <!-- Options will be populated via JavaScript -->
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="rdvDescription" class="form-label">Description</label>
+                        <textarea class="form-control" id="rdvDescription" rows="3"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Enregistrer</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+    <div class="modal fade" id="createConsultationModal" tabindex="-1" aria-labelledby="createConsultationModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="createConsultationModalLabel">Créer une Consultation</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" (click)="modal.dismiss('Cross click')"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="consultationForm">
+                        <input type="hidden" id="patient_id" name="patient_id">
+                        <div class="mb-3">
+                            <label for="medecin" class="form-label">Médecin</label>
+                            <select class="form-select" id="medecin" required>
+                                <option value="">Sélectionnez un médecin</option>
+                                <!-- Options will be populated via JavaScript -->
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="patient" class="form-label">Nom du Patient</label>
+                            <input type="text" class="form-control" id="patient" readonly>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Consultation Payante</label>
+                            
+
+            <!-- Corriger la structure des radios -->
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="payant" id="payantOui" value="1" required>
+                <label class="form-check-label" for="payantOui">Oui</label>
+            </div>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="payant" id="payantNon" value="0" required>
+                <label class="form-check-label" for="payantNon">Non</label>
+            </div>
+
+                <div class="mb-3 d-none" id="modePaiementContainer">
+                    <label for="modePaiement" class="form-label">Mode de Paiement</label>
+                    <select class="form-select" id="modePaiement" name="modePaiement">
+                        <option disabled selected>Chargement...</option>
+                    </select>
+                </div>
+
+
+
+                        <button type="submit" class="btn btn-primary">Créer</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<a class="scroll-to-top rounded" href="#page-top"><i class="fas fa-angle-up"></i></a>
+{% endblock %}
+
+{% block javascripts %}  
+    {{ parent() }}
+    <script src="{{ asset('js/patients.js') }}"></script>
+{% endblock %}
+
+

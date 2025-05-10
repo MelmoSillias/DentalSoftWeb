@@ -1,0 +1,118 @@
+{% extends 'appbase.html.twig' %}
+
+{% block title %}Dossier Patient{% endblock %}
+
+{% block main %}
+<div class="container-fluid px-4">
+
+  {# --- 1. Infos personnelles (mise en page « aléatoire » via card-columns) --- #}
+  <div class="card mb-4">
+    <div class="card-header">
+      <i class="fas fa-user me-2"></i>Informations personnelles
+    </div>
+    <div class="card-body">
+      <div class="card-columns" id="patient-info-cards">
+        {# JS injectera ici une card par champ (nom, prénom, etc.), chacune contenant un input/select #}
+      </div>
+      <button id="btn-save-patient" class="btn btn-primary mt-3" disabled>Enregistrer</button>
+    </div>
+  </div>
+
+  {# --- 2. Collections composées (cartes) --- #}
+  <div class="card mb-4">
+    <div class="card-header">
+      <i class="fas fa-layer-group me-2"></i>Données complémentaires
+    </div>
+    <div class="card-body">
+      <h5>Allergies</h5>
+      <div class="card-columns mb-4" id="allergies-cards">
+        {# cartes AllergyViewModel + mini-formulaire d’ajout #}
+      </div>
+
+      <h5>Antécédents</h5>
+      <div class="card-columns mb-4" id="antecedents-cards">
+        {# cartes AntecedentViewModel + mini-formulaire d’ajout #}
+      </div>
+
+      <h5>Contacts d’urgence</h5>
+      <div class="card-columns" id="contacts-cards">
+        {# cartes ContactUrgenceViewModel + mini-formulaire d’ajout #}
+      </div>
+    </div>
+  </div>
+
+  {# --- 3. Table des consultations --- #}
+  <div class="card mb-4">
+    <div class="card-header">
+      <i class="fas fa-stethoscope me-2"></i>Consultations
+    </div>
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-striped table-hover" id="consultations-table">
+          <thead class="thead-light">
+            <tr>
+              <th style="width: 2rem;"></th> {# chevron toggle #}
+              <th>#</th>
+              <th>Date / Heure</th>
+              <th>Médecin</th>
+              <th>Type</th>
+              <th>Statut</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {# JS remplira les lignes + sous-lignes collapsibles de détails #}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  {# --- 4. Table des rendez-vous (RDV) --- #}
+  <div class="card mb-4">
+    <div class="card-header">
+      <i class="fas fa-calendar-alt me-2"></i>Rendez-vous
+    </div>
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-bordered" id="rdvs-table">
+          <thead class="thead-light">
+            <tr>
+              <th>Date / Heure</th>
+              <th>Salle</th>
+              <th>Médecin</th>
+              <th>Patient</th>
+              <th>Statut</th>
+            </tr>
+          </thead>
+          <tbody>
+            {# JS injectera ici chaque RDV, cliquable pour voir le détail #}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  {# --- 5. Timeline bi-ligne fixe --- #}
+  <div class="card mb-4">
+    <div class="card-header">
+      <i class="fas fa-stream me-2"></i>Timeline
+    </div>
+    <div class="card-body">
+      <div id="timeline-container" class="d-flex flex-column">
+        <div id="timeline-consultations" class="timeline-track mb-4" style="height: 200px;">
+          {# JS dessinera ici les cards de consultations et flèches #}
+        </div>
+        <div id="timeline-rdvs" class="timeline-track" style="height: 200px;">
+          {# JS dessinera ici les cards de RDV #}
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+{% block javascripts %}
+{{ parent() }}
+<script src="{{ asset('js/patientDossier.js') }}"></script>
+{% endblock %}

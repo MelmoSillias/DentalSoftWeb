@@ -1,0 +1,530 @@
+{% extends 'appbase.html.twig' %}
+
+{% block title %}Gestion des Rendez-vous{% endblock %}
+
+{% block stylesheets %}
+    <link href="{{ asset('sb-admin/vendor/fontawesome-free/css/all.min.css') }}" rel="stylesheet">
+    <link href="{{ asset('sb-admin/css/sb-admin-2.min.css') }}" rel="stylesheet">
+    <style>
+        .context-menu {
+            position: absolute;
+            z-index: 9999;
+            display: none;
+            background-color: #fff;
+            border: 1px solid #ccc;
+            border-radius: 0.35rem;
+            box-shadow: 0 0.15rem 1.75rem 0 rgba(58,59,69,.15);
+            min-width: 160px;
+        }
+        .context-menu ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .context-menu li {
+            padding: 10px 15px;
+            cursor: pointer;
+        }
+        .context-menu li:hover {
+            background-color: #f8f9fc;
+        }
+
+        .date-slider-container {
+            margin-bottom: 20px;
+        }
+        #date-slider {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            padding: 10px;
+            scroll-behavior: smooth;
+        }
+        .date-item {
+            background-color: #ffffff;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px 15px;
+            min-width: 80px;
+            text-align: center;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            animation: slideInLeft 0.3s ease-in;
+        }
+        .date-item.active {
+            background-color: #4e73df;
+            color: #fff;
+        }
+        @keyframes slideInLeft {
+            from { transform: translateX(-50px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .calendar-grid {
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            overflow-x: auto;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .calendar-grid th {
+            background-color: #f8f9fc;
+        }
+        .grid-cell:hover {
+            background-color: #f1f1f1;
+        }
+        .add-rdv-btn {
+            display: none;
+        }
+        .grid-cell:hover .add-rdv-btn {
+            display: block;
+        }
+        .rdv-card {
+            position: relative;
+            padding: 10px;
+            border-radius: 5px;
+            background-color: #f8f9fc;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-direction: row-reverse;
+        } 
+        .rdv-status-bar.bg-primary { background-color: #007bff; }
+        .rdv-status-bar.bg-success { background-color: #28a745; }
+        .rdv-status-bar.bg-warning { background-color: #ffc107; }
+        .rdv-status-bar.bg-danger { background-color: #dc3545; } 
+        @media (max-width: 768px) {
+            .calendar-grid table { font-size: 12px; }
+            .date-item { min-width: 60px; padding: 5px 10px; }
+            .rdv-card { flex-direction: column; align-items: flex-start; }
+            .rdv-actions { margin-top: 5px; }
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+    </style>
+{% endblock %}
+
+{% block main %}
+<div class="container-fluid">
+    <h1 class="h3 mb-4 text-gray-800">Agenda</h1>
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><i class="fas fa-home"></i> Dashboard</li>
+        <li class="breadcrumb-item active">Agenda</li>
+    </ol>
+
+    <div class="date-slider-container">
+        <div class="row align-items-center mb-2">
+            <div class="col-auto">
+                <button id="today-btn" class="btn btn-info">Aujourd'hui</button>
+            </div>
+            <div class="col-auto">
+                <input type="date" id="date-picker" class="form-control">
+            </div>
+        </div>
+        <div class="row align-items-center">
+            <div class="col-auto">
+                <button id="prev-date-slider" class="btn btn-light"><i class="fas fa-chevron-left"></i></button>
+            </div>
+            <div class="col">
+                <div id="date-slider" class="d-flex justify-content-center"></div>
+            </div>
+            <div class="col-auto">
+                <button id="next-date-slider" class="btn btn-light"><i class="fas fa-chevron-right"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Calendar Grid -->
+    <div class="calendar-grid mb-4">
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th style="width: 1%;">Créneau</th>
+                    {% for salle in salles %}
+                        <th style="width: {{ 100 / salles|length }}%;">{{ salle.nom }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for hour in 0..23 %}
+                    {% for minute in ['00', '15', '30', '45'] %}
+                        <tr>
+                            <td>{{ hour }}:{{ minute }}</td>
+                            {% for salle in salles %}
+                                <td class="grid-cell" data-hour="{{ hour }}" data-minute="{{ minute }}" data-salle="{{ salle.id }}">
+                                    <button class="btn btn-sm btn-success add-rdv-btn"><i class="fas fa-plus"></i></button>
+                                </td>
+                            {% endfor %}
+                        </tr>
+                    {% endfor %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Statistiques -->
+    <div id="stats" class="row">
+        <div class="col-md-3">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body"><h5 class="card-title">En attente</h5><p class="display-4" id="stats-pending">0</p></div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body"><h5 class="card-title">Validés</h5><p class="display-4" id="stats-validated">0</p></div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body"><h5 class="card-title">Reportés</h5><p class="display-4" id="stats-postponed">0</p></div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-left-danger shadow h-100 py-2">
+                <div class="card-body"><h5 class="card-title">Annulés</h5><p class="display-4" id="stats-cancelled">0</p></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <!-- Modal de création de rendez-vous -->
+<div class="modal fade" id="rdvModal" tabindex="-1" aria-labelledby="rdvModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+       <div class="modal-header">
+           <h5 class="modal-title" id="rdvModalLabel">Créer un Rendez-vous</h5>
+           <button type="button" class="btn-close btn-closer" data-bs-dismiss="modal" aria-label="Close"></button>
+       </div>
+       <div class="modal-body">
+           <form id="rdvForm">
+             <div class="mb-3">
+                <label for="patientSelect" class="form-label">Patient</label>
+                <select class="form-select form-control form-user-control" id="patientSelect" name="patient" required>
+                   <option value="">Sélectionnez un patient</option>
+                </select>
+             </div>
+             <div class="mb-3">
+                <label for="medecinSelect" class="form-label">Médecin</label>
+                <select class="form-select form-control form-user-control" id="medecinSelect" name="medecin" required>
+                   <option value="">Sélectionnez un médecin</option>
+                </select>
+             </div>
+             <div class="mb-3">
+                <label for="salleSelect" class="form-label">Salle</label>
+                <select class="form-select form-control form-user-control" id="salleSelect" name="salle" required>
+                   <option value="">Sélectionnez une salle</option>
+                   {% for salle in salles %}
+                      <option value="{{ salle.id }}">{{ salle.nom }}</option>
+                   {% endfor %}
+                </select>
+             </div>
+             <div class="mb-3">
+                <label for="rdvTime" class="form-label">Heure</label>
+                <input type="time" class=" form-control form-user-control" id="rdvTime" name="time" required>
+             </div>
+             <div class="mb-3">
+                <label for="rdvDescription" class="form-label">Description</label>
+                <textarea class="form-control" id="rdvDescription" name="description" rows="3"></textarea>
+             </div>
+           </form>
+       </div>
+       <div class="modal-footer">
+           <button type="button" class="btn btn-secondary btn-closer" data-bs-dismiss="modal">Annuler</button>
+           <button type="submit" form="rdvForm" class="btn btn-primary">Créer</button>
+       </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de confirmation de validation -->
+<div class="modal fade" id="confirmValidateModal" tabindex="-1" aria-labelledby="confirmValidateModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+       <div class="modal-header bg-success text-white">
+           <h5 class="modal-title" id="confirmValidateModalLabel">Confirmer la validation</h5>
+           <button type="button" class="btn-close btn-closer btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+       </div>
+       <div class="modal-body">
+           Êtes-vous sûr de vouloir valider ce rendez-vous ?
+       </div>
+       <div class="modal-footer">
+           <button type="button" class="btn btn-secondary btn-closer" data-bs-dismiss="modal">Annuler</button>
+           <button type="button" class="btn btn-success" id="confirmValidateBtn">Valider</button>
+       </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de confirmation d'annulation -->
+<div class="modal fade" id="confirmCancelModal" tabindex="-1" aria-labelledby="confirmCancelModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+       <div class="modal-header bg-danger text-white">
+           <h5 class="modal-title" id="confirmCancelModalLabel">Confirmer l'annulation</h5>
+           <button type="button" class="btn-close btn-closer btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+       </div>
+       <div class="modal-body">
+           Êtes-vous sûr de vouloir annuler ce rendez-vous ?
+       </div>
+       <div class="modal-footer">
+           <button type="button" class="btn btn-secondary btn-closer" data-bs-dismiss="modal">Annuler</button>
+           <button type="button" class="btn btn-danger" id="confirmCancelBtn">Annuler RDV</button>
+       </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de report -->
+<div class="modal fade" id="reportModal" tabindex="-1" aria-labelledby="reportModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+       <div class="modal-header bg-warning text-white">
+           <h5 class="modal-title" id="reportModalLabel">Reporter le Rendez-vous</h5>
+           <button type="button" class="btn-close btn-close-white btn-closer" data-bs-dismiss="modal" aria-label="Close"></button>
+       </div>
+       <div class="modal-body">
+           <p><strong>Patient :</strong> <span id="reportPatient"></span></p>
+           <p><strong>Médecin :</strong> <span id="reportMedecin"></span></p>
+           <p><strong>Salle :</strong> <span id="reportSalle"></span></p>
+           <p><strong>Date création :</strong> <span id="reportOldDate"></span></p>
+           <hr>
+           <form id="reportForm">
+               <div class="mb-3">
+                  <label for="reportNewDate" class="form-label">Nouvelle date</label>
+                  <input type="date" class="form-control" id="reportNewDate" name="reportNewDate" required>
+               </div>
+               <div class="mb-3">
+                  <label for="reportNewTime" class="form-label">Nouvelle heure</label>
+                  <input type="time" class="form-control" id="reportNewTime" name="reportNewTime" required>
+               </div>
+           </form>
+       </div>
+       <div class="modal-footer">
+           <button type="button" class="btn btn-secondary btn-closer" data-bs-dismiss="modal">Annuler</button>
+           <button type="button" class="btn btn-warning" id="confirmReportBtn">Reporter</button>
+       </div>
+    </div>
+  </div>
+</div>
+</div>
+{% endblock %}
+
+{% block javascripts %}
+<script src="{{ asset('sb-admin/vendor/jquery/jquery.min.js') }}"></script>
+<script src="{{ asset('sb-admin/vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
+<script>
+$(document).ready(function() {
+    let currentDate = new Date();
+    let selectedRdvId = null;
+
+    function generateDateSlider() {
+        const $dateSlider = $('#date-slider');
+        $dateSlider.empty();
+        for (let i = -7; i <= 7; i++) {
+            const d = new Date(currentDate);
+            d.setDate(currentDate.getDate() + i);
+            const dateStr = d.toISOString().split('T')[0];
+            const $dateItem = $('<div>', {
+                class: 'date-item',
+                'data-date': dateStr,
+                text: d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })
+            });
+            if (d.toDateString() === currentDate.toDateString()) $dateItem.addClass('active');
+            $dateItem.on('click', function() {
+                currentDate = new Date($(this).data('date'));
+                updateDateInputs();
+                generateDateSlider();
+                reloadAppointments();
+            });
+            $dateSlider.append($dateItem);
+        }
+    }
+
+    function updateDateInputs() {
+        $('#date-picker').val(currentDate.toISOString().split('T')[0]);
+    }
+
+    $('#date-picker').on('change', function() {
+        currentDate = new Date($(this).val());
+        generateDateSlider();
+        reloadAppointments();
+    });
+
+    $('#today-btn').on('click', function() {
+        currentDate = new Date();
+        generateDateSlider();
+        reloadAppointments();
+    });
+
+    function reloadAppointments() {
+        const url = `/api/rdvs/${currentDate.toISOString().split('T')[0]}`;
+        $('.grid-cell').each(function() {
+            const $cell = $(this);
+            const $addBtn = $cell.find('.add-rdv-btn').detach();
+            $cell.empty().append($addBtn.show());
+        });
+        $.getJSON(url, function(data) {
+            data.forEach(function(rdv) {
+                const rdvDate = new Date(rdv.dateRdv);
+                const hour = rdvDate.getHours();
+                const minutes = rdvDate.getMinutes();
+                const slot = minutes < 15 ? '00' : minutes < 30 ? '15' : minutes < 45 ? '30' : '45';
+                const $cell = $(`.grid-cell[data-hour="${hour}"][data-minute="${slot}"][data-salle="${rdv.salle}"]`);
+                if ($cell.length) {
+                    $cell.find('.add-rdv-btn').hide();
+                    const statusClass = rdv.statut === 0 ? 'border-right-primary' :
+                                        rdv.statut === 1 ? 'border-right-success' :
+                                        rdv.statut === -1 ? 'border-right-warning' :
+                                        'border-right-danger';
+                    const actionButtons = rdv.statut === 0 ? `
+                        <div class="rdv-actions mt-4">
+                            <button class="btn btn-sm btn-success btn-validate" data-id="${rdv.id}"><i class="fas fa-check"></i></button>
+                            <button class="btn btn-sm btn-warning btn-report" data-id="${rdv.id}" data-patient="${rdv.patient}" data-medecin="${rdv.medecin}" data-salle="${rdv.salle}" data-datecreation="${rdv.dateCreation}"><i class="fas fa-calendar-alt"></i></button>
+                            <button class="btn btn-sm btn-danger btn-cancel" data-id="${rdv.id}"><i class="fas fa-times"></i></button>
+                        </div>` : '';
+                    const rdvHtml = `
+                        <div class="rdv-card card fade-in ${statusClass}">
+                            <div class="rdv-content card-body">
+                                <strong>${rdv.patient}</strong><br>
+                                ${rdv.medecin}<br>
+                                <small>${rdv.dateCreation}</small>
+                                ${actionButtons}
+                            </div>
+                        </div>`;
+                    $cell.append(rdvHtml);
+                }
+            });
+        }).fail(function() {
+            showToastModal({ message: "Erreur de chargement des rendez-vous", type: "error", duration: 3000 });
+        });
+    }
+
+    $('.btn-closer').on('click', function() {
+        $(this).closest('.modal').modal('hide');
+    });
+
+    // Met à jour le statut et affiche un toast
+    async function updateRdvStatus(id, statut) {
+        try {
+            const res = await fetch(`/api/rdv/${statut === 1 ? 'validate' : 'cancel'}/${id}`, { method: 'POST' });
+            const json = await res.json();
+            if (json.success) {
+                reloadAppointments();
+                showToastModal({ 
+                    message: statut === 1 ? 'Rendez-vous validé' : 'Rendez-vous annulé', 
+                    type: 'success' 
+                });
+            } else {
+                showToastModal({ message: json.error || 'Erreur lors de la mise à jour', type: 'error', duration: 3000 });
+            }
+        } catch {
+            showToastModal({ message: 'Erreur réseau lors de la mise à jour', type: 'error', duration: 3000 });
+        }
+    }
+
+    $(document).on('click', '.btn-validate', function() {
+        selectedRdvId = $(this).data('id');
+        $('#confirmValidateModal').modal('show');
+    });
+
+    $('#confirmValidateBtn').on('click', function() {
+        $('#confirmValidateModal').modal('hide');
+        updateRdvStatus(selectedRdvId, 1);
+    });
+
+    $(document).on('click', '.btn-cancel', function() {
+        selectedRdvId = $(this).data('id');
+        $('#confirmCancelModal').modal('show');
+    });
+
+    $('#confirmCancelBtn').on('click', function() {
+        $('#confirmCancelModal').modal('hide');
+        updateRdvStatus(selectedRdvId, -2);
+    });
+
+    $(document).on('click', '.btn-report', function() {
+        selectedRdvId = $(this).data('id');
+        const $btn = $(this);
+        $('#reportPatient').text($btn.data('patient'));
+        $('#reportMedecin').text($btn.data('medecin'));
+        $('#reportSalle').text($btn.data('salle'));
+        $('#reportOldDate').text($btn.data('datecreation'));
+        $('#reportNewDate').val($('#date-picker').val());
+        $('#reportNewTime').val("09:00");
+        $('#reportModal').modal('show');
+    });
+
+    $('#confirmReportBtn').on('click', function() {
+        const payload = {
+            rdv_id: selectedRdvId,
+            new_date: $('#reportNewDate').val(),
+            new_time: $('#reportNewTime').val()
+        };
+        $.post('/api/rdv/report', payload, function(data) {
+            if (data.success) {
+                reloadAppointments();
+                loadStats(); // si défini ailleurs
+                $('#reportModal').modal('hide');
+                showToastModal({ message: 'Rendez-vous reporté', type: 'success' });
+            } else {
+                showToastModal({ message: data.error || 'Erreur lors du report', type: 'error', duration: 3000 });
+            }
+        }).fail(function() {
+            showToastModal({ message: 'Erreur réseau lors du report', type: 'error', duration: 3000 });
+        });
+    });
+
+    $('#prev-date-slider').on('click', function() {
+        $('#date-slider').scrollLeft($('#date-slider').scrollLeft() - 100);
+    });
+
+    $('#next-date-slider').on('click', function() {
+        $('#date-slider').scrollLeft($('#date-slider').scrollLeft() + 100);
+    });
+
+    $(document).on('click', '.add-rdv-btn', function() {
+        const $cell = $(this).closest('.grid-cell');
+        const hour = $cell.data('hour');
+        const minute = $cell.data('minute');
+        const salle = $cell.data('salle');
+        $('#rdvTime').val(`${hour.toString().padStart(2, '0')}:${minute}`);
+        $('#salleSelect').val(salle);
+        $.getJSON('/api/patients', function(data) {
+            const $patientSelect = $('#patientSelect').empty().append('<option value="">Sélectionnez un patient</option>');
+            data.patients.forEach(p => $patientSelect.append(`<option value="${p.id}">${p.nom} ${p.prenom}</option>`));
+            const $medecinSelect = $('#medecinSelect').empty().append('<option value="">Sélectionnez un médecin</option>');
+            data.medecins.forEach(m => $medecinSelect.append(`<option value="${m.id}">${m.nom} ${m.prenom}</option>`));
+            $('#rdvModal').modal('show');
+        }).fail(function() {
+            showToastModal({ message: 'Erreur chargement patients/médecins', type: 'error', duration: 3000 });
+        });
+    });
+
+    $('#rdvForm').on('submit', function(e) {
+        e.preventDefault();
+        const payload = $(this).serializeArray().reduce((o, item) => (o[item.name] = item.value, o), {});
+        payload.date = $('#date-picker').val();
+        $.post('/api/rdv/create', payload, function(data) {
+            if (data.success) {
+                $('#rdvModal').modal('hide');
+                reloadAppointments();
+                loadStats();
+                showToastModal({ message: 'Rendez-vous créé', type: 'success' });
+            } else {
+                showToastModal({ message: data.error || 'Erreur création RDV', type: 'error', duration: 3000 });
+            }
+        }).fail(function() {
+            showToastModal({ message: 'Erreur réseau création RDV', type: 'error', duration: 3000 });
+        });
+    });
+
+    generateDateSlider();
+    updateDateInputs();
+    reloadAppointments();
+});
+</script>
+
+{% endblock %}

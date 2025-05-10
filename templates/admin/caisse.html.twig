@@ -1,0 +1,549 @@
+{% extends 'appbase.html.twig' %}
+
+{% block title %}Gestion de la Caisse{% endblock %}
+
+{% block stylesheets%} 
+    <style>/* --- Facture Styles --- */
+    .facture-container {
+        font-family: 'Nunito', sans-serif;
+        color: #333;
+    }
+    .facture-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 2px solid #007bff;
+        padding-bottom: 1rem;
+        margin-bottom: 1rem;
+    }
+    .facture-logo {
+        max-width: 100px;
+    }
+    .entreprise-info {
+        text-align: right;
+    }
+    .client-info {
+        margin-bottom: 1.5rem;
+    }
+    .facture-meta {
+        text-align: right;
+    }
+    .facture-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 1.5rem;
+    }
+    .facture-table th, .facture-table td {
+        border: 1px solid #ddd;
+        padding: 0.75rem;
+        text-align: left;
+    }
+    .facture-table th {
+        background-color: #f8f9fc;
+        font-weight: bold;
+    }
+    .facture-table tfoot th {
+        text-align: right;
+    }
+    .signature-section {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 2rem;
+    }
+    .montant-lettres {
+        font-style: italic;
+    }
+    .cachet-space {
+        width: 150px;
+        height: 100px;
+        border: 1px dashed #ccc;
+        text-align: center;
+        line-height: 100px;
+        color: #999;
+    }
+    .facture-footer {
+        text-align: center;
+        font-size: 0.875rem;
+        color: #666;
+        margin-top: 2rem;
+    }
+    </style>
+{% endblock %}
+
+{% block main %}
+<div class="container-fluid">
+    <h1 class="h3 mb-4 text-gray-800">Gestion de la Caisse</h1>
+
+<!-- Devis Impayés (JS driven) -->
+<div class="card shadow mb-4">
+    <div class="card-header py-3 bg-warning text-white d-flex justify-content-between align-items-center">
+        <span>
+            <i class="fas fa-exclamation-circle me-2"></i> Devis Impayés
+            <span class="badge badge-light text-dark ml-2" id="devisCount">0</span>
+        </span>
+        <div>
+            <strong>Total impayé :</strong>
+            <span id="totalRestant">0 FCFA</span>
+            <button class="btn btn-sm btn-outline-light ml-3" onclick="window.print()">
+                <i class="fas fa-print"></i> Imprimer
+            </button>
+        </div>
+    </div>
+    <div class="card-body">
+        <div id="devisEmptyMessage" class="alert alert-info mb-0 d-none">Aucun devis impayé à ce jour</div>
+        <div class="table-responsive">
+            <table class="table table-striped table-hover" id="devisImpayesTable">
+  <thead>
+    <tr>
+      <th>N° Devis</th>
+      <th>Date</th>
+      <th>Patient</th>
+      <th>Montant Total</th>
+      <th>Reste à payer</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+</table>
+
+        </div>
+    </div>
+</div>
+
+<!-- Historique des Paiements Devis -->
+<div class="card shadow mb-4">
+    <div class="card-header py-3 bg-success text-white d-flex justify-content-between align-items-center">
+        <span>
+            <i class="fas fa-coins me-2"></i> Paiements enregistrés
+        </span>
+        <button class="btn btn-outline-primary btn-sm" id="imprimerPaiementsBtn">
+    <i class="fas fa-print"></i> Imprimer la période
+</button>
+
+        <div class="d-flex align-items-center gap-3">
+            <span class="mr-3">
+                <strong>Recette sur la période :</strong>
+                <span id="recetteTotalPeriode">0 FCFA</span>
+            </span>
+            <input type="text" id="devisDateRange" class="form-control form-user-control w-auto" />
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table id="paiementsDevisTable" class="table table-striped table-hover table-sm my-4">
+                <thead class="table-light">
+                    <tr>
+                        <th>N° Devis</th>
+                        <th>Patient</th>
+                        <th>Montant</th>
+                        <th>Mode de paiement</th>
+                        <th>Date de paiement</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de visualisation d’un devis -->
+<div class="modal fade" id="devisModal" tabindex="-1" role="dialog">
+  <div class="modal-dialog modal-xl" role="document">
+    <div class="modal-content">
+      <div class="modal-header bg-info text-white">
+        <h5 class="modal-title">Détail du Devis</h5>
+        <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+      </div>
+      <div class="modal-body" id="devisPreviewContainer">
+        Chargement...
+      </div>
+      <div class="modal-footer">
+  <button class="btn btn-outline-secondary" onclick="printDevisModal()">
+    <i class="fas fa-print"></i> Imprimer
+  </button>
+</div>
+
+    </div>
+  </div>
+</div>
+
+
+<div class="modal fade" id="reglerDevisModal" tabindex="-1" role="dialog">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header bg-success text-white">
+        <h5 class="modal-title">Régler le Devis</h5>
+        <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label for="modePaiementDevis" class="form-label">Mode de Paiement</label>
+          <select class="form-control" id="modePaiementDevis"></select>
+        </div>
+        <div class="mb-3">
+          <label for="montantRegle" class="form-label">Montant à régler</label>
+          <input type="number" class="form-control" id="montantRegle" min="1">
+          <small id="resteCalc" class="text-muted"></small>
+        </div> 
+        
+        <p class="text-muted small">Ce montant sera déduit du reste à payer.</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-dismiss="modal">Annuler</button>
+        <button class="btn btn-success" id="confirmerPaiementDevisBtn">Confirmer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block javascripts %}  
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css" /> 
+<script src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
+<script>
+$(function () {
+    // Variables globales pour les filtres de date
+    let devisStart = moment().format('YYYY-MM-DD');
+    let devisEnd   = moment().format('YYYY-MM-DD');
+    let devisTable;
+
+    // === 1. Rendu des Devis Impayés ===
+    devisTable = $('#devisImpayesTable').DataTable({
+  ajax: {
+    url: '/api/devis/impayes',
+    method: 'GET',
+    dataSrc: function (json) {
+      // Calcul des stats dans le callback
+      const totalReste = json.reduce((sum, d) => sum + (parseFloat(d.reste) || 0), 0);
+      $('#devisCount').text(json.length);
+      $('#totalRestant').text(`${totalReste.toLocaleString('fr-FR')} FCFA`);
+
+      if (json.length === 0) {
+        $('#devisEmptyMessage').removeClass('d-none');
+      } else {
+        $('#devisEmptyMessage').addClass('d-none');
+      }
+
+      return json;
+    }
+  },
+  columns: [
+    {
+      data: 'id',
+      render: id => `DEV-${String(id).padStart(4, '0')}`
+    },
+    {
+      data: 'date',
+      render: date => new Date(date).toLocaleDateString('fr-FR')
+    },
+    {
+      data: 'patient',
+      render: p => `${p.nom} ${p.prenom}`
+    },
+    {
+      data: 'montant',
+      render: m => `${parseFloat(m).toLocaleString('fr-FR')} FCFA`
+    },
+    {
+      data: 'reste',
+      render: r => `${parseFloat(r).toLocaleString('fr-FR')} FCFA`
+    },
+    {
+      data: 'id',
+      orderable: false,
+      searchable: false,
+      render: id => `
+        <a href="#" class="btn btn-sm btn-primary preview-devis-btn" data-toggle="modal"
+           data-target="#devisModal" data-devis-id="${id}">
+           <i class="fas fa-eye"></i> Visualiser
+        </a>
+        <a href="#" class="btn btn-sm btn-success regler-devis-btn" data-toggle="modal"
+           data-target="#reglerDevisModal" data-devis-id="${id}">
+           <i class="fas fa-hand-holding-usd"></i> Régler
+        </a>
+      `
+    }
+  ],
+  language: { url: 'https://cdn.datatables.net/plug-ins/1.13.5/i18n/fr-FR.json' },
+  order: [[1, 'desc']]
+});
+
+
+    // === 2. Paiements : Date Range Picker ===
+    $('#devisDateRange').daterangepicker({
+        locale: {
+            format: 'YYYY-MM-DD',
+            applyLabel: 'Appliquer',
+            cancelLabel: 'Annuler',
+            daysOfWeek: ['Di','Lu','Ma','Me','Je','Ve','Sa'],
+            monthNames: [
+                'Janvier','Février','Mars','Avril','Mai','Juin',
+                'Juillet','Août','Septembre','Octobre','Novembre','Décembre'
+            ],
+            firstDay: 1
+        },
+        opens: 'left',
+        alwaysShowCalendars: true,
+        startDate: devisStart,
+        endDate: devisEnd,
+        ranges: {
+            "Aujourd'hui":     [moment(), moment()],
+            "Hier":            [moment().subtract(1, 'days'), moment().subtract(1, 'days')],
+            "Cette semaine":   [moment().startOf('week'),   moment().endOf('week')],
+            "Ce mois-ci":      [moment().startOf('month'),  moment().endOf('month')],
+            "Cette année":     [moment().startOf('year'),   moment().endOf('year')]
+        }
+    }, function(start, end) {
+        devisStart = start.format('YYYY-MM-DD');
+        devisEnd = end.format('YYYY-MM-DD');
+        paiementsTable.ajax.reload();
+    });
+
+    // === 3. DataTable des Paiements ===
+    const paiementsTable = $('#paiementsDevisTable').DataTable({
+        processing: true,
+        serverSide: true,
+        ajax: {
+            url: '/api/paiements-devis',
+            data: function (d) {
+                d.start = devisStart;
+                d.end = devisEnd;
+            }
+        },
+        columns: [
+            {
+                data: 'devisId',
+                render: id => `DEV-${String(id).padStart(4, '0')}`
+            },
+            { data: 'patient' },
+            {
+                data: 'montant',
+                render: m => `${parseFloat(m).toLocaleString('fr-FR')} FCFA`
+            },
+            { data: 'mode' },
+            {
+                data: 'date',
+                render: d => {
+                    const date = new Date(d);
+                    return date.toLocaleDateString('fr-FR') + ' ' +
+                           date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+                }
+            }
+        ],
+        language: { url: 'https://cdn.datatables.net/plug-ins/1.13.5/i18n/fr-FR.json' },
+        order: [[4, 'desc']]
+    });
+
+    // === 4. Total recettes dynamiques ===
+    paiementsTable.on('draw', function () {
+        const data = paiementsTable.column(2, { search: 'applied' }).data().toArray();
+        const total = data.reduce((sum, val) => sum + (parseFloat(val) || 0), 0);
+        $('#recetteTotalPeriode').text(`${total.toLocaleString('fr-FR')} FCFA`);
+    });
+
+    // === 5. Impression d’un paiement unique (à connecter à un bouton dans le tableau si besoin)
+    $(document).on('click', '.imprimer-paiement-btn', function () {
+        const paiementId = $(this).data('id');
+        window.open(`/admin/paiement-devis/${paiementId}/print`, '_blank');
+    });
+
+    // === 6. Impression de la table filtrée
+    $('#imprimerPaiementsBtn').on('click', function () {
+        const url = `/admin/paiements-devis/impression?start=${devisStart}&end=${devisEnd}`;
+        window.open(url, '_blank');
+    });
+
+    $('#devisModal').on('show.bs.modal', function (event) {
+  const devisId = $(event.relatedTarget).data('devis-id');
+  const $container = $('#devisPreviewContainer');
+
+  $container.html('<p class="text-muted">Chargement du devis...</p>');
+
+  $.getJSON(`/admin/devis/${devisId}/preview`, function (data) {
+    const lignes = data.contenus.map(c => `
+      <tr>
+        <td>${c.designation}</td>
+        <td>${c.qte}</td>
+        <td>${parseFloat(c.montant).toLocaleString('fr-FR')} FCFA</td>
+        <td>${parseFloat(c.total).toLocaleString('fr-FR')} FCFA</td>
+      </tr>
+    `).join('');
+
+    const total = parseFloat(data.montant).toLocaleString('fr-FR') + ' FCFA';
+    const reste = parseFloat(data.reste).toLocaleString('fr-FR') + ' FCFA';
+    const date = new Date(data.date).toLocaleDateString('fr-FR');
+
+    $container.html(`
+  <div class="card shadow-sm">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-start mb-4">
+        <div>
+          <h5 class="text-primary mb-1">Devis N° <strong>DEV-${String(data.id).padStart(4, '0')}</strong></h5>
+          <p class="mb-0"><strong>Date :</strong> ${date}</p>
+        </div>
+        <div class="text-end">
+          <h6 class="mb-1">Patient :</h6>
+          <p class="mb-0">${data.patient.nom} ${data.patient.prenom}</p>
+          <p class="text-muted small">${data.patient.telephone || 'Téléphone non renseigné'}</p>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-bordered table-sm">
+          <thead class="table-light">
+            <tr>
+              <th>Désignation</th>
+              <th>Qté</th>
+              <th>Prix Unitaire</th>
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${data.contenus.map(c => `
+              <tr>
+                <td>${c.designation}</td>
+                <td>${c.qte}</td>
+                <td>${parseFloat(c.montant).toLocaleString('fr-FR')} FCFA</td>
+                <td>${parseFloat(c.total).toLocaleString('fr-FR')} FCFA</td>
+              </tr>
+            `).join('')}
+          </tbody>
+          <tfoot>
+            <tr>
+              <th colspan="3" class="text-end">Total TTC</th>
+              <th>${parseFloat(data.montant).toLocaleString('fr-FR')} FCFA</th>
+            </tr>
+            <tr>
+              <th colspan="3" class="text-end">Reste à payer</th>
+              <th class="text-danger">${parseFloat(data.reste).toLocaleString('fr-FR')} FCFA</th>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      <div class="row mt-5">
+        <div class="col-md-6 text-center">
+          <p class="text-muted">Signature du patient</p>
+          <div style="border-top: 1px solid #ccc; width: 80%; margin: 30px auto 0;"></div>
+        </div>
+        <div class="col-md-6 text-center">
+          <p class="text-muted">Cachet de la clinique</p>
+          <div style="border-top: 1px solid #ccc; width: 80%; margin: 30px auto 0;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+`);
+
+  }).fail(() => {
+    $container.html('<div class="alert alert-danger">Erreur lors du chargement du devis.</div>');
+  });
+});
+
+function chargerModesPaiement() {
+  const $select = $('#modePaiementDevis');
+  $select.empty().append('<option disabled selected>Chargement...</option>');
+
+  $.get('/api/modes-paiement', function (modes) {
+    $select.empty();
+    modes.forEach(mode => {
+      if (mode.actif) {
+        $select.append(`<option value="${mode.id}">${mode.libelle} (${mode.type})</option>`);
+      }
+    });
+  }).fail(() => {
+    $select.html('<option disabled>Erreur de chargement</option>');
+  });
+}
+
+$('#reglerDevisModal').on('show.bs.modal', function (e) {
+  const devisId = $(e.relatedTarget).data('devis-id');
+  $(this).data('devis-id', devisId);
+  $('#montantRegle').val('');
+  chargerModesPaiement();
+
+  // Charger aussi le reste à payer
+  $.getJSON(`/admin/devis/${devisId}/preview`, function (data) {
+    $('#montantRegle').attr('max', data.reste).attr('placeholder', `Max: ${data.reste} FCFA`);
+  });
+});
+
+$('#montantRegle').on('input', function () {
+  const max = parseFloat($(this).attr('max'));
+  const val = parseFloat($(this).val());
+
+  if (val > max) {
+    $(this).val(max);
+  }
+
+  const reste = max - (val || 0);
+  $('#resteCalc').text(`Reste après paiement : ${reste.toLocaleString('fr-FR')} FCFA`);
+});
+
+$('#confirmerPaiementDevisBtn').on('click', function () {
+  const modal = $('#reglerDevisModal');
+  const devisId = modal.data('devis-id');
+  const montant = parseFloat($('#montantRegle').val());
+  const modeId  = $('#modePaiementDevis').val();
+
+  if (!montant || montant <= 0 || !modeId) {
+    showToastModal({ message: 'Veuillez renseigner un montant et un mode de paiement.', type: 'warning' });
+    return;
+  }
+
+  $.ajax({
+    url: `/admin/devis/${devisId}/payer`,
+    method: 'POST',
+    data: {
+      montant: montant,
+      modeId: modeId
+    },
+    success: function () {
+      showToastModal({ message: 'Paiement enregistré avec succès.', type: 'success' });
+      modal.modal('hide');
+      $('#montantRegle').val('');
+      $('#resteCalc').text('');
+
+      // Recharge les données
+      if (typeof devisTable !== 'undefined') devisTable.ajax.reload();
+      if (typeof paiementsTable !== 'undefined') paiementsTable.ajax.reload();
+    },
+    error: function () {
+      showToastModal({ message: 'Erreur lors de l’enregistrement du paiement.', type: 'error' });
+    }
+  });
+});
+
+window.printDevisModal = function () {
+  const content = document.getElementById('devisPreviewContainer').innerHTML;
+  const style = `
+    <style>
+      body { font-family: sans-serif; margin: 30px; color: #333; }
+      table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+      th, td { border: 1px solid #ccc; padding: 8px; }
+      .text-end { text-align: right; }
+      .text-center { text-align: center; }
+    </style>
+  `;
+
+  const printWindow = window.open('', '', 'width=900,height=700');
+  printWindow.document.write(`
+    <html>
+      <head><title>Impression Devis</title>${style}</head>
+      <body>${content}</body>
+    </html>
+  `);
+  printWindow.document.close();
+  printWindow.focus();
+  printWindow.print();
+  printWindow.close();
+};
+
+
+
+});
+
+</script>
+
+{% endblock %}

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Paiement Devis</title>
+    <style>
+        body { font-family: sans-serif; margin: 30px; color: #333; }
+        h1 { text-align: center; margin-bottom: 30px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        td, th { padding: 10px; border: 1px solid #ddd; }
+        .right { text-align: right; }
+        .center { text-align: center; }
+        .info { margin-bottom: 20px; }
+        .signature { margin-top: 60px; display: flex; justify-content: space-between; }
+        .signature div { width: 30%; text-align: center; }
+    </style>
+</head>
+<body>
+    <h1>Reçu de Paiement</h1>
+
+    <div class="info">
+        <p><strong>Nom du patient :</strong> {{ paiement.devis.fiche.patient.nom }} {{ paiement.devis.fiche.patient.prenom }}</p>
+        <p><strong>N° Devis :</strong> DEV-{{ paiement.devis.id|default('')|pad(4, '0') }}</p>
+        <p><strong>Date du paiement :</strong> {{ paiement.date|date('d/m/Y H:i') }}</p>
+        <p><strong>Mode de paiement :</strong> {{ paiement.mode.libelle }} ({{ paiement.mode.type }})</p>
+    </div>
+
+    <table>
+        <tr>
+            <th>Description</th>
+            <th class="right">Montant</th>
+        </tr>
+        <tr>
+            <td>Paiement partiel de devis</td>
+            <td class="right">{{ paiement.montant|number_format(0, ',', ' ') }} FCFA</td>
+        </tr>
+        <tr>
+            <td class="right"><strong>Total payé</strong></td>
+            <td class="right"><strong>{{ paiement.montant|number_format(0, ',', ' ') }} FCFA</strong></td>
+        </tr>
+    </table>
+
+    <div class="signature">
+        <div>Signature du patient</div>
+        <div>Cachet de la clinique</div>
+    </div>
+</body>
+</html>

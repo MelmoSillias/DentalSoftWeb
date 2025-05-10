@@ -1,0 +1,28 @@
+je veux que tu fasse un template dashbord pour mon application  de gestion de cabinet dentaire.
+je souhaite integré les statistiques suivantes: 
+
+	sur la première sections des cartes légerement coloré avec des fas illustratifs bien accordée en taille (mais pas forcément de meme taille) (une carte par tiret, le tout bien accordé en hauteur)
+		- le nombre de patient enregistrées avec le nombre de ceux dont la dernière consultation c'est effectué dans un intervalle d'un mois en mini
+		- le nombre d'employées autres que les medecins et la masse salariale en mini 
+		- le nombre de medecins et en mini le nombre de medecins salariés fixe - la masse salaire fixe et le nombre de medecins en mini
+		- le nombre de medecins prestataires - 30 %
+		- le budget actuel et la recette mensuel en bas
+	sur la deuxième encore des cartes aussi coloré avec des fas pour illustré
+		- le nombre de consultations en attentes, 
+		- les factures non payées,
+		- les rdv en attente.
+	sur la troisième
+		- des graphiques de repartition homme/femme, par tranche d'ages, et l'evlution du nombre de patient aussi du taux de retour des patients dans un carousel sur 1/3 de la ligne 
+		- l'evolution du budget, benefice, depenses sur le même graphe et plusieurs couleurs de courbes et des trainées dégradées de courbe. sur les 2 autres tiers
+	sur cette section donnée d'abord un selecteur du mois et de l'année  
+		- ensuite une section pour les données périodiques avec un selecteur de periode: (
+			- sur la première ligne un tableau avec en entête de ligne les jours de la semaine et en entête de colonnes les semaines (semaine 1 [du 'debut' au 'fin' 'mois'] à 4)
+			  dans les cellulles du tableau renseigné la recette en vert par exemple, les dépenses en rouge, le nombre de consultations - le nombre de rendez vous de manière intuitive afin que tout sois visible avec sa taille
+			- sur la ligne d'après les rdvs (le nombre, les validés, les reportés, les ratés (avec le pourcentage de retour du client après raté))
+			- les graphiques des actes posées par catégories les catégories sont (protèses, soins dentaires, detartrage, ODH, extractions). avec les chiffres visible sur le coté avec une taille raisonnable
+			
+		- ensuite une section de rapport financier par mensuel
+
+assure toi que tout soit symétrique et ergonomique.
+fais un template twig stylé bootstrap 5 coloré et des petites animations au chargement et au survol des éléments des graphes epurer, utilises des données fictives pour faire le template twig mais sans mettre de routes ou autre car elle ne sont pas encore créer
+fais le tout en une seule page (html-twig, css, js). je te donne le template parent appbase, et model de dashbord que j'aime bien que tu pourrait suivre

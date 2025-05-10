@@ -1,0 +1,111 @@
+body {
+    background-color: rgb(255, 255, 255);
+}
+
+
+
+/* --- ANIMATION FLUIDE POUR LA NAVIGATION LATÉRALE --- */
+.sidebar {
+    transition: margin 0.3s ease, width 0.3s ease;
+}
+
+.sidebar.toggled {
+    transition: margin 0.3s ease, width 0.3s ease;
+}
+/* --- TRANSITION DOUCE SUR LES LIENS --- */
+.sidebar .nav-link,
+.navbar .nav-link,
+.collapse-inner .collapse-item {
+    transition: all 0.2s ease-in-out;
+}
+
+.sidebar .nav-link:hover,
+.navbar .nav-link:hover,
+.collapse-inner .collapse-item:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* --- ANIMATION DU TOGGLE ICON (optionnel, effet de rotation) --- */
+#sidebarToggle, #sidebarToggleTop {
+    transition: transform 0.3s ease;
+}
+
+#sidebarToggle:hover,
+#sidebarToggleTop:hover {
+    transform: rotate(90deg);
+}
+
+.form-select {
+    border: 2px solid #ced4da; 
+    border-radius: 0.5rem;
+    padding: 0.5rem 1rem;
+    background-color: #f8f9fa;
+    font-size: 1rem;
+    color: #495057;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+.form-select:focus {
+    border-color: #4e73df;
+    box-shadow: 0 0 0 0.2rem rgba(78, 115, 223, 0.25);
+    outline: none;
+}
+
+/* Placeholder grisé */
+.form-select option[value=""] {
+    color: #6c757d;
+}
+/* Curseur pointer sur hover */
+.form-select:hover {
+    cursor: pointer;
+    border-color: #a1a5b0;
+}
+
+/* === Custom Overrides === */
+
+.filepond--root {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial,
+        sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
+}
+
+.filepond--file-action-button {
+    cursor: pointer;
+    background-color: rgba(0, 0, 0, 0.5);
+    color: white;
+}
+
+.filepond--drop-label {
+    color: #555;
+}
+
+.filepond--label-action {
+    text-decoration-color: #aaa;
+}
+
+.filepond--panel-root {
+    background-color: transparent;
+    border: 2px solid #2c3340;
+    border-radius: 0.5em;
+}
+
+.filepond--item-panel {
+    background-color: #555;
+    border-radius: 0.5em;
+}
+
+.filepond--drip-blob {
+    background-color: #999;
+}
+
+.filepond--file {
+    color: white;
+}
+
+[data-filepond-item-state*='error'] .filepond--item-panel,
+[data-filepond-item-state*='invalid'] .filepond--item-panel {
+    background-color: red;
+}
+
+[data-filepond-item-state='processing-complete'] .filepond--item-panel {
+    background-color: green;
+}
+  /* 2. Co

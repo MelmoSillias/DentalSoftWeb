@@ -1,0 +1,629 @@
+{% extends 'appbase.html.twig' %}
+
+{% block title %}Jours Congés{% endblock %}
+
+{% block stylesheets %}
+<link href="https://unpkg.com/vis-timeline@7.7.0/styles/vis-timeline-graph2d.min.css" rel="stylesheet" />
+<style> 
+ /* === CONTAINER PRINCIPAL === */
+.timeline-wrapper {
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: 75vh;
+  border: 1px solid #dee2e6;
+  border-radius: 1rem;
+  padding: 1rem;
+  background: #f8f9fc;
+  box-shadow: 0 0 1.2rem rgba(0, 0, 0, 0.05);
+}
+
+/* === STYLE DE LA TIMELINE === */
+.vis-timeline {
+  background-color: #ffffff;
+  border-radius: 0.75rem;
+  box-shadow: 0 0 0.5rem rgba(0, 0, 0, 0.03);
+}
+
+.vis-group {
+  min-height: 60px;
+}
+
+.vis-time-axis .vis-text {
+  font-weight: 500;
+  color: #4e73df;
+  font-size: 0.85rem;
+}
+
+.vis-item {
+  border-radius: 0.5rem;
+  padding: 2px 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  border: none;
+}
+
+/* === STYLES PAR TYPE DE CONGÉ === */
+.vis-item.ferie {
+  background-color: #858796;
+}
+
+.vis-item.absence {
+  background-color: #e74a3b;
+}
+
+.vis-item.conge {
+  background-color: #1cc88a;
+}
+
+.vis-item.rtt {
+  background-color: #36b9cc;
+}
+
+/* === STYLES LIGNES DE GROUPE (EMPLOYÉS) === */
+.vis-label {
+  font-weight: 600;
+  font-size: 0.95rem;
+  padding: 0 10px;
+  color: #343a40;
+  min-height: 60px;
+}
+
+.vis-labelset {
+  background-color: #f8f9fc;
+}
+.vis-item.conge-annuel {
+  background-color: #1cc88a !important;
+  color: #fff !important;
+}
+.vis-item.conge-maladie {
+  background-color: #e74a3b !important;
+  color: #fff !important;
+}
+.vis-item.jour-ferie {
+  background-color: #f6c23e !important;
+  color: #212529 !important;
+}
+.vis-item.fermeture {
+  background-color: #6c757d !important;
+  color: #fff !important;
+}
+.vis-item.conge-autre {
+  background-color: #36b9cc !important;
+  color: #fff !important;
+}
+.vis-item.bg-jour-ferie {
+  background-color: #f6c23e !important;
+  opacity: 0.4 !important;
+  border: none !important;
+}
+
+.vis-item.bg-jour-fermeture {
+  background-color: #6c757d !important;
+  opacity: 0.2 !important;
+  border: none !important;
+}
+
+.modal-content.border-danger {
+  box-shadow: 0 0 0.75rem rgba(220, 53, 69, 0.5);
+}
+
+
+
+/* === Légende === */
+.legend-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-bottom: 1rem;
+}
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.875rem;
+  color: #495057;
+}
+.legend-color {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.lg-vacances    { background-color: rgba(78,115,223,0.8); }
+.lg-teletravail { background-color: rgba(25,135,84,0.8); }
+.lg-arret       { background-color: rgba(246,194,62,0.9); border:1px solid #bbb; }
+.lg-deplacement { background-color: rgba(231,74,59,0.8); }
+.lg-ferie       { background-color: rgba(234,76,137,0.2); border:1px solid rgba(234,76,137,0.5); }
+.lg-weekend     { background-color: rgba(248,249,250,0.6); border:1px solid #dee2e6; }
+
+/* === Responsive === */
+@media (max-width: 1028px) {
+  .btn-text { display: none !important; }
+}
+@media (max-width: 768px) {
+  .legend-container {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .btn i { margin-right: 0 !important; }
+  .btn {
+    padding: 0.5rem 0.75rem !important;
+    font-size: 0.9rem !important;
+    justify-content: center;
+    text-align: center;
+    margin: 0.5rem 0;
+  }
+  .btn.w-100 {
+    display: flex;
+    width: 100%;
+  }
+  .modal-dialog {
+    margin: 0;
+    max-width: 100%;
+  }
+  .modal-content { border-radius: 0; }
+}
+
+
+</style>
+{% endblock %}
+
+{% block main %}
+<div class="container-fluid px-4">
+  <div class="d-flex justify-content-between align-items-center mt-4 mb-3">
+    <h1 class="h4 text-primary mb-0">Gestion des Jours de Congé</h1>
+    <div class="legend-container d-flex flex-wrap gap-3">
+      <div class="legend-item"><span class="legend-color lg-vacances"></span> Vacances</div>
+      <div class="legend-item"><span class="legend-color lg-teletravail"></span> Télétravail</div>
+      <div class="legend-item"><span class="legend-color lg-arret"></span> Arrêt maladie</div>
+      <div class="legend-item"><span class="legend-color lg-deplacement"></span> Déplacement</div> 
+      <div class="legend-item"><span class="legend-color lg-weekend"></span> Week-end</div>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-4 align-items-center">
+    <div class="col-md-4">
+      <input id="searchInput" class="form-control shadow-sm" placeholder="🔍 Rechercher un employé...">
+    </div>
+    <div class="col-md-2">
+      <button id="todayBtn" class="btn btn-outline-primary w-100 btn-rounded shadow-sm">
+        <i class="fas fa-calendar-day"></i> <span class="btn-text">Aujourd'hui</span>
+      </button>
+    </div>
+    <div class="col-md-2">
+      <button id="configFermesBtn" class="btn btn-outline-secondary w-100 btn-rounded shadow-sm">
+        <i class="fas fa-cog"></i> <span class="btn-text">Jours fermés</span>
+      </button>
+    </div>
+    <div class="col-md-2">
+      <button id="addCongeBtn" class="btn btn-outline-success w-100 btn-rounded shadow-sm">
+        <i class="fas fa-plus"></i> <span class="btn-text">Ajouter Congé</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="timeline-wrapper">
+    <div id="timeline"></div>
+  </div>
+</div>
+
+<!-- Modal d'ajout de congé -->
+<div class="modal fade" id="addCongeModal" tabindex="-1" aria-labelledby="addCongeModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="addCongeModalLabel">Ajouter un Congé</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+      </div>
+      <div class="modal-body">
+        <form id="formAddConge">
+          <div class="mb-3">
+            <label for="employeeSelect" class="form-label">Employé concerné</label>
+            <select class="form-select" id="employeeSelect" required>
+              <option selected disabled value="">-- Choisir un employé --</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="typeConge" class="form-label">Type de congé</label>
+            <select class="form-select" id="typeConge" required>
+              <option value="vacances">Vacances</option>
+              <option value="teletravail">Télétravail</option>
+              <option value="arret">Arrêt maladie</option>
+              <option value="deplacement">Déplacement</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="startDate" class="form-label">Début</label>
+            <input type="date" class="form-control" id="startDate" required>
+          </div>
+          <div class="mb-3">
+            <label for="endDate" class="form-label">Fin</label>
+            <input type="date" class="form-control" id="endDate" required>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary btn-close" data-bs-dismiss="modal">Annuler</button>
+        <button id="saveCongeBtn" class="btn btn-primary">Ajouter</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de configuration jours fermés -->
+<div class="modal fade" id="configFermesModal" tabindex="-1" aria-labelledby="configFermesModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="configFermesModalLabel">Configurer les jours fermés</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="configFermesForm">
+          <div class="mb-3">
+            <label>Jours de la semaine fermés</label>
+            {% for idx, day in {0:'Dimanche',1:'Lundi',2:'Mardi',3:'Mercredi',4:'Jeudi',5:'Vendredi',6:'Samedi'} %}
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" value="{{ idx }}" id="ckd{{ idx }}" name="weekDays">
+              <label class="form-check-label" for="ckd{{ idx }}">{{ day }}</label>
+            </div>
+            {% endfor %}
+          </div>
+          <hr>
+          <div class="mb-3">
+            <label>Ajouter un jour férié</label>
+            <div class="d-flex">
+              <input type="date" id="newHolidayDate" class="form-control me-2">
+              <button type="button" id="addHolidayBtn" class="btn btn-outline-primary">Ajouter</button>
+            </div>
+          </div>
+          <ul class="list-group" id="holidaysList"></ul>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary btn-close" data-bs-dismiss="modal">Fermer</button>
+        <button id="saveConfigFermesBtn" class="btn btn-primary">Appliquer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="confirmAddModal" tabindex="-1" aria-labelledby="confirmAddModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-sm modal-dialog-centered">
+    <div class="modal-content bg-success text-white">
+      <div class="modal-body text-center py-4">
+        <i class="fas fa-check-circle fa-3x mb-3"></i>
+        <h5 class="mb-0" id="confirmAddModalLabel">Congé ajouté avec succès</h5>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block javascripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+<script src="https://unpkg.com/vis-timeline@7.7.0/standalone/umd/vis-timeline-graph2d.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/kylekatarnls-business-day@1.0.3/dist/business-day.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', async () => {
+  const now = new Date();
+  const viewStart = new Date(now.getFullYear() - 3, 0, 1);
+  const viewEnd   = new Date(now.getFullYear() + 2, 11, 31);
+
+  // Ferme tout modal via le bouton .btn-close
+  $('.btn-close').on('click', function () {
+    $(this).closest('.modal').modal('hide');
+  });
+
+  // 📦 Récupération de la config (jours fériés, fermetures hebdo)
+  let config;
+  try {
+    config = await fetch('/api/jours/list').then(r => r.json());
+  } catch (e) {
+    showToastModal({
+      message: "Impossible de charger la configuration des jours.",
+      type: "error",
+      duration: 3000
+    });
+    return; // On stoppe l'initialisation
+  }
+  const holidayDates   = config.feries;
+  const closedWeekDays = config.fermeturesHebdo;
+
+  // 📊 Préparation des datasets
+  const groupsDS     = new vis.DataSet();
+  const itemsDS      = new vis.DataSet();
+  const backgroundDS = new vis.DataSet();
+
+  function getClassForType(type) {
+    switch (type.toLowerCase()) {
+      case 'vacances':     return 'conge-annuel';
+      case 'teletravail':  return 'conge-autre';
+      case 'arret':        return 'conge-maladie';
+      case 'deplacement':  return 'conge-autre';
+      default:             return 'conge-autre';
+    }
+  }
+
+  // 👥 Récupération des employés + congés
+  let data;
+  try {
+    data = await fetch('/api/employes/conges').then(r => r.json());
+  } catch (e) {
+    showToastModal({
+      message: "Erreur lors de la récupération des congés.",
+      type: "error",
+      duration: 3000
+    });
+    return;
+  }
+
+  data.forEach(emp => {
+    groupsDS.add({ id: emp.id, content: `${emp.prenom} ${emp.nom}` });
+    emp.conges.forEach(c => {
+      itemsDS.add({
+        id:        c.id,
+        group:     emp.id,
+        content:   c.type,
+        start:     c.start,
+        end:       new Date(new Date(c.end).getTime() + 86400000).toISOString().slice(0,10),
+        className: getClassForType(c.type)
+      });
+    });
+    // Remplissage du select
+    const opt = document.createElement('option');
+    opt.value = emp.id;
+    opt.textContent = emp.prenom + ' ' + emp.nom;
+    document.getElementById('employeeSelect').append(opt);
+  });
+
+  function updateBackground() {
+    backgroundDS.clear();
+    // Jours fériés
+    holidayDates.forEach(date => {
+      backgroundDS.add({
+        id:        `ferie-${date}`,
+        content:   '',
+        start:     date,
+        end:       new Date(new Date(date).getTime() + 86400000).toISOString().slice(0,10),
+        type:      'background',
+        className: 'bg-jour-ferie'
+      });
+    });
+    // Fermetures hebdo
+    for (let d = new Date(viewStart); d <= viewEnd; d.setDate(d.getDate() + 1)) {
+      const iso = d.toISOString().slice(0,10);
+      if (closedWeekDays.includes(d.getDay())) {
+        backgroundDS.add({
+          id:        `closed-${iso}`,
+          content:   '',
+          start:     iso,
+          end:       new Date(new Date(iso).getTime() + 86400000).toISOString().slice(0,10),
+          type:      'background',
+          className: 'bg-jour-fermeture'
+        });
+      }
+    }
+  }
+  updateBackground();
+
+  // 🗓 Initialisation de la timeline
+  const timeline = new vis.Timeline(
+    document.getElementById('timeline'),
+    new vis.DataSet([...itemsDS.get(), ...backgroundDS.get()]),
+    groupsDS,
+    {
+      start: viewStart,
+      end:   viewEnd,
+      stack: false,
+      orientation: { axis: 'top', item: 'top' },
+      groupOrder:  'content',
+      groupHeightMode: 'fixed',
+      zoomKey:     'ctrlKey',
+      zoomable:    true,
+      zoomMax:     1000 * 60 * 60 * 24 * 30,
+      editable:    false,
+      groupTemplate: g => g.content
+    }
+  );
+
+  // Zoom sur le mois courant
+  const moisDebut = new Date(now.getFullYear(), now.getMonth(), 1);
+  const moisFin   = new Date(now.getFullYear(), now.getMonth()+1, 0);
+  timeline.setWindow(moisDebut, moisFin, { animation: true });
+
+  // 🌞 Style de l’axe pour fériés / fermetures
+  function styleAxis() {
+    document.querySelectorAll('.vis-time-axis .vis-grid').forEach(cell => {
+      const dateStr = cell.getAttribute('title') || cell.dataset.date;
+      if (!dateStr) return;
+      const d   = new Date(dateStr);
+      const iso = d.toISOString().slice(0,10);
+      cell.classList.remove('vis-ferie','vis-weekend');
+      if (holidayDates.includes(iso))      cell.classList.add('vis-ferie');
+      else if (closedWeekDays.includes(d.getDay())) cell.classList.add('vis-weekend');
+    });
+  }
+  timeline.on('rangechanged', styleAxis);
+  styleAxis();
+
+  function refreshTimelineItems() {
+    const merged = new vis.DataSet();
+    itemsDS.get().forEach(i => merged.add(i));
+    backgroundDS.get().forEach(b => merged.add(b));
+    timeline.setItems(merged);
+  }
+
+  // 🎛 Boutons et filtres
+  $('#todayBtn').on('click', () => timeline.moveTo(new Date()));
+  $('#searchInput').on('input', e => {
+    const txt    = e.target.value.toLowerCase();
+    const filtres= groupsDS.get({ filter: g => g.content.toLowerCase().includes(txt) });
+    timeline.setGroups(new vis.DataSet(filtres));
+  });
+
+  // --- AJOUT DE CONGÉ ---
+  $('#addCongeBtn').on('click', () => {
+    const todayISO = new Date().toISOString().slice(0,10);
+    const dispo = data.filter(emp =>
+      !emp.conges.some(c =>
+        c.type.toLowerCase()==='vacances' &&
+        new Date(c.end).toISOString().slice(0,10) >= todayISO
+      )
+    );
+    const $sel = $('#employeeSelect').empty().append('<option disabled selected value="">-- Choisir un employé --</option>');
+    if (dispo.length) {
+      dispo.forEach(emp => $sel.append(`<option value="${emp.id}">${emp.prenom} ${emp.nom}</option>`));
+    } else {
+      $sel.append('<option disabled>Aucun employé disponible</option>');
+    }
+    $('#addCongeModal').modal('show');
+  });
+
+  $('#saveCongeBtn').on('click', async () => {
+    const emp   = +$('#employeeSelect').val();
+    const type  = $('#typeConge').val();
+    const start = $('#startDate').val();
+    const end   = $('#endDate').val();
+    const $card = $('#addCongeModal .modal-content');
+
+    // Reset erreurs
+    $card.removeClass('border border-danger');
+    bootstrap.Tooltip.getInstance($card[0])?.dispose();
+
+    if (!emp || !type || !start || !end) {
+      showToastModal({ message: 'Tous les champs sont requis', type: 'warning' });
+      return;
+    }
+
+    const sd = new Date(start), ed = new Date(end);
+    const overlap = data.find(e => e.id===emp)?.conges.some(c => {
+      const cs = new Date(c.start), ce = new Date(c.end);
+      return sd <= ce && ed >= cs;
+    });
+
+    if (overlap) {
+      $card.addClass('border border-danger');
+      const tip = new bootstrap.Tooltip($card[0], {
+        title: "Chevauchement détecté pour cet employé",
+        placement: 'top',
+        trigger: 'manual'
+      });
+      tip.show();
+      return;
+    }
+
+    // Envoi
+    let json;
+    try {
+      const res = await fetch('/api/conges', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ employeId: emp, type, startDate: start, endDate: end })
+      });
+      json = await res.json();
+    } catch {
+      showToastModal({ message: 'Erreur réseau lors de l’ajout', type: 'error', duration: 3000 });
+      return;
+    }
+
+    if (json.conge) {
+      itemsDS.add({
+        id:        json.conge.id,
+        group:     emp,
+        content:   type,
+        start:     json.conge.start,
+        end:       new Date(new Date(json.conge.end).getTime()+86400000).toISOString().slice(0,10),
+        className: getClassForType(type)
+      });
+      refreshTimelineItems();
+      styleAxis();
+      $('#addCongeModal').modal('hide');
+      showToastModal({ message: 'Congé ajouté avec succès', type: 'success' });
+    } else {
+      showToastModal({ message: 'Échec de l’ajout du congé', type: 'error', duration: 3000 });
+    }
+  });
+
+  // --- CONFIGURER LES FERMETURES HEBDO ---
+  $('#configFermesBtn').on('click', () => {
+    $('#configFermesModal').modal('show');
+    $('input[name="weekDays"]').each(function () {
+      this.checked = closedWeekDays.includes(+this.value);
+    });
+  });
+
+  $('#addHolidayBtn').on('click', async () => {
+    const d = $('#newHolidayDate').val();
+    if (!d || holidayDates.includes(d)) return;
+    try {
+      const j = await fetch('/api/jours/ferie/add', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({ date: d })
+      }).then(r=>r.json());
+      if (j.success) {
+        holidayDates.push(d);
+        updateBackground();
+        refreshTimelineItems();
+        styleAxis();
+        refreshHolidaysUI();
+        showToastModal({ message: 'Jour férié ajouté', type: 'success' });
+      } else {
+        showToastModal({ message: 'Impossible d’ajouter ce jour férié', type: 'error', duration: 3000 });
+      }
+    } catch {
+      showToastModal({ message: 'Erreur réseau lors de l’ajout du jour férié', type: 'error', duration: 3000 });
+    }
+  });
+
+  $('#saveConfigFermesBtn').on('click', async () => {
+    const jours = $('input[name="weekDays"]:checked').map(function(){ return +this.value }).get();
+    try {
+      await fetch('/api/jours/fermetures/update', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({ jours })
+      });
+      closedWeekDays.splice(0, closedWeekDays.length, ...jours);
+      updateBackground();
+      refreshTimelineItems();
+      styleAxis();
+      $('#configFermesModal').modal('hide');
+      showToastModal({ message: 'Configuration enregistrée', type: 'success' });
+    } catch {
+      showToastModal({ message: 'Erreur lors de l’enregistrement', type: 'error', duration: 3000 });
+    }
+  });
+
+  function refreshHolidaysUI() {
+    const ul = $('#holidaysList').empty();
+    holidayDates.forEach(d => {
+      const li = $(`
+        <li class="list-group-item d-flex justify-content-between align-items-center">
+          ${d}
+          <button type="button" class="btn-close"></button>
+        </li>`);
+      li.find('.btn-close').on('click', () => {
+        holidayDates.splice(holidayDates.indexOf(d),1);
+        updateBackground();
+        refreshTimelineItems();
+        styleAxis();
+        refreshHolidaysUI();
+        showToastModal({ message: 'Jour férié supprimé', type: 'info' });
+      });
+      ul.append(li);
+    });
+  }
+
+  refreshHolidaysUI();
+});
+</script>
+
+
+{% endblock %}
+ 

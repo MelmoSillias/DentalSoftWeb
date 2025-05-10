@@ -1,0 +1,78 @@
+<?php
+
+namespace App\Controller;
+
+use App\Entity\Conge;
+use App\Repository\CongeRepository;
+use App\Repository\EmployeRepository;
+use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\Routing\Annotation\Route;
+
+#[Route('/api/conges')]
+class CongeController extends AbstractController
+{
+    #[Route('', name: 'api_add_conge', methods: ['POST'])]
+    public function addConge(
+        Request $request,
+        EntityManagerInterface $em,
+        EmployeRepository $employeRepo
+    ): JsonResponse {
+        $data = json_decode($request->getContent(), true);
+
+        if (!isset($data['employeId'], $data['type'], $data['startDate'], $data['endDate'])) {
+            return $this->json(['error' => 'Champs manquants.'], 400);
+        }
+
+        $employe = $employeRepo->find($data['employeId']);
+        if (!$employe) {
+            return $this->json(['error' => 'Employé introuvable.'], 404);
+        }
+
+        $start = \DateTime::createFromFormat('Y-m-d', $data['startDate']);
+        $end = \DateTime::createFromFormat('Y-m-d', $data['endDate']);
+
+        if (!$start || !$end || $end < $start) {
+            return $this->json(['error' => 'Dates invalides.'], 400);
+        }
+
+        $conge = new Conge();
+        $conge->setEmploye($employe);
+        $conge->setType($data['type']);
+        $conge->setStartDate($start);
+        $conge->setEndDate($end);
+        $em->persist($conge);
+        $em->flush();
+
+        return $this->json([
+            'message' => 'Congé ajouté avec succès.',
+            'conge' => [
+                'id' => $conge->getId(),
+                'type' => $conge->getType(),
+                'start' => $start->format('Y-m-d'),
+                'end' => $end->format('Y-m-d'),
+                'employe' => $employe->getPrenom() . ' ' . $employe->getNom(),
+            ]
+        ], 201);
+    }
+
+    #[Route('/all', name: 'api_all_conges', methods: ['GET'])]
+    public function getAllConges(CongeRepository $repo): JsonResponse
+    {
+        $conges = $repo->findAll();
+
+        $data = array_map(function ($conge) {
+            return [
+                'id' => $conge->getId(),
+                'employeId' => $conge->getEmploye()->getId(),
+                'type' => $conge->getType(),
+                'start' => $conge->getStartDate()->format('Y-m-d'),
+                'end' => $conge->getEndDate()->format('Y-m-d')
+            ];
+        }, $conges);
+
+        return $this->json($data);
+    }
+}
