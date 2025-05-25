@@ -15,20 +15,20 @@ class Devis
     #[ORM\Column(type: 'integer')]
     private ?int $id = null;
 
-    #[ORM\OneToOne(targetEntity: FicheObservation::class, inversedBy: 'devis', cascade: ['persist', 'remove'])]
+    #[ORM\ManyToOne(targetEntity: FicheObservation::class, inversedBy: 'devis', cascade: ['persist', 'remove'])]
     #[ORM\JoinColumn(nullable: false)]
     private ?FicheObservation $fiche = null;
 
     #[ORM\Column(type: 'datetime')]
     private ?\DateTimeInterface $date = null;
 
-    #[ORM\Column(type: 'float')]
+    #[ORM\Column(type: 'float', nullable:true)]
     private float $montant;
 
-    #[ORM\Column(type: 'float')]
+    #[ORM\Column(type: 'float', nullable:true)]
     private float $reste;
 
-    #[ORM\Column(type: 'integer')]
+    #[ORM\Column(type: 'integer', nullable:true)]
     private int $statut;
 
     #[ORM\OneToMany(mappedBy: 'devis', targetEntity: PaiementDevis::class, cascade: ['persist', 'remove'])]
@@ -36,6 +36,9 @@ class Devis
 
     #[ORM\OneToMany(mappedBy: 'devis', targetEntity: ContenuDevis::class, cascade: ['persist', 'remove'])]
     private Collection $contenus;
+
+    #[ORM\Column]
+    private ?int $type = null;
 
     public function __construct()
     {
@@ -101,6 +104,18 @@ class Devis
                 $contenu->setDevis(null);
             }
         }
+        return $this;
+    }
+
+    public function getType(): ?int
+    {
+        return $this->type;
+    }
+
+    public function setType(int $type): static
+    {
+        $this->type = $type;
+
         return $this;
     }
 

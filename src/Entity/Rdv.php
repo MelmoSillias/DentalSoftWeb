@@ -36,6 +36,9 @@ class Rdv
     #[ORM\Column(length: 255)]
     private ?string $description = null;
 
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $reportedAt = null;
+
 
     public function getId(): ?int
     {
@@ -122,6 +125,18 @@ class Rdv
     public function setDescription(string $description): static
     {
         $this->description = $description;
+
+        return $this;
+    }
+
+    public function getReportedAt(): ?\DateTimeImmutable
+    {
+        return $this->reportedAt;
+    }
+
+    public function setReportedAt(?\DateTimeImmutable $reportedAt): static
+    {
+        $this->reportedAt = $reportedAt;
 
         return $this;
     }

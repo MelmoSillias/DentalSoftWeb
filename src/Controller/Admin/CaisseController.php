@@ -36,6 +36,7 @@ public function getDevisImpayes(DevisRepository $repo): JsonResponse
         ->join('d.fiche', 'f')->addSelect('f')
         ->join('f.patient', 'p')->addSelect('p')
         ->where('d.reste > 0')
+        ->Andwhere('d.type = 1')
         ->orderBy('d.date', 'DESC')
         ->getQuery()
         ->getResult();
@@ -84,7 +85,8 @@ public function getPaiementsDevis(Request $request, PaiementDevisRepository $rep
             'montant' => $p->getMontant(),
             'mode'    => $p->getMode()->getLibelle(),
             'date'    => $p->getDate()->format('Y-m-d H:i:s'),
-            'type'    => $devis ? 'devis' : 'ticket'
+            'type'    => $devis ? 'devis' : 'ticket',
+            'pId' => $p->getId()
         ];
     }, $paiements);
 

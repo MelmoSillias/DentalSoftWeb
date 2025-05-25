@@ -1,25 +1,575 @@
-<formn class="eventForm" >
-    <div class="card">
-        <div class="row mt-5">
-            <div class="col-md-6">
-                <label for="eventStartDate" class="form-label"></label>
-                <input id="eventStartDate" class="form-control" type="datetime-local">
-            </div>
-            <div class="col-md-6">
-                <label for="eventEndDate" class="form-label"></label>
-                <input id="eventEndDate" class="form-control" type="datetime-local">
-            </div>
-        </div>
-        
-        <div class="mt-4">
-            <label for="eventTitle" class="form-label"></label>
-            <input id="eventTitle" class="form-control" type="text">
-        </div>
+{% extends 'appbase.html.twig' %}
 
-        <div class="mt-4">
-            <label for="eventDescription" class="form-label"></label>
-            <textarea id="eventDescription" class="form-control" type="text">
-        </div>
-        
+{% block title %}Compléter Consultation - {{ consultation.patient.nom }}{% endblock %}
+
+{% block stylesheets %}
+  {{ parent() }}
+
+  {# --- FilePond CSS (thème clair) --- #}
+  <link href="https://unpkg.com/filepond/dist/filepond.min.css" rel="stylesheet"/>
+
+  <style>
+    /* --- Layout global --- */
+    .container-fluid { padding: 1rem; }
+    .card { margin-bottom: 1.5rem; }
+
+    /* --- Floating Action Buttons --- */
+    .floating-buttons {
+      position: fixed;
+      bottom: 20px; right: 20px;
+      display: flex; flex-direction: column; gap: 0.5rem;
+      z-index: 1000;
+    }
+    .btn-circle {
+      width: 56px; height: 56px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.25rem; padding: 0;
+    }
+    @media (max-width: 767.98px) {
+      .floating-buttons { bottom: 15px; right: 15px; }
+      .btn-circle { width: 45px; height: 45px; }
+    }
+    @media (max-width: 575.98px) {
+      .floating-buttons { bottom: 10px; right: 10px; }
+      .btn-circle { width: 40px; height: 40px; }
+    }
+
+    /* --- Modals Responsives --- */
+    @media (max-width: 991.98px) {
+      .modal-xl { max-width: 100% !important; margin: 1rem; }
+    }
+    @media (max-width: 575.98px) {
+      .modal-dialog { max-width: 100% !important; margin: 0.5rem; }
+    }
+
+    /* --- Tables Responsive --- */
+    .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+    /* --- Facture Styles --- */
+    .facture-container { font-family: 'Nunito', sans-serif; color: #333; }
+    .facture-header {
+      display: flex; justify-content: space-between; align-items: center;
+      border-bottom: 2px solid #007bff; padding-bottom: 1rem; margin-bottom: 1rem;
+    }
+    .facture-logo { max-width: 100px; }
+    .entreprise-info { text-align: right; }
+    .client-info { margin-bottom: 1.5rem; }
+    .facture-meta { text-align: right; }
+    .facture-table {
+      width: 100%; border-collapse: collapse; margin-bottom: 1.5rem;
+    }
+    .facture-table th,
+    .facture-table td {
+      border: 1px solid #ddd; padding: 0.75rem; text-align: left;
+    }
+    .facture-table th { background-color: #f8f9fc; font-weight: bold; }
+    .facture-table tfoot th { text-align: right; }
+    .signature-section {
+      display: flex; justify-content: space-between; align-items: center; margin-top: 2rem;
+    }
+    .montant-lettres { font-style: italic; }
+    .cachet-space {
+      width: 150px; height: 100px; border: 1px dashed #ccc;
+      text-align: center; line-height: 100px; color: #999;
+    }
+    .facture-footer {
+      text-align: center; font-size: 0.875rem; color: #666; margin-top: 2rem;
+    }
+
+    /* --- Last Consultation Card --- */
+    .last-consult-card {
+      position: fixed; top: 5.5rem; right: 1rem;
+      width: 20rem; z-index: 1100; opacity: .5;
+      transition: top .3s ease-in-out, opacity .3s ease;
+    }
+    .last-consult-card:hover { opacity: 1; }
+    .last-consult-card .card {
+      border-left: .25rem solid #4e73df;
+      box-shadow: 0 .15rem 1.75rem rgba(58,59,69,.15);
+    }
+
+    /* --- Custom Tabs --- */
+    .custom-tabs .nav-tabs {
+      border-bottom: 2px solid #dee2e6;
+    }
+    .custom-tabs .nav-link {
+      border: 1px solid transparent;
+      border-top-left-radius: 0.25rem;
+      border-top-right-radius: 0.25rem;
+      color: #495057;
+      padding: 0.5rem 1rem;
+      margin-bottom: -1px;
+    }
+    .custom-tabs .nav-link.active {
+      color: #007bff;
+      background-color: #fff;
+      border-color: #dee2e6 #dee2e6 #fff;
+      border-bottom-color: #fff;
+    }
+    .custom-tabs .tab-content {
+      padding: 1rem;
+      background-color: #fff;
+      border: 1px solid #dee2e6;
+      border-top: none;
+    }
+  </style>
+{% endblock %}
+
+{% block main %}
+<script>
+    window.consultId = {{ id }}; 
+</script> 
+
+<div class="container-fluid px-4">
+  <div class="card shadow mb-3">
+    <div class="card-header py-3 d-flex justify-content-between align-items-center">
+      <h6 class="m-0 font-weight-bold text-primary">Fiche de consultation - Référence #{{ fiche.id }}# | Séance {{ fiche.consultations|length + 1 }}</h6>
     </div>
-</form>
+  </div>
+
+  <div class="custom-tabs">
+    <ul class="nav nav-tabs" id="myTab" role="tablist">
+      <li class="nav-item">
+        <a class="nav-link active text-white bg-secondary" id="infos-patient-tab" data-toggle="tab" href="#infos-patient" role="tab" aria-controls="infos-patient" aria-selected="true">Infos Patient</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" id="motif-soins-tab" data-toggle="tab" href="#motif-soins" role="tab" aria-controls="motif-soins" aria-selected="false">Motif & Histoire</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" id="examens-tab" data-toggle="tab" href="#examens" role="tab" aria-controls="examens" aria-selected="false">Examens</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" id="traitements-documents-tab" data-toggle="tab" href="#traitements-documents" role="tab" aria-controls="traitements-documents" aria-selected="false">Traitements & Documents</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" id="devis-tab" data-toggle="tab" href="#devis" role="tab" aria-controls="devis" aria-selected="false">Devis</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" id="seances-passees-tab" data-toggle="tab" href="#seances-passees" role="tab" aria-controls="seances-passees" aria-selected="false">Séances Passées</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link text-white bg-success" id="consultation-en-cours-tab" data-toggle="tab" href="#consultation-en-cours" role="tab" aria-controls="consultation-en-cours" aria-selected="false">Consultation en Cours</a>
+      </li>
+    </ul>
+    <div class="tab-content" id="myTabContent">
+      <!-- Section Informations du patient -->
+      <div class="tab-pane fade show active" id="infos-patient" role="tabpanel" aria-labelledby="infos-patient-tab">
+        <div class="card shadow mb-3">
+          <div class="card-header py-3 d-flex justify-content-between align-items-center">
+            <h6 class="m-0 font-weight-bold text-primary">Informations du patient : <span class="text-gray-600 ms-2">{{ consultation.patient.nom }} {{ consultation.patient.prenom }}</span></h6>
+            <button type="button" class="btn btn-secondary" disabled>Sauvegarder</button>
+          </div>
+          <div class="card-body">
+            <div class="row">
+              <div class="col-md-6">
+                <p><strong>Nom :</strong> {{ consultation.patient.nom }}</p>
+                <p><strong>Prénom :</strong> {{ consultation.patient.prenom }}</p>
+                <p><strong>Date de naissance :</strong>
+                  {{ consultation.patient.dateNaissance ? consultation.patient.dateNaissance|date('d/m/Y') : '-' }}
+                </p>
+              </div>
+              <div class="col-md-6">
+                <p><strong>Sexe :</strong> {{ consultation.patient.sexe }}</p>
+                <p><strong>Téléphone :</strong> {{ consultation.patient.telephone }}</p>
+                <p><strong>Adresse :</strong> {{ consultation.patient.adresse }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section Motif, Soins Antérieurs, Histoire Maladie -->
+      <div class="tab-pane fade" id="motif-soins" role="tabpanel" aria-labelledby="motif-soins-tab">
+        <div class="card shadow mb-3">
+          <div class="card-header py-3 d-flex justify-content-between align-items-center">
+            <h6 class="m-0 font-weight-bold text-primary">Motif, Soins Antérieurs, Histoire Maladie</h6>
+            <button type="button" class="btn btn-primary" id="btnSaveMotifSoins">Sauvegarder</button>
+          </div>
+          <div class="card-body">
+            <form id="motifSoinsForm">
+              <div class="row">
+                <div class="col-md-6 mb-3">
+                  <label for="motif" class="form-label">Motif</label>
+                  <textarea id="motif" class="form-control" name="motif"></textarea>
+                </div>
+                <div class="col-md-6 mb-3">
+                  <label for="histoireMaladie" class="form-label">Histoire de la maladie</label>
+                  <textarea id="histoireMaladie" class="form-control" name="histoireMaladie"></textarea>
+                </div>
+                <div class="col-md-12 mb-3">
+                  <label for="soinsAnterieurs" class="form-label">Soins antérieurs</label>
+                  <textarea id="soinsAnterieurs" class="form-control" name="soinsAnterieurs"></textarea>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section Examens -->
+      <div class="tab-pane fade" id="examens" role="tabpanel" aria-labelledby="examens-tab">
+        <div class="card shadow mb-3">
+          <div class="card-header py-3 d-flex justify-content-between align-items-center">
+            <h6 class="m-0 font-weight-bold text-primary">Examens</h6>
+            <button type="button" class="btn btn-primary" id="btnSaveExamens">Sauvegarder</button>
+          </div>
+          <div class="card-body">
+            <form id="examensForm">
+              
+
+              <h6 class="mt-4 alert alert-primary">Examen Exobuccal</h6>
+              <div class="row">
+                <div class="col-md-6 mb-3">
+                  <label for="exoInspection" class="form-label">Inspection</label>
+                  <textarea id="exoInspection" class="form-control" name="exoInspection"></textarea>
+                </div>
+                <div class="col-md-6 mb-3">
+                  <label for="exoPalpation" class="form-label">Palpation</label>
+                  <textarea id="exoPalpation" class="form-control" name="exoPalpation"></textarea>
+                </div>
+              </div>
+
+              <h6 class="mt-4 alert alert-primary">Examen Endobuccal</h6>
+              <div class="row">
+                <div class="col-md-6 mb-3">
+                  <label for="endoInspection" class="form-label">Inspection</label>
+                  <textarea id="endoInspection" class="form-control" name="endoInspection"></textarea>
+                </div>
+                <div class="col-md-6 mb-3">
+                  <label for="endoPalpation" class="form-label">Palpation</label>
+                  <textarea id="endoPalpation" class="form-control" name="endoPalpation"></textarea>
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <label for="occlusion" class="form-label">Occlusion</label>
+                <textarea id="occlusion" class="form-control" name="occlusion"></textarea>
+              </div>
+
+              <div class="mb-3">
+                <label for="examenParodontal" class="form-label">Examen parodontal</label>
+                <textarea id="examenParodontal" class="form-control" name="examenParodontal"></textarea>
+              </div>
+
+              <div class="mb-3">
+                <label for="diagnostic" class="form-label">Diagnostic</label>
+                <textarea id="diagnostic" class="form-control" name="diagnostic"></textarea>
+              </div>
+
+              <div class="card mb-3">
+                <div class="card-header d-flex align-items-center justify-content-between alert alert-primary">
+                  <h6 class="m-0 font-weight-bold"><i class="fas fa-tooth me-1 "></i> Examens Dentaires</h6> 
+                </div>
+                <div class="card-body">
+                  <div id="toothContainer"> 
+                     {% set upperPairs = [ [11, 21], [12, 22], [13, 23], [14, 24], [15, 25], [16, 26], [17, 27], [18, 28] ] %}
+
+                      {% set lowerPairs = [ [31, 41], [32, 42], [33, 43], [34, 44], [35, 45], [36, 46], [37, 47], [38, 48] ] %}
+
+                      <h5>Arcade supérieure</h5>
+                      <div class="row">
+                          {% for pair in upperPairs %}
+                              <div class="col-md-6 mb-2">
+                                  <div class="input-group">
+                                      <span class="input-group-text">{{ pair[0] }}</span>
+                                      <textarea class="form-control tooth-input"
+                                                id="tooth-{{ pair[0] }}"
+                                                data-tooth="{{ pair[0] }}"
+                                                name="toothsCheck[{{ pair[0] }}]"></textarea>
+                                  </div>
+                              </div>
+                              <div class="col-md-6 mb-2">
+                                  <div class="input-group">
+                                      <span class="input-group-text">{{ pair[1] }}</span>
+                                      <textarea class="form-control tooth-input"
+                                                id="tooth-{{ pair[1] }}"
+                                                data-tooth="{{ pair[1] }}"
+                                                name="toothsCheck[{{ pair[1] }}]"></textarea>
+                                  </div>
+                              </div>
+                          {% endfor %}
+                      </div>
+
+                      <h5>Arcade inférieure</h5>
+                      <div class="row">
+                          {% for pair in lowerPairs %}
+                              <div class="col-md-6 mb-2">
+                                  <div class="input-group">
+                                      <span class="input-group-text">{{ pair[0] }}</span>
+                                      <textarea class="form-control tooth-input"
+                                                id="tooth-{{ pair[0] }}"
+                                                data-tooth="{{ pair[0] }}"
+                                                name="toothsCheck[{{ pair[0] }}]"></textarea>
+                                  </div>
+                              </div>
+                              <div class="col-md-6 mb-2">
+                                  <div class="input-group">
+                                      <span class="input-group-text">{{ pair[1] }}</span>
+                                      <textarea class="form-control tooth-input"
+                                                id="tooth-{{ pair[1] }}"
+                                                data-tooth="{{ pair[1] }}"
+                                                name="toothsCheck[{{ pair[1] }}]"></textarea>
+                                  </div>
+                              </div>
+                          {% endfor %}
+                      </div> 
+                  </div>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section Traitements & Documents Médicaux -->
+      <div class="tab-pane fade" id="traitements-documents" role="tabpanel" aria-labelledby="traitements-documents-tab">
+        <div class="card shadow mb-3">
+          <div class="card-header py-3 d-flex justify-content-between align-items-center">
+            <h6 class="m-0 font-weight-bold text-primary">Traitements & Documents Médicaux</h6>
+            <button type="button" class="btn btn-primary" id="btnSaveTraitementsDocuments">Sauvegarder</button>
+          </div>
+          <div class="card-body">
+            <form id="traitementsDocumentsForm">
+              <h6 class="mt-4 alert alert-primary"><i class="fas fa-syringe me-1"></i> Traitements</h6>
+              <div class="row">
+                <div class="col-md-4 mb-3">
+                  <label for="traitementUrgence" class="form-label">Urgence</label>
+                  <textarea id="traitementUrgence" class="form-control" name="traitementUrgence"></textarea>
+                </div>
+                <div class="col-md-4 mb-3">
+                  <label for="traitementDentaire" class="form-label">Dentaire</label>
+                  <textarea id="traitementDentaire" class="form-control" name="traitementDentaire"></textarea>
+                </div>
+                <div class="col-md-4 mb-3">
+                  <label for="traitementParodontal" class="form-label">Parodontal</label>
+                  <textarea id="traitementParodontal" class="form-control" name="traitementParodontal"></textarea>
+                </div>
+                <div class="col-md-6 mb-3">
+                  <label for="traitementOrthodontique" class="form-label">Orthodontique</label>
+                  <textarea id="traitementOrthodontique" class="form-control" name="traitementOrthodontique"></textarea>
+                </div>
+                <div class="col-md-6 mb-3">
+                  <label for="autres" class="form-label">Autres</label>
+                  <textarea id="autres" class="form-control" name="autres"></textarea>
+                </div>
+              </div>
+
+              <div class="card mb-3">
+                <div class="card-header d-flex align-items-center justify-content-between">
+                  <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-file-medical me-2"></i> Documents médicaux
+                  </h6>
+                  <button type="button" class="btn btn-sm btn-outline-primary" id="btnAddDocument">
+                    <i class="fas fa-plus me-1"></i> Ajouter
+                  </button>
+                </div>
+                <div class="card-body">
+                  <div id="documentsContainer"></div>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section Devis -->
+      <div class="tab-pane fade" id="devis" role="tabpanel" aria-labelledby="devis-tab">
+        <div class="card shadow mb-3">
+          <div class="card-header py-3 d-flex justify-content-between align-items-center">
+            <h6 class="m-0 font-weight-bold text-primary">Devis</h6>
+            <button type="button" class="btn btn-primary" id="btnSaveDevis">Sauvegarder</button>
+          </div>
+          <div class="card-body">
+            <form id="devisForm">
+              <div class="mb-3 row">
+                <label for="devisDate" class="col-sm-3 col-form-label">Date</label>
+                <div class="col-sm-9">
+                  <input type="date" class="form-control" name="date" id="devisDate" required>
+                </div>
+              </div>
+
+              <hr>
+
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="mb-0">Services</h6>
+                <button type="button" class="btn btn-sm btn-outline-primary" id="btnAddService">
+                  <i class="fas fa-plus me-1"></i> Ajouter un service
+                </button>
+              </div>
+              <div id="servicesContainer"></div>
+
+              <hr>
+
+              <div class="mb-3 row">
+                <label class="col-sm-3 col-form-label fw-bold">Montant total à Payer</label>
+                <div class="col-sm-9">
+                  <input type="text" readonly class="form-control-plaintext fw-bold fs-5" id="devisTotal" value="0.00">
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section Séances Passées -->
+      <div class="tab-pane fade" id="seances-passees" role="tabpanel" aria-labelledby="seances-passees-tab">
+        <div class="card shadow mb-3">
+          <div class="card-header py-3 d-flex justify-content-between align-items-center">
+            <h6 class="m-0 font-weight-bold text-primary">Séances Passées</h6>
+          </div>
+          <div class="card-body">
+            <div class="row" id="seancesContainer">
+              {% if fiche and fiche.consultations is iterable %}
+                {% for seance in fiche.consultations %}
+                  {% if seance.statut == 1 %}
+                    <div class="col-md-6">
+                      <div class="card mb-3 border-start border-4 border-success shadow-sm">
+                        <div class="card-body">
+                          <h6 class="card-title text-primary mb-1">
+                            <i class="fas fa-calendar-alt me-1"></i>
+                            Séance du {{ seance.CreatedAt|date('d/m/Y') }}
+                          </h6>
+                          <p class="mb-1">
+                            <strong>Médecin :</strong> {{ seance.medecin.FullName }}<br>
+                            <strong>Infirmier :</strong> {{ seance.infirmier.FullName|default('—') }}<br>
+                            <strong>Salle :</strong> {{ seance.salle.nom|default('—') }}
+                          </p>
+                          <p class="small text-muted mb-0">
+                            <strong>Note :</strong> {{ seance.noteSeance|default('—') }}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  {% endif %}
+                {% endfor %}
+              {% else %}
+                <div class="col-12">
+                  <p class="text-muted fst-italic alert alert-secondary">Aucune séance clôturée pour cette fiche.</p>
+                </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section Consultation en Cours -->
+      <div class="tab-pane fade" id="consultation-en-cours" role="tabpanel" aria-labelledby="consultation-en-cours-tab">
+        <div class="card shadow mb-3">
+          <div class="card-header py-3 d-flex justify-content-between align-items-center">
+            <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-stethoscope"></i> Consultation en cours</h6>
+            <button type="button" class="btn btn-primary" id="btnSaveConsultationEnCours">Sauvegarder</button>
+          </div>
+          <div class="card-body">
+            <form id="consultationEnCoursForm">
+              <div class="row">
+                <div class="col-md-4 mb-3">
+                  <label for="medecin" class="form-label">Médecin</label>
+                  <select class="form-select form-control" id="medecin" name="medecin">
+                    <option value="">–</option>
+                    {% for m in medecins %}
+                      <option value="{{ m.id }}">{{ m.FullName }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div class="col-md-4 mb-3">
+                  <label for="infirmier" class="form-label">Infirmier(ère)</label>
+                  <select class="form-select form-control" id="infirmier" name="infirmier">
+                    <option value="">–</option>
+                    {% for i in infirmiers %}
+                      <option value="{{ i.id }}">{{ i.Fullname }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div class="col-md-4 mb-3">
+                  <label for="salle" class="form-label">Salle</label>
+                  <select class="form-select form-control" id="salle" name="salle">
+                    <option value="">–</option>
+                    {% for s in salles %}
+                      <option value="{{ s.id }}">{{ s.nom }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <label for="noteSeance" class="form-label">Note de séance</label>
+                <textarea id="noteSeance" name="noteSeance" class="form-control" rows="2"></textarea>
+              </div>
+
+              <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                  <h6 class="m-0 font-weight-bold text-primary d-flex align-items-center">
+                    <i class="fas fa-tools me-2"></i> Actes médicaux
+                    <button type="button" class="btn btn-sm btn-outline-primary ms-3" id="btnAddActe">
+                      <i class="fas fa-plus me-1"></i> Ajouter
+                    </button>
+                  </h6>
+                </div>
+                <div class="card-body">
+                  <div id="actesContainer"></div>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="floating-buttons">
+    <button type="button" class="btn btn-secondary shadow-sm" id="btnRetour">
+      <i class="fas fa-arrow-left me-1"></i> Retour
+    </button>
+    <button type="button" class="btn btn-danger shadow-sm" id="btnCloturerConsultation">
+      <i class="fas fa-lock me-1"></i> Clôturer
+    </button>
+  </div>
+
+  <div class="modal fade" id="modalQuitConfirm" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-warning">
+        <div class="modal-header bg-warning text-dark">
+          <h5 class="modal-title"><i class="fas fa-exclamation-triangle me-2"></i> Modifications non sauvegardées</h5>
+          <button type="button" class="btn-close" data-dismiss="modal" aria-label="Fermer"></button>
+        </div>
+        <div class="modal-body">
+          Vous avez des modifications en cours. Êtes-vous sûr de vouloir quitter cette page ?
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Annuler</button>
+          <button type="button" class="btn btn-danger" id="btnQuitConfirmed">Oui, quitter</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="modalClotureConsultation" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-danger">
+        <div class="modal-header bg-danger text-white">
+          <h5 class="modal-title"><i class="fas fa-lock me-2"></i> Clôturer la consultation</h5>
+          <button type="button" class="btn-close btn-close-white" data-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          Cette action va clôturer définitivement cette consultation. Aucune modification ne sera possible ensuite.<br>
+          Voulez-vous continuer ?
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-close" data-dismiss="modal">Annuler</button>
+          <button type="button" class="btn btn-danger" id="btnConfirmCloture">Clôturer</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block javascripts %}
+  {{ parent() }}
+
+  {# --- FilePond JS --- #}
+  <script src="https://unpkg.com/filepond/dist/filepond.min.js"></script>
+
+
+  <script src="{{ asset('js/consultation.js') }}"></script>
+{% endblock %}

@@ -7,110 +7,113 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
     <style>
         body {
-            background-color: #fff;
-            position: relative;
+            background-color: #f8fbff;
+            font-family: 'Poppins', sans-serif;
             overflow-x: hidden;
         }
-        #bgCanvas {
-            position: fixed;
-            top: 0;
-            left: 0;
-            z-index: -1;
+
+        .landing-container {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem 1rem;
+            text-align: center;
+            position: relative;
+        }
+
+        .logo-container img {
+            width: 120px;
+            animation: float 3s ease-in-out infinite;
+        } 
+
+        @keyframes float {
+            0% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0); }
+        }
+
+        .title {
+            font-weight: 700;
+            font-size: 2.5rem;
+            color: #212529;
+            animation: fadeInDown 1s ease-in-out;
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            color: #6c757d;
+            margin-bottom: 1.5rem;
+            animation: fadeIn 2s ease-in-out;
+        }
+
+        .btn-custom {
+            font-size: 1.1rem;
+            padding: 12px 30px;
+            background-color: #5dade2;
+            border: none;
+            color: white;
+            border-radius: 30px;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .btn-custom:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(93, 173, 226, 0.6);
+            color: rgba(93, 173, 226);
+        }
+
+        .illustration img {
             width: 100%;
-            height: 100%;
+            max-width: 600px;
+            animation: zoomIn 1s ease-in-out;
+        }
+
+        @media (min-width: 768px) {
+            .landing-container {
+                flex-direction: row;
+                text-align: left;
+                padding: 4rem 5%;
+            }
+
+            .left-col, .right-col {
+                flex: 1;
+                padding: 1rem;
+            }
+
+            .title {
+                font-size: 3rem;
+            }
+
+            .subtitle {
+                font-size: 1.25rem;
+            }
+
+            .logo-container img {
+                width: 140px;
+            }
         }
     </style>
 {% endblock %}
 
 {% block body %}
-<canvas id="bgCanvas"></canvas>
-
-<div class="container text-center mt-5">
-    <div class="row justify-content-center">
-        <div class="col-md-8 animate__animated animate__fadeInDown">
-            <h1 class="display-4 fw-bold text-dark">Bienvenue sur DentalSoft</h1>
-            <p class="lead text-secondary">Une solution complète pour la gestion des cabinets dentaires.</p>
-
-            <div class="my-4">
-                <img src="{{ asset('img/logo.png') }}" class="img-fluid rounded shadow-lg animate__animated animate__zoomIn" alt="Illustration DentalSoft">
-            </div>
-
-            <a href="{{ url('app_login') }}" class="btn btn-primary btn-lg btn-custom animate__animated animate__pulse animate__infinite">
-                Se connecter
-            </a>
+<div class="landing-container">
+    <div class="left-col animate__animated animate__fadeInLeft col-md-4">
+        <div class="logo-container mb-3">
+            <img src="{{ asset('img/logo.png') }}" alt="Logo DentalSoft">
         </div>
+        <h1 class="title">DentalSoft</h1>
+        <p class="subtitle">Gestion de cabinet dentaire dédiée à<br><strong>CABINET ORODENT</strong></p>
+
+        <a href="{{ path('app_login') }}" class="btn btn-custom mt-3 animate__animated animate__fadeInUp">
+            <i class="fas fa-tooth me-2"></i> Se connecter
+        </a>
+    </div>
+
+    <div class="right-col illustration d-none d-md-block col-md-8">
+        <img src="{{ asset('img/landing-illustration.png') }}" alt="Illustration DentalSoft">
     </div>
 </div>
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const canvas = document.getElementById('bgCanvas');
-    const ctx = canvas.getContext('2d');
-    let particles = [];
-    const particleCount = 50;
-    const maxSpeed = 2;
-    let mouseX = window.innerWidth / 2;
-    let mouseY = window.innerHeight / 2;
-
-    function resizeCanvas() {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-    }
-    resizeCanvas();
-    window.addEventListener('resize', resizeCanvas);
-
-    document.addEventListener('mousemove', function(e) {
-        mouseX = e.clientX;
-        mouseY = e.clientY;
-    });
-
-    function Particle(x, y) {
-        this.x = x;
-        this.y = y;
-        this.size = Math.random() * 3 + 1;
-        this.speedX = Math.random() * maxSpeed - maxSpeed / 2;
-        this.speedY = Math.random() * maxSpeed - maxSpeed / 2;
-    }
-
-    Particle.prototype.update = function() {
-        this.x += this.speedX;
-        this.y += this.speedY;
-        // Rebonds aux bords du canvas
-        if (this.x < 0 || this.x > canvas.width) this.speedX = -this.speedX;
-        if (this.y < 0 || this.y > canvas.height) this.speedY = -this.speedY;
-    };
-
-    Particle.prototype.draw = function() {
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-        ctx.fill();
-    };
-
-    for (let i = 0; i < particleCount; i++) {
-        particles.push(new Particle(Math.random() * canvas.width, Math.random() * canvas.height));
-    }
-
-    function animate() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        particles.forEach(particle => {
-            particle.update();
-            particle.draw();
-
-            const dist = Math.hypot(particle.x - mouseX, particle.y - mouseY);
-            if (dist < 150) {
-                ctx.beginPath();
-                ctx.moveTo(mouseX, mouseY);
-                ctx.lineTo(particle.x, particle.y);
-                ctx.strokeStyle = 'rgba(0, 0, 0, ' + (1 - dist / 150) + ')';
-                ctx.stroke();
-            }
-        });
-
-        requestAnimationFrame(animate);
-    }
-    animate();
-});
-</script>
 {% endblock %}
+

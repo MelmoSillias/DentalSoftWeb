@@ -127,4 +127,18 @@ class ConsultationRepository extends ServiceEntityRepository
             ->getQuery()
             ->getResult();
     }
+
+    public function findFullConsultation(int $id): ?Consultation
+    {
+        return $this->createQueryBuilder('c')
+            ->leftJoin('c.patient', 'p')->addSelect('p')
+            ->leftJoin('c.medecin', 'm')->addSelect('m')
+            ->leftJoin('c.infirmier', 'i')->addSelect('i')
+            ->leftJoin('c.salle', 's')->addSelect('s')
+            ->leftJoin('c.actes', 'a')->addSelect('a')
+            ->where('c.id = :id')
+            ->setParameter('id', $id)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
 }

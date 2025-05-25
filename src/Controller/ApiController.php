@@ -38,31 +38,30 @@ class ApiController extends AbstractController
         SalleRepository $salleRepo,
         EmployeRepository $medecinRepo,
         EntityManagerInterface $em
-    ): JsonResponse {
-        $data = json_decode($request->getContent(), true);
+    ): JsonResponse { 
 
-        $patient = $patientRepo->find($data['patient_id']);
-        $salle = $salleRepo->find($data['salle_id']);
-        $medecin = $medecinRepo->find($data['medecin_id']);
+        $patient = $patientRepo->find($request->get('patient'));
+        $medecin = $medecinRepo->find($request->get('medecin'));
 
-        if (!$patient || !$salle || !$medecin) {
+        if (!$patient || !$medecin) {
             return new JsonResponse(['success' => false, 'error' => 'Données invalides'], 400);
         }
 
         $rdv = new Rdv();
         $rdv->setPatient($patient)
-            ->setSalle($salle)
             ->setMedecin($medecin)
-            ->setDescription($data['description'])
+            ->setDescription($request->get('description'))
             ->setStatut(0)
             ->setDateCreation(new \DateTime())
-            ->setDateRdv(new \DateTime($data['date'] . ' ' . $data['time']));
+            ->setDateRdv(new \DateTime($request->get('date') . ' ' . $request->get('time')));
 
         $em->persist($rdv);
         $em->flush();
 
-        return new JsonResponse(['success' => true]);
+        return new JsonResponse(['success' => true], 200);
     }
+
+    
 
 
     // Dans votre contrôleur, par exemple RdvController.php
@@ -119,42 +118,6 @@ class ApiController extends AbstractController
         ]);
     }
     
-
-#[Route('/api/rdv/report', name: 'api_rdv_report', methods: ['POST'])]
-public function reportRdv(
-    Request $request,
-    RdvRepository $rdvRepo,
-    EntityManagerInterface $em
-): JsonResponse {
-    $data = json_decode($request->getContent(), true);
-    if (!isset($data['rdv_id'], $data['new_date'], $data['new_time'])) {
-        return new JsonResponse(['success' => false, 'error' => 'Paramètres manquants'], 400);
-    }
-
-    $originalRdv = $rdvRepo->find($data['rdv_id']);
-    if (!$originalRdv) {
-        return new JsonResponse(['success' => false, 'error' => 'RDV non trouvé'], 404);
-    }
-
-    // Met à jour l'ancien RDV avec le statut "reporté" (-1)
-    $originalRdv->setStatut(-1);
-
-    // Crée un nouveau RDV avec les mêmes informations que l'ancien mais avec la nouvelle date/heure
-    $newRdv = new Rdv();
-    $newRdv->setPatient($originalRdv->getPatient())
-           ->setSalle($originalRdv->getSalle())
-           ->setMedecin($originalRdv->getMedecin())
-           ->setDescription($originalRdv->getDescription())
-           ->setStatut(0) // nouveau RDV en attente
-           ->setDateCreation(new \DateTime())
-           ->setDateRdv(new \DateTime($data['new_date'] . ' ' . $data['new_time']));
-
-    $em->persist($newRdv);
-    $em->flush();
-
-    return new JsonResponse(['success' => true]);
-}
-
     #[Route('/api/rdv/update_status', name: 'api_rdv_update_status', methods: ['POST'])]
 public function updateStatus(Request $request, RdvRepository $rdvRepo, EntityManagerInterface $em): JsonResponse {
     $data = json_decode($request->getContent(), true);
@@ -210,6 +173,53 @@ public function updateStatus(Request $request, RdvRepository $rdvRepo, EntityMan
         return new JsonResponse($data);
     }
 
+    #[Route('/api/rdv/{id}/{action}', name: 'api_rdv_validation', methods:['POST'])]
+    public function validateRdv(Request $req, Rdv $rdv, string $action, EntityManagerInterface $em): JsonResponse
+    {
+        if (!$rdv){
+            return $this->json(['success' => false, 404]);
+        }
+
+        if (!$action){
+            return $this->json(['success' => false, 400]);
+        }
+
+        if ($action === 'validate') $rdv->setStatut(1);
+        else if ($action === 'cancel') $rdv->setStatut(-2);
+        else if ($action === 'report')
+        {   
+            $rdv_id = $req->get('rdv_id');
+            $new_date = $req->get('new_date');
+            $new_time = $req->get('new_time');
+
+            
+            if (!$rdv_id || !$new_date || !$new_time) {
+                return new JsonResponse(['success' => false, 'error' => 'Paramètres manquants'], 400);
+            }
+        
+            // Met à jour l'ancien RDV avec le statut "reporté" (-1)
+            $rdv->setStatut(-1);
+            $rdv->setReportedAt(new \DateTimeImmutable($new_date. ' ' . $new_time));
+        
+            // Crée un nouveau RDV avec les mêmes informations que l'ancien mais avec la nouvelle date/heure
+            $newRdv = new Rdv();
+            $newRdv->setPatient($rdv->getPatient())
+                   ->setSalle($rdv->getSalle())
+                   ->setMedecin($rdv->getMedecin())
+                   ->setDescription($rdv->getDescription())
+                   ->setStatut(0) // nouveau RDV en attente
+                   ->setDateCreation(new \DateTime())
+                   ->setDateRdv(new \DateTime($new_date. ' ' . $new_time));
+
+            $em->persist($newRdv);
+        } else $this->json(['success' => false], 404);
+
+        $em->persist($rdv);
+        $em->flush();
+
+        return $this->json(['success' => true, 200]);
+    }
+
     #[Route('/api/rdvs/{date}', name: 'api_rdvs', methods: ['GET'])]
     public function getRdvs(Request $request, string $date ,EntityManagerInterface $em): JsonResponse
         {
@@ -228,13 +238,14 @@ public function updateStatus(Request $request, RdvRepository $rdvRepo, EntityMan
             $data = array_map(function ($rdv) {
                 return [
                     'id' => $rdv->getId(),
-                    'patient' => $rdv->getPatient()->getNom() . ' ' . $rdv->getPatient()->getPrenom(),
-                    'salle' => $rdv->getSalle()->getid(),
+                    'patient' => $rdv->getPatient()->getNom() . ' ' . $rdv->getPatient()->getPrenom(), 
                     'medecin' => $rdv->getMedecin()->getNom() . ' ' . $rdv->getMedecin()->getPrenom(),
+                    'medecin_id' => $rdv->getMedecin()->getId(),
                     'description' => $rdv->getDescription(),
                     'statut' => $rdv->getStatut(),
                     'dateRdv' => $rdv->getDateRdv()->format('Y-m-d H:i:s'),
                     'dateCreation' => $rdv->getDateCreation()->format('d-m-Y H:i:s'),
+                    'reportedAt' =>  $rdv->getReportedAt() ? 'Reporté au '.$rdv->getReportedAt()->format('d-m-Y H:i:s') : null
                 ];
             }, $rdvs);
             return new JsonResponse($data);

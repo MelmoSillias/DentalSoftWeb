@@ -2,6 +2,7 @@
 
 namespace App\Controller\Admin;
 
+use App\Controller\MedecinController;
 use App\Entity\Conge;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
@@ -30,15 +31,15 @@ final class AgendaController extends AbstractController
 
     // ==== Agenda: Rendez-vous ====
     #[Route('/admin/agenda/rendez-vous', name: 'app_admin_rendez_vous')]
-    public function rendezVous(SalleRepository $salleRepository, RdvRepository $rdvRepository): Response
+    public function rendezVous(EmployeRepository $medecinRepo, RdvRepository $rdvRepository): Response
     {
-        $salles = $salleRepository->findAll();
+        $medecins = $medecinRepo->findBy(['type' => 'medecin']); // Suppose que le type "medecin" est utilisé
         $rdvs = $rdvRepository->findAll(); // Récupération des rendez-vous
 
         return $this->render('admin/agenda/rendezvous.html.twig', [
             'controller_name' => 'AdminController',
             'active_page' => 'rendez_vous',
-            'salles' => $salles,
+            'medecins' => $medecins,
             'rdvs' => $rdvs // Ajout des rendez-vous
         ]);
     }

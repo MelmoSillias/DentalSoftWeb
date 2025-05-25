@@ -73,12 +73,14 @@ class FicheObservation
     #[ORM\OneToMany(mappedBy: 'fiche', targetEntity: ExamenDentaire::class, cascade: ['persist', 'remove'])]
     private Collection $examensDentaires;
 
-    #[ORM\OneToMany(mappedBy: 'fiche', targetEntity: Devis::class, cascade: ['persist', 'remove'])]
-    #[ORM\OneToOne(mappedBy: 'fiche', targetEntity: Devis::class, cascade: ['persist', 'remove'])]
-    private ?Devis $devis = null;
+    #[ORM\OneToMany(mappedBy: 'fiche', targetEntity: Devis::class, cascade: ['persist', 'remove'])] 
+    private Collection $devis;
 
     #[ORM\OneToMany(targetEntity: DocumentMedical::class, mappedBy: 'fiche')]
     private Collection $documentsMedicaux;
+
+    #[ORM\Column]
+    private array $toothsCheck = [];
 
     public function __construct()
     {
@@ -86,7 +88,8 @@ class FicheObservation
         $this->consultations = new ArrayCollection();
         $this->examensDentaires = new ArrayCollection();
         $this->documentsMedicaux = new ArrayCollection();
-        $this->devis = new Devis(); 
+        $this->devis = new ArrayCollection();
+        $this->toothsCheck = $this->generateDefaultToothsCheck();  
     }
 
     public function getId(): ?int { return $this->id; }
@@ -250,19 +253,14 @@ class FicheObservation
         return $this;
     }
 
-    public function getDevis(): ?Devis
+    public function getDevis(): ?Collection
     {
         return $this->devis;
     }
 
-    public function setDevis(?Devis $devis): self
+    public function setDevis(?Collection $devis): self
     {
         $this->devis = $devis;
-
-        // Set the owning side of the relation if necessary
-        if ($devis !== null && $devis->getFiche() !== $this) {
-            $devis->setFiche($this);
-        }
 
         return $this;
     }
@@ -291,6 +289,47 @@ class FicheObservation
         }
 
         return $this;
+    }
+
+    public function getToothsCheck(): array
+    {
+        return $this->toothsCheck;
+    }
+
+    public function setToothsCheck(array $toothsCheck): static
+    {
+        $this->toothsCheck = $toothsCheck;
+
+        return $this;
     } 
+
+    private function generateDefaultToothsCheck() : array
+    {
+        
+        $tooths = [];
+
+        // Haut droite (11 à 18)
+        for ($i = 11; $i <= 18; $i++) {
+            $tooths[(string)$i] = '';
+        }
+
+        // Haut gauche (21 à 28)
+        for ($i = 21; $i <= 28; $i++) {
+            $tooths[(string)$i] = '';
+        }
+
+        // Bas gauche (31 à 38)
+        for ($i = 31; $i <= 38; $i++) {
+            $tooths[(string)$i] = '';
+        }
+
+        // Bas droite (41 à 48)
+        for ($i = 41; $i <= 48; $i++) {
+            $tooths[(string)$i] = '';
+        }
+
+        return $tooths;
+
+    }
     
 }

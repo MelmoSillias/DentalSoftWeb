@@ -85,34 +85,7 @@ final class PatientController extends AbstractController
                 'telephone' => $c->getTelephone(),
             ];
         }
-
-        // Consultations (avec détails imbriqués)
-        foreach ($patient->getConsultations() as $c) {
-            $consultData = [
-                'id'          => $c->getId(),
-                'dateDebut'   => $c->getDateDebut()->format(\DateTime::ATOM),
-                'medecinNom'  => $c->getMedecin()->getNom(), 
-                'state'       => $c->getState(),
-                'diagnostic'  => $c->getDiagnostic(),
-                'remarques'   => $c->getRemarques(),
-                'documents'   => [],
-                'ordonnances' => [],
-            ];
-            foreach ($c->getDocuments() as $d) {
-                $consultData['documents'][] = [
-                    'libelle' => $d->getLibelle(),
-                    'date'    => $d->getDate()->format(\DateTime::ISO8601),
-                ];
-            }
-            foreach ($c->getOrdonnances() as $o) {
-                $consultData['ordonnances'][] = [
-                    'libelle' => $o->getLibelle(),
-                    'date'    => $o->getDate()->format(\DateTime::ISO8601),
-                ];
-            }
-            $data['consultations'][] = $consultData;
-        }
-
+ 
         // RDV
         $rdvRepo = $em->getRepository(Rdv::class);
         foreach ($rdvRepo->findBy(['patient' => $patient]) as $r) {

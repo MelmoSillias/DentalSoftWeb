@@ -2,6 +2,7 @@
 
 namespace App\Repository;
 
+use App\Entity\Devis;
 use App\Entity\FicheObservation;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
@@ -14,4 +15,7 @@ class FicheObservationRepository extends ServiceEntityRepository
     }
 
     // Ajoutez vos requêtes personnalisées ici
+    // src/Repository/FicheRepository.php
+   
+
 }

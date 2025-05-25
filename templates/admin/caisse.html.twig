@@ -93,7 +93,7 @@
     <div class="card-body">
         <div id="devisEmptyMessage" class="alert alert-info mb-0 d-none">Aucun devis impayé à ce jour</div>
         <div class="table-responsive">
-            <table class="table table-striped table-hover" id="devisImpayesTable">
+            <table class="table table-striped table-hover my-4" id="devisImpayesTable">
   <thead>
     <tr>
       <th>N° Devis</th>
@@ -138,6 +138,7 @@
                         <th>Montant</th>
                         <th>Mode de paiement</th>
                         <th>Date de paiement</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody></tbody>
@@ -172,7 +173,7 @@
   <div class="modal-dialog" role="document">
     <div class="modal-content">
       <div class="modal-header bg-success text-white">
-        <h5 class="modal-title">Régler le Devis</h5>
+        <h5 class="modal-title">Régler la facture</h5>
         <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
       </div>
       <div class="modal-body">
@@ -314,7 +315,7 @@ $(function () {
         columns: [
             {
                 data: 'devisId',
-                render: id => `DEV-${String(id).padStart(4, '0')}`
+                render: id => `${String(id).padStart(4, '0')}`
             },
             { data: 'patient' },
             {
@@ -329,7 +330,17 @@ $(function () {
                     return date.toLocaleDateString('fr-FR') + ' ' +
                            date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
                 }
-            }
+            }, {
+      data: 'pId',
+      orderable: false,
+      searchable: false,
+      render: id => `
+        <a href="/admin/paiement-devis/${id}/print" class="btn btn-sm btn-outline-secondary print-devis-btn">
+           <i class="fas fa-print"></i> 
+        </a>
+      `
+    }
+
         ],
         language: { url: 'https://cdn.datatables.net/plug-ins/1.13.5/i18n/fr-FR.json' },
         order: [[4, 'desc']]
@@ -379,7 +390,7 @@ $(function () {
     <div class="card-body">
       <div class="d-flex justify-content-between align-items-start mb-4">
         <div>
-          <h5 class="text-primary mb-1">Devis N° <strong>DEV-${String(data.id).padStart(4, '0')}</strong></h5>
+          <h5 class="text-primary mb-1">FACTURE N° <strong>${String(data.id).padStart(4, '0')}</strong></h5>
           <p class="mb-0"><strong>Date :</strong> ${date}</p>
         </div>
         <div class="text-end">

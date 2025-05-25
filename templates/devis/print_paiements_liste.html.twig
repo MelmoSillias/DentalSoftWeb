@@ -32,7 +32,7 @@
             {% for p in paiements %}
                 {% set total = total + p.montant %}
                 <tr>
-                    <td>DEV-{{ p.devis.id|default('')|pad(4, '0') }}</td>
+                    <td>DEV-{{ p.devis.id|default('') }}</td>
                     <td>{{ p.devis.fiche.patient.nom }} {{ p.devis.fiche.patient.prenom }}</td>
                     <td class="right">{{ p.montant|number_format(0, ',', ' ') }} FCFA</td>
                     <td>{{ p.mode.libelle }}</td>

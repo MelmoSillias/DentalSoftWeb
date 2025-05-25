@@ -1,48 +1,106 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <title>Paiement Devis</title>
-    <style>
-        body { font-family: sans-serif; margin: 30px; color: #333; }
-        h1 { text-align: center; margin-bottom: 30px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        td, th { padding: 10px; border: 1px solid #ddd; }
-        .right { text-align: right; }
-        .center { text-align: center; }
-        .info { margin-bottom: 20px; }
-        .signature { margin-top: 60px; display: flex; justify-content: space-between; }
-        .signature div { width: 30%; text-align: center; }
-    </style>
+  <meta charset="UTF-8">
+  <title>Reçu de Caisse</title>
+  <style>
+    /* imprimer sur rouleau 80 mm */
+    body {
+      width: 80mm;
+      margin: 0 auto;
+      padding: 5px 0;
+      font-family: Arial, sans-serif;
+      font-size: 12px;
+      color: #000;
+    }
+    .center { text-align: center; }
+    .right  { text-align: right; }
+    .bold   { font-weight: bold; }
+    hr      { border: none; border-top: 1px dashed #000; margin: 5px 0; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 5px 0;
+    }
+    th, td {
+      padding: 2px 0;
+    }
+    th { font-weight: bold; }
+    .total {
+      font-size: 14px;
+      font-weight: bold;
+    }
+    .small {
+      font-size: 10px;
+    }
+  </style>
 </head>
-<body>
-    <h1>Reçu de Paiement</h1>
+<body onload="initPrint()" class="small">
+  <div class="center bold">
+    Cabinet Orodent<br>
+    Reçu de Caisse
+  </div>
 
-    <div class="info">
-        <p><strong>Nom du patient :</strong> {{ paiement.devis.fiche.patient.nom }} {{ paiement.devis.fiche.patient.prenom }}</p>
-        <p><strong>N° Devis :</strong> DEV-{{ paiement.devis.id|default('')|pad(4, '0') }}</p>
-        <p><strong>Date du paiement :</strong> {{ paiement.date|date('d/m/Y H:i') }}</p>
-        <p><strong>Mode de paiement :</strong> {{ paiement.mode.libelle }} ({{ paiement.mode.type }})</p>
-    </div>
+  <hr>
 
-    <table>
-        <tr>
-            <th>Description</th>
-            <th class="right">Montant</th>
-        </tr>
-        <tr>
-            <td>Paiement partiel de devis</td>
-            <td class="right">{{ paiement.montant|number_format(0, ',', ' ') }} FCFA</td>
-        </tr>
-        <tr>
-            <td class="right"><strong>Total payé</strong></td>
-            <td class="right"><strong>{{ paiement.montant|number_format(0, ',', ' ') }} FCFA</strong></td>
-        </tr>
-    </table>
+  <table class="small">
+    <tr>
+      <td>Reçu N°</td>
+      <td class="right">{{ paiement.id }}</td>
+    </tr>
+    <tr>
+      <td>Date</td>
+      <td class="right">{{ paiement.date|date('d/m/Y H:i') }}</td>
+    </tr>
+    <tr>
+      <td>Patient</td>
+      <td class="right">{{ paiement.devis.fiche.patient.nom }} {{ paiement.devis.fiche.patient.prenom }}</td>
+    </tr>
+    <tr>
+      <td>Mode</td>
+      <td class="right">{{ paiement.mode.libelle }}</td>
+    </tr>
+  </table>
 
-    <div class="signature">
-        <div>Signature du patient</div>
-        <div>Cachet de la clinique</div>
-    </div>
+  <hr>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Description</th>
+        <th class="right">Montant</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Paiement devis #{{ paiement.devis.id }}</td>
+        <td class="right">{{ paiement.montant|number_format(0, ',', ' ') }} FCFA</td>
+      </tr>
+    </tbody>
+    <tfoot>
+      <tr>
+        <td class="bold">Total payé</td>
+        <td class="right bold">{{ paiement.montant|number_format(0, ',', ' ') }} FCFA</td>
+      </tr>
+    </tfoot>
+  </table>
+
+  <hr>
+
+  <div class="small center">
+    Merci de votre confiance !<br>
+    Contact: +223 XX XX XX XX
+  </div>
+
+  <script>
+    function initPrint() {
+      // Fermer la fenêtre après que la boîte d’impression soit fermée (OK ou Annuler)
+      window.onafterprint = function() {
+        window.close();
+      };
+      // Déclenche immédiatement la boîte d’impression
+      window.print();
+    }
+  </script>
 </body>
 </html>

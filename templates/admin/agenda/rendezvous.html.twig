@@ -86,11 +86,11 @@
             align-items: center;
             justify-content: space-between;
             flex-direction: row-reverse;
-        } 
-        .rdv-status-bar.bg-primary { background-color: #007bff; }
-        .rdv-status-bar.bg-success { background-color: #28a745; }
-        .rdv-status-bar.bg-warning { background-color: #ffc107; }
-        .rdv-status-bar.bg-danger { background-color: #dc3545; } 
+        }
+        .card-outline-primary { border-left: 5px solid #007bff; }
+        .card-outline-success { border-left: 5px solid #28a745; }
+        .card-outline-warning { border-left: 5px solid #ffc107; }
+        .card-outline-danger { border-left: 5px solid #dc3545; }
         @media (max-width: 768px) {
             .calendar-grid table { font-size: 12px; }
             .date-item { min-width: 60px; padding: 5px 10px; }
@@ -137,14 +137,38 @@
         </div>
     </div>
 
+     <!-- Statistiques -->
+    <div id="stats" class="row mb-3" >
+        <div class="col-md-3">
+            <div class="card border-left-primary shadow h-70">
+                <div class="card-body"><h6 class="card-title">En attente</h6><p class="display-4" id="stats-pending">0</p></div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-left-success shadow h-70">
+                <div class="card-body"><h6 class="card-title">Validés</h6><p class="display-4" id="stats-validated">0</p></div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-left-warning shadow h-70">
+                <div class="card-body"><h6 class="card-title">Reportés</h6><p class="display-4" id="stats-postponed">0</p></div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-left-danger shadow h-70">
+                <div class="card-body"><h6 class="card-title">Annulés</h6><p class="display-4" id="stats-cancelled">0</p></div>
+            </div>
+        </div>
+    </div>
+
     <!-- Calendar Grid -->
     <div class="calendar-grid mb-4">
         <table class="table table-bordered">
             <thead>
                 <tr>
                     <th style="width: 1%;">Créneau</th>
-                    {% for salle in salles %}
-                        <th style="width: {{ 100 / salles|length }}%;">{{ salle.nom }}</th>
+                    {% for medecin in medecins %}
+                        <th style="width: {{ 100 / medecins|length }}%;">{{ medecin.nom }}</th>
                     {% endfor %}
                 </tr>
             </thead>
@@ -153,8 +177,8 @@
                     {% for minute in ['00', '15', '30', '45'] %}
                         <tr>
                             <td>{{ hour }}:{{ minute }}</td>
-                            {% for salle in salles %}
-                                <td class="grid-cell" data-hour="{{ hour }}" data-minute="{{ minute }}" data-salle="{{ salle.id }}">
+                            {% for medecin in medecins %}
+                                <td class="grid-cell" data-hour="{{ hour }}" data-minute="{{ minute }}" data-medecin="{{ medecin.id }}">
                                     <button class="btn btn-sm btn-success add-rdv-btn"><i class="fas fa-plus"></i></button>
                                 </td>
                             {% endfor %}
@@ -165,29 +189,7 @@
         </table>
     </div>
 
-    <!-- Statistiques -->
-    <div id="stats" class="row">
-        <div class="col-md-3">
-            <div class="card border-left-primary shadow h-100 py-2">
-                <div class="card-body"><h5 class="card-title">En attente</h5><p class="display-4" id="stats-pending">0</p></div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card border-left-success shadow h-100 py-2">
-                <div class="card-body"><h5 class="card-title">Validés</h5><p class="display-4" id="stats-validated">0</p></div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card border-left-warning shadow h-100 py-2">
-                <div class="card-body"><h5 class="card-title">Reportés</h5><p class="display-4" id="stats-postponed">0</p></div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card border-left-danger shadow h-100 py-2">
-                <div class="card-body"><h5 class="card-title">Annulés</h5><p class="display-4" id="stats-cancelled">0</p></div>
-            </div>
-        </div>
-    </div>
+   
 
     <!-- Modals -->
     <!-- Modal de création de rendez-vous -->
@@ -210,14 +212,8 @@
                 <label for="medecinSelect" class="form-label">Médecin</label>
                 <select class="form-select form-control form-user-control" id="medecinSelect" name="medecin" required>
                    <option value="">Sélectionnez un médecin</option>
-                </select>
-             </div>
-             <div class="mb-3">
-                <label for="salleSelect" class="form-label">Salle</label>
-                <select class="form-select form-control form-user-control" id="salleSelect" name="salle" required>
-                   <option value="">Sélectionnez une salle</option>
-                   {% for salle in salles %}
-                      <option value="{{ salle.id }}">{{ salle.nom }}</option>
+                   {% for medecin in medecins %}
+                      <option value="{{ medecin.id }}">{{ medecin.nom }}</option>
                    {% endfor %}
                 </select>
              </div>
@@ -288,7 +284,6 @@
        <div class="modal-body">
            <p><strong>Patient :</strong> <span id="reportPatient"></span></p>
            <p><strong>Médecin :</strong> <span id="reportMedecin"></span></p>
-           <p><strong>Salle :</strong> <span id="reportSalle"></span></p>
            <p><strong>Date création :</strong> <span id="reportOldDate"></span></p>
            <hr>
            <form id="reportForm">
@@ -315,216 +310,5 @@
 {% block javascripts %}
 <script src="{{ asset('sb-admin/vendor/jquery/jquery.min.js') }}"></script>
 <script src="{{ asset('sb-admin/vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
-<script>
-$(document).ready(function() {
-    let currentDate = new Date();
-    let selectedRdvId = null;
-
-    function generateDateSlider() {
-        const $dateSlider = $('#date-slider');
-        $dateSlider.empty();
-        for (let i = -7; i <= 7; i++) {
-            const d = new Date(currentDate);
-            d.setDate(currentDate.getDate() + i);
-            const dateStr = d.toISOString().split('T')[0];
-            const $dateItem = $('<div>', {
-                class: 'date-item',
-                'data-date': dateStr,
-                text: d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })
-            });
-            if (d.toDateString() === currentDate.toDateString()) $dateItem.addClass('active');
-            $dateItem.on('click', function() {
-                currentDate = new Date($(this).data('date'));
-                updateDateInputs();
-                generateDateSlider();
-                reloadAppointments();
-            });
-            $dateSlider.append($dateItem);
-        }
-    }
-
-    function updateDateInputs() {
-        $('#date-picker').val(currentDate.toISOString().split('T')[0]);
-    }
-
-    $('#date-picker').on('change', function() {
-        currentDate = new Date($(this).val());
-        generateDateSlider();
-        reloadAppointments();
-    });
-
-    $('#today-btn').on('click', function() {
-        currentDate = new Date();
-        generateDateSlider();
-        reloadAppointments();
-    });
-
-    function reloadAppointments() {
-        const url = `/api/rdvs/${currentDate.toISOString().split('T')[0]}`;
-        $('.grid-cell').each(function() {
-            const $cell = $(this);
-            const $addBtn = $cell.find('.add-rdv-btn').detach();
-            $cell.empty().append($addBtn.show());
-        });
-        $.getJSON(url, function(data) {
-            data.forEach(function(rdv) {
-                const rdvDate = new Date(rdv.dateRdv);
-                const hour = rdvDate.getHours();
-                const minutes = rdvDate.getMinutes();
-                const slot = minutes < 15 ? '00' : minutes < 30 ? '15' : minutes < 45 ? '30' : '45';
-                const $cell = $(`.grid-cell[data-hour="${hour}"][data-minute="${slot}"][data-salle="${rdv.salle}"]`);
-                if ($cell.length) {
-                    $cell.find('.add-rdv-btn').hide();
-                    const statusClass = rdv.statut === 0 ? 'border-right-primary' :
-                                        rdv.statut === 1 ? 'border-right-success' :
-                                        rdv.statut === -1 ? 'border-right-warning' :
-                                        'border-right-danger';
-                    const actionButtons = rdv.statut === 0 ? `
-                        <div class="rdv-actions mt-4">
-                            <button class="btn btn-sm btn-success btn-validate" data-id="${rdv.id}"><i class="fas fa-check"></i></button>
-                            <button class="btn btn-sm btn-warning btn-report" data-id="${rdv.id}" data-patient="${rdv.patient}" data-medecin="${rdv.medecin}" data-salle="${rdv.salle}" data-datecreation="${rdv.dateCreation}"><i class="fas fa-calendar-alt"></i></button>
-                            <button class="btn btn-sm btn-danger btn-cancel" data-id="${rdv.id}"><i class="fas fa-times"></i></button>
-                        </div>` : '';
-                    const rdvHtml = `
-                        <div class="rdv-card card fade-in ${statusClass}">
-                            <div class="rdv-content card-body">
-                                <strong>${rdv.patient}</strong><br>
-                                ${rdv.medecin}<br>
-                                <small>${rdv.dateCreation}</small>
-                                ${actionButtons}
-                            </div>
-                        </div>`;
-                    $cell.append(rdvHtml);
-                }
-            });
-        }).fail(function() {
-            showToastModal({ message: "Erreur de chargement des rendez-vous", type: "error", duration: 3000 });
-        });
-    }
-
-    $('.btn-closer').on('click', function() {
-        $(this).closest('.modal').modal('hide');
-    });
-
-    // Met à jour le statut et affiche un toast
-    async function updateRdvStatus(id, statut) {
-        try {
-            const res = await fetch(`/api/rdv/${statut === 1 ? 'validate' : 'cancel'}/${id}`, { method: 'POST' });
-            const json = await res.json();
-            if (json.success) {
-                reloadAppointments();
-                showToastModal({ 
-                    message: statut === 1 ? 'Rendez-vous validé' : 'Rendez-vous annulé', 
-                    type: 'success' 
-                });
-            } else {
-                showToastModal({ message: json.error || 'Erreur lors de la mise à jour', type: 'error', duration: 3000 });
-            }
-        } catch {
-            showToastModal({ message: 'Erreur réseau lors de la mise à jour', type: 'error', duration: 3000 });
-        }
-    }
-
-    $(document).on('click', '.btn-validate', function() {
-        selectedRdvId = $(this).data('id');
-        $('#confirmValidateModal').modal('show');
-    });
-
-    $('#confirmValidateBtn').on('click', function() {
-        $('#confirmValidateModal').modal('hide');
-        updateRdvStatus(selectedRdvId, 1);
-    });
-
-    $(document).on('click', '.btn-cancel', function() {
-        selectedRdvId = $(this).data('id');
-        $('#confirmCancelModal').modal('show');
-    });
-
-    $('#confirmCancelBtn').on('click', function() {
-        $('#confirmCancelModal').modal('hide');
-        updateRdvStatus(selectedRdvId, -2);
-    });
-
-    $(document).on('click', '.btn-report', function() {
-        selectedRdvId = $(this).data('id');
-        const $btn = $(this);
-        $('#reportPatient').text($btn.data('patient'));
-        $('#reportMedecin').text($btn.data('medecin'));
-        $('#reportSalle').text($btn.data('salle'));
-        $('#reportOldDate').text($btn.data('datecreation'));
-        $('#reportNewDate').val($('#date-picker').val());
-        $('#reportNewTime').val("09:00");
-        $('#reportModal').modal('show');
-    });
-
-    $('#confirmReportBtn').on('click', function() {
-        const payload = {
-            rdv_id: selectedRdvId,
-            new_date: $('#reportNewDate').val(),
-            new_time: $('#reportNewTime').val()
-        };
-        $.post('/api/rdv/report', payload, function(data) {
-            if (data.success) {
-                reloadAppointments();
-                loadStats(); // si défini ailleurs
-                $('#reportModal').modal('hide');
-                showToastModal({ message: 'Rendez-vous reporté', type: 'success' });
-            } else {
-                showToastModal({ message: data.error || 'Erreur lors du report', type: 'error', duration: 3000 });
-            }
-        }).fail(function() {
-            showToastModal({ message: 'Erreur réseau lors du report', type: 'error', duration: 3000 });
-        });
-    });
-
-    $('#prev-date-slider').on('click', function() {
-        $('#date-slider').scrollLeft($('#date-slider').scrollLeft() - 100);
-    });
-
-    $('#next-date-slider').on('click', function() {
-        $('#date-slider').scrollLeft($('#date-slider').scrollLeft() + 100);
-    });
-
-    $(document).on('click', '.add-rdv-btn', function() {
-        const $cell = $(this).closest('.grid-cell');
-        const hour = $cell.data('hour');
-        const minute = $cell.data('minute');
-        const salle = $cell.data('salle');
-        $('#rdvTime').val(`${hour.toString().padStart(2, '0')}:${minute}`);
-        $('#salleSelect').val(salle);
-        $.getJSON('/api/patients', function(data) {
-            const $patientSelect = $('#patientSelect').empty().append('<option value="">Sélectionnez un patient</option>');
-            data.patients.forEach(p => $patientSelect.append(`<option value="${p.id}">${p.nom} ${p.prenom}</option>`));
-            const $medecinSelect = $('#medecinSelect').empty().append('<option value="">Sélectionnez un médecin</option>');
-            data.medecins.forEach(m => $medecinSelect.append(`<option value="${m.id}">${m.nom} ${m.prenom}</option>`));
-            $('#rdvModal').modal('show');
-        }).fail(function() {
-            showToastModal({ message: 'Erreur chargement patients/médecins', type: 'error', duration: 3000 });
-        });
-    });
-
-    $('#rdvForm').on('submit', function(e) {
-        e.preventDefault();
-        const payload = $(this).serializeArray().reduce((o, item) => (o[item.name] = item.value, o), {});
-        payload.date = $('#date-picker').val();
-        $.post('/api/rdv/create', payload, function(data) {
-            if (data.success) {
-                $('#rdvModal').modal('hide');
-                reloadAppointments();
-                loadStats();
-                showToastModal({ message: 'Rendez-vous créé', type: 'success' });
-            } else {
-                showToastModal({ message: data.error || 'Erreur création RDV', type: 'error', duration: 3000 });
-            }
-        }).fail(function() {
-            showToastModal({ message: 'Erreur réseau création RDV', type: 'error', duration: 3000 });
-        });
-    });
-
-    generateDateSlider();
-    updateDateInputs();
-    reloadAppointments();
-});
-</script>
-
+<script src="{{ asset('js/rdv.js') }}"></script>
 {% endblock %}

@@ -18,6 +18,7 @@ class ActeMedical
     private ?Consultation $consultation = null;
 
     #[ORM\Column(type: 'string', length: 255)]
+    #[ORM\JoinColumn(nullable: false)]
     private ?string $type = null;
 
     #[ORM\Column(type: 'string', length: 10)]
@@ -54,7 +55,7 @@ class ActeMedical
     {
         return $this->type;
     }
-    public function setType(string $t): self
+    public function setType(?string $t): self
     {
         $this->type = $t;
         return $this;
