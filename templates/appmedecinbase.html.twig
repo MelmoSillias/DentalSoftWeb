@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Dashboard{% endblock %}</title>
+
+    <!-- Fonts + Icons -->
+    <link href="{{ asset('sb-admin/vendor/fontawesome-free/css/all.min.css') }}" rel="stylesheet" type="text/css">
+    <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,800,900" rel="stylesheet">
+
+    <!-- SB Admin 2 Core CSS -->
+    <link href="{{ asset('sb-admin/vendor/datatables/datatables.min.css') }}" rel="stylesheet">
+    <link href="{{ asset('sb-admin/css/sb-admin-2.min.css') }}" rel="stylesheet"> 
+    
+    <style>
+        body {
+    background-color: rgb(255, 255, 255);
+}
+
+html {
+  font-size: 1rem;
+}
+
+@include media-breakpoint-up(sm) {
+  html {
+    font-size: 1.2rem;
+  }
+}
+
+@include media-breakpoint-up(md) {
+  html {
+    font-size: 1.4rem;
+  }
+}
+
+@include media-breakpoint-up(lg) {
+  html {
+    font-size: 1.6rem;
+  }
+}
+
+
+/* --- ANIMATION FLUIDE POUR LA NAVIGATION LATÉRALE --- */
+.sidebar {
+    transition: margin 0.3s ease, width 0.3s ease;
+}
+
+.sidebar.toggled {
+    transition: margin 0.3s pulse, width 0.3s pulse;
+}
+/* --- TRANSITION DOUCE SUR LES LIENS --- */
+.sidebar .nav-link,
+.navbar .nav-link,
+.collapse-inner .collapse-item {
+    transition: all 0.2s ease-in-out;
+}
+
+.sidebar .nav-link:hover,
+.navbar .nav-link:hover,
+.collapse-inner .collapse-item:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* --- ANIMATION DU TOGGLE ICON (optionnel, effet de rotation) --- */
+#sidebarToggle, #sidebarToggleTop {
+    transition: transform 0.3s ease;
+}
+
+#sidebarToggle:hover,
+#sidebarToggleTop:hover {
+    transform: rotate(90deg);
+}
+
+    </style>
+
+    <script
+      type="importmap"
+      id="importmap"
+      data-turbo-permanent>
+      {
+        "imports": {
+          "app":    "/build/app.js",
+          "@hotwired/turbo":             "/build/turbo.es2017-esm.js",
+          "@hotwired/stimulus":          "/build/stimulus.es2017-esm.js",
+          "@symfony/stimulus-bundle":    "/build/controllers.json"
+        }
+      }
+    </script>
+    {% block stylesheets %}{% endblock %}
+</head>
+<body id="page-top">
+
+<!-- Page Wrapper -->
+<div id="wrapper" data-turbo-permanent>
+
+    <!-- Sidebar -->
+    <ul class="navbar-nav navbar-nav-fixed bg-gradient-primary sidebar sidebar-dark accordion bg-dark" id="accordionSidebar" data-turbo-permanent>
+
+        <!-- Brand -->
+        <a class="sidebar-brand d-flex align-items-center justify-content-center" href="{{ path('app_admin') }}">
+            <div class="sidebar-brand-icon rotate-n-15">
+                <i class="fas fa-tooth"></i>
+            </div>
+            <div class="sidebar-brand-text mx-3">DentalSoft</div>
+        </a>
+
+        <hr class="sidebar-divider my-0">
+
+        <li class="nav-item {{ active_page == 'dashboard' ? 'active' : '' }}">
+            <a class="nav-link" href="{{ path('app_admin') }}">
+                <i class="fas fa-fw fa-tachometer-alt"></i>
+                <span>Dashboard</span>
+            </a>
+        </li>
+
+        <hr class="sidebar-divider">
+        <div class="sidebar-heading">Gestion</div>
+
+        <li class="nav-item {{ active_page == 'agenda'  ? 'active' : '' }}">
+            <a class="nav-link"  href="#" >
+                <i class="fas fa-calendar"></i>
+                <span>Agenda</span>
+            </a> 
+        </li>
+
+        <li class="nav-item {{ active_page == 'patients' ? 'active' : '' }}">
+            <a class="nav-link"  href="{{ path('app_admin_patient') }}">
+                <i class="fas fa-user-plus"></i>
+                <span>Patients</span>
+            </a>
+        </li>
+        
+        <li class="nav-item {{ active_page in ['consultations_pending', 'consultation_edit', 'consultation_details', 'consultations_closed'] ? 'active' : '' }}">
+            <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseConsults"
+               aria-expanded="true" aria-controls="collapseConsults">
+                <i class="fas fa-stethoscope"></i>
+                <span>Consultations</span>
+            </a>
+            <div id="collapseConsults" class="collapse {{ active_page in ['consultations_pending', 'consultation_edit', 'consultation_details', 'consultations_closed'] ? 'show' : '' }}" data-parent="#accordionSidebar">
+                <div class="bg-white py-2 collapse-inner rounded">
+                    <a class="collapse-item" href="{{ path('consultations_pending') }}">En attente</a>
+                    <a class="collapse-item" href="{{ path('consultations_closed') }}">Classées</a>
+                </div>
+            </div>
+        </li>
+
+        <li class="nav-item  {{ active_page == 'caisse' ? 'active' : '' }}">
+            <a class="nav-link" href="{{ path('app_admin_caisse') }}">
+                <i class="fas fa-cash-register"></i>
+                <span>Statistiques</span>
+            </a>
+        </li> 
+
+        <hr class="sidebar-divider d-none d-md-block">
+        <div class="text-center d-none d-md-inline">
+            <button class="rounded-circle border-0" id="sidebarToggle"></button>
+        </div>
+    </ul>
+    <!-- End of Sidebar -->
+    
+
+    <!-- Content Wrapper -->
+    <div id="content-wrapper" class="d-flex flex-column">
+
+        <!-- Main Content -->
+        <div id="content">
+
+            <!-- Topbar -->
+            <nav class="navbar navbar-expand navbar-light bg-white topbar mb-4 static-top shadow" data-turbo-permanent>
+                <!-- Sidebar Toggle (Topbar) -->
+                <button id="sidebarToggleTop" class="btn btn-link d-md-none rounded-circle mr-3">
+                    <i class="fa fa-bars"></i>
+                </button>
+
+                <!-- Topbar Search -->
+                <form class="d-none d-sm-inline-block form-inline mr-auto ml-md-3 my-2 my-md-0 mw-100 navbar-search">
+                    <div class="input-group">
+                        <input type="text" class="form-control bg-light border-0 small"
+                               placeholder="Recherche..." aria-label="Search">
+                        <div class="input-group-append">
+                            <button class="btn btn-primary" type="button">
+                                <i class="fas fa-search fa-sm"></i>
+                            </button>
+                        </div>
+                    </div>
+                </form>
+
+                <!-- User -->
+                <ul class="navbar-nav ml-auto">
+                    <li class="nav-item dropdown no-arrow">
+                        <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button"
+                           data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            <span class="mr-2 d-none d-lg-inline text-gray-600 small">Admin</span>
+                            <img class="img-profile rounded-circle" >
+                        </a>
+                        <div class="dropdown-menu dropdown-menu-right shadow animated--grow-in"
+                             aria-labelledby="userDropdown">
+                            <a class="dropdown-item" href="#"><i class="fas fa-user fa-sm fa-fw mr-2 text-gray-400"></i>Profil</a>
+                            <a class="dropdown-item" href="#"><i class="fas fa-cogs fa-sm fa-fw mr-2 text-gray-400"></i>Paramètres</a>
+                            <div class="dropdown-divider"></div>
+                            <a class="dropdown-item" href="{{ path('app_logout') }}"><i class="fas fa-sign-out-alt fa-sm fa-fw mr-2 text-gray-400"></i>Déconnexion</a>
+                        </div>
+                    </li>
+                </ul>
+            </nav>
+            <!-- End of Topbar -->
+
+            <!-- Begin Page Content -->
+            <div class="container-fluid">
+                {% block main %}{% endblock %}
+            </div>
+            <!-- /.container-fluid -->
+
+        </div>
+        <!-- End of Main Content -->
+
+        <!-- Footer -->
+        <footer class="sticky-footer bg-white" data-turbo-permanent>
+            <div class="container my-auto text-center">
+                <div class="copyright">
+                    <span>© DentalSoft {{ "now"|date("Y") }}</span>
+                </div>
+            </div>
+        </footer>
+        <!-- End of Footer -->
+    </div>
+    <!-- End of Content Wrapper -->
+</div>
+<!-- End of Page Wrapper -->
+
+{# appbase.html.twig – juste avant </body> #}
+<div class="modal fade" id="genericModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-sm modal-dialog-centered" id="genericModalDialog">
+    <div class="modal-content" id="genericModalContent">
+      <div class="modal-body text-center py-4">
+        <i id="genericModalIcon" class="fas fa-info-circle fa-3x mb-3"></i>
+        <h5 class="mb-0" id="genericModalMessage">Message ici</h5>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- Scripts -->
+ 
+
+<script src="{{ asset('sb-admin/vendor/datatables/datatables.min.js') }}"></script>
+<script src="{{ asset('sb-admin/vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
+<script src="{{ asset('sb-admin/js/sb-admin-2.min.js') }}"></script> 
+<script>
+    $('.close-btn').on('click', function() {
+        $(this).closest('.modal').modal('hide');
+    });
+    /**
+     * Affiche le modal générique.
+     * @param {Object} opts
+     * @param {string} opts.message – Le texte à afficher.
+     * @param {'success'|'error'|'info'|'warning'} [opts.type='info'] – Le style.
+     * @param {string} [opts.icon] – Classe FontAwesome si vous voulez autre chose.
+     * @param {number} [opts.duration] – Durée en ms avant fermeture auto (0 = pas d’auto-close).
+     */
+    function showToastModal({ message, type = 'info', icon, duration = 1500 } = {}) {
+      const $dialog = $('#genericModalDialog');
+      const $content = $('#genericModalContent');
+      const $iconEl = $('#genericModalIcon');
+      const $msgEl  = $('#genericModalMessage');
+
+      // 1. Choix du style
+      const bgClasses = {
+        success: 'bg-success text-white',
+        error:   'bg-danger  text-white',
+        warning: 'bg-warning text-dark',
+        info:    'bg-info    text-white'
+      };
+      $content
+        .removeClass('bg-success bg-danger bg-warning bg-info text-white text-dark')
+        .addClass(bgClasses[type] || bgClasses.info);
+
+      // 2. Icône
+      const iconClasses = {
+        success: 'fas fa-check-circle',
+        error:   'fas fa-times-circle',
+        warning: 'fas fa-exclamation-triangle',
+        info:    'fas fa-info-circle'
+      };
+      $iconEl
+        .attr('class', (icon || iconClasses[type] || iconClasses.info) + ' fa-3x mb-3');
+
+      // 3. Message
+      $msgEl.text(message);
+
+      // 4. Affichage
+      $('#genericModal').modal('show');
+
+      // 5. Fermeture automatique si demandé
+      if (duration > 0) {
+        setTimeout(() => $('#genericModal').modal('hide'), duration);
+      }
+    }
+</script>
+
+{% block javascripts %}
+
+{% endblock %}
+{% block ownscripts %}{% endblock %}
+</body>
+</html>

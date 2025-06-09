@@ -1,0 +1,58 @@
+<!-- Add Modal -->
+<div class="modal fade" id="addModal" tabindex="-1" aria-labelledby="addModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            {{ form_start(addForm, {'action': path('app_admin_salle_add')}) }}
+            <div class="modal-header">
+                <h5 class="modal-title" id="addModalLabel">Ajouter une Salle</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                {{ form_row(addForm.nom) }}
+                {{ form_row(addForm.description) }}
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+                <button type="submit" class="btn btn-primary">Enregistrer</button>
+            </div>
+            {{ form_end(addForm) }}
+        </div>
+    </div>
+</div>
+
+<!-- Edit Modal -->
+<div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            {{ form_start(editForm, {'action': path('app_admin_salle_edit', {'id': 0}) }) }}
+            <div class="modal-header">
+                <h5 class="modal-title" id="editModalLabel">Modifier la Salle</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                {{ form_row(editForm.nom) }}
+                {{ form_row(editForm.description) }}
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+                <button type="submit" class="btn btn-primary">Mettre à jour</button>
+            </div>
+            {{ form_end(editForm) }}
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.edit-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const id = this.dataset.id;
+            const formAction = document.querySelector('#editModal form').action;
+            document.querySelector('#editModal form').action = formAction.replace('/0', '/' + id);
+            
+            document.querySelector('#editForm_nom').value = this.dataset.nom;
+            document.querySelector('#editForm_description').value = this.dataset.description;
+        });
+    });
+});
+</script>

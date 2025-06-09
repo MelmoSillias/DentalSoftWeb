@@ -1,0 +1,178 @@
+{% extends 'appbase.html.twig' %}
+
+{% block title %}Gestion des Salles{% endblock %}
+
+
+{% block main %}
+<div class="container-fluid px-4">
+    <h1 class="mt-4">Gestion des Salles</h1>
+    <ol class="breadcrumb mb-4">
+        <li class="breadcrumb-item active">Liste des Salles</li>
+    </ol>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex justify-content-between align-items-center">
+            <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-door-open me-1"></i> Liste des Salles</h6>
+            <button class="btn btn-success btn-sm" id="openAddModal">
+                <i class="fas fa-plus"></i> Ajouter une Salle
+            </button>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered table-striped table-hover my-4" id="sallesTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Nom</th>
+                            <th>Description</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for salle in salles %}
+                        <tr>
+                            <td>{{ salle.nom }}</td>
+                            <td>{{ salle.description }}</td>
+                            <td>
+                                <button class="btn btn-warning btn-sm edit-btn" 
+                                        data-id="{{ salle.id }}"
+                                        data-nom="{{ salle.nom }}"
+                                        data-description="{{ salle.description }}">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Modal -->
+<div class="modal fade" id="addModal" tabindex="-1" aria-labelledby="addModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" action="{{ path('app_admin_salle_add') }}">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addModalLabel">Ajouter une Salle</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="nom" class="form-label">Nom</label>
+                        <input type="text" class="form-control" id="nom" name="nom" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <textarea class="form-control" id="description" name="description"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-close" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary">Ajouter</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Modal -->
+<div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" action="{{ path('app_admin_salle_edit') }}">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editModalLabel">Modifier une Salle</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="edit-id" name="id">
+                    <div class="mb-3">
+                        <label for="edit-nom" class="form-label">Nom</label>
+                        <input type="text" class="form-control" id="edit-nom" name="nom" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit-description" class="form-label">Description</label>
+                        <textarea class="form-control" id="edit-description" name="description"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-close" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary">Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" id="deleteForm">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deleteModalLabel">Confirmer la Suppression</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Êtes-vous sûr de vouloir supprimer cette salle ?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-close" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-danger">Supprimer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascripts %} 
+    <script>
+        $(document).ready(function () {
+            $('#sallesTable').DataTable();
+
+            // Open Add Modal
+            document.getElementById('openAddModal').addEventListener('click', () => {
+                const addModal = new bootstrap.Modal(document.getElementById('addModal'));
+                addModal.show();
+            });
+
+            // Open Edit Modal
+            const editButtons = document.querySelectorAll('.edit-btn');
+            editButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const id = button.getAttribute('data-id');
+                    const nom = button.getAttribute('data-nom');
+                    const description = button.getAttribute('data-description');
+                    document.getElementById('edit-id').value = id;
+                    document.getElementById('edit-nom').value = nom;
+                    document.getElementById('edit-description').value = description;
+
+                    const editModal = new bootstrap.Modal(document.getElementById('editModal'));
+                    editModal.show();
+                });
+            });
+
+            // Open Delete Modal
+            const deleteButtons = document.querySelectorAll('form[action*="app_admin_salle_delete"] button');
+            deleteButtons.forEach(button => {
+                button.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const form = button.closest('form');
+                    const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+                    const deleteForm = document.getElementById('deleteForm');
+                    deleteForm.action = form.action;
+                    deleteModal.show();
+                });
+            });
+
+            $('.btn-close').on('click', function () {
+                $(this).closest('.modal').modal('hide');
+            });
+        });
+
+    </script>
+{% endblock %}

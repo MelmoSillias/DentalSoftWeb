@@ -1,0 +1,507 @@
+{# dashboard.html.twig #}
+{% extends 'appbase.html.twig' %}
+
+{% block title %}Dashboard - Cabinet Dentaire{% endblock %}
+
+{% block stylesheets %}
+  {{ parent() }}
+  <style>
+    /* Styles personnalisés du Dashboard */
+
+    /* Animation sur le chargement et hover */
+    .animated-load {
+      opacity: 0;
+      transform: translateY(20px);
+      animation: fadeInUp 0.8s forwards;
+    }
+    @keyframes fadeInUp {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    .card-hover {
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .card-hover:hover {
+      transform: scale(1.02);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+    /* Carousel & Chart */
+    .carousel-item canvas {
+      width: 100% !important;
+      height: 300px !important;
+    }
+    /* Styles de la table pour les données périodiques */
+    .period-table th, .period-table td {
+      text-align: center;
+      padding: 5px;
+      font-size: 0.9rem;
+    }
+    .data-green {
+      color: green;
+      font-weight: bold;
+    }
+    .data-red {
+      color: red;
+      font-weight: bold;
+    }
+  </style>
+{% endblock %}
+
+{% block main %}
+<div class="container-fluid my-4">
+  <h1 class="mb-4">Tableau de Bord - Cabinet Dentaire</h1>
+
+  <!-- Section 1 : Statistiques principales sous forme de cartes -->
+  <div class="row g-3 mb-4">
+    <!-- Carte 1 : Patients -->
+    <div class="col-md-4 animated-load">
+      <div class="card card-hover text-white bg-info">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <h5 class="card-title">Patients Enregistrés</h5>
+              <h2>350</h2>
+              <small><i class="fas fa-calendar-check"></i> 120 consultation(s) &lt; 1 mois</small>
+            </div>
+            <div>
+              <i class="fas fa-user-injured fa-3x"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Carte 2 : Employées hors médecins -->
+    <div class="col-md-4 animated-load">
+      <div class="card card-hover text-white bg-warning">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <h5 class="card-title">Employées (hors médecins)</h5>
+              <h2>45</h2>
+              <small><i class="fas fa-money-bill-wave"></i> Masse salariale: 120K€</small>
+            </div>
+            <div>
+              <i class="fas fa-user-friends fa-3x"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Carte 3 : Médecins Fixes -->
+    <div class="col-md-4 animated-load">
+      <div class="card card-hover text-white bg-success">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <h5 class="card-title">Médecins Fixes</h5>
+              <h2>20</h2>
+              <small><i class="fas fa-user-md"></i> Salariés: 15 | Masse: 80K€</small>
+            </div>
+            <div>
+              <i class="fas fa-user-md fa-3x"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Carte 4 : Médecins Prestataires -->
+    <div class="col-md-4 animated-load">
+      <div class="card card-hover text-white bg-danger">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <h5 class="card-title">Médecins Prestataires</h5>
+              <h2>6</h2>
+              <small>30 % du total</small>
+            </div>
+            <div>
+              <i class="fas fa-user-nurse fa-3x"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Carte 5 : Budget et Recette -->
+    <div class="col-md-4 animated-load">
+      <div class="card card-hover text-white bg-primary">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <h5 class="card-title">Budget &amp; Recette</h5>
+              <h2>Budget : 500K€</h2>
+              <small>Recette mensuelle : 80K€</small>
+            </div>
+            <div>
+              <i class="fas fa-chart-line fa-3x"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section 2 : Consultations, Factures et Rendez-vous -->
+  <div class="row g-3 mb-4">
+    <!-- Carte : Consultations en attente -->
+    <div class="col-md-4 animated-load">
+      <div class="card card-hover bg-secondary text-white">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <h5 class="card-title">Consultations En Attente</h5>
+              <h2>25</h2>
+            </div>
+            <div>
+              <i class="fas fa-stethoscope fa-3x"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Carte : Factures non payées -->
+    <div class="col-md-4 animated-load">
+      <div class="card card-hover bg-dark text-white">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <h5 class="card-title">Factures Non Payées</h5>
+              <h2>10</h2>
+            </div>
+            <div>
+              <i class="fas fa-file-invoice-dollar fa-3x"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Carte : Rendez-vous en attente -->
+    <div class="col-md-4 animated-load">
+      <div class="card card-hover bg-light text-dark">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <h5 class="card-title">RDV En Attente</h5>
+              <h2>8</h2>
+            </div>
+            <div>
+              <i class="fas fa-calendar-alt fa-3x"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section 3 : Graphiques et Données Périodiques -->
+  <div class="mb-4">
+    <!-- Sélecteurs mois et année -->
+    <div class="row align-items-center mb-3">
+      <div class="col-md-6">
+        <label for="selectMonth" class="form-label">Mois :</label>
+        <select id="selectMonth" class="form-select">
+          <option>Janvier</option>
+          <option>Février</option>
+          <option>Mars</option>
+          <option>Avril</option>
+          <option>Mai</option>
+          <option>Juin</option>
+          <option>Juillet</option>
+          <option>Août</option>
+          <option>Septembre</option>
+          <option>Octobre</option>
+          <option>Novembre</option>
+          <option>Décembre</option>
+        </select>
+      </div>
+      <div class="col-md-6">
+        <label for="selectYear" class="form-label">Année :</label>
+        <select id="selectYear" class="form-select">
+          <option>2023</option>
+          <option>2024</option>
+          <option>2025</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="row">
+      <!-- Colonne 1/3 : Carousel de graphiques -->
+      <div class="col-md-4 animated-load">
+        <div id="carouselGraphs" class="carousel slide" data-bs-ride="carousel">
+          <div class="carousel-inner">
+            <!-- Graphique Répartition Homme/Femme -->
+            <div class="carousel-item active">
+              <div class="card">
+                <div class="card-header">
+                  Répartition Homme/Femme
+                </div>
+                <div class="card-body">
+                  <canvas id="chartGender"></canvas>
+                </div>
+              </div>
+            </div>
+            <!-- Graphique Répartition par Tranche d'Âges -->
+            <div class="carousel-item">
+              <div class="card">
+                <div class="card-header">
+                  Répartition par Tranche d'Âges
+                </div>
+                <div class="card-body">
+                  <canvas id="chartAge"></canvas>
+                </div>
+              </div>
+            </div>
+            <!-- Graphique Evolution Patients & Retour -->
+            <div class="carousel-item">
+              <div class="card">
+                <div class="card-header">
+                  Evolution Patients &amp; Retour
+                </div>
+                <div class="card-body">
+                  <canvas id="chartPatientEvolution"></canvas>
+                </div>
+              </div>
+            </div>
+          </div>
+          <button class="carousel-control-prev" type="button" data-bs-target="#carouselGraphs" data-bs-slide="prev">
+            <span class="carousel-control-prev-icon"></span>
+          </button>
+          <button class="carousel-control-next" type="button" data-bs-target="#carouselGraphs" data-bs-slide="next">
+            <span class="carousel-control-next-icon"></span>
+          </button>
+        </div>
+      </div>
+      <!-- Colonne 2/3 : Evolution Budget, Bénéfices & Dépenses -->
+      <div class="col-md-8 animated-load">
+        <div class="card">
+          <div class="card-header">
+            Evolution Budget, Bénéfices et Dépenses
+          </div>
+          <div class="card-body">
+            <canvas id="chartFinance"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section 4 : Données Périodiques -->
+  <div class="mb-4 animated-load">
+    <h3>Données Périodiques</h3>
+    <div class="mb-3">
+      <label for="selectPeriod" class="form-label">Période :</label>
+      <select id="selectPeriod" class="form-select">
+        <option>1ère semaine</option>
+        <option>2ème semaine</option>
+        <option>3ème semaine</option>
+        <option>4ème semaine</option>
+      </select>
+    </div>
+    <!-- Tableau récapitulatif par semaine et jour -->
+    <div class="table-responsive">
+      <table class="table table-bordered period-table">
+        <thead class="table-light">
+          <tr>
+            <th>Jour / Semaine</th>
+            <th>Semaine 1<br><small>(01 - 07)</small></th>
+            <th>Semaine 2<br><small>(08 - 14)</small></th>
+            <th>Semaine 3<br><small>(15 - 21)</small></th>
+            <th>Semaine 4<br><small>(22 - 28)</small></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for day in ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'] %}
+          <tr>
+            <th>{{ day }}</th>
+            {% for week in 1..4 %}
+            <td>
+              <div class="data-green">Recette: {{ 100 + week * 10 }}€</div>
+              <div class="data-red">Dépenses: {{ 80 + week * 8 }}€</div>
+              <div>Consultations: {{ 5 + week }}</div>
+              <div>RDV: {{ 3 + week }}</div>
+            </td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+          <!-- Ligne supplémentaire pour les détails des RDV -->
+          <tr class="table-secondary">
+            <th>RDV Détails</th>
+            {% for week in 1..4 %}
+            <td>
+              <div>Total RDV: {{ 20 + week*2 }}</div>
+              <div>Validés: {{ 18 + week }}</div>
+              <div>Reportés: {{ 1 + week }}</div>
+              <div>Ratés: 1 (50 % retour)</div>
+            </td>
+            {% endfor %}
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <!-- Graphique des actes par catégories -->
+    <div class="card mt-4 animated-load">
+      <div class="card-header">
+        Actes par Catégories
+      </div>
+      <div class="card-body">
+        <canvas id="chartActs"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section 5 : Rapport Financier Mensuel -->
+  <div class="mb-4 animated-load">
+    <h3>Rapport Financier Mensuel</h3>
+    <div class="card">
+      <div class="card-body">
+        <p><strong>Revenus Totals :</strong> 80K€</p>
+        <p><strong>Dépenses Totals :</strong> 50K€</p>
+        <p><strong>Bénéfice Net :</strong> 30K€</p>
+        <p>Analyse détaillée du rapport financier du mois en cours...</p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block javascripts %}
+  {{ parent() }}
+  <!-- Chargement de Chart.js depuis un CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Graphique : Répartition Homme/Femme (type pie)
+      const ctxGender = document.getElementById('chartGender').getContext('2d');
+      const chartGender = new Chart(ctxGender, {
+        type: 'pie',
+        data: {
+          labels: ['Homme', 'Femme'],
+          datasets: [{
+            data: [55, 45],
+            backgroundColor: ['#007bff', '#dc3545']
+          }]
+        },
+        options: {
+          responsive: true,
+          animation: { duration: 1500 }
+        }
+      });
+
+      // Graphique : Répartition par Tranche d'Âges (type bar)
+      const ctxAge = document.getElementById('chartAge').getContext('2d');
+      const chartAge = new Chart(ctxAge, {
+        type: 'bar',
+        data: {
+          labels: ['0-18', '19-35', '36-50', '51+'],
+          datasets: [{
+            label: 'Nombre de patients',
+            data: [40, 100, 80, 30],
+            backgroundColor: ['#28a745','#17a2b8','#ffc107','#6c757d']
+          }]
+        },
+        options: {
+          responsive: true,
+          animation: { duration: 1500 }
+        }
+      });
+
+      // Graphique : Evolution des Patients & % de Retour (type line)
+      const ctxPatientEvolution = document.getElementById('chartPatientEvolution').getContext('2d');
+      const chartPatientEvolution = new Chart(ctxPatientEvolution, {
+        type: 'line',
+        data: {
+          labels: ['S1', 'S2', 'S3', 'S4', 'S5'],
+          datasets: [
+            {
+              label: 'Patients',
+              data: [320, 330, 340, 345, 350],
+              borderColor: '#6610f2',
+              fill: false,
+              tension: 0.4
+            },
+            {
+              label: '% Retour',
+              data: [20, 22, 21, 23, 25],
+              borderColor: '#e83e8c',
+              fill: false,
+              tension: 0.4
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          animation: { duration: 1500 }
+        }
+      });
+
+      // Graphique : Evolution Finance (Budget, Bénéfices, Dépenses) en ligne avec dégradés
+      const ctxFinance = document.getElementById('chartFinance').getContext('2d');
+      const gradientBudget = ctxFinance.createLinearGradient(0, 0, 0, 400);
+      gradientBudget.addColorStop(0, 'rgba(0,123,255,0.5)');
+      gradientBudget.addColorStop(1, 'rgba(0,123,255,0.1)');
+      const gradientProfit = ctxFinance.createLinearGradient(0, 0, 0, 400);
+      gradientProfit.addColorStop(0, 'rgba(40,167,69,0.5)');
+      gradientProfit.addColorStop(1, 'rgba(40,167,69,0.1)');
+      const gradientExpenses = ctxFinance.createLinearGradient(0, 0, 0, 400);
+      gradientExpenses.addColorStop(0, 'rgba(220,53,69,0.5)');
+      gradientExpenses.addColorStop(1, 'rgba(220,53,69,0.1)');
+
+      const chartFinance = new Chart(ctxFinance, {
+        type: 'line',
+        data: {
+          labels: ['Semaine 1', 'Semaine 2', 'Semaine 3', 'Semaine 4'],
+          datasets: [
+            {
+              label: 'Budget',
+              data: [500, 510, 520, 530],
+              borderColor: '#007bff',
+              backgroundColor: gradientBudget,
+              fill: true,
+              tension: 0.3
+            },
+            {
+              label: 'Bénéfice',
+              data: [50, 55, 60, 65],
+              borderColor: '#28a745',
+              backgroundColor: gradientProfit,
+              fill: true,
+              tension: 0.3
+            },
+            {
+              label: 'Dépenses',
+              data: [200, 210, 205, 215],
+              borderColor: '#dc3545',
+              backgroundColor: gradientExpenses,
+              fill: true,
+              tension: 0.3
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          animation: { duration: 1500 }
+        }
+      });
+
+      // Graphique : Actes par Catégories (type bar)
+      const ctxActs = document.getElementById('chartActs').getContext('2d');
+      const chartActs = new Chart(ctxActs, {
+        type: 'bar',
+        data: {
+          labels: ['Protèses', 'Soins dentaires', 'Détartrage', 'ODH', 'Extractions'],
+          datasets: [{
+            label: 'Nombre d\'actes',
+            data: [30, 50, 20, 15, 10],
+            backgroundColor: ['#007bff','#28a745','#ffc107','#17a2b8','#dc3545']
+          }]
+        },
+        options: {
+          responsive: true,
+          animation: { duration: 1500 },
+          plugins: { legend: { display: false } }
+        }
+      });
+    });
+  </script>
+{% endblock %}

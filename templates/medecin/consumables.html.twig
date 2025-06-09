@@ -1,0 +1,392 @@
+{% extends 'appbase.html.twig' %}
+
+{% block title %}Consommables{% endblock %}
+
+{% block stylesheets %} 
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css" />
+{% endblock %}
+
+{% block main %}
+<div class="container-fluid px-4">
+    <h1 class="mt-4">Consommables</h1>
+    <ol class="breadcrumb mb-4">
+        <li class="breadcrumb-item active">Gestion des consommables</li>
+    </ol>
+
+    <div class="d-flex justify-content-end mb-4">
+        <button class="btn btn-primary nav-toggle-btn me-2" id="btn-consommables">Table des Consommables</button>
+        <button class="btn btn-outline-secondary nav-toggle-btn" id="btn-stock">Variations de Stock</button>
+    </div>
+
+    <div class="card shadow mb-4" id="section-consommables">
+        <div class="card-header py-3 d-flex justify-content-between align-items-center">
+            <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-boxes me-1"></i> Liste des Consommables</h6>
+            <button class="btn btn-success btn-sm" id="btn-open-ajout-modal"><i class="fas fa-plus"></i> Ajouter</button>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table id="consommablesTable" class="table table-bordered table-striped table-hover my-4">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Nom</th>
+                            <th>Quantité</th>
+                            <th>Fournisseur</th>
+                            <th ></th>
+                            <th style="width: 160px;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Rows will be dynamically populated via AJAX -->
+                       
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow mb-4 d-none" id="section-stock">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-history me-1"></i> Variations de Stock</h6>
+        </div>
+        <div class="card-body">
+            <div class="d-flex mb-3 flex-wrap">
+                <input type="text" id="daterange" class="form-control form-user-control me-2 mb-2" />
+            </div>
+            <div class="table-responsive">
+                <table id="stockTable" class="table table-bordered table-striped table-hover my-4">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Consommable</th>
+                            <th>Quantité Utilisée</th>
+                            <th>Date</th>
+                            <th>Employé</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Rows will be dynamically populated via AJAX -->
+                    
+                    </tbody>
+                </table>
+            </div>
+            <div id="statistiques" class="mt-4">
+                <!-- Résultat des stats ici -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Ajout Consommable -->
+    <div class="modal fade" id="ajoutConsommableModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form method="post" action="{{ path('consommable_add') }}">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Ajouter un consommable</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label>Nom</label>
+                            <input type="text" name="nom" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label>Quantité</label>
+                            <input type="number" name="quantite" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label>Fournisseur</label>
+                            <input type="text" name="fournisseur" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label>Valeur de Stock Bas</label>
+                            <input type="number" name="lowValue" class="form-control" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary btn-close" data-bs-dismiss="modal">Annuler</button>
+                        <button type="submit" class="btn btn-primary">Ajouter</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Retrait -->
+    <div class="modal fade" id="retraitModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form method="post">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Retirer du Stock</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" name="id" id="retrait-consommable-id">
+                        <div class="mb-3">
+                            <label>Quantité</label>
+                            <input type="number" name="quantite" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label>Description</label>
+                            <input type="text" name="description" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label>Employé</label>
+                            <select name="employe" class="form-control" required>
+                                <option value="" disabled selected>Choisir un employé</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary btn-close" data-bs-dismiss="modal">Annuler</button>
+                        <button type="submit" class="btn btn-primary">Retirer</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Ajout Stock -->
+    <div class="modal fade" id="addStockModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form method="post">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Ajouter au Stock</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" name="id" id="add-stock-consommable-id">
+                        <div class="mb-3">
+                            <label>Quantité</label>
+                            <input type="number" name="quantite" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label>Description</label>
+                            <input type="text" name="description" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label>Employé</label>
+                            <select name="employe" class="form-control" required>
+                                <option value="" disabled selected>Choisir un employé</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary btn-close" data-bs-dismiss="modal">Annuler</button>
+                        <button type="submit" class="btn btn-primary">Ajouter</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Delete Confirmation -->
+    <div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirmer la suppression</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Êtes-vous sûr de vouloir supprimer cet élément ? Cette action est irréversible.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-close" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-danger" id="confirm-delete-btn">Supprimer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascripts %} 
+ <script src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
+<script>
+    $(document).ready(function () {
+        $('#consommablesTable').DataTable();
+        $('#stockTable').DataTable();
+
+        const btnCons = $('#btn-consommables');
+        const btnStock = $('#btn-stock');
+        const sectionCons = $('#section-consommables');
+        const sectionStock = $('#section-stock');
+
+        btnCons.on('click', () => {
+            sectionCons.removeClass('d-none');
+            sectionStock.addClass('d-none');
+            btnCons.removeClass('btn-outline-primary').addClass('btn-primary');
+            btnStock.removeClass('btn-primary').addClass('btn-outline-secondary');
+        });
+
+        btnStock.on('click', () => {
+            sectionStock.removeClass('d-none');
+            sectionCons.addClass('d-none');
+            btnStock.removeClass('btn-outline-secondary').addClass('btn-primary');
+            btnCons.removeClass('btn-primary').addClass('btn-outline-primary');
+        });
+
+        $('#btn-open-ajout-modal').on('click', () => {
+            $('#ajoutConsommableModal').modal('show');
+        });
+
+        let deleteId = null;
+
+        function handleRetraitClick(id) {
+            $('#retrait-consommable-id').val(id);
+            $('#retraitModal').modal('show');
+        }
+
+        function handleAddStockClick(id) {
+            $('#add-stock-consommable-id').val(id);
+            $('#addStockModal').modal('show');
+        }
+
+        function handleDeleteClick(id) {
+            deleteId = id;
+            $('#deleteModal').modal('show');
+        }
+
+        $('#confirm-delete-btn').on('click', function () {
+            if (deleteId) {
+                $.ajax({
+                    url: `/api/consommables/${deleteId}`,
+                    method: 'DELETE',
+                    success: function () {
+                        $('#deleteModal').modal('hide');
+                        fetchConsommables(); // Refresh the table
+                    },
+                    error: function () {
+                        alert('Erreur lors de la suppression.');
+                    }
+                });
+            }
+        });
+
+        window.handleRetraitClick = handleRetraitClick;
+        window.handleAddStockClick = handleAddStockClick;
+        window.handleDeleteClick = handleDeleteClick;
+
+        function fetchConsommables() {
+            $.ajax({
+                url: '/api/consommables',
+                method: 'GET',
+                success: function (data) {
+                    const tbody = $('#consommablesTable tbody');
+                    tbody.empty();
+                    data.forEach(consommable => {
+                        tbody.append(`
+                            <tr>
+                                <td>${consommable.nom}</td>
+                                <td>${consommable.quantity}</td>
+                                <td>${consommable.fournisseur}</td>
+                                <td>
+                                    <span class="badge text-white ${consommable.onLowValue ? 'bg-danger' : 'bg-success'}">
+                                        <i class="fas ${consommable.onLowValue ? 'fa-exclamation-circle' : 'fa-check-circle'}"></i>
+                                    </span>
+                                </td>
+                                <td>
+                                    <button class="btn btn-sm btn-warning action-btn" onclick="handleRetraitClick(${consommable.id})"><i class="fas fa-minus-circle"></i></button>
+                                    <button class="btn btn-sm btn-primary action-btn" onclick="handleAddStockClick(${consommable.id})"><i class="fas fa-plus-circle"></i></button>
+                                    <button class="btn btn-sm btn-danger action-btn" onclick="handleDeleteClick(${consommable.id})"><i class="fas fa-trash-alt"></i></button>
+                                </td>
+                            </tr>
+                        `);
+                    });
+                },
+                error: function () {
+                    alert('Erreur lors de la récupération des consommables.');
+                }
+            });
+        }
+
+        function fetchStockVariations(start, end) {
+            $.ajax({
+                url: '/api/stocks',
+                method: 'GET',
+                data: { start, end },
+                success: function (data) {
+                    const tbody = $('#stockTable tbody');
+                    tbody.empty();
+                    if (data.length === 0) {
+                        tbody.append('<tr><td colspan="5" class="text-center">Aucune donnée disponible pour cette période.</td></tr>');
+                    } else {
+                        data.forEach(stock => {
+                            tbody.append(`
+                                <tr>
+                                    <td>${stock.consommable}</td>
+                                    <td class="${stock.type === 'Retrait' ? 'text-danger' : 'text-success'}">
+                                        ${stock.type === 'Retrait' ? '-' : '+'}${stock.quantiteUtilisee}
+                                    </td>
+                                    <td>${stock.date}</td>
+                                    <td>${stock.employe}</td>
+                                    <td>${stock.description}</td>
+                                </tr>
+                            `);
+                        });
+                    }
+                },
+                error: function () {
+                    alert('Erreur lors de la récupération des variations de stock.');
+                }
+            });
+        }
+
+        function fetchEmployees() {
+            $.ajax({
+            url: '/api/employees',
+            method: 'GET',
+            success: function (response) {
+                const employees = response.data; // Adjusted to match the controller's JSON structure
+                if (!Array.isArray(employees)) {
+                console.error('Invalid data format: Expected an array.');
+                return;
+                }
+                const employeeOptions = employees.map(employee => 
+                `<option value="${employee.id}">${employee.nom} ${employee.prenom}</option>`
+                ).join('');
+                $('select[name="employe"]').html('<option value="" disabled selected>Choisir un employé</option>' + employeeOptions);
+            },
+            error: function () {
+                alert('Erreur lors de la récupération des employés.');
+            }
+            });
+        }
+
+        fetchConsommables();
+        fetchEmployees();
+
+        $('#daterange').daterangepicker({
+            locale: {
+                format: 'YYYY-MM-DD',
+                applyLabel: 'Appliquer',
+                cancelLabel: 'Annuler',
+                fromLabel: 'De',
+                toLabel: 'À',
+                customRangeLabel: 'Personnalisé',
+                weekLabel: 'S',
+                daysOfWeek: ['Di', 'Lu', 'Ma', 'Me', 'Je', 'Ve', 'Sa'],
+                monthNames: ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'],
+                firstDay: 1
+            },
+            opens: 'left',
+            alwaysShowCalendars: true,
+            ranges: {
+                "Aujourd'hui": [moment(), moment()],
+                "Hier": [moment().subtract(1, 'days'), moment().subtract(1, 'days')],
+                "Cette semaine": [moment().startOf('week'), moment().endOf('week')],
+                "Ce mois-ci": [moment().startOf('month'), moment().endOf('month')],
+                "Cette année": [moment().startOf('year'), moment().endOf('year')]
+            }
+        }, function (start, end) {
+            fetchStockVariations(start.format('YYYY-MM-DD'), end.format('YYYY-MM-DD'));
+        });
+
+        $('.btn-close').on('click', function () {
+            $(this).closest('.modal').modal('hide');
+        });
+    });
+</script>
+{% endblock %}

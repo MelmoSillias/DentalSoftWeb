@@ -1,0 +1,198 @@
+{% extends 'appbase.html.twig' %}
+
+{% block title %}Détails Consultation - {{ consultation.patient.nom }}{% endblock %}
+
+{% block stylesheets %} 
+<style>
+    .facture-container {
+        font-family: 'Nunito', sans-serif;
+        color: #333;
+    }
+    .facture-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 2px solid #007bff;
+        padding-bottom: 1rem;
+        margin-bottom: 1rem;
+    }
+    .facture-logo {
+        max-width: 100px;
+    }
+    .entreprise-info {
+        text-align: right;
+    }
+    .facture-table th, .facture-table td {
+        border: 1px solid #ddd;
+        padding: 0.75rem;
+        text-align: left;
+    }
+    .facture-footer {
+        text-align: center;
+        font-size: 0.875rem;
+        color: #666;
+        margin-top: 2rem;
+    }
+</style>
+{% endblock %}
+
+{% block main %}
+<div class="container-fluid px-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 text-gray-800">
+            <i class="fas fa-info-circle me-2"></i>
+            Consultation #{{ consultation.id }}
+        </h1>
+        <div>
+            <a href="{{ path('consultations_closed') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-2"></i>Retour
+            </a>
+            <a href="{{ path('app_patient_dossier', {id: consultation.patient.id}) }}" class="btn btn-primary">
+                <i class="fas fa-folder-open me-2"></i>Ouvrir Dossier Patient
+            </a>
+        </div>
+    </div>
+
+    <!-- Informations Patient -->
+    <div class="card shadow mb-4">
+        <div class="card-header bg-primary text-white">
+            <i class="fas fa-user me-2"></i>Informations Patient
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4">
+                    <p><strong>Nom:</strong> {{ consultation.patient.nom }}</p>
+                    <p><strong>Prénom:</strong> {{ consultation.patient.prenom }}</p>
+                </div>
+                <div class="col-md-4">
+                    <p><strong>Médecin:</strong> Dr. {{ consultation.medecin.nom }}</p>
+                    <p><strong>Date:</strong> {{ consultation.dateDebut|date('d/m/Y H:i') }}</p>
+                </div>
+                <div class="col-md-4">
+                    <p><strong>Infirmier:</strong> {{ consultation.infirmier ? consultation.infirmier.FullName : 'N/A' }}</p>
+                    <p><strong>Salle:</strong> {{ consultation.salle ? consultation.salle.nom : 'N/A' }}</p>
+                    <p><strong>Type:</strong> {{ consultation.type ?: 'N/A' }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Détails Médicaux -->
+    <div class="row">
+        <div class="col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header bg-info text-white">
+                    <i class="fas fa-stethoscope me-2"></i>Détails Médicaux
+                </div>
+                <div class="card-body">
+                    <p><strong>Motif:</strong> {{ consultation.motifConsultation }}</p>
+                    <p><strong>Diagnostic:</strong> {{ consultation.diagnostic }}</p>
+                    <p><strong>Prescriptions:</strong> {{ consultation.prescriptions }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Actes Médicaux -->
+        <div class="col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header bg-warning text-dark">
+                    <i class="fas fa-procedures me-2"></i>Actes Médicaux
+                </div>
+                <div class="card-body">
+                    {% if actes|length > 0 %}
+                        <ul class="list-group">
+                            {% for acte in actes %}
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    <span>
+                                        <strong>{{ acte.nom }}</strong><br>
+                                        <small class="text-muted">{{ acte.description ?: 'Aucune description' }}</small>
+                                    </span>
+                                    <span class="badge bg-primary">{{ acte.prix ?: 0 }} FCFA</span>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="text-muted">Aucun acte médical enregistré pour cette consultation.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Prévisualisation Facture -->
+    <div class="card shadow mb-4">
+        <div class="card-header bg-success text-white">
+            <i class="fas fa-file-invoice-dollar me-2"></i>Prévisualisation de la Facture
+        </div>
+        <div class="card-body">
+            <button id="btnPreviewFacture" class="btn btn-success">
+                <i class="fas fa-eye me-2"></i>Prévisualiser la Facture
+            </button>
+            <div id="factureContent" class="mt-4" style="display: none;"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascripts %} 
+<script>
+    document.getElementById('btnPreviewFacture').addEventListener('click', function () {
+        const factureContent = document.getElementById('factureContent');
+        factureContent.style.display = 'block';
+
+        const actes = {{ actes|json_encode|raw }};
+        const total = actes.reduce((sum, acte) => sum + (acte.prix * (acte.quantite || 1)), 0);
+        const dateFacture = new Date().toLocaleDateString('fr-FR');
+
+        factureContent.innerHTML = `
+            <div class="facture-container">
+                <header class="facture-header">
+                    <div class="logo-container">
+                        <img src="https://cdn.pixabay.com/photo/2017/01/08/21/11/medical-1964528_1280.png" class="facture-logo" alt="Logo Cabinet Médical">
+                    </div>
+                    <div class="entreprise-info">
+                        <h2>Cabinet Dentaire Orodent</h2>
+                        <p>123 Avenue des Cliniques, Bamako</p>
+                        <p>Tél: +223 76 54 32 10 | Email: contact@orodent.ml</p>
+                    </div>
+                </header>
+                <div class="client-info">
+                    <p><strong>Facture à :</strong> {{ consultation.patient.nom }} {{ consultation.patient.prenom }}</p>
+                    <p><strong>Contact :</strong> {{ consultation.patient.telephone ?: 'Non renseigné' }}</p>
+                </div>
+                <table class="facture-table">
+                    <thead>
+                        <tr>
+                            <th>Description</th>
+                            <th>Quantité</th>
+                            <th>Prix Unitaire</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${actes.map(acte => `
+                            <tr>
+                                <td>${acte.nom}${acte.description ? '<br><small>' + acte.description + '</small>' : ''}</td>
+                                <td>${acte.quantite || 1}</td>
+                                <td>${acte.prix.toLocaleString('fr-FR')} FCFA</td>
+                                <td>${(acte.prix * (acte.quantite || 1)).toLocaleString('fr-FR')} FCFA</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <th colspan="3">Total TTC</th>
+                            <th>${total.toLocaleString('fr-FR')} FCFA</th>
+                        </tr>
+                    </tfoot>
+                </table>
+                <footer class="facture-footer">
+                    <p>Banque : BDM SA - RIB: 007 00000 12345678901 72</p>
+                    <p>N° RCCM: ML2024BKO001 | NIF: 2024A12345</p>
+                    <p>"Une facture doit être réglée dans les 15 jours suivant son émission"</p>
+                </footer>
+            </div>
+        `;
+    });
+</script>
+{% endblock %}

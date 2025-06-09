@@ -8,11 +8,12 @@ use Symfony\Component\Routing\Attribute\Route;
 
 final class MedecinController extends AbstractController
 {
-    #[Route('/medecin', name: 'app_medecin')]
+    #[Route('/medecin/dashboard', name: 'app_medecin')]
     public function index(): Response
     {
         return $this->render('medecin/index.html.twig', [
             'controller_name' => 'MedecinController',
+            'active_page' => 'dashboard',
         ]);
     }
 }

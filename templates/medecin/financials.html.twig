@@ -1,0 +1,713 @@
+{% extends 'appbase.html.twig' %}
+
+{% set months = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'] %}
+
+{% block title %}Finances{% endblock %}
+
+{% block main %}
+<div class="container-fluid px-4">
+    <h1 class="mt-4">Finances</h1>
+    <ol class="breadcrumb mb-4">
+        <li class="breadcrumb-item"><a href="{{ path('app_admin') }}">Dashboard</a></li>
+        <li class="breadcrumb-item active">Finances</li>
+    </ol>
+
+    {% set balance = 0 %}
+    {% for transaction in transactions %}
+        {% set balance = balance + (transaction.type == 'Entrée' ? transaction.montant : -transaction.montant) %}
+    {% endfor %}
+
+    <div class="row mb-4">
+        {% set capitalTotal = barSoldeChart.soldes|reduce((carry, val) => carry + val) %}
+        <div class="col-xl-3 col-md-6">
+            <div class="card border-left-dark shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="text-xs font-weight-bold text-dark text-uppercase mb-1">Capital Total</div>
+                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ capitalTotal|format_currency('XOF') }}</div>
+                </div>
+            </div>
+        </div>
+
+        {% for compte in soldesParCompte %}
+            <div class="col-xl-3 col-md-6 mb-3">
+                <div class="card border-left-{{ compte.type == 'Espèces' ? 'primary' : 'info' }} shadow h-100 py-2">
+                    <div class="card-body">
+                        <div class="text-xs font-weight-bold text-uppercase text-{{ compte.type == 'Espèces' ? 'primary' : 'info' }} mb-1">
+                            {{ compte.libelle }} ({{ compte.type }})
+                        </div>
+                        <div class="h5 font-weight-bold text-gray-800">
+                            {{ compte.solde|format_currency('XOF') }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-plus me-2"></i> Ajouter une transaction</h6>
+        </div>
+        <div class="card-body">
+            <form id="transactionForm" class="row g-3">
+                <div class="col-md-2">
+                    <label for="type" class="form-label">Type</label>
+                    <select id="type" name="type" class="form-select form-control form-user-control">
+                        <option value="entry">Entrée</option>
+                        <option value="exit">Sortie</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="amount" class="form-label">Montant</label>
+                    <input type="number" id="amount" name="amount" class="form-control" required>
+                </div>
+                <div class="col-md-3">
+                    <label for="mode" class="form-label">Compte</label>
+                    <select id="mode" name="modeId" class="form-select" required>
+                        <!-- rempli dynamiquement en JS -->
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="description" class="form-label">Description</label>
+                    <input type="text" id="description" name="description" class="form-control" required>
+                </div>
+                <div class="col-md-3">
+                    <label for="date" class="form-label">Date</label>
+                    <input type="date" id="date" name="date" class="form-control" value="{{ 'now'|date('Y-m-d') }}">
+                </div>
+                <div class="col-md-12 text-end mt-3">
+                    <button type="submit" class="btn btn-primary">Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex justify-content-between align-items-center">
+            <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-list me-2"></i> Historique des transactions</h6>
+            <input type="text" id="daterange" class="form-control form-user-control w-auto" />
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table id="transactionsTable" class="table table-bordered table-striped table-hover my-4">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Description</th>
+                            <th>Type</th>
+                            <th>Montant</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for transaction in transactions %}
+                            <tr>
+                                <td>{{ transaction.dateTransaction|date('d/m/Y') }}</td>
+                                <td>{{ transaction.description }}</td>
+                                <td>
+                                    <span class="{{ transaction.type == 'Entrée' ? 'text-success' : 'text-danger' }}">
+                                        {{ transaction.type == 'Entrée' ? 'Entrée' : 'Sortie' }}
+                                    </span>
+                                </td>
+                                <td>{{ transaction.montant|format_currency('XOF') }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- === GESTION DES MODES DE PAIEMENT === -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex justify-content-between align-items-center">
+            <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-credit-card me-2"></i>Modes de Paiement</h6>
+            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modalAddMode">
+                <i class="fas fa-plus me-1"></i> Ajouter
+            </button>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table id="modePaiementTable" class="table table-bordered table-striped table-hover w-100 my-4">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Libellé</th>
+                            <th>Type</th>
+                            <th>Actif</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Rempli dynamiquement en JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- === MODAL AJOUT MODE DE PAIEMENT === -->
+    <div class="modal fade" id="modalAddMode" tabindex="-1" role="dialog">
+        <div class="modal-dialog" role="document">
+            <form id="formAddMode" class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">Ajouter un Mode de Paiement</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="libelleMode" class="form-label">Libellé</label>
+                        <input type="text" class="form-control" id="libelleMode" name="libelle" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="typeMode" class="form-label">Type</label>
+                        <select class="form-select" id="typeMode" name="type" required>
+                            <option value="Espèces">Espèces</option>
+                            <option value="Mobile Money">Mobile Money</option>
+                            <option value="Assurance">Assurance</option>
+                            <option value="Chèque">Chèque</option>
+                            <option value="Virement">Virement</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="notesMode" class="form-label">Notes (facultatif)</label>
+                        <textarea class="form-control" id="notesMode" name="notes" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary">Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Bouton flottant pour transfert inter-compte -->
+    <button class="btn btn-sm btn-outline-primary position-fixed" style="bottom: 20px; right: 20px; z-index: 1050;" id="interCompteBtn">
+        Transfert Inter-Compte
+    </button>
+
+    <!-- Statistiques graphiques -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-chart-bar me-2"></i>Courbe d'evolution du Capital</h6>
+        </div>
+        <div class="card-body">
+            <canvas id="financeChart" width="100%" height="50"></canvas>
+            <div id="customLegend" class="mt-3"></div>
+        </div>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-header">
+            <h6 class="m-0 font-weight-bold text-primary">
+                <i class="fas fa-chart-bar me-2"></i>Résumé des comptes avec solde stylisé
+            </h6>
+        </div>
+        <div class="card-body">
+            <canvas id="barSoldeChart" ></canvas>
+        </div>
+    </div>
+
+    <canvas id="evolutionCapitalChart" ></canvas>
+
+    <div class="modal fade" id="interCompteModal" tabindex="-1">
+        <div class="modal-dialog">
+            <form id="formInterCompte" class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Transfert entre comptes</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group mb-2">
+                        <label>De (source)</label>
+                        <select class="form-select" id="fromAccount" name="from"></select>
+                    </div>
+                    <div class="form-group mb-2">
+                        <label>Vers (destination)</label>
+                        <select class="form-select" id="toAccount" name="to"></select>
+                    </div>
+                    <div class="form-group mb-2">
+                        <label>Montant</label>
+                        <input type="number" class="form-control" id="amountTransfert" name="montant" required />
+                    </div>
+                    <div class="form-group mb-2">
+                        <label>Motif</label>
+                        <input type="text" class="form-control" id="motifTransfert" name="motif" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary">Transférer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block stylesheets %}
+<link href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css" rel="stylesheet">
+
+{% endblock %}
+
+{% block javascripts %}
+{{ parent() }}
+<script src="{{ asset('sb-admin/vendor/chart.js/Chart.min.js') }}"></script>
+<script src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
+<script>
+    $(document).ready(function () {
+        $('#transactionsTable').DataTable({
+            language: { url: 'https://cdn.datatables.net/plug-ins/1.13.5/i18n/fr-FR.json' },
+            order: [[0, 'desc']]
+        });
+
+        
+
+        $('#interCompteBtn').on('click', function () {
+          $.get('/api/modes-paiement', function (data) {
+              const $from = $('#fromAccount');
+              const $to = $('#toAccount');
+
+              $from.empty();
+              $to.empty();
+
+              data.forEach(mode => {
+                  if (mode.actif) {
+                      const option = `<option value="${mode.id}">${mode.libelle} (${mode.type})</option>`;
+                      $from.append(option);
+                      $to.append(option);
+                  }
+              });
+
+              // Filtrage automatique des options identiques
+              handleCompteFilter();
+
+              $('#interCompteModal').modal('show');
+          });
+      });
+
+function handleCompteFilter() {
+    $('#fromAccount').on('change', function () {
+        const selected = $(this).val();
+        $('#toAccount option').each(function () {
+            $(this).prop('disabled', $(this).val() === selected);
+        });
+
+        // Auto-sélection du premier compte valide
+        const $to = $('#toAccount');
+        if ($to.val() === selected) {
+            const firstOther = $to.find('option:not([disabled])').first().val();
+            $to.val(firstOther);
+        }
+    });
+
+    $('#toAccount').on('change', function () {
+        const selected = $(this).val();
+        $('#fromAccount option').each(function () {
+            $(this).prop('disabled', $(this).val() === selected);
+        });
+
+        const $from = $('#fromAccount');
+        if ($from.val() === selected) {
+            const firstOther = $from.find('option:not([disabled])').first().val();
+            $from.val(firstOther);
+        }
+    });
+
+    // Déclenche une fois pour l'initialisation
+    $('#fromAccount').trigger('change');
+}
+
+        const ctx = $('#financeChart')[0].getContext('2d');
+        const chart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: {{ months|json_encode|raw }},
+                datasets: {{ datasetsComptes|json_encode|raw }}
+            },
+            options: {
+                plugins: {
+                    legend: { display: false },
+                    title: {
+                        display: true,
+                        text: 'Évolution mensuelle des Entrées / Dépenses / Soldes par compte',
+                        font: { size: 18 }
+                    }
+                },
+                animation: {
+                    duration: 1200,
+                    easing: 'easeOutQuart'
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: val => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF' }).format(val)
+                        }
+                    }
+                }
+            }
+        });
+
+        const $legend = $('#customLegend');
+        const used = new Set();
+        $legend.html('<table class="table table-bordered table-sm"><thead><tr><th>Compte</th><th>Couleur</th></tr></thead><tbody></tbody></table>');
+
+        chart.data.datasets.forEach(ds => {
+            const baseLabel = ds.label.split(' - ')[0];
+            if (!used.has(baseLabel)) {
+                used.add(baseLabel);
+                $('#customLegend tbody').append(`
+                    <tr>
+                        <td>${baseLabel}</td>
+                        <td><div style="width:30px;height:14px;background:${ds.borderColor ?? ds.backgroundColor};border:1px solid #ccc;"></div></td>
+                    </tr>
+                `);
+            }
+        });
+
+        const dataBarSolde = {
+            labels: {{ barSoldeChart.labels|json_encode|raw }},
+            datasets: [
+                {
+                    label: 'Entrées',
+                    data: {{ barSoldeChart.entrees|json_encode|raw }},
+                    backgroundColor: 'rgba(40, 167, 69, 0.7)',
+                    stack: 'group1',
+                    type: 'bar'
+                },
+                {
+                    label: 'Dépenses',
+                    data: {{ barSoldeChart.depenses|json_encode|raw }},
+                    backgroundColor: 'rgba(220, 53, 69, 0.7)',
+                    stack: 'group1',
+                    type: 'bar'
+                },
+                {
+                    label: 'Solde',
+                    data: {{ barSoldeChart.soldes|json_encode|raw }},
+                    type: 'bubble',
+                    pointStyle: 'circle',
+                    backgroundColor: {{ barSoldeChart.colors|json_encode|raw }},
+                    pointRadius: 10,
+                    pointHoverRadius: 12,
+                    showLine: false,
+                    parsing: {
+                        xAxisKey: 'x',
+                        yAxisKey: 'y'
+                    }
+                }
+            ]
+        };
+
+        const ctxSolde = document.getElementById('barSoldeChart').getContext('2d');
+        new Chart(ctxSolde, {
+            type: 'bar',
+            data: {
+                labels: dataBarSolde.labels,
+                datasets: [
+                    dataBarSolde.datasets[0],
+                    dataBarSolde.datasets[1],
+                    {
+                        label: 'Solde',
+                        data: dataBarSolde.labels.map((_, i) => ({
+                            x: i,
+                            y: dataBarSolde.datasets[2].data[i]
+                        })),
+                        type: 'line',
+                        showLine: false,
+                        pointStyle: 'circle',
+                        backgroundColor: dataBarSolde.datasets[2].backgroundColor,
+                        pointRadius: 9,
+                        pointHoverRadius: 11
+                    }
+                ]
+            },
+            options: {
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Entrées / Dépenses avec points de solde par compte'
+                    },
+                    legend: { position: 'bottom' },
+                    tooltip: {
+                        callbacks: {
+                            label: ctx => {
+                                const val = ctx.parsed.y ?? ctx.raw.y;
+                                return `${ctx.dataset.label}: ` + new Intl.NumberFormat('fr-FR', {
+                                    style: 'currency',
+                                    currency: 'XOF'
+                                }).format(val);
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: val => new Intl.NumberFormat('fr-FR', {
+                                style: 'currency',
+                                currency: 'XOF'
+                            }).format(val)
+                        }
+                    }
+                }
+            }
+        });
+
+        new Chart(document.getElementById('evolutionCapitalChart'), {
+            type: 'line',
+            data: {
+                labels: {{ months|json_encode|raw }},
+                datasets: [{
+                    label: 'Évolution du capital',
+                    data: {{ evolutionCapital|json_encode|raw }},
+                    backgroundColor: 'rgba(0,123,255,0.1)',
+                    borderColor: 'rgba(0,123,255,1)',
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: 4,
+                    pointHoverRadius: 6
+                }]
+            },
+            options: {
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Capital cumulé mensuel'
+                    },
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: val => new Intl.NumberFormat('fr-FR', {
+                                style: 'currency',
+                                currency: 'XOF'
+                            }).format(val)
+                        }
+                    }
+                }
+            }
+        });
+
+        $('#transactionForm').on('submit', function (event) {
+            event.preventDefault();
+
+            const formData = $(this).serialize();
+            $.ajax({
+                url: '{{ path('app_admin_finances_add') }}',
+                method: 'POST',
+                data: formData,
+                success: function (response) {
+                    alert(response.message);
+                    location.reload();
+                },
+                error: function () {
+                    alert('Une erreur est survenue.');
+                }
+            });
+        });
+
+        $('#daterange').daterangepicker({
+            locale: {
+                format: 'YYYY-MM-DD',
+                applyLabel: 'Appliquer',
+                cancelLabel: 'Annuler',
+                fromLabel: 'De',
+                toLabel: 'À',
+                customRangeLabel: 'Personnalisé',
+                weekLabel: 'S',
+                daysOfWeek: ['Di', 'Lu', 'Ma', 'Me', 'Je', 'Ve', 'Sa'],
+                monthNames: ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'],
+                firstDay: 1
+            },
+            opens: 'left',
+            alwaysShowCalendars: true,
+            ranges: {
+                "Aujourd'hui": [moment(), moment()],
+                "Hier": [moment().subtract(1, 'days'), moment().subtract(1, 'days')],
+                "Cette semaine": [moment().startOf('week'), moment().endOf('week')],
+                "Ce mois-ci": [moment().startOf('month'), moment().endOf('month')],
+                "Cette année": [moment().startOf('year'), moment().endOf('year')]
+            }
+        }, function (start, end) {
+            fetchTransactions(start.format('YYYY-MM-DD'), end.format('YYYY-MM-DD'));
+        });
+
+        function fetchTransactions(start, end) {
+            $.ajax({
+                url: '{{ path('app_admin_finances_transactions') }}',
+                method: 'GET',
+                data: { start, end },
+                success: function (data) {
+                    const tbody = $('#transactionsTable tbody');
+                    tbody.empty();
+                    if (data.length === 0) {
+                        tbody.append('<tr><td colspan="4" class="text-center">Aucune transaction trouvée pour cette période.</td></tr>');
+                    } else {
+                      data.forEach(transaction => {
+                        tbody.append(`
+                          <tr>
+                          <td>${transaction.date}</td>
+                          <td>${transaction.description}</td>
+                          <td>
+                            <span class="${transaction.type == 'Entrée' ? 'text-success' : 'text-danger'}">
+                              ${transaction.type == 'Entrée' ? 'Entrée' : 'Sortie'}
+                            </span>
+                          </td>
+                          <td>${transaction.amount}</td>
+                          </tr>
+                        `);
+                      });
+                    }
+                },
+                error: function () {
+                    alert('Erreur lors de la récupération des transactions.');
+                }
+            });
+        }
+    });
+</script>
+
+<script>
+    $(document).ready(function () {
+        const $modeTable = $('#modePaiementTable').DataTable({
+            ajax: {
+                url: '/api/modes-paiement',
+                dataSrc: ''
+            },
+            columns: [
+                { data: 'libelle' },
+                { data: 'type' },
+                {
+                    data: 'actif',
+                    render: actif => actif
+                        ? '<span class="badge bg-success text-white">Actif</span>'
+                        : '<span class="badge bg-secondary text-white">Inactif</span>'
+                },
+                {
+                    data: 'id',
+                    render: function (id, type, row) {
+                        if (row.libelle.toLowerCase() === 'espèces') {
+                            return `<span class="text-muted"><i class="fas fa-lock me-1"></i>Verrouillé</span>`;
+                        }
+
+                        return `
+                            <button class="btn btn-sm btn-outline-${row.actif ? 'warning' : 'success'} toggle-btn" data-id="${id}">
+                                <i class="fas fa-toggle-${row.actif ? 'off' : 'on'}"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger delete-btn" data-id="${id}">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>`;
+                    },
+                    orderable: false,
+                    searchable: false
+                }
+            ],
+            language: { url: 'https://cdn.datatables.net/plug-ins/1.13.5/i18n/fr-FR.json' }
+        });
+
+        $('[data-bs-toggle="modal"]').on('click', function () {
+            $('#modalAddMode').modal('show');
+        });
+
+        function closeAddModal() {
+            $('#formAddMode')[0].reset();
+            $('#modalAddMode').modal('hide');
+        }
+
+        $('#formAddMode').on('submit', function (e) {
+            e.preventDefault();
+            const data = {
+                libelle: $('#libelleMode').val(),
+                type: $('#typeMode').val(),
+                notes: $('#notesMode').val()
+            };
+
+            $.ajax({
+                url: '/api/modes-paiement',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(data),
+                success: function () {
+                    closeAddModal();
+                    $modeTable.ajax.reload();
+                },
+                error: function () {
+                    alert('Erreur lors de l’enregistrement.');
+                }
+            });
+        });
+
+        $('#modePaiementTable').on('click', '.delete-btn', function () {
+            const id = $(this).data('id');
+            if (confirm('Confirmer la suppression ?')) {
+                $.ajax({
+                    url: `/api/modes-paiement/${id}`,
+                    method: 'DELETE',
+                    success: function () {
+                        $modeTable.ajax.reload();
+                    },
+                    error: function () {
+                        alert('Erreur lors de la suppression.');
+                    }
+                });
+            }
+        });
+
+        $('#modePaiementTable').on('click', '.toggle-btn', function () {
+            const id = $(this).data('id');
+            $.ajax({
+                url: `/api/modes-paiement/${id}/toggle`,
+                method: 'PATCH',
+                success: function () {
+                    $modeTable.ajax.reload();
+                },
+                error: function () {
+                    alert('Erreur lors de l’activation/désactivation.');
+                }
+            });
+        });
+
+        function loadComptes() {
+            $.get('/api/modes-paiement', function (data) {
+                const $select = $('#mode');
+                $select.empty();
+                data.forEach(mode => {
+                    if (mode.actif) {
+                        $select.append(`<option value="${mode.id}">${mode.libelle} (${mode.type})</option>`);
+                    }
+                });
+            });
+        }
+
+        loadComptes();
+
+        $('#formInterCompte').on('submit', function (e) {
+            e.preventDefault();
+            const data = {
+                from: $('#fromAccount').val(),
+                to: $('#toAccount').val(),
+                montant: $('#amountTransfert').val(),
+                motif: $('#motifTransfert').val()
+            };
+
+            $.ajax({
+                url: '/api/transactions/intercompte',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(data),
+                success: function () {
+                    $('#interCompteModal').modal('hide');
+                    $('#transactionsTable').DataTable().ajax.reload();
+                },
+                error: function () {
+                    alert("Échec du transfert");
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}

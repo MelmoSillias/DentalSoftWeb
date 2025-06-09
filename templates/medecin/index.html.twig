@@ -1,20 +1,190 @@
-{% extends 'base.html.twig' %}
+{# templates/index.html.twig #}
+{% extends 'appmedecinbase.html.twig' %}
 
-{% block title %}Hello MedecinController!{% endblock %}
+{% block title %}Dashboard - Cabinet Dentaire{% endblock %}
 
-{% block body %}
-<style>
-    .example-wrapper { margin: 1em auto; max-width: 800px; width: 95%; font: 18px/1.5 sans-serif; }
-    .example-wrapper code { background: #F5F5F5; padding: 2px 6px; }
-</style>
+{% block main %}
+<div class="container-fluid py-4 px-4">
+ <div class="d-sm-flex align-items-center justify-content-between mb-4">
+      <h1 class="h2 mb-0 text-gray-800">Tableau de bord</h1>
+      <a href="#" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm"><i
+              class="fas fa-download fa-sm text-white-50"></i> Generate Report</a>
+  </div>
+  
+  <h4 class="mb-2 text-secondary">Statistiques Globales</h4> 
 
-<div class="example-wrapper">
-    <h1>Hello {{ controller_name }}! ✅</h1>
+  <!-- Row Static Stats -->
+  <div class="row">
+ 
+      <!-- Earnings (Monthly) Card Example -->
+      <div class="col-xl-3 col-md-6 mb-4">
+          <div class="card border-left-primary shadow h-100 py-2">
+              <div class="card-body">
+                  <div class="row no-gutters align-items-center">
+                      <div class="col mr-2">
+                          <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                              Nombre de Patients</div>
+                          <div class="h6 mb-0 font-weight-bold text-gray-800">150</div>
+                      </div>
+                      <div class="col-auto">
+                          <i class="fas fa-user fa-2x text-gray-300"></i>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      </div>
+ 
+      <div class="col-xl-3 col-md-6 mb-4">
+          <div class="card border-left-success shadow h-100 py-2">
+              <div class="card-body">
+                  <div class="row no-gutters align-items-center">
+                      <div class="col mr-2">
+                          <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                              Solde</div>
+                          <div class="h6 mb-0 font-weight-bold text-gray-800">28,150,000 Fcfa</div>
+                      </div>
+                      <div class="col-auto">
+                          <i class="fas fa-dollar-sign fa-2x text-gray-300"></i>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      </div>
 
-    This friendly message is coming from:
-    <ul>
-        <li>Your controller at <code>D:/Repos/Web/DentalSoftWeb/DentalSoftWeb/src/Controller/MedecinController.php</code></li>
-        <li>Your template at <code>D:/Repos/Web/DentalSoftWeb/DentalSoftWeb/templates/medecin/index.html.twig</code></li>
-    </ul>
+      <!-- Earnings (Monthly) Card Example -->
+      <div class="col-xl-3 col-md-6 mb-4">
+          <div class="card border-left-info shadow h-100 py-2">
+              <div class="card-body">
+                  <div class="row no-gutters align-items-center">
+                      <div class="col mr-2">
+                          <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Chiffre d'affaire
+                          </div>
+                          <div class="h6 mb-0 font-weight-bold text-gray-800">518,150,000 Fcfa</div>
+                      </div>
+                      <div class="col-auto">
+                          <i class="fas fa-clipboard-list fa-2x text-gray-300"></i>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      </div>
+
+      <!-- Pending Requests Card Example -->
+      <div class="col-xl-3 col-md-6 mb-4">
+          <div class="card border-left-warning shadow h-100 py-2">
+              <div class="card-body">
+                  <div class="row no-gutters align-items-center">
+                      <div class="col mr-2">
+                          <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                              Pending Requests</div>
+                          <div class="h6 mb-0 font-weight-bold text-gray-800">18</div>
+                      </div>
+                      <div class="col-auto">
+                          <i class="fas fa-comments fa-2x text-gray-300"></i>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      </div>
+  </div>
+
+  <div class="d-sm-flex align-items-center justify-content-between mb-4">
+      <h4 class="mb-2 text-secondary">Statistiques Periodique</h4>
+      <form id="periodSelectorForm">
+          <input type="date" class="form-control" name="periodChooser" id="periodChooser"/>
+      </form>
+  </div>
+  
+  <div class="row">
+      <div class="col-12">
+          <div class="card shadow mb-4">
+              <div class="card-header py-3">
+                  <h6 class="m-0 font-weight-bold text-primary">Patients / consultations</h6>
+              </div>
+              <div class="card-body">
+                  
+                <ul class="list-group list-group-flush list-group-bordered">
+                    <li class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-center" data-toggle="collapse" href="#collapsePatients" aria-expanded="false" aria-controls="collapsePatients">
+                            <span>Patients</span>
+                            <span class="badge badge-primary badge-pill">150</span>
+                        </div>
+                        <div class="collapse" id="collapsePatients">
+                            <div class="card card-body">
+                                Details about Patients
+                            </div>
+                        </div>
+                    </li>
+                    <li class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-center" data-toggle="collapse" href="#collapseConsultations" aria-expanded="false" aria-controls="collapseConsultations">
+                            <span>Consultations</span>
+                            <span class="badge badge-success badge-pill">300</span>
+                        </div>
+                        <div class="collapse" id="collapseConsultations">
+                            <div class="card card-body">
+                                Details about Consultations
+                            </div>
+                        </div>
+                    </li>
+                    <li class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-center" data-toggle="collapse" href="#collapseRendezVous" aria-expanded="false" aria-controls="collapseRendezVous">
+                            <span>Rendez-vous</span>
+                            <span class="badge badge-info badge-pill">200</span>
+                        </div>
+                        <div class="collapse" id="collapseRendezVous">
+                            <div class="card card-body">
+                                Details about Rendez-vous
+                            </div>
+                        </div>
+                    </li>
+                    <li class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-center" data-toggle="collapse" href="#collapseInterventions" aria-expanded="false" aria-controls="collapseInterventions">
+                            <span>Interventions</span>
+                            <span class="badge badge-warning badge-pill">100</span>
+                        </div>
+                        <div class="collapse" id="collapseInterventions">
+                            <div class="card card-body">
+                                Details about Interventions
+                            </div>
+                        </div>
+                    </li>
+                    <li class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-center" data-toggle="collapse" href="#collapseFactures" aria-expanded="false" aria-controls="collapseFactures">
+                            <span>Factures</span>
+                            <span class="badge badge-danger badge-pill">80</span>
+                        </div>
+                        <div class="collapse" id="collapseFactures">
+                            <div class="card border-0">
+                                Details about Factures
+                            </div>
+                        </div>
+                    </li>
+                </ul>  
+
+              </div>
+          </div>
+      </div>
+      <div class="col-md-6">
+          
+      </div>
+      <div class="col-md-6">
+          
+      </div>
+      <div class="col-md-6">
+          
+      </div>
+  </div>
+
+
 </div>
+{% endblock %}
+
+{% block javascripts %}
+  {{ parent() }}
+  <!-- Chargement de Chart.js depuis un CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <script>
+    
+  </script>
 {% endblock %}

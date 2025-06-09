@@ -1,0 +1,314 @@
+{% extends 'appbase.html.twig' %}
+
+{% block title %}Gestion des Rendez-vous{% endblock %}
+
+{% block stylesheets %}
+    <link href="{{ asset('sb-admin/vendor/fontawesome-free/css/all.min.css') }}" rel="stylesheet">
+    <link href="{{ asset('sb-admin/css/sb-admin-2.min.css') }}" rel="stylesheet">
+    <style>
+        .context-menu {
+            position: absolute;
+            z-index: 9999;
+            display: none;
+            background-color: #fff;
+            border: 1px solid #ccc;
+            border-radius: 0.35rem;
+            box-shadow: 0 0.15rem 1.75rem 0 rgba(58,59,69,.15);
+            min-width: 160px;
+        }
+        .context-menu ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .context-menu li {
+            padding: 10px 15px;
+            cursor: pointer;
+        }
+        .context-menu li:hover {
+            background-color: #f8f9fc;
+        }
+
+        .date-slider-container {
+            margin-bottom: 20px;
+        }
+        #date-slider {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            padding: 10px;
+            scroll-behavior: smooth;
+        }
+        .date-item {
+            background-color: #ffffff;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px 15px;
+            min-width: 80px;
+            text-align: center;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            animation: slideInLeft 0.3s ease-in;
+        }
+        .date-item.active {
+            background-color: #4e73df;
+            color: #fff;
+        }
+        @keyframes slideInLeft {
+            from { transform: translateX(-50px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .calendar-grid {
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            overflow-x: auto;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .calendar-grid th {
+            background-color: #f8f9fc;
+        }
+        .grid-cell:hover {
+            background-color: #f1f1f1;
+        }
+        .add-rdv-btn {
+            display: none;
+        }
+        .grid-cell:hover .add-rdv-btn {
+            display: block;
+        }
+        .rdv-card {
+            position: relative;
+            padding: 10px;
+            border-radius: 5px;
+            background-color: #f8f9fc;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-direction: row-reverse;
+        }
+        .card-outline-primary { border-left: 5px solid #007bff; }
+        .card-outline-success { border-left: 5px solid #28a745; }
+        .card-outline-warning { border-left: 5px solid #ffc107; }
+        .card-outline-danger { border-left: 5px solid #dc3545; }
+        @media (max-width: 768px) {
+            .calendar-grid table { font-size: 12px; }
+            .date-item { min-width: 60px; padding: 5px 10px; }
+            .rdv-card { flex-direction: column; align-items: flex-start; }
+            .rdv-actions { margin-top: 5px; }
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+    </style>
+{% endblock %}
+
+{% block main %}
+<div class="container-fluid">
+    <h1 class="h3 mb-4 text-gray-800">Agenda</h1>
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><i class="fas fa-home"></i> Dashboard</li>
+        <li class="breadcrumb-item active">Agenda</li>
+    </ol>
+
+    <div class="date-slider-container">
+        <div class="row align-items-center mb-2">
+            <div class="col-auto">
+                <button id="today-btn" class="btn btn-info">Aujourd'hui</button>
+            </div>
+            <div class="col-auto">
+                <input type="date" id="date-picker" class="form-control">
+            </div>
+        </div>
+        <div class="row align-items-center">
+            <div class="col-auto">
+                <button id="prev-date-slider" class="btn btn-light"><i class="fas fa-chevron-left"></i></button>
+            </div>
+            <div class="col">
+                <div id="date-slider" class="d-flex justify-content-center"></div>
+            </div>
+            <div class="col-auto">
+                <button id="next-date-slider" class="btn btn-light"><i class="fas fa-chevron-right"></i></button>
+            </div>
+        </div>
+    </div>
+
+     <!-- Statistiques -->
+    <div id="stats" class="row mb-3" >
+        <div class="col-md-3">
+            <div class="card border-left-primary shadow h-70">
+                <div class="card-body"><h6 class="card-title">En attente</h6><p class="display-4" id="stats-pending">0</p></div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-left-success shadow h-70">
+                <div class="card-body"><h6 class="card-title">Validés</h6><p class="display-4" id="stats-validated">0</p></div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-left-warning shadow h-70">
+                <div class="card-body"><h6 class="card-title">Reportés</h6><p class="display-4" id="stats-postponed">0</p></div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-left-danger shadow h-70">
+                <div class="card-body"><h6 class="card-title">Annulés</h6><p class="display-4" id="stats-cancelled">0</p></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Calendar Grid -->
+    <div class="calendar-grid mb-4">
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th style="width: 1%;">Créneau</th>
+                    {% for medecin in medecins %}
+                        <th style="width: {{ 100 / medecins|length }}%;">{{ medecin.nom }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for hour in 0..23 %}
+                    {% for minute in ['00', '15', '30', '45'] %}
+                        <tr>
+                            <td>{{ hour }}:{{ minute }}</td>
+                            {% for medecin in medecins %}
+                                <td class="grid-cell" data-hour="{{ hour }}" data-minute="{{ minute }}" data-medecin="{{ medecin.id }}">
+                                    <button class="btn btn-sm btn-success add-rdv-btn"><i class="fas fa-plus"></i></button>
+                                </td>
+                            {% endfor %}
+                        </tr>
+                    {% endfor %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+   
+
+    <!-- Modals -->
+    <!-- Modal de création de rendez-vous -->
+<div class="modal fade" id="rdvModal" tabindex="-1" aria-labelledby="rdvModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+       <div class="modal-header">
+           <h5 class="modal-title" id="rdvModalLabel">Créer un Rendez-vous</h5>
+           <button type="button" class="btn-close btn-closer" data-bs-dismiss="modal" aria-label="Close"></button>
+       </div>
+       <div class="modal-body">
+           <form id="rdvForm">
+             <div class="mb-3">
+                <label for="patientSelect" class="form-label">Patient</label>
+                <select class="form-select form-control form-user-control" id="patientSelect" name="patient" required>
+                   <option value="">Sélectionnez un patient</option>
+                </select>
+             </div>
+             <div class="mb-3">
+                <label for="medecinSelect" class="form-label">Médecin</label>
+                <select class="form-select form-control form-user-control" id="medecinSelect" name="medecin" required>
+                   <option value="">Sélectionnez un médecin</option>
+                   {% for medecin in medecins %}
+                      <option value="{{ medecin.id }}">{{ medecin.nom }}</option>
+                   {% endfor %}
+                </select>
+             </div>
+             <div class="mb-3">
+                <label for="rdvTime" class="form-label">Heure</label>
+                <input type="time" class=" form-control form-user-control" id="rdvTime" name="time" required>
+             </div>
+             <div class="mb-3">
+                <label for="rdvDescription" class="form-label">Description</label>
+                <textarea class="form-control" id="rdvDescription" name="description" rows="3"></textarea>
+             </div>
+           </form>
+       </div>
+       <div class="modal-footer">
+           <button type="button" class="btn btn-secondary btn-closer" data-bs-dismiss="modal">Annuler</button>
+           <button type="submit" form="rdvForm" class="btn btn-primary">Créer</button>
+       </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de confirmation de validation -->
+<div class="modal fade" id="confirmValidateModal" tabindex="-1" aria-labelledby="confirmValidateModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+       <div class="modal-header bg-success text-white">
+           <h5 class="modal-title" id="confirmValidateModalLabel">Confirmer la validation</h5>
+           <button type="button" class="btn-close btn-closer btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+       </div>
+       <div class="modal-body">
+           Êtes-vous sûr de vouloir valider ce rendez-vous ?
+       </div>
+       <div class="modal-footer">
+           <button type="button" class="btn btn-secondary btn-closer" data-bs-dismiss="modal">Annuler</button>
+           <button type="button" class="btn btn-success" id="confirmValidateBtn">Valider</button>
+       </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de confirmation d'annulation -->
+<div class="modal fade" id="confirmCancelModal" tabindex="-1" aria-labelledby="confirmCancelModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+       <div class="modal-header bg-danger text-white">
+           <h5 class="modal-title" id="confirmCancelModalLabel">Confirmer l'annulation</h5>
+           <button type="button" class="btn-close btn-closer btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+       </div>
+       <div class="modal-body">
+           Êtes-vous sûr de vouloir annuler ce rendez-vous ?
+       </div>
+       <div class="modal-footer">
+           <button type="button" class="btn btn-secondary btn-closer" data-bs-dismiss="modal">Annuler</button>
+           <button type="button" class="btn btn-danger" id="confirmCancelBtn">Annuler RDV</button>
+       </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de report -->
+<div class="modal fade" id="reportModal" tabindex="-1" aria-labelledby="reportModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+       <div class="modal-header bg-warning text-white">
+           <h5 class="modal-title" id="reportModalLabel">Reporter le Rendez-vous</h5>
+           <button type="button" class="btn-close btn-close-white btn-closer" data-bs-dismiss="modal" aria-label="Close"></button>
+       </div>
+       <div class="modal-body">
+           <p><strong>Patient :</strong> <span id="reportPatient"></span></p>
+           <p><strong>Médecin :</strong> <span id="reportMedecin"></span></p>
+           <p><strong>Date création :</strong> <span id="reportOldDate"></span></p>
+           <hr>
+           <form id="reportForm">
+               <div class="mb-3">
+                  <label for="reportNewDate" class="form-label">Nouvelle date</label>
+                  <input type="date" class="form-control" id="reportNewDate" name="reportNewDate" required>
+               </div>
+               <div class="mb-3">
+                  <label for="reportNewTime" class="form-label">Nouvelle heure</label>
+                  <input type="time" class="form-control" id="reportNewTime" name="reportNewTime" required>
+               </div>
+           </form>
+       </div>
+       <div class="modal-footer">
+           <button type="button" class="btn btn-secondary btn-closer" data-bs-dismiss="modal">Annuler</button>
+           <button type="button" class="btn btn-warning" id="confirmReportBtn">Reporter</button>
+       </div>
+    </div>
+  </div>
+</div>
+</div>
+{% endblock %}
+
+{% block javascripts %}
+<script src="{{ asset('sb-admin/vendor/jquery/jquery.min.js') }}"></script>
+<script src="{{ asset('sb-admin/vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
+<script src="{{ asset('js/rdv.js') }}"></script>
+{% endblock %}

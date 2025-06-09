@@ -1,0 +1,107 @@
+{% extends 'appbase.html.twig' %}
+
+{% block title %}Consultations en Attente{% endblock %}
+
+{% block main %}
+  <div class="container-fluid px-4">
+    <h1 class="mt-4">Consultations en Attente</h1>
+    <ol class="breadcrumb mb-4 d-flex">
+      <li class="breadcrumb-item active"><i class="fas fa-home"></i></li>
+      <li class="breadcrumb-item active">Consultations en Attente</li>
+    </ol>
+
+    <div class="row mt-4">
+      {% for consultation in consultationsData %}
+        <div class="col-xl-4 col-md-6 mb-4 consultation-card" 
+             style="height: 220px;" 
+             id="consultation-card-{{ consultation.id }}">
+          <div class="card border-left-warning shadow h-100 py-2">
+            <div class="card-body">
+              <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                En attente
+              </div>
+              <div class="h5 mb-0 font-weight-bold text-gray-800">
+                <i class="fas fa-user-injured me-2"></i>{{ consultation.patient }}
+              </div>
+              <div class="text-gray-500 small mb-1">
+                <i class="fas fa-user-md me-2"></i>{{ consultation.medecin }}
+              </div>
+              <div class="text-gray-500 small">
+                <i class="fas fa-clock me-2"></i>
+                {{ consultation.dateDebut|date('d/m/Y H:i') }}
+              </div>
+            </div>
+
+            <div class="card-footer d-flex justify-content-between">
+            {% if consultation.hasFiche %}
+                {% if consultation.fiche == null %}
+                    <button
+                    onclick="window.location.href='{{ path('consultation_edit', { id: consultation.id }) }}'"
+                    class="btn btn-sm btn-secondary">
+                    Continuer dernière fiche <i class="fas fa-forward"></i>
+                    </button>
+                    <button
+                    onclick="window.location.href='{{ path('consultation_edit', { id: consultation.id }) }}/new'"
+                    class="btn btn-sm btn-success">
+                    Nouvelle fiche <i class="fas fa-plus-circle"></i>
+                    </button>
+                {% else %}
+                    <button
+                    onclick="window.location.href='{{ path('consultation_edit', { id: consultation.id }) }}'"
+                    class="btn btn-sm btn-secondary">
+                    Continuer dernière fiche <i class="fas fa-forward"></i>
+                    </button>
+                {% endif %}
+            {% else %}
+                    <button
+                    onclick="window.location.href='{{ path('consultation_edit', { id: consultation.id }) }}/new'"
+                    class="btn btn-sm btn-success">
+                    Nouvelle fiche <i class="fas fa-plus-circle"></i>
+                    </button>
+            {% endif %}
+
+              <button
+                class="btn btn-sm btn-danger btn-cancel-consultation"
+                data-id="{{ consultation.id }}">
+                <i class="fas fa-times-circle me-1"></i> Annuler
+              </button>
+            </div>
+          </div>
+        </div>
+      {% else %}
+        <div class="col-12">
+          <div class="alert alert-info">
+            Aucune consultation en attente
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  {# Modal de confirmation d'annulation #}
+  <div class="modal fade" id="confirmCancelModal" tabindex="-1" aria-labelledby="confirmCancelLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header bg-danger text-white">
+          <h5 class="modal-title" id="confirmCancelLabel">Annuler la consultation</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          Êtes-vous sûr de vouloir <strong>annuler définitivement</strong> cette consultation ?
+          Cette action est irréversible.
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-close" data-bs-dismiss="modal">Annuler</button>
+          <button type="button" class="btn btn-danger" id="confirmCancelBtn">Oui, annuler</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <a class="scroll-to-top rounded" href="#page-top"><i class="fas fa-angle-up"></i></a>
+{% endblock %}
+
+{% block javascripts %}
+  {{ parent() }}
+  <script src="{{ asset('js/pendingconsultation.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,336 @@
+{% extends 'appbase.html.twig' %}
+
+{% block title %}Configuration des Utilisateurs{% endblock %}
+
+{% block main %}
+<div class="container-fluid px-4">
+    <h1 class="mt-4">Configuration des Utilisateurs</h1>
+    <ol class="breadcrumb mb-4 d-flex flex-wrap">
+        <li class="breadcrumb-item"><a href="#">Dashboard</a></li>
+        <li class="breadcrumb-item active">Utilisateurs</li>
+    </ol>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-2">
+            <div class="d-flex flex-wrap gap-2">
+                <button id="btnAddUser" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Ajouter un utilisateur
+                </button>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table id="usersTable" class="table table-bordered table-striped table-hover my-4" width="100%" cellspacing="0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>ID</th>
+                            <th>Nom d'utilisateur</th>
+                            <th>Employé</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users %}
+                        <tr data-user-id="{{ user.id }}">
+                            <td>{{ user.id }}</td>
+                            <td class="username-cell">{{ user.username }}</td>
+                            <td>
+                                {% if userEmployees[user.id] is defined %}
+                                    {{ userEmployees[user.id].nom }} {{ userEmployees[user.id].prenom }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-warning btn-edit-username" data-user-id="{{ user.id }}">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="btn btn-sm btn-info btn-reset-pwd" data-user-id="{{ user.id }}">
+                                    <i class="fas fa-key"></i>
+                                </button>
+                                <button class="btn btn-sm btn-danger btn-delete-user" data-user-id="{{ user.id }}">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="4" class="text-center">Aucun utilisateur trouvé</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal : Ajout d'un utilisateur -->
+<div class="modal fade" id="addUserModal" tabindex="-1" aria-labelledby="addUserModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+       <div class="modal-header">
+           <h5 class="modal-title" id="addUserModalLabel">Ajouter un utilisateur</h5>
+           <button type="button" class="btn-close btn-closer" data-bs-dismiss="modal" aria-label="Fermer"></button>
+       </div>
+       <div class="modal-body">
+           <form id="addUserForm">
+             <div class="mb-3">
+                <label for="newUsername" class="form-label">Nom d'utilisateur</label>
+                <input type="text" class="form-control" id="newUsername" name="username" required>
+             </div>
+             {# Comme l'entité User n'a pas de champ email, on ne l'affiche pas #}
+             <div class="mb-3">
+                <label for="newEmployee" class="form-label">Employé</label>
+                <select class="form-select" id="newEmployee" name="employee_id">
+                   <option value="">-- Sélectionnez un employé --</option>
+                   {% for emp in employees %}
+                      <option value="{{ emp.id }}">{{ emp.nom }} {{ emp.prenom }}</option>
+                   {% endfor %}
+                </select>
+             </div>
+           </form>
+       </div>
+       <div class="modal-footer">
+           <button type="button" class="btn btn-secondary btn-closer" data-bs-dismiss="modal">Annuler</button>
+           <button type="submit" form="addUserForm" class="btn btn-primary">Créer</button>
+       </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal : Modification du nom d'utilisateur -->
+<div class="modal fade" id="editUsernameModal" tabindex="-1" aria-labelledby="editUsernameModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+       <div class="modal-header">
+           <h5 class="modal-title" id="editUsernameModalLabel">Modifier le nom d'utilisateur</h5>
+           <button type="button" class="btn-close btn-closer" data-bs-dismiss="modal" aria-label="Fermer"></button>
+       </div>
+       <div class="modal-body">
+           <form id="editUsernameForm">
+             <input type="hidden" id="editUserId" name="user_id">
+             <div class="mb-3">
+                <label for="editUsername" class="form-label">Nouveau nom d'utilisateur</label>
+                <input type="text" class="form-control" id="editUsername" name="username" required>
+             </div>
+             <div class="mb-3">
+                <small class="text-muted">Ancien nom : <span id="oldUsername"></span></small>
+             </div>
+           </form>
+       </div>
+       <div class="modal-footer">
+           <button type="button" class="btn btn-secondary btn-closer" data-bs-dismiss="modal">Annuler</button>
+           <button type="submit" form="editUsernameForm" class="btn btn-primary">Enregistrer</button>
+       </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal : Réinitialisation du mot de passe -->
+<div class="modal fade" id="resetPwdModal" tabindex="-1" aria-labelledby="resetPwdModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+       <div class="modal-header">
+           <h5 class="modal-title" id="resetPwdModalLabel">Réinitialiser le mot de passe</h5>
+           <button type="button" class="btn-close btn-closer" data-bs-dismiss="modal" aria-label="Fermer"></button>
+       </div>
+       <div class="modal-body">
+           <form id="resetPwdForm">
+             <input type="hidden" id="resetUserId" name="user_id">
+             <div class="mb-3">
+                <label for="newPassword" class="form-label">Nouveau mot de passe</label>
+                <input type="password" class="form-control" id="newPassword" name="password" required>
+             </div>
+           </form>
+       </div>
+       <div class="modal-footer">
+           <button type="button" class="btn btn-secondary btn-closer" data-bs-dismiss="modal">Annuler</button>
+           <button type="submit" form="resetPwdForm" class="btn btn-primary">Réinitialiser</button>
+       </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal : Confirmation de suppression -->
+<div class="modal fade" id="deleteUserModal" tabindex="-1" aria-labelledby="deleteUserModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+       <div class="modal-header bg-danger text-white">
+           <h5 class="modal-title" id="deleteUserModalLabel">Supprimer l'utilisateur</h5>
+           <button type="button" class="btn-close btn-closer btn-close-white" data-bs-dismiss="modal" aria-label="Fermer"></button>
+       </div>
+       <div class="modal-body">
+           Êtes-vous sûr de vouloir supprimer cet utilisateur ?
+       </div>
+       <div class="modal-footer">
+           <button type="button" class="btn btn-secondary btn-closer" data-bs-dismiss="modal">Annuler</button>
+           <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Supprimer</button>
+       </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block javascripts %} 
+   <script>
+$(document).ready(function() {
+    $('#usersTable').DataTable({
+        language: {
+            sEmptyTable: "Aucune donnée disponible",
+            sInfo: "Affichage de _START_ à _END_ sur _TOTAL_ éléments",
+            sLengthMenu: "Afficher _MENU_ éléments",
+            sSearch: "Rechercher :",
+            oPaginate: {
+                sNext: "Suivant",
+                sPrevious: "Précédent"
+            }
+        }
+    });
+
+    // --- Gestion des modals ---
+
+    // Ouverture modal "Ajouter un utilisateur"
+    $('#btnAddUser').on('click', function() {
+        $('#addUserModal').modal('show');
+    });
+
+    // Soumission du formulaire d'ajout d'utilisateur
+    $('#addUserForm').on('submit', function(e) {
+        e.preventDefault();
+        let payload = {
+            username: $('#newUsername').val(),
+            employee_id: $('#newEmployee').val()
+        };
+        fetch('/api/users/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        })
+        .then(response => response.json())
+        .then(function(data) {
+            if(data.success) {
+                $('#addUserModal').modal('hide');
+                showToastModal({ message: 'Utilisateur créé avec succès', type: 'success' });
+                setTimeout(() => location.reload(), 800);
+            } else {
+                showToastModal({ message: "Erreur lors de la création de l'utilisateur", type: 'error', duration: 3000 });
+            }
+        })
+        .catch(function(error) {
+            console.error(error);
+            showToastModal({ message: "Erreur lors de la création de l'utilisateur", type: 'error', duration: 3000 });
+        });
+    });
+
+    // Ouverture modal pour modification du username
+    $('.btn-edit-username').on('click', function() {
+        let userId = $(this).data('user-id');
+        let $row = $(this).closest('tr');
+        let currentUsername = $row.find('.username-cell').text().trim();
+        $('#editUserId').val(userId);
+        $('#editUsername').val(currentUsername);
+        $('#oldUsername').text(currentUsername);
+        $('#editUsernameModal').modal('show');
+    });
+
+    // Soumission du formulaire de modification du username
+    $('#editUsernameForm').on('submit', function(e) {
+        e.preventDefault();
+        let payload = {
+            user_id: $('#editUserId').val(),
+            username: $('#editUsername').val()
+        };
+        fetch('/api/users/update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        })
+        .then(response => response.json())
+        .then(function(data) {
+            if(data.success) {
+                $('#editUsernameModal').modal('hide');
+                showToastModal({ message: "Nom d'utilisateur mis à jour", type: 'success' });
+                setTimeout(() => location.reload(), 800);
+            } else {
+                showToastModal({ message: "Erreur lors de la modification du nom d'utilisateur", type: 'error', duration: 3000 });
+            }
+        })
+        .catch(function(error) {
+            console.error(error);
+            showToastModal({ message: "Erreur lors de la modification du nom d'utilisateur", type: 'error', duration: 3000 });
+        });
+    });
+
+    // Ouverture modal pour réinitialiser le mot de passe
+    $('.btn-reset-pwd').on('click', function() {
+        let userId = $(this).data('user-id');
+        $('#resetUserId').val(userId);
+        $('#resetPwdModal').modal('show');
+    });
+
+    // Soumission du formulaire de réinitialisation du mot de passe
+    $('#resetPwdForm').on('submit', function(e) {
+        e.preventDefault();
+        let payload = {
+            user_id: $('#resetUserId').val(),
+            password: $('#newPassword').val()
+        };
+        fetch('/api/users/reset_password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        })
+        .then(response => response.json())
+        .then(function(data) {
+            if(data.success) {
+                $('#resetPwdModal').modal('hide');
+                showToastModal({ message: "Mot de passe réinitialisé avec succès", type: 'success' });
+            } else {
+                showToastModal({ message: "Erreur lors de la réinitialisation du mot de passe", type: 'error', duration: 3000 });
+            }
+        })
+        .catch(function(error) {
+            console.error(error);
+            showToastModal({ message: "Erreur lors de la réinitialisation du mot de passe", type: 'error', duration: 3000 });
+        });
+    });
+
+    // Ouverture modal pour suppression d'un utilisateur
+    $('.btn-delete-user').on('click', function() {
+        let userId = $(this).data('user-id');
+        $('#deleteUserModal').data('user-id', userId).modal('show');
+    });
+
+    // Confirmation de suppression
+    $('#confirmDeleteBtn').on('click', function() {
+        let userId = $('#deleteUserModal').data('user-id');
+        fetch('/api/users/delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: userId })
+        })
+        .then(response => response.json())
+        .then(function(data) {
+            if(data.success) {
+                $('#deleteUserModal').modal('hide');
+                showToastModal({ message: "Utilisateur supprimé", type: 'success' });
+                setTimeout(() => location.reload(), 800);
+            } else {
+                showToastModal({ message: "Erreur lors de la suppression de l'utilisateur", type: 'error', duration: 3000 });
+            }
+        })
+        .catch(function(error) {
+            console.error(error);
+            showToastModal({ message: "Erreur lors de la suppression de l'utilisateur", type: 'error', duration: 3000 });
+        });
+    });
+
+    // Fermeture des modals
+    $('.btn-closer').on('click', function() {
+        $(this).closest('.modal').modal('hide');
+    });
+});
+</script>
+
+{% endblock %}
