@@ -23,10 +23,10 @@ final class ApiController extends AbstractController
         $data = array_map(function (Consultation $consultation) {
             return [
                 'id' => $consultation->getId(),
-                'patient' => $consultation->getPatient()->getFullName(),
-                'medecin' => $consultation->getMedecin()->getFullName(),  
-                'date' => $consultation->getCreatedAt()->format('Y-m-d H:i:s'),
-                'salle' => $consultation->getSalle()->getNom(),
+                'patient' => $consultation->getPatient()?->getFullName(),
+                'medecin' => $consultation->getMedecin()?->getFullName(),  
+                'date' => $consultation->getCreatedAt()?->format('Y-m-d H:i:s'),
+                'salle' => $consultation->getSalle()?->getNom(),
                 'state' => $consultation->getStatut(),
             ];
         }, $consultations);

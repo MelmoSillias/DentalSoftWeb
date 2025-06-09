@@ -41,7 +41,7 @@ final class AdminController extends AbstractController
     ): Response {
         // SECTION 1 : Statistiques principales
 
-        return $this->render('appbase.html.twig', [
+        return $this->render('admin/index.html.twig', [
 
             'controller_name' => 'AdminController', 'active_page' => 'dashboard'
                   ]);
