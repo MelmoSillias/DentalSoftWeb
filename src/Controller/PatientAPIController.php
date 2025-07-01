@@ -233,6 +233,8 @@ final class PatientAPIController extends AbstractController
                 $paiement->setMode($modePaiement);
                 $paiement->setMontant(5000);
                 $paiement->setDate(new \DateTime());
+                $paiement->setConsultation($consultation);
+                $em->persist($paiement);
 
                 $transaction = new Transaction(); // Direct instantiation
                 $transaction->setType('Entrée');
@@ -240,6 +242,7 @@ final class PatientAPIController extends AbstractController
                 $transaction->setDateTransaction(new \DateTime());
                 $transaction->setDescription('Ticket de consultation #' . $consultation->getId());
                 $transaction->setModeDePaiement($modePaiement);
+                $transaction->setPaiementDevis($paiement); // Link to the payment
                 $em->persist($transaction); // Persist the transaction
             }
 

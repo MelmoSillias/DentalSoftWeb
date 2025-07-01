@@ -226,8 +226,29 @@ public function consultationDetailsJson(ConsultationRepository $repo, int $id): 
             return $this->json(['message' => 'Consultation introuvable'], 404);
         }
 
-        $em->remove($consultation);
-        $em->flush();
+        if ($consultation->getPaiementDevis()) {
+            $paiementDevis = $consultation->getPaiementDevis();
+            $transaction = $paiementDevis->getTransaction();
+        
+            // Casser les relations d'abord
+            $paiementDevis->setTransaction(null);
+            $paiementDevis->setConsultation(null);
+            $consultation->setPaiementDevis(null);
+        
+            $em->flush(); // Enregistrer les modifications de relations d'abord
+        
+            // Ensuite supprimer dans l'ordre logique
+            if ($transaction) {
+                $em->remove($transaction);
+            }
+            $em->remove($paiementDevis);
+            $em->remove($consultation);
+        
+            $em->flush(); // Supprimer proprement maintenant
+        } else {
+            $em->remove($consultation);
+            $em->flush();
+        } 
 
         return $this->json(['message' => 'Consultation supprimée avec succès']);
     }

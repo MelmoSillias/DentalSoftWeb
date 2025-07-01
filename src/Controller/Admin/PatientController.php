@@ -153,8 +153,7 @@ final class PatientController extends AbstractController
             if (!empty($c['id'])) {
                 $entity = $em->getRepository(\App\Entity\ContactUrgence::class)->find($c['id']) ?: $entity;
             }
-            $entity->setNom($c['nom'])
-                   ->setPrenom($c['prenom'])
+            $entity->setNom($c['nom']) 
                    ->setRelation($c['relation'])
                    ->setTelephone($c['telephone']);
             $patient->addContactUrgence($entity);

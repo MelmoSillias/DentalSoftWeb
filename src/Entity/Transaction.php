@@ -30,6 +30,9 @@ class Transaction
     #[ORM\JoinColumn(nullable: false)]
     private ?ModeDePaiement $modeDePaiement = null;
 
+    #[ORM\OneToOne(inversedBy: 'transaction', cascade: ['persist', 'remove'])]
+    private ?PaiementDevis $paiementDevis = null;
+
 
     public function getId(): ?int
     {
@@ -94,4 +97,17 @@ public function setModeDePaiement(?ModeDePaiement $mode): static
     $this->modeDePaiement = $mode;
     return $this;
 }
+
+public function getPaiementDevis(): ?PaiementDevis
+{
+    return $this->paiementDevis;
+}
+
+public function setPaiementDevis(?PaiementDevis $paiementDevis): static
+{
+    $this->paiementDevis = $paiementDevis;
+
+    return $this;
+}
+
 }

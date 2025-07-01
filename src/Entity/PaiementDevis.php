@@ -27,6 +27,12 @@ class PaiementDevis
     #[ORM\Column(type: 'float')]
     private float $montant;
 
+    #[ORM\OneToOne(cascade: ['persist', 'remove'])]
+    private ?Consultation $consultation = null;
+
+    #[ORM\OneToOne(mappedBy: 'paiementDevis', cascade: ['persist', 'remove'])]
+    private ?Transaction $transaction = null;
+
     public function getId(): ?int { return $this->id; }
     public function getDevis(): ?Devis { return $this->devis; }
     public function setDevis(?Devis $devis): self { $this->devis = $devis; return $this; }
@@ -36,4 +42,38 @@ class PaiementDevis
     public function setDate(\DateTimeInterface $date): self { $this->date = $date; return $this; }
     public function getMontant(): float { return $this->montant; }
     public function setMontant(float $montant): self { $this->montant = $montant; return $this; }
+
+    public function getConsultation(): ?Consultation
+    {
+        return $this->consultation;
+    }
+
+    public function setConsultation(?Consultation $consultation): static
+    {
+        $this->consultation = $consultation;
+
+        return $this;
+    }
+
+    public function getTransaction(): ?Transaction
+    {
+        return $this->transaction;
+    }
+
+    public function setTransaction(?Transaction $transaction): static
+    {
+        // unset the owning side of the relation if necessary
+        if ($transaction === null && $this->transaction !== null) {
+            $this->transaction->setPaiementDevis(null);
+        }
+
+        // set the owning side of the relation if necessary
+        if ($transaction !== null && $transaction->getPaiementDevis() !== $this) {
+            $transaction->setPaiementDevis($this);
+        }
+
+        $this->transaction = $transaction;
+
+        return $this;
+    }
 }

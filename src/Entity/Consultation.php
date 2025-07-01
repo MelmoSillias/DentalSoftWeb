@@ -45,6 +45,10 @@ class Consultation
     #[ORM\Column(type: 'datetime', nullable: true)]
     private ?\DateTimeInterface $CreatedAt = null;
 
+    #[ORM\OneToOne(mappedBy: 'consultation', cascade: ['persist', 'remove'])]
+    private ?PaiementDevis $paiementDevis = null;
+
+
     public function __construct()
     {
         $this->actes = new ArrayCollection(); 
@@ -88,5 +92,26 @@ class Consultation
         }
         return $this;
     }
+ 
+    public function getPaiementDevis(): ?PaiementDevis
+    {
+        return $this->paiementDevis;
+    }
 
+    public function setPaiementDevis(?PaiementDevis $paiementDevis): self
+    {
+        // Unset the owning side of the relation if necessary
+        if ($paiementDevis === null && $this->paiementDevis !== null) {
+            $this->paiementDevis->setConsultation(null);
+        }
+
+        // Set the owning side of the relation if necessary
+        if ($paiementDevis !== null && $paiementDevis->getConsultation() !== $this) {
+            $paiementDevis->setConsultation($this);
+        }
+
+        $this->paiementDevis = $paiementDevis;
+
+        return $this;
+    }
 }

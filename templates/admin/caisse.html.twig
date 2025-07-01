@@ -133,7 +133,7 @@
             <table id="paiementsDevisTable" class="table table-striped table-hover table-sm my-4">
                 <thead class="table-light">
                     <tr>
-                        <th>N° Devis</th>
+                        <th>N° </th>
                         <th>Patient</th>
                         <th>Montant</th>
                         <th>Mode de paiement</th>
@@ -303,47 +303,52 @@ $(function () {
 
     // === 3. DataTable des Paiements ===
     const paiementsTable = $('#paiementsDevisTable').DataTable({
-        processing: true,
-        serverSide: true,
-        ajax: {
-            url: '/api/paiements-devis',
-            data: function (d) {
-                d.start = devisStart;
-                d.end = devisEnd;
-            }
+      processing: true,
+      serverSide: true,
+      ajax: {
+        url: '/api/paiements-devis',
+        data: function (d) {
+          d.start = devisStart;
+          d.end = devisEnd;
+        }
+      },
+      columns: [
+        {
+          data: 'devisId',
+          render: id => `${String(id).padStart(4, '0')}`
         },
-        columns: [
-            {
-                data: 'devisId',
-                render: id => `${String(id).padStart(4, '0')}`
-            },
-            { data: 'patient' },
-            {
-                data: 'montant',
-                render: m => `${parseFloat(m).toLocaleString('fr-FR')} FCFA`
-            },
-            { data: 'mode' },
-            {
-                data: 'date',
-                render: d => {
-                    const date = new Date(d);
-                    return date.toLocaleDateString('fr-FR') + ' ' +
-                           date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-                }
-            }, {
-      data: 'pId',
-      orderable: false,
-      searchable: false,
-      render: id => `
-        <a href="/admin/paiement-devis/${id}/print" class="btn btn-sm btn-outline-secondary print-devis-btn">
-           <i class="fas fa-print"></i> 
-        </a>
-      `
-    }
-
-        ],
-        language: { url: 'https://cdn.datatables.net/plug-ins/1.13.5/i18n/fr-FR.json' },
-        order: [[4, 'desc']]
+        { data: 'patient' },
+        {
+          data: 'montant',
+          render: m => `${parseFloat(m).toLocaleString('fr-FR')} FCFA`
+        },
+        { data: 'mode' },
+        {
+          data: 'date',
+          render: d => {
+            const date = new Date(d);
+            return date.toLocaleDateString('fr-FR') + ' ' +
+                 date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+          }
+        },
+        {
+          data: 'pId',
+          orderable: false,
+          searchable: false,
+          render: (id, type, row) => {
+            const isDevis = row.type === 'devis';
+            const btnClass = isDevis ? 'btn-outline-secondary' : 'btn-info';
+            const iconClass = isDevis ? 'fa-print' : 'fa-ticket';
+            return `
+              <a href="/admin/paiement-${row.type}/${id}/print" class="btn btn-sm ${btnClass} print-${row.type}-btn">
+                <i class="fas ${iconClass}"></i>
+              </a>
+            `;
+          }
+        }
+      ],
+      language: { url: 'https://cdn.datatables.net/plug-ins/1.13.5/i18n/fr-FR.json' },
+      order: [[4, 'desc']] 
     });
 
     // === 4. Total recettes dynamiques ===

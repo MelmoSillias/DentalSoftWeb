@@ -88,6 +88,15 @@ $(document).ready(function () {
                 mode_paiement_id: $('input[name="payant"]:checked').val() ? $('#modePaiement').val() : null
             };
 
+            if(formData('mode_paiement_id') == null){
+                showToastModal({
+                    message: 'Veillez Choisir le mode de paiement',
+                    type: 'error',
+                    duration: 3000
+                  });
+                  return
+            }
+
             $.ajax({
                 url: '/api/consultation/create',
                 type: 'POST',

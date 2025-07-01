@@ -80,8 +80,8 @@ public function getPaiementsDevis(Request $request, PaiementDevisRepository $rep
         $patient = $devis?->getFiche()?->getPatient();
 
         return [
-            'devisId' => $devis ? $devis->getId() : null,
-            'patient' => $patient ? $patient->getFullName() : 'Anonyme',
+            'devisId' => $devis ? $devis->getId() : 'Ticket N°',
+            'patient' => $patient ? $patient->getFullName() : $p->getConsultation()->getPatient()->getFullName(),
             'montant' => $p->getMontant(),
             'mode'    => $p->getMode()->getLibelle(),
             'date'    => $p->getDate()->format('Y-m-d H:i:s'),
@@ -187,6 +187,19 @@ public function printPaiement(int $id, PaiementDevisRepository $repo): Response
     }
 
     return $this->render('devis/print_paiement.html.twig', [
+        'paiement' => $paiement
+    ]);
+}
+
+#[Route('/admin/paiement-ticket/{id}/print', name: 'admin_paiement_devis_print', methods: ['GET'])]
+public function printTicket(int $id, PaiementDevisRepository $repo): Response
+{
+    $paiement = $repo->find($id);
+    if (!$paiement) {
+        throw $this->createNotFoundException('Paiement introuvable.');
+    }
+
+    return $this->render('devis/print_Ticket.html.twig', [
         'paiement' => $paiement
     ]);
 }
