@@ -55,10 +55,9 @@
             <div class="table-responsive">
                 <table id="stockTable" class="table table-bordered table-striped table-hover my-4">
                     <thead class="table-light">
-                        <tr>
+                        <tr><th>Date</th>
                             <th>Consommable</th>
-                            <th>Quantité Utilisée</th>
-                            <th>Date</th>
+                            <th>Quantité Utilisée</th> 
                             <th>Employé</th>
                             <th>Description</th>
                         </tr>
@@ -79,7 +78,7 @@
     <div class="modal fade" id="ajoutConsommableModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
-                <form method="post" action="{{ path('consommable_add') }}">
+                <form method="post">
                     <div class="modal-header">
                         <h5 class="modal-title">Ajouter un consommable</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -111,6 +110,38 @@
         </div>
     </div>
 
+    <!-- Modal Ajout Consommable -->
+    <div class="modal fade" id="modConsommableModal" tabindex="-1" aria-hidden="true" data-id="">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form method="post">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Modifier le consommable</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="nom">Nom</label>
+                            <input type="text" id="nom" name="nom" class="form-control" required>
+                        </div> 
+                        <div class="mb-3">
+                            <label for="fournisseur">Fournisseur</label>
+                            <input type="text" id="fournisseur" name="fournisseur" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="lowValue">Valeur de Stock Bas</label>
+                            <input type="number" id="lowValue" name="lowValue" class="form-control" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary btn-close" data-bs-dismiss="modal">Annuler</button>
+                        <button type="submit" class="btn btn-primary">Ajouter</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal Retrait -->
     <div class="modal fade" id="retraitModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog">
@@ -121,18 +152,18 @@
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
-                        <input type="hidden" name="id" id="retrait-consommable-id">
+                        <input type="hidden" id="retrait-consommable-id" name="id">
                         <div class="mb-3">
-                            <label>Quantité</label>
-                            <input type="number" name="quantite" class="form-control" required>
+                            <label for="retrait-quantite">Quantité</label>
+                            <input type="number" id="retrait-quantite" name="quantite" class="form-control" required>
                         </div>
                         <div class="mb-3">
-                            <label>Description</label>
-                            <input type="text" name="description" class="form-control" required>
+                            <label for="retrait-description">Description</label>
+                            <input type="text" id="retrait-description" name="description" class="form-control" required>
                         </div>
                         <div class="mb-3">
-                            <label>Employé</label>
-                            <select name="employe" class="form-control" required>
+                            <label for="retrait-employe">Employé</label>
+                            <select id="retrait-employe" name="employe" class="form-control" required>
                                 <option value="" disabled selected>Choisir un employé</option>
                             </select>
                         </div>
@@ -156,21 +187,15 @@
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
-                        <input type="hidden" name="id" id="add-stock-consommable-id">
+                        <input type="hidden" id="add-stock-consommable-id" name="id">
                         <div class="mb-3">
-                            <label>Quantité</label>
-                            <input type="number" name="quantite" class="form-control" required>
+                            <label for="add-stock-quantite">Quantité</label>
+                            <input type="number" id="add-stock-quantite" name="quantite" class="form-control" required>
                         </div>
                         <div class="mb-3">
-                            <label>Description</label>
-                            <input type="text" name="description" class="form-control" required>
-                        </div>
-                        <div class="mb-3">
-                            <label>Employé</label>
-                            <select name="employe" class="form-control" required>
-                                <option value="" disabled selected>Choisir un employé</option>
-                            </select>
-                        </div>
+                            <label for="add-stock-description">Description</label>
+                            <input type="text" id="add-stock-description" name="description" class="form-control" required>
+                        </div> 
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary btn-close" data-bs-dismiss="modal">Annuler</button>
@@ -199,194 +224,388 @@
             </div>
         </div>
     </div>
+
 </div>
 {% endblock %}
 
 {% block javascripts %} 
  <script src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
 <script>
-    $(document).ready(function () {
-        $('#consommablesTable').DataTable();
-        $('#stockTable').DataTable();
+    $(document).ready(function() {
+    // Initialize DataTables for Consommables and Stock
+    let devisStart = moment().format('YYYY-MM-DD');
+    let devisEnd = moment().format('YYYY-MM-DD');
 
-        const btnCons = $('#btn-consommables');
-        const btnStock = $('#btn-stock');
-        const sectionCons = $('#section-consommables');
-        const sectionStock = $('#section-stock');
+    const consommablesTable = $('#consommablesTable').DataTable({
+        ajax: {
+            url: '/api/consommables',
+            dataSrc: '',
+            error: function() {
+                showToastModal({
+                    message: 'Erreur lors de la récupération des consommables.',
+                    type: 'error',
+                    duration: 3000
+                });
+            }
+        },
+        columns: [
+            { data: 'nom' },
+            { data: 'quantity' },
+            { data: 'fournisseur' },
+            {
+                data: 'onlowvalue',
+                render: function(data) {
+                    return `<span class="badge text-white ${data ? 'bg-danger' : 'bg-success'}">
+                                <i class="fas ${data ? 'fa-exclamation-circle' : 'fa-check-circle'}"></i>
+                            </span>`;
+                }
+            },
+            {
+                data: 'id',
+                render: function(data) {
+                    return `
+                        <button class="btn btn-sm btn-warning action-btn" onclick="handleRetraitClick(${data})">
+                            <i class="fas fa-minus-circle"></i>
+                        </button>
+                        <button class="btn btn-sm btn-primary action-btn" onclick="handleAddStockClick(${data})">
+                            <i class="fas fa-plus-circle"></i>
+                        </button>
+                        <button class="btn btn-sm btn-info action-btn" onclick="handleModStockClick(${data})">
+                            <i class="fas fa-pencil-alt"></i>
+                        </button>
+                        <button class="btn btn-sm btn-danger action-btn" onclick="handleDeleteClick(${data})">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>`;
+                }
+            }
+        ]
+    });
 
-        btnCons.on('click', () => {
-            sectionCons.removeClass('d-none');
-            sectionStock.addClass('d-none');
-            btnCons.removeClass('btn-outline-primary').addClass('btn-primary');
-            btnStock.removeClass('btn-primary').addClass('btn-outline-secondary');
-        });
-
-        btnStock.on('click', () => {
-            sectionStock.removeClass('d-none');
-            sectionCons.addClass('d-none');
-            btnStock.removeClass('btn-outline-secondary').addClass('btn-primary');
-            btnCons.removeClass('btn-primary').addClass('btn-outline-primary');
-        });
-
-        $('#btn-open-ajout-modal').on('click', () => {
-            $('#ajoutConsommableModal').modal('show');
-        });
-
-        let deleteId = null;
-
-        function handleRetraitClick(id) {
-            $('#retrait-consommable-id').val(id);
-            $('#retraitModal').modal('show');
+    const stockTable = $('#stockTable').DataTable({
+        ajax: {
+            url: '/api/stocks',
+            dataSrc: '',
+            data: function(d) {
+                d.start = devisStart;
+                d.end = devisEnd;
+            },
+            error: function(xhr) {
+                console.error('Stock API error:', xhr.responseText);
+                stockTable.clear().draw();
+                $('#stockTable tbody').html(
+                    '<tr><td colspan="5" class="text-center">Erreur lors du chargement des données</td></tr>'
+                );
+                showToastModal({
+                    message: 'Erreur lors du chargement des données de stock.',
+                    type: 'error',
+                    duration: 3000
+                });
+            }
+        },
+        columns: [
+            {
+                data: 'date',
+                render: function(data) {
+                    const dateObj = new Date(data);
+                    return dateObj.toLocaleDateString() + ' ' + dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                }
+            },
+            
+            {
+                data: null,
+                render: function(data) {
+                    const isRetrait = data.type === 'Retrait';
+                    const classe = isRetrait ? 'text-danger' : 'text-success';
+                    const signe = isRetrait ? '-' : '+';
+                    return `<span class="${classe}">${signe}${data.quantiteUtilisee}</span>`;
+                }
+            },
+            { data: 'consommable' },
+            { data: 'employe' },
+            { data: 'description' }
+        ],
+        language: {
+            emptyTable: "Aucune donnée disponible pour cette période",
+            zeroRecords: "Aucun résultat trouvé"
         }
+    });
 
-        function handleAddStockClick(id) {
-            $('#add-stock-consommable-id').val(id);
-            $('#addStockModal').modal('show');
+    // Date change handler
+    $('#startDate, #endDate').change(function() {
+        stockTable.ajax.reload();
+    });
+
+    // Fetch and populate employees
+    $.ajax({
+        url: '/api/employees',
+        method: 'GET',
+        success: function(response) {
+            const employees = response.data;
+            if (!Array.isArray(employees)) {
+                console.error('Invalid data format: Expected an array.');
+                showToastModal({
+                    message: 'Format de données invalide: tableau attendu.',
+                    type: 'error',
+                    duration: 3000
+                });
+                return;
+            }
+            const employeeOptions = employees.map(employee =>
+                `<option value="${employee.id}">${employee.nom} ${employee.prenom}</option>`
+            ).join('');
+            $('select[name="employe"]').html('<option value="" disabled selected>Choisir un employé</option>' + employeeOptions);
+        },
+        error: function() {
+            showToastModal({
+                message: 'Erreur lors de la récupération des employés.',
+                type: 'error',
+                duration: 3000
+            });
         }
+    });
 
-        function handleDeleteClick(id) {
-            deleteId = id;
-            $('#deleteModal').modal('show');
-        }
+    // Toggle sections
+    const btnCons = $('#btn-consommables');
+    const btnStock = $('#btn-stock');
+    const sectionCons = $('#section-consommables');
+    const sectionStock = $('#section-stock');
 
-        $('#confirm-delete-btn').on('click', function () {
-            if (deleteId) {
-                $.ajax({
-                    url: `/api/consommables/${deleteId}`,
-                    method: 'DELETE',
-                    success: function () {
-                        $('#deleteModal').modal('hide');
-                        fetchConsommables(); // Refresh the table
-                    },
-                    error: function () {
-                        alert('Erreur lors de la suppression.');
-                    }
+    btnCons.on('click', () => {
+        sectionCons.removeClass('d-none');
+        sectionStock.addClass('d-none');
+        btnCons.removeClass('btn-outline-primary').addClass('btn-primary');
+        btnStock.removeClass('btn-primary').addClass('btn-outline-secondary');
+    });
+
+    btnStock.on('click', () => {
+        sectionStock.removeClass('d-none');
+        sectionCons.addClass('d-none');
+        btnStock.removeClass('btn-outline-secondary').addClass('btn-primary');
+        btnCons.removeClass('btn-primary').addClass('btn-outline-primary');
+    });
+
+    // Open add consumable modal
+    $('#btn-open-ajout-modal').on('click', () => {
+        $('#ajoutConsommableModal').modal('show');
+    });
+
+    // Handle form submissions
+    $('#ajoutConsommableModal form').on('submit', function(e) {
+        e.preventDefault();
+        const formData = $(this).serialize();
+
+        $.ajax({
+            url: '/api/consommables/add',
+            method: 'POST',
+            data: formData,
+            success: function(response) {
+                showToastModal({
+                    message: response.message,
+                    type: 'success',
+                    duration: 3000
+                });
+                $('#ajoutConsommableModal').modal('hide');
+                consommablesTable.ajax.reload();
+            },
+            error: function(xhr) {
+                showToastModal({
+                    message: 'Erreur lors de l\'ajout du consommable: ' + xhr.responseText,
+                    type: 'error',
+                    duration: 3000
                 });
             }
         });
+    });
 
-        window.handleRetraitClick = handleRetraitClick;
-        window.handleAddStockClick = handleAddStockClick;
-        window.handleDeleteClick = handleDeleteClick;
+    $('#retraitModal form').on('submit', function(e) {
+        e.preventDefault();
+        const formData = $(this).serialize();
 
-        function fetchConsommables() {
-            $.ajax({
-                url: '/api/consommables',
-                method: 'GET',
-                success: function (data) {
-                    const tbody = $('#consommablesTable tbody');
-                    tbody.empty();
-                    data.forEach(consommable => {
-                        tbody.append(`
-                            <tr>
-                                <td>${consommable.nom}</td>
-                                <td>${consommable.quantity}</td>
-                                <td>${consommable.fournisseur}</td>
-                                <td>
-                                    <span class="badge text-white ${consommable.onLowValue ? 'bg-danger' : 'bg-success'}">
-                                        <i class="fas ${consommable.onLowValue ? 'fa-exclamation-circle' : 'fa-check-circle'}"></i>
-                                    </span>
-                                </td>
-                                <td>
-                                    <button class="btn btn-sm btn-warning action-btn" onclick="handleRetraitClick(${consommable.id})"><i class="fas fa-minus-circle"></i></button>
-                                    <button class="btn btn-sm btn-primary action-btn" onclick="handleAddStockClick(${consommable.id})"><i class="fas fa-plus-circle"></i></button>
-                                    <button class="btn btn-sm btn-danger action-btn" onclick="handleDeleteClick(${consommable.id})"><i class="fas fa-trash-alt"></i></button>
-                                </td>
-                            </tr>
-                        `);
-                    });
-                },
-                error: function () {
-                    alert('Erreur lors de la récupération des consommables.');
-                }
-            });
-        }
-
-        function fetchStockVariations(start, end) {
-            $.ajax({
-                url: '/api/stocks',
-                method: 'GET',
-                data: { start, end },
-                success: function (data) {
-                    const tbody = $('#stockTable tbody');
-                    tbody.empty();
-                    if (data.length === 0) {
-                        tbody.append('<tr><td colspan="5" class="text-center">Aucune donnée disponible pour cette période.</td></tr>');
-                    } else {
-                        data.forEach(stock => {
-                            tbody.append(`
-                                <tr>
-                                    <td>${stock.consommable}</td>
-                                    <td class="${stock.type === 'Retrait' ? 'text-danger' : 'text-success'}">
-                                        ${stock.type === 'Retrait' ? '-' : '+'}${stock.quantiteUtilisee}
-                                    </td>
-                                    <td>${stock.date}</td>
-                                    <td>${stock.employe}</td>
-                                    <td>${stock.description}</td>
-                                </tr>
-                            `);
-                        });
-                    }
-                },
-                error: function () {
-                    alert('Erreur lors de la récupération des variations de stock.');
-                }
-            });
-        }
-
-        function fetchEmployees() {
-            $.ajax({
-            url: '/api/employees',
-            method: 'GET',
-            success: function (response) {
-                const employees = response.data; // Adjusted to match the controller's JSON structure
-                if (!Array.isArray(employees)) {
-                console.error('Invalid data format: Expected an array.');
-                return;
-                }
-                const employeeOptions = employees.map(employee => 
-                `<option value="${employee.id}">${employee.nom} ${employee.prenom}</option>`
-                ).join('');
-                $('select[name="employe"]').html('<option value="" disabled selected>Choisir un employé</option>' + employeeOptions);
+        $.ajax({
+            url: `/api/consommables/${$('#retrait-consommable-id').val()}/retrait`,
+            method: 'POST',
+            data: formData,
+            success: function(response) {
+                showToastModal({
+                    message: response.message,
+                    type: 'success',
+                    duration: 3000
+                });
+                $('#retraitModal').modal('hide');
+                consommablesTable.ajax.reload();
             },
-            error: function () {
-                alert('Erreur lors de la récupération des employés.');
+            error: function(xhr) {
+                showToastModal({
+                    message: 'Erreur lors du retrait du stock: ' + xhr.responseText,
+                    type: 'error',
+                    duration: 3000
+                });
             }
-            });
-        }
-
-        fetchConsommables();
-        fetchEmployees();
-
-        $('#daterange').daterangepicker({
-            locale: {
-                format: 'YYYY-MM-DD',
-                applyLabel: 'Appliquer',
-                cancelLabel: 'Annuler',
-                fromLabel: 'De',
-                toLabel: 'À',
-                customRangeLabel: 'Personnalisé',
-                weekLabel: 'S',
-                daysOfWeek: ['Di', 'Lu', 'Ma', 'Me', 'Je', 'Ve', 'Sa'],
-                monthNames: ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'],
-                firstDay: 1
-            },
-            opens: 'left',
-            alwaysShowCalendars: true,
-            ranges: {
-                "Aujourd'hui": [moment(), moment()],
-                "Hier": [moment().subtract(1, 'days'), moment().subtract(1, 'days')],
-                "Cette semaine": [moment().startOf('week'), moment().endOf('week')],
-                "Ce mois-ci": [moment().startOf('month'), moment().endOf('month')],
-                "Cette année": [moment().startOf('year'), moment().endOf('year')]
-            }
-        }, function (start, end) {
-            fetchStockVariations(start.format('YYYY-MM-DD'), end.format('YYYY-MM-DD'));
-        });
-
-        $('.btn-close').on('click', function () {
-            $(this).closest('.modal').modal('hide');
         });
     });
+
+    $('#addStockModal form').on('submit', function(e) {
+        e.preventDefault();
+        const formData = $(this).serialize();
+
+        $.ajax({
+            url: `/api/consommables/${$('#add-stock-consommable-id').val()}/add-stock`,
+            method: 'POST',
+            data: formData,
+            success: function(response) {
+                showToastModal({
+                    message: response.message,
+                    type: 'success',
+                    duration: 3000
+                });
+                $('#addStockModal').modal('hide');
+                consommablesTable.ajax.reload();
+            },
+            error: function(xhr) {
+                showToastModal({
+                    message: 'Erreur lors de l\'ajout de stock: ' + xhr.responseText,
+                    type: 'error',
+                    duration: 3000
+                });
+            }
+        });
+    });
+
+    // Handle clicks for modals
+    let deleteId = null;
+
+    window.handleRetraitClick = function(id) {
+        $('#retrait-consommable-id').val(id);
+        $('#retraitModal').modal('show');
+    };
+
+    window.handleAddStockClick = function(id) {
+        $('#add-stock-consommable-id').val(id);
+        $('#addStockModal').modal('show');
+    };
+
+    window.handleModStockClick = function(id) {
+    // Set the consumable ID in the modal data
+    $('#modConsommableModal').data('id', id);
+
+    // Fetch the consumable details using AJAX
+    $.ajax({
+        url: `/api/consommables/${id}`,
+        method: 'GET',
+        success: function(response) {
+            // Populate the modal form fields with the consumable details
+            $('#modConsommableModal input[name="nom"]').val(response.nom); 
+            $('#modConsommableModal input[name="fournisseur"]').val(response.fournisseur);
+            $('#modConsommableModal input[name="lowValue"]').val(response.lowValue);
+
+            // Show the modal
+            $('#modConsommableModal').modal('show');
+        },
+        error: function(xhr) {
+            // Show an error message if the request fails
+            showToastModal({
+                message: 'Erreur lors de la récupération des détails du consommable: ' + xhr.responseText,
+                type: 'error',
+                duration: 3000
+            });
+        }
+    });
+};
+
+    $('#modConsommableModal form').on('submit', function(e) {
+        e.preventDefault();
+        const formData = $(this).serialize();
+
+        $.ajax({
+            url: `/api/consommables/${$('#modConsommableModal').data('id')}/edit`,
+            method: 'POST',
+            data: formData,
+            success: function(response) {
+                showToastModal({
+                    message: response.message,
+                    type: 'success',
+                    duration: 3000
+                });
+                $('#modConsommableModal').modal('hide');
+                consommablesTable.ajax.reload();
+            },
+            error: function(xhr) {
+                showToastModal({
+                    message: 'Erreur lors de l\'ajout de stock: ' + xhr.responseText,
+                    type: 'error',
+                    duration: 3000
+                });
+            }
+        });
+    });
+
+
+    window.handleDeleteClick = function(id) {
+        deleteId = id;
+        $('#deleteModal').modal('show');
+    };
+
+    $('#confirm-delete-btn').on('click', function() {
+        if (deleteId) {
+            $.ajax({
+                url: `/api/consommables/${deleteId}/delete`,
+                method: 'POST',
+                data: { _token: 'your_csrf_token_here' }, // Replace with actual token
+                success: function(response) {
+                    showToastModal({
+                        message: response.message,
+                        type: 'success',
+                        duration: 3000
+                    });
+                    $('#deleteModal').modal('hide');
+                    consommablesTable.ajax.reload();
+                },
+                error: function(xhr) {
+                    showToastModal({
+                        message: 'Erreur lors de la suppression: ' + xhr.responseText,
+                        type: 'error',
+                        duration: 3000
+                    });
+                }
+            });
+        }
+    });
+
+    // Initialize date range picker
+    $('#daterange').daterangepicker({
+        locale: {
+            format: 'YYYY-MM-DD',
+            applyLabel: 'Appliquer',
+            cancelLabel: 'Annuler',
+            daysOfWeek: ['Di', 'Lu', 'Ma', 'Me', 'Je', 'Ve', 'Sa'],
+            monthNames: [
+                'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+                'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
+            ],
+            firstDay: 1
+        },
+        opens: 'left',
+        alwaysShowCalendars: true,
+        startDate: devisStart,
+        endDate: devisEnd,
+        ranges: {
+            "Aujourd'hui": [moment(), moment()],
+            "Hier": [moment().subtract(1, 'days'), moment().subtract(1, 'days')],
+            "Cette semaine": [moment().startOf('week'), moment().endOf('week')],
+            "Ce mois-ci": [moment().startOf('month'), moment().endOf('month')],
+            "Cette année": [moment().startOf('year'), moment().endOf('year')]
+        }
+    }, function(start, end) {
+        devisStart = start.format('YYYY-MM-DD');
+        devisEnd = end.format('YYYY-MM-DD');
+        stockTable.ajax.reload();
+    });
+
+    // Close modals
+    $('.btn-close').on('click', function() {
+        $(this).closest('.modal').modal('hide');
+    });
+});
+
 </script>
 {% endblock %}

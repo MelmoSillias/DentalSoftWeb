@@ -89,22 +89,23 @@ class ConsultationApiController extends AbstractController
         }
 
         // Devis
-        $devis      = $fiche->getDevis();
-        $devisData  = null;
+        $devis = $fiche->getDevis()[0] ?? null;
+        $devisData = null; 
         if ($devis) {
             $contenus = [];
             foreach ($devis->getContenus() as $c) {
                 $contenus[] = [
-                    'designation'=> $c->getDesignation(),
-                    'qte'        => $c->getQte(),
-                    'montant'    => $c->getMontant(),
+                    'designation' => $c->getDesignation(),
+                    'qte' => $c->getQte(),
+                    'montant' => $c->getMontant(),
                 ];
             }
             $devisData = [
-                'date'     => $devis->getDate()->format('Y-m-d'),
+                'date' => $devis->getDate()->format('Y-m-d'),
                 'contenus' => $contenus,
             ];
         }
+ 
 
         // Séances passées
         $precedentes = [];
@@ -210,32 +211,38 @@ class ConsultationApiController extends AbstractController
         
 
         // (Re)créer les documents
-        $fs        = new Filesystem();
-        $uploadDir = $this->getParameter('kernel.project_dir').'/public/uploads/documents';
+        $fs = new Filesystem();
+        $uploadDir = $this->getParameter('kernel.project_dir')
+                . DIRECTORY_SEPARATOR . 'public'
+                . DIRECTORY_SEPARATOR . 'uploads'
+                . DIRECTORY_SEPARATOR . 'documents';
+
         if (!$fs->exists($uploadDir)) {
             $fs->mkdir($uploadDir, 0775);
+            $fs->chmod($uploadDir, 0775);
         }
 
-        if (isset($data['documents']) && is_array($data['documents'])) {
-            foreach ($data['documents'] as $i => $docData) {
-                $dm = new DocumentMedical();
-                $dm->setFiche($fiche)
-                    ->setLibelle   ($docData['libelle']    ?? '')
-                    ->setDateDossier(new \DateTime($docData['dateDossier'] ?? 'now'))
-                    ->setDescription($docData['description'] ?? '');
-
-                // Gestion du fichier
-                if (isset($files[$i]) && $files[$i] instanceof UploadedFile) {
-                    $file     = $files[$i];
-                    $name     = uniqid('doc_').'.'.$file->guessExtension();
-                    $file->move($uploadDir, $name);
-                    $dm->setFichier('uploads/documents/'.$name);
-                } else {
-                    $dm->setFichier($docData['url'] ?? null);
-                }
-
-                $em->persist($dm);
+        foreach ($files as $i => $file) {
+            if (!$file instanceof UploadedFile) {
+                continue;
             }
+
+            // construction du nom comme expliqué plus haut
+            $extension = $file->guessExtension() ?: $file->getClientOriginalExtension();
+            $name      = uniqid('doc_') . ($extension ? ".{$extension}" : '');
+
+            // déplace et renvoie un objet File
+            $movedFile = $file->move($uploadDir, $name);
+
+            $dm = new DocumentMedical();
+            $dm->setFiche($fiche)
+            ->setLibelle($data['documents'][$i]['libelle'] ?? '')
+            ->setDateDossier(new \DateTime($data['documents'][$i]['dateDossier'] ?? 'now'))
+            ->setDescription($data['documents'][$i]['description'] ?? '')
+            // on stocke le chemin relatif depuis 'public'
+            ->setFichier('uploads/documents/' . $movedFile->getFilename());
+
+            $em->persist($dm);
         }
 
         $em->flush();
@@ -353,20 +360,20 @@ class ConsultationApiController extends AbstractController
         
         $amount = 0;
         // Ajouter les contenus
-             foreach ($consultation->getActes() as $a) {
-                 $cd = new ContenuDevis();
-                 $cd->setDevis($facture)
-                    ->setDesignation($a->getDescription() ?? '')
-                    ->setQte   ($a->getQuantite()         ?? 1)
-                    ->setMontant    ($a->getPrix()     ?? 0);
-                $amount += $cd->getMontant() * $cd->getQte();
-                $cd->setMontantTotal($amount);
-                $em->persist($cd);
-               
-             }
+        foreach ($consultation->getActes() as $a) {
+            $cd = new ContenuDevis();
+            $cd->setDevis($facture)
+            ->setDesignation($a->getDescription() ?? '')
+            ->setQte   ($a->getQuantite()         ?? 1)
+            ->setMontant    ($a->getPrix()     ?? 0);
+            $amount += $cd->getMontant() * $cd->getQte();
+            $cd->setMontantTotal($amount);
+            $em->persist($cd); 
+        }
          
         $facture->setMontant($amount);
         $facture->setReste($amount);
+        $facture->setConsultation($consultation);
         $em->persist($facture);
 
         $em->flush();
@@ -375,4 +382,8 @@ class ConsultationApiController extends AbstractController
         $em->flush();
         return new JsonResponse(['success' => true]);
     }
+
+  
+
+
 }

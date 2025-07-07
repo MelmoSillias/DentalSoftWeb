@@ -1,0 +1,59 @@
+{% extends 'appreceptionbase.html.twig' %}
+
+{% block title %}Consultations du jour{% endblock %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    <link href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap4.min.css" rel="stylesheet">
+    <style>
+        .table-success {
+            background-color: #d4edda !important;
+        }
+    </style>
+{% endblock %}
+
+{% block main %}
+<div class="container-fluid px-4">
+    <h1 class="mt-4">Consultations du {{ "now"|date("d/m/Y") }}</h1>
+    <div class="table-responsive mt-4">
+        <table id="consultationTable" class="table table-bordered table-striped w-100">
+    <thead>
+        <tr>
+            <th>N°</th>
+            <th>Patient</th>
+            <th>Médecin</th>
+            <th>Date Création</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+</table>
+
+    </div>
+</div>
+
+<div class="modal fade" id="confirmCancelModal" tabindex="-1" role="dialog" aria-labelledby="cancelModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title" id="cancelModalLabel">Annuler la consultation</h5>
+        <button type="button" class="close text-white" data-dismiss="modal" aria-label="Fermer">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        Êtes-vous sûr de vouloir annuler cette consultation ? Cette action est irréversible.
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Non</button>
+        <button type="button" class="btn btn-danger" id="confirmCancelBtn">Oui, annuler</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    <script src="{{ asset('js/consultationsday.js') }}"></script>
+{% endblock %}

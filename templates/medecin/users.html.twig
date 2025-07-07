@@ -82,7 +82,7 @@
              {# Comme l'entité User n'a pas de champ email, on ne l'affiche pas #}
              <div class="mb-3">
                 <label for="newEmployee" class="form-label">Employé</label>
-                <select class="form-select" id="newEmployee" name="employee_id">
+                <select class="form-select form-control" id="newEmployee" name="employee_id">
                    <option value="">-- Sélectionnez un employé --</option>
                    {% for emp in employees %}
                       <option value="{{ emp.id }}">{{ emp.nom }} {{ emp.prenom }}</option>

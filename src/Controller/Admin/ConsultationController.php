@@ -261,4 +261,113 @@ public function consultationDetailsJson(ConsultationRepository $repo, int $id): 
             'controller_name' => 'AdminController', 'active_page' => 'consultations_closed'
         ]);
     }
+
+    
+    #[Route('/api/consultation/{consultation}/facture', name: 'by_consultation', methods: ['GET'])]
+    public function GetFacturebyConsultation(Consultation $consultation, EntityManagerInterface $em): JsonResponse
+    {
+        /** @var Devis|null $devis */
+        $devis = $consultation->getFacture();
+
+        if (!$devis) {
+            return new JsonResponse(['error' => 'Facture non trouvée'], 404);
+        }
+
+        $lignes = [];
+        foreach ($devis->getContenus() as $contenu) {
+            $lignes[] = [
+                'id'          => $contenu->getId(),
+                'designation' => $contenu->getDesignation(),
+                'quantite'    => $contenu->getQte(),
+                'montant'     => $contenu->getMontant(), 
+            ];
+        }
+
+        return new JsonResponse($lignes);
+    }
+
+    /**
+     * Met à jour les lignes de la facture (Devis) pour une consultation donnée.
+     * Expects JSON { "lignes": [ { designation, quantite, montant, description? }, … ] }
+     */
+    #[Route('/api/consultation/{consultation}/facture/update', name: 'update', methods: ['PUT'])]
+    public function update(
+        EntityManagerInterface $em,
+        Request $request,
+        Consultation $consultation
+    ): JsonResponse {
+        $data = json_decode($request->getContent(), true);
+        if (!isset($data['lignes']) || !is_array($data['lignes'])) {
+            return new JsonResponse(['error' => 'Payload invalide'], 400);
+        }
+
+        /** @var Devis|null $devis */
+        $devis = $consultation->getFacture();
+
+        if (!$devis) {
+            return new JsonResponse(['error' => 'Facture non trouvée'], 404);
+        }
+
+        // 1) Supprimer les anciennes lignes
+        foreach ($devis->getContenus() as $old) {
+            $em->remove($old);
+        }
+        $em->flush();
+
+        // 2) Créer les nouvelles lignes et calculer le total
+        $total = 0;
+        foreach ($data['lignes'] as $ligneData) {
+            $cd = new ContenuDevis();
+            $cd->setDevis($devis) 
+               ->setQte((int)($ligneData['quantite'] ?? 1))
+               ->setMontant((float)($ligneData['prix'] ?? 0))
+               ->setDesignation($ligneData['description'] ?? '')
+               ->setMontantTotal((int)($ligneData['quantite'] ?? 1) * (float)($ligneData['prix'] ?? 0));
+
+            $total += $cd->getMontant() * $cd->getQte();
+            $em->persist($cd);
+        }
+
+        // 3) Mettre à jour le montant et le reste à payer
+        $devis->setMontant($total)
+              ->setReste($total);
+
+        $em->persist($devis);
+        $em->flush();
+
+        return new JsonResponse(['success' => true]);
+    }
+
+      #[Route('/api/consultations/jour', name: 'api_consultations_day', methods: ['GET'])]
+public function consultationsDuJour(EntityManagerInterface $em): JsonResponse
+{
+    $start = (new \DateTime())->setTime(0, 0, 0);
+    $end = (new \DateTime())->setTime(23, 59, 59);
+
+    $consultations = $em->createQuery("
+        SELECT c FROM App\Entity\Consultation c
+        JOIN c.patient p
+        JOIN c.medecin m
+        WHERE c.CreatedAt BETWEEN :start AND :end
+        ORDER BY c.CreatedAt ASC
+    ")
+    ->setParameter('start', $start)
+    ->setParameter('end', $end)
+    ->getResult();
+
+    $data = [];
+    $counter = 1;
+    foreach ($consultations as $c) {
+        $data[] = [
+            'id' => $c->getId(),
+            'numero' => $counter++,
+            'patient' => $c->getPatient()->getFullName(),
+            'medecin' => $c->getMedecin()->getFullName(),
+            'createdAt' => $c->getCreatedAt()->format('d/m/Y H:i'),
+            'state' => $c->getStatut()
+        ];
+    }
+
+    return new JsonResponse($data);
+}
 }

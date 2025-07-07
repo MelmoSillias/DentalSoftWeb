@@ -1,0 +1,52 @@
+DATA:
+Array
+(
+    [nom] => Touré
+    [prenom] => Sidi Mahamane Youssouf
+    [telephone] => 74 14 19 34
+    [email] => siditoure98@gmail.com
+    [fonction] => Chirurgien Dentiste
+    [type] => 
+    [dateEmbauche] => 2025-07-17
+    [typeContrat] => CDI
+    [dureeContrat] => 5
+    [typeSalaire] => fixe
+    [valeurSalaire] => 300000
+)
+FILES:
+Array
+(
+)
+DATA:
+Array
+(
+    [nom] => Aman
+    [prenom] => Doumbia
+    [telephone] => 899
+    [email] => simcorp1901@gmail.com
+    [fonction] => Acceuil
+    [type] => 
+    [dateEmbauche] => 2025-07-07
+    [typeContrat] => CDI
+    [dureeContrat] => 
+    [valeurSalaire] => 200000
+    [comingDays] => Array
+        (
+            [0] => Mardi
+            [1] => Vendredi
+        )
+
+)
+FILES:
+Array
+(
+)
+ERROR:
+Warning: Undefined array key "typeSalaire"
+#0 D:\Repos\Web\DentalSoftWeb\vendor\symfony\http-kernel\HttpKernel.php(183): App\Controller\Admin\RHController->create(Object(Symfony\Component\HttpFoundation\Request), Object(ContainerJRxF6H7\EntityManagerGhost614a58f))
+#1 D:\Repos\Web\DentalSoftWeb\vendor\symfony\http-kernel\HttpKernel.php(76): Symfony\Component\HttpKernel\HttpKernel->handleRaw(Object(Symfony\Component\HttpFoundation\Request), 1)
+#2 D:\Repos\Web\DentalSoftWeb\vendor\symfony\http-kernel\Kernel.php(182): Symfony\Component\HttpKernel\HttpKernel->handle(Object(Symfony\Component\HttpFoundation\Request), 1, true)
+#3 D:\Repos\Web\DentalSoftWeb\vendor\symfony\runtime\Runner\Symfony\HttpKernelRunner.php(35): Symfony\Component\HttpKernel\Kernel->handle(Object(Symfony\Component\HttpFoundation\Request))
+#4 D:\Repos\Web\DentalSoftWeb\vendor\autoload_runtime.php(29): Symfony\Component\Runtime\Runner\Symfony\HttpKernelRunner->run()
+#5 D:\Repos\Web\DentalSoftWeb\public\index.php(5): require_once('D:\\Repos\\Web\\De...')
+#6 {main}

@@ -88,7 +88,7 @@ $(document).ready(function () {
                 mode_paiement_id: $('input[name="payant"]:checked').val() ? $('#modePaiement').val() : null
             };
 
-            if(formData('mode_paiement_id') == null){
+            if(formData['mode_paiement_id'] == null){
                 showToastModal({
                     message: 'Veillez Choisir le mode de paiement',
                     type: 'error',
@@ -172,26 +172,27 @@ $(document).ready(function () {
             columns: [
                 { data: 'nom' },
                 { data: 'prenom' },
-                { data: 'age' },
-                { data: 'sexe' },
-                { data: 'telephone' },
-                { data: 'adresse' },
+                { data: 'age', width: '80px'},
+                { data: 'sexe', width: '80px' },
+                { data: 'telephone', width: '150px' },
+                { data: 'adresse'},
                 {
                     data: 'id',
                     title: 'Actions',
+                    width: '182px',
                     render: function (data) {
                         return `
                             <div class="d-flex gap-1">
                                 <button class="btn btn-sm btn-primary edit-btn" data-id="${data}">
                                     <i class="fas fa-edit"></i>
                                 </button>
-                                <button class="btn btn-sm btn-success consult-btn" data-id="${data}">
+                                <button class="btn btn-sm btn-success consult-btn ml-2" data-id="${data}">
                                     <i class="fas fa-stethoscope"></i>
                                 </button>
-                                <a href="/patient/${data}/dossier" class="btn btn-sm btn-info text-white">
+                                <a href="/admin/patient/${data}/dossier" class="btn btn-sm ml-2 btn-info text-white">
                                     <i class="fas fa-folder-open"></i>
                                 </a>
-                                <button class="btn btn-sm btn-warning rdv-btn text-white" data-id="${data}">
+                                <button class="btn btn-sm btn-warning rdv-btn text-white ml-2" data-id="${data}">
                                     <i class="fas fa-calendar-plus"></i>
                                 </button>
                             </div>`;
@@ -311,14 +312,13 @@ $(document).ready(function () {
             const formData = {
                 patient_id: $('#rdvPatientId').val(),
                 date: $('#rdvDate').val(),
-                time: $('#rdvTime').val(),
-                salle_id: $('#rdvSalle').val(),
+                time: $('#rdvTime').val(), 
                 medecin_id: $('#rdvDoctor').val(),
                 description: $('#rdvDescription').val()
             };
 
             $.ajax({
-                url: '/api/rdv/create',
+                url: `/api/patient/${formData.patient_id}/rdv/create`,
                 type: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify(formData),
@@ -360,9 +360,9 @@ $(document).ready(function () {
                 adresse: $('#adresse').val(),
                 groupeSanguin: $('#groupeSanguin').val(),
                 contactUrgence: {
-                    nom: $('input[name="urgence_nom"]').val(),
-                    telephone: $('input[name="urgence_telephone"]').val(),
-                    lienParente: $('input[name="urgence_lien"]').val()
+                    nom: $('#urgenceNom').val(),
+                    telephone: $('#urgenceTel').val(),
+                    lienParente: $('#urgenceLien').val()
                 }
             };
 

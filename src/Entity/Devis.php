@@ -40,6 +40,9 @@ class Devis
     #[ORM\Column]
     private ?int $type = null;
 
+    #[ORM\OneToOne(mappedBy: 'facture', cascade: ['persist', 'remove'])]
+    private ?Consultation $consultation = null;
+
     public function __construct()
     {
         $this->contenus = new ArrayCollection();
@@ -115,6 +118,28 @@ class Devis
     public function setType(int $type): static
     {
         $this->type = $type;
+
+        return $this;
+    }
+
+    public function getConsultation(): ?Consultation
+    {
+        return $this->consultation;
+    }
+
+    public function setConsultation(?Consultation $consultation): static
+    {
+        // unset the owning side of the relation if necessary
+        if ($consultation === null && $this->consultation !== null) {
+            $this->consultation->setFacture(null);
+        }
+
+        // set the owning side of the relation if necessary
+        if ($consultation !== null && $consultation->getFacture() !== $this) {
+            $consultation->setFacture($this);
+        }
+
+        $this->consultation = $consultation;
 
         return $this;
     }

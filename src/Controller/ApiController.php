@@ -4,6 +4,7 @@ namespace App\Controller;
 
 use App\Entity\Booking;
 use App\Entity\Consommable;
+use App\Entity\Consultation;
 use App\Entity\Employe;
 use App\Entity\Rdv;
 use App\Entity\Facture;
@@ -27,10 +28,7 @@ use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Annotation\Route;
 
 class ApiController extends AbstractController
-{
-
-
-
+{ 
     #[Route('/api/rdv/create', name: 'api_rdv_create', methods: ['POST'])]
     public function createRdv(
         Request $request,
@@ -60,10 +58,7 @@ class ApiController extends AbstractController
 
         return new JsonResponse(['success' => true], 200);
     }
-
-    
-
-
+  
     // Dans votre contrôleur, par exemple RdvController.php
     #[Route('/api/rdvs/stats/{date}', name: 'api_rdvs_stats', methods: ['GET'])]
     public function stats(string $date, RdvRepository $rdvRepo): JsonResponse {
@@ -117,6 +112,50 @@ class ApiController extends AbstractController
              'cancelled' => (int)$cancelled,
         ]);
     }
+
+    #[Route('/api/rdvs/stats/{date}/medecin', name: 'api_rdvs_stats_by_medecin', methods: ['GET'])]
+public function statsbymedecin(string $date, RdvRepository $rdvRepo, EntityManagerInterface $em): JsonResponse
+{
+    $selectedDate = \DateTime::createFromFormat('Y-m-d', $date);
+    if (!$selectedDate) {
+        return new JsonResponse(['success' => false, 'error' => 'Date invalide'], 400);
+    }
+
+    $user = $this->getUser();
+    if (!$user) {
+        return new JsonResponse(['success' => false, 'error' => 'Utilisateur non connecté'], 401);
+    }
+
+    $medecin = $em->getRepository(Employe::class)->findOneBy(['user' => $user]);
+    if (!$medecin) {
+        return new JsonResponse(['success' => false, 'error' => 'Aucun médecin trouvé pour cet utilisateur'], 404);
+    }
+
+    $start = new \DateTimeImmutable($date . ' 00:00:00');
+    $end   = new \DateTimeImmutable($date . ' 23:59:59');
+
+    $buildCount = function (int $statut) use ($rdvRepo, $start, $end, $medecin) {
+        return (int) $rdvRepo->createQueryBuilder('r')
+            ->select('COUNT(r.id)')
+            ->where('r.statut = :statut')
+            ->andWhere('r.medecin = :medecin')
+            ->andWhere('r.dateRdv BETWEEN :start AND :end')
+            ->setParameter('statut', $statut)
+            ->setParameter('medecin', $medecin)
+            ->setParameter('start', $start)
+            ->setParameter('end', $end)
+            ->getQuery()
+            ->getSingleScalarResult();
+    };
+
+    return new JsonResponse([
+        'pending'   => $buildCount(0),
+        'validated' => $buildCount(1),
+        'postponed' => $buildCount(-1),
+        'cancelled' => $buildCount(-2),
+    ]);
+}
+
     
     #[Route('/api/rdv/update_status', name: 'api_rdv_update_status', methods: ['POST'])]
 public function updateStatus(Request $request, RdvRepository $rdvRepo, EntityManagerInterface $em): JsonResponse {
@@ -126,13 +165,33 @@ public function updateStatus(Request $request, RdvRepository $rdvRepo, EntityMan
         return new JsonResponse(['success' => false, 'error' => 'RDV non trouvé'], 404);
     }
     $newStatus = $data['status'];
-    $rdv->setStatut($newStatus);
+    $rdv->setStatut($newStatus); 
+    
+    $empRepo = $em->getRepository(Employe::class); 
+
+    if ($data['statut'] === 1){
+
+    // Récupération des entités
+        $medecin = $empRepo->find($data['medecin']);
+        
+        if (!$medecin) {
+            throw new \Exception('Médecin ou patient introuvable');
+        }
+        // Création de la nouvelle consultation
+        $consultation = new Consultation();
+        $consultation->setMedecin($medecin);
+        $consultation->setPatient($rdv->getPatient());
+        $consultation->setCreatedAt(new \DateTime());  
+        $consultation->setStatut(0); // Statut par défaut
+
+        // Enregistrement de la consultation
+        $em->persist($consultation); 
+    }
     $em->flush();
+
     return new JsonResponse(['success' => true]);
 }
-
-
-
+ 
     #[Route('/api/salles', name: 'api_salles', methods: ['GET'])]
     public function getSalles(SalleRepository $salleRepo): JsonResponse
     {
@@ -165,7 +224,7 @@ public function updateStatus(Request $request, RdvRepository $rdvRepo, EntityMan
         $data = array_map(function ($medecin) {
             return [
                 'id' => $medecin->getId(),
-                'nom' => $medecin->getNom(),
+                'nom' => $medecin->getFullName(),
                 'prenom' => $medecin->getPrenom(),
             ];
         }, $medecins);
@@ -184,7 +243,27 @@ public function updateStatus(Request $request, RdvRepository $rdvRepo, EntityMan
             return $this->json(['success' => false, 400]);
         }
 
-        if ($action === 'validate') $rdv->setStatut(1);
+        if ($action === 'validate') { 
+            $rdv->setStatut(1); 
+
+            $empRepo = $em->getRepository(Employe::class); 
+            $data = json_decode($req->getContent(), true);
+            // Récupération des entités
+            $medecin = $empRepo->find((int)$data['medecin']);
+            
+            if (!$medecin) {
+                throw new \Exception('Médecin ou patient introuvable');
+            }
+            // Création de la nouvelle consultation
+            $consultation = new Consultation();
+            $consultation->setMedecin($medecin);
+            $consultation->setPatient($rdv->getPatient());
+            $consultation->setCreatedAt(new \DateTime());  
+            $consultation->setStatut(0); // Statut par défaut
+
+            // Enregistrement de la consultation
+            $em->persist($consultation);  
+        }
         else if ($action === 'cancel') $rdv->setStatut(-2);
         else if ($action === 'report')
         {   
@@ -192,15 +271,14 @@ public function updateStatus(Request $request, RdvRepository $rdvRepo, EntityMan
             $new_date = $req->get('new_date');
             $new_time = $req->get('new_time');
 
-            
             if (!$rdv_id || !$new_date || !$new_time) {
                 return new JsonResponse(['success' => false, 'error' => 'Paramètres manquants'], 400);
             }
         
             // Met à jour l'ancien RDV avec le statut "reporté" (-1)
             $rdv->setStatut(-1);
-            $rdv->setReportedAt(new \DateTimeImmutable($new_date. ' ' . $new_time));
-        
+            $rdv->setReportedAt(new \DateTimeImmutable($new_date.' '.$new_time));
+            
             // Crée un nouveau RDV avec les mêmes informations que l'ancien mais avec la nouvelle date/heure
             $newRdv = new Rdv();
             $newRdv->setPatient($rdv->getPatient())
@@ -250,6 +328,63 @@ public function updateStatus(Request $request, RdvRepository $rdvRepo, EntityMan
             }, $rdvs);
             return new JsonResponse($data);
         }
+
+        #[Route('/api/rdvs/{date}/medecin', name: 'api_rdvs_bymedecin', methods: ['GET'])]
+public function getRdvsByMedecin( 
+    string $date,
+    EntityManagerInterface $em
+): JsonResponse {
+    if (!$date) {
+        return new JsonResponse(['success' => false, 'error' => 'Date non fournie'], 400);
+    }
+
+    $dateObj = \DateTime::createFromFormat('Y-m-d', $date);
+    if (!$dateObj) {
+        return new JsonResponse(['success' => false, 'error' => 'Format de date invalide'], 400);
+    }
+
+    $user = $this->getUser();
+    if (!$user) {
+        return new JsonResponse(['success' => false, 'error' => 'Utilisateur non connecté'], 401);
+    }
+
+    $medecin = $em->getRepository(Employe::class)->findOneBy(['user' => $user]);
+    if (!$medecin) {
+        return new JsonResponse(['success' => false, 'error' => 'Aucun médecin associé'], 404);
+    }
+
+    $start = (clone $dateObj)->setTime(0, 0, 0);
+    $end   = (clone $dateObj)->setTime(23, 59, 59);
+
+    $rdvs = $em->createQueryBuilder()
+        ->select('r')
+        ->from(Rdv::class, 'r')
+        ->where('r.dateRdv BETWEEN :start AND :end')
+        ->andWhere('r.medecin = :medecin')
+        ->setParameter('start', $start)
+        ->setParameter('end', $end)
+        ->setParameter('medecin', $medecin)
+        ->orderBy('r.dateRdv', 'ASC')
+        ->getQuery()
+        ->getResult();
+
+    $data = array_map(function (Rdv $rdv) {
+        return [
+            'id' => $rdv->getId(),
+            'patient' => $rdv->getPatient()->getNom() . ' ' . $rdv->getPatient()->getPrenom(),
+            'medecin' => $rdv->getMedecin()->getNom() . ' ' . $rdv->getMedecin()->getPrenom(),
+            'medecin_id' => $rdv->getMedecin()->getId(),
+            'description' => $rdv->getDescription(),
+            'statut' => $rdv->getStatut(),
+            'dateRdv' => $rdv->getDateRdv()->format('Y-m-d H:i:s'),
+            'dateCreation' => $rdv->getDateCreation()->format('d-m-Y H:i:s'),
+            'reportedAt' => $rdv->getReportedAt() ? 'Reporté au ' . $rdv->getReportedAt()->format('d-m-Y H:i:s') : null
+        ];
+    }, $rdvs);
+
+    return new JsonResponse($data);
+}
+
     
     #[Route('/api/events/all')]
     public function GetEvents(BookingRepository $BookRep): JsonResponse {
@@ -279,10 +414,9 @@ public function updateStatus(Request $request, RdvRepository $rdvRepo, EntityMan
 
         $beginAt = \DateTime::createFromFormat('Y-m-d H:i:s', $data['beginAt']);
         if (isset($data['endAt'])){
-            $endAt = \DateTime::createFromFormat('Y-m-d H:i:s', $data['endAt']);
-            
-        }else{$endAt = null;
-
+            $endAt = \DateTime::createFromFormat('Y-m-d H:i:s', $data['endAt']); 
+        }else{
+            $endAt = null; 
         }
             
 
@@ -307,34 +441,71 @@ public function updateStatus(Request $request, RdvRepository $rdvRepo, EntityMan
     }
 
     #[Route('/api/users/create', name: 'api_users_create', methods: ['POST'])]
-    public function create(
-        Request $request, 
-        EntityManagerInterface $em, 
-        UserPasswordHasherInterface $passwordHasher
-    ): JsonResponse {
-        $data = json_decode($request->getContent(), true);
-        if (!isset($data['username'])) {
-            return new JsonResponse(['success' => false, 'error' => 'Username manquant'], 400);
-        }
+public function create(
+    Request $request,
+    EntityManagerInterface $em,
+    UserPasswordHasherInterface $passwordHasher
+): JsonResponse {
+    $data = json_decode($request->getContent(), true);
 
-        // Vérifier si le username est déjà utilisé
-        $existingUser = $em->getRepository(User::class)->findOneBy(['username' => $data['username']]);
-        if ($existingUser) {
-            return new JsonResponse(['success' => false, 'error' => 'Nom d\'utilisateur déjà utilisé'], 400);
-        }
-
-        $user = new User();
-        $user->setUsername($data['username']);
-        // Par défaut, on ne reçoit pas de mot de passe dans la création ; on peut définir un mot de passe par défaut
-        $defaultPassword = 'password'; // À modifier selon vos besoins
-        $hashedPassword = $passwordHasher->hashPassword($user, $defaultPassword);
-        $user->setPassword($hashedPassword);
-        // Si vous souhaitez lier un employé, vous pouvez le faire ici (ex: $user->setEmployee($employee))
-        $em->persist($user);
-        $em->flush();
-
-        return new JsonResponse(['success' => true, 'user_id' => $user->getId()]);
+    // Vérifier si le username est fourni
+    if (!isset($data['username'])) {
+        return new JsonResponse(['success' => false, 'error' => 'Username manquant'], 400);
     }
+
+    // Vérifier si le username est déjà utilisé
+    $existingUser = $em->getRepository(User::class)->findOneBy(['username' => $data['username']]);
+    if ($existingUser) {
+        return new JsonResponse(['success' => false, 'error' => 'Nom d\'utilisateur déjà utilisé'], 400);
+    }
+
+    // Vérifier si l'employé a déjà un utilisateur
+    $existingUserWithEmployee = $em->getRepository(Employe::class)->findOneBy(['id' => $data['employee_id']]);
+    if (isset($data['employee_id'])) { 
+        if ($existingUserWithEmployee->getUser()) {
+            return new JsonResponse(['success' => false, 'error' => 'Un utilisateur existe déjà pour cet employé'], 400);
+        }
+    }
+
+    $user = new User();
+    $user->setUsername($data['username']);
+
+    // Définir un mot de passe par défaut
+    $defaultPassword = '123'; // À modifier selon vos besoins
+    $hashedPassword = $passwordHasher->hashPassword($user, $defaultPassword);
+    $user->setPassword($hashedPassword);
+
+    // Définir le rôle en fonction du type d'employé
+    if ($existingUserWithEmployee->getType()) {
+        switch ($existingUserWithEmployee->getType()) {
+            case 'Admin':
+                $user->setRoles(['ROLE_ADMIN']);
+                break;
+            case 'Medecin':
+                $user->setRoles(['ROLE_MEDECIN']);
+                break;
+            case 'Receptionniste':
+                $user->setRoles(['ROLE_RECEPTIONNISTE']);
+                break;
+            default:
+                $user->setRoles(['ROLE_USER']); // Rôle par défaut si le type n'est pas reconnu
+        }
+    }
+
+    // Si vous souhaitez lier un employé, vous pouvez le faire ici
+    if (isset($data['employee_id'])) {
+        $employee = $em->getRepository(Employe::class)->find($data['employee_id']);
+        if ($employee) {
+            $employee->setUser($user);
+            $em->persist($employee);
+        }
+    }
+
+    $em->persist($user);
+    $em->flush();
+
+    return new JsonResponse(['success' => true, 'user_id' => $user->getId()]);
+}
 
     #[Route('/api/users/update', name: 'api_users_update', methods: ['POST'])]
     public function update(

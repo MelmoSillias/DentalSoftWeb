@@ -21,10 +21,7 @@
 
     <div class="card shadow mb-4">
         <div class="card-header py-2 d-flex justify-content-between align-items-center flex-wrap">
-            <span class="fw-bold">Liste des patients</span>
-            <button class="btn btn-success btn-sm mt-2 mt-sm-0" data-bs-toggle="modal" data-bs-target="#addPatientModal">
-                <i class="fas fa-user-plus me-1"></i> Nouveau Patient
-            </button>
+            <span class="fw-bold">Liste des patients</span> 
         </div>
         <div class="card-body">
             <div class="table-responsive">
@@ -55,7 +52,9 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="addPatientModalLabel">Ajouter un Patient</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
             </div>
             <div class="modal-body">
                 <form id="patientForm">
@@ -76,7 +75,7 @@
                         </div>
                         <div class="col-md-6 mb-3">
                             <label for="sexe" class="form-label">Sexe <span class="text-danger">*</span></label>
-                            <select class="form-select" id="sexe" name="sexe" required>
+                            <select class="form-select form-control" id="sexe" name="sexe" required>
                                 <option value="">-- Sélectionner --</option>
                                 <option value="Homme">Homme</option>
                                 <option value="Femme">Femme</option>
@@ -99,7 +98,7 @@
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="groupeSanguin" class="form-label">Groupe Sanguin</label>
-                            <select class="form-select" id="groupeSanguin" name="groupeSanguin">
+                            <select class="form-select form-control" id="groupeSanguin" name="groupeSanguin">
                                 <option value="">-- Non spécifié --</option>
                                 <option value="A+">A+</option>
                                 <option value="A−">A−</option>
@@ -145,7 +144,9 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="editModalLabel">Modifier le Patient</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
             </div>
             <div class="modal-body">
                 <form id="editPatientForm">
@@ -176,7 +177,7 @@
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="editGroupeSanguin" class="form-label">Groupe Sanguin</label>
-                            <select class="form-select" id="editGroupeSanguin">
+                            <select class="form-select form-control" id="editGroupeSanguin">
                                 <option value="">-- Aucun --</option>
                                 <option value="A+">A+</option>
                                 <option value="A-">A-</option>
@@ -209,7 +210,9 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="detailsModalLabel">Dossier Médical</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
             </div>
             <div class="modal-body" id="detailsModalBody">
                 Chargement en cours...
@@ -224,7 +227,9 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="rdvModalLabel">Nouveau Rendez-vous</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
             </div>
             <div class="modal-body">
                 <form id="rdvForm">
@@ -239,8 +244,8 @@
                     </div>
                     <div class="mb-3">
                         <label for="rdvTime" class="form-label">Heure</label>
-                        <select class="form-select" id="rdvTime" required>
-                            {% for hour in 0..23 %}
+                        <select class="form-select form-control" id="rdvTime" required>
+                            {% for hour in 6..20 %}
                                 <option value="{{ hour }}:00">{{ hour }}:00</option>
                                 <option value="{{ hour }}:15">{{ hour }}:15</option>
                                 <option value="{{ hour }}:30">{{ hour }}:30</option>
@@ -248,17 +253,10 @@
                             {% endfor %}
                         </select>
                     </div>
-                    <div class="mb-3">
-                        <label for="rdvSalle" class="form-label">Salle</label>
-                        <select class="form-select" id="rdvSalle" required>
-                            {% for salle in salles %}
-                                <option value="{{ salle.id }}">{{ salle.nom }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
+                
                     <div class="mb-3">
                         <label for="rdvDoctor" class="form-label">Médecin</label>
-                        <select class="form-select" id="rdvDoctor" required>
+                        <select class="form-select form-control" id="rdvDoctor" required>
                             <!-- Options will be populated via JavaScript -->
                         </select>
                     </div>

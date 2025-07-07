@@ -81,6 +81,9 @@ class Patient
     #[ORM\OneToMany(mappedBy: 'patient', targetEntity: FicheObservation::class)]
     private Collection $fichesObservation;
 
+    #[ORM\Column(length: 255)]
+    private ?string $referencement = null;
+
     public function __construct()
     {
         $this->antecedents = new ArrayCollection();
@@ -425,6 +428,18 @@ class Patient
                 $fiche->setPatient(null);
             }
         }
+
+        return $this;
+    }
+
+    public function getReferencement(): ?string
+    {
+        return $this->referencement;
+    }
+
+    public function setReferencement(string $referencement): static
+    {
+        $this->referencement = $referencement;
 
         return $this;
     }

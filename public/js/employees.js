@@ -78,7 +78,7 @@ $(document).ready(function () {
         e.preventDefault();
 
         // Synchroniser champ caché 'type'
-        $('#typeHidden').val($('#typeSelect').val());
+        $('#typeHidden').val($('#employeeType').val());
 
         const formData = new FormData();
 
@@ -88,6 +88,8 @@ $(document).ready(function () {
                 formData.append(name, value);
             }
         });
+
+        formData.append("typeSalaire", $('#typeSalaire').val());
 
         // Ajouter les jours sélectionnés
         $('input[name="comingDays[]"]:checked').each(function () {

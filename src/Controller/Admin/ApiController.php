@@ -12,10 +12,11 @@ use App\Entity\Consultation;
 use App\Repository\ConsultationRepository;
 use App\Form\ConsultationType;
 use App\Repository\EmployeRepository;
+use App\Repository\PaiementDevisRepository;
 
 final class ApiController extends AbstractController
 {
-#[Route('/api/consultations/closed', name: 'api_consultations_closed', methods: ['GET'])]
+    #[Route('/api/consultations/closed', name: 'api_consultations_closed', methods: ['GET'])]
     public function getClosedConsultations(ConsultationRepository $consultationRepo): JsonResponse
     {
         $consultations = $consultationRepo->findClosedConsultations();
@@ -28,6 +29,8 @@ final class ApiController extends AbstractController
                 'date' => $consultation->getCreatedAt()?->format('Y-m-d H:i:s'),
                 'salle' => $consultation->getSalle()?->getNom(),
                 'state' => $consultation->getStatut(),
+                'factstate' => ($consultation->getFacture()->getStatut() == 0 && empty($consultation->getFacture()->getPaiements())) ? 0 : 1,
+                'patientId' => $consultation->getPatient()->getId()
             ];
         }, $consultations);
 

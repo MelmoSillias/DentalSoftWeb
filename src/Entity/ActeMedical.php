@@ -100,4 +100,12 @@ class ActeMedical
         $this->quantite = $q;
         return $this;
     }
+
+    public function getMontantTotal(): ?float
+    {
+        if ($this->prix === null || $this->quantite === null) {
+            return null;
+        }
+        return $this->prix * $this->quantite;
+    }
 }

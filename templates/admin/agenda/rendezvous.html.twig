@@ -168,12 +168,12 @@
                 <tr>
                     <th style="width: 1%;">Créneau</th>
                     {% for medecin in medecins %}
-                        <th style="width: {{ 100 / medecins|length }}%;">{{ medecin.nom }}</th>
+                        <th style="width: {{ 100 / medecins|length }}%;">{{ medecin.fullname }}</th>
                     {% endfor %}
                 </tr>
             </thead>
             <tbody>
-                {% for hour in 0..23 %}
+                {% for hour in 6..20 %}
                     {% for minute in ['00', '15', '30', '45'] %}
                         <tr>
                             <td>{{ hour }}:{{ minute }}</td>
@@ -234,7 +234,7 @@
     </div>
   </div>
 </div>
-
+ 
 <!-- Modal de confirmation de validation -->
 <div class="modal fade" id="confirmValidateModal" tabindex="-1" aria-labelledby="confirmValidateModalLabel" aria-hidden="true">
   <div class="modal-dialog">
@@ -244,7 +244,15 @@
            <button type="button" class="btn-close btn-closer btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
        </div>
        <div class="modal-body">
-           Êtes-vous sûr de vouloir valider ce rendez-vous ?
+           <p>Êtes-vous sûr de vouloir valider ce rendez-vous ?</p>
+           <div class="mb-3">
+             <label for="validateMedecinSelect" class="form-label">Médecin</label>
+             <select id="validateMedecinSelect" class="form-select">
+               {% for medecin in medecins %}
+                 <option value="{{ medecin.id }}">{{ medecin.nom }}</option>
+               {% endfor %}
+             </select>
+           </div>
        </div>
        <div class="modal-footer">
            <button type="button" class="btn btn-secondary btn-closer" data-bs-dismiss="modal">Annuler</button>
@@ -253,6 +261,7 @@
     </div>
   </div>
 </div>
+
 
 <!-- Modal de confirmation d'annulation -->
 <div class="modal fade" id="confirmCancelModal" tabindex="-1" aria-labelledby="confirmCancelModalLabel" aria-hidden="true">

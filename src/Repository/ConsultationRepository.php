@@ -38,6 +38,20 @@ class ConsultationRepository extends ServiceEntityRepository
         return $consultation;
     }
 
+    /**
+     * @return Consultation[]
+     */
+    public function findByDateRange(\DateTimeInterface $from, \DateTimeInterface $to): array
+    {
+        return $this->createQueryBuilder('c')
+            ->where('c.CreatedAt BETWEEN :from AND :to')
+            ->setParameter('from' , $from->format('Y-m-d 00:00:00'))
+            ->setParameter('to'   ,$to->format('Y-m-d 23:59:59'))
+            ->getQuery()
+            ->getResult();
+    }
+
+
     public function findPendingConsultations(): array
     {
         return $this->createQueryBuilder('c')

@@ -145,6 +145,18 @@ class EmployeRepository extends ServiceEntityRepository
         return (int) $qb->getQuery()->getSingleScalarResult();
     }
 
+    
+
+    public function sumValeurSalaireByType(string $typeSalaire): float
+{
+    return $this->createQueryBuilder('e')
+        ->select('SUM(e.valeurSalaire)')
+        ->andWhere('e.typeSalaire = :typeSalaire')
+        ->setParameter('typeSalaire', $typeSalaire)
+        ->getQuery()
+        ->getSingleScalarResult();
+}
+
     //    /**
     //     * @return Employe[] Returns an array of Employe objects
     //     */

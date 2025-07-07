@@ -4,6 +4,7 @@ namespace App\Controller\Medecin;
 
 use App\Controller\MedecinController;
 use App\Entity\Conge;
+use App\Entity\Employe;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
@@ -21,78 +22,20 @@ use App\Repository\EmployeRepository;
 
 final class AgendaController extends AbstractController
 {
-#[Route('/admin/agenda', name: 'app_admin_agenda')]
-    public function agenda(): Response
-    {
-        return $this->render('admin/index.html.twig', [
-            'controller_name' => 'AdminController', 'active_page' => 'agenda'
-        ]);
-    }
-
-    // ==== Agenda: Rendez-vous ====
-    #[Route('/admin/agenda/rendez-vous', name: 'app_admin_rendez_vous')]
+    #[Route('/medecin/agenda', name: 'app_medecin_agenda')]  
     public function rendezVous(EmployeRepository $medecinRepo, RdvRepository $rdvRepository): Response
     {
-        $medecins = $medecinRepo->findBy(['type' => 'medecin']); // Suppose que le type "medecin" est utilisé
+        $user = $this->getUser();
+        $employee = $medecinRepo->findOneBy(['user' => $user]);
+        $medecins = [$employee];
         $rdvs = $rdvRepository->findAll(); // Récupération des rendez-vous
 
-        return $this->render('admin/agenda/rendezvous.html.twig', [
+        return $this->render('medecin/agenda/rendezvous.html.twig', [
             'controller_name' => 'AdminController',
-            'active_page' => 'rendez_vous',
+            'active_page' => 'agenda',
             'medecins' => $medecins,
             'rdvs' => $rdvs // Ajout des rendez-vous
         ]);
-    }
-
-    // ==== Agenda: Événements ====
-    #[Route('/admin/agenda/evenements', name: 'app_admin_evenements')]
-    public function calendar(): Response
-    {
-        return $this->render('admin/agenda/evenements.html.twig', [
-            'controller_name' => 'AdminController',
-            'active_page' => 'evenements'
-        ]);
-    }
-
-    #[Route('/api/event/delete/{id}', name: 'api_event_delete', methods: ['DELETE'])]
-    public function deleteBooking(int $id, EntityManagerInterface $em, BookingRepository $bookingRepository): JsonResponse
-    {
-        $booking = $bookingRepository->find($id);
-
-        if (!$booking) {
-            return new JsonResponse(['success' => false, 'message' => 'Événement non trouvé'], 404);
-        }
-
-        $em->remove($booking);
-        $em->flush();
-
-        return new JsonResponse(['success' => true]);
-}
-
-
-    // ==== Agenda: Jours Congés ====
-    #[Route('/admin/agenda/jours-conges', name: 'app_admin_jours_conges')]
-    public function joursConges(): Response
-    {
-        return $this->render('admin/agenda/joursconges.html.twig', [
-            'controller_name' => 'AdminController',
-            'active_page' => 'jours_conges'
-        ]);
-    }
-
-    #[Route('/api/event/validate/{id}', name: 'api_event_validate', methods: ['POST'])]
-    public function validateEvent(int $id, EntityManagerInterface $em, BookingRepository $bookingRepository): JsonResponse
-    {
-        $booking = $bookingRepository->find($id);
-
-        if (!$booking) {
-            return new JsonResponse(['success' => false, 'message' => 'Événement introuvable'], 404);
-        }
-
-        $booking->setStatut(1);
-        $em->flush();
-
-        return new JsonResponse(['success' => true]);
     }
 
 }

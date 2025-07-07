@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Fiche patient – {{ patient.nom }} {{ patient.prenom }}</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 30px; }
+    header { text-align: center; margin-bottom: 40px; }
+    .cabinet-logo { max-height: 80px; }
+    .info-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+    .info-table th, .info-table td { text-align: left; padding: 6px; border-bottom: 1px solid #ddd; }
+    h2 { margin-top: 40px; text-decoration: underline; }
+  </style>
+  <script>
+    window.onload = () => window.print();
+  </script>
+</head>
+<body>
+  <header>
+    <img src="{{ asset('img/logo.png') }}" alt="Logo Cabinet" class="cabinet-logo">
+    <h1>Cabinet Orodent</h1>
+    <p>123 Rue de la Santé, Bamako – Tél : +223 20 00 00 00<br>SIRET : 123 456 789 00010</p>
+  </header>
+  <h2>Informations personnelles</h2>
+  <table class="info-table">
+    <tr><th>Nom</th>                   <td>{{ patient.nom }}</td></tr>
+    <tr><th>Prénom</th>                <td>{{ patient.prenom }}</td></tr>
+    <tr><th>Date de naissance</th>     <td>{{ patient.dateNaissance|date('d/m/Y') }}</td></tr>
+    <tr><th>Sexe</th>                  <td>{{ patient.sexe }}</td></tr>
+    <tr><th>Téléphone</th>             <td>{{ patient.telephone }}</td></tr>
+    <tr><th>Adresse</th>               <td>{{ patient.adresse }}</td></tr>
+    <tr><th>Numéro de carnet</th>      <td>{{ patient.numCarnet }}</td></tr>
+    <tr><th>Groupe sanguin</th>        <td>{{ patient.groupeSanguin }}</td></tr>
+    <tr><th>Date d'inscription</th>    <td>{{ patient.dateInscription|date('d/m/Y H:i') }}</td></tr>
+    <tr>
+        <th>Contact d'urgence</th>
+        <td>
+            {% if not patient.contactsUrgence.isEmpty() %}
+            {{ patient.contactsUrgence.first().nom }}
+            ({{ patient.contactsUrgence.first().lienParente }})
+            <br>
+            Tél : {{ patient.contactsUrgence.first().telephone }}
+            {% else %}
+            Aucun contact d'urgence disponible.
+            {% endif %}
+        </td>
+    </tr>
+  </table>
+
+  <h2>Allergies</h2>
+  {% if patient.allergies|length %}
+    <ul>
+      {% for a in patient.allergies %}
+        <li>{{ a.libelle }}{% if a.description %} : {{ a.description }}{% endif %}</li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>Aucune allérgie</p>
+  {% endif %}
+
+  <h2>Antécédents médicaux</h2>
+  {% if patient.antecedents|length %}
+    <ul>
+      {% for ant in patient.antecedents %}
+        <li>
+          {{ ant.type }}
+          {% if ant.description %} ({{ ant.description }}){% endif %}
+          {% if ant.dateEnregistrement %} – {{ ant.dateEnregistrement|date('d/m/Y') }}{% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>Aucun antécédent</p>
+  {% endif %}
+</body>
+</html>

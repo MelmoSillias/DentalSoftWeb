@@ -100,7 +100,7 @@
                 </div>
             </div>
             <div class="col-md-6 mb-3 row">
-                <label class="col-sm-5 col-form-label">Valeur du Salaire (€)</label>
+                <label class="col-sm-5 col-form-label">Valeur du Salaire (F CFA)</label>
                 <div class="col-sm-7">
                     <input type="number" step="0.01" name="valeurSalaire" class="form-control" value="{{ employee.valeurSalaire }}">
                 </div>
@@ -348,6 +348,8 @@ $(document).ready(function () {
         $('input[name="comingDays[]"]:checked').each(function () {
             formData.append('comingDays[]', $(this).val());
         });
+
+        
         
         pondInstance.getFiles().forEach(fileItem => {
             formData.append('administrativeFiles[]', fileItem.file);

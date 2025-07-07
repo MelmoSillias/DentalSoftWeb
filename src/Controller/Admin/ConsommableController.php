@@ -30,8 +30,8 @@ final class ConsommableController extends AbstractController
         ]);
     }
 
-    #[Route('/consommables/add', name: 'consommable_add', methods: ['POST'])]
-    public function add(Request $request, EntityManagerInterface $em): Response
+    #[Route('/api/consommables/add', name: 'api_consommable_add', methods: ['POST'])]
+    public function add(Request $request, EntityManagerInterface $em): JsonResponse
     {
         $c = new Consommable();
         $c->setNom($request->request->get('nom'));
@@ -45,6 +45,7 @@ final class ConsommableController extends AbstractController
         $stock->setType('Ajout');
         $stock->setDescription('Ajout d\'un nouveau consommable');
         $stock->setDatePrise(new \DateTime());
+
         $user = $this->getUser();
         $employee = $em->getRepository(Employe::class)->findOneBy(['user' => $user]);
         $stock->setEmployee($employee);
@@ -53,98 +54,120 @@ final class ConsommableController extends AbstractController
         $em->persist($stock);
         $em->flush();
 
-        return $this->redirectToRoute('app_admin_consumables');
-    }        
+        return $this->json(['message' => 'Consommable added successfully'], 201);
+    }
 
-    #[Route('/consommables/{id}/edit', name: 'consommable_edit', methods: ['POST'])]
-    public function edit(Request $request, Consommable $consommable, EntityManagerInterface $em): Response
+    #[Route('/api/consommables/{id}/edit', name: 'api_consommable_edit', methods: ['POST'])]
+    public function edit(Request $request, Consommable $consommable, EntityManagerInterface $em): JsonResponse
     {
         $consommable->setNom($request->get('nom'));
-        $consommable->setQuantity((int)$request->get('quantite'));
+        $consommable->setLowValue((int)$request->get('lowValue'));
         $consommable->setFournisseur($request->get('fournisseur'));
         $em->flush();
 
-        return $this->redirectToRoute('consommable_list');
+        return $this->json(['message' => 'Consommable updated successfully']);
     }
 
-    #[Route('/consommables/{id}/retrait', name: 'consommable_retrait', methods: ['POST'])]
-    public function retrait(
-        Consommable $consommable,
-        Request $request,
-        EntityManagerInterface $em,
-        EmployeRepository $employeRepo
-    ): Response {
-        $quantite = (int)$request->get('quantite');
-        $description = $request->get('description');
-        $employeId = $request->get('employe_id');
-        $employe = $employeRepo->find($employeId);
+    #[Route('/api/consommables/{id}/retrait', name: 'api_consommable_retrait', methods: ['POST'])]
+public function retrait(
+    Consommable $consommable,
+    Request $request,
+    EntityManagerInterface $em,
+    EmployeRepository $employeRepo
+): JsonResponse {
+    $quantite = (int)$request->get('quantite');
+    $description = $request->get('description');
+    $employeId = $request->get('employe');
+    $employe = $employeRepo->find($employeId);
 
-        if (!$employe) {
-            $this->addFlash('error', 'Employé invalide.');
-            return $this->redirectToRoute('app_admin_consumables');
-        }
-
-        if ($quantite > 0 && $quantite <= $consommable->getQuantity()) {
-            $consommable->setQuantity($consommable->getQuantity() - $quantite);
-
-            $variation = new Stock();
-            $variation->setConsommable($consommable);
-            $variation->setQuantiteUtilisee($quantite);
-            $variation->setType('Retrait');
-            $variation->setDescription($description);
-            $variation->setDatePrise(new \DateTime());
-            $variation->setEmployee($employe);
-
-            $em->persist($variation);
-            $em->flush();
-        } else {
-            $this->addFlash('error', 'Quantité invalide.');
-        }
-
-        return $this->redirectToRoute('app_admin_consumables');
+    if (!$employe) {
+        return $this->json(['error' => 'Employé invalide.'], 400);
     }
 
-    #[Route('/consommables/{id}/add-stock', name: 'consommable_add_stock', methods: ['POST'])]
-    public function addStock(
-        Consommable $consommable,
-        Request $request,
-        EntityManagerInterface $em
-    ): Response {
-        $quantite = (int)$request->get('quantite');
-        $description = $request->get('description');
+    if ($quantite > 0 && $quantite <= $consommable->getQuantity()) {
+        $consommable->setQuantity($consommable->getQuantity() - $quantite);
+        $variation = new Stock();
+        $variation->setConsommable($consommable);
+        $variation->setQuantiteUtilisee($quantite);
+        $variation->setType('Retrait');
+        $variation->setDescription($description);
+        $variation->setDatePrise(new \DateTime());
+        $variation->setEmployee($employe);
+        $em->persist($variation);
+        $em->flush();
 
-        if ($quantite > 0) {
-            $consommable->setQuantity($consommable->getQuantity() + $quantite);
-
-            $stock = new Stock();
-            $stock->setConsommable($consommable);
-            $stock->setQuantiteUtilisee($quantite);
-            $stock->setType('Ajout');
-            $stock->setDescription($description);
-            $stock->setDatePrise(new \DateTime());
-            $stock->setEmployee(null);
-
-            $em->persist($stock);
-            $em->flush();
-        } else {
-            $this->addFlash('error', 'Quantité invalide.');
-        }
-
-        return $this->redirectToRoute('app_admin_consumables');
+        return $this->json(['message' => 'Stock retired successfully']);
+    } else {
+        return $this->json(['error' => 'Quantité invalide.'], 400);
     }
+}
 
-    #[Route('/consommables/{id}/delete', name: 'consommable_delete', methods: ['POST'])]
-    public function delete(Consommable $consommable, Request $request, EntityManagerInterface $em): Response
+#[Route('/api/consommables/{id}', name: 'api_consommable_details', methods: ['GET'])]
+    public function getConsommableDetails(int $id, EntityManagerInterface $entityManager): JsonResponse
     {
-        $submittedToken = $request->request->get('_token');
-        if ($this->isCsrfTokenValid('delete' . $consommable->getId(), $submittedToken)) {
-            $em->remove($consommable);
-            $em->flush();
+        // Fetch the consumable by ID
+        $consommable = $entityManager->getRepository(Consommable::class)->find($id);
+
+        // Check if the consumable exists
+        if (!$consommable) {
+            return $this->json(['error' => 'Consommable not found'], 404);
         }
 
-        return $this->redirectToRoute('consommable_list');
+        // Return the consumable details as JSON
+        return $this->json([
+            'id' => $consommable->getId(),
+            'nom' => $consommable->getNom(),
+            'quantity' => $consommable->getQuantity(),
+            'fournisseur' => $consommable->getFournisseur(),
+            'lowValue' => $consommable->getLowValue(),
+            // Add any other fields you want to include
+        ]);
     }
 
+#[Route('/api/consommables/{id}/add-stock', name: 'api_consommable_add_stock', methods: ['POST'])]
+public function addStock(
+    Consommable $consommable,
+    Request $request,
+    EntityManagerInterface $em
+): JsonResponse {
+    $quantite = (int)$request->get('quantite');
+    $description = $request->get('description');
+
+    if ($quantite > 0) {
+        $consommable->setQuantity($consommable->getQuantity() + $quantite);
+        $stock = new Stock();
+        $stock->setConsommable($consommable);
+        $stock->setQuantiteUtilisee($quantite);
+        $stock->setType('Ajout');
+        $stock->setDescription($description);
+        $stock->setDatePrise(new \DateTime());
+        $user = $this->getUser();
+        $employee = $em->getRepository(Employe::class)->findOneBy(['user' => $user]);
+        $stock->setEmployee($employee);
+        $em->persist($stock);
+        $em->flush();
+
+        return $this->json(['message' => 'Stock added successfully']);
+    } else {
+        return $this->json(['error' => 'Quantité invalide.'], 400);
+    }
+}
+
+#[Route('/api/consommables/{id}/delete', name: 'api_consommable_delete', methods: ['POST'])]
+public function delete(Consommable $consommable, Request $request, EntityManagerInterface $em): JsonResponse
+{
+    $submittedToken = $request->request->get('_token');
+    if ($this->isCsrfTokenValid('delete' . $consommable->getId(), $submittedToken)) {
+        $em->remove($consommable);
+        $em->flush();
+
+        return $this->json(['message' => 'Consommable deleted successfully']);
+    }
+
+    return $this->json(['error' => 'Invalid CSRF token.'], 400);
+}
+
+    
     #[Route('/api/stocks', name: 'api_stocks', methods: ['GET'])]
     public function fetchStocks(Request $request, StockRepository $stockRepo): JsonResponse
     {
@@ -184,6 +207,7 @@ final class ConsommableController extends AbstractController
                 'nom' => $consommable->getNom(),
                 'quantity' => $consommable->getQuantity(),
                 'fournisseur' => $consommable->getFournisseur(),
+                'onlowvalue' => $consommable->getQuantity() < $consommable->getLowValue()
             ];
         }, $consommables);
 

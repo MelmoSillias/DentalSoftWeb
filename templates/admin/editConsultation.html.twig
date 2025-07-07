@@ -116,6 +116,22 @@
 {% endblock %}
 
 {% block main %}
+  {% if consultation.statut == 1 %}
+    <div class="container-fluid mt-4">
+      <div class="alert alert-info d-flex align-items-center">
+        <i class="fas fa-check-circle fa-2x me-2"></i>
+        <div>
+          <strong>Consultation déjà fermée</strong><br>
+          Aucune action n’est possible sur cette consultation.
+        </div>
+      </div>
+      <div class="mt-3">
+        <a href="{{ path('consultations_pending') }}" class="btn btn-secondary">
+          <i class="fas fa-arrow-left me-1"></i> Retour à la liste
+        </a>
+      </div>
+    </div>
+  {% else %}
   <script>
     window.ficheId = {{ fiche.id }};
     window.consultId = {{ consultation.id }};
@@ -579,6 +595,7 @@
       </div>
     </div>
   </div>
+  {% endif %}
 {% endblock %}
 
 {% block javascripts %}

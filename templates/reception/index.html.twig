@@ -1,0 +1,157 @@
+{% extends 'appreceptionbase.html.twig' %}
+
+{% block title %}Dashboard - Réceptionniste{% endblock %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css" />
+    <style>
+        .card {
+            border-radius: 10px;
+            transition: transform 0.3s;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        .card-body {
+            padding: 1.25rem;
+        }
+        .text-gray-800 {
+            color: #5a5c69 !important;
+        }
+        .shadow {
+            box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15) !important;
+        }
+    </style>
+{% endblock %}
+
+{% block main %}
+<div class="container-fluid py-4 px-4">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h2 mb-0 text-gray-800">Bienvenue, Réceptionniste</h1>
+        <div class="d-flex">
+            <button class="btn btn-sm btn-primary shadow-sm mr-2" onclick="printSection('globalStats')">
+                <i class="fas fa-print fa-sm text-white-50"></i> Imprimer
+            </button>
+            <div class="input-group date" id="datepicker">
+                <input type="text" class="form-control" value="{{ "now"|date("Y-m-d") }}" />
+                <div class="input-group-append">
+                    <span class="input-group-text"><i class="fas fa-calendar"></i></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <section id="globalStats">
+        <h4 class="mb-3 text-secondary">Statistiques du Jour</h4>
+        <div class="row">
+
+            {% set cards = [
+                {'title': 'Nouveaux Patients', 'id': 'newPatientsTotal', 'icon': 'fa-user', 'color': 'primary'},
+                {'title': 'Consultations', 'id': 'consultationsTotal', 'icon': 'fa-stethoscope', 'color': 'success'},
+                {'title': 'Consultations en attente', 'id': 'pendingConsultationsTotal', 'icon': 'fa-clock', 'color': 'info'},
+                {'title': 'Rendez-vous Planifiés', 'id': 'appointmentsTotal', 'icon': 'fa-calendar-check', 'color': 'warning'},
+                {'title': 'Absences Patients', 'id': 'absentPatients', 'icon': 'fa-user-times', 'color': 'danger'},
+                {'title': 'Factures Payées', 'id': 'paidInvoices', 'icon': 'fa-receipt', 'color': 'success'},
+                {'title': 'Revenus encaissés', 'id': 'cashRevenueTotal', 'icon': 'fa-money-bill-wave', 'color': 'dark'},
+                {'title': 'Total revenus', 'id': 'totalRevenue', 'icon': 'fa-coins', 'color': 'primary'}
+            ] %}
+
+            {% for card in cards %}
+                <div class="col-xl-3 col-md-6 mb-4">
+                    <div class="card border-left-{{ card.color }} shadow h-100 py-2">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="text-xs font-weight-bold text-{{ card.color }} text-uppercase mb-1">
+                                        {{ card.title }}
+                                    </div>
+                                    <div id="{{ card.id }}" class="h6 mb-0 font-weight-bold text-gray-800">--</div>
+                                </div>
+                                <div class="col-auto">
+                                    <i class="fas {{ card.icon }} fa-2x text-gray-300"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </section>
+</div>
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.29.1/moment.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
+    <script>
+        $(function () {
+            $('#datepicker input').daterangepicker({
+                singleDatePicker: true,
+                showDropdowns: true,
+                locale: { format: 'YYYY-MM-DD' }
+            });
+
+            $(function () {
+    // Initialisation du datepicker
+    const dateInput = $('#datepicker input');
+    dateInput.daterangepicker({
+        singleDatePicker: true,
+        showDropdowns: true,
+        locale: { format: 'YYYY-MM-DD' }
+    });
+
+    // Charger les données au chargement initial
+    loadStats(dateInput.val());
+
+    // Charger les données quand la date change
+    dateInput.on('apply.daterangepicker', function (ev, picker) {
+        loadStats(picker.startDate.format('YYYY-MM-DD'));
+    });
+
+    function loadStats(date) {
+        $.get(`/api/dashboard/reception-stats?date=${date}`, function (data) {
+            const keys = {
+                newPatientsTotal: data.newPatients || 0,
+                consultationsTotal: data.totalConsultations || 0,
+                pendingConsultationsTotal: data.pendingConsultations || 0,
+                appointmentsTotal: data.totalAppointments || 0,
+                absentPatients: data.absentAppointments || 0,
+                paidInvoices: data.paidInvoices || 0,
+                cashRevenueTotal: data.cashRevenue + ' Fcfa',
+                totalRevenue: data.totalRevenue + ' Fcfa',
+            };
+
+            for (const [id, val] of Object.entries(keys)) {
+                $('#' + id).text(val);
+            }
+        }).fail(function () {
+            alert("Erreur de chargement des statistiques");
+        });
+    }
+
+    window.printSection = function (sectionId) {
+        const originalContent = document.body.innerHTML;
+        const sectionContent = document.getElementById(sectionId).innerHTML;
+        document.body.innerHTML = sectionContent;
+        window.print();
+        document.body.innerHTML = originalContent;
+        location.reload();
+    }
+});
+            
+        });
+
+
+        function printSection(sectionId) {
+            const originalContent = document.body.innerHTML;
+            const sectionContent = document.getElementById(sectionId).innerHTML;
+            document.body.innerHTML = sectionContent;
+            window.print();
+            document.body.innerHTML = originalContent;
+            location.reload(); // recharge les scripts
+        }
+    </script>
+{% endblock %}
+

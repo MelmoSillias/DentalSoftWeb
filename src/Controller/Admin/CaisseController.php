@@ -94,7 +94,7 @@ public function getPaiementsDevis(Request $request, PaiementDevisRepository $rep
 }
 
 
-#[Route('/admin/devis/{id}/preview', name: 'admin_devis_preview', methods: ['GET'])]
+#[Route('/api/devis/{id}/preview', name: 'api_devis_preview', methods: ['GET'])]
 public function previewDevis(int $id, DevisRepository $repo): JsonResponse
 {
     $devis = $repo->find($id);
@@ -129,7 +129,7 @@ public function previewDevis(int $id, DevisRepository $repo): JsonResponse
     ]);
 }
 
-#[Route('/admin/devis/{id}/payer', name: 'admin_devis_payer', methods: ['POST'])]
+#[Route('/api/devis/{id}/payer', name: 'api_devis_payer', methods: ['POST'])]
 public function payerDevis(
     int $id,
     Request $request,
@@ -167,6 +167,7 @@ public function payerDevis(
     $transaction->setDateTransaction(new \DateTime());
     $transaction->setDescription('Paiement de la facture | Devis #' . $devis->getId());
     $transaction->setModeDePaiement($mode);
+    $transaction->setPaiementDevis($paiement);
 
     $em->persist($transaction);
     $em->flush();
@@ -178,20 +179,7 @@ public function payerDevis(
     return new JsonResponse(['success' => true]);
 }
 
-#[Route('/admin/paiement-devis/{id}/print', name: 'admin_paiement_devis_print', methods: ['GET'])]
-public function printPaiement(int $id, PaiementDevisRepository $repo): Response
-{
-    $paiement = $repo->find($id);
-    if (!$paiement) {
-        throw $this->createNotFoundException('Paiement introuvable.');
-    }
-
-    return $this->render('devis/print_paiement.html.twig', [
-        'paiement' => $paiement
-    ]);
-}
-
-#[Route('/admin/paiements-devis/impression', name: 'admin_paiements_devis_print', methods: ['GET'])]
+#[Route('/api/paiement-devis/impression', name: 'api_paiements_devis_print', methods: ['GET'])]
 public function printListePaiements(
     Request $request,
     PaiementDevisRepository $repo
@@ -218,6 +206,32 @@ public function printListePaiements(
         'end' => $end
     ]);
 }
+
+#[Route('/api/paiement-devis/{id}/print', name:'api_paiement_devis_print', methods: ['GET'])]
+    public function printPaiement(int $id, PaiementDevisRepository $repo): Response
+    {
+        $paiement = $repo->find($id);
+        if (!$paiement) {
+            throw $this->createNotFoundException('Paiement introuvable.');
+        }
+
+        return $this->render('devis/print_paiement.html.twig', [
+            'paiement' => $paiement
+        ]);
+    }
+
+    #[Route('/api/paiement-ticket/{id}/print', name: 'api_paiement_ticket_print', methods: ['GET'])]
+    public function printTicket(int $id, PaiementDevisRepository $repo): Response
+    {
+        $paiement = $repo->find($id);
+        if (!$paiement) {
+            throw $this->createNotFoundException('Paiement introuvable.');
+        }
+
+        return $this->render('devis/print_Ticket.html.twig', [
+            'paiement' => $paiement
+        ]);
+    }
 
 
 }

@@ -2,14 +2,18 @@
 
 namespace App\Controller;
 
+use App\Entity\Consultation;
 use App\Entity\ContactUrgence;
+use App\Entity\Employe;
 use App\Entity\ModeDePaiement;
 use App\Entity\PaiementDevis;
 use App\Entity\Patient;
+use App\Entity\Rdv;
 use App\Entity\Transaction;
 use App\Repository\PatientRepository;
 use App\Repository\ConsultationRepository;
 use App\Repository\EmployeRepository;
+use App\Repository\SalleRepository;
 use DateTime;
 use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\EntityManagerInterface;
@@ -55,6 +59,65 @@ final class PatientAPIController extends AbstractController
 
         return $this->json($data);
     }
+
+    #[Route('/api/patients/medecin', name: 'api_patients_by_medecin', methods: ['GET'])]
+public function getPatientsByMedecin(
+    PatientRepository $patientRepo,
+    EntityManagerInterface $em
+): JsonResponse {
+    $user = $this->getUser();
+
+    if (!$user) {
+        return $this->json(['error' => 'Utilisateur non authentifié'], 401);
+    }
+
+    $employe = $em->getRepository(Employe::class)->findOneBy(['user' => $user]);
+
+    if (!$employe) {
+        return $this->json(['error' => 'Aucun employé associé'], 404);
+    }
+
+    // 1. Patients ayant eu une consultation avec ce médecin
+    $consultations = $em->getRepository(Consultation::class)->findBy(['medecin' => $employe]);
+    $patientsFromConsultations = array_map(fn($c) => $c->getPatient(), $consultations);
+
+    // 2. Patients ayant un rendez-vous avec ce médecin
+    $rdvs = $em->getRepository(Rdv::class)->findBy(['medecin' => $employe]);
+    $patientsFromRdvs = array_map(fn($r) => $r->getPatient(), $rdvs);
+
+    // 3. Fusionner les deux listes de patients et éliminer les doublons
+    $patients = array_unique(array_merge($patientsFromConsultations, $patientsFromRdvs), SORT_REGULAR);
+
+    // 4. Format JSON
+    $data = array_map(function ($patient) {
+        $contact = $patient->getContactsUrgence()->first();
+        $consultation = $patient->getDerniereConsultation();
+
+        return [
+            'id' => $patient->getId(),
+            'nom' => $patient->getNom(),
+            'prenom' => $patient->getPrenom(),
+            'age' => $patient->getAge(),
+            'sexe' => $patient->getSexe(),
+            'telephone' => $patient->getTelephone(),
+            'adresse' => $patient->getAdresse(),
+            'groupeSanguin' => $patient->getGroupeSanguin(),
+            'contactUrgence' => $contact ? [
+                'nom' => $contact->getNom(),
+                'telephone' => $contact->getTelephone(),
+                'lienParente' => $contact->getLienParente()
+            ] : null,
+            'derniereConsultation' => $consultation ? [
+                'id' => $consultation->getId(),
+                'date' => $consultation->getDateDebut()?->format('Y-m-d H:i'),
+                'motif' => $consultation->getMotifConsultation()
+            ] : null
+        ];
+    }, $patients);
+
+    return $this->json(array_values($data));
+}
+
 
 
     #[Route('/api/patient/add', name: 'api_patient_add', methods: ['POST'])]
@@ -168,34 +231,107 @@ final class PatientAPIController extends AbstractController
 
 
     #[Route('/api/patient/{id}', name: 'api_patient_details', methods: ['GET'])]
-    public function getPatientDetails(int $id, PatientRepository $patientRepository): JsonResponse
-    {
-        $patient = $patientRepository->findPatientById($id);
+public function getPatientDetails(int $id, PatientRepository $patientRepository): JsonResponse
+{
+    $patient = $patientRepository->find($id);
 
-        if (!$patient) {
-            return $this->json(['message' => 'Patient non trouvé'], Response::HTTP_NOT_FOUND);
-        }
-
-        // Calcul de l'âge
-        if ($patient['dateNaissance']) {
-            try {
-                $dateNaissance = $patient['dateNaissance'];
-                $aujourdhui = new \DateTime();
-                $age = $dateNaissance->diff($aujourdhui)->y . ' ans';
-            } catch (\Exception $e) {
-                $age = 'Néant';
-            }
-        } else {
-            $age = 'Néant';
-        }
-
-        $patient['age'] = $age;
-        return $this->json($patient);
+    if (!$patient) {
+        return $this->json(['message' => 'Patient non trouvé'], Response::HTTP_NOT_FOUND);
     }
 
+    // Calculate age
+    $age = 'Néant';
+    if ($patient->getDateNaissance()) {
+        try {
+            $dateNaissance = $patient->getDateNaissance();
+            $aujourdhui = new \DateTime();
+            $age = $dateNaissance->diff($aujourdhui)->y . ' ans';
+        } catch (\Exception $e) {
+            // Keep default 'Néant' value
+        }
+    }
+
+    // Format emergency contacts
+    $contactUrgence = [];
+    foreach ($patient->getContactsUrgence() as $contact) {
+        $contactUrgence = [
+            'nom' => $contact->getNom(), 
+            'lienParente' => $contact->getLienParente(),
+            'telephone' => $contact->getTelephone()
+        ];
+    }
+
+    // Format allergies
+    $allergies = [];
+    foreach ($patient->getAllergies() as $allergy) {
+        $allergies[] = [
+            'nom' => $allergy->getNom(),
+            'severite' => $allergy->getSeverite(),
+            'commentaire' => $allergy->getCommentaire()
+        ];
+    }
+
+    // Format medical history (antecedents)
+    $antecedents = [];
+    foreach ($patient->getAntecedents() as $antecedent) {
+        $antecedents[] = [
+            'type' => $antecedent->getType(),
+            'description' => $antecedent->getDescription(),
+            'date' => $antecedent->getDate() ? $antecedent->getDate()->format('Y-m-d') : null
+        ];
+    }
+
+    // Format last consultation if exists
+    $derniereConsultation = null;
+    if ($patient->getDerniereConsultation()) {
+        $consultation = $patient->getDerniereConsultation();
+        $derniereConsultation = [
+            'date' => $consultation->getDate()->format('Y-m-d H:i'),
+            'motif' => $consultation->getMotif(),
+            'medecin' => $consultation->getMedecin() ? 
+                $consultation->getMedecin()->getNomComplet() : null
+        ];
+    }
+
+    return $this->json([
+        'id' => $patient->getId(),
+        'nom' => $patient->getNom(),
+        'prenom' => $patient->getPrenom(),
+        'dateNaissance' => $patient->getDateNaissance() ? $patient->getDateNaissance()->format('Y-m-d') : null,
+        'age' => $age,
+        'sexe' => $patient->getSexe(),
+        'telephone' => $patient->getTelephone(),
+        'adresse' => $patient->getAdresse(),
+        'numCarnet' => $patient->getNumCarnet(),
+        'groupeSanguin' => $patient->getGroupeSanguin(),
+        'dateInscription' => $patient->getDateInscription()->format('Y-m-d H:i'),
+        'contactUrgence' => $contactUrgence,
+        'allergies' => $allergies,
+        'antecedents' => $antecedents,
+        'derniereConsultation' => $derniereConsultation
+    ]);
+}
+
     // src/Controller/PatientAPIController.php
-    #[Route('/patient/{id}/dossier', name: 'app_patient_dossier')]
-    public function dossierMedical($id, PatientRepository $patientRepository): Response
+    #[Route('/admin/patient/{id}/dossier', name: 'app_admin_patient_dossier')]
+    public function AdminDossierMedical($id, PatientRepository $patientRepository): Response
+    {
+        // Ensure $id is an integer
+        $id = (int)$id;
+
+        $patient = $patientRepository->findWithMedicalData($id);
+
+        if (!$patient) {
+            throw $this->createNotFoundException('Patient non trouvé');
+        }
+
+        return $this->render('pages_bases/dossier_medical.html.twig', [
+            'patient' => $patient, 'active_page' => 'patients'
+        ]);
+    }
+
+    #[Route('/medecin/patient/{id}/dossier', name: 'app_medecin_patient_dossier')]
+    public function MedecinDossierMedical($id, PatientRepository $patientRepository): Response
     {
         // Ensure $id is an integer
         $id = (int)$id;
@@ -258,5 +394,49 @@ final class PatientAPIController extends AbstractController
                 'error' => $e->getMessage()
             ], 400);
         }
+    }
+
+    #[Route('/api/patient/{id}/rdv/create', name: 'api_patient_rdv_create', methods: ['POST'])]
+    public function createRdv(
+        Request $request,
+        PatientRepository $patientRepo, 
+        EmployeRepository $medecinRepo,
+        EntityManagerInterface $em
+    ): JsonResponse { 
+
+        $data = json_decode($request->getContent(), true);
+    
+    // Validate required fields
+    if (!isset($data['patient_id']) || !isset($data['medecin_id']) || !isset($data['date']) || !isset($data['time'])) {
+        return new JsonResponse(['success' => false, 'error' => 'Missing required fields'], 400);
+    }
+
+    $patient = $patientRepo->find($data['patient_id']);
+    $medecin = $medecinRepo->find($data['medecin_id']);
+
+    if (!$patient) {
+        return new JsonResponse(['success' => false, 'error' => 'Patient not found'], 404);
+    }
+
+    if (!$medecin) {
+        return new JsonResponse(['success' => false, 'error' => 'Medecin not found'], 404);
+    }
+
+    try {
+        $rdv = new Rdv();
+        $rdv->setPatient($patient)
+            ->setMedecin($medecin)
+            ->setDescription($data['description'] ?? '')
+            ->setStatut(0)
+            ->setDateCreation(new \DateTime())
+            ->setDateRdv(new \DateTime($data['date'] . ' ' . $data['time']));
+
+        $em->persist($rdv);
+        $em->flush();
+
+        return new JsonResponse(['success' => true, 'rdv_id' => $rdv->getId()], 201);
+    } catch (\Exception $e) {
+        return new JsonResponse(['success' => false, 'error' => $e->getMessage()], 500);
+    }
     }
 }

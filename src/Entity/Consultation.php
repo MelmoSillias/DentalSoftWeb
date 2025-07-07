@@ -48,6 +48,9 @@ class Consultation
     #[ORM\OneToOne(mappedBy: 'consultation', cascade: ['persist', 'remove'])]
     private ?PaiementDevis $paiementDevis = null;
 
+    #[ORM\OneToOne(inversedBy: 'consultation', cascade: ['persist', 'remove'])]
+    private ?Devis $facture = null;
+
 
     public function __construct()
     {
@@ -111,6 +114,18 @@ class Consultation
         }
 
         $this->paiementDevis = $paiementDevis;
+
+        return $this;
+    }
+
+    public function getFacture(): ?Devis
+    {
+        return $this->facture;
+    }
+
+    public function setFacture(?Devis $facture): static
+    {
+        $this->facture = $facture;
 
         return $this;
     }

@@ -1,190 +1,482 @@
-{# templates/index.html.twig #}
 {% extends 'appbase.html.twig' %}
-
 {% block title %}Dashboard - Cabinet Dentaire{% endblock %}
-
+{% block stylesheets %}
+    {{ parent() }}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css" />
+    <style>
+        .card {
+            border-radius: 10px;
+            transition: transform 0.3s;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        .card-body {
+            padding: 1.25rem;
+        }
+        .text-gray-800 {
+            color: #5a5c69 !important;
+        }
+        .shadow {
+            box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15) !important;
+        }
+        .btn-outline-primary {
+            border-color: #4e73df;
+            color: #4e73df;
+        }
+        .btn-outline-primary:hover {
+            background-color: #4e73df;
+            color: white;
+        }
+    </style>
+{% endblock %}
 {% block main %}
 <div class="container-fluid py-4 px-4">
- <div class="d-sm-flex align-items-center justify-content-between mb-4">
-      <h1 class="h2 mb-0 text-gray-800">Tableau de bord</h1>
-      <a href="#" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm"><i
-              class="fas fa-download fa-sm text-white-50"></i> Generate Report</a>
-  </div>
-  
-  <h4 class="mb-2 text-secondary">Statistiques Globales</h4> 
-
-  <!-- Row Static Stats -->
-  <div class="row">
- 
-      <!-- Earnings (Monthly) Card Example -->
-      <div class="col-xl-3 col-md-6 mb-4">
-          <div class="card border-left-primary shadow h-100 py-2">
-              <div class="card-body">
-                  <div class="row no-gutters align-items-center">
-                      <div class="col mr-2">
-                          <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                              Nombre de Patients</div>
-                          <div class="h6 mb-0 font-weight-bold text-gray-800">150</div>
-                      </div>
-                      <div class="col-auto">
-                          <i class="fas fa-user fa-2x text-gray-300"></i>
-                      </div>
-                  </div>
-              </div>
-          </div>
-      </div>
- 
-      <div class="col-xl-3 col-md-6 mb-4">
-          <div class="card border-left-success shadow h-100 py-2">
-              <div class="card-body">
-                  <div class="row no-gutters align-items-center">
-                      <div class="col mr-2">
-                          <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                              Solde</div>
-                          <div class="h6 mb-0 font-weight-bold text-gray-800">28,150,000 Fcfa</div>
-                      </div>
-                      <div class="col-auto">
-                          <i class="fas fa-dollar-sign fa-2x text-gray-300"></i>
-                      </div>
-                  </div>
-              </div>
-          </div>
-      </div>
-
-      <!-- Earnings (Monthly) Card Example -->
-      <div class="col-xl-3 col-md-6 mb-4">
-          <div class="card border-left-info shadow h-100 py-2">
-              <div class="card-body">
-                  <div class="row no-gutters align-items-center">
-                      <div class="col mr-2">
-                          <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Chiffre d'affaire
-                          </div>
-                          <div class="h6 mb-0 font-weight-bold text-gray-800">518,150,000 Fcfa</div>
-                      </div>
-                      <div class="col-auto">
-                          <i class="fas fa-clipboard-list fa-2x text-gray-300"></i>
-                      </div>
-                  </div>
-              </div>
-          </div>
-      </div>
-
-      <!-- Pending Requests Card Example -->
-      <div class="col-xl-3 col-md-6 mb-4">
-          <div class="card border-left-warning shadow h-100 py-2">
-              <div class="card-body">
-                  <div class="row no-gutters align-items-center">
-                      <div class="col mr-2">
-                          <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                              Pending Requests</div>
-                          <div class="h6 mb-0 font-weight-bold text-gray-800">18</div>
-                      </div>
-                      <div class="col-auto">
-                          <i class="fas fa-comments fa-2x text-gray-300"></i>
-                      </div>
-                  </div>
-              </div>
-          </div>
-      </div>
-  </div>
-
-  <div class="d-sm-flex align-items-center justify-content-between mb-4">
-      <h4 class="mb-2 text-secondary">Statistiques Periodique</h4>
-      <form id="periodSelectorForm">
-          <input type="date" class="form-control" name="periodChooser" id="periodChooser"/>
-      </form>
-  </div>
-  
-  <div class="row">
-      <div class="col-12">
-          <div class="card shadow mb-4">
-              <div class="card-header py-3">
-                  <h6 class="m-0 font-weight-bold text-primary">Patients / consultations</h6>
-              </div>
-              <div class="card-body">
-                  
-                <ul class="list-group list-group-flush list-group-bordered">
-                    <li class="list-group-item">
-                        <div class="d-flex justify-content-between align-items-center" data-toggle="collapse" href="#collapsePatients" aria-expanded="false" aria-controls="collapsePatients">
-                            <span>Patients</span>
-                            <span class="badge badge-primary badge-pill">150</span>
-                        </div>
-                        <div class="collapse" id="collapsePatients">
-                            <div class="card card-body">
-                                Details about Patients
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h2 mb-0 text-gray-800">Tableau de bord</h1>
+        <div class="d-flex">
+            <button class="btn btn-sm btn-primary shadow-sm mr-2" onclick="printSection('globalStats')">
+                <i class="fas fa-print fa-sm text-white-50"></i> Imprimer Globale
+            </button>
+            <button id="reportrange" class="btn btn-outline-secondary btn-sm">
+                <i class="far fa-calendar-alt"></i>
+                <span>Choisir période</span>
+                <i class="fas fa-caret-down"></i>
+            </button>
+        </div>
+    </div>
+    <section id="globalStats">
+    <h4 class="mb-2 text-secondary">Statistiques Globales</h4>
+    <div class="row">
+        <!-- Patients -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                Patients (Total)
                             </div>
+                            <div id="patientsTotal" class="h6 mb-0 font-weight-bold text-gray-800"> -- </div>
                         </div>
-                    </li>
-                    <li class="list-group-item">
-                        <div class="d-flex justify-content-between align-items-center" data-toggle="collapse" href="#collapseConsultations" aria-expanded="false" aria-controls="collapseConsultations">
-                            <span>Consultations</span>
-                            <span class="badge badge-success badge-pill">300</span>
+                        <div class="col-auto">
+                            <i class="fas fa-user fa-2x text-gray-300"></i>
                         </div>
-                        <div class="collapse" id="collapseConsultations">
-                            <div class="card card-body">
-                                Details about Consultations
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Solde -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Capital
                             </div>
+                            <div id="capitalTotal" class="h6 mb-0 font-weight-bold text-gray-800"> -- </div>
+                            <small class="text-gray-600">Espèces : <span id="capitalCash"> -- </span></small> 
                         </div>
-                    </li>
-                    <li class="list-group-item">
-                        <div class="d-flex justify-content-between align-items-center" data-toggle="collapse" href="#collapseRendezVous" aria-expanded="false" aria-controls="collapseRendezVous">
-                            <span>Rendez-vous</span>
-                            <span class="badge badge-info badge-pill">200</span>
+                        <div class="col-auto">
+                            <i class="fas fa-dollar-sign fa-2x text-gray-300"></i>
                         </div>
-                        <div class="collapse" id="collapseRendezVous">
-                            <div class="card card-body">
-                                Details about Rendez-vous
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Chiffre d'affaires -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                Chiffre d'affaires
                             </div>
+                            <div id="revenueTotal" class="h6 mb-0 font-weight-bold text-gray-800"> -- </div>
                         </div>
-                    </li>
-                    <li class="list-group-item">
-                        <div class="d-flex justify-content-between align-items-center" data-toggle="collapse" href="#collapseInterventions" aria-expanded="false" aria-controls="collapseInterventions">
-                            <span>Interventions</span>
-                            <span class="badge badge-warning badge-pill">100</span>
+                        <div class="col-auto">
+                            <i class="fas fa-clipboard-list fa-2x text-gray-300"></i>
                         </div>
-                        <div class="collapse" id="collapseInterventions">
-                            <div class="card card-body">
-                                Details about Interventions
-                            </div>
-                        </div>
-                    </li>
-                    <li class="list-group-item">
-                        <div class="d-flex justify-content-between align-items-center" data-toggle="collapse" href="#collapseFactures" aria-expanded="false" aria-controls="collapseFactures">
-                            <span>Factures</span>
-                            <span class="badge badge-danger badge-pill">80</span>
-                        </div>
-                        <div class="collapse" id="collapseFactures">
-                            <div class="card border-0">
-                                Details about Factures
-                            </div>
-                        </div>
-                    </li>
-                </ul>  
+                    </div>
+                </div>
+            </div>
+        </div>
 
-              </div>
-          </div>
-      </div>
-      <div class="col-md-6">
-          
-      </div>
-      <div class="col-md-6">
-          
-      </div>
-      <div class="col-md-6">
-          
-      </div>
-  </div>
+        <!-- Employés -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-dark shadow h-100 py-2">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-xs font-weight-bold text-dark text-uppercase mb-1">
+                            Employés (total)
+                        </div>
+                        <div id="employeesTotal" class="h6 mb-0 font-weight-bold text-gray-800"> -- </div>
+                    </div>
+                    <i class="fas fa-users fa-2x text-gray-300"></i>
+                </div>
+            </div>
+        </div>
+        <!-- Masse salariale fixe -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-secondary shadow h-100 py-2">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-xs font-weight-bold text-secondary text-uppercase mb-1">
+                            Masse salariale fixe
+                        </div>
+                        <div id="payrollFixed" class="h6 mb-0 font-weight-bold text-gray-800"> -- </div>
+                        <small class="text-gray-600"><span id="payrollFixedCount">12</span> employés</small>
+                    </div>
+                    <i class="fas fa-money-bill-wave fa-2x text-gray-300"></i>
+                </div>
+            </div>
+        </div>
+        <!-- Salles de consultation -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                            Salles de consultation
+                        </div>
+                        <div id="consultRoomsCount" class="h6 mb-0 font-weight-bold text-gray-800"> -- </div>
+                    </div>
+                    <i class="fas fa-clinic-medical fa-2x text-gray-300"></i>
+                </div>
+            </div>
+        </div>
+        <!-- Produits consommables -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                            Produits consommables
+                        </div>
+                        <div id="consumablesCount" class="h6 mb-0 font-weight-bold text-gray-800"> -- </div>
+                    </div>
+                    <i class="fas fa-pills fa-2x text-gray-300"></i>
+                </div>
+            </div>
+        </div>
+        <!-- Utilisateurs -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                            Utilisateurs
+                        </div>
+                        <div class="h6 mb-0 font-weight-bold text-gray-800" id="AllUsers"> -- </div>
+                        <small class="text-gray-600">Admin: <span id="usersAdmin"> -- </span>, Secrétaire: <span id="usersReceptionist"> -- </span>, Médecin: <span id="usersDoctor"> -- </span></small>
+                    </div>
+                    <i class="fas fa-user-cog fa-2x text-gray-300"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+
+
+<div class="row mt-4" id="nonPeriodicDetails">
+    <div class="col-12">
+        <h4 class="mb-3 text-secondary">Détails Globaux</h4>
+    </div>
+
+    {# — Employés — #} 
+    <div class="col-xl-6 col-lg-6 col-md-12 mb-4">
+        <div class="card h-100 border-left-dark shadow">
+            <div class="card-header d-flex justify-content-between align-items-center py-2">
+                <h6 class="mb-0">Répartition des Employés</h6>
+                <button class="btn btn-sm btn-outline-primary" onclick="printSection('patientsEmployéesRepart')">
+                        <i class="fas fa-print"></i>
+                    </button>
+            </div>
+            <ul class="list-group list-group-flush" id="employeeList">
+                
+            </ul>
+        </div>
+    </div>
+
+    {# — Consommables à Stock Bas — #}
+    <div class="col-xl-6 col-lg-6 col-md-12 mb-4">
+        <div class="card h-100 border-left-warning shadow">
+            <div class="card-header d-flex justify-content-between align-items-center py-2">
+                <h6 class="mb-0">Consommables à Stock Bas</h6>
+                <button class="btn btn-sm btn-outline-primary" onclick="printSection('StockBas')">
+                        <i class="fas fa-print"></i>
+                    </button>
+            </div>
+            <ul class="list-group list-group-flush" id="lowStockList">
+                
+                {# … autres consommables critiques #}
+            </ul>
+        </div>
+    </div>
+
+    {# — Patients — #}
+        <div class="col-12 mb-4" id="patientsDetails">
+    <div class="card h-100 border-left-primary shadow">
+        <div class="card-header d-flex justify-content-between align-items-center py-2">
+            <h6 class="mb-0">Patients</h6>
+            <button class="btn btn-sm btn-outline-primary" onclick="printSection('patientsDetails')">
+                <i class="fas fa-print"></i>
+            </button>
+        </div>
+        <ul class="list-group list-group-flush">
+            <li class="list-group-item d-flex justify-content-between">
+                Total
+                <span id="totalPatientsValue" class="badge badge-primary">—</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between">
+                Femmes / Hommes
+                <span id="genderRatioValue" class="badge badge-secondary">—</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between">
+                Mineurs / Adultes / Séniors
+                <span id="ageGroupsValue" class="badge badge-info">—</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between">
+                Âge moyen
+                <span id="averageAgeValue" class="badge badge-warning">—</span>
+            </li>
+        </ul>
+    </div>
+</div>
 
 
 </div>
-{% endblock %}
 
-{% block javascripts %}
-  {{ parent() }}
-  <!-- Chargement de Chart.js depuis un CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    {# … dans votre template, remplacez le <div class="mt-4"> entier par ceci #}
 
-  <script>
+<div class="mt-4">
+    <h4 class="mb-3 text-secondary">Détails Periodiques</h4>
+    <div class="row">
+        {# — Patients — #}
+        <div class="col-xl-4 col-lg-6 col-md-12 mb-4" id="patientsDetails">
+            <div class="card h-100 border-left-primary shadow">
+                <div class="card-header d-flex justify-content-between align-items-center py-2">
+                    <h6 class="mb-0">Patients</h6>
+                    <button class="btn btn-sm btn-outline-primary" onclick="printSection('patientsDetails')">
+                        <i class="fas fa-print"></i>
+                    </button>
+                </div>
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item d-flex justify-content-between">
+                        Nouveaux
+                        <span id="periodicNewPatientsValue" class="badge badge-primary">--</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                        Retours
+                        <span id="periodicReturningPatientsValue" class="badge badge-secondary">--</span>
+                    </li> 
+                </ul>
+            </div>
+        </div>
+
+        {# — Consultations — #}
+        <div class="col-xl-4 col-lg-6 col-md-12 mb-4" id="consultDetails">
+    <div class="card h-100 border-left-success shadow">
+        <div class="card-header d-flex justify-content-between align-items-center py-2">
+            <h6 class="mb-0">Consultations</h6>
+            <button class="btn btn-sm btn-outline-primary" onclick="printSection('consultDetails')">
+                <i class="fas fa-print"></i>
+            </button>
+        </div>
+        <ul class="list-group list-group-flush">
+            <li class="list-group-item d-flex justify-content-between">
+                Total
+                <span id="periodicTotalConsultsValue" class="badge badge-primary">--</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between">
+                Payantes / Gratuites
+                <span id="periodicPaidConsultsValue" class="badge badge-secondary">-- / --</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between">
+                Montant total
+                <span id="periodicTotalAmountValue" class="badge badge-success">-- Fcfa</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between">
+                Montant moyen
+                <span id="periodicAvgAmountValue" class="badge badge-info">-- Fcfa</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between">
+                Actes fréquents
+                <span id="periodicTopActsValue" class="badge badge-warning">--</span>
+            </li>
+        </ul>
+    </div>
+</div>
+
+
+        {# — Rendez-vous — #}
+        <div class="col-xl-4 col-lg-6 col-md-12 mb-4" id="rdvDetails">
+    <div class="card h-100 border-left-warning shadow">
+        <div class="card-header d-flex justify-content-between align-items-center py-2">
+            <h6 class="mb-0">Rendez-vous</h6>
+            <button class="btn btn-sm btn-outline-primary" onclick="printSection('rdvDetails')">
+                <i class="fas fa-print"></i>
+            </button>
+        </div>
+        <ul class="list-group list-group-flush">
+            <li class="list-group-item d-flex justify-content-between">
+                Planifiés
+                <span class="badge badge-primary" id="periodicScheduled">—</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between">
+                Validés / En attente
+                <span class="badge badge-success" id="periodicConfirmed">—</span> /
+                <span class="badge badge-success" id="periodicPending">—</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between">
+                Reportés / Annulés
+                <span class="badge badge-secondary" id="periodicPostponed">—</span> /
+                <span class="badge badge-secondary" id="periodicCancelled">—</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between">
+                Taux de confirmation
+                <span class="badge badge-info" id="periodicConfirmRate">—</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between">
+                Délai moyen
+                <span class="badge badge-warning" id="periodicAvgDelay">—</span>
+            </li>
+        </ul>
+    </div>
+</div>
+
+        {# Utilisation des Salles #}
+        <div class="col-xl-4 col-lg-6 col-md-12 mb-4" id="roomUsageDetails">
+            <div class="card h-100 border-left-info shadow">
+                <div class="card-header d-flex justify-content-between align-items-center py-2">
+                    <h6 class="mb-0">Utilisation des Salles</h6>
+                    <button class="btn btn-sm btn-outline-primary" onclick="printSection('roomUsageDetails')">
+                    <i class="fas fa-print"></i>
+                    </button>
+                </div>
+                <ul class="list-group list-group-flush" id="roomUsageList">
+                    
+                </ul>
+            </div>
+        </div>
+
+        {# Modes de Paiement #}
+        <div class="col-xl-4 col-lg-6 col-md-12 mb-4" id="paymentModesDetails">
+            <div class="card h-100 border-left-success shadow"> 
+                    
+                <div class="card-header d-flex justify-content-between align-items-center py-2">
+        <h6 class="mb-0">Solde des comptes de Paiement</h6>
+        <button class="btn btn-sm btn-outline-primary" onclick="printSection('paymentUsageDetails')">
+          <i class="fas fa-print"></i>
+        </button> </div>
+                <ul class="list-group list-group-flush" id="paymentBalancesList">
+                    
+                </ul>
+            </div>
+        </div>
+
+        {# Modes de Paiement #}
+        <div class="col-xl-4 col-lg-6 col-md-12 mb-4" id="paymentUsageDetails">
+    <div class="card h-100 border-left-success shadow">
+      <div class="card-header d-flex justify-content-between align-items-center py-2">
+        <h6 class="mb-0">Utilisation des Modes de Paiement</h6>
+        <button class="btn btn-sm btn-outline-primary" onclick="printSection('paymentUsageDetails')">
+          <i class="fas fa-print"></i>
+        </button>
+      </div>
+      <ul class="list-group list-group-flush" id="paymentFreqList">
+        
+      </ul>
+    </div>
+  </div>
+
+        
+    </div>
+</div>
+
     
-  </script>
+
+    {# … après la fin de votre <div class="mt-4"> (Détails) et avant <div class="mt-5"> (Rapports médecins) #}
+<div class="row mt-4">
+    <div class="col-12" id="actesStats">
+        <div class="card h-100 border-left-secondary shadow">
+            <div class="card-header d-flex justify-content-between align-items-center py-2">
+                <h6 class="mb-0">Statistiques des Actes Médicaux</h6>
+                <button class="btn btn-sm btn-outline-primary" onclick="printSection('actesStats')">
+                    <i class="fas fa-print"></i>
+                </button>
+            </div>
+            <ul class="list-group list-group-flush" id="actsStatsList">
+                
+            </ul>
+        </div>
+    </div>
+</div>
+
+    {# … juste après la section “Statistiques des Actes Médicaux” #}
+<div class="row mt-5">
+    <div class="col-12">
+        <div class="card shadow h-100 border-left-info" id="doctorReportsCard">
+            <div class="card-header d-flex justify-content-between align-items-center py-2">
+                <h6 class="mb-0">Rapports Périodiques par Médecin</h6>
+                <button class="btn btn-sm btn-outline-primary" onclick="printSection('doctorReportsCard')">
+                    <i class="fas fa-print"></i> Imprimer
+                </button>
+            </div>
+            <div class="card-body">
+                {# — KPI Médecins — #}
+                <div class="row text-center mb-4">
+                    <div class="col-md-4 mb-2">
+                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                            Apports Total
+                        </div>
+                        <div class="h5 font-weight-bold text-gray-800" id="kpiTotalRevenue">-- Fcfa</div>
+                    </div>
+                    <div class="col-md-4 mb-2">
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                            Après retrait des %
+                        </div>
+                        <div class="h5 font-weight-bold text-gray-800" id="kpiAfterFees">-- Fcfa</div>
+                    </div>
+                    <div class="col-md-4 mb-2">
+                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                            Salaires Totaux
+                        </div>
+                        <div class="h5 font-weight-bold text-gray-800" id="kpiTotalSalaries">-- Fcfa</div>
+                    </div>
+                </div>
+
+                {# — Tableau Médecins — #}
+                <div class="table-responsive">
+                    <table id="doctorsReport" class="table table-striped table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Médecin</th>
+                                <th>Nb Consult.</th>
+                                <th>Montant (Fcfa)</th>
+                                <th>Payantes / Gratuites</th>
+                                <th>Salaire</th>
+                                <th>Action</th>
+
+                            </tr>
+                        </thead>
+                        <tbody>
+                           
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+</div>
+{% endblock %}
+{% block javascripts %}
+{{ parent() }}
+<script src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
+<script src="{{ asset('js/dashboard.js') }}"></script>
 {% endblock %}

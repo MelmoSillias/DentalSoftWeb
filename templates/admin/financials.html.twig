@@ -63,7 +63,7 @@
                 </div>
                 <div class="col-md-3">
                     <label for="mode" class="form-label">Compte</label>
-                    <select id="mode" name="modeId" class="form-select" required>
+                    <select id="mode" name="modeId" class="form-select form-control" required>
                         <!-- rempli dynamiquement en JS -->
                     </select>
                 </div>
@@ -150,7 +150,7 @@
             <form id="formAddMode" class="modal-content">
                 <div class="modal-header bg-primary text-white">
                     <h5 class="modal-title">Ajouter un Mode de Paiement</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
@@ -159,7 +159,7 @@
                     </div>
                     <div class="mb-3">
                         <label for="typeMode" class="form-label">Type</label>
-                        <select class="form-select" id="typeMode" name="type" required>
+                        <select class="form-select form-control" id="typeMode" name="type" required>
                             <option value="Espèces">Espèces</option>
                             <option value="Mobile Money">Mobile Money</option>
                             <option value="Assurance">Assurance</option>
@@ -172,8 +172,7 @@
                         <textarea class="form-control" id="notesMode" name="notes" rows="2"></textarea>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <div class="modal-footer"> 
                     <button type="submit" class="btn btn-primary">Enregistrer</button>
                 </div>
             </form>
@@ -214,16 +213,16 @@
             <form id="formInterCompte" class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">Transfert entre comptes</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
                 </div>
                 <div class="modal-body">
                     <div class="form-group mb-2">
                         <label>De (source)</label>
-                        <select class="form-select" id="fromAccount" name="from"></select>
+                        <select class="form-select form-control" id="fromAccount" name="from"></select>
                     </div>
                     <div class="form-group mb-2">
                         <label>Vers (destination)</label>
-                        <select class="form-select" id="toAccount" name="to"></select>
+                        <select class="form-select form-control" id="toAccount" name="to"></select>
                     </div>
                     <div class="form-group mb-2">
                         <label>Montant</label>
@@ -234,8 +233,7 @@
                         <input type="text" class="form-control" id="motifTransfert" name="motif" />
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <div class="modal-footer"> 
                     <button type="submit" class="btn btn-primary">Transférer</button>
                 </div>
             </form>

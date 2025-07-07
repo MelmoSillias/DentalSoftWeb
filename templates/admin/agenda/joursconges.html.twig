@@ -216,19 +216,21 @@
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title" id="addCongeModalLabel">Ajouter un Congé</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
       </div>
       <div class="modal-body">
         <form id="formAddConge">
           <div class="mb-3">
             <label for="employeeSelect" class="form-label">Employé concerné</label>
-            <select class="form-select" id="employeeSelect" required>
+            <select class="form-select form-control" id="employeeSelect" required>
               <option selected disabled value="">-- Choisir un employé --</option>
             </select>
           </div>
           <div class="mb-3">
             <label for="typeConge" class="form-label">Type de congé</label>
-            <select class="form-select" id="typeConge" required>
+            <select class="form-select form-control" id="typeConge" required>
               <option value="vacances">Vacances</option>
               <option value="teletravail">Télétravail</option>
               <option value="arret">Arrêt maladie</option>

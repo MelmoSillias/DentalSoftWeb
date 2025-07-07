@@ -96,67 +96,52 @@ html {
 
     <!-- Sidebar -->
     <ul class="navbar-nav navbar-nav-fixed bg-gradient-primary sidebar sidebar-dark accordion bg-dark" id="accordionSidebar" data-turbo-permanent>
-
-        <!-- Brand -->
-        <a class="sidebar-brand d-flex align-items-center justify-content-center" href="{{ path('app_admin') }}">
+    <!-- Brand -->
+        <a class="sidebar-brand d-flex align-items-center justify-content-center" href="{{ path('app_medecin') }}">
             <div class="sidebar-brand-icon rotate-n-15">
                 <i class="fas fa-tooth"></i>
             </div>
             <div class="sidebar-brand-text mx-3">DentalSoft</div>
         </a>
-
         <hr class="sidebar-divider my-0">
-
         <li class="nav-item {{ active_page == 'dashboard' ? 'active' : '' }}">
-            <a class="nav-link" href="{{ path('app_admin') }}">
+            <a class="nav-link" href="{{ path('app_medecin') }}">
                 <i class="fas fa-fw fa-tachometer-alt"></i>
                 <span>Dashboard</span>
             </a>
         </li>
-
         <hr class="sidebar-divider">
         <div class="sidebar-heading">Gestion</div>
-
-        <li class="nav-item {{ active_page == 'agenda'  ? 'active' : '' }}">
-            <a class="nav-link"  href="#" >
+        <li class="nav-item {{ active_page == 'agenda' ? 'active' : '' }}">
+            <a class="nav-link" href="{{ path('app_medecin_agenda') }}">
                 <i class="fas fa-calendar"></i>
                 <span>Agenda</span>
-            </a> 
+            </a>
         </li>
-
         <li class="nav-item {{ active_page == 'patients' ? 'active' : '' }}">
-            <a class="nav-link"  href="{{ path('app_admin_patient') }}">
+            <a class="nav-link" href="{{ path('app_medecin_patient') }}">
                 <i class="fas fa-user-plus"></i>
                 <span>Patients</span>
             </a>
         </li>
-        
-        <li class="nav-item {{ active_page in ['consultations_pending', 'consultation_edit', 'consultation_details', 'consultations_closed'] ? 'active' : '' }}">
-            <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseConsults"
-               aria-expanded="true" aria-controls="collapseConsults">
-                <i class="fas fa-stethoscope"></i>
-                <span>Consultations</span>
+        <li class="nav-item {{ active_page == 'consultations_pending' ? 'active' : '' }}">
+            <a class="nav-link" href="{{ path('app_medecin_consultations_pending') }}">
+                <i class="fas fa-hourglass-start"></i>
+                <span>En attente</span>
             </a>
-            <div id="collapseConsults" class="collapse {{ active_page in ['consultations_pending', 'consultation_edit', 'consultation_details', 'consultations_closed'] ? 'show' : '' }}" data-parent="#accordionSidebar">
-                <div class="bg-white py-2 collapse-inner rounded">
-                    <a class="collapse-item" href="{{ path('consultations_pending') }}">En attente</a>
-                    <a class="collapse-item" href="{{ path('consultations_closed') }}">Classées</a>
-                </div>
-            </div>
         </li>
-
-        <li class="nav-item  {{ active_page == 'caisse' ? 'active' : '' }}">
-            <a class="nav-link" href="{{ path('app_admin_caisse') }}">
-                <i class="fas fa-cash-register"></i>
-                <span>Statistiques</span>
+        <li class="nav-item {{ active_page == 'consultations_closed' ? 'active' : '' }}">
+            <a class="nav-link" href="{{ path('app_medecin_consultations_closed') }}">
+                <i class="fas fa-stethoscope"></i>
+                <span>Classées</span>
             </a>
-        </li> 
-
+        </li>
         <hr class="sidebar-divider d-none d-md-block">
         <div class="text-center d-none d-md-inline">
             <button class="rounded-circle border-0" id="sidebarToggle"></button>
         </div>
     </ul>
+
     <!-- End of Sidebar -->
     
 
@@ -172,37 +157,34 @@ html {
                 <button id="sidebarToggleTop" class="btn btn-link d-md-none rounded-circle mr-3">
                     <i class="fa fa-bars"></i>
                 </button>
-
-                <!-- Topbar Search -->
-                <form class="d-none d-sm-inline-block form-inline mr-auto ml-md-3 my-2 my-md-0 mw-100 navbar-search">
-                    <div class="input-group">
-                        <input type="text" class="form-control bg-light border-0 small"
-                               placeholder="Recherche..." aria-label="Search">
-                        <div class="input-group-append">
-                            <button class="btn btn-primary" type="button">
-                                <i class="fas fa-search fa-sm"></i>
-                            </button>
-                        </div>
-                    </div>
-                </form>
-
-                <!-- User -->
+ 
+               <!-- User -->
                 <ul class="navbar-nav ml-auto">
-                    <li class="nav-item dropdown no-arrow">
-                        <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button"
-                           data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                            <span class="mr-2 d-none d-lg-inline text-gray-600 small">Admin</span>
-                            <img class="img-profile rounded-circle" >
-                        </a>
-                        <div class="dropdown-menu dropdown-menu-right shadow animated--grow-in"
-                             aria-labelledby="userDropdown">
-                            <a class="dropdown-item" href="#"><i class="fas fa-user fa-sm fa-fw mr-2 text-gray-400"></i>Profil</a>
-                            <a class="dropdown-item" href="#"><i class="fas fa-cogs fa-sm fa-fw mr-2 text-gray-400"></i>Paramètres</a>
-                            <div class="dropdown-divider"></div>
-                            <a class="dropdown-item" href="{{ path('app_logout') }}"><i class="fas fa-sign-out-alt fa-sm fa-fw mr-2 text-gray-400"></i>Déconnexion</a>
-                        </div>
-                    </li>
-                </ul>
+    <li class="nav-item dropdown no-arrow">
+        <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button"
+           data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+            <span class="mr-2 d-none d-lg-inline text-gray-600 small">
+                {{ app.user.username }}
+            </span>
+            {# {% if app.user.avatar %}
+                <img class="img-profile rounded-circle" src="{{ asset('uploads/avatars/' ~ app.user.avatar) }}" width="40" height="40">
+            {% else %} #}
+                <img class="img-profile rounded-circle" src="{{ asset('img/profil.png') }}" width="40" height="40">
+            {# {% endif %} #}
+        </a>
+        <div class="dropdown-menu dropdown-menu-right shadow animated--grow-in" aria-labelledby="userDropdown">
+            {# <a class="dropdown-item" href="#">
+                <i class="fas fa-user fa-sm fa-fw mr-2 text-gray-400"></i>
+                Profil
+            </a> 
+            <div class="dropdown-divider"></div> #}
+            <a class="dropdown-item" href="{{ path('app_logout') }}">
+                <i class="fas fa-sign-out-alt fa-sm fa-fw mr-2 text-gray-400"></i>
+                Déconnexion
+            </a>
+        </div>
+    </li>
+</ul>
             </nav>
             <!-- End of Topbar -->
 

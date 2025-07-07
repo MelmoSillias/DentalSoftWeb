@@ -68,14 +68,9 @@ final class RHController extends AbstractController
 
     #[Route('/api/employee/new', name: 'api_employee_creation', methods: ['POST'])]
     public function create(Request $request, EntityManagerInterface $em): JsonResponse
-    {
-        try {
+    { 
             $data = $request->request->all();
             $files = $request->files->all()['administrativeFiles'] ?? [];
-
-            // Log data reçues
-            file_put_contents('create.log', "DATA:\n" . print_r($data, true), FILE_APPEND);
-            file_put_contents('create.log', "FILES:\n" . print_r($files, true), FILE_APPEND);
 
             $employe = new Employe();
             $employe->setNom($data['nom']);
@@ -88,7 +83,7 @@ final class RHController extends AbstractController
             $employe->setTypeContrat($data['typeContrat']);
             $employe->setDureeContrat($data['dureeContrat'] ?: null);
             $employe->setTypeSalaire($data['typeSalaire']);
-            $employe->setValeurSalaire((float)$data['valeurSalaire']);
+            $employe->setValeurSalaire((float)$data['valeurSalaire'] ?? 0);
             $employe->setComingDaysInWeek($data['comingDays'] ?? []);
             $employe->setIsOnDaysOff(false);
             $matricule = 'EMP-' . date('YmdHis');
@@ -111,15 +106,7 @@ final class RHController extends AbstractController
             $em->flush();
 
             return new JsonResponse(['message' => 'Employé créé avec succès'], 201);
-        } catch (\Throwable $e) {
-            $this->addFlash('error', 'Erreur lors de la création de l\'employé : ' . $e->getMessage());
-            file_put_contents('create.log', "ERROR:\n" . $e->getMessage() . "\n" . $e->getTraceAsString(), FILE_APPEND);
-            return new JsonResponse([
-                'error' => $e->getMessage(),
-                'line' => $e->getLine(),
-                'file' => $e->getFile(),
-            ], 500);
-        }
+        
     }
 
 

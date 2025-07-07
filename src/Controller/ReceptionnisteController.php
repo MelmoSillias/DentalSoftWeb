@@ -8,11 +8,10 @@ use Symfony\Component\Routing\Attribute\Route;
 
 final class ReceptionnisteController extends AbstractController
 {
-    #[Route('/receptionniste', name: 'app_receptionniste')]
+    #[Route('/reception', name: 'app_reception_dashboard')]
     public function index(): Response
     {
-        return $this->render('receptionniste/index.html.twig', [
-            'controller_name' => 'ReceptionnisteController',
-        ]);
+        return $this->render('reception/index.html.twig', [
+            'controller_name' => 'ReceptionnisteController','active_page' => 'dashboard']);
     }
 }

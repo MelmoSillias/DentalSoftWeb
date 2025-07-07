@@ -1,6 +1,7 @@
 $(document).ready(function() {
     let currentDate = new Date();
     let selectedRdvId = null;
+    let selectedRdvMedecinId = null;
 
     function generateDateSlider() {
         const $dateSlider = $('#date-slider');
@@ -56,8 +57,7 @@ $(document).ready(function() {
                 const rdvDate = new Date(rdv.dateRdv);
                 const hour = rdvDate.getHours();
                 const minutes = rdvDate.getMinutes();
-                const slot = minutes < 15 ? '00' : minutes < 30 ? '15' : minutes < 45 ? '30' : '45';
-                console.log(rdv.medecin)
+                const slot = minutes < 15 ? '00' : minutes < 30 ? '15' : minutes < 45 ? '30' : '45'; 
                 const $cell = $(`.grid-cell[data-hour="${hour}"][data-minute="${slot}"][data-medecin="${rdv.medecin_id}"]`);
                 if ($cell.length) {
                     $cell.find('.add-rdv-btn').hide();
@@ -67,7 +67,7 @@ $(document).ready(function() {
                                         'danger';
                     const actionButtons = rdv.statut === 0 ? `
                         <div class="rdv-actions mt-4"> 
-                            <button class="btn btn-sm btn-success btn-validate" data-id="${rdv.id}"><i class="fas fa-check"></i></button>
+                            <button class="btn btn-sm btn-success btn-validate" data-id="${rdv.id}" data-medecin="${rdv.medecin_id}"><i class="fas fa-check"></i></button>
                             <button class="btn btn-sm btn-warning btn-report" data-id="${rdv.id}" data-patient="${rdv.patient}" data-medecin="${rdv.medecin_id}" data-datecreation="${rdv.dateCreation}"><i class="fas fa-calendar-alt"></i></button>
                             <button class="btn btn-sm btn-danger btn-cancel" data-id="${rdv.id}"><i class="fas fa-times"></i></button>
                         </div>` : '';
@@ -109,34 +109,53 @@ $(document).ready(function() {
     });
 
     // Met à jour le statut et affiche un toast
-    async function updateRdvStatus(id, statut) {
-        try {
-            const res = await fetch(`/api/rdv/${id}/${statut === 1 ? 'validate' : 'cancel'}`, { method: 'POST' });
-            const json = await res.json();
-            if (json.success) {
-                reloadAppointments();
-                showToastModal({
-                    message: statut === 1 ? 'Rendez-vous validé' : 'Rendez-vous annulé',
-                    type: 'success'
-                });
-                loadStats();
-            } else {
-                showToastModal({ message: json.error || 'Erreur lors de la mise à jour', type: 'error', duration: 3000 });
-            }
-        } catch {
-            showToastModal({ message: 'Erreur réseau lors de la mise à jour', type: 'error', duration: 3000 });
+    async function updateRdvStatus(id, statut, medecinId = null) {
+    try {
+        const url    = `/api/rdv/${id}/${statut === 1 ? 'validate' : 'cancel'}`;
+        const payload = { statut };
+        
+        // n’ajoutez le champ medecin que pour la validation
+        if (statut === 1 && medecinId !== null) {
+        payload.medecin = medecinId;
         }
+        
+        const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+        });
+        const json = await res.json();
+        if (json.success) {
+        reloadAppointments();
+        showToastModal({
+            message: statut === 1 ? 'Rendez-vous validé' : 'Rendez-vous annulé',
+            type: 'success'
+        });
+        loadStats();
+        } else {
+        showToastModal({ message: json.error||'Erreur', type: 'error', duration:3000 });
+        }
+    } catch {
+        showToastModal({ message: 'Erreur réseau', type: 'error', duration:3000 });
+    }
     }
 
-    $(document).on('click', '.btn-validate', function() {
-        selectedRdvId = $(this).data('id');
-        $('#confirmValidateModal').modal('show');
-    });
 
-    $('#confirmValidateBtn').on('click', function() {
-        $('#confirmValidateModal').modal('hide');
-        updateRdvStatus(selectedRdvId, 1);
-    });
+    $(document).on('click', '.btn-validate', function() {
+    selectedRdvId        = $(this).data('id');
+    selectedRdvMedecinId = $(this).data('medecin');
+    // on pré-sélectionne le médecin d’origine dans le select
+    $('#validateMedecinSelect').val(selectedRdvMedecinId);
+    $('#confirmValidateModal').modal('show');
+  });
+
+  // Au clic sur “Valider” dans le modal, on lit le médecin choisi
+  $('#confirmValidateBtn').on('click', function() {
+    const newMedecinId = $('#validateMedecinSelect').val();
+    $('#confirmValidateModal').modal('hide');
+    updateRdvStatus(selectedRdvId, 1, newMedecinId);
+  });
+
 
     $(document).on('click', '.btn-cancel', function() {
         selectedRdvId = $(this).data('id');
