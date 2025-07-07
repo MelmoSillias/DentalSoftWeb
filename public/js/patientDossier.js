@@ -1,5 +1,5 @@
 $(function () {
-  const patientId = window.location.pathname.split('/')[2];
+  const patientId = parseInt(window.location.pathname.split('/')[3], 10);
   let dossierData = {};
 
   function loadData() {
