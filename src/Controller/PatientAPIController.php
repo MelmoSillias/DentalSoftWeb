@@ -141,6 +141,7 @@ public function getPatientsByMedecin(
             $patient->setDateInscription(new \DateTime());
             $patient->setNumCarnet(uniqid('PAT-', true));
             $patient->setGroupeSanguin($data['groupeSanguin'] ?? null);
+            $patient->setReferencement("");
 
             // === Ajout Contact d'Urgence si présent ===
             if (isset($data['contactUrgence']) && is_array($data['contactUrgence'])) {
@@ -183,6 +184,7 @@ public function getPatientsByMedecin(
             $patient->setTelephone($data['telephone'] ?? $patient->getTelephone());
             $patient->setAdresse($data['adresse'] ?? $patient->getAdresse());
             $patient->setGroupeSanguin($data['groupeSanguin'] ?? $patient->getGroupeSanguin());
+            
 
             // === Gestion du contact d'urgence ===
             if (isset($data['contactUrgence']) && is_array($data['contactUrgence'])) {
