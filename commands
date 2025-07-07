@@ -1,3 +1,10 @@
+cd /var/www
+rm dentalsoft
+gh repo clone MelmoSillias/DentalSoftWeb
+mv DentalSoftWeb dentalsoft
+cd dentalsoft
+composer install --no-dev --optimize-autoloader
 rm .env 
 mv env .env
 mv public/access public/.htaccess 
+composer dump-env prod

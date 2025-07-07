@@ -342,7 +342,7 @@ public function getPatientDetails(int $id, PatientRepository $patientRepository)
             throw $this->createNotFoundException('Patient non trouvé');
         }
 
-        return $this->render('pages_bases/dossier_medical.html.twig', [
+        return $this->render('pages_bases/dossier_medical_medecin.html.twig', [
             'patient' => $patient, 'active_page' => 'patients'
         ]);
     }
