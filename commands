@@ -1,5 +1,5 @@
 cd /var/www
-rm dentalsoft
+rm -r dentalsoft
 gh repo clone MelmoSillias/DentalSoftWeb
 mv DentalSoftWeb dentalsoft
 cd dentalsoft
@@ -8,3 +8,8 @@ rm .env
 mv env .env
 mv public/access public/.htaccess 
 composer dump-env prod
+rm -rf /var/www/dentalsoft/var/cache/prod
+php /var/www/dentalsoft/bin/console cache:warmup --env=prod
+sudo chown -R www-data:www-data /var/www/dentalsoft/var
+sudo chmod -R 775 /var/www/dentalsoft/var
+

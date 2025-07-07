@@ -16,7 +16,7 @@
 
 ###> symfony/framework-bundle ###
 APP_ENV=prod
-APP_DEBUG=1
+APP_DEBUG=0
 APP_SECRET=5a7c8bde4b9d41f9bbf38497cc5f1a31
 
 ###< symfony/framework-bundle ###
