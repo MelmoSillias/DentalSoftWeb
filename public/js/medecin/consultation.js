@@ -377,7 +377,7 @@ $(function() {
         method: 'POST',
         success() {
           showToastModal({ message: 'Consultation clôturée', type: 'success', duration: 3000 });
-          window.location.href = '/admin/consultation/en-attente';
+          window.location.href = '/medecin/consultation/en-attente';
         },
         error() {
           showToastModal({ message: 'Erreur clôture consultation', type: 'error', duration: 3000 });
