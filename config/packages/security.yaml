@@ -21,12 +21,12 @@ security:
                     Melmo: { password: '$2y$13$zHd5PvVUKu9mZy.b0N2C/.WONc3TkaPLZ1rLOrX0gZTgZmO/Bs0a6', roles: ['ROLE_ADMIN'] }
 
     firewalls:
-        dev:
-            pattern: ^/(_(profiler|wdt)|css|images|js)/
-            security: false
         main:
             lazy: true
             provider: users_in_database
+            anonymous: true  # ← obligatoire
+            custom_authenticator: App\Security\DSAuthenticator
+            entry_point: form_login
             form_login:
                 login_path: app_login
                 check_path: app_login
@@ -34,9 +34,7 @@ security:
             logout:
                 path: app_logout
                 target: app_login
-                invalidate_session: true
-            custom_authenticator: App\Security\DSAuthenticator
-            entry_point: form_login
+                invalidate_session: true 
 
             remember_me:
                 secret: '%kernel.secret%'
@@ -54,17 +52,13 @@ security:
     # Easy way to control access for large sections of your site
     # Note: Only the *first* access control that matches will be used
     access_control:
-        # 👇 Public access to login and logout routes
         - { path: ^/login, roles: IS_AUTHENTICATED_ANONYMOUSLY }
         - { path: ^/logout, roles: IS_AUTHENTICATED_ANONYMOUSLY }
-
-        # 👇 Then restrict access by roles
         - { path: ^/admin, roles: ROLE_ADMIN }
         - { path: ^/medecin, roles: ROLE_MEDECIN }
         - { path: ^/reception, roles: ROLE_RECEPTION }
-
-        # 👇 Optional: deny access to everything else if not logged in
         - { path: ^/, roles: IS_AUTHENTICATED_FULLY }
+
 
 
 when@test:

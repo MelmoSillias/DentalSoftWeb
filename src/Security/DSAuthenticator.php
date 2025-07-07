@@ -56,7 +56,7 @@ class DSAuthenticator extends AbstractLoginFormAuthenticator
         } elseif (in_array('ROLE_RECEPTION', $user->getRoles())) {
             return new RedirectResponse($this->urlGenerator->generate('app_reception_dashboard'));
         } else {
-            return new RedirectResponse($this->urlGenerator->generate('app_logout'));
+            return new RedirectResponse($this->urlGenerator->generate('app_home'));
         }
     }
 
