@@ -12,4 +12,5 @@ rm -rf /var/www/dentalsoft/var/cache/prod
 php /var/www/dentalsoft/bin/console cache:warmup --env=prod
 sudo chown -R www-data:www-data /var/www/dentalsoft/var
 sudo chmod -R 775 /var/www/dentalsoft/var
-
+sudo chown -R www-data:www-data /var/www/dentalsoft/public/uploads
+sudo chmod -R 775 /var/www/dentalsoft/public/uploads

@@ -77,10 +77,17 @@ public function getPaiementsDevis(Request $request, PaiementDevisRepository $rep
 
     $data = array_map(function(PaiementDevis $p) {
         $devis = $p->getDevis();
-        $patient = $devis?->getFiche()?->getPatient();
+        
+        if ($p->getConsultation()) {
+            $patient = $p->getConsultation()->getPatient();
+        } elseif ($p->getDevis() && $p->getDevis()->getFiche() && $p->getDevis()->getFiche()->getPatient()) {
+            $patient = $p->getDevis()->getFiche()->getPatient();
+        } else {
+            $patient = null;
+        }
 
         return [
-            'devisId' => $devis ? $devis->getId() : null,
+            'devisId' => $devis ? $devis->getId() : $p->getId(),
             'patient' => $patient ? $patient->getFullName() : 'Anonyme',
             'montant' => $p->getMontant(),
             'mode'    => $p->getMode()->getLibelle(),
