@@ -371,7 +371,7 @@ $(function () {
 
     $('#paiementsDevisTable').on('click',  '.imprimer-ticket-btn', function (e) {
         e.preventDefault();
-        const url = `/api/paiement-devis/impression?start=${devisStart}&end=${devisEnd}`;
+     const url = `/api/paiement-ticket/${paiementId}/print`;
         window.open(url, '_blank', 'width=800,height=900,scrollbars=yes');
     });
 
