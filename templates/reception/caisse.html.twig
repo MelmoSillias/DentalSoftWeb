@@ -362,16 +362,16 @@ $(function () {
         window.open(`/api/paiement-devis/${paiementId}/print`, '_blank', 'width=800,height=900,scrollbars=no');
     });
 
-    $('#imprimerPaiementsBtn').on('click', function (e) {
+    $('#paiementsDevisTable').on('click',  '.imprimer-ticket-btn', function (e) {
         e.preventDefault();
         const paiementId = $(this).data('id');
         const url = `/api/paiement-ticket/${paiementId}/print`;
         window.open(url, '_blank', 'width=800,height=900,scrollbars=no');
     });
 
-    $('#paiementsDevisTable').on('click',  '.imprimer-ticket-btn', function (e) {
+    $('#imprimerPaiementsBtn').on('click', function (e) {
         e.preventDefault();
-     const url = `/api/paiement-ticket/${paiementId}/print`;
+        const url = `/api/paiement-devis/impression?start=${devisStart}&end=${devisEnd}`;
         window.open(url, '_blank', 'width=800,height=900,scrollbars=yes');
     });
 
