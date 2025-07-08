@@ -9,34 +9,42 @@
   <style>
     body {
       font-family: Arial, sans-serif;
-      font-size: 11px;
+      font-size: 9px; /* Taille de police réduite */
       color: #000;
       margin: 0;
+      padding: 0;
     }
     #receipt-content {
-      width: 70mm;
-      padding: 5px;
-      margin: auto;
+      width: 57mm;
+      height: 90mm;
+      padding: 2mm;
+      margin: 0;
+      box-sizing: border-box;
+      overflow: hidden;
     }
     .center { text-align: center; }
     .right  { text-align: right; }
     .bold   { font-weight: bold; }
-    hr      { border: none; border-top: 1px dashed #000; margin: 5px 0; }
+    hr      { 
+      border: none; 
+      border-top: 1px dashed #000; 
+      margin: 3px 0; /* Marge réduite */
+    }
     table {
       width: 100%;
       border-collapse: collapse;
-      margin: 5px 0;
+      margin: 3px 0; /* Marge réduite */
     }
     th, td {
-      padding: 2px 0;
+      padding: 1px 0; /* Padding réduit */
     }
     th { font-weight: bold; }
     .total {
-      font-size: 12px;
+      font-size: 10px; /* Taille réduite */
       font-weight: bold;
     }
     .small {
-      font-size: 9px;
+      font-size: 7px; /* Taille réduite */
     }
   </style>
 </head>
@@ -105,7 +113,7 @@
         printable: 'receipt-content',
         type: 'html',
         targetStyles: ['*'],
-        style: '@page { 80mm 80mm; auto; margin: 2mm; }',
+        style: '@page { 57mm 90mm; auto; margin: 2mm; }',
       });
 
       // Ferme la fenêtre après un délai (si compatible)
