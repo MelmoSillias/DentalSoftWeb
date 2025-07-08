@@ -95,7 +95,7 @@ html {
 <div id="wrapper" data-turbo-permanent>
 
     <!-- Sidebar -->
-    <ul class="navbar-nav navbar-nav-fixed bg-gradient-primary sidebar sidebar-dark accordion bg-dark" id="accordionSidebar" data-turbo-permanent>
+    <ul class="navbar-nav navbar-nav-fixed bg-gradient-primary sidebar sidebar-dark accordion bg-dark sidebar-sticky" id="accordionSidebar" data-turbo-permanent>
     <!-- Brand -->
     <a class="sidebar-brand d-flex align-items-center justify-content-center" href="{{ path('app_reception_dashboard') }}">
         <div class="sidebar-brand-icon rotate-n-15">
@@ -127,7 +127,7 @@ html {
     <li class="nav-item {{ active_page == 'consultations_pending' ? 'active' : '' }}">
         <a class="nav-link" href="{{ path('app_reception_consultations_pending') }}">
             <i class="fas fa-stethoscope"></i>
-            <span>En attente</span>
+            <span>Liste D'attente</span>
         </a>
     </li>
     <li class="nav-item {{ active_page == 'caisse' ? 'active' : '' }}">

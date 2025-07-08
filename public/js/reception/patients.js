@@ -79,55 +79,65 @@ $(document).ready(function () {
     }
 
     function handleConsultationForm() {
-        $('#consultationForm').submit(function (e) {
-            e.preventDefault();
-            const formData = {
-                patient_id: $(this).data('patient-id'),
-                medecin_id: $('#medecin').val(),
-                payant: $('input[name="payant"]:checked').val(),
-                mode_paiement_id: $('input[name="payant"]:checked').val() ? $('#modePaiement').val() : null
-            };
+    $('#consultationForm').submit(function (e) {
+        e.preventDefault();
 
-            if(formData['mode_paiement_id'] == null){
-                showToastModal({
-                    message: 'Veillez Choisir le mode de paiement',
-                    type: 'error',
-                    duration: 3000
-                  });
-                  return
-            }
+        const formData = {
+            patient_id: $(this).data('patient-id'),
+            medecin_id: $('#medecin').val(),
+            payant: $('input[name="payant"]:checked').val(),
+            mode_paiement_id: $('input[name="payant"]:checked').val() ? $('#modePaiement').val() : null
+        };
 
-            $.ajax({
-                url: '/api/consultation/create',
-                type: 'POST',
-                contentType: 'application/json',
-                data: JSON.stringify(formData),
-                success: function (response) {
-                    $('#createConsultationModal').modal('hide');
-                    if (response.success) {
-                        showToastModal({
-                          message: 'Consultation créée avec succès !',
-                          type: 'success'
-                        });
-                        window.location.reload();
-                    } else {
-                        showToastModal({
-                          message: 'Erreur : ' + response.error,
-                          type: 'error',
-                          duration: 3000
-                        });
-                    }
-                },
-                error: function () {
+        if (formData['mode_paiement_id'] == null) {
+            showToastModal({
+                message: 'Veuillez choisir le mode de paiement',
+                type: 'error',
+                duration: 3000
+            });
+            return;
+        }
+
+        $.ajax({
+            url: '/api/consultation/create',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(formData),
+            success: function (response) {
+                $('#createConsultationModal').modal('hide');
+
+                if (response.success) {
                     showToastModal({
-                      message: 'Une erreur est survenue lors de la création',
-                      type: 'error',
-                      duration: 3000
+                        message: 'Consultation créée avec succès !',
+                        type: 'success'
+                    });
+
+                    setTimeout(() => {
+                         if (formData.payant === "1" && response.paiement_id) {
+                        const receiptUrl = `/api/paiement-ticket/${response.paiement_id}/print`;
+                        const printWindow = window.open(receiptUrl, '_blank');
+                        printWindow.focus();
+                    }}, 3000)
+ 
+                } else {
+                    showToastModal({
+                        message: 'Erreur : ' + response.error,
+                        type: 'error',
+                        duration: 3000
                     });
                 }
-            });
+            },
+            error: function () {
+                showToastModal({
+                    message: 'Une erreur est survenue lors de la création',
+                    type: 'error',
+                    duration: 3000
+                });
+            }
         });
-    }
+    });
+}
+
 
     let dataTable;
     function initDataTable() {

@@ -29,7 +29,7 @@ final class PatientAPIController extends AbstractController
     #[Route('/api/patients', name: 'api_patients', methods: ['GET'])]
     public function getPatients(PatientRepository $patientRepo): JsonResponse
     {
-        $patients = $patientRepo->findAll();
+        $patients = $patientRepo->findBy([], ['nom' => 'ASC']);
 
         $data = array_map(function ($patient) {
             $contact = $patient->getContactsUrgence()->first();
@@ -262,27 +262,8 @@ public function getPatientDetails(int $id, PatientRepository $patientRepository)
             'telephone' => $contact->getTelephone()
         ];
     }
-
-    // Format allergies
-    $allergies = [];
-    foreach ($patient->getAllergies() as $allergy) {
-        $allergies[] = [
-            'nom' => $allergy->getNom(),
-            'severite' => $allergy->getSeverite(),
-            'commentaire' => $allergy->getCommentaire()
-        ];
-    }
-
-    // Format medical history (antecedents)
-    $antecedents = [];
-    foreach ($patient->getAntecedents() as $antecedent) {
-        $antecedents[] = [
-            'type' => $antecedent->getType(),
-            'description' => $antecedent->getDescription(),
-            'date' => $antecedent->getDate() ? $antecedent->getDate()->format('Y-m-d') : null
-        ];
-    }
-
+ 
+ 
     // Format last consultation if exists
     $derniereConsultation = null;
     if ($patient->getDerniereConsultation()) {
@@ -307,9 +288,7 @@ public function getPatientDetails(int $id, PatientRepository $patientRepository)
         'numCarnet' => $patient->getNumCarnet(),
         'groupeSanguin' => $patient->getGroupeSanguin(),
         'dateInscription' => $patient->getDateInscription()->format('Y-m-d H:i'),
-        'contactUrgence' => $contactUrgence,
-        'allergies' => $allergies,
-        'antecedents' => $antecedents,
+        'contactUrgence' => $contactUrgence, 
         'derniereConsultation' => $derniereConsultation
     ]);
 }
@@ -388,7 +367,8 @@ public function getPatientDetails(int $id, PatientRepository $patientRepository)
 
             return $this->json([
                 'success' => true,
-                'consultation_id' => $consultation->getId()
+                'consultation_id' => $consultation->getId(),
+                'paiement_id' => $paiement->getId()
             ]);
         } catch (\Exception $e) {
             return $this->json([

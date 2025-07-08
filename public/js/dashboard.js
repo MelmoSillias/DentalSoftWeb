@@ -1,7 +1,13 @@
 // public/js/dashboard.js
+
 $(function() {
-  // 1) Initialisation DateRangePicker
+  // 1) Initialisation DateRangePicker avec période par défaut = mois courant
+  const startOfMonth = moment().startOf('month');
+  const endOfMonth = moment().endOf('month');
+
   $('#reportrange').daterangepicker({
+    startDate: startOfMonth,
+    endDate: endOfMonth,
     opens: 'right',
     locale: { format: 'DD/MM/YYYY', applyLabel: 'Appliquer', cancelLabel: 'Annuler' }
   }, function(start, end) {
@@ -10,8 +16,13 @@ $(function() {
     loadAll(start.format('YYYY-MM-DD'), end.format('YYYY-MM-DD'));
   });
 
-  // Chargement initial sans filtre (période facultative)
-  loadAll();
+  // Affiche la période par défaut dans le label
+  $('#reportrange span').text(
+    startOfMonth.format('DD/MM/YYYY') + ' - ' + endOfMonth.format('DD/MM/YYYY')
+  );
+
+  // Chargement initial avec la période du mois courant
+  loadAll(startOfMonth.format('YYYY-MM-DD'), endOfMonth.format('YYYY-MM-DD'));
 });
 
 function loadAll(from = null, to = null) {
@@ -239,12 +250,20 @@ function loadDoctorReports(from, to) {
     $('#kpiAfterFees').text(formatFcfa(resp.kpi.afterFees));
     $('#kpiTotalSalaries').text(formatFcfa(resp.kpi.totalSalaries));
 
-    // Destruction de l’ancienne instance
+    // Réinitialisation propre de la table
     if ($.fn.DataTable.isDataTable('#doctorsReport')) {
-      $('#doctorsReport').DataTable().destroy();
+      const dt = $('#doctorsReport').DataTable();
+      dt.rows().every(function () {
+        if (this.child.isShown()) {
+          this.child.hide();
+          $(this.node()).removeClass('shown');
+        }
+      });
+      dt.destroy();
     }
 
-    const $table = $('#doctorsReport').DataTable({
+    // Création du tableau
+    $('#doctorsReport').DataTable({
       data: resp.doctors,
       columns: [
         { data: 'name' },
@@ -261,7 +280,7 @@ function loadDoctorReports(from, to) {
         {
           data: null,
           orderable: false,
-          render: function () {
+          render: function (data, type, row) {
             return `
               <div class="btn-group">
                 <button class="btn btn-sm btn-outline-primary" onclick="printDoctorRow(this)">
@@ -273,30 +292,39 @@ function loadDoctorReports(from, to) {
               </div>
             `;
           }
-        }
+        } 
       ]
-    });
-
-    // Gestion du bouton déroulant
-    $('#doctorsReport tbody').on('click', '.btn-toggle-details', function () {
-      const tr = $(this).closest('tr');
-      const row = $table.row(tr);
-
-      if (row.child.isShown()) {
-        row.child.hide();
-        tr.removeClass('shown');
-        $(this).html('<i class="fas fa-chevron-down"></i>');
-      } else {
-        row.child(formatDoctorDetails(row.data())).show();
-        tr.addClass('shown');
-        $(this).html('<i class="fas fa-chevron-up"></i>');
-      }
     });
   });
 }
 
+$('#doctorsReport tbody').on('click', '.btn-toggle-details', function () {
+  const table = $('#doctorsReport').DataTable();
+  const tr = $(this).closest('tr');
+  const row = table.row(tr);
+
+  // Toujours récupérer les données (même si vides)
+  const data = row.data();
+  if (!data) return;
+
+  // Générer le HTML du détail (vide ou non)
+  const detailHtml = formatDoctorDetails(data);
+
+  if (row.child.isShown()) {
+    row.child.hide();
+    tr.removeClass('shown');
+    $(this).html('<i class="fas fa-chevron-down"></i>');
+  } else {
+    row.child(detailHtml).show();
+    tr.addClass('shown');
+    $(this).html('<i class="fas fa-chevron-up"></i>');
+  }
+});
+
+
+
 function formatDoctorDetails(d) {
-  if (!d.actes || d.actes.length === 0) {
+  if (!d || !Array.isArray(d.actes) || d.actes.length === 0) {
     return '<div class="p-2"><em>Aucun acte enregistré sur cette période.</em></div>';
   }
 
@@ -305,6 +333,7 @@ function formatDoctorDetails(d) {
       <table class="table table-sm table-bordered mb-0">
         <thead class="thead-light">
           <tr>
+            <th>Date</th>
             <th>Patient</th>
             <th>Type d'acte</th>
             <th>Montant</th>
@@ -315,6 +344,7 @@ function formatDoctorDetails(d) {
   d.actes.forEach(a => {
     table += `
       <tr>
+        <td>${a.date}</td>
         <td>${a.patient}</td>
         <td>${a.type}</td>
         <td>${formatFcfa(a.montant)}</td>
@@ -325,6 +355,106 @@ function formatDoctorDetails(d) {
   return table;
 }
 
+
+
+function printDoctorRow(btn) {
+  const tr = $(btn).closest('tr');
+  const row = $('#doctorsReport').DataTable().row(tr).data();
+
+  let html = `
+    <div style="font-family: Arial; font-size: 14px;">
+      <h2 style="text-align: center;">Rapport de service — Dr ${row.name}</h2>
+      <p><strong>Période :</strong> ${$('#reportrange').text() || '(non spécifiée)'}</p>
+      <hr>
+      ${formatDoctorDetails(row)}
+      <br><br>
+      <table style="width: 100%; margin-top: 50px;">
+        <tr>
+          <td style="text-align: left;"><strong>Signature Médecin</strong></td>
+          <td style="text-align: right;"><strong>Signature Direction</strong></td>
+        </tr>
+      </table>
+    </div>
+  `;
+
+  printJS({
+    printable: html,
+    type: 'raw-html',
+    style: '@page { size: A4 landscape; margin: 20mm; }',
+    scanStyles: false
+  });
+}
+
+
+
+
+function printAllActs() {
+  $('#globalPrintModal').modal('hide');
+
+  const rows = $('#doctorsReport').DataTable().rows().data().toArray();
+  let allActes = [];
+
+  rows.forEach(r => {
+    if (Array.isArray(r.actes)) {
+      r.actes.forEach(a => {
+        allActes.push({
+          date: a.date,
+          medecin: r.name,
+          patient: a.patient,
+          type: a.type,
+          montant: a.montant
+        });
+      });
+    }
+  });
+
+  let html = `
+    <div style="font-family: Arial;">
+      <h2 style="text-align: center;">Liste des actes médicaux</h2>
+      <p><strong>Période :</strong> ${$('#reportrange').text() || '(non spécifiée)'}</p>
+      <table style="width: 100%; border-collapse: collapse;" border="1" cellpadding="5">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Médecin</th>
+            <th>Patient</th>
+            <th>Type d'acte</th>
+            <th>Montant</th>
+          </tr>
+        </thead>
+        <tbody>`;
+
+  allActes.forEach(a => {
+    html += `
+      <tr>
+        <td>${a.date}</td>
+        <td>${a.medecin}</td>
+        <td>${a.patient}</td>
+        <td>${a.type}</td>
+        <td>${formatFcfa(a.montant)}</td>
+      </tr>`;
+  });
+
+  html += `
+        </tbody>
+      </table>
+      <br><br>
+      <table style="width: 100%; margin-top: 50px;">
+        <tr>
+          <td style="text-align: left;"><strong>Signature Responsable</strong></td>
+          <td style="text-align: right;"><strong>Cachet Cabinet</strong></td>
+        </tr>
+      </table>
+    </div>
+  `;
+
+  printJS({
+    printable: html,
+    type: 'raw-html',
+    style: '@page { size: A4 landscape; margin: 20mm; }',
+    scanStyles: false
+  });
+}
 
 
 // utilitaire de formatage en Fcfa

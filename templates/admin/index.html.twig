@@ -3,6 +3,8 @@
 {% block stylesheets %}
     {{ parent() }}
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css" />
+    <script src="https://printjs-4de6.kxcdn.com/print.min.js"></script>
+    <link rel="stylesheet" href="https://printjs-4de6.kxcdn.com/print.min.css">
     <style>
         .card {
             border-radius: 10px;
@@ -28,6 +30,127 @@
             background-color: #4e73df;
             color: white;
         }
+
+        @media print {
+  body * {
+    visibility: hidden;
+    margin: 0;
+    padding: 0;
+  }
+
+  .print-area, .print-area * {
+    visibility: visible;
+  }
+
+  .print-area {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    padding: 20px 40px;
+    font-family: "Times New Roman", serif;
+    font-size: 12pt;
+    color: #000;
+  }
+
+  /* Masquer complètement les badges */
+  .badge {
+    display: none !important;
+  }
+
+  /* Style pour afficher uniquement le contenu texte des badges */
+  .badge-content {
+    display: inline;
+    font-weight: normal;
+  }
+
+  .print-header {
+    text-align: center;
+    border-bottom: 2px solid #000;
+    margin-bottom: 25px;
+    padding-bottom: 15px;
+  }
+
+  .print-header h2 {
+    font-size: 18pt;
+    margin-bottom: 5px;
+    text-transform: uppercase;
+  }
+
+  .print-section-title {
+    font-weight: bold;
+    font-size: 14pt;
+    margin: 25px 0 15px;
+    border-bottom: 1px solid #ccc;
+    padding-bottom: 5px;
+  }
+
+  /* Style amélioré pour les données */
+  .data-field {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    page-break-inside: avoid;
+  }
+
+  .data-label {
+    font-weight: bold;
+    width: 40%;
+  }
+
+  .data-value {
+    width: 60%;
+    text-align: right;
+    font-weight: normal;
+  }
+
+  /* Style des listes sans puces ni badges */
+  ul.list-group, ol.list-group {
+    list-style-type: none;
+    padding-left: 0;
+    margin: 15px 0;
+  }
+
+  ul.list-group li, ol.list-group li {
+    border: none;
+    padding: 6px 0;
+    display: flex;
+    justify-content: space-between;
+    border-bottom: 1px solid #eee;
+  }
+
+  /* Pied de page professionnel */
+  .print-footer {
+    margin-top: 50px;
+    font-size: 10pt;
+    border-top: 1px solid #000;
+    padding-top: 15px;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .sign {
+    width: 45%;
+    text-align: center;
+  }
+
+  .sign hr {
+    border: none;
+    border-top: 1px solid #000;
+    width: 80%;
+    margin: 15px auto 5px;
+  }
+
+  @page {
+    size: A4;
+    margin: 1.5cm;
+    @bottom-center {
+      content: "Page " counter(page);
+      font-size: 10pt;
+    }
+  }
+} 
+
     </style>
 {% endblock %}
 {% block main %}
@@ -35,7 +158,7 @@
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
         <h1 class="h2 mb-0 text-gray-800">Tableau de bord</h1>
         <div class="d-flex">
-            <button class="btn btn-sm btn-primary shadow-sm mr-2" onclick="printSection('globalStats')">
+            <button class="btn btn-sm btn-primary shadow-sm mr-2 print-btn" onclick="printSection('globalStats')">
                 <i class="fas fa-print fa-sm text-white-50"></i> Imprimer Globale
             </button>
             <button id="reportrange" class="btn btn-outline-secondary btn-sm">
@@ -45,386 +168,370 @@
             </button>
         </div>
     </div>
-    <section id="globalStats">
-    <h4 class="mb-2 text-secondary">Statistiques Globales</h4>
-    <div class="row">
-        <!-- Patients -->
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-primary shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                Patients (Total)
+    
+    <!-- Section Statistiques Globales -->
+    <section id="globalStats" class="print-section">
+        <h4 class="mb-2 text-secondary print-section-title">Statistiques Globales</h4>
+        <div class="row print-row">
+            <!-- Patients -->
+            <div class="col-xl-3 col-md-6 mb-4 print-card">
+                <div class="card border-left-primary shadow h-100 py-2">
+                    <div class="card-body">
+                        <div class="row no-gutters align-items-center">
+                            <div class="col mr-2">
+                                <div class="text-xs font-weight-bold text-primary text-uppercase mb-1 print-label">
+                                    Patients (Total)
+                                </div>
+                                <div id="patientsTotal" class="h6 mb-0 font-weight-bold text-gray-800 print-value"> -- </div>
                             </div>
-                            <div id="patientsTotal" class="h6 mb-0 font-weight-bold text-gray-800"> -- </div>
                         </div>
-                        <div class="col-auto">
-                            <i class="fas fa-user fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Solde -->
+            <div class="col-xl-3 col-md-6 mb-4 print-card">
+                <div class="card border-left-success shadow h-100 py-2">
+                    <div class="card-body">
+                        <div class="row no-gutters align-items-center">
+                            <div class="col mr-2">
+                                <div class="text-xs font-weight-bold text-success text-uppercase mb-1 print-label">
+                                    Capital
+                                </div>
+                                <div id="capitalTotal" class="h6 mb-0 font-weight-bold text-gray-800 print-value"> -- </div>
+                                <small class="text-gray-600 print-subvalue">Espèces : <span id="capitalCash" class="print-subvalue"> -- </span></small> 
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Chiffre d'affaires -->
+            <div class="col-xl-3 col-md-6 mb-4 print-card">
+                <div class="card border-left-info shadow h-100 py-2">
+                    <div class="card-body">
+                        <div class="row no-gutters align-items-center">
+                            <div class="col mr-2">
+                                <div class="text-xs font-weight-bold text-info text-uppercase mb-1 print-label">
+                                    Chiffre d'affaires
+                                </div>
+                                <div id="revenueTotal" class="h6 mb-0 font-weight-bold text-gray-800 print-value"> -- </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Employés -->
+            <div class="col-xl-3 col-md-6 mb-4 print-card">
+                <div class="card border-left-dark shadow h-100 py-2">
+                    <div class="card-body d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="text-xs font-weight-bold text-dark text-uppercase mb-1 print-label">
+                                Employés (total)
+                            </div>
+                            <div id="employeesTotal" class="h6 mb-0 font-weight-bold text-gray-800 print-value"> -- </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Masse salariale fixe -->
+            <div class="col-xl-3 col-md-6 mb-4 print-card">
+                <div class="card border-left-secondary shadow h-100 py-2">
+                    <div class="card-body d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="text-xs font-weight-bold text-secondary text-uppercase mb-1 print-label">
+                                Masse salariale fixe
+                            </div>
+                            <div id="payrollFixed" class="h6 mb-0 font-weight-bold text-gray-800 print-value"> -- </div>
+                            <small class="text-gray-600 print-subvalue"><span id="payrollFixedCount" class="print-subvalue">12</span> employés</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Salles de consultation -->
+            <div class="col-xl-3 col-md-6 mb-4 print-card">
+                <div class="card border-left-info shadow h-100 py-2">
+                    <div class="card-body d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1 print-label">
+                                Salles de consultation
+                            </div>
+                            <div id="consultRoomsCount" class="h6 mb-0 font-weight-bold text-gray-800 print-value"> -- </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Produits consommables -->
+            <div class="col-xl-3 col-md-6 mb-4 print-card">
+                <div class="card border-left-warning shadow h-100 py-2">
+                    <div class="card-body d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1 print-label">
+                                Produits consommables
+                            </div>
+                            <div id="consumablesCount" class="h6 mb-0 font-weight-bold text-gray-800 print-value"> -- </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Utilisateurs -->
+            <div class="col-xl-3 col-md-6 mb-4 print-card">
+                <div class="card border-left-success shadow h-100 py-2">
+                    <div class="card-body d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1 print-label">
+                                Utilisateurs
+                            </div>
+                            <div class="h6 mb-0 font-weight-bold text-gray-800 print-value" id="AllUsers"> -- </div>
+                            <small class="text-gray-600 print-subvalue">Admin: <span id="usersAdmin" class="print-subvalue"> -- </span>, Secrétaire: <span id="usersReceptionist" class="print-subvalue"> -- </span>, Médecin: <span id="usersDoctor" class="print-subvalue"> -- </span></small>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-        <!-- Solde -->
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-success shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                                Capital
-                            </div>
-                            <div id="capitalTotal" class="h6 mb-0 font-weight-bold text-gray-800"> -- </div>
-                            <small class="text-gray-600">Espèces : <span id="capitalCash"> -- </span></small> 
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas fa-dollar-sign fa-2x text-gray-300"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <!-- Chiffre d'affaires -->
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-info shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
-                                Chiffre d'affaires
-                            </div>
-                            <div id="revenueTotal" class="h6 mb-0 font-weight-bold text-gray-800"> -- </div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas fa-clipboard-list fa-2x text-gray-300"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
+    </section>
+
+    <!-- Détails Globaux -->
+    <div class="row mt-4" id="nonPeriodicDetails">
+        <div class="col-12">
+            <h4 class="mb-3 text-secondary print-section-title">Détails Globaux</h4>
         </div>
 
         <!-- Employés -->
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-dark shadow h-100 py-2">
-                <div class="card-body d-flex justify-content-between align-items-center">
-                    <div>
-                        <div class="text-xs font-weight-bold text-dark text-uppercase mb-1">
-                            Employés (total)
-                        </div>
-                        <div id="employeesTotal" class="h6 mb-0 font-weight-bold text-gray-800"> -- </div>
-                    </div>
-                    <i class="fas fa-users fa-2x text-gray-300"></i>
-                </div>
-            </div>
-        </div>
-        <!-- Masse salariale fixe -->
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-secondary shadow h-100 py-2">
-                <div class="card-body d-flex justify-content-between align-items-center">
-                    <div>
-                        <div class="text-xs font-weight-bold text-secondary text-uppercase mb-1">
-                            Masse salariale fixe
-                        </div>
-                        <div id="payrollFixed" class="h6 mb-0 font-weight-bold text-gray-800"> -- </div>
-                        <small class="text-gray-600"><span id="payrollFixedCount">12</span> employés</small>
-                    </div>
-                    <i class="fas fa-money-bill-wave fa-2x text-gray-300"></i>
-                </div>
-            </div>
-        </div>
-        <!-- Salles de consultation -->
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-info shadow h-100 py-2">
-                <div class="card-body d-flex justify-content-between align-items-center">
-                    <div>
-                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
-                            Salles de consultation
-                        </div>
-                        <div id="consultRoomsCount" class="h6 mb-0 font-weight-bold text-gray-800"> -- </div>
-                    </div>
-                    <i class="fas fa-clinic-medical fa-2x text-gray-300"></i>
-                </div>
-            </div>
-        </div>
-        <!-- Produits consommables -->
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-warning shadow h-100 py-2">
-                <div class="card-body d-flex justify-content-between align-items-center">
-                    <div>
-                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                            Produits consommables
-                        </div>
-                        <div id="consumablesCount" class="h6 mb-0 font-weight-bold text-gray-800"> -- </div>
-                    </div>
-                    <i class="fas fa-pills fa-2x text-gray-300"></i>
-                </div>
-            </div>
-        </div>
-        <!-- Utilisateurs -->
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-success shadow h-100 py-2">
-                <div class="card-body d-flex justify-content-between align-items-center">
-                    <div>
-                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                            Utilisateurs
-                        </div>
-                        <div class="h6 mb-0 font-weight-bold text-gray-800" id="AllUsers"> -- </div>
-                        <small class="text-gray-600">Admin: <span id="usersAdmin"> -- </span>, Secrétaire: <span id="usersReceptionist"> -- </span>, Médecin: <span id="usersDoctor"> -- </span></small>
-                    </div>
-                    <i class="fas fa-user-cog fa-2x text-gray-300"></i>
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
-
-
-
-<div class="row mt-4" id="nonPeriodicDetails">
-    <div class="col-12">
-        <h4 class="mb-3 text-secondary">Détails Globaux</h4>
-    </div>
-
-    {# — Employés — #} 
-    <div class="col-xl-6 col-lg-6 col-md-12 mb-4">
-        <div class="card h-100 border-left-dark shadow">
-            <div class="card-header d-flex justify-content-between align-items-center py-2">
-                <h6 class="mb-0">Répartition des Employés</h6>
-                <button class="btn btn-sm btn-outline-primary" onclick="printSection('patientsEmployéesRepart')">
+        <div class="col-xl-6 col-lg-6 col-md-12 mb-4 print-card">
+            <div class="card h-100 border-left-dark shadow">
+                <div class="card-header d-flex justify-content-between align-items-center py-2 print-card-header">
+                    <h6 class="mb-0 print-card-title">Répartition des Employés</h6>
+                    <button class="btn btn-sm btn-outline-primary print-btn" onclick="printSection('patientsEmployéesRepart')">
                         <i class="fas fa-print"></i>
                     </button>
+                </div>
+                <ul class="list-group list-group-flush print-list" id="employeeList">
+                    <!-- Contenu dynamique -->
+                </ul>
             </div>
-            <ul class="list-group list-group-flush" id="employeeList">
-                
-            </ul>
         </div>
-    </div>
 
-    {# — Consommables à Stock Bas — #}
-    <div class="col-xl-6 col-lg-6 col-md-12 mb-4">
-        <div class="card h-100 border-left-warning shadow">
-            <div class="card-header d-flex justify-content-between align-items-center py-2">
-                <h6 class="mb-0">Consommables à Stock Bas</h6>
-                <button class="btn btn-sm btn-outline-primary" onclick="printSection('StockBas')">
+        <!-- Consommables à Stock Bas -->
+        <div class="col-xl-6 col-lg-6 col-md-12 mb-4 print-card">
+            <div class="card h-100 border-left-warning shadow">
+                <div class="card-header d-flex justify-content-between align-items-center py-2 print-card-header">
+                    <h6 class="mb-0 print-card-title">Consommables à Stock Bas</h6>
+                    <button class="btn btn-sm btn-outline-primary print-btn" onclick="printSection('StockBas')">
                         <i class="fas fa-print"></i>
                     </button>
+                </div>
+                <ul class="list-group list-group-flush print-list" id="lowStockList">
+                    <!-- Contenu dynamique -->
+                </ul>
             </div>
-            <ul class="list-group list-group-flush" id="lowStockList">
-                
-                {# … autres consommables critiques #}
-            </ul>
         </div>
-    </div>
 
-    {# — Patients — #}
-        <div class="col-12 mb-4" id="patientsDetails">
-    <div class="card h-100 border-left-primary shadow">
-        <div class="card-header d-flex justify-content-between align-items-center py-2">
-            <h6 class="mb-0">Patients</h6>
-            <button class="btn btn-sm btn-outline-primary" onclick="printSection('patientsDetails')">
-                <i class="fas fa-print"></i>
-            </button>
-        </div>
-        <ul class="list-group list-group-flush">
-            <li class="list-group-item d-flex justify-content-between">
-                Total
-                <span id="totalPatientsValue" class="badge badge-primary">—</span>
-            </li>
-            <li class="list-group-item d-flex justify-content-between">
-                Femmes / Hommes
-                <span id="genderRatioValue" class="badge badge-secondary">—</span>
-            </li>
-            <li class="list-group-item d-flex justify-content-between">
-                Mineurs / Adultes / Séniors
-                <span id="ageGroupsValue" class="badge badge-info">—</span>
-            </li>
-            <li class="list-group-item d-flex justify-content-between">
-                Âge moyen
-                <span id="averageAgeValue" class="badge badge-warning">—</span>
-            </li>
-        </ul>
-    </div>
-</div>
-
-
-</div>
-
-    {# … dans votre template, remplacez le <div class="mt-4"> entier par ceci #}
-
-<div class="mt-4">
-    <h4 class="mb-3 text-secondary">Détails Periodiques</h4>
-    <div class="row">
-        {# — Patients — #}
-        <div class="col-xl-4 col-lg-6 col-md-12 mb-4" id="patientsDetails">
+        <!-- Patients -->
+        <div class="col-12 mb-4 print-card" id="patientsDetails">
             <div class="card h-100 border-left-primary shadow">
-                <div class="card-header d-flex justify-content-between align-items-center py-2">
-                    <h6 class="mb-0">Patients</h6>
-                    <button class="btn btn-sm btn-outline-primary" onclick="printSection('patientsDetails')">
+                <div class="card-header d-flex justify-content-between align-items-center py-2 print-card-header">
+                    <h6 class="mb-0 print-card-title">Patients</h6>
+                    <button class="btn btn-sm btn-outline-primary print-btn" onclick="printSection('patientsDetails')">
                         <i class="fas fa-print"></i>
                     </button>
                 </div>
-                <ul class="list-group list-group-flush">
-                    <li class="list-group-item d-flex justify-content-between">
-                        Nouveaux
-                        <span id="periodicNewPatientsValue" class="badge badge-primary">--</span>
+                <ul class="list-group list-group-flush print-list">
+                    <li class="list-group-item d-flex justify-content-between print-list-item">
+                        <span class="print-label">Total</span>
+                        <span id="totalPatientsValue" class="print-value">—</span>
                     </li>
-                    <li class="list-group-item d-flex justify-content-between">
-                        Retours
-                        <span id="periodicReturningPatientsValue" class="badge badge-secondary">--</span>
-                    </li> 
+                    <li class="list-group-item d-flex justify-content-between print-list-item">
+                        <span class="print-label">Femmes / Hommes</span>
+                        <span id="genderRatioValue" class="print-value">—</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between print-list-item">
+                        <span class="print-label">Mineurs / Adultes / Séniors</span>
+                        <span id="ageGroupsValue" class="print-value">—</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between print-list-item">
+                        <span class="print-label">Âge moyen</span>
+                        <span id="averageAgeValue" class="print-value">—</span>
+                    </li>
                 </ul>
             </div>
         </div>
-
-        {# — Consultations — #}
-        <div class="col-xl-4 col-lg-6 col-md-12 mb-4" id="consultDetails">
-    <div class="card h-100 border-left-success shadow">
-        <div class="card-header d-flex justify-content-between align-items-center py-2">
-            <h6 class="mb-0">Consultations</h6>
-            <button class="btn btn-sm btn-outline-primary" onclick="printSection('consultDetails')">
-                <i class="fas fa-print"></i>
-            </button>
-        </div>
-        <ul class="list-group list-group-flush">
-            <li class="list-group-item d-flex justify-content-between">
-                Total
-                <span id="periodicTotalConsultsValue" class="badge badge-primary">--</span>
-            </li>
-            <li class="list-group-item d-flex justify-content-between">
-                Payantes / Gratuites
-                <span id="periodicPaidConsultsValue" class="badge badge-secondary">-- / --</span>
-            </li>
-            <li class="list-group-item d-flex justify-content-between">
-                Montant total
-                <span id="periodicTotalAmountValue" class="badge badge-success">-- Fcfa</span>
-            </li>
-            <li class="list-group-item d-flex justify-content-between">
-                Montant moyen
-                <span id="periodicAvgAmountValue" class="badge badge-info">-- Fcfa</span>
-            </li>
-            <li class="list-group-item d-flex justify-content-between">
-                Actes fréquents
-                <span id="periodicTopActsValue" class="badge badge-warning">--</span>
-            </li>
-        </ul>
     </div>
-</div>
 
+    <!-- Détails Periodiques -->
+    <div class="mt-4 print-section">
+        <h4 class="mb-3 text-secondary print-section-title">Détails Periodiques</h4>
+        <div class="row print-row">
+            <!-- Patients -->
+            <div class="col-xl-4 col-lg-6 col-md-12 mb-4 print-card" id="patientsDetailsPeriodic">
+                <div class="card h-100 border-left-primary shadow">
+                    <div class="card-header d-flex justify-content-between align-items-center py-2 print-card-header">
+                        <h6 class="mb-0 print-card-title">Patients</h6>
+                        <button class="btn btn-sm btn-outline-primary print-btn" onclick="printSection('patientsDetailsPeriodic')">
+                            <i class="fas fa-print"></i>
+                        </button>
+                    </div>
+                    <ul class="list-group list-group-flush print-list">
+                        <li class="list-group-item d-flex justify-content-between print-list-item">
+                            <span class="print-label">Nouveaux</span>
+                            <span id="periodicNewPatientsValue" class="print-value">--</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between print-list-item">
+                            <span class="print-label">Retours</span>
+                            <span id="periodicReturningPatientsValue" class="print-value">--</span>
+                        </li> 
+                    </ul>
+                </div>
+            </div>
 
-        {# — Rendez-vous — #}
-        <div class="col-xl-4 col-lg-6 col-md-12 mb-4" id="rdvDetails">
-    <div class="card h-100 border-left-warning shadow">
-        <div class="card-header d-flex justify-content-between align-items-center py-2">
-            <h6 class="mb-0">Rendez-vous</h6>
-            <button class="btn btn-sm btn-outline-primary" onclick="printSection('rdvDetails')">
-                <i class="fas fa-print"></i>
-            </button>
+            <!-- Consultations -->
+            <div class="col-xl-4 col-lg-6 col-md-12 mb-4 print-card" id="consultDetails">
+                <div class="card h-100 border-left-success shadow">
+                    <div class="card-header d-flex justify-content-between align-items-center py-2 print-card-header">
+                        <h6 class="mb-0 print-card-title">Consultations</h6>
+                        <button class="btn btn-sm btn-outline-primary print-btn" onclick="printSection('consultDetails')">
+                            <i class="fas fa-print"></i>
+                        </button>
+                    </div>
+                    <ul class="list-group list-group-flush print-list">
+                        <li class="list-group-item d-flex justify-content-between print-list-item">
+                            <span class="print-label">Total</span>
+                            <span id="periodicTotalConsultsValue" class="print-value">--</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between print-list-item">
+                            <span class="print-label">Payantes / Gratuites</span>
+                            <span id="periodicPaidConsultsValue" class="print-value">-- / --</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between print-list-item">
+                            <span class="print-label">Montant total</span>
+                            <span id="periodicTotalAmountValue" class="print-value">-- Fcfa</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between print-list-item">
+                            <span class="print-label">Montant moyen</span>
+                            <span id="periodicAvgAmountValue" class="print-value">-- Fcfa</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between print-list-item">
+                            <span class="print-label">Actes fréquents</span>
+                            <span id="periodicTopActsValue" class="print-value">--</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Rendez-vous -->
+            <div class="col-xl-4 col-lg-6 col-md-12 mb-4 print-card" id="rdvDetails">
+                <div class="card h-100 border-left-warning shadow">
+                    <div class="card-header d-flex justify-content-between align-items-center py-2 print-card-header">
+                        <h6 class="mb-0 print-card-title">Rendez-vous</h6>
+                        <button class="btn btn-sm btn-outline-primary print-btn" onclick="printSection('rdvDetails')">
+                            <i class="fas fa-print"></i>
+                        </button>
+                    </div>
+                    <ul class="list-group list-group-flush print-list">
+                        <li class="list-group-item d-flex justify-content-between print-list-item">
+                            <span class="print-label">Planifiés</span>
+                            <span id="periodicScheduled" class="print-value">—</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between print-list-item">
+                            <span class="print-label">Validés / En attente</span>
+                            <span id="periodicConfirmed" class="print-value">—</span> /
+                            <span id="periodicPending" class="print-value">—</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between print-list-item">
+                            <span class="print-label">Reportés / Annulés</span>
+                            <span id="periodicPostponed" class="print-value">—</span> /
+                            <span id="periodicCancelled" class="print-value">—</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between print-list-item">
+                            <span class="print-label">Taux de confirmation</span>
+                            <span id="periodicConfirmRate" class="print-value">—</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between print-list-item">
+                            <span class="print-label">Délai moyen</span>
+                            <span id="periodicAvgDelay" class="print-value">—</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Utilisation des Salles -->
+            <div class="col-xl-4 col-lg-6 col-md-12 mb-4 print-card" id="roomUsageDetails">
+                <div class="card h-100 border-left-info shadow">
+                    <div class="card-header d-flex justify-content-between align-items-center py-2 print-card-header">
+                        <h6 class="mb-0 print-card-title">Utilisation des Salles</h6>
+                        <button class="btn btn-sm btn-outline-primary print-btn" onclick="printSection('roomUsageDetails')">
+                            <i class="fas fa-print"></i>
+                        </button>
+                    </div>
+                    <ul class="list-group list-group-flush print-list" id="roomUsageList">
+                        <!-- Contenu dynamique -->
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Modes de Paiement -->
+            <div class="col-xl-4 col-lg-6 col-md-12 mb-4 print-card" id="paymentModesDetails">
+                <div class="card h-100 border-left-success shadow"> 
+                    <div class="card-header d-flex justify-content-between align-items-center py-2 print-card-header">
+                        <h6 class="mb-0 print-card-title">Solde des comptes de Paiement</h6>
+                        <button class="btn btn-sm btn-outline-primary print-btn" onclick="printSection('paymentUsageDetails')">
+                            <i class="fas fa-print"></i>
+                        </button>
+                    </div>
+                    <ul class="list-group list-group-flush print-list" id="paymentBalancesList">
+                        <!-- Contenu dynamique -->
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Utilisation des Modes de Paiement -->
+            <div class="col-xl-4 col-lg-6 col-md-12 mb-4 print-card" id="paymentUsageDetails">
+                <div class="card h-100 border-left-success shadow">
+                    <div class="card-header d-flex justify-content-between align-items-center py-2 print-card-header">
+                        <h6 class="mb-0 print-card-title">Utilisation des Modes de Paiement</h6>
+                        <button class="btn btn-sm btn-outline-primary print-btn" onclick="printSection('paymentUsageDetails')">
+                            <i class="fas fa-print"></i>
+                        </button>
+                    </div>
+                    <ul class="list-group list-group-flush print-list" id="paymentFreqList">
+                        <!-- Contenu dynamique -->
+                    </ul>
+                </div>
+            </div>
         </div>
-        <ul class="list-group list-group-flush">
-            <li class="list-group-item d-flex justify-content-between">
-                Planifiés
-                <span class="badge badge-primary" id="periodicScheduled">—</span>
-            </li>
-            <li class="list-group-item d-flex justify-content-between">
-                Validés / En attente
-                <span class="badge badge-success" id="periodicConfirmed">—</span> /
-                <span class="badge badge-success" id="periodicPending">—</span>
-            </li>
-            <li class="list-group-item d-flex justify-content-between">
-                Reportés / Annulés
-                <span class="badge badge-secondary" id="periodicPostponed">—</span> /
-                <span class="badge badge-secondary" id="periodicCancelled">—</span>
-            </li>
-            <li class="list-group-item d-flex justify-content-between">
-                Taux de confirmation
-                <span class="badge badge-info" id="periodicConfirmRate">—</span>
-            </li>
-            <li class="list-group-item d-flex justify-content-between">
-                Délai moyen
-                <span class="badge badge-warning" id="periodicAvgDelay">—</span>
-            </li>
-        </ul>
     </div>
-</div>
 
-        {# Utilisation des Salles #}
-        <div class="col-xl-4 col-lg-6 col-md-12 mb-4" id="roomUsageDetails">
-            <div class="card h-100 border-left-info shadow">
-                <div class="card-header d-flex justify-content-between align-items-center py-2">
-                    <h6 class="mb-0">Utilisation des Salles</h6>
-                    <button class="btn btn-sm btn-outline-primary" onclick="printSection('roomUsageDetails')">
-                    <i class="fas fa-print"></i>
+    <!-- Statistiques des Actes Médicaux -->
+    <div class="row mt-4 print-section">
+        <div class="col-12 print-card" id="actesStats">
+            <div class="card h-100 border-left-secondary shadow">
+                <div class="card-header d-flex justify-content-between align-items-center py-2 print-card-header">
+                    <h6 class="mb-0 print-card-title">Statistiques des Actes Médicaux</h6>
+                    <button class="btn btn-sm btn-outline-primary print-btn" onclick="printSection('actesStats')">
+                        <i class="fas fa-print"></i>
                     </button>
                 </div>
-                <ul class="list-group list-group-flush" id="roomUsageList">
-                    
+                <ul class="list-group list-group-flush print-list" id="actsStatsList">
+                    <!-- Contenu dynamique -->
                 </ul>
             </div>
         </div>
-
-        {# Modes de Paiement #}
-        <div class="col-xl-4 col-lg-6 col-md-12 mb-4" id="paymentModesDetails">
-            <div class="card h-100 border-left-success shadow"> 
-                    
-                <div class="card-header d-flex justify-content-between align-items-center py-2">
-        <h6 class="mb-0">Solde des comptes de Paiement</h6>
-        <button class="btn btn-sm btn-outline-primary" onclick="printSection('paymentUsageDetails')">
-          <i class="fas fa-print"></i>
-        </button> </div>
-                <ul class="list-group list-group-flush" id="paymentBalancesList">
-                    
-                </ul>
-            </div>
-        </div>
-
-        {# Modes de Paiement #}
-        <div class="col-xl-4 col-lg-6 col-md-12 mb-4" id="paymentUsageDetails">
-    <div class="card h-100 border-left-success shadow">
-      <div class="card-header d-flex justify-content-between align-items-center py-2">
-        <h6 class="mb-0">Utilisation des Modes de Paiement</h6>
-        <button class="btn btn-sm btn-outline-primary" onclick="printSection('paymentUsageDetails')">
-          <i class="fas fa-print"></i>
-        </button>
-      </div>
-      <ul class="list-group list-group-flush" id="paymentFreqList">
-        
-      </ul>
-    </div>
-  </div>
-
-        
-    </div>
-</div>
-
-    
-
-    {# … après la fin de votre <div class="mt-4"> (Détails) et avant <div class="mt-5"> (Rapports médecins) #}
-<div class="row mt-4">
-    <div class="col-12" id="actesStats">
-        <div class="card h-100 border-left-secondary shadow">
-            <div class="card-header d-flex justify-content-between align-items-center py-2">
-                <h6 class="mb-0">Statistiques des Actes Médicaux</h6>
-                <button class="btn btn-sm btn-outline-primary" onclick="printSection('actesStats')">
-                    <i class="fas fa-print"></i>
-                </button>
-            </div>
-            <ul class="list-group list-group-flush" id="actsStatsList">
-                
-            </ul>
-        </div>
-    </div>
-</div>
-
+    </div> 
     {# … juste après la section “Statistiques des Actes Médicaux” #}
 <div class="row mt-5">
     <div class="col-12">
         <div class="card shadow h-100 border-left-info" id="doctorReportsCard">
             <div class="card-header d-flex justify-content-between align-items-center py-2">
                 <h6 class="mb-0">Rapports Périodiques par Médecin</h6>
-                <button class="btn btn-sm btn-outline-primary" onclick="printSection('doctorReportsCard')">
+                <button class="btn btn-outline-primary" onclick="openGlobalPrintModal()">
                     <i class="fas fa-print"></i> Imprimer
-                </button>
+                    </button>
+
             </div>
             <div class="card-body">
                 {# — KPI Médecins — #}
@@ -473,10 +580,486 @@
     </div>
 </div>
 
+
+
 </div>
+
+<div class="modal fade" id="globalPrintModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Choix d’impression</h5></div>
+      <div class="modal-body">
+        <p>Souhaitez-vous imprimer :</p>
+        <button class="btn btn-primary w-100 mb-2" onclick="printDoctorsSummary()">Liste des médecins (résumé)</button>
+        <button class="btn btn-secondary w-100" onclick="printAllActs()">Liste des actes détaillée</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 {% endblock %}
 {% block javascripts %}
 {{ parent() }}
 <script src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
 <script src="{{ asset('js/dashboard.js') }}"></script>
+<script>
+function openGlobalPrintModal() {
+        $('#globalPrintModal').modal('show');
+    }
+
+function printDoctorRow(btn) {
+  const tr = $(btn).closest('tr');
+  const row = $('#doctorsReport').DataTable().row(tr).data();
+const currentDate = new Date().toLocaleDateString('fr-FR');
+
+  let html = `
+    <html>
+    <head>
+      <title>Rapport Dr ${row.name}</title>
+      <style>
+        @page {
+          size: A4 landscape;
+          margin: 10mm;
+        }
+        body {
+          font-family: "Times New Roman", serif;
+          font-size: 12pt;
+          line-height: 1.4;
+          color: #000;
+          margin: 0;
+          padding: 10mm;
+        }
+        .header {
+          text-align: center;
+          margin-bottom: 20px;
+          border-bottom: 2px solid #000;
+          padding-bottom: 10px;
+        }
+        .header h2 {
+          margin: 0;
+          font-size: 18pt;
+          text-transform: uppercase;
+        }
+        .header p {
+          margin: 5px 0 0;
+          font-size: 11pt;
+        }
+        .clinic-info {
+          font-size: 10pt;
+          margin-bottom: 15px;
+        }
+        .doctor-info {
+          margin-bottom: 20px;
+        }
+        .section-title {
+          font-weight: bold;
+          font-size: 13pt;
+          margin: 25px 0 10px;
+          border-bottom: 1px solid #ccc;
+          padding-bottom: 3px;
+        }
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          margin: 15px 0;
+          page-break-inside: avoid;
+        }
+        th {
+          background-color: #f2f2f2;
+          text-align: left;
+          padding: 8px;
+          border: 1px solid #ddd;
+          font-weight: bold;
+        }
+        td {
+          padding: 8px;
+          border: 1px solid #ddd;
+        }
+        .signature-table {
+          margin-top: 40px;
+          width: 100%;
+        }
+        .signature-cell {
+          width: 45%;
+          text-align: center;
+        }
+        .signature-line {
+          border-top: 1px solid #000;
+          width: 80%;
+          margin: 15px auto 5px;
+        }
+        .footer {
+          font-size: 9pt;
+          text-align: center;
+          margin-top: 10px;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <h2>Cabinet Dentaire Orodent</h2>
+        <p>RAPPORT DE SERVICE MÉDICAL</p>
+        <p class="clinic-info">
+          123 Avenue des Dentistes, 75000 Paris | Tél: 01 23 45 67 89 | SIRET: 123 456 789 00012
+        </p>
+      </div>
+
+      <div class="doctor-info">
+        <div class="data-row" style="display: flex; justify-content: space-between;">
+          <div><strong>Médecin :</strong> Dr ${row.name}</div>
+          <div><strong>Date du rapport :</strong> ${currentDate}</div>
+        </div>
+        <div><strong>Période concernée :</strong> ${$('#reportrange').text() !== "Choisir période" ? $('#reportrange').text() : '(non spécifiée)'}</div>
+      </div>
+
+      {# <div class="section-title">Statistiques d'activité</div>
+      ${formatDoctorTable(row)} #}
+
+      <div class="section-title">Détails des actes posés</div>
+      ${formatActsDetails(row)}
+
+      <table class="signature-table">
+        <tr>
+          <td class="signature-cell">
+            <div class="signature-line"></div>
+            <p>Signature du praticien</p>
+          </td>
+          <td class="signature-cell">
+            <div class="signature-line"></div>
+            <p>Cachet et visa de la direction</p>
+          </td>
+        </tr>
+      </table>
+
+      <div class="footer">
+        Document généré automatiquement le ${currentDate} - Valable sans signature
+      </div>
+    </body>
+    </html>
+  `;
+
+  const printWindow = window.open('', '_blank');
+  printWindow.document.write(html);
+  printWindow.document.close();
+  
+  setTimeout(() => {
+    printWindow.focus();
+    printWindow.print();
+    printWindow.close();
+  }, 500);
+}
+
+function formatDoctorTable(row) {
+  return `
+    <table>
+      <thead>
+        <tr>
+          <th>Indicateur</th>
+          <th>Nombre</th>
+          <th>Montant total</th>
+          <th>Moyenne par consultation</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Consultations réalisées</td>
+          <td>${row.consultations || '0'}</td>
+          <td>${row.total_amount ? row.total_amount + ' F CFA' : '0 F CFA'}</td>
+          <td>${row.avg_amount ? row.avg_amount + ' F CFA' : '0 F CFA'}</td>
+        </tr>
+        <tr>
+          <td>Actes effectués</td>
+          <td>${row.acts || '0'}</td>
+          <td>${row.acts_amount ? row.acts_amount + ' F CFA' : '0 F CFA'}</td>
+          <td>${row.avg_act ? row.avg_act + ' F CFA' : '0 F CFA'}</td>
+        </tr>
+        <tr>
+          <td>Nouveaux patients</td>
+          <td>${row.new_patients || '0'}</td>
+          <td colspan="2"></td>
+        </tr>
+        <tr>
+          <td>Patients fidélisés</td>
+          <td>${row.returning_patients || '0'}</td>
+          <td colspan="2"></td>
+        </tr>
+      </tbody>
+    </table>
+  `;
+}
+
+function formatActsDetails(row) {
+  if (!row.actes || row.actes.length === 0) {
+    return '<p>Aucun acte détaillé disponible pour cette période.</p>';
+  }
+
+  let detailsHtml = `
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Patient</th>
+          <th>Type d'acte</th>
+          <th>Montant</th>
+        </tr>
+      </thead>
+      <tbody>
+  `;
+
+  row.actes.forEach(acte => {
+    detailsHtml += `
+      <tr>
+        <td>${acte.date || ''}</td>
+        <td>${acte.patient || ''}</td>
+        <td>${acte.type || ''}</td>
+        <td>${acte.montant ? acte.montant + ' F CFA' : '0 F CFA'}</td>
+      </tr>
+    `;
+  });
+
+  detailsHtml += `
+      </tbody>
+    </table>
+  `;
+
+  return detailsHtml;
+}
+
+function printDoctorsSummary() {
+  $('#globalPrintModal').modal('hide');
+
+  const table = $('#doctorsReport').DataTable();
+  const rows = table.rows().data().toArray();
+
+  let html = `
+    <div style="font-family: Arial;">
+      <h2 style="text-align: center;">Résumé des rapports médicaux</h2>
+      <p><strong>Période :</strong> ${$('#reportrange').text() || '(non spécifiée)'}</p>
+      <table style="width: 100%; border-collapse: collapse;" border="1" cellpadding="5">
+        <thead>
+          <tr>
+            <th>Médecin</th>
+            <th>Nb Consult.</th>
+            <th>Montant (FCFA)</th>
+            <th>Payantes / Gratuites</th>
+            <th>Salaire</th>
+          </tr>
+        </thead>
+        <tbody>
+  `;
+
+  rows.forEach(r => {
+    html += `
+      <tr>
+        <td>${r.name}</td>
+        <td>${r.consultations}</td>
+        <td>${formatFcfa(r.revenue)}</td>
+        <td>${r.paidVsFree}</td>
+        <td>${formatFcfa(r.salary)}</td>
+      </tr>`;
+  });
+
+  html += `
+        </tbody>
+      </table>
+      <br><br>
+      <table style="width: 100%; margin-top: 50px;">
+        <tr>
+          <td style="text-align: left;"><strong>Signature Responsable</strong></td>
+          <td style="text-align: right;"><strong>Cachet Cabinet</strong></td>
+        </tr>
+      </table>
+    </div>
+  `;
+
+  printJS({
+    printable: html,
+    type: 'raw-html',
+    style: '@page { size: A4 landscape; margin: 20mm; }',
+    scanStyles: false
+  });
+}
+
+
+    function printAllActs() {
+        $('#globalPrintModal').modal('hide');
+        const rows = $('#doctorsReport').DataTable().rows().data().toArray();
+        let allActes = [];
+        rows.forEach(r => {
+            if (Array.isArray(r.actes)) {
+                r.actes.forEach(a => {
+                    allActes.push({
+                        date: a.date,
+                        medecin: r.name,
+                        patient: a.patient,
+                        type: a.type,
+                        montant: a.montant
+                    });
+                });
+            }
+        });
+        let html = `
+            <div style="font-family: Arial;">
+                <h2 style="text-align: center;">Liste des actes médicaux</h2>
+                <p><strong>Période :</strong> ${ $('#reportrange').text() || '(non spécifiée)'}</p>
+                <table style="width: 100%; border-collapse: collapse;" border="1" cellpadding="5">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Médecin</th>
+                            <th>Patient</th>
+                            <th>Type d'acte</th>
+                            <th>Montant</th>
+                        </tr>
+                    </thead>
+                    <tbody>`;
+        allActes.forEach(a => {
+            html += `
+                <tr>
+                    <td>${a.date}</td>
+                    <td>${a.medecin}</td>
+                    <td>${a.patient}</td>
+                    <td>${a.type}</td>
+                    <td>${formatFcfa(a.montant)}</td>
+                </tr>`;
+        });
+        html += `
+                    </tbody>
+                </table>
+                <br><br>
+                <table style="width: 100%; margin-top: 50px;">
+                    <tr>
+                        <td style="text-align: left;"><strong>Signature Responsable</strong></td>
+                        <td style="text-align: right;"><strong>Cachet Cabinet</strong></td>
+                    </tr>
+                </table>
+            </div>
+        `;
+        printJS({
+            printable: html,
+            type: 'raw-html',
+            style: '@page { size: A4 landscape; margin: 20mm; }',
+            scanStyles: false
+        });
+    }
+
+    function formatFcfa(amount) {
+        return new Intl.NumberFormat('fr-FR').format(amount) + ' Fcfa';
+    }
+
+
+
+function printSection(sectionId) {
+    const section = document.getElementById(sectionId);
+    if (!section) return;
+
+    const printWindow = window.open('', '', 'height=842,width=1024');
+    printWindow.document.write('<html><head><title>Impression</title>');
+    printWindow.document.write('<style>');
+    printWindow.document.write(`
+        body {
+            font-family: "Times New Roman", serif;
+            font-size: 12pt;
+            color: #000;
+            margin: 0;
+            padding: 20px;
+        }
+        .print-header {
+            text-align: center;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #000;
+            padding-bottom: 15px;
+        }
+        .print-header h2 {
+            margin: 0;
+            font-size: 18pt;
+        }
+        .print-section-title {
+            font-size: 14pt;
+            font-weight: bold;
+            margin: 25px 0 15px;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 5px;
+        }
+        .print-card {
+            margin-bottom: 15px;
+            page-break-inside: avoid;
+        }
+        .print-card-header {
+            padding: 10px 15px;
+            border-bottom: 1px solid #ddd;
+        }
+        .print-card-title {
+            font-weight: bold;
+            font-size: 12pt;
+            margin: 0;
+        }
+        .print-list {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+        .print-list-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 15px;
+            border-bottom: 1px solid #eee;
+        }
+        .print-label {
+            font-weight: bold;
+        }
+        .print-value {
+            text-align: right;
+        }
+        .print-subvalue {
+            font-size: 10pt;
+            color: #666;
+        }
+        @page {
+            size: A4;
+            margin: 1.5cm;
+        }
+    `);
+    printWindow.document.write('</style></head><body>');
+
+    // En-tête du document
+    printWindow.document.write(`
+        <div class="print-header">
+            <h2>CABINET DENTAIRE ORODENT</h2>
+            <p><strong>DOCUMENT ADMINISTRATIF</strong> - ${new Date().toLocaleDateString('fr-FR')}</p>
+        </div>
+    `);
+
+    // Titre de la section
+    const sectionTitle = section.querySelector('.print-section-title, .print-card-title, h4, h6')?.innerText || 'Section';
+    printWindow.document.write(`<div class="print-section-title">${sectionTitle}</div>`);
+
+    // Contenu de la section
+    printWindow.document.write(section.innerHTML);
+
+    // Pied de page
+    printWindow.document.write(`
+        <div style="margin-top: 40px; padding-top: 15px; border-top: 1px solid #000; display: flex; justify-content: space-between;">
+            <div style="width: 45%; text-align: center;">
+                <hr style="border: none; border-top: 1px solid #000; width: 80%; margin: 15px auto 5px;">
+                <p style="margin: 0; font-size: 10pt;">Signature du praticien</p>
+            </div>
+            <div style="width: 45%; text-align: center;">
+                <hr style="border: none; border-top: 1px solid #000; width: 80%; margin: 15px auto 5px;">
+                <p style="margin: 0; font-size: 10pt;">Cachet du cabinet</p>
+            </div>
+        </div>
+    `);
+
+    printWindow.document.write('</body></html>');
+    printWindow.document.close();
+
+    setTimeout(() => {
+        printWindow.focus();
+        printWindow.print();
+        printWindow.close();
+    }, 500);
+}
+
+</script>
 {% endblock %}

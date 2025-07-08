@@ -5,6 +5,8 @@
 {% block stylesheets %}
     {{ parent() }}
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css" />
+    <script src="https://printjs-4de6.kxcdn.com/print.min.js"></script>
+    <link rel="stylesheet" href="https://printjs-4de6.kxcdn.com/print.min.css">
     <style>
         .card {
             border-radius: 10px;
@@ -22,7 +24,32 @@
         .shadow {
             box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15) !important;
         }
-    </style>
+    @media print {
+        body * {
+            visibility: hidden;
+        }
+        #printableSection, #printableSection * {
+            visibility: visible;
+        }
+        #printableSection {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+        }
+        .card {
+            border: none;
+            box-shadow: none;
+        }
+        .text-secondary, .text-primary, .text-success, .text-info, .text-warning, .text-danger, .text-dark {
+            color: #000000 !important;
+        }
+        .fas {
+            color: #000000 !important;
+        }
+    }
+</style>
+
 {% endblock %}
 
 {% block main %}
@@ -41,7 +68,7 @@
             </div>
         </div>
     </div>
-
+<div id="printableSection">
     <section id="globalStats">
         <h4 class="mb-3 text-secondary">Statistiques du Jour</h4>
         <div class="row">
@@ -77,8 +104,55 @@
                 </div>
             {% endfor %}
         </div>
-    </section>
+    </section></div>
+    <div class="row mt-5">
+    <div class="col-12">
+        <div class="card shadow h-100 border-left-info" id="doctorReportsCard">
+            <div class="card-header d-flex justify-content-between align-items-center py-2">
+                <h6 class="mb-0">Rapports Périodiques par Médecin</h6>
+                <button class="btn btn-outline-primary" onclick="openGlobalPrintModal()">
+                  <i class="fas fa-print"></i> Imprimer
+                </button>
+
+            </div>
+            <div class="card-body"> 
+                {# — Tableau Médecins — #}
+                <div class="table-responsive">
+                    <table id="doctorsReport" class="table table-striped table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Médecin</th>
+                                <th>Nb Consult.</th>
+                                <th>Montant (Fcfa)</th>
+                                <th>Payantes / Gratuites</th>
+                                <th>Salaire</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                           
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
+</div>
+
+<div class="modal fade" id="globalPrintModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Choix d’impression</h5></div>
+      <div class="modal-body">
+        <p>Souhaitez-vous imprimer :</p>
+        <button class="btn btn-primary w-100 mb-2" onclick="printDoctorsSummary()">Liste des médecins (résumé)</button>
+        <button class="btn btn-secondary w-100" onclick="printAllActs()">Liste des actes détaillée</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 {% endblock %}
 
 {% block javascripts %}
@@ -86,14 +160,7 @@
     <script src="https://cdn.jsdelivr.net/npm/moment@2.29.1/moment.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
     <script>
-        $(function () {
-            $('#datepicker input').daterangepicker({
-                singleDatePicker: true,
-                showDropdowns: true,
-                locale: { format: 'YYYY-MM-DD' }
-            });
-
-            $(function () {
+  $(function () {
     // Initialisation du datepicker
     const dateInput = $('#datepicker input');
     dateInput.daterangepicker({
@@ -104,10 +171,12 @@
 
     // Charger les données au chargement initial
     loadStats(dateInput.val());
+    loadDoctorReports(dateInput.val(), dateInput.val());
 
     // Charger les données quand la date change
     dateInput.on('apply.daterangepicker', function (ev, picker) {
         loadStats(picker.startDate.format('YYYY-MM-DD'));
+        loadDoctorReports(picker.startDate.format('YYYY-MM-DD'), picker.startDate.format('YYYY-MM-DD'));
     });
 
     function loadStats(date) {
@@ -122,7 +191,6 @@
                 cashRevenueTotal: data.cashRevenue + ' Fcfa',
                 totalRevenue: data.totalRevenue + ' Fcfa',
             };
-
             for (const [id, val] of Object.entries(keys)) {
                 $('#' + id).text(val);
             }
@@ -132,26 +200,471 @@
     }
 
     window.printSection = function (sectionId) {
-        const originalContent = document.body.innerHTML;
-        const sectionContent = document.getElementById(sectionId).innerHTML;
-        document.body.innerHTML = sectionContent;
-        window.print();
-        document.body.innerHTML = originalContent;
-        location.reload();
-    }
-});
-            
+        printJS({
+            printable: 'printableSection',
+            type: 'html',
+            style: '@media print { body * { visibility: hidden; } #printableSection, #printableSection * { visibility: visible; } #printableSection { position: absolute; left: 0; top: 0; width: 100%; } .text-secondary, .text-primary, .text-success, .text-info, .text-warning, .text-danger, .text-dark, .fas { color: #000000 !important; } }'
         });
+    }
+function loadDoctorReports(from, to) {
+  $.getJSON('/api/dashboard/periodic/doctor-reports', { from, to }, resp => {
+    // Affichage des KPI
+    $('#kpiTotalRevenue').text(formatFcfa(resp.kpi.totalRevenue));
+    $('#kpiAfterFees').text(formatFcfa(resp.kpi.afterFees));
+    $('#kpiTotalSalaries').text(formatFcfa(resp.kpi.totalSalaries));
 
-
-        function printSection(sectionId) {
-            const originalContent = document.body.innerHTML;
-            const sectionContent = document.getElementById(sectionId).innerHTML;
-            document.body.innerHTML = sectionContent;
-            window.print();
-            document.body.innerHTML = originalContent;
-            location.reload(); // recharge les scripts
+    // Réinitialisation propre de la table
+    if ($.fn.DataTable.isDataTable('#doctorsReport')) {
+      const dt = $('#doctorsReport').DataTable();
+      dt.rows().every(function () {
+        if (this.child.isShown()) {
+          this.child.hide();
+          $(this.node()).removeClass('shown');
         }
-    </script>
+      });
+      dt.destroy();
+    }
+
+    // Création du tableau
+    $('#doctorsReport').DataTable({
+      data: resp.doctors,
+      columns: [
+        { data: 'name' },
+        { data: 'consultations' },
+        {
+          data: 'revenue',
+          render: data => formatFcfa(data)
+        },
+        { data: 'paidVsFree' },
+        {
+          data: 'salary',
+          render: data => formatFcfa(data)
+        },
+        {
+          data: null,
+          orderable: false,
+          render: function (data, type, row) {
+            return `
+              <div class="btn-group">
+                <button class="btn btn-sm btn-outline-primary" onclick="printDoctorRow(this)">
+                  <i class="fas fa-print"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-secondary btn-toggle-details">
+                  <i class="fas fa-chevron-down"></i>
+                </button>
+              </div>
+            `;
+          }
+        } 
+      ]
+    });
+  });
+}
+
+$('#doctorsReport tbody').on('click', '.btn-toggle-details', function () {
+  const table = $('#doctorsReport').DataTable();
+  const tr = $(this).closest('tr');
+  const row = table.row(tr);
+
+  // Toujours récupérer les données (même si vides)
+  const data = row.data();
+  if (!data) return;
+
+  // Générer le HTML du détail (vide ou non)
+  const detailHtml = formatDoctorDetails(data);
+
+  if (row.child.isShown()) {
+    row.child.hide();
+    tr.removeClass('shown');
+    $(this).html('<i class="fas fa-chevron-down"></i>');
+  } else {
+    row.child(detailHtml).show();
+    tr.addClass('shown');
+    $(this).html('<i class="fas fa-chevron-up"></i>');
+  }
+});
+
+
+
+function formatDoctorDetails(d) {
+  if (!d || !Array.isArray(d.actes) || d.actes.length === 0) {
+    return '<div class="p-2"><em>Aucun acte enregistré sur cette période.</em></div>';
+  }
+
+  let table = `
+    <div class="p-3">
+      <table class="table table-sm table-bordered mb-0">
+        <thead class="thead-light">
+          <tr>
+            <th>Date</th>
+            <th>Patient</th>
+            <th>Type d'acte</th>
+            <th>Montant</th>
+          </tr>
+        </thead>
+        <tbody>`;
+
+  d.actes.forEach(a => {
+    table += `
+      <tr>
+        <td>${a.date}</td>
+        <td>${a.patient}</td>
+        <td>${a.type}</td>
+        <td>${formatFcfa(a.montant)}</td>
+      </tr>`;
+  });
+
+  table += `</tbody></table></div>`;
+  return table;
+}
+
+});
+
+function openGlobalPrintModal() {
+        $('#globalPrintModal').modal('show');
+    }
+
+function printDoctorRow(btn) {
+  const tr = $(btn).closest('tr');
+  const row = $('#doctorsReport').DataTable().row(tr).data();
+const currentDate = new Date().toLocaleDateString('fr-FR');
+
+  let html = `
+    <html>
+    <head>
+      <title>Rapport Dr ${row.name}</title>
+      <style>
+        @page {
+          size: A4 landscape;
+          margin: 10mm;
+        }
+        body {
+          font-family: "Times New Roman", serif;
+          font-size: 12pt;
+          line-height: 1.4;
+          color: #000;
+          margin: 0;
+          padding: 10mm;
+        }
+        .header {
+          text-align: center;
+          margin-bottom: 20px;
+          border-bottom: 2px solid #000;
+          padding-bottom: 10px;
+        }
+        .header h2 {
+          margin: 0;
+          font-size: 18pt;
+          text-transform: uppercase;
+        }
+        .header p {
+          margin: 5px 0 0;
+          font-size: 11pt;
+        }
+        .clinic-info {
+          font-size: 10pt;
+          margin-bottom: 15px;
+        }
+        .doctor-info {
+          margin-bottom: 20px;
+        }
+        .section-title {
+          font-weight: bold;
+          font-size: 13pt;
+          margin: 25px 0 10px;
+          border-bottom: 1px solid #ccc;
+          padding-bottom: 3px;
+        }
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          margin: 15px 0;
+          page-break-inside: avoid;
+        }
+        th {
+          background-color: #f2f2f2;
+          text-align: left;
+          padding: 8px;
+          border: 1px solid #ddd;
+          font-weight: bold;
+        }
+        td {
+          padding: 8px;
+          border: 1px solid #ddd;
+        }
+        .signature-table {
+          margin-top: 40px;
+          width: 100%;
+        }
+        .signature-cell {
+          width: 45%;
+          text-align: center;
+        }
+        .signature-line {
+          border-top: 1px solid #000;
+          width: 80%;
+          margin: 15px auto 5px;
+        }
+        .footer {
+          font-size: 9pt;
+          text-align: center;
+          margin-top: 10px;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <h2>Cabinet Dentaire Orodent</h2>
+        <p>RAPPORT DE SERVICE MÉDICAL</p>
+        <p class="clinic-info">
+          123 Avenue des Dentistes, 75000 Paris | Tél: 01 23 45 67 89 | SIRET: 123 456 789 00012
+        </p>
+      </div>
+
+      <div class="doctor-info">
+        <div class="data-row" style="display: flex; justify-content: space-between;">
+          <div><strong>Médecin :</strong> Dr ${row.name}</div>
+          <div><strong>Date du rapport :</strong> ${currentDate}</div>
+        </div>
+        <div><strong>Période concernée :</strong> ${$('#datepicker input').val() || '(non spécifiée)'}</div>
+      </div>
+
+      {# <div class="section-title">Statistiques d'activité</div>
+      ${formatDoctorTable(row)} #}
+
+      <div class="section-title">Détails des actes posés</div>
+      ${formatActsDetails(row)}
+
+      <table class="signature-table">
+        <tr>
+          <td class="signature-cell">
+            <div class="signature-line"></div>
+            <p>Signature du praticien</p>
+          </td>
+          <td class="signature-cell">
+            <div class="signature-line"></div>
+            <p>Cachet et visa de la direction</p>
+          </td>
+        </tr>
+      </table>
+
+      <div class="footer">
+        Document généré automatiquement le ${currentDate} - Valable sans signature
+      </div>
+    </body>
+    </html>
+  `;
+
+  const printWindow = window.open('', '_blank');
+  printWindow.document.write(html);
+  printWindow.document.close();
+  
+  setTimeout(() => {
+    printWindow.focus();
+    printWindow.print();
+    printWindow.close();
+  }, 500);
+}
+
+function formatDoctorTable(row) {
+  return `
+    <table>
+      <thead>
+        <tr>
+          <th>Indicateur</th>
+          <th>Nombre</th>
+          <th>Montant total</th>
+          <th>Moyenne par consultation</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Consultations réalisées</td>
+          <td>${row.consultations || '0'}</td>
+          <td>${row.total_amount ? row.total_amount + ' F CFA' : '0 F CFA'}</td>
+          <td>${row.avg_amount ? row.avg_amount + ' F CFA' : '0 F CFA'}</td>
+        </tr>
+        <tr>
+          <td>Actes effectués</td>
+          <td>${row.acts || '0'}</td>
+          <td>${row.acts_amount ? row.acts_amount + ' F CFA' : '0 F CFA'}</td>
+          <td>${row.avg_act ? row.avg_act + ' F CFA' : '0 F CFA'}</td>
+        </tr>
+        <tr>
+          <td>Nouveaux patients</td>
+          <td>${row.new_patients || '0'}</td>
+          <td colspan="2"></td>
+        </tr>
+        <tr>
+          <td>Patients fidélisés</td>
+          <td>${row.returning_patients || '0'}</td>
+          <td colspan="2"></td>
+        </tr>
+      </tbody>
+    </table>
+  `;
+}
+
+function formatActsDetails(row) {
+  if (!row.actes || row.actes.length === 0) {
+    return '<p>Aucun acte détaillé disponible pour cette période.</p>';
+  }
+
+  let detailsHtml = `
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Patient</th>
+          <th>Type d'acte</th>
+          <th>Montant</th>
+        </tr>
+      </thead>
+      <tbody>
+  `;
+
+  row.actes.forEach(acte => {
+    detailsHtml += `
+      <tr>
+        <td>${acte.date || ''}</td>
+        <td>${acte.patient || ''}</td>
+        <td>${acte.type || ''}</td>
+        <td>${acte.montant ? acte.montant + ' F CFA' : '0 F CFA'}</td>
+      </tr>
+    `;
+  });
+
+  detailsHtml += `
+      </tbody>
+    </table>
+  `;
+
+  return detailsHtml;
+}
+
+
+function printDoctorsSummary() {
+  $('#globalPrintModal').modal('hide');
+
+  const table = $('#doctorsReport').DataTable();
+  const rows = table.rows().data().toArray();
+
+  let html = `
+    <div style="font-family: Arial;">
+      <h2 style="text-align: center;">Résumé des rapports médicaux</h2>
+      <p><strong>Période :</strong> ${$('#datepicker input').val() || '(non spécifiée)'}</p>
+      <table style="width: 100%; border-collapse: collapse;" border="1" cellpadding="5">
+        <thead>
+          <tr>
+            <th>Médecin</th>
+            <th>Nb Consult.</th>
+            <th>Montant (FCFA)</th>
+            <th>Payantes / Gratuites</th>
+            <th>Salaire</th>
+          </tr>
+        </thead>
+        <tbody>
+  `;
+
+  rows.forEach(r => {
+    html += `
+      <tr>
+        <td>${r.name}</td>
+        <td>${r.consultations}</td>
+        <td>${formatFcfa(r.revenue)}</td>
+        <td>${r.paidVsFree}</td>
+        <td>${formatFcfa(r.salary)}</td>
+      </tr>`;
+  });
+
+  html += `
+        </tbody>
+      </table>
+      <br><br>
+      <table style="width: 100%; margin-top: 50px;">
+        <tr>
+          <td style="text-align: left;"><strong>Signature Responsable</strong></td>
+          <td style="text-align: right;"><strong>Cachet Cabinet</strong></td>
+        </tr>
+      </table>
+    </div>
+  `;
+
+  printJS({
+    printable: html,
+    type: 'raw-html',
+    style: '@page { size: A4 landscape; margin: 20mm; }',
+    scanStyles: false
+  });
+}
+
+
+    function printAllActs() {
+        $('#globalPrintModal').modal('hide');
+        const rows = $('#doctorsReport').DataTable().rows().data().toArray();
+        let allActes = [];
+        rows.forEach(r => {
+            if (Array.isArray(r.actes)) {
+                r.actes.forEach(a => {
+                    allActes.push({
+                        date: a.date,
+                        medecin: r.name,
+                        patient: a.patient,
+                        type: a.type,
+                        montant: a.montant
+                    });
+                });
+            }
+        });
+        let html = `
+            <div style="font-family: Arial;">
+                <h2 style="text-align: center;">Liste des actes médicaux</h2>
+                <p><strong>Période :</strong> ${ $('#datepicker input').val() || '(non spécifiée)'}</p>
+                <table style="width: 100%; border-collapse: collapse;" border="1" cellpadding="5">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Médecin</th>
+                            <th>Patient</th>
+                            <th>Type d'acte</th>
+                            <th>Montant</th>
+                        </tr>
+                    </thead>
+                    <tbody>`;
+        allActes.forEach(a => {
+            html += `
+                <tr>
+                    <td>${a.date}</td>
+                    <td>${a.medecin}</td>
+                    <td>${a.patient}</td>
+                    <td>${a.type}</td>
+                    <td>${formatFcfa(a.montant)}</td>
+                </tr>`;
+        });
+        html += `
+                    </tbody>
+                </table>
+                <br><br>
+                <table style="width: 100%; margin-top: 50px;">
+                    <tr>
+                        <td style="text-align: left;"><strong>Signature Responsable</strong></td>
+                        <td style="text-align: right;"><strong>Cachet Cabinet</strong></td>
+                    </tr>
+                </table>
+            </div>
+        `;
+        printJS({
+            printable: html,
+            type: 'raw-html',
+            style: '@page { size: A4 landscape; margin: 20mm; }',
+            scanStyles: false
+        });
+    }
+
+    function formatFcfa(amount) {
+        return new Intl.NumberFormat('fr-FR').format(amount) + ' Fcfa';
+    }
+</script>
+
 {% endblock %}
 

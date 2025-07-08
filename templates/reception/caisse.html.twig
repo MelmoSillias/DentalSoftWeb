@@ -1,4 +1,4 @@
-{% extends 'appreceptionbase.html.twig' %}
+{% extends 'appbase.html.twig' %}
 
 {% block title %}Gestion de la Caisse{% endblock %}
 
@@ -113,7 +113,7 @@
         <span>
             <i class="fas fa-coins me-2"></i> Paiements enregistrés
         </span>
-        <button class="btn btn-outline-primary btn-sm" id="imprimerPaiementsBtn">
+        <button class="btn btn-outline-primary btn-sm text-white" id="imprimerPaiementsBtn">
     <i class="fas fa-print"></i> Imprimer la période
 </button>
 
@@ -335,8 +335,9 @@ $(function () {
             const isDevis = row.type === 'devis';
             const btnClass = isDevis ? 'btn-outline-secondary' : 'btn-info';
             const iconClass = isDevis ? 'fa-print' : 'fa-ticket-alt';
+            const printClass = isDevis ? 'imprimer-paiement-btn' : 'imprimer-ticket-btn';
             return `
-              <a href="/api/paiement-${row.type}/${id}/print" class="btn btn-sm ${btnClass} print-${row.type}-btn">
+              <a href="#" class="btn btn-sm ${btnClass} ${printClass}" data-id="${id}">
                 <i class="fas ${iconClass}"></i>
               </a>
             `;
@@ -354,16 +355,24 @@ $(function () {
         $('#recetteTotalPeriode').text(`${total.toLocaleString('fr-FR')} FCFA`);
     });
 
-    // === 5. Impression d’un paiement unique (à connecter à un bouton dans le tableau si besoin)
-    $(document).on('click', '.imprimer-paiement-btn', function () {
+    // Paiement unique
+    $('#paiementsDevisTable').on('click', '.imprimer-paiement-btn', function (e) {
+        e.preventDefault();
         const paiementId = $(this).data('id');
-        window.open(`/api/paiement-devis/${paiementId}/print`, '_blank');
+        window.open(`/api/paiement-devis/${paiementId}/print`, '_blank', 'width=800,height=900,scrollbars=no');
     });
 
-    // === 6. Impression de la table filtrée
-    $('#imprimerPaiementsBtn').on('click', function () {
+    $('#imprimerPaiementsBtn').on('click', function (e) {
+        e.preventDefault();
+        const paiementId = $(this).data('id');
+        const url = `/api/paiement-ticket/${paiementId}/print`;
+        window.open(url, '_blank', 'width=800,height=900,scrollbars=no');
+    });
+
+    $('#paiementsDevisTable').on('click',  '.imprimer-ticket-btn', function (e) {
+        e.preventDefault();
         const url = `/api/paiement-devis/impression?start=${devisStart}&end=${devisEnd}`;
-        window.open(url, '_blank');
+        window.open(url, '_blank', 'width=800,height=900,scrollbars=yes');
     });
 
     $('#devisModal').on('show.bs.modal', function (event) {
@@ -550,10 +559,7 @@ window.printDevisModal = function () {
   printWindow.focus();
   printWindow.print();
   printWindow.close();
-};
-
-
-
+}; 
 });
 
 </script>

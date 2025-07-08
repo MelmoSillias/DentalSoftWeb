@@ -86,6 +86,9 @@
             <strong>Total impayé :</strong>
             <span id="totalRestant">0 FCFA</span> 
         </div>
+        <div class="d-flex align-items-center gap-3"> 
+            <input type="text" id="AlldevisDateRange" class="form-control form-user-control w-auto" />
+        </div>
     </div>
     <div class="card-body">
         <div id="devisEmptyMessage" class="alert alert-info mb-3 d-none">Aucune facture impayé à ce jour</div>
@@ -98,6 +101,7 @@
       <th>Patient</th>
       <th>Montant Total</th>
       <th>Reste à payer</th>
+      <th>Statut</th>
       <th>Actions</th>
     </tr>
   </thead>
@@ -113,7 +117,7 @@
         <span>
             <i class="fas fa-coins me-2"></i> Paiements enregistrés
         </span>
-        <button class="btn btn-outline-primary btn-sm" id="imprimerPaiementsBtn">
+        <button class="btn btn-outline-primary btn-sm text-white" id="imprimerPaiementsBtn">
     <i class="fas fa-print"></i> Imprimer la période
 </button>
 
@@ -203,13 +207,19 @@ $(function () {
     // Variables globales pour les filtres de date
     let devisStart = moment().format('YYYY-MM-DD');
     let devisEnd   = moment().format('YYYY-MM-DD');
+    let AdevisStart = moment().format('YYYY-MM-DD');
+    let AdevisEnd   = moment().format('YYYY-MM-DD');
     let devisTable;
 
     // === 1. Rendu des Devis Impayés ===
     devisTable = $('#devisImpayesTable').DataTable({
   ajax: {
-    url: '/api/devis/impayes',
-    method: 'GET',
+    url: '/api/devis/all',
+    method: 'GET', 
+    data: function (d) {
+      d.start = AdevisStart;
+      d.end = AdevisEnd;
+    },
     dataSrc: function (json) {
       // Calcul des stats dans le callback
       const totalReste = json.reduce((sum, d) => sum + (parseFloat(d.reste) || 0), 0);
@@ -226,42 +236,77 @@ $(function () {
     }
   },
   columns: [
-    {
-      data: 'id',
-      render: id => `DEV-${String(id).padStart(4, '0')}`
-    },
-    {
-      data: 'date',
-      render: date => new Date(date).toLocaleDateString('fr-FR')
-    },
-    {
-      data: 'patient',
-      render: p => `${p.nom} ${p.prenom}`
-    },
-    {
-      data: 'montant',
-      render: m => `${parseFloat(m).toLocaleString('fr-FR')} FCFA`
-    },
-    {
-      data: 'reste',
-      render: r => `${parseFloat(r).toLocaleString('fr-FR')} FCFA`
-    },
-    {
-      data: 'id',
-      orderable: false,
-      searchable: false,
-      render: id => `
-        <a href="#" class="btn btn-sm btn-primary preview-devis-btn" data-toggle="modal"
-           data-target="#devisModal" data-devis-id="${id}">
-           <i class="fas fa-eye"></i> Visualiser
-        </a>
-        <a href="#" class="btn btn-sm btn-success regler-devis-btn" data-toggle="modal"
-           data-target="#reglerDevisModal" data-devis-id="${id}">
-           <i class="fas fa-hand-holding-usd"></i> Régler
-        </a>
-      `
+  {
+    data: 'id',
+    render: id => `DEV-${String(id).padStart(4, '0')}`
+  },
+  {
+    data: 'date',
+    render: date => new Date(date).toLocaleDateString('fr-FR')
+  },
+  {
+    data: 'patient',
+    render: p => `${p.nom} ${p.prenom}`
+  },
+  {
+    data: 'montant',
+    render: m => `${parseFloat(m).toLocaleString('fr-FR')} FCFA`
+  },
+  {
+    data: 'reste',
+    render: r => `${parseFloat(r).toLocaleString('fr-FR')} FCFA`
+  },
+  {
+    data: null,
+    orderable: false,
+    searchable: false,
+    render: row => {
+      const montant = parseFloat(row.montant);
+      const reste = parseFloat(row.reste);
+      let statut = '';
+      let badgeClass = '';
+
+      if (reste === 0) {
+        statut = 'Payé';
+        badgeClass = 'badge-success';
+      } else if (reste === montant) {
+        statut = 'Impayé';
+        badgeClass = 'badge-danger';
+      } else {
+        statut = 'Partiellement payé';
+        badgeClass = 'badge-warning';
+      }
+
+      return `<span class="badge ${badgeClass}">${statut}</span>`;
     }
-  ],
+  },
+  {
+    data: 'id',
+    orderable: false,
+    searchable: false,
+    render: (id, type, row) => {
+      const statut = row.statut;
+      const isRegle = statut == 1;
+
+      const reglerButton = isRegle
+        ? ''
+        : `<a href="#" class="btn btn-sm btn-success regler-devis-btn" data-toggle="modal"
+             data-target="#reglerDevisModal" data-devis-id="${id}">
+             <i class="fas fa-hand-holding-usd"></i> Régler
+          </a>`;
+
+      return `
+        <div>
+          <a href="#" class="btn btn-sm btn-primary preview-devis-btn" data-toggle="modal"
+             data-target="#devisModal" data-devis-id="${id}">
+             <i class="fas fa-eye"></i> Visualiser
+          </a>
+          ${reglerButton}
+        </div>
+      `;
+    }
+  }
+],
   language: { url: 'https://cdn.datatables.net/plug-ins/1.13.5/i18n/fr-FR.json' },
   order: [[1, 'desc']]
 });
@@ -295,6 +340,35 @@ $(function () {
         devisStart = start.format('YYYY-MM-DD');
         devisEnd = end.format('YYYY-MM-DD');
         paiementsTable.ajax.reload();
+    });
+
+    $('#AlldevisDateRange').daterangepicker({
+        locale: {
+            format: 'YYYY-MM-DD',
+            applyLabel: 'Appliquer',
+            cancelLabel: 'Annuler',
+            daysOfWeek: ['Di','Lu','Ma','Me','Je','Ve','Sa'],
+            monthNames: [
+                'Janvier','Février','Mars','Avril','Mai','Juin',
+                'Juillet','Août','Septembre','Octobre','Novembre','Décembre'
+            ],
+            firstDay: 1
+        },
+        opens: 'left',
+        alwaysShowCalendars: true,
+        startDate: devisStart,
+        endDate: devisEnd,
+        ranges: {
+            "Aujourd'hui":     [moment(), moment()],
+            "Hier":            [moment().subtract(1, 'days'), moment().subtract(1, 'days')],
+            "Cette semaine":   [moment().startOf('week'),   moment().endOf('week')],
+            "Ce mois-ci":      [moment().startOf('month'),  moment().endOf('month')],
+            "Cette année":     [moment().startOf('year'),   moment().endOf('year')]
+        }
+    }, function(start, end) {
+        devisStart = start.format('YYYY-MM-DD');
+        devisEnd = end.format('YYYY-MM-DD');
+        devisTable.ajax.reload();
     });
 
     // === 3. DataTable des Paiements ===
@@ -335,8 +409,9 @@ $(function () {
             const isDevis = row.type === 'devis';
             const btnClass = isDevis ? 'btn-outline-secondary' : 'btn-info';
             const iconClass = isDevis ? 'fa-print' : 'fa-ticket-alt';
+            const printClass = isDevis ? 'imprimer-paiement-btn' : 'imprimer-ticket-btn';
             return `
-              <a href="/api/paiement-${row.type}/${id}/print" class="btn btn-sm ${btnClass} print-${row.type}-btn">
+              <a href="#" class="btn btn-sm ${btnClass} ${printClass}" data-id="${id}">
                 <i class="fas ${iconClass}"></i>
               </a>
             `;
@@ -354,16 +429,24 @@ $(function () {
         $('#recetteTotalPeriode').text(`${total.toLocaleString('fr-FR')} FCFA`);
     });
 
-    // === 5. Impression d’un paiement unique (à connecter à un bouton dans le tableau si besoin)
-    $(document).on('click', '.imprimer-paiement-btn', function () {
+    // Paiement unique
+    $('#paiementsDevisTable').on('click', '.imprimer-paiement-btn', function (e) {
+        e.preventDefault();
         const paiementId = $(this).data('id');
-        window.open(`/api/paiement-devis/${paiementId}/print`, '_blank');
+        window.open(`/api/paiement-devis/${paiementId}/print`, '_blank', 'width=800,height=900,scrollbars=no');
     });
 
-    // === 6. Impression de la table filtrée
-    $('#imprimerPaiementsBtn').on('click', function () {
+    $('#imprimerPaiementsBtn').on('click', function (e) {
+        e.preventDefault();
+        const paiementId = $(this).data('id');
+        const url = `/api/paiement-ticket/${paiementId}/print`;
+        window.open(url, '_blank', 'width=800,height=900,scrollbars=no');
+    });
+
+    $('#paiementsDevisTable').on('click',  '.imprimer-ticket-btn', function (e) {
+        e.preventDefault();
         const url = `/api/paiement-devis/impression?start=${devisStart}&end=${devisEnd}`;
-        window.open(url, '_blank');
+        window.open(url, '_blank', 'width=800,height=900,scrollbars=yes');
     });
 
     $('#devisModal').on('show.bs.modal', function (event) {

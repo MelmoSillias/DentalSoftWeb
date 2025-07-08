@@ -3,15 +3,20 @@
 <head>
   <meta charset="UTF-8">
   <title>Reçu de Caisse</title>
+  <script src="https://printjs-4de6.kxcdn.com/print.min.js"></script>
+  <link rel="stylesheet" href="https://printjs-4de6.kxcdn.com/print.min.css">
+
   <style>
-    /* imprimer sur rouleau 80 mm */
     body {
-      width: 80mm;
-      margin: 0 auto;
-      padding: 5px 0;
       font-family: Arial, sans-serif;
-      font-size: 12px;
+      font-size: 14px;
       color: #000;
+      margin: 0;
+    }
+    #receipt-content {
+      width: 70mm;
+      padding: 5px;
+      margin: auto;
     }
     .center { text-align: center; }
     .right  { text-align: right; }
@@ -27,23 +32,24 @@
     }
     th { font-weight: bold; }
     .total {
-      font-size: 14px;
+      font-size: 16px;
       font-weight: bold;
     }
     .small {
-      font-size: 10px;
+      font-size: 12px;
     }
   </style>
 </head>
-<body onload="initPrint()" class="small">
-  <div class="center bold">
-    Cabinet Orodent<br>
-    Reçu de Caisse
-  </div>
+<body>
+  <div id="receipt-content" class="small">
+    <div class="center bold">
+      Cabinet Orodent<br>
+      Ticket de Consultation
+    </div>
 
-  <hr>
+    <hr>
 
-  <table class="small">
+    <table class="small">
     <tr>
       <td>Reçu N°</td>
       <td class="right">{{ paiement.id }}</td>
@@ -85,22 +91,31 @@
     </tfoot>
   </table>
 
-  <hr>
+    <hr>
 
-  <div class="small center">
-    Merci de votre confiance !<br>
-    Contact: +223 XX XX XX XX
+    <div class="small center">
+      Merci de votre confiance !<br>
+      Contact: +223 XX XX XX XX
+    </div>
   </div>
 
   <script>
-    function initPrint() {
-      // Fermer la fenêtre après que la boîte d’impression soit fermée (OK ou Annuler)
-      window.onafterprint = function() {
+    window.onload = function () {
+      printJS({
+        printable: 'receipt-content',
+        type: 'html',
+        targetStyles: ['*'],
+        style: '@page { 80mm 80mm; auto; margin: 2mm; }',
+      });
+
+      // Ferme la fenêtre après un délai (si compatible)
+      setTimeout(() => {
         window.close();
-      };
-      // Déclenche immédiatement la boîte d’impression
-      window.print();
-    }
+      }, 1000);
+    };
   </script>
 </body>
 </html>
+
+
+

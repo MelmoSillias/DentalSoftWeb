@@ -227,23 +227,63 @@ class ConsultationApiController extends AbstractController
                 continue;
             }
 
-            // construction du nom comme expliqué plus haut
+            // Récupérer les infos nécessaires
+            $libelle = $data['documents'][$i]['libelle'] ?? 'document';
+            $dateDossier = new \DateTime($data['documents'][$i]['dateDossier'] ?? 'now');
+            $description = $data['documents'][$i]['description'] ?? '';
+
+            // Sanitize le nom du fichier
+            $patientNomComplet = preg_replace('/[^a-zA-Z0-9_-]/', '_', $fiche->getPatient()->getNom() . '_' . $fiche->getPatient()->getPrenom());
+            $libelleSanitized  = preg_replace('/[^a-zA-Z0-9_-]/', '_', $libelle);
+
+            // Extension
             $extension = $file->guessExtension() ?: $file->getClientOriginalExtension();
-            $name      = uniqid('doc_') . ($extension ? ".{$extension}" : '');
 
-            // déplace et renvoie un objet File
-            $movedFile = $file->move($uploadDir, $name);
+            // Nom de base
+            $baseName = $libelleSanitized . '_' . $patientNomComplet;
+            $filename = $baseName . '.' . $extension;
 
+            // Gérer les doublons
+            $counter = 1;
+            while (file_exists($uploadDir . '/' . $filename)) {
+                $filename = $baseName . '_' . $counter . '.' . $extension;
+                $counter++;
+            }
+
+            // Déplacer le fichier
+            $movedFile = $file->move($uploadDir, $filename);
+
+            // Créer et persister l'objet
             $dm = new DocumentMedical();
             $dm->setFiche($fiche)
-            ->setLibelle($data['documents'][$i]['libelle'] ?? '')
-            ->setDateDossier(new \DateTime($data['documents'][$i]['dateDossier'] ?? 'now'))
-            ->setDescription($data['documents'][$i]['description'] ?? '')
-            // on stocke le chemin relatif depuis 'public'
+            ->setLibelle($libelle)
+            ->setDateDossier($dateDossier)
+            ->setDescription($description)
             ->setFichier('uploads/documents/' . $movedFile->getFilename());
 
             $em->persist($dm);
         }
+
+        foreach ($data['documents'] as $i => $docData) {
+                // Sauter si ce document a déjà été traité avec un fichier uploadé
+                if (isset($files[$i]) && $files[$i] instanceof UploadedFile) {
+                    continue;
+                }
+
+                // Vérifier s'il y a une URL existante
+                if (!empty($docData['url'])) {
+                    $dm = new DocumentMedical();
+                    $dm->setFiche($fiche)
+                    ->setLibelle($docData['libelle'] ?? '')
+                    ->setDateDossier(new \DateTime($docData['dateDossier'] ?? 'now'))
+                    ->setDescription($docData['description'] ?? '')
+                    ->setFichier($docData['url']); // Réutiliser l’ancienne URL
+
+                    $em->persist($dm);
+                }
+            }
+
+
 
         $em->flush();
         return new JsonResponse(['success' => true]);

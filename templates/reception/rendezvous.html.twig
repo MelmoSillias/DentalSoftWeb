@@ -161,8 +161,18 @@
         </div>
     </div>
 
-    <!-- Calendar Grid -->
-    <div class="calendar-grid mb-4">
+    <div class="d-flex justify-content-end align-items-center mb-2">
+        <label class="mr-2 mb-0">Zoom :</label>
+        <div class="btn-group btn-group-sm" role="group">
+            <button class="btn btn-outline-secondary" id="zoomOutBtn"><i class="fas fa-minus"></i></button>
+            <span class="btn btn-light" id="zoomDisplay">100%</span>
+            <button class="btn btn-outline-secondary" id="zoomInBtn"><i class="fas fa-plus"></i></button>
+        </div>
+    </div>
+
+
+<div id="zoomContainer" style="overflow: auto;">
+    <div class="calendar-grid mb-4" id="calendarGrid" style="transform-origin: top left;">
         <table class="table table-bordered">
             <thead>
                 <tr>
@@ -188,7 +198,7 @@
             </tbody>
         </table>
     </div>
-
+</div>
    
 
     <!-- Modals -->
@@ -210,16 +220,16 @@
              </div>
              <div class="mb-3">
                 <label for="medecinSelect" class="form-label">Médecin</label>
-                <select class="form-select form-control form-user-control" id="medecinSelect" name="medecin" required>
+                <select class="form-select form-control form-user-control" id="medecinSelect" name="medecin" required readonly>
                    <option value="">Sélectionnez un médecin</option>
                    {% for medecin in medecins %}
-                      <option value="{{ medecin.id }}">{{ medecin.nom }}</option>
+                      <option value="{{ medecin.id }}">{{ medecin.fullname }}</option>
                    {% endfor %}
                 </select>
              </div>
              <div class="mb-3">
                 <label for="rdvTime" class="form-label">Heure</label>
-                <input type="time" class=" form-control form-user-control" id="rdvTime" name="time" required>
+                <input type="time" class=" form-control form-user-control" id="rdvTime" name="time" required readonly>
              </div>
              <div class="mb-3">
                 <label for="rdvDescription" class="form-label">Description</label>
@@ -247,7 +257,7 @@
            <p>Êtes-vous sûr de vouloir valider ce rendez-vous ?</p>
            <div class="mb-3">
              <label for="validateMedecinSelect" class="form-label">Médecin</label>
-             <select id="validateMedecinSelect" class="form-select">
+             <select id="validateMedecinSelect" class="form-select form-control">
                {% for medecin in medecins %}
                  <option value="{{ medecin.id }}">{{ medecin.nom }}</option>
                {% endfor %}
@@ -320,4 +330,39 @@
 <script src="{{ asset('sb-admin/vendor/jquery/jquery.min.js') }}"></script>
 <script src="{{ asset('sb-admin/vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
 <script src="{{ asset('js/rdv.js') }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const zoomInBtn = document.getElementById('zoomInBtn');
+    const zoomOutBtn = document.getElementById('zoomOutBtn');
+    const zoomDisplay = document.getElementById('zoomDisplay');
+    const grid = document.getElementById('calendarGrid');
+
+    let zoomLevel = 100; // pourcentage
+    const minZoom = 50;
+    const maxZoom = 150;
+    const step = 10;
+
+    function applyZoom() {
+        grid.style.transform = `scale(${zoomLevel / 100})`;
+        zoomDisplay.textContent = `${zoomLevel}%`;
+    }
+
+    zoomInBtn.addEventListener('click', function () {
+        if (zoomLevel < maxZoom) {
+            zoomLevel += step;
+            applyZoom();
+        }
+    });
+
+    zoomOutBtn.addEventListener('click', function () {
+        if (zoomLevel > minZoom) {
+            zoomLevel -= step;
+            applyZoom();
+        }
+    });
+
+    applyZoom(); // initial zoom
+});
+</script>
+
 {% endblock %}

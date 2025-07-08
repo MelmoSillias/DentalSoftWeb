@@ -685,7 +685,7 @@ public function periodicActsStats(Request $request): JsonResponse
 }
 
 
-    #[Route('/periodic/doctor-reports', name: 'periodic_doctor_reports', methods: ['GET'])] 
+   #[Route('/periodic/doctor-reports', name: 'periodic_doctor_reports', methods: ['GET'])] 
 public function periodicDoctorReports(Request $request, EntityManagerInterface $em): JsonResponse
 {
     $from = $request->query->get('from');
@@ -721,25 +721,74 @@ public function periodicDoctorReports(Request $request, EntityManagerInterface $
         $paid = 0;
         $free = 0;
         $apport = 0.0;
+        $totalAmount = 0.0;
+        $actsAmount = 0.0;
+        $newPatients = 0;
+        $returningPatients = 0;
+        $patientIds = [];
+        $consultationDetails = [];
+        $actesList = [];
+        $totalActs = 0;
 
         foreach ($consultations as $consult) {
+            // Statistiques paiement
             if ($consult->getPaiementDevis()) {
                 $paid++;
             } else {
                 $free++;
             }
 
-            $facture = $consult->getFacture();
-            if ($facture && $facture->getMontant()) {
-                $apport += $facture->getMontant();
+            // Calcul des montants
+            $consultAmount = 0;
+            if ($consult->getFacture() && $consult->getFacture()->getMontant()) {
+                $consultAmount = $consult->getFacture()->getMontant();
+                $apport += $consultAmount;
+                $totalAmount += $consultAmount;
             }
 
             $paiementDevis = $consult->getPaiementDevis();
             if ($paiementDevis && $paiementDevis->getMontant()) {
+                $consultAmount += $paiementDevis->getMontant();
                 $apport += $paiementDevis->getMontant();
+                $totalAmount += $paiementDevis->getMontant();
+            }
+
+            // Nouveaux vs patients fidélisés
+            $patientId = $consult->getPatient()->getId();
+            if (!in_array($patientId, $patientIds)) {
+                $newPatients++;
+                $patientIds[] = $patientId;
+            } else {
+                $returningPatients++;
+            }
+
+            // Détails des consultations
+            $consultationDetails[] = [
+                'date' => $consult->getCreatedAt()->format('d/m/Y'),
+                'patient' => $consult->getPatient()->getFullName(),
+                'type' => $consult->getNoteSeance(),
+                'amount' => $consultAmount,
+                'paid' => $consult->getPaiementDevis() !== null
+            ];
+
+            // Actes effectués
+            if ($consult->getFacture()) {
+                foreach ($consult->getFacture()->getContenus() as $acte) {
+                    $totalActs++;
+                    $actAmount = $acte->getMontantTotal();
+                    $actsAmount += $actAmount;
+                    
+                    $actesList[] = [
+                        'date' => $consult->getCreatedAt()->format('d/m/Y'),
+                        'patient' => $consult->getPatient()->getFullName(),
+                        'type' => $acte->getDesignation(),
+                        'montant' => $actAmount,
+                    ];
+                }
             }
         }
 
+        // Calcul du salaire
         $salary = 0.0;
         if ($doctor->getTypeSalaire() === 'pourcentage') {
             $salary = ($doctor->getValeurSalaire() / 100) * $apport;
@@ -747,39 +796,43 @@ public function periodicDoctorReports(Request $request, EntityManagerInterface $
             $salary = $doctor->getValeurSalaire();
         }
 
+        // Calcul des moyennes
+        $avgAmount = count($consultations) > 0 ? $totalAmount / count($consultations) : 0;
+        $avgAct = $totalActs > 0 ? $actsAmount / $totalActs : 0;
+
         $totalRevenue += $apport;
         $totalSalaries += $salary;
 
-        $actesList = [];
-
-        foreach ($consultations as $consult) {
-            if($consult->getFacture()){
-                foreach ($consult->getFacture()->getContenus() as $acte) {
-                    $actesList[] = [
-                        'patient' => $consult->getPatient()->getFullName(),
-                        'type' => $acte->getDesignation(),
-                        'montant' => $acte->getMontantTotal(),
-                    ];
-                }
-            }
-        }
-
-        
         $doctorStats[] = [
+            'id' => $doctor->getId(),
             'name' => $doctor->getFullName(),
             'consultations' => count($consultations),
+            'total_amount' => $totalAmount,
+            'avg_amount' => $avgAmount,
+            'acts' => $totalActs,
+            'acts_amount' => $actsAmount,
+            'avg_act' => $avgAct,
+            'new_patients' => $newPatients,
+            'returning_patients' => $returningPatients,
             'revenue' => $apport,
             'paidVsFree' => "$paid/$free",
             'salary' => $salary,
+            'consultation_details' => $consultationDetails,
             'actes' => $actesList, 
         ];
     }
 
     return $this->json([
+        'period' => [
+            'from' => $fromDate->format('d/m/Y'),
+            'to' => $toDate->format('d/m/Y')
+        ],
         'kpi' => [
             'totalRevenue' => $totalRevenue,
             'afterFees' => $totalRevenue - $totalSalaries,
             'totalSalaries' => $totalSalaries,
+            'totalConsultations' => count($allConsultations),
+            'totalActs' => array_sum(array_column($doctorStats, 'acts')),
         ],
         'doctors' => $doctorStats,
     ]);

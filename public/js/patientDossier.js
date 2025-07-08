@@ -425,269 +425,345 @@ function renderRdvs() {
     const $container = $('#fiches-medicales');
     dossierData.fiches.forEach(fiche => {
         // Create the main card for the consultation sheet
+        // Calcul du montant total du devis
+        let montantTotal = 0;
+        if (fiche.devis && Array.isArray(fiche.devis.contenus)) {
+            montantTotal = fiche.devis.contenus.reduce((sum, ligne) => {
+          const qte = parseFloat(ligne.qte) || 1;
+          const montant = parseFloat(ligne.montant) || 0;
+          return sum + (qte * montant);
+            }, 0);
+        }
+
         const $ficheCard = $(`
             <div class="card shadow mb-3">
-                <div class="card-header py-3 d-flex justify-content-between align-items-center">
-                    <h6 class="m-0 font-weight-bold text-primary">
-                        Fiche de consultation - Référence #${fiche.id}
-                    </h6>
-                    <button type="button" class="btn btn-primary shadow-sm btnImpimerFiche" data-fiche-id="${fiche.id}">
-                        <i class="fas fa-print me-1"></i> Imprimer
-                    </button>
-                </div>
+          <div class="card-header py-3 d-flex justify-content-between align-items-center">
+              <h6 class="m-0 font-weight-bold text-primary">
+            Fiche de consultation - Référence #${fiche.id}
+              </h6>
+              <button type="button" class="btn btn-primary shadow-sm btnImpimerFiche" data-fiche-id="${fiche.id}">
+            <i class="fas fa-print me-1"></i> Imprimer
+              </button>
+          </div>
             </div>
             <div class="custom-tabs">
-                <ul class="nav nav-tabs" role="tablist">
-                    <li class="nav-item">
-                        <a class="nav-link active" data-toggle="tab" href="#motif-soins-${fiche.id}" role="tab">Motif & Histoire</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" data-toggle="tab" href="#examens-${fiche.id}" role="tab">Examens</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" data-toggle="tab" href="#traitements-documents-${fiche.id}" role="tab">Traitements & Documents</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" data-toggle="tab" href="#devis-${fiche.id}" role="tab">Devis</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" data-toggle="tab" href="#seances-passees-${fiche.id}" role="tab">Séances Passées</a>
-                    </li>
-                </ul>
-                <div class="tab-content">
+          <ul class="nav nav-tabs" role="tablist">
+              <li class="nav-item">
+            <a class="nav-link active" data-toggle="tab" href="#motif-soins-${fiche.id}" role="tab">Motif & Histoire</a>
+              </li>
+              <li class="nav-item">
+            <a class="nav-link" data-toggle="tab" href="#examens-${fiche.id}" role="tab">Examens</a>
+              </li>
+              <li class="nav-item">
+            <a class="nav-link" data-toggle="tab" href="#traitements-documents-${fiche.id}" role="tab">Traitements & Documents</a>
+              </li>
+              <li class="nav-item">
+            <a class="nav-link" data-toggle="tab" href="#devis-${fiche.id}" role="tab">Devis</a>
+              </li>
+              <li class="nav-item">
+            <a class="nav-link" data-toggle="tab" href="#seances-passees-${fiche.id}" role="tab">Séances Passées</a>
+              </li>
+          </ul>
+          <div class="tab-content">
 
-                    <div class="tab-pane fade show active" id="motif-soins-${fiche.id}" role="tabpanel">
-                        <div class="card shadow mb-3">
-                            <div class="card-body">
-                                <form id="motifSoinsForm">
-                                    <div class="row">
-                                        <div class="col-md-6 mb-3">
-                                            <label for="motif" class="form-label">Motif</label>
-                                            <textarea id="motif" class="form-control" name="motif" readonly>${fiche.motif || ''}</textarea>
-                                        </div>
-                                        <div class="col-md-6 mb-3">
-                                            <label for="histoireMaladie" class="form-label">Histoire de la maladie</label>
-                                            <textarea id="histoireMaladie" class="form-control" name="histoireMaladie" readonly>${fiche.histoireMaladie || ''}</textarea>
-                                        </div>
-                                        <div class="col-md-12 mb-3">
-                                            <label for="soinsAnterieurs" class="form-label">Soins antérieurs</label>
-                                            <textarea id="soinsAnterieurs" class="form-control" name="soinsAnterieurs" readonly>${fiche.soinsAnterieurs || ''}</textarea>
-                                        </div>
-                                    </div>
-                                </form>
-                            </div>
-                            <div class="card-footer py-3 d-flex justify-content-between align-items-center">
-                                <h6 class="m-0 font-weight-bold text-primary"></h6>
-                                <button type="button" class="btn btn-primary" id="btnSaveMotifSoins" style="display: none;">Sauvegarder</button>
-                            </div>
+              <div class="tab-pane fade show active" id="motif-soins-${fiche.id}" role="tabpanel">
+            <div class="card shadow mb-3">
+                <div class="card-body">
+              <form id="motifSoinsForm">
+                  <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="motif" class="form-label">Motif</label>
+                    <textarea id="motif" class="form-control" name="motif" readonly>${fiche.motif || ''}</textarea>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="histoireMaladie" class="form-label">Histoire de la maladie</label>
+                    <textarea id="histoireMaladie" class="form-control" name="histoireMaladie" readonly>${fiche.histoireMaladie || ''}</textarea>
+                </div>
+                <div class="col-md-12 mb-3">
+                    <label for="soinsAnterieurs" class="form-label">Soins antérieurs</label>
+                    <textarea id="soinsAnterieurs" class="form-control" name="soinsAnterieurs" readonly>${fiche.soinsAnterieurs || ''}</textarea>
+                </div>
+                  </div>
+              </form>
+                </div>
+                <div class="card-footer py-3 d-flex justify-content-between align-items-center">
+              <h6 class="m-0 font-weight-bold text-primary"></h6>
+              <button type="button" class="btn btn-primary" id="btnSaveMotifSoins" style="display: none;">Sauvegarder</button>
+                </div>
+            </div>
+              </div>
+              <div class="tab-pane fade" id="examens-${fiche.id}" role="tabpanel">
+            <div class="card shadow mb-3">
+                <div class="card-body">
+              <form id="examensForm">
+                  <h6 class="mt-4 alert alert-primary">Examen Exobuccal</h6>
+                  <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="exoInspection" class="form-label">Inspection</label>
+                    <textarea id="exoInspection" class="form-control" name="exoInspection" readonly>${fiche.exoInspection || ''}</textarea>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="exoPalpation" class="form-label">Palpation</label>
+                    <textarea id="exoPalpation" class="form-control" name="exoPalpation" readonly>${fiche.exoPalpation || ''}</textarea>
+                </div>
+                  </div>
+                  <h6 class="mt-4 alert alert-primary">Examen Endobuccal</h6>
+                  <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="endoInspection" class="form-label">Inspection</label>
+                    <textarea id="endoInspection" class="form-control" name="endoInspection" readonly>${fiche.endoInspection || ''}</textarea>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="endoPalpation" class="form-label">Palpation</label>
+                    <textarea id="endoPalpation" class="form-control" name="endoPalpation" readonly>${fiche.endoPalpation || ''}</textarea>
+                </div>
+                  </div>
+                  <div class="mb-3">
+                <label for="occlusion" class="form-label">Occlusion</label>
+                <textarea id="occlusion" class="form-control" name="occlusion" readonly>${fiche.occlusion || ''}</textarea>
+                  </div>
+                  <div class="mb-3">
+                <label for="examenParodontal" class="form-label">Examen parodontal</label>
+                <textarea id="examenParodontal" class="form-control" name="examenParodontal" readonly>${fiche.examenParodontal || ''}</textarea>
+                  </div>
+                  <div class="mb-3">
+                <label for="diagnostic" class="form-label">Diagnostic</label>
+                <textarea id="diagnostic" class="form-control" name="diagnostic" readonly>${fiche.diagnostic || ''}</textarea>
+                  </div>
+                  <div class="card mb-3">
+                <div class="card-header d-flex align-items-center justify-content-between alert alert-primary">
+                    <h6 class="m-0 font-weight-bold"><i class="fas fa-tooth me-1"></i> Examens Dentaires</h6>
+                </div>
+                <div class="card-body">
+                    <div id="toothContainer">
+                  <h5>Arcade supérieure</h5>
+                  <div class="row">
+                      ${[ [11, 21], [12, 22], [13, 23], [14, 24], [15, 25], [16, 26], [17, 27], [18, 28] ].map(pair => `
+                    <div class="col-md-6 mb-2">
+                        <div class="input-group">
+                      <span class="input-group-text">${pair[0]}</span>
+                      <textarea class="form-control tooth-input" id="tooth-${pair[0]}" data-tooth="${pair[0]}" name="toothsCheck[${pair[0]}]" readonly></textarea>
                         </div>
                     </div>
-                    <div class="tab-pane fade" id="examens-${fiche.id}" role="tabpanel">
-                        <div class="card shadow mb-3">
-                            <div class="card-body">
-                                <form id="examensForm">
-                                    <h6 class="mt-4 alert alert-primary">Examen Exobuccal</h6>
-                                    <div class="row">
-                                        <div class="col-md-6 mb-3">
-                                            <label for="exoInspection" class="form-label">Inspection</label>
-                                            <textarea id="exoInspection" class="form-control" name="exoInspection" readonly>${fiche.exoInspection || ''}</textarea>
-                                        </div>
-                                        <div class="col-md-6 mb-3">
-                                            <label for="exoPalpation" class="form-label">Palpation</label>
-                                            <textarea id="exoPalpation" class="form-control" name="exoPalpation" readonly>${fiche.exoPalpation || ''}</textarea>
-                                        </div>
-                                    </div>
-                                    <h6 class="mt-4 alert alert-primary">Examen Endobuccal</h6>
-                                    <div class="row">
-                                        <div class="col-md-6 mb-3">
-                                            <label for="endoInspection" class="form-label">Inspection</label>
-                                            <textarea id="endoInspection" class="form-control" name="endoInspection" readonly>${fiche.endoInspection || ''}</textarea>
-                                        </div>
-                                        <div class="col-md-6 mb-3">
-                                            <label for="endoPalpation" class="form-label">Palpation</label>
-                                            <textarea id="endoPalpation" class="form-control" name="endoPalpation" readonly>${fiche.endoPalpation || ''}</textarea>
-                                        </div>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label for="occlusion" class="form-label">Occlusion</label>
-                                        <textarea id="occlusion" class="form-control" name="occlusion" readonly>${fiche.occlusion || ''}</textarea>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label for="examenParodontal" class="form-label">Examen parodontal</label>
-                                        <textarea id="examenParodontal" class="form-control" name="examenParodontal" readonly>${fiche.examenParodontal || ''}</textarea>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label for="diagnostic" class="form-label">Diagnostic</label>
-                                        <textarea id="diagnostic" class="form-control" name="diagnostic" readonly>${fiche.diagnostic || ''}</textarea>
-                                    </div>
-                                    <div class="card mb-3">
-                                        <div class="card-header d-flex align-items-center justify-content-between alert alert-primary">
-                                            <h6 class="m-0 font-weight-bold"><i class="fas fa-tooth me-1"></i> Examens Dentaires</h6>
-                                        </div>
-                                        <div class="card-body">
-                                            <div id="toothContainer">
-                                                <h5>Arcade supérieure</h5>
-                                                <div class="row">
-                                                    ${[ [11, 21], [12, 22], [13, 23], [14, 24], [15, 25], [16, 26], [17, 27], [18, 28] ].map(pair => `
-                                                        <div class="col-md-6 mb-2">
-                                                            <div class="input-group">
-                                                                <span class="input-group-text">${pair[0]}</span>
-                                                                <textarea class="form-control tooth-input" id="tooth-${pair[0]}" data-tooth="${pair[0]}" name="toothsCheck[${pair[0]}]" readonly></textarea>
-                                                            </div>
-                                                        </div>
-                                                        <div class="col-md-6 mb-2">
-                                                            <div class="input-group">
-                                                                <span class="input-group-text">${pair[1]}</span>
-                                                                <textarea class="form-control tooth-input" id="tooth-${pair[1]}" data-tooth="${pair[1]}" name="toothsCheck[${pair[1]}]" readonly></textarea>
-                                                            </div>
-                                                        </div>
-                                                    `).join('')}
-                                                </div>
-                                                <h5>Arcade inférieure</h5>
-                                                <div class="row">
-                                                    ${[ [31, 41], [32, 42], [33, 43], [34, 44], [35, 45], [36, 46], [37, 47], [38, 48] ].map(pair => `
-                                                        <div class="col-md-6 mb-2">
-                                                            <div class="input-group">
-                                                                <span class="input-group-text">${pair[0]}</span>
-                                                                <textarea class="form-control tooth-input" id="tooth-${pair[0]}" data-tooth="${pair[0]}" name="toothsCheck[${pair[0]}]" readonly></textarea>
-                                                            </div>
-                                                        </div>
-                                                        <div class="col-md-6 mb-2">
-                                                            <div class="input-group">
-                                                                <span class="input-group-text">${pair[1]}</span>
-                                                                <textarea class="form-control tooth-input" id="tooth-${pair[1]}" data-tooth="${pair[1]}" name="toothsCheck[${pair[1]}]" readonly></textarea>
-                                                            </div>
-                                                        </div>
-                                                    `).join('')}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </form>
-                            </div>
-                            <div class="card-footer py-3 d-flex justify-content-between align-items-center">
-                                <h6 class="m-0 font-weight-bold text-primary"></h6>
-                                <button type="button" class="btn btn-primary" id="btnSaveExamens" style="display: none;">Sauvegarder</button>
-                            </div>
+                    <div class="col-md-6 mb-2">
+                        <div class="input-group">
+                      <span class="input-group-text">${pair[1]}</span>
+                      <textarea class="form-control tooth-input" id="tooth-${pair[1]}" data-tooth="${pair[1]}" name="toothsCheck[${pair[1]}]" readonly></textarea>
                         </div>
                     </div>
-                    <div class="tab-pane fade" id="traitements-documents-${fiche.id}" role="tabpanel">
-                        <div class="card shadow mb-3">
-                            <div class="card-body">
-                                <form id="traitementsDocumentsForm">
-                                    <h6 class="mt-4 alert alert-primary"><i class="fas fa-syringe me-1"></i> Traitements</h6>
-                                    <div class="row">
-                                        <div class="col-md-4 mb-3">
-                                            <label for="traitementUrgence" class="form-label">Urgence</label>
-                                            <textarea id="traitementUrgence" class="form-control" name="traitementUrgence" readonly>${fiche.traitementUrgence || ''}</textarea>
-                                        </div>
-                                        <div class="col-md-4 mb-3">
-                                            <label for="traitementDentaire" class="form-label">Dentaire</label>
-                                            <textarea id="traitementDentaire" class="form-control" name="traitementDentaire" readonly>${fiche.traitementDentaire || ''}</textarea>
-                                        </div>
-                                        <div class="col-md-4 mb-3">
-                                            <label for="traitementParodontal" class="form-label">Parodontal</label>
-                                            <textarea id="traitementParodontal" class="form-control" name="traitementParodontal" readonly>${fiche.traitementParodontal || ''}</textarea>
-                                        </div>
-                                        <div class="col-md-6 mb-3">
-                                            <label for="traitementOrthodontique" class="form-label">Orthodontique</label>
-                                            <textarea id="traitementOrthodontique" class="form-control" name="traitementOrthodontique" readonly>${fiche.traitementOrthodontique || ''}</textarea>
-                                        </div>
-                                        <div class="col-md-6 mb-3">
-                                            <label for="autres" class="form-label">Autres</label>
-                                            <textarea id="autres" class="form-control" name="autres" readonly>${fiche.autres || ''}</textarea>
-                                        </div>
-                                    </div>
-                                    
-                                </form>
-                            </div>
-                            <div class="card-footer py-3 d-flex justify-content-between align-items-center">
-                                <h6 class="m-0 font-weight-bold text-primary"></h6>
-                                <button type="button" class="btn btn-primary" id="btnSaveTraitementsDocuments" style="display: none;">Sauvegarder</button>
-                            </div>
+                      `).join('')}
+                  </div>
+                  <h5>Arcade inférieure</h5>
+                  <div class="row">
+                      ${[ [31, 41], [32, 42], [33, 43], [34, 44], [35, 45], [36, 46], [37, 47], [38, 48] ].map(pair => `
+                    <div class="col-md-6 mb-2">
+                        <div class="input-group">
+                      <span class="input-group-text">${pair[0]}</span>
+                      <textarea class="form-control tooth-input" id="tooth-${pair[0]}" data-tooth="${pair[0]}" name="toothsCheck[${pair[0]}]" readonly></textarea>
                         </div>
                     </div>
-                    <div class="tab-pane fade" id="devis-${fiche.id}" role="tabpanel">
-                        <div class="card shadow mb-3">
-                            <div class="card-body">
-                                <form id="devisForm">
-                                    <div class="mb-3 row">
-                                        <label for="devisDate" class="col-sm-3 col-form-label">Date</label>
-                                        <div class="col-sm-9">
-                                            <input type="date" class="form-control" name="date" id="devisDate" readonly required>
-                                        </div>
-                                    </div>
-                                    <hr>
-                                    <div class="d-flex justify-content-between align-items-center mb-2">
-                                        <h6 class="mb-0">Services</h6>
-                                        <button type="button" class="btn btn-sm btn-outline-primary" id="btnAddService" style="display: none;">
-                                            <i class="fas fa-plus me-1"></i> Ajouter un service
-                                        </button>
-                                    </div>
-                                    <div id="servicesContainer"></div>
-                                    <hr>
-                                    <div class="mb-3 row">
-                                        <label class="col-sm-3 col-form-label fw-bold">Montant total à Payer</label>
-                                        <div class="col-sm-9">
-                                            <input type="text" readonly class="form-control-plaintext fw-bold fs-5" id="devisTotal" value="0.00">
-                                        </div>
-                                    </div>
-                                </form>
-                            </div>
-                            <div class="card-footer py-3 d-flex justify-content-between align-items-center">
-                                <h6 class="m-0 font-weight-bold text-primary"></h6>
-                                <button type="button" class="btn btn-primary" id="btnSaveDevis" style="display: none;">Sauvegarder</button>
-                            </div>
+                    <div class="col-md-6 mb-2">
+                        <div class="input-group">
+                      <span class="input-group-text">${pair[1]}</span>
+                      <textarea class="form-control tooth-input" id="tooth-${pair[1]}" data-tooth="${pair[1]}" name="toothsCheck[${pair[1]}]" readonly></textarea>
                         </div>
                     </div>
-                    <div class="tab-pane fade" id="seances-passees-${fiche.id}" role="tabpanel">
-                        <div class="card shadow mb-3">
-                            <div class="card-body">
-                                <div id="seancesContainer">
-    ${fiche.consultations.length > 0 ? fiche.consultations.map((seance, index) => `
+                      `).join('')}
+                  </div>
+                    </div>
+                </div>
+                  </div>
+              </form>
+                </div>
+                <div class="card-footer py-3 d-flex justify-content-between align-items-center">
+              <h6 class="m-0 font-weight-bold text-primary"></h6>
+              <button type="button" class="btn btn-primary" id="btnSaveExamens" style="display: none;">Sauvegarder</button>
+                </div>
+            </div>
+              </div>
+              <div class="tab-pane fade" id="traitements-documents-${fiche.id}" role="tabpanel">
+            <div class="card shadow mb-3">
+                <div class="card-body">
+              <form id="traitementsDocumentsForm">
+                  <h6 class="mt-4 alert alert-primary"><i class="fas fa-syringe me-1"></i> Traitements</h6>
+                  <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label for="traitementUrgence" class="form-label">Urgence</label>
+                    <textarea id="traitementUrgence" class="form-control" name="traitementUrgence" readonly>${fiche.traitementUrgence || ''}</textarea>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="traitementDentaire" class="form-label">Dentaire</label>
+                    <textarea id="traitementDentaire" class="form-control" name="traitementDentaire" readonly>${fiche.traitementDentaire || ''}</textarea>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="traitementParodontal" class="form-label">Parodontal</label>
+                    <textarea id="traitementParodontal" class="form-control" name="traitementParodontal" readonly>${fiche.traitementParodontal || ''}</textarea>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="traitementOrthodontique" class="form-label">Orthodontique</label>
+                    <textarea id="traitementOrthodontique" class="form-control" name="traitementOrthodontique" readonly>${fiche.traitementOrthodontique || ''}</textarea>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="autres" class="form-label">Autres</label>
+                    <textarea id="autres" class="form-control" name="autres" readonly>${fiche.autres || ''}</textarea>
+                </div>
+                  </div>
+
+                  <div class="card mb-3">
+                    <div class="card-header d-flex align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">
+                  <i class="fas fa-file-medical me-2"></i> Documents médicaux
+                </h6>
+                
+                    </div>
+                    <div class="card-body">
+                <div id="documentsContainer">
+        ${fiche.documents && fiche.documents.length ? fiche.documents.map((doc, i) => `
+          <div class="document-block mb-3" id="doc-${i}" data-existing-url="${doc.url || ''}">
+            <div class="row gx-2">
+        <div class="col-md-4">
+          <label>Libellé</label>
+          <input type="text" class="form-control doc-libelle" value="${doc.libelle || ''}">
+        </div>
+        <div class="col-md-3">
+          <label>Date</label>
+          <input type="date" class="form-control doc-date" value="${doc.dateDossier || ''}">
+        </div>
+        <div class="col-md-3 text-end d-flex align-items-end justify-content-end"> 
+        </div>
+            </div>
+            <div class="row mt-2 gx-2">
+        <div class="col-md-6">
+          <label>Description</label>
+          <textarea class="form-control doc-description" rows="3">${doc.description || ''}</textarea>
+        </div>
+        <div class="col-md-6">
+          <label>Fichier</label>
+          ${ doc.url ? `<p><a href="/${doc.url}" target="_blank" download>Télécharger</a></p>` : ''}
+          // <input type="file" class="doc-fichier" name="documentsFiles[]">
+        </div>
+            </div>
+          </div>
+        `).join('') : ''}
+      </div>
+
+                    </div>
+                  </div>
+                  
+              </form>
+                </div>
+                <div class="card-footer py-3 d-flex justify-content-between align-items-center">
+              <h6 class="m-0 font-weight-bold text-primary"></h6>
+              <button type="button" class="btn btn-primary" id="btnSaveTraitementsDocuments" style="display: none;">Sauvegarder</button>
+                </div>
+            </div>
+              </div>
+              <div class="tab-pane fade" id="devis-${fiche.id}" role="tabpanel">
+            <div class="card shadow mb-3">
+                <div class="card-body">
+              <form id="devisForm">
+        <div class="mb-3 row">
+          <label for="devisDate" class="col-sm-3 col-form-label">Date</label>
+          <div class="col-sm-9">
+            <input type="date" class="form-control" name="date" id="devisDate" value="${fiche.devis ? fiche.devis.date : ''}" readonly required>
+          </div>
+        </div>
+
+        <hr>
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <h6 class="mb-0">Services</h6> 
+        </div>
+
+        <div id="servicesContainer">
+          ${fiche.devis && fiche.devis.contenus && fiche.devis.contenus.length ? fiche.devis.contenus.map((ligne, i) => `
+            <div class="service-block mb-3" id="service-${i}">
+        <div class="row gx-2 align-items-end">
+          <div class="col-md-5">
+            <label>Libellé</label>
+            <input type="text" class="form-control service-libelle" value="${ligne.designation || ''}" required>
+          </div>
+          <div class="col-md-3">
+            <label>Prix unitaire</label>
+            <input type="number" class="form-control service-prix" value="${ligne.montant || 0}" step="0.01" required>
+          </div>
+          <div class="col-md-2">
+            <label>Quantité</label>
+            <input type="number" class="form-control service-quantite" value="${ligne.qte || 1}" min="1" required>
+          </div>
+          <div class="col-md-2 text-end">
+            <button type="button" class="btn btn-outline-danger btn-remove-service">
+              <i class="fas fa-trash"></i>
+            </button>
+          </div>
+        </div>
+            </div>
+          `).join('') : ''}
+        </div>
+
+        <hr>
+        <div class="mb-3 row">
+          <label class="col-sm-3 col-form-label fw-bold">Montant total à Payer</label>
+          <div class="col-sm-9">
+            <input type="text" readonly class="form-control-plaintext fw-bold fs-5" id="devisTotal" value="${montantTotal.toFixed(2)}">
+          </div>
+        </div>
+      </form>
+
+                </div>
+                <div class="card-footer py-3 d-flex justify-content-between align-items-center">
+              <h6 class="m-0 font-weight-bold text-primary"></h6>
+              <button type="button" class="btn btn-primary" id="btnSaveDevis" style="display: none;">Sauvegarder</button>
+                </div>
+            </div>
+              </div>
+              <div class="tab-pane fade" id="seances-passees-${fiche.id}" role="tabpanel">
+            <div class="card shadow mb-3">
+                <div class="card-body">
+              <div id="seancesContainer">
+          ${fiche.consultations.length > 0 ? fiche.consultations.map((seance, index) => `
         <div class="card mb-3 shadow-sm">
             <div class="card-header bg-light" id="heading-${index}">
-                <h6 class="mb-0 d-flex justify-content-between align-items-center">
-                    <span>
-                        <i class="fas fa-calendar-alt me-2"></i>
-                        Séance du ${new Date(seance.date).toLocaleDateString('fr-FR')}
-                    </span>
-                    <button class="btn btn-link" data-toggle="collapse" data-target="#collapse-${index}"
-                            aria-expanded="false" aria-controls="collapse-${index}">
-                        Voir les actes
-                    </button>
-                </h6>
+          <h6 class="mb-0 d-flex justify-content-between align-items-center">
+              <span>
+            <i class="fas fa-calendar-alt me-2"></i>
+            Séance du ${new Date(seance.date).toLocaleDateString('fr-FR')}
+              </span>
+              <button class="btn btn-link" data-toggle="collapse" data-target="#collapse-${index}"
+                aria-expanded="false" aria-controls="collapse-${index}">
+            Voir les actes
+              </button>
+          </h6>
             </div>
             <div id="collapse-${index}" class="collapse" aria-labelledby="heading-${index}" data-parent="#seancesContainer">
-                <div class="card-body">
-                    <p class="mb-1">
-                        <strong>Médecin :</strong> ${seance.medecin || '—'}<br>
-                        <strong>Infirmier :</strong> ${seance.infirmier || '—'}<br>
-                        <strong>Salle :</strong> ${seance.salle || '—'}
-                    </p>
-                    <p class="small text-muted mb-0">
-                        <strong>Note :</strong> ${seance.noteSeance || '—'}
-                    </p>
-                    <!-- Section pour les actes posés -->
-                    <div class="mt-2">
-                        <strong>Actes posés :</strong>
-                        <ul class="list-group">
-                            ${seance.actes && seance.actes.length > 0 ? seance.actes.map(acte => `
-                                <li class="list-group-item">${acte.description || '—'}</li>
-                            `).join('') : '<li class="list-group-item">Aucun acte enregistré.</li>'}
-                        </ul>
-                    </div>
-                </div>
+          <div class="card-body">
+              <p class="mb-1">
+            <strong>Médecin :</strong> ${seance.medecin || '—'}<br>
+            <strong>Infirmier :</strong> ${seance.infirmier || '—'}<br>
+            <strong>Salle :</strong> ${seance.salle || '—'}
+              </p>
+              <p class="small text-muted mb-0">
+            <strong>Note :</strong> ${seance.noteSeance || '—'}
+              </p>
+              <!-- Section pour les actes posés -->
+              <div class="mt-2">
+            <strong>Actes posés :</strong>
+            <ul class="list-group">
+                ${seance.actes && seance.actes.length > 0 ? seance.actes.map(acte => `
+              <li class="list-group-item">${acte.description || '—'}</li>
+                `).join('') : '<li class="list-group-item">Aucun acte enregistré.</li>'}
+            </ul>
+              </div>
+          </div>
             </div>
         </div>
-    `).join('') : '<div class="col-12"><p class="text-muted fst-italic alert alert-secondary">Aucune séance clôturée pour cette fiche.</p></div>'}
-</div>
-                            </div>
-                        </div>
-                    </div>
+          `).join('') : '<div class="col-12"><p class="text-muted fst-italic alert alert-secondary">Aucune séance clôturée pour cette fiche.</p></div>'}
+      </div>
                 </div>
             </div>
-        `);
+              </div>
+          </div>
+            </div>
+        `);  
         $container.append($ficheCard);
     });
 }
@@ -884,36 +960,6 @@ function renderRdvs() {
     function uniqueId(prefix = 'id') {
       return `${prefix}_${Date.now()}_${Math.floor(Math.random()*1000)}`;
     }
-  
-    // Documents
-    $('#btnAddDocument').on('click', () => addDocumentBlock());
-    function addDocumentBlock(doc = {}) {
-      const uid = uniqueId('doc');
-      const $blk = $(`
-        <div class="document-block mb-3" id="${uid}" data-existing-url="${doc.url||''}">
-          <div class="row gx-2">
-            <div class="col-md-4"><label>Libellé</label><input type="text" class="form-control doc-libelle" value="${doc.libelle||''}"></div>
-            <div class="col-md-3"><label>Date</label><input type="date" class="form-control doc-date" value="${doc.dateDossier||''}"></div>
-            <div class="col-md-3 text-end d-flex align-items-end justify-content-end">
-              <button type="button" class="btn btn-sm btn-outline-danger btn-remove-document"><i class="fas fa-trash"></i></button>
-            </div>
-          </div>
-          <div class="row mt-2 gx-2">
-            <div class="col-md-6"><label>Description</label><textarea class="form-control doc-description" rows="3">${doc.description||''}</textarea></div>
-            <div class="col-md-6">
-              <label>Fichier</label>
-              ${ doc.url ? `<p><a href="/${doc.url}" target="_blank">Voir existant</a></p>` : '' }
-              <input type="file" class="doc-fichier" name="documentsFiles[]">
-            </div>
-          </div>
-        </div>
-      `);
-      $('#documentsContainer').append($blk);
-    }
-    $('#documentsContainer').on('click','.btn-remove-document',function(){
-      $(this).closest('.document-block').remove();
-      isTraitementsModified = true; updateGlobalSaveStatus();
-    });
   
     // Devis — Services
     $('#btnAddService').on('click', () => {

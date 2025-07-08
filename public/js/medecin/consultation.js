@@ -414,7 +414,7 @@ $(function() {
             <div class="col-md-6"><label>Description</label><textarea class="form-control doc-description" rows="3">${doc.description||''}</textarea></div>
             <div class="col-md-6">
               <label>Fichier</label>
-              ${ doc.url ? `<p><a href="/${doc.url}" target="_blank">Voir existant</a></p>` : '' }
+              ${ doc.url ? `<p><a href="/${doc.url}" target="_blank">Telecharger</a></p>` : '' }
               <input type="file" class="doc-fichier" name="documentsFiles[]">
             </div>
           </div>

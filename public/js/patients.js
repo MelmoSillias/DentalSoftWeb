@@ -49,7 +49,7 @@ $(document).ready(function () {
             const medecinSelect = $('#medecin');
             medecinSelect.empty();
             $.each(data, function (index, medecin) {
-                medecinSelect.append(`<option value="${medecin.id}">${medecin.nom} ${medecin.prenom}</option>`);
+                medecinSelect.append(`<option value="${medecin.id}">${medecin.nom}</option>`);
             });
         }).fail(function () {
             showToastModal({
@@ -77,57 +77,66 @@ $(document).ready(function () {
             });
         });
     }
+function handleConsultationForm() {
+    $('#consultationForm').submit(function (e) {
+        e.preventDefault();
 
-    function handleConsultationForm() {
-        $('#consultationForm').submit(function (e) {
-            e.preventDefault();
-            const formData = {
-                patient_id: $(this).data('patient-id'),
-                medecin_id: $('#medecin').val(),
-                payant: $('input[name="payant"]:checked').val(),
-                mode_paiement_id: $('input[name="payant"]:checked').val() ? $('#modePaiement').val() : null
-            };
+        const formData = {
+            patient_id: $(this).data('patient-id'),
+            medecin_id: $('#medecin').val(),
+            payant: $('input[name="payant"]:checked').val(),
+            mode_paiement_id: $('input[name="payant"]:checked').val() ? $('#modePaiement').val() : null
+        };
 
-            if(formData['mode_paiement_id'] == null){
-                showToastModal({
-                    message: 'Veillez Choisir le mode de paiement',
-                    type: 'error',
-                    duration: 3000
-                  });
-                  return
-            }
+        if (formData['mode_paiement_id'] == null) {
+            showToastModal({
+                message: 'Veuillez choisir le mode de paiement',
+                type: 'error',
+                duration: 3000
+            });
+            return;
+        }
 
-            $.ajax({
-                url: '/api/consultation/create',
-                type: 'POST',
-                contentType: 'application/json',
-                data: JSON.stringify(formData),
-                success: function (response) {
-                    $('#createConsultationModal').modal('hide');
-                    if (response.success) {
-                        showToastModal({
-                          message: 'Consultation créée avec succès !',
-                          type: 'success'
-                        });
-                        window.location.reload();
-                    } else {
-                        showToastModal({
-                          message: 'Erreur : ' + response.error,
-                          type: 'error',
-                          duration: 3000
-                        });
-                    }
-                },
-                error: function () {
+        $.ajax({
+            url: '/api/consultation/create',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(formData),
+            success: function (response) {
+                $('#createConsultationModal').modal('hide');
+
+                if (response.success) {
                     showToastModal({
-                      message: 'Une erreur est survenue lors de la création',
-                      type: 'error',
-                      duration: 3000
+                        message: 'Consultation créée avec succès !',
+                        type: 'success'
+                    });
+
+                    setTimeout(() => {
+                         if (formData.payant === "1" && response.paiement_id) {
+                        const receiptUrl = `/api/paiement-ticket/${response.paiement_id}/print`;
+                        const printWindow = window.open(receiptUrl, '_blank');
+                        printWindow.focus();
+                    }}, 3000)
+ 
+                } else {
+                    showToastModal({
+                        message: 'Erreur : ' + response.error,
+                        type: 'error',
+                        duration: 3000
                     });
                 }
-            });
+            },
+            error: function () {
+                showToastModal({
+                    message: 'Une erreur est survenue lors de la création',
+                    type: 'error',
+                    duration: 3000
+                });
+            }
         });
-    }
+    });
+}
+
 
     let dataTable;
     function initDataTable() {
@@ -148,24 +157,45 @@ $(document).ready(function () {
                         },
                         { extend: 'spacer', style: 'bar', className: 'mb-2' },
                         {
-                            extend: 'pdfHtml5',
-                            text: 'Exporter en PDF',
-                            className: 'btn mb-2',
-                            title: 'Liste des patients Orodent',
-                            filename: 'liste_des_patients_orodent',
-                            messageTop: 'PDF créé par PDFMake avec Buttons pour DataTables.',
-                            customize: function (doc) {
-                                doc.pageSize = 'A4';
-                                doc.content[0].margin = [0, 0, 0, 12];
-                                const now = new Date();
-                                const jsDate = now.getDate() + '-' + (now.getMonth() + 1) + '-' + now.getFullYear();
-                                doc.content.push({
-                                    text: 'Date d\'exportation: ' + jsDate,
-                                    alignment: 'right',
-                                    margin: [0, 10]
-                                });
-                            }
-                        }
+    extend: 'pdfHtml5',
+    text: 'Exporter en PDF',
+    className: 'btn mb-2',
+    title: 'Liste des patients Orodent',
+    filename: 'liste_des_patients_orodent',
+    messageTop: '',
+    exportOptions: {
+        columns: [0, 1, 2, 3, 4, 5]  // exporte uniquement les 6 premières colonnes
+    },
+    customize: function (doc) {
+        // Format portrait A4
+        doc.pageOrientation = 'landscape';
+        doc.pageSize = 'A4';
+
+        // Agrandit le titre principal
+        doc.content[0].text = 'Liste des patients Orodent';
+        doc.content[0].fontSize = 18;
+        doc.content[0].alignment = 'center';
+        doc.content[0].margin = [0, 0, 0, 12];
+
+        // Étire les colonnes sur toute la largeur disponible
+        const table = doc.content.find(item => item.table);
+        if (table) {
+            const colCount = table.table.body[0].length;
+            table.table.widths = Array(colCount).fill('*');  // largeur égale pour toutes les colonnes
+        }
+
+        // Ajout de la date en bas
+        const now = new Date();
+        const jsDate = now.getDate() + '-' + (now.getMonth() + 1) + '-' + now.getFullYear();
+        doc.content.push({
+            text: 'Date d\'exportation : ' + jsDate,
+            alignment: 'right',
+            margin: [0, 20, 0, 0],
+            fontSize: 10
+        });
+    }
+}
+
                     ]
                 }
             },
@@ -294,7 +324,7 @@ $(document).ready(function () {
                 const rdvDoctorSelect = $('#rdvDoctor');
                 rdvDoctorSelect.empty();
                 $.each(data, function (i, m) {
-                    rdvDoctorSelect.append(`<option value="${m.id}">${m.nom} ${m.prenom}</option>`);
+                    rdvDoctorSelect.append(`<option value="${m.id}">${m.nom}</option>`);
                 });
             }).fail(function () {
                 showToastModal({

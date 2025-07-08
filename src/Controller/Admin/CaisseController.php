@@ -29,6 +29,40 @@ final class CaisseController extends AbstractController
         ]);
     }
 
+    #[Route('/api/devis/all', name: 'api_devis_all', methods: ['GET'])]
+public function getDevisAll(Request $request, DevisRepository $repo): JsonResponse
+{ 
+    $start = new \DateTime($request->query->get('start', 'today'));
+    $end   = new \DateTime($request->query->get('end', 'today'));
+    $end->setTime(23, 59, 59);
+
+    $devis = $repo->createQueryBuilder('d')
+        ->join('d.fiche', 'f')->addSelect('f')
+        ->join('f.patient', 'p')->addSelect('p') 
+        ->where('d.date BETWEEN :start AND :end') 
+        ->setParameter('start', $start)
+        ->setParameter('end', $end)
+        ->orderBy('d.date', 'DESC')
+        ->getQuery()
+        ->getResult();
+
+    $data = array_map(function(Devis $d) {
+        return [
+            'id' => $d->getId(),
+            'date' => $d->getDate()->format('Y-m-d'),
+            'montant' => $d->getMontant(),
+            'reste' => $d->getReste(),
+            'statut' => $d->getStatut(),
+            'patient' => [
+                'nom' => $d->getFiche()->getPatient()->getNom(),
+                'prenom' => $d->getFiche()->getPatient()->getPrenom(),
+            ]
+        ];
+    }, $devis);
+
+    return new JsonResponse($data);
+}
+
     #[Route('/api/devis/impayes', name: 'api_devis_impayes', methods: ['GET'])]
 public function getDevisImpayes(DevisRepository $repo): JsonResponse
 {
@@ -56,6 +90,7 @@ public function getDevisImpayes(DevisRepository $repo): JsonResponse
 
     return new JsonResponse($data);
 }
+
 #[Route('/api/paiements-devis', name: 'api_paiements_devis', methods: ['GET'])]
 public function getPaiementsDevis(Request $request, PaiementDevisRepository $repo): JsonResponse
 {
@@ -165,6 +200,7 @@ public function payerDevis(
     $devis->setReste($devis->getReste() - $montant);
     if ($devis->getReste() <= 0) {
         $devis->setReste(0);
+        $devis->setStatut(1);
     }
 
     // Créer la transaction associée
