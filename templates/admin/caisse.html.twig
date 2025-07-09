@@ -420,7 +420,7 @@ $(function () {
 
     // === 4. Total recettes dynamiques ===
     paiementsTable.on('draw', function () {
-        const data = paiementsTable.column(2, { search: 'applied' }).data().toArray();
+        const data = paiementsTable.column(3, { search: 'applied' }).data().toArray();
         const total = data.reduce((sum, val) => sum + (parseFloat(val) || 0), 0);
         $('#recetteTotalPeriode').text(`${total.toLocaleString('fr-FR')} FCFA`);
     });

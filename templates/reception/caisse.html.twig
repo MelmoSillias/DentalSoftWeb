@@ -263,7 +263,7 @@ $(function () {
     }
   ],
   language: { url: 'https://cdn.datatables.net/plug-ins/1.13.5/i18n/fr-FR.json' },
-  order: [[1, 'desc']]
+  order: [[0, 'desc']]
 });
 
 
@@ -342,12 +342,12 @@ $(function () {
         }
       ],
       language: { url: 'https://cdn.datatables.net/plug-ins/1.13.5/i18n/fr-FR.json' },
-      order: [[4, 'desc']] 
+      order: [[0, 'desc']] 
     });
 
     // === 4. Total recettes dynamiques ===
     paiementsTable.on('draw', function () {
-        const data = paiementsTable.column(2, { search: 'applied' }).data().toArray();
+        const data = paiementsTable.column(3, { search: 'applied' }).data().toArray();
         const total = data.reduce((sum, val) => sum + (parseFloat(val) || 0), 0);
         $('#recetteTotalPeriode').text(`${total.toLocaleString('fr-FR')} FCFA`);
     });
