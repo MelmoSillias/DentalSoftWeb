@@ -134,8 +134,7 @@
                         <th>Patient</th>
                         <th>Telephone</th>
                         <th>Montant</th>
-                        <th>Mode de paiement</th>
-                        <th>Date de paiement</th>
+                        <th>Mode de paiement</th> 
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -210,7 +209,7 @@ $(function () {
     devisTable = $('#devisImpayesTable').DataTable({
   ajax: {
     url: '/api/devis/impayes',
-    method: 'GET',
+    method: 'GET', 
     dataSrc: function (json) {
       // Calcul des stats dans le callback
       const totalReste = json.reduce((sum, d) => sum + (parseFloat(d.reste) || 0), 0);
@@ -226,42 +225,77 @@ $(function () {
       return json;
     }
   },
-  columns: [ 
-    {
-      data: 'date',
-      render: date => new Date(date).toLocaleDateString('fr-FR')
-    },
-    {
-      data: 'patient',
-      render: p => `${p.nom} ${p.prenom}`
-    },
-    {
-      data: 'telephone',
-    },
-    {
-      data: 'montant',
-      render: m => `${parseFloat(m).toLocaleString('fr-FR')} FCFA`
-    },
-    {
-      data: 'reste',
-      render: r => `${parseFloat(r).toLocaleString('fr-FR')} FCFA`
-    },
-    {
-      data: 'id',
-      orderable: false,
-      searchable: false,
-      render: id => `
-        <a href="#" class="btn btn-sm btn-primary preview-devis-btn" data-toggle="modal"
-           data-target="#devisModal" data-devis-id="${id}">
-           <i class="fas fa-eye"></i> Visualiser
-        </a>
-        <a href="#" class="btn btn-sm btn-success regler-devis-btn" data-toggle="modal"
-           data-target="#reglerDevisModal" data-devis-id="${id}">
-           <i class="fas fa-hand-holding-usd"></i> Régler
-        </a>
-      `
+  columns: [
+  {
+    data: 'date',
+    render: date => new Date(date).toLocaleDateString('fr-FR')
+  },
+  {
+    data: 'patient',
+    render: p => `${p.nom} ${p.prenom}`
+  },
+  {
+    data: 'telephone', 
+  },
+  {
+    data: 'montant',
+    render: m => `${parseFloat(m).toLocaleString('fr-FR')} FCFA`
+  },
+  {
+    data: 'reste',
+    render: r => `${parseFloat(r).toLocaleString('fr-FR')} FCFA`
+  },
+  {
+    data: null,
+    orderable: false,
+    searchable: false,
+    render: row => {
+      const montant = parseFloat(row.montant);
+      const reste = parseFloat(row.reste);
+      let statut = '';
+      let badgeClass = '';
+
+      if (reste === 0) {
+        statut = 'Payé';
+        badgeClass = 'badge-success';
+      } else if (reste === montant) {
+        statut = 'Impayé';
+        badgeClass = 'badge-danger';
+      } else {
+        statut = 'Partiellement payé';
+        badgeClass = 'badge-warning';
+      }
+
+      return `<span class="badge ${badgeClass}">${statut}</span>`;
     }
-  ],
+  },
+  {
+    data: 'id',
+    orderable: false,
+    searchable: false,
+    render: (id, type, row) => {
+      const statut = row.statut;
+      const isRegle = statut == 1;
+
+      const reglerButton = isRegle
+        ? ''
+        : `<a href="#" class="btn btn-sm btn-success regler-devis-btn" data-toggle="modal"
+             data-target="#reglerDevisModal" data-devis-id="${id}">
+             <i class="fas fa-hand-holding-usd"></i> Régler
+          </a>`;
+
+      return `
+        <div>
+          <a href="#" class="btn btn-sm btn-primary preview-devis-btn" data-toggle="modal"
+             data-target="#devisModal" data-devis-id="${id}">
+             <i class="fas fa-eye"></i> Visualiser
+          </a>
+          ${reglerButton}
+        </div>
+      `;
+    }
+  }
+],
   language: { url: 'https://cdn.datatables.net/plug-ins/1.13.5/i18n/fr-FR.json' },
   order: [[0, 'desc']]
 });
@@ -556,9 +590,12 @@ window.printDevisModal = function () {
   printWindow.focus();
   printWindow.print();
   printWindow.close();
-}; 
-});
+};
 
+
+
+});
+ 
 </script>
 
 {% endblock %}
