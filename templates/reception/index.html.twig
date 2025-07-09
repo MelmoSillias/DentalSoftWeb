@@ -147,7 +147,7 @@
       <div class="modal-body">
         <p>Souhaitez-vous imprimer :</p>
         <button class="btn btn-primary w-100 mb-2" onclick="printDoctorsSummary()">Liste des médecins (résumé)</button>
-        <button class="btn btn-secondary w-100" onclick="printAllActs()">Liste des actes détaillée</button>
+        <button class="btn btn-secondary w-100" onclick="printAllActs()">Liste des soins détaillée</button>
       </div>
     </div>
   </div>
@@ -288,7 +288,7 @@ $('#doctorsReport tbody').on('click', '.btn-toggle-details', function () {
 
 function formatDoctorDetails(d) {
   if (!d || !Array.isArray(d.actes) || d.actes.length === 0) {
-    return '<div class="p-2"><em>Aucun acte enregistré sur cette période.</em></div>';
+    return '<div class="p-2"><em>Aucun soin enregistré sur cette période.</em></div>';
   }
 
   let table = `
@@ -429,10 +429,10 @@ const currentDate = new Date().toLocaleDateString('fr-FR');
         <div><strong>Période concernée :</strong> ${$('#datepicker input').val() || '(non spécifiée)'}</div>
       </div>
 
-      {# <div class="section-title">Statistiques d'activité</div>
-      ${formatDoctorTable(row)} #}
+      <div class="section-title">Statistiques d'activité</div>
+      ${formatDoctorTable(row)}
 
-      <div class="section-title">Détails des actes posés</div>
+      <div class="section-title">Détails des soins éffectués</div>
       ${formatActsDetails(row)}
 
       <table class="signature-table">
@@ -474,7 +474,6 @@ function formatDoctorTable(row) {
           <th>Indicateur</th>
           <th>Nombre</th>
           <th>Montant total</th>
-          <th>Moyenne par consultation</th>
         </tr>
       </thead>
       <tbody>
@@ -482,23 +481,11 @@ function formatDoctorTable(row) {
           <td>Consultations réalisées</td>
           <td>${row.consultations || '0'}</td>
           <td>${row.total_amount ? row.total_amount + ' F CFA' : '0 F CFA'}</td>
-          <td>${row.avg_amount ? row.avg_amount + ' F CFA' : '0 F CFA'}</td>
         </tr>
         <tr>
-          <td>Actes effectués</td>
+          <td>Soins effectués</td>
           <td>${row.acts || '0'}</td>
           <td>${row.acts_amount ? row.acts_amount + ' F CFA' : '0 F CFA'}</td>
-          <td>${row.avg_act ? row.avg_act + ' F CFA' : '0 F CFA'}</td>
-        </tr>
-        <tr>
-          <td>Nouveaux patients</td>
-          <td>${row.new_patients || '0'}</td>
-          <td colspan="2"></td>
-        </tr>
-        <tr>
-          <td>Patients fidélisés</td>
-          <td>${row.returning_patients || '0'}</td>
-          <td colspan="2"></td>
         </tr>
       </tbody>
     </table>
@@ -506,8 +493,8 @@ function formatDoctorTable(row) {
 }
 
 function formatActsDetails(row) {
-  if (!row.actes || row.actes.length === 0) {
-    return '<p>Aucun acte détaillé disponible pour cette période.</p>';
+  if (!row.paiements || row.paiements.length === 0) {
+    return '<p>Aucun soin disponible pour cette période.</p>';
   }
 
   let detailsHtml = `
@@ -515,21 +502,25 @@ function formatActsDetails(row) {
       <thead>
         <tr>
           <th>Date</th>
+          <th>Médecin</th>
           <th>Patient</th>
-          <th>Type d'acte</th>
+          <th>Téléphone</th>
           <th>Montant</th>
+          <th>Pour</th>
         </tr>
       </thead>
       <tbody>
   `;
 
-  row.actes.forEach(acte => {
+  row.paiements.forEach(a => {
     detailsHtml += `
       <tr>
-        <td>${acte.date || ''}</td>
-        <td>${acte.patient || ''}</td>
-        <td>${acte.type || ''}</td>
-        <td>${acte.montant ? acte.montant + ' F CFA' : '0 F CFA'}</td>
+        <td>${a.date}</td>
+        <td>${a.medecin}</td>
+        <td>${a.patient}</td>
+        <td>${a.telephone}</td>
+        <td>${formatFcfa(a.montant)}</td>
+        <td>${a.pour}</td>
       </tr>
     `;
   });
@@ -550,8 +541,23 @@ function printDoctorsSummary() {
   const rows = table.rows().data().toArray();
 
   let html = `
-    <div style="font-family: Arial;">
-      <h2 style="text-align: center;">Résumé des rapports médicaux</h2>
+    <style>
+      .print-header {
+          text-align: center;
+          margin-bottom: 20px;
+          border-bottom: 2px solid #000;
+          padding-bottom: 15px;
+      }
+      .print-header h2 {
+          margin: 0;
+          font-size: 18pt;
+      }
+  </style>
+  <div style="font-family: Arial;">
+        <div class="print-header">
+          <h2>CABINET DENTAIRE ORODENT</h2>
+          <p><strong>Rapport de service (résumé)</strong></p>
+      </div>
       <p><strong>Période :</strong> ${$('#datepicker input').val() || '(non spécifiée)'}</p>
       <table style="width: 100%; border-collapse: collapse;" border="1" cellpadding="5">
         <thead>
@@ -559,8 +565,7 @@ function printDoctorsSummary() {
             <th>Médecin</th>
             <th>Nb Consult.</th>
             <th>Montant (FCFA)</th>
-            <th>Payantes / Gratuites</th>
-            <th>Salaire</th>
+            <th>Payantes / Gratuites</th> 
           </tr>
         </thead>
         <tbody>
@@ -572,8 +577,7 @@ function printDoctorsSummary() {
         <td>${r.name}</td>
         <td>${r.consultations}</td>
         <td>${formatFcfa(r.revenue)}</td>
-        <td>${r.paidVsFree}</td>
-        <td>${formatFcfa(r.salary)}</td>
+        <td>${r.paidVsFree}</td> 
       </tr>`;
   });
 
@@ -602,23 +606,40 @@ function printDoctorsSummary() {
     function printAllActs() {
         $('#globalPrintModal').modal('hide');
         const rows = $('#doctorsReport').DataTable().rows().data().toArray();
-        let allActes = [];
+        let allPays = [];
         rows.forEach(r => {
-            if (Array.isArray(r.actes)) {
-                r.actes.forEach(a => {
-                    allActes.push({
-                        date: a.date,
-                        medecin: r.name,
-                        patient: a.patient,
-                        type: a.type,
-                        montant: a.montant
+            if (Array.isArray(r.paiements)) {
+                r.paiements.forEach(p => {
+                    allPays.push({
+                        date: p.date,
+                        medecin: p.medecin,
+                        patient: p.patient,
+                        telephone: p.telephone,
+                        montant: p.montant,
+                        type: p.pour,
+                        
                     });
                 });
             }
         });
         let html = `
+            <style>
+                .print-header {
+                    text-align: center;
+                    margin-bottom: 20px;
+                    border-bottom: 2px solid #000;
+                    padding-bottom: 15px;
+                }
+                .print-header h2 {
+                    margin: 0;
+                    font-size: 18pt;
+                }
+            </style>
             <div style="font-family: Arial;">
-                <h2 style="text-align: center;">Liste des actes médicaux</h2>
+                 <div class="print-header">
+                    <h2>CABINET DENTAIRE ORODENT</h2>
+                    <p><strong>Rapport de service</strong></p>
+                </div>
                 <p><strong>Période :</strong> ${ $('#datepicker input').val() || '(non spécifiée)'}</p>
                 <table style="width: 100%; border-collapse: collapse;" border="1" cellpadding="5">
                     <thead>
@@ -626,19 +647,21 @@ function printDoctorsSummary() {
                             <th>Date</th>
                             <th>Médecin</th>
                             <th>Patient</th>
-                            <th>Type d'acte</th>
+                            <th>Téléphone</th>
                             <th>Montant</th>
+                            <th>Pour</th>
                         </tr>
                     </thead>
                     <tbody>`;
-        allActes.forEach(a => {
+        allPays.forEach(a => {
             html += `
                 <tr>
                     <td>${a.date}</td>
                     <td>${a.medecin}</td>
                     <td>${a.patient}</td>
-                    <td>${a.type}</td>
+                    <td>${a.telephone}</td>
                     <td>${formatFcfa(a.montant)}</td>
+                    <td>${a.type}</td>
                 </tr>`;
         });
         html += `

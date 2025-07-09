@@ -39,7 +39,9 @@ public function getDevisAll(Request $request, DevisRepository $repo): JsonRespon
     $devis = $repo->createQueryBuilder('d')
         ->join('d.fiche', 'f')->addSelect('f')
         ->join('f.patient', 'p')->addSelect('p') 
-        ->where('d.date BETWEEN :start AND :end') 
+        ->where('d.type = :type') 
+        ->AndWhere('d.date BETWEEN :start AND :end') 
+        ->setParameter('type', 1)
         ->setParameter('start', $start)
         ->setParameter('end', $end)
         ->orderBy('d.date', 'DESC')
@@ -56,6 +58,7 @@ public function getDevisAll(Request $request, DevisRepository $repo): JsonRespon
             'patient' => [
                 'nom' => $d->getFiche()->getPatient()->getNom(),
                 'prenom' => $d->getFiche()->getPatient()->getPrenom(),
+                'telephone' => $d->getFiche()->getPatient()->getTelephone(),
             ]
         ];
     }, $devis);
@@ -84,6 +87,7 @@ public function getDevisImpayes(DevisRepository $repo): JsonResponse
             'patient' => [
                 'nom' => $d->getFiche()->getPatient()->getNom(),
                 'prenom' => $d->getFiche()->getPatient()->getPrenom(),
+                'telephone' => $d->getFiche()->getPatient()->getTelephone(),
             ]
         ];
     }, $devis);
@@ -232,11 +236,11 @@ public function printListePaiements(
     $end->setTime(23, 59, 59);
 
     $paiements = $repo->createQueryBuilder('p')
-        ->join('p.devis', 'd')->addSelect('d')
-        ->join('d.fiche', 'f')->addSelect('f')
-        ->join('f.patient', 'pat')->addSelect('pat')
+        ->leftJoin('p.devis', 'd')->addSelect('d')
+        ->leftJoin('d.fiche', 'f')->addSelect('f')
+        ->leftJoin('f.patient', 'pat')->addSelect('pat')
         ->join('p.mode', 'm')->addSelect('m')
-        ->where('p.date BETWEEN :start AND :end')
+        ->where('p.date BETWEEN :start AND :end') 
         ->setParameter('start', $start)
         ->setParameter('end', $end)
         ->orderBy('p.date', 'DESC')

@@ -746,7 +746,7 @@ function renderRdvs() {
               </p>
               <!-- Section pour les actes posés -->
               <div class="mt-2">
-            <strong>Actes posés :</strong>
+            <strong>Soins Médicaux :</strong>
             <ul class="list-group">
                 ${seance.actes && seance.actes.length > 0 ? seance.actes.map(acte => `
               <li class="list-group-item">${acte.description || '—'}</li>

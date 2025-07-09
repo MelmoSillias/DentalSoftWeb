@@ -92,10 +92,10 @@
         <div class="table-responsive">
             <table class="table table-striped table-hover my-4" id="devisImpayesTable">
   <thead>
-    <tr>
-      <th>N° facture</th>
+    <tr> 
       <th>Date</th>
       <th>Patient</th>
+      <th>Date</th>
       <th>Montant Total</th>
       <th>Reste à payer</th>
       <th>Actions</th>
@@ -130,7 +130,7 @@
             <table id="paiementsDevisTable" class="table table-striped table-hover table-sm my-4">
                 <thead class="table-light">
                     <tr>
-                        <th>N° </th>
+                        <th>Date</th>
                         <th>Patient</th>
                         <th>Montant</th>
                         <th>Mode de paiement</th>
@@ -225,11 +225,7 @@ $(function () {
       return json;
     }
   },
-  columns: [
-    {
-      data: 'id',
-      render: id => `DEV-${String(id).padStart(4, '0')}`
-    },
+  columns: [ 
     {
       data: 'date',
       render: date => new Date(date).toLocaleDateString('fr-FR')
@@ -237,6 +233,9 @@ $(function () {
     {
       data: 'patient',
       render: p => `${p.nom} ${p.prenom}`
+    },
+    {
+      data: 'telephone',
     },
     {
       data: 'montant',
@@ -298,9 +297,7 @@ $(function () {
     });
 
     // === 3. DataTable des Paiements ===
-    const paiementsTable = $('#paiementsDevisTable').DataTable({
-      processing: true,
-      serverSide: true,
+    const paiementsTable = $('#paiementsDevisTable').DataTable({ 
       ajax: {
         url: '/api/paiements-devis',
         data: function (d) {
@@ -309,11 +306,10 @@ $(function () {
         }
       },
       columns: [
-        {
-          data: 'devisId',
-          render: id => `${String(id).padStart(4, '0')}`
-        },
         { data: 'patient' },
+        {
+          data: 'telephone',
+        },
         {
           data: 'montant',
           render: m => `${parseFloat(m).toLocaleString('fr-FR')} FCFA`

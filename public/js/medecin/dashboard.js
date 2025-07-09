@@ -41,6 +41,7 @@ function loadDashboardData(from = null, to = null) {
         // Consultations
         $('#freeConsultations').text(data.period.freeConsultations);
         $('#paidConsultations').text(data.period.paidConsultations);
+        $('#AmountConsultations').text(formatFcfa(parseInt(data.period.paidConsultations) * 5000));
 
         // RDV stats
         $('#scheduledAppointments').text(data.period.rdvPlanifies);
@@ -50,7 +51,9 @@ function loadDashboardData(from = null, to = null) {
         $('#cancelledAppointments').text(data.period.rdvAnnules);
 
         // Apport
-        $('#periodRevenue').text(formatFcfa(data.period.apportTotal));
+        $('#periodRevenueC').text(formatFcfa(parseInt(data.period.paidConsultations) * 5000));
+        $('#periodRevenueA').text(formatFcfa(parseFloat(data.period.apportTotal) - (parseInt(data.period.paidConsultations) * 5000)));
+        $('#periodRevenueT').text(formatFcfa(data.period.apportTotal));
 
         // Actes médicaux
         renderMedicalActs(data.period.actesMedicaux);

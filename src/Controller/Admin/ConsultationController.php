@@ -21,6 +21,7 @@ use App\Repository\ConsultationRepository;
 use App\Repository\SalleRepository;
 use App\Repository\EmployeRepository; 
 use DateTime;
+use PHPUnit\Util\Json;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 final class ConsultationController extends AbstractController
@@ -339,10 +340,18 @@ public function consultationDetailsJson(ConsultationRepository $repo, int $id): 
     }
 
       #[Route('/api/consultations/jour', name: 'api_consultations_day', methods: ['GET'])]
-public function consultationsDuJour(EntityManagerInterface $em): JsonResponse
+public function consultationsDuJour(Request $req,EntityManagerInterface $em): JsonResponse
 {
-    $start = (new \DateTime())->setTime(0, 0, 0);
-    $end = (new \DateTime())->setTime(23, 59, 59);
+    // Récupère la date depuis la requête GET (?date=YYYY-MM-DD), sinon aujourd'hui
+    $dateStr = $req->get('date');
+    if ($dateStr) {
+        $date = \DateTime::createFromFormat('Y-m-d', $dateStr) ?: new \DateTime();
+    } else {
+        $date = new \DateTime();
+    }
+
+    $start = (clone $date)->setTime(0, 0, 0);
+    $end = (clone $date)->setTime(23, 59, 59);
 
     $consultations = $em->createQuery("
         SELECT c FROM App\Entity\Consultation c
@@ -368,6 +377,7 @@ public function consultationsDuJour(EntityManagerInterface $em): JsonResponse
         ];
     }
 
-    return new JsonResponse($data);
+    return new JsonResponse(['data' => $data]);
+;
 }
 }

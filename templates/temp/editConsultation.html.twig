@@ -283,7 +283,7 @@
         <!-- Actes Médicaux -->
         <div class="card mb-3">
           <div class="card-header d-flex justify-content-between">
-            <span>Actes médicaux</span>
+            <span>Soins </span>
             <button id="addActe" class="btn btn-sm btn-outline-primary"><i class="fas fa-plus"></i></button>
           </div>
           <div class="card-body" id="actesContainer">
@@ -462,11 +462,7 @@ function sendAjax(endpoint) {
       fd.append(key, item.file);
     });
   });
-
-  // 2c) Debug : liste complète des clés du FormData
-  for (let [k, v] of fd.entries()) {
-    console.log('[FormData]', k, v);
-  }
+ 
  
   // 3) AJAX multipart
   $.ajax({
@@ -506,7 +502,7 @@ function sendAjax(endpoint) {
     {% endfor %}
     $('#btnShowFacture').on('click', function(){
       if (!actes.length) {
-        showToastModal({ message:'Aucun acte à facturer.', type:'info' });
+        showToastModal({ message:'Aucun soin à facturer.', type:'info' });
         return;
       }
       var total = actes.reduce((s,a)=>s + a.prix*(a.quantite||1), 0);

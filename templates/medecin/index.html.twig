@@ -178,6 +178,10 @@
                         Payantes
                         <span id="paidConsultations" class="badge badge-secondary">--</span>
                     </li>
+                     <li class="list-group-item d-flex justify-content-between">
+                        Total
+                        <span id="AmountConsultations" class="badge badge-success">--</span>
+                    </li>
                 </ul>
             </div>
         </div>
@@ -219,8 +223,16 @@
                 </div>
                 <ul class="list-group list-group-flush">
                     <li class="list-group-item d-flex justify-content-between">
-                        Total
-                        <span id="periodRevenue" class="badge badge-primary">-- Fcfa</span>
+                        Total sur consultations
+                        <span id="periodRevenueC" class="badge badge-primary">-- Fcfa</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                        Total sur soins éffectués
+                        <span id="periodRevenueA" class="badge badge-secondary">-- Fcfa</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                        Montant Total
+                        <span id="periodRevenueT" class="badge badge-success">-- Fcfa</span>
                     </li>
                 </ul>
             </div>
@@ -232,7 +244,7 @@
         <div class="col-12">
             <div class="card h-100 border-left-secondary shadow">
                 <div class="card-header d-flex justify-content-between align-items-center py-2">
-                    <h6 class="mb-0">Actes Médicaux Posés</h6>
+                    <h6 class="mb-0">Soins médicaux</h6>
                 </div>
                 <ul class="list-group list-group-flush" id="medicalActsList">
                     <!-- Contenu dynamique pour les actes médicaux -->

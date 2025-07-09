@@ -729,6 +729,7 @@ public function periodicDoctorReports(Request $request, EntityManagerInterface $
         $consultationDetails = [];
         $actesList = [];
         $totalActs = 0;
+        $paiements = [];
 
         foreach ($consultations as $consult) {
             // Statistiques paiement
@@ -741,9 +742,18 @@ public function periodicDoctorReports(Request $request, EntityManagerInterface $
             // Calcul des montants
             $consultAmount = 0;
             if ($consult->getFacture() && $consult->getFacture()->getMontant()) {
+                $fact = $consult->getFacture();
                 $consultAmount = $consult->getFacture()->getMontant();
                 $apport += $consultAmount;
                 $totalAmount += $consultAmount;
+                $paiements[] = [
+                    'date' => $consult->getFacture()->getDate()?->format('Y-m-d H:i'),
+                    'medecin' => $doctor->getFullName(),
+                    'patient' => $consult->getPatient()?->getFullName() ?? 'Inconnu',
+                    'telephone' => $consult->getPatient()?->getTelephone() ?? '-- -- -- --',
+                    'montant' => $fact->getMontant() - $fact->getReste() ?? null , 
+                    'pour' => 'Soins'
+                ];
             }
 
             $paiementDevis = $consult->getPaiementDevis();
@@ -751,6 +761,14 @@ public function periodicDoctorReports(Request $request, EntityManagerInterface $
                 $consultAmount += $paiementDevis->getMontant();
                 $apport += $paiementDevis->getMontant();
                 $totalAmount += $paiementDevis->getMontant();
+                $paiements[] = [
+                    'date' => $consult->getCreatedAt()?->format('Y-m-d H:i'),
+                    'medecin' => $doctor->getFullName(),
+                    'patient' => $consult->getPatient()?->getFullName() ?? 'Inconnu',
+                    'telephone' => $consult->getPatient()?->getTelephone() ?? '-- -- -- --',
+                    'montant' => $consult->getPaiementDevis()->getMontant() ?? null , 
+                    'pour' => 'Consultation'
+                ];
             }
 
             // Nouveaux vs patients fidélisés
@@ -819,6 +837,7 @@ public function periodicDoctorReports(Request $request, EntityManagerInterface $
             'salary' => $salary,
             'consultation_details' => $consultationDetails,
             'actes' => $actesList, 
+            'paiements' => $paiements
         ];
     }
 
@@ -848,6 +867,7 @@ public function medecinDashboard(
         return $this->json(['error' => 'Utilisateur non connecté'], 401);
     }
 
+    /** @var Employe $medecin */
     $medecin = $em->getRepository(Employe::class)->findOneBy(['user' => $user]);
     if (!$medecin) {
         return $this->json(['error' => 'Aucun médecin trouvé'], 404);
@@ -884,6 +904,7 @@ public function medecinDashboard(
     $freeConsults = 0;
     $apport = 0.0;
     $actes = [];
+    $paiements = [];
 
     foreach ($consultationsPeriode as $consult) {
         if ($consult->getFacture()) {
@@ -894,20 +915,38 @@ public function medecinDashboard(
 
         if ($facture = $consult->getFacture()) {
             $apport += $facture->getMontant();
+            $paiements[] = [
+                'date' => $facture->getDate()?->format('Y-m-d H:i'),
+                'medecin' => $medecin->getFullName(),
+                'patient' => $consult->getPatient()?->getFullName() ?? 'Inconnu',
+                'telephone' => $consult->getPatient()?->getTelephone() ?? '-- -- -- --',
+                'montant' => $consult->getCreatedAt()?->format('Y-m-d H:i') ?? null , 
+                'pour' => 'Soins'
+            ];
         }
 
         if ($p = $consult->getPaiementDevis()) {
             $apport += $p->getMontant();
+            $paiements[] = [
+                'date' => $consult->getCreatedAt()?->format('Y-m-d H:i'),
+                'medecin' => $medecin->getFullName(),
+                'patient' => $consult->getPatient()?->getFullName() ?? 'Inconnu',
+                'telephone' => $consult->getPatient()?->getTelephone() ?? '-- -- -- --',
+                'montant' => $consult->getCreatedAt()?->format('Y-m-d H:i') ?? null , 
+                'pour' => 'Consultation'
+            ];
         }
 
-        foreach ($consult->getActes() as $acte) {
-        $actes[] = [
-            'nom' => $acte->getType(),
-            'montant' => $acte->getMontantTotal(),
-            'patient' => $consult->getPatient()?->getFullName() ?? 'Inconnu',
-            'date' => $consult->getCreatedAt()?->format('Y-m-d H:i') ?? null
-        ]; 
-    }
+        if ($consult->getFacture() !== null) {
+            foreach ($consult->getFacture()->getContenus() as $acte) {
+            $actes[] = [
+                'nom' => $acte->getDesignation(),
+                'montant' => $acte->getMontant(),
+                'patient' => $consult->getPatient()?->getFullName() ?? 'Inconnu',
+                'date' => $consult->getCreatedAt()?->format('Y-m-d H:i') ?? null
+            ]; 
+            }
+        }
 }
 
     // RDV du jour
