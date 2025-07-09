@@ -89,7 +89,7 @@ $(document).ready(function () {
             mode_paiement_id: $('input[name="payant"]:checked').val() ? $('#modePaiement').val() : null
         };
 
-        if (formData['payant'] && formData['mode_paiement_id'] == null) {
+        if (formData['payant'] == "1" && formData['mode_paiement_id'] == null) {
             showToastModal({
                 message: 'Veuillez choisir le mode de paiement',
                 type: 'error',
