@@ -339,11 +339,24 @@ public function getPatientDetails(int $id, PatientRepository $patientRepository)
             $data = json_decode($request->getContent(), true);
         
         try {
-            $consultation = $consultationRepo->NewConsultation($data, $patientRepo, $empRepo);
+            if ($data["payant"] == 1) {
 
-            if (isset($data["mode_paiement_id"])) {
-                
+                if (!isset($data["mode_paiement_id"])) {
+                    return $this->json([
+                        'success' => false,
+                        'error' => 'Le mode de paiement est requis pour une consultation payante.'
+                    ], 400);
+                }
+
+                $consultation = $consultationRepo->NewConsultation($data, $patientRepo, $empRepo);
                 $modePaiement = $em->getRepository(ModeDePaiement::class)->find($data["mode_paiement_id"]);
+
+                if (!$modePaiement) {
+                    return $this->json([
+                        'success' => false,
+                        'error' => 'Mode de paiement invalide.'
+                    ], 400);
+                }
 
                 $paiement = new PaiementDevis();
                 $paiement->setDevis(null);
@@ -361,15 +374,21 @@ public function getPatientDetails(int $id, PatientRepository $patientRepository)
                 $transaction->setModeDePaiement($modePaiement);
                 $transaction->setPaiementDevis($paiement); // Link to the payment
                 $em->persist($transaction); // Persist the transaction
+
+                $em->flush(); // Ensure all changes are saved
+
+                return $this->json([
+                    'success' => true,
+                    'consultation_id' => $consultation->getId(),
+                    'paiement_id' => $paiement->getId()
+                ]);
+            } else {
+                $consultation = $consultationRepo->NewConsultation($data, $patientRepo, $empRepo);
+                return $this->json([
+                    'success' => true,
+                    'consultation_id' => $consultation->getId(), 
+                ]);
             }
-
-            $em->flush(); // Ensure all changes are saved
-
-            return $this->json([
-                'success' => true,
-                'consultation_id' => $consultation->getId(),
-                'paiement_id' => $paiement->getId()
-            ]);
         } catch (\Exception $e) {
             return $this->json([
                 'success' => false,
