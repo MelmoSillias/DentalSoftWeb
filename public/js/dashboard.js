@@ -364,6 +364,7 @@ function printDoctorRow(btn) {
   let html = `
     <div style="font-family: Arial; font-size: 14px;">
       <h2 style="text-align: center;">Rapport de service — Dr ${row.name}</h2>
+      
       <p><strong>Période :</strong> ${$('#reportrange').text() || '(non spécifiée)'}</p>
       <hr>
       ${formatDoctorDetails(row)}
