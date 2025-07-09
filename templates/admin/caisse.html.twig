@@ -134,11 +134,11 @@
             <table id="paiementsDevisTable" class="table table-striped table-hover table-sm my-4">
                 <thead class="table-light">
                     <tr>
+                        <th>Date de paiement</th>
                         <th>Patient</th>
                         <th>Telephone</th> 
                         <th>Montant</th>
-                        <th>Mode de paiement</th>
-                        <th>Date de paiement</th>
+                        <th>Mode de paiement</th> 
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -307,7 +307,7 @@ $(function () {
   }
 ],
   language: { url: 'https://cdn.datatables.net/plug-ins/1.13.5/i18n/fr-FR.json' },
-  order: [[1, 'desc']]
+  order: [[0, 'desc']]
 });
 
 
@@ -380,16 +380,6 @@ $(function () {
         }
       },
       columns: [
-        
-        { data: 'patient' },
-        {
-          data: 'telephone',
-        },
-        {
-          data: 'montant',
-          render: m => `${parseFloat(m).toLocaleString('fr-FR')} FCFA`
-        },
-        { data: 'mode' },
         {
           data: 'date',
           render: d => {
@@ -398,6 +388,15 @@ $(function () {
                  date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
           }
         },
+        { data: 'patient' },
+        {
+          data: 'telephone',
+        },
+        {
+          data: 'montant',
+          render: m => `${parseFloat(m).toLocaleString('fr-FR')} FCFA`
+        },
+        { data: 'mode' }, 
         {
           data: 'pId',
           orderable: false,
@@ -416,7 +415,7 @@ $(function () {
         }
       ],
       language: { url: 'https://cdn.datatables.net/plug-ins/1.13.5/i18n/fr-FR.json' },
-      order: [[4, 'desc']] 
+      order: [[0, 'desc']] 
     });
 
     // === 4. Total recettes dynamiques ===

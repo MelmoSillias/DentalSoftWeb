@@ -95,7 +95,7 @@
     <tr> 
       <th>Date</th>
       <th>Patient</th>
-      <th>Date</th>
+      <th>Telephone</th>
       <th>Montant Total</th>
       <th>Reste à payer</th>
       <th>Actions</th>
@@ -132,6 +132,7 @@
                     <tr>
                         <th>Date</th>
                         <th>Patient</th>
+                        <th>Telephone</th>
                         <th>Montant</th>
                         <th>Mode de paiement</th>
                         <th>Date de paiement</th>
@@ -306,15 +307,6 @@ $(function () {
         }
       },
       columns: [
-        { data: 'patient' },
-        {
-          data: 'telephone',
-        },
-        {
-          data: 'montant',
-          render: m => `${parseFloat(m).toLocaleString('fr-FR')} FCFA`
-        },
-        { data: 'mode' },
         {
           data: 'date',
           render: d => {
@@ -323,6 +315,15 @@ $(function () {
                  date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
           }
         },
+        { data: 'patient' },
+        {
+          data: 'telephone',
+        },
+        {
+          data: 'montant',
+          render: m => `${parseFloat(m).toLocaleString('fr-FR')} FCFA`
+        },
+        { data: 'mode' }, 
         {
           data: 'pId',
           orderable: false,

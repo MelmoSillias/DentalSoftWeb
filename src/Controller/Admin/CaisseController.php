@@ -58,8 +58,8 @@ public function getDevisAll(Request $request, DevisRepository $repo): JsonRespon
             'patient' => [
                 'nom' => $d->getFiche()->getPatient()->getNom(),
                 'prenom' => $d->getFiche()->getPatient()->getPrenom(),
-                'telephone' => $d->getFiche()->getPatient()->getTelephone(),
-            ]
+                
+            ],'telephone' => $d->getFiche()->getPatient()->getTelephone(),
         ];
     }, $devis);
 
@@ -86,9 +86,9 @@ public function getDevisImpayes(DevisRepository $repo): JsonResponse
             'reste' => $d->getReste(),
             'patient' => [
                 'nom' => $d->getFiche()->getPatient()->getNom(),
-                'prenom' => $d->getFiche()->getPatient()->getPrenom(),
-                'telephone' => $d->getFiche()->getPatient()->getTelephone(),
-            ]
+                'prenom' => $d->getFiche()->getPatient()->getPrenom(), 
+            ],
+            'telephone' => $d->getFiche()->getPatient()->getTelephone(),
         ];
     }, $devis);
 
@@ -128,6 +128,7 @@ public function getPaiementsDevis(Request $request, PaiementDevisRepository $rep
         return [
             'devisId' => $devis ? $devis->getId() : $p->getId(),
             'patient' => $patient ? $patient->getFullName() : 'Anonyme',
+            'telephone' => $patient->getTelephone(),
             'montant' => $p->getMontant(),
             'mode'    => $p->getMode()->getLibelle(),
             'date'    => $p->getDate()->format('Y-m-d H:i:s'),
