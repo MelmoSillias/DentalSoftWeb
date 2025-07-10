@@ -182,7 +182,9 @@ $(document).ready(function() {
         const payload = {
             rdv_id: selectedRdvId,
             new_date: $('#reportNewDate').val(),
-            new_time: $('#reportNewTime').val()
+            new_time: $('#reportNewTime').val(),
+            new_duration: $('#reportRdvDuration').val(),
+            new_medecin: $('#reportValidateMedecinSelect').val()
         };
         $.post(`/api/rdv/${selectedRdvId}/${'report'}`, payload, function(data) {
             if (data.success) {

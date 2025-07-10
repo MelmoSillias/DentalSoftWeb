@@ -230,6 +230,32 @@ public function getPatientsByMedecin(
             ]);
         }
 
+        #[Route('/api/patients/search', name: 'api_patients_search', methods: ['GET'])]
+public function searchPatients(Request $request, PatientRepository $repo): JsonResponse
+{
+    $term = trim(strtolower($request->query->get('term', '')));
+
+    $patients = $repo->createQueryBuilder('p')
+        ->where('LOWER(p.nom) LIKE :term')
+        ->orWhere('LOWER(p.prenom) LIKE :term')
+        ->orWhere('p.telephone LIKE :term')
+        ->setParameter('term', '%' . $term . '%')
+        ->setMaxResults(20)
+        ->getQuery()
+        ->getResult();
+
+    $results = [];
+    foreach ($patients as $patient) {
+        $results[] = [
+            'id'   => $patient->getId(),
+            'text' => $patient->getNom() . ' ' . $patient->getPrenom() . ' — ' . $patient->getTelephone(),
+        ];
+    }
+
+    return $this->json(['results' => $results]);
+}
+
+
 
 
     #[Route('/api/patient/{id}', name: 'api_patient_details', methods: ['GET'])]

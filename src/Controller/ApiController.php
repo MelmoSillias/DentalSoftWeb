@@ -49,6 +49,7 @@ class ApiController extends AbstractController
         $rdv->setPatient($patient)
             ->setMedecin($medecin)
             ->setDescription($request->get('description'))
+            ->setDuration($request->get('duration'))
             ->setStatut(0)
             ->setDateCreation(new \DateTime())
             ->setDateRdv(new \DateTime($request->get('date') . ' ' . $request->get('time')));
@@ -299,8 +300,13 @@ public function updateStatus(Request $request, RdvRepository $rdvRepo, EntityMan
             $rdv_id = $req->get('rdv_id');
             $new_date = $req->get('new_date');
             $new_time = $req->get('new_time');
+            $new_medecin_id = $req->get('new_medecin');
+            $new_duration = $req->get('new_duration');
 
-            if (!$rdv_id || !$new_date || !$new_time) {
+            $empRepo = $em->getRepository(Employe::class); 
+            $new_medecin = $empRepo->find((int) $new_medecin_id);
+
+            if (!$rdv_id || !$new_date || !$new_time || !$new_duration) {
                 return new JsonResponse(['success' => false, 'error' => 'Paramètres manquants'], 400);
             }
         
@@ -312,7 +318,8 @@ public function updateStatus(Request $request, RdvRepository $rdvRepo, EntityMan
             $newRdv = new Rdv();
             $newRdv->setPatient($rdv->getPatient())
                    ->setSalle($rdv->getSalle())
-                   ->setMedecin($rdv->getMedecin())
+                   ->setMedecin($new_medecin ?? $rdv->getMedecin())
+                   ->setDuration($new_duration)
                    ->setDescription($rdv->getDescription())
                    ->setStatut(0) // nouveau RDV en attente
                    ->setDateCreation(new \DateTime())
@@ -399,6 +406,7 @@ public function getRdvInRange(Request $request, EntityManagerInterface $em): Jso
             'description' => $rdv->getDescription(),
             'statut' => $rdv->getStatut(),
             'dateRdv' => $rdv->getDateRdv()->format('Y-m-d H:i:s'),
+            'endDate' => $rdv->getEndDate()->format('Y-m-d H:i:s'),
             'dateCreation' => $rdv->getDateCreation()->format('d-m-Y H:i:s'),
             'reportedAt' =>  $rdv->getReportedAt() ? 'Reporté au '.$rdv->getReportedAt()->format('d-m-Y H:i:s') : null
         ];

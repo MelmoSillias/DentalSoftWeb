@@ -3,6 +3,8 @@
 namespace App\Entity;
 
 use App\Repository\RdvRepository;
+use DateTimeImmutable;
+use DateTimeInterface;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
@@ -38,6 +40,9 @@ class Rdv
 
     #[ORM\Column(nullable: true)]
     private ?\DateTimeImmutable $reportedAt = null;
+
+    #[ORM\Column]
+    private ?int $duration = null;
 
 
     public function getId(): ?int
@@ -140,5 +145,24 @@ class Rdv
 
         return $this;
     }
+
+    public function getDuration(): ?int
+    {
+        return $this->duration;
+    }
+
+    public function setDuration(int $duration): static
+    {
+        $this->duration = $duration;
+
+        return $this;
+    }
+
+    public function getEndDate(): ?\DateTimeImmutable
+    {
+        $start = \DateTimeImmutable::createFromInterface($this->dateRdv);
+
+        return $start->add(new \DateInterval('PT' . $this->duration . 'M'));
+    } 
 
 }
