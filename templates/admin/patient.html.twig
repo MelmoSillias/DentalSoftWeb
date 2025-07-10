@@ -242,10 +242,15 @@
                         <label for="rdvDate" class="form-label">Date</label>
                         <input type="date" class="form-control" id="rdvDate" required>
                     </div>
-                    <div class="mb-3">
+                    <div class="mb-3 row d-flex">
                        <div class="col">
                             <label for="rdvTime" class="form-label">Heure</label>
-                            <input type="time" class="form-control form-user-control" id="rdvTime" name="time" required readonly>
+                            <select class="form-select form-control" id="rdvTime" required>
+                                {% for hour in 6..20 %}
+                                    <option value="{{ hour }}:00">{{ hour }}:00</option> 
+                                    <option value="{{ hour }}:30">{{ hour }}:30</option> 
+                                {% endfor %}
+                            </select>
                         </div>
                         <div class="col">
                             <label for="rdvDuration" class="form-label">Durée</label>
