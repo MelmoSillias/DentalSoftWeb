@@ -60,58 +60,87 @@ class ApiController extends AbstractController
     }
   
     // Dans votre contrôleur, par exemple RdvController.php
-    #[Route('/api/rdvs/stats/{date}', name: 'api_rdvs_stats', methods: ['GET'])]
-    public function stats(string $date, RdvRepository $rdvRepo): JsonResponse {
-        $selectedDate = \DateTime::createFromFormat('Y-m-d', $date);
-        if (!$selectedDate) {
-            return new JsonResponse(['success' => false, 'error' => 'Date invalide'], 400);
-        }
-        $start = new \DateTime($date . ' 00:00:00');
-        $end = new \DateTime($date . ' 23:59:59');
-    
-        $pending = $rdvRepo->createQueryBuilder('r')
-            ->select('COUNT(r.id)')
-            ->where('r.statut = 0')
-            ->andWhere('r.dateRdv BETWEEN :start AND :end')
-            ->setParameter('start', $start)
-            ->setParameter('end', $end)
-            ->getQuery()
-            ->getSingleScalarResult();
-    
-        $validated = $rdvRepo->createQueryBuilder('r')
-            ->select('COUNT(r.id)')
-            ->where('r.statut = 1')
-            ->andWhere('r.dateRdv BETWEEN :start AND :end')
-            ->setParameter('start', $start)
-            ->setParameter('end', $end)
-            ->getQuery()
-            ->getSingleScalarResult();
-    
-        $postponed = $rdvRepo->createQueryBuilder('r')
-            ->select('COUNT(r.id)')
-            ->where('r.statut = -1')
-            ->andWhere('r.dateRdv BETWEEN :start AND :end')
-            ->setParameter('start', $start)
-            ->setParameter('end', $end)
-            ->getQuery()
-            ->getSingleScalarResult();
-    
-        $cancelled = $rdvRepo->createQueryBuilder('r')
-            ->select('COUNT(r.id)')
-            ->where('r.statut = -2')
-            ->andWhere('r.dateRdv BETWEEN :start AND :end')
-            ->setParameter('start', $start)
-            ->setParameter('end', $end)
-            ->getQuery()
-            ->getSingleScalarResult();
-    
-        return new JsonResponse([
-             'pending' => (int)$pending,
-             'validated' => (int)$validated,
-             'postponed' => (int)$postponed,
-             'cancelled' => (int)$cancelled,
-        ]);
+    #[Route('/api/rdvs/stats', name: 'api_rdvs_stats_range', methods: ['GET'])]
+public function statsRange(Request $req, EntityManagerInterface $em): JsonResponse {
+    $startStr = $req->query->get('start');
+    $endStr   = $req->query->get('end'); 
+
+    $start = \DateTime::createFromFormat('Y-m-d', $startStr)?->setTime(0, 0, 0);
+    $end   = \DateTime::createFromFormat('Y-m-d', $endStr)?->setTime(23, 59, 59);
+
+    if (!$start || !$end) {
+        return new JsonResponse(['success' => false, 'error' => 'Période invalide'], 400);
     }
+
+    $qb = $em->createQuery("
+        SELECT r.statut, COUNT(r.id) as total
+        FROM App\Entity\Rdv r
+        WHERE r.dateRdv BETWEEN :start AND :end
+        GROUP BY r.statut
+    ")
+    ->setParameter('start', $start)
+    ->setParameter('end', $end);
+
+    $results = $qb->getResult();
+
+    $stats = [
+        'pending'   => 0,
+        'validated' => 0,
+        'postponed' => 0,
+        'cancelled' => 0
+    ];
+
+    foreach ($results as $row) {
+        switch ((int)$row['statut']) {
+            case 0:  $stats['pending']   = (int)$row['total']; break;
+            case 1:  $stats['validated'] = (int)$row['total']; break;
+            case -1: $stats['postponed'] = (int)$row['total']; break;
+            case -2: $stats['cancelled'] = (int)$row['total']; break;
+        }
+    }
+
+    return new JsonResponse($stats);
+}
+
+
+    #[Route('/api/rdvs/stats/{date}', name: 'api_rdvs_stats', methods: ['GET'])]
+public function stats(string $date, EntityManagerInterface $em): JsonResponse {
+    $start = \DateTime::createFromFormat('Y-m-d H:i:s', $date . ' 00:00:00');
+    $end   = \DateTime::createFromFormat('Y-m-d H:i:s', $date . ' 23:59:59');
+
+    if (!$start || !$end) {
+        return new JsonResponse(['success' => false, 'error' => 'Date invalide'], 400);
+    }
+
+    $qb = $em->createQuery("
+        SELECT r.statut, COUNT(r.id) as total
+        FROM App\Entity\Rdv r
+        WHERE r.dateRdv BETWEEN :start AND :end
+        GROUP BY r.statut
+    ")
+    ->setParameter('start', $start)
+    ->setParameter('end', $end);
+
+    $results = $qb->getResult();
+    $stats = [
+        'pending'   => 0,
+        'validated' => 0,
+        'postponed' => 0,
+        'cancelled' => 0
+    ];
+
+    foreach ($results as $row) {
+        switch ((int)$row['statut']) {
+            case 0:  $stats['pending']   = (int)$row['total']; break;
+            case 1:  $stats['validated'] = (int)$row['total']; break;
+            case -1: $stats['postponed'] = (int)$row['total']; break;
+            case -2: $stats['cancelled'] = (int)$row['total']; break;
+        }
+    }
+
+    return new JsonResponse($stats);
+}
+
 
     #[Route('/api/rdvs/stats/{date}/medecin', name: 'api_rdvs_stats_by_medecin', methods: ['GET'])]
 public function statsbymedecin(string $date, RdvRepository $rdvRepo, EntityManagerInterface $em): JsonResponse
@@ -328,6 +357,56 @@ public function updateStatus(Request $request, RdvRepository $rdvRepo, EntityMan
             }, $rdvs);
             return new JsonResponse($data);
         }
+
+        #[Route('/api/rdvs', name: 'api_rdvs_range', methods: ['GET'])]
+public function getRdvInRange(Request $request, EntityManagerInterface $em): JsonResponse
+{
+    $startStr = $request->query->get('start');
+    $endStr   = $request->query->get('end');
+    $medecinId = $request->query->get('medecin');
+
+    if (!$startStr || !$endStr) {
+        return new JsonResponse(['success' => false, 'error' => 'Plage de dates requise'], 400);
+    }
+
+    $start = \DateTime::createFromFormat('Y-m-d', substr($startStr, 0, 10));
+    $end   = \DateTime::createFromFormat('Y-m-d', substr($endStr, 0, 10));
+    if (!$start || !$end) {
+        return new JsonResponse(['success' => false, 'error' => 'Format de date invalide'], 400);
+    }
+
+    $qb = $em->createQueryBuilder()
+        ->select('r')
+        ->from(Rdv::class, 'r')
+        ->where('r.dateRdv BETWEEN :start AND :end')
+        ->setParameter('start', $start->setTime(0,0,0))
+        ->setParameter('end', $end->setTime(23,59,59))
+        ->orderBy('r.dateRdv', 'ASC');
+
+    if ($medecinId) {
+        $qb->andWhere('r.medecin = :medecin')
+           ->setParameter('medecin', $medecinId);
+    }
+
+    $rdvs = $qb->getQuery()->getResult();
+
+    $data = array_map(function ($rdv) {
+        return [
+            'id' => $rdv->getId(),
+            'patient' => $rdv->getPatient()->getNom() . ' ' . $rdv->getPatient()->getPrenom(), 
+            'medecin' => $rdv->getMedecin()->getNom() . ' ' . $rdv->getMedecin()->getPrenom(),
+            'medecin_id' => $rdv->getMedecin()->getId(),
+            'description' => $rdv->getDescription(),
+            'statut' => $rdv->getStatut(),
+            'dateRdv' => $rdv->getDateRdv()->format('Y-m-d H:i:s'),
+            'dateCreation' => $rdv->getDateCreation()->format('d-m-Y H:i:s'),
+            'reportedAt' =>  $rdv->getReportedAt() ? 'Reporté au '.$rdv->getReportedAt()->format('d-m-Y H:i:s') : null
+        ];
+    }, $rdvs);
+
+    return new JsonResponse($data);
+}
+
 
         #[Route('/api/rdvs/{date}/medecin', name: 'api_rdvs_bymedecin', methods: ['GET'])]
 public function getRdvsByMedecin( 
