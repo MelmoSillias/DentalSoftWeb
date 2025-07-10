@@ -233,51 +233,50 @@
             </div>
             <div class="modal-body">
                 <form id="rdvForm">
-							<div class="mb-3">
-								<label for="rdvPatientName" class="form-label">Patient</label>
-								<select class="form-select form-control form-user-control" id="rdvPatientName" name="patient" required>
-									<option value="">Sélectionnez un patient</option>
-								</select>
-							</div>
-							<div class="mb-3">
-								<label for="medecinSelect" class="form-label">Médecin</label>
-								<select class="form-select form-control form-user-control" id="medecinSelect" name="medecin" required>
-									{% for medecin in medecins %}
-										<option value="{{ medecin.id }}">{{ medecin.fullname }}</option>
-									{% endfor %}
-								</select>
-							</div>
-                            <div class="mb-3">
-								<label for="rdvDate" class="form-label">Date</label>
-								<input type="date" class=" form-control form-user-control" id="rdvDate" name="date" required readonly>
-							</div>
-							<div class="row mb-3">
-                                <div class="col">
-                                    <label for="rdvTime" class="form-label">Heure</label>
-                                    <input type="time" class="form-control form-user-control" id="rdvTime" name="time" required readonly>
-                                </div>
-                                <div class="col">
-                                    <label for="rdvDuration" class="form-label">Durée</label>
-                                    <select class="form-select form-control form-user-control" id="rdvDuration" name="duration" required>
-                                        <option value="30">30 min</option>
-                                        <option value="45">45 min</option>
-                                        <option value="60">1 h</option>
-                                        <option value="75">1 h 15 min</option>
-                                        <option value="90">1 h 30 min</option>
-                                        <option value="105">1 h 45 min</option>
-                                        <option value="120">2 h</option>
-                                        <option value="150">2 h 30 min</option>
-                                        <option value="180">3 h</option>
-                                        <option value="210">3 h 30 min</option>
-                                        <option value="240">4 h</option>
-                                    </select>
-                                </div>
-                            </div>
-							<div class="mb-3">
-								<label for="rdvDescription" class="form-label">Description</label>
-								<textarea class="form-control" id="rdvDescription" name="description" rows="3"></textarea>
-							</div>
-						</form>
+                    <input type="hidden" id="rdvPatientId">
+                    <div class="mb-3">
+                        <label for="rdvPatientName" class="form-label">Nom du Patient</label>
+                        <input type="text" class="form-control" id="rdvPatientName" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label for="rdvDate" class="form-label">Date</label>
+                        <input type="date" class="form-control" id="rdvDate" required>
+                    </div>
+                    <div class="mb-3">
+                       <div class="col">
+                            <label for="rdvTime" class="form-label">Heure</label>
+                            <input type="time" class="form-control form-user-control" id="rdvTime" name="time" required readonly>
+                        </div>
+                        <div class="col">
+                            <label for="rdvDuration" class="form-label">Durée</label>
+                            <select class="form-select form-control form-user-control" id="rdvDuration" name="duration" required>
+                                <option value="30">30 min</option>
+                                <option value="45">45 min</option>
+                                <option value="60">1 h</option>
+                                <option value="75">1 h 15 min</option>
+                                <option value="90">1 h 30 min</option>
+                                <option value="105">1 h 45 min</option>
+                                <option value="120">2 h</option>
+                                <option value="150">2 h 30 min</option>
+                                <option value="180">3 h</option>
+                                <option value="210">3 h 30 min</option>
+                                <option value="240">4 h</option>
+                            </select>
+                        </div>
+                    </div>
+                
+                    <div class="mb-3">
+                        <label for="rdvDoctor" class="form-label">Médecin</label>
+                        <select class="form-select form-control" id="rdvDoctor" required>
+                            <!-- Options will be populated via JavaScript -->
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="rdvDescription" class="form-label">Description</label>
+                        <textarea class="form-control" id="rdvDescription" rows="3"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Enregistrer</button>
+                </form>
             </div>
         </div>
     </div>
