@@ -49,13 +49,9 @@
 
 							<div class="mb-3 row">
 								<label class="col-sm-4 col-form-label">Type</label>
-								<div class="col-sm-8">
-									<select id="typeSelect" class="form-select form-control" disabled>
-										{% for t in ['Medecin','GRH','Receptionniste','Admin','Autre'] %}
-											<option value="{{ t }}" {{ employee.type == t ? 'selected' }}>{{ t }}</option>
-										{% endfor %}
-									</select>
-									<input type="hidden" name="type" id="typeHidden" value="{{ employee.type }}">
+								<div class="col-sm-8"> 
+									<input type="text" name="typeSelect" class="form-control" value="{{ employee.type }}">{{ employee.type }}</input> 
+									<input type="hidden" name="type" id="typeHidden" value="{{ employee.type }}">{{ employee.type }}</input>
 								</div>
 							</div>
 						</div>

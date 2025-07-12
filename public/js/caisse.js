@@ -88,14 +88,14 @@ $(function () { // Variables globales pour les filtres de date
                     const reste = row.reste
                     const reglerButton = isRegle ? '' : `<a href="#" class="btn btn-sm btn-success regler-devis-btn" data-toggle="modal"
                             data-target="${!row.isRegle && reste === 0 ?  "#validateFreeDevisModal" : "#reglerDevisModal"}" data-devis-id="${id}">
-                            <i class="fas fa-hand-holding-usd"></i> Régler
+                            <i class="fas fa-hand-holding-usd"></i>
                         </a>`;
 
                     return `
         <div>${reglerButton}
           <a href="#" class="btn btn-sm btn-primary preview-devis-btn ${row.montant === 0 && reste === 0 ?  "d-none" : ""}" data-toggle="modal"
              data-target="#devisModal" data-devis-id="${id}">
-             <i class="fas fa-eye"></i> Visualiser
+             <i class="fas fa-eye"></i>
           </a>
           
         </div>
