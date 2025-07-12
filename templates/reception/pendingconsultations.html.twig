@@ -1,79 +1,80 @@
 {% extends 'appreceptionbase.html.twig' %}
-{% block title %}Consultations du jour{% endblock %}
+{% block title %}Consultations du jour
+{% endblock %}
 
 {% block stylesheets %}
-    {{ parent() }}
-    <link href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap4.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/css/bootstrap-datepicker.min.css">
-    <style>
-        .table-success {
-            background-color: #d4edda !important;
-        }
-    </style>
+	{{ parent() }}
+	<link href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap4.min.css" rel="stylesheet">
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/css/bootstrap-datepicker.min.css">
+	<style>
+		.table-success {
+			background-color: #d4edda !important;
+		}
+	</style>
 {% endblock %}
 
 {% block main %}
-<div class="container-fluid px-4">
-    <div class="row align-items-center mb-4">
-        <div class="col">
-            <h1 class="mt-4">Consultations</h1>
-        </div>
-        <div class="col-auto">
-            <div class="form-group mb-0">
-                <div class="input-group date" id="datepicker">
-                    <input type="text" class="form-control" placeholder="Sélectionnez une date">
-                    <div class="input-group-append">
-                        <span class="input-group-text">
-                            <i class="fa fa-calendar"></i>
-                        </span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+	<div class="container-fluid px-4">
+		<div class="row align-items-center mb-4">
+			<div class="col">
+				<h1 class="mt-4">Consultations</h1>
+			</div>
+			<div class="col-auto">
+				<div class="form-group mb-0">
+					<div class="input-group date" id="datepicker">
+						<input type="text" class="form-control" placeholder="Sélectionnez une date">
+						<div class="input-group-append">
+							<span class="input-group-text">
+								<i class="fa fa-calendar"></i>
+							</span>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
 
-    <div class="card">
-        <div class="card-body">
-            <div class="table-responsive">
-                <table id="consultationTable" class="table table-bordered table-striped w-100">
-                    <thead>
-                        <tr>
-                            <th>N°</th>
-                            <th>Patient</th>
-                            <th>Médecin</th>
-                            <th>Date Création</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                </table>
-            </div>
-        </div>
-    </div>
-</div>
+		<div class="card">
+			<div class="card-body">
+				<div class="table-responsive">
+					<table id="consultationTable" class="table table-bordered table-striped w-100">
+						<thead>
+							<tr>
+								<th>N°</th>
+								<th>Patient</th>
+								<th>Médecin</th>
+								<th>Date Création</th>
+								<th>Actions</th>
+							</tr>
+						</thead>
+					</table>
+				</div>
+			</div>
+		</div>
 
-<div class="modal fade" id="confirmCancelModal" tabindex="-1" role="dialog" aria-labelledby="cancelModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered" role="document">
-        <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title" id="cancelModalLabel">Annuler la consultation</h5>
-                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Fermer">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <div class="modal-body">
-                Êtes-vous sûr de vouloir annuler cette consultation ? Cette action est irréversible.
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Non</button>
-                <button type="button" class="btn btn-danger" id="confirmCancelBtn">Oui, annuler</button>
-            </div>
-        </div>
-    </div>
-</div>
-{% endblock %}
+		<div class="modal fade" id="confirmCancelModal" tabindex="-1" role="dialog" aria-labelledby="cancelModalLabel" aria-hidden="true">
+			<div class="modal-dialog modal-dialog-centered" role="document">
+				<div class="modal-content">
+					<div class="modal-header bg-danger text-white">
+						<h5 class="modal-title" id="cancelModalLabel">Annuler la consultation</h5>
+						<button type="button" class="close text-white" data-dismiss="modal" aria-label="Fermer">
+							<span aria-hidden="true">&times;</span>
+						</button>
+					</div>
+					<div class="modal-body">
+						Êtes-vous sûr de vouloir annuler cette consultation ? Cette action est irréversible.
+					</div>
+					<div class="modal-footer">
+						<button type="button" class="btn btn-secondary" data-dismiss="modal">Non</button>
+						<button type="button" class="btn btn-danger" id="confirmCancelBtn">Oui, annuler</button>
+					</div>
+				</div>
+			</div>
+		</div>
+	{% endblock %}
 
-{% block javascripts %}
-    {{ parent() }}
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/js/bootstrap-datepicker.min.js"></script>
-    <script src="{{ asset('js/consultationsday.js') }}"></script>
-{% endblock %}
+	{% block javascripts %}
+		{{ parent() }}
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/js/bootstrap-datepicker.min.js"></script>
+		<script src="{{ asset('js/reception/consultationsday.js') }}"></script>
+	{% endblock %}
+

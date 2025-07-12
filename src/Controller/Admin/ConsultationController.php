@@ -15,6 +15,7 @@ use App\Entity\Consultation;
 use App\Entity\ContenuDevis;
 use App\Entity\Devis;
 use App\Entity\DocumentMedical;
+use App\Entity\Employe;
 use App\Entity\ExamenDentaire;
 use App\Entity\FicheObservation;
 use App\Repository\ConsultationRepository; 
@@ -27,6 +28,15 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 final class ConsultationController extends AbstractController
 {
     // src/Controller/Admin/ConsultationController.php
+
+    #[Route('/admin/consultation/liste', name: 'consultations_liste')]
+    public function ListeAllConsultations(ConsultationRepository $consultRepo): Response
+    {
+           
+        return $this->render('admin/consultations.html.twig', [ 
+            'active_page'       => 'consultations_pending',
+        ]);
+    }
 
 #[Route('/admin/consultation/en-attente', name: 'consultations_pending')]
 public function pendingConsultations(ConsultationRepository $consultRepo): Response
@@ -340,7 +350,7 @@ public function consultationDetailsJson(ConsultationRepository $repo, int $id): 
     }
 
       #[Route('/api/consultations/jour', name: 'api_consultations_day', methods: ['GET'])]
-public function consultationsDuJour(Request $req,EntityManagerInterface $em): JsonResponse
+public function consultationsDuJour(Request $req,EntityManagerInterface $em, EmployeRepository $empRepo): JsonResponse
 {
     // Récupère la date depuis la requête GET (?date=YYYY-MM-DD), sinon aujourd'hui
     $dateStr = $req->get('date');
@@ -353,16 +363,23 @@ public function consultationsDuJour(Request $req,EntityManagerInterface $em): Js
     $start = (clone $date)->setTime(0, 0, 0);
     $end = (clone $date)->setTime(23, 59, 59);
 
-    $consultations = $em->createQuery("
-        SELECT c FROM App\Entity\Consultation c
-        JOIN c.patient p
-        JOIN c.medecin m
-        WHERE c.CreatedAt BETWEEN :start AND :end
-        ORDER BY c.CreatedAt ASC
-    ")
-    ->setParameter('start', $start)
-    ->setParameter('end', $end)
-    ->getResult();
+    $qb = $em->createQueryBuilder()
+        ->select('c')
+        ->from('App\Entity\Consultation', 'c')
+        ->join('c.patient', 'p')
+        ->join('c.medecin', 'm')
+        ->where('c.CreatedAt BETWEEN :start AND :end')
+        ->orderBy('c.CreatedAt', 'ASC')
+        ->setParameter('start', $start)
+        ->setParameter('end', $end);
+
+    $user = $this->getUser();
+    if (in_array('ROLE_MEDECIN', $user->getRoles())) {
+        $qb->AndWhere("m = :medecin");
+        $qb->setParameter("medecin", $empRepo->FindOneBy(['user' => $user]));
+    }
+
+    $consultations = $qb->getQuery()->getResult();
 
     $data = [];
     $counter = 1;
@@ -371,8 +388,10 @@ public function consultationsDuJour(Request $req,EntityManagerInterface $em): Js
             'id' => $c->getId(),
             'numero' => $counter++,
             'patient' => $c->getPatient()->getFullName(),
+            'patientId' => $c->getPatient()->getId(),
             'medecin' => $c->getMedecin()->getFullName(),
             'createdAt' => $c->getCreatedAt()->format('d/m/Y H:i'),
+            'factstate' => $c->getFacture() ? ($c->getFacture()?->getStatut() == 0 && (int)$c->getFacture()->getMontant() === (int)$c->getFacture()->getReste() ? 0 : 1) : null,
             'state' => $c->getStatut()
         ];
     }

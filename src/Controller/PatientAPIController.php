@@ -39,6 +39,7 @@ final class PatientAPIController extends AbstractController
                 'id' => $patient->getId(),
                 'nom' => $patient->getNom(),
                 'prenom' => $patient->getPrenom(),
+                'fullname' => $patient->getFullName(),
                 'age' => $patient->getAge(), // méthode personnalisée
                 'sexe' => $patient->getSexe(),
                 'telephone' => $patient->getTelephone(),

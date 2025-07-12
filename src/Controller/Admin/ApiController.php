@@ -29,11 +29,10 @@ final class ApiController extends AbstractController
                 'date' => $consultation->getCreatedAt()?->format('Y-m-d H:i:s'),
                 'salle' => $consultation->getSalle()?->getNom(),
                 'state' => $consultation->getStatut(),
-                'factstate' => ($consultation->getFacture()->getStatut() == 0 && empty($consultation->getFacture()->getPaiements())) ? 0 : 1,
+                'factstate' => $consultation->getFacture()->getStatut() == 0 && (int)$consultation->getFacture()->getMontant() === (int)$consultation->getFacture()->getReste() ? 0 : 1,
                 'patientId' => $consultation->getPatient()->getId()
             ];
-        }, $consultations);
-
+        }, $consultations); 
         return new JsonResponse($data);
     }
 

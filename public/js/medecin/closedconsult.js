@@ -22,18 +22,11 @@ $(document).ready(function () {
                         href="#" data-patient-id="${row.patientId}">
                         <i class="fas fa-folder-open me-1"></i> 
                       </a>
-                `;
-
-                // Ajoute l'option "Modifier la facture" seulement si factstate = 0
-                if (row.factstate === "0") {
-                  html += `
-                      <a class="btn btn-sm btn-modify-facture btn-secondary"
+                      <a class="btn btn-sm btn-modify-facture btn-secondary ${row.factstate === 0 ? '' : 'd-none'}"
                         href="#" data-consult-id="${row.id}">
                         <i class="fas fa-edit me-1"></i>
                       </a>
-                  `;
-                }
-
+                `;
                 return html;
               },
               orderable: false,

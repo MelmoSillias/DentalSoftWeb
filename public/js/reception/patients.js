@@ -166,6 +166,9 @@ $(document).ready(function () {
                             title: 'Liste des patients Orodent',
                             filename: 'liste_des_patients_orodent',
                             messageTop: 'PDF créé par PDFMake avec Buttons pour DataTables.',
+                            exportOptions: {
+                                columns: [0, 1, 2, 3, 4]  // exporte uniquement les 6 premières colonnes
+                            },
                             customize: function (doc) {
                                 doc.pageSize = 'A4';
                                 doc.content[0].margin = [0, 0, 0, 12];
@@ -182,8 +185,7 @@ $(document).ready(function () {
                 }
             },
             columns: [
-                { data: 'nom' },
-                { data: 'prenom' },
+                { data: 'fullname' }, 
                 { data: 'age', width: '80px'},
                 { data: 'sexe', width: '80px' },
                 { data: 'telephone', width: '150px' },
@@ -323,7 +325,8 @@ $(document).ready(function () {
                 date: $('#rdvDate').val(),
                 time: $('#rdvTime').val(), 
                 medecin_id: $('#rdvDoctor').val(),
-                description: $('#rdvDescription').val()
+                description: $('#rdvDescription').val(),
+                duration: $('#rdvDuration').val()
             };
 
             $.ajax({

@@ -216,4 +216,13 @@ final class ConsultationController extends AbstractController
             'controller_name' => 'AdminController', 'active_page' => 'consultations_closed'
         ]);
     }
+
+    #[Route('/medecin/consultation/liste', name: 'app_medecin_consultations_liste')]
+    public function ListeAllConsultations(ConsultationRepository $consultRepo): Response
+    {
+           
+        return $this->render('medecin/consultations.html.twig', [ 
+            'active_page'       => 'consultations_liste',
+        ]);
+    }
 }

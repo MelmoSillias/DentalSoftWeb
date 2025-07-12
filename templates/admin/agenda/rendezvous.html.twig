@@ -6,6 +6,10 @@
 {% block stylesheets %}
 	<link href="{{ asset('sb-admin/vendor/fontawesome-free/css/all.min.css') }}" rel="stylesheet">
 	<link href="{{ asset('sb-admin/css/sb-admin-2.min.css') }}" rel="stylesheet">
+	<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.4/main.min.css" rel="stylesheet"/>
+	<link rel="stylesheet" href="https://unpkg.com/tippy.js@6/themes/light-border.css"/>
+	<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet"/>
+
 	<style>
 		.context-menu {
 			position: absolute;
@@ -14,7 +18,7 @@
 			background-color: #fff;
 			border: 1px solid #ccc;
 			border-radius: 0.35rem;
-			box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, .15);
+			box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
 			min-width: 160px;
 		}
 		.context-menu ul {
@@ -134,122 +138,282 @@
 			}
 		}
 	</style>
+	<style>
+		/* Personnaliser le champ Select2 */
+		.select2-container--bootstrap4 .select2-selection {
+			background-color: #f8f9fc;
+			border: 1px solid #4e73df;
+			border-radius: 0.35rem;
+			padding: 6px 12px;
+			font-size: 14px;
+			color: #212529;
+		}
+
+		/* Lorsqu'il est focus */
+		.select2-container--bootstrap4.select2-container--focus .select2-selection {
+			box-shadow: 0 0 0 0.2rem rgba(78, 115, 223, 0.25);
+			border-color: #4e73df;
+		}
+
+		/* Flèche du dropdown */
+		.select2-container--bootstrap4 .select2-selection__arrow {
+			top: 6px;
+		}
+
+		/* Résultats dans la dropdown */
+		.select2-results__option {
+			font-size: 14px;
+			padding: 6px 10px;
+		}
+
+		/* Highlight lors du hover */
+		.select2-results__option--highlighted {
+			background-color: #4e73df !important;
+			color: white;
+		}
+
+		/* Statuts de rendez-vous */
+		.fc-event {
+			background: white !important;
+			color: black !important;
+		}
+		.fc-event.rdv-pending {
+			border-left: 10px solid #4e73df !important;
+		}
+		.fc-event.rdv-validated {
+			border-left: 10px solid #28a745 !important;
+		}
+		.fc-event.rdv-postponed {
+			border-left: 10px solid #ffc107 !important;
+		}
+		.fc-event.rdv-cancelled {
+			border-left: 5px solid #dc3545 !important;
+		}
+		/* Pour que l'événement prenne toute la largeur de la colonne */
+		.fc-timegrid-event .fc-event-main {
+			padding: 2px;
+		}
+
+		#rdvContextMenu {
+			min-width: 150px;
+			padding: 0;
+			box-shadow: 0 0.2rem 0.8rem rgba(0, 0, 0, 0.2);
+		}
+
+		#calendarWrapper {
+			position: relative;
+		}
+	</style>
 {% endblock %}
 
 {% block main %}
 	<div class="container-fluid">
 		<h1 class="h3 mb-4 text-gray-800">Agenda</h1>
-		<ol class="breadcrumb">
-			<li class="breadcrumb-item">
-				<i class="fas fa-home"></i>
-				Dashboard</li>
-			<li class="breadcrumb-item active">Agenda</li>
-		</ol>
-
-		<div class="date-slider-container">
-			<div class="row align-items-center mb-2">
-				<div class="col-auto">
-					<button id="today-btn" class="btn btn-info">Aujourd'hui</button>
-				</div>
-				<div class="col-auto">
-					<input type="date" id="date-picker" class="form-control">
-				</div>
+		<div class="row d-flex justify-content-between align-items-center">
+			<div class="col">
+				<ol class="breadcrumb mb-0">
+					<li class="breadcrumb-item">
+						<i class="fas fa-home"></i>
+						Dashboard</li>
+					<li class="breadcrumb-item active">Agenda</li>
+				</ol>
 			</div>
-			<div class="row align-items-center">
-				<div class="col-auto">
-					<button id="prev-date-slider" class="btn btn-light">
-						<i class="fas fa-chevron-left"></i>
-					</button>
-				</div>
-				<div class="col">
-					<div id="date-slider" class="d-flex justify-content-center"></div>
-				</div>
-				<div class="col-auto">
-					<button id="next-date-slider" class="btn btn-light">
-						<i class="fas fa-chevron-right"></i>
-					</button>
+			<div class="col-auto">
+				<div class="nav nav-tabs btn-group" id="view-nav-tab" role="tablist" aria-label="View Selection"> 
+					<a class="btn btn-outline-warning nav-item nav-link active" id="week-tab" data-toggle="tab" href="#FullCalendarView" role="tab" aria-selected="true" aria-controls="FullCalendarView">Vue hebdomadaire</a>
+					<a class="btn btn-outline-primary nav-item nav-link" id="oneDay-tab" data-toggle="tab" href="#oneDayView" role="tab" aria-selected="false" aria-controls="oneDayView">Vue journalière</a>
 				</div>
 			</div>
 		</div>
 
-		<!-- Statistiques -->
-		<div id="stats" class="row mb-3">
-			<div class="col-md-3">
-				<div class="card border-left-primary shadow h-70">
-					<div class="card-body">
-						<h6 class="card-title">En attente</h6>
-						<p class="display-4" id="stats-pending">0</p>
+		<div class="tab-content mt-3" id="view-nav-tabContent">
+			<div class="tab-pane fade" id="oneDayView" role="tabpanel" aria-labelledby="oneDay-tab">
+				<div class="date-slider-container">
+					<div class="row align-items-center mb-2">
+						<div class="col-auto">
+							<button id="today-btn" class="btn btn-info">Aujourd'hui</button>
+						</div>
+						<div class="col-auto">
+							<input type="date" id="date-picker" class="form-control">
+						</div>
+					</div>
+					<div class="row align-items-center">
+						<div class="col-auto">
+							<button id="prev-date-slider" class="btn btn-light">
+								<i class="fas fa-chevron-left"></i>
+							</button>
+						</div>
+						<div class="col">
+							<div id="date-slider" class="d-flex justify-content-center"></div>
+						</div>
+						<div class="col-auto">
+							<button id="next-date-slider" class="btn btn-light">
+								<i class="fas fa-chevron-right"></i>
+							</button>
+						</div>
 					</div>
 				</div>
-			</div>
-			<div class="col-md-3">
-				<div class="card border-left-success shadow h-70">
-					<div class="card-body">
-						<h6 class="card-title">Validés</h6>
-						<p class="display-4" id="stats-validated">0</p>
+				<!-- Statistiques -->
+				<div id="stats" class="row mb-3">
+					<div class="col-md-3">
+						<div class="card border-left-primary shadow h-70">
+							<div class="card-body">
+								<h6 class="card-title">En attente</h6>
+								<p class="display-4" id="stats-pending">0</p>
+							</div>
+						</div>
+					</div>
+					<div class="col-md-3">
+						<div class="card border-left-success shadow h-70">
+							<div class="card-body">
+								<h6 class="card-title">Validés</h6>
+								<p class="display-4" id="stats-validated">0</p>
+							</div>
+						</div>
+					</div>
+					<div class="col-md-3">
+						<div class="card border-left-warning shadow h-70">
+							<div class="card-body">
+								<h6 class="card-title">Reportés</h6>
+								<p class="display-4" id="stats-postponed">0</p>
+							</div>
+						</div>
+					</div>
+					<div class="col-md-3">
+						<div class="card border-left-danger shadow h-70">
+							<div class="card-body">
+								<h6 class="card-title">Annulés</h6>
+								<p class="display-4" id="stats-cancelled">0</p>
+							</div>
+						</div>
 					</div>
 				</div>
-			</div>
-			<div class="col-md-3">
-				<div class="card border-left-warning shadow h-70">
-					<div class="card-body">
-						<h6 class="card-title">Reportés</h6>
-						<p class="display-4" id="stats-postponed">0</p>
+				<div class="d-flex justify-content-end align-items-center mb-2">
+					<label class="mr-2 mb-0">Zoom :</label>
+					<div class="btn-group btn-group-sm" role="group">
+						<button class="btn btn-outline-secondary" id="zoomOutBtn">
+							<i class="fas fa-minus"></i>
+						</button>
+						<span class="btn btn-light" id="zoomDisplay">100%</span>
+						<button class="btn btn-outline-secondary" id="zoomInBtn">
+							<i class="fas fa-plus"></i>
+						</button>
 					</div>
 				</div>
-			</div>
-			<div class="col-md-3">
-				<div class="card border-left-danger shadow h-70">
-					<div class="card-body">
-						<h6 class="card-title">Annulés</h6>
-						<p class="display-4" id="stats-cancelled">0</p>
-					</div>
-				</div>
-			</div>
-		</div>
-
-		<div class="d-flex justify-content-end align-items-center mb-2">
-			<label class="mr-2 mb-0">Zoom :</label>
-			<div class="btn-group btn-group-sm" role="group">
-				<button class="btn btn-outline-secondary" id="zoomOutBtn">
-					<i class="fas fa-minus"></i>
-				</button>
-				<span class="btn btn-light" id="zoomDisplay">100%</span>
-				<button class="btn btn-outline-secondary" id="zoomInBtn">
-					<i class="fas fa-plus"></i>
-				</button>
-			</div>
-		</div>
-
-
-		<div id="zoomContainer" style="overflow: auto;">
-			<div class="calendar-grid mb-4" id="calendarGrid" style="transform-origin: top left;">
-				<table class="table table-bordered">
-					<thead>
-						<tr>
-							<th style="width: 1%;">Créneau</th>
-							{% for medecin in medecins %}
-								<th style="width: {{ 100 / medecins|length }}%;">{{ medecin.fullname }}</th>
-							{% endfor %}
-						</tr>
-					</thead>
-					<tbody>
-						{% for hour in 6..20 %}
-							{% for minute in ['00', '15', '30', '45'] %}
+				<div id="zoomContainer" style="overflow: auto;">
+					<div class="calendar-grid mb-4" id="calendarGrid" style="transform-origin: top left;">
+						<table class="table table-bordered">
+							<thead>
 								<tr>
-									<td>{{ hour }}:{{ minute }}</td>
+									<th style="width: 1%;">Créneau</th>
 									{% for medecin in medecins %}
-										<td class="grid-cell" data-hour="{{ hour }}" data-minute="{{ minute }}" data-medecin="{{ medecin.id }}">
-											<button class="btn btn-sm btn-success add-rdv-btn">
-												<i class="fas fa-plus"></i>
-											</button>
-										</td>
+										<th style="width: {{ 100 / medecins|length }}%;">{{ medecin.fullname }}</th>
 									{% endfor %}
 								</tr>
+							</thead>
+							<tbody>
+								{% for hour in 6..20 %}
+									{% for minute in ['00', '15', '30', '45'] %}
+										<tr>
+											<td>{{ hour }}:{{ minute }}</td>
+											{% for medecin in medecins %}
+												<td class="grid-cell" data-hour="{{ hour }}" data-minute="{{ minute }}" data-medecin="{{ medecin.id }}">
+													<button class="btn btn-sm btn-success add-rdv-btn">
+														<i class="fas fa-plus"></i>
+													</button>
+												</td>
+											{% endfor %}
+										</tr>
+									{% endfor %}
+								{% endfor %}
+							</tbody>
+						</table>
+					</div>
+				</div>
+			</div>
+
+			<div class="tab-pane fade show active" id="FullCalendarView" role="tabpanel" aria-labelledby="week-tab">
+				<!-- VUE HEBDOMADAIRE -->
+				<div class="row mb-3 align-items-center">
+					<div class="col-md-4">
+						<label for="filterMedecin" class="form-label">Filtrer par médecin</label>
+						<select id="filterMedecin" class="form-select form-control">
+							<option value="">Tous les médecins</option>
+							{% for medecin in medecins %}
+								<option value="{{ medecin.id }}">{{ medecin.fullname }}</option>
 							{% endfor %}
-						{% endfor %}
-					</tbody>
-				</table>
+						</select>
+					</div>
+					<div class="col-md-4">
+						<label for="searchPatient" class="form-label">Rechercher un patient</label>
+						<input type="text" id="searchPatient" class="form-control" placeholder="Nom ou prénom...">
+					</div>
+					<div class="col-md-4">
+						<div class="d-flex justify-content-around">
+							<div class="d-flex align-items-center">
+								<div class="legend-indicator" style="background-color: #007bff; width: 20px; height: 20px; margin-right: 5px;"></div>
+								<span>En attente</span>
+							</div>
+							<div class="d-flex align-items-center">
+								<div class="legend-indicator" style="background-color: #28a745; width: 20px; height: 20px; margin-right: 5px;"></div>
+								<span>Validé</span>
+							</div>
+							<div class="d-flex align-items-center">
+								<div class="legend-indicator" style="background-color: #ffc107; width: 20px; height: 20px; margin-right: 5px;"></div>
+								<span>Reporté</span>
+							</div>
+							<div class="d-flex align-items-center">
+								<div class="legend-indicator" style="background-color: #dc3545; width: 20px; height: 20px; margin-right: 5px;"></div>
+								<span>Annulé</span>
+							</div>
+						</div>
+					</div>
+				</div>
+
+
+		{# Statistiques #}
+		{# <div id="stats" class="row mb-4">
+					        {% set colors = ['primary','success','warning','danger'] %}
+					        {% set labels = ['En attente','Validés','Reportés','Annulés'] %}
+					        {% set ids    = ['pending','validated','postponed','cancelled'] %}
+					        {% for i in 0..3 %}
+					        <div class="col-md-3 mb-2">
+					            <div class="card border-left-{{ colors[i] }} shadow h-100 py-2">
+					                <div class="card-body text-center">
+					                    <h6 class="card-title">{{ labels[i] }}</h6>
+					                    <p class="display-4" id="stats-{{ ids[i] }}">0</p>
+					                </div>
+					            </div>
+					        </div>
+					        {% endfor %}
+					    </div> #}
+
+		{# Div qui accueillera FullCalendar #}
+				<div class="card"> 
+					<div class="card-header bg-primary align-items-center d-flex justify-content-between text-white">
+						<div>Calendrier</div>
+						<div id="calendarOverlayLoader" style=" width= 5px; transform: translate(-50%, -50%); z-index: 2000; display: none;">
+							<div class="spinner-border text-white align-self-center m-0" role="status"></div>
+						</div>
+ 					</div>
+					<div class="card-body">
+						<div id="calendar"></div>
+					</div>
+				</div>
+				<div id="rdvContextMenu" class="dropdown-menu" style="position: absolute; display: none; z-index: 1050;">
+					<button class="dropdown-item text-success" id="ctx-validate">
+						<i class="fas fa-check"></i>
+						Valider
+					</button>
+					<button class="dropdown-item text-warning" id="ctx-report">
+						<i class="fas fa-calendar-alt"></i>
+						Reporter
+					</button>
+					<button class="dropdown-item text-danger" id="ctx-cancel">
+						<i class="fas fa-times"></i>
+						Annuler
+					</button>
+				</div>
 			</div>
 		</div>
 
@@ -433,48 +597,61 @@
 				</div>
 			</div>
 		</div>
-	</div>
-{% endblock %}
 
-{% block javascripts %}
-	<script src="{{ asset('sb-admin/vendor/jquery/jquery.min.js') }}"></script>
-	<script src="{{ asset('sb-admin/vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
-	<script src="{{ asset('js/rdv.js') }}"></script>
-	<script>
-		document.addEventListener('DOMContentLoaded', function () {
-            const zoomInBtn = document.getElementById('zoomInBtn');
-            const zoomOutBtn = document.getElementById('zoomOutBtn');
-            const zoomDisplay = document.getElementById('zoomDisplay');
-            const grid = document.getElementById('calendarGrid');
+	{% endblock %}
 
-            let zoomLevel = 100; // pourcentage
-            const minZoom = 50;
-            const maxZoom = 150;
-            const step = 10;
+	{% block javascripts %}
+		<script src="{{ asset('sb-admin/vendor/jquery/jquery.min.js') }}"></script>
+		<script src="{{ asset('sb-admin/vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
+		<script src="{{ asset('js/rdv.js') }}"></script>
+		<script>
+			document.addEventListener('DOMContentLoaded', function () {
+		const zoomInBtn = document.getElementById('zoomInBtn');
+		const zoomOutBtn = document.getElementById('zoomOutBtn');
+		const zoomDisplay = document.getElementById('zoomDisplay');
+		const grid = document.getElementById('calendarGrid');
 
-            function applyZoom() {
-            grid.style.transform = `scale(${
-            zoomLevel / 100
-            })`;
-            zoomDisplay.textContent = `${zoomLevel}%`;
-            }
+		let zoomLevel = 100; // pourcentage
+		const minZoom = 50;
+		const maxZoom = 150;
+		const step = 10;
 
-            zoomInBtn.addEventListener('click', function () {
-            if (zoomLevel < maxZoom) {
-            zoomLevel += step;
-            applyZoom();
-            }
-            });
+		function applyZoom() {
+		grid.style.transform = `scale(${
+		zoomLevel / 100
+		})`;
+		zoomDisplay.textContent = `${zoomLevel}%`;
+		}
 
-            zoomOutBtn.addEventListener('click', function () {
-            if (zoomLevel > minZoom) {
-            zoomLevel -= step;
-            applyZoom();
-            }
-            });
+		zoomInBtn.addEventListener('click', function () {
+		if (zoomLevel < maxZoom) {
+		zoomLevel += step;
+		applyZoom();
+		}
+		});
 
-            applyZoom(); // initial zoom
-            });
-	</script>
+		zoomOutBtn.addEventListener('click', function () {
+		if (zoomLevel > minZoom) {
+		zoomLevel -= step;
+		applyZoom();
+		}
+		});
 
-{% endblock %}
+		applyZoom(); // initial zoom
+		});
+				</script>
+				<script>
+					$(document).ready(function () {
+		$('#view-nav-tab a').on('click', function (e) {
+		e.preventDefault();
+		$(this).tab('show');
+		});
+		});
+		</script>
+		<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+		<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.4/locales/fr.js"></script>
+		<script src="https://unpkg.com/@popperjs/core@2"></script>
+		<script src="https://unpkg.com/tippy.js@6"></script>
+		<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+ 
+	{% endblock %}

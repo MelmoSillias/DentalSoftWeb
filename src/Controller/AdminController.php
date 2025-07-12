@@ -2,30 +2,8 @@
 
 namespace App\Controller;
 
-use App\Entity\ActePose;
-use App\Entity\Caisse;
-use App\Entity\Consommable;
-use App\Entity\Employe;
-use App\Entity\Facture;
-use App\Entity\Salle;
-use App\Entity\Stock;
-use App\Entity\Transaction;
-use App\Form\SalleType;
-use App\Repository\ActePoseRepository;
-use App\Repository\ConsommableRepository;
-use App\Repository\ConsultationRepository;
-use App\Repository\EmployeRepository;
-use App\Repository\FactureRepository;
-use App\Repository\PatientRepository;
-use App\Repository\SalleRepository;
-use App\Repository\RdvRepository;
-use App\Repository\SalaireRepository;
-use App\Repository\StockRepository;
-use App\Repository\TraitementRepository;
-use App\Repository\TransactionRepository;
-use App\Repository\UserRepository;
-use Doctrine\ORM\EntityManagerInterface;
-use Doctrine\Persistence\ManagerRegistry;
+
+
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\Request;

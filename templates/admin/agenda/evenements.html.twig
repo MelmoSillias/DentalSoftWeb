@@ -137,23 +137,23 @@
                 <h6 class="m-0 font-weight-bold text-primary">
                     <i class="fas fa-calendar me-1"></i> Calendrier
                 </h6>
-                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addEventModal">
+                <button class="btn btn-primary" data-toggle="modal" data-target="#addEventModal">
                     <i class="fas fa-plus"></i> Nouvel Événement
                 </button>
             </div>
             <div class="card-body">
                 <div id="calendar-holder"></div>
             </div>
-        </div>
-    </div>
+            <div id="calendarContextMenu" class="context-menu">
+                <ul class="mb-0">
+                    <li id="validateEventOption"><i class="fas fa-check text-success me-2"></i>Valider</li>
+                    <li id="deleteEventOption"><i class="fas fa-trash text-danger me-2"></i>Supprimer</li>
+                </ul>
+            </div>
+        </div> 
 
     <!-- Menu contextuel -->
-     <div id="calendarContextMenu" class="context-menu">
-        <ul class="mb-0">
-            <li id="validateEventOption"><i class="fas fa-check text-success me-2"></i>Valider</li>
-            <li id="deleteEventOption"><i class="fas fa-trash text-danger me-2"></i>Supprimer</li>
-        </ul>
-    </div>
+    
 
     <!-- Modal Ajouter Événement -->
     <div class="modal fade" id="addEventModal" tabindex="-1" aria-labelledby="addEventModalLabel" aria-hidden="true">
@@ -262,6 +262,7 @@
 {% endblock %}
 
 {% block javascripts %} 
+    {{ parent() }}
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script> 
     <script src="{{ asset('js/event.js') }}"></script>
 {% endblock %}

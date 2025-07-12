@@ -21,8 +21,8 @@ class SecurityController extends AbstractController
                 return $this->redirectToRoute('app_admin');
             } elseif (in_array('ROLE_MEDECIN', $user->getRoles())) {
                 return $this->redirectToRoute('app_medecin');
-            } elseif (in_array('ROLE_RECEPTIONNISTE', $user->getRoles())) {
-                return $this->redirectToRoute('app_receptionniste');
+            } elseif (in_array('ROLE_RECEPTION', $user->getRoles())) {
+                return $this->redirectToRoute('app_reception_dashboard');
             }
 
             // Si aucun rôle ne correspond, rediriger vers une page par défaut
