@@ -4,11 +4,12 @@ $(function () { // Variables globales pour les filtres de date
     let AdevisStart = moment().startOf('month').format('YYYY-MM-DD');
     let AdevisEnd = moment().endOf('month').format('YYYY-MM-DD');
     let devisTable;
+    const devisUrl = $('#devisTableTypeSelect option:selected').val() == "all" ? '/api/devis/all' : '/api/devis/impayes'
 
     // === 1. Rendu des Devis Impayés ===
     devisTable = $('#devisImpayesTable').DataTable({
         ajax: {
-            url: '/api/devis/all',
+            url: devisUrl,
             method: 'GET',
             data: function (d) {
                 d.start = AdevisStart;

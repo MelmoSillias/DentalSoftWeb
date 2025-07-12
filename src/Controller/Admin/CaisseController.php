@@ -74,7 +74,7 @@ final class CaisseController extends AbstractController
         $devis = $repo->createQueryBuilder('d')
             ->join('d.fiche', 'f')->addSelect('f')
             ->join('f.patient', 'p')->addSelect('p')
-            ->where('d.reste > 0')
+            ->where('d.statut = 0')
             ->Andwhere('d.type = 1')
             ->orderBy('d.date', 'DESC')
             ->getQuery()
@@ -86,6 +86,7 @@ final class CaisseController extends AbstractController
                 'date' => $d->getDate()->format('Y-m-d'),
                 'montant' => $d->getMontant(),
                 'reste' => $d->getReste(),
+                'isRegle' => $d->getStatut() == 1,
                 'patient' => [
                     'nom' => $d->getFiche()->getPatient()->getNom(),
                     'prenom' => $d->getFiche()->getPatient()->getPrenom(),
