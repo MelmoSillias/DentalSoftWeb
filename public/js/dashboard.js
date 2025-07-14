@@ -351,7 +351,11 @@ function formatDoctorDetails(d) {
       </tr>`;
   });
 
-  table += `</tbody></table></div>`;
+  table += `</tbody></table></div> 
+      <br><br> 
+      <p style="width: 100%; text-align: left; display:flex;">Total = <h3>${formatFcfa(total)}</h3><p>
+      <br><br>         
+  `;
   return table;
 }
 
@@ -424,7 +428,7 @@ function printAllActs() {
           </tr>
         </thead>
         <tbody>`;
-
+  let total = 0
   allActes.forEach(a => {
     html += `
       <tr>
@@ -434,11 +438,14 @@ function printAllActs() {
         <td>${a.type}</td>
         <td>${formatFcfa(a.montant)}</td>
       </tr>`;
+    total += a.montant
   });
 
   html += `
         </tbody>
       </table>
+      <br><br> 
+      <p style="width: 100%; text-align: left; display:flex;">Total = <h3>${formatFcfa(total)}</h3><p>
       <br><br>
       <table style="width: 100%; margin-top: 50px;">
         <tr>

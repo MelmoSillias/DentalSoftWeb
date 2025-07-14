@@ -621,28 +621,28 @@
 		</div>
 
 
-	<div class="modal fade" id="globalPrintModal" tabindex="-1">
-		<div class="modal-dialog modal-dialog-centered">
-			<div class="modal-content">
-				<div class="modal-header">
-					<h5 class="modal-title">Choix d’impression</h5>
-				</div>
-				<div class="modal-body">
-					<p>Souhaitez-vous imprimer :</p>
-					<button class="btn btn-primary w-100 mb-2" onclick="printDoctorsSummary()">Liste des médecins (résumé)</button>
-					<button class="btn btn-secondary w-100" onclick="printAllActs()">Liste des soins détaillée</button>
+		<div class="modal fade" id="globalPrintModal" tabindex="-1">
+			<div class="modal-dialog modal-dialog-centered">
+				<div class="modal-content">
+					<div class="modal-header">
+						<h5 class="modal-title">Choix d’impression</h5>
+					</div>
+					<div class="modal-body">
+						<p>Souhaitez-vous imprimer :</p>
+						<button class="btn btn-primary w-100 mb-2" onclick="printDoctorsSummary()">Liste des médecins (résumé)</button>
+						<button class="btn btn-secondary w-100" onclick="printAllActs()">Liste des soins détaillée</button>
+					</div>
 				</div>
 			</div>
 		</div>
-	</div>
 
-{% endblock %}
-{% block javascripts %}
-	{{ parent() }}
-	<script src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
-	<script src="{{ asset('js/dashboard.js') }}"></script>
-	<script>
-		function openGlobalPrintModal() {
+	{% endblock %}
+	{% block javascripts %}
+		{{ parent() }}
+		<script src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
+		<script src="{{ asset('js/dashboard.js') }}"></script>
+		<script>
+			function openGlobalPrintModal() {
 $('#globalPrintModal').modal('show');
 }
 
@@ -757,10 +757,10 @@ $('#reportrange').text() !== "Choisir période" ? $('#reportrange').text() : '(n
 }</div>
       </div>
 
-      {# <div class="section-title">Statistiques d'activité</div>
+      <div class="section-title">Statistiques d'activité</div>
       ${
 formatDoctorTable(row)
-} #}
+}
 
       <div class="section-title">Détails des soins éffectués par type</div>
       ${
@@ -805,8 +805,7 @@ return `
         <tr>
           <th>Indicateur</th>
           <th>Nombre</th>
-          <th>Montant total</th>
-          <th>Moyenne par consultation</th>
+          <th>Montant total</th> 
         </tr>
       </thead>
       <tbody>
@@ -816,11 +815,8 @@ return `
 row.consultations || '0'
 }</td>
           <td>${
-row.total_amount ? row.total_amount + ' F CFA' : '0 F CFA'
-}</td>
-          <td>${
-row.avg_amount ? row.avg_amount + ' F CFA' : '0 F CFA'
-}</td>
+row.consultations_amount ? row.consultations_amount + ' F CFA' : '0 F CFA'
+}</td> 
         </tr>
         <tr>
           <td>Soins effectués</td>
@@ -830,24 +826,8 @@ row.acts || '0'
           <td>${
 row.acts_amount ? row.acts_amount + ' F CFA' : '0 F CFA'
 }</td>
-          <td>${
-row.avg_act ? row.avg_act + ' F CFA' : '0 F CFA'
-}</td>
         </tr>
-        <tr>
-          <td>Nouveaux patients</td>
-          <td>${
-row.new_patients || '0'
-}</td>
-          <td colspan="2"></td>
-        </tr>
-        <tr>
-          <td>Patients fidélisés</td>
-          <td>${
-row.returning_patients || '0'
-}</td>
-          <td colspan="2"></td>
-        </tr>
+        
       </tbody>
     </table>
   `;
@@ -870,7 +850,7 @@ let detailsHtml = `
       </thead>
       <tbody>
   `;
-
+let total = 0
 row.actes.forEach(acte => {
 detailsHtml += `
       <tr>
@@ -888,11 +868,13 @@ acte.montant ? acte.montant + ' F CFA' : '0 F CFA'
 }</td>
       </tr>
     `;
+total += acte.montant;
 });
 
 detailsHtml += `
       </tbody>
-    </table>
+    </table> 
+    <p style="width: 500px; text-align: left;  display:flex; flex-direction:row; align-items:center;">Total = <span style ="margin-left:5px; font-weight:bold; font-size:20px"> ${formatFcfa(total)}</span><p>
   `;
 
 return detailsHtml;
@@ -1035,7 +1017,9 @@ $('#reportrange').text() || '(non spécifiée)'
                         </tr>
                     </thead>
                     <tbody>`;
+					let total = 0
 allActes.forEach(a => {
+	total += a.montant
 html += `
                 <tr>
                     <td>${
@@ -1058,8 +1042,10 @@ formatFcfa(a.montant)
 html += `
                     </tbody>
                 </table>
-                <br><br>
-                <table style="width: 100%; margin-top: 50px;">
+      <br><br> 
+      <p style="width: 500px; text-align: left;  display:flex; flex-direction:row; align-items:center;">Total = <span style ="margin-left:5px; font-weight:bold; font-size:20px"> ${formatFcfa(total)}</span><p>
+      <br><br>
+      <table style="width: 100%; margin-top: 50px;">
                     <tr>
                         <td style="text-align: left;"><strong>Signature Responsable</strong></td>
                         <td style="text-align: right;"><strong>Cachet Cabinet</strong></td>
@@ -1079,6 +1065,7 @@ function printSection(sectionId) {
 const section = document.getElementById(sectionId);
 if (! section) 
 return;
+
 
 
 const printWindow = window.open('', '', 'height=842,width=1024');
@@ -1190,5 +1177,5 @@ printWindow.print();
 printWindow.close();
 }, 500);
 }
-	</script>
-{% endblock %}
+		</script>
+	{% endblock %}

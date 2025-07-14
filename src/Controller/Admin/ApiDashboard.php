@@ -825,6 +825,7 @@ public function periodicDoctorReports(Request $request, EntityManagerInterface $
             'id' => $doctor->getId(),
             'name' => $doctor->getFullName(),
             'consultations' => count($consultations),
+            'consultations_amount' => $paid*5000,
             'total_amount' => $totalAmount,
             'avg_amount' => $avgAmount,
             'acts' => $totalActs,
