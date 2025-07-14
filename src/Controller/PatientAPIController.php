@@ -456,6 +456,7 @@ public function getPatientDetails(int $id, PatientRepository $patientRepository)
             ->setMedecin($medecin)
             ->setDescription($data['description'] ?? '')
             ->setStatut(0)
+            ->setDuration($data['duration'] ?? 30)
             ->setDateCreation(new \DateTime())
             ->setDateRdv(new \DateTime($data['date'] . ' ' . $data['time']));
 
