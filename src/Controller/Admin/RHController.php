@@ -134,8 +134,7 @@ final class RHController extends AbstractController
             $employee->setNom($data['nom']);
             $employee->setPrenom($data['prenom']);
             $employee->setMatricule($data['matricule']);
-            $employee->setFonction($data['fonction']);
-            $employee->setType($data['type']);
+            $employee->setFonction($data['fonction']); 
             $employee->setTelephone($data['telephone']);
             $employee->setEmail($data['email']);
             $employee->setDateEmbauche(new \DateTime($data['dateEmbauche']));

@@ -238,7 +238,7 @@
 	<script src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
 	<script>
 		$(document).ready(function () { // Initialize DataTables for Consommables and Stock
-let devisStart = moment().monthStart().format('YYYY-MM-DD');
+let devisStart = moment().startOf('month').format('YYYY-MM-DD');
 let devisEnd = moment().format('YYYY-MM-DD');
 
 const consommablesTable = $('#consommablesTable').DataTable({
