@@ -120,6 +120,7 @@ class EmployeRepository extends ServiceEntityRepository
                ->orWhere('e.prenom LIKE :search')
                ->orWhere('e.fonction LIKE :search')
                ->orWhere('e.type LIKE :search')
+               ->orderBy('e.type')
                ->setParameter('search', '%' . $searchValue . '%');
         }
 
@@ -139,6 +140,7 @@ class EmployeRepository extends ServiceEntityRepository
                ->orWhere('e.prenom LIKE :search')
                ->orWhere('e.fonction LIKE :search')
                ->orWhere('e.type LIKE :search')
+               ->orderBy('e.type')
                ->setParameter('search', '%' . $searchValue . '%');
         }
 
