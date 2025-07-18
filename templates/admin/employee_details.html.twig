@@ -272,10 +272,7 @@
 let pondInstance;
 
 const existingFiles = {{ employee.administrativeFiles|json_encode|raw }};
-
-// Synchroniser le champ <select disabled> avec l'input hidden
-$('#typeHidden').val($('#typeSelect').val());
-
+ 
 FilePond.registerPlugin(FilePondPluginFileValidateType, FilePondPluginFileValidateSize);
 
 pondInstance = FilePond.create(document.querySelector('#administrativeFiles'), {
