@@ -44,7 +44,7 @@ $(document).ready(function () {
                 }
             }
         ],
-        order: [[0, 'asc']],
+        order: [[2, 'asc'], [4, 'asc']],
         rowGroup: {
             dataSrc: 'type'
         },
