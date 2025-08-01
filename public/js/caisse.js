@@ -396,7 +396,7 @@ $(function () { // Variables globales pour les filtres de date
             url: 'https://cdn.datatables.net/plug-ins/1.13.5/i18n/fr-FR.json'
         },
         order: [
-            [0, 'desc']
+            [0, 'asc']
         ]
     });
 
