@@ -52,7 +52,7 @@ final class CaisseController extends AbstractController
             return [
                 'id' => $d->getId(),
                 'date' => $d->getDate()->format('Y-m-d'),
-                'consultation'  => $d->getConsultation()->getId() ?? null,
+                'consultation'  => $d->getConsultation() ? $d->getConsultation()->getId() :  null,
                 'montant' => $d->getMontant(),
                 'reste' => $d->getReste(),
                 'statut' => $d->getStatut(),
