@@ -713,9 +713,9 @@ class ApiDashboard extends AbstractController
         }
 
         /** @var \DateTimeInterface $fromDate */
-        $fromDate = new \DateTimeImmutable($from);
+        $fromDate = new \DateTimeImmutable($from. ' 00:00:00');
         /** @var \DateTimeInterface $toDate */
-        $toDate = new \DateTimeImmutable($to);
+        $toDate = new \DateTimeImmutable($to. ' 23:59:59');
 
         /** @var Employe[] $doctors */
         $doctors = $em->getRepository(Employe::class)->findBy(['type' => 'medecin']);

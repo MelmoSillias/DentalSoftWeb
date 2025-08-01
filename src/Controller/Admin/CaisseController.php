@@ -52,6 +52,7 @@ final class CaisseController extends AbstractController
             return [
                 'id' => $d->getId(),
                 'date' => $d->getDate()->format('Y-m-d'),
+                'consultation'  => $d->getConsultation()->getId(),
                 'montant' => $d->getMontant(),
                 'reste' => $d->getReste(),
                 'statut' => $d->getStatut(),
@@ -84,6 +85,7 @@ final class CaisseController extends AbstractController
             return [
                 'id' => $d->getId(),
                 'date' => $d->getDate()->format('Y-m-d'),
+                'consultation'  => $d->getConsultation()->getId(),
                 'montant' => $d->getMontant(),
                 'reste' => $d->getReste(),
                 'isRegle' => $d->getStatut() == 1,
@@ -130,7 +132,7 @@ final class CaisseController extends AbstractController
 
             return [
                 'devisId' => $devis ? $devis->getId() : $p->getId(),
-                'patient' => $patient ? $patient->getFullName() : 'Anonyme',
+                'patient' => $patient ? $patient->getFullName() : 'Anonyme', 
                 'telephone' => $patient->getTelephone(),
                 'montant' => $p->getMontant(),
                 'mode'    => $p->getMode()->getLibelle(),
@@ -168,6 +170,7 @@ final class CaisseController extends AbstractController
         return new JsonResponse([
             'id' => $devis->getId(),
             'date' => $devis->getDate()->format('Y-m-d'),
+            'consultation'  => $devis->getConsultation()->getId(),
             'montant' => $devis->getMontant(),
             'reste' => $devis->getReste(),
             'patient' => [

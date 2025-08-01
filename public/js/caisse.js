@@ -85,14 +85,19 @@ $(function () { // Variables globales pour les filtres de date
                 render: (id, type, row) => {
                     const statut = row.statut;
                     const isRegle = statut == 1;
+                    const modifiable = row.montant === row.reste 
                     const reste = row.reste
                     const reglerButton = isRegle ? '' : `<a href="#" class="btn btn-sm btn-success regler-devis-btn" data-toggle="modal"
                             data-target="${!row.isRegle && reste === 0 ?  "#validateFreeDevisModal" : "#reglerDevisModal"}" data-devis-id="${id}">
                             <i class="fas fa-hand-holding-usd"></i>
                         </a>`;
+                    const modButton = modifiable ?  `<a href="#" class="btn btn-sm btn-secondary mod-devis-btn" data-toggle="modal"
+                            data-target="#modifyFactureModal" data-devis-id="${id}" data-consult-id="${row.consultation}">
+                            <i class="fas fa-pencil-alt"></i>
+                        </a>`:'' ;
 
                     return `
-        <div>${reglerButton}
+        <div>${reglerButton} ${modButton}
           <a href="#" class="btn btn-sm btn-primary preview-devis-btn ${row.montant === 0 && reste === 0 ?  "d-none" : ""}" data-toggle="modal"
              data-target="#devisModal" data-devis-id="${id}">
              <i class="fas fa-eye"></i>
@@ -110,6 +115,119 @@ $(function () { // Variables globales pour les filtres de date
             [0, 'desc']
         ]
     });
+
+    $(document).on('click', '.mod-devis-btn', function () {
+        const consultId = $(this).data('consult-id');
+        openModifyFactureModal(consultId);
+    });
+
+
+    function openModifyFactureModal(consultId) {
+        $('#factureLinesContainer').empty();
+        $('#factureTotal').text('0.00');
+        $('#btnSaveFacture').data('id', consultId);
+        $('#modifyFactureModal').modal('show');
+
+        // Récupérer les lignes de la facture via AJAX
+        $.get(`/api/consultation/${consultId}/facture`, function (lines) {
+            // lines = [ { dent, type, prix, quantite, description, idLigne }, ... ]
+            lines.forEach(l => {
+                const blk = createFactureLineBlock(l);
+                $('#factureLinesContainer').append(blk);
+            });
+            recalcFactureTotal();
+
+        });
+    }
+
+      function uniqueId(prefix = 'id') {
+        return `${prefix}_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+    }
+
+    // Fonction de création d’un bloc « ligne de facture » (adaptée de createActeBlock)
+    function createFactureLineBlock(data = {}) {
+        const uid = uniqueId('ligne'); // même fonction uniqueId
+        const $blk = $(`
+    <div class="ligne-facture mb-3 border p-2" id="${uid}">
+      <div class="row gx-2"> 
+        <div class="col-md-4">
+          <label>Description</label>
+          <textarea class="form-control ligne-desc" rows="2">${data.designation || ''}</textarea>
+        </div>
+        <div class="col-md-2">
+          <label>Prix (€)</label>
+          <input type="number" step="0.01" class="form-control ligne-prix" value="${data.montant || 0}">
+        </div>
+        <div class="col-md-2">
+          <label>Quantité</label>
+          <input type="number" class="form-control ligne-qte" value="${data.quantite || 1}">
+        </div>
+        
+        <div class="col-md-1 d-flex align-items-end">
+          <button type="button" class="btn btn-sm btn-outline-danger btn-remove-ligne">
+            <i class="fas fa-trash"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  `);
+
+        // Recalcule automatique du total à chaque modification
+        $blk.on('input', '.ligne-prix, .ligne-qte', recalcFactureTotal);
+        // Suppression de la ligne
+        $blk.on('click', '.btn-remove-ligne', function () {
+            $blk.remove();
+            recalcFactureTotal();
+        });
+        return $blk;
+    }
+
+    // Ajout d’une nouvelle ligne vide
+    $('#btnAddLigne').on('click', function () {
+        $('#factureLinesContainer').append(createFactureLineBlock());
+        recalcFactureTotal();
+    });
+
+    // Recalcul du total TTC
+    function recalcFactureTotal() {
+        let total = 0;
+        $('#factureLinesContainer .ligne-facture').each(function () {
+            const prix = parseFloat($(this).find('.ligne-prix').val()) || 0;
+            const qte = parseInt($(this).find('.ligne-qte').val()) || 0;
+            total += prix * qte;
+        });
+        $('#factureTotal').text(total.toFixed(2));
+    }
+
+    // Enregistrement de la facture modifiée
+    $('#btnSaveFacture').on('click', function () {
+        const payload = [];
+        const consultId = $(this).data('id')
+        $('#factureLinesContainer .ligne-facture').each(function () {
+            payload.push({
+                prix: parseFloat($(this).find('.ligne-prix').val()),
+                quantite: parseInt($(this).find('.ligne-qte').val()),
+                description: $(this).find('.ligne-desc').val()
+                // ajoutez éventuellement l’ID de la ligne si vous en avez besoin
+            });
+        });
+
+        $.ajax({
+            url: `/api/consultation/${consultId}/facture/update`, // stockez-le dans une variable globale
+            method: 'PUT',
+            contentType: 'application/json',
+            data: JSON.stringify({ lignes: payload }),
+            success: function () {
+                $('#modifyFactureModal').modal('hide');
+                // rafraîchir le DataTable
+                devisTable.ajax.reload(null, false);
+            },
+            error: function (err) {
+                console.error(err);
+                alert('Erreur lors de l’enregistrement de la facture');
+            }
+        });
+    }); 
 
 
     // === 2. Paiements : Date Range Picker ===

@@ -233,6 +233,35 @@
 				</div>
 			</div>
 
+			<div class="modal fade" id="modifyFactureModal" tabindex="-1">
+			<div class="modal-dialog modal-lg">
+				<div class="modal-content">
+					<div class="modal-header">
+						<h5 class="modal-title">Modifier la facture</h5>
+						<button type="button" class="close" data-dismiss="modal">
+							<span>&times;</span>
+						</button>
+					</div>
+					<div class="modal-body">
+						<div id="factureLinesContainer"></div>
+						<button type="button" class="btn btn-outline-primary mt-3" id="btnAddLigne">
+							<i class="fas fa-plus me-1"></i>
+							Ajouter une ligne
+						</button>
+						<hr>
+						<div class="text-end">
+							<strong>Total TTC :
+								<span id="factureTotal">0.00</span>
+								F CFA</strong>
+						</div>
+					</div>
+					<div class="modal-footer">
+						<button type="button" class="btn btn-primary" id="btnSaveFacture" data-id="">Enregistrer</button>
+					</div>
+				</div>
+			</div>
+		</div>
+
 		{% endblock %}
 
 		{% block javascripts %}
