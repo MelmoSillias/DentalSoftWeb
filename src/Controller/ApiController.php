@@ -407,6 +407,10 @@ class ApiController extends AbstractController
             ->setParameter('end', $end->setTime(23, 59, 59))
             ->orderBy('r.dateRdv', 'ASC');
 
+        if($this->getUser()->getRoles()[0] === "ROLE_RECEPTIONNISTE") {
+             $qb->andWhere('r.statut != -2');
+        }
+
         if ($medecinId) {
             $qb->andWhere('r.medecin = :medecin')
                 ->setParameter('medecin', $medecinId);
@@ -438,13 +442,14 @@ class ApiController extends AbstractController
         $startStr = $request->query->get('start');
         $endStr   = $request->query->get('end');
         $medecinId = $request->query->get('medecin');
-
+        dump($startStr, $endStr);
         if (!$startStr || !$endStr) {
             return new JsonResponse(['success' => false, 'error' => 'Plage de dates requise'], 400);
         }
 
         $start = \DateTime::createFromFormat('Y-m-d', substr($startStr, 0, 10));
         $end   = \DateTime::createFromFormat('Y-m-d', substr($endStr, 0, 10));
+        
         if (!$start || !$end) {
             return new JsonResponse(['success' => false, 'error' => 'Format de date invalide'], 400);
         }

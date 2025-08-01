@@ -55,7 +55,7 @@ $(document).ready(function () {
             if (medecinFilter) {
                 params.set('medecin', medecinFilter);
             }
-            fetch(`/api/rdvs/pending?${params.toString()}`)
+            fetch(`/api/rdvs?${params.toString()}`)
                 .then(res => res.json())
                 .then(data => {
                     const filtered = data.filter(rdv => {

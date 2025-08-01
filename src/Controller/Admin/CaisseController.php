@@ -52,7 +52,7 @@ final class CaisseController extends AbstractController
             return [
                 'id' => $d->getId(),
                 'date' => $d->getDate()->format('Y-m-d'),
-                'consultation'  => $d->getConsultation()->getId(),
+                'consultation'  => $d->getConsultation()->getId() ?? null,
                 'montant' => $d->getMontant(),
                 'reste' => $d->getReste(),
                 'statut' => $d->getStatut(),
@@ -77,7 +77,7 @@ final class CaisseController extends AbstractController
             ->join('f.patient', 'p')->addSelect('p')
             ->where('d.statut = 0')
             ->Andwhere('d.type = 1')
-            ->orderBy('d.date', 'DESC')
+            ->orderBy('d.date', 'ASC')
             ->getQuery()
             ->getResult();
 
