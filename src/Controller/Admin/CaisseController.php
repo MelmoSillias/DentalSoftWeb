@@ -161,7 +161,7 @@ final class CaisseController extends AbstractController
                 'designation' => $c->getDesignation(),
                 'qte' => $c->getQte(),
                 'montant' => $c->getMontant(),
-                'total' => $c->getMontantTotal()
+                'total' => $c->getQte() * $c->getMontant()
             ];
         }, $contenus->toArray());
 

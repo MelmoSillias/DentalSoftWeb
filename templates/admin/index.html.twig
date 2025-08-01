@@ -944,10 +944,10 @@
 						r.paiements_period.forEach(p => {
 							allActes.push({
 								date: p.date,
-								medecin: p.name,
+								medecin: p.medecin,
 								patient: p.patient,
 								description: p.description,
-								montant: p.montant_paye
+								montant_paye: p.montant_paye
 							});
 						});
 					}

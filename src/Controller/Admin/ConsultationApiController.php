@@ -403,7 +403,7 @@ class ConsultationApiController extends AbstractController
         foreach ($consultation->getActes() as $a) {
             $cd = new ContenuDevis();
             $cd->setDevis($facture)
-            ->setDesignation($a->getDescription() ?? '')
+            ->setDesignation($a->getType() ?? '')
             ->setQte   ($a->getQuantite()         ?? 1)
             ->setMontant    ($a->getPrix()     ?? 0);
             $amount += $cd->getMontant() * $cd->getQte();
