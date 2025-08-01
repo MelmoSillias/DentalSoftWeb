@@ -106,7 +106,7 @@ final class PatientController extends AbstractController
                 'dateCreation' => $r->getDateCreation(), 
                 'dateRdv' => $r->getDateRdv()->format('Y-m-d H:i'),
                 'salle'     => $r->getSalle()?->getNom(),
-                'medecinNom'=> $r->getMedecin()->getNom(). ' ' . $patient->getPrenom(), 
+                'medecinNom'=> $r->getMedecin()->getFullName(), 
                 'statut'    => $r->getStatut(),
             ];
         }

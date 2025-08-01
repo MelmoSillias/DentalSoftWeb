@@ -520,13 +520,17 @@ $(function() {
                                     <option value="Consultation" ${a.type === 'Consultation' ? 'selected' : ''}>Consultation</option>
                                     <option value="Détartrage" ${a.type === 'Détartrage' ? 'selected' : ''}>Détartrage</option>
                                     <option value="Extraction" ${a.type === 'Extraction' ? 'selected' : ''}>Extraction</option>
-                                    <option value="Remplissage" ${a.type === 'Remplissage' ? 'selected' : ''}>Remplissage</option>
+                                    <option value="Composite" ${a.type === 'Composite' ? 'selected' : ''}>Composite</option>
+                                    <option value="Amalgame" ${a.type === 'Amalgame' ? 'selected' : ''}>Amalgame</option>
+                                    <option value="Traitement de canal" ${a.type === 'Traitement de canal' ? 'selected' : ''}>Traitement de canal</option>
+                                    <option value="Traumatisme" ${a.type === 'Traumatisme' ? 'selected' : ''}>Traumatisme</option>
                                     <option value="Couronne" ${a.type === 'Couronne' ? 'selected' : ''}>Couronne</option>
                                     <option value="Blanchiment" ${a.type === 'Blanchiment' ? 'selected' : ''}>Blanchiment</option>
                                     <option value="Radio" ${a.type === 'Radio' ? 'selected' : ''}>Radio</option>
                                     <option value="Prothèse" ${a.type === 'Prothèse' ? 'selected' : ''}>Prothèse</option>
                                     <option value="Orthodontie" ${a.type === 'Orthodontie' ? 'selected' : ''}>Orthodontie</option>
                                     <option value="Chirurgie" ${a.type === 'Chirurgie' ? 'selected' : ''}>Chirurgie</option>
+                                    
                                 </select>
                             </div>
                             <div class="col-md-6"><label>Prix</label><input type="number" step="0.01" class="form-control acte-prix" value="${a.prix || ''}"></div>

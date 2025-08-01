@@ -520,7 +520,10 @@ $(function() {
                                     <option value="Consultation" ${a.type === 'Consultation' ? 'selected' : ''}>Consultation</option>
                                     <option value="Détartrage" ${a.type === 'Détartrage' ? 'selected' : ''}>Détartrage</option>
                                     <option value="Extraction" ${a.type === 'Extraction' ? 'selected' : ''}>Extraction</option>
-                                    <option value="Remplissage" ${a.type === 'Remplissage' ? 'selected' : ''}>Remplissage</option>
+                                    <option value="Composite" ${a.type === 'Composite' ? 'selected' : ''}>Composite</option>
+                                    <option value="Amalgame" ${a.type === 'Amalgame' ? 'selected' : ''}>Amalgame</option>
+                                    <option value="Traitement de canal" ${a.type === 'Traitement de canal' ? 'selected' : ''}>Traitement de canal</option>
+                                    <option value="Traumatisme" ${a.type === 'Traumatisme' ? 'selected' : ''}>Traumatisme</option>
                                     <option value="Couronne" ${a.type === 'Couronne' ? 'selected' : ''}>Couronne</option>
                                     <option value="Blanchiment" ${a.type === 'Blanchiment' ? 'selected' : ''}>Blanchiment</option>
                                     <option value="Radio" ${a.type === 'Radio' ? 'selected' : ''}>Radio</option>

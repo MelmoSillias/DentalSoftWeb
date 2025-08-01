@@ -267,14 +267,30 @@ function loadDoctorReports(from, to) {
       data: resp.doctors,
       columns: [
         { data: 'name' },
-        { data: 'consultations' },
-        {
-          data: 'revenue',
+        { 
+          data: null,
+          title: 'Consultations',
+          render: row => `${row.consultations} (${row.consultations_paid} payantes)` 
+          // exemple : "12 (8)" = 12 totales dont 8 payantes
+        },
+        { 
+          data: 'apport', 
+          title: 'Montant total',
           render: data => formatFcfa(data)
         },
-        { data: 'paidVsFree' },
-        {
-          data: 'salary',
+        { 
+          data: 'revenue', 
+          title: 'Payé sur la période',
+          render: data => formatFcfa(data)
+        },
+        { 
+          data: 'reliquat', 
+          title: 'Reliquat patient',
+          render: data => formatFcfa(data)
+        },
+        { 
+          data: 'salary', 
+          title: 'Salaire',
           render: data => formatFcfa(data)
         },
         {
@@ -324,10 +340,10 @@ $('#doctorsReport tbody').on('click', '.btn-toggle-details', function () {
 
 
 function formatDoctorDetails(d) {
-  if (!d || !Array.isArray(d.actes) || d.actes.length === 0) {
-    return '<div class="p-2"><em>Aucun acte enregistré sur cette période.</em></div>';
+  if (!d || !Array.isArray(d.paiements_period) || d.paiements_period.length === 0) {
+    return '<div class="p-2"><em>Aucune entrée enregistré sur cette période.</em></div>';
   }
-
+  let total = 0
   let table = `
     <div class="p-3">
       <table class="table table-sm table-bordered mb-0">
@@ -335,25 +351,26 @@ function formatDoctorDetails(d) {
           <tr>
             <th>Date</th>
             <th>Patient</th>
-            <th>Type d'acte</th>
+            <th>Description</th>
             <th>Montant</th>
           </tr>
         </thead>
         <tbody>`;
 
-  d.actes.forEach(a => {
+  d.paiements_period.forEach(d => {
+    total += d.montant_paye
     table += `
       <tr>
-        <td>${a.date}</td>
-        <td>${a.patient}</td>
-        <td>${a.type}</td>
-        <td>${formatFcfa(a.montant)}</td>
+        <td>${d.date}</td>
+        <td>${d.patient}</td>
+        <td>${d.description}</td>
+        <td>${formatFcfa(d.montant_paye)}</td>
       </tr>`;
   });
 
   table += `</tbody></table></div> 
       <br><br> 
-      <p style="width: 100%; text-align: left; display:flex;">Total = <h3>${formatFcfa(total)}</h3><p>
+      <div style="width: 100%; text-align: left; display:flex;"><p>Total = </p><h4>${formatFcfa(total)}</h4><div>
       <br><br>         
   `;
   return table;
@@ -400,14 +417,14 @@ function printAllActs() {
   let allActes = [];
 
   rows.forEach(r => {
-    if (Array.isArray(r.actes)) {
-      r.actes.forEach(a => {
+    if (Array.isArray(r.paiements_period)) {
+      r.actes.forEach(p => {
         allActes.push({
-          date: a.date,
-          medecin: r.name,
-          patient: a.patient,
-          type: a.type,
-          montant: a.montant
+          date: p.date,
+          medecin: p.name,
+          patient: p.patient,
+          description: p.description,
+          montant: p.montant_paye
         });
       });
     }
@@ -423,7 +440,7 @@ function printAllActs() {
             <th>Date</th>
             <th>Médecin</th>
             <th>Patient</th>
-            <th>Type d'acte</th>
+            <th>Description</th>
             <th>Montant</th>
           </tr>
         </thead>
@@ -435,8 +452,8 @@ function printAllActs() {
         <td>${a.date}</td>
         <td>${a.medecin}</td>
         <td>${a.patient}</td>
-        <td>${a.type}</td>
-        <td>${formatFcfa(a.montant)}</td>
+        <td>${a.description}</td>
+        <td>${formatFcfa(a.montant_paye)}</td>
       </tr>`;
     total += a.montant
   });

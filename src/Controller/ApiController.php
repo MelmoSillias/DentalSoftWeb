@@ -323,7 +323,7 @@ class ApiController extends AbstractController
             $empRepo = $em->getRepository(Employe::class);
             $new_medecin = $empRepo->find((int) $new_medecin_id);
 
-            if (!$rdv_id || !$new_date || !$new_time || !$new_duration) {
+            if (!$new_date || !$new_time || !$new_duration) {
                 return new JsonResponse(['success' => false, 'error' => 'Paramètres manquants'], 400);
             }
 
@@ -405,6 +405,58 @@ class ApiController extends AbstractController
             ->where('r.dateRdv BETWEEN :start AND :end')
             ->setParameter('start', $start->setTime(0, 0, 0))
             ->setParameter('end', $end->setTime(23, 59, 59))
+            ->orderBy('r.dateRdv', 'ASC');
+
+        if ($medecinId) {
+            $qb->andWhere('r.medecin = :medecin')
+                ->setParameter('medecin', $medecinId);
+        }
+
+        $rdvs = $qb->getQuery()->getResult();
+
+        $data = array_map(function ($rdv) {
+            return [
+                'id' => $rdv->getId(),
+                'patient' => $rdv->getPatient()->getNom() . ' ' . $rdv->getPatient()->getPrenom(),
+                'medecin' => $rdv->getMedecin()->getNom() . ' ' . $rdv->getMedecin()->getPrenom(),
+                'medecin_id' => $rdv->getMedecin()->getId(),
+                'description' => $rdv->getDescription(),
+                'statut' => $rdv->getStatut(),
+                'dateRdv' => $rdv->getDateRdv()->format('Y-m-d H:i:s'),
+                'endDate' => $rdv->getEndDate()->format('Y-m-d H:i:s'),
+                'dateCreation' => $rdv->getDateCreation()->format('d-m-Y H:i:s'),
+                'reportedAt' =>  $rdv->getReportedAt() ? 'Reporté au ' . $rdv->getReportedAt()->format('d-m-Y H:i:s') : null
+            ];
+        }, $rdvs);
+
+        return new JsonResponse($data);
+    }
+
+    #[Route('/api/rdvs/pending', name: 'api_pending_rdvs_range', methods: ['GET'])]
+    public function getPendingsRdvInRange(Request $request, EntityManagerInterface $em): JsonResponse
+    {
+        $startStr = $request->query->get('start');
+        $endStr   = $request->query->get('end');
+        $medecinId = $request->query->get('medecin');
+
+        if (!$startStr || !$endStr) {
+            return new JsonResponse(['success' => false, 'error' => 'Plage de dates requise'], 400);
+        }
+
+        $start = \DateTime::createFromFormat('Y-m-d', substr($startStr, 0, 10));
+        $end   = \DateTime::createFromFormat('Y-m-d', substr($endStr, 0, 10));
+        if (!$start || !$end) {
+            return new JsonResponse(['success' => false, 'error' => 'Format de date invalide'], 400);
+        }
+
+        $qb = $em->createQueryBuilder()
+            ->select('r')
+            ->from(Rdv::class, 'r')
+            ->where('r.dateRdv BETWEEN :start AND :end')
+            ->andWhere('r.statut != :statut')
+            ->setParameter('start', $start->setTime(0, 0, 0))
+            ->setParameter('end', $end->setTime(23, 59, 59))
+            ->setParameter('statut', -2)
             ->orderBy('r.dateRdv', 'ASC');
 
         if ($medecinId) {

@@ -56,24 +56,24 @@ function loadDashboardData(from = null, to = null) {
         $('#periodRevenueT').text(formatFcfa(data.period.apportTotal));
 
         // Actes médicaux
-        renderMedicalActs(data.period.actesMedicaux);
+        renderMedicalActs(data.period.paiements_period);
     });
 }
 
-function renderMedicalActs(actes) {
+function renderMedicalActs(paiements_period) {
     const $list = $('#medicalActsList').empty();
 
-    if (!actes || actes.length === 0) {
+    if (!paiements_period || paiements_period.length === 0) {
         $list.append(`<li class="list-group-item text-muted">Aucun acte posé durant cette période.</li>`);
         return;
     }
 
-    actes.forEach(acte => {
+    paiements_period.forEach(paiement => {
         $list.append(`
             <li class="list-group-item d-flex justify-content-between flex-column">
-                <strong>${acte.nom}</strong>
-                <small>${acte.patient} – ${acte.date}</small>
-                <span class="badge bg-secondary align-self-end text-white">${formatFcfa(acte.montant)}</span>
+                <strong>${paiement.description}</strong>
+                <small>${paiement.patient} – ${paiement.date}</small>
+                <span class="badge bg-secondary align-self-end text-white">${formatFcfa(paiement.montant_paye)}</span>
             </li>
         `);
     });

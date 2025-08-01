@@ -55,7 +55,7 @@ $(document).ready(function () {
             if (medecinFilter) {
                 params.set('medecin', medecinFilter);
             }
-            fetch(`/api/rdvs?${params.toString()}`)
+            fetch(`/api/rdvs/pending?${params.toString()}`)
                 .then(res => res.json())
                 .then(data => {
                     const filtered = data.filter(rdv => {
@@ -109,7 +109,7 @@ $(document).ready(function () {
             const tooltip = `
 		                    <strong>${event.title}</strong><br>
 		                    <small>Créé le : ${event.extendedProps.dateCreation}</small><br>
-                              <p><strong>Description :</strong><br>
+                            <p><strong>Description :</strong><br>
                                 ${event.description}
                             </p><br>
 		                    ${event.extendedProps.reportedAt ? `<span class="text-warning">Reporté le : ${event.extendedProps.reportedAt}</span>` : ''}
@@ -322,7 +322,7 @@ $(document).ready(function () {
     });
 
     function reloadAppointments() {
-        const url = `/api/rdvs/${currentDate.toISOString().split('T')[0]}/medecin`;
+        const url = `/api/rdvs/${currentDate.toISOString().split('T')[0]}`;
         $('.grid-cell').each(function () {
             const $cell = $(this);
             const $addBtn = $cell.find('.add-rdv-btn').detach();
@@ -368,7 +368,7 @@ $(document).ready(function () {
 
     function loadStats() {
         const date = currentDate.toISOString().split('T')[0];
-        const url = `/api/rdvs/stats/${date}/medecin`;
+        const url = `/api/rdvs/stats/${date}`;
 
         $.getJSON(url, function (data) {
             $('#stats-pending').text(data.pending);
@@ -434,7 +434,9 @@ $(document).ready(function () {
         }).fail(function () {
             showToastModal({ message: 'Erreur chargement patients', type: 'error', duration: 3000 });
         });
-    }); 
+    });
+
+     
 
     generateDateSlider();
     updateDateInputs();

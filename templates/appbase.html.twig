@@ -80,13 +80,13 @@
 
 		<script type="importmap" id="importmap" data-turbo-permanent>
 			{
-			        "imports": {
-			          "app":    "/build/app.js",
-			          "@hotwired/turbo":             "/build/turbo.es2017-esm.js",
-			          "@hotwired/stimulus":          "/build/stimulus.es2017-esm.js",
-			          "@symfony/stimulus-bundle":    "/build/controllers.json"
-			        }
-			      }
+						        "imports": {
+						          "app":    "/build/app.js",
+						          "@hotwired/turbo":             "/build/turbo.es2017-esm.js",
+						          "@hotwired/stimulus":          "/build/stimulus.es2017-esm.js",
+						          "@symfony/stimulus-bundle":    "/build/controllers.json"
+						        }
+						      }
 		</script>
 		{% block stylesheets %}{% endblock %}
 	</head>
@@ -150,7 +150,7 @@
 					</a>
 					<div id="collapseConsults" class="collapse {{ active_page in ['consultations_pending', 'consultation_edit', 'consultation_details', 'consultations_closed'] ? 'show' : '' }}" data-parent="#accordionSidebar">
 						<div class="bg-white py-2 collapse-inner rounded">
-							<a class="collapse-item" href="{{ path('consultations_pending') }}">En attente</a> 
+							<a class="collapse-item" href="{{ path('consultations_pending') }}">En attente</a>
 							<a class="collapse-item" href="{{ path('consultations_liste') }}">Liste</a>
 						</div>
 					</div>
@@ -214,8 +214,8 @@
 										{{ app.user.username }}
 									</span>
 									{# {% if app.user.avatar %}
-									                <img class="img-profile rounded-circle" src="{{ asset('uploads/avatars/' ~ app.user.avatar) }}" width="40" height="40">
-									            {% else %} #}
+																		                <img class="img-profile rounded-circle" src="{{ asset('uploads/avatars/' ~ app.user.avatar) }}" width="40" height="40">
+																		            {% else %} #}
 									<img
 									class="img-profile rounded-circle" src="{{ asset('img/profil.png') }}" width="40" height="40">
 								{# {% endif %} #}
@@ -223,10 +223,10 @@
 								<div
 									class="dropdown-menu dropdown-menu-right shadow animated--grow-in" aria-labelledby="userDropdown">
 									{# <a class="dropdown-item" href="#">
-									                <i class="fas fa-user fa-sm fa-fw mr-2 text-gray-400"></i>
-									                Profil
-									            </a> 
-									            <div class="dropdown-divider"></div> #}
+																		                <i class="fas fa-user fa-sm fa-fw mr-2 text-gray-400"></i>
+																		                Profil
+																		            </a> 
+																		            <div class="dropdown-divider"></div> #}
 									<a class="dropdown-item" href="{{ path('app_logout') }}">
 										<i class="fas fa-sign-out-alt fa-sm fa-fw mr-2 text-gray-400"></i>
 										Déconnexion

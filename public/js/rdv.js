@@ -73,7 +73,8 @@ $(document).ready(function () {
                             dateCreation: rdv.dateCreation,
                             reportedAt: rdv.reportedAt,
                             medecin: rdv.medecin,
-                            medecin_id: rdv.medecin_id
+                            medecin_id: rdv.medecin_id,
+                            description: rdv.description
                         },
                         textColor: 'rgb(31, 31, 31)'
                     }));
@@ -108,6 +109,9 @@ $(document).ready(function () {
             const tooltip = `
 		                    <strong>${event.title}</strong><br>
 		                    <small>Créé le : ${event.extendedProps.dateCreation}</small><br>
+                            <p><strong>Description :</strong><br>
+                                ${event.description}
+                            </p><br>
 		                    ${event.extendedProps.reportedAt ? `<span class="text-warning">Reporté le : ${event.extendedProps.reportedAt}</span>` : ''}
 		                `;
             tippy(info.el, {
