@@ -201,7 +201,7 @@ $(document).ready(function () {
                 }
             },
             columns: [
-                { data: 'nom' }, 
+                { data: 'fullname' }, 
                 { data: 'age', width: '80px' },
                 { data: 'sexe', width: '80px' },
                 { data: 'telephone', width: '150px' },

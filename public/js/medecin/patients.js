@@ -24,8 +24,7 @@ $(document).ready(function () {
                 dataSrc: ''
             },
             columns: [
-                { data: 'nom' },
-                { data: 'prenom' },
+                { data: 'fullname' }, 
                 { data: 'age', width: '80px'},
                 { data: 'sexe', width: '80px' },
                 { data: 'telephone', width: '150px' },

@@ -39,6 +39,7 @@ final class CaisseController extends AbstractController
         $devis = $repo->createQueryBuilder('d')
             ->join('d.fiche', 'f')->addSelect('f')
             ->join('f.patient', 'p')->addSelect('p')
+            ->join('App\Entity\Consultation', 'c', 'WITH', 'c.facture = d.id')
             ->where('d.type = :type')
             ->AndWhere('d.date BETWEEN :start AND :end')
             ->setParameter('type', 1)
@@ -52,7 +53,7 @@ final class CaisseController extends AbstractController
             return [
                 'id' => $d->getId(),
                 'date' => $d->getDate()->format('Y-m-d'),
-                'consultation'  => $d->getConsultation() ? $d->getConsultation()->getId() :  null,
+                'consultation'  => $d->getConsultation() ,
                 'montant' => $d->getMontant(),
                 'reste' => $d->getReste(),
                 'statut' => $d->getStatut(),
@@ -72,16 +73,18 @@ final class CaisseController extends AbstractController
     #[Route('/api/devis/impayes', name: 'api_devis_impayes', methods: ['GET'])]
     public function getDevisImpayes(DevisRepository $repo): JsonResponse
     {
-        $devis = $repo->createQueryBuilder('d')
+       $devis = $repo->createQueryBuilder('d')
             ->join('d.fiche', 'f')->addSelect('f')
             ->join('f.patient', 'p')->addSelect('p')
+            ->join('App\Entity\Consultation', 'c', 'WITH', 'c.facture = d.id')
             ->where('d.statut = 0')
-            ->Andwhere('d.type = 1')
+            ->andWhere('d.type = 1')
             ->orderBy('d.date', 'ASC')
             ->getQuery()
             ->getResult();
 
-        $data = array_map(function (Devis $d) {
+
+        $data = array_map(function (Devis $d) { 
             return [
                 'id' => $d->getId(),
                 'date' => $d->getDate()->format('Y-m-d'),
