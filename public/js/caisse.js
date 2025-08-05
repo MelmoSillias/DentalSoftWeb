@@ -85,7 +85,7 @@ $(function () { // Variables globales pour les filtres de date
                 render: (id, type, row) => {
                     const statut = row.statut;
                     const isRegle = statut == 1;
-                    const modifiable = row.montant === row.reste 
+                    const modifiable = row.montant === row.reste && !isRegle
                     const reste = row.reste
                     const reglerButton = isRegle ? '' : `<a href="#" class="btn btn-sm btn-success regler-devis-btn" data-toggle="modal"
                             data-target="${!row.isRegle && reste === 0 ?  "#validateFreeDevisModal" : "#reglerDevisModal"}" data-devis-id="${id}">
@@ -112,7 +112,8 @@ $(function () { // Variables globales pour les filtres de date
             url: 'https://cdn.datatables.net/plug-ins/1.13.5/i18n/fr-FR.json'
         },
         order: [
-            [0, 'desc']
+            [0, 'asc']
+            
         ]
     });
 
