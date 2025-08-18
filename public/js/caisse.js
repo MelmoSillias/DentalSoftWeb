@@ -19,14 +19,12 @@ $(function () { // Variables globales pour les filtres de date
                 const totalReste = json.reduce((sum, d) => sum + (parseFloat(d.reste) || 0), 0);
                 $('#devisCount').text(json.length);
                 $('#totalRestant').text(`${totalReste.toLocaleString('fr-FR')
-                    } FCFA`);
-
+                    } FCFA`); 
                 if (json.length === 0) {
                     $('#devisEmptyMessage').removeClass('d-none');
                 } else {
                     $('#devisEmptyMessage').addClass('d-none');
-                }
-
+                } 
                 return json;
             }
         },

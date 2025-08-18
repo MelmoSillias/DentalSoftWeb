@@ -436,19 +436,19 @@ class ApiController extends AbstractController
         return new JsonResponse($data);
     }
 
-    #[Route('/api/rdvs/pending', name: 'api_pending_rdvs_range', methods: ['GET'])]
+    #[Route('/api/rdvs_pending', name: 'api_pending_rdvs_range', methods: ['GET'])]
     public function getPendingsRdvInRange(Request $request, EntityManagerInterface $em): JsonResponse
     {
         $startStr = $request->query->get('start');
         $endStr   = $request->query->get('end');
         $medecinId = $request->query->get('medecin');
-        dump($startStr, $endStr);
+        
         if (!$startStr || !$endStr) {
             return new JsonResponse(['success' => false, 'error' => 'Plage de dates requise'], 400);
         }
 
-        $start = \DateTime::createFromFormat('Y-m-d', substr($startStr, 0, 10));
-        $end   = \DateTime::createFromFormat('Y-m-d', substr($endStr, 0, 10));
+        $start = \DateTime::createFromFormat('Y-m-d',$startStr);
+        $end   = \DateTime::createFromFormat('Y-m-d',$endStr);
         
         if (!$start || !$end) {
             return new JsonResponse(['success' => false, 'error' => 'Format de date invalide'], 400);

@@ -49,13 +49,13 @@ $(document).ready(function () {
         events: function (fetchInfo, successCallback, failureCallback) {
             document.getElementById('calendarOverlayLoader').style.display = 'block';
             const params = new URLSearchParams({
-                start: fetchInfo.startStr,
-                end: fetchInfo.endStr
+                start: fetchInfo.startStr.substr(0, 10),
+                end: fetchInfo.endStr.substr(0, 10)
             });
             if (medecinFilter) {
                 params.set('medecin', medecinFilter);
             }
-            fetch(`/api/rdvs?${params.toString()}`)
+            fetch(`/api/rdvs_pending?${params.toString()}`)
                 .then(res => res.json())
                 .then(data => {
                     const filtered = data.filter(rdv => {
@@ -70,6 +70,7 @@ $(document).ready(function () {
                         end: rdv.endDate,
                         extendedProps: {
                             statut: rdv.statut,
+                            description: rdv.description,
                             dateCreation: rdv.dateCreation,
                             reportedAt: rdv.reportedAt,
                             medecin: rdv.medecin,
@@ -78,6 +79,7 @@ $(document).ready(function () {
                         },
                         textColor: 'rgb(31, 31, 31)'
                     }));
+                    console.log(events)
 
                     successCallback(events);
                 })
@@ -110,7 +112,7 @@ $(document).ready(function () {
 		                    <strong>${event.title}</strong><br>
 		                    <small>Créé le : ${event.extendedProps.dateCreation}</small><br>
                             <p><strong>Description :</strong><br>
-                                ${event.description}
+                                ${event.extendedProps.description}
                             </p><br>
 		                    ${event.extendedProps.reportedAt ? `<span class="text-warning">Reporté le : ${event.extendedProps.reportedAt}</span>` : ''}
 		                `;
