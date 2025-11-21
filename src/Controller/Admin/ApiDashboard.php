@@ -856,48 +856,38 @@ class ApiDashboard extends AbstractController
 
             // 2) Paiements de factures (PaiementDevis lié à Facture)
             $paiementsFactures = $em->createQueryBuilder()
-                ->select('pd','f','c','c2')
+                ->select('pd', 'f', 'c')
                 ->from(PaiementDevis::class, 'pd')
-                ->leftJoin('pd.devis', 'f')
-                ->leftJoin('f.consultation', 'c')
-                // fallback : trouver une consultation ayant la même fiche que le devis (si mapping fiche existe)
-                ->leftJoin(Consultation::class, 'c2', 'WITH', 'c2.fiche = f.fiche')
-                ->where('(c.medecin = :doctor OR c2.medecin = :doctor)')
+                ->join('pd.devis', 'f')
+                ->join('f.consultation', 'c')
+                ->where('c.medecin = :doctor')
                 ->andWhere('pd.date BETWEEN :from AND :to')
                 ->setParameter('doctor', $doctor)
                 ->setParameter('from', $fromDate)
-                ->setParameter('to', $toDate)
+                ->setParameter('to', $toDate,)
                 ->getQuery()
                 ->getResult();
 
             foreach ($paiementsFactures as $pay) {
                 $facture = $pay->getDevis();
-
-                // essayer d'obtenir la consultation liée : d'abord via la relation, sinon recherche par fiche
-                $consult = $facture?->getConsultation();
-                if (!$consult && $facture?->getFiche()) {
-                    $consult = $em->getRepository(Consultation::class)->findOneBy(['fiche' => $facture->getFiche()]);
-                }
-
-                $patient = $consult?->getPatient();
+                $consult = $facture->getConsultation();
+                $patient = $consult->getPatient();
 
                 // Concaténation des désignations d'actes
                 $descriptions = [];
-                if ($facture) {
-                    foreach ($facture->getContenus() as $acte) {
-                        $descriptions[] = $acte->getDesignation();
-                    }
+                foreach ($facture->getContenus() as $acte) {
+                    $descriptions[] = $acte->getDesignation();
                 }
 
                 $paiementsPeriode[] = [
-                    'date' => $pay->getDate()?->format('Y-m-d H:i'),
+                    'date' => $pay->getDate()->format('Y-m-d H:i'),
                     'medecin' => $doctor->getFullName(),
                     'patient' => $patient?->getFullName() ?? 'Inconnu',
                     'telephone' => $patient?->getTelephone() ?? '-- -- -- --',
                     'description' => implode(', ', $descriptions),
-                    'montant_total' => $facture?->getMontant(),
+                    'montant_total' => $facture->getMontant(),
                     'montant_paye' => $pay->getMontant(),
-                    'reste' => $facture?->getReste(),
+                    'reste' => $facture->getReste(),
                 ];
                 $revenue += $pay->getMontant();
             }
@@ -1088,48 +1078,38 @@ class ApiDashboard extends AbstractController
 
             // 2) Paiements de factures (PaiementDevis lié à Facture)
             $paiementsFactures = $em->createQueryBuilder()
-                ->select('pd','f','c','c2')
+                ->select('pd', 'f', 'c')
                 ->from(PaiementDevis::class, 'pd')
-                ->leftJoin('pd.devis', 'f')
-                ->leftJoin('f.consultation', 'c')
-                // fallback : trouver une consultation ayant la même fiche que le devis (si mapping fiche existe)
-                ->leftJoin(Consultation::class, 'c2', 'WITH', 'c2.fiche = f.fiche')
-                ->where('(c.medecin = :doctor OR c2.medecin = :doctor)')
+                ->join('pd.devis', 'f')
+                ->join('f.consultation', 'c')
+                ->where('c.medecin = :doctor')
                 ->andWhere('pd.date BETWEEN :from AND :to')
                 ->setParameter('doctor', $medecin)
                 ->setParameter('from', $from)
-                ->setParameter('to', $to)
+                ->setParameter('to', $to,)
                 ->getQuery()
                 ->getResult();
 
             foreach ($paiementsFactures as $pay) {
                 $facture = $pay->getDevis();
-
-                // essayer d'obtenir la consultation liée : d'abord via la relation, sinon recherche par fiche
-                $consult = $facture?->getConsultation();
-                if (!$consult && $facture?->getFiche()) {
-                    $consult = $em->getRepository(Consultation::class)->findOneBy(['fiche' => $facture->getFiche()]);
-                }
-
-                $patient = $consult?->getPatient();
+                $consult = $facture->getConsultation();
+                $patient = $consult->getPatient();
 
                 // Concaténation des désignations d'actes
                 $descriptions = [];
-                if ($facture) {
-                    foreach ($facture->getContenus() as $acte) {
-                        $descriptions[] = $acte->getDesignation();
-                    }
+                foreach ($facture->getContenus() as $acte) {
+                    $descriptions[] = $acte->getDesignation();
                 }
 
                 $paiementsPeriode[] = [
-                    'date' => $pay->getDate()?->format('Y-m-d H:i'),
+                    'date' => $pay->getDate()->format('Y-m-d H:i'),
                     'medecin' => $medecin->getFullName(),
                     'patient' => $patient?->getFullName() ?? 'Inconnu',
                     'telephone' => $patient?->getTelephone() ?? '-- -- -- --',
                     'description' => implode(', ', $descriptions),
-                    'montant_total' => $facture?->getMontant(),
+                    'montant_total' => $facture->getMontant(),
                     'montant_paye' => $pay->getMontant(),
-                    'reste' => $facture?->getReste(),
+                    'reste' => $facture->getReste(),
                 ];
                 $revenue += $pay->getMontant();
             }
