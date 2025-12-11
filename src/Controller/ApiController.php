@@ -2,255 +2,237 @@
 
 namespace App\Controller;
 
-use App\Entity\Booking;
-use App\Entity\Consommable;
-use App\Entity\Consultation;
-use App\Entity\Employe;
 use App\Entity\Rdv;
-use App\Entity\Facture;
-use App\Entity\User;
-use App\Repository\BookingRepository;
 use App\Repository\EmployeRepository;
-use App\Repository\FactureRepository;
-use App\Repository\PatientRepository;
-use App\Repository\SalleRepository;
-use App\Repository\MedecinRepository;
-use App\Repository\RdvRepository;
-use App\Repository\UserRepository;
-use CalendarBundle\Entity\Event;
+use App\Service\AgendaService;
+use App\Service\DashboardStatsService;
+use App\Service\RdvService;
+use App\Service\SalleService;
+use App\Service\UserManagementService;
 use DateTime;
-use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Bundle\MakerBundle\EventRegistry;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Annotation\Route;
 
 class ApiController extends AbstractController
 {
+    public function __construct(
+        private RdvService $rdvService,
+        private AgendaService $agendaService,
+        private SalleService $salleService,
+        private UserManagementService $userService,
+        private DashboardStatsService $dashboardStatsService,
+        private EmployeRepository $employeRepo,
+    ) {
+    }
+
+    private function jsonPayload(Request $request): array
+    {
+        $content = $request->getContent();
+        if ($content) {
+            $data = json_decode($content, true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                return $data ?? [];
+            }
+        }
+
+        return $request->request->all();
+    }
+
     #[Route('/api/rdv/create', name: 'api_rdv_create', methods: ['POST'])]
-    public function createRdv(
-        Request $request,
-        PatientRepository $patientRepo,
-        SalleRepository $salleRepo,
-        EmployeRepository $medecinRepo,
-        EntityManagerInterface $em
-    ): JsonResponse {
+    public function createRdv(Request $request): JsonResponse
+    {
+        $result = $this->rdvService->createRdv($this->jsonPayload($request));
+        $status = $result['status'] ?? (isset($result['error']) ? 400 : 200);
 
-        $patient = $patientRepo->find($request->get('patient'));
-        $medecin = $medecinRepo->find($request->get('medecin'));
-
-        if (!$patient || !$medecin) {
-            return new JsonResponse(['success' => false, 'error' => 'Données invalides'], 400);
-        }
-
-        $rdv = new Rdv();
-        $rdv->setPatient($patient)
-            ->setMedecin($medecin)
-            ->setDescription($request->get('description'))
-            ->setDuration($request->get('duration'))
-            ->setStatut(0)
-            ->setDateCreation(new \DateTime())
-            ->setDateRdv(new \DateTime($request->get('date') . ' ' . $request->get('time')));
-
-        $em->persist($rdv);
-        $em->flush();
-
-        return new JsonResponse(['success' => true], 200);
+        return new JsonResponse($result, $status);
     }
 
-    // Dans votre contrôleur, par exemple RdvController.php
-    #[Route('/api/rdvs/stats', name: 'api_rdvs_stats_range', methods: ['GET'])]
-    public function statsRange(Request $req, EntityManagerInterface $em): JsonResponse
+    #[Route('/api/rdv/{id}/{action}', name: 'api_rdv_action', methods: ['POST'])]
+    public function handleRdvAction(Request $request, Rdv $rdv, string $action): JsonResponse
     {
-        $startStr = $req->query->get('start');
-        $endStr   = $req->query->get('end');
+        $result = $this->rdvService->handleAction($rdv, $action, $this->jsonPayload($request));
+        $status = $result['status'] ?? (isset($result['error']) ? 400 : 200);
 
-        $start = \DateTime::createFromFormat('Y-m-d', $startStr)?->setTime(0, 0, 0);
-        $end   = \DateTime::createFromFormat('Y-m-d', $endStr)?->setTime(23, 59, 59);
+        return new JsonResponse($result, $status);
+    }
 
-        if (!$start || !$end) {
-            return new JsonResponse(['success' => false, 'error' => 'Période invalide'], 400);
-        }
+    #[Route('/api/rdv/stats', name: 'api_rdv_stats', methods: ['GET'])]
+    public function rdvStats(Request $request): JsonResponse
+    {
+        $dateStr = $request->query->get('date');
+        $startStr = $request->query->get('start');
+        $endStr = $request->query->get('end');
+        $medecinId = $request->query->get('medecin');
 
-        $qb = $em->createQuery("
-        SELECT r.statut, COUNT(r.id) as total
-        FROM App\Entity\Rdv r
-        WHERE r.dateRdv BETWEEN :start AND :end
-        GROUP BY r.statut
-    ")
-            ->setParameter('start', $start)
-            ->setParameter('end', $end);
-
-        $results = $qb->getResult();
-
-        $stats = [
-            'pending'   => 0,
-            'validated' => 0,
-            'postponed' => 0,
-            'cancelled' => 0
-        ];
-
-        foreach ($results as $row) {
-            switch ((int)$row['statut']) {
-                case 0:
-                    $stats['pending']   = (int)$row['total'];
-                    break;
-                case 1:
-                    $stats['validated'] = (int)$row['total'];
-                    break;
-                case -1:
-                    $stats['postponed'] = (int)$row['total'];
-                    break;
-                case -2:
-                    $stats['cancelled'] = (int)$row['total'];
-                    break;
+        if ($dateStr) {
+            $date = new DateTime($dateStr);
+            if ($medecinId) {
+                $medecin = $this->employeRepo->find((int) $medecinId);
+                $data = $medecin ? $this->rdvService->getStatsForMedecinDate($date, $medecin) : ['error' => 'Médecin introuvable', 'status' => 404];
+            } else {
+                $data = $this->rdvService->getStatsForDate($date);
             }
+        } elseif ($startStr && $endStr) {
+            $start = new DateTime($startStr);
+            $end = new DateTime($endStr);
+            $data = $this->rdvService->getStatsForRange($start, $end);
+        } else {
+            $data = $this->rdvService->getStatsForDate(new DateTime());
         }
 
-        return new JsonResponse($stats);
+        $status = $data['status'] ?? 200;
+
+        return new JsonResponse($data, $status);
     }
 
-
-    #[Route('/api/rdvs/stats/{date}', name: 'api_rdvs_stats', methods: ['GET'])]
-    public function stats(string $date, EntityManagerInterface $em): JsonResponse
+    #[Route('/api/rdvs/stats/{date}', name: 'api_rdvs_stats_by_date', methods: ['GET'])]
+    public function rdvStatsByDate(string $date, Request $request): JsonResponse
     {
-        $start = \DateTime::createFromFormat('Y-m-d H:i:s', $date . ' 00:00:00');
-        $end   = \DateTime::createFromFormat('Y-m-d H:i:s', $date . ' 23:59:59');
-
-        if (!$start || !$end) {
-            return new JsonResponse(['success' => false, 'error' => 'Date invalide'], 400);
+        $dateObj = DateTime::createFromFormat('Y-m-d', $date);
+        if (!$dateObj) {
+            return new JsonResponse(['error' => 'Format de date invalide'], 400);
         }
 
-        $qb = $em->createQuery("
-        SELECT r.statut, COUNT(r.id) as total
-        FROM App\Entity\Rdv r
-        WHERE r.dateRdv BETWEEN :start AND :end
-        GROUP BY r.statut
-    ")
-            ->setParameter('start', $start)
-            ->setParameter('end', $end);
-
-        $results = $qb->getResult();
-        $stats = [
-            'pending'   => 0,
-            'validated' => 0,
-            'postponed' => 0,
-            'cancelled' => 0
-        ];
-
-        foreach ($results as $row) {
-            switch ((int)$row['statut']) {
-                case 0:
-                    $stats['pending']   = (int)$row['total'];
-                    break;
-                case 1:
-                    $stats['validated'] = (int)$row['total'];
-                    break;
-                case -1:
-                    $stats['postponed'] = (int)$row['total'];
-                    break;
-                case -2:
-                    $stats['cancelled'] = (int)$row['total'];
-                    break;
-            }
-        }
-
-        return new JsonResponse($stats);
-    }
-
-
-    #[Route('/api/rdvs/stats/{date}/medecin', name: 'api_rdvs_stats_by_medecin', methods: ['GET'])]
-    public function statsbymedecin(string $date, RdvRepository $rdvRepo, EntityManagerInterface $em): JsonResponse
-    {
-        $selectedDate = \DateTime::createFromFormat('Y-m-d', $date);
-        if (!$selectedDate) {
-            return new JsonResponse(['success' => false, 'error' => 'Date invalide'], 400);
-        }
-
-        $user = $this->getUser();
-        if (!$user) {
-            return new JsonResponse(['success' => false, 'error' => 'Utilisateur non connecté'], 401);
-        }
-
-        $medecin = $em->getRepository(Employe::class)->findOneBy(['user' => $user]);
-        if (!$medecin) {
-            return new JsonResponse(['success' => false, 'error' => 'Aucun médecin trouvé pour cet utilisateur'], 404);
-        }
-
-        $start = new \DateTimeImmutable($date . ' 00:00:00');
-        $end   = new \DateTimeImmutable($date . ' 23:59:59');
-
-        $buildCount = function (int $statut) use ($rdvRepo, $start, $end, $medecin) {
-            return (int) $rdvRepo->createQueryBuilder('r')
-                ->select('COUNT(r.id)')
-                ->where('r.statut = :statut')
-                ->andWhere('r.medecin = :medecin')
-                ->andWhere('r.dateRdv BETWEEN :start AND :end')
-                ->setParameter('statut', $statut)
-                ->setParameter('medecin', $medecin)
-                ->setParameter('start', $start)
-                ->setParameter('end', $end)
-                ->getQuery()
-                ->getSingleScalarResult();
-        };
-
-        return new JsonResponse([
-            'pending'   => $buildCount(0),
-            'validated' => $buildCount(1),
-            'postponed' => $buildCount(-1),
-            'cancelled' => $buildCount(-2),
-        ]);
-    }
-
-
-    #[Route('/api/rdv/update_status', name: 'api_rdv_update_status', methods: ['POST'])]
-    public function updateStatus(Request $request, RdvRepository $rdvRepo, EntityManagerInterface $em): JsonResponse
-    {
-        $data = json_decode($request->getContent(), true);
-        $rdv = $rdvRepo->find($data['rdv_id']);
-        if (!$rdv) {
-            return new JsonResponse(['success' => false, 'error' => 'RDV non trouvé'], 404);
-        }
-        $newStatus = $data['status'];
-        $rdv->setStatut($newStatus);
-
-        $empRepo = $em->getRepository(Employe::class);
-
-        if ($data['statut'] === 1) {
-
-            // Récupération des entités
-            $medecin = $empRepo->find($data['medecin']);
-
+        $medecinId = $request->query->get('medecin');
+        if ($medecinId) {
+            $medecin = $this->employeRepo->find((int) $medecinId);
             if (!$medecin) {
-                throw new \Exception('Médecin ou patient introuvable');
+                return new JsonResponse(['error' => 'Médecin introuvable'], 404);
             }
-            // Création de la nouvelle consultation
-            $consultation = new Consultation();
-            $consultation->setMedecin($medecin);
-            $consultation->setPatient($rdv->getPatient());
-            $consultation->setCreatedAt(new \DateTime());
-            $consultation->setStatut(0); // Statut par défaut
-
-            // Enregistrement de la consultation
-            $em->persist($consultation);
+            $data = $this->rdvService->getStatsForMedecinDate($dateObj, $medecin);
+        } else {
+            $data = $this->rdvService->getStatsForDate($dateObj);
         }
-        $em->flush();
 
-        return new JsonResponse(['success' => true]);
+        return new JsonResponse($data);
+    }
+
+    #[Route('/api/rdvs/{date}', name: 'api_rdvs_by_date', methods: ['GET'])]
+    public function listRdvsByDate(Request $request, string $date): JsonResponse
+    {
+        $dateObj = DateTime::createFromFormat('Y-m-d', $date);
+        if (!$dateObj) {
+            return new JsonResponse(['error' => 'Format de date invalide'], 400);
+        }
+
+        $medecinId = $request->query->get('medecin');
+        $medecin = $medecinId ? $this->employeRepo->find((int) $medecinId) : null;
+        $excludeCancelled = in_array('ROLE_RECEPTIONNISTE', $this->getUser()?->getRoles() ?? [], true);
+
+        $data = $this->rdvService->listByDate($dateObj, $medecin, $excludeCancelled);
+
+        return new JsonResponse($data);
+    }
+
+    #[Route('/api/rdvs', name: 'api_rdvs_range', methods: ['GET'])]
+    public function listRdvsRange(Request $request): JsonResponse
+    {
+        $startStr = $request->query->get('start');
+        $endStr = $request->query->get('end');
+
+        if (!$startStr || !$endStr) {
+            return new JsonResponse(['error' => 'Plage de dates requise'], 400);
+        }
+
+        $start = DateTime::createFromFormat('Y-m-d', substr($startStr, 0, 10));
+        $end = DateTime::createFromFormat('Y-m-d', substr($endStr, 0, 10));
+
+        if (!$start || !$end) {
+            return new JsonResponse(['error' => 'Format de date invalide'], 400);
+        }
+
+        $medecinId = $request->query->get('medecin');
+        $excludeCancelled = in_array('ROLE_RECEPTIONNISTE', $this->getUser()?->getRoles() ?? [], true);
+
+        $data = $this->rdvService->listByRange($start, $end, $medecinId ? (int) $medecinId : null, $excludeCancelled);
+
+        return new JsonResponse($data);
+    }
+
+    #[Route('/api/rdvs_pending', name: 'api_pending_rdvs_range', methods: ['GET'])]
+    public function listPendingRdvsRange(Request $request): JsonResponse
+    {
+        $startStr = $request->query->get('start');
+        $endStr = $request->query->get('end');
+
+        if (!$startStr || !$endStr) {
+            return new JsonResponse(['error' => 'Plage de dates requise'], 400);
+        }
+
+        $start = DateTime::createFromFormat('Y-m-d', $startStr);
+        $end = DateTime::createFromFormat('Y-m-d', $endStr);
+
+        if (!$start || !$end) {
+            return new JsonResponse(['error' => 'Format de date invalide'], 400);
+        }
+
+        $medecinId = $request->query->get('medecin');
+
+        $data = $this->rdvService->listPendingByRange($start, $end, $medecinId ? (int) $medecinId : null);
+
+        return new JsonResponse($data);
+    }
+
+    #[Route('/api/rdvs/{date}/medecin', name: 'api_rdvs_bymedecin', methods: ['GET'])]
+    public function listRdvsForCurrentMedecin(string $date): JsonResponse
+    {
+        $dateObj = DateTime::createFromFormat('Y-m-d', $date);
+        if (!$dateObj) {
+            return new JsonResponse(['error' => 'Format de date invalide'], 400);
+        }
+
+        $medecin = $this->rdvService->getMedecinForUser($this->getUser());
+        if (!$medecin) {
+            return new JsonResponse(['error' => 'Aucun médecin associé'], 404);
+        }
+
+        $data = $this->rdvService->listByDate($dateObj, $medecin);
+
+        return new JsonResponse($data);
+    }
+
+    #[Route('/api/events/all', name: 'api_events_all', methods: ['GET'])]
+    public function listEvents(): JsonResponse
+    {
+        return new JsonResponse($this->agendaService->listBookings());
+    }
+
+    #[Route('/api/event/createBooking', name: 'api_event_create_booking', methods: ['POST', 'GET'])]
+    public function createBooking(Request $request): JsonResponse
+    {
+        $payload = $this->jsonPayload($request);
+        $result = $this->agendaService->createBooking($payload);
+        $status = $result['status'] ?? (isset($result['error']) ? 400 : 200);
+
+        return new JsonResponse($result, $status);
+    }
+
+    #[Route('/api/event/{id}/delete', name: 'api_event_delete', methods: ['POST', 'DELETE'])]
+    public function deleteBooking(int $id): JsonResponse
+    {
+        $result = $this->agendaService->deleteBooking($id);
+        $status = $result['status'] ?? (isset($result['error']) ? 404 : 200);
+
+        return new JsonResponse($result, $status);
+    }
+
+    #[Route('/api/event/{id}/validate', name: 'api_event_validate', methods: ['POST'])]
+    public function validateBooking(int $id): JsonResponse
+    {
+        $result = $this->agendaService->validateBooking($id);
+        $status = $result['status'] ?? (isset($result['error']) ? 404 : 200);
+
+        return new JsonResponse($result, $status);
     }
 
     #[Route('/api/salles', name: 'api_salles', methods: ['GET'])]
-    public function getSalles(SalleRepository $salleRepo): JsonResponse
+    public function getSalles(): JsonResponse
     {
-        $salles = $salleRepo->findAll();
+        $salles = $this->salleService->list();
 
-        if (!$salles) {
-            return new JsonResponse([], 200); // Retourne un tableau vide si aucune salle n'est trouvée
-        }
-
-        $data = array_map(function ($salle) {
+        $data = array_map(static function ($salle) {
             return [
                 'id' => $salle->getId(),
                 'nom' => $salle->getNom(),
@@ -262,630 +244,67 @@ class ApiController extends AbstractController
     }
 
     #[Route('/api/medecins', name: 'api_medecins', methods: ['GET'])]
-    public function getMedecins(EmployeRepository $medecinRepo): JsonResponse
+    public function getMedecins(): JsonResponse
     {
-        $medecins = $medecinRepo->findBy(['type' => 'medecin']); // Suppose que le type "medecin" est utilisé
+        $medecins = $this->employeRepo->findBy(['type' => 'medecin']);
 
-        if (!$medecins) {
-            return new JsonResponse([], 200); // Retourne un tableau vide si aucun médecin n'est trouvé
-        }
-
-        $data = array_map(function ($medecin) {
+        $data = array_map(static function ($medecin) {
             return [
                 'id' => $medecin->getId(),
-                'nom' => $medecin->getFullName(),
+                'nom' => $medecin->getNom(),
                 'prenom' => $medecin->getPrenom(),
+                'fullName' => method_exists($medecin, 'getFullName') ? $medecin->getFullName() : trim($medecin->getNom() . ' ' . $medecin->getPrenom()),
             ];
         }, $medecins);
 
         return new JsonResponse($data);
     }
 
-    #[Route('/api/rdv/{id}/{action}', name: 'api_rdv_validation', methods: ['POST'])]
-    public function validateRdv(Request $req, Rdv $rdv, string $action, EntityManagerInterface $em): JsonResponse
-    {
-        if (!$rdv) {
-            return $this->json(['success' => false, 404]);
-        }
-
-        if (!$action) {
-            return $this->json(['success' => false, 400]);
-        }
-
-        if ($action === 'validate') {
-            $rdv->setStatut(1);
-
-            $empRepo = $em->getRepository(Employe::class);
-            $data = json_decode($req->getContent(), true);
-            // Récupération des entités
-            $medecin = $empRepo->find((int)$data['medecin']);
-
-            if (!$medecin) {
-                throw new \Exception('Médecin ou patient introuvable');
-            }
-            // Création de la nouvelle consultation
-            $consultation = new Consultation();
-            $consultation->setMedecin($medecin);
-            $consultation->setPatient($rdv->getPatient());
-            $consultation->setCreatedAt(new \DateTime());
-            $consultation->setStatut(0); // Statut par défaut
-
-            // Enregistrement de la consultation
-            $em->persist($consultation);
-        } else if ($action === 'cancel') $rdv->setStatut(-2);
-        else if ($action === 'report') {
-            $rdv_id = $req->get('rdv_id');
-            $new_date = $req->get('new_date');
-            $new_time = $req->get('new_time');
-            $new_medecin_id = $req->get('new_medecin');
-            $new_duration = $req->get('new_duration');
-
-            $empRepo = $em->getRepository(Employe::class);
-            $new_medecin = $empRepo->find((int) $new_medecin_id);
-
-            if (!$new_date || !$new_time || !$new_duration) {
-                return new JsonResponse(['success' => false, 'error' => 'Paramètres manquants'], 400);
-            }
-
-            // Met à jour l'ancien RDV avec le statut "reporté" (-1)
-            $rdv->setStatut(-1);
-            $rdv->setReportedAt(new \DateTimeImmutable($new_date . ' ' . $new_time));
-
-            // Crée un nouveau RDV avec les mêmes informations que l'ancien mais avec la nouvelle date/heure
-            $newRdv = new Rdv();
-            $newRdv->setPatient($rdv->getPatient())
-                ->setSalle($rdv->getSalle())
-                ->setMedecin($new_medecin ?? $rdv->getMedecin())
-                ->setDuration($new_duration)
-                ->setDescription($rdv->getDescription())
-                ->setStatut(0) // nouveau RDV en attente
-                ->setDateCreation(new \DateTime())
-                ->setDateRdv(new \DateTime($new_date . ' ' . $new_time));
-
-            $em->persist($newRdv);
-        } else $this->json(['success' => false], 404);
-
-        $em->persist($rdv);
-        $em->flush();
-
-        return $this->json(['success' => true, 200]);
-    }
-
-    #[Route('/api/rdvs/{date}', name: 'api_rdvs', methods: ['GET'])]
-    public function getRdvs(Request $request, string $date, EntityManagerInterface $em): JsonResponse
-    {
-        if (!$date) {
-            return new JsonResponse(['success' => false, 'error' => 'Date non fournie'], 400);
-        }
-
-        $dateObj = \DateTime::createFromFormat('Y-m-d', $date);
-        if (!$dateObj) {
-            return new JsonResponse(['success' => false, 'error' => 'Format de date invalide'], 400);
-        }
-
-        $rdvRepository = $em->getRepository(Rdv::class);
-        $rdvs = $rdvRepository->findRdvByDate($dateObj);
-
-        $data = array_map(function ($rdv) {
-            return [
-                'id' => $rdv->getId(),
-                'patient' => $rdv->getPatient()->getNom() . ' ' . $rdv->getPatient()->getPrenom(),
-                'medecin' => $rdv->getMedecin()->getNom() . ' ' . $rdv->getMedecin()->getPrenom(),
-                'medecin_id' => $rdv->getMedecin()->getId(),
-                'description' => $rdv->getDescription(),
-                'statut' => $rdv->getStatut(),
-                'dateRdv' => $rdv->getDateRdv()->format('Y-m-d H:i:s'),
-                'dateCreation' => $rdv->getDateCreation()->format('d-m-Y H:i:s'),
-                'reportedAt' =>  $rdv->getReportedAt() ? 'Reporté au ' . $rdv->getReportedAt()->format('d-m-Y H:i:s') : null
-            ];
-        }, $rdvs);
-        return new JsonResponse($data);
-    }
-
-    #[Route('/api/rdvs', name: 'api_rdvs_range', methods: ['GET'])]
-    public function getRdvInRange(Request $request, EntityManagerInterface $em): JsonResponse
-    {
-        $startStr = $request->query->get('start');
-        $endStr   = $request->query->get('end');
-        $medecinId = $request->query->get('medecin');
-
-        if (!$startStr || !$endStr) {
-            return new JsonResponse(['success' => false, 'error' => 'Plage de dates requise'], 400);
-        }
-
-        $start = \DateTime::createFromFormat('Y-m-d', substr($startStr, 0, 10));
-        $end   = \DateTime::createFromFormat('Y-m-d', substr($endStr, 0, 10));
-        if (!$start || !$end) {
-            return new JsonResponse(['success' => false, 'error' => 'Format de date invalide'], 400);
-        }
-
-        $qb = $em->createQueryBuilder()
-            ->select('r')
-            ->from(Rdv::class, 'r')
-            ->where('r.dateRdv BETWEEN :start AND :end')
-            ->setParameter('start', $start->setTime(0, 0, 0))
-            ->setParameter('end', $end->setTime(23, 59, 59))
-            ->orderBy('r.dateRdv', 'ASC');
-
-        if($this->getUser()->getRoles()[0] === "ROLE_RECEPTIONNISTE") {
-             $qb->andWhere('r.statut != -2');
-        }
-
-        if ($medecinId) {
-            $qb->andWhere('r.medecin = :medecin')
-                ->setParameter('medecin', $medecinId);
-        }
-
-        $rdvs = $qb->getQuery()->getResult();
-
-        $data = array_map(function ($rdv) {
-            return [
-                'id' => $rdv->getId(),
-                'patient' => $rdv->getPatient()->getNom() . ' ' . $rdv->getPatient()->getPrenom(),
-                'medecin' => $rdv->getMedecin()->getNom() . ' ' . $rdv->getMedecin()->getPrenom(),
-                'medecin_id' => $rdv->getMedecin()->getId(),
-                'description' => $rdv->getDescription(),
-                'statut' => $rdv->getStatut(),
-                'dateRdv' => $rdv->getDateRdv()->format('Y-m-d H:i:s'),
-                'endDate' => $rdv->getEndDate()->format('Y-m-d H:i:s'),
-                'dateCreation' => $rdv->getDateCreation()->format('d-m-Y H:i:s'),
-                'reportedAt' =>  $rdv->getReportedAt() ? 'Reporté au ' . $rdv->getReportedAt()->format('d-m-Y H:i:s') : null
-            ];
-        }, $rdvs);
-
-        return new JsonResponse($data);
-    }
-
-    #[Route('/api/rdvs_pending', name: 'api_pending_rdvs_range', methods: ['GET'])]
-    public function getPendingsRdvInRange(Request $request, EntityManagerInterface $em): JsonResponse
-    {
-        $startStr = $request->query->get('start');
-        $endStr   = $request->query->get('end');
-        $medecinId = $request->query->get('medecin');
-        
-        if (!$startStr || !$endStr) {
-            return new JsonResponse(['success' => false, 'error' => 'Plage de dates requise'], 400);
-        }
-
-        $start = \DateTime::createFromFormat('Y-m-d',$startStr);
-        $end   = \DateTime::createFromFormat('Y-m-d',$endStr);
-        
-        if (!$start || !$end) {
-            return new JsonResponse(['success' => false, 'error' => 'Format de date invalide'], 400);
-        }
-
-        $qb = $em->createQueryBuilder()
-            ->select('r')
-            ->from(Rdv::class, 'r')
-            ->where('r.dateRdv BETWEEN :start AND :end')
-            ->andWhere('r.statut != :statut')
-            ->setParameter('start', $start->setTime(0, 0, 0))
-            ->setParameter('end', $end->setTime(23, 59, 59))
-            ->setParameter('statut', -2)
-            ->orderBy('r.dateRdv', 'ASC');
-
-        if ($medecinId) {
-            $qb->andWhere('r.medecin = :medecin')
-                ->setParameter('medecin', $medecinId);
-        }
-
-        $rdvs = $qb->getQuery()->getResult();
-
-        $data = array_map(function ($rdv) {
-            return [
-                'id' => $rdv->getId(),
-                'patient' => $rdv->getPatient()->getNom() . ' ' . $rdv->getPatient()->getPrenom(),
-                'medecin' => $rdv->getMedecin()->getNom() . ' ' . $rdv->getMedecin()->getPrenom(),
-                'medecin_id' => $rdv->getMedecin()->getId(),
-                'description' => $rdv->getDescription(),
-                'statut' => $rdv->getStatut(),
-                'dateRdv' => $rdv->getDateRdv()->format('Y-m-d H:i:s'),
-                'endDate' => $rdv->getEndDate()->format('Y-m-d H:i:s'),
-                'dateCreation' => $rdv->getDateCreation()->format('d-m-Y H:i:s'),
-                'reportedAt' =>  $rdv->getReportedAt() ? 'Reporté au ' . $rdv->getReportedAt()->format('d-m-Y H:i:s') : null
-            ];
-        }, $rdvs);
-
-        return new JsonResponse($data);
-    }
-
-
-    #[Route('/api/rdvs/{date}/medecin', name: 'api_rdvs_bymedecin', methods: ['GET'])]
-    public function getRdvsByMedecin(
-        string $date,
-        EntityManagerInterface $em
-    ): JsonResponse {
-        if (!$date) {
-            return new JsonResponse(['success' => false, 'error' => 'Date non fournie'], 400);
-        }
-
-        $dateObj = \DateTime::createFromFormat('Y-m-d', $date);
-        if (!$dateObj) {
-            return new JsonResponse(['success' => false, 'error' => 'Format de date invalide'], 400);
-        }
-
-        $user = $this->getUser();
-        if (!$user) {
-            return new JsonResponse(['success' => false, 'error' => 'Utilisateur non connecté'], 401);
-        }
-
-        $medecin = $em->getRepository(Employe::class)->findOneBy(['user' => $user]);
-        if (!$medecin) {
-            return new JsonResponse(['success' => false, 'error' => 'Aucun médecin associé'], 404);
-        }
-
-        $start = (clone $dateObj)->setTime(0, 0, 0);
-        $end   = (clone $dateObj)->setTime(23, 59, 59);
-
-        $rdvs = $em->createQueryBuilder()
-            ->select('r')
-            ->from(Rdv::class, 'r')
-            ->where('r.dateRdv BETWEEN :start AND :end')
-            ->andWhere('r.medecin = :medecin')
-            ->setParameter('start', $start)
-            ->setParameter('end', $end)
-            ->setParameter('medecin', $medecin)
-            ->orderBy('r.dateRdv', 'ASC')
-            ->getQuery()
-            ->getResult();
-
-        $data = array_map(function (Rdv $rdv) {
-            return [
-                'id' => $rdv->getId(),
-                'patient' => $rdv->getPatient()->getNom() . ' ' . $rdv->getPatient()->getPrenom(),
-                'medecin' => $rdv->getMedecin()->getNom() . ' ' . $rdv->getMedecin()->getPrenom(),
-                'medecin_id' => $rdv->getMedecin()->getId(),
-                'description' => $rdv->getDescription(),
-                'statut' => $rdv->getStatut(),
-                'dateRdv' => $rdv->getDateRdv()->format('Y-m-d H:i:s'),
-                'dateCreation' => $rdv->getDateCreation()->format('d-m-Y H:i:s'),
-                'reportedAt' => $rdv->getReportedAt() ? 'Reporté au ' . $rdv->getReportedAt()->format('d-m-Y H:i:s') : null
-            ];
-        }, $rdvs);
-
-        return new JsonResponse($data);
-    }
-
-
-    #[Route('/api/events/all')]
-    public function GetEvents(BookingRepository $BookRep): JsonResponse
-    {
-        $bookings = $BookRep->findAll();
-        $data = array_map(function (Booking $booking) {
-            return [
-                'id' => $booking->getId(),
-                'title' => $booking->getTitle(),
-                'description' => $booking->getDescription(),
-                'beginAt' => $booking->getBeginAt()->format('Y-m-d\TH:i:s'),
-                'endAt' => $booking->getEndAt()?->format('Y-m-d\TH:i:s'),
-                'statut' => $booking->getStatut(),
-            ];
-        }, $bookings);
-
-        return new JsonResponse($data);
-    }
-
-    #[Route('/api/event/createBooking', name: 'api_event_create_booking', methods: ['POST', 'GET'])]
-    public function createBooking(Request $request, EntityManagerInterface $em): JsonResponse
-    {
-        $data = json_decode($request->getContent(), true);
-
-        if (!isset($data['beginAt'], $data['title'])) {
-            return new JsonResponse(['success' => false, 'error' => 'Données manquantes'], 400);
-        }
-
-        $beginAt = \DateTime::createFromFormat('Y-m-d H:i:s', $data['beginAt']);
-        if (isset($data['endAt'])) {
-            $endAt = \DateTime::createFromFormat('Y-m-d H:i:s', $data['endAt']);
-        } else {
-            $endAt = null;
-        }
-
-
-        if (!$beginAt) {
-            return new JsonResponse(['success' => false, 'error' => 'Format de date invalide pour beginAt'], 400);
-        }
-
-        if ($endAt && $endAt < $beginAt) {
-            return new JsonResponse(['success' => false, 'error' => 'endAt ne peut pas être avant beginAt'], 400);
-        }
-
-        $booking = new Booking();
-        $booking->setBeginAt($beginAt)
-            ->setEndAt($endAt)
-            ->setTitle($data['title'])
-            ->setDescription($data['description'] ?? null);
-
-        $em->persist($booking);
-        $em->flush();
-
-        return new JsonResponse(['success' => true, 'id' => $booking->getId()]);
-    }
-
     #[Route('/api/users/create', name: 'api_users_create', methods: ['POST'])]
-    public function create(
-        Request $request,
-        EntityManagerInterface $em,
-        UserPasswordHasherInterface $passwordHasher
-    ): JsonResponse {
-        $data = json_decode($request->getContent(), true);
+    public function createUser(Request $request): JsonResponse
+    {
+        $result = $this->userService->createUser($this->jsonPayload($request));
+        $status = $result['status'] ?? (isset($result['error']) ? 400 : 200);
 
-        // Vérifier si le username est fourni
-        if (!isset($data['username'])) {
-            return new JsonResponse(['success' => false, 'error' => 'Username manquant'], 400);
-        }
-
-        // Vérifier si le username est déjà utilisé
-        $existingUser = $em->getRepository(User::class)->findOneBy(['username' => $data['username']]);
-        if ($existingUser) {
-            return new JsonResponse(['success' => false, 'error' => 'Nom d\'utilisateur déjà utilisé'], 400);
-        }
-
-        // Vérifier si l'employé a déjà un utilisateur
-        $existingUserWithEmployee = $em->getRepository(Employe::class)->findOneBy(['id' => $data['employee_id']]);
-        if (isset($data['employee_id'])) {
-            if ($existingUserWithEmployee->getUser()) {
-                return new JsonResponse(['success' => false, 'error' => 'Un utilisateur existe déjà pour cet employé'], 400);
-            }
-        }
-
-        $user = new User();
-        $user->setUsername($data['username']);
-
-        // Définir un mot de passe par défaut
-        $defaultPassword = '123'; // À modifier selon vos besoins
-        $hashedPassword = $passwordHasher->hashPassword($user, $defaultPassword);
-        $user->setPassword($hashedPassword);
-
-        // Définir le rôle en fonction du type d'employé
-        if ($existingUserWithEmployee->getType()) {
-            switch ($existingUserWithEmployee->getType()) {
-                case 'Admin':
-                    $user->setRoles(['ROLE_ADMIN']);
-                    break;
-                case 'Medecin':
-                    $user->setRoles(['ROLE_MEDECIN']);
-                    break;
-                case 'Receptionniste':
-                    $user->setRoles(['ROLE_RECEPTIONNISTE']);
-                    break;
-                default:
-                    $user->setRoles(['ROLE_USER']); // Rôle par défaut si le type n'est pas reconnu
-            }
-        }
-
-        // Si vous souhaitez lier un employé, vous pouvez le faire ici
-        if (isset($data['employee_id'])) {
-            $employee = $em->getRepository(Employe::class)->find($data['employee_id']);
-            if ($employee) {
-                $employee->setUser($user);
-                $em->persist($employee);
-            }
-        }
-
-        $em->persist($user);
-        $em->flush();
-
-        return new JsonResponse(['success' => true, 'user_id' => $user->getId()]);
+        return new JsonResponse($result, $status);
     }
 
     #[Route('/api/users/update', name: 'api_users_update', methods: ['POST'])]
-    public function update(
-        Request $request,
-        UserRepository $userRepository,
-        EntityManagerInterface $em
-    ): JsonResponse {
-        $data = json_decode($request->getContent(), true);
-        if (!isset($data['user_id'], $data['username'])) {
-            return new JsonResponse(['success' => false, 'error' => 'Paramètres manquants'], 400);
-        }
-        $user = $userRepository->find($data['user_id']);
-        if (!$user) {
-            return new JsonResponse(['success' => false, 'error' => 'Utilisateur non trouvé'], 404);
-        }
-        $user->setUsername($data['username']);
-        $em->flush();
+    public function updateUser(Request $request): JsonResponse
+    {
+        $result = $this->userService->updateUser($this->jsonPayload($request));
+        $status = $result['status'] ?? (isset($result['error']) ? 400 : 200);
 
-        return new JsonResponse(['success' => true]);
+        return new JsonResponse($result, $status);
     }
 
     #[Route('/api/users/reset_password', name: 'api_users_reset_password', methods: ['POST'])]
-    public function resetPassword(
-        Request $request,
-        UserRepository $userRepository,
-        EntityManagerInterface $em,
-        UserPasswordHasherInterface $passwordHasher
-    ): JsonResponse {
-        $data = json_decode($request->getContent(), true);
-        if (!isset($data['user_id'], $data['password'])) {
-            return new JsonResponse(['success' => false, 'error' => 'Paramètres manquants'], 400);
-        }
-        $user = $userRepository->find($data['user_id']);
-        if (!$user) {
-            return new JsonResponse(['success' => false, 'error' => 'Utilisateur non trouvé'], 404);
-        }
-        $hashedPassword = $passwordHasher->hashPassword($user, $data['password']);
-        $user->setPassword($hashedPassword);
-        $em->flush();
+    public function resetPassword(Request $request): JsonResponse
+    {
+        $result = $this->userService->resetPassword($this->jsonPayload($request));
+        $status = $result['status'] ?? (isset($result['error']) ? 400 : 200);
 
-        return new JsonResponse(['success' => true]);
+        return new JsonResponse($result, $status);
     }
 
     #[Route('/api/users/delete', name: 'api_users_delete', methods: ['POST'])]
-    public function delete(
-        Request $request,
-        UserRepository $userRepository,
-        EntityManagerInterface $em
-    ): JsonResponse {
-        $data = json_decode($request->getContent(), true);
-        if (!isset($data['user_id'])) {
-            return new JsonResponse(['success' => false, 'error' => 'Paramètre user_id manquant'], 400);
-        }
-        $user = $userRepository->find($data['user_id']);
-        if (!$user) {
-            return new JsonResponse(['success' => false, 'error' => 'Utilisateur non trouvé'], 404);
-        }
-        $em->remove($user);
-        $em->flush();
+    public function deleteUser(Request $request): JsonResponse
+    {
+        $result = $this->userService->deleteUser($this->jsonPayload($request));
+        $status = $result['status'] ?? (isset($result['error']) ? 400 : 200);
 
-        return new JsonResponse(['success' => true]);
+        return new JsonResponse($result, $status);
     }
 
     #[Route('/api/reports', name: 'api_reports_data', methods: ['GET'])]
-    public function reports(
-        Request $request
-        // Uncomment and use the repositories as needed:
-        // , ConsultationRepository $consultationRepository,
-        // FactureRepository $factureRepository,
-        // PatientRepository $patientRepository,
-        // EmployeeRepository $employeeRepository,
-        // AppointmentRepository $appointmentRepository
-    ): JsonResponse {
-        // Retrieve query parameters for period and custom date ranges
+    public function reports(Request $request): JsonResponse
+    {
         $period = $request->query->get('period', 'month');
-        $employeeId = $request->query->get('employeeId', null);
+        $employeeId = $request->query->get('employeeId');
         $customStart = $request->query->get('start');
         $customEnd = $request->query->get('end');
 
-        $now = new DateTime();
-        if ($period === 'custom' && $customStart && $customEnd) {
-            $startDate = new DateTime($customStart);
-            $endDate   = (new DateTime($customEnd))->setTime(23, 59, 59);
-        } else {
-            switch ($period) {
-                case 'today':
-                    $startDate = (clone $now)->setTime(0, 0, 0);
-                    $endDate   = (clone $now)->setTime(23, 59, 59);
-                    break;
-                case 'week':
-                    // Last 7 days (including today)
-                    $startDate = (clone $now)->modify('-6 days')->setTime(0, 0, 0);
-                    $endDate   = (clone $now)->setTime(23, 59, 59);
-                    break;
-                case 'year':
-                    $startDate = (clone $now)->modify('-11 months')->setTime(0, 0, 0);
-                    $endDate   = (clone $now)->setTime(23, 59, 59);
-                    break;
-                case 'month':
-                default:
-                    // Last 30 days by default
-                    $startDate = (clone $now)->modify('-29 days')->setTime(0, 0, 0);
-                    $endDate   = (clone $now)->setTime(23, 59, 59);
-                    break;
-            }
-        }
-
-        // ----------------------------------------------------------------
-        // Prepare the report data using your repository methods.
-        // Replace the dummy values below with calls to your repositories.
-
-        // 1. Employee Statistics
-        $employees = [];
-        // Example pseudocode: if filtering by employee, return that one;
-        // else, return all with computed stats.
-        /*
-        if ($employeeId) {
-            $employee = $employeeRepository->find($employeeId);
-            $employees[] = [
-                'name' => $employee->getNom(),
-                'role' => $employee->getRole(),
-                'consultations' => $consultationRepository->countByEmployeeAndPeriod($employee, $startDate, $endDate),
-                'patients' => $consultationRepository->countUniquePatientsByEmployee($employee, $startDate, $endDate),
-                'avgTime' => $consultationRepository->getAverageConsultationTimeByEmployee($employee, $startDate, $endDate),
-                'revenue' => $factureRepository->sumRevenueByEmployee($employee, $startDate, $endDate),
-            ];
-        } else {
-            $allEmployees = $employeeRepository->findAll();
-            foreach ($allEmployees as $employee) {
-                $employees[] = [
-                    'name' => $employee->getNom(),
-                    'role' => $employee->getRole(),
-                    'consultations' => $consultationRepository->countByEmployeeAndPeriod($employee, $startDate, $endDate),
-                    'patients' => $consultationRepository->countUniquePatientsByEmployee($employee, $startDate, $endDate),
-                    'avgTime' => $consultationRepository->getAverageConsultationTimeByEmployee($employee, $startDate, $endDate),
-                    'revenue' => $factureRepository->sumRevenueByEmployee($employee, $startDate, $endDate),
-                ];
-            }
-        }
-        */
-        // For demonstration, use dummy data:
-        $employees = [
-            [
-                'name' => 'Dr. Jean Dupont',
-                'role' => 'Medecin',
-                'consultations' => 20,
-                'patients' => 18,
-                'avgTime' => 30,
-                'revenue' => 500000,
-            ],
-            [
-                'name' => 'Infirmier Marie',
-                'role' => 'Infirmier',
-                'consultations' => 15,
-                'patients' => 14,
-                'avgTime' => 25,
-                'revenue' => 250000,
-            ]
-        ];
-
-        // 2. Role breakdown data
-        $rolesData = [
-            'Medecin' => 5,
-            'Infirmier' => 3,
-        ];
-
-        // 3. Financial Data
-        $finances = [
-            'revenue' => 1200000,
-            'expenses' => 300000,
-            'net' => 900000,
-            'unpaidCount' => 2,
-            'unpaidAmount' => 15000,
-        ];
-
-        // 4. Revenue trend over time (e.g., daily revenue for the period)
-        $revenueTrend = [
-            ['date' => '2025-04-01', 'amount' => 40000],
-            ['date' => '2025-04-02', 'amount' => 50000],
-            // Add additional daily data as needed
-        ];
-
-        // 5. Patients data: gender, age groups, regional distribution, etc.
-        $patientsData = [
-            'male' => 50,
-            'female' => 45,
-            'ageGroups' => [
-                '<18' => 5,
-                '18-30' => 20,
-                '31-50' => 30,
-                '51+' => 40,
-            ],
-            'regions' => [
-                ['region' => 'Paris', 'count' => 60],
-                ['region' => 'Lyon', 'count' => 20],
-            ],
-        ];
-
-        // 6. Appointments & Consultations trend data
-        $appointmentsTrend = [
-            ['date' => '2025-04-01', 'appointments' => 10, 'consultations' => 8],
-            ['date' => '2025-04-02', 'appointments' => 12, 'consultations' => 9],
-            // More data points...
-        ];
-        $attendanceRate = 80; // Example: 80%
-        $noShows = 3;
-
-        // Assemble all data into a structured response
-        $data = [
-            'employees'         => $employees,
-            'roles'             => $rolesData,
-            'finances'          => $finances,
-            'revenueTrend'      => $revenueTrend,
-            'patients'          => $patientsData,
-            'appointmentsTrend' => $appointmentsTrend,
-            'attendanceRate'    => $attendanceRate,
-            'noShows'           => $noShows,
-        ];
+        $data = $this->dashboardStatsService->getReportsData($period, $customStart, $customEnd, $employeeId);
 
         return new JsonResponse($data);
     }
