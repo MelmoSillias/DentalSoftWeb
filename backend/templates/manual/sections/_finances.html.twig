@@ -1,0 +1,118 @@
+<section id="finances" class="manual-card manual-section" aria-labelledby="finances-title">
+    <header class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+        <div>
+            <h2 id="finances-title" class="mb-1">Finances</h2>
+            <p class="mb-0">Transactions internes, transferts inter-comptes et modes de paiement.</p>
+        </div>
+        <span class="manual-pill"><i class="fas fa-chart-line mr-2"></i>Rôles : Admin</span>
+    </header>
+
+    <div class="manual-grid-2 mb-3">
+        <div class="manual-note manual-success">
+            <strong>À quoi sert</strong><br>
+            Enregistrer toutes les entrées/sorties, suivre les soldes, configurer les modes de paiement.
+        </div>
+        <div class="manual-note manual-warning">
+            <strong>À vérifier avant d’agir</strong><br>
+            Compte sélectionné, sens (entrée/sortie), justification, dates correctes.
+        </div>
+    </div>
+
+    <div class="manual-grid-2 align-items-start mb-3">
+        <div>
+            <h3 class="h5">Interface</h3>
+            <ul class="manual-list">
+                <li><strong>Filtres</strong> : période, type (entrée/sortie), compte.</li>
+                <li><strong>Tableau</strong> : date, libellé, compte, montant, opérateur.</li>
+                <li><strong>Boutons</strong> : Nouvelle transaction, Transfert inter-compte, Gestion modes de paiement.</li>
+                <li><strong>Graphiques</strong> (si présents) : répartition par type/compte.</li>
+            </ul>
+        </div>
+        <div class="manual-placeholder" aria-label="Maquette finances">
+            [ Image – Tableau transactions et boutons Nouvelle transaction / Transfert ]
+        </div>
+    </div>
+
+    <h3 class="h5">Actions disponibles</h3>
+    <div class="manual-grid-2 mb-3">
+        <div class="manual-action">
+            <h4>Enregistrer une transaction</h4>
+            <small>Bouton « Nouvelle transaction ».</small>
+            <dl>
+                <dt>Quand</dt><dd>Dépense ou recette à tracer.</dd>
+                <dt>Système</dt><dd>Crée une ligne entrée/sortie sur le compte.</dd>
+                <dt>Vérifier</dt><dd>Type, compte, montant, libellé, date.</dd>
+                <dt>Résultat</dt><dd>Ligne ajoutée; soldes mis à jour.</dd>
+            </dl>
+        </div>
+        <div class="manual-action">
+            <h4>Transfert inter-compte</h4>
+            <small>Bouton « Transfert inter-compte ».</small>
+            <dl>
+                <dt>Quand</dt><dd>Déplacer un montant entre deux comptes internes.</dd>
+                <dt>Système</dt><dd>Crée deux écritures (sortie source, entrée destination).</dd>
+                <dt>Vérifier</dt><dd>Source/destination, montant, motif.</dd>
+                <dt>Résultat</dt><dd>Soldes ajustés; traçabilité du motif.</dd>
+            </dl>
+        </div>
+        <div class="manual-action">
+            <h4>Gérer les modes de paiement</h4>
+            <small>Bouton « Modes de paiement ».</small>
+            <dl>
+                <dt>Quand</dt><dd>Activer/désactiver ou créer un mode (carte, mobile money, etc.).</dd>
+                <dt>Système</dt><dd>Active/désactive sans supprimer l’historique.</dd>
+                <dt>Vérifier</dt><dd>Impact sur la caisse; modes obligatoires non supprimables.</dd>
+                <dt>Résultat</dt><dd>Liste mise à jour; disponibles à l’encaissement.</dd>
+            </dl>
+        </div>
+    </div>
+
+    <h3 class="h5">Workflow pas-à-pas</h3>
+    <ol class="manual-steps">
+        <li class="manual-step">
+            <div class="d-flex align-items-center justify-content-between">
+                <span class="manual-step-number">1</span>
+                <span class="manual-tag">Admin</span>
+            </div>
+            <p class="manual-step-title">Enregistrer une dépense</p>
+            <ul class="manual-list">
+                <li>Cliquer <strong>Nouvelle transaction</strong>, choisir <strong>Sortie</strong>.</li>
+                <li>Sélectionner le compte, saisir libellé (« consommables ») et montant.</li>
+                <li>Valider; vérifier que le tableau affiche la ligne.</li>
+            </ul>
+            <div class="manual-placeholder mt-2">[ Image – Formulaire sortie avec compte et libellé ]</div>
+        </li>
+        <li class="manual-step">
+            <div class="d-flex align-items-center justify-content-between">
+                <span class="manual-step-number">2</span>
+                <span class="manual-tag">Admin</span>
+            </div>
+            <p class="manual-step-title">Transférer un montant</p>
+            <ul class="manual-list">
+                <li><strong>Transfert inter-compte</strong> → choisir source et destination.</li>
+                <li>Saisir le montant et le motif (« fermeture caisse soir »).</li>
+                <li>Valider; contrôler les deux écritures créées.</li>
+            </ul>
+            <div class="manual-placeholder mt-2">[ Image – Formulaire transfert inter-compte ]</div>
+        </li>
+    </ol>
+
+    <div class="manual-grid-2 mt-3">
+        <div class="manual-note manual-success">
+            <strong>Bonnes pratiques</strong>
+            <ul class="manual-list mt-2">
+                <li>Renseigner un libellé explicite pour chaque écriture.</li>
+                <li>Utiliser les transferts plutôt que des sorties/entrées séparées.</li>
+                <li>Limiter la création de nouveaux modes de paiement pour garder des rapports clairs.</li>
+            </ul>
+        </div>
+        <div class="manual-note manual-warning">
+            <strong>Erreurs fréquentes</strong>
+            <ul class="manual-list mt-2">
+                <li>Montant mal saisi (virgule/point) → vérifier avant validation.</li>
+                <li>Suppression d’un mode obligatoire → non autorisée (préférer désactiver).</li>
+                <li>Oubli de période dans les filtres → tableau incomplet.</li>
+            </ul>
+        </div>
+    </div>
+</section>

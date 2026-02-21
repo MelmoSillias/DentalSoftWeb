@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Médical</title>
+    {# Bootstrap 5 de base #}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <style>
+        /* Layout global avec sidebar fixe et main flexible */
+        html, body { height: 100%; scroll-behavior: smooth; }
+        body {
+            display: flex;
+            margin: 0;
+            background: #f7f9fc;
+            color: #1a1f2b;
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+        }
+        .ds-shell { display: flex; width: 100%; min-height: 100vh; }
+        aside.ds-sidebar {
+            flex: 0 0 250px;
+            max-width: 250px;
+            height: 100vh;
+            overflow-y: auto;
+            background: #0d1b2a;
+            color: #fff;
+            position: sticky;
+            top: 0;
+            padding: 1.25rem 1rem;
+        }
+        .ds-brand { font-weight: 700; letter-spacing: .5px; }
+        .ds-nav a {
+            color: #dbe2ef;
+            text-decoration: none;
+            padding: .6rem .9rem;
+            border-radius: .5rem;
+            display: block;
+            transition: background .2s ease, color .2s ease;
+            margin-bottom: .35rem;
+        }
+        .ds-nav a:hover { background: rgba(255,255,255,.1); color: #fff; }
+        .ds-main { flex: 1; padding: 1.5rem; overflow-x: hidden; }
+        .ds-section { margin-bottom: 2rem; }
+        .ds-card { border: 1px solid #e7ecf3; box-shadow: 0 10px 30px rgba(17,24,39,.06); }
+        .ds-badge { font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: #0d6efd; }
+        .ds-placeholder { background: #eef2f7 url('https://via.placeholder.com/600x300') center/cover no-repeat; border-radius: .75rem; min-height: 220px; border: 1px dashed #cbd5e1; }
+        .ds-actions { gap: .5rem; }
+        .ds-table-wrap { overflow-x: auto; }
+        /* Sidebar responsive */
+        @media (max-width: 768px) {
+            body { display: block; }
+            aside.ds-sidebar {
+                position: relative;
+                width: 100%;
+                max-width: none;
+                height: auto;
+                margin-bottom: 1rem;
+            }
+            .ds-main { padding: 1rem; }
+        }
+    </style>
+</head>
+<body>
+<div class="ds-shell">
+    <!-- Sidebar latérale fixe contenant la navigation principale -->
+    <aside class="ds-sidebar">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+            <div class="ds-brand">Dashboard Médical</div>
+            <button class="btn btn-sm btn-outline-light d-md-none" id="toggleSidebar">≡</button>
+        </div>
+        <nav class="ds-nav" id="sidebarNav">
+            <a href="#accueil">Accueil</a>
+            <a href="#patients">Patients</a>
+            <a href="#rendezvous">Rendez-vous</a>
+            <a href="#facturation">Facturation</a>
+            <a href="#parametres">Paramètres</a>
+        </nav>
+    </aside>
+
+    <!-- Conteneur principal qui occupe l’espace restant -->
+    <main class="ds-main">
+        {# Section Accueil #}
+        {% include 'dashboard/_accueil.twig' %}
+
+        {# Section Patients #}
+        {% include 'dashboard/_patients.twig' %}
+
+        {# Section Rendez-vous #}
+        {% include 'dashboard/_rendezvous.twig' %}
+
+        {# Section Facturation #}
+        {% include 'dashboard/_facturation.twig' %}
+
+        {# Section Paramètres #}
+        {% include 'dashboard/_parametres.twig' %}
+    </main>
+</div>
+
+{# Modale générique pour confirmations/export #}
+<div class="modal fade" id="dsModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="dsModalTitle">Confirmer l’action</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+      </div>
+      <div class="modal-body" id="dsModalBody">Voulez-vous poursuivre ?</div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+        <button type="button" class="btn btn-primary" id="dsModalConfirm">Confirmer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// Smooth scroll sur tous les liens d’ancre
+const scrollLinks = document.querySelectorAll('a[href^="#"]');
+scrollLinks.forEach(link => {
+    link.addEventListener('click', (e) => {
+        const target = document.querySelector(link.getAttribute('href'));
+        if (target) {
+            e.preventDefault();
+            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    });
+});
+
+// Sidebar toggle mobile
+const toggleSidebarBtn = document.getElementById('toggleSidebar');
+const sidebarNav = document.getElementById('sidebarNav');
+if (toggleSidebarBtn) {
+    toggleSidebarBtn.addEventListener('click', () => {
+        sidebarNav.classList.toggle('d-none');
+    });
+}
+
+// Helpers
+const modalEl = document.getElementById('dsModal');
+const modalTitle = document.getElementById('dsModalTitle');
+const modalBody = document.getElementById('dsModalBody');
+const modalConfirm = document.getElementById('dsModalConfirm');
+const bsModal = modalEl ? new bootstrap.Modal(modalEl) : null;
+
+function openModal(title, body, onConfirm) {
+    if (!bsModal) return;
+    modalTitle.textContent = title;
+    modalBody.textContent = body;
+    modalConfirm.onclick = () => {
+        if (onConfirm) onConfirm();
+        bsModal.hide();
+    };
+    bsModal.show();
+}
+
+// Accueil actions
+function refreshStats() {
+    const cards = document.querySelectorAll('[data-stat-value]');
+    cards.forEach((card) => {
+        card.classList.add('placeholder-wave');
+        setTimeout(() => {
+            const newValue = Math.floor(Math.random() * 200) + 1;
+            card.textContent = newValue;
+            card.classList.remove('placeholder-wave');
+        }, 700);
+    });
+}
+function exportReport() {
+    openModal('Exporter le rapport', 'Simulation d’export PDF. Continuer ?', () => {
+        window.print();
+    });
+}
+
+// Patients actions
+function openPatientDetails(rowId) {
+    openModal('Détails patient', `Affichage de la fiche patient #${rowId}.`, null);
+}
+function editPatient(rowId) {
+    const row = document.querySelector(`[data-row="${rowId}"]`);
+    if (!row) return;
+    row.classList.add('table-warning');
+    setTimeout(() => {
+        row.classList.remove('table-warning');
+        openModal('Modification', 'Changements simulés et sauvegardés.', null);
+    }, 500);
+}
+function deletePatient(rowId) {
+    openModal('Supprimer patient', 'Confirmez la suppression simulée.', () => {
+        const row = document.querySelector(`[data-row="${rowId}"]`);
+        if (row) row.remove();
+    });
+}
+function addRdv(rowId) {
+    document.getElementById('rendezvous')?.scrollIntoView({ behavior: 'smooth' });
+    console.log('Pré-remplir RDV pour patient', rowId);
+}
+
+// Rendez-vous actions
+function planifierRdv() { openModal('Planifier un RDV', 'Création simulée.', null); }
+function annulerRdv(id) { openModal('Annuler RDV', `Annulation du RDV #${id}`, null); }
+
+// Facturation actions
+function genererFacture() { openModal('Générer facture', 'Facture générée (simulation).', null); }
+function payerFacture(id) { openModal('Payer facture', `Paiement facture #${id}`, null); }
+
+// Paramètres actions
+function saveSettings() { openModal('Sauvegarde', 'Réglages sauvegardés (simulation).', null); }
+function logout() { window.location.href = '/logout'; }
+</script>
+</body>
+</html>

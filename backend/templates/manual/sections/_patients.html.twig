@@ -1,0 +1,184 @@
+<section id="patients" class="manual-card manual-section" aria-labelledby="patients-title">
+    <header class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+        <div>
+            <h2 id="patients-title" class="mb-1">Patients</h2>
+            <p class="mb-0">Créer, chercher, éditer, lancer une consultation ou planifier un rendez-vous à partir d’une fiche patient.</p>
+        </div>
+        <span class="manual-pill"><i class="fas fa-user-shield mr-2"></i>Rôles : Réception · Médecin · Admin</span>
+    </header>
+
+    <div class="manual-grid-2 mb-3">
+        <div class="manual-note manual-success">
+            <strong>À quoi sert</strong><br>
+            Centraliser l’identité, l’historique médical et les actions (consultations, RDV, impression) pour chaque patient.
+        </div>
+        <div class="manual-note manual-warning">
+            <strong>À vérifier avant d’agir</strong><br>
+            Rôle connecté (certains boutons sont masqués), exactitude du téléphone (évite doublons), présence d’une consultation déjà ouverte.
+        </div>
+    </div>
+
+    <div class="manual-grid-2 align-items-start mb-3">
+        <div>
+            <h3 class="h5">Interface (vue liste)</h3>
+            <ul class="manual-list">
+                <li><strong>Barre haute</strong> : recherche par nom/prénom/téléphone, filtres rapides.</li>
+                <li><strong>Tableau central</strong> : colonnes Nom, Prénom, Sexe, Âge, Téléphone, Dernière visite.</li>
+                <li><strong>Colonne Actions (droite)</strong> : Éditer, Dossier, Consultation, RDV, Imprimer.</li>
+                <li><strong>Bandeau d’état</strong> : messages de succès/erreur après chaque opération.</li>
+                <li><strong>Pagination bas de page</strong> : navigation entre lots de résultats.</li>
+            </ul>
+        </div>
+        <div class="manual-placeholder" aria-label="Maquette de la liste patients">
+            [ Image – Liste des patients avec colonne Actions et barre de recherche ]
+        </div>
+    </div>
+
+    <h3 class="h5">Actions disponibles</h3>
+    <div class="manual-grid-2 mb-3">
+        <div class="manual-action">
+            <h4>Créer un patient</h4>
+            <small>Bouton « Nouveau patient » (haut droite).</small>
+            <dl>
+                <dt>Quand l’utiliser</dt><dd>Nouveau patient ou doublon confirmé inexistant.</dd>
+                <dt>Ce que le système fait</dt><dd>Enregistre identité, contrôle doublons par téléphone.</dd>
+                <dt>Ce que l’utilisateur vérifie</dt><dd>Nom/Prénom/Sexe/Téléphone obligatoires, format international conseillé.</dd>
+                <dt>Résultat attendu</dt><dd>Ligne ajoutée dans la liste; actions disponibles.</dd>
+            </dl>
+        </div>
+        <div class="manual-action">
+            <h4>Rechercher / Filtrer</h4>
+            <small>Barre de recherche + tri sur en-têtes.</small>
+            <dl>
+                <dt>Quand</dt><dd>Avant toute création pour éviter doublons.</dd>
+                <dt>Système</dt><dd>Filtre en direct; remet la pagination à la première page.</dd>
+                <dt>Vérifier</dt><dd>Orthographe et accents; numéro sans espaces.</dd>
+                <dt>Résultat</dt><dd>Tableau réduit aux lignes correspondantes.</dd>
+            </dl>
+        </div>
+        <div class="manual-action">
+            <h4>Ouvrir le dossier</h4>
+            <small>Icône dossier dans la colonne Actions.</small>
+            <dl>
+                <dt>Quand</dt><dd>Consulter l’historique médical ou imprimer infos personnelles.</dd>
+                <dt>Système</dt><dd>Charge identité + consultations + fiches associées.</dd>
+                <dt>Vérifier</dt><dd>Que vous avez le bon patient; rôle autorisé à imprimer.</dd>
+                <dt>Résultat</dt><dd>Vue dossier affichée; bouton d’impression si autorisé.</dd>
+            </dl>
+        </div>
+        <div class="manual-action">
+            <h4>Lancer une consultation</h4>
+            <small>Bouton « Consultation » dans la ligne.</small>
+            <dl>
+                <dt>Quand</dt><dd>Patient présent ou téléconsultation.</dd>
+                <dt>Système</dt><dd>Vérifie consultation active; propose médecin, type payante/gratuite.</dd>
+                <dt>Vérifier</dt><dd>Consultation en cours non existante; choix du médecin; mode de paiement si payante.</dd>
+                <dt>Résultat</dt><dd>Nouvelle consultation en statut « En attente » accessible dans le module dédié.</dd>
+            </dl>
+        </div>
+        <div class="manual-action">
+            <h4>Planifier un rendez-vous</h4>
+            <small>Bouton « RDV » dans la ligne.</small>
+            <dl>
+                <dt>Quand</dt><dd>Planification future ou suivi post-acte.</dd>
+                <dt>Système</dt><dd>Propose date/heure/durée, médecin, salle; vérifie chevauchements.</dd>
+                <dt>Vérifier</dt><dd>Disponibilité salle/médecin; motif saisi; durée cohérente.</dd>
+                <dt>Résultat</dt><dd>RDV créé et visible dans l’agenda; statut initial « en attente ».</dd>
+            </dl>
+        </div>
+        <div class="manual-action">
+            <h4>Imprimer / Exporter</h4>
+            <small>Actions du dossier (infos perso, fiches, ordonnances).</small>
+            <dl>
+                <dt>Quand</dt><dd>Remettre un document au patient ou archiver.</dd>
+                <dt>Système</dt><dd>Génère PDF/HTML selon le document.</dd>
+                <dt>Vérifier</dt><dd>Connexion HTTPS, navigateur autorisant les popups.</dd>
+                <dt>Résultat</dt><dd>Document prêt à imprimer ou enregistrer.</dd>
+            </dl>
+        </div>
+    </div>
+
+    <h3 class="h5">Workflows pas-à-pas (cas réel)</h3>
+    <ol class="manual-steps">
+        <li class="manual-step">
+            <div class="d-flex align-items-center justify-content-between">
+                <span class="manual-step-number">1</span>
+                <span class="manual-tag">Cas : urgence douleur molaire</span>
+            </div>
+            <p class="manual-step-title">Créer le patient et vérifier l’absence de doublon</p>
+            <ul class="manual-list">
+                <li>Rechercher « Traore » ou « +22370000000 » dans la barre haute.</li>
+                <li>Si aucune ligne : cliquer <strong>Nouveau patient</strong> et saisir identité + contact d’urgence.</li>
+                <li>Contrôler le récapitulatif avant validation.</li>
+            </ul>
+            <div class="manual-placeholder mt-2">[ Image – Modal création patient avec champs requis ]</div>
+        </li>
+        <li class="manual-step">
+            <div class="d-flex align-items-center justify-content-between">
+                <span class="manual-step-number">2</span>
+                <span class="manual-tag">Réception</span>
+            </div>
+            <p class="manual-step-title">Lancer une consultation payante</p>
+            <ul class="manual-list">
+                <li>Dans la ligne, bouton <strong>Consultation</strong>.</li>
+                <li>Choisir le médecin disponible, cocher <strong>Payante</strong>, sélectionner le mode de paiement.</li>
+                <li>Valider : la consultation apparaît en « En attente ».</li>
+            </ul>
+            <div class="manual-placeholder mt-2">[ Image – Formulaire création consultation depuis patient ]</div>
+        </li>
+        <li class="manual-step">
+            <div class="d-flex align-items-center justify-content-between">
+                <span class="manual-step-number">3</span>
+                <span class="manual-tag">Médecin</span>
+            </div>
+            <p class="manual-step-title">Ouvrir le dossier et préparer la fiche</p>
+            <ul class="manual-list">
+                <li>Bouton <strong>Dossier</strong> → onglet Fiches.</li>
+                <li>Continuer la dernière fiche ou en créer une nouvelle.</li>
+                <li>Remplir motif, examens, traitements; sauvegarde auto toutes quelques secondes.</li>
+            </ul>
+            <div class="manual-placeholder mt-2">[ Image – Dossier patient avec onglet Fiches ]</div>
+        </li>
+        <li class="manual-step">
+            <div class="d-flex align-items-center justify-content-between">
+                <span class="manual-step-number">4</span>
+                <span class="manual-tag">Suivi</span>
+            </div>
+            <p class="manual-step-title">Planifier un contrôle</p>
+            <ul class="manual-list">
+                <li>Depuis la ligne patient, bouton <strong>RDV</strong>.</li>
+                <li>Date J+7, durée 30 min, même médecin et salle.</li>
+                <li>Valider : le RDV s’affiche dans l’agenda avec statut en attente.</li>
+            </ul>
+            <div class="manual-placeholder mt-2">[ Image – Planification RDV contrôle ]</div>
+        </li>
+    </ol>
+
+    <div class="manual-grid-2 mt-3">
+        <div class="manual-note manual-success">
+            <strong>Bonnes pratiques</strong>
+            <ul class="manual-list mt-2">
+                <li>Saisir le téléphone complet dès la création.</li>
+                <li>Créer le patient avant le RDV ou la consultation pour tracer correctement.</li>
+                <li>Utiliser la recherche à chaque arrivée pour éviter les doublons.</li>
+            </ul>
+        </div>
+        <div class="manual-note manual-warning">
+            <strong>Erreurs fréquentes</strong>
+            <ul class="manual-list mt-2">
+                <li>Créer une consultation alors qu’une est déjà en attente → vérifier le message d’avertissement.</li>
+                <li>Oublier de choisir le médecin ou le mode de paiement → blocage de la validation payante.</li>
+                <li>Impression bloquée par le navigateur → autoriser les fenêtres popups.</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="manual-note mt-3">
+        <strong>Astuces métier</strong>
+        <ul class="manual-list mt-2">
+            <li>En cas d’homonymes, ajoutez systématiquement la date de naissance et un contact d’urgence.</li>
+            <li>Pour un suivi orthodontie, ajoutez un motif précis lors du RDV (ex : « contrôle multi-attaches mois 3 ») pour retrouver la session.</li>
+            <li>Avant de clôturer la consultation, imprimez ou exportez les ordonnances et devis nécessaires.</li>
+        </ul>
+    </div>
+</section>

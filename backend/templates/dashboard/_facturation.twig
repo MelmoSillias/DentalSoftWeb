@@ -1,0 +1,57 @@
+{# Section Facturation : liste + graph placeholder + actions #}
+<section id="facturation" class="ds-section">
+    <!-- En-tête section facturation -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-3">
+        <div>
+            <h2 class="h4 mb-1">Facturation</h2>
+            <p class="text-muted mb-0">Suivi des factures et paiements.</p>
+        </div>
+        <div class="d-flex ds-actions">
+            <button class="btn btn-primary" onclick="genererFacture()">Générer facture</button>
+        </div>
+    </div>
+
+    <!-- Graph placeholder -->
+    <div class="ds-placeholder mb-3" aria-label="Graphique facturation">
+        <!-- Image placeholder pour graphique -->
+    </div>
+
+    <!-- Liste des factures -->
+    <div class="card ds-card">
+        <div class="card-body">
+            <div class="ds-table-wrap">
+                <table class="table table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Patient</th>
+                            <th>Montant</th>
+                            <th>Statut</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>F-001</td>
+                            <td>Traoré Aïcha</td>
+                            <td>75 000</td>
+                            <td><span class="badge text-bg-warning">En attente</span></td>
+                            <td class="d-flex ds-actions">
+                                <button class="btn btn-outline-success btn-sm" onclick="payerFacture('F-001')">Payer</button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>F-002</td>
+                            <td>Diallo Moussa</td>
+                            <td>50 000</td>
+                            <td><span class="badge text-bg-success">Payée</span></td>
+                            <td class="d-flex ds-actions">
+                                <button class="btn btn-outline-secondary btn-sm" disabled>Déjà payé</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</section>

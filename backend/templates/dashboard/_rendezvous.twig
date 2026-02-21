@@ -1,0 +1,58 @@
+{# Section Rendez-vous : calendrier + liste + actions #}
+<section id="rendezvous" class="ds-section">
+    <!-- En-tête section rendez-vous -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-3">
+        <div>
+            <h2 class="h4 mb-1">Rendez-vous</h2>
+            <p class="text-muted mb-0">Planifier, visualiser et annuler des rendez-vous.</p>
+        </div>
+        <div class="d-flex ds-actions">
+            <button class="btn btn-primary" onclick="planifierRdv()">Planifier</button>
+            <button class="btn btn-outline-secondary">Exporter</button>
+        </div>
+    </div>
+
+    <!-- Placeholder calendrier -->
+    <div class="ds-placeholder mb-3" aria-label="Calendrier des rendez-vous">
+        <!-- Image placeholder pour le calendrier -->
+    </div>
+
+    <!-- Liste des rendez-vous -->
+    <div class="card ds-card">
+        <div class="card-body">
+            <div class="ds-table-wrap">
+                <table class="table table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Patient</th>
+                            <th>Date</th>
+                            <th>Médecin</th>
+                            <th>Statut</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Traoré Aïcha</td>
+                            <td>2025-12-27 10:00</td>
+                            <td>Dr. Keita</td>
+                            <td><span class="badge text-bg-success">Confirmé</span></td>
+                            <td class="d-flex ds-actions">
+                                <button class="btn btn-outline-danger btn-sm" onclick="annulerRdv(101)">Annuler</button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>Diallo Moussa</td>
+                            <td>2025-12-27 14:00</td>
+                            <td>Dr. Coulibaly</td>
+                            <td><span class="badge text-bg-warning">En attente</span></td>
+                            <td class="d-flex ds-actions">
+                                <button class="btn btn-outline-danger btn-sm" onclick="annulerRdv(102)">Annuler</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</section>

@@ -1,0 +1,128 @@
+<section id="caisse" class="manual-card manual-section" aria-labelledby="caisse-title">
+    <header class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+        <div>
+            <h2 id="caisse-title" class="mb-1">Caisse</h2>
+            <p class="mb-0">Encaissement des factures (payées, partielles, impayées) et validation des factures vides.</p>
+        </div>
+        <span class="manual-pill"><i class="fas fa-cash-register mr-2"></i>Rôles : Réception · Admin</span>
+    </header>
+
+    <div class="manual-grid-2 mb-3">
+        <div class="manual-note manual-success">
+            <strong>À quoi sert</strong><br>
+            Suivre le reste à payer, encaisser par mode de paiement, imprimer reçus et tickets.
+        </div>
+        <div class="manual-note manual-warning">
+            <strong>À vérifier avant d’agir</strong><br>
+            Facture sélectionnée, mode de paiement autorisé, montant saisi cohérent avec le reste dû.
+        </div>
+    </div>
+
+    <div class="manual-grid-2 align-items-start mb-3">
+        <div>
+            <h3 class="h5">Interface</h3>
+            <ul class="manual-list">
+                <li><strong>Filtres haut</strong> : période, statut (payé/partiel/impayé), médecin (option).</li>
+                <li><strong>Tableau</strong> : patient, facture, montant total, reste à payer, statut, mode.</li>
+                <li><strong>Colonne Actions</strong> : Régler, Détails, Imprimer (devis/facture/reçu).</li>
+                <li><strong>Badge vide non validé</strong> : facture sans lignes à valider.</li>
+            </ul>
+        </div>
+        <div class="manual-placeholder" aria-label="Maquette caisse">
+            [ Image – Liste des factures avec colonne Régler et badge Reste à payer ]
+        </div>
+    </div>
+
+    <h3 class="h5">Actions disponibles</h3>
+    <div class="manual-grid-2 mb-3">
+        <div class="manual-action">
+            <h4>Encaisser une facture</h4>
+            <small>Bouton « Régler ».</small>
+            <dl>
+                <dt>Quand</dt><dd>Le patient règle tout ou partie.</dd>
+                <dt>Système</dt><dd>Calcule le reste; enregistre le paiement; met à jour le statut.</dd>
+                <dt>Vérifier</dt><dd>Montant saisi (≤ reste), mode choisi, justificatif éventuel.</dd>
+                <dt>Résultat</dt><dd>Reste à jour; reçu imprimable.</dd>
+            </dl>
+        </div>
+        <div class="manual-action">
+            <h4>Paiement partiel</h4>
+            <small>Formulaire Régler → montant partiel.</small>
+            <dl>
+                <dt>Quand</dt><dd>Accompte ou paiement fractionné.</dd>
+                <dt>Système</dt><dd>Diminue le reste; conserve l’historique des versements.</dd>
+                <dt>Vérifier</dt><dd>Montant exact remis; mode de paiement associé.</dd>
+                <dt>Résultat</dt><dd>Statut partiel; reste visible pour encaissement ultérieur.</dd>
+            </dl>
+        </div>
+        <div class="manual-action">
+            <h4>Valider une facture vide</h4>
+            <small>Badge « Vide non validé » → Régler.</small>
+            <dl>
+                <dt>Quand</dt><dd>Consultation à 0 ou offerte.</dd>
+                <dt>Système</dt><dd>Marque la facture comme réglée à 0.</dd>
+                <dt>Vérifier</dt><dd>Que l’acte est bien gratuit et autorisé.</dd>
+                <dt>Résultat</dt><dd>Statut payé; traçabilité conservée.</dd>
+            </dl>
+        </div>
+        <div class="manual-action">
+            <h4>Imprimer reçu / facture</h4>
+            <small>Actions Imprimer.</small>
+            <dl>
+                <dt>Quand</dt><dd>Remettre un justificatif au patient ou archiver.</dd>
+                <dt>Système</dt><dd>Génère PDF/HTML selon le modèle.</dd>
+                <dt>Vérifier</dt><dd>Popups autorisées; imprimante configurée.</dd>
+                <dt>Résultat</dt><dd>Document téléchargeable/imprimable.</dd>
+            </dl>
+        </div>
+    </div>
+
+    <h3 class="h5">Workflow pas-à-pas</h3>
+    <ol class="manual-steps">
+        <li class="manual-step">
+            <div class="d-flex align-items-center justify-content-between">
+                <span class="manual-step-number">1</span>
+                <span class="manual-tag">Réception</span>
+            </div>
+            <p class="manual-step-title">Encaisser avec paiement partiel</p>
+            <ul class="manual-list">
+                <li>Filtrer la date du jour, repérer la facture avec reste.</li>
+                <li>Cliquer <strong>Régler</strong>, saisir le montant remis (ex : 20 000), choisir mode.</li>
+                <li>Valider et imprimer le reçu si demandé.</li>
+            </ul>
+            <div class="manual-placeholder mt-2">[ Image – Modal paiement avec champ montant et mode ]</div>
+        </li>
+        <li class="manual-step">
+            <div class="d-flex align-items-center justify-content-between">
+                <span class="manual-step-number">2</span>
+                <span class="manual-tag">Admin</span>
+            </div>
+            <p class="manual-step-title">Clore une facture vide</p>
+            <ul class="manual-list">
+                <li>Repérer le badge « Vide non validé ».</li>
+                <li>Ouvrir <strong>Régler</strong> et valider sans montant.</li>
+                <li>Contrôler que le statut passe en payé.</li>
+            </ul>
+            <div class="manual-placeholder mt-2">[ Image – Badge Vide non validé et action Régler ]</div>
+        </li>
+    </ol>
+
+    <div class="manual-grid-2 mt-3">
+        <div class="manual-note manual-success">
+            <strong>Bonnes pratiques</strong>
+            <ul class="manual-list mt-2">
+                <li>Noter le mode de paiement réel pour la réconciliation.</li>
+                <li>Imprimer ou envoyer le reçu après chaque encaissement.</li>
+                <li>En cas d’annulation, ajouter un commentaire dans l’historique.</li>
+            </ul>
+        </div>
+        <div class="manual-note manual-warning">
+            <strong>Erreurs fréquentes</strong>
+            <ul class="manual-list mt-2">
+                <li>Montant supérieur au reste → refusé.</li>
+                <li>Bouton Régler absent → facture déjà payée ou rôle insuffisant.</li>
+                <li>Popups bloquées → impression impossible.</li>
+            </ul>
+        </div>
+    </div>
+</section>

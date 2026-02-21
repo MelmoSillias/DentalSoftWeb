@@ -1,0 +1,573 @@
+<script setup>
+import ConsultationEnCoursForm from '@/components/consultations/ConsultationEnCoursForm.vue';
+import DevisForm from '@/components/consultations/DevisForm.vue';
+import OrdonnanceModal from '@/components/consultations/OrdonnanceModal.vue';
+import SaveIndicator from '@/components/consultations/SaveIndicator.vue';
+import SectionSwitcher from '@/components/consultations/SectionSwitcher.vue';
+import AllergyDialogForm from '@/components/patients/AllergyDialogForm.vue';
+import AntecedentDialogForm from '@/components/patients/AntecedentDialogForm.vue';
+import PrintOrdonnanceBody from '@/components/print/PrintOrdonnanceBody.vue';
+import EntretienVerbalForm from '@/components/fiche-medicale/EntretienVerbalForm.vue';
+import ExamensFicheForm from '@/components/fiche-medicale/ExamensFicheForm.vue';
+import FicheBilansForm from '@/components/fiche-medicale/FicheBilansForm.vue';
+import FicheDocumentsForm from '@/components/fiche-medicale/FicheDocumentsForm.vue';
+import FichePatientInfoSection from '@/components/fiche-medicale/FichePatientInfoSection.vue';
+import FichePlanTraitementForm from '@/components/fiche-medicale/FichePlanTraitementForm.vue';
+import SeancesSection from '@/components/fiche-medicale/SeancesSection.vue';
+import { useConsultationsForm } from '@/composables/useConsultationsForm';
+import { usePrinter } from '@/composables/usePrinter';
+import { addPatientAllergy, addPatientAntecedent, deletePatientAllergy, deletePatientAntecedent } from '@/services/patients';
+import { fetchOrdonnancePrintData } from '@/services/printService';
+import Button from 'primevue/button';
+import ConfirmDialog from 'primevue/confirmdialog';
+import SelectButton from 'primevue/selectbutton';
+import Toast from 'primevue/toast';
+import { useConfirm } from 'primevue/useconfirm';
+import { useToast } from 'primevue/usetoast';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
+
+const route = useRoute();
+const router = useRouter();
+const toast = useToast();
+const confirm = useConfirm();
+const token = localStorage.getItem('token');
+const { printComponent } = usePrinter();
+
+const ficheId = ref(route.query.ficheId ? Number(route.query.ficheId) : null);
+const consultId = ref(route.query.id ? Number(route.query.id) : null);
+
+const {
+    loading,
+    activeSection,
+    switcherMode,
+    sectionInitKey,
+    data,
+    saving,
+    dirty,
+    lastSavedAt,
+    autoSaveEnabled,
+    savingCount,
+    dirtySectionsList,
+    loadData,
+    watchSection,
+    saveEntretienSection: saveEntretien,
+    saveExamensSection: saveExamens,
+    saveDocumentsSection: saveDocuments,
+    saveBilansSection: saveBilans,
+    savePlanTraitementSection: savePlanTraitement,
+    saveDevisSection: saveDevis,
+    saveConsultSection: saveConsult,
+    saveOrdonnanceSection: saveOrdonnance,
+    closeConsult
+} = useConsultationsForm({ ficheId, consultId, token });
+
+const ordonnanceModalVisible = ref(false);
+const ordonnanceDraft = ref({ date: '', medecinNom: '', note: '', lignes: [] });
+const showAntecedentDialog = ref(false);
+const showAllergyDialog = ref(false);
+const savingAntecedent = ref(false);
+const savingAllergy = ref(false);
+const isIndicatorFloating = ref(false);
+
+const displayModeOptions = [
+    { label: 'Onglets', value: 'tabs' },
+    { label: 'Sidebar', value: 'sidebar' }
+];
+
+const medecinsOptions = computed(() => (data.medecins || []).map((m) => ({
+    id: m.id,
+    label: m.label || m.FullName || m.fullName || m.name || m.nom || `${m.prenom ?? ''} ${m.nom ?? ''}`.trim()
+})));
+
+const infirmiersOptions = computed(() => (data.infirmiers || []).map((i) => ({
+    id: i.id,
+    label: i.label || i.Fullname || i.fullname || i.fullName || i.name || i.nom || `${i.prenom ?? ''} ${i.nom ?? ''}`.trim()
+})));
+
+const sallesOptions = computed(() => (data.salles || []).map((s) => ({ id: s.id, label: s.label || s.nom || s.name || '' })));
+
+const computeAgeYears = (value) => {
+    if (!value) return 0;
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return Number(value) || 0;
+    const diff = Date.now() - d.getTime();
+    return Math.max(0, Math.floor(diff / (1000 * 60 * 60 * 24 * 365.25)));
+};
+
+const ageNumber = computed(() => computeAgeYears(data.patient.dateNaissance || data.patient.age));
+const hasUnsavedChanges = computed(() => dirtySectionsList.value.length > 0);
+
+const hasValue = (value) => {
+    if (Array.isArray(value)) return value.length > 0;
+    if (value && typeof value === 'object') return Object.values(value).some(hasValue);
+    if (typeof value === 'number') return value > 0;
+    return typeof value === 'string' ? value.trim().length > 0 : Boolean(value);
+};
+
+const isSectionFilled = (id) => {
+    switch (id) {
+        case 'infos':
+            return hasValue([data.patient?.nom, data.patient?.prenom, data.patient?.telephone, data.patient?.sexe, data.patient?.dateNaissance]);
+        case 'entretien':
+            return hasValue(data.entretien);
+        case 'examens':
+            return hasValue(data.examens);
+        case 'documents':
+            return hasValue(data.documents);
+        case 'bilans':
+            return hasValue(data.bilans);
+        case 'plan-traitement':
+            return hasValue(data.planTraitement);
+        case 'devis':
+            return hasValue([data.devis?.date, data.devis?.services]);
+        case 'seances':
+            return hasValue(data.sessions);
+        case 'consult':
+            return hasValue([data.consultation?.type, data.consultation?.medecinId, data.consultation?.infirmierIds, data.consultation?.salleId, data.consultation?.noteSeance, data.consultation?.actes]);
+        default:
+            return false;
+    }
+};
+
+const getSectionStatus = (key) => {
+    if (!key) return { status: 'readonly', label: 'Lecture seule', saveDisabled: true };
+    if (saving[key]) return { status: 'saving', label: 'Sauvegarde...', saveDisabled: true };
+    if (dirty[key]) return { status: 'dirty', label: 'Modifie', saveDisabled: false };
+    return { status: 'saved', label: 'Sauvegarde', saveDisabled: true };
+};
+
+const sections = computed(() => {
+    const entretienStatus = getSectionStatus('entretien');
+    const examensStatus = getSectionStatus('examens');
+    const documentsStatus = getSectionStatus('documents');
+    const bilansStatus = getSectionStatus('bilans');
+    const planTraitementStatus = getSectionStatus('planTraitement');
+    const devisStatus = getSectionStatus('devis');
+    const consultStatus = getSectionStatus('consult');
+
+    return [
+        {
+            id: 'infos',
+            label: 'Informations patient',
+            filled: isSectionFilled('infos'),
+            status: 'readonly',
+            statusLabel: 'Lecture seule',
+            saveDisabled: true
+        },
+        {
+            id: 'entretien',
+            label: 'Entretien verbale',
+            filled: isSectionFilled('entretien'),
+            status: entretienStatus.status,
+            statusLabel: entretienStatus.label,
+            saveDisabled: entretienStatus.saveDisabled,
+            saving: saving.entretien,
+            onSave: () => saveEntretienSection()
+        },
+        {
+            id: 'examens',
+            label: 'Examens',
+            filled: isSectionFilled('examens'),
+            status: examensStatus.status,
+            statusLabel: examensStatus.label,
+            saveDisabled: examensStatus.saveDisabled,
+            saving: saving.examens,
+            onSave: () => saveExamensSection()
+        },
+        {
+            id: 'documents',
+            label: 'Images & documents',
+            filled: isSectionFilled('documents'),
+            status: documentsStatus.status,
+            statusLabel: documentsStatus.label,
+            saveDisabled: documentsStatus.saveDisabled,
+            saving: saving.documents,
+            onSave: () => saveDocumentsSection()
+        },
+        {
+            id: 'bilans',
+            label: 'Bilans',
+            filled: isSectionFilled('bilans'),
+            status: bilansStatus.status,
+            statusLabel: bilansStatus.label,
+            saveDisabled: bilansStatus.saveDisabled,
+            saving: saving.bilans,
+            onSave: () => saveBilansSection()
+        },
+        {
+            id: 'plan-traitement',
+            label: 'Plan de traitement',
+            filled: isSectionFilled('plan-traitement'),
+            status: planTraitementStatus.status,
+            statusLabel: planTraitementStatus.label,
+            saveDisabled: planTraitementStatus.saveDisabled,
+            saving: saving.planTraitement,
+            onSave: () => savePlanTraitementSection()
+        },
+        {
+            id: 'devis',
+            label: 'Devis',
+            filled: isSectionFilled('devis'),
+            status: devisStatus.status,
+            statusLabel: devisStatus.label,
+            saveDisabled: devisStatus.saveDisabled,
+            saving: saving.devis,
+            onSave: () => saveDevisSection()
+        },
+        {
+            id: 'seances',
+            label: 'Seances',
+            filled: isSectionFilled('seances'),
+            status: 'readonly',
+            statusLabel: 'Lecture seule',
+            saveDisabled: true
+        },
+        {
+            id: 'consult',
+            label: 'Consultation en cours',
+            filled: isSectionFilled('consult'),
+            status: consultStatus.status,
+            statusLabel: consultStatus.label,
+            saveDisabled: consultStatus.saveDisabled,
+            saving: saving.consult,
+            onSave: () => saveConsultSection()
+        }
+    ];
+});
+
+const saveEntretienSection = async ({ silent = false } = {}) => {
+    if (!dirty.entretien) return;
+    try {
+        await saveEntretien();
+        if (!silent) toast.add({ severity: 'success', summary: 'Entretien enregistre', life: 2000 });
+    } catch (error) {
+        console.error('Erreur sauvegarde entretien', error);
+        if (!silent) toast.add({ severity: 'error', summary: 'Erreur', detail: 'Sauvegarde entretien impossible.' });
+    }
+};
+
+const saveExamensSection = async ({ silent = false } = {}) => {
+    if (!dirty.examens) return;
+    try {
+        await saveExamens();
+        if (!silent) toast.add({ severity: 'success', summary: 'Examens enregistres', life: 2000 });
+    } catch (error) {
+        console.error('Erreur sauvegarde examens', error);
+        if (!silent) toast.add({ severity: 'error', summary: 'Erreur', detail: 'Sauvegarde examens impossible.' });
+    }
+};
+
+const saveDocumentsSection = async ({ silent = false } = {}) => {
+    if (!dirty.documents) return;
+    try {
+        await saveDocuments();
+        if (!silent) toast.add({ severity: 'success', summary: 'Documents enregistres', life: 2000 });
+    } catch (error) {
+        console.error('Erreur sauvegarde documents', error);
+        if (!silent) toast.add({ severity: 'error', summary: 'Erreur', detail: 'Sauvegarde documents impossible.' });
+    }
+};
+
+const saveBilansSection = async ({ silent = false } = {}) => {
+    if (!dirty.bilans) return;
+    try {
+        await saveBilans();
+        if (!silent) toast.add({ severity: 'success', summary: 'Bilans enregistres', life: 2000 });
+    } catch (error) {
+        console.error('Erreur sauvegarde bilans', error);
+        if (!silent) toast.add({ severity: 'error', summary: 'Erreur', detail: 'Sauvegarde bilans impossible.' });
+    }
+};
+
+const savePlanTraitementSection = async ({ silent = false } = {}) => {
+    if (!dirty.planTraitement) return;
+    try {
+        await savePlanTraitement();
+        if (!silent) toast.add({ severity: 'success', summary: 'Plan enregistre', life: 2000 });
+    } catch (error) {
+        console.error('Erreur sauvegarde plan traitement', error);
+        if (!silent) toast.add({ severity: 'error', summary: 'Erreur', detail: 'Sauvegarde plan traitement impossible.' });
+    }
+};
+
+const saveDevisSection = async ({ silent = false } = {}) => {
+    if (!dirty.devis) return;
+    try {
+        await saveDevis();
+        if (!silent) toast.add({ severity: 'success', summary: 'Devis enregistre', life: 2000 });
+    } catch (error) {
+        console.error('Erreur sauvegarde devis', error);
+        if (!silent) toast.add({ severity: 'error', summary: 'Erreur', detail: 'Sauvegarde devis impossible.' });
+    }
+};
+
+const saveConsultSection = async ({ silent = false } = {}) => {
+    if (!dirty.consult) return;
+    try {
+        await saveConsult();
+        if (!silent) toast.add({ severity: 'success', summary: 'Consultation enregistree', life: 2000 });
+    } catch (error) {
+        console.error('Erreur sauvegarde consultation', error);
+        if (!silent) toast.add({ severity: 'error', summary: 'Erreur', detail: 'Sauvegarde consultation impossible.' });
+    }
+};
+
+const saveOrdonnanceSection = async ({ silent = false } = {}) => {
+    if (!dirty.ordonnances) return;
+    try {
+        await saveOrdonnance(ordonnanceDraft.value);
+        ordonnanceModalVisible.value = false;
+        if (!silent) toast.add({ severity: 'success', summary: 'Ordonnance enregistree', life: 2000 });
+    } catch (error) {
+        console.error('Erreur sauvegarde ordonnance', error);
+        if (!silent) toast.add({ severity: 'error', summary: 'Erreur', detail: 'Sauvegarde ordonnance impossible.' });
+    }
+};
+
+const saveAll = async ({ silent = false } = {}) => {
+    await Promise.all([
+        saveEntretienSection({ silent }),
+        saveExamensSection({ silent }),
+        saveDocumentsSection({ silent }),
+        saveBilansSection({ silent }),
+        savePlanTraitementSection({ silent }),
+        saveDevisSection({ silent }),
+        saveConsultSection({ silent }),
+        saveOrdonnanceSection({ silent })
+    ]);
+};
+
+watchSection(() => data.entretien, 'entretien', saveAll);
+watchSection(() => data.examens, 'examens', saveAll);
+watchSection(() => data.documents, 'documents', saveAll);
+watchSection(() => data.bilans, 'bilans', saveAll);
+watchSection(() => data.planTraitement, 'planTraitement', saveAll);
+watchSection(() => data.devis, 'devis', saveAll);
+watchSection(() => data.consultation, 'consult', saveAll);
+watchSection(() => ordonnanceDraft.value, 'ordonnances', saveAll);
+
+const handleSaveAntecedent = async (payload) => {
+    if (!data.patient?.id) return;
+    savingAntecedent.value = true;
+    try {
+        const res = await addPatientAntecedent(data.patient.id, payload, token);
+        if (res?.antecedent) data.patient.antecedents.push(res.antecedent);
+        toast.add({ severity: 'success', summary: 'Antecedent ajoute', life: 2000 });
+        showAntecedentDialog.value = false;
+    } catch (error) {
+        console.error('Erreur ajout antecedent', error);
+        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible d\'ajouter l\'antecedent.' });
+    } finally {
+        savingAntecedent.value = false;
+    }
+};
+
+const handleSaveAllergy = async (payload) => {
+    if (!data.patient?.id) return;
+    savingAllergy.value = true;
+    try {
+        const res = await addPatientAllergy(data.patient.id, payload, token);
+        if (res?.allergy) data.patient.allergies.push(res.allergy);
+        toast.add({ severity: 'success', summary: 'Allergie ajoutee', life: 2000 });
+        showAllergyDialog.value = false;
+    } catch (error) {
+        console.error('Erreur ajout allergie', error);
+        toast.add({ severity: 'error', summary: 'Erreur', detail: "Impossible d'ajouter l'allergie." });
+    } finally {
+        savingAllergy.value = false;
+    }
+};
+
+const handleDeleteAntecedent = async (item) => {
+    if (!data.patient?.id || !item?.id) return;
+    try {
+        await deletePatientAntecedent(data.patient.id, item.id, token);
+        data.patient.antecedents = data.patient.antecedents.filter((a) => a.id !== item.id);
+        toast.add({ severity: 'success', summary: 'Antecedent supprime', life: 2000 });
+    } catch (error) {
+        console.error('Erreur suppression antecedent', error);
+        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Suppression impossible.' });
+    }
+};
+
+const handleDeleteAllergy = async (item) => {
+    if (!data.patient?.id || !item?.id) return;
+    try {
+        await deletePatientAllergy(data.patient.id, item.id, token);
+        data.patient.allergies = data.patient.allergies.filter((a) => a.id !== item.id);
+        toast.add({ severity: 'success', summary: 'Allergie supprimee', life: 2000 });
+    } catch (error) {
+        console.error('Erreur suppression allergie', error);
+        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Suppression impossible.' });
+    }
+};
+
+const handleCloture = () => {
+    confirm.require({
+        message: 'Cloturer definitivement cette consultation ?',
+        header: 'Confirmation',
+        icon: 'pi pi-exclamation-triangle',
+        acceptLabel: 'Cloturer',
+        rejectLabel: 'Annuler',
+        acceptClass: 'p-button-danger',
+        accept: async () => {
+            await closeConsult();
+        }
+    });
+};
+
+const handlePrintOrdonnance = async (ordo) => {
+    if (!ordo?.id) return;
+    try {
+        const res = await fetchOrdonnancePrintData(ordo.id, token);
+        await printComponent(PrintOrdonnanceBody, { data: res.data });
+    } catch (error) {
+        console.error('Erreur impression ordonnance', error);
+        toast.add({ severity: 'error', summary: 'Erreur', detail: "Impossible d'imprimer l'ordonnance." });
+    }
+};
+
+const handleScroll = () => {
+    isIndicatorFloating.value = window.scrollY > 180;
+};
+
+const handleBeforeUnload = (event) => {
+    if (!hasUnsavedChanges.value) return;
+    event.preventDefault();
+    event.returnValue = '';
+};
+
+const confirmLeave = () => new Promise((resolve) => {
+    confirm.require({
+        message: 'Des modifications ne sont pas enregistrees. Quitter le formulaire ?',
+        header: 'Confirmation',
+        icon: 'pi pi-exclamation-triangle',
+        acceptLabel: 'Quitter',
+        rejectLabel: 'Rester',
+        accept: () => resolve(true),
+        reject: () => resolve(false)
+    });
+});
+
+onBeforeRouteLeave(async () => {
+    if (!hasUnsavedChanges.value) return true;
+    return await confirmLeave();
+});
+
+onMounted(() => {
+    loadData();
+    handleScroll();
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener('beforeunload', handleBeforeUnload);
+});
+
+onBeforeUnmount(() => {
+    window.removeEventListener('scroll', handleScroll);
+    window.removeEventListener('beforeunload', handleBeforeUnload);
+});
+
+</script>
+
+<template>
+    <div class="min-h-screen p-4 md:p-6 lg:p-8 transition-colors duration-300">
+        <ConfirmDialog />
+        <Toast />
+
+        <div class="mb-6 md:mb-8">
+            <div class="inline-flex items-center gap-3 mb-4 p-3 rounded-2xl bg-surface-0/80 dark:bg-surface-800/80 backdrop-blur-sm border border-surface-200/50 dark:border-surface-700/50">
+                <div class="p-2.5 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600">
+                    <i class="pi pi-file text-white text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-2xl md:text-3xl font-bold text-surface-900 dark:text-surface-50">Fiche medicale</h1>
+                    <p class="text-sm text-surface-600 dark:text-surface-300">Suivi complet du patient</p>
+                </div>
+            </div>
+            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+                <div class="flex items-center gap-2">
+                    <Button icon="pi pi-arrow-left" label="Retour" severity="secondary" outlined @click="() => router.back()" />
+                </div>
+                <div class="flex items-center gap-2">
+                    <SelectButton v-model="switcherMode" :options="displayModeOptions" optionLabel="label" optionValue="value" />
+                </div>
+            </div>
+        </div>
+
+        <div class="p-6 bg-surface-0 dark:bg-surface-800/80 rounded-2xl shadow-xl border border-surface-200/50 dark:border-surface-700/50 backdrop-blur-sm">
+            <SaveIndicator
+                v-model:auto-save-enabled="autoSaveEnabled"
+                :loading="loading"
+                :saving-count="savingCount"
+                :last-saved-at="lastSavedAt"
+                :dirty-sections="dirtySectionsList"
+                :floating="isIndicatorFloating"
+                @save-all="() => saveAll({ silent: false })"
+            />
+
+            <SectionSwitcher v-model="activeSection" :sections="sections" :mode="switcherMode" :init-key="sectionInitKey">
+                <template #infos>
+                    <FichePatientInfoSection
+                        :patient="data.patient"
+                        @add-antecedent="() => (showAntecedentDialog = true)"
+                        @add-allergy="() => (showAllergyDialog = true)"
+                        @delete-antecedent="handleDeleteAntecedent"
+                        @delete-allergy="handleDeleteAllergy"
+                    />
+                </template>
+
+                <template #entretien>
+                    <EntretienVerbalForm v-model="data.entretien" :saving="saving.entretien" @save="saveEntretienSection" />
+                </template>
+
+                <template #examens>
+                    <ExamensFicheForm v-model="data.examens" :saving="saving.examens" @save="saveExamensSection" />
+                </template>
+
+                <template #documents>
+                    <FicheDocumentsForm v-model="data.documents" :saving="saving.documents" @save="saveDocumentsSection" />
+                </template>
+
+                <template #bilans>
+                    <FicheBilansForm v-model="data.bilans" :saving="saving.bilans" :patient-age="ageNumber" @save="saveBilansSection" />
+                </template>
+
+                <template #plan-traitement>
+                    <FichePlanTraitementForm v-model="data.planTraitement" :saving="saving.planTraitement" @save="savePlanTraitementSection" />
+                </template>
+
+                <template #devis>
+                    <DevisForm v-model="data.devis" :saving="saving.devis" @save="saveDevisSection" />
+                </template>
+
+                <template #seances>
+                    <SeancesSection :sessions="data.sessions" />
+                </template>
+
+                <template #consult>
+                    <ConsultationEnCoursForm
+                        v-model="data.consultation"
+                        :formule-dentaire="data.bilans?.bilanDentaire?.formuleDentaire"
+                        :medecins="data.medecins"
+                        :medecins-options="medecinsOptions"
+                        :infirmiers="data.infirmiers"
+                        :infirmiers-options="infirmiersOptions"
+                        :salles="data.salles"
+                        :salles-options="sallesOptions"
+                        :ordonnances="data.ordonnances"
+                        :saving="saving.consult"
+                        :cloture-loading="false"
+                        @save="saveConsultSection"
+                        @cloture="handleCloture"
+                        @open-ordonnance="() => (ordonnanceModalVisible = true)"
+                        @print-ordonnance="handlePrintOrdonnance"
+                    />
+                </template>
+            </SectionSwitcher>
+        </div>
+
+        <AntecedentDialogForm v-model="showAntecedentDialog" :loading="savingAntecedent" @save="handleSaveAntecedent" />
+        <AllergyDialogForm v-model="showAllergyDialog" :loading="savingAllergy" @save="handleSaveAllergy" />
+        <OrdonnanceModal v-model="ordonnanceDraft" :visible="ordonnanceModalVisible" :saving="saving.ordonnances" @save="saveOrdonnanceSection" />
+    </div>
+</template>

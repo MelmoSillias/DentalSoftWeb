@@ -1,0 +1,84 @@
+import { apiPrefix } from '@/config';
+import http from '@/service/http';
+
+const axios = http;
+
+const authHeaders = (token) => (token ? { Authorization: `Bearer ${token}` } : {});
+
+export const loadConsultationForm = async (ficheId, consultId, token) => {
+    const res = await axios.get(`${apiPrefix}/fiches/${ficheId}/consultations/${consultId}/json`, {
+        headers: authHeaders(token)
+    });
+    return res.data;
+};
+
+export const saveMotif = async (ficheId, consultId, payload, token) => {
+    const res = await axios.post(`${apiPrefix}/fiches/${ficheId}/consultations/${consultId}/motif`, payload, {
+        headers: authHeaders(token)
+    });
+    return res.data;
+};
+
+export const saveExamens = async (ficheId, consultId, payload, token) => {
+    const res = await axios.post(`${apiPrefix}/fiches/${ficheId}/consultations/${consultId}/examens`, payload, {
+        headers: authHeaders(token)
+    });
+    return res.data;
+};
+
+export const saveTraitementsDocuments = async (ficheId, consultId, payload, token) => {
+    const res = await axios.post(`${apiPrefix}/fiches/${ficheId}/consultations/${consultId}/traitements`, payload, {
+        headers: authHeaders(token)
+    });
+    return res.data;
+};
+
+export const saveDevis = async (ficheId, consultId, payload, token) => {
+    const res = await axios.post(`${apiPrefix}/fiches/${ficheId}/consultations/${consultId}/devis`, payload, {
+        headers: authHeaders(token)
+    });
+    return res.data;
+};
+
+export const saveConsultation = async (ficheId, consultId, payload, token) => {
+    const res = await axios.post(`${apiPrefix}/fiches/${ficheId}/consultations/${consultId}`, payload, {
+        headers: authHeaders(token)
+    });
+    return res.data;
+};
+
+export const closeConsultation = async (ficheId, consultId, token) => {
+    console.log('Closing consultation...', ficheId, consultId, 'url :' + `${apiPrefix}/fiches/${ficheId}/consultations/${consultId}/cloture`);
+    const res = await axios.post(
+        `${apiPrefix}/fiches/${ficheId}/consultations/${consultId}/cloture`,
+        {},
+        {
+            headers: authHeaders(token)
+        }
+    );
+    return res.data;
+};
+
+export const loadOrdonnances = async (consultId, token) => {
+    const res = await axios.get(`${apiPrefix}/consultations/${consultId}/ordonnances`, {
+        headers: authHeaders(token)
+    });
+    return Array.isArray(res.data) ? res.data : [];
+};
+
+export const saveOrdonnance = async (consultId, payload, token) => {
+    const res = await axios.post(`${apiPrefix}/consultations/${consultId}/ordonnances`, payload, {
+        headers: authHeaders(token)
+    });
+    return res.data;
+};
+
+export const printOrdonnance = async (ordonnanceId, token) => {
+    const res = await axios.get(`${apiPrefix}/ordonnance/${ordonnanceId}/print`, {
+        headers: authHeaders(token),
+        responseType: 'blob'
+    });
+    return res.data;
+};
+
+export const defaultActesList = ['Consultation', 'Détartrage', 'Extraction', 'Remplissage', 'Composite', 'Amalgame', 'Traitement de canal', 'Traumatisme', 'Couronne', 'Blanchiment', 'Radio', 'Prothèse', 'Orthodontie', 'Chirurgie'];
