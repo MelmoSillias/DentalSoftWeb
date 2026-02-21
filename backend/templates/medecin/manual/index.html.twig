@@ -1,0 +1,161 @@
+{% extends 'layout.html.twig' %}
+
+{% block title %}Manuel d’utilisation - Médecin{% endblock %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    <style>
+        .manual-toc a { text-decoration: none; }
+        .manual-section { scroll-margin-top: 90px; }
+        .manual-kbd {
+            display: inline-block;
+            padding: 0.15rem 0.4rem;
+            font-size: 0.85rem;
+            line-height: 1.2;
+            color: #212529;
+            background: #f8f9fc;
+            border: 1px solid #e3e6f0;
+            border-radius: 0.25rem;
+        }
+    </style>
+{% endblock %}
+
+{% block main %}
+    <div class="container-fluid px-4">
+        <div class="d-flex align-items-center justify-content-between flex-wrap mt-4 mb-3">
+            <div>
+                <h1 class="h3 mb-1 text-gray-800">Manuel d’utilisation (Médecin)</h1>
+                <div class="text-muted small">Ce guide décrit uniquement les écrans et actions disponibles pour le rôle Médecin.</div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-lg-4 col-xl-3 mb-3">
+                <div class="card shadow-sm manual-toc">
+                    <div class="card-header py-2">
+                        <strong>Sommaire</strong>
+                    </div>
+                    <div class="list-group list-group-flush">
+                        <a class="list-group-item list-group-item-action" href="#medecin-intro">1. Vue d’ensemble</a>
+                        <a class="list-group-item list-group-item-action" href="#medecin-dashboard">2. Dashboard</a>
+                        <a class="list-group-item list-group-item-action" href="#medecin-agenda">3. Agenda</a>
+                        <a class="list-group-item list-group-item-action" href="#medecin-patients">4. Patients</a>
+                        <a class="list-group-item list-group-item-action" href="#medecin-consultations">5. Consultations</a>
+                        <a class="list-group-item list-group-item-action" href="#medecin-depannage">6. Astuces & Dépannage</a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-8 col-xl-9">
+                <div class="card shadow-sm mb-3 manual-section" id="medecin-intro">
+                    <div class="card-header py-2">
+                        <strong>1) Vue d’ensemble</strong>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-2">
+                            En tant que <strong>Médecin</strong>, vous utilisez DentalSoft pour consulter l’agenda, accéder aux patients,
+                            compléter les fiches de consultation et consulter l’historique.
+                        </p>
+                        <ul class="mb-0">
+                            <li><strong>Menu gauche</strong> : Dashboard, Agenda, Patients, Consultations, Manuel.</li>
+                            <li><strong>Chargement</strong> : un indicateur peut apparaître en haut à droite lors des actions.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="card shadow-sm mb-3 manual-section" id="medecin-dashboard">
+                    <div class="card-header py-2">
+                        <strong>2) Dashboard</strong>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-2">Le Dashboard présente des statistiques (patients consultés, consultations, rendez-vous du jour, etc.).</p>
+                        <ul class="mb-0">
+                            <li>Surveillez <strong>Consultations en attente</strong> pour démarrer/continuer une fiche.</li>
+                            <li>Surveillez <strong>Rendez-vous du jour</strong> pour anticiper la charge.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="card shadow-sm mb-3 manual-section" id="medecin-agenda">
+                    <div class="card-header py-2">
+                        <strong>3) Agenda</strong>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-2">L’Agenda propose deux modes : <strong>vue hebdomadaire</strong> et <strong>vue journalière</strong>.</p>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6 class="text-secondary">Vue hebdomadaire</h6>
+                                <ul>
+                                    <li>Filtrer par médecin et rechercher un patient.</li>
+                                    <li>Couleurs de statut : <span class="manual-kbd">En attente</span>, <span class="manual-kbd">Validé</span>, <span class="manual-kbd">Reporté</span>, <span class="manual-kbd">Annulé</span>.</li>
+                                    <li>Clic droit / menu contextuel sur un RDV : <strong>Valider</strong>, <strong>Reporter</strong>, <strong>Annuler</strong>.</li>
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <h6 class="text-secondary">Vue journalière</h6>
+                                <ul class="mb-0">
+                                    <li>Bouton <strong>Aujourd’hui</strong> + sélection de date.</li>
+                                    <li>Statistiques par statut sur la journée.</li>
+                                    <li>Grille par créneaux : utilisez le bouton <strong>+</strong> dans une case pour ajouter un RDV.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card shadow-sm mb-3 manual-section" id="medecin-patients">
+                    <div class="card-header py-2">
+                        <strong>4) Patients</strong>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-2">La page Patients affiche la liste et permet des actions liées au suivi médical.</p>
+                        <ul class="mb-0">
+                            <li><strong>Modifier un patient</strong> : ouvrez la fenêtre de modification, mettez à jour les champs et enregistrez.</li>
+                            <li><strong>Planifier un RDV</strong> : depuis la liste, vous pouvez créer un rendez-vous (date, heure, salle, médecin, description).</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="card shadow-sm mb-3 manual-section" id="medecin-consultations">
+                    <div class="card-header py-2">
+                        <strong>5) Consultations</strong>
+                    </div>
+                    <div class="card-body">
+                        <h6 class="text-secondary">5.1 Consultations en attente</h6>
+                        <ul>
+                            <li>Chaque carte représente une consultation à traiter.</li>
+                            <li>Actions possibles : <strong>Nouvelle fiche</strong> ou <strong>Continuer dernière fiche</strong> (si disponible).</li>
+                            <li><strong>Annuler</strong> : supprime la consultation en attente (action irréversible).</li>
+                        </ul>
+
+                        <h6 class="text-secondary">5.2 Édition d’une fiche de consultation</h6>
+                        <p class="mb-2">La fiche est organisée en onglets (Infos Patient, Motif & Histoire, Examens, Traitements & Documents, Devis, Séances passées, Consultation en cours).</p>
+                        <ul>
+                            <li>Utilisez les boutons <strong>Sauvegarder</strong> par section.</li>
+                            <li>Le haut de page affiche la référence de fiche et la séance en cours.</li>
+                        </ul>
+
+                        <h6 class="text-secondary">5.3 Liste / historique des consultations</h6>
+                        <ul class="mb-0">
+                            <li>Filtre par date via le sélecteur en haut.</li>
+                            <li>Selon l’écran, vous pouvez consulter les <strong>détails</strong> et, si nécessaire, <strong>modifier la facture</strong> associée.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="card shadow-sm mb-4 manual-section" id="medecin-depannage">
+                    <div class="card-header py-2">
+                        <strong>6) Astuces & Dépannage</strong>
+                    </div>
+                    <div class="card-body">
+                        <ul class="mb-0">
+                            <li>Si une page semble “bloquée”, attendez la fin du chargement (icône/indicateur en haut).</li>
+                            <li>En cas d’action refusée, vérifiez que vous êtes bien connecté avec le rôle Médecin.</li>
+                            <li>Si un RDV n’apparaît pas, vérifiez la date/filtre médecin et le statut (en attente/validé/reporté/annulé).</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

@@ -1,0 +1,57 @@
+# This file is the entry point to configure your own services.
+# Files in the packages/ subdirectory configure your dependencies.
+
+# Put parameters here that don't need to change on each machine where the app is deployed
+# https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
+parameters: 
+    upload_files_directory: '%kernel.project_dir%/public/upload_files'
+
+
+services:
+    # default configuration for services in *this* file
+    _defaults:
+        autowire: true      # Automatically injects dependencies in your services.
+        autoconfigure: true # Automatically registers your services as commands, event subscribers, etc.
+
+    # makes classes in src/ available to be used as services
+    # this creates a service per class whose id is the fully-qualified class name
+    App\:
+        resource: '../src/'
+        exclude:
+            - '../src/DependencyInjection/'
+            - '../src/Entity/'
+            - '../src/Kernel.php'
+    
+    
+    App\Service\Dashboard\GlobalStatsService: ~
+    App\Service\Dashboard\PatientsStatsService: ~
+    App\Service\Dashboard\ConsultationsStatsService: ~
+    App\Service\Dashboard\AppointmentsStatsService: ~
+    App\Service\Dashboard\RoomUsageService: ~
+    App\Service\Dashboard\PaymentsBalanceService: ~
+    App\Service\Dashboard\PaymentsFrequencyService: ~
+    App\Service\Dashboard\ActsStatsService: ~
+    App\Service\Reception\AgendaService: ~
+    App\Service\Reception\CaisseService: ~
+    App\Service\Reception\ConsultationService: ~
+    App\Service\Reception\PatientService: ~
+    App\Service\Medecin\AgendaService: ~
+    App\Service\Medecin\ConsultationService: ~
+    App\Service\Medecin\PatientService: ~
+    App\Service\Admin\AgendaService: ~
+    App\Service\Admin\CaisseService: ~
+    App\Service\Admin\ConsultationService: ~
+    App\Service\Admin\FinancesService: ~
+    App\Service\Admin\ReportsService: ~
+    App\Service\Admin\RHService: ~
+    App\Service\Admin\UserService: ~
+    App\Service\Patient\PatientQueryService: ~
+    App\Service\Patient\PatientStatsService: ~
+    App\Service\Payment\TransactionService: ~
+    App\Service\Payment\ModePaiementService: ~
+    App\Mercure\NotificationTopicGenerator:
+        arguments:
+            $secret: '%env(NOTIFICATION_TOPIC_SECRET)%'
+    Symfony\Component\Mercure\Jwt\TokenFactoryInterface: '@defaultTokenFactory'
+    # add more service definitions when explicit configuration is needed
+    # please note that last definitions always *replace* previous ones

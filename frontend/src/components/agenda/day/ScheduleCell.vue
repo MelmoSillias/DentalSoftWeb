@@ -1,0 +1,142 @@
+<script setup>
+import Button from 'primevue/button';
+import Card from 'primevue/card';
+import Tag from 'primevue/tag';
+import { computed } from 'vue';
+import { useRdvStatus } from '@/composables/useRdvStatus';
+
+const props = defineProps({
+  slotLabel: { type: String, required: true },
+  rdv: { type: Object, default: null },
+  medecinName: { type: String, default: '' }
+});
+
+const emit = defineEmits(['create', 'validate', 'cancel', 'report']);
+const { getLabel, getSeverity } = useRdvStatus();
+
+const hasRdv = computed(() => !!props.rdv);
+
+const patientLabel = computed(() => {
+  if (!props.rdv) return '';
+  return (
+    props.rdv.patientName ||
+    props.rdv.patient ||
+    props.rdv.patient?.fullname ||
+    props.rdv.patient?.name ||
+    `${props.rdv.patient?.prenom ?? ''} ${props.rdv.patient?.nom ?? ''}`.trim() ||
+    props.rdv.patient_nom ||
+    props.rdv.patient_prenom ||
+    'Patient inconnu'
+  );
+});
+
+const medecinLabel = computed(() => {
+  if (!props.rdv) return props.medecinName || '—';
+  return (
+    props.rdv.medecinName ||
+    props.rdv.medecin ||
+    props.rdv.medecin?.fullname ||
+    props.rdv.medecin?.name ||
+    `${props.rdv.medecin?.prenom ?? ''} ${props.rdv.medecin?.nom ?? ''}`.trim() ||
+    props.medecinName ||
+    'Médecin'
+  );
+});
+
+const descriptionLabel = computed(() => {
+  if (!props.rdv) return 'Créer un rendez-vous';
+  return props.rdv.description || props.rdv.motif || props.rdv.note || 'Aucune description';
+});
+
+const statutValue = computed(() => props.rdv?.statut ?? props.rdv?.status ?? props.rdv?.etat ?? 0);
+
+const trigger = (eventName) => {
+  emit(eventName, { rdv: props.rdv });
+};
+</script>
+
+<template>
+  <div class="group relative h-full min-h-[112px] xs:min-h-[128px] bg-white p-2 xs:p-3 shadow-sm transition-all duration-200 hover:shadow-md dark:bg-gray-800 dark:shadow-gray-900/30">
+    <!-- Header -->
+    <div class="mb-1.5 xs:mb-2.5 flex items-center justify-between text-[10px] xs:text-xs font-medium text-gray-500 dark:text-gray-400">
+      <span>{{ slotLabel }}</span>
+      <Button
+        v-if="!hasRdv"
+        icon="pi pi-plus"
+        rounded
+        text
+        severity="secondary"
+        size="small"
+        class="opacity-70 hover:opacity-100 transition-opacity"
+        @click.stop="emit('create')"
+      />
+    </div>
+
+    <!-- Contenu RDV -->
+    <Card
+      v-if="hasRdv"
+      class="h-full border border-gray-200 bg-gray-50/70 shadow-sm transition-colors hover:border-blue-200 dark:border-gray-700 dark:bg-gray-750 dark:hover:border-blue-800/40"
+    >
+      <template #content>
+        <div class="flex flex-col h-full">
+          <div class="mb-1.5 xs:mb-2.5 flex items-start justify-between gap-2 xs:gap-3">
+            <div class="min-w-0 flex-1">
+              <div class="truncate font-semibold text-gray-900 dark:text-gray-100 text-sm xs:text-base leading-tight">
+                {{ patientLabel }}
+              </div>
+              <div class="mt-0.5 truncate text-xs xs:text-sm text-gray-600 dark:text-gray-400">
+                {{ medecinLabel }}
+              </div>
+            </div>
+            <Tag
+              :severity="getSeverity(statutValue)"
+              :value="getLabel(statutValue)"
+              class="text-[10px] xs:text-xs font-medium whitespace-nowrap"
+            />
+          </div>
+
+          <p class="mb-3 xs:mb-4 line-clamp-2 text-xs xs:text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+            {{ descriptionLabel }}
+          </p>
+
+          <div v-if="statutValue === 0" class="mt-auto flex flex-wrap gap-1 xs:gap-2">
+            <Button
+              size="small"
+              icon="pi pi-check"
+              label="Valider"
+              class="text-[10px] xs:text-xs"
+              @click="trigger('validate')"
+            />
+            <Button
+              size="small"
+              icon="pi pi-calendar-minus"
+              label="Reporter"
+              severity="warning"
+              text
+              class="text-[10px] xs:text-xs"
+              @click="trigger('report')"
+            />
+            <Button
+              size="small"
+              icon="pi pi-times"
+              label="Annuler"
+              severity="danger"
+              text
+              class="text-[10px] xs:text-xs"
+              @click="trigger('cancel')"
+            />
+          </div>
+        </div>
+      </template>
+    </Card>
+
+    <!-- Placeholder quand pas de RDV -->
+    <div
+      v-else
+      class="mt-2 xs:mt-3 flex h-16 xs:h-20 items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50/40 text-xs xs:text-sm text-gray-400 transition-colors hover:border-gray-400 dark:border-gray-600 dark:bg-gray-800/30 dark:hover:border-gray-500"
+    >
+      Disponible
+    </div>
+  </div>
+</template>
+

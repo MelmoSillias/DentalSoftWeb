@@ -1,0 +1,618 @@
+{% extends 'layout.html.twig' %}
+
+{% block title %}Gestion de la Caisse
+{% endblock %}
+
+{% block stylesheets%}
+	<style>
+		.caisse-view-switcher {
+			position: fixed;
+			right: 18px;
+			bottom: 18px;
+			z-index: 1050;
+		}
+
+		.caisse-view-switcher .btn {
+			border-radius: 999px !important;
+			box-shadow: 0 10px 26px rgba(0, 0, 0, 0.12);
+		}
+
+		.caisse-view-switcher .btn + .btn {
+			margin-top: 10px;
+		}
+
+		.caisse-kpi {
+			border: 1px solid var(--caisse-border);
+			border-radius: 14px;
+			padding: 14px 16px;
+			background: #fff;
+			height: 100%;
+		}
+
+		.caisse-kpi .label {
+			font-size: 0.95rem;
+			color: #6c757d;
+		}
+
+		.caisse-kpi .value {
+			font-size: 1.5rem;
+			font-weight: 800;
+			line-height: 1.1;
+			color: var(--caisse-ink);
+		}
+
+		.caisse-card-grid .card {
+			border-radius: 14px;
+		}
+
+		.caisse-card-grid .card .card-body {
+			padding: 14px 16px;
+		}
+
+		:root {
+			--caisse-primary: #0b6efd;
+			--caisse-ink: #1f2d3d;
+			--caisse-soft: #eff4ff;
+			--caisse-border: #e5e7eb;
+			--caisse-accent: #f28f16;
+		}
+
+		.caisse-page {
+			color: var(--caisse-ink);
+			background: radial-gradient(circle at 10% 10%, rgba(11, 110, 253, 0.08), transparent 30%), radial-gradient(circle at 90% 10%, rgba(242, 143, 22, 0.08), transparent 28%);
+		}
+
+		.caisse-hero {
+			background: linear-gradient(135deg, #0b6efd, #0a58ca);
+			border-radius: 20px;
+			padding: 24px 28px;
+			color: #fff;
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			gap: 16px;
+			box-shadow: 0 12px 35px rgba(11, 110, 253, 0.18);
+		}
+
+		.caisse-hero .eyebrow {
+			letter-spacing: 0.08em;
+			text-transform: uppercase;
+			opacity: 0.85;
+			font-size: 0.8rem;
+			margin-bottom: 4px;
+		}
+
+		.caisse-hero .hero-subtitle {
+			opacity: 0.9;
+			margin: 6px 0 0;
+		}
+
+		.summary-grid .summary-card {
+			border: 1px solid var(--caisse-border);
+			border-radius: 14px;
+			padding: 16px 18px;
+			background: #fff;
+			box-shadow: 0 8px 22px rgba(0, 0, 0, 0.04);
+			height: 100%;
+		}
+
+		.summary-card .label {
+			font-size: 0.95rem;
+			color: #6c757d;
+		}
+
+		.summary-card .value {
+			font-size: 1.8rem;
+			font-weight: 700;
+			color: var(--caisse-ink);
+			line-height: 1.1;
+		}
+
+		.summary-card .hint {
+			color: #6c757d;
+			font-size: 0.9rem;
+			margin-top: 4px;
+		}
+
+		.card-header-soft {
+			background: #fff;
+			border-bottom: 1px solid var(--caisse-border);
+			padding: 16px 20px;
+		}
+
+		.panel-intro {
+			margin: 0;
+			color: #4b5563;
+			font-size: 0.95rem;
+		}
+
+		.filter-stack {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 14px;
+			align-items: flex-end;
+		}
+
+		.filter-stack .filter-field {
+			min-width: 180px;
+		}
+
+		.filter-stack label {
+			display: block;
+			font-weight: 600;
+			margin-bottom: 6px;
+			color: #4b5563;
+		}
+
+		.filter-stat {
+			border: 1px dashed var(--caisse-border);
+			border-radius: 10px;
+			padding: 10px 12px;
+			background: var(--caisse-soft);
+			font-weight: 700;
+			color: var(--caisse-ink);
+		}
+
+		.caisse-table {
+			border-radius: 12px;
+			overflow: hidden;
+		}
+
+		.caisse-table thead th {
+			background: #f8fafc;
+			text-transform: uppercase;
+			font-size: 0.85rem;
+			letter-spacing: 0.02em;
+			border-bottom: 1px solid var(--caisse-border);
+		}
+
+		.caisse-table tbody tr {
+			transition: background-color 0.18s ease;
+		}
+
+		.caisse-table tbody tr:hover {
+			background: #f6f9ff;
+		}
+
+		.caisse-action-group .btn {
+			margin-right: 6px;
+			padding: 6px 10px;
+		}
+
+		.badge-status {
+			padding: 6px 10px;
+			border-radius: 999px;
+			font-weight: 700;
+		}
+
+		.inline-help {
+			color: #6c757d;
+			font-size: 0.9rem;
+		}
+
+		/* --- Facture Styles --- */
+		.facture-container {
+			font-family: 'Nunito', sans-serif;
+			color: #333;
+		}
+		.facture-header {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			border-bottom: 2px solid #007bff;
+			padding-bottom: 1rem;
+			margin-bottom: 1rem;
+		}
+		.facture-logo {
+			max-width: 100px;
+		}
+		.entreprise-info {
+			text-align: right;
+		}
+		.client-info {
+			margin-bottom: 1.5rem;
+		}
+		.facture-meta {
+			text-align: right;
+		}
+		.facture-table {
+			width: 100%;
+			border-collapse: collapse;
+			margin-bottom: 1.5rem;
+		}
+		.facture-table th,
+		.facture-table td {
+			border: 1px solid #ddd;
+			padding: 0.75rem;
+			text-align: left;
+		}
+		.facture-table th {
+			background-color: #f8f9fc;
+			font-weight: bold;
+		}
+		.facture-table tfoot th {
+			text-align: right;
+		}
+		.signature-section {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			margin-top: 2rem;
+		}
+		.montant-lettres {
+			font-style: italic;
+		}
+		.cachet-space {
+			width: 150px;
+			height: 100px;
+			border: 1px dashed #ccc;
+			text-align: center;
+			line-height: 100px;
+			color: #999;
+		}
+		.facture-footer {
+			text-align: center;
+			font-size: 0.875rem;
+			color: #666;
+			margin-top: 2rem;
+		}
+	</style>
+{% endblock %}
+
+{% block main %}
+	<div
+		class="container-fluid caisse-page">
+
+		<!-- ===== VUE D'ENSEMBLE (vue actuelle) ===== -->
+		<div id="caisseViewOverview">
+			<div class="row summary-grid g-3 my-4">
+				<div class="col-lg-4 col-md-6">
+					<div class="summary-card">
+						<div class="label">Factures visibles</div>
+						<div class="value" id="devisCount">0</div>
+						<div class="hint">Nombre de factures selon vos filtres</div>
+					</div>
+				</div>
+				<div class="col-lg-4 col-md-6">
+					<div class="summary-card">
+						<div class="label">Total impayé</div>
+						<div class="value js-total-restant">0 FCFA</div>
+						<div class="hint">Reste à recouvrer sur la sélection</div>
+					</div>
+				</div>
+				<div class="col-lg-4 col-md-12">
+					<div class="summary-card">
+						<div class="label">Recette sur la période</div>
+						<div class="value js-recette-total">0 FCFA</div>
+						<div class="hint">Paiements encaissés (tableau ci-dessous)</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Devis Impayés (JS driven) -->
+			<div class="card shadow-sm mb-4">
+				<div class="card-header card-header-soft d-flex flex-wrap justify-content-between align-items-center">
+					<div>
+						<div class="d-flex align-items-center text-warning mb-1">
+							<i class="fas fa-exclamation-circle mr-2"></i>
+							<strong>Factures impayées</strong>
+						</div>
+						<p class="panel-intro">Suivez les règlements en attente et ajustez une facture avant validation.</p>
+					</div>
+					<div class="filter-stack">
+						<div class="filter-field">
+							<label for="devisTableTypeSelect">Affichage</label>
+							<select id="devisTableTypeSelect" class="form-select form-control">
+								<option value="all">Toutes</option>
+								<option value="impaye">Factures impayés</option>
+							</select>
+						</div>
+						<div class="filter-field">
+							<label for="AlldevisDateRange">Période</label>
+							<input type="text" id="AlldevisDateRange" class="form-control form-user-control"/>
+						</div>
+						<div class="filter-field">
+							<label class="mb-1">Reste à recouvrer</label>
+							<div class="filter-stat js-total-restant">0 FCFA</div>
+						</div>
+					</div>
+				</div>
+				<div class="card-body">
+					<div id="devisEmptyMessage" class="alert alert-info mb-3 d-none">Aucune facture impayé à ce jour</div>
+					<div class="table-responsive">
+						<table class="table table-striped table-hover my-3 caisse-table" id="devisImpayesTable">
+							<thead>
+								<tr>
+									<th>Date</th>
+									<th>Patient</th>
+									<th>Telephone</th>
+									<th>Montant Total</th>
+									<th>Reste à payer</th>
+									<th>Statut</th>
+									<th>Actions</th>
+								</tr>
+							</thead>
+						</table>
+
+					</div>
+				</div>
+			</div>
+
+			<div class="card shadow-sm mb-4">
+				<div class="card-header card-header-soft d-flex flex-wrap justify-content-between align-items-center">
+					<div>
+						<div class="d-flex align-items-center text-success mb-1">
+							<i class="fas fa-coins mr-2"></i>
+							<strong>Paiements enregistrés</strong>
+						</div>
+						<p class="panel-intro">Consultez les encaissements et imprimez un récapitulatif sur la période.</p>
+					</div>
+					<div class="filter-stack">
+						<div class="filter-field">
+							<label for="devisDateRange">Période</label>
+							<input type="text" id="devisDateRange" class="form-control form-user-control"/>
+						</div>
+						<div class="filter-field d-flex flex-column">
+							<label class="mb-1">Recette sur la période</label>
+							<div class="filter-stat js-recette-total">0 FCFA</div>
+						</div>
+						<button class="btn btn-outline-primary" id="imprimerPaiementsBtn">
+							<i class="fas fa-print"></i>
+							Imprimer la période
+						</button>
+					</div>
+				</div>
+				<div class="card-body">
+					<div class="table-responsive">
+						<table id="paiementsDevisTable" class="table table-striped table-hover table-sm my-3 caisse-table">
+							<thead class="table-light">
+								<tr>
+									<th>Date de paiement</th>
+									<th>Patient</th>
+									<th>Telephone</th>
+									<th>Montant</th>
+									<th>Mode de paiement</th>
+									<th>Actions</th>
+								</tr>
+							</thead>
+							<tbody></tbody>
+						</table>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- ===== VUE FACTURES UNIQUEMENT (cards / accordéons) ===== -->
+		<div id="caisseViewFactures" class="d-none mt-4">
+			<div class="card shadow-sm mb-4">
+				<div class="card-header card-header-soft d-flex flex-wrap justify-content-between align-items-center">
+					<div>
+						<div class="d-flex align-items-center text-warning mb-1">
+							<i class="fas fa-file-invoice mr-2"></i>
+							<strong>Vue Factures</strong>
+						</div>
+						<p class="panel-intro">Affichage en cartes et sections, alimenté par vos filtres actuels.</p>
+					</div>
+					<div class="filter-stack">
+						<div class="filter-field">
+							<label for="devisTableTypeSelectAlt">Affichage</label>
+							<select id="devisTableTypeSelectAlt" class="form-select form-control">
+								<option value="all">Toutes</option>
+								<option value="impaye">Factures impayés</option>
+							</select>
+						</div>
+						<div class="filter-field">
+							<label for="AlldevisDateRangeAlt">Période</label>
+							<input type="text" id="AlldevisDateRangeAlt" class="form-control form-user-control"/>
+						</div>
+					</div>
+				</div>
+				<div class="card-body">
+					<div class="row g-3 mb-3">
+						<div class="col-lg-4 col-md-6">
+							<div class="caisse-kpi">
+								<div class="label">Factures visibles</div>
+								<div class="value" id="facturesCount">0</div>
+							</div>
+						</div>
+						<div class="col-lg-4 col-md-6">
+							<div class="caisse-kpi">
+								<div class="label">Total impayé</div>
+								<div class="value" id="facturesTotalRestant">0 FCFA</div>
+							</div>
+						</div>
+						<div class="col-lg-4 col-md-12">
+							<div class="caisse-kpi">
+								<div class="label">Répartition</div>
+								<div class="value" id="facturesBreakdown">—</div>
+								<div class="hint">Impayées / Partiellement payées / Payées</div>
+							</div>
+						</div>
+					</div>
+					<div id="facturesEmptyMessage" class="alert alert-info d-none">Aucune facture à afficher pour ces filtres.</div>
+					<div id="facturesAccordion"></div>
+				</div>
+			</div>
+		</div>
+
+		<!-- ===== VUE PAIEMENTS UNIQUEMENT (cards / accordéons + mini graphe) ===== -->
+		<div id="caisseViewPaiements" class="d-none mt-4">
+			<div class="card shadow-sm mb-4">
+				<div class="card-header card-header-soft d-flex flex-wrap justify-content-between align-items-center">
+					<div>
+						<div class="d-flex align-items-center text-success mb-1">
+							<i class="fas fa-receipt mr-2"></i>
+							<strong>Vue Paiements</strong>
+						</div>
+						<p class="panel-intro">Affichage par mode de paiement et résumé visuel sur la période.</p>
+					</div>
+					<div class="filter-stack">
+						<div class="filter-field">
+							<label for="devisDateRangeAlt">Période</label>
+							<input type="text" id="devisDateRangeAlt" class="form-control form-user-control"/>
+						</div>
+						<button class="btn btn-outline-primary" id="imprimerPaiementsBtnAlt">
+							<i class="fas fa-print"></i>
+							Imprimer la période
+						</button>
+					</div>
+				</div>
+				<div class="card-body">
+					<div class="row g-3 mb-3">
+						<div class="col-lg-4 col-md-6">
+							<div class="caisse-kpi">
+								<div class="label">Paiements visibles</div>
+								<div class="value" id="paiementsCount">0</div>
+							</div>
+						</div>
+						<div class="col-lg-4 col-md-6">
+							<div class="caisse-kpi">
+								<div class="label">Recette (période)</div>
+								<div class="value" id="paiementsTotal">0 FCFA</div>
+							</div>
+						</div>
+						<div class="col-lg-4 col-md-12">
+							<div class="caisse-kpi">
+								<div class="label">Montants par jour (aperçu)</div>
+								<div id="paiementsMiniChart"></div>
+							</div>
+						</div>
+					</div>
+					<div id="paiementsEmptyMessage" class="alert alert-info d-none">Aucun paiement à afficher pour cette période.</div>
+					<div id="paiementsAccordion"></div>
+				</div>
+			</div>
+		</div>
+
+		<!-- Boutons flottants : bascule entre vues -->
+		<div class="caisse-view-switcher" aria-label="Bascule des vues caisse">
+			<button type="button" class="btn btn-primary caisse-view-btn" data-view="overview">
+				<i class="fas fa-columns mr-2"></i>Vue d'ensemble
+			</button>
+			<button type="button" class="btn btn-outline-primary caisse-view-btn" data-view="factures">
+				<i class="fas fa-file-invoice mr-2"></i>Factures
+			</button>
+			<button type="button" class="btn btn-outline-primary caisse-view-btn" data-view="paiements">
+				<i class="fas fa-coins mr-2"></i>Paiements
+			</button>
+		</div>
+
+		<!-- Modal de visualisation d’un devis -->
+		<div class="modal fade" id="devisModal" tabindex="-1" role="dialog">
+			<div class="modal-dialog modal-xl" role="document">
+				<div class="modal-content">
+					<div class="modal-header bg-info text-white">
+						<h5 class="modal-title">Détail de la facture</h5>
+						<button type="button" class="close" data-dismiss="modal">
+							<span>&times;</span>
+						</button>
+					</div>
+					<div class="modal-body" id="devisPreviewContainer">
+						Chargement...
+					</div>
+					<div class="modal-footer">
+						<button class="btn btn-outline-secondary" onclick="printDevisModal()">
+							<i class="fas fa-print"></i>
+							Imprimer
+						</button>
+					</div>
+
+				</div>
+			</div>
+		</div>
+
+
+		<div class="modal fade" id="reglerDevisModal" tabindex="-1" role="dialog">
+			<div class="modal-dialog" role="document">
+				<div class="modal-content">
+					<div class="modal-header bg-success text-white">
+						<h5 class="modal-title">Régler la facture</h5>
+						<button type="button" class="close" data-dismiss="modal">
+							<span>&times;</span>
+						</button>
+					</div>
+					<div class="modal-body">
+						<div class="mb-3">
+							<label for="modePaiementDevis" class="form-label">Mode de Paiement</label>
+							<select class="form-control" id="modePaiementDevis"></select>
+						</div>
+						<div class="row">
+							<div class="col-md-6 mb-3">
+								<label for="paiementDate" class="form-label">Date du paiement</label>
+								<input type="date" class="form-control" id="paiementDate" required>
+							</div>
+							<div class="col-md-6 mb-3">
+								<label for="paiementTime" class="form-label">Heure du paiement</label>
+								<input type="time" class="form-control" id="paiementTime" required>
+							</div>
+						</div>
+						<div class="mb-3">
+							<label for="montantRegle" class="form-label">Montant à régler</label>
+							<input type="number" class="form-control" id="montantRegle" min="1">
+							<small id="resteCalc" class="text-muted"></small>
+						</div>
+						<p class="text-muted small">Ce montant sera déduit du reste à payer.</p>
+					</div>
+					<div class="modal-footer">
+						<button class="btn btn-secondary" data-dismiss="modal">Annuler</button>
+						<button class="btn btn-success" id="confirmerPaiementDevisBtn">Confirmer</button>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div class="modal fade" id="validateFreeDevisModal" tabindex="-1" role="dialog">
+			<div class="modal-dialog" role="document">
+				<div class="modal-content">
+					<div class="modal-header bg-success text-white">
+						<h5 class="modal-title">Valider la facture vide</h5>
+						<button type="button" class="close" data-dismiss="modal">
+							<span>&times;</span>
+						</button>
+					</div>
+					<div class="modal-body">
+						<p class="">Confirmer que la facture-ci est vide.</p>
+					</div>
+					<div class="modal-footer">
+						<button class="btn btn-secondary" data-dismiss="modal">Annuler</button>
+						<button class="btn btn-success" id="validateFreeDevisBtn">Confirmer</button>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div class="modal fade" id="modifyFactureModal" tabindex="-1">
+			<div class="modal-dialog modal-lg">
+				<div class="modal-content">
+					<div class="modal-header">
+						<h5 class="modal-title">Modifier la facture</h5>
+						<button type="button" class="close" data-dismiss="modal">
+							<span>&times;</span>
+						</button>
+					</div>
+					<div class="modal-body">
+						<div id="factureLinesContainer"></div>
+						<button type="button" class="btn btn-outline-primary mt-3" id="btnAddLigne">
+							<i class="fas fa-plus me-1"></i>
+							Ajouter une ligne
+						</button>
+						<hr>
+						<div class="text-end">
+							<strong>Total TTC :
+								<span id="factureTotal">0.00</span>
+								F CFA</strong>
+						</div>
+					</div>
+					<div class="modal-footer">
+						<button type="button" class="btn btn-primary" id="btnSaveFacture" data-id="">Enregistrer</button>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+{% endblock %}
+{% block javascripts %}
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css"/>
+	<script src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
+	<script src="{{ asset('js/reception/caisse/caisse.js') }}"></script>
+{% endblock %}

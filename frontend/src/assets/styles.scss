@@ -1,0 +1,342 @@
+/* You can add global styles to this file, and also import other style files */
+@use 'primeicons/primeicons.css';
+@use '@/assets/tailwind.css';
+@use '@/assets/layout/layout.scss';
+@use '@/assets/demo/demo.scss';
+
+/* FullCalendar dark-mode variable overrides to improve header / "today" contrast
+	 Applied under .app-dark (project dark-mode class) with attribute fallback.
+*/
+:root {}
+
+.app-dark .fc,
+[class*="app-dark"] .fc {
+	--fc-page-bg-color: #0b1220;
+	--fc-neutral-text-color: #cbd5e1;
+	--fc-border-color: #374151;
+	--fc-border-color: #444 !important; 
+	--fc-today-bg-color: rgba(19, 180, 255, 0.801);
+	--fc-today-text-color: #ffffff;
+	--fc-button-bg-color: #1f2937;
+	--fc-button-text-color: #ffffff;
+}
+
+.app-dark .fc .fc-col-header-cell-cushion,
+[class*="app-dark"] .fc .fc-col-header-cell-cushion {
+	color: var(--fc-neutral-text-color) !important;
+}
+
+.app-dark .fc .fc-col-header-cell.fc-day-today .fc-col-header-cell-cushion,
+[class*="app-dark"] .fc .fc-col-header-cell.fc-day-today .fc-col-header-cell-cushion {
+	background-color: var(--fc-today-bg-color) !important;
+	color: var(--fc-today-text-color) !important;
+	border-radius: 0.375rem;
+	padding: 0.2rem 0.5rem;
+}
+
+.app-dark .fc .fc-timegrid-col.fc-day-today .fc-timegrid-slot,
+[class*="app-dark"] .fc .fc-timegrid-col.fc-day-today .fc-timegrid-slot {
+	background-color: rgba(255,255,255,0.02) !important;
+}
+
+/* Additional variants: match elements that carry data-date or live inside scrollgrid sections */
+.app-dark .fc .fc-col-header-cell[data-date].fc-day-today,
+[class*="app-dark"] .fc .fc-col-header-cell[data-date].fc-day-today {
+	background-color: rgb(0, 15, 61) !important;
+	color: var(--fc-today-text-color) !important;
+}
+
+.app-dark .fc .fc-timegrid-col[data-date].fc-day-today,
+[class*="app-dark"] .fc .fc-timegrid-col[data-date].fc-day-today {
+	background-color: rgba(99,102,241,0.06) !important;
+}
+
+.app-dark .fc .fc-scrollgrid-section .fc-timegrid-col.fc-day-today,
+[class*="app-dark"] .fc .fc-scrollgrid-section .fc-timegrid-col.fc-day-today {
+	background-color: rgba(255,255,255,0.02) !important;
+}
+
+/* Ensure the header cushion still has the pill look for data-date variant */
+.app-dark .fc .fc-col-header-cell[data-date].fc-day-today .fc-col-header-cell-cushion,
+[class*="app-dark"] .fc .fc-col-header-cell[data-date].fc-day-today .fc-col-header-cell-cushion {
+	background-color: rgb(0, 15, 61)  !important;
+	color: var(--fc-today-text-color) !important;
+	border-radius: 0.375rem;
+	padding: 0.2rem 0.5rem;
+}
+
+/* Styles portés depuis templates/admin/agenda/evenements.html.twig */
+/* Conteneur principal du calendrier */
+#calendar-holder .fc {
+	background-color: rgba(255, 255, 255, 0.95);
+	border-radius: 0.5rem;
+	box-shadow: 0 0.5rem 1.5rem rgba(58, 59, 69, 0.15);
+	padding: 1.5rem;
+	transition: all 0.3s ease-in-out;
+}
+
+/* En-tête du calendrier */
+.fc-toolbar.fc-header-toolbar {
+	margin-bottom: 1.25rem;
+	border-bottom: 1px solid rgba(230, 230, 255, 0.3);
+	padding-bottom: 0.5rem;
+}
+
+/* Titre */
+.fc-toolbar-title {
+	font-size: 1.4rem;
+	font-weight: 700;
+	color: #4e73df;
+}
+
+/* Boutons */
+.fc .fc-button {
+	background-color: rgba(78, 115, 223, 0.9);
+	color: white;
+	border: none;
+	border-radius: 0.35rem;
+	font-size: 0.85rem;
+	padding: 0.4rem 0.75rem;
+	margin: 0 0.2rem;
+	box-shadow: 0 0.15rem 0.75rem rgba(0, 0, 0, 0.1);
+	transition: background-color 0.3s;
+}
+
+.fc .fc-button:hover {
+	background-color: rgba(46, 89, 217, 1);
+}
+
+.fc .fc-button:disabled {
+	background-color: rgba(200, 200, 200, 0.4);
+	color: rgba(90, 90, 90, 0.7);
+}
+
+/* Jours de la semaine */
+.fc-col-header-cell-cushion {
+	font-weight: 600;
+	color: #6e707e;
+	font-size: 0.85rem;
+	padding: 0.75rem 0;
+}
+
+/* Jours */
+.fc-daygrid-day-number {
+	color: #4e73df;
+	font-weight: 600;
+	font-size: 0.85rem;
+	padding: 0.25rem;
+}
+
+/* Hover sur les jours */
+.fc-daygrid-day:hover {
+	background-color: rgba(78, 115, 223, 0.05);
+	cursor: pointer;
+}
+
+/* Événements */
+.fc-event {
+	background-color: rgba(78, 115, 223, 0.85);
+	border: none;
+	color: #fff;
+	font-size: 0.75rem;
+	padding: 0.2rem 0.5rem;
+	border-radius: 0.35rem;
+	margin-bottom: 0.2rem;
+	transition: background-color 0.3s;
+}
+
+.fc-event:hover {
+	background-color: rgba(46, 89, 217, 0.95);
+	box-shadow: 0 0.25rem 0.5rem rgba(78, 115, 223, 0.3);
+}
+
+/* Vue mensuelle - bordures douces */
+.fc-theme-bootstrap td,
+.fc-theme-bootstrap th {
+	border-color: rgba(222, 226, 230, 0.3);
+}
+
+/* Cellule aujourd'hui */
+.fc-day-today {
+	background-color: rgba(28, 200, 138, 0.08) !important;
+	box-shadow: inset 0 0 0 2px rgba(28, 200, 138, 0.3);
+}
+
+.context-menu {
+	position: absolute;
+	z-index: 9999;
+	display: none;
+	background-color: #fff;
+	border: 1px solid #ccc;
+	border-radius: 0.35rem;
+	box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, .15);
+	min-width: 160px;
+}
+.context-menu ul {
+	list-style: none;
+	padding: 0;
+	margin: 0;
+}
+.context-menu li {
+	padding: 10px 15px;
+	cursor: pointer;
+}
+.context-menu li:hover {
+	background-color: #f8f9fc;
+}
+
+/* Dark mode variants for the calendar styles */
+.app-dark #calendar-holder .fc,
+[class*="app-dark"] #calendar-holder .fc {
+	background-color: #071024; /* darker page bg */
+	border-radius: 0.5rem;
+	box-shadow: 0 0.5rem 1.5rem rgba(0,0,0,0.6);
+	padding: 1.5rem;
+	transition: all 0.3s ease-in-out;
+}
+
+.app-dark .fc-toolbar.fc-header-toolbar,
+[class*="app-dark"] .fc-toolbar.fc-header-toolbar {
+	margin-bottom: 1.25rem;
+	border-bottom: 1px solid rgba(255,255,255,0.04);
+	padding-bottom: 0.5rem;
+}
+
+.app-dark .fc-toolbar-title,
+[class*="app-dark"] .fc-toolbar-title {
+	font-size: 1.4rem;
+	font-weight: 700;
+	color: #9ab9ff;
+}
+
+.app-dark .fc .fc-button,
+[class*="app-dark"] .fc .fc-button {
+	background-color: rgba(45, 55, 95, 0.85);
+	color: #e6eefc;
+	border: none;
+	border-radius: 0.35rem;
+	font-size: 0.85rem;
+	padding: 0.4rem 0.75rem;
+	margin: 0 0.2rem;
+	box-shadow: 0 0.15rem 0.75rem rgba(0, 0, 0, 0.5);
+}
+
+.app-dark .fc .fc-button:hover,
+[class*="app-dark"] .fc .fc-button:hover {
+	background-color: rgba(70, 90, 160, 0.95);
+}
+
+.app-dark .fc-col-header-cell-cushion,
+[class*="app-dark"] .fc-col-header-cell-cushion {
+	font-weight: 600;
+	color: #aeb6c8;
+	font-size: 0.85rem;
+	padding: 0.75rem 0;
+}
+
+.app-dark .fc-daygrid-day-number,
+[class*="app-dark"] .fc-daygrid-day-number {
+	color: #9ab9ff;
+	font-weight: 600;
+	font-size: 0.85rem;
+	padding: 0.25rem;
+}
+
+.app-dark .fc-daygrid-day:hover,
+[class*="app-dark"] .fc-daygrid-day:hover {
+	background-color: rgba(78, 115, 223, 0.06);
+	cursor: pointer;
+}
+
+.app-dark .fc-event,
+[class*="app-dark"] .fc-event {
+	background-color: rgba(78, 115, 223, 0.9);
+	border: none;
+	color: #fff;
+	font-size: 0.75rem;
+	padding: 0.2rem 0.5rem;
+	border-radius: 0.35rem;
+	margin-bottom: 0.2rem;
+	transition: background-color 0.3s;
+}
+
+.app-dark .fc-event:hover,
+[class*="app-dark"] .fc-event:hover {
+	background-color: rgba(46, 89, 217, 1);
+	box-shadow: 0 0.25rem 0.5rem rgba(0,0,0,0.6);
+}
+
+.app-dark .fc-theme-bootstrap td,
+[class*="app-dark"] .fc-theme-bootstrap td,
+.app-dark .fc-theme-bootstrap th,
+[class*="app-dark"] .fc-theme-bootstrap th {
+	border-color: rgba(255,255,255,0.04);
+}
+
+.app-dark .fc-day-today,
+[class*="app-dark"] .fc-day-today {
+	background-color: rgba(19, 255, 227, 0.08) !important;
+	box-shadow: inset 0 0 0 2px rgba(19, 255, 227, 0.12);
+}
+
+.app-dark .context-menu,
+[class*="app-dark"] .context-menu {
+	background-color: #0b1220;
+	border: 1px solid rgba(255,255,255,0.06);
+	color: #cbd5e1;
+}
+
+.app-dark .context-menu li:hover,
+[class*="app-dark"] .context-menu li:hover {
+	background-color: rgba(255,255,255,0.02);
+}
+
+/* Dark-mode adjustments specifically for the dayGridMonth view (month grid) */
+.app-dark .fc .fc-daygrid-day,
+[class*="app-dark"] .fc .fc-daygrid-day {
+	background-color: transparent;
+	border: 1px solid rgba(255,255,255,0.03);
+	border-radius: 0.375rem;
+	padding: 0.2rem;
+	transition: background-color 0.12s ease, border-color 0.12s ease;
+}
+
+.app-dark .fc .fc-daygrid-day:hover,
+[class*="app-dark"] .fc .fc-daygrid-day:hover {
+	background-color: rgba(255,255,255,0.02);
+}
+
+.app-dark .fc .fc-daygrid-day .fc-daygrid-day-number,
+[class*="app-dark"] .fc .fc-daygrid-day .fc-daygrid-day-number {
+	color: #9ab9ff;
+	font-weight: 600;
+}
+
+.app-dark .fc .fc-daygrid-day-events,
+[class*="app-dark"] .fc .fc-daygrid-day-events {
+	margin-top: 0.25rem;
+}
+
+.app-dark .fc .fc-daygrid-event,
+[class*="app-dark"] .fc .fc-daygrid-event {
+	background-color: rgba(78, 115, 223, 0.9);
+	color: #fff;
+	border-radius: 0.35rem;
+	padding: 0.15rem 0.4rem;
+	box-shadow: none;
+}
+
+.app-dark .fc .fc-daygrid-more-link,
+[class*="app-dark"] .fc .fc-daygrid-more-link {
+	color: rgba(170,190,255,0.95);
+}
+
+.app-dark .fc .fc-daygrid-day.fc-day-today,
+[class*="app-dark"] .fc .fc-daygrid-day.fc-day-today {
+	background-color: rgba(19, 255, 227, 0.06) !important;
+	box-shadow: inset 0 0 0 2px rgba(19, 255, 227, 0.10);
+}
+
+
+
+

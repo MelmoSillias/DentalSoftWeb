@@ -1,0 +1,56 @@
+{# Section Accueil : résumé global avec cards de stats #}
+<section id="accueil" class="ds-section">
+    <!-- Titre principal de bienvenue -->
+    <div class="mb-3">
+        <h1 class="h3 mb-1">Bienvenue sur le Dashboard Médical</h1>
+        <p class="text-muted mb-0">Aperçu rapide des patients, rendez-vous, facturation et paramètres.</p>
+    </div>
+
+    <!-- Actions principales Accueil -->
+    <div class="d-flex flex-wrap ds-actions mb-3">
+        <!-- Bouton qui simule un rafraîchissement des indicateurs via JS fetch -->
+        <button class="btn btn-primary" onclick="refreshStats()">Rafraîchir les stats</button>
+        <!-- Bouton qui ouvre une modale avant export (window.print/jsPDF simulé) -->
+        <button class="btn btn-outline-secondary" onclick="exportReport()">Exporter rapport (PDF)</button>
+    </div>
+
+    <!-- Grid de cartes de stats (3 colonnes sur desktop) -->
+    <div class="row row-cols-1 row-cols-md-3 g-3">
+        <div class="col">
+            <div class="card ds-card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="ds-badge">Patients</span>
+                        <img src="https://via.placeholder.com/48" alt="Icône patients" class="rounded">
+                    </div>
+                    <h3 class="mb-0" data-stat-value>128</h3>
+                    <small class="text-muted">Total enregistrés</small>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card ds-card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="ds-badge">RDV du jour</span>
+                        <img src="https://via.placeholder.com/48" alt="Icône rendez-vous" class="rounded">
+                    </div>
+                    <h3 class="mb-0" data-stat-value>24</h3>
+                    <small class="text-muted">Planifiés aujourd’hui</small>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card ds-card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="ds-badge">Facturation</span>
+                        <img src="https://via.placeholder.com/48" alt="Icône facturation" class="rounded">
+                    </div>
+                    <h3 class="mb-0" data-stat-value>42</h3>
+                    <small class="text-muted">Factures en attente</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>

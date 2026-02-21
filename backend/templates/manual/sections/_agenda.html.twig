@@ -1,0 +1,162 @@
+<section id="agenda" class="manual-card manual-section" aria-labelledby="agenda-title">
+    <header class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+        <div>
+            <h2 id="agenda-title" class="mb-1">Agenda</h2>
+            <p class="mb-0">Rendez-vous patients, événements internes et congés, sans chevauchements.</p>
+        </div>
+        <span class="manual-pill"><i class="fas fa-calendar-alt mr-2"></i>Rôles : Réception · Médecin · Admin</span>
+    </header>
+
+    <div class="manual-grid-2 mb-3">
+        <div class="manual-note manual-success">
+            <strong>À quoi sert</strong><br>
+            Planifier et visualiser les rendez-vous par médecin/salle, gérer les événements internes et congés pour éviter les conflits.
+        </div>
+        <div class="manual-note manual-warning">
+            <strong>À vérifier avant d’agir</strong><br>
+            Disponibilité médecin/salle; statut du rendez-vous (en attente/validé/reporté/annulé); bonnes dates pour congés et fériés.
+        </div>
+    </div>
+
+    <div class="manual-grid-2 align-items-start mb-3">
+        <div>
+            <h3 class="h5">Interface</h3>
+            <ul class="manual-list">
+                <li><strong>Vue Rendez-vous</strong> : grille temps × salles, couleurs par statut.</li>
+                <li><strong>Vue Événements</strong> : calendrier mensuel avec cartes ajout/suppression.</li>
+                <li><strong>Vue Congés</strong> : timeline par employé; formulaire ajout congé.</li>
+                <li><strong>Filtre médecin/salle/date</strong> en haut; boutons d’action dans les cartes.</li>
+                <li><strong>Colonne Actions</strong> (RDV) : Valider, Reporter, Annuler, Supprimer.</li>
+            </ul>
+        </div>
+        <div class="manual-placeholder" aria-label="Maquette agenda">
+            [ Image – Grille de rendez-vous par salle avec codes couleur et actions ]
+        </div>
+    </div>
+
+    <h3 class="h5">Actions disponibles</h3>
+    <div class="manual-grid-2 mb-3">
+        <div class="manual-action">
+            <h4>Créer un rendez-vous</h4>
+            <small>Clic sur un créneau libre ou bouton « Nouveau RDV ».</small>
+            <dl>
+                <dt>Quand</dt><dd>Planifier une visite ou un contrôle.</dd>
+                <dt>Système</dt><dd>Vérifie chevauchements; associe patient, médecin, salle, durée, motif.</dd>
+                <dt>Vérifier</dt><dd>Patient trouvé ou créé; durée réaliste; salle disponible.</dd>
+                <dt>Résultat</dt><dd>RDV ajouté en statut « en attente ».</dd>
+            </dl>
+        </div>
+        <div class="manual-action">
+            <h4>Valider / Annuler / Reporter</h4>
+            <small>Menu d’action sur la carte RDV.</small>
+            <dl>
+                <dt>Quand</dt><dd>Confirmer la présence, noter une annulation ou déplacer.</dd>
+                <dt>Système</dt><dd>Met à jour le statut/couleur; recalcul des conflits.</dd>
+                <dt>Vérifier</dt><dd>Nouvelle date/heure; prévenir le patient si report.</dd>
+                <dt>Résultat</dt><dd>Carte mise à jour; historique statut conservé.</dd>
+            </dl>
+        </div>
+        <div class="manual-action">
+            <h4>Gérer un événement interne (Admin)</h4>
+            <small>Calendrier Événements.</small>
+            <dl>
+                <dt>Quand</dt><dd>Bloquer une salle ou annoncer une formation.</dd>
+                <dt>Système</dt><dd>Crée un bloc daté avec titre/type; valide ou supprime.</dd>
+                <dt>Vérifier</dt><dd>Dates exactes; type cohérent; pas de conflit critique.</dd>
+                <dt>Résultat</dt><dd>Bloc visible sur le calendrier, couleurs par type.</dd>
+            </dl>
+        </div>
+        <div class="manual-action">
+            <h4>Enregistrer un congé</h4>
+            <small>Vue Congés → « Ajouter congé ».</small>
+            <dl>
+                <dt>Quand</dt><dd>Absence planifiée d’un employé/médecin.</dd>
+                <dt>Système</dt><dd>Ajoute une période; timeline mise à jour; impact sur disponibilités.</dd>
+                <dt>Vérifier</dt><dd>Type (congé, maladie), dates de début/fin, employé correct.</dd>
+                <dt>Résultat</dt><dd>Congé affiché; créneaux bloqués sur la période.</dd>
+            </dl>
+        </div>
+        <div class="manual-action">
+            <h4>Définir fériés / fermetures</h4>
+            <small>Vue Fériés/Fermetures (Admin).</small>
+            <dl>
+                <dt>Quand</dt><dd>Planifier une fermeture de cabinet ou un jour férié.</dd>
+                <dt>Système</dt><dd>Enregistre les dates/jours fermés; les RDV bloqués.</dd>
+                <dt>Vérifier</dt><dd>Dates exactes; impact sur RDV déjà créés.</dd>
+                <dt>Résultat</dt><dd>Plages indisponibles; nouveaux RDV interdits sur ces jours.</dd>
+            </dl>
+        </div>
+    </div>
+
+    <h3 class="h5">Workflows pas-à-pas (exemple)</h3>
+    <ol class="manual-steps">
+        <li class="manual-step">
+            <div class="d-flex align-items-center justify-content-between">
+                <span class="manual-step-number">1</span>
+                <span class="manual-tag">Réception</span>
+            </div>
+            <p class="manual-step-title">Programmer un contrôle</p>
+            <ul class="manual-list">
+                <li>Clic sur la grille à la date/heure souhaitée.</li>
+                <li>Rechercher le patient; choisir médecin, salle, durée 30 min.</li>
+                <li>Motif : « Contrôle post-acte molaire 36 ».</li>
+                <li>Valider : RDV en attente, couleur neutre.</li>
+            </ul>
+            <div class="manual-placeholder mt-2">[ Image – Formulaire création RDV avec choix médecin/salle ]</div>
+        </li>
+        <li class="manual-step">
+            <div class="d-flex align-items-center justify-content-between">
+                <span class="manual-step-number">2</span>
+                <span class="manual-tag">Médecin</span>
+            </div>
+            <p class="manual-step-title">Valider et préparer la séance</p>
+            <ul class="manual-list">
+                <li>Sur la carte RDV, action <strong>Valider</strong>.</li>
+                <li>Ajouter une note interne si besoin (ex : apporter radio).</li>
+                <li>Si indisponible, action <strong>Reporter</strong> vers un autre créneau.</li>
+            </ul>
+            <div class="manual-placeholder mt-2">[ Image – Carte RDV avec menu Valider/Reporter/Annuler ]</div>
+        </li>
+        <li class="manual-step">
+            <div class="d-flex align-items-center justify-content-between">
+                <span class="manual-step-number">3</span>
+                <span class="manual-tag">Admin</span>
+            </div>
+            <p class="manual-step-title">Bloquer une salle pour maintenance</p>
+            <ul class="manual-list">
+                <li>Vue Événements → cliquer sur la date.</li>
+                <li>Titre « Maintenance salle 2 », type « Blocage ».</li>
+                <li>Valider; vérifier qu’aucun RDV critique n’est dessus.</li>
+            </ul>
+            <div class="manual-placeholder mt-2">[ Image – Calendrier événements avec bloc Maintenance ]</div>
+        </li>
+    </ol>
+
+    <div class="manual-grid-2 mt-3">
+        <div class="manual-note manual-success">
+            <strong>Bonnes pratiques</strong>
+            <ul class="manual-list mt-2">
+                <li>Utiliser des motifs explicites pour les RDV (type d’acte, côté, dent).</li>
+                <li>Reporter plutôt qu’annuler quand une nouvelle date est proposée.</li>
+                <li>Renseigner les congés dès validation pour éviter les collisions ultérieures.</li>
+            </ul>
+        </div>
+        <div class="manual-note manual-warning">
+            <strong>Erreurs fréquentes</strong>
+            <ul class="manual-list mt-2">
+                <li>Chevauchement salle/médecin : choisir une autre salle ou durée.</li>
+                <li>Patient introuvable : rechercher par téléphone ou le créer.</li>
+                <li>Fériés non pris en compte : vérifier la liste après ajout.</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="manual-note mt-3">
+        <strong>Astuces métier</strong>
+        <ul class="manual-list mt-2">
+            <li>Pour les séries (orthodontie), planifier plusieurs RDV d’un coup en conservant le même motif.</li>
+            <li>Quand un RDV est annulé tardivement, noter la raison dans un champ de commentaire pour le suivi qualité.</li>
+            <li>Utiliser les événements pour bloquer les réunions d’équipe et éviter les surprises en salle.</li>
+        </ul>
+    </div>
+</section>

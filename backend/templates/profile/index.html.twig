@@ -1,0 +1,556 @@
+﻿{% extends 'layout.html.twig' %}
+
+{% block title %}Profil{% endblock %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    <style>
+        .profile-hero {
+            background: linear-gradient(135deg, #4e73df 0%, #1cc88a 100%);
+            color: #fff;
+            border-radius: 1rem;
+            padding: 2.5rem;
+            position: relative;
+            overflow: hidden;
+        }
+        .profile-hero::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at 20% 20%, rgba(255,255,255,0.15), transparent 45%),
+                        radial-gradient(circle at 80% 0, rgba(255,255,255,0.12), transparent 40%);
+            pointer-events: none;
+        }
+        .avatar-ring {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            display: grid;
+            place-items: center;
+            background: rgba(255,255,255,0.15);
+            border: 1px solid rgba(255,255,255,0.25);
+        }
+        .profile-actions {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+        .profile-actions > * {
+            margin: 0.25rem;
+        }
+        @media (min-width: 768px) {
+            .profile-actions {
+                flex-direction: column;
+                align-items: flex-end;
+            }
+        }
+        .stat-card {
+            border-left: 4px solid #4e73df;
+        }
+        .stat-card.success {
+            border-color: #1cc88a;
+        }
+        .stat-card.warning {
+            border-color: #f6c23e;
+        }
+        .stat-card.info {
+            border-color: #36b9cc;
+        }
+        .metric-label {
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: .08rem;
+            color: #858796;
+        }
+        .metric-value {
+            font-weight: 700;
+            font-size: 1.6rem;
+            color: #4e73df;
+        }
+        .activity-item {
+            display: flex;
+            align-items: flex-start;
+            padding: 0.85rem 0;
+            border-bottom: 1px solid #f1f3f9;
+        }
+        .activity-item:last-child {
+            border-bottom: none;
+        }
+        .activity-icon {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            margin-right: 1rem;
+        }
+        .activity-icon.badge-success {
+            background: #1cc88a;
+        }
+        .activity-icon.badge-warning {
+            background: #f6c23e;
+        }
+        .activity-icon.badge-secondary {
+            background: #858796;
+        }
+        .notification-pill {
+            border-radius: 0.75rem;
+            padding: 0.75rem 1rem;
+            border: 1px solid #edf2fb;
+            margin-bottom: 0.75rem;
+            transition: transform 0.2s ease;
+            border-left: 4px solid transparent;
+        }
+        .notification-pill:hover {
+            transform: translateX(4px);
+        }
+        .notification-pill.unread {
+            background: #f8fbff;
+            border-color: #cfe2ff;
+        }
+        .notification-pill[data-priority="info"] {
+            border-left-color: #4e73df;
+        }
+        .notification-pill[data-priority="warning"] {
+            border-left-color: #f6c23e;
+        }
+        .notification-pill[data-priority="critical"] {
+            border-left-color: #e74a3b;
+        }
+        .quick-link-btn {
+            border-radius: 0.85rem;
+            padding: 0.85rem 1rem;
+            border: 1px solid #e3e6f0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            text-decoration: none;
+            color: inherit;
+            margin-bottom: 0.75rem;
+        }
+        .quick-link-btn i {
+            font-size: 1.1rem;
+        }
+        .employee-meta {
+            background: #f8f9fc;
+            border-radius: 0.75rem;
+            padding: 1rem;
+            height: 100%;
+        }
+        .modal .form-control {
+            border-radius: 0.5rem;
+        }
+    </style>
+{% endblock %}
+
+{% block main %}
+<div class="container-fluid py-4 px-0 px-md-2">
+    {% set lastSession = recentSessions|first %}
+    {% for label, messages in app.flashes %}
+        {% for message in messages %}
+            <div class="alert alert-{{ label }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="close" data-dismiss="alert" aria-label="Fermer">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+        {% endfor %}
+    {% endfor %}
+
+    <div class="profile-hero shadow-sm mb-4">
+        <div class="row align-items-center">
+            <div class="col-lg-3 text-center mb-3 mb-lg-0">
+                <div class="avatar-ring mx-auto">
+                    <img src="{{ asset('sb-admin/img/undraw_profile_2.svg') }}" alt="Avatar" class="img-fluid rounded-circle" style="width: 90px; height: 90px;">
+                </div>
+            </div>
+            <div class="col-lg-6 text-center text-lg-left">
+                <p class="mb-2 text-uppercase small text-white-50">Espace personnel</p>
+                <h1 class="h3 mb-2">{{ app.user.username ?? 'Utilisateur' }}</h1>
+                <p class="mb-0 text-white-75">Suivez vos connexions, notifications et informations clés au même endroit.</p>
+            </div>
+            <div class="col-lg-3">
+                <div class="profile-actions">
+                    <button class="btn btn-light btn-sm text-primary shadow-sm" data-toggle="modal" data-target="#changePasswordModal">
+                        <i class="fas fa-key mr-2"></i>Modifier le mot de passe
+                    </button>
+                    <button class="btn btn-outline-light btn-sm" data-toggle="modal" data-target="#notificationsModal">
+                        <i class="fas fa-bell mr-2"></i>Voir toutes les notifications
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card shadow-sm stat-card border-0">
+                <div class="card-body">
+                    <div class="metric-label mb-1">Statut du compte</div>
+                    <div class="metric-value text-dark">Actif</div>
+                    <small class="text-muted">Dernière mise à jour {{ lastSession and lastSession.time ? lastSession.time|date('d/m H:i') : 'récente' }}</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card shadow-sm stat-card info border-0">
+                <div class="card-body">
+                    <div class="metric-label mb-1">Notifications</div>
+                    <div class="metric-value text-info">{{ notifications|length }}</div>
+                    <small class="text-muted">20 dernières notifications affichées</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card shadow-sm stat-card success border-0">
+                <div class="card-body">
+                    <div class="metric-label mb-1">Activité récente</div>
+                    <div class="metric-value text-success">{{ recentSessions|length }}</div>
+                    <small class="text-muted">Connexions & déconnexions</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card shadow-sm stat-card warning border-0">
+                <div class="card-body">
+                    <div class="metric-label mb-1">Dernier accès</div>
+                    <div class="metric-value text-warning">
+                        {% if lastSession and lastSession.time %}
+                            {{ lastSession.time|date('d/m H:i') }}
+                        {% else %}
+                            --
+                        {% endif %}
+                    </div>
+                    <small class="text-muted">Surveillance temps réel</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-7 mb-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <div>
+                        <p class="text-muted small mb-1">Sécurité</p>
+                        <h5 class="mb-0">Activité récente</h5>
+                    </div>
+                    <span class="badge badge-primary">{{ recentSessions|length }} événements</span>
+                </div>
+                <div class="card-body">
+                    {% if recentSessions is not empty %}
+                        {% for session in recentSessions %}
+                            <div class="activity-item">
+                                <div class="activity-icon badge-{{ session.badge ?? 'secondary' }}">
+                                    <i class="{{ session.icon ?? 'fas fa-info-circle' }}"></i>
+                                </div>
+                                <div class="flex-fill">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <h6 class="mb-0">{{ session.title }}</h6>
+                                        <span class="badge badge-{{ session.badge ?? 'secondary' }}">{{ session.time ? session.time|date('d/m H:i') : 'Instantané' }}</span>
+                                    </div>
+                                    {% if session.subtitle %}
+                                        <p class="mb-1 text-muted small">{{ session.subtitle }}</p>
+                                    {% endif %}
+                                    <small class="text-muted">IP {{ session.ip ?? '—' }} • {{ session.userAgent ?? 'Agent inconnu' }}</small>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center py-4 text-muted">
+                            <i class="fas fa-shield-alt fa-2x mb-2"></i>
+                            <p class="mb-0">Aucune activité enregistrée pour le moment.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-5 mb-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <div>
+                        <p class="text-muted small mb-1">Centre d'alertes</p>
+                        <h5 class="mb-0">Notifications</h5>
+                    </div>
+                    <div class="d-flex align-items-center">
+                        <div class="btn-group btn-group-sm mr-2" role="group">
+                            <a class="btn btn-sm {{ notificationsFilter == 'all' ? 'btn-primary' : 'btn-outline-primary' }}" href="{{ path('app_profile', {'notifications_filter': 'all'}) }}">Toutes</a>
+                            <a class="btn btn-sm {{ notificationsFilter == 'unread' ? 'btn-primary' : 'btn-outline-primary' }}" href="{{ path('app_profile', {'notifications_filter': 'unread'}) }}">Non lues</a>
+                            <a class="btn btn-sm {{ notificationsFilter == 'read' ? 'btn-primary' : 'btn-outline-primary' }}" href="{{ path('app_profile', {'notifications_filter': 'read'}) }}">Lues</a>
+                        </div>
+                        <button class="btn btn-sm btn-outline-secondary js-notifications-mark-all" data-endpoint="{{ path('app_notifications_mark_read') }}">
+                            <i class="fas fa-check mr-1"></i>Tout lire
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted small mb-3">{{ notificationsUnreadCount }} notification(s) non lue(s)</p>
+                    {% if notifications %}
+                        {% for notification in notifications %}
+                            <div class="notification-pill {{ notification.etatVu != 'vu' ? 'unread' }}" data-priority="{{ notification.priority ?? 'info' }}" data-notification-id="{{ notification.id }}">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="badge badge-{{ notification.priority == 'critical' ? 'danger' : (notification.priority == 'warning' ? 'warning' : 'primary') }}">
+                                        {{ notification.priority|default('info')|capitalize }}
+                                    </span>
+                                    <small class="text-muted">{{ notification.dateEnvoi ? notification.dateEnvoi|date('d/m/Y H:i') : '' }}</small>
+                                </div>
+                                <p class="mb-1 font-weight-bold">{{ notification.message }}</p>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <small class="text-muted">
+                                        {{ notification.emitter ? 'Par ' ~ notification.emitter.username ~ ' · ' : '' }}
+                                        {{ notification.etatVu == 'vu' ? 'Lu' : 'Non lu' }}
+                                    </small>
+                                    <div>
+                                        {% if notification.link %}
+                                            <a href="{{ notification.link }}" class="small text-primary js-notification-link" data-notification-id="{{ notification.id }}">Ouvrir</a>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted mb-0">Aucune notification disponible.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        {% if employee %}
+            <div class="col-lg-7 mb-4">
+                <div class="card shadow-sm h-100">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Informations employé</h5>
+                        <span class="badge badge-info">{{ employee.fonction ?? 'Equipe' }}</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <p class="text-muted small mb-1">Nom complet</p>
+                                <p class="mb-0 font-weight-bold">{{ employee.fullName ?? (employee.nom ~ ' ' ~ employee.prenom) }}</p>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <p class="text-muted small mb-1">Matricule</p>
+                                <p class="mb-0 font-weight-bold">{{ employee.matricule ?? 'Non défini' }}</p>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <p class="text-muted small mb-1">Téléphone</p>
+                                <p class="mb-0">{{ employee.telephone ?? 'Non renseigné' }}</p>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <p class="text-muted small mb-1">Email</p>
+                                <p class="mb-0">{{ employee.email ?? app.user.userIdentifier ?? '—' }}</p>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <p class="text-muted small mb-1">Type de contrat</p>
+                                <p class="mb-0">{{ employee.typeContrat ?? 'N/A' }}</p>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <p class="text-muted small mb-1">Date d'embauche</p>
+                                <p class="mb-0">{{ employee.dateEmbauche ? employee.dateEmbauche|date('d/m/Y') : 'N/A' }}</p>
+                            </div>
+                            <div class="col-12">
+                                <div class="employee-meta">
+                                    <p class="mb-1 font-weight-bold">Disponibilités</p>
+                                    {% set days = employee.comingDaysInWeek %}
+                                    <small class="text-muted">
+                                        {% if days is iterable and days|length > 0 %}
+                                            {{ days|join(', ') }}
+                                        {% else %}
+                                            Calendrier en attente de configuration.
+                                        {% endif %}
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-5 mb-4">
+                {% if quickLinks is not empty %}
+                    <div class="card shadow-sm h-100">
+                        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Accès rapides</h5>
+                            <i class="fas fa-external-link-alt text-primary"></i>
+                        </div>
+                        <div class="card-body">
+                            {% for link in quickLinks %}
+                                <a class="quick-link-btn" href="{{ path(link.route) }}">
+                                    <div>
+                                        <p class="mb-0 font-weight-bold">{{ link.label }}</p>
+                                        <small class="text-muted">Disponible selon vos droits</small>
+                                    </div>
+                                    <span class="badge badge-{{ link.variant }}">
+                                        <i class="{{ link.icon }}"></i>
+                                    </span>
+                                </a>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        {% else %}
+            <div class="col-12 mb-4">
+                {% if quickLinks is not empty %}
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Accès rapides</h5>
+                            <i class="fas fa-external-link-alt text-primary"></i>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                {% for link in quickLinks %}
+                                    <div class="col-md-4">
+                                        <a class="quick-link-btn" href="{{ path(link.route) }}">
+                                            <div>
+                                                <p class="mb-0 font-weight-bold">{{ link.label }}</p>
+                                                <small class="text-muted">Accès direct</small>
+                                            </div>
+                                            <span class="badge badge-{{ link.variant }}">
+                                                <i class="{{ link.icon }}"></i>
+                                            </span>
+                                        </a>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="card shadow-sm">
+                        <div class="card-body text-center text-muted">
+                            <i class="fas fa-info-circle fa-2x mb-2"></i>
+                            <p class="mb-0">Aucun lien rapide n'est disponible pour votre rôle.</p>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="modal fade" id="changePasswordModal" tabindex="-1" role="dialog" aria-labelledby="changePasswordLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content border-0">
+            <form id="changePasswordForm" method="post" action="{{ path('app_profile_password') }}">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="changePasswordLabel">Modifier le mot de passe</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Fermer">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="_token" value="{{ csrf_token('change-password') }}">
+                    <div class="form-group">
+                        <label for="currentPassword">Mot de passe actuel</label>
+                        <input type="password" class="form-control" id="currentPassword" name="current_password" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="newPassword">Nouveau mot de passe</label>
+                        <input type="password" class="form-control" id="newPassword" name="new_password" required minlength="8">
+                        <small class="form-text text-muted">Minimum 8 caractères.</small>
+                    </div>
+                    <div class="form-group mb-0">
+                        <label for="confirmPassword">Confirmer le mot de passe</label>
+                        <input type="password" class="form-control" id="confirmPassword" name="confirm_password" required minlength="8">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary">Mettre à jour</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="notificationsModal" tabindex="-1" role="dialog" aria-labelledby="notificationsLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable" role="document">
+        <div class="modal-content border-0">
+            <div class="modal-header">
+                <h5 class="modal-title" id="notificationsLabel">Toutes les notifications</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Fermer">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                {% if notifications %}
+                    {% for notification in notifications %}
+                        <div class="notification-pill">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="badge badge-{{ notification.type == 'urgent' ? 'danger' : 'secondary' }}">
+                                    {{ notification.type|default('info')|capitalize }}
+                                </span>
+                                <small class="text-muted">{{ notification.dateEnvoi ? notification.dateEnvoi|date('d/m/Y H:i') : '' }}</small>
+                            </div>
+                            <p class="mb-1 font-weight-bold">{{ notification.message }}</p>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <small class="text-muted">Statut : {{ notification.etatVu ?? 'non lu' }}</small>
+                                {% if notification.link %}
+                                    <a href="{{ notification.link }}" class="small text-primary">Ouvrir</a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted mb-0">Aucune notification disponible pour le moment.</p>
+                {% endif %}
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-dismiss="modal">Fermer</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block ownscripts %}
+    {{ parent() }}
+    <script>
+        (function() {
+            $('#changePasswordModal').on('show.bs.modal', function () {
+                const form = document.getElementById('changePasswordForm');
+                if (form) {
+                    form.reset();
+                }
+            });
+
+            const markEndpoint = document.querySelector('.js-notifications-mark-all')?.dataset.endpoint;
+
+            function markNotifications(payload) {
+                if (!markEndpoint) {
+                    return;
+                }
+
+                fetch(markEndpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Accept: 'application/json'
+                    },
+                    body: JSON.stringify(payload),
+                    credentials: 'same-origin'
+                }).catch(() => {});
+            }
+
+            document.querySelectorAll('.js-notification-link').forEach((link) => {
+                link.addEventListener('click', () => {
+                    const id = link.dataset.notificationId;
+                    if (id) {
+                        markNotifications({ ids: [parseInt(id, 10)] });
+                    }
+                });
+            });
+
+            const markAllBtn = document.querySelector('.js-notifications-mark-all');
+            if (markAllBtn) {
+                markAllBtn.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    markNotifications({ all: true });
+                });
+            }
+        })();
+    </script>
+{% endblock %}

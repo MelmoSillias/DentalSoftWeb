@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ title }} #{{ '%04d'|format(doc.id) }}</title>
+    <style>
+        :root {
+            --primary: #00aee6;
+            --text: #1f2d3d;
+            --muted: #586574;
+            --border: #cfd8e3;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            padding: 0;
+            background: #f4f6f9;
+            font-family: Arial, sans-serif;
+            color: var(--text);
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        .page {
+            position: relative;
+            max-width: 210mm;
+            margin: 12mm auto;
+            padding: 14mm 16mm;
+            background: #fff;
+            box-shadow: 0 0 8mm rgba(0,0,0,0.08);
+            overflow: hidden;
+        }
+        .page::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: url('{{ asset('img/logo.png') }}') center center no-repeat;
+            background-size: 70%;
+            opacity: 0.10;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .content { position: relative; z-index: 1; }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16mm;
+        }
+        .header .logo img { max-height: 90px; width: 100%; object-fit: contain; }
+        .meta { text-align: right; }
+        .meta .title { font-size: 20pt; font-weight: 700; margin: 0; text-transform: uppercase; }
+        .meta .info { color: var(--muted); margin: 2px 0 0; font-size: 12pt; }
+        .patient {
+            margin-bottom: 12mm;
+            font-size: 14pt;
+            display: flex;
+            justify-content: space-between;
+            gap: 14px;
+        }
+
+        .patient muted {
+            color: var(--muted);
+            font-size: 13pt;
+        }
+
+        .card {
+            border: 1px solid var(--border); 
+            padding: 12px 14px;
+            background: #fafbfd9a;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px; 
+            font-size: 11pt;
+        }
+        th, td {
+            border: 1px solid var(--border);
+            padding: 9px 10px;
+            vertical-align: top;
+        }
+        th { background: #eef2f783; text-align: left; font-weight: 700; }
+        tfoot th { text-align: right; }
+        .totals th { font-size: 13pt; }
+        .muted { color: var(--muted); font-size: 11pt; }
+        .sign-row { margin-top: 28px; display: flex; justify-content: space-between; gap: 20px; }
+        .sign-col { width: 48%; text-align: center; color: var(--muted); }
+        .sign-line { border-top: 1px solid #ccc; width: 85%; margin: 28px auto 0; height: 1px; }
+        .actions { text-align: right; margin: 10px auto; max-width: 210mm; }
+        @media print {
+            @page { size: A4; margin: 10mm 12mm; }
+            body { background: #fff; }
+            .actions { display: none !important; }
+            .page { box-shadow: none; margin: 0 auto; width: 100%; max-width: 210mm; padding: 14mm 16mm; }
+            .page::before { opacity: 0.12; }
+        }
+    </style>
+</head>
+<body>
+<div class="actions">
+    <button onclick="window.print()">Imprimer</button>
+</div>
+<div class="page">
+    <div class="content">
+        <div class="header">
+            <div class="logo">
+                <img src="{{ asset('img/header-big.jpeg') }}" alt="Centre Dentaire Massaman">
+            </div>
+            <div class="meta">
+                <p class="title">{{ title }}</p>
+                <p class="info"> N° {{ '%04d'|format(doc.id) }}</p>
+                <p class="info">Date : {{ doc.date|date('d/m/Y') }}</p>
+            </div>
+        </div>
+
+        <div class="card patient">
+            <div>
+                <div class="patient-infos"><strong>Patient :</strong> {{ doc.patient.nom }} {{ doc.patient.prenom }}</div>
+                <div class="muted">Tel : {{ doc.patient.telephone ?: 'Non renseigné' }}</div>
+            </div> 
+        </div>
+ 
+            <table>
+                <thead>
+                    <tr>
+                        <th>Désignation</th>
+                        <th style="width:8%">Qté</th>
+                        <th style="width:22%">Prix unitaire</th>
+                        <th style="width:22%">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for ligne in doc.contenus %}
+                    <tr>
+                        <td>{{ ligne.designation }}</td>
+                        <td>{{ ligne.qte }}</td>
+                        <td>{{ ligne.montant|number_format(0, ',', ' ') }} FCFA</td>
+                        <td>{{ ligne.total|number_format(0, ',', ' ') }} FCFA</td>
+                    </tr>
+                {% else %}
+                    <tr><td colspan="4">Aucune ligne.</td></tr>
+                {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr class="totals">
+                        <th colspan="3">Total TTC</th>
+                        <th>{{ doc.montant|number_format(0, ',', ' ') }} FCFA</th>
+                    </tr>
+                    {% if doc.reste is defined %}
+                    <tr class="totals">
+                        <th colspan="3">Reste à payer</th>
+                        <th>{{ doc.reste|number_format(0, ',', ' ') }} FCFA</th>
+                    </tr>
+                    {% endif %}
+                </tfoot>
+            </table> 
+
+        <div class="sign-row">
+            <div class="sign-col">
+                <p>Signature du patient</p>
+                <div class="sign-line"></div>
+            </div>
+            <div class="sign-col">
+                <p>Cachet de la clinique</p>
+                <div class="sign-line"></div>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    window.onload = function() {
+        setTimeout(() => window.print(), 200);
+    };
+</script>
+</body>
+</html>

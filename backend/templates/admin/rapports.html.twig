@@ -1,0 +1,373 @@
+{# dashboard.html.twig #}
+{% extends 'layout.html.twig' %}
+
+{% block title %}Dashboard - Cabinet Dentaire{% endblock %}
+
+{% block stylesheets %}
+  {{ parent() }}
+  <style>
+    /* Styles personnalisés du Dashboard */
+
+    /* Animation sur le chargement et hover */
+    .animated-load {
+      opacity: 0;
+      transform: translateY(20px);
+      animation: fadeInUp 0.8s forwards;
+    }
+    @keyframes fadeInUp {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    .card-hover {
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .card-hover:hover {
+      transform: scale(1.02);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+    /* Carousel & Chart */
+    .carousel-item canvas {
+      width: 100% !important;
+      height: 300px !important;
+    }
+    /* Styles de la table pour les données périodiques */
+    .period-table th, .period-table td {
+      text-align: center;
+      padding: 5px;
+      font-size: 0.9rem;
+    }
+    .data-green {
+      color: green;
+      font-weight: bold;
+    }
+    .data-red {
+      color: red;
+      font-weight: bold;
+    }
+  </style>
+{% endblock %}
+
+{% block main %}
+<div class="container-fluid my-4">
+  <h1 class="mb-4">Tableau de Bord - Cabinet Dentaire</h1>
+
+  <!-- Section 1 : Statistiques principales sous forme de cartes -->
+  <div class="row g-3 mb-4">
+    <!-- Carte 1 : Patients -->
+    <div class="col-md-4 animated-load">
+      <div class="card card-hover text-white bg-info">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <h5 class="card-title">Patients Enregistrés</h5>
+              <h2>350</h2>
+              <small><i class="fas fa-calendar-check"></i> 120 consultation(s) &lt; 1 mois</small>
+            </div>
+            <div>
+              <i class="fas fa-user-injured fa-3x"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Carte 2 : Employées hors médecins -->
+    <div class="col-md-4 animated-load">
+      <div class="card card-hover text-white bg-warning">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <h5 class="card-title">Employées (hors médecins)</h5>
+              <h2>45</h2>
+              <small><i class="fas fa-money-bill-wave"></i> Masse salariale: 120KF CFA</small>
+            </div>
+            <div>
+              <i class="fas fa-user-friends fa-3x"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Carte 3 : Médecins Fixes -->
+    <div class="col-md-4 animated-load">
+      <div class="card card-hover text-white bg-success">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <h5 class="card-title">Médecins Fixes</h5>
+              <h2>20</h2>
+              <small><i class="fas fa-user-md"></i> Salariés: 15 | Masse: 80KF CFA</small>
+            </div>
+            <div>
+              <i class="fas fa-user-md fa-3x"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Carte 4 : Médecins Prestataires -->
+    <div class="col-md-4 animated-load">
+      <div class="card card-hover text-white bg-danger">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <h5 class="card-title">Médecins Prestataires</h5>
+              <h2>6</h2>
+              <small>30 % du total</small>
+            </div>
+            <div>
+              <i class="fas fa-user-nurse fa-3x"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Carte 5 : Budget et Recette -->
+    <div class="col-md-4 animated-load">
+      <div class="card card-hover text-white bg-primary">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <h5 class="card-title">Budget &amp; Recette</h5>
+              <h2>Budget : 500KF CFA</h2>
+              <small>Recette mensuelle : 80KF CFA</small>
+            </div>
+            <div>
+              <i class="fas fa-chart-line fa-3x"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section 2 : Consultations, Factures et Rendez-vous -->
+  <div class="row g-3 mb-4">
+    <!-- Carte : Consultations en attente -->
+    <div class="col-md-4 animated-load">
+      <div class="card card-hover bg-secondary text-white">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <h5 class="card-title">Consultations En Attente</h5>
+              <h2>25</h2>
+            </div>
+            <div>
+              <i class="fas fa-stethoscope fa-3x"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Carte : Factures non payées -->
+    <div class="col-md-4 animated-load">
+      <div class="card card-hover bg-dark text-white">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <h5 class="card-title">Factures Non Payées</h5>
+              <h2>10</h2>
+            </div>
+            <div>
+              <i class="fas fa-file-invoice-dollar fa-3x"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Carte : Rendez-vous en attente -->
+    <div class="col-md-4 animated-load">
+      <div class="card card-hover bg-light text-dark">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <h5 class="card-title">RDV En Attente</h5>
+              <h2>8</h2>
+            </div>
+            <div>
+              <i class="fas fa-calendar-alt fa-3x"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section 3 : Graphiques et Données Périodiques -->
+  <div class="mb-4">
+    <!-- Sélecteurs mois et année -->
+    <div class="row align-items-center mb-3">
+      <div class="col-md-6">
+        <label for="selectMonth" class="form-label">Mois :</label>
+        <select id="selectMonth" class="form-select form-control">
+          <option>Janvier</option>
+          <option>Février</option>
+          <option>Mars</option>
+          <option>Avril</option>
+          <option>Mai</option>
+          <option>Juin</option>
+          <option>Juillet</option>
+          <option>Août</option>
+          <option>Septembre</option>
+          <option>Octobre</option>
+          <option>Novembre</option>
+          <option>Décembre</option>
+        </select>
+      </div>
+      <div class="col-md-6">
+        <label for="selectYear" class="form-label">Année :</label>
+        <select id="selectYear" class="form-select form-control">
+          <option>2023</option>
+          <option>2024</option>
+          <option>2025</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="row">
+      <!-- Colonne 1/3 : Carousel de graphiques -->
+      <div class="col-md-4 animated-load">
+        <div id="carouselGraphs" class="carousel slide" data-bs-ride="carousel">
+          <div class="carousel-inner">
+            <!-- Graphique Répartition Homme/Femme -->
+            <div class="carousel-item active">
+              <div class="card">
+                <div class="card-header">
+                  Répartition Homme/Femme
+                </div>
+                <div class="card-body">
+                  <canvas id="chartGender"></canvas>
+                </div>
+              </div>
+            </div>
+            <!-- Graphique Répartition par Tranche d'Âges -->
+            <div class="carousel-item">
+              <div class="card">
+                <div class="card-header">
+                  Répartition par Tranche d'Âges
+                </div>
+                <div class="card-body">
+                  <canvas id="chartAge"></canvas>
+                </div>
+              </div>
+            </div>
+            <!-- Graphique Evolution Patients & Retour -->
+            <div class="carousel-item">
+              <div class="card">
+                <div class="card-header">
+                  Evolution Patients &amp; Retour
+                </div>
+                <div class="card-body">
+                  <canvas id="chartPatientEvolution"></canvas>
+                </div>
+              </div>
+            </div>
+          </div>
+          <button class="carousel-control-prev" type="button" data-bs-target="#carouselGraphs" data-bs-slide="prev">
+            <span class="carousel-control-prev-icon"></span>
+          </button>
+          <button class="carousel-control-next" type="button" data-bs-target="#carouselGraphs" data-bs-slide="next">
+            <span class="carousel-control-next-icon"></span>
+          </button>
+        </div>
+      </div>
+      <!-- Colonne 2/3 : Evolution Budget, Bénéfices & Dépenses -->
+      <div class="col-md-8 animated-load">
+        <div class="card">
+          <div class="card-header">
+            Evolution Budget, Bénéfices et Dépenses
+          </div>
+          <div class="card-body">
+            <canvas id="chartFinance"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section 4 : Données Périodiques -->
+  <div class="mb-4 animated-load">
+    <h3>Données Périodiques</h3>
+    <div class="mb-3">
+      <label for="selectPeriod" class="form-label">Période :</label>
+      <select id="selectPeriod" class="form-select form-control">
+        <option>1ère semaine</option>
+        <option>2ème semaine</option>
+        <option>3ème semaine</option>
+        <option>4ème semaine</option>
+      </select>
+    </div>
+    <!-- Tableau récapitulatif par semaine et jour -->
+    <div class="table-responsive">
+      <table class="table table-bordered period-table">
+        <thead class="table-light">
+          <tr>
+            <th>Jour / Semaine</th>
+            <th>Semaine 1<br><small>(01 - 07)</small></th>
+            <th>Semaine 2<br><small>(08 - 14)</small></th>
+            <th>Semaine 3<br><small>(15 - 21)</small></th>
+            <th>Semaine 4<br><small>(22 - 28)</small></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for day in ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'] %}
+          <tr>
+            <th>{{ day }}</th>
+            {% for week in 1..4 %}
+            <td>
+              <div class="data-green">Recette: {{ 100 + week * 10 }}F CFA</div>
+              <div class="data-red">Dépenses: {{ 80 + week * 8 }}F CFA</div>
+              <div>Consultations: {{ 5 + week }}</div>
+              <div>RDV: {{ 3 + week }}</div>
+            </td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+          <!-- Ligne supplémentaire pour les détails des RDV -->
+          <tr class="table-secondary">
+            <th>RDV Détails</th>
+            {% for week in 1..4 %}
+            <td>
+              <div>Total RDV: {{ 20 + week*2 }}</div>
+              <div>Validés: {{ 18 + week }}</div>
+              <div>Reportés: {{ 1 + week }}</div>
+              <div>Ratés: 1 (50 % retour)</div>
+            </td>
+            {% endfor %}
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <!-- Graphique des actes par catégories -->
+    <div class="card mt-4 animated-load">
+      <div class="card-header">
+        Actes par Catégories
+      </div>
+      <div class="card-body">
+        <canvas id="chartActs"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section 5 : Rapport Financier Mensuel -->
+  <div class="mb-4 animated-load">
+    <h3>Rapport Financier Mensuel</h3>
+    <div class="card">
+      <div class="card-body">
+        <p><strong>Revenus Totals :</strong> 80KF CFA</p>
+        <p><strong>Dépenses Totals :</strong> 50KF CFA</p>
+        <p><strong>Bénéfice Net :</strong> 30KF CFA</p>
+        <p>Analyse détaillée du rapport financier du mois en cours...</p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block javascripts %}
+  {{ parent() }}
+  <!-- Chargement de Chart.js depuis un CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="{{ asset('js/admin/rapports.js') }}"></script>
+{% endblock %}
