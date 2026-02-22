@@ -1,4 +1,4 @@
-import headerImg from '@/assets/header.jpeg';
+import headerImg from '@/assets/header-big.jpeg';
 import { jsPDF } from 'jspdf';
 import * as XLSX from 'xlsx';
 

@@ -3,17 +3,13 @@
 namespace App\Controller\Api;
 
 use App\Entity\Notification;
-use App\Entity\User;
-use App\Mercure\NotificationTopicGenerator;
 use App\Repository\NotificationRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
-use Symfony\Component\Mercure\Jwt\TokenFactoryInterface;
  
 class NotificationController extends AbstractController
 {
@@ -79,31 +75,6 @@ class NotificationController extends AbstractController
         $em->flush();
 
         return $this->json(['updated' => count($list)]);
-    }
-
-    #[Route('/api/me/notifications/mercure', name: 'api_me_notifications_mercure', methods: ['GET'])]
-    public function mercureInfo(
-        #[Autowire(service: 'defaultTokenFactory')] TokenFactoryInterface $tokenFactory,
-        NotificationTopicGenerator $topicGenerator,
-        #[Autowire('%env(MERCURE_PUBLIC_URL)%')] string $publicUrl,
-    ): JsonResponse {
-        $user = $this->getUser();
-        if (!$user instanceof User) {
-            return $this->json(['error' => 'Unauthenticated'], 401);
-        }
-
-        $topic = $topicGenerator->forUser($user);
-        if (!$topic) {
-            return $this->json(['error' => 'Invalid user topic'], 400);
-        }
-
-        $token = $tokenFactory->create([$topic]);
-
-        return $this->json([
-            'topic' => $topic,
-            'publicUrl' => $publicUrl,
-            'token' => $token,
-        ]);
     }
 
     /** @return array<string, mixed> */

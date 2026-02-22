@@ -47,8 +47,7 @@ const initialValues = ref({
     description: ''
 })
 
-async function onFormSubmit({ valid, values }) {
-    console.log(values);
+async function onFormSubmit({ valid, values }) { 
     if (!valid) return;
     if (!props.consumable) return;
 

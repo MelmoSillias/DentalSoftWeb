@@ -1,7 +1,7 @@
 <template>
     <div class="paper" :style="{ '--watermark': `url(${logoSrc})` }">
         <header>
-            <img :src="headerSrc" alt="Centre Dentaire Massaman" class="header-banner" />
+            <img :src="headerSrc" alt="Cabinet Dentaire Orodent" class="header-banner" />
             <h3>Dossier patient</h3>
         </header>
 
@@ -56,7 +56,7 @@
 </template>
 
 <script setup>
-import headerImg from '@/assets/header.jpeg';
+import headerImg from '@/assets/header-big.jpeg';
 import logoImg from '@/assets/logo.png';
 
 defineProps({

@@ -23,7 +23,8 @@ document.addEventListener('DOMContentLoaded', function () {
                                 <img src="https://cdn.pixabay.com/photo/2017/01/08/21/11/medical-1964528_1280.png" class="facture-logo" alt="Logo Cabinet Médical">
                             </div>
                             <div class="entreprise-info">
-                                <h2>Cabinet Dentaire Centre Dentaire Massaman</h2>
+                                <h2>CABINET DENTAIRE ORODENT
+</h2>
                                 <p>Rue 403 - Porte 963 KalabanCoura ACI | Bamako-MALI</p>
                             </div>
                         </header>

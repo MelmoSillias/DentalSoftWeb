@@ -146,9 +146,7 @@ export function useRdvApi() {
 
             const res = await http.get('rdvs', { params });
             const data = Array.isArray(res.data) ? res.data : [];
-            console.log('[useRdvApi] rdvs(range) raw:', data);
-            let matches = data.map(normalizeRdv);
-            console.log('[useRdvApi] rdvs(range) normalized:', matches);
+            let matches = data.map(normalizeRdv); 
 
             if (patientQuery) {
                 const query = patientQuery.toLowerCase();
@@ -174,10 +172,8 @@ export function useRdvApi() {
             const params = {};
             if (medecinId) params.medecin = medecinId;
             const res = await http.get(`rdvs/${dateStr}`, { params });
-            const data = Array.isArray(res.data) ? res.data : [];
-            console.log('[useRdvApi] rdvs(day) raw:', data);
-            const normalized = data.map(normalizeRdv);
-            console.log('[useRdvApi] rdvs(day) normalized:', normalized);
+            const data = Array.isArray(res.data) ? res.data : []; 
+            const normalized = data.map(normalizeRdv); 
             rdvs.value = normalized;
             return normalized;
         } catch (err) {

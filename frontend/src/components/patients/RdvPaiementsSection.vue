@@ -29,7 +29,7 @@ const tabs = computed(() => {
     const base = [
         { id: 'rdv', label: 'Rendez-vous', icon: 'pi pi-calendar' },
         { id: 'paiements', label: 'Paiements', icon: 'pi pi-credit-card' },
-        { id: 'factures', label: 'Factures', icon: 'pi pi-file' }
+        { id: 'factures', label: 'Factures Impayées', icon: 'pi pi-file' }
     ];
 
     if (props.showConsultations) {
@@ -41,21 +41,12 @@ const tabs = computed(() => {
 const activeTab = ref('rdv');
 
 const totalPaye = computed(() =>
-    props.paiements
-        .filter(p => getPaiementStatut(p) === 'Payé')
+    props.paiements 
         .reduce((sum, p) => sum + getPaiementMontant(p), 0)
 );
-
-const totalAttente = computed(() =>
-    props.paiements
-        .filter(p => getPaiementStatut(p) === 'En attente')
-        .reduce((sum, p) => sum + getPaiementMontant(p), 0)
-);
-
+ 
 const totalImpaye = computed(() =>
-    props.paiements
-        .filter(p => getPaiementStatut(p) === 'Impayé')
-        .reduce((sum, p) => sum + getPaiementMontant(p), 0)
+    props.factures.reduce((sum, p) => sum + getFactureMontant(p), 0)
 );
 
 function formatDate(date) {
@@ -253,15 +244,11 @@ function getRDVStatusColor(status) {
                 </div>
 
                 <div class="mt-6 pt-6 border-t border-surface-200/50 dark:border-surface-700/50">
-                    <div class="grid grid-cols-3 gap-4">
+                    <div class="grid grid-cols-2 gap-4">
                         <div class="text-center p-3 rounded-xl bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-emerald-900/20 dark:to-emerald-800/20 border border-emerald-200/50 dark:border-emerald-800/50">
                             <div class="text-sm text-emerald-700 dark:text-emerald-300">Total payé</div>
                             <div class="text-xl font-bold text-emerald-900 dark:text-emerald-100">{{ totalPaye }} F CFA</div>
-                        </div>
-                        <div class="text-center p-3 rounded-xl bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-900/20 dark:to-amber-800/20 border border-amber-200/50 dark:border-amber-800/50">
-                            <div class="text-sm text-amber-700 dark:text-amber-300">En attente</div>
-                            <div class="text-xl font-bold text-amber-900 dark:text-amber-100">{{ totalAttente }} F CFA</div>
-                        </div>
+                        </div> 
                         <div class="text-center p-3 rounded-xl bg-gradient-to-br from-red-50 to-red-100/50 dark:from-red-900/20 dark:to-red-800/20 border border-red-200/50 dark:border-red-800/50">
                             <div class="text-sm text-red-700 dark:text-red-300">Impayés</div>
                             <div class="text-xl font-bold text-red-900 dark:text-red-100">{{ totalImpaye }} F CFA</div>

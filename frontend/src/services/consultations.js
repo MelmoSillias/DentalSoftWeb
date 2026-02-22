@@ -18,6 +18,9 @@ export const normalizeConsultation = (raw = {}) => {
     const ficheId = raw.ficheId ?? raw.fiche_id ?? raw.fiche?.id ?? null;
     const ficheType = raw.ficheType ?? raw.fiche_type ?? (raw.ficheMedicale ? 'medicale' : raw.fiche ? 'observation' : null);
     const ficheVersion = raw.ficheVersion ?? raw.fiche_version ?? (ficheType === 'medicale' ? 2 : ficheType === 'observation' ? 1 : null);
+    const lastFicheId = raw.lastFicheId ?? raw.last_fiche_id ?? null;
+    const lastFicheType = raw.lastFicheType ?? raw.last_fiche_type ?? null;
+    const lastFicheVersion = raw.lastFicheVersion ?? raw.last_fiche_version ?? (lastFicheType === 'medicale' ? 2 : lastFicheType === 'observation' ? 1 : null);
 
     return {
         id: raw.id,
@@ -37,7 +40,10 @@ export const normalizeConsultation = (raw = {}) => {
         factState,
         ficheId,
         ficheType,
-        ficheVersion
+        ficheVersion,
+        lastFicheId,
+        lastFicheType,
+        lastFicheVersion
     };
 };
 

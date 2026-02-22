@@ -1,7 +1,7 @@
 <template>
     <div class="paper" :style="{ '--watermark': `url(${logoSrc})` }">
         <header>
-            <img :src="headerSrc" alt="Centre Dentaire Massaman" class="header-banner" />
+            <img :src="headerSrc" alt="Cabinet Dentaire Orodent" class="header-banner" />
             <h1>Fiche de consultation</h1>
             <small class="muted">N° {{ ficheNumber }}</small>
         </header>
@@ -199,7 +199,7 @@
 
 <script setup>
 import { computed } from 'vue';
-import headerImg from '@/assets/header.jpeg';
+import headerImg from '@/assets/header-big.jpeg';
 import logoImg from '@/assets/logo.png';
 
 const props = defineProps({

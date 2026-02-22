@@ -23,7 +23,6 @@ import {
     saveDevis,
     saveExamens,
     saveMotif,
-    saveOrdonnance,
     saveTraitementsDocuments
 } from '@/services/consultationsforms';
 import { fetchOrdonnancePrintData } from '@/services/printService';
@@ -60,6 +59,7 @@ const dirtySectionsList = computed(() => Object.entries(dirty).filter(([, v]) =>
 
 const ficheId = ref(route.query.ficheId ? Number(route.query.ficheId) : null);
 const consultId = ref(route.query.id ? Number(route.query.id) : null);
+const mode = computed(() => (route.query.mode === 'new-fiche' ? 'new-fiche' : 'continue'));
 
 const data = reactive({
     patient: { allergies: [], antecedents: [] },
@@ -289,11 +289,11 @@ const loadReferenceData = async () => {
 };
 
 const ensureFicheLinked = async () => {
-    if (ficheId.value) return ficheId.value;
     if (!consultId.value) return null;
 
     try {
-        const res = await setConsultationFiche(consultId.value, null, token);
+        const requestedFicheId = mode.value === 'continue' ? (ficheId.value || null) : null;
+        const res = await setConsultationFiche(consultId.value, requestedFicheId, token);
         const linkedId = res?.ficheId ?? res?.id ?? null;
         if (linkedId) {
             ficheId.value = Number(linkedId);
@@ -442,7 +442,7 @@ const saveDevisSection = async ({ silent = false } = {}) => {
 };
 
 const saveConsultSection = async ({ silent = false } = {}) => {
-    if (!dirty.consult) return;
+    if (!dirty.consult && !dirty.ordonnances) return;
     setSaving('consult', true);
     try {
         const payload = {
@@ -451,8 +451,21 @@ const saveConsultSection = async ({ silent = false } = {}) => {
                 ? data.consultation.infirmierIds[0] ?? null
                 : data.consultation.infirmierIds
         };
+
+        if (dirty.ordonnances && Array.isArray(ordonnanceDraft.value?.lignes) && ordonnanceDraft.value.lignes.length > 0) {
+            payload.ordonnance = ordonnanceDraft.value;
+        }
+
         await saveConsultation(ficheId.value, consultId.value, payload, token);
-        clearDirty(['consult']);
+
+        if (payload.ordonnance) {
+            ordonnanceModalVisible.value = false;
+            await fetchOrdonnances();
+            clearDirty(['consult', 'ordonnances']);
+        } else {
+            clearDirty(['consult']);
+        }
+
         if (!silent) toast.add({ severity: 'success', summary: 'Consultation enregistrée', life: 2000 });
     } catch (error) {
         console.error('Erreur sauvegarde consultation', error);
@@ -463,20 +476,7 @@ const saveConsultSection = async ({ silent = false } = {}) => {
 };
 
 const saveOrdonnanceSection = async ({ silent = false } = {}) => {
-    if (!dirty.ordonnances) return;
-    setSaving('ordonnances', true);
-    try {
-        await saveOrdonnance(consultId.value, ordonnanceDraft.value, token);
-        ordonnanceModalVisible.value = false;
-        await fetchOrdonnances();
-        clearDirty(['ordonnances']);
-        if (!silent) toast.add({ severity: 'success', summary: 'Ordonnance enregistrée', life: 2000 });
-    } catch (error) {
-        console.error('Erreur sauvegarde ordonnance', error);
-        if (!silent) toast.add({ severity: 'error', summary: 'Erreur', detail: 'Sauvegarde ordonnance impossible.' });
-    } finally {
-        setSaving('ordonnances', false);
-    }
+    await saveConsultSection({ silent });
 };
 
 const fetchOrdonnances = async () => {
@@ -493,8 +493,7 @@ const saveAll = async ({ silent = false } = {}) => {
         saveExamensSection({ silent }),
         saveTraitementsSection({ silent }),
         saveDevisSection({ silent }),
-        saveConsultSection({ silent }),
-        saveOrdonnanceSection({ silent })
+        saveConsultSection({ silent })
     ]);
 };
 
@@ -918,8 +917,12 @@ const handlePrintOrdonnance = async (ordo) => {
         <AntecedentDialogForm v-model="showAntecedentDialog" :loading="savingAntecedent" @save="handleSaveAntecedent" />
         <AllergyDialogForm v-model="showAllergyDialog" :loading="savingAllergy" @save="handleSaveAllergy" />
 
-        <OrdonnanceModal v-model="ordonnanceDraft" :visible="ordonnanceModalVisible" :saving="saving.ordonnances"
-            @update:visible="(v) => (ordonnanceModalVisible = v)" @save="saveOrdonnanceSection()" />
+        <OrdonnanceModal
+            v-model="ordonnanceDraft"
+            v-model:visible="ordonnanceModalVisible"
+            :saving="saving.consult"
+            @save="saveOrdonnanceSection()"
+        />
     </div>
 </template>
   

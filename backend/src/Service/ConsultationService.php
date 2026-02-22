@@ -57,26 +57,58 @@ class ConsultationService
         return $this->employeRepo->findOneBy(['user' => $user]);
     }
 
+    private function resolvePendingFicheData(Consultation $consultation): array
+    {
+        $patient = $consultation->getPatient();
+        $lastFicheMedicale = $patient->getFichesMedicales()->filter(fn($f) => $f !== null)->last() ?: null;
+        $lastFicheObservation = $patient->getFichesObservation()->filter(fn($f) => $f !== null)->last() ?: null;
+
+        $ficheMedicale = $consultation->getFicheMedicale();
+        $ficheObservation = $consultation->getFiche();
+
+        $linkedFiche = $ficheMedicale ?? $ficheObservation;
+
+        $lastFicheCandidate = null;
+        if (!$linkedFiche) {
+            $lastFicheCandidate = $lastFicheMedicale ?: $lastFicheObservation;
+        }
+
+        return [
+            'ficheMedicale' => $ficheMedicale,
+            'ficheObservation' => $ficheObservation,
+            'fiche' => $linkedFiche,
+            'ficheId' => $linkedFiche?->getId(),
+            'ficheType' => $ficheMedicale ? 'medicale' : ($ficheObservation ? 'observation' : null),
+            'ficheVersion' => $ficheMedicale ? 2 : ($ficheObservation ? 1 : null),
+            'hasFiche' => (bool) ($linkedFiche || $lastFicheCandidate),
+            'lastFicheId' => $lastFicheCandidate?->getId(),
+            'lastFicheType' => $lastFicheCandidate instanceof FicheMedicale ? 'medicale' : ($lastFicheCandidate instanceof FicheObservation ? 'observation' : null),
+            'lastFicheVersion' => $lastFicheCandidate instanceof FicheMedicale ? 2 : ($lastFicheCandidate instanceof FicheObservation ? 1 : null),
+            'motif' => $linkedFiche
+                ? ($ficheMedicale?->getEntretien()?->getMotifConsultation() ?? $ficheObservation?->getMotif() ?? '')
+                : ($lastFicheMedicale?->getEntretien()?->getMotifConsultation() ?? $lastFicheObservation?->getMotif() ?? ''),
+        ];
+    }
+
     private function buildPendingConsultationsData(array $consultations): array
     {
         return array_map(function (Consultation $c) {
-            $lastFicheMedicale = $c->getPatient()->getFichesMedicales()->filter(fn($f) => $f !== null)->last();
-            $lastFicheObservation = $c->getPatient()->getFichesObservation()->filter(fn($f) => $f !== null)->last();
-            $ficheMedicale = $c->getFicheMedicale();
-            $ficheObservation = $c->getFiche();
-            $ficheType = $ficheMedicale ? 'medicale' : ($ficheObservation ? 'observation' : null);
-            $ficheVersion = $ficheMedicale ? 2 : ($ficheObservation ? 1 : null);
+            $patient = $c->getPatient();
+            $ficheData = $this->resolvePendingFicheData($c);
 
             return [
                 'id' => $c->getId(),
-                'patient' => $c->getPatient()->getNom() . ' ' . $c->getPatient()->getPrenom(),
+                'patient' => $patient->getNom() . ' ' . $patient->getPrenom(),
                 'medecin' => $c->getMedecin() ? $c->getMedecin()->getFullName() : null,
                 'dateDebut' => $c->getCreatedAt()->format('Y-m-d H:i'),
-                'hasFiche' => ($lastFicheMedicale || $lastFicheObservation) ? true : false,
-                'fiche' => $ficheMedicale ?? $ficheObservation,
-                'ficheId' => $ficheMedicale?->getId() ?? $ficheObservation?->getId(),
-                'ficheType' => $ficheType,
-                'ficheVersion' => $ficheVersion,
+                'hasFiche' => $ficheData['hasFiche'],
+                'fiche' => $ficheData['fiche'],
+                'ficheId' => $ficheData['ficheId'],
+                'ficheType' => $ficheData['ficheType'],
+                'ficheVersion' => $ficheData['ficheVersion'],
+                'lastFicheId' => $ficheData['lastFicheId'],
+                'lastFicheType' => $ficheData['lastFicheType'],
+                'lastFicheVersion' => $ficheData['lastFicheVersion'],
             ];
         }, $consultations);
     }
@@ -134,22 +166,45 @@ class ConsultationService
         ];
     }
 
-    private function getFicheAndConsultation(int $ficheId, int $consultationId): array
+    public function getFicheAndConsultation(int $ficheId, int $consultationId): array
     {
         $consultation = $this->em->getRepository(Consultation::class)->find($consultationId);
         if (!$consultation) {
             throw new NotFoundHttpException("Consultation {$consultationId} introuvable");
         }
 
+        $patientId = $consultation->getPatient()?->getId();
+
+        $attachIfAllowed = function (FicheObservation|FicheMedicale $fiche) use ($consultation, $patientId): bool {
+            if ($fiche->getPatient()?->getId() !== $patientId) {
+                return false;
+            }
+
+            if ($consultation->getFiche() || $consultation->getFicheMedicale()) {
+                return false;
+            }
+
+            if ($fiche instanceof FicheMedicale) {
+                $consultation->setFicheMedicale($fiche);
+            } else {
+                $consultation->setFiche($fiche);
+            }
+
+            $this->em->persist($consultation);
+            $this->em->flush();
+
+            return true;
+        };
+
         // Try fiche observation first
         $ficheObs = $this->em->getRepository(FicheObservation::class)->find($ficheId);
-        if ($ficheObs && $consultation->getFiche() === $ficheObs) {
+        if ($ficheObs && ($consultation->getFiche() === $ficheObs || $attachIfAllowed($ficheObs))) {
             return [$ficheObs, $consultation];
         }
 
         // Try fiche medicale
         $ficheMed = $this->em->getRepository(FicheMedicale::class)->find($ficheId);
-        if ($ficheMed && $consultation->getFicheMedicale() === $ficheMed) {
+        if ($ficheMed && ($consultation->getFicheMedicale() === $ficheMed || $attachIfAllowed($ficheMed))) {
             return [$ficheMed, $consultation];
         }
 
@@ -465,6 +520,18 @@ class ConsultationService
             }
         }
 
+        $ordonnancePayload = null;
+        if (isset($data['ordonnance']) && is_array($data['ordonnance'])) {
+            $ordonnancePayload = $data['ordonnance'];
+        } elseif (!empty($data['ordonnances']) && is_array($data['ordonnances'])) {
+            $first = $data['ordonnances'][0] ?? null;
+            $ordonnancePayload = is_array($first) ? $first : null;
+        }
+
+        if (is_array($ordonnancePayload)) {
+            $this->createOrdonnanceEntityFromPayload($consultation, $ordonnancePayload);
+        }
+
         $this->em->flush();
     }
 
@@ -604,31 +671,22 @@ class ConsultationService
         $consultations = $this->consultationRepo->findPendingConsultations();
 
         $consultationsData = array_map(function (Consultation $c) {
-            $lastFicheMedicale = $c->getPatient()
-                ->getFichesMedicales()
-                ->filter(fn($f) => $f !== null)
-                ->last();
-            $lastFicheObservation = $c->getPatient()
-                ->getFichesObservation()
-                ->filter(fn($f) => $f !== null)
-                ->last();
-            $ficheMedicale = $c->getFicheMedicale();
-            $ficheObservation = $c->getFiche();
-            $motif = $ficheMedicale?->getEntretien()?->getMotifConsultation() ?? $ficheObservation?->getMotif() ?? '';
-            $ficheType = $ficheMedicale ? 'medicale' : ($ficheObservation ? 'observation' : null);
-            $ficheVersion = $ficheMedicale ? 2 : ($ficheObservation ? 1 : null);
+            $ficheData = $this->resolvePendingFicheData($c);
 
             return [
                 'id' => $c->getId(),
                 'patient' => $c->getPatient()->getNom() . ' ' . $c->getPatient()->getPrenom(),
                 'medecin' => $c->getMedecin() ? $c->getMedecin()->getNom() : null,
                 'dateDebut' => $c->getCreatedAt()->format('Y-m-d H:i'),
-                'hasFiche' => ($lastFicheMedicale || $lastFicheObservation) ? true : false,
-                'fiche' => $ficheMedicale ?? $ficheObservation,
-                'ficheId' => $ficheMedicale?->getId() ?? $ficheObservation?->getId(),
-                'motif' => $motif,
-                'ficheType' => $ficheType,
-                'ficheVersion' => $ficheVersion,
+                'hasFiche' => $ficheData['hasFiche'],
+                'fiche' => $ficheData['fiche'],
+                'ficheId' => $ficheData['ficheId'],
+                'motif' => $ficheData['motif'],
+                'ficheType' => $ficheData['ficheType'],
+                'ficheVersion' => $ficheData['ficheVersion'],
+                'lastFicheId' => $ficheData['lastFicheId'],
+                'lastFicheType' => $ficheData['lastFicheType'],
+                'lastFicheVersion' => $ficheData['lastFicheVersion'],
             ];
         }, $consultations);
 
@@ -642,20 +700,25 @@ class ConsultationService
     {
         $consults = $this->consultationRepo->findBy(['statut' => 0]);
 
-        return array_map(fn($c) => [
-            'id' => $c->getId(),
-            'patient' => $c->getPatient()->getNom() . ' ' . $c->getPatient()->getPrenom(),
-            'medecin' => $c->getMedecin()->getNom(),
-            'type' => $c->getType(),
-            'motif' => $c->getFicheMedicale()?->getEntretien()?->getMotifConsultation()
-                ?? ($c->getFiche() ? $c->getFiche()->getMotif() : ''),
-            'createdAt' => $c->getCreatedAt()->format('Y-m-d H:i'),
-            'hasFiche' => ($c->getPatient()->getFichesMedicales()->filter(fn($f) => $f !== null)->last()
-                || $c->getPatient()->getFichesObservation()->filter(fn($f) => $f !== null)->last()) ? true : false,
-            'ficheId' => $c->getFicheMedicale()?->getId() ?? ($c->getFiche() ? $c->getFiche()->getId() : null),
-            'ficheType' => $c->getFicheMedicale() ? 'medicale' : ($c->getFiche() ? 'observation' : null),
-            'ficheVersion' => $c->getFicheMedicale() ? 2 : ($c->getFiche() ? 1 : null),
-        ], $consults);
+        return array_map(function (Consultation $c) {
+            $ficheData = $this->resolvePendingFicheData($c);
+
+            return [
+                'id' => $c->getId(),
+                'patient' => $c->getPatient()->getNom() . ' ' . $c->getPatient()->getPrenom(),
+                'medecin' => $c->getMedecin()->getNom(),
+                'type' => $c->getType(),
+                'motif' => $ficheData['motif'],
+                'createdAt' => $c->getCreatedAt()->format('Y-m-d H:i'),
+                'hasFiche' => $ficheData['hasFiche'],
+                'ficheId' => $ficheData['ficheId'],
+                'ficheType' => $ficheData['ficheType'],
+                'ficheVersion' => $ficheData['ficheVersion'],
+                'lastFicheId' => $ficheData['lastFicheId'],
+                'lastFicheType' => $ficheData['lastFicheType'],
+                'lastFicheVersion' => $ficheData['lastFicheVersion'],
+            ];
+        }, $consults);
     }
 
     public function listPendingConsultationsJsonForUser(?object $user, bool $restrictToMedecin): array
@@ -670,20 +733,25 @@ class ConsultationService
             $consults = $this->consultationRepo->findBy(['statut' => 0]);
         }
 
-        return array_map(fn($c) => [
-            'id' => $c->getId(),
-            'patient' => $c->getPatient()->getNom() . ' ' . $c->getPatient()->getPrenom(),
-            'medecin' => $c->getMedecin() ? $c->getMedecin()->getNom() : null,
-            'type' => $c->getType(),
-            'motif' => $c->getFicheMedicale()?->getEntretien()?->getMotifConsultation()
-                ?? ($c->getFiche() ? $c->getFiche()->getMotif() : ''),
-            'createdAt' => $c->getCreatedAt()->format('Y-m-d H:i'),
-            'hasFiche' => ($c->getPatient()->getFichesMedicales()->filter(fn($f) => $f !== null)->last()
-                || $c->getPatient()->getFichesObservation()->filter(fn($f) => $f !== null)->last()) ? true : false,
-            'ficheId' => $c->getFicheMedicale()?->getId() ?? ($c->getFiche() ? $c->getFiche()->getId() : null),
-            'ficheType' => $c->getFicheMedicale() ? 'medicale' : ($c->getFiche() ? 'observation' : null),
-            'ficheVersion' => $c->getFicheMedicale() ? 2 : ($c->getFiche() ? 1 : null),
-        ], $consults);
+        return array_map(function (Consultation $c) {
+            $ficheData = $this->resolvePendingFicheData($c);
+
+            return [
+                'id' => $c->getId(),
+                'patient' => $c->getPatient()->getNom() . ' ' . $c->getPatient()->getPrenom(),
+                'medecin' => $c->getMedecin() ? $c->getMedecin()->getNom() : null,
+                'type' => $c->getType(),
+                'motif' => $ficheData['motif'],
+                'createdAt' => $c->getCreatedAt()->format('Y-m-d H:i'),
+                'hasFiche' => $ficheData['hasFiche'],
+                'ficheId' => $ficheData['ficheId'],
+                'ficheType' => $ficheData['ficheType'],
+                'ficheVersion' => $ficheData['ficheVersion'],
+                'lastFicheId' => $ficheData['lastFicheId'],
+                'lastFicheType' => $ficheData['lastFicheType'],
+                'lastFicheVersion' => $ficheData['lastFicheVersion'],
+            ];
+        }, $consults);
     }
 
     public function linkOrCreateFiche(int $consultationId, ?int $ficheId = null): array
@@ -695,38 +763,61 @@ class ConsultationService
         }
 
         $fiche = $consultation->getFicheMedicale();
+        $ficheObservation = $consultation->getFiche();
         $created = false;
+        $ficheType = $fiche ? 'medicale' : ($ficheObservation ? 'observation' : null);
+        $ficheVersion = $fiche ? 2 : ($ficheObservation ? 1 : null);
 
         if ($ficheId) {
-            $fiche = $this->em->getRepository(FicheMedicale::class)->find($ficheId);
+            $ficheMedicale = $this->em->getRepository(FicheMedicale::class)->find($ficheId);
+            $ficheObs = $ficheMedicale ? null : $this->em->getRepository(FicheObservation::class)->find($ficheId);
 
-            if (!$fiche) {
+            if (!$ficheMedicale && !$ficheObs) {
                 throw new NotFoundHttpException('Fiche introuvable');
             }
 
-            if ($fiche->getPatient()?->getId() !== $consultation->getPatient()?->getId()) {
+            $fichePatientId = $ficheMedicale?->getPatient()?->getId() ?? $ficheObs?->getPatient()?->getId();
+            if ($fichePatientId !== $consultation->getPatient()?->getId()) {
                 throw new \InvalidArgumentException('La fiche ne correspond pas au patient de la consultation.');
+            }
+
+            if ($ficheMedicale) {
+                $consultation->setFiche(null);
+                $consultation->setFicheMedicale($ficheMedicale);
+                $fiche = $ficheMedicale;
+                $ficheType = 'medicale';
+                $ficheVersion = 2;
+            } else {
+                $consultation->setFicheMedicale(null);
+                $consultation->setFiche($ficheObs);
+                $ficheObservation = $ficheObs;
+                $ficheType = 'observation';
+                $ficheVersion = 1;
             }
         }
 
-        if (!$fiche) {
+        if (!$fiche && !$ficheObservation) {
             $fiche = new FicheMedicale();
             $fiche->setPatient($consultation->getPatient());
             $this->em->persist($fiche);
             $created = true;
+            $ficheType = 'medicale';
+            $ficheVersion = 2;
         }
 
-        $consultation->setFicheMedicale($fiche);
+        if ($ficheType === 'medicale' && $fiche instanceof FicheMedicale) {
+            $consultation->setFicheMedicale($fiche);
+        }
 
         $this->em->persist($consultation);
         $this->em->flush();
 
         return [
-            'ficheId' => $fiche->getId(),
+            'ficheId' => $ficheType === 'medicale' ? $consultation->getFicheMedicale()?->getId() : $consultation->getFiche()?->getId(),
             'consultationId' => $consultation->getId(),
             'created' => $created,
-            'ficheType' => 'medicale',
-            'ficheVersion' => 2,
+            'ficheType' => $ficheType,
+            'ficheVersion' => $ficheVersion,
         ];
     }
 
@@ -973,16 +1064,28 @@ class ConsultationService
 
     public function createOrdonnance(Consultation $consultation, array $payload): array
     {
+        $ord = $this->createOrdonnanceEntityFromPayload($consultation, $payload);
+        if (!$ord) {
+            return ['error' => 'Aucune ligne fournie'];
+        }
+
+        $this->em->flush();
+
+        return ['success' => true, 'id' => $ord->getId()];
+    }
+
+    private function createOrdonnanceEntityFromPayload(Consultation $consultation, array $payload): ?Ordonnance
+    {
+        $lignes = $payload['lignes'] ?? [];
+        if (!is_array($lignes) || empty($lignes)) {
+            return null;
+        }
+
         $ord = new Ordonnance();
         $ord->setConsultation($consultation)
             ->setDate(isset($payload['date']) ? new \DateTime($payload['date']) : new \DateTime())
             ->setMedecinNom($payload['medecinNom'] ?? null)
             ->setNote($payload['note'] ?? null);
-
-        $lignes = $payload['lignes'] ?? [];
-        if (!is_array($lignes) || empty($lignes)) {
-            return ['error' => 'Aucune ligne fournie'];
-        }
 
         foreach ($lignes as $line) {
             $ol = new OrdonnanceLigne();
@@ -998,9 +1101,7 @@ class ConsultationService
         }
 
         $this->em->persist($ord);
-        $this->em->flush();
-
-        return ['success' => true, 'id' => $ord->getId()];
+        return $ord;
     }
 
     public function getOrdonnanceData(int $id): ?array

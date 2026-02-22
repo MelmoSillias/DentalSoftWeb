@@ -27,6 +27,7 @@ const loadPending = async () => {
     try {
         const data = await fetchPendingConsultations(token);
         consultations.value = data.map((c) => normalizeConsultation(c));
+        console.log('Consultations en cours chargées', consultations.value);
     } catch (error) {
         console.error('Erreur lors du chargement des consultations en cours', error);
         toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de charger les consultations en cours.', life: 3000 });
@@ -74,14 +75,27 @@ const cardTone = (index) => {
 
 const goToConsultation = (consultation, mode = 'continue') => {
     const query = { id: consultation.id, mode };
-    if (consultation.ficheId) query.ficheId = consultation.ficheId;
+    const linked = isLinked(consultation);
+    const targetFicheId = linked
+        ? consultation.ficheId
+        : mode === 'continue'
+          ? (consultation.lastFicheId || null)
+          : null;
 
-    const ficheType = consultation.ficheType || (consultation.ficheVersion === 1 ? 'observation' : 'medicale');
+    if (targetFicheId) query.ficheId = targetFicheId;
+
+    const ficheType = mode === 'new-fiche'
+        ? 'medicale'
+        : linked
+          ? (consultation.ficheType || (consultation.ficheVersion === 1 ? 'observation' : 'medicale'))
+          : (consultation.lastFicheType || (consultation.lastFicheVersion === 1 ? 'observation' : 'medicale'));
+
     const routeName = ficheType === 'observation' ? 'consultations-form-legacy' : 'consultations-form';
     router.push({ name: routeName, query });
 };
+
 const isLinked = (consultation) => Boolean(consultation.ficheId);
-const patientHasFiche = (consultation) => Boolean(consultation.hasFiche );
+const patientHasFiche = (consultation) => Boolean(consultation.hasFiche || consultation.lastFicheId);
 const isAdmin = computed(() => Boolean(auth.user?.roles?.includes('ROLE_ADMIN')));
 
 const showActions = {

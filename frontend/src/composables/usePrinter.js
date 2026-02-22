@@ -15,6 +15,8 @@ export const usePrinter = () => {
     const printComponent = async (Component, props = {}, options = {}) => {
         isPrinting.value = true;
         lastError.value = null;
+        // Defaults: enable autoPrint unless explicitly set to false
+        options = Object.assign({ autoPrint: true }, options);
         const features = options.windowFeatures || 'width=900,height=900,scrollbars=yes';
         const target = window.open('', '_blank', features);
 
@@ -35,6 +37,16 @@ export const usePrinter = () => {
         container.style.margin = options.margin || '0 auto';
         container.style.background = '#fff';
         target.document.body.appendChild(container);
+
+        // Inject a script into the new window to trigger printing automatically
+        if (options.autoPrint) {
+            const delay = options.printDelay || 250;
+            const autoCloseCode = options.autoClose ? 'window.close();' : '';
+            const script = target.document.createElement('script');
+            script.type = 'text/javascript';
+            script.text = `(function(){function trigger(){try{window.print();${autoCloseCode}}catch(e){} } if(document.readyState==='complete'){setTimeout(trigger,${delay});}else{window.addEventListener('load',function(){setTimeout(trigger,${delay});});}})();`;
+            target.document.body.appendChild(script);
+        }
 
         const app = createApp({
             render: () => h(Component, props)

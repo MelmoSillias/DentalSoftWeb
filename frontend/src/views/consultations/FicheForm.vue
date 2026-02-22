@@ -36,6 +36,7 @@ const { printComponent } = usePrinter();
 
 const ficheId = ref(route.query.ficheId ? Number(route.query.ficheId) : null);
 const consultId = ref(route.query.id ? Number(route.query.id) : null);
+const mode = computed(() => (route.query.mode === 'new-fiche' ? 'new-fiche' : 'continue'));
 
 const {
     loading,
@@ -58,9 +59,8 @@ const {
     savePlanTraitementSection: savePlanTraitement,
     saveDevisSection: saveDevis,
     saveConsultSection: saveConsult,
-    saveOrdonnanceSection: saveOrdonnance,
     closeConsult
-} = useConsultationsForm({ ficheId, consultId, token });
+} = useConsultationsForm({ ficheId, consultId, token, mode });
 
 const ordonnanceModalVisible = ref(false);
 const ordonnanceDraft = ref({ date: '', medecinNom: '', note: '', lignes: [] });
@@ -303,9 +303,12 @@ const saveDevisSection = async ({ silent = false } = {}) => {
 };
 
 const saveConsultSection = async ({ silent = false } = {}) => {
-    if (!dirty.consult) return;
+    if (!dirty.consult && !dirty.ordonnances) return;
     try {
-        await saveConsult();
+        await saveConsult({ ordonnancePayload: dirty.ordonnances ? ordonnanceDraft.value : null });
+        if (dirty.ordonnances) {
+            ordonnanceModalVisible.value = false;
+        }
         if (!silent) toast.add({ severity: 'success', summary: 'Consultation enregistree', life: 2000 });
     } catch (error) {
         console.error('Erreur sauvegarde consultation', error);
@@ -314,15 +317,7 @@ const saveConsultSection = async ({ silent = false } = {}) => {
 };
 
 const saveOrdonnanceSection = async ({ silent = false } = {}) => {
-    if (!dirty.ordonnances) return;
-    try {
-        await saveOrdonnance(ordonnanceDraft.value);
-        ordonnanceModalVisible.value = false;
-        if (!silent) toast.add({ severity: 'success', summary: 'Ordonnance enregistree', life: 2000 });
-    } catch (error) {
-        console.error('Erreur sauvegarde ordonnance', error);
-        if (!silent) toast.add({ severity: 'error', summary: 'Erreur', detail: 'Sauvegarde ordonnance impossible.' });
-    }
+    await saveConsultSection({ silent });
 };
 
 const saveAll = async ({ silent = false } = {}) => {
@@ -333,8 +328,7 @@ const saveAll = async ({ silent = false } = {}) => {
         saveBilansSection({ silent }),
         savePlanTraitementSection({ silent }),
         saveDevisSection({ silent }),
-        saveConsultSection({ silent }),
-        saveOrdonnanceSection({ silent })
+        saveConsultSection({ silent })
     ]);
 };
 
@@ -568,6 +562,11 @@ onBeforeUnmount(() => {
 
         <AntecedentDialogForm v-model="showAntecedentDialog" :loading="savingAntecedent" @save="handleSaveAntecedent" />
         <AllergyDialogForm v-model="showAllergyDialog" :loading="savingAllergy" @save="handleSaveAllergy" />
-        <OrdonnanceModal v-model="ordonnanceDraft" :visible="ordonnanceModalVisible" :saving="saving.ordonnances" @save="saveOrdonnanceSection" />
+        <OrdonnanceModal
+            v-model="ordonnanceDraft"
+            v-model:visible="ordonnanceModalVisible"
+            :saving="saving.consult"
+            @save="saveOrdonnanceSection"
+        />
     </div>
 </template>

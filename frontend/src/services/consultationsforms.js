@@ -47,8 +47,7 @@ export const saveConsultation = async (ficheId, consultId, payload, token) => {
     return res.data;
 };
 
-export const closeConsultation = async (ficheId, consultId, token) => {
-    console.log('Closing consultation...', ficheId, consultId, 'url :' + `${apiPrefix}/fiches/${ficheId}/consultations/${consultId}/cloture`);
+export const closeConsultation = async (ficheId, consultId, token) => { 
     const res = await axios.post(
         `${apiPrefix}/fiches/${ficheId}/consultations/${consultId}/cloture`,
         {},

@@ -22,6 +22,11 @@ const props = defineProps({
 
 const emit = defineEmits(['update:visible', 'update:modelValue', 'save']);
 
+const dialogVisible = computed({
+    get: () => props.visible,
+    set: (val) => emit('update:visible', val)
+});
+
 const ordonnance = computed({
     get: () => props.modelValue,
     set: (val) => emit('update:modelValue', val)
@@ -58,7 +63,7 @@ const totalBoites = computed(() => {
 </script>
 <!-- OrdonnanceModal.vue -->
 <template>
-    <Dialog :visible="visible" modal :style="{ width: '60rem', maxWidth: '98vw' }" 
+    <Dialog v-model:visible="dialogVisible" modal :style="{ width: '60rem', maxWidth: '98vw' }" 
         :pt="{
             root: 'rounded-2xl overflow-hidden',
             header: 'px-6 py-4 bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900 dark:to-surface-800 border-b border-surface-200 dark:border-surface-700',
@@ -69,7 +74,7 @@ const totalBoites = computed(() => {
         <template #header>
             <div class="flex items-center gap-3">
                 <div class="p-2 rounded-lg bg-primary-500/10 dark:bg-primary-500/20">
-                    <i class="pi pi-prescription text-primary-600 dark:text-primary-400 text-xl"></i>
+                    <i class="pi pi-file-plus text-primary-600 dark:text-primary-400 text-2xl px-4"></i>
                 </div>
                 <div>
                     <h3 class="text-xl font-bold text-surface-900 dark:text-surface-50">Nouvelle ordonnance</h3>
@@ -79,15 +84,15 @@ const totalBoites = computed(() => {
         </template>
 
         <!-- Content -->
-        <div class="space-y-6">
+        <div class=" space-y-6 ">
             <!-- Basic Info -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
                 <div class="space-y-2">
                     <label class="text-sm font-medium text-surface-700 dark:text-surface-300 flex items-center gap-2">
                         <i class="pi pi-calendar text-surface-400"></i>
                         Date
                     </label>
-                    <InputText 
+                    <DatePicker 
                         :value="ordonnance.date" 
                         placeholder="JJ/MM/AAAA"
                         class="w-full rounded-xl border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-800/50 p-3 focus:ring-2 focus:ring-primary-500/20 transition-all"
@@ -144,7 +149,7 @@ const totalBoites = computed(() => {
             <div class="space-y-4">
                 <div v-if="!(ordonnance.lignes && ordonnance.lignes.length)" class="text-center py-8">
                     <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-surface-100 dark:bg-surface-800 mb-3">
-                        <i class="pi pi-prescription text-2xl text-surface-400"></i>
+                        <i class="pi pi-list text-2xl text-surface-400"></i>
                     </div>
                     <p class="text-surface-600 dark:text-surface-400">Aucune ligne de prescription. Cliquez sur "Ajouter une ligne" pour commencer.</p>
                 </div>

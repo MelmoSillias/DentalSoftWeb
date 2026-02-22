@@ -80,7 +80,7 @@ onMounted(() => {
                     </div>
                     <div class="p-6 md:p-8">
                         <div class="text-center mb-6">
-                            <div class="text-surface-900 dark:text-surface-0 text-2xl font-semibold mb-2">Bienvenue sur Dentalsoft! <br> <small class="text-sm text-surface-600 dark:text-surface-400">Centre Medical Massaman</small></div>
+                            <div class="text-surface-900 dark:text-surface-0 text-2xl font-semibold mb-2">Bienvenue sur Dentalsoft! <br> <small class="text-sm text-surface-600 dark:text-surface-400">Centre Medical Orodent</small></div>
                             
                             <span class="text-surface-500 dark:text-surface-400 text-sm">Connectez-vous pour continuer</span>
                         </div>

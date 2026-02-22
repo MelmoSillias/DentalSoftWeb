@@ -3,6 +3,7 @@ import FullCalendar from '@fullcalendar/vue3';
 import interactionPlugin from '@fullcalendar/interaction';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import Select from 'primevue/select';
+import MultiSelect from 'primevue/multiselect';
 import InputText from 'primevue/inputtext';
 import ContextMenu from 'primevue/contextmenu';
 import ProgressSpinner from 'primevue/progressspinner';
@@ -23,7 +24,17 @@ const calendarPlugins = [timeGridPlugin, interactionPlugin];
 
 const events = ref([]);
 const loading = ref(false);
-const filters = reactive({ medecinId: null, patient: '' });
+const statusOptions = [
+  { label: 'En attente', value: 'pending' },
+  { label: 'Validé', value: 'validated' },
+  { label: 'Reporté', value: 'postponed' },
+  { label: 'Annulé', value: 'cancelled' }
+];
+const filters = reactive({
+  medecinId: null,
+  patient: '',
+  statuses: ['pending', 'validated', 'postponed']
+});
 const calendarRef = ref();
 const contextMenu = ref();
 const selectedEvent = ref(null);
@@ -38,6 +49,30 @@ const medecinsOptions = computed(() => {
   return Array.isArray(props.medecins) ? props.medecins : props.medecins?.value || [];
 });
 
+const extractStatusValue = (rdv) => {
+  const raw = rdv?.statut ?? rdv?.status ?? rdv?.statusValue ?? rdv?.etat ?? rdv?.state;
+  if (raw === null || raw === undefined) return 0;
+  const normalized = String(raw).trim().toLowerCase();
+
+  if (normalized === '1' || normalized.includes('valid')) return 1;
+  if (normalized === '-1' || normalized.includes('report') || normalized.includes('postpon')) return -1;
+  if (normalized === '-2' || normalized.includes('annul') || normalized.includes('cancel')) return -2;
+  if (normalized === '0' || normalized.includes('attente') || normalized.includes('pending')) return 0;
+
+  const numeric = Number(normalized);
+  return Number.isFinite(numeric) ? numeric : 0;
+};
+
+const getStatusCssClass = (rdv) => getCssClass(extractStatusValue(rdv));
+
+const getStatusKey = (rdv) => {
+  const cssClass = getStatusCssClass(rdv);
+  if (cssClass === 'rdv-validated') return 'validated';
+  if (cssClass === 'rdv-postponed') return 'postponed';
+  if (cssClass === 'rdv-cancelled') return 'cancelled';
+  return 'pending';
+};
+
 const menuItems = [
   { label: 'Valider', icon: 'pi pi-check', command: () => { if (selectedEvent.value) { emit('request-validate', selectedEvent.value.extendedProps); loadEvents(true); } } },
   { label: 'Reporter', icon: 'pi pi-calendar-minus', command: () => { if (selectedEvent.value) { emit('request-report', selectedEvent.value.extendedProps); loadEvents(true); } } },
@@ -49,7 +84,8 @@ const loadEvents = async (force = false) => {
   const start = currentRange.value?.start;
   const end = currentRange.value?.end;
   if (!start || !end) return;
-  const fetchKey = `${start.toISOString()}_${end.toISOString()}_${filters.medecinId ?? 'all'}_${filters.patient ?? ''}`;
+  const selectedStatuses = Array.isArray(filters.statuses) ? [...filters.statuses].sort().join(',') : '';
+  const fetchKey = `${start.toISOString()}_${end.toISOString()}_${filters.medecinId ?? 'all'}_${filters.patient ?? ''}_${selectedStatuses}`;
   if (!force && (isFetching.value || lastFetchKey.value === fetchKey)) return;
   isFetching.value = true;
   lastFetchKey.value = fetchKey;
@@ -62,13 +98,16 @@ const loadEvents = async (force = false) => {
       patientQuery: filters.patient
     });
 
-    events.value = payload.map(rdv => ({
+    const selectedStatusSet = new Set(filters.statuses || []);
+    const filteredPayload = (Array.isArray(payload) ? payload : []).filter((rdv) => selectedStatusSet.has(getStatusKey(rdv)));
+
+    events.value = filteredPayload.map(rdv => ({
       id: rdv.id,
       title: `${rdv.patientName || 'Patient'} — ${rdv.medecinName || 'Médecin'}`,
       start: rdv.start,
       end: rdv.end,
       extendedProps: rdv,
-      classNames: [getCssClass(rdv.statut)]
+      classNames: [getStatusCssClass(rdv)]
     }));
   } finally {
     loading.value = false;
@@ -104,8 +143,7 @@ const handleEventMount = (info) => {
   }
 
   info.el.addEventListener('contextmenu', (e) => {
-    const statut = info.event.extendedProps?.statut;
-    const css = getCssClass(statut);
+    const css = getStatusCssClass(info.event.extendedProps || {});
     const isPending = css === 'rdv-pending';
     if (!isPending) return; // allow native browser menu for non-pending events
     e.preventDefault();
@@ -161,6 +199,13 @@ watch(events, (next) => {
   calendarOptions.events = next;
 });
 
+watch(
+  () => [filters.medecinId, filters.patient, [...(filters.statuses || [])].sort().join(',')],
+  () => {
+    loadEvents(true);
+  }
+);
+
 // Refresh events when parent signals via `refreshKey`
 watch(() => props.refreshKey, (newVal, oldVal) => {
   if (newVal === oldVal) return;
@@ -169,9 +214,9 @@ watch(() => props.refreshKey, (newVal, oldVal) => {
 </script>
 
 <template>
-  <section class="flex flex-col gap-3 xs:gap-4 p-0.5 xs:p-1">
+  <section class="weekly-view-page flex flex-col gap-3 xs:gap-4 p-0.5 xs:p-1">
     <!-- Filtres – plus moderne et espacé -->
-    <div class="flex flex-wrap items-center gap-3 xs:gap-4 rounded-xl xs:rounded-2xl bg-white p-3 xs:p-4 shadow-sm ring-1 ring-gray-200/70 dark:bg-gray-800 dark:ring-gray-700/60 dark:shadow-gray-900/20">
+    <div class="flex flex-row  items-center gap-3 xs:gap-4 rounded-xl xs:rounded-2xl bg-white p-3 xs:p-4 shadow-sm ring-1 ring-gray-200/70 dark:bg-gray-800 dark:ring-gray-700/60 dark:shadow-gray-900/20">
       <Select
         v-model="filters.medecinId"
         :options="medecinsOptions"
@@ -190,6 +235,15 @@ watch(() => props.refreshKey, (newVal, oldVal) => {
           class="w-full"
         />
       </span>
+      <MultiSelect
+        v-model="filters.statuses"
+        :options="statusOptions"
+        optionLabel="label"
+        optionValue="value"
+        placeholder="Statuts"
+        display="chip"
+        class="w-full xs:w-80 min-w-[180px]"
+      />
     </div>
 
     <!-- Conteneur calendrier -->
@@ -238,19 +292,19 @@ watch(() => props.refreshKey, (newVal, oldVal) => {
    https://fullcalendar.io/docs/css-customization
    ────────────────────────────────────────────── */
 
-.fc {
+.weekly-view-page .fc {
   --fc-border-color: theme('colors.gray.200');
   --fc-today-bg-color: theme('colors.blue.50');
   --fc-now-indicator-color: theme('colors.red.500');
-  --fc-event-bg-color: theme('colors.blue.600');
-  --fc-event-border-color: theme('colors.blue.700');
-  --fc-event-text-color: white;
+  --fc-event-bg-color: #ffffff;
+  --fc-event-border-color: #cbd5e1;
+  --fc-event-text-color: #1e293b;
   --fc-daygrid-event-dot-width: 8px;
 
   @apply font-sans text-sm;
 }
 
-:deep(.app-dark .fc), :deep([class*="app-dark"] .fc) {
+.weekly-view-page :deep(.app-dark .fc), .weekly-view-page :deep([class*="app-dark"] .fc) {
   --fc-border-color: theme('colors.gray.700');
   --fc-today-bg-color: theme('colors.blue.950');
   --fc-now-indicator-color: theme('colors.red.400');
@@ -259,42 +313,71 @@ watch(() => props.refreshKey, (newVal, oldVal) => {
 }
 
 /* Événements plus lisibles et modernes (apply to FullCalendar DOM via deep selector) */
-:deep(.fc-event) {
+.weekly-view-page :deep(.fc-event) {
   @apply rounded-md shadow-sm border border-opacity-60 overflow-hidden transition-all duration-150 hover:shadow-md hover:scale-[1.02] hover:z-10;
   padding: 2px 6px !important;
   font-weight: 500;
   line-height: 1.3; 
+  background-color: #ffffff !important;
+  color: #1e293b !important;
+}
+
+.weekly-view-page :deep(.fc-event .fc-event-main),
+.weekly-view-page :deep(.fc-event .fc-event-main-frame),
+.weekly-view-page :deep(.fc-event .fc-event-title),
+.weekly-view-page :deep(.fc-event .fc-event-time) {
+  color: inherit !important;
 }
 
 /* Cursor pointer on hover for events */
-:deep(.fc-event:hover) {
+.weekly-view-page :deep(.fc-event:hover) {
   cursor: pointer;
+}
+
+.weekly-view-page :deep(.fc-event .event-header strong) {
+  color: inherit !important;
 }
  
 
 /* Status-specific colors (matched with useRdvStatus composable) */
-:deep(.fc-event.rdv-pending) {
-  background-color: #2563eb !important;
+.weekly-view-page :deep(.fc-event.rdv-pending) {
   border-color: #1d4ed8 !important;
-  color: #ffffff !important;
+  border-left: 4px solid #1d4ed8 !important;
+  color: #1d4ed8 !important;
 }
 
-:deep(.fc-event.rdv-validated) {
-  background-color: #16a34a !important;
+.weekly-view-page :deep(.fc-event.rdv-pending .fc-event-main) {
+  color: #1d4ed8 !important;
+}
+
+.weekly-view-page :deep(.fc-event.rdv-validated) {
   border-color: #15803d !important;
-  color: #ffffff !important;
+  border-left: 4px solid #15803d !important;
+  color: #15803d !important;
 }
 
-:deep(.fc-event.rdv-postponed) {
-  background-color: #eab308 !important;
+.weekly-view-page :deep(.fc-event.rdv-validated .fc-event-main) {
+  color: #15803d !important;
+}
+
+.weekly-view-page :deep(.fc-event.rdv-postponed) {
   border-color: #d97706 !important;
-  color: #000000 !important;
+  border-left: 4px solid #d97706 !important;
+  color: #b45309 !important;
 }
 
-:deep(.fc-event.rdv-cancelled) {
-  background-color: #dc2626 !important;
+.weekly-view-page :deep(.fc-event.rdv-postponed .fc-event-main) {
+  color: #b45309 !important;
+}
+
+.weekly-view-page :deep(.fc-event.rdv-cancelled) {
   border-color: #b91c1c !important;
-  color: #ffffff !important;
+  border-left: 4px solid #b91c1c !important;
+  color: #b91c1c !important;
+}
+
+.weekly-view-page :deep(.fc-event.rdv-cancelled .fc-event-main) {
+  color: #b91c1c !important;
 }
  
 </style>

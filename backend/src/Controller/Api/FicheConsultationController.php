@@ -5,7 +5,6 @@ namespace App\Controller\Api;
 use App\Service\ConsultationService;
 use App\Service\FicheMedicaleService;
 use App\Entity\FicheMedicale;
-use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -14,18 +13,15 @@ use Symfony\Component\Routing\Attribute\Route;
 #[Route('/api/fiches/{ficheId}/consultations/{consultationId}', name: 'api_fiche_consultation_')]
 class FicheConsultationController extends AbstractController
 {
-    public function __construct(private ConsultationService $consultationService, private FicheMedicaleService $ficheMedicaleService, private EntityManagerInterface $em) {}
+    public function __construct(private ConsultationService $consultationService, private FicheMedicaleService $ficheMedicaleService) {}
 
     #[Route('/json', name: 'json', methods: ['GET'])]
     public function getJson(int $ficheId, int $consultationId): JsonResponse
     {
-        // If fiche is a FicheMedicale, delegate to FicheMedicaleService and enrich with consultation details
-        $ficheMed = $this->em->getRepository(FicheMedicale::class)->find($ficheId);
-        if ($ficheMed) {
+        [$fiche, $consult] = $this->consultationService->getFicheAndConsultation($ficheId, $consultationId);
+
+        if ($fiche instanceof FicheMedicale) {
             $ficheData = $this->ficheMedicaleService->getFicheJson($ficheId);
-            $consultCtx = $this->consultationService->getConsultationDetailsContext($consultationId);
-            $consult = $consultCtx['consultation'];
-            $actes = $consultCtx['actes'];
 
             $consultationData = [
                 'id' => $consult->getId(),
@@ -38,18 +34,19 @@ class FicheConsultationController extends AbstractController
 
             return new JsonResponse(array_merge($ficheData, ['consultation' => $consultationData, 'actes' => array_map(fn($a) => [
                 'dent' => $a->getDent(), 'type' => $a->getType(), 'description' => $a->getDescription(), 'prix' => $a->getPrix(), 'quantite' => $a->getQuantite()
-            ], $actes)]));
+            ], $consult->getActes()->toArray())]));
         }
 
-        return new JsonResponse($this->consultationService->getConsultationJson($ficheId, $consultationId));
+        return new JsonResponse($this->consultationService->getConsultationJson($fiche->getId(), $consult->getId()));
     }
 
     #[Route('/motif', methods: ['POST'], name: 'update_motif')]
     public function updateMotif(Request $request, int $ficheId, int $consultationId): JsonResponse
     {
         $data = json_decode($request->getContent(), true) ?? [];
-        $ficheMed = $this->em->getRepository(FicheMedicale::class)->find($ficheId);
-        if ($ficheMed) {
+        [$fiche, ] = $this->consultationService->getFicheAndConsultation($ficheId, $consultationId);
+
+        if ($fiche instanceof FicheMedicale) {
             $this->ficheMedicaleService->updateEntretien($ficheId, $data);
         } else {
             $this->consultationService->updateMotif($ficheId, $consultationId, $data);
@@ -61,8 +58,9 @@ class FicheConsultationController extends AbstractController
     public function updateExamens(Request $request, int $ficheId, int $consultationId): JsonResponse
     {
         $data = json_decode($request->getContent(), true) ?? [];
-        $ficheMed = $this->em->getRepository(FicheMedicale::class)->find($ficheId);
-        if ($ficheMed) {
+        [$fiche, ] = $this->consultationService->getFicheAndConsultation($ficheId, $consultationId);
+
+        if ($fiche instanceof FicheMedicale) {
             $this->ficheMedicaleService->updateExamens($ficheId, $data);
         } else {
             $this->consultationService->updateExamens($ficheId, $consultationId, $data);
@@ -75,8 +73,9 @@ class FicheConsultationController extends AbstractController
     {
         $data  = json_decode($request->get('data'), true) ?? [];
         $files = $request->files->get('documentsFiles', []);
-        $ficheMed = $this->em->getRepository(FicheMedicale::class)->find($ficheId);
-        if ($ficheMed) {
+        [$fiche, ] = $this->consultationService->getFicheAndConsultation($ficheId, $consultationId);
+
+        if ($fiche instanceof FicheMedicale) {
             $this->ficheMedicaleService->updateDocuments($ficheId, $data, $files ?: []);
         } else {
             $this->consultationService->updateTraitements($ficheId, $consultationId, $data, $files ?: []);
@@ -88,8 +87,9 @@ class FicheConsultationController extends AbstractController
     public function updateDevis(Request $request, int $ficheId, int $consultationId): JsonResponse
     {
         $data = json_decode($request->getContent(), true) ?? [];
-        $ficheMed = $this->em->getRepository(FicheMedicale::class)->find($ficheId);
-        if ($ficheMed) {
+        [$fiche, ] = $this->consultationService->getFicheAndConsultation($ficheId, $consultationId);
+
+        if ($fiche instanceof FicheMedicale) {
             $this->ficheMedicaleService->updateDevis($ficheId, $data);
         } else {
             $this->consultationService->updateDevis($ficheId, $consultationId, $data);

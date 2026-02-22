@@ -1,12 +1,12 @@
 <template>
     <div class="ticket-header">
-        <img :src="logoSrc" alt="Centre Dentaire Massaman" class="header-logo" />
+        <img :src="logoSrc" alt="Cabinet Dentaire Orodent" class="header-logo" />
         <div class="title">{{ title }}</div>
     </div>
 </template>
 
 <script setup>
-import headerImg from '@/assets/header.jpeg';
+import headerImg from '@/assets/header-big.jpeg';
 
 defineProps({
     title: { type: String, default: 'Ticket de caisse' },

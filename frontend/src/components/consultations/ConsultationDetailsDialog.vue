@@ -68,13 +68,13 @@ const handleHide = () => emit('update:visible', false);
             </div>
 
             <div>
-                <h4 class="text-md font-semibold text-gray-700 mb-2">Note de séance</h4>
-                <div class="border rounded-lg p-3 bg-gray-50 min-h-[60px]">{{ details.noteSeance || 'Aucune note' }}
+                <h4 class="text-md font-semibold text-gray-700 mb-2 dark:text-gray-300">Note de séance</h4>
+                <div class="border rounded-lg p-3 bg-gray-50 dark:bg-gray-800 min-h-[60px]">{{ details.noteSeance || 'Aucune note' }}
                 </div>
             </div>
 
             <div class="flex flex-col gap-2">
-                <h4 class="text-md font-semibold text-gray-700">Soins réalisés</h4>
+                <h4 class="text-md font-semibold text-gray-700 dark:text-gray-300">Soins réalisés</h4>
                 <DataTable :value="actes" size="small" class="shadow-sm" :stripedRows="true">
                     <Column field="dent" header="Dent" style="width: 8rem"></Column>
                     <Column field="type" header="Type d'acte" style="width: 12rem"></Column>

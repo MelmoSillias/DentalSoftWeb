@@ -51,10 +51,21 @@ class PatientService
     ) {
     }
 
+    private function resolveLatestConsultation(Patient $patient): ?Consultation
+    {
+        $latest = $this->consultationRepo->findLatestByPatient($patient);
+
+        if ($latest !== null) {
+            return $latest;
+        }
+
+        return $patient->getDerniereConsultation();
+    }
+
     private function formatPatientSummary(Patient $patient): array
     {
         $contact = $patient->getContactUrgence();
-        $consultation = $patient->getDerniereConsultation();
+        $consultation = $this->resolveLatestConsultation($patient);
 
         return [
             'id' => $patient->getId(),
@@ -325,14 +336,23 @@ class PatientService
         return $this->cache->get($cacheKey, function (ItemInterface $item) use ($term, $limit) {
             $item->expiresAfter(60);
             $qb = $this->patientRepo->createQueryBuilder('p')
-                ->select('p.id, p.nom, p.prenom, p.telephone');
+                ->select('DISTINCT p.id, p.nom, p.prenom, p.telephone')
+                ->leftJoin('p.consultations', 'c')
+                ->leftJoin('c.fiche', 'cf')
+                ->leftJoin('p.fichesObservation', 'fo');
 
             if ($term !== '') {
                 $qb->andWhere(
                     $qb->expr()->orX(
                         'LOWER(p.nom) LIKE :term',
                         'LOWER(p.prenom) LIKE :term',
-                        'p.telephone LIKE :term'
+                        'p.telephone LIKE :term',
+                        'LOWER(c.type) LIKE :term',
+                        'LOWER(c.noteSeance) LIKE :term',
+                        'LOWER(cf.motif) LIKE :term',
+                        'LOWER(cf.diagnostic) LIKE :term',
+                        'LOWER(fo.motif) LIKE :term',
+                        'LOWER(fo.diagnostic) LIKE :term'
                     )
                 )
                     ->setParameter('term', '%' . $term . '%');
@@ -384,12 +404,13 @@ class PatientService
         ] : null;
 
         $derniereConsultation = null;
-        if ($patient->getDerniereConsultation()) {
-            $consultation = $patient->getDerniereConsultation();
+        $latestConsultation = $this->resolveLatestConsultation($patient);
+        if ($latestConsultation) {
+            $consultation = $latestConsultation;
             $derniereConsultation = [
-                'date' => $consultation->getDate()->format('Y-m-d H:i'),
-                'motif' => $consultation->getMotif(),
-                'medecin' => $consultation->getMedecin()?->getNomComplet(),
+                'date' => $consultation->getCreatedAt()?->format('Y-m-d H:i'),
+                'motif' => $consultation->getType() ?: $consultation->getNoteSeance(),
+                'medecin' => trim(($consultation->getMedecin()?->getNom() ?? '') . ' ' . ($consultation->getMedecin()?->getPrenom() ?? '')),
             ];
         }
 
@@ -595,11 +616,12 @@ class PatientService
         }
 
         $derniereConsultation = null;
-        if ($patient->getDerniereConsultation()) {
-            $consultation = $patient->getDerniereConsultation();
+        $latestConsultation = $this->resolveLatestConsultation($patient);
+        if ($latestConsultation) {
+            $consultation = $latestConsultation;
             $derniereConsultation = [
-                'date' => $consultation->getCreatedAt()->format('Y-m-d H:i'),
-                'motif' => $consultation->getType(),
+                'date' => $consultation->getCreatedAt()?->format('Y-m-d H:i'),
+                'motif' => $consultation->getType() ?: $consultation->getNoteSeance(),
                 'medecin' => $consultation->getMedecin()?->getNom().' '.$consultation->getMedecin()?->getPrenom(),
             ];
         }

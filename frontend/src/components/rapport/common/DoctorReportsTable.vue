@@ -104,9 +104,10 @@ function printDoctorRow(row) {
         </head>
         <body>
             <div class="header">
-                <h2>Cabinet Dentaire Centre Dentaire Massaman</h2>
+                <h2>CABINET DENTAIRE ORODENT
+</h2>
                 <p>RAPPORT DE SERVICE MÉDICAL</p>
-                <p>Rue 404 - Porte 963 KalabanCoura ACI | Bamako-MALI | Tél: +223 44 54 26 09 / +223 97 08 12 92</p>
+                <p>Rue 612 Bacodjicoroni ACI | Bamako-MALI | Tél: +223 77 27 28 61 / +223 44 51 61 85</p>
             </div>
             <div>
                 <strong>Médecin :</strong> Dr ${row.name || ''}<br />
@@ -206,9 +207,10 @@ function printSummary() {
         </head>
         <body>
             <div class="header">
-                <h2>CABINET DENTAIRE Centre Dentaire Massaman</h2>
+                <h2>CABINET DENTAIRE ORODENT
+</h2>
                 <p><strong>Rapport de service (Résumé)</strong> - ${currentDate}</p>
-                <p>Rue 404 - Porte 963 KalabanCoura ACI | Bamako-MALI | Tél: +223 44 54 26 09 / +223 97 08 12 92</p>
+                <p>Rue 612 Bacodjicoroni ACI | Bamako-MALI | Tél: +223 77 27 28 61 / +223 44 51 61 85</p>
             </div>
             <p><strong>Période :</strong> ${props.periodLabel || '(non spécifiée)'}</p>
             <table>

@@ -1013,7 +1013,7 @@ $(function () { // Variables globales pour les filtres de date
                     <div class="paper-body">
                         <div class="row mb-3 d-flex align-items-center no-wrap justify-content-between">
                             <div class="col-8 header">
-                                <img src="/img/header-big.jpeg" alt="Centre Dentaire Massaman" style="max-height:90px; width:100%; object-fit:contain;">
+                                <img src="/img/header-big.jpeg" alt="Cabinet Dentaire Orodent" style="max-height:90px; width:100%; object-fit:contain;">
                             </div>
 
                             <div class="col-4 text-end">

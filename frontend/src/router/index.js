@@ -163,8 +163,7 @@ const router = createRouter({
         // Routes publiques (pas d'authentification requise)
         {
             path: '/',
-            name: 'landing',
-            component: () => import('@/views/pages/Landing.vue')
+            redirect: '/auth/login'
         },
         {
             path: '/auth/login',

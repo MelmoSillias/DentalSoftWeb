@@ -48,7 +48,7 @@
 </template>
 
 <script setup>
-import headerImg from '@/assets/header.jpeg';
+import headerImg from '@/assets/header-big.jpeg';
 import logoImg from '@/assets/logo.png';
 
 defineProps({

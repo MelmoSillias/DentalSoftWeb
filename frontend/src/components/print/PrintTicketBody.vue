@@ -85,11 +85,11 @@ const formatMoney = (value) => `${Number(value || 0).toLocaleString('fr-FR')} FC
     padding: 2mm;
     color: #000;
     font-family: Arial, sans-serif;
-    font-size: 11px;
+    font-size: 14px;
 }
 
 .small {
-    font-size: 9px;
+    font-size: 12px;
 }
 
 .center {

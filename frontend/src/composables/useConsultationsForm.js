@@ -2,7 +2,7 @@ import { computed, reactive, ref, watch } from 'vue';
 import { fetchMedecins, fetchInfirmiers } from '@/services/corpsmedical';
 import { fetchSalles } from '@/services/salles';
 import { fetchConsultationDetails, setConsultationFiche } from '@/services/consultations';
-import { loadOrdonnances, saveConsultation, saveOrdonnance, closeConsultation } from '@/services/consultationsforms';
+import { loadOrdonnances, saveConsultation, closeConsultation } from '@/services/consultationsforms';
 import { loadFicheMedicale, saveBilans, saveDevis, saveDocuments, saveEntretien, saveExamens, savePlanTraitement } from '@/services/ficheMedicale';
 import { filePrefix } from '@/config';
 
@@ -83,7 +83,7 @@ const defaultConsultation = () => ({
     actes: []
 });
 
-export const useConsultationsForm = ({ ficheId, consultId, token }) => {
+export const useConsultationsForm = ({ ficheId, consultId, token, mode }) => {
     const loading = ref(false);
     const activeSection = ref('infos');
     const switcherMode = ref('tabs');
@@ -180,10 +180,10 @@ export const useConsultationsForm = ({ ficheId, consultId, token }) => {
     };
 
     const ensureFicheLinked = async () => {
-        if (ficheId.value) return ficheId.value;
         if (!consultId.value) return null;
 
-        const res = await setConsultationFiche(consultId.value, null, token);
+        const requestedFicheId = mode?.value === 'continue' ? (ficheId.value || null) : null;
+        const res = await setConsultationFiche(consultId.value, requestedFicheId, token);
         const linkedId = res?.ficheId ?? res?.id ?? null;
         if (linkedId) ficheId.value = linkedId;
         return ficheId.value;
@@ -437,27 +437,44 @@ export const useConsultationsForm = ({ ficheId, consultId, token }) => {
         }
     };
 
-    const saveConsultSection = async () => {
-        if (!dirty.consult || !consultId.value) return;
+    const saveConsultSection = async ({ ordonnancePayload = null } = {}) => {
+        if (!consultId.value) return;
+
+        const shouldSaveConsult = dirty.consult;
+        const shouldSaveOrdonnance = dirty.ordonnances && ordonnancePayload && Array.isArray(ordonnancePayload.lignes) && ordonnancePayload.lignes.length > 0;
+        if (!shouldSaveConsult && !shouldSaveOrdonnance) return;
+
         setSaving('consult', true);
         try {
-            await saveConsultation(ficheId.value, consultId.value, data.consultation, token);
-            clearDirty(['consult']);
+            const payload = {
+                ...data.consultation,
+                infirmierId: Array.isArray(data.consultation.infirmierIds)
+                    ? data.consultation.infirmierIds[0] ?? null
+                    : data.consultation.infirmierIds,
+            };
+
+            if (shouldSaveOrdonnance) {
+                payload.ordonnance = ordonnancePayload;
+            }
+
+            await saveConsultation(ficheId.value, consultId.value, payload, token);
+
+            if (shouldSaveOrdonnance) {
+                data.ordonnances = await loadOrdonnances(consultId.value, token);
+                clearDirty(['consult', 'ordonnances']);
+            } else {
+                clearDirty(['consult']);
+            }
         } finally {
             setSaving('consult', false);
         }
     };
 
     const saveOrdonnanceSection = async (payload) => {
-        if (!consultId.value) return;
-        setSaving('ordonnances', true);
-        try {
-            await saveOrdonnance(consultId.value, payload, token);
-            data.ordonnances = await loadOrdonnances(consultId.value, token);
-            clearDirty(['ordonnances']);
-        } finally {
-            setSaving('ordonnances', false);
+        if (payload) {
+            dirty.ordonnances = true;
         }
+        await saveConsultSection({ ordonnancePayload: payload });
     };
 
     const closeConsult = async () => {

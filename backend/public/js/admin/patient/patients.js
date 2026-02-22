@@ -175,8 +175,8 @@ $(document).ready(function () {
                             extend: 'pdfHtml5',
                             text: 'Exporter en PDF',
                             className: 'btn mb-2',
-                            title: 'Liste des patients Centre Dentaire Massaman',
-                            filename: 'liste_des_patients_Centre Dentaire Massaman',
+                            title: 'Liste des patients Cabinet Dentaire Orodent',
+                            filename: 'liste_des_patients_Cabinet Dentaire Orodent',
                             messageTop: '',
                             exportOptions: {
                                 columns: [0, 1, 2, 3, 4]  // exporte uniquement les 6 premières colonnes
@@ -187,7 +187,7 @@ $(document).ready(function () {
                                 doc.pageSize = 'A4';
 
                                 // Agrandit le titre principal
-                                doc.content[0].text = 'Liste des patients Centre Dentaire Massaman';
+                                doc.content[0].text = 'Liste des patients Cabinet Dentaire Orodent';
                                 doc.content[0].fontSize = 18;
                                 doc.content[0].alignment = 'center';
                                 doc.content[0].margin = [0, 0, 0, 12];

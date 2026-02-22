@@ -7,6 +7,7 @@ import PrintPaymentsListBody from '@/components/print/PrintPaymentsListBody.vue'
 import PrintReceiptBody from '@/components/print/PrintReceiptBody.vue';
 import PrintTicketBody from '@/components/print/PrintTicketBody.vue';
 import { usePrinter } from '@/composables/usePrinter';
+import { useAuthStore } from '@/stores/auth';
 import {
 	fetchDevis,
 	fetchDevisDetail,
@@ -35,6 +36,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 const toast = useToast();
 const token = localStorage.getItem('token');
 const { printComponent } = usePrinter();
+const authStore = useAuthStore();
 
 const viewStorageKey = 'caisse.view';
 const activeView = ref(localStorage.getItem(viewStorageKey) || 'overview');
@@ -44,8 +46,17 @@ const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
 const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
 
 const devisType = ref('all');
-const devisRange = ref([startOfMonth, endOfMonth]);
-const paymentRange = ref([startOfMonth, endOfMonth]);
+
+const devisRange = ref([]);
+const paymentRange = ref([]);
+
+if(authStore.user.roles.includes('ROLE_RECEPTION')) {
+	devisRange.value = [today, today];
+	paymentRange.value = [today, today];
+} else { 
+	devisRange.value = [startOfMonth, endOfMonth];
+	paymentRange.value = [startOfMonth, endOfMonth];
+}
 
 const devis = ref([]);
 const payments = ref([]);
@@ -55,6 +66,7 @@ const paymentsLoading = ref(false);
 const toApiDate = (value) => {
 	if (!value) return '';
 	const date = value instanceof Date ? value : new Date(value);
+	console.log('toApiDate input:', value, 'parsed:', date);
 	return date.toISOString().slice(0, 10);
 };
 
@@ -519,7 +531,7 @@ onMounted(() => {
 							previewData.patient?.prenom
 						}}</p>
 					</div>
-					<Tag value="Reste {{ formatFcfa(previewData.reste) }}" severity="warning" />
+					<Tag :value="'Reste ' + formatFcfa(previewData.reste)" severity="warning" />
 				</div>
 				<table class="w-full text-sm">
 					<thead>

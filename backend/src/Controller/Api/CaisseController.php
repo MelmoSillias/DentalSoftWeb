@@ -21,7 +21,11 @@ class CaisseController extends AbstractController
     public function getDevisAll(Request $request): JsonResponse
     {
         $start = new \DateTime($request->query->get('start', 'today'));
-        $end   = new \DateTime($request->query->get('end', 'today'));
+        if ($request->query->has('end') && $request->query->get('end') !== '') {
+            $end = new \DateTime($request->query->get('end'));
+        } else {
+            $end = (clone $start);
+        }
         $end->setTime(23, 59, 59);
 
         return new JsonResponse($this->cashdeskService->listDevisByPeriod($start, $end));
@@ -37,7 +41,11 @@ class CaisseController extends AbstractController
     public function getPaiementsDevis(Request $request): JsonResponse
     {
         $start = new \DateTime($request->query->get('start', 'today'));
-        $end   = new \DateTime($request->query->get('end', 'today'));
+        if ($request->query->has('end') && $request->query->get('end') !== '') {
+            $end = new \DateTime($request->query->get('end'));
+        } else {
+            $end = (clone $start);
+        }
         $end->setTime(23, 59, 59);
 
         return new JsonResponse(['data' => $this->cashdeskService->listPaiementsDevis($start, $end)]);
@@ -103,7 +111,11 @@ class CaisseController extends AbstractController
     public function printListePaiements(Request $request): Response
     {
         $start = new \DateTime($request->query->get('start', 'today'));
-        $end = new \DateTime($request->query->get('end', 'today'));
+        if ($request->query->has('end') && $request->query->get('end') !== '') {
+            $end = new \DateTime($request->query->get('end'));
+        } else {
+            $end = (clone $start);
+        }
         $end->setTime(23, 59, 59);
 
         $paiements = $this->cashdeskService->paiementsForPeriod($start, $end);
@@ -173,7 +185,11 @@ class CaisseController extends AbstractController
     public function getPaymentsPrintData(Request $request): JsonResponse
     {
         $start = new \DateTime($request->query->get('start', 'today'));
-        $end = new \DateTime($request->query->get('end', 'today'));
+        if ($request->query->has('end') && $request->query->get('end') !== '') {
+            $end = new \DateTime($request->query->get('end'));
+        } else {
+            $end = (clone $start);
+        }
         $end->setTime(23, 59, 59);
 
         $paiements = $this->cashdeskService->paiementsForPeriod($start, $end);

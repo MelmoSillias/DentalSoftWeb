@@ -3,6 +3,7 @@
 namespace App\Repository;
 
 use App\Entity\Consultation;
+use App\Entity\Patient;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
@@ -91,6 +92,20 @@ class ConsultationRepository extends ServiceEntityRepository
             ->orderBy('c.id', 'ASC')
             ->getQuery()
             ->getResult();
+    }
+
+    public function findLatestByPatient(Patient|int $patient): ?Consultation
+    {
+        return $this->createQueryBuilder('c')
+            ->leftJoin('c.fiche', 'fo')->addSelect('fo')
+            ->leftJoin('c.ficheMedicale', 'fm')->addSelect('fm')
+            ->andWhere('c.patient = :patient')
+            ->setParameter('patient', $patient)
+            ->orderBy('c.CreatedAt', 'DESC')
+            ->addOrderBy('c.id', 'DESC')
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
     }
     public function findConsultationsByMedecin($medecinId): array
     {

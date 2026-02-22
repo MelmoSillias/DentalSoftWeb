@@ -20,8 +20,7 @@ export const useAuthStore = defineStore('auth', {
                 localStorage.setItem('token', this.token); 
                 await this.fetchUser(); 
             } catch (err) {
-                this.error = err.response?.data?.message || 'Erreur de connexion';
-                console.log(err);
+                this.error = err.response?.data?.message || 'Erreur de connexion'; 
                 throw err;
             } finally {
                 this.loading = false;
@@ -30,8 +29,7 @@ export const useAuthStore = defineStore('auth', {
 
         async validateToken() {
             try {
-                const response = await http.get('token/validate');
-                console.log('Token valide:', response.data);
+                const response = await http.get('token/validate'); 
                 return true;
             } catch (error) { 
                 if (error.response && error.response.status === 401) { 

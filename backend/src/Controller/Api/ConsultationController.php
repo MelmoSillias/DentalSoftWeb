@@ -90,11 +90,11 @@ final class ConsultationController extends AbstractController{
     #[Route('/api/consultations/{consultation}/ordonnances', name: 'api_consultation_ordonnance_add', methods: ['POST'])]
     public function addOrdonnance(Request $request, Consultation $consultation): JsonResponse
     {
-        $data = json_decode($request->getContent(), true) ?? [];
-        $result = $this->consultationService->createOrdonnance($consultation, $data);
-        $status = isset($result['error']) ? 400 : 201;
-
-        return new JsonResponse($result, $status);
+        return new JsonResponse([
+            'success' => false,
+            'deprecated' => true,
+            'message' => "Endpoint déprécié: sauvegardez l'ordonnance via l'endpoint de mise à jour consultation (/api/fiches/{ficheId}/consultations/{consultationId}).",
+        ], 410);
     }
 
     #[Route('/api/ordonnance/{id}', name: 'api_ordonnance_get', methods: ['GET'])]

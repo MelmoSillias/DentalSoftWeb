@@ -29,8 +29,7 @@ const devisTypeOptions = [
 ];
 
 const safeDevis = computed(() => 
-    {
-        console.log(props.devis);
+    { 
         return (Array.isArray(props.devis) ? props.devis : [])
     });
 

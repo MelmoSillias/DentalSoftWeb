@@ -8,23 +8,23 @@ import Button from 'primevue/button';
 
 const toast = useToast();
 
-// const primaryColor = ref('#0ea5a4');
-// const theme = ref('system'); // 'light' | 'dark' | 'system'
-const fontSize = ref(12); // px
+const primaryColor = ref('#0ea5a4');
+const theme = ref('system'); // 'light' | 'dark' | 'system'
+const fontSize = ref(16); // px
 
-// const themeOptions = [
-//     { label: 'Système (par défaut)', value: 'system' },
-//     { label: 'Clair', value: 'light' },
-//     { label: 'Sombre', value: 'dark' }
-// ];
+const themeOptions = [
+    { label: 'Système (par défaut)', value: 'system' },
+    { label: 'Clair', value: 'light' },
+    { label: 'Sombre', value: 'dark' }
+];
 
 function loadSettings() {
     const saved = localStorage.getItem('appearanceSettings');
     if (saved) {
         try {
             const s = JSON.parse(saved);
-            // if (s.primaryColor) primaryColor.value = s.primaryColor;
-            // if (s.theme) theme.value = s.theme;
+            if (s.primaryColor) primaryColor.value = s.primaryColor;
+            if (s.theme) theme.value = s.theme;
             if (s.fontSize) fontSize.value = s.fontSize;
         } catch (e) {
             console.warn('Impossible de parser les réglages d\'apparence', e);
@@ -59,9 +59,9 @@ function saveSettings() {
 }
 
 function resetSettings() {
-    // primaryColor.value = '#0ea5a4';
-    // theme.value = 'system';
-    fontSize.value = 12;
+    primaryColor.value = '#0ea5a4';
+    theme.value = 'system';
+    fontSize.value = 16;
     saveSettings();
 }
 
@@ -92,7 +92,7 @@ onMounted(() => {
             <div class="card p-4 md:col-span-2">
                 <label class="block text-sm font-medium mb-2">Taille du texte</label>
                 <div class="flex items-center gap-3">
-                    <Slider v-model="fontSize" :min=12 :max=20 step="1" />
+                    <Slider v-model="fontSize" :min="12" :max="20" />
                     <div class="w-16 text-right">{{ fontSize }}px</div>
                 </div>
                 <p class="text-xs text-gray-500 mt-2">Ajuste la taille de base du texte de l'interface.</p>

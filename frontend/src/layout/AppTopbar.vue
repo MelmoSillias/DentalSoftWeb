@@ -42,29 +42,29 @@ onMounted(() => {
         auth.fetchUser(); // Fetch user data if token exists
     }
 
-    if (auth.token) {
-        loadNotifications();
-        connectMercure();
-    }
+    // if (auth.token) {
+    //     loadNotifications();
+    //     connectMercure();
+    // }
 });
-onBeforeUnmount(() => {
-    clearInterval(timer);
-    disconnectMercure();
-});
+// onBeforeUnmount(() => {
+//     clearInterval(timer);
+//     disconnectMercure();
+// });
 
-watch(
-    () => auth.token,
-    (token) => {
-        if (token) {
-            loadNotifications();
-            connectMercure();
-        } else {
-            notifications.value = [];
-            unreadCount.value = 0;
-            disconnectMercure();
-        }
-    }
-);
+// watch(
+//     () => auth.token,
+//     (token) => {
+//         if (token) {
+//             loadNotifications();
+//             connectMercure();
+//         } else {
+//             notifications.value = [];
+//             unreadCount.value = 0;
+//             disconnectMercure();
+//         }
+//     }
+// );
 
 function toggleNotificationsPopover(event) {
     if (showNotificationsPopover.value) {
@@ -89,7 +89,7 @@ async function handleLogout() {
     try {
         auth.logout();
         showProfilePopover.value = false; // Close Popover
-        disconnectMercure();
+        // disconnectMercure();
         toast.add({
             severity: 'success',
             summary: 'Déconnexion réussie',
@@ -150,7 +150,7 @@ async function loadNotifications() {
 async function connectMercure() {
     if (!auth.token) return;
 
-    disconnectMercure();
+    // disconnectMercure();
 
     try {
         const res = await http.get('me/notifications/mercure');
@@ -317,7 +317,7 @@ async function handleNotificationClick(notification) {
                     <img src="@/assets/logo.png" class="app-logo" width="54" height="40" />
                 </div>
                 
-                <span style="font-weight: 500;">Dentalsoft <br> <small>Cabinet Dentaire Massaman</small></span>
+                <span style="font-weight: 500;">Dentalsoft <br> <small>Cabinet Dentaire Orodent</small></span>
                 
             </router-link>
         </div>

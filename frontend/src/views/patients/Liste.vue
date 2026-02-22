@@ -401,14 +401,14 @@ onBeforeUnmount(() => {
                         </template>
                     </Column>
 
-                    <Column field="sexe" header="Sexe" sortable headerClass="hidden md:table-cell"
+                    <!-- <Column field="sexe" header="Sexe" sortable headerClass="hidden md:table-cell"
                         bodyClass="hidden md:table-cell">
                         <template #body="{ data }">
-                            <Tag :value="data.sexe === 'M' ? 'Masculin' : 'Féminin'"
+                            <Tag :value="data.sexe"
                                 :severity="data.sexe === 'M' ? 'info' : 'secondary'"
                                 class="px-3 py-1 rounded-full font-medium" />
                         </template>
-                    </Column>
+                    </Column> -->
 
                     <Column field="telephone" header="Téléphone" sortable headerClass="hidden md:table-cell"
                         bodyClass="hidden md:table-cell">

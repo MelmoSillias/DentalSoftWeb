@@ -387,24 +387,24 @@ const currentFactureLoading = computed(() => {
 
             <!-- Filters & Controls -->
             <div class="px-5 md:px-6 py-4 border-b border-surface-200/50 dark:border-surface-700/50 bg-surface-0/50 dark:bg-surface-800/30">
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <div class="flex flex-col lg:flex-row lg:items-center gap-4">
                     <!-- Search -->
-                    <div class="lg:col-span-2">
+                    <div class="col-6 w-full">
                         <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">
                             Rechercher une consultation
                         </label>
-                        <span class="p-input-icon-left w-full">
-                            <i class="pi pi-search text-surface-400" />
+                        <IconField class="p-input-icon-left w-full">
+                            <InputIcon class="pi pi-search text-surface-400"></InputIcon>
                             <InputText 
                                 v-model="filterGlobalValue" 
                                 placeholder="Patient, médecin, statut..." 
                                 class="w-full p-3.5 rounded-xl border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-700/50 focus:ring-2 focus:ring-primary-500/20 transition-all"
                             />
-                        </span>
+                        </IconField>
                     </div>
                     
                     <!-- Date & Actions -->
-                    <div class="flex flex-col sm:flex-row lg:flex-col gap-3">
+                    <div class="flex flex-col sm:flex-row lg:flex-col gap-3 col-6 w-full">
                         <div>
                             <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">
                                 Date de consultation
@@ -414,7 +414,7 @@ const currentFactureLoading = computed(() => {
                                     v-model="selectedDate" 
                                     dateFormat="dd/mm/yy" 
                                     showIcon
-                                    class="flex-1 rounded-xl border-surface-200 dark:border-surface-700 [&_.p-datepicker]:p-3.5"
+                                    class="flex-1 rounded-xl border-surface-200 dark:border-surface-700 [&_.p-datepicker]:p-3.5 "
                                     @update:modelValue="onDateChange" 
                                 />
                                 <Button 
@@ -424,18 +424,16 @@ const currentFactureLoading = computed(() => {
                                     class="px-3 rounded-xl"
                                     @click="selectedDate = null"
                                 />
-                            </div>
-                        </div>
-                        <div class="flex items-end">
-                            <Button 
-                                icon="pi pi-refresh" 
-                                label="Rafraîchir" 
+                                <Button 
+                                icon="pi pi-refresh"  
                                 :loading="loading" 
                                 outlined
                                 class="w-full rounded-xl px-5 py-3.5 border-surface-300 dark:border-surface-600 hover:bg-surface-100 dark:hover:bg-surface-700 transition-colors"
                                 @click="loadConsultations" 
                             />
-                        </div>
+                            </div>
+                            
+                        </div> 
                     </div>
                 </div>
             </div>
@@ -542,9 +540,9 @@ const currentFactureLoading = computed(() => {
                                     {{ formatDateTime(data.createdAt) }}
                                 </span>
                             </div>
-                            <div class="text-xs text-surface-500">
+                            <!-- <div class="text-xs text-surface-500">
                                 {{ getTimeAgo(data.createdAt) }}
-                            </div>
+                            </div> -->
                         </div>
                     </template>
                 </Column>
@@ -705,7 +703,7 @@ const currentFactureLoading = computed(() => {
                     <div>
                         <p class="text-sm text-green-700 dark:text-green-300 font-medium">Consultations terminées</p>
                         <p class="text-2xl font-bold text-green-900 dark:text-green-100 mt-2">
-                            {{ consultations.filter(c => c.statut === 'TERMINE').length }}
+                            {{ consultations.filter(c => c.state === 1).length }}
                         </p>
                     </div>
                     <i class="fas fa-check-circle text-2xl text-green-500"></i>
@@ -717,24 +715,12 @@ const currentFactureLoading = computed(() => {
                     <div>
                         <p class="text-sm text-amber-700 dark:text-amber-300 font-medium">En cours</p>
                         <p class="text-2xl font-bold text-amber-900 dark:text-amber-100 mt-2">
-                            {{ consultations.filter(c => c.statut === 'EN_COURS').length }}
+                            {{ consultations.filter(c => c.state === 'EN_COURS' || c.state === 'EN_ATTENTE' || c.state == 0 ).length }}
                         </p>
                     </div>
                     <i class="fas fa-clock text-2xl text-amber-500"></i>
                 </div>
-            </div>
-            
-            <div class="bg-gradient-to-br from-red-50 to-red-100/50 dark:from-red-900/20 dark:to-red-800/20 rounded-2xl p-5 border border-red-200/50 dark:border-red-800/50">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-sm text-red-700 dark:text-red-300 font-medium">Annulées</p>
-                        <p class="text-2xl font-bold text-red-900 dark:text-red-100 mt-2">
-                            {{ consultations.filter(c => c.statut === 'ANNULE').length }}
-                        </p>
-                    </div>
-                    <i class="fas fa-times-circle text-2xl text-red-500"></i>
-                </div>
-            </div>
+            </div> 
         </div>
 
         <!-- Dialogs -->

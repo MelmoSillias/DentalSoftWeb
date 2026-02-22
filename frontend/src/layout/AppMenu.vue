@@ -39,9 +39,9 @@ const model = computed(() => {
     // Agenda (mêmes rôles que le routage)
     if (hasAnyRole(['ROLE_ADMIN', 'ROLE_RECEPTION', 'ROLE_MEDECIN'])) {
         const agendaItems = [];
-        agendaItems.push({ label: 'Rendez-Vous', icon: 'pi pi-fw pi-hourglass', to: router.resolve({ name: 'agenda-rendezvous' }).href });
+        agendaItems.push({ label: 'Rendez-Vous', icon: 'pi pi-fw pi-calendar', to: router.resolve({ name: 'agenda-rendezvous' }).href });
         if (isAdmin.value) {
-            agendaItems.push({ label: 'Evenements', icon: 'pi pi-fw pi-file', to: router.resolve({ name: 'agenda-evenements' }).href }); 
+            agendaItems.push({ label: 'Evenements', icon: 'pi pi-fw pi-star', to: router.resolve({ name: 'agenda-evenements' }).href }); 
         }
         menu.push({ label: 'Agenda', items: agendaItems });
     }
@@ -52,7 +52,7 @@ const model = computed(() => {
             label: 'Patients',
             items: [
                 { label: 'Liste', icon: 'pi pi-fw pi-users', to: router.resolve({ name: 'patients-liste' }).href },
-                { label: 'Dossier', icon: 'pi pi-fw pi-file', to: router.resolve({ name: 'patients-dossier', params: { patientId: null } }).href }
+                { label: 'Dossier', icon: 'pi pi-fw pi-folder', to: router.resolve({ name: 'patients-dossier', params: { patientId: null } }).href }
             ]
         });
     }
@@ -61,9 +61,9 @@ const model = computed(() => {
     if (hasAnyRole(['ROLE_ADMIN', 'ROLE_RECEPTION', 'ROLE_MEDECIN'])) {
         const consultationItems = [];
         if (isMedecin.value || isAdmin.value) {
-            consultationItems.push({ label: 'Cartes', icon: 'pi pi-fw pi-objects-column', to: router.resolve({ name: 'consultations-cards' }).href });
+            consultationItems.push({ label: 'File d\'attente', icon: 'pi pi-fw pi-hourglass', to: router.resolve({ name: 'consultations-cards' }).href });
         }
-        consultationItems.push({ label: 'Table', icon: 'pi pi-fw pi-table', to: router.resolve({ name: 'consultations-table' }).href });
+        consultationItems.push({ label: 'Historique', icon: 'pi pi-fw pi-list', to: router.resolve({ name: 'consultations-table' }).href });
         menu.push({
             label: 'Consultations',
             items: consultationItems 
@@ -94,12 +94,12 @@ const model = computed(() => {
     const adminItems = [];
     if (isAdmin.value) {
         adminItems.push(
-            { label: 'Consommables', icon: 'pi pi-fw pi-history', to: router.resolve({ name: 'administration-consommables' }).href },
+            { label: 'Consommables', icon: 'pi pi-fw pi-box', to: router.resolve({ name: 'administration-consommables' }).href },
             { label: 'Salles', icon: 'pi pi-fw pi-building', to: router.resolve({ name: 'administration-salles' }).href },
             { label: 'Gestion RH', icon: 'pi pi-fw pi-users', to: router.resolve({ name: 'administration-gestionrh' }).href },
             { label: 'Finances', icon: 'pi pi-fw pi-wallet', to: router.resolve({ name: 'administration-finances' }).href },
             { label: 'Utilisateurs', icon: 'pi pi-fw pi-id-card', to: router.resolve({ name: 'administration-utilisateurs' }).href },
-            { label: 'Notifications', icon: 'pi pi-fw pi-cog', to: router.resolve({ name: 'administration-notifications' }).href },
+            { label: 'Notifications', icon: 'pi pi-fw pi-bell', to: router.resolve({ name: 'administration-notifications' }).href },
 
         );
     }

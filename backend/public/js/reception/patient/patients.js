@@ -177,8 +177,8 @@ $(document).ready(function () {
                             extend: 'pdfHtml5',
                             text: 'Exporter en PDF',
                             className: 'btn mb-2',
-                            title: 'Liste des patients Centre Dentaire Massaman',
-                            filename: 'liste_des_patients_Centre Dentaire Massaman',
+                            title: 'Liste des patients Cabinet Dentaire Orodent',
+                            filename: 'liste_des_patients_Cabinet Dentaire Orodent',
                             messageTop: 'PDF créé par PDFMake avec Buttons pour DataTables.',
                             exportOptions: {
                                 columns: [0, 1, 2, 3, 4]  // exporte uniquement les 6 premières colonnes

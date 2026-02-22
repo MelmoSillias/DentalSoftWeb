@@ -130,8 +130,7 @@ export const checkConsultationActive = async (patientId, token) => {
     return res.data;
 };
 
-export const deleteConsultation = async (consultationId, token) => {
-    console.log(`${apiPrefix}/consultations/${consultationId}`);
+export const deleteConsultation = async (consultationId, token) => { 
     const res = await axios.delete(`${apiPrefix}/consultations/${consultationId}`, {
         headers: authHeaders(token)
     });

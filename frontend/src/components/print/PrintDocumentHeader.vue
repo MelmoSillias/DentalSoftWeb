@@ -1,7 +1,7 @@
 <template>
     <div class="print-doc-header">
         <div class="logo">
-            <img :src="logoSrc" alt="Centre Dentaire Massaman" />
+            <img :src="logoSrc" alt="Cabinet Dentaire Orodent" />
         </div>
         <div class="meta">
             <p class="title">{{ title }}</p>
@@ -13,7 +13,7 @@
 
 <script setup>
 import { computed } from 'vue';
-import headerImg from '@/assets/header.jpeg';
+import headerImg from '@/assets/header-big.jpeg';
 
 const props = defineProps({
     title: { type: String, default: '' },
