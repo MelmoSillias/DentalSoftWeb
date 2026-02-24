@@ -8,9 +8,67 @@ const copyStyles = (sourceDocument, targetDocument) => {
     });
 };
 
+const injectPrintBaseStyles = (targetDocument) => {
+    const style = targetDocument.createElement('style');
+    style.type = 'text/css';
+    style.textContent = `
+        html, body {
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+            background: #fff;
+        }
+
+        @media print {
+            html, body {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+        }
+    `;
+    targetDocument.head.appendChild(style);
+};
+
 export const usePrinter = () => {
     const isPrinting = ref(false);
     const lastError = ref(null);
+
+    const waitForPrintReady = async (targetWindow) => {
+        const doc = targetWindow.document;
+
+        if (doc.readyState !== 'complete') {
+            await new Promise((resolve) => {
+                const onLoad = () => {
+                    targetWindow.removeEventListener('load', onLoad);
+                    resolve();
+                };
+                targetWindow.addEventListener('load', onLoad, { once: true });
+            });
+        }
+
+        const images = Array.from(doc.images || []);
+        if (!images.length) {
+            return;
+        }
+
+        await Promise.all(
+            images.map(
+                (img) =>
+                    new Promise((resolve) => {
+                        if (img.complete) {
+                            resolve();
+                            return;
+                        }
+                        const done = () => {
+                            img.removeEventListener('load', done);
+                            img.removeEventListener('error', done);
+                            resolve();
+                        };
+                        img.addEventListener('load', done, { once: true });
+                        img.addEventListener('error', done, { once: true });
+                    })
+            )
+        );
+    };
 
     const printComponent = async (Component, props = {}, options = {}) => {
         isPrinting.value = true;
@@ -31,22 +89,13 @@ export const usePrinter = () => {
         target.document.write(`<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8" /><title>${title}</title></head><body></body></html>`);
         target.document.close();
         copyStyles(document, target.document);
+        injectPrintBaseStyles(target.document);
 
         const container = target.document.createElement('div');
         container.style.width = options.width || '100%';
         container.style.margin = options.margin || '0 auto';
         container.style.background = '#fff';
         target.document.body.appendChild(container);
-
-        // Inject a script into the new window to trigger printing automatically
-        if (options.autoPrint) {
-            const delay = options.printDelay || 250;
-            const autoCloseCode = options.autoClose ? 'window.close();' : '';
-            const script = target.document.createElement('script');
-            script.type = 'text/javascript';
-            script.text = `(function(){function trigger(){try{window.print();${autoCloseCode}}catch(e){} } if(document.readyState==='complete'){setTimeout(trigger,${delay});}else{window.addEventListener('load',function(){setTimeout(trigger,${delay});});}})();`;
-            target.document.body.appendChild(script);
-        }
 
         const app = createApp({
             render: () => h(Component, props)
@@ -57,7 +106,21 @@ export const usePrinter = () => {
             await nextTick();
             target.focus();
             if (options.autoPrint) {
+                const delay = options.printDelay || 250;
+                await waitForPrintReady(target);
+                if (delay > 0) {
+                    await new Promise((resolve) => setTimeout(resolve, delay));
+                }
                 target.print();
+                if (options.autoClose) {
+                    target.addEventListener(
+                        'afterprint',
+                        () => {
+                            target.close();
+                        },
+                        { once: true }
+                    );
+                }
             }
         } catch (error) {
             lastError.value = error;

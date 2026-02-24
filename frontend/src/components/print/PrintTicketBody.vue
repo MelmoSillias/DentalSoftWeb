@@ -1,6 +1,6 @@
 <template>
-    <div class="ticket">
-        <div class="small">
+    <div class="ticket" :style="{ '--watermark': `url(${logoSrc})` }">
+        <div class="small content">
             <PrintTicketHeader title="Ticket de Consultation" />
 
             <hr />
@@ -65,9 +65,11 @@
 <script setup>
 import { computed } from 'vue';
 import PrintTicketHeader from './PrintTicketHeader.vue';
+import logoImg from '@/assets/logo.png';
 
 const props = defineProps({
-    paiement: { type: Object, default: () => ({}) }
+    paiement: { type: Object, default: () => ({}) },
+    logoSrc: { type: String, default: logoImg }
 });
 
 const dateLabel = computed(() => {
@@ -81,11 +83,29 @@ const formatMoney = (value) => `${Number(value || 0).toLocaleString('fr-FR')} FC
 
 <style scoped>
 .ticket {
+    position: relative;
     width: 80mm;
     padding: 2mm;
     color: #000;
     font-family: Arial, sans-serif;
     font-size: 14px;
+    overflow: hidden;
+}
+
+.ticket::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--watermark) center center no-repeat;
+    background-size: 70% auto;
+    opacity: 0.06;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.content {
+    position: relative;
+    z-index: 1;
 }
 
 .small {
