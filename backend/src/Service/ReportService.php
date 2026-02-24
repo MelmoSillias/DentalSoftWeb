@@ -994,9 +994,11 @@ class ReportService
         }
 
         return [
+            'fullName' => $medecin->getFullName(),
             'identity' => [
                 'nom' => $medecin->getNom(),
                 'prenom' => $medecin->getPrenom(),
+                'fullName' => $medecin->getFullName(),
                 'matricule' => $medecin->getMatricule(),
                 'fonction' => $medecin->getFonction(),
                 'email' => $medecin->getEmail(),

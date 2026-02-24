@@ -15,6 +15,14 @@ const props = defineProps({
         type: Array,
         default: () => []
     },
+    lockedMedecinId: {
+        type: Number,
+        default: null
+    },
+    medecinReadonly: {
+        type: Boolean,
+        default: false
+    },
     loading: {
         type: Boolean,
         default: false
@@ -37,8 +45,18 @@ watch(
     () => props.rdv,
     (val) => {
         if (val) {
-            form.medecinId = val.medecinId;
+            form.medecinId = props.lockedMedecinId ?? val.medecinId;
             form.dateTime = new Date(val.start);
+        }
+    },
+    { immediate: true }
+);
+
+watch(
+    () => props.lockedMedecinId,
+    (val) => {
+        if (val) {
+            form.medecinId = val;
         }
     },
     { immediate: true }
@@ -50,7 +68,7 @@ const submit = () => {
     const end = new Date(form.dateTime.getTime() + form.duration * 60000);
     emit('submit', {
         id: props.rdv.id,
-        medecinId: form.medecinId,
+        medecinId: props.medecinReadonly ? (props.lockedMedecinId ?? form.medecinId) : form.medecinId,
         start: form.dateTime.toISOString(),
         end: end.toISOString()
     });
@@ -63,7 +81,14 @@ const submit = () => {
         <div class="flex flex-col gap-3">
             <div class="flex flex-col gap-1">
                 <label class="text-sm font-semibold text-surface-700 dark:text-surface-50">Médecin</label>
-                <Select v-model="form.medecinId" :options="medecins" optionLabel="name" optionValue="id" placeholder="Médecin" />
+                <Select
+                    v-model="form.medecinId"
+                    :options="medecins"
+                    optionLabel="name"
+                    optionValue="id"
+                    placeholder="Médecin"
+                    :disabled="medecinReadonly"
+                />
             </div>
             <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div class="flex flex-col gap-1">

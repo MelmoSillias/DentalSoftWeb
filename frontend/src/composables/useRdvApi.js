@@ -101,7 +101,10 @@ export function useRdvApi() {
                 fetchPatients(token, { page: 1, limit: 20 })
             ]);
             medecins.value = Array.isArray(meds)
-                ? meds.map((m) => ({ id: m.id, name: m.name ?? m.nom ?? m.fullname ?? `${m.prenom ?? ''} ${m.nom ?? ''}`.trim() }))
+                ? meds.map((m) => ({
+                      id: m.id,
+                      name: m.name ?? m.fullName ?? m.fullname ?? `${m.prenom ?? ''} ${m.nom ?? ''}`.trim() ?? m.nom ?? 'Médecin'
+                  }))
                 : [];
             const items = Array.isArray(pts?.items) ? pts.items : [];
             patientsSeed = items.map((p) => ({ id: p.id, name: p.fullname ?? `${p.prenom ?? ''} ${p.nom ?? ''}`.trim() }));
@@ -244,8 +247,11 @@ export function useRdvApi() {
         }
     };
 
-    const validateRdv = async (id, medecinId) => {
-        await http.post(`rdv/${id}/validate`, { medecin: medecinId });
+    const validateRdv = async (id, medecinId, options = {}) => {
+        await http.post(`rdv/${id}/validate`, {
+            medecin: medecinId,
+            create_consultation: options.createConsultation ?? true
+        });
         rdvs.value = rdvs.value.map((rdv) => (rdv.id === id ? { ...rdv, medecinId: medecinId || rdv.medecinId, statut: 1 } : rdv));
     };
 

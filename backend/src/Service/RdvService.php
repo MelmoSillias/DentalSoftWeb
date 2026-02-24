@@ -9,6 +9,7 @@ use App\Entity\User;
 use App\Repository\EmployeRepository;
 use App\Repository\RdvRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class RdvService
@@ -59,6 +60,14 @@ class RdvService
             'description' => $data['description'] ?? '',
             'duration' => $data['duration'] ?? 30,
         ];
+
+        if ($this->isMedecinUser($actor)) {
+            $medecin = $this->getMedecinForUser($actor);
+            if (!$medecin) {
+                return ['error' => 'Aucun médecin associé', 'status' => 403];
+            }
+            $payload['medecin_id'] = $medecin->getId();
+        }
 
         return $this->patientService->createRdv($payload, $actor);
     }
@@ -177,6 +186,20 @@ class RdvService
         return $user ? $this->employeRepo->findOneBy(['user' => $user]) : null;
     }
 
+    private function isMedecinUser(?User $actor): bool
+    {
+        return $actor instanceof User && in_array('ROLE_MEDECIN', $actor->getRoles(), true);
+    }
+
+    private function canAutoCreateConsultation(?User $actor, array $payload = []): bool
+    {
+        if (($payload['create_consultation'] ?? null) === false) {
+            return false;
+        }
+
+        return !$this->isMedecinUser($actor);
+    }
+
     private function createConsultationFromRdv(Rdv $rdv, ?int $medecinId = null): Consultation
     {
         $medecin = $medecinId ? $this->employeRepo->find($medecinId) : $rdv->getMedecin();
@@ -205,7 +228,7 @@ class RdvService
         $rdv->setStatut($newStatus);
         $createdConsultation = null;
 
-        if ($newStatus === 1) {
+        if ($newStatus === 1 && $this->canAutoCreateConsultation($actor, $payload)) {
             $createdConsultation = $this->createConsultationFromRdv($rdv, $payload['medecin'] ?? null);
         }
 
@@ -228,12 +251,24 @@ class RdvService
 
     public function handleAction(Rdv $rdv, string $action, array $payload, ?User $actor = null): array
     {
+        $actorMedecin = $this->isMedecinUser($actor) ? $this->getMedecinForUser($actor) : null;
+        if ($this->isMedecinUser($actor)) {
+            if (!$actorMedecin) {
+                return ['error' => 'Aucun médecin associé', 'status' => 403];
+            }
+            if (!$rdv->getMedecin() || $rdv->getMedecin()->getId() !== $actorMedecin->getId()) {
+                throw new AccessDeniedHttpException('Vous ne pouvez pas modifier ce rendez-vous.');
+            }
+        }
+
         $createdConsultation = null;
         $newRdv = null;
 
         if ($action === 'validate') {
             $rdv->setStatut(1);
-            $createdConsultation = $this->createConsultationFromRdv($rdv, $payload['medecin'] ?? null);
+            if ($this->canAutoCreateConsultation($actor, $payload)) {
+                $createdConsultation = $this->createConsultationFromRdv($rdv, $payload['medecin'] ?? null);
+            }
         } elseif ($action === 'cancel') {
             $rdv->setStatut(-2);
         } elseif ($action === 'report') {
@@ -247,6 +282,9 @@ class RdvService
             }
 
             $emp = $newMedecinId ? $this->employeRepo->find((int) $newMedecinId) : $rdv->getMedecin();
+            if ($actorMedecin) {
+                $emp = $actorMedecin;
+            }
 
             $rdv->setStatut(-1);
             $rdv->setReportedAt(new \DateTimeImmutable($newDate . ' ' . $newTime));

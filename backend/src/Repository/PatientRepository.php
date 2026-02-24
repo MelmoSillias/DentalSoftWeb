@@ -111,16 +111,26 @@ class PatientRepository extends ServiceEntityRepository
         $qb = $this->createQueryBuilder('p');
 
         if ($term !== null && $term !== '') {
-            $term = '%' . strtolower($term) . '%';
-            $qb->andWhere(
-                $qb->expr()->orX(
-                    'LOWER(p.nom) LIKE :term',
-                    'LOWER(p.prenom) LIKE :term',
-                    'LOWER(p.adresse) LIKE :term',
-                    'p.telephone LIKE :term'
-                )
-            )
-                ->setParameter('term', $term);
+            $normalizedTerm = mb_strtolower(trim($term));
+            $termLike = '%' . $normalizedTerm . '%';
+            $digitsOnly = preg_replace('/\D+/', '', $normalizedTerm);
+
+            $orX = $qb->expr()->orX(
+                'LOWER(p.nom) LIKE :term',
+                'LOWER(p.prenom) LIKE :term',
+                'LOWER(CONCAT(COALESCE(p.nom, \'\'), \' \', COALESCE(p.prenom, \'\'))) LIKE :term',
+                'LOWER(CONCAT(COALESCE(p.prenom, \'\'), \' \', COALESCE(p.nom, \'\'))) LIKE :term',
+                'LOWER(p.adresse) LIKE :term',
+                'LOWER(p.telephone) LIKE :term'
+            );
+
+            if (!empty($digitsOnly)) {
+                $orX->add("REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(p.telephone, ''), ' ', ''), '-', ''), '.', ''), '+', '') LIKE :termPhone");
+                $qb->setParameter('termPhone', '%' . $digitsOnly . '%');
+            }
+
+            $qb->andWhere($orX)
+                ->setParameter('term', $termLike);
         }
 
         $countQb = clone $qb;
@@ -159,16 +169,26 @@ class PatientRepository extends ServiceEntityRepository
             ->distinct();
 
         if ($term !== null && $term !== '') {
-            $term = '%' . strtolower($term) . '%';
-            $qb->andWhere(
-                $qb->expr()->orX(
-                    'LOWER(p.nom) LIKE :term',
-                    'LOWER(p.prenom) LIKE :term',
-                    'LOWER(p.adresse) LIKE :term',
-                    'p.telephone LIKE :term'
-                )
-            )
-                ->setParameter('term', $term);
+            $normalizedTerm = mb_strtolower(trim($term));
+            $termLike = '%' . $normalizedTerm . '%';
+            $digitsOnly = preg_replace('/\D+/', '', $normalizedTerm);
+
+            $orX = $qb->expr()->orX(
+                'LOWER(p.nom) LIKE :term',
+                'LOWER(p.prenom) LIKE :term',
+                'LOWER(CONCAT(COALESCE(p.nom, \'\'), \' \', COALESCE(p.prenom, \'\'))) LIKE :term',
+                'LOWER(CONCAT(COALESCE(p.prenom, \'\'), \' \', COALESCE(p.nom, \'\'))) LIKE :term',
+                'LOWER(p.adresse) LIKE :term',
+                'LOWER(p.telephone) LIKE :term'
+            );
+
+            if (!empty($digitsOnly)) {
+                $orX->add("REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(p.telephone, ''), ' ', ''), '-', ''), '.', ''), '+', '') LIKE :termPhone");
+                $qb->setParameter('termPhone', '%' . $digitsOnly . '%');
+            }
+
+            $qb->andWhere($orX)
+                ->setParameter('term', $termLike);
         }
 
         $countQb = clone $qb;

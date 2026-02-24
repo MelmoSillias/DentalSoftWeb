@@ -17,6 +17,10 @@ const props = defineProps({
     saving: {
         type: Boolean,
         default: false
+    },
+    medecinReadonly: {
+        type: Boolean,
+        default: false
     }
 });
 
@@ -30,6 +34,39 @@ const dialogVisible = computed({
 const ordonnance = computed({
     get: () => props.modelValue,
     set: (val) => emit('update:modelValue', val)
+});
+
+const dateModel = computed({
+    get: () => {
+        const value = ordonnance.value?.date;
+        if (!value) return null;
+        if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
+        if (typeof value === 'string') {
+            const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+            if (match) {
+                const parsed = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+                return Number.isNaN(parsed.getTime()) ? null : parsed;
+            }
+            const parsed = new Date(value);
+            return Number.isNaN(parsed.getTime()) ? null : parsed;
+        }
+        return null;
+    },
+    set: (value) => {
+        if (!value) {
+            updateField('date', null);
+            return;
+        }
+        const parsed = value instanceof Date ? value : new Date(value);
+        if (Number.isNaN(parsed.getTime())) {
+            updateField('date', null);
+            return;
+        }
+        const year = parsed.getFullYear();
+        const month = String(parsed.getMonth() + 1).padStart(2, '0');
+        const day = String(parsed.getDate()).padStart(2, '0');
+        updateField('date', `${year}-${month}-${day}`);
+    }
 });
 
 const close = () => emit('update:visible', false);
@@ -93,10 +130,9 @@ const totalBoites = computed(() => {
                         Date
                     </label>
                     <DatePicker 
-                        :value="ordonnance.date" 
+                        v-model="dateModel" 
                         placeholder="JJ/MM/AAAA"
                         class="w-full rounded-xl border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-800/50 p-3 focus:ring-2 focus:ring-primary-500/20 transition-all"
-                        @update:modelValue="(v) => updateField('date', v)" 
                     />
                 </div>
                 <div class="space-y-2">
@@ -107,6 +143,7 @@ const totalBoites = computed(() => {
                     <InputText 
                         :value="ordonnance.medecinNom" 
                         placeholder="Nom du médecin prescripteur"
+                        :disabled="medecinReadonly"
                         class="w-full rounded-xl border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-800/50 p-3 focus:ring-2 focus:ring-primary-500/20 transition-all"
                         @update:modelValue="(v) => updateField('medecinNom', v)" 
                     />

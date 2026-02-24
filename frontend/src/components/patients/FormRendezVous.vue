@@ -1,5 +1,6 @@
 <script setup>
 import { createRdvForPatient, fetchMedecins, normalizePatient, searchPatients } from '@/services/patients';
+import { useAuthStore } from '@/stores/auth';
 import Button from 'primevue/button';
 import ConfirmPopup from 'primevue/confirmpopup';
 import DatePicker from 'primevue/datepicker';
@@ -26,6 +27,7 @@ const emit = defineEmits(['saved', 'cancel']);
 const confirmPopup = useConfirm();
 const toast = useToast();
 const token = localStorage.getItem('token');
+const auth = useAuthStore();
 const loading = ref(false);
 
 const patients = ref([]);
@@ -33,6 +35,7 @@ const patientsLoading = ref(false);
 const selectedPatientId = ref(null);
 const medecins = ref([]);
 const selectedMedecinId = ref(null);
+const isMedecinUser = computed(() => Boolean(auth.user?.roles?.includes('ROLE_MEDECIN')));
 
 const form = reactive({
     motif: '',
@@ -103,10 +106,68 @@ const handlePatientFilter = (event) => {
 };
 
 const medecinOptions = computed(() =>
-    medecins.value.map((m) => ({
-        label: m.fullname || `${m.prenom ?? ''} ${m.nom ?? ''}`.trim() || m.nom || 'Médecin',
-        value: m.id
-    }))
+    {
+        const options = medecins.value.map((m) => ({
+            label: m.label || m.fullName || m.fullname || m.name || `${m.prenom ?? ''} ${m.nom ?? ''}`.trim() || m.nom || 'Médecin',
+            value: m.id
+        }));
+
+        if (
+            isMedecinUser.value
+            && selectedMedecinId.value
+            && !options.some((opt) => Number(opt.value) === Number(selectedMedecinId.value))
+        ) {
+            options.unshift({
+                label: connectedMedecinDisplayName.value || `Médecin #${selectedMedecinId.value}`,
+                value: selectedMedecinId.value
+            });
+        }
+
+        return options;
+    }
+);
+
+const normalizeText = (value) => String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+
+const resolveConnectedMedecinId = () => {
+    const user = auth.user || {};
+    const directId = Number(user.medecinId ?? user.medecin_id ?? user.medecin?.id ?? Number.NaN);
+    if (Number.isFinite(directId)) {
+        return directId;
+    }
+
+    const fullName = [user.prenom, user.nom].filter(Boolean).join(' ').trim();
+    const candidates = [fullName, user.name, user.fullName, user.username].filter(Boolean).map(normalizeText);
+    if (!candidates.length) return null;
+
+    const foundByName = (medecins.value || []).find((m) => {
+        const label = normalizeText(m.label || m.fullName || m.fullname || m.name || `${m.prenom ?? ''} ${m.nom ?? ''}`.trim() || m.nom);
+        return candidates.some((candidate) => candidate && (label === candidate || label.includes(candidate) || candidate.includes(label)));
+    });
+
+    return foundByName?.id ?? null;
+};
+
+const connectedMedecinDisplayName = computed(() => {
+    const user = auth.user || {};
+    const fullName = [user.prenom, user.nom].filter(Boolean).join(' ').trim();
+    return fullName || user.fullName || user.name || user.username || '';
+});
+
+watch(
+    () => [isMedecinUser.value, medecinOptions.value.length],
+    () => {
+        if (!isMedecinUser.value) return;
+        const connectedId = resolveConnectedMedecinId();
+        if (connectedId) {
+            selectedMedecinId.value = connectedId;
+        }
+    },
+    { immediate: true }
 );
 
 const saveRendezVous = async () => {
@@ -189,7 +250,7 @@ const handleSubmit = (event) => {
             <div class="flex flex-col gap-2">
                 <label class="font-semibold">Médecin</label>
                 <Select v-model="selectedMedecinId" :options="medecinOptions" optionLabel="label" optionValue="value"
-                    placeholder="Choisir un médecin" class="w-full" />
+                    placeholder="Choisir un médecin" class="w-full" :disabled="isMedecinUser" />
             </div>
             <div class="flex flex-col gap-2">
                 <label class="font-semibold">Durée (minutes)</label>

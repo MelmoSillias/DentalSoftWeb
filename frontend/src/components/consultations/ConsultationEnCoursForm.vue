@@ -5,6 +5,7 @@ import Dialog from 'primevue/dialog';
 import InputNumber from 'primevue/inputnumber';
 import InputText from 'primevue/inputtext';
 import MultiSelect from 'primevue/multiselect';
+import ProgressSpinner from 'primevue/progressspinner';
 import Textarea from 'primevue/textarea';
 import { computed, ref, watch } from 'vue';
 
@@ -50,6 +51,14 @@ const props = defineProps({
         default: false
     },
     clotureLoading: {
+        type: Boolean,
+        default: false
+    },
+    medecinReadonly: {
+        type: Boolean,
+        default: false
+    },
+    loading: {
         type: Boolean,
         default: false
     }
@@ -284,6 +293,11 @@ const teethOptions = (() => {
 <!-- ConsultationEnCours.vue -->
 <template>
     <div class="rounded-2xl border border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-br from-surface-0 to-surface-50/80 dark:from-surface-800 dark:to-surface-900/80 p-6 shadow-sm">
+        <div v-if="loading" class="flex min-h-[20rem] flex-col items-center justify-center gap-3">
+            <ProgressSpinner strokeWidth="4" style="width: 48px; height: 48px" />
+            <p class="text-sm text-surface-500 dark:text-surface-400">Chargement des données de consultation...</p>
+        </div>
+        <template v-else>
         <!-- Header -->
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-surface-100 dark:border-surface-700">
             <div class="flex items-center gap-3">
@@ -332,6 +346,7 @@ const teethOptions = (() => {
                             :suggestions="medecinSuggestions"
                             :optionLabel="'label'" 
                             placeholder="Rechercher un médecin"
+                            :disabled="medecinReadonly"
                             class="w-full"
                             dropdown 
                             forceSelection
@@ -694,6 +709,7 @@ const teethOptions = (() => {
                 </div>
             </div>
         </div>
+        </template>
     </div>
 </template>
  

@@ -333,9 +333,16 @@ export function useRapports() {
         medecinError.value = null;
         try {
             const data = await fetchJson('/report/medecin', { from, to });
+            const identity = data.identity || {};
+            const fullName = data.fullName
+                || identity.fullName
+                || `${identity.prenom || ''} ${identity.nom || ''}`.trim();
+
             medecinData.value = {
                 ...medecinData.value,
+                ...identity,
                 ...data,
+                fullName,
                 stats: {
                     patientsTotal: data.stats?.patientsTotal || 0,
                     totalConsultations: data.stats?.totalConsultations || 0,
@@ -353,7 +360,7 @@ export function useRapports() {
                     apportTotal: data.period?.apportTotal || 0,
                     paiements_period: safeArray(data.period?.paiements_period)
                 },
-                joursTravailles: safeArray(data.joursTravailles)
+                joursTravailles: safeArray(identity.joursTravailles ?? data.joursTravailles)
             };
             if (!silent) {
                 toast.add({ severity: 'success', summary: 'Rapport médecin', detail: 'Données mises à jour.', life: 2500 });

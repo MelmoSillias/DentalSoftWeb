@@ -7,7 +7,6 @@ use App\Entity\Allergy;
 use App\Entity\Antecedent;
 use App\Entity\ContactUrgence;
 use App\Entity\Notification;
-use App\Entity\FicheObservation;
 use App\Entity\Patient;
 use App\Entity\Rdv;
 use App\Entity\Consultation;
@@ -21,7 +20,6 @@ use App\Entity\Ordonnance;
 use App\Entity\OrdonnanceLigne;
 use App\Repository\ConsultationRepository;
 use App\Repository\EmployeRepository;
-use App\Repository\FicheObservationRepository;
 use App\Repository\PatientRepository;
 use App\Repository\SalleRepository;
 use DateTime;
@@ -38,7 +36,6 @@ class PatientService
         private EntityManagerInterface $em,
         private PatientRepository $patientRepo,
         private SalleRepository $salleRepo,
-        private FicheObservationRepository $ficheRepo,
         private ConsultationRepository $consultationRepo,
         private EmployeRepository $employeRepo,
         private ConsultationNotificationService $consultationNotificationService,
@@ -342,19 +339,27 @@ class PatientService
                 ->leftJoin('p.fichesObservation', 'fo');
 
             if ($term !== '') {
-                $qb->andWhere(
-                    $qb->expr()->orX(
-                        'LOWER(p.nom) LIKE :term',
-                        'LOWER(p.prenom) LIKE :term',
-                        'p.telephone LIKE :term',
-                        'LOWER(c.type) LIKE :term',
-                        'LOWER(c.noteSeance) LIKE :term',
-                        'LOWER(cf.motif) LIKE :term',
-                        'LOWER(cf.diagnostic) LIKE :term',
-                        'LOWER(fo.motif) LIKE :term',
-                        'LOWER(fo.diagnostic) LIKE :term'
-                    )
-                )
+                $digitsOnly = preg_replace('/\D+/', '', $term);
+                $orX = $qb->expr()->orX(
+                    'LOWER(p.nom) LIKE :term',
+                    'LOWER(p.prenom) LIKE :term',
+                    'LOWER(CONCAT(COALESCE(p.nom, \'\'), \' \', COALESCE(p.prenom, \'\'))) LIKE :term',
+                    'LOWER(CONCAT(COALESCE(p.prenom, \'\'), \' \', COALESCE(p.nom, \'\'))) LIKE :term',
+                    'LOWER(p.telephone) LIKE :term',
+                    'LOWER(c.type) LIKE :term',
+                    'LOWER(c.noteSeance) LIKE :term',
+                    'LOWER(cf.motif) LIKE :term',
+                    'LOWER(cf.diagnostic) LIKE :term',
+                    'LOWER(fo.motif) LIKE :term',
+                    'LOWER(fo.diagnostic) LIKE :term'
+                );
+
+                if (!empty($digitsOnly)) {
+                    $orX->add("REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(p.telephone, ''), ' ', ''), '-', ''), '.', ''), '+', '') LIKE :termPhone");
+                    $qb->setParameter('termPhone', '%' . $digitsOnly . '%');
+                }
+
+                $qb->andWhere($orX)
                     ->setParameter('term', '%' . $term . '%');
             }
 
@@ -640,97 +645,12 @@ class PatientService
         }
 
         $fiches = [];
-        foreach ($this->ficheRepo->findBy(['patient' => $patient]) as $f) {
-            $ficheData = [
-                'id' => $f->getId(),
-                'version' => 1,
-                'createdAt' => $f->getCreatedAt()->format('Y-m-d H:i:s'),
-                'dateCreation' => $f->getCreatedAt()->format('Y-m-d H:i:s'),
-                'motif' => $f->getMotif(),
-                'histoireMaladie' => $f->getHistoireMaladie(),
-                'soinsAnterieurs' => $f->getSoinsAnterieurs(),
-                'exoInspection' => $f->getExoInspection(),
-                'exoPalpation' => $f->getExoPalpation(),
-                'endoInspection' => $f->getEndoInspection(),
-                'endoPalpation' => $f->getEndoPalpation(),
-                'occlusion' => $f->getOcclusion(),
-                'examenParodontal' => $f->getExamenParodontal(),
-                'diagnostic' => $f->getDiagnostic(),
-                'traitementUrgence' => $f->getTraitementUrgence(),
-                'traitementDentaire' => $f->getTraitementDentaire(),
-                'traitementParodontal' => $f->getTraitementParodontal(),
-                'traitementOrthodontique' => $f->getTraitementOrthodontique(),
-                'autres' => $f->getAutres(),
-            ];
-
-            $examens = $f->getToothsCheck();
-
-            $documents = [];
-            foreach ($f->getDocumentsMedicaux() as $d) {
-                $documents[] = [
-                    'libelle' => $d->getLibelle(),
-                    'dateDossier' => $d->getDateDossier()->format('Y-m-d'),
-                    'description' => $d->getDescription(),
-                    'url' => $d->getFichier(),
-                ];
-            }
-
-            $devis = $f->getDevis()[0] ?? null;
-            $devisData = null;
-            if ($devis) {
-                $contenus = [];
-                foreach ($devis->getContenus() as $c) {
-                    $contenus[] = [
-                        'designation' => $c->getDesignation(),
-                        'qte' => $c->getQte(),
-                        'montant' => $c->getMontant(),
-                    ];
-                }
-                $devisData = [
-                    'date' => $devis->getDate()->format('Y-m-d'),
-                    'contenus' => $contenus,
-                ];
-            }
-
-            $precedentes = [];
-            foreach ($f->getConsultations() as $s) {
-                $actes = [];
-                foreach ($s->getActes() as $a) {
-                    $actes[] = [
-                        'dent' => $a->getDent(),
-                        'type' => $a->getType(),
-                        'description' => $a->getDescription(),
-                        'prix' => $a->getPrix(),
-                        'quantite' => $a->getQuantite(),
-                    ];
-                }
-
-                $precedentes[] = [
-                    'id' => $s->getId(),
-                    'date' => $s->getCreatedAt()->format('Y-m-d'),
-                    'medecin' => $s->getMedecin()?->getFullName(),
-                    'infirmier' => $s->getInfirmier()?->getFullName(),
-                    'salle' => $s->getSalle()?->getNom(),
-                    'noteSeance' => $s->getNoteSeance(),
-                    'actes' => $actes,
-                ];
-            }
-
-            $fiches[] = array_merge($ficheData, [
-                'examens' => $examens,
-                'documents' => $documents,
-                'devis' => $devisData,
-                'consultations' => $precedentes,
-            ]);
-        }
-
-        $fichesV2 = [];
         foreach ($patient->getFichesMedicales() as $ficheMedicale) {
             $ficheData = $this->ficheMedicaleService->getFicheJson($ficheMedicale->getId());
             $ficheData['version'] = 2;
             $ficheData['dateCreation'] = $ficheData['createdAt']
                 ?? $ficheMedicale->getCreatedAt()?->format('Y-m-d H:i:s');
-            $fichesV2[] = $ficheData;
+            $fiches[] = $ficheData;
         }
 
         $factures = $this->cashdeskService->listDevisImpayesByPatient($patient->getId());
@@ -758,7 +678,6 @@ class PatientService
             'derniereConsultation' => $derniereConsultation,
             'rdvs' => $rdvs,
             'fiches' => $fiches,
-            'fichesV2' => $fichesV2,
             'factures' => $factures,
             'paiements' => $paiements,
         ];
@@ -993,15 +912,6 @@ class PatientService
             return null;
         }
 
-        $ficheObservation = $this->ficheRepo->find($ficheId);
-        if ($ficheObservation && $ficheObservation->getPatient()->getId() === $patientId) {
-            return [
-                'patient' => $patient,
-                'fiche' => $ficheObservation,
-                'version' => 1,
-            ];
-        }
-
         $ficheMedicale = $this->em->getRepository(FicheMedicale::class)->find($ficheId);
         if ($ficheMedicale && $ficheMedicale->getPatient()->getId() === $patientId) {
             return [
@@ -1023,82 +933,8 @@ class PatientService
 
         /** @var Patient $patient */
         $patient = $context['patient'];
-        $version = $context['version'] ?? 1;
-
-        if ($version === 2) {
-            /** @var FicheMedicale $fiche */
-            $fiche = $context['fiche'];
-
-            $consultations = array_map(function (Consultation $consultation) {
-                $actes = array_map(fn (ActeMedical $a) => [
-                    'dent' => $a->getDent(),
-                    'type' => $a->getType(),
-                    'description' => $a->getDescription(),
-                    'prix' => $a->getPrix(),
-                    'quantite' => $a->getQuantite(),
-                ], $consultation->getActes()->toArray());
-
-                $ordonnances = array_map(function (Ordonnance $ord) {
-                    return [
-                        'id' => $ord->getId(),
-                        'date' => $ord->getDate()?->format('Y-m-d'),
-                        'medecinNom' => $ord->getMedecinNom(),
-                        'note' => $ord->getNote(),
-                        'lignes' => array_map(fn(OrdonnanceLigne $l) => [
-                            'designation' => $l->getDesignation(),
-                            'posologie' => $l->getPosologie(),
-                            'frequence' => $l->getFrequence(),
-                            'duree' => $l->getDuree(),
-                            'quantite' => $l->getQuantite(),
-                            'instructions' => $l->getInstructions(),
-                        ], $ord->getLignes()->toArray()),
-                    ];
-                }, $consultation->getOrdonnances()->toArray());
-
-                return [
-                    'id' => $consultation->getId(),
-                    'type' => $consultation->getType(),
-                    'noteSeance' => $consultation->getNoteSeance(),
-                    'createdAt' => $consultation->getCreatedAt()?->format('Y-m-d H:i'),
-                    'medecin' => $consultation->getMedecin() ? [
-                        'nom' => $consultation->getMedecin()?->getNom().' '.$consultation->getMedecin()?->getPrenom(),
-                    ] : null,
-                    'infirmier' => $consultation->getInfirmier() ? [
-                        'nom' => $consultation->getInfirmier()?->getNom().' '.$consultation->getInfirmier()?->getPrenom(),
-                    ] : null,
-                    'salle' => $consultation->getSalle() ? [
-                        'nom' => $consultation->getSalle()?->getNom(),
-                    ] : null,
-                    'actes' => $actes,
-                    'ordonnances' => $ordonnances,
-                ];
-            }, $fiche->getConsultations()->toArray());
-
-            $ficheData = $this->ficheMedicaleService->getFicheJson($fiche->getId());
-            $ficheData['consultations'] = $consultations;
-
-            return [
-                'version' => 2,
-                'patient' => [
-                    'id' => $patient->getId(),
-                    'nom' => $patient->getNom(),
-                    'prenom' => $patient->getPrenom(),
-                    'age' => $patient->getAge(),
-                    'telephone' => $patient->getTelephone(),
-                ],
-                'fiche' => $ficheData,
-            ];
-        }
-
-        /** @var FicheObservation $fiche */
+        /** @var FicheMedicale $fiche */
         $fiche = $context['fiche'];
-
-        $devis = $fiche->getDevis()?->first() ?: null;
-        $devisData = $devis ? [
-            'id' => $devis->getId(),
-            'date' => $devis->getDate()?->format('Y-m-d'),
-            'montant' => $devis->getMontant(),
-        ] : null;
 
         $consultations = array_map(function (Consultation $consultation) {
             $actes = array_map(fn (ActeMedical $a) => [
@@ -1145,8 +981,11 @@ class PatientService
             ];
         }, $fiche->getConsultations()->toArray());
 
+        $ficheData = $this->ficheMedicaleService->getFicheJson($fiche->getId());
+        $ficheData['consultations'] = $consultations;
+
         return [
-            'version' => 1,
+            'version' => 2,
             'patient' => [
                 'id' => $patient->getId(),
                 'nom' => $patient->getNom(),
@@ -1154,28 +993,7 @@ class PatientService
                 'age' => $patient->getAge(),
                 'telephone' => $patient->getTelephone(),
             ],
-            'fiche' => [
-                'id' => $fiche->getId(),
-                'createdAt' => $fiche->getCreatedAt()?->format('Y-m-d H:i'),
-                'motif' => $fiche->getMotif(),
-                'histoireMaladie' => $fiche->getHistoireMaladie(),
-                'soinsAnterieurs' => $fiche->getSoinsAnterieurs(),
-                'diagnostic' => $fiche->getDiagnostic(),
-                'exoInspection' => $fiche->getExoInspection(),
-                'exoPalpation' => $fiche->getExoPalpation(),
-                'endoInspection' => $fiche->getEndoInspection(),
-                'endoPalpation' => $fiche->getEndoPalpation(),
-                'occlusion' => $fiche->getOcclusion(),
-                'examenParodontal' => $fiche->getExamenParodontal(),
-                'traitementUrgence' => $fiche->getTraitementUrgence(),
-                'traitementDentaire' => $fiche->getTraitementDentaire(),
-                'traitementParodontal' => $fiche->getTraitementParodontal(),
-                'traitementOrthodontique' => $fiche->getTraitementOrthodontique(),
-                'autres' => $fiche->getAutres(),
-                'toothChecks' => $fiche->getToothsCheck(),
-                'devis' => $devisData,
-                'consultations' => $consultations,
-            ],
+            'fiche' => $ficheData,
         ];
     }
 }

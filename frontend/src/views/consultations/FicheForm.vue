@@ -18,13 +18,14 @@ import { useConsultationsForm } from '@/composables/useConsultationsForm';
 import { usePrinter } from '@/composables/usePrinter';
 import { addPatientAllergy, addPatientAntecedent, deletePatientAllergy, deletePatientAntecedent } from '@/services/patients';
 import { fetchOrdonnancePrintData } from '@/services/printService';
+import { useAuthStore } from '@/stores/auth';
 import Button from 'primevue/button';
 import ConfirmDialog from 'primevue/confirmdialog';
 import SelectButton from 'primevue/selectbutton';
 import Toast from 'primevue/toast';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 
 const route = useRoute();
@@ -32,6 +33,7 @@ const router = useRouter();
 const toast = useToast();
 const confirm = useConfirm();
 const token = localStorage.getItem('token');
+const auth = useAuthStore();
 const { printComponent } = usePrinter();
 
 const ficheId = ref(route.query.ficheId ? Number(route.query.ficheId) : null);
@@ -69,23 +71,69 @@ const showAllergyDialog = ref(false);
 const savingAntecedent = ref(false);
 const savingAllergy = ref(false);
 const isIndicatorFloating = ref(false);
+const allowRouteLeaveAfterCloture = ref(false);
 
 const displayModeOptions = [
     { label: 'Onglets', value: 'tabs' },
     { label: 'Sidebar', value: 'sidebar' }
 ];
 
+const toFullName = (employee = {}) => {
+    return employee.label
+        || employee.fullName
+        || employee.fullname
+        || employee.name
+        || employee.FullName
+        || employee.Fullname
+        || `${employee.prenom ?? ''} ${employee.nom ?? ''}`.trim()
+        || employee.nom
+        || '';
+};
+
 const medecinsOptions = computed(() => (data.medecins || []).map((m) => ({
     id: m.id,
-    label: m.label || m.FullName || m.fullName || m.name || m.nom || `${m.prenom ?? ''} ${m.nom ?? ''}`.trim()
+    label: toFullName(m)
 })));
 
 const infirmiersOptions = computed(() => (data.infirmiers || []).map((i) => ({
     id: i.id,
-    label: i.label || i.Fullname || i.fullname || i.fullName || i.name || i.nom || `${i.prenom ?? ''} ${i.nom ?? ''}`.trim()
+    label: toFullName(i)
 })));
 
 const sallesOptions = computed(() => (data.salles || []).map((s) => ({ id: s.id, label: s.label || s.nom || s.name || '' })));
+const selectedMedecinLabel = computed(() => {
+    const selectedId = data.consultation?.medecinId;
+    const item = (medecinsOptions.value || []).find((m) => m.id === selectedId);
+    if (item?.label) return item.label;
+    const user = auth.user || {};
+    const fullName = [user.prenom, user.nom].filter(Boolean).join(' ').trim();
+    return fullName || user.name || user.username || '';
+});
+
+const normalizeText = (value) => String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+
+const resolveConnectedMedecinId = () => {
+    const user = auth.user || {};
+    const directId = Number(user.medecinId ?? user.medecin_id ?? user.medecin?.id ?? Number.NaN);
+    if (Number.isFinite(directId)) {
+        const found = (medecinsOptions.value || []).find((m) => Number(m.id) === directId);
+        if (found) return found.id;
+    }
+
+    const fullName = [user.prenom, user.nom].filter(Boolean).join(' ').trim();
+    const candidates = [fullName, user.name, user.fullName, user.username].filter(Boolean).map(normalizeText);
+    if (!candidates.length) return null;
+
+    const foundByName = (medecinsOptions.value || []).find((m) => {
+        const label = normalizeText(m.label);
+        return candidates.some((candidate) => candidate && (label === candidate || label.includes(candidate) || candidate.includes(label)));
+    });
+    return foundByName?.id ?? null;
+};
 
 const computeAgeYears = (value) => {
     if (!value) return 0;
@@ -96,7 +144,19 @@ const computeAgeYears = (value) => {
 };
 
 const ageNumber = computed(() => computeAgeYears(data.patient.dateNaissance || data.patient.age));
+const isMedecinUser = computed(() => Boolean(auth.user?.roles?.includes('ROLE_MEDECIN')));
 const hasUnsavedChanges = computed(() => dirtySectionsList.value.length > 0);
+
+const isClosedConsultationError = (error) => Number(error?.response?.status) === 409;
+
+const redirectClosedConsultation = () => {
+    Object.keys(dirty).forEach((key) => {
+        dirty[key] = false;
+    });
+    allowRouteLeaveAfterCloture.value = true;
+    toast.add({ severity: 'warn', summary: 'Consultation clôturée', detail: 'Cette consultation est déjà clôturée.', life: 2500 });
+    router.replace({ name: 'consultations-table' });
+};
 
 const hasValue = (value) => {
     if (Array.isArray(value)) return value.length > 0;
@@ -242,6 +302,10 @@ const saveEntretienSection = async ({ silent = false } = {}) => {
         await saveEntretien();
         if (!silent) toast.add({ severity: 'success', summary: 'Entretien enregistre', life: 2000 });
     } catch (error) {
+        if (isClosedConsultationError(error)) {
+            redirectClosedConsultation();
+            return;
+        }
         console.error('Erreur sauvegarde entretien', error);
         if (!silent) toast.add({ severity: 'error', summary: 'Erreur', detail: 'Sauvegarde entretien impossible.' });
     }
@@ -253,6 +317,10 @@ const saveExamensSection = async ({ silent = false } = {}) => {
         await saveExamens();
         if (!silent) toast.add({ severity: 'success', summary: 'Examens enregistres', life: 2000 });
     } catch (error) {
+        if (isClosedConsultationError(error)) {
+            redirectClosedConsultation();
+            return;
+        }
         console.error('Erreur sauvegarde examens', error);
         if (!silent) toast.add({ severity: 'error', summary: 'Erreur', detail: 'Sauvegarde examens impossible.' });
     }
@@ -264,6 +332,10 @@ const saveDocumentsSection = async ({ silent = false } = {}) => {
         await saveDocuments();
         if (!silent) toast.add({ severity: 'success', summary: 'Documents enregistres', life: 2000 });
     } catch (error) {
+        if (isClosedConsultationError(error)) {
+            redirectClosedConsultation();
+            return;
+        }
         console.error('Erreur sauvegarde documents', error);
         if (!silent) toast.add({ severity: 'error', summary: 'Erreur', detail: 'Sauvegarde documents impossible.' });
     }
@@ -275,6 +347,10 @@ const saveBilansSection = async ({ silent = false } = {}) => {
         await saveBilans();
         if (!silent) toast.add({ severity: 'success', summary: 'Bilans enregistres', life: 2000 });
     } catch (error) {
+        if (isClosedConsultationError(error)) {
+            redirectClosedConsultation();
+            return;
+        }
         console.error('Erreur sauvegarde bilans', error);
         if (!silent) toast.add({ severity: 'error', summary: 'Erreur', detail: 'Sauvegarde bilans impossible.' });
     }
@@ -286,6 +362,10 @@ const savePlanTraitementSection = async ({ silent = false } = {}) => {
         await savePlanTraitement();
         if (!silent) toast.add({ severity: 'success', summary: 'Plan enregistre', life: 2000 });
     } catch (error) {
+        if (isClosedConsultationError(error)) {
+            redirectClosedConsultation();
+            return;
+        }
         console.error('Erreur sauvegarde plan traitement', error);
         if (!silent) toast.add({ severity: 'error', summary: 'Erreur', detail: 'Sauvegarde plan traitement impossible.' });
     }
@@ -297,6 +377,10 @@ const saveDevisSection = async ({ silent = false } = {}) => {
         await saveDevis();
         if (!silent) toast.add({ severity: 'success', summary: 'Devis enregistre', life: 2000 });
     } catch (error) {
+        if (isClosedConsultationError(error)) {
+            redirectClosedConsultation();
+            return;
+        }
         console.error('Erreur sauvegarde devis', error);
         if (!silent) toast.add({ severity: 'error', summary: 'Erreur', detail: 'Sauvegarde devis impossible.' });
     }
@@ -311,6 +395,10 @@ const saveConsultSection = async ({ silent = false } = {}) => {
         }
         if (!silent) toast.add({ severity: 'success', summary: 'Consultation enregistree', life: 2000 });
     } catch (error) {
+        if (isClosedConsultationError(error)) {
+            redirectClosedConsultation();
+            return;
+        }
         console.error('Erreur sauvegarde consultation', error);
         if (!silent) toast.add({ severity: 'error', summary: 'Erreur', detail: 'Sauvegarde consultation impossible.' });
     }
@@ -406,7 +494,21 @@ const handleCloture = () => {
         rejectLabel: 'Annuler',
         acceptClass: 'p-button-danger',
         accept: async () => {
-            await closeConsult();
+            try {
+                await closeConsult();
+                Object.keys(dirty).forEach((key) => {
+                    dirty[key] = false;
+                });
+                allowRouteLeaveAfterCloture.value = true;
+                router.replace({ name: 'consultations-table' });
+            } catch (error) {
+                if (isClosedConsultationError(error)) {
+                    redirectClosedConsultation();
+                    return;
+                }
+                console.error('Erreur clôture consultation', error);
+                toast.add({ severity: 'error', summary: 'Erreur', detail: 'Clôture impossible.', life: 2500 });
+            }
         }
     });
 };
@@ -420,6 +522,16 @@ const handlePrintOrdonnance = async (ordo) => {
         console.error('Erreur impression ordonnance', error);
         toast.add({ severity: 'error', summary: 'Erreur', detail: "Impossible d'imprimer l'ordonnance." });
     }
+};
+
+const openOrdonnanceModal = () => {
+    ordonnanceDraft.value = {
+        date: new Date().toISOString().slice(0, 10),
+        medecinNom: selectedMedecinLabel.value || '',
+        note: '',
+        lignes: []
+    };
+    ordonnanceModalVisible.value = true;
 };
 
 const handleScroll = () => {
@@ -445,16 +557,37 @@ const confirmLeave = () => new Promise((resolve) => {
 });
 
 onBeforeRouteLeave(async () => {
+    if (allowRouteLeaveAfterCloture.value) return true;
     if (!hasUnsavedChanges.value) return true;
     return await confirmLeave();
 });
 
-onMounted(() => {
-    loadData();
+onMounted(async () => {
+    try {
+        await loadData();
+    } catch (error) {
+        if (isClosedConsultationError(error)) {
+            redirectClosedConsultation();
+            return;
+        }
+        throw error;
+    }
     handleScroll();
     window.addEventListener('scroll', handleScroll, { passive: true });
     window.addEventListener('beforeunload', handleBeforeUnload);
 });
+
+watch(
+    () => [isMedecinUser.value, data.consultation?.medecinId, medecinsOptions.value.length],
+    () => {
+        if (!isMedecinUser.value) return;
+        if (data.consultation?.medecinId) return;
+        const fallbackMedecinId = resolveConnectedMedecinId();
+        if (!fallbackMedecinId) return;
+        data.consultation = { ...data.consultation, medecinId: fallbackMedecinId };
+    },
+    { immediate: true }
+);
 
 onBeforeUnmount(() => {
     window.removeEventListener('scroll', handleScroll);
@@ -549,11 +682,13 @@ onBeforeUnmount(() => {
                         :salles="data.salles"
                         :salles-options="sallesOptions"
                         :ordonnances="data.ordonnances"
+                        :medecin-readonly="isMedecinUser"
+                        :loading="loading"
                         :saving="saving.consult"
                         :cloture-loading="false"
                         @save="saveConsultSection"
                         @cloture="handleCloture"
-                        @open-ordonnance="() => (ordonnanceModalVisible = true)"
+                        @open-ordonnance="openOrdonnanceModal"
                         @print-ordonnance="handlePrintOrdonnance"
                     />
                 </template>
@@ -565,6 +700,7 @@ onBeforeUnmount(() => {
         <OrdonnanceModal
             v-model="ordonnanceDraft"
             v-model:visible="ordonnanceModalVisible"
+            :medecin-readonly="true"
             :saving="saving.consult"
             @save="saveOrdonnanceSection"
         />

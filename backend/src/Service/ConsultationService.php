@@ -25,6 +25,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
+use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Contracts\Cache\CacheInterface;
 use Symfony\Contracts\Cache\ItemInterface;
@@ -55,6 +56,13 @@ class ConsultationService
         }
 
         return $this->employeRepo->findOneBy(['user' => $user]);
+    }
+
+    private function ensureConsultationOpen(Consultation $consultation): void
+    {
+        if ($consultation->getStatut() === 1) {
+            throw new ConflictHttpException('Cette consultation est déjà clôturée.');
+        }
     }
 
     private function resolvePendingFicheData(Consultation $consultation): array
@@ -157,6 +165,7 @@ class ConsultationService
                 'date' => $c->getCreatedAt()->format('Y-m-d H:i'),
                 'patient' => $c->getPatient()->getNom() . ' ' . $c->getPatient()->getPrenom(),
                 'medecin' => $c->getMedecin()?->getFullName(),
+                'medecinId' => $c->getMedecin()?->getId(),
                 'infirmier' => $c->getInfirmier()?->getNom(),
                 'salle' => $c->getSalle()?->getNom(),
                 'type' => $c->getType(),
@@ -172,6 +181,8 @@ class ConsultationService
         if (!$consultation) {
             throw new NotFoundHttpException("Consultation {$consultationId} introuvable");
         }
+
+        $this->ensureConsultationOpen($consultation);
 
         $patientId = $consultation->getPatient()?->getId();
 
@@ -493,6 +504,7 @@ class ConsultationService
     public function updateConsultation(int $ficheId, int $consultationId, array $data): void
     {
         [, $consultation] = $this->getFicheAndConsultation($ficheId, $consultationId);
+        $this->ensureConsultationOpen($consultation);
 
         $medecinId = $data['medecinId'] ?? null;
         $infirmierId = $data['infirmierId'] ?? ($data['infirmierIds'][0] ?? null);
@@ -538,6 +550,7 @@ class ConsultationService
     public function clotureConsultation(int $ficheId, int $consultationId): void
     {
         [$fiche, $consultation] = $this->getFicheAndConsultation($ficheId, $consultationId);
+        $this->ensureConsultationOpen($consultation);
 
         $facture = new Devis();
         if ($fiche instanceof FicheMedicale) {
@@ -637,6 +650,10 @@ class ConsultationService
                     'id' => $employee->getId(),
                     'nom' => $employee->getNom(),
                     'prenom' => $employee->getPrenom(),
+                    'fullName' => $employee->getFullName(),
+                    'fullname' => $employee->getFullName(),
+                    'name' => $employee->getFullName(),
+                    'label' => $employee->getFullName(),
                     'fonction' => $employee->getFonction(),
                     'type' => $employee->getType(),
                     'dateEmbauche' => $employee->getDateEmbauche()->format('Y-m-d'),
@@ -657,6 +674,10 @@ class ConsultationService
                     'id' => $employee->getId(),
                     'nom' => $employee->getNom(),
                     'prenom' => $employee->getPrenom(),
+                    'fullName' => $employee->getFullName(),
+                    'fullname' => $employee->getFullName(),
+                    'name' => $employee->getFullName(),
+                    'label' => $employee->getFullName(),
                     'fonction' => $employee->getFonction(),
                     'type' => $employee->getType(),
                     'dateEmbauche' => $employee->getDateEmbauche()->format('Y-m-d'),
@@ -676,7 +697,7 @@ class ConsultationService
             return [
                 'id' => $c->getId(),
                 'patient' => $c->getPatient()->getNom() . ' ' . $c->getPatient()->getPrenom(),
-                'medecin' => $c->getMedecin() ? $c->getMedecin()->getNom() : null,
+                'medecin' => $c->getMedecin() ? $c->getMedecin()->getFullName() : null,
                 'dateDebut' => $c->getCreatedAt()->format('Y-m-d H:i'),
                 'hasFiche' => $ficheData['hasFiche'],
                 'fiche' => $ficheData['fiche'],
@@ -706,7 +727,7 @@ class ConsultationService
             return [
                 'id' => $c->getId(),
                 'patient' => $c->getPatient()->getNom() . ' ' . $c->getPatient()->getPrenom(),
-                'medecin' => $c->getMedecin()->getNom(),
+                'medecin' => $c->getMedecin()?->getFullName(),
                 'type' => $c->getType(),
                 'motif' => $ficheData['motif'],
                 'createdAt' => $c->getCreatedAt()->format('Y-m-d H:i'),
@@ -739,7 +760,7 @@ class ConsultationService
             return [
                 'id' => $c->getId(),
                 'patient' => $c->getPatient()->getNom() . ' ' . $c->getPatient()->getPrenom(),
-                'medecin' => $c->getMedecin() ? $c->getMedecin()->getNom() : null,
+                'medecin' => $c->getMedecin() ? $c->getMedecin()->getFullName() : null,
                 'type' => $c->getType(),
                 'motif' => $ficheData['motif'],
                 'createdAt' => $c->getCreatedAt()->format('Y-m-d H:i'),
@@ -761,6 +782,8 @@ class ConsultationService
         if (!$consultation) {
             throw new NotFoundHttpException('Consultation introuvable');
         }
+
+        $this->ensureConsultationOpen($consultation);
 
         $fiche = $consultation->getFicheMedicale();
         $ficheObservation = $consultation->getFiche();

@@ -2,7 +2,6 @@
 import Button from 'primevue/button';
 import Card from 'primevue/card';
 import Galleria from 'primevue/galleria';
-import Tag from 'primevue/tag';
 import Timeline from 'primevue/timeline';
 import { computed, ref } from 'vue';
 import { filePrefix } from '@/config';
@@ -261,9 +260,6 @@ const sessions = computed(() =>
                     <p class="text-sm text-surface-600 dark:text-surface-300 mt-1">
                         Creee le {{ formatDate(props.fiche?.dateCreation || props.fiche?.createdAt) }}
                     </p>
-                </div>
-                <div class="flex items-center gap-2">
-                    <Tag value="V2" severity="info" class="px-3 py-1.5 rounded-full font-medium" />
                 </div>
             </div>
         </div>

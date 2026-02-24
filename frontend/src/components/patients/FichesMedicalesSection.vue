@@ -4,13 +4,16 @@ import Carousel from 'primevue/carousel';
 import Dialog from 'primevue/dialog';
 import Select from 'primevue/select';
 import { computed, ref } from 'vue';
-import FicheMedical from '@/components/patients/FicheMedical.vue';
 import FicheMedicalV2 from '@/components/patients/FicheMedicalV2.vue';
 
 const props = defineProps({
     fiches: {
         type: Array,
         default: () => []
+    },
+    canCreateConsultation: {
+        type: Boolean,
+        default: true
     }
 });
 
@@ -105,6 +108,7 @@ function openExpanded() {
                         :pt="{ label: { class: 'hidden sm:inline' } }"
                     />
                     <Button
+                        v-if="canCreateConsultation"
                         icon="pi pi-plus"
                         label="Nouvelle consultation"
                         severity="primary"
@@ -129,14 +133,7 @@ function openExpanded() {
                 >
                     <template #item="slotProps">
                         <div class="medical-fiches-item">
-                            <FicheMedical
-                                v-if="(slotProps.data?.version ?? 1) === 1"
-                                :fiche="slotProps.data"
-                                :position-label="formatPosition(slotProps.index)"
-                                @print="emit('print-fiche', slotProps.data)"
-                            />
                             <FicheMedicalV2
-                                v-else
                                 :fiche="slotProps.data"
                                 :position-label="formatPosition(slotProps.index)"
                                 @print="emit('print-fiche', slotProps.data)"
@@ -148,7 +145,7 @@ function openExpanded() {
                 <div class="flex items-center justify-center gap-2 mt-4">
                     <button
                         v-for="(fiche, index) in orderedFiches"
-                        :key="`${fiche.version || 1}-${fiche.id || index}`"
+                        :key="fiche.id || index"
                         @click="currentFicheIndex = index"
                         :class="[
                             'w-2 h-2 rounded-full transition-all',
@@ -181,14 +178,8 @@ function openExpanded() {
     </div>
 
     <Dialog v-model:visible="isExpanded" modal header="Fiche médicale" class="w-full max-w-7xl">
-        <FicheMedical
-            v-if="selectedFiche && (selectedFiche?.version ?? 1) === 1"
-            :fiche="selectedFiche"
-            :position-label="formatPosition(currentFicheIndex)"
-            @print="emit('print-fiche', selectedFiche)"
-        />
         <FicheMedicalV2
-            v-else-if="selectedFiche"
+            v-if="selectedFiche"
             :fiche="selectedFiche"
             :position-label="formatPosition(currentFicheIndex)"
             @print="emit('print-fiche', selectedFiche)"

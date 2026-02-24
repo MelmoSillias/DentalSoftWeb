@@ -26,6 +26,7 @@ import {
     saveTraitementsDocuments
 } from '@/services/consultationsforms';
 import { fetchOrdonnancePrintData } from '@/services/printService';
+import { useAuthStore } from '@/stores/auth';
 import { fetchInfirmiers, fetchMedecins } from '@/services/corpsmedical';
 import { fetchSalles } from '@/services/salles';
 import Button from 'primevue/button';
@@ -42,6 +43,7 @@ const router = useRouter();
 const toast = useToast();
 const confirm = useConfirm();
 const token = localStorage.getItem('token');
+const auth = useAuthStore();
 const { printComponent } = usePrinter();
 
 const activeSection = ref('infos');
@@ -82,6 +84,7 @@ const showAllergyDialog = ref(false);
 const savingAntecedent = ref(false);
 const savingAllergy = ref(false);
 const isIndicatorFloating = ref(false);
+const allowRouteLeaveAfterCloture = ref(false);
 let autosaveTimer = null;
 let ignoreNextDirty = false;
 
@@ -204,13 +207,46 @@ const sections = computed(() => {
 
 const medecinsOptions = computed(() => (data.medecins || []).map((m) => ({
     id: m.id,
-    label: m.label || m.FullName || m.fullName || m.name || m.nom || `${m.prenom ?? ''} ${m.nom ?? ''}`.trim()
+    label: m.label || m.fullName || m.fullname || m.name || m.FullName || `${m.prenom ?? ''} ${m.nom ?? ''}`.trim() || m.nom
 })));
 const infirmiersOptions = computed(() => (data.infirmiers || []).map((i) => ({
     id: i.id,
-    label: i.label || i.Fullname || i.fullname || i.fullName || i.name || i.nom || `${i.prenom ?? ''} ${i.nom ?? ''}`.trim()
+    label: i.label || i.fullName || i.fullname || i.name || i.Fullname || `${i.prenom ?? ''} ${i.nom ?? ''}`.trim() || i.nom
 })));
 const sallesOptions = computed(() => (data.salles || []).map((s) => ({ id: s.id, label: s.label || s.nom || s.name || '' })));
+const selectedMedecinLabel = computed(() => {
+    const selectedId = data.consultation?.medecinId;
+    const item = (medecinsOptions.value || []).find((m) => m.id === selectedId);
+    if (item?.label) return item.label;
+    const user = auth.user || {};
+    const fullName = [user.prenom, user.nom].filter(Boolean).join(' ').trim();
+    return fullName || user.name || user.username || '';
+});
+
+const normalizeText = (value) => String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+
+const resolveConnectedMedecinId = () => {
+    const user = auth.user || {};
+    const directId = Number(user.medecinId ?? user.medecin_id ?? user.medecin?.id ?? Number.NaN);
+    if (Number.isFinite(directId)) {
+        const found = (medecinsOptions.value || []).find((m) => Number(m.id) === directId);
+        if (found) return found.id;
+    }
+
+    const fullName = [user.prenom, user.nom].filter(Boolean).join(' ').trim();
+    const candidates = [fullName, user.name, user.fullName, user.username].filter(Boolean).map(normalizeText);
+    if (!candidates.length) return null;
+
+    const foundByName = (medecinsOptions.value || []).find((m) => {
+        const label = normalizeText(m.label);
+        return candidates.some((candidate) => candidate && (label === candidate || label.includes(candidate) || candidate.includes(label)));
+    });
+    return foundByName?.id ?? null;
+};
 
 const formatDate = (value) => {
     if (!value) return '';
@@ -302,6 +338,9 @@ const ensureFicheLinked = async () => {
         }
         return ficheId.value;
     } catch (error) {
+        if (isClosedConsultationError(error)) {
+            throw error;
+        }
         console.error('Erreur création/liaison fiche', error);
         toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de lier une fiche à la consultation.', life: 3000 });
         return null;
@@ -322,6 +361,12 @@ const loadData = async () => {
         ]);
         ignoreNextDirty = true;
         hydrateFromResponse(res);
+        if (isMedecinUser.value && !data.consultation.medecinId) {
+            const fallbackMedecinId = resolveConnectedMedecinId();
+            if (fallbackMedecinId) {
+                data.consultation = { ...data.consultation, medecinId: fallbackMedecinId };
+            }
+        }
         if (data.consultation.ficheId && !ficheId.value) ficheId.value = data.consultation.ficheId;
         if (res.ordonnances) data.ordonnances = res.ordonnances;
         else fetchOrdonnances();
@@ -329,6 +374,10 @@ const loadData = async () => {
         clearDirty(['motif', 'examens', 'traitements', 'devis', 'consult', 'ordonnances']);
         sectionInitKey.value += 1;
     } catch (error) {
+        if (isClosedConsultationError(error)) {
+            redirectClosedConsultation();
+            return;
+        }
         console.error('Erreur de chargement du formulaire consultation', error);
         toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de charger la consultation.', life: 3000 });
     } finally {
@@ -360,6 +409,7 @@ const confirmLeave = () => new Promise((resolve) => {
 });
 
 onBeforeRouteLeave(async () => {
+    if (allowRouteLeaveAfterCloture.value) return true;
     if (!dirtySectionsList.value.length) return true;
     return await confirmLeave();
 });
@@ -385,6 +435,10 @@ const saveMotifSection = async ({ silent = false } = {}) => {
         clearDirty(['motif']);
         if (!silent) toast.add({ severity: 'success', summary: 'Motif enregistré', life: 2000 });
     } catch (error) {
+        if (isClosedConsultationError(error)) {
+            redirectClosedConsultation();
+            return;
+        }
         console.error('Erreur sauvegarde motif', error);
         if (!silent) toast.add({ severity: 'error', summary: 'Erreur', detail: 'Sauvegarde motif impossible.' });
     } finally {
@@ -400,6 +454,10 @@ const saveExamensSection = async ({ silent = false } = {}) => {
         clearDirty(['examens']);
         if (!silent) toast.add({ severity: 'success', summary: 'Examens enregistrés', life: 2000 });
     } catch (error) {
+        if (isClosedConsultationError(error)) {
+            redirectClosedConsultation();
+            return;
+        }
         console.error('Erreur sauvegarde examens', error);
         if (!silent) toast.add({ severity: 'error', summary: 'Erreur', detail: 'Sauvegarde examens impossible.' });
     } finally {
@@ -415,6 +473,10 @@ const saveTraitementsSection = async ({ silent = false } = {}) => {
         clearDirty(['traitements']);
         if (!silent) toast.add({ severity: 'success', summary: 'Traitements enregistrés', life: 2000 });
     } catch (error) {
+        if (isClosedConsultationError(error)) {
+            redirectClosedConsultation();
+            return;
+        }
         console.error('Erreur sauvegarde traitements', error);
         if (!silent) toast.add({ severity: 'error', summary: 'Erreur', detail: 'Sauvegarde traitements impossible.' });
     } finally {
@@ -434,6 +496,10 @@ const saveDevisSection = async ({ silent = false } = {}) => {
         clearDirty(['devis']);
         if (!silent) toast.add({ severity: 'success', summary: 'Devis enregistré', life: 2000 });
     } catch (error) {
+        if (isClosedConsultationError(error)) {
+            redirectClosedConsultation();
+            return;
+        }
         console.error('Erreur sauvegarde devis', error);
         if (!silent) toast.add({ severity: 'error', summary: 'Erreur', detail: 'Sauvegarde devis impossible.' });
     } finally {
@@ -468,6 +534,10 @@ const saveConsultSection = async ({ silent = false } = {}) => {
 
         if (!silent) toast.add({ severity: 'success', summary: 'Consultation enregistrée', life: 2000 });
     } catch (error) {
+        if (isClosedConsultationError(error)) {
+            redirectClosedConsultation();
+            return;
+        }
         console.error('Erreur sauvegarde consultation', error);
         if (!silent) toast.add({ severity: 'error', summary: 'Erreur', detail: 'Sauvegarde consultation impossible.' });
     } finally {
@@ -511,8 +581,13 @@ const handleCloture = () => {
                 await saveConsultSection({ silent: true });
                 await closeConsultation(ficheId.value, consultId.value, token);
                 toast.add({ severity: 'success', summary: 'Consultation clôturée' });
-                router.push({ name: 'consultations-table' });
+                allowRouteLeaveAfterCloture.value = true;
+                router.replace({ name: 'consultations-table' });
             } catch (error) {
+                if (isClosedConsultationError(error)) {
+                    redirectClosedConsultation();
+                    return;
+                }
                 console.error('Erreur clôture', error);
                 toast.add({ severity: 'error', summary: 'Erreur', detail: 'Clôture impossible.' });
             } finally {
@@ -602,13 +677,27 @@ function getStatutSeverity(statut) {
         }
 
 const openOrdonnanceModal = () => {
-    ordonnanceDraft.value = { date: new Date().toISOString().slice(0, 10), medecinNom: '', note: '', lignes: [] };
+    ordonnanceDraft.value = {
+        date: new Date().toISOString().slice(0, 10),
+        medecinNom: selectedMedecinLabel.value || '',
+        note: '',
+        lignes: []
+    };
     ordonnanceModalVisible.value = true;
 };
 
 const goBack = () => router.back();
 
 const ageNumber = computed(() => computeAgeYears(data.patient.dateNaissance || data.patient.age));
+const isMedecinUser = computed(() => Boolean(auth.user?.roles?.includes('ROLE_MEDECIN')));
+
+const isClosedConsultationError = (error) => Number(error?.response?.status) === 409;
+
+const redirectClosedConsultation = () => {
+    allowRouteLeaveAfterCloture.value = true;
+    toast.add({ severity: 'warn', summary: 'Consultation clôturée', detail: 'Cette consultation est déjà clôturée.', life: 2500 });
+    router.replace({ name: 'consultations-table' });
+};
 
 function hydrateFromResponse(res) {
     const fiche = res.fiche || {};
@@ -687,7 +776,7 @@ function hydrateFromResponse(res) {
     data.consultation = {
         ficheId: fiche.id ?? null,
         type: consultation.type ?? '',
-        medecinId: consultation.medecin?.id ?? null,
+        medecinId: consultation.medecin?.id ?? consultation.medecinId ?? consultation.medecin_id ?? null,
         infirmierIds: consultation.infirmier?.id ? [consultation.infirmier.id] : [],
         salleId: consultation.salle?.id ?? null,
         noteSeance: consultation.noteSeance ?? '',
@@ -860,6 +949,7 @@ const handlePrintOrdonnance = async (ordo) => {
                         <ConsultationEnCoursForm v-model="data.consultation" :medecins="data.medecins"
                             :formule-dentaire="data.bilans?.bilanDentaire?.formuleDentaire"
                             :infirmiers="data.infirmiers" :salles="data.salles" :ordonnances="data.ordonnances"
+                            :medecin-readonly="isMedecinUser"
                             :saving="saving.consult" :medecins-options="medecinsOptions"
                             :infirmiers-options="infirmiersOptions" :salles-options="sallesOptions"
                             @save="saveConsultSection()" @cloture="handleCloture" @open-ordonnance="openOrdonnanceModal"
@@ -920,6 +1010,7 @@ const handlePrintOrdonnance = async (ordo) => {
         <OrdonnanceModal
             v-model="ordonnanceDraft"
             v-model:visible="ordonnanceModalVisible"
+            :medecin-readonly="true"
             :saving="saving.consult"
             @save="saveOrdonnanceSection()"
         />

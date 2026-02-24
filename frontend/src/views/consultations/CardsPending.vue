@@ -97,6 +97,15 @@ const goToConsultation = (consultation, mode = 'continue') => {
 const isLinked = (consultation) => Boolean(consultation.ficheId);
 const patientHasFiche = (consultation) => Boolean(consultation.hasFiche || consultation.lastFicheId);
 const isAdmin = computed(() => Boolean(auth.user?.roles?.includes('ROLE_ADMIN')));
+const isMedecin = computed(() => Boolean(auth.user?.roles?.includes('ROLE_MEDECIN')));
+
+const medecinLabel = (consultation) => {
+    const value = consultation?.medecin;
+    if (!value) return '—';
+    if (typeof value === 'string') return value;
+    const fullName = `${value.prenom ?? ''} ${value.nom ?? ''}`.trim();
+    return value.label || value.fullName || value.name || fullName || '—';
+};
 
 const showActions = {
     continue: (c) => isLinked(c) || (!isLinked(c) && patientHasFiche(c)),
@@ -249,6 +258,7 @@ function getBorderColor(index) {
                     Toutes les consultations ont été traitées ou clôturées.
                 </p>
                 <Button 
+                    v-if="!isMedecin"
                     icon="fas fa-plus" 
                     label="Créer une consultation" 
                     severity="secondary"
@@ -298,6 +308,10 @@ function getBorderColor(index) {
                                         <div class="flex items-center gap-2 text-sm text-surface-500 dark:text-surface-400">
                                             <i class="pi pi-phone"></i>
                                             <span>{{ consultation.patientPhone || 'Téléphone non renseigné' }}</span>
+                                        </div>
+                                        <div class="flex items-center gap-2 text-sm text-surface-500 dark:text-surface-400 mt-1">
+                                            <i class="fas fa-user-md"></i>
+                                            <span>{{ medecinLabel(consultation) }}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -402,6 +416,7 @@ function getBorderColor(index) {
     </div>
 
     <Dialog 
+        v-if="!isMedecin"
         v-model:visible="openCreateConsultationDialog" 
         header="Créer une nouvelle consultation" 
         :modal="true" 

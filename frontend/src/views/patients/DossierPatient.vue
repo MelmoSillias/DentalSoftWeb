@@ -88,6 +88,7 @@
                 <FichesMedicalesSection
                     v-else
                     :fiches="fiches"
+                    :can-create-consultation="!isMedecin"
                     @print-fiche="handlePrintFiche"
                     @new-consultation="() => (showConsultationDialog = true)"
                 />
@@ -101,7 +102,7 @@
             </div>
         </div>
 
-        <Dialog v-model:visible="showConsultationDialog" modal :style="{ width: '50rem' }" :pt="{
+        <Dialog v-if="!isMedecin" v-model:visible="showConsultationDialog" modal :style="{ width: '50rem' }" :pt="{
             root: 'rounded-2xl',
             header: 'bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900 dark:to-surface-800 px-6 py-4 border-b',
             content: 'p-0 mt-4'
@@ -179,7 +180,7 @@
             @save="handleSaveAllergy"
         />
 
-        <Dialog v-model:visible="showPrintV2Dialog" modal :style="{ width: '32rem' }" :pt="{
+        <Dialog v-model:visible="showPrintDialog" modal :style="{ width: '32rem' }" :pt="{
             root: 'rounded-2xl',
             header: 'bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900 dark:to-surface-800 px-6 py-4 border-b',
             content: 'p-0'
@@ -190,35 +191,35 @@
                         <i class="pi pi-print text-primary-600 dark:text-primary-400"></i>
                     </div>
                     <div>
-                        <h4 class="m-0 text-surface-900 dark:text-surface-100">Impression fiche V2</h4>
+                        <h4 class="m-0 text-surface-900 dark:text-surface-100">Impression fiche</h4>
                         <p class="text-sm text-surface-500 dark:text-surface-400 mt-1">Choisir les sections a imprimer</p>
                     </div>
                 </div>
             </template>
             <div class="p-6 space-y-5">
                 <div class="space-y-3">
-                    <div v-for="item in printV2SectionOptions" :key="item.key" class="flex items-center gap-3">
+                    <div v-for="item in printSectionOptions" :key="item.key" class="flex items-center gap-3">
                         <Checkbox
-                            :inputId="`print-v2-${item.key}`"
+                            :inputId="`print-${item.key}`"
                             :value="item.key"
-                            v-model="printV2Sections"
+                            v-model="printSections"
                         />
-                        <label :for="`print-v2-${item.key}`" class="text-sm text-surface-700 dark:text-surface-300">
+                        <label :for="`print-${item.key}`" class="text-sm text-surface-700 dark:text-surface-300">
                             {{ item.label }}
                         </label>
                     </div>
                 </div>
                 <div class="flex items-center gap-3">
-                    <Checkbox inputId="print-v2-empty" v-model="printV2IncludeEmpty" binary />
-                    <label for="print-v2-empty" class="text-sm text-surface-700 dark:text-surface-300">
+                    <Checkbox inputId="print-empty" v-model="printIncludeEmpty" binary />
+                    <label for="print-empty" class="text-sm text-surface-700 dark:text-surface-300">
                         Imprimer les champs vides
                     </label>
                 </div>
             </div>
             <template #footer>
                 <div class="flex items-center justify-end gap-2 px-6 pb-6">
-                    <Button label="Annuler" severity="secondary" outlined @click="showPrintV2Dialog = false" />
-                    <Button label="Imprimer" icon="pi pi-print" :disabled="!printV2Sections.length" @click="submitPrintV2" />
+                    <Button label="Annuler" severity="secondary" outlined @click="showPrintDialog = false" />
+                    <Button label="Imprimer" icon="pi pi-print" :disabled="!printSections.length" @click="submitPrint" />
                 </div>
             </template>
         </Dialog>
@@ -236,7 +237,6 @@ import FormRendezVous from '@/components/patients/FormRendezVous.vue';
 import ListePatientConsultations from '@/components/patients/ListePatientConsultations.vue';
 import RdvPaiementsSection from '@/components/patients/RdvPaiementsSection.vue';
 import PrintDossierBody from '@/components/print/PrintDossierBody.vue';
-import PrintFicheBody from '@/components/print/PrintFicheBody.vue';
 import PrintFicheV2Body from '@/components/print/PrintFicheV2Body.vue';
 import { usePrinter } from '@/composables/usePrinter';
 import { usePatients } from '@/composables/usePatients';  
@@ -288,13 +288,13 @@ const showAntecedentDialog = ref(false);
 const showAllergyDialog = ref(false);
 const savingAntecedent = ref(false);
 const savingAllergy = ref(false);
-const showPrintV2Dialog = ref(false);
+const showPrintDialog = ref(false);
 const selectedFicheForPrint = ref(null);
-const printV2IncludeEmpty = ref(false);
-const printV2Sections = ref([]);
+const printIncludeEmpty = ref(false);
+const printSections = ref([]);
 let patientSearchTimeout = null;
 
-const printV2SectionOptions = [
+const printSectionOptions = [
     { key: 'entretien', label: 'Entretien verbal' },
     { key: 'examens', label: 'Examen' },
     { key: 'images', label: 'Images et documents' },
@@ -502,27 +502,15 @@ const handlePrintDossier = async () => {
 };
 
 const handlePrintFiche = async (fiche) => {
-    const patientId = props.patientId ?? patient.value?.id;
     const ficheId = fiche?.id ?? null;
-    if (!patientId || !ficheId) return;
-    if ((fiche?.version ?? 1) === 2) {
-        selectedFicheForPrint.value = fiche;
-        printV2Sections.value = printV2SectionOptions.map((item) => item.key);
-        printV2IncludeEmpty.value = false;
-        showPrintV2Dialog.value = true;
-        return;
-    }
-
-    try {
-        const res = await fetchPatientFichePrintData(patientId, ficheId, localStorage.getItem('token'));
-        await printComponent(PrintFicheBody, { patient: res.patient, fiche: res.fiche });
-    } catch (error) {
-        console.error(error);
-        toast.add({ severity: 'error', summary: 'Fiche', detail: 'Impression indisponible', life: 3500 });
-    }
+    if (!ficheId) return;
+    selectedFicheForPrint.value = fiche;
+    printSections.value = printSectionOptions.map((item) => item.key);
+    printIncludeEmpty.value = false;
+    showPrintDialog.value = true;
 };
 
-const submitPrintV2 = async () => {
+const submitPrint = async () => {
     const patientId = props.patientId ?? patient.value?.id;
     const ficheId = selectedFicheForPrint.value?.id ?? null;
     if (!patientId || !ficheId) return;
@@ -531,10 +519,10 @@ const submitPrintV2 = async () => {
         await printComponent(PrintFicheV2Body, {
             patient: res.patient,
             fiche: res.fiche,
-            sections: printV2Sections.value,
-            printEmpty: printV2IncludeEmpty.value
+            sections: printSections.value,
+            printEmpty: printIncludeEmpty.value
         });
-        showPrintV2Dialog.value = false;
+        showPrintDialog.value = false;
     } catch (error) {
         console.error(error);
         toast.add({ severity: 'error', summary: 'Fiche', detail: 'Impression indisponible', life: 3500 });

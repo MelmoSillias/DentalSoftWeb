@@ -2,7 +2,7 @@
     <div class="paper" :style="{ '--watermark': `url(${logoSrc})` }">
         <header>
             <img :src="headerSrc" alt="Cabinet Dentaire Orodent" class="header-banner" />
-            <h1>Fiche medicale (V2)</h1>
+            <h1>Fiche medicale</h1>
             <small class="muted">N° {{ ficheNumber }}</small>
         </header>
 

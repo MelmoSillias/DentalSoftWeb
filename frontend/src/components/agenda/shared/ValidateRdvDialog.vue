@@ -17,6 +17,18 @@ const props = defineProps({
         type: Array,
         default: () => []
     },
+    lockedMedecinId: {
+        type: Number,
+        default: null
+    },
+    medecinReadonly: {
+        type: Boolean,
+        default: false
+    },
+    autoCreateConsultation: {
+        type: Boolean,
+        default: true
+    },
     loading: {
         type: Boolean,
         default: false
@@ -33,14 +45,27 @@ watch(localVisible, (v) => emit('update:visible', v));
 watch(
     () => props.rdv,
     (val) => {
-        medecinId.value = val?.medecinId ?? null;
+        medecinId.value = props.lockedMedecinId ?? val?.medecinId ?? null;
+    },
+    { immediate: true }
+);
+
+watch(
+    () => props.lockedMedecinId,
+    (val) => {
+        if (val) {
+            medecinId.value = val;
+        }
     },
     { immediate: true }
 );
 
 const close = () => (localVisible.value = false);
 const confirm = () => {
-    emit('confirm', { id: props.rdv?.id, medecinId: medecinId.value });
+    emit('confirm', {
+        id: props.rdv?.id,
+        medecinId: props.medecinReadonly ? (props.lockedMedecinId ?? medecinId.value) : medecinId.value
+    });
     close();
 };
 </script>
@@ -49,7 +74,17 @@ const confirm = () => {
     <Dialog v-model:visible="localVisible" modal header="Valider le rendez-vous" style="width: 420px" @hide="close">
         <div class="flex flex-col gap-3">
             <p class="text-sm text-surface-700 dark:text-surface-300">Confirmer la validation de ce rendez-vous ?</p>
-            <Select v-model="medecinId" :options="medecins" optionLabel="name" optionValue="id" placeholder="Médecin" />
+            <p v-if="!autoCreateConsultation" class="text-xs text-surface-500 dark:text-surface-400">
+                La validation n'entraîne pas la création automatique d'une consultation.
+            </p>
+            <Select
+                v-model="medecinId"
+                :options="medecins"
+                optionLabel="name"
+                optionValue="id"
+                placeholder="Médecin"
+                :disabled="medecinReadonly"
+            />
         </div>
 
         <template #footer>

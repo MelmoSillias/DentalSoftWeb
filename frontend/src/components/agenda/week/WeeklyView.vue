@@ -15,7 +15,9 @@ import { useRdvStatus } from '@/composables/useRdvStatus';
 const props = defineProps({
   medecins: { type: Array, default: () => [] },
   api: { type: Object, required: true },
-  refreshKey: { type: Number, default: 0 }
+  refreshKey: { type: Number, default: 0 },
+  lockedMedecinId: { type: Number, default: null },
+  medecinReadonly: { type: Boolean, default: false }
 });
 
 const emit = defineEmits(['request-create', 'request-validate', 'request-cancel', 'request-report']);
@@ -31,7 +33,7 @@ const statusOptions = [
   { label: 'Annulé', value: 'cancelled' }
 ];
 const filters = reactive({
-  medecinId: null,
+  medecinId: props.lockedMedecinId,
   patient: '',
   statuses: ['pending', 'validated', 'postponed']
 });
@@ -206,6 +208,16 @@ watch(
   }
 );
 
+watch(
+  () => props.lockedMedecinId,
+  (next) => {
+    if (next) {
+      filters.medecinId = next;
+    }
+  },
+  { immediate: true }
+);
+
 // Refresh events when parent signals via `refreshKey`
 watch(() => props.refreshKey, (newVal, oldVal) => {
   if (newVal === oldVal) return;
@@ -222,10 +234,11 @@ watch(() => props.refreshKey, (newVal, oldVal) => {
         :options="medecinsOptions"
         optionLabel="name"
         optionValue="id"
-        placeholder="Tous les médecins"
-        showClear
+        :placeholder="medecinReadonly ? 'Médecin connecté' : 'Tous les médecins'"
+        :showClear="!medecinReadonly"
         class="w-full xs:w-72 min-w-[160px] xs:min-w-[180px]"
-        filter
+        :filter="!medecinReadonly"
+        :disabled="medecinReadonly"
       />
       <span class="p-input-icon-left w-full xs:w-72 min-w-[160px] xs:min-w-[180px]"> 
         <InputText

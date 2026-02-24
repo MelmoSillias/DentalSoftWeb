@@ -16,6 +16,7 @@ import ReportRdvDialog from '@/components/agenda/shared/ReportRdvDialog.vue';
 import ValidateRdvDialog from '@/components/agenda/shared/ValidateRdvDialog.vue';
 import WeeklyView from '@/components/agenda/week/WeeklyView.vue';
 import { useRdvApi } from '@/composables/useRdvApi';
+import { useAuthStore } from '@/stores/auth';
 import { addMinutes } from '@/utils/dateUtils';
 import { useLayout } from '@/layout/composables/layout';
 
@@ -27,7 +28,43 @@ const breadcrumbItems = [
 ];
 
 const api = useRdvApi();
+const auth = useAuthStore();
 const medecinsList = computed(() => api.medecins?.value ?? api.medecins ?? []);
+const isMedecinUser = computed(() => Boolean(auth.user?.roles?.includes('ROLE_MEDECIN')));
+
+const normalizeText = (value) => String(value || '')
+	.normalize('NFD')
+	.replace(/[\u0300-\u036f]/g, '')
+	.toLowerCase()
+	.trim();
+
+const connectedMedecinId = computed(() => {
+	const user = auth.user || {};
+	const options = medecinsList.value || [];
+	const directId = Number(user.medecinId ?? user.medecin_id ?? user.medecin?.id ?? Number.NaN);
+	if (Number.isFinite(directId)) {
+		const found = options.find((m) => Number(m.id) === directId);
+		if (found) return found.id;
+	}
+
+	const fullName = [user.prenom, user.nom].filter(Boolean).join(' ').trim();
+	const candidates = [fullName, user.name, user.fullName, user.username].filter(Boolean).map(normalizeText);
+	if (!candidates.length) return null;
+
+	const foundByName = options.find((m) => {
+		const label = normalizeText(m.name);
+		return candidates.some((candidate) => candidate && (label === candidate || label.includes(candidate) || candidate.includes(label)));
+	});
+
+	return foundByName?.id ?? null;
+});
+
+const scopedMedecinsList = computed(() => {
+	if (!isMedecinUser.value) return medecinsList.value;
+	const id = connectedMedecinId.value;
+	if (!id) return [];
+	return (medecinsList.value || []).filter((m) => Number(m.id) === Number(id));
+});
 const activeIndex = ref('week');
 const refreshKey = ref(0);
 const actionLoading = ref(false);
@@ -58,7 +95,9 @@ const openCreate = (payload = {}) => {
 	const end = payload.end ? new Date(payload.end) : addMinutes(start, 30);
 	createDefaults.start = start;
 	createDefaults.end = end;
-	createDefaults.medecinId = payload.medecin?.id ?? payload.medecinId ?? null;
+	createDefaults.medecinId = isMedecinUser.value
+		? connectedMedecinId.value
+		: (payload.medecin?.id ?? payload.medecinId ?? null);
 	dialogState.create = true;
 };
 
@@ -77,14 +116,18 @@ const submitCreate = async (payload) => {
 };
 
 const openValidate = (rdv) => {
-	currentRdv.value = rdv;
+	currentRdv.value = {
+		...rdv,
+		medecinId: isMedecinUser.value ? connectedMedecinId.value : rdv?.medecinId
+	};
 	dialogState.validate = true;
 };
 
 const confirmValidate = async ({ id, medecinId }) => {
 	actionLoading.value = true;
 	try {
-		await api.validateRdv(id, medecinId);
+		const effectiveMedecinId = isMedecinUser.value ? connectedMedecinId.value : medecinId;
+		await api.validateRdv(id, effectiveMedecinId, { createConsultation: !isMedecinUser.value });
 		notify('Rendez-vous validé');
 		refreshKey.value += 1;
 	} catch (err) {
@@ -115,14 +158,20 @@ const confirmCancel = async ({ id }) => {
 };
 
 const openReport = (rdv) => {
-	currentRdv.value = rdv;
+	currentRdv.value = {
+		...rdv,
+		medecinId: isMedecinUser.value ? connectedMedecinId.value : rdv?.medecinId
+	};
 	dialogState.report = true;
 };
 
 const submitReport = async (payload) => {
 	actionLoading.value = true;
 	try {
-		await api.reportRdv(payload.id, payload);
+		const patchedPayload = isMedecinUser.value
+			? { ...payload, medecinId: connectedMedecinId.value }
+			: payload;
+		await api.reportRdv(payload.id, patchedPayload);
 		notify('Rendez-vous reporté');
 		refreshKey.value += 1;
 	} catch (err) {
@@ -157,9 +206,11 @@ onMounted(() => {
 			<TabPanels>
 				<TabPanel value="week">
 					<WeeklyView
-						:medecins="medecinsList"
+						:medecins="scopedMedecinsList"
 						:api="api"
 						:refreshKey="refreshKey"
+						:lockedMedecinId="isMedecinUser ? connectedMedecinId : null"
+						:medecinReadonly="isMedecinUser"
 						@request-create="openCreate"
 						@request-validate="openValidate"
 						@request-cancel="openCancel"
@@ -168,9 +219,10 @@ onMounted(() => {
 				</TabPanel>
 				<TabPanel value="day">
 					<DailyView
-						:medecins="medecinsList"
+						:medecins="scopedMedecinsList"
 						:api="api"
 						:refreshKey="refreshKey"
+						:lockedMedecinId="isMedecinUser ? connectedMedecinId : null"
 						@request-create="openCreate"
 						@request-validate="openValidate"
 						@request-cancel="openCancel"
@@ -182,9 +234,11 @@ onMounted(() => {
 
 		<CreateRdvDialog
 			v-model:visible="dialogState.create"
-			:medecins="medecinsList"
+			:medecins="scopedMedecinsList"
 			:defaultDate="createDefaults.start"
 			:defaultMedecinId="createDefaults.medecinId"
+			:lockedMedecinId="isMedecinUser ? connectedMedecinId : null"
+			:medecinReadonly="isMedecinUser"
 			:loading="actionLoading"
 			:searchPatients="api.searchPatients"
 			@submit="submitCreate"
@@ -193,7 +247,10 @@ onMounted(() => {
 		<ValidateRdvDialog
 			v-model:visible="dialogState.validate"
 			:rdv="currentRdv"
-			:medecins="medecinsList"
+			:medecins="scopedMedecinsList"
+			:lockedMedecinId="isMedecinUser ? connectedMedecinId : null"
+			:medecinReadonly="isMedecinUser"
+			:autoCreateConsultation="!isMedecinUser"
 			:loading="actionLoading"
 			@confirm="confirmValidate"
 		/>
@@ -208,7 +265,9 @@ onMounted(() => {
 		<ReportRdvDialog
 			v-model:visible="dialogState.report"
 			:rdv="currentRdv"
-			:medecins="medecinsList"
+			:medecins="scopedMedecinsList"
+			:lockedMedecinId="isMedecinUser ? connectedMedecinId : null"
+			:medecinReadonly="isMedecinUser"
 			:loading="actionLoading"
 			@submit="submitReport"
 		/>

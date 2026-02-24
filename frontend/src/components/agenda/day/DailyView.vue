@@ -19,6 +19,10 @@ const props = defineProps({
     refreshKey: {
         type: Number,
         default: 0
+    },
+    lockedMedecinId: {
+        type: Number,
+        default: null
     }
 });
 
@@ -45,7 +49,7 @@ const refreshDay = async () => {
     if (!props.api?.fetchEventsByDay) return;
     loadingDay.value = true;
     try {
-        dayEvents.value = await props.api.fetchEventsByDay(selectedDate.value);
+        dayEvents.value = await props.api.fetchEventsByDay(selectedDate.value, props.lockedMedecinId);
     } finally {
         loadingDay.value = false;
     }
@@ -55,7 +59,7 @@ const refreshStats = async () => {
     if (!props.api?.fetchStats) return;
     loadingStats.value = true;
     try {
-        stats.value = await props.api.fetchStats(selectedDate.value);
+        stats.value = await props.api.fetchStats(selectedDate.value, props.lockedMedecinId);
     } finally {
         loadingStats.value = false;
     }
@@ -68,7 +72,10 @@ const onDateChange = (val) => {
 const onCreate = ({ medecin, slot }) => {
     const start = computeDateFromSlot(slot.minutes);
     const end = new Date(start.getTime() + 30 * 60000);
-    emit('request-create', { start, end, medecin });
+    const effectiveMedecin = props.lockedMedecinId
+        ? (medecinsOptions.value || []).find((m) => Number(m.id) === Number(props.lockedMedecinId)) || medecin
+        : medecin;
+    emit('request-create', { start, end, medecin: effectiveMedecin });
 };
 
 const onValidate = ({ rdv }) => emit('request-validate', rdv);

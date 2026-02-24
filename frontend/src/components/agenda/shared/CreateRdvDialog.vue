@@ -24,6 +24,14 @@ const props = defineProps({
         type: Number,
         default: null
     },
+    lockedMedecinId: {
+        type: Number,
+        default: null
+    },
+    medecinReadonly: {
+        type: Boolean,
+        default: false
+    },
     loading: {
         type: Boolean,
         default: false
@@ -66,6 +74,16 @@ watch(
     { immediate: true }
 );
 
+watch(
+    () => props.lockedMedecinId,
+    (val) => {
+        if (val) {
+            form.medecinId = val;
+        }
+    },
+    { immediate: true }
+);
+
 const close = () => (localVisible.value = false);
 
 const submit = () => {
@@ -74,7 +92,7 @@ const submit = () => {
     emit('submit', {
         patientId: form.patient?.id || null,
         patientName: form.patient?.name || '',
-        medecinId: form.medecinId,
+        medecinId: props.medecinReadonly ? (props.lockedMedecinId ?? form.medecinId) : form.medecinId,
         start: form.dateTime.toISOString(),
         end: end.toISOString(),
         description: form.description
@@ -104,7 +122,14 @@ const searchPatients = async (event) => {
             </div>
             <div class="flex flex-col gap-1">
                 <label class="text-sm font-semibold text-surface-700 dark:text-surface-50">Médecin</label>
-                <Select v-model="form.medecinId" :options="medecins" optionLabel="name" optionValue="id" placeholder="Sélectionner" />
+                <Select
+                    v-model="form.medecinId"
+                    :options="medecins"
+                    optionLabel="name"
+                    optionValue="id"
+                    placeholder="Sélectionner"
+                    :disabled="medecinReadonly"
+                />
             </div>
             <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div class="flex flex-col gap-1">

@@ -74,6 +74,19 @@ const defaultPlanTraitement = () => ([]);
 
 const defaultDevis = () => ({ date: null, services: [] });
 
+const normalizeDateForApi = (value) => {
+    if (!value) return null;
+    if (typeof value === 'string') {
+        return value;
+    }
+    const parsed = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(parsed.getTime())) return null;
+    const year = parsed.getFullYear();
+    const month = String(parsed.getMonth() + 1).padStart(2, '0');
+    const day = String(parsed.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
 const defaultConsultation = () => ({
     type: '',
     medecinId: null,
@@ -336,6 +349,7 @@ export const useConsultationsForm = ({ ficheId, consultId, token, mode }) => {
                     data.consultation = {
                         ...defaultConsultation(),
                         type: consult.type ?? '',
+                        medecinId: consult.medecinId ?? null,
                         noteSeance: consult.noteSeance ?? '',
                         actes: consult.actes ?? []
                     };
@@ -422,7 +436,7 @@ export const useConsultationsForm = ({ ficheId, consultId, token, mode }) => {
         setSaving('devis', true);
         try {
             const payload = {
-                date: data.devis.date,
+                date: normalizeDateForApi(data.devis.date),
                 type: 0,
                 contenus: (data.devis.services || []).map((s) => ({
                     designation: s.designation ?? '',

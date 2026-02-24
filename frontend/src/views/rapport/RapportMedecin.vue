@@ -8,7 +8,9 @@ import MedecinQuickStatsSection from '@/components/rapport/medecin/MedecinQuickS
 import MedecinPeriodicDetailsSection from '@/components/rapport/medecin/MedecinPeriodicDetailsSection.vue';
 import MedecinMedicalActsSection from '@/components/rapport/medecin/MedecinMedicalActsSection.vue';
 import MedecinProfileSection from '@/components/rapport/medecin/MedecinProfileSection.vue';
+import { useAuthStore } from '@/stores/auth';
 const { medecinLoading, medecinData, fetchMedecinRapport, toIsoDate } = useRapports();
+const auth = useAuthStore();
 
 const startOfMonth = new Date();
 startOfMonth.setDate(1);
@@ -21,6 +23,21 @@ const periodLabel = computed(() => {
     const [start, end] = range.value || [];
     if (!start || !end) return 'Choisir période';
     return `${start.toLocaleDateString('fr-FR')} - ${end.toLocaleDateString('fr-FR')}`;
+});
+
+const connectedMedecinFullName = computed(() => {
+    const identity = medecinData.value?.identity || {};
+    const fromRapport = medecinData.value?.fullName
+        || identity.fullName
+        || [identity.prenom, identity.nom].filter(Boolean).join(' ').trim();
+    if (fromRapport) return fromRapport;
+
+    const user = auth.user || {};
+    return [user.prenom, user.nom].filter(Boolean).join(' ').trim()
+        || user.fullName
+        || user.name
+        || user.username
+        || '';
 });
 
 async function refresh(silent = false) {
@@ -52,7 +69,7 @@ onMounted(() => {
         <div class="flex flex-wrap items-center justify-between gap-4">
             <div>
                 <h2 class="text-2xl font-semibold text-surface-900 dark:text-surface-0">
-                    Bienvenue Dr {{ medecinData.nom || '' }}
+                    Bienvenue Dr {{ connectedMedecinFullName }}
                 </h2>
                 <p class="text-sm text-surface-500 dark:text-surface-400">Période : {{ periodLabel }}</p>
             </div>

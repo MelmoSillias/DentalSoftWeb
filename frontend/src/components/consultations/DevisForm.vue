@@ -23,6 +23,42 @@ const devis = computed({
     set: (val) => emit('update:modelValue', val)
 });
 
+const dateModel = computed({
+    get: () => {
+        const value = devis.value?.date;
+        if (!value) return null;
+        if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
+        if (typeof value === 'string') {
+            const isoMatch = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+            if (isoMatch) {
+                const year = Number(isoMatch[1]);
+                const month = Number(isoMatch[2]) - 1;
+                const day = Number(isoMatch[3]);
+                const parsed = new Date(year, month, day);
+                return Number.isNaN(parsed.getTime()) ? null : parsed;
+            }
+            const parsed = new Date(value);
+            return Number.isNaN(parsed.getTime()) ? null : parsed;
+        }
+        return null;
+    },
+    set: (value) => {
+        if (!value) {
+            updateField('date', null);
+            return;
+        }
+        const parsed = value instanceof Date ? value : new Date(value);
+        if (Number.isNaN(parsed.getTime())) {
+            updateField('date', null);
+            return;
+        }
+        const year = parsed.getFullYear();
+        const month = String(parsed.getMonth() + 1).padStart(2, '0');
+        const day = String(parsed.getDate()).padStart(2, '0');
+        updateField('date', `${year}-${month}-${day}`);
+    }
+});
+
 const updateField = (key, value) => {
     devis.value = { ...devis.value, [key]: value };
 };
@@ -110,11 +146,10 @@ function subtotal(service) {
                         Date du devis
                     </label>
                     <DatePicker 
-                        v-model="devis.date" 
+                        v-model="dateModel" 
                         dateFormat="dd/mm/yy" 
                         showIcon
                         inputClass="w-full rounded-xl border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-800/50 p-3 focus:ring-2 focus:ring-primary-500/20 transition-all"
-                        @update:modelValue="(v) => updateField('date', v)" 
                     />
                 </div>
                 <div class="rounded-xl bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-emerald-900/20 dark:to-emerald-800/20 p-5 border border-emerald-200/50 dark:border-emerald-800/50">

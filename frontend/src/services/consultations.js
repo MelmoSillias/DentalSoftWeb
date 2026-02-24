@@ -98,6 +98,7 @@ export const fetchConsultationDetails = async (consultationId, token) => {
                 date: data.date ?? data.createdAt ?? data.created_at ?? null,
                 patient: data.patient ?? data.patientName ?? data.patient_name ?? '',
                 medecin: data.medecin ?? '',
+                medecinId: data.medecin?.id ?? data.medecinId ?? data.medecin_id ?? null,
                 infirmier: data.infirmier ?? '',
                 salle: data.salle ?? '',
                 noteSeance: data.noteSeance ?? data.note ?? '',

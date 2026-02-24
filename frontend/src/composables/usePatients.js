@@ -53,13 +53,10 @@ export function usePatients() {
         const allergies = Array.isArray(dossier.allergies) ? dossier.allergies : [];
         const antecedents = Array.isArray(dossier.antecedents) ? dossier.antecedents : [];
         const rdvs = Array.isArray(dossier.rdvs) ? dossier.rdvs : [];
-        const fichesV1 = Array.isArray(dossier.fiches) ? dossier.fiches : [];
-        const fichesV2 = Array.isArray(dossier.fichesV2) ? dossier.fichesV2 : [];
-        const fiches = [...fichesV1, ...fichesV2]
+        const fiches = (Array.isArray(dossier.fiches) ? dossier.fiches : [])
             .map((fiche) => {
                 const dateCreation = fiche?.dateCreation ?? fiche?.createdAt ?? fiche?.date ?? null;
-                const version = fiche?.version ?? (fiche?.entretien || fiche?.bilans ? 2 : 1);
-                return { ...fiche, dateCreation, version };
+                return { ...fiche, dateCreation, version: 2 };
             })
             .sort((a, b) => {
                 const aTime = a?.dateCreation ? new Date(a.dateCreation).getTime() : 0;
