@@ -1,8 +1,8 @@
 <script setup>
 import { computed, ref } from 'vue';
 import Button from 'primevue/button';
-import TabPanel from 'primevue/tabpanel';
-import TabView from 'primevue/tabview';
+import TabPanel from 'primevue/tabpanel'; 
+import { TabList } from 'primevue';
 
 const props = defineProps({
     role: { type: String, default: 'admin' },
@@ -34,9 +34,18 @@ const formatAmount = (value) => `${new Intl.NumberFormat('fr-FR').format(Number(
 
         <!-- Tabs -->
         <div class="flex-1 min-h-0">
-            <TabView v-model:activeIndex="activeIndex" class="h-full flex flex-col">
+            <Tabs v-model:activeIndex="activeIndex" class="h-full flex flex-col">
+                
+                    <TabList>
+                        <Tab value="0" >Rendez-vous</Tab>
+                        <Tab value="1">Consultations</Tab>
+                        <Tab value="2">Factures</Tab>
+                        <Tab v-if="isReception" value="3">Paiements</Tab>
+                        <Tab v-if="isMedecin" value="4">Actes</Tab>
+                    </TabList>
                 <!-- RDV -->
-                <TabPanel header="Rendez-vous">
+                <TabPanels>
+                <TabPanel value="0">
                     <div class="list">
                         <template v-if="loading">
                             <div v-for="i in 3" :key="i" class="skeleton" />
@@ -59,7 +68,7 @@ const formatAmount = (value) => `${new Intl.NumberFormat('fr-FR').format(Number(
                 </TabPanel>
 
                 <!-- Consultations -->
-                <TabPanel header="Consultations">
+                <TabPanel value="1">
                     <div class="list">
                         <template v-if="loading">
                             <div v-for="i in 3" :key="i" class="skeleton" />
@@ -81,7 +90,7 @@ const formatAmount = (value) => `${new Intl.NumberFormat('fr-FR').format(Number(
                 </TabPanel>
 
                 <!-- Factures -->
-                <TabPanel header="Factures">
+                <TabPanel value="2">
                     <div class="list">
                         <template v-if="loading">
                             <div v-for="i in 3" :key="i" class="skeleton" />
@@ -104,7 +113,7 @@ const formatAmount = (value) => `${new Intl.NumberFormat('fr-FR').format(Number(
                 </TabPanel>
 
                 <!-- Paiements -->
-                <TabPanel v-if="isReception" header="Paiements">
+                <TabPanel v-if="isReception" value="3">
                     <div class="list">
                         <template v-if="loading">
                             <div v-for="i in 2" :key="i" class="skeleton" />
@@ -125,7 +134,7 @@ const formatAmount = (value) => `${new Intl.NumberFormat('fr-FR').format(Number(
                 </TabPanel>
 
                 <!-- Actes -->
-                <TabPanel v-if="isMedecin" header="Actes">
+                <TabPanel v-if="isMedecin" value="4">
                     <div class="list">
                         <template v-if="loading">
                             <div v-for="i in 2" :key="i" class="skeleton" />
@@ -144,7 +153,8 @@ const formatAmount = (value) => `${new Intl.NumberFormat('fr-FR').format(Number(
                         <div v-else class="empty">Aucun acte</div>
                     </div>
                 </TabPanel>
-            </TabView>
+                </TabPanels>
+            </Tabs>
         </div>
 
         <!-- Footer -->

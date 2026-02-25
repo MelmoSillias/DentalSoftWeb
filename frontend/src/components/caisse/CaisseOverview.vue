@@ -181,9 +181,9 @@ const handlePreview = (row) => emit('preview', row);
                             <Button v-if="!data.isRegle" :label="targetIsFree(data) ? 'Valider' : 'Régler'" size="small"
                                 :severity="targetIsFree(data) ? 'secondary' : 'success'" icon="pi pi-wallet"
                                 @click="targetIsFree(data) ? handleValidate(data) : handlePay(data)" />
-                            <Button v-if="canModify(data)" label="Modifier" size="small" severity="secondary"
+                            <Button v-if="canModify(data)" size="small" severity="secondary"
                                 icon="pi pi-pencil" @click="handleModify(data)" />
-                            <Button v-if="canPreview(data)" label="Voir" size="small" icon="pi pi-eye" severity="info"
+                            <Button v-if="canPreview(data)" size="small" icon="pi pi-eye" severity="info" class="p-button-outlined"
                                 @click="handlePreview(data)" />
                         </div>
                     </template>

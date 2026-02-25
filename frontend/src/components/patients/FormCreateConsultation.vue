@@ -69,8 +69,7 @@ const loadPatients = async (query = '') => {
     try {
         const data = await searchPatients(query, token, 20);
         patients.value = data.map((p) => normalizePatient(p));
-    } catch (error) {
-        console.error('Erreur lors du chargement des patients', error);
+    } catch (error) { 
         toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de charger les patients.', life: 3000 });
     } finally {
         patientsLoading.value = false;

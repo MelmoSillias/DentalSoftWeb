@@ -19,6 +19,10 @@ final class PatientController extends AbstractController
     #[Route('/api/patients', name: 'api_patients', methods: ['GET'])]
     public function getPatients(Request $request): JsonResponse
     {
+        if (!$request->query->has('page') && !$request->query->has('limit')) {
+            return $this->json($this->patientService->listPatients());
+        }
+
         $page = (int) $request->query->get('page', 1);
         $limit = (int) $request->query->get('limit', 10);
         $query = trim((string) ($request->query->get('q') ?? $request->query->get('term') ?? ''));
@@ -32,6 +36,16 @@ final class PatientController extends AbstractController
     #[Route('/api/patients/medecin', name: 'api_patients_by_medecin', methods: ['GET'])]
     public function getPatientsByMedecin(Request $request): JsonResponse
     {
+        if (!$request->query->has('page') && !$request->query->has('limit')) {
+            $result = $this->patientService->listPatientsByMedecin($this->getUser());
+
+            if (isset($result['error'])) {
+                return $this->json(['error' => $result['error']], $result['status'] ?? 400);
+            }
+
+            return $this->json($result);
+        }
+
         $page = (int) $request->query->get('page', 1);
         $limit = (int) $request->query->get('limit', 10);
         $query = trim((string) ($request->query->get('q') ?? $request->query->get('term') ?? ''));

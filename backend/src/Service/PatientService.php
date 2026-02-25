@@ -326,17 +326,18 @@ class PatientService
 
     public function searchPatients(string $term, int $limit = 20): array
     {
-        $term = trim(strtolower($term));
+        $term = mb_strtolower(trim($term));
         $limit = max(1, min($limit, 50));
+        if ($term === '') {
+            return [];
+        }
+
         $cacheKey = sprintf('patients.search.%d.%s', $limit, sha1($term));
 
         return $this->cache->get($cacheKey, function (ItemInterface $item) use ($term, $limit) {
             $item->expiresAfter(60);
             $qb = $this->patientRepo->createQueryBuilder('p')
-                ->select('DISTINCT p.id, p.nom, p.prenom, p.telephone')
-                ->leftJoin('p.consultations', 'c')
-                ->leftJoin('c.fiche', 'cf')
-                ->leftJoin('p.fichesObservation', 'fo');
+                ->select('DISTINCT p.id, p.nom, p.prenom, p.telephone');
 
             if ($term !== '') {
                 $digitsOnly = preg_replace('/\D+/', '', $term);
@@ -346,17 +347,17 @@ class PatientService
                     'LOWER(CONCAT(COALESCE(p.nom, \'\'), \' \', COALESCE(p.prenom, \'\'))) LIKE :term',
                     'LOWER(CONCAT(COALESCE(p.prenom, \'\'), \' \', COALESCE(p.nom, \'\'))) LIKE :term',
                     'LOWER(p.telephone) LIKE :term',
-                    'LOWER(c.type) LIKE :term',
-                    'LOWER(c.noteSeance) LIKE :term',
-                    'LOWER(cf.motif) LIKE :term',
-                    'LOWER(cf.diagnostic) LIKE :term',
-                    'LOWER(fo.motif) LIKE :term',
-                    'LOWER(fo.diagnostic) LIKE :term'
+                    'LOWER(p.adresse) LIKE :term'
                 );
 
                 if (!empty($digitsOnly)) {
-                    $orX->add("REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(p.telephone, ''), ' ', ''), '-', ''), '.', ''), '+', '') LIKE :termPhone");
-                    $qb->setParameter('termPhone', '%' . $digitsOnly . '%');
+                    $pairs = str_split($digitsOnly, 2);
+                    $spacedDigits = trim(implode(' ', $pairs));
+
+                    $orX->add('p.telephone LIKE :termPhoneDigits');
+                    $orX->add('p.telephone LIKE :termPhoneSpaced');
+                    $qb->setParameter('termPhoneDigits', '%' . $digitsOnly . '%');
+                    $qb->setParameter('termPhoneSpaced', '%' . $spacedDigits . '%');
                 }
 
                 $qb->andWhere($orX)

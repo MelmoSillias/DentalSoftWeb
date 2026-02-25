@@ -93,6 +93,7 @@ const factureSaving = ref(false);
 const previewDialogVisible = ref(false);
 const previewLoading = ref(false);
 const previewData = ref(null);
+const payLoading = ref(false);
 
 // Explicit setters avoid template auto-unwrapping issues on refs
 const setDevisType = (val) => {
@@ -192,6 +193,7 @@ const openPayDialog = async (row) => {
 };
 
 const submitPayment = async () => {
+	
 	if (!selectedDevis.value) return;
 	const montant = Number(payForm.value.montant) || 0;
 	const max = Number(selectedDevis.value.reste) || 0;
@@ -208,6 +210,7 @@ const submitPayment = async () => {
 		return;
 	}
 	try {
+		payLoading.value = true;
 		const res = await payDevis(selectedDevis.value.id, {
 			montant,
 			modeId: payForm.value.modeId,
@@ -246,6 +249,8 @@ const submitPayment = async () => {
 	} catch (error) {
 		console.error(error);
 		toast.add({ severity: 'error', summary: 'Paiement', detail: 'Enregistrement impossible', life: 3500 });
+	} finally {
+		payLoading.value = false;
 	}
 };
 
@@ -476,7 +481,7 @@ onMounted(() => {
 			</div>
 			<template #footer>
 				<Button label="Annuler" text @click="payDialogVisible = false" />
-				<Button label="Confirmer" severity="success" icon="pi pi-check" @click="submitPayment" />
+				<Button label="Confirmer" severity="success" icon="pi pi-check" @click="submitPayment" :loading="payLoading" />
 			</template>
 		</Dialog>
 

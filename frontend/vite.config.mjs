@@ -18,15 +18,14 @@ export default defineConfig({
             registerType: 'autoUpdate',
             includeAssets: ['favicon.ico', 'robots.txt', 'icons/*.svg'],
             manifest: {
-                name: 'CETIG SOFTWARE',
-                short_name: 'CETIG',
-                description: 'Application PWA pour CETIG SOFTWARE',
-                theme_color: '#4e73df',
+                name: 'DENTALSOFT - ORODENT',
+                short_name: 'DENTALSOFT',
+                description: 'Application de gestion de cabinet dentaire - ORODENT',
+                theme_color: '#5ad6f5',
                 start_url: '/',
                 display: 'standalone',
                 icons: [
-                    { src: 'icons/icon-192.svg', sizes: '192x192', type: 'image/svg+xml' },
-                    { src: 'icons/icon-512.svg', sizes: '512x512', type: 'image/svg+xml' }
+                    { src: 'logo.png', sizes: '512x512', type: 'image/png' }, 
                 ]
             }
         }),

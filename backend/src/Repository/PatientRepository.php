@@ -125,8 +125,13 @@ class PatientRepository extends ServiceEntityRepository
             );
 
             if (!empty($digitsOnly)) {
-                $orX->add("REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(p.telephone, ''), ' ', ''), '-', ''), '.', ''), '+', '') LIKE :termPhone");
-                $qb->setParameter('termPhone', '%' . $digitsOnly . '%');
+                $pairs = str_split($digitsOnly, 2);
+                $spacedDigits = trim(implode(' ', $pairs));
+
+                $orX->add('p.telephone LIKE :termPhoneDigits');
+                $orX->add('p.telephone LIKE :termPhoneSpaced');
+                $qb->setParameter('termPhoneDigits', '%' . $digitsOnly . '%');
+                $qb->setParameter('termPhoneSpaced', '%' . $spacedDigits . '%');
             }
 
             $qb->andWhere($orX)
@@ -151,6 +156,7 @@ class PatientRepository extends ServiceEntityRepository
         $items = $qb
             ->orderBy($sortColumn, $direction)
             ->addOrderBy('p.prenom', 'ASC')
+            ->addOrderBy('p.id', 'ASC')
             ->setFirstResult(($page - 1) * $limit)
             ->setMaxResults($limit)
             ->getQuery()
@@ -162,11 +168,8 @@ class PatientRepository extends ServiceEntityRepository
     public function paginatePatientsByMedecin(Employe $medecin, int $page, int $limit, ?string $term = null, ?string $sortField = null, ?string $sortOrder = null): array
     {
         $qb = $this->createQueryBuilder('p')
-            ->leftJoin('p.consultations', 'c')
-            ->leftJoin('p.rdvs', 'r')
-            ->andWhere('c.medecin = :medecin OR r.medecin = :medecin')
-            ->setParameter('medecin', $medecin)
-            ->distinct();
+            ->andWhere('EXISTS (SELECT 1 FROM App\\Entity\\Consultation c WHERE c.patient = p AND c.medecin = :medecin) OR EXISTS (SELECT 1 FROM App\\Entity\\Rdv r WHERE r.patient = p AND r.medecin = :medecin)')
+            ->setParameter('medecin', $medecin);
 
         if ($term !== null && $term !== '') {
             $normalizedTerm = mb_strtolower(trim($term));
@@ -183,8 +186,13 @@ class PatientRepository extends ServiceEntityRepository
             );
 
             if (!empty($digitsOnly)) {
-                $orX->add("REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(p.telephone, ''), ' ', ''), '-', ''), '.', ''), '+', '') LIKE :termPhone");
-                $qb->setParameter('termPhone', '%' . $digitsOnly . '%');
+                $pairs = str_split($digitsOnly, 2);
+                $spacedDigits = trim(implode(' ', $pairs));
+
+                $orX->add('p.telephone LIKE :termPhoneDigits');
+                $orX->add('p.telephone LIKE :termPhoneSpaced');
+                $qb->setParameter('termPhoneDigits', '%' . $digitsOnly . '%');
+                $qb->setParameter('termPhoneSpaced', '%' . $spacedDigits . '%');
             }
 
             $qb->andWhere($orX)
@@ -192,7 +200,7 @@ class PatientRepository extends ServiceEntityRepository
         }
 
         $countQb = clone $qb;
-        $total = (int) $countQb->select('COUNT(DISTINCT p.id)')->getQuery()->getSingleScalarResult();
+        $total = (int) $countQb->select('COUNT(p.id)')->getQuery()->getSingleScalarResult();
 
         $direction = strtolower($sortOrder ?? 'asc') === 'desc' ? 'DESC' : 'ASC';
         $sortMap = [
@@ -209,6 +217,7 @@ class PatientRepository extends ServiceEntityRepository
         $items = $qb
             ->orderBy($sortColumn, $direction)
             ->addOrderBy('p.prenom', 'ASC')
+            ->addOrderBy('p.id', 'ASC')
             ->setFirstResult(($page - 1) * $limit)
             ->setMaxResults($limit)
             ->getQuery()
