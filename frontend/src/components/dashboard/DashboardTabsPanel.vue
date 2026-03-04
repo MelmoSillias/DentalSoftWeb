@@ -10,7 +10,7 @@ const props = defineProps({
     loading: { type: Boolean, default: false }
 });
 
-const activeIndex = ref(0);
+const activeIndex = ref("0");
 
 const isMedecin = computed(() => props.role === 'medecin');
 const isReception = computed(() => props.role === 'reception');
@@ -34,7 +34,7 @@ const formatAmount = (value) => `${new Intl.NumberFormat('fr-FR').format(Number(
 
         <!-- Tabs -->
         <div class="flex-1 min-h-0">
-            <Tabs v-model:activeIndex="activeIndex" class="h-full flex flex-col">
+            <Tabs :value="activeIndex" class="h-full flex flex-col">
                 
                     <TabList>
                         <Tab value="0" >Rendez-vous</Tab>

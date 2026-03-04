@@ -7,7 +7,7 @@ use App\Entity\User;
 final class NotificationTopicGenerator
 {
     public function __construct(
-        private readonly string $secret = "",
+        private readonly string $publicHubUrl,
     ) {
     }
 
@@ -18,8 +18,6 @@ final class NotificationTopicGenerator
             return null;
         }
 
-        $signature = substr(hash_hmac('sha256', (string) $id, $this->secret), 0, 16);
-
-        return sprintf('urn:dentalsoft:notifications:%d:%s', $id, $signature);
+        return sprintf('%s/users/%d', rtrim($this->publicHubUrl, '/'), $id);
     }
 }

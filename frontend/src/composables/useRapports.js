@@ -141,6 +141,14 @@ export function useRapports() {
 
     const userRoles = computed(() => auth.user?.roles || []);
 
+    function hasToken() {
+        return Boolean(auth.token || localStorage.getItem('token'));
+    }
+
+    function isAuthTransitionError(error) {
+        return error?.code === 'AUTH_TRANSITION';
+    }
+
     function buildAuthHeaders(includeJson = false) {
         const token = auth.token || localStorage.getItem('token');
         const headers = {};
@@ -150,6 +158,12 @@ export function useRapports() {
     }
 
     async function fetchJson(path, params = {}) {
+        if (!hasToken()) {
+            const error = new Error('AUTH_TRANSITION');
+            error.code = 'AUTH_TRANSITION';
+            throw error;
+        }
+
         const url = new URL(`${apiPrefix}${path}`);
         Object.entries(params).forEach(([key, value]) => {
             if (value === null || value === undefined || value === '') return;
@@ -161,6 +175,12 @@ export function useRapports() {
             return response.data;
         } catch (err) {
             const status = err?.response?.status;
+            if (status === 401 || !hasToken()) {
+                const error = new Error('AUTH_TRANSITION');
+                error.code = 'AUTH_TRANSITION';
+                throw error;
+            }
+
             const body = err?.response?.data;
             const message = body?.message || body?.error || err?.message || `Erreur ${status || 'inconnue'}`;
             throw new Error(message);
@@ -300,6 +320,10 @@ export function useRapports() {
     }
 
     async function fetchAdminRapport({ from, to, silent = false } = {}) {
+        if (!hasToken()) {
+            return;
+        }
+
         adminLoading.value = true;
         adminError.value = null;
         try {
@@ -321,6 +345,10 @@ export function useRapports() {
                 toast.add({ severity: 'success', summary: 'Rapport admin', detail: 'Données mises à jour.', life: 2500 });
             }
         } catch (err) {
+            if (isAuthTransitionError(err)) {
+                return;
+            }
+
             adminError.value = err.message || 'Erreur de chargement';
             toast.add({ severity: 'error', summary: 'Rapport admin', detail: 'Erreur lors du chargement.', life: 3000 });
         } finally {
@@ -329,6 +357,10 @@ export function useRapports() {
     }
 
     async function fetchMedecinRapport({ from, to, silent = false } = {}) {
+        if (!hasToken()) {
+            return;
+        }
+
         medecinLoading.value = true;
         medecinError.value = null;
         try {
@@ -366,6 +398,10 @@ export function useRapports() {
                 toast.add({ severity: 'success', summary: 'Rapport médecin', detail: 'Données mises à jour.', life: 2500 });
             }
         } catch (err) {
+            if (isAuthTransitionError(err)) {
+                return;
+            }
+
             medecinError.value = err.message || 'Erreur de chargement';
             toast.add({ severity: 'error', summary: 'Rapport médecin', detail: 'Erreur lors du chargement.', life: 3000 });
         } finally {
@@ -374,6 +410,10 @@ export function useRapports() {
     }
 
     async function fetchReceptionRapport({ date, silent = false } = {}) {
+        if (!hasToken()) {
+            return;
+        }
+
         receptionLoading.value = true;
         receptionError.value = null;
         try {
@@ -393,6 +433,10 @@ export function useRapports() {
                 toast.add({ severity: 'success', summary: 'Rapport réception', detail: 'Données mises à jour.', life: 2500 });
             }
         } catch (err) {
+            if (isAuthTransitionError(err)) {
+                return;
+            }
+
             receptionError.value = err.message || 'Erreur de chargement';
             toast.add({ severity: 'error', summary: 'Rapport réception', detail: 'Erreur lors du chargement.', life: 3000 });
         } finally {

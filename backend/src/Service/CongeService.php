@@ -3,14 +3,14 @@
 namespace App\Service;
 
 use App\Entity\Conge;
-use App\Entity\Notification;
 use App\Entity\User;
+use App\Event\EntityActionEvent;
 use App\Repository\CongeRepository;
 use App\Repository\EmployeRepository;  
 use App\Service\NotificationRecipientResolver;
-use App\Service\NotificationService;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
 class CongeService
 {
@@ -18,8 +18,8 @@ class CongeService
         private EntityManagerInterface $em,
         private CongeRepository $congeRepo,
         private EmployeRepository $employeRepo,
-        private NotificationService $notificationService,
         private NotificationRecipientResolver $notificationRecipientResolver,
+        private EventDispatcherInterface $eventDispatcher,
     ) {
     }
 
@@ -128,13 +128,19 @@ class CongeService
             default => sprintf('Mise à jour de congé pour %s.', $employeeName),
         };
 
-        $this->notificationService->notifyMany(
-            array_values($recipients),
-            $message,
-            Notification::PRIORITY_INFO,
-            '/admin/agenda/jours-conges',
-            Notification::TYPE_INFO,
-            $actor,
+        $this->eventDispatcher->dispatch(
+            new EntityActionEvent(
+                $conge,
+                $event,
+                ['ROLE_ADMIN', 'ROLE_RECEPTION', 'ROLE_RECEPTIONNISTE'],
+                $actor,
+                [
+                    'message' => $message,
+                    'priority' => 'info',
+                    'type' => 'info',
+                    'link' => '/admin/agenda/jours-conges',
+                ],
+            )
         );
     }
 }

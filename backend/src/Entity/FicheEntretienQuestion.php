@@ -22,7 +22,7 @@ class FicheEntretienQuestion
     #[ORM\Column(type: 'boolean', nullable: true)]
     private ?bool $reponse = null;
 
-    #[ORM\Column(type: 'text', nullable: true)]
+    #[ORM\Column(name: '`precision`', type: 'text', nullable: true)]
     private ?string $precision = null;
 
     public function getId(): ?int

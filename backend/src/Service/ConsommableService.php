@@ -4,14 +4,15 @@ namespace App\Service;
 
 use App\Entity\Consommable;
 use App\Entity\Employe;
-use App\Entity\Notification;
 use App\Entity\Stock;
 use App\Entity\User;
+use App\Event\EntityActionEvent;
 use App\Repository\ConsommableRepository;
 use App\Repository\EmployeRepository;
 use App\Repository\StockRepository;
 use DateTime;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
 class ConsommableService
 {
@@ -22,8 +23,8 @@ class ConsommableService
         private ConsommableRepository $consRepo,
         private StockRepository $stockRepo,
         private EmployeRepository $employeRepo,
-        private NotificationService $notificationService,
         private NotificationRecipientResolver $notificationRecipientResolver,
+        private EventDispatcherInterface $eventDispatcher,
     ) {
     }
 
@@ -243,8 +244,8 @@ class ConsommableService
 
         $name = $consommable->getNom();
         $quantity = $consommable->getQuantity();
-        $priority = Notification::PRIORITY_INFO;
-        $type = Notification::TYPE_INFO;
+        $priority = 'info';
+        $type = 'info';
 
         $message = match ($event) {
             'created' => sprintf('Nouveau consommable %s ajouté (stock initial %d).', $name, $quantity),
@@ -259,19 +260,25 @@ class ConsommableService
         }
 
         if ($event === 'deleted') {
-            $priority = Notification::PRIORITY_WARNING;
-            $type = Notification::TYPE_WARNING;
+            $priority = 'warning';
+            $type = 'warning';
         } elseif ($event === 'created') {
-            $type = Notification::TYPE_SUCCESS;
+            $type = 'success';
         }
 
-        $this->notificationService->notifyMany(
-            $recipients,
-            $message,
-            $priority,
-            self::CONSUMABLES_LINK,
-            $type,
-            $actor,
+        $this->eventDispatcher->dispatch(
+            new EntityActionEvent(
+                $consommable,
+                $event,
+                ['ROLE_ADMIN'],
+                $actor,
+                [
+                    'message' => $message,
+                    'priority' => $priority,
+                    'type' => $type,
+                    'link' => self::CONSUMABLES_LINK,
+                ],
+            )
         );
     }
 
@@ -303,13 +310,19 @@ class ConsommableService
             $description ? ' - Motif: ' . $description : '',
         );
 
-        $this->notificationService->notifyMany(
-            $recipients,
-            $message,
-            Notification::PRIORITY_WARNING,
-            self::CONSUMABLES_LINK,
-            Notification::TYPE_WARNING,
-            $actor,
+        $this->eventDispatcher->dispatch(
+            new EntityActionEvent(
+                $consommable,
+                'stock_withdraw',
+                ['ROLE_ADMIN'],
+                $actor,
+                [
+                    'message' => $message,
+                    'priority' => 'warning',
+                    'type' => 'warning',
+                    'link' => self::CONSUMABLES_LINK,
+                ],
+            )
         );
     }
 
@@ -325,11 +338,11 @@ class ConsommableService
         }
 
         $priority = $consommable->getQuantity() <= 0
-            ? Notification::PRIORITY_CRITICAL
-            : Notification::PRIORITY_WARNING;
-        $type = $priority === Notification::PRIORITY_CRITICAL
-            ? Notification::TYPE_DANGER
-            : Notification::TYPE_WARNING;
+            ? 'critical'
+            : 'warning';
+        $type = $priority === 'critical'
+            ? 'danger'
+            : 'warning';
 
         $message = sprintf(
             'Stock bas pour %s : %d restants (seuil %d).',
@@ -338,13 +351,19 @@ class ConsommableService
             $consommable->getLowValue(),
         );
 
-        $this->notificationService->notifyMany(
-            $recipients,
-            $message,
-            $priority,
-            self::CONSUMABLES_LINK,
-            $type,
-            $actor,
+        $this->eventDispatcher->dispatch(
+            new EntityActionEvent(
+                $consommable,
+                'low_stock',
+                ['ROLE_ADMIN'],
+                $actor,
+                [
+                    'message' => $message,
+                    'priority' => $priority,
+                    'type' => $type,
+                    'link' => self::CONSUMABLES_LINK,
+                ],
+            )
         );
     }
 

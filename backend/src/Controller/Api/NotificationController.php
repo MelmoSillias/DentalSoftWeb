@@ -4,12 +4,12 @@ namespace App\Controller\Api;
 
 use App\Entity\Notification;
 use App\Repository\NotificationRepository;
-use Doctrine\ORM\EntityManagerInterface;
+use App\Service\MercureAuthorizationService;
+use App\Service\NotificationService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
-use Symfony\Component\Security\Http\Attribute\IsGranted;
  
 class NotificationController extends AbstractController
 {
@@ -37,7 +37,7 @@ class NotificationController extends AbstractController
     }
 
     #[Route('/api/me/notifications/mark-read', name: 'api_me_notifications_mark_read', methods: ['POST'])]
-    public function markRead(Request $request, EntityManagerInterface $em): JsonResponse
+    public function markRead(Request $request, NotificationService $notificationService): JsonResponse
     {
         $user = $this->getUser();
         if (!$user) {
@@ -49,32 +49,38 @@ class NotificationController extends AbstractController
             return $this->json(['updated' => 0]);
         }
 
-        $repo = $em->getRepository(Notification::class);
-        $list = $repo->findBy(['id' => $ids, 'user' => $user]);
-        foreach ($list as $notif) {
-            $notif->setEtatVu('vu');
-        }
-        $em->flush();
+        $updated = $notificationService->markAsRead($user, $ids);
 
-        return $this->json(['updated' => count($list)]);
+        return $this->json(['updated' => $updated]);
     }
 
     #[Route('/api/me/notifications/mark-all', name: 'api_me_notifications_mark_all', methods: ['POST'])]
-    public function markAll(EntityManagerInterface $em): JsonResponse
+    public function markAll(NotificationService $notificationService): JsonResponse
     {
         $user = $this->getUser();
         if (!$user) {
             return $this->json(['error' => 'Unauthenticated'], 401);
         }
 
-        $repo = $em->getRepository(Notification::class);
-        $list = $repo->findBy(['user' => $user, 'etatVu' => 'non_vu']);
-        foreach ($list as $notif) {
-            $notif->setEtatVu('vu');
-        }
-        $em->flush();
+        $updated = $notificationService->markAsRead($user);
 
-        return $this->json(['updated' => count($list)]);
+        return $this->json(['updated' => $updated]);
+    }
+
+    #[Route('/api/me/notifications/mercure', name: 'api_me_notifications_mercure', methods: ['GET'])]
+    public function mercure(MercureAuthorizationService $mercureAuthorizationService): JsonResponse
+    {
+        $user = $this->getUser();
+        if (!$user) {
+            return $this->json(['error' => 'Unauthenticated'], 401);
+        }
+
+        $subscription = $mercureAuthorizationService->buildSubscription($user);
+        if ($subscription === null) {
+            return $this->json(['error' => 'Unable to create Mercure subscription'], 400);
+        }
+
+        return $this->json($subscription);
     }
 
     /** @return array<string, mixed> */
@@ -82,6 +88,7 @@ class NotificationController extends AbstractController
     {
         return [
             'id' => $notification->getId(),
+            'title' => 'Notification',
             'message' => $notification->getMessage(),
             'status' => $notification->getEtatVu(),
             'priority' => $notification->getPriority(),

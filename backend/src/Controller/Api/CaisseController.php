@@ -233,7 +233,7 @@ class CaisseController extends AbstractController
     private function mapPaiementReceipt(PaiementDevis $paiement): array
     {
         $devis = $paiement->getDevis();
-        $fiche = $devis?->getFiche();
+        $fiche = $devis?->getFicheMedicale();
         $patient = $fiche?->getPatient();
 
         return [
@@ -279,7 +279,7 @@ class CaisseController extends AbstractController
     private function mapPaiementListItem(PaiementDevis $paiement): array
     {
         $devis = $paiement->getDevis();
-        $fiche = $devis?->getFiche();
+        $fiche = $devis?->getFicheMedicale();
         $patient = $fiche?->getPatient();
 
         return [

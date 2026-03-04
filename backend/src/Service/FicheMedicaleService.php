@@ -141,50 +141,126 @@ class FicheMedicaleService
         }
 
         if (isset($data['medicaments']) && is_array($data['medicaments'])) {
-            $this->clearCollection($entretien->getMedicaments());
+            $incomingIds = array_filter(array_map(fn($m) => $m['id'] ?? null, $data['medicaments']));
+
+            foreach ($entretien->getMedicaments() as $existing) {
+                if ($existing->getId() && !in_array($existing->getId(), $incomingIds, true)) {
+                    $entretien->getMedicaments()->removeElement($existing);
+                    $this->em->remove($existing);
+                }
+            }
+
             foreach ($data['medicaments'] as $m) {
-                $med = new FicheEntretienMedicament();
-                $med->setEntretien($entretien);
+                $med = null;
+                if (!empty($m['id'])) {
+                    $med = $this->em->getRepository(FicheEntretienMedicament::class)->find($m['id']);
+                }
+                if (!$med) {
+                    $med = new FicheEntretienMedicament();
+                    $med->setEntretien($entretien);
+                }
+
                 $med->setNom($m['nom'] ?? $m['name'] ?? $m['key'] ?? (is_string($m) ? $m : null));
                 $med->setEstUtilise($this->toBool($m['estUtilise'] ?? $m['value'] ?? $m['utilise'] ?? null));
                 $med->setDetails($m['details'] ?? $m['description'] ?? null);
+
                 $this->em->persist($med);
+                if (!$entretien->getMedicaments()->contains($med)) {
+                    $entretien->getMedicaments()->add($med);
+                }
             }
         }
 
         if (isset($data['affections']) && is_array($data['affections'])) {
-            $this->clearCollection($entretien->getAffections());
+            $incomingIds = array_filter(array_map(fn($a) => $a['id'] ?? null, $data['affections']));
+
+            foreach ($entretien->getAffections() as $existing) {
+                if ($existing->getId() && !in_array($existing->getId(), $incomingIds, true)) {
+                    $entretien->getAffections()->removeElement($existing);
+                    $this->em->remove($existing);
+                }
+            }
+
             foreach ($data['affections'] as $a) {
-                $aff = new FicheEntretienAffection();
-                $aff->setEntretien($entretien);
+                $aff = null;
+                if (!empty($a['id'])) {
+                    $aff = $this->em->getRepository(FicheEntretienAffection::class)->find($a['id']);
+                }
+                if (!$aff) {
+                    $aff = new FicheEntretienAffection();
+                    $aff->setEntretien($entretien);
+                }
+
                 $aff->setNom($a['nom'] ?? $a['name'] ?? $a['key'] ?? (is_string($a) ? $a : null));
                 $aff->setEstPresente($this->toBool($a['estPresente'] ?? $a['value'] ?? $a['present'] ?? null));
                 $aff->setDetails($a['details'] ?? $a['description'] ?? null);
+
                 $this->em->persist($aff);
+                if (!$entretien->getAffections()->contains($aff)) {
+                    $entretien->getAffections()->add($aff);
+                }
             }
         }
 
         if (isset($data['questions']) && is_array($data['questions'])) {
-            $this->clearCollection($entretien->getQuestions());
+            $incomingIds = array_filter(array_map(fn($q) => $q['id'] ?? null, $data['questions']));
+
+            foreach ($entretien->getQuestions() as $existing) {
+                if ($existing->getId() && !in_array($existing->getId(), $incomingIds, true)) {
+                    $entretien->getQuestions()->removeElement($existing);
+                    $this->em->remove($existing);
+                }
+            }
+
             foreach ($data['questions'] as $q) {
-                $question = new FicheEntretienQuestion();
-                $question->setEntretien($entretien);
-                $question->setQuestion($q['question'] ?? $q['key'] ?? (is_string($q) ? $q : null));
+                $question = null;
+                if (!empty($q['id'])) {
+                    $question = $this->em->getRepository(FicheEntretienQuestion::class)->find($q['id']);
+                }
+                if (!$question) {
+                    $question = new FicheEntretienQuestion();
+                    $question->setEntretien($entretien);
+                }
+
+                $question->setQuestion($q['question'] ?? $q['nom'] ?? $q['key'] ?? (is_string($q) ? $q : null));
                 $question->setReponse($this->toBool($q['reponse'] ?? $q['value'] ?? $q['oui'] ?? null));
                 $question->setPrecision($q['precision'] ?? $q['details'] ?? null);
+
                 $this->em->persist($question);
+                if (!$entretien->getQuestions()->contains($question)) {
+                    $entretien->getQuestions()->add($question);
+                }
             }
         }
 
         if (isset($data['habitudes']) && is_array($data['habitudes'])) {
-            $this->clearCollection($entretien->getHabitudes());
+            $incomingIds = array_filter(array_map(fn($h) => $h['id'] ?? null, $data['habitudes']));
+
+            foreach ($entretien->getHabitudes() as $existing) {
+                if ($existing->getId() && !in_array($existing->getId(), $incomingIds, true)) {
+                    $entretien->getHabitudes()->removeElement($existing);
+                    $this->em->remove($existing);
+                }
+            }
+
             foreach ($data['habitudes'] as $h) {
-                $habitude = new FicheEntretienHabitude();
-                $habitude->setEntretien($entretien);
-                $habitude->setType($h['type'] ?? $h['name'] ?? (is_string($h) ? $h : null));
+                $habitude = null;
+                if (!empty($h['id'])) {
+                    $habitude = $this->em->getRepository(FicheEntretienHabitude::class)->find($h['id']);
+                }
+                if (!$habitude) {
+                    $habitude = new FicheEntretienHabitude();
+                    $habitude->setEntretien($entretien);
+                }
+
+                $habitude->setType($h['type'] ?? $h['name'] ?? $h['nom'] ?? (is_string($h) ? $h : null));
                 $habitude->setEstPresente($this->toBool($h['estPresente'] ?? $h['value'] ?? $h['present'] ?? null));
                 $habitude->setQuantite($h['quantite'] ?? $h['details'] ?? null);
+
                 $this->em->persist($habitude);
+                if (!$entretien->getHabitudes()->contains($habitude)) {
+                    $entretien->getHabitudes()->add($habitude);
+                }
             }
         }
 

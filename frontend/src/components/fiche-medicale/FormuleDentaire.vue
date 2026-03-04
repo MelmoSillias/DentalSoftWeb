@@ -249,7 +249,7 @@ const clearEtatLabel = computed(() => {
 </script>
 
 <template>
-    <div class="grid grid-cols-1 xl:grid-cols-[1.1fr_0.9fr] gap-6 w-full min-w-0">
+    <div class="grid grid-cols-1 xl:grid-cols-[1.3fr_0.8fr] gap-6 w-full min-w-0">
         <div
             class="rounded-2xl border border-surface-200/70 dark:border-surface-700 bg-gradient-to-br from-surface-0 to-surface-50 dark:from-surface-900 dark:to-surface-900 p-4 sm:p-5 shadow-sm w-full min-w-0 overflow-hidden"
         >

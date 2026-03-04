@@ -207,6 +207,7 @@ const getArrayItem = (key, nom) => {
                                 </div>
                             </div>
                             <InputText
+                                v-if="getArrayItem('medicaments', name).estUtilise"
                                 :value="getArrayItem('medicaments', name).details"
                                 placeholder="Details"
                                 class="w-full"
@@ -224,6 +225,7 @@ const getArrayItem = (key, nom) => {
                                 <span class="text-sm font-medium text-surface-700 dark:text-surface-300">{{ name }}</span>
                             </div>
                             <InputText
+                                v-if="getArrayItem('affections', name).estPresente"
                                 :value="getArrayItem('affections', name).details"
                                 placeholder="Details"
                                 class="w-full"
@@ -243,17 +245,18 @@ const getArrayItem = (key, nom) => {
                             <SelectButton
                                 :options="yesNoOptions"
                                 optionLabel="label"
-                                optionValue="value"
+                                optionValue="value" 
                                 :modelValue="getArrayItem('questions', q).reponse"
                                 @update:modelValue="(v) => updateArrayItem('questions', q, { reponse: v, question: q })"
                             />
                         </div>
-                        <InputText
-                            :value="getArrayItem('questions', q).precision"
-                            placeholder="Precision si besoin"
-                            class="w-full"
-                            @update:modelValue="(v) => updateArrayItem('questions', q, { precision: v, question: q })"
-                        />
+                            <InputText
+                                v-if="getArrayItem('questions', q).reponse"
+                                :value="getArrayItem('questions', q).precision"
+                                placeholder="Precision si besoin"
+                                class="w-full"
+                                @update:modelValue="(v) => updateArrayItem('questions', q, { precision: v, question: q })"
+                            />
                     </div>
                 </div>
             </div>
@@ -284,3 +287,10 @@ const getArrayItem = (key, nom) => {
         </div>
     </div>
 </template>
+
+<style scoped>
+:deep(.p-togglebutton.p-togglebutton-checked .p-togglebutton-content) {
+    background-color: rgb(54, 199, 97) !important;
+    color: white;
+}
+</style>

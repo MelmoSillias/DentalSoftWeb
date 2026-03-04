@@ -534,9 +534,16 @@ const handleMarkAll = async () => {
 watch(
     () => [role.value, filterParams.value],
     async () => {
+        if (!auth.token) return;
+
         const params = filterParams.value;
         if (!params.date && (!params.from || !params.to)) return;
-        await fetchDashboard(role.value, params);
+
+        try {
+            await fetchDashboard(role.value, params);
+        } catch (_) {
+            // Ignore transient errors during logout/unmount transitions
+        }
     },
     { deep: true, immediate: true }
 );

@@ -291,7 +291,7 @@ const handleSubmit = (event) => {
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div class="flex flex-col gap-2 md:col-span-2" v-if="!isPatientPreselected">
                 <label class="font-semibold">Patient</label>
-                <Select v-model="selectedPatientId" :options="patientOptions" optionLabel="label" optionValue="value"
+                <Select v-model="selectedPatientId" :options="patientOptions  || []" optionLabel="label" optionValue="value"
                     placeholder="Choisir un patient" class="w-full" filter :loading="patientsLoading"
                     @filter="handlePatientFilter" />
             </div>
@@ -301,7 +301,7 @@ const handleSubmit = (event) => {
             </div>
             <div class="flex flex-col gap-2">
                 <label class="font-semibold">Médecin</label>
-                <Select v-model="form.medecinId" :options="medecinOptions" optionLabel="label" optionValue="value"
+                <Select v-model="form.medecinId" :options="medecinOptions  || []" optionLabel="label" optionValue="value"
                     placeholder="Choisir un médecin" class="w-full" />
             </div>
 
@@ -319,7 +319,7 @@ const handleSubmit = (event) => {
             </div>
             <div class="flex flex-col gap-2" v-if="form.payant">
                 <label class="font-semibold">Mode de paiement</label>
-                <Select v-model="form.modePaiementId" :options="paymentMethodOptions" optionLabel="label"
+                <Select v-model="form.modePaiementId" :options="paymentMethodOptions  || []" optionLabel="label"
                     optionValue="value" placeholder="Choisir un mode de paiement" class="w-full" />
                 <small class="text-gray-500">Le mode de paiement est requis pour les consultations payantes.</small>
             </div>

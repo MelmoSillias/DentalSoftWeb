@@ -15,6 +15,7 @@ import CreateRdvDialog from '@/components/agenda/shared/CreateRdvDialog.vue';
 import ReportRdvDialog from '@/components/agenda/shared/ReportRdvDialog.vue';
 import ValidateRdvDialog from '@/components/agenda/shared/ValidateRdvDialog.vue';
 import WeeklyView from '@/components/agenda/week/WeeklyView.vue';
+import { onMounted as vueOnMounted, nextTick } from 'vue';
 import { useRdvApi } from '@/composables/useRdvApi';
 import { useAuthStore } from '@/stores/auth';
 import { addMinutes } from '@/utils/dateUtils';
@@ -67,6 +68,7 @@ const scopedMedecinsList = computed(() => {
 });
 const activeIndex = ref('week');
 const refreshKey = ref(0);
+const weeklyViewRef = ref();
 const actionLoading = ref(false);
 
 
@@ -107,6 +109,9 @@ const submitCreate = async (payload) => {
 		await api.createRdv(payload);
 		notify('Rendez-vous créé');
 		refreshKey.value += 1;
+		nextTick(() => {
+			weeklyViewRef.value?.reloadOnAction?.();
+		});
 	} catch (err) {
 		notify("Création impossible", 'error');
 		console.error(err);
@@ -130,6 +135,9 @@ const confirmValidate = async ({ id, medecinId }) => {
 		await api.validateRdv(id, effectiveMedecinId, { createConsultation: !isMedecinUser.value });
 		notify('Rendez-vous validé');
 		refreshKey.value += 1;
+		nextTick(() => {
+			weeklyViewRef.value?.reloadOnAction?.();
+		});
 	} catch (err) {
 		notify('Validation impossible', 'error');
 		console.error(err);
@@ -149,6 +157,9 @@ const confirmCancel = async ({ id }) => {
 		await api.cancelRdv(id);
 		notify('Rendez-vous annulé');
 		refreshKey.value += 1;
+		nextTick(() => {
+			weeklyViewRef.value?.reloadOnAction?.();
+		});
 	} catch (err) {
 		notify('Annulation impossible', 'error');
 		console.error(err);
@@ -174,6 +185,9 @@ const submitReport = async (payload) => {
 		await api.reportRdv(payload.id, patchedPayload);
 		notify('Rendez-vous reporté');
 		refreshKey.value += 1;
+		nextTick(() => {
+			weeklyViewRef.value?.reloadOnAction?.();
+		});
 	} catch (err) {
 		notify('Report impossible', 'error');
 		console.error(err);
@@ -205,17 +219,18 @@ onMounted(() => {
 			</TabList>
 			<TabPanels>
 				<TabPanel value="week">
-					<WeeklyView
-						:medecins="scopedMedecinsList"
-						:api="api"
-						:refreshKey="refreshKey"
-						:lockedMedecinId="isMedecinUser ? connectedMedecinId : null"
-						:medecinReadonly="isMedecinUser"
-						@request-create="openCreate"
-						@request-validate="openValidate"
-						@request-cancel="openCancel"
-						@request-report="openReport"
-					/>
+					       <WeeklyView
+						       ref="weeklyViewRef"
+						       :medecins="scopedMedecinsList"
+						       :api="api"
+						       :refreshKey="refreshKey"
+						       :lockedMedecinId="isMedecinUser ? connectedMedecinId : null"
+						       :medecinReadonly="isMedecinUser"
+						       @request-create="openCreate"
+						       @request-validate="openValidate"
+						       @request-cancel="openCancel"
+						       @request-report="openReport"
+					       />
 				</TabPanel>
 				<TabPanel value="day">
 					<DailyView

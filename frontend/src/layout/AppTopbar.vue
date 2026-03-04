@@ -1,13 +1,14 @@
 <script setup>
-import { ref, onMounted, onBeforeUnmount, watch } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { useLayout } from '@/layout/composables/layout';
 import { useAuthStore } from '@/stores/auth';
 import AppConfigurator from './AppConfigurator.vue';
 import Popover from 'primevue/popover';
 import Button from 'primevue/button';
+import OverlayBadge from 'primevue/overlaybadge';
 import { useToast } from 'primevue/usetoast';
 import router from '@/router';
-import http from '@/service/http';
+import { useMercureNotifications } from '@/composables/useMercureNotifications';
 
 const { toggleMenu, toggleDarkMode, isDarkTheme } = useLayout();
 const auth = useAuthStore();
@@ -21,12 +22,90 @@ const profileButton = ref(null);
 const notificationsPopover = ref(null);
 const profilePopover = ref(null);
 const isLoggingOut = ref(false);
-const notifications = ref([]);
-const unreadCount = ref(0);
 const isNotificationsLoading = ref(false);
 
-let eventSource = null;
-let reconnectTimer = null;
+
+const {
+    notifications,
+    unreadCount,
+    start: startNotifications,
+    markAsRead,
+    markAllAsRead,
+    onNotificationReceived // à ajouter dans le composable
+} = useMercureNotifications();
+
+// Son de notification (bip)
+let notificationAudio = null;
+let audioEnabled = false;
+function enableNotificationAudio() {
+    if (!notificationAudio) notificationAudio = new Audio('/notification.mp3');
+    audioEnabled = true;
+}
+function playNotificationSound() {
+    if (!audioEnabled) return;
+    try {
+        notificationAudio.currentTime = 0;
+        notificationAudio.play();
+    } catch (_) { }
+}
+
+// Active le son après la première interaction utilisateur (clic n'importe où)
+if (typeof window !== 'undefined') {
+    const enableAudioOnce = () => {
+        enableNotificationAudio();
+        window.removeEventListener('click', enableAudioOnce, true);
+    };
+    window.addEventListener('click', enableAudioOnce, true);
+}
+
+function resolveNotificationSeverity(type) {
+    switch (type) {
+        case 'success':
+            return 'success';
+        case 'error':
+            return 'error';
+        case 'warning':
+            return 'warn';
+        default:
+            return 'info';
+    }
+};
+
+// Toast notification
+function showNotificationToast(notification) {
+    toast.add({
+        severity: resolveNotificationSeverity(notification.type),
+        summary: notification.title || 'Notification',
+        detail: notification.message,
+        life: 3000
+    });
+}
+
+// Gestion de l'événement notification reçue
+if (onNotificationReceived) {
+    onNotificationReceived((notif) => {
+        playNotificationSound();
+        showNotificationToast(notif);
+    });
+}
+
+const topbarNotifications = computed(() => notifications.value.slice(0, 5));
+
+function getNotificationIcon(notification) {
+    const type = notification?.type;
+    if (type === 'success') return 'pi pi-check-circle';
+    if (type === 'error') return 'pi pi-times-circle';
+    if (type === 'warning') return 'pi pi-exclamation-triangle';
+    return 'pi pi-info-circle';
+}
+
+function getNotificationIconClass(notification) {
+    const type = notification?.type;
+    if (type === 'success') return 'text-green-500';
+    if (type === 'error') return 'text-red-500';
+    if (type === 'warning') return 'text-orange-500';
+    return 'text-primary-500';
+}
 
 function updateDateTime() {
     const now = new Date();
@@ -41,30 +120,25 @@ onMounted(() => {
     if (auth.token && !auth.user) {
         auth.fetchUser(); // Fetch user data if token exists
     }
-
-    // if (auth.token) {
-    //     loadNotifications();
-    //     connectMercure();
-    // }
+    if (auth.token) {
+        isNotificationsLoading.value = true;
+        startNotifications()
+            .catch(() => {
+                toast.add({
+                    severity: 'warn',
+                    summary: 'Notifications',
+                    detail: 'Impossible de charger les notifications.',
+                    life: 3000
+                });
+            })
+            .finally(() => {
+                isNotificationsLoading.value = false;
+            });
+    }
 });
-// onBeforeUnmount(() => {
-//     clearInterval(timer);
-//     disconnectMercure();
-// });
-
-// watch(
-//     () => auth.token,
-//     (token) => {
-//         if (token) {
-//             loadNotifications();
-//             connectMercure();
-//         } else {
-//             notifications.value = [];
-//             unreadCount.value = 0;
-//             disconnectMercure();
-//         }
-//     }
-// );
+onBeforeUnmount(() => {
+    clearInterval(timer);
+});
 
 function toggleNotificationsPopover(event) {
     if (showNotificationsPopover.value) {
@@ -89,7 +163,6 @@ async function handleLogout() {
     try {
         auth.logout();
         showProfilePopover.value = false; // Close Popover
-        // disconnectMercure();
         toast.add({
             severity: 'success',
             summary: 'Déconnexion réussie',
@@ -122,148 +195,13 @@ function openProfile() {
     router.push({ name: 'profile' });
 }
 
-async function loadNotifications() {
-    if (!auth.token) return;
-
-    isNotificationsLoading.value = true;
-    try {
-        const [profileRes, notificationsRes] = await Promise.all([
-            http.get('me'),
-            http.get('me/notifications?filter=unread&limit=5')
-        ]);
-
-        unreadCount.value = profileRes?.data?.notificationsUnreadCount || 0;
-        const items = notificationsRes?.data?.items || [];
-        notifications.value = items.map(normalizeNotification);
-    } catch (err) {
-        toast.add({
-            severity: 'warn',
-            summary: 'Notifications',
-            detail: 'Impossible de charger les notifications.',
-            life: 3000
-        });
-    } finally {
-        isNotificationsLoading.value = false;
-    }
-}
-
-async function connectMercure() {
-    if (!auth.token) return;
-
-    // disconnectMercure();
-
-    try {
-        const res = await http.get('me/notifications/mercure');
-        const { publicUrl, topic, token } = res?.data || {};
-        if (!publicUrl || !topic || !token) {
-            return;
-        }
-
-        const url = new URL(publicUrl);
-        url.searchParams.append('topic', topic);
-        url.searchParams.append('token', token);
-
-        eventSource = new EventSource(url.toString());
-        eventSource.addEventListener('notification', (event) => {
-            try {
-                const payload = JSON.parse(event.data);
-                handleIncomingNotification(payload);
-            } catch (_) {
-                // Ignore malformed payloads
-            }
-        });
-
-        eventSource.onerror = () => {
-            scheduleReconnect();
-        };
-    } catch (err) {
-        scheduleReconnect();
-    }
-}
-
-function disconnectMercure() {
-    if (eventSource) {
-        eventSource.close();
-        eventSource = null;
-    }
-    if (reconnectTimer) {
-        clearTimeout(reconnectTimer);
-        reconnectTimer = null;
-    }
-}
-
-function scheduleReconnect() {
-    if (reconnectTimer) {
-        return;
-    }
-    disconnectMercure();
-    reconnectTimer = setTimeout(() => {
-        reconnectTimer = null;
-        if (auth.token) {
-            connectMercure();
-        }
-    }, 5000);
-}
-
-function normalizeNotification(item) {
-    const status = item?.status || item?.etatVu;
-    return {
-        id: item?.id,
-        message: item?.message || '',
-        type: item?.type || 'info',
-        priority: item?.priority || 'info',
-        date: item?.createdAt || item?.date || null,
-        read: (item?.read ?? status === 'vu') || (status === 'lu'),
-        link: item?.link || null,
-        emitter: item?.emitter || null
-    };
-}
-
-function handleIncomingNotification(payload) {
-    const notification = normalizeNotification(payload);
-    if (!notification.id) return;
-
-    const exists = notifications.value.some((item) => item.id === notification.id);
-    if (!exists) {
-        notifications.value.unshift(notification);
-    }
-
-    notifications.value = notifications.value.slice(0, 5);
-
-    if (!notification.read) {
-        unreadCount.value = Math.max(0, unreadCount.value + 1);
-    }
-
-    toast.add({
-        severity: mapNotificationSeverity(notification.type),
-        summary: 'Nouvelle notification',
-        detail: notification.message,
-        life: 5000
-    });
-}
-
-function mapNotificationSeverity(type) {
-    switch (type) {
-        case 'success':
-            return 'success';
-        case 'warning':
-            return 'warn';
-        case 'danger':
-            return 'error';
-        default:
-            return 'info';
-    }
-}
-
 async function markNotificationRead(notification) {
-    if (!notification?.id || notification.read) {
+    if (!notification?.id || notification.status === 'vu') {
         return;
     }
 
     try {
-        await http.post('me/notifications/mark-read', { ids: [notification.id] });
-        notification.read = true;
-        unreadCount.value = Math.max(0, unreadCount.value - 1);
+        await markAsRead([notification.id]);
     } catch (_) {
         // ignore
     }
@@ -271,12 +209,7 @@ async function markNotificationRead(notification) {
 
 async function markAllNotificationsRead() {
     try {
-        await http.post('me/notifications/mark-all', {});
-        notifications.value = notifications.value.map((item) => ({
-            ...item,
-            read: true
-        }));
-        unreadCount.value = 0;
+        await markAllAsRead();
     } catch (_) {
         // ignore
     }
@@ -316,9 +249,9 @@ async function handleNotificationClick(notification) {
                 <div class="h-12 w-12 rounded-full rounded-50 p-1 bg-white dark:bg-white/90">
                     <img src="@/assets/logo.png" class="app-logo" width="54" height="40" />
                 </div>
-                
+
                 <span style="font-weight: 500;">Dentalsoft <br> <small>Cabinet Dentaire Orodent</small></span>
-                
+
             </router-link>
         </div>
         <div class="layout-topbar-actions">
@@ -334,13 +267,88 @@ async function handleNotificationClick(notification) {
                     >
                         <i class="pi pi-palette"></i>
                     </button> -->
-                    <!-- <AppConfigurator />
+                <!-- <AppConfigurator />
                 </div> -->
+                <button type="button" class="notification-btn" :class="{ 'has-unread': unreadCount > 0 }"
+                    @click="toggleNotificationsPopover($event)" ref="notificationsButton">
+                    <OverlayBadge v-if="unreadCount && unreadCount !== 0" :value="unreadCount" severity="danger"
+                        class="inline-flex items-center justify-center">
+                        <i class="pi pi-bell text-2xl" /> <!-- augmente la taille pour tester visibilité -->
+                    </OverlayBadge>
+                    <i v-else class="pi pi-bell text-2xl" /> <!-- fallback icon when no unread notifications -->
+
+                    <span class="sr-only">Notifications ({{ unreadCount }} non lues)</span>
+                </button>
+                <Popover ref="notificationsPopover" v-model:visible="showNotificationsPopover" :autoHide="true"
+                    :dismissable="true" :target="notificationsButton" position="bottom"
+                    class="w-[24rem] max-w-[90vw] bg-surface-0 dark:bg-surface-900 shadow-xl rounded-2xl border border-surface-200/70 dark:border-surface-700/70 p-0 overflow-hidden"
+                    style="z-index: 1000">
+                    <div
+                        class="px-4 py-3 border-b border-surface-200/70 dark:border-surface-700/70 bg-surface-50/80 dark:bg-surface-800/80">
+                        <div class="flex items-center justify-between gap-3">
+                            <div class="flex items-center gap-2">
+                                <i class="pi pi-bell text-primary-500"></i>
+                                <span class="font-semibold text-surface-900 dark:text-surface-50">Notifications</span>
+                                <span v-if="unreadCount"
+                                    class="text-xs px-2 py-0.5 rounded-full bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300">
+                                    {{ unreadCount }} non lue(s)
+                                </span>
+                            </div>
+                            <button type="button"
+                                class="text-xs font-medium text-primary-600 dark:text-primary-400 hover:underline"
+                                @click="markAllNotificationsRead">
+                                Tout lire
+                            </button>
+                        </div>
+                    </div>
+                    <div v-if="isNotificationsLoading"
+                        class="p-6 text-sm text-surface-600 dark:text-surface-300 text-center">
+                        <i class="pi pi-spin pi-spinner mr-2"></i>
+                        Chargement des notifications...
+                    </div>
+                    <div v-else-if="!notifications.length" class="p-6 text-center">
+                        <div
+                            class="inline-flex items-center justify-center h-10 w-10 rounded-full bg-surface-100 dark:bg-surface-800 mb-3">
+                            <i class="pi pi-bell-slash text-surface-400"></i>
+                        </div>
+                        <p class="text-sm font-medium text-surface-700 dark:text-surface-200">Aucune notification</p>
+                        <p class="text-xs text-surface-500 dark:text-surface-400 mt-1">Les nouvelles alertes
+                            apparaîtront ici.</p>
+                    </div>
+                    <div v-else class="p-2 space-y-1 max-h-[22rem] overflow-y-auto">
+                        <button v-for="notification in topbarNotifications" :key="notification.id" type="button"
+                            class="group w-full text-left p-3 rounded-xl border border-transparent hover:border-surface-200 dark:hover:border-surface-700 hover:bg-surface-50 dark:hover:bg-surface-800 transition-colors"
+                            :class="{
+                                'bg-primary-50/50 dark:bg-primary-900/20 border-primary-200/60 dark:border-primary-800/60': notification.status !== 'vu'
+                            }" @click="handleNotificationClick(notification)">
+                            <div class="flex items-start gap-3">
+                                <div class="mt-0.5">
+                                    <i
+                                        :class="[getNotificationIcon(notification), getNotificationIconClass(notification)]"></i>
+                                </div>
+                                <div class="min-w-0 flex-1">
+                                    <p class="text-sm text-surface-800 dark:text-surface-100 leading-5"
+                                        :class="{ 'font-semibold': notification.status !== 'vu' }">
+                                        {{ notification.message }}
+                                    </p>
+                                    <div
+                                        class="mt-1 flex items-center gap-2 text-xs text-surface-500 dark:text-surface-400">
+                                        <span>{{ formatNotificationDate(notification.createdAt) }}</span>
+                                        <span v-if="notification.link" class="inline-flex items-center gap-1">
+                                            <i class="pi pi-link"></i>
+                                            Action disponible
+                                        </span>
+                                    </div>
+                                </div>
+                                <div v-if="notification.status !== 'vu'"
+                                    class="mt-1 h-2 w-2 rounded-full bg-primary-500"></div>
+                            </div>
+                        </button>
+                    </div>
+                </Popover>
             </div>
-            <button
-                class="layout-topbar-menu-button layout-topbar-action"
-                v-styleclass="{ selector: '@next', enterFromClass: 'hidden', enterActiveClass: 'animate-scalein', leaveToClass: 'hidden', leaveActiveClass: 'animate-fadeout', hideOnOutsideClick: true }"
-            >
+            <button class="layout-topbar-menu-button layout-topbar-action"
+                v-styleclass="{ selector: '@next', enterFromClass: 'hidden', enterActiveClass: 'animate-scalein', leaveToClass: 'hidden', leaveActiveClass: 'animate-fadeout', hideOnOutsideClick: true }">
                 <i class="pi pi-ellipsis-v"></i>
             </button>
             <div class="layout-topbar-menu hidden lg:block">
@@ -355,73 +363,21 @@ async function handleNotificationClick(notification) {
                     </div> -->
                     <!-- ======= NOTIFICATIONS avec POPOVER ======= -->
                     <div class="relative">
-                        <button type="button" class="layout-topbar-action flex items-center gap-1" @click="toggleNotificationsPopover" ref="notificationsButton">
-                            <i class="pi pi-bell"></i>
-                            <span>Notifications</span>
-                            <span v-if="unreadCount" class="notification-badge">{{ unreadCount > 99 ? '99+' : unreadCount }}</span>
-                        </button>
-                        <Popover
-                            ref="notificationsPopover"
-                            v-model:visible="showNotificationsPopover"
-                            :autoHide="true"
-                            :dismissable="true"
-                            :target="notificationsButton"
-                            position="bottom"
-                            class="w-72 bg-white dark:bg-gray-800 shadow-lg rounded-lg p-4"
-                            style="z-index: 1000"
-                        >
-                            <div class="flex items-center justify-between mb-3">
-                                <span class="font-semibold text-gray-800 dark:text-gray-100">Notifications</span>
-                                <button
-                                    type="button"
-                                    class="text-xs text-primary-600 dark:text-primary-400 hover:underline"
-                                    @click="markAllNotificationsRead"
-                                >
-                                    Tout lire
-                                </button>
-                            </div>
-                            <div v-if="isNotificationsLoading" class="text-sm text-gray-600 dark:text-gray-300 text-center">
-                                Chargement...
-                            </div>
-                            <div v-else-if="!notifications.length" class="text-sm text-gray-600 dark:text-gray-300 text-center">
-                                Aucune notification
-                            </div>
-                            <div v-else class="space-y-2">
-                                <button
-                                    v-for="notification in notifications"
-                                    :key="notification.id"
-                                    type="button"
-                                    class="w-full text-left p-2 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700"
-                                    @click="handleNotificationClick(notification)"
-                                >
-                                    <p class="text-sm font-medium text-gray-800 dark:text-gray-100" :class="{ 'opacity-70': notification.read }">
-                                        {{ notification.message }}
-                                    </p>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400">
-                                        {{ formatNotificationDate(notification.date) }}
-                                    </p>
-                                </button>
-                            </div>
-                        </Popover>
+
                     </div>
                     <!-- ======= PROFIL avec POPOVER ======= -->
                     <div class="relative">
-                        <button type="button" class="layout-topbar-action flex items-center gap-1" @click="toggleProfilePopover" ref="profileButton">
+                        <button type="button" class="layout-topbar-action flex items-center gap-1"
+                            @click="toggleProfilePopover" ref="profileButton">
                             <i class="pi pi-user"></i>
                             <span>Profil</span>
                         </button>
-                        <Popover
-                            ref="profilePopover"
-                            v-model:visible="showProfilePopover"
-                            :autoHide="true"
-                            :dismissable="true"
-                            :target="profileButton"
-                            position="bottom"
-                            class="w-64 bg-white dark:bg-gray-800 shadow-lg rounded-lg p-4"
-                            style="z-index: 1000"
-                        >
+                        <Popover ref="profilePopover" v-model:visible="showProfilePopover" :autoHide="true"
+                            :dismissable="true" :target="profileButton" position="bottom"
+                            class="w-64 bg-white dark:bg-gray-800 shadow-lg rounded-lg p-4" style="z-index: 1000">
                             <div class="flex items-center gap-3 border-b pb-3 mb-3">
-                                <img src="https://cdn-icons-png.flaticon.com/512/149/149071.png" alt="User Avatar" class="w-12 h-12 rounded-full border border-gray-300 dark:border-gray-600" />
+                                <img src="https://cdn-icons-png.flaticon.com/512/149/149071.png" alt="User Avatar"
+                                    class="w-12 h-12 rounded-full border border-gray-300 dark:border-gray-600" />
                                 <div>
                                     <p class="font-semibold text-lg text-gray-800 dark:text-gray-100">
                                         {{ auth.user?.username || 'Utilisateur' }}
@@ -432,8 +388,10 @@ async function handleNotificationClick(notification) {
                                 </div>
                             </div>
                             <div class="mt-4 space-y-2">
-                                <Button class="p-button-secondary p-button-sm w-full" label="Mon profil" icon="pi pi-user" iconPos="left" @click="openProfile" />
-                                <Button :loading="isLoggingOut" class="p-button-danger p-button-sm w-full" label="Déconnexion" icon="pi pi-sign-out" iconPos="left" @click="handleLogout" />
+                                <Button class="p-button-secondary p-button-sm w-full" label="Mon profil"
+                                    icon="pi pi-user" iconPos="left" @click="openProfile" />
+                                <Button :loading="isLoggingOut" class="p-button-danger p-button-sm w-full"
+                                    label="Déconnexion" icon="pi pi-sign-out" iconPos="left" @click="handleLogout" />
                             </div>
                         </Popover>
                     </div>
@@ -468,10 +426,12 @@ async function handleNotificationClick(notification) {
     border-radius: 4px;
     transition: background-color 0.2s;
 }
+
 .layout-topbar-action:hover {
     color: #fff;
     background-color: rgba(255, 255, 255, 0.12);
 }
+
 .notification-badge {
     display: inline-flex;
     align-items: center;
@@ -486,12 +446,63 @@ async function handleNotificationClick(notification) {
     font-weight: 600;
     line-height: 1;
 }
+
 :deep(.p-button.p-button-danger) {
     background-color: #ef4444;
     border-color: #ef4444;
 }
+
 :deep(.p-button.p-button-danger:hover) {
     background-color: #dc2626;
     border-color: #dc2626;
+}
+
+.notification-btn {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    color: #fff;
+    background: transparent;
+    transition: background-color 0.2s ease;
+    cursor: pointer;
+    position: relative;
+
+    &:hover {
+        background-color: rgba(255, 255, 255, 0.12);
+    }
+
+    &:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.3);
+    }
+
+    .pi-bell {
+        font-size: 1.3rem;
+    }
+
+    &.has-unread {
+        animation: ring 2s ease-in-out infinite;
+
+        .pi-bell {
+            color: #fef2f2;
+        }
+    }
+}
+
+@keyframes ring {
+    0% {
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.55);
+    }
+
+    70% {
+        box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+    }
 }
 </style>

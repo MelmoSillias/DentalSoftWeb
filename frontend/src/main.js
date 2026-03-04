@@ -8,6 +8,8 @@ import { registerSW } from 'virtual:pwa-register';
 import { createApp } from 'vue';
 import App from './App.vue';
 import router from './router';
+// main.js ou main.ts
+
 
 // Défensive: wrappe l'ajout/suppression de listeners sur matchMedia
 // pour éviter que des listeners tiers (ex: PrimeVue) lèvent des exceptions
@@ -69,6 +71,9 @@ if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
                 return origRemoveListener.call(this, listener);
             };
         }
+
+        // no EventSource polyfill here; we use fetch-event-source in composable
+
     } catch (e) { 
         console.warn('matchMedia safe wrapper failed:', e);
     }

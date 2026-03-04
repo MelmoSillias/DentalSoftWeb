@@ -133,6 +133,8 @@ final class NotificationService
     {
         $qb = $this->notificationRepository->createQueryBuilder('n')
             ->andWhere('n.user = :user')
+            ->andWhere('n.etatVu = :unread')
+            ->setParameter('unread', 'non_vu')
             ->setParameter('user', $user);
 
         if ($ids !== []) {

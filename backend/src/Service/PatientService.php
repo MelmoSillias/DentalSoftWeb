@@ -6,7 +6,6 @@ use App\Entity\ActeMedical;
 use App\Entity\Allergy;
 use App\Entity\Antecedent;
 use App\Entity\ContactUrgence;
-use App\Entity\Notification;
 use App\Entity\Patient;
 use App\Entity\Rdv;
 use App\Entity\Consultation;
@@ -18,6 +17,7 @@ use App\Entity\User;
 use App\Entity\FicheMedicale;
 use App\Entity\Ordonnance;
 use App\Entity\OrdonnanceLigne;
+use App\Event\EntityActionEvent;
 use App\Repository\ConsultationRepository;
 use App\Repository\EmployeRepository;
 use App\Repository\PatientRepository;
@@ -27,6 +27,7 @@ use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use App\Service\CashdeskService;
 use App\Service\FicheMedicaleService;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Contracts\Cache\CacheInterface;
 use Symfony\Contracts\Cache\ItemInterface;
 
@@ -39,12 +40,12 @@ class PatientService
         private ConsultationRepository $consultationRepo,
         private EmployeRepository $employeRepo,
         private ConsultationNotificationService $consultationNotificationService,
-        private NotificationService $notificationService,
         private NotificationRecipientResolver $notificationRecipientResolver,
         private RdvNotificationService $rdvNotificationService,
         private CashdeskService $cashdeskService,
         private FicheMedicaleService $ficheMedicaleService,
         private CacheInterface $cache,
+        private EventDispatcherInterface $eventDispatcher,
     ) {
     }
 
@@ -325,64 +326,63 @@ class PatientService
     }
 
     public function searchPatients(string $term, int $limit = 20): array
-    {
-        $term = mb_strtolower(trim($term));
-        $limit = max(1, min($limit, 50));
-        if ($term === '') {
-            return [];
+{
+    $term = mb_strtolower(trim($term));
+    $limit = max(1, min($limit, 50));
+
+    if ($term === '') {
+        return [];
+    }
+
+    $cacheKey = sprintf('patients.search.%d.%s', $limit, sha1($term));
+
+    return $this->cache->get($cacheKey, function (ItemInterface $item) use ($term, $limit) {
+
+        $item->expiresAfter(60);
+
+        $qb = $this->patientRepo->createQueryBuilder('p')
+            ->select('p.id, p.nom, p.prenom, p.telephone');
+
+        $like = '%' . $term . '%';
+
+        $orX = $qb->expr()->orX(
+            'LOWER(p.nom) LIKE :term',
+            'LOWER(p.prenom) LIKE :term',
+            'LOWER(p.telephone) LIKE :term',
+            "LOWER(CONCAT(p.nom, ' ', p.prenom)) LIKE :term",
+            "LOWER(CONCAT(p.prenom, ' ', p.nom)) LIKE :term"
+        );
+
+        // Optimisation téléphone (ignore espaces)
+        $digits = preg_replace('/\D+/', '', $term);
+        if (!empty($digits)) {
+            $orX->add("REPLACE(p.telephone, ' ', '') LIKE :digits");
+            $qb->setParameter('digits', '%' . $digits . '%');
         }
 
-        $cacheKey = sprintf('patients.search.%d.%s', $limit, sha1($term));
+        $qb->andWhere($orX)
+           ->setParameter('term', $like);
 
-        return $this->cache->get($cacheKey, function (ItemInterface $item) use ($term, $limit) {
-            $item->expiresAfter(60);
-            $qb = $this->patientRepo->createQueryBuilder('p')
-                ->select('DISTINCT p.id, p.nom, p.prenom, p.telephone');
+        $rows = $qb
+            ->orderBy('p.nom', 'ASC')
+            ->addOrderBy('p.prenom', 'ASC')
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getArrayResult();
 
-            if ($term !== '') {
-                $digitsOnly = preg_replace('/\D+/', '', $term);
-                $orX = $qb->expr()->orX(
-                    'LOWER(p.nom) LIKE :term',
-                    'LOWER(p.prenom) LIKE :term',
-                    'LOWER(CONCAT(COALESCE(p.nom, \'\'), \' \', COALESCE(p.prenom, \'\'))) LIKE :term',
-                    'LOWER(CONCAT(COALESCE(p.prenom, \'\'), \' \', COALESCE(p.nom, \'\'))) LIKE :term',
-                    'LOWER(p.telephone) LIKE :term',
-                    'LOWER(p.adresse) LIKE :term'
-                );
+        return array_map(function (array $row) {
+            $fullname = trim(($row['prenom'] ?? '') . ' ' . ($row['nom'] ?? ''));
 
-                if (!empty($digitsOnly)) {
-                    $pairs = str_split($digitsOnly, 2);
-                    $spacedDigits = trim(implode(' ', $pairs));
-
-                    $orX->add('p.telephone LIKE :termPhoneDigits');
-                    $orX->add('p.telephone LIKE :termPhoneSpaced');
-                    $qb->setParameter('termPhoneDigits', '%' . $digitsOnly . '%');
-                    $qb->setParameter('termPhoneSpaced', '%' . $spacedDigits . '%');
-                }
-
-                $qb->andWhere($orX)
-                    ->setParameter('term', '%' . $term . '%');
-            }
-
-            $rows = $qb
-                ->orderBy('p.nom', 'ASC')
-                ->addOrderBy('p.prenom', 'ASC')
-                ->setMaxResults($limit)
-                ->getQuery()
-                ->getArrayResult();
-
-            return array_map(function (array $row) {
-                $fullname = trim(($row['prenom'] ?? '') . ' ' . ($row['nom'] ?? ''));
-                return [
-                    'id' => $row['id'],
-                    'nom' => $row['nom'] ?? '',
-                    'prenom' => $row['prenom'] ?? '',
-                    'fullname' => $fullname,
-                    'telephone' => $row['telephone'] ?? '',
-                ];
-            }, $rows);
-        });
-    }
+            return [
+                'id' => $row['id'],
+                'nom' => $row['nom'] ?? '',
+                'prenom' => $row['prenom'] ?? '',
+                'fullname' => $fullname,
+                'telephone' => $row['telephone'] ?? '',
+            ];
+        }, $rows);
+    });
+}
 
     public function getPatientDetailsData(int $id): ?array
     {
@@ -562,13 +562,19 @@ class PatientService
         $author = $actor?->getUsername() ?? 'le système';
         $message = sprintf('Nouveau patient %s ajouté par %s.', $patientName, $author);
 
-        $this->notificationService->notifyMany(
-            $recipients,
-            $message,
-            Notification::PRIORITY_INFO,
-            '/reception/patients',
-            Notification::TYPE_SUCCESS,
-            $actor,
+        $this->eventDispatcher->dispatch(
+            new EntityActionEvent(
+                $patient,
+                'created',
+                ['ROLE_ADMIN', 'ROLE_RECEPTION', 'ROLE_RECEPTIONNISTE'],
+                $actor,
+                [
+                    'message' => $message,
+                    'priority' => 'info',
+                    'type' => 'success',
+                    'link' => '/reception/patients',
+                ],
+            )
         );
     }
 

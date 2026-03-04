@@ -6,7 +6,6 @@ use App\Entity\ActeMedical;
 use App\Entity\Allergy;
 use App\Entity\Antecedent;
 use App\Entity\Consultation;
-use App\Entity\Notification;
 use App\Entity\Ordonnance;
 use App\Entity\OrdonnanceLigne;
 use App\Entity\ContenuDevis;
@@ -17,11 +16,13 @@ use App\Entity\User;
 use App\Entity\FicheMedicale;
 use App\Entity\FicheObservation;
 use App\Entity\Salle;
+use App\Event\EntityActionEvent;
 use App\Repository\ConsultationRepository;
 use App\Repository\DevisRepository;
 use App\Repository\EmployeRepository;
 use App\Repository\SalleRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
@@ -40,9 +41,8 @@ class ConsultationService
         private ConsultationRepository $consultationRepo,
         private EmployeRepository $employeRepo,
         private SalleRepository $salleRepo,
-        private ConsultationNotificationService $consultationNotificationService,
-        private NotificationService $notificationService,
         private NotificationRecipientResolver $notificationRecipientResolver,
+        private EventDispatcherInterface $eventDispatcher,
         ParameterBagInterface $params,
         private CacheInterface $cache,
     ) {
@@ -610,12 +610,19 @@ class ConsultationService
             $amountLabel,
         );
 
-        $this->notificationService->notifyMany(
-            $recipients,
-            $message,
-            Notification::PRIORITY_INFO,
-            '/reception/caisse',
-            Notification::TYPE_SUCCESS,
+        $this->eventDispatcher->dispatch(
+            new EntityActionEvent(
+                $consultation,
+                'closed',
+                ['ROLE_RECEPTION', 'ROLE_RECEPTIONNISTE'],
+                null,
+                [
+                    'message' => $message,
+                    'priority' => 'info',
+                    'type' => 'success',
+                    'link' => '/reception/caisse',
+                ],
+            )
         );
     }
 
@@ -932,7 +939,19 @@ class ConsultationService
             $this->em->flush();
         }
 
-        $this->consultationNotificationService->notifyCancellation($consultation, $actor);
+        $this->eventDispatcher->dispatch(
+            new EntityActionEvent(
+                $consultation,
+                'cancelled',
+                ['ROLE_MEDECIN'],
+                $actor,
+                [
+                    'priority' => 'warning',
+                    'type' => 'warning',
+                    'link' => '/consultations',
+                ],
+            )
+        );
 
         return true;
     }

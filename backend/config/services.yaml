@@ -51,7 +51,11 @@ services:
     App\Service\Payment\ModePaiementService: ~
     App\Mercure\NotificationTopicGenerator:
         arguments:
-            $secret: '%env(NOTIFICATION_TOPIC_SECRET)%'
+            $publicHubUrl: '%env(MERCURE_PUBLIC_URL)%'
+    App\Service\MercureAuthorizationService:
+        arguments:
+            $mercureJwtSecret: '%env(MERCURE_JWT_SECRET)%'
+            $mercurePublicUrl: '%env(MERCURE_PUBLIC_URL)%'
     Symfony\Component\Mercure\Jwt\TokenFactoryInterface: '@defaultTokenFactory'
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones

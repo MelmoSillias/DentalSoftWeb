@@ -2,15 +2,15 @@
 
 namespace App\Service;
 
-use App\Entity\Notification;
 use App\Entity\Rdv;
 use App\Entity\User;
+use App\Event\EntityActionEvent;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
 final class RdvNotificationService
 {
     public function __construct(
-        private readonly NotificationService $notificationService,
-        private readonly NotificationRecipientResolver $recipientResolver,
+        private readonly EventDispatcherInterface $eventDispatcher,
     ) {
     }
 
@@ -39,51 +39,52 @@ final class RdvNotificationService
      */
     private function dispatch(Rdv $rdv, string $event, ?User $emitter, array $context = []): void
     {
-        $recipient = $this->recipientResolver->userForEmploye($rdv->getMedecin(), $emitter);
-        if (!$recipient instanceof User) {
-            return;
-        }
-
         $patientName = trim($rdv->getPatient()?->getFullName() ?? '') ?: ($rdv->getPatient()?->getNom() ?? 'Patient');
         $dateLabel = $rdv->getDateRdv()?->format('d/m/Y H:i') ?? 'une date à confirmer';
 
         $message = '';
-        $priority = Notification::PRIORITY_INFO;
-        $type = Notification::TYPE_INFO;
+        $priority = 'info';
+        $type = 'info';
 
         switch ($event) {
             case 'created':
                 $suffix = !empty($context['from_report']) ? ' (suite à un report)' : '';
                 $message = sprintf('Nouveau rendez-vous pour %s le %s%s.', $patientName, $dateLabel, $suffix);
-                $type = Notification::TYPE_SUCCESS;
+                $type = 'success';
                 break;
             case 'validated':
                 $message = sprintf('Le rendez-vous de %s prévu le %s a été validé.', $patientName, $dateLabel);
-                $type = Notification::TYPE_SUCCESS;
+                $type = 'success';
                 break;
             case 'cancelled':
                 $message = sprintf('Le rendez-vous de %s prévu le %s a été annulé.', $patientName, $dateLabel);
-                $priority = Notification::PRIORITY_WARNING;
-                $type = Notification::TYPE_WARNING;
+                $priority = 'warning';
+                $type = 'warning';
                 break;
             case 'reported':
                 $newDate = $context['new_date'] ?? null;
                 $newDateLabel = $newDate instanceof \DateTimeInterface ? $newDate->format('d/m/Y H:i') : 'une nouvelle date à préciser';
                 $message = sprintf('Le rendez-vous de %s initialement prévu le %s est reporté au %s.', $patientName, $dateLabel, $newDateLabel);
-                $priority = Notification::PRIORITY_WARNING;
-                $type = Notification::TYPE_WARNING;
+                $priority = 'warning';
+                $type = 'warning';
                 break;
             default:
                 return;
         }
 
-        $this->notificationService->notify(
-            $recipient,
-            $message,
-            $priority,
-            '/medecin/agenda',
-            $type,
-            $emitter,
+        $this->eventDispatcher->dispatch(
+            new EntityActionEvent(
+                $rdv,
+                $event,
+                ['ROLE_MEDECIN'],
+                $emitter,
+                [
+                    'message' => $message,
+                    'priority' => $priority,
+                    'type' => $type,
+                    'link' => '/medecin/agenda',
+                ],
+            )
         );
     }
 }

@@ -3,12 +3,12 @@
 namespace App\Service;
 
 use App\Entity\Employe;
-use App\Entity\Notification;
 use App\Entity\User;
+use App\Event\EntityActionEvent;
 use App\Repository\EmployeRepository;
 use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
-use Doctrine\ORM\Query\Expr\Func;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
 class UserManagementService
@@ -20,9 +20,9 @@ class UserManagementService
         private EmployeRepository $employeRepo,
         private EntityManagerInterface $em,
         private UserPasswordHasherInterface $passwordHasher,
-        private NotificationService $notificationService,
         private NotificationRecipientResolver $recipientResolver,
         private EmployeeService $employeeService,
+        private EventDispatcherInterface $eventDispatcher,
     ) {
     }
 
@@ -97,7 +97,7 @@ class UserManagementService
             $user->getUsername(),
             implode(', ', $user->getRoles()),
         );
-        $this->notifyAdmins($message, $actor, Notification::PRIORITY_INFO, Notification::TYPE_SUCCESS);
+        $this->notifyAdmins($message, $actor, 'info', 'success');
 
         return ['success' => true, 'user_id' => $user->getId()];
     }
@@ -141,7 +141,7 @@ class UserManagementService
         $this->em->flush();
 
         $message = sprintf('Mot de passe réinitialisé pour %s.', $this->userLabel($user));
-        $this->notifyAdmins($message, $actor, Notification::PRIORITY_WARNING, Notification::TYPE_WARNING);
+        $this->notifyAdmins($message, $actor, 'warning', 'warning');
 
         return ['success' => true];
     }
@@ -165,7 +165,7 @@ class UserManagementService
         $this->em->flush();
 
         $message = sprintf('Utilisateur %s supprimé.', $label);
-        $this->notifyAdmins($message, $actor, Notification::PRIORITY_WARNING, Notification::TYPE_WARNING);
+        $this->notifyAdmins($message, $actor, 'warning', 'warning');
 
         return ['success' => true];
     }
@@ -185,8 +185,8 @@ class UserManagementService
     private function notifyAdmins(
         string $message,
         ?User $emitter = null,
-        string $priority = Notification::PRIORITY_INFO,
-        string $type = Notification::TYPE_INFO,
+        string $priority = 'info',
+        string $type = 'info',
     ): void {
         $recipients = $this->recipientResolver->admins($emitter);
 
@@ -194,13 +194,19 @@ class UserManagementService
             return;
         }
 
-        $this->notificationService->notifyMany(
-            $recipients,
-            $message,
-            $priority,
-            self::USERS_LINK,
-            $type,
-            $emitter,
+        $this->eventDispatcher->dispatch(
+            new EntityActionEvent(
+                $emitter ?? ($recipients[0] ?? new User()),
+                'users_management',
+                ['ROLE_ADMIN'],
+                $emitter,
+                [
+                    'message' => $message,
+                    'priority' => $priority,
+                    'type' => $type,
+                    'link' => self::USERS_LINK,
+                ],
+            )
         );
     }
 }

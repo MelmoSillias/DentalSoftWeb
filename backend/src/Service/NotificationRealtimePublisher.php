@@ -31,11 +31,12 @@ final class NotificationRealtimePublisher
 
         $payload = [
             'id' => $notification->getId(),
+            'title' => 'Notification',
             'message' => $notification->getMessage(),
             'type' => $notification->getType(),
             'priority' => $notification->getPriority(),
-            'date' => $notification->getDateEnvoi()?->format(DATE_ATOM),
-            'read' => $notification->getEtatVu() === 'vu',
+            'status' => $notification->getEtatVu(),
+            'createdAt' => $notification->getDateEnvoi()?->format(DATE_ATOM),
             'link' => $notification->getLink(),
             'emitter' => $notification->getEmitter()?->getUsername(),
         ];

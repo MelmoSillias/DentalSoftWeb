@@ -19,7 +19,7 @@ export const fetchDevis = async ({ start, end, unpaidOnly = false }, token) => {
 };
 
 export const fetchPayments = async ({ start, end }, token) => {
-    const res = await axios.get(`${apiPrefix}/devis/payments`, { params: { start, end }, ...withHeaders(token) });
+    const res = await axios.get(`${apiPrefix}/devis/payments`, { params: { start, end: end === "" ? start : end }, ...withHeaders(token) });
     return res.data || [];
 };
 

@@ -4,7 +4,9 @@ import Breadcrumb from 'primevue/breadcrumb';
 import Button from 'primevue/button';
 import InputText from 'primevue/inputtext'; 
 import Select from 'primevue/select';
+import TextArea from 'primevue/textarea';
 import Toast from 'primevue/toast';
+import ConfirmPopup from 'primevue/confirmpopup';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
 import { useUsers } from '@/composables/useUsers';
@@ -43,7 +45,14 @@ const filteredUsers = computed(() => {
     });
 });
 
-const selectedCount = computed(() => selectedRecipients.value.size + (selectedSingleUser.value ? 1 : 0));
+const recipientIds = computed(() => {
+    const selected = selectedSingleUser.value ? [selectedSingleUser.value] : [];
+    return Array.from(new Set([...selected, ...Array.from(selectedRecipients.value)]));
+});
+
+const selectedCount = computed(() => recipientIds.value.length);
+
+const canSubmit = computed(() => Boolean(message.value?.trim()) && selectedCount.value > 0);
 
 const load = async () => {
     try {
@@ -69,7 +78,7 @@ const toggleRecipient = (id) => {
 };
 
 const submit = (event) => {
-    if (!message.value || (!selectedSingleUser.value && selectedRecipients.value.size === 0)) {
+    if (!canSubmit.value) {
         toast.add({ severity: 'warn', summary: 'Attention', detail: 'Renseignez un message et sélectionnez au moins un destinataire.', life: 3500 });
         return;
     }
@@ -82,11 +91,10 @@ const submit = (event) => {
         rejectLabel: 'Annuler',
         accept: async () => {
             try {
-                const recipients = Array.from(new Set([...(selectedSingleUser.value ? [selectedSingleUser.value] : []), ...Array.from(selectedRecipients.value)]));
                 const payload = {
-                    recipients,
+                    recipients: recipientIds.value,
                     priority: priority.value,
-                    message: message.value,
+                    message: message.value.trim(),
                     link: link.value || null
                 };
                 const res = await sendNotification(payload);
@@ -97,7 +105,8 @@ const submit = (event) => {
                 selectedRecipients.value = new Set();
                 selectedSingleUser.value = null;
             } catch (err) {
-                toast.add({ severity: 'error', summary: 'Erreur', detail: err?.message || 'Échec envoi', life: 5000 });
+                const detail = err?.response?.data?.error || err?.message || 'Échec envoi';
+                toast.add({ severity: 'error', summary: 'Erreur', detail, life: 5000 });
             }
         }
     });
@@ -152,6 +161,7 @@ onMounted(load);
 <template>
     <section class="min-h-screen p-4 md:p-6 lg:p-8 transition-colors duration-300">
         <Toast />
+        <ConfirmPopup />
         
         <!-- Header -->
         <div class="mb-6 md:mb-8">
@@ -180,8 +190,9 @@ onMounted(load);
                     :label="`Envoyer à ${selectedCount} destinataire(s)`" 
                     icon="pi pi-send" 
                     :loading="sending"
+                    @click="submit"
                     class="shadow-lg hover:shadow-xl transition-all duration-300 bg-gradient-to-r from-primary-500 to-primary-600 border-0 text-white px-6 py-3 rounded-xl font-medium min-w-[200px]"
-                    :disabled="selectedCount === 0"
+                    :disabled="!canSubmit || sending"
                 />
             </div>
         </div>
@@ -501,6 +512,8 @@ onMounted(load);
                                     icon="pi pi-send" 
                                     severity="primary"
                                     size="small"
+                                    :loading="sending"
+                                    :disabled="!canSubmit || sending"
                                     class="rounded-xl bg-gradient-to-r from-primary-500 to-primary-600 border-0"
                                     @click="submit"
                                 />

@@ -42,16 +42,16 @@ class PatientRepository extends ServiceEntityRepository
 
     public function addPatient(array $data): Patient
     {
-        $entityManager = $this->getEntityManager(); 
+        $entityManager = $this->getEntityManager();
         // Générer un numéro de carnet unique (par exemple : P20240320001)
         $latestPatient = $this->createQueryBuilder('p')
             ->orderBy('p.id', 'DESC')
             ->setMaxResults(1)
             ->getQuery()
-            ->getOneOrNullResult(); 
-        
+            ->getOneOrNullResult();
+
         $lastNumber = $latestPatient ? (int) substr($latestPatient->getNumCarnet(), -3) + 1 : 1;
-        $numCarnet = 'P' . date('Ymd') . str_pad($lastNumber, 3, '0', STR_PAD_LEFT); 
+        $numCarnet = 'P' . date('Ymd') . str_pad($lastNumber, 3, '0', STR_PAD_LEFT);
 
         // Création du patient
         $patient = new Patient();
@@ -106,44 +106,49 @@ class PatientRepository extends ServiceEntityRepository
         return true;
     }
 
-    public function paginatePatients(int $page, int $limit, ?string $term = null, ?string $sortField = null, ?string $sortOrder = null): array
-    {
+    public function paginatePatients(
+        int $page,
+        int $limit,
+        ?string $term = null,
+        ?string $sortField = null,
+        ?string $sortOrder = null
+    ): array {
         $qb = $this->createQueryBuilder('p');
 
-        if ($term !== null && $term !== '') {
-            $normalizedTerm = mb_strtolower(trim($term));
-            $termLike = '%' . $normalizedTerm . '%';
-            $digitsOnly = preg_replace('/\D+/', '', $normalizedTerm);
+        if (!empty($term)) {
+            $normalized = mb_strtolower(trim($term));
+            $like = '%' . $normalized . '%';
 
             $orX = $qb->expr()->orX(
                 'LOWER(p.nom) LIKE :term',
                 'LOWER(p.prenom) LIKE :term',
-                'LOWER(CONCAT(COALESCE(p.nom, \'\'), \' \', COALESCE(p.prenom, \'\'))) LIKE :term',
-                'LOWER(CONCAT(COALESCE(p.prenom, \'\'), \' \', COALESCE(p.nom, \'\'))) LIKE :term',
-                'LOWER(p.adresse) LIKE :term',
-                'LOWER(p.telephone) LIKE :term'
+                'LOWER(p.telephone) LIKE :term',
+                "LOWER(CONCAT(p.nom, ' ', p.prenom)) LIKE :term",
+                "LOWER(CONCAT(p.prenom, ' ', p.nom)) LIKE :term"
             );
 
-            if (!empty($digitsOnly)) {
-                $pairs = str_split($digitsOnly, 2);
-                $spacedDigits = trim(implode(' ', $pairs));
-
-                $orX->add('p.telephone LIKE :termPhoneDigits');
-                $orX->add('p.telephone LIKE :termPhoneSpaced');
-                $qb->setParameter('termPhoneDigits', '%' . $digitsOnly . '%');
-                $qb->setParameter('termPhoneSpaced', '%' . $spacedDigits . '%');
+            // Si contient des chiffres → recherche téléphone optimisée
+            $digits = preg_replace('/\D+/', '', $normalized);
+            if (!empty($digits)) {
+                $orX->add('REPLACE(p.telephone, \' \', \'\') LIKE :digits');
+                $qb->setParameter('digits', '%' . $digits . '%');
             }
 
             $qb->andWhere($orX)
-                ->setParameter('term', $termLike);
+                ->setParameter('term', $like);
         }
 
+        // COUNT
         $countQb = clone $qb;
-        $total = (int) $countQb->select('COUNT(p.id)')->getQuery()->getSingleScalarResult();
+        $total = (int) $countQb
+            ->select('COUNT(p.id)')
+            ->getQuery()
+            ->getSingleScalarResult();
 
+        // TRI
         $direction = strtolower($sortOrder ?? 'asc') === 'desc' ? 'DESC' : 'ASC';
+
         $sortMap = [
-            'fullname' => 'p.nom',
             'nom' => 'p.nom',
             'prenom' => 'p.prenom',
             'telephone' => 'p.telephone',
@@ -151,18 +156,21 @@ class PatientRepository extends ServiceEntityRepository
             'sexe' => 'p.sexe',
             'dateNaissance' => 'p.dateNaissance',
         ];
+
         $sortColumn = $sortMap[$sortField ?? ''] ?? 'p.nom';
 
         $items = $qb
             ->orderBy($sortColumn, $direction)
             ->addOrderBy('p.prenom', 'ASC')
-            ->addOrderBy('p.id', 'ASC')
             ->setFirstResult(($page - 1) * $limit)
             ->setMaxResults($limit)
             ->getQuery()
             ->getResult();
 
-        return ['items' => $items, 'total' => $total];
+        return [
+            'items' => $items,
+            'total' => $total
+        ];
     }
 
     public function paginatePatientsByMedecin(Employe $medecin, int $page, int $limit, ?string $term = null, ?string $sortField = null, ?string $sortOrder = null): array
@@ -227,22 +235,22 @@ class PatientRepository extends ServiceEntityRepository
     }
 
     // src/Repository/PatientRepository.php
-public function findWithMedicalData(int $id): ?Patient
-{
-    return $this->createQueryBuilder('p')
-        ->leftJoin('p.antecedents', 'a')
-        ->addSelect('a')
-        ->leftJoin('p.consultations', 'c')
-        ->addSelect('c')
-        ->leftJoin('p.rdvs', 'r')
-        ->addSelect('r')
-        ->leftJoin('p.traitements', 't')
-        ->addSelect('t')
-        ->where('p.id = :id')
-        ->setParameter('id', $id)
-        ->getQuery()
-        ->getOneOrNullResult();
-}
+    public function findWithMedicalData(int $id): ?Patient
+    {
+        return $this->createQueryBuilder('p')
+            ->leftJoin('p.antecedents', 'a')
+            ->addSelect('a')
+            ->leftJoin('p.consultations', 'c')
+            ->addSelect('c')
+            ->leftJoin('p.rdvs', 'r')
+            ->addSelect('r')
+            ->leftJoin('p.traitements', 't')
+            ->addSelect('t')
+            ->where('p.id = :id')
+            ->setParameter('id', $id)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
 
     //    /**
     //     * @return Patient[] Returns an array of Patient objects

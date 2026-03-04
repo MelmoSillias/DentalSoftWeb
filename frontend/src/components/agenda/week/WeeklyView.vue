@@ -76,9 +76,9 @@ const getStatusKey = (rdv) => {
 };
 
 const menuItems = [
-  { label: 'Valider', icon: 'pi pi-check', command: () => { if (selectedEvent.value) { emit('request-validate', selectedEvent.value.extendedProps); loadEvents(true); } } },
-  { label: 'Reporter', icon: 'pi pi-calendar-minus', command: () => { if (selectedEvent.value) { emit('request-report', selectedEvent.value.extendedProps); loadEvents(true); } } },
-  { label: 'Annuler', icon: 'pi pi-times', command: () => { if (selectedEvent.value) { emit('request-cancel', selectedEvent.value.extendedProps); loadEvents(true); } } }
+  { label: 'Valider', icon: 'pi pi-check', command: () => { if (selectedEvent.value) { emit('request-validate', selectedEvent.value.extendedProps); } } },
+  { label: 'Reporter', icon: 'pi pi-calendar-minus', command: () => { if (selectedEvent.value) { emit('request-report', selectedEvent.value.extendedProps); } } },
+  { label: 'Annuler', icon: 'pi pi-times', command: () => { if (selectedEvent.value) { emit('request-cancel', selectedEvent.value.extendedProps); } } }
 ];
 
 const loadEvents = async (force = false) => {
@@ -223,6 +223,12 @@ watch(() => props.refreshKey, (newVal, oldVal) => {
   if (newVal === oldVal) return;
   loadEvents();
 });
+
+// Recharge le calendrier après chaque action (création, validation, annulation, report)
+const reloadOnAction = () => loadEvents(true);
+
+// Écoute les événements émis par le parent
+defineExpose({ reloadOnAction });
 </script>
 
 <template>
@@ -363,6 +369,7 @@ watch(() => props.refreshKey, (newVal, oldVal) => {
   color: #1d4ed8 !important;
 }
 
+
 .weekly-view-page :deep(.fc-event.rdv-validated) {
   border-color: #15803d !important;
   border-left: 4px solid #15803d !important;
@@ -393,4 +400,15 @@ watch(() => props.refreshKey, (newVal, oldVal) => {
   color: #b91c1c !important;
 }
  
+.app-dark .weekly-view-page :deep(.fc-event) {
+  background-color: #030d20 !important;
+  color: #cbd5e1 !important;
+}
+
+.app-dark .weekly-view-page :deep(.fc-event .fc-event-main),
+.app-dark .weekly-view-page :deep(.fc-event .fc-event-main-frame) {
+  background-color: #030d20 !important;
+  color: #cbd5e1 !important;
+}
+
 </style>

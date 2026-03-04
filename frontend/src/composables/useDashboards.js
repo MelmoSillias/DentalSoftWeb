@@ -23,6 +23,10 @@ export function useDashboards() {
     const carousels = ref(null);
     const tabs = ref(null);
 
+    function hasToken() {
+        return Boolean(auth?.token || localStorage.getItem('token'));
+    }
+
     function buildAuthHeaders() {
         const token = auth?.token || localStorage.getItem('token');
         const headers = {};
@@ -39,6 +43,10 @@ export function useDashboards() {
     }
 
     async function fetchJson(path, params = {}) {
+        if (!hasToken()) {
+            return null;
+        }
+
         const url = new URL(`${apiPrefix}${path}`);
         const query = buildParams(params);
         Object.entries(query).forEach(([key, value]) => {
@@ -53,6 +61,10 @@ export function useDashboards() {
             return response.data;
         } catch (err) {
             const status = err?.response?.status;
+            if (status === 401 || !hasToken()) {
+                return null;
+            }
+
             const body = err?.response?.data;
             const message = body?.message || body?.error || err?.message || `Erreur ${status || 'inconnue'}`;
             throw new Error(message);
@@ -72,6 +84,14 @@ export function useDashboards() {
     }
 
     async function fetchDashboard(role, params = {}) {
+        if (!hasToken()) {
+            cards.value = {};
+            carousels.value = {};
+            tabs.value = {};
+            error.value = null;
+            return { cards: cards.value, carousels: carousels.value, tabs: tabs.value };
+        }
+
         loading.value = true;
         error.value = null;
         try {
@@ -85,6 +105,14 @@ export function useDashboards() {
             tabs.value = tabsData || {};
             return { cards: cards.value, carousels: carousels.value, tabs: tabs.value };
         } catch (err) {
+            if (!hasToken()) {
+                cards.value = {};
+                carousels.value = {};
+                tabs.value = {};
+                error.value = null;
+                return { cards: cards.value, carousels: carousels.value, tabs: tabs.value };
+            }
+
             error.value = err;
             throw err;
         } finally {

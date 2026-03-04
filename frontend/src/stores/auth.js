@@ -6,6 +6,7 @@ export const useAuthStore = defineStore('auth', {
     state: () => ({
         user: null,
         token: localStorage.getItem('token') || null,
+        mercure: null,
         loading: false,
         error: null
     }),
@@ -49,6 +50,7 @@ export const useAuthStore = defineStore('auth', {
             try {
                 const res = await http.get('me');
                 this.user = res.data.user;
+                this.mercure = res.data.mercure || null;
             } catch (err) {
                 if (err.response && err.response.status === 401) {
                     this.logout();
@@ -59,6 +61,7 @@ export const useAuthStore = defineStore('auth', {
         logout() {
             this.user = null;
             this.token = null;
+            this.mercure = null;
             localStorage.removeItem('token');
         }
     }

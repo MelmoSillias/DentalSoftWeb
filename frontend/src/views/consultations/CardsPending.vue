@@ -26,8 +26,7 @@ const loadPending = async () => {
     loading.value = true;
     try {
         const data = await fetchPendingConsultations(token);
-        consultations.value = data.map((c) => normalizeConsultation(c));
-        console.log('Consultations en cours chargées', consultations.value);
+        consultations.value = data.map((c) => normalizeConsultation(c)); 
     } catch (error) {
         console.error('Erreur lors du chargement des consultations en cours', error);
         toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de charger les consultations en cours.', life: 3000 });

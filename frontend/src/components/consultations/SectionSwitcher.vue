@@ -139,7 +139,7 @@ onBeforeUnmount(() => {
                     :key="section.id" 
                     :label="section.label"
                     :severity="active === section.id ? 'secondary' : 'help'" 
-                    :outlined="active !== section.id"
+                    :outlined="active === section.id"
                     :disabled="section.disabled" 
                     @click="select(section.id)"
                     class="rounded-xl px-4 py-2.5 font-medium transition-all hover:shadow-md"

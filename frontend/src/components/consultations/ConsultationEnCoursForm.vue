@@ -288,6 +288,14 @@ const teethOptions = (() => {
     return options;
 })();
 
+const isValidTooth = (value) => {
+    return (
+        value !== null &&
+        typeof value !== 'undefined' &&
+        !(typeof value === 'object' && 'target' in value)
+    )
+}
+
 </script>
 
 <!-- ConsultationEnCours.vue -->
@@ -483,86 +491,92 @@ const teethOptions = (() => {
 
                         <!-- Acte Content -->
                         <div class="grid grid-cols-1 lg:grid-cols-5 gap-3">
-                            <div class="space-y-1">
-                                <label class="text-xs font-medium text-surface-600 dark:text-surface-400">Dent</label>
-                                <Select
-                                    :options="teethOptions"
-                                    :modelValue="acte.dent"
-                                    optionLabel="label"
-                                    optionValue="value"
-                                    placeholder="Numéro"
-                                    :filter="true"
-                                    showClear
-                                    class="w-full rounded-lg border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800 text-sm"
-                                    @update:modelValue="(v) => updateActe(idx, { dent: v })"
-                                >
-                                    <template #value="slotProps">
-                                        <div v-if="slotProps.value" class="flex items-center gap-2">
-                                            <span
-                                                class="inline-flex h-2.5 w-2.5 rounded-full border"
-                                                :class="toothStateClass(slotProps.value)"
-                                            ></span>
-                                            <span class="font-medium">{{ slotProps.value }}</span>
-                                            <span class="text-xs text-surface-500">
-                                                {{ toothSummary(slotProps.value) || '---' }}
-                                            </span>
-                                        </div>
-                                        <span v-else class="text-surface-400">Numero</span>
-                                    </template>
-                                    <template #option="slotProps">
-                                        <div class="flex items-center gap-2">
-                                            <span
-                                                class="inline-flex h-2.5 w-2.5 rounded-full border"
-                                                :class="toothStateClass(slotProps.option.value)"
-                                            ></span>
-                                            <span class="font-medium">{{ slotProps.option.label }}</span>
-                                            <span class="text-xs text-surface-500">
-                                                {{ toothSummary(slotProps.option.value) || '---' }}
-                                            </span>
-                                        </div>
-                                    </template>
-                                </Select>
+                            <div>
+                                <FloatLabel variant="in">
+                                    <Select
+                                        :options="teethOptions"
+                                        :modelValue="acte.dent"
+                                        optionLabel="label"
+                                        optionValue="value" 
+                                        :filter="true"
+                                        showClear
+                                        class="w-full rounded-lg border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800 text-sm"
+                                        @update:modelValue="(v) => updateActe(idx, { dent: v })"
+                                    >
+                                        <template #value="slotProps">
+                                            <div v-if="isValidTooth(slotProps.value)">
+                                                <span
+                                                    class="inline-flex h-2.5 w-2.5 rounded-full border"
+                                                    :class="toothStateClass(slotProps.value)"
+                                                ></span>
+                                                <span class="font-medium">{{ slotProps.value }}</span>
+                                                <span class="text-xs text-surface-500">
+                                                    {{ toothSummary(slotProps.value) || '---' }}
+                                                </span>
+                                            </div> 
+                                        </template>
+                                        <template #option="slotProps">
+                                            <div class="flex items-center gap-2">
+                                                <span
+                                                    class="inline-flex h-2.5 w-2.5 rounded-full border"
+                                                    :class="toothStateClass(slotProps.option.value)"
+                                                ></span>
+                                                <span class="font-medium">{{ slotProps.option.label }}</span>
+                                                <span class="text-xs text-surface-500">
+                                                    {{ toothSummary(slotProps.option.value) || '---' }}
+                                                </span>
+                                            </div>
+                                        </template>
+                                    </Select>
+                                    <label class="text-xs font-medium text-surface-600 dark:text-surface-400">Dent</label>
+                                </FloatLabel>
                             </div>
-                            <div class="lg:col-span-2 space-y-1">
-                                <label class="text-xs font-medium text-surface-600 dark:text-surface-400">Type d'acte</label>
-                                <Select
-                                    :options="soinsList"
-                                    :value="acte.type" 
-                                    placeholder="Type de soin"
-                                    class="w-full rounded-lg border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800  text-sm"
-                                    @update:modelValue="(v) => updateActe(idx, { type: v })" 
-                                />
+                            <div class="w-full">
+                                <FloatLabel variant="in">
+                                    <Select
+                                        :options="soinsList"
+                                        :value="acte.type"  
+                                        class="w-full rounded-lg border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800  text-sm"
+                                        @update:modelValue="(v) => updateActe(idx, { type: v })" 
+                                    />
+                                    <label class="text-xs font-medium text-surface-600 dark:text-surface-400">Type d'acte</label>
+                                </FloatLabel>
                             </div>
-                            <div class="lg:col-span-2 space-y-1">
-                                <label class="text-xs font-medium text-surface-600 dark:text-surface-400">Description</label>
-                                <InputText 
-                                    :value="acte.description" 
-                                    placeholder="Description détaillée"
-                                    class="w-full rounded-lg border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800 p-2 text-sm"
-                                    @update:modelValue="(v) => updateActe(idx, { description: v })" 
-                                />
+                            <div class="w-full">
+                                <FloatLabel variant="in">
+                                    <InputText 
+                                        :value="acte.description"  
+                                        class="w-full rounded-lg border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800 p-2 text-sm"
+                                        @update:modelValue="(v) => updateActe(idx, { description: v })" 
+                                    />
+                                    <label class="text-xs font-medium text-surface-600 dark:text-surface-400">Description</label>
+                                </FloatLabel>
                             </div>
-                            <div class="space-y-1">
-                                <label class="text-xs font-medium text-surface-600 dark:text-surface-400">Qté</label>
-                                <InputNumber 
-                                    :modelValue="acte.quantite" 
-                                    :min="1" 
-                                    mode="decimal" 
-                                    :useGrouping="false"
-                                    inputClass="w-full rounded-lg border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800 p-2 text-sm"
-                                    @update:modelValue="(v) => updateActe(idx, { quantite: v ?? 1 })" 
-                                />
+                            <div class="w-full">
+                                <FloatLabel variant="in">
+                                    <InputNumber 
+                                        :modelValue="acte.quantite" 
+                                        :min="1" 
+                                        mode="decimal" 
+                                        :useGrouping="false"
+                                        inputClass="w-full rounded-lg border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800 p-2 text-sm"
+                                        @update:modelValue="(v) => updateActe(idx, { quantite: v ?? 1 })" 
+                                    />
+                                    <label class="text-xs font-medium text-surface-600 dark:text-surface-400">Qté</label>
+                                </FloatLabel>
                             </div>
-                            <div class="space-y-1">
-                                <label class="text-xs font-medium text-surface-600 dark:text-surface-400">Prix</label>
-                                <InputNumber 
-                                    :modelValue="acte.prix" 
-                                    mode="decimal" 
-                                    :minFractionDigits="0"
-                                    :maxFractionDigits="2"
-                                    inputClass="w-full rounded-lg border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800 p-2 text-sm"
-                                    @update:modelValue="(v) => updateActe(idx, { prix: v ?? 0 })" 
-                                />
+                            <div>
+                                <FloatLabel variant="in">
+                                    <InputNumber 
+                                        :modelValue="acte.prix" 
+                                        mode="decimal" 
+                                        :minFractionDigits="0"
+                                        :maxFractionDigits="2"
+                                        inputClass="w-full rounded-lg border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800 p-2 text-sm"
+                                        @update:modelValue="(v) => updateActe(idx, { prix: v ?? 0 })" 
+                                    />
+                                    <label class="text-xs font-medium text-surface-600 dark:text-surface-400">Prix</label>
+                                </FloatLabel>
                             </div>
                         </div>
 
@@ -712,4 +726,9 @@ const teethOptions = (() => {
         </template>
     </div>
 </template>
- 
+
+<style scoped>
+    :deep(.p-inputnumber ) {
+        width: 100%;
+    }
+</style>

@@ -24,17 +24,36 @@ final class NotificationController extends AbstractController
             /** @var list<User> $recipients */
             $recipients = $form->get('recipients')->getData();
             $priority = $form->get('priority')->getData();
-            $message = $form->get('message')->getData();
+            $message = trim((string) $form->get('message')->getData());
             $link = $form->get('link')->getData();
 
-            $sent = $notificationService->notifyMany(
-                $recipients,
-                $message,
-                $priority,
-                $link ?: null,
-                null,
-                $this->getUser() instanceof User ? $this->getUser() : null,
-            );
+            $uniqueRecipients = [];
+            foreach ($recipients as $recipient) {
+                if (!$recipient instanceof User) {
+                    continue;
+                }
+
+                $key = $recipient->getId() ?? spl_object_id($recipient);
+                $uniqueRecipients[$key] = $recipient;
+            }
+
+            $emitter = $this->getUser() instanceof User ? $this->getUser() : null;
+            $sent = 0;
+
+            if ($message !== '') {
+                foreach ($uniqueRecipients as $recipient) {
+                    $notificationService->notify(
+                        $recipient,
+                        $message,
+                        $priority,
+                        $link ?: null,
+                        null,
+                        $emitter,
+                    );
+
+                    ++$sent;
+                }
+            }
 
             if ($sent > 0) {
                 $this->addFlash('success', sprintf('%d notification(s) envoyée(s).', $sent));

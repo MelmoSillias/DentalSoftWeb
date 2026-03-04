@@ -62,11 +62,11 @@ const devis = ref([]);
 const payments = ref([]);
 const devisLoading = ref(false);
 const paymentsLoading = ref(false);
+const validateLoading = ref(false);
 
 const toApiDate = (value) => {
 	if (!value) return '';
-	const date = value instanceof Date ? value : new Date(value);
-	console.log('toApiDate input:', value, 'parsed:', date);
+	const date = value instanceof Date ? value : new Date(value); 
 	return date.toISOString().slice(0, 10);
 };
 
@@ -261,7 +261,9 @@ const openValidateDialog = (row) => {
 
 const confirmValidate = async () => {
 	if (!pendingDevis.value) return;
+	validateLoading.value = true;
 	try {
+		
 		await validateEmptyDevis(pendingDevis.value.id, token);
 		toast.add({ severity: 'success', summary: 'Validation', detail: 'Facture vide validée', life: 2500 });
 		validateDialogVisible.value = false;
@@ -269,6 +271,8 @@ const confirmValidate = async () => {
 	} catch (error) {
 		console.error(error);
 		toast.add({ severity: 'error', summary: 'Validation', detail: 'Échec de la validation', life: 3500 });
+	} finally {
+		validateLoading.value = false;
 	}
 };
 
@@ -491,7 +495,7 @@ onMounted(() => {
 			</p>
 			<template #footer>
 				<Button label="Annuler" text @click="validateDialogVisible = false" />
-				<Button label="Valider" severity="success" icon="pi pi-check" @click="confirmValidate" />
+				<Button label="Valider" severity="success" icon="pi pi-check" @click="confirmValidate" :loading="validateLoading" />
 			</template>
 		</Dialog>
 

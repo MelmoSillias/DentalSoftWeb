@@ -2,6 +2,7 @@
 
 namespace App\Controller\Admin;
 
+use App\Entity\User;
 use App\Repository\UserRepository;
 use App\Service\NotificationService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -22,8 +23,8 @@ final class ApiNotificationController extends AbstractController
             return new JsonResponse(['error' => 'Invalid payload'], Response::HTTP_BAD_REQUEST);
         }
 
-        $recipientIds = $data['recipients'] ?? [];
-        $message = $data['message'] ?? '';
+        $recipientIds = array_values(array_unique((array) ($data['recipients'] ?? [])));
+        $message = trim((string) ($data['message'] ?? ''));
         $priority = $data['priority'] ?? 'normal';
         $link = $data['link'] ?? null;
 
@@ -32,15 +33,25 @@ final class ApiNotificationController extends AbstractController
         }
 
         $recipientEntities = $users->findBy(['id' => $recipientIds]);
+        $emitter = $this->getUser() instanceof User ? $this->getUser() : null;
 
-        $sent = $notificationService->notifyMany(
-            $recipientEntities,
-            $message,
-            $priority,
-            $link ?: null,
-            null,
-            $this->getUser() instanceof \App\Entity\User ? $this->getUser() : null
-        );
+        $sent = 0;
+        foreach ($recipientEntities as $recipient) {
+            if (!$recipient instanceof User) {
+                continue;
+            }
+
+            $notificationService->notify(
+                $recipient,
+                $message,
+                $priority,
+                $link ?: null,
+                null,
+                $emitter
+            );
+
+            ++$sent;
+        }
 
         return new JsonResponse(['sent' => $sent]);
     }

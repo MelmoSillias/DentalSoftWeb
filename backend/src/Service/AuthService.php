@@ -23,6 +23,7 @@ final class AuthService
         private NotificationRepository $notificationRepository,
         private EmployeRepository $employeRepository,
         private RequestStack $requestStack,
+        private MercureAuthorizationService $mercureAuthorizationService,
     ) {
     }
 
@@ -64,6 +65,7 @@ final class AuthService
         $notifications = $this->notificationRepository->findLatestForUser($user, 20);
         $unreadCount = $this->notificationRepository->countUnread($user);
         $activity = $this->getActivityFeed($user);
+        $mercure = $this->mercureAuthorizationService->buildSubscription($user);
 
         return [
             'user' => [
@@ -92,6 +94,7 @@ final class AuthService
                 'activityCount' => count($activity),
                 'lastAccess' => $activity[0]['time'] ?? null,
             ],
+            'mercure' => $mercure,
         ];
     }
 
