@@ -1,7 +1,7 @@
 <script setup>
-import ConsultationActions from '@/components/consultations/ConsultationActions.vue';
 import ConsultationDetailsDialog from '@/components/consultations/ConsultationDetailsDialog.vue';
 import FactureModal from '@/components/consultations/FactureModal.vue';
+import QuickClotureConsultationDialog from '@/components/consultations/QuickClotureConsultationDialog.vue';
 import FormCreateConsultation from '@/components/patients/FormCreateConsultation.vue';
 import PrintDataTablePage from '@/components/print/PrintDataTablePage.vue';
 import { usePrinter } from '@/composables/usePrinter';
@@ -22,6 +22,7 @@ import ConfirmPopup from 'primevue/confirmpopup';
 import DataTable from 'primevue/datatable';
 import Dialog from 'primevue/dialog';
 import InputText from 'primevue/inputtext';
+import Menu from 'primevue/menu';
 import Tag from 'primevue/tag';
 import Toast from 'primevue/toast';
 import { useConfirm } from 'primevue/useconfirm';
@@ -55,6 +56,10 @@ const detailsLoading = ref(false);
 const detailData = ref(null);
 const detailsLoadingId = ref(null);
 const showCreateDialog = ref(false);
+const quickMenus = {};
+const quickDialogVisible = ref(false);
+const quickDialogConsultation = ref(null);
+const quickDialogActionMode = ref('continue');
 
 const headerTitle = computed(() => `Consultations du ${formatDisplayDate(selectedDate.value)}`);
 const isAdmin = computed(() => Boolean(auth.user?.roles?.includes('ROLE_ADMIN')));
@@ -150,6 +155,60 @@ const onDateChange = () => {
 };
 
 const rowClass = (data) => (data.state === 1 ? 'row-success' : '');
+
+const isLinked = (consultation) => Boolean(consultation?.ficheId);
+const patientHasFiche = (consultation) => Boolean(consultation?.hasFiche || consultation?.lastFicheId);
+const isClosed = (consultation) => Number(consultation?.state) === 1;
+
+const setQuickMenuRef = (id, el) => {
+    if (!id) return;
+    if (!el) {
+        delete quickMenus[id];
+        return;
+    }
+    quickMenus[id] = el;
+};
+
+const openQuickDialog = (consultation, mode) => {
+    if (!consultation?.id || isClosed(consultation)) return;
+    quickDialogConsultation.value = consultation;
+    quickDialogActionMode.value = mode;
+    quickDialogVisible.value = true;
+};
+
+const quickActionItems = (consultation) => {
+    const linked = isLinked(consultation);
+    const hasFiche = patientHasFiche(consultation);
+    const closed = isClosed(consultation);
+
+    return [
+        {
+            label: 'Continuer avec la dernière fiche',
+            icon: 'pi pi-history',
+            disabled: closed || linked || !hasFiche,
+            command: () => openQuickDialog(consultation, 'continue-last')
+        },
+        {
+            label: 'Continuer',
+            icon: 'pi pi-forward',
+            disabled: closed || !linked,
+            command: () => openQuickDialog(consultation, 'continue')
+        },
+        {
+            label: 'Nouvelle fiche',
+            icon: 'pi pi-plus-circle',
+            disabled: closed || linked,
+            command: () => openQuickDialog(consultation, 'new-fiche')
+        }
+    ];
+};
+
+const toggleQuickActions = (event, consultation) => {
+    if (!consultation?.id) return;
+    const menu = quickMenus[consultation.id];
+    if (!menu) return;
+    menu.toggle(event);
+};
 
 const askCancel = (event, consultation) => {
     confirm.require({
@@ -257,6 +316,12 @@ const handleCreateSaved = async () => {
     await loadConsultations();
 };
 
+const handleQuickDialogDone = async () => {
+    quickDialogVisible.value = false;
+    quickDialogConsultation.value = null;
+    await loadConsultations();
+};
+
 const currentFactureLoading = computed(() => {
     const id = factureConsultation.value?.id;
     return id ? factureLoading.value[id] === true : false;
@@ -308,9 +373,9 @@ const currentFactureLoading = computed(() => {
         }   
         
         function resetFilters() {
-            this.filterGlobalValue = '';
-            this.selectedDate = null;
-            this.loadConsultations();
+            filterGlobalValue.value = '';
+            selectedDate.value = null;
+            loadConsultations();
         }
 </script>
 
@@ -619,6 +684,24 @@ const currentFactureLoading = computed(() => {
                                 @click="askCancel($event, data)" 
                                 v-if="data.state !== 1"
                             />
+
+                            <Button
+                                icon="pi pi-bolt"
+                                label="Actions rapides"
+                                severity="contrast"
+                                size="small"
+                                outlined
+                                class="rounded-xl"
+                                :disabled="isClosed(data)"
+                                @click="toggleQuickActions($event, data)"
+                            />
+                            <Menu :ref="(el) => setQuickMenuRef(data.id, el)" :model="quickActionItems(data)" popup>
+                                <template #start>
+                                    <div class="px-3 pt-3 pb-2 text-xs font-semibold uppercase tracking-wide text-surface-500">
+                                        Actions rapides
+                                    </div>
+                                </template>
+                            </Menu>
                         </div>
                     </template>
                 </Column>
@@ -738,6 +821,14 @@ const currentFactureLoading = computed(() => {
             :saving="factureSaving" 
             @update:visible="closeFactureModal" 
             @save="handleSaveFacture" 
+        />
+
+        <QuickClotureConsultationDialog
+            v-model:visible="quickDialogVisible"
+            :consultation="quickDialogConsultation"
+            :action-mode="quickDialogActionMode"
+            @saved="handleQuickDialogDone"
+            @closed="handleQuickDialogDone"
         />
     </section>
 </template>

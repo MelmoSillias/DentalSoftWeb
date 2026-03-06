@@ -211,12 +211,13 @@ onMounted(load);
                     </div>
                     <div class="p-5">
                         <div class="relative mb-5">
-                            <i class="pi pi-search absolute left-4 top-1/2 transform -translate-y-1/2 text-surface-400"></i>
+                            <IconField>
+                            <InputIcon class="pi pi-search" />
                             <InputText 
                                 v-model="search" 
                                 placeholder="Rechercher un utilisateur par nom, prénom ou identifiant..." 
                                 class="w-full pl-11 pr-4 py-3.5 rounded-xl border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-700/50 focus:ring-2 focus:ring-primary-500/20 transition-all"
-                            />
+                            /></IconField>
                         </div>
 
                         <!-- User List -->

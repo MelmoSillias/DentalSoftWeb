@@ -276,6 +276,9 @@ onMounted(() => {
                             <InputText 
                                 v-model="search" 
                                 placeholder="Nom d'utilisateur, employé, type..." 
+                                name="users-search"
+                                autocomplete="off"
+                                data-lpignore="true"
                                 class="w-full p-3.5 rounded-xl border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-700/50 focus:ring-2 focus:ring-primary-500/20 transition-all"
                             />
                         </IconField>
@@ -365,7 +368,18 @@ onMounted(() => {
         <Dialog header="Réinitialiser le mot de passe" v-model:visible="resetDialogVisible" :style="{ width: '420px' }" :modal="true">
             <div class="flex flex-col gap-3">
                 <label for="reset-password" class="font-medium">Nouveau mot de passe</label>
-                <Password id="reset-password" v-model="resetPasswordValue" toggleMask placeholder="Saisir un mot de passe" />
+                <Password
+                    inputId="reset-password"
+                    v-model="resetPasswordValue"
+                    toggleMask
+                    :feedback="false"
+                    placeholder="Saisir un mot de passe"
+                    :inputProps="{
+                        autocomplete: 'new-password',
+                        name: 'user-reset-password',
+                        'data-lpignore': 'true'
+                    }"
+                />
             </div>
             <template #footer>
                 <Button label="Annuler" icon="pi pi-times" severity="secondary" text @click="resetDialogVisible = false" />

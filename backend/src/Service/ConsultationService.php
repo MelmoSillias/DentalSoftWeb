@@ -28,6 +28,7 @@ use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Contracts\Cache\CacheInterface;
 use Symfony\Contracts\Cache\ItemInterface;
 
@@ -43,6 +44,7 @@ class ConsultationService
         private SalleRepository $salleRepo,
         private NotificationRecipientResolver $notificationRecipientResolver,
         private EventDispatcherInterface $eventDispatcher,
+        private UserPasswordHasherInterface $passwordHasher,
         ParameterBagInterface $params,
         private CacheInterface $cache,
     ) {
@@ -56,6 +58,21 @@ class ConsultationService
         }
 
         return $this->employeRepo->findOneBy(['user' => $user]);
+    }
+
+    public function verifyConsultationMedecinPassword(int $consultationId, string $plainPassword): bool
+    {
+        $consultation = $this->consultationRepo->find($consultationId);
+        if (!$consultation) {
+            throw new NotFoundHttpException('Consultation introuvable');
+        }
+
+        $medecinUser = $consultation->getMedecin()?->getUser();
+        if (!$medecinUser || trim($plainPassword) === '') {
+            return false;
+        }
+
+        return $this->passwordHasher->isPasswordValid($medecinUser, $plainPassword);
     }
 
     private function ensureConsultationOpen(Consultation $consultation): void
@@ -506,11 +523,14 @@ class ConsultationService
         [, $consultation] = $this->getFicheAndConsultation($ficheId, $consultationId);
         $this->ensureConsultationOpen($consultation);
 
-        $medecinId = $data['medecinId'] ?? null;
+        $medecinId = $data['medecinId'] ?? $consultation->getMedecin()?->getId();
+        if (!$medecinId) {
+            throw new \InvalidArgumentException('Le médecin est obligatoire pour enregistrer la consultation.');
+        }
         $infirmierId = $data['infirmierId'] ?? ($data['infirmierIds'][0] ?? null);
         $salleId = $data['salleId'] ?? null;
 
-        $consultation->setMedecin($medecinId ? $this->em->getReference(Employe::class, $medecinId) : null);
+        $consultation->setMedecin($this->em->getReference(Employe::class, (int) $medecinId));
         $consultation->setInfirmier($infirmierId ? $this->em->getReference(Employe::class, $infirmierId) : null);
         $consultation->setSalle($salleId ? $this->em->getReference(Salle::class, $salleId) : null);
         $consultation->setType($data['type'] ?? null);
@@ -551,6 +571,10 @@ class ConsultationService
     {
         [$fiche, $consultation] = $this->getFicheAndConsultation($ficheId, $consultationId);
         $this->ensureConsultationOpen($consultation);
+
+        if (!$consultation->getMedecin()) {
+            throw new \InvalidArgumentException('Le médecin est obligatoire pour clôturer la consultation.');
+        }
 
         $facture = new Devis();
         if ($fiche instanceof FicheMedicale) {
@@ -1066,6 +1090,7 @@ class ConsultationService
         $data = [];
         $counter = 1;
         foreach ($consultations as $c) {
+            $ficheData = $this->resolvePendingFicheData($c);
             $data[] = [
                 'id' => $c->getId(),
                 'numero' => $counter++,
@@ -1075,6 +1100,14 @@ class ConsultationService
                 'createdAt' => $c->getCreatedAt()->format('d/m/Y H:i'),
                 'factstate' => $c->getFacture() ? ($c->getFacture()?->getStatut() == 0 && (int) $c->getFacture()->getMontant() === (int) $c->getFacture()->getReste() ? 0 : 1) : null,
                 'state' => $c->getStatut(),
+                'hasFiche' => $ficheData['hasFiche'],
+                'fiche' => $ficheData['fiche'],
+                'ficheId' => $ficheData['ficheId'],
+                'ficheType' => $ficheData['ficheType'],
+                'ficheVersion' => $ficheData['ficheVersion'],
+                'lastFicheId' => $ficheData['lastFicheId'],
+                'lastFicheType' => $ficheData['lastFicheType'],
+                'lastFicheVersion' => $ficheData['lastFicheVersion'],
             ];
         }
 

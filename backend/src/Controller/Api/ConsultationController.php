@@ -180,5 +180,20 @@ final class ConsultationController extends AbstractController{
         return $this->json($details['data']);
     }
 
+    #[Route('/api/consultations/{id}/verify-medecin-password', name: 'api_consultation_verify_medecin_password', methods: ['POST'])]
+    public function verifyMedecinPassword(Request $request, int $id): JsonResponse
+    {
+        if (!$this->isGranted('ROLE_RECEPTION') && !$this->isGranted('ROLE_RECEPTIONNISTE')) {
+            return $this->json(['error' => 'Accès refusé'], 403);
+        }
+
+        $data = json_decode($request->getContent(), true) ?? [];
+        $password = (string) ($data['password'] ?? '');
+
+        $isValid = $this->consultationService->verifyConsultationMedecinPassword($id, $password);
+
+        return $this->json(['valid' => $isValid]);
+    }
+
     
 }

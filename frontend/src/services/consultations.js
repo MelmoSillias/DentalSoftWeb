@@ -112,6 +112,16 @@ export const fetchConsultationDetails = async (consultationId, token) => {
     throw lastError ?? new Error('Impossible de charger les détails de la consultation');
 };
 
+export const verifyConsultationMedecinPassword = async (consultationId, password, token) => {
+    const res = await axios.post(
+        `${apiPrefix}/consultations/${consultationId}/verify-medecin-password`,
+        { password },
+        { headers: authHeaders(token) }
+    );
+
+    return Boolean(res.data?.valid);
+};
+
 export const fetchConsultationInvoice = async (consultationId, token) => {
     const res = await axios.get(`${apiPrefix}/consultations/${consultationId}/facture`, { headers: authHeaders(token) });
     const lines = Array.isArray(res.data) ? res.data : Array.isArray(res.data?.lignes) ? res.data.lignes : [];

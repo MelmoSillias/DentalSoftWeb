@@ -61,6 +61,10 @@ const props = defineProps({
     loading: {
         type: Boolean,
         default: false
+    },
+    hideOrdonnances: {
+        type: Boolean,
+        default: false
     }
 });
 
@@ -648,7 +652,7 @@ const isValidTooth = (value) => {
             </Dialog>
 
             <!-- Ordonnances -->
-            <div class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/30 p-5">
+            <div v-if="!hideOrdonnances" class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/30 p-5">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
                     <div class="flex items-center gap-3">
                         <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-purple-500/10">
@@ -708,12 +712,12 @@ const isValidTooth = (value) => {
             </div>
 
             <!-- Session Summary -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="grid grid-cols-1 gap-4" :class="hideOrdonnances ? 'md:grid-cols-2' : 'md:grid-cols-3'">
                 <div class="p-4 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-900/20 dark:to-blue-800/20 border border-blue-200/50 dark:border-blue-800/50">
                     <div class="text-sm font-medium text-blue-700 dark:text-blue-300">Actes réalisés</div>
                     <div class="text-2xl font-bold text-blue-900 dark:text-blue-100 mt-1">{{ form.actes?.length || 0 }}</div>
                 </div>
-                <div class="p-4 rounded-xl bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-emerald-900/20 dark:to-emerald-800/20 border border-emerald-200/50 dark:border-emerald-800/50">
+                <div v-if="!hideOrdonnances" class="p-4 rounded-xl bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-emerald-900/20 dark:to-emerald-800/20 border border-emerald-200/50 dark:border-emerald-800/50">
                     <div class="text-sm font-medium text-emerald-700 dark:text-emerald-300">Ordonnances</div>
                     <div class="text-2xl font-bold text-emerald-900 dark:text-emerald-100 mt-1">{{ ordonnances?.length || 0 }}</div>
                 </div>

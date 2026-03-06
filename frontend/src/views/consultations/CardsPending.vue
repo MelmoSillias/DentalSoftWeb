@@ -1,15 +1,18 @@
 <script setup>
+import QuickClotureConsultationDialog from '@/components/consultations/QuickClotureConsultationDialog.vue';
+import FormCreateConsultation from '@/components/patients/FormCreateConsultation.vue';
 import { cancelConsultation, fetchPendingConsultations, normalizeConsultation } from '@/services/consultations';
 import { useAuthStore } from '@/stores/auth';
 import Button from 'primevue/button';
 import ConfirmPopup from 'primevue/confirmpopup';
+import Dialog from 'primevue/dialog';
+import Menu from 'primevue/menu';
 import { useConfirm } from 'primevue/useconfirm';
 import Tag from 'primevue/tag';
 import Toast from 'primevue/toast'; 
 import { useToast } from 'primevue/usetoast';
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import '@/components/patients/FormCreateConsultation.vue';
 
 const router = useRouter();
 const toast = useToast();
@@ -21,6 +24,11 @@ const consultations = ref([]);
 const loading = ref(false);
 const canceling = ref({});
 const openCreateConsultationDialog = ref(false);
+const consultationPatient = ref(null);
+const quickMenus = {};
+const quickDialogVisible = ref(false);
+const quickDialogConsultation = ref(null);
+const quickDialogActionMode = ref('continue');
 
 const loadPending = async () => {
     loading.value = true;
@@ -95,6 +103,7 @@ const goToConsultation = (consultation, mode = 'continue') => {
 
 const isLinked = (consultation) => Boolean(consultation.ficheId);
 const patientHasFiche = (consultation) => Boolean(consultation.hasFiche || consultation.lastFicheId);
+const isClosed = (consultation) => Number(consultation?.state) === 1;
 const isAdmin = computed(() => Boolean(auth.user?.roles?.includes('ROLE_ADMIN')));
 const isMedecin = computed(() => Boolean(auth.user?.roles?.includes('ROLE_MEDECIN')));
 
@@ -166,6 +175,62 @@ const handleNewFiche = (event, consultation) => {
 
 const handleCancelWithConfirm = (event, consultation) => {
     confirmAction(event, 'Annuler cette consultation en cours ?', () => handleCancel(consultation));
+};
+
+const setQuickMenuRef = (id, el) => {
+    if (!id) return;
+    if (!el) {
+        delete quickMenus[id];
+        return;
+    }
+    quickMenus[id] = el;
+};
+
+const openQuickDialog = (consultation, mode) => {
+    if (!consultation?.id || isClosed(consultation)) return;
+    quickDialogConsultation.value = consultation;
+    quickDialogActionMode.value = mode;
+    quickDialogVisible.value = true;
+};
+
+const quickActionItems = (consultation) => {
+    const linked = isLinked(consultation);
+    const hasFiche = patientHasFiche(consultation);
+    const closed = isClosed(consultation);
+
+    return [
+        {
+            label: 'Continuer avec la dernière fiche',
+            icon: 'pi pi-history',
+            disabled: closed || linked || !hasFiche,
+            command: () => openQuickDialog(consultation, 'continue-last')
+        },
+        {
+            label: 'Continuer',
+            icon: 'pi pi-forward',
+            disabled: closed || !linked,
+            command: () => openQuickDialog(consultation, 'continue')
+        },
+        {
+            label: 'Nouvelle fiche',
+            icon: 'pi pi-plus-circle',
+            disabled: closed || linked,
+            command: () => openQuickDialog(consultation, 'new-fiche')
+        }
+    ];
+};
+
+const toggleQuickActions = (event, consultation) => {
+    if (!consultation?.id) return;
+    const menu = quickMenus[consultation.id];
+    if (!menu) return;
+    menu.toggle(event);
+};
+
+const handleQuickDialogDone = async () => {
+    quickDialogVisible.value = false;
+    quickDialogConsultation.value = null;
+    await loadPending();
 };
 
 function getBorderColor(index) {
@@ -367,6 +432,24 @@ function getBorderColor(index) {
                     <!-- Card Footer - Actions -->
                     <div class="mt-auto p-4 border-t border-surface-100 dark:border-surface-700/50 bg-surface-50/50 dark:bg-surface-800/30">
                         <div class="flex flex-wrap gap-2">
+                            <Button
+                                icon="pi pi-bolt"
+                                label="Actions rapides"
+                                severity="contrast"
+                                size="small"
+                                outlined
+                                class="rounded-xl px-4 py-2 text-sm font-medium"
+                                :disabled="isClosed(consultation)"
+                                @click="toggleQuickActions($event, consultation)"
+                            />
+                            <Menu :ref="(el) => setQuickMenuRef(consultation.id, el)" :model="quickActionItems(consultation)" popup>
+                                <template #start>
+                                    <div class="px-3 pt-3 pb-2 text-xs font-semibold uppercase tracking-wide text-surface-500">
+                                        Actions rapides
+                                    </div>
+                                </template>
+                            </Menu>
+
                             <Button 
                                 v-if="showActions.continue(consultation)" 
                                 :label="continueLabel(consultation)" 
@@ -446,6 +529,14 @@ function getBorderColor(index) {
     </Dialog>
 
     <ConfirmPopup />
+
+    <QuickClotureConsultationDialog
+        v-model:visible="quickDialogVisible"
+        :consultation="quickDialogConsultation"
+        :action-mode="quickDialogActionMode"
+        @saved="handleQuickDialogDone"
+        @closed="handleQuickDialogDone"
+    />
 </template> 
 
 <style scoped>

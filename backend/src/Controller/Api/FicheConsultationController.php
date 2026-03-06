@@ -101,17 +101,24 @@ class FicheConsultationController extends AbstractController
     public function update(Request $request, int $ficheId, int $consultationId): JsonResponse
     {
         $data = json_decode($request->getContent(), true) ?? [];
-        // updateConsultation now supports both fiche types via service
-        $this->consultationService->updateConsultation($ficheId, $consultationId, $data);
+        try {
+            // updateConsultation now supports both fiche types via service
+            $this->consultationService->updateConsultation($ficheId, $consultationId, $data);
+        } catch (\InvalidArgumentException $e) {
+            return new JsonResponse(['error' => $e->getMessage()], 400);
+        }
         return new JsonResponse(['success' => true]);
     }
 
     #[Route('/cloture', methods: ['POST'], name: 'cloture')]
     public function close(Request $request, int $ficheId, int $consultationId): JsonResponse
     {
-        $data = json_decode($request->getContent(), true) ?? [];
-        // clotureConsultation will handle both fiche types
-        $this->consultationService->clotureConsultation($ficheId, $consultationId);
+        try {
+            // clotureConsultation will handle both fiche types
+            $this->consultationService->clotureConsultation($ficheId, $consultationId);
+        } catch (\InvalidArgumentException $e) {
+            return new JsonResponse(['error' => $e->getMessage()], 400);
+        }
         return new JsonResponse(['success' => true]);
     }
 }

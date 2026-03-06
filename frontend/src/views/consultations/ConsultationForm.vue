@@ -507,12 +507,23 @@ const saveDevisSection = async ({ silent = false } = {}) => {
     }
 };
 
+const ensureMedecinSelected = ({ silent = false } = {}) => {
+    const medecinId = Number(data.consultation?.medecinId ?? Number.NaN);
+    const isValid = Number.isFinite(medecinId) && medecinId > 0;
+    if (!isValid && !silent) {
+        toast.add({ severity: 'warn', summary: 'Médecin requis', detail: 'Veuillez sélectionner un médecin avant de sauvegarder ou clôturer.', life: 3000 });
+    }
+    return isValid;
+};
+
 const saveConsultSection = async ({ silent = false } = {}) => {
     if (!dirty.consult && !dirty.ordonnances) return;
+    if (!ensureMedecinSelected({ silent })) return;
     setSaving('consult', true);
     try {
         const payload = {
             ...data.consultation,
+            medecinId: data.consultation?.medecinId ? Number(data.consultation.medecinId) : null,
             infirmierId: Array.isArray(data.consultation.infirmierIds)
                 ? data.consultation.infirmierIds[0] ?? null
                 : data.consultation.infirmierIds
@@ -568,6 +579,8 @@ const saveAll = async ({ silent = false } = {}) => {
 };
 
 const handleCloture = () => {
+    if (!ensureMedecinSelected()) return;
+
     confirm.require({
         message: 'Clôturer définitivement cette consultation ?',
         header: 'Confirmation',

@@ -71,6 +71,7 @@ security:
         # API
         - { path: ^/api/login, roles: PUBLIC_ACCESS }
         - { path: ^/api/token/validate, roles: PUBLIC_ACCESS }
+        - { path: ^/api, roles: PUBLIC_ACCESS, methods: [OPTIONS] }
         - { path: ^/api, roles: IS_AUTHENTICATED_FULLY }
        
         # WEB

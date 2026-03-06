@@ -9,7 +9,17 @@ import { defineConfig } from 'vite';
 // https://vitejs.dev/config/
 export default defineConfig({
     optimizeDeps: {
-        noDiscovery: true
+        noDiscovery: true,
+        esbuildOptions: {
+            logOverride: {
+                'missing-source-map': 'silent'
+            }
+        }
+    },
+    server: {
+        sourcemapIgnoreList: (sourcePath) =>
+            sourcePath.includes('/node_modules/@microsoft/fetch-event-source/')
+            || sourcePath.includes('\\node_modules\\@microsoft\\fetch-event-source\\')
     },
     plugins: [
         vue(),

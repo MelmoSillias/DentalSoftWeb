@@ -16,7 +16,6 @@ export function useMercureNotifications() {
     const notifications = computed(() => notificationsStore.notifications);
     const unreadCount = computed(() => notificationsStore.unreadCount);
 
-    // Ajout d'un callback pour notification reçue
     let notificationReceivedCb = null;
     function onNotificationReceived(cb) {
         notificationReceivedCb = cb;
