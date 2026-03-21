@@ -18,7 +18,8 @@ const emit = defineEmits([
     'refresh-payments',
     'print-payments',
     'print-payment',
-    'print-receipt'
+    'print-receipt',
+    'send-receipt-sms'
 ]);
 
 const paymentRangeModel = computed({
@@ -132,6 +133,7 @@ const miniChart = computed(() => {
                                 <div class="flex gap-2 justify-end mt-2">
                                     <Button :icon="row.type === 'devis' ? 'pi pi-print' : 'pi pi-ticket'" text
                                         @click="emit(row.type === 'devis' ? 'print-payment' : 'print-receipt', row)" />
+                                    <Button icon="pi pi-send" text @click="emit('send-receipt-sms', row)" />
                                 </div>
                             </div>
                         </div>

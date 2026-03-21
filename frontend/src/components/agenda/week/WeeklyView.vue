@@ -20,7 +20,7 @@ const props = defineProps({
   medecinReadonly: { type: Boolean, default: false }
 });
 
-const emit = defineEmits(['request-create', 'request-validate', 'request-cancel', 'request-report']);
+const emit = defineEmits(['request-create', 'request-validate', 'request-cancel', 'request-report', 'request-sms-reminder', 'request-sms-schedule']);
 
 const calendarPlugins = [timeGridPlugin, interactionPlugin];
 
@@ -78,7 +78,9 @@ const getStatusKey = (rdv) => {
 const menuItems = [
   { label: 'Valider', icon: 'pi pi-check', command: () => { if (selectedEvent.value) { emit('request-validate', selectedEvent.value.extendedProps); } } },
   { label: 'Reporter', icon: 'pi pi-calendar-minus', command: () => { if (selectedEvent.value) { emit('request-report', selectedEvent.value.extendedProps); } } },
-  { label: 'Annuler', icon: 'pi pi-times', command: () => { if (selectedEvent.value) { emit('request-cancel', selectedEvent.value.extendedProps); } } }
+  { label: 'Annuler', icon: 'pi pi-times', command: () => { if (selectedEvent.value) { emit('request-cancel', selectedEvent.value.extendedProps); } } },
+  { label: 'Envoyer rappel SMS', icon: 'pi pi-send', command: () => { if (selectedEvent.value) { emit('request-sms-reminder', selectedEvent.value.extendedProps); } } },
+  { label: 'Programmer rappel auto', icon: 'pi pi-clock', command: () => { if (selectedEvent.value) { emit('request-sms-schedule', selectedEvent.value.extendedProps); } } }
 ];
 
 const loadEvents = async (force = false) => {

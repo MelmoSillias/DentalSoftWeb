@@ -15,11 +15,15 @@ import CreateRdvDialog from '@/components/agenda/shared/CreateRdvDialog.vue';
 import ReportRdvDialog from '@/components/agenda/shared/ReportRdvDialog.vue';
 import ValidateRdvDialog from '@/components/agenda/shared/ValidateRdvDialog.vue';
 import WeeklyView from '@/components/agenda/week/WeeklyView.vue';
+import { scheduleAppointmentReminderSms, sendAppointmentReminderSms } from '@/services/smsService';
 import { onMounted as vueOnMounted, nextTick } from 'vue';
 import { useRdvApi } from '@/composables/useRdvApi';
 import { useAuthStore } from '@/stores/auth';
 import { addMinutes } from '@/utils/dateUtils';
 import { useLayout } from '@/layout/composables/layout';
+import Dialog from 'primevue/dialog';
+import InputText from 'primevue/inputtext';
+import SelectButton from 'primevue/selectbutton';
 
 const toast = useToast();
 const breadcrumbHome = { icon: 'pi pi-home', to: '/dashboard' };
@@ -70,6 +74,18 @@ const activeIndex = ref('week');
 const refreshKey = ref(0);
 const weeklyViewRef = ref();
 const actionLoading = ref(false);
+const smsDialogVisible = ref(false);
+const smsScheduleDialogVisible = ref(false);
+const smsDraft = ref('');
+const smsRdv = ref(null);
+const smsScheduleHours = ref(24);
+const smsScheduleOptions = ref([
+	{ label: '24h avant', value: 24 },
+	{ label: '12h avant', value: 12 },
+	{ label: '2h avant', value: 2 }
+]);
+const smsLoading = ref(false);
+const token = localStorage.getItem('token');
 
 
 
@@ -176,6 +192,54 @@ const openReport = (rdv) => {
 	dialogState.report = true;
 };
 
+const openSmsReminder = (rdv) => {
+	smsRdv.value = rdv;
+	const patientName = rdv?.patientName || 'Patient';
+	const when = rdv?.start ? new Date(rdv.start) : null;
+	const dateStr = when ? when.toLocaleDateString('fr-FR') : '';
+	const timeStr = when ? when.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '';
+	smsDraft.value = `Rappel : rendez-vous le ${dateStr} à ${timeStr}. Cabinet ORODENT.`.trim();
+	smsDialogVisible.value = true;
+};
+
+const sendSmsReminder = async () => {
+	if (!smsRdv.value?.id || !smsDraft.value?.trim()) return;
+	smsLoading.value = true;
+	try {
+		const result = await sendAppointmentReminderSms(smsRdv.value.id, { message: smsDraft.value }, token);
+		if (!result?.success) throw new Error(result?.error || 'Erreur envoi SMS');
+		notify('Rappel SMS ajouté à la file');
+		smsDialogVisible.value = false;
+	} catch (err) {
+		notify('Envoi SMS impossible', 'error');
+		console.error(err);
+	} finally {
+		smsLoading.value = false;
+	}
+};
+
+const openScheduleReminder = (rdv) => {
+	smsRdv.value = rdv;
+	smsScheduleHours.value = 24;
+	smsScheduleDialogVisible.value = true;
+};
+
+const scheduleSmsReminder = async () => {
+	if (!smsRdv.value?.id) return;
+	smsLoading.value = true;
+	try {
+		const result = await scheduleAppointmentReminderSms(smsRdv.value.id, { hoursBefore: smsScheduleHours.value }, token);
+		if (!result?.success) throw new Error(result?.error || 'Erreur programmation');
+		notify(`Rappel SMS programmé (${smsScheduleHours.value}h avant)`);
+		smsScheduleDialogVisible.value = false;
+	} catch (err) {
+		notify('Programmation SMS impossible', 'error');
+		console.error(err);
+	} finally {
+		smsLoading.value = false;
+	}
+};
+
 const submitReport = async (payload) => {
 	actionLoading.value = true;
 	try {
@@ -230,6 +294,8 @@ onMounted(() => {
 						       @request-validate="openValidate"
 						       @request-cancel="openCancel"
 						       @request-report="openReport"
+					       	@request-sms-reminder="openSmsReminder"
+					       	@request-sms-schedule="openScheduleReminder"
 					       />
 				</TabPanel>
 				<TabPanel value="day">
@@ -286,6 +352,29 @@ onMounted(() => {
 			:loading="actionLoading"
 			@submit="submitReport"
 		/>
+
+		<Dialog v-model:visible="smsDialogVisible" modal header="Envoyer rappel SMS" :style="{ width: '38rem' }">
+			<div class="flex flex-col gap-3">
+				<div class="text-sm text-surface-600">Message personnalisable avant envoi.</div>
+				<InputText v-model="smsDraft" />
+				<div class="text-xs text-surface-500">{{ smsDraft.length }} caractères • {{ Math.max(1, Math.ceil(smsDraft.length / 160)) }} SMS estimé(s)</div>
+			</div>
+			<template #footer>
+				<Button label="Annuler" text @click="smsDialogVisible = false" />
+				<Button label="Envoyer SMS" icon="pi pi-send" :loading="smsLoading" @click="sendSmsReminder" />
+			</template>
+		</Dialog>
+
+		<Dialog v-model:visible="smsScheduleDialogVisible" modal header="Programmer rappel automatique" :style="{ width: '30rem' }">
+			<div class="flex flex-col gap-3">
+				<div class="text-sm text-surface-600">Choisissez le délai avant le rendez-vous.</div>
+				<SelectButton v-model="smsScheduleHours" :options="smsScheduleOptions" optionLabel="label" optionValue="value" :allowEmpty="false" />
+			</div>
+			<template #footer>
+				<Button label="Annuler" text @click="smsScheduleDialogVisible = false" />
+				<Button label="Programmer" icon="pi pi-clock" :loading="smsLoading" @click="scheduleSmsReminder" />
+			</template>
+		</Dialog>
 	</section>
 </template>
 

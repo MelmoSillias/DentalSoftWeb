@@ -1,6 +1,7 @@
 <script setup>
 import { createPatient, updatePatient } from '@/services/patients';
 import Button from 'primevue/button';
+import Checkbox from 'primevue/checkbox';
 import ConfirmPopup from 'primevue/confirmpopup';
 import InputText from 'primevue/inputtext';
 import Textarea from 'primevue/textarea';
@@ -43,6 +44,15 @@ const form = reactive({
         nom: '',
         telephone: '',
         lienParente: ''
+    },
+    smsPreferences: {
+        patientCreated: false,
+        receipt: false,
+        ticket: false,
+        invoice: false,
+        appointmentReminder: false,
+        unsubscribed: false,
+        blacklisted: false
     }
 });
 
@@ -70,6 +80,13 @@ const resetForm = () => {
     form.contactUrgence.nom = '';
     form.contactUrgence.telephone = '';
     form.contactUrgence.lienParente = '';
+    form.smsPreferences.patientCreated = false;
+    form.smsPreferences.receipt = false;
+    form.smsPreferences.ticket = false;
+    form.smsPreferences.invoice = false;
+    form.smsPreferences.appointmentReminder = false;
+    form.smsPreferences.unsubscribed = false;
+    form.smsPreferences.blacklisted = false;
 };
 
 watch(
@@ -91,6 +108,14 @@ watch(
             form.contactUrgence.nom = contactUrgence.nom ?? '';
             form.contactUrgence.telephone = contactUrgence.telephone ?? '';
             form.contactUrgence.lienParente = contactUrgence.lienParente ?? '';
+            const smsPreferences = val.smsPreferences ?? {};
+            form.smsPreferences.patientCreated = Boolean(smsPreferences.patientCreated ?? false);
+            form.smsPreferences.receipt = Boolean(smsPreferences.receipt ?? false);
+            form.smsPreferences.ticket = Boolean(smsPreferences.ticket ?? false);
+            form.smsPreferences.invoice = Boolean(smsPreferences.invoice ?? false);
+            form.smsPreferences.appointmentReminder = Boolean(smsPreferences.appointmentReminder ?? false);
+            form.smsPreferences.unsubscribed = Boolean(smsPreferences.unsubscribed ?? false);
+            form.smsPreferences.blacklisted = Boolean(smsPreferences.blacklisted ?? false);
         } else {
             resetForm();
         }
@@ -119,7 +144,16 @@ const savePatient = async () => {
             dateNaissance: form.dateNaissance || null,
             groupeSanguin: form.groupeSanguin,
             notes: form.notes,
-            contactUrgence: hasContactUrgence ? contactUrgence : null
+            contactUrgence: hasContactUrgence ? contactUrgence : null,
+            smsPreferences: {
+                patientCreated: form.smsPreferences.patientCreated,
+                receipt: form.smsPreferences.receipt,
+                ticket: form.smsPreferences.ticket,
+                invoice: form.smsPreferences.invoice,
+                appointmentReminder: form.smsPreferences.appointmentReminder,
+                unsubscribed: form.smsPreferences.unsubscribed,
+                blacklisted: form.smsPreferences.blacklisted
+            }
         };
         const saved = isEdit.value && props.patient?.id
             ? await updatePatient(props.patient.id, payload, token)
@@ -208,6 +242,39 @@ const handleSubmit = (event) => {
                 <label for="notes" class="font-semibold">Notes</label>
                 <Textarea id="notes" v-model="form.notes" rows="3" autoResize
                     placeholder="Informations complémentaires" />
+            </div>
+            <div class="md:col-span-2 flex flex-col gap-3 border border-surface-200 rounded-xl p-4">
+                <h4 class="font-semibold text-surface-800">Communication SMS</h4>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    <div class="flex items-center gap-2">
+                        <Checkbox inputId="sms-created" v-model="form.smsPreferences.patientCreated" binary />
+                        <label for="sms-created">Envoyer accusé lors de la création du patient</label>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <Checkbox inputId="sms-receipt" v-model="form.smsPreferences.receipt" binary />
+                        <label for="sms-receipt">Envoyer automatiquement reçu par SMS</label>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <Checkbox inputId="sms-ticket" v-model="form.smsPreferences.ticket" binary />
+                        <label for="sms-ticket">Envoyer automatiquement ticket par SMS</label>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <Checkbox inputId="sms-invoice" v-model="form.smsPreferences.invoice" binary />
+                        <label for="sms-invoice">Envoyer automatiquement facture par SMS</label>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <Checkbox inputId="sms-rdv" v-model="form.smsPreferences.appointmentReminder" binary />
+                        <label for="sms-rdv">Envoyer rappel automatique de rendez-vous</label>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <Checkbox inputId="sms-unsub" v-model="form.smsPreferences.unsubscribed" binary />
+                        <label for="sms-unsub">Ne plus recevoir SMS</label>
+                    </div>
+                    <div class="flex items-center gap-2 md:col-span-2">
+                        <Checkbox inputId="sms-black" v-model="form.smsPreferences.blacklisted" binary />
+                        <label for="sms-black">Blacklist numéro (bloquer envoi SMS)</label>
+                    </div>
+                </div>
             </div>
         </div>
         <div class="flex gap-2 justify-end">

@@ -29,7 +29,9 @@ const emit = defineEmits([
     'preview',
     'print-payments',
     'print-payment',
-    'print-receipt'
+    'print-receipt',
+    'send-invoice-sms',
+    'send-receipt-sms'
 ]);
 
 const devisTypeOptions = [
@@ -185,6 +187,8 @@ const handlePreview = (row) => emit('preview', row);
                                 icon="pi pi-pencil" @click="handleModify(data)" />
                             <Button v-if="canPreview(data)" size="small" icon="pi pi-eye" severity="info" class="p-button-outlined"
                                 @click="handlePreview(data)" />
+                            <Button v-if="canPreview(data)" size="small" icon="pi pi-send" severity="help"
+                                @click="emit('send-invoice-sms', data)" />
                         </div>
                     </template>
 
@@ -227,6 +231,7 @@ const handlePreview = (row) => emit('preview', row);
                         <div class="flex gap-2">
                             <Button :icon="data.type === 'devis' ? 'pi pi-print' : 'pi pi-ticket'" text
                                 @click="emit(data.type === 'devis' ? 'print-payment' : 'print-receipt', data)" />
+                            <Button icon="pi pi-send" text @click="emit('send-receipt-sms', data)" />
                         </div>
                     </template>
                 </Column>

@@ -24,6 +24,7 @@ import {
 	fetchReceiptPrintData,
 	fetchTicketPrintData
 } from '@/services/printService';
+import { sendInvoiceSms, sendReceiptSms } from '@/services/smsService';
 import Button from 'primevue/button';
 import Dialog from 'primevue/dialog';
 import InputNumber from 'primevue/inputnumber';
@@ -409,6 +410,38 @@ const printReceiptById = async (paymentId) => {
 	}
 };
 
+const sendInvoiceBySms = async (row) => {
+	if (!row?.id) return;
+	try {
+		const res = await sendInvoiceSms(row.id, {}, token);
+		toast.add({
+			severity: res?.success ? 'success' : 'warn',
+			summary: 'SMS Facture',
+			detail: res?.success ? 'Facture ajoutée à la file SMS.' : (res?.error || 'Échec de l\'envoi.'),
+			life: 3500
+		});
+	} catch (error) {
+		console.error(error);
+		toast.add({ severity: 'error', summary: 'SMS Facture', detail: 'Envoi impossible.', life: 3500 });
+	}
+};
+
+const sendReceiptBySms = async (row) => {
+	if (!row?.pId) return;
+	try {
+		const res = await sendReceiptSms(row.pId, {}, token);
+		toast.add({
+			severity: res?.success ? 'success' : 'warn',
+			summary: 'SMS Reçu',
+			detail: res?.success ? 'Reçu ajouté à la file SMS.' : (res?.error || 'Échec de l\'envoi.'),
+			life: 3500
+		});
+	} catch (error) {
+		console.error(error);
+		toast.add({ severity: 'error', summary: 'SMS Reçu', detail: 'Envoi impossible.', life: 3500 });
+	}
+};
+
 watch([devisRange, devisType], loadDevis, { immediate: true });
 watch(paymentRange, loadPayments, { immediate: true });
 
@@ -442,19 +475,20 @@ onMounted(() => {
 						@update:devisRange="setDevisRange" @update:paymentRange="setPaymentRange"
 						@refresh-devis="loadDevis" @refresh-payments="loadPayments" @pay="openPayDialog"
 						@validate-free="openValidateDialog" @modify="openModifyDialog" @preview="openPreviewDialog"
-						@print-payments="printPayments" @print-payment="printPayment" @print-receipt="printReceipt" />
+						@print-payments="printPayments" @print-payment="printPayment" @print-receipt="printReceipt"
+						@send-invoice-sms="sendInvoiceBySms" @send-receipt-sms="sendReceiptBySms" />
 				</TabPanel>
 				<TabPanel value="factures">
 					<CaisseFactures :devis="devis" :devis-loading="devisLoading" :devis-type="devisType"
 						:devis-range="devisRange" @update:devisType="setDevisType" @update:devisRange="setDevisRange"
 						@refresh-devis="loadDevis" @pay="openPayDialog" @validate-free="openValidateDialog"
-						@modify="openModifyDialog" @preview="openPreviewDialog" />
+						@modify="openModifyDialog" @preview="openPreviewDialog" @send-invoice-sms="sendInvoiceBySms" />
 				</TabPanel>
 				<TabPanel value="paiements">
 					<CaissePaiements :payments="payments" :payments-loading="paymentsLoading"
 						:payment-range="paymentRange" @update:paymentRange="setPaymentRange"
 						@refresh-payments="loadPayments" @print-payments="printPayments" @print-payment="printPayment"
-						@print-receipt="printReceipt" />
+						@print-receipt="printReceipt" @send-receipt-sms="sendReceiptBySms" />
 				</TabPanel>
 			</TabPanels>
 		</Tabs>

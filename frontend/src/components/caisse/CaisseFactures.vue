@@ -20,7 +20,8 @@ const emit = defineEmits([
     'pay',
     'validate-free',
     'modify',
-    'preview'
+    'preview',
+    'send-invoice-sms'
 ]);
 
 const devisTypeOptions = [
@@ -170,6 +171,8 @@ const formatPatient = (row) => {
                                 icon="pi pi-pencil" @click="emit('modify', row)" />
                             <Button v-if="canPreview(row)" label="Voir" size="small" icon="pi pi-eye" severity="info"
                                 @click="emit('preview', row)" />
+                            <Button v-if="canPreview(row)" label="Envoyer facture par SMS" size="small" icon="pi pi-send" severity="help"
+                                @click="emit('send-invoice-sms', row)" />
                                 </div>
                             </div>
                         </div>

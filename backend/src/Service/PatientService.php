@@ -44,6 +44,7 @@ class PatientService
         private RdvNotificationService $rdvNotificationService,
         private CashdeskService $cashdeskService,
         private FicheMedicaleService $ficheMedicaleService,
+        private SmsService $smsService,
         private CacheInterface $cache,
         private EventDispatcherInterface $eventDispatcher,
     ) {
@@ -84,6 +85,7 @@ class PatientService
                 'telephone' => $contact->getTelephone(),
                 'lienParente' => $contact->getLienParente(),
             ] : null,
+            'smsPreferences' => $this->extractSmsPreferences($patient),
             'derniereConsultation' => $consultation ? [
                 'id' => $consultation->getId(),
                 'date' => $consultation->getCreatedAt()?->format('Y-m-d H:i'),
@@ -227,6 +229,7 @@ class PatientService
             $patient->setNumCarnet(uniqid('PAT-', true));
             $patient->setGroupeSanguin($data['groupeSanguin'] ?? null);
             $patient->setReferencement('');
+            $this->applySmsPreferences($patient, $data);
 
             if (isset($data['contactUrgence']) && is_array($data['contactUrgence'])) {
                 $contactData = $data['contactUrgence'];
@@ -246,6 +249,10 @@ class PatientService
             $this->em->flush();
 
             $this->notifyPatientCreation($patient, $actor);
+            $this->smsService->queueTemplateForPatient($patient, 'patient_created', [
+                'patient_name' => trim(($patient->getPrenom() ?? '') . ' ' . ($patient->getNom() ?? '')),
+                'cabinet_name' => 'ORODENT',
+            ], 'patient-created');
 
             return ['success' => true, 'status' => 201, 'patientId' => $patient->getId()];
         } catch (\Exception $e) {
@@ -270,6 +277,7 @@ class PatientService
             $patient->setLieuNaissance($data['lieuNaissance'] ?? $patient->getLieuNaissance());
             $patient->setGroupeSanguin($data['groupeSanguin'] ?? $patient->getGroupeSanguin());
             $patient->setSexe($data['sexe'] ?? $patient->getSexe());
+            $this->applySmsPreferences($patient, $data);
             if (!empty($data['dateNaissance'])) {
                 $patient->setDateNaissance(new DateTime($data['dateNaissance']));
             }
@@ -436,6 +444,7 @@ class PatientService
             'groupeSanguin' => $patient->getGroupeSanguin(),
             'dateInscription' => $patient->getDateInscription()->format('Y-m-d H:i'),
             'contactUrgence' => $contactUrgence,
+            'smsPreferences' => $this->extractSmsPreferences($patient),
             'derniereConsultation' => $derniereConsultation,
         ];
     }
@@ -680,6 +689,7 @@ class PatientService
             'groupeSanguin' => $patient->getGroupeSanguin(),
             'dateInscription' => $patient->getDateInscription()->format('Y-m-d H:i'),
             'contactUrgence' => $contactUrgence,
+            'smsPreferences' => $this->extractSmsPreferences($patient),
             'allergies' => $allergies,
             'antecedents' => $antecedents,
             'derniereConsultation' => $derniereConsultation,
@@ -714,6 +724,8 @@ class PatientService
         if (!empty($payload['dateNaissance'])) {
             $patient->setDateNaissance(new DateTime($payload['dateNaissance']));
         }
+
+        $this->applySmsPreferences($patient, $payload);
 
         $patient->getAllergies()->clear();
         if (isset($payload['allergies']) && is_array($payload['allergies'])) {
@@ -766,6 +778,53 @@ class PatientService
         $this->em->flush();
 
         return ['success' => true];
+    }
+
+    /**
+     * @return array<string, bool>
+     */
+    private function extractSmsPreferences(Patient $patient): array
+    {
+        return [
+            'patientCreated' => $patient->isSmsPatientCreated(),
+            'receipt' => $patient->isSmsReceipt(),
+            'ticket' => $patient->isSmsTicket(),
+            'invoice' => $patient->isSmsInvoice(),
+            'appointmentReminder' => $patient->isSmsAppointmentReminder(),
+            'unsubscribed' => $patient->isSmsUnsubscribed(),
+            'blacklisted' => $patient->isSmsBlacklisted(),
+        ];
+    }
+
+    private function applySmsPreferences(Patient $patient, array $data): void
+    {
+        $sms = isset($data['smsPreferences']) && is_array($data['smsPreferences'])
+            ? $data['smsPreferences']
+            : $data;
+
+        $mappings = [
+            'smsPatientCreated' => 'setSmsPatientCreated',
+            'patientCreated' => 'setSmsPatientCreated',
+            'smsReceipt' => 'setSmsReceipt',
+            'receipt' => 'setSmsReceipt',
+            'smsTicket' => 'setSmsTicket',
+            'ticket' => 'setSmsTicket',
+            'smsInvoice' => 'setSmsInvoice',
+            'invoice' => 'setSmsInvoice',
+            'smsAppointmentReminder' => 'setSmsAppointmentReminder',
+            'appointmentReminder' => 'setSmsAppointmentReminder',
+            'smsUnsubscribed' => 'setSmsUnsubscribed',
+            'unsubscribed' => 'setSmsUnsubscribed',
+            'smsBlacklisted' => 'setSmsBlacklisted',
+            'blacklisted' => 'setSmsBlacklisted',
+        ];
+
+        foreach ($mappings as $key => $setter) {
+            if (!array_key_exists($key, $sms)) {
+                continue;
+            }
+            $patient->$setter((bool) $sms[$key]);
+        }
     }
 
     public function addAntecedent(int $patientId, array $payload): array

@@ -39,6 +39,15 @@ export function usePatients() {
         groupeSanguin: raw.groupeSanguin ?? raw.groupe_sanguin ?? '',
         notes: raw.notes ?? '',
         contactUrgence: raw.contactUrgence ?? raw.contact_urgence ?? null,
+        smsPreferences: raw.smsPreferences ?? {
+            patientCreated: raw.smsPatientCreated ?? false,
+            receipt: raw.smsReceipt ?? false,
+            ticket: raw.smsTicket ?? false,
+            invoice: raw.smsInvoice ?? false,
+            appointmentReminder: raw.smsAppointmentReminder ?? false,
+            unsubscribed: raw.smsUnsubscribed ?? false,
+            blacklisted: raw.smsBlacklisted ?? false
+        },
         derniereConsultation: raw.derniereConsultation ?? raw.derniere_consultation ?? null
     });
 
@@ -82,6 +91,15 @@ export function usePatients() {
             lieuNaissance: patient.lieuNaissance ?? dossier.lieuNaissance ?? dossier.lieu_naissance ?? '--',
             adresse: patient.adresse ?? dossier.adresse ?? '--',
             contactUrgence,
+            smsPreferences: patient.smsPreferences ?? dossier.smsPreferences ?? {
+                patientCreated: false,
+                receipt: false,
+                ticket: false,
+                invoice: false,
+                appointmentReminder: false,
+                unsubscribed: false,
+                blacklisted: false
+            },
             allergies,
             antecedents,
             stats: {

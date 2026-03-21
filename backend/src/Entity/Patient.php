@@ -96,6 +96,27 @@ class Patient
     #[ORM\Column(length: 255)]
     private ?string $referencement = null;
 
+    #[ORM\Column(options: ['default' => false])]
+    private bool $smsPatientCreated = false;
+
+    #[ORM\Column(options: ['default' => false])]
+    private bool $smsReceipt = false;
+
+    #[ORM\Column(options: ['default' => false])]
+    private bool $smsTicket = false;
+
+    #[ORM\Column(options: ['default' => false])]
+    private bool $smsInvoice = false;
+
+    #[ORM\Column(options: ['default' => false])]
+    private bool $smsAppointmentReminder = false;
+
+    #[ORM\Column(options: ['default' => false])]
+    private bool $smsUnsubscribed = false;
+
+    #[ORM\Column(options: ['default' => false])]
+    private bool $smsBlacklisted = false;
+
     public function __construct()
     {
         $this->antecedents = new ArrayCollection();
@@ -105,6 +126,90 @@ class Patient
         $this->allergies         = new ArrayCollection(); 
         $this->fichesObservation = new ArrayCollection();
         $this->fichesMedicales = new ArrayCollection();
+    }
+
+    public function isSmsPatientCreated(): bool
+    {
+        return $this->smsPatientCreated;
+    }
+
+    public function setSmsPatientCreated(bool $smsPatientCreated): static
+    {
+        $this->smsPatientCreated = $smsPatientCreated;
+
+        return $this;
+    }
+
+    public function isSmsReceipt(): bool
+    {
+        return $this->smsReceipt;
+    }
+
+    public function setSmsReceipt(bool $smsReceipt): static
+    {
+        $this->smsReceipt = $smsReceipt;
+
+        return $this;
+    }
+
+    public function isSmsTicket(): bool
+    {
+        return $this->smsTicket;
+    }
+
+    public function setSmsTicket(bool $smsTicket): static
+    {
+        $this->smsTicket = $smsTicket;
+
+        return $this;
+    }
+
+    public function isSmsInvoice(): bool
+    {
+        return $this->smsInvoice;
+    }
+
+    public function setSmsInvoice(bool $smsInvoice): static
+    {
+        $this->smsInvoice = $smsInvoice;
+
+        return $this;
+    }
+
+    public function isSmsAppointmentReminder(): bool
+    {
+        return $this->smsAppointmentReminder;
+    }
+
+    public function setSmsAppointmentReminder(bool $smsAppointmentReminder): static
+    {
+        $this->smsAppointmentReminder = $smsAppointmentReminder;
+
+        return $this;
+    }
+
+    public function isSmsUnsubscribed(): bool
+    {
+        return $this->smsUnsubscribed;
+    }
+
+    public function setSmsUnsubscribed(bool $smsUnsubscribed): static
+    {
+        $this->smsUnsubscribed = $smsUnsubscribed;
+
+        return $this;
+    }
+
+    public function isSmsBlacklisted(): bool
+    {
+        return $this->smsBlacklisted;
+    }
+
+    public function setSmsBlacklisted(bool $smsBlacklisted): static
+    {
+        $this->smsBlacklisted = $smsBlacklisted;
+
+        return $this;
     }
 
     public function getId(): ?int

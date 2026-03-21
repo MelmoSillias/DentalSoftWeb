@@ -4,7 +4,10 @@ namespace App\Controller\Api;
 
 use App\Entity\Devis;
 use App\Entity\PaiementDevis;
+use App\Entity\Patient;
+use App\Repository\PaiementDevisRepository;
 use App\Service\CashdeskService;
+use App\Service\SmsService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -13,7 +16,11 @@ use Symfony\Component\Routing\Attribute\Route;
 
 class CaisseController extends AbstractController
 {
-    public function __construct(private CashdeskService $cashdeskService)
+    public function __construct(
+        private CashdeskService $cashdeskService,
+        private SmsService $smsService,
+        private PaiementDevisRepository $paiementRepository,
+    )
     {
     }
 
@@ -75,6 +82,20 @@ class CaisseController extends AbstractController
             $payload['date'] ?? null,
             $payload['time'] ?? null
         );
+
+        if (!isset($result['error']) && isset($result['paiement_id'])) {
+            $paiement = $this->paiementRepository->find((int) $result['paiement_id']);
+            $patient = $this->resolvePatientFromPaiement($paiement);
+
+            if ($patient instanceof Patient) {
+                $this->smsService->queueTemplateForPatient($patient, 'receipt', [
+                    'patient_name' => trim(($patient->getPrenom() ?? '') . ' ' . ($patient->getNom() ?? '')),
+                    'amount' => (string) ((int) round((float) ($payload['montant'] ?? 0))),
+                    'date' => (string) ($payload['date'] ?? (new \DateTime())->format('Y-m-d')),
+                    'cabinet_name' => 'ORODENT',
+                ], 'payment');
+            }
+        }
 
         return new JsonResponse($result, isset($result['error']) ? 400 : 200);
     }
@@ -298,5 +319,28 @@ class CaisseController extends AbstractController
             ],
             'date' => $paiement->getDate()?->format('Y-m-d H:i'),
         ];
+    }
+
+    private function resolvePatientFromPaiement(?PaiementDevis $paiement): ?Patient
+    {
+        if (!$paiement instanceof PaiementDevis) {
+            return null;
+        }
+
+        $devis = $paiement->getDevis();
+        $fromFicheMedicale = $devis?->getFicheMedicale()?->getPatient();
+        if ($fromFicheMedicale instanceof Patient) {
+            return $fromFicheMedicale;
+        }
+
+        $fiche = $devis?->getFiche();
+        if ($fiche && method_exists($fiche, 'getPatient')) {
+            $patient = $fiche->getPatient();
+            if ($patient instanceof Patient) {
+                return $patient;
+            }
+        }
+
+        return $paiement->getConsultation()?->getPatient();
     }
 }

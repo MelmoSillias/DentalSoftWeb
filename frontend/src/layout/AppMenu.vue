@@ -109,9 +109,9 @@ const model = computed(() => {
     }
 
     // Paramètres : mêmes rôles que dans le routage (admin, secrétaire, topo)
-    // if (hasAnyRole(['ROLE_ADMIN', 'ROLE_RECEPTION', 'ROLE_MEDECIN'])) {
-    //     menu.push(settingsSection);
-    // }
+    if (hasAnyRole(['ROLE_ADMIN', 'ROLE_SECRETAIRE', 'ROLE_TOPO'])) {
+        menu.push(settingsSection);
+    }
 
     return menu;
 });
