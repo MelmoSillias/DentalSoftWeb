@@ -130,9 +130,12 @@ class EmployeRepository extends ServiceEntityRepository
                ->orWhere('e.fonction LIKE :search')
                ->orWhere('e.type LIKE :search')
                ->orderBy('e.type')
+               ->addOrderBy('e.nom', 'ASC')
                ->setParameter('search', '%' . $searchValue . '%');
         }
 
+        $qb->orderBy('e.type', 'ASC')
+           ->addOrderBy('e.nom', 'ASC');
         return $qb->setFirstResult($start)
                   ->setMaxResults($length)
                   ->getQuery()

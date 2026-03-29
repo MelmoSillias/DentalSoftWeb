@@ -7,8 +7,8 @@ import Textarea from 'primevue/textarea';
 import Select from 'primevue/select';
 import SelectButton from 'primevue/selectbutton';
 import Divider from 'primevue/divider';
-import { useLayout } from '@/layout/composables/layout';
-import { updatePreset } from '@primeuix/themes';
+import AppConfigurator from '@/layout/AppConfigurator.vue';
+import { useUiSettingsStore } from '@/stores/uiSettings';
 import {
     fetchSmsLogs,
     fetchSmsSettings,
@@ -25,41 +25,20 @@ import {
 
 const toast = useToast();
 const token = localStorage.getItem('token');
-const { layoutConfig } = useLayout();
+const uiSettings = useUiSettingsStore();
 
 const sections = [
     { id: 'appearance', label: 'Apparence' },
+    { id: 'appearance-theme', label: 'Mode theme' },
+    { id: 'appearance-primary', label: 'Couleur principale' },
+    { id: 'appearance-surface', label: 'Surface UI' },
+    { id: 'appearance-presets', label: 'Presets' },
+    { id: 'appearance-font-family', label: 'Police' },
+    { id: 'appearance-font-size', label: 'Taille texte' },
     { id: 'sms-api', label: 'API SMS' }
 ];
 const activeSection = ref('appearance');
 let observer = null;
-
-const themeMode = ref(localStorage.getItem('settings.themeMode') || 'system');
-const fontFamily = ref(localStorage.getItem('settings.fontFamily') || 'Inter');
-const fontSize = ref(localStorage.getItem('settings.fontSize') || 'normal');
-
-const themeOptions = [
-    { label: 'Clair', value: 'light' },
-    { label: 'Sombre', value: 'dark' },
-    { label: 'Système', value: 'system' }
-];
-
-const fontFamilyOptions = ['Inter', 'Roboto', 'Open Sans', 'System'];
-const fontSizeOptions = [
-    { label: 'Small', value: 'small' },
-    { label: 'Normal', value: 'normal' },
-    { label: 'Large', value: 'large' }
-];
-
-const primaryPalette = {
-    emerald: { 500: '#10b981' },
-    blue: { 500: '#3b82f6' },
-    violet: { 500: '#8b5cf6' },
-    orange: { 500: '#f97316' },
-    rose: { 500: '#f43f5e' }
-};
-
-const primaryColors = Object.entries(primaryPalette).map(([name, palette]) => ({ name, palette }));
 
 const smsLoading = ref(false);
 const smsLoaded = ref(false);
@@ -119,46 +98,10 @@ const monthlySeries = computed(() => Object.entries(smsStats.monthlyConsumption 
 const maxDaily = computed(() => Math.max(1, ...dailySeries.value.map(([, value]) => Number(value) || 0)));
 const maxMonthly = computed(() => Math.max(1, ...monthlySeries.value.map(([, value]) => Number(value) || 0)));
 
-const applyThemeMode = (mode) => {
-    const isSystemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const shouldDark = mode === 'system' ? isSystemDark : mode === 'dark';
-    layoutConfig.darkTheme = shouldDark;
-    document.documentElement.classList.toggle('app-dark', shouldDark);
-};
-
-const applyFontSettings = () => {
-    const root = document.documentElement;
-    const familyMap = {
-        Inter: 'Inter, system-ui, -apple-system, sans-serif',
-        Roboto: 'Roboto, system-ui, -apple-system, sans-serif',
-        'Open Sans': '"Open Sans", system-ui, -apple-system, sans-serif',
-        System: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
-    };
-
-    const sizeMap = {
-        small: '14px',
-        normal: '16px',
-        large: '18px'
-    };
-
-    root.style.setProperty('--app-font-family', familyMap[fontFamily.value] || familyMap.System);
-    root.style.setProperty('--app-font-size', sizeMap[fontSize.value] || sizeMap.normal);
-    root.style.fontFamily = 'var(--app-font-family)';
-    root.style.fontSize = 'var(--app-font-size)';
-};
-
 const saveAppearance = () => {
-    localStorage.setItem('settings.themeMode', themeMode.value);
-    localStorage.setItem('settings.fontFamily', fontFamily.value);
-    localStorage.setItem('settings.fontSize', fontSize.value);
-    applyThemeMode(themeMode.value);
-    applyFontSettings();
-    toast.add({ severity: 'success', summary: 'Apparence', detail: 'Paramètres enregistrés.', life: 2500 });
-};
-
-const setPrimaryColor = (name) => {
-    layoutConfig.primary = name;
-    updatePreset({ semantic: { primary: primaryPalette[name] } });
+    uiSettings.persistAppearance();
+    uiSettings.persistLayout();
+    toast.add({ severity: 'success', summary: 'Apparence', detail: 'Parametres enregistres.', life: 2500 });
 };
 
 const scrollToSection = async (id) => {
@@ -322,9 +265,6 @@ watch(activeSection, (value) => {
 });
 
 onMounted(() => {
-    applyThemeMode(themeMode.value);
-    applyFontSettings();
-
     observer = new IntersectionObserver(
         (entries) => {
             entries.forEach((entry) => {
@@ -355,41 +295,20 @@ onBeforeUnmount(() => {
 
 <template>
     <div class="settings-page">
-        <div class="settings-main">
-            <h1 class="text-2xl font-semibold mb-4">Settings</h1>
+        <div class="settings-main"> 
 
             <section id="appearance" class="settings-section">
-                <h2 class="text-xl font-semibold mb-3">Apparence</h2>
-                <div class="grid md:grid-cols-2 gap-4">
-                    <div class="panel">
-                        <label class="label">Thème</label>
-                        <SelectButton v-model="themeMode" :options="themeOptions" optionLabel="label" optionValue="value" :allowEmpty="false" />
-                    </div>
-
-                    <div class="panel">
-                        <label class="label">Couleur principale</label>
-                        <div class="flex flex-wrap gap-2 mt-2">
-                            <button
-                                v-for="primaryColor in primaryColors"
-                                :key="primaryColor.name"
-                                type="button"
-                                class="color-dot"
-                                :class="{ selected: layoutConfig.primary === primaryColor.name }"
-                                :style="{ backgroundColor: primaryColor.palette['500'] }"
-                                @click="setPrimaryColor(primaryColor.name)"
-                            />
-                        </div>
-                    </div>
-
-                    <div class="panel">
-                        <label class="label">Font Family</label>
-                        <Select v-model="fontFamily" :options="fontFamilyOptions" class="w-full" />
-                    </div>
-
-                    <div class="panel">
-                        <label class="label">Font Size</label>
-                        <SelectButton v-model="fontSize" :options="fontSizeOptions" optionLabel="label" optionValue="value" :allowEmpty="false" />
-                    </div>
+                <h2 class="text-xl font-semibold mb-3 section-title"> <i class="pi pi-objects-column pr-2"></i> Apparence</h2>
+                <div class="panel">
+                    <AppConfigurator
+                        embedded
+                        :show-menu-mode="false"
+                        :show-theme-mode="true"
+                        :show-primary="true"
+                        :show-surface="true"
+                        :show-presets="true"
+                        :show-typography="true"
+                    />
                 </div>
 
                 <div class="mt-4 flex justify-end">
@@ -398,7 +317,7 @@ onBeforeUnmount(() => {
             </section>
 
             <section id="sms-api" class="settings-section">
-                <h2 class="text-xl font-semibold mb-3">API SMS</h2>
+                <h2 class="text-xl font-semibold mb-3 section-title"> <i class="pi pi-send pr-2"></i> API SMS</h2>
 
                 <div class="panel mb-4">
                     <h3 class="font-semibold mb-3">Configuration API</h3>
@@ -573,7 +492,7 @@ onBeforeUnmount(() => {
                         :key="section.id"
                         type="button"
                         class="anchor-btn"
-                        :class="{ active: activeSection === section.id }"
+                        :class="[{ active: activeSection === section.id }, { child: section.id.startsWith('appearance-') && section.id !== 'appearance' }]"
                         @click="scrollToSection(section.id)"
                     >
                         {{ section.label }}
@@ -589,6 +508,7 @@ onBeforeUnmount(() => {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 240px;
     gap: 1rem;
+    background-color: var(--surface-overlay);
 }
 
 .settings-main {
@@ -596,9 +516,8 @@ onBeforeUnmount(() => {
 }
 
 .settings-section {
-    background: var(--surface-card);
-    border: 1px solid var(--surface-border);
-    border-radius: 14px;
+    background: none;
+    border: none;
     padding: 1rem;
     margin-bottom: 1rem;
     scroll-margin-top: 80px;
@@ -606,9 +525,18 @@ onBeforeUnmount(() => {
 
 .panel {
     border: 1px solid var(--surface-border);
-    border-radius: 12px;
+    border-radius: 0;
     padding: 0.9rem;
     background: var(--surface-0);
+}
+
+.panel h3 {
+    font-size: 1.2rem;
+}
+
+.section-title{
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--surface-border);
 }
 
 .label {
@@ -633,28 +561,33 @@ onBeforeUnmount(() => {
 
 .settings-sidebar {
     position: sticky;
-    top: 1rem;
+    top: 5rem;
     align-self: start;
+    margin-top: 20px;
     max-height: calc(100vh - 2rem);
 }
 
 .sidebar-card {
-    border: 1px solid var(--surface-border);
-    border-radius: 12px;
+    border-left: 1px solid var(--surface-border);
+    border-radius: none;
     padding: 0.9rem;
-    background: var(--surface-card);
+    background: none;
 }
 
 .anchor-btn {
-    text-align: left;
-    border: 1px solid var(--surface-border);
-    border-radius: 8px;
+    text-align: left; 
     padding: 0.55rem 0.7rem;
     background: transparent;
     cursor: pointer;
 }
 
+.anchor-btn.child {
+    opacity: 0.85;
+    padding-inline-start: 1.3rem;
+}
+
 .anchor-btn.active {
+    border-inline-start: 2px solid ;
     border-color: var(--primary-color);
     background: color-mix(in srgb, var(--primary-color), transparent 90%);
 }

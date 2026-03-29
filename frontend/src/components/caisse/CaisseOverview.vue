@@ -3,9 +3,10 @@ import Button from 'primevue/button';
 import Column from 'primevue/column';
 import DataTable from 'primevue/datatable';
 import DatePicker from 'primevue/datepicker';
+import InputText from 'primevue/inputtext';
 import Select from 'primevue/select';
 import Tag from 'primevue/tag';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 
 const props = defineProps({
     devis: { type: Array, default: () => [] },
@@ -54,8 +55,58 @@ const paymentRangeModel = computed({
     set: (val) => emit('update:paymentRange', val || [])
 });
 
-const devisTotals = computed(() => {
+const devisSearch = ref('');
+const paymentsSearch = ref('');
+
+const normalizeText = (value) => String(value ?? '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+
+const matchesQuery = (parts, query) => {
+    if (!query) return true;
+    return parts.some((part) => normalizeText(part).includes(query));
+};
+
+const devisSearchQuery = computed(() => normalizeText(devisSearch.value.trim()));
+const paymentsSearchQuery = computed(() => normalizeText(paymentsSearch.value.trim()));
+
+const filteredDevis = computed(() => {
     const list = Array.isArray(props.devis) ? props.devis : [];
+    const query = devisSearchQuery.value;
+    return list.filter((row) => {
+        const patient = (row.patient && typeof row.patient === 'object')
+            ? `${row.patient.nom || ''} ${row.patient.prenom || ''}`.trim()
+            : (row.patient || '');
+        const status = computeStatus(row).label;
+        return matchesQuery([
+            patient,
+            row.telephone,
+            row.date,
+            formatDate(row.date),
+            row.montant,
+            row.reste,
+            status
+        ], query);
+    });
+});
+
+const filteredPayments = computed(() => {
+    const list = Array.isArray(props.payments) ? props.payments : [];
+    const query = paymentsSearchQuery.value;
+    return list.filter((row) => matchesQuery([
+        row.patient,
+        row.telephone,
+        row.date,
+        formatDate(row.date, true),
+        row.montant,
+        row.mode,
+        row.type
+    ], query));
+});
+
+const devisTotals = computed(() => {
+    const list = filteredDevis.value;
     const totalRestant = list.reduce((sum, r) => sum + (Number(r.reste) || 0), 0);
     return {
         count: list.length,
@@ -64,7 +115,7 @@ const devisTotals = computed(() => {
 });
 
 const paymentsTotals = computed(() => {
-    const list = Array.isArray(props.payments) ? props.payments : [];
+    const list = filteredPayments.value;
     const total = list.reduce((sum, r) => sum + (Number(r.montant) || 0), 0);
     return {
         count: list.length,
@@ -106,7 +157,7 @@ const handlePreview = (row) => emit('preview', row);
 
 <template>
     <div class="flex flex-col gap-5">
-        <div class="grid md:grid-cols-3 gap-3">
+        <div class="grid md:grid-cols-3 gap-3 stat-cards">
             <div class="stat-card stat-primary">
                 <div class="icon pi pi-file" aria-hidden="true"></div>
                 <div>
@@ -141,6 +192,11 @@ const handlePreview = (row) => emit('preview', row);
                 </div>
                 <div class="filters">
                     <div class="filter-item">
+                        <label>Recherche</label>
+                        <InputText v-model="devisSearch" placeholder="Tapez quelque chose..."
+                            fluid />
+                    </div>
+                    <div class="filter-item">
                         <label>Affichage</label>
                         <Select v-model="devisTypeModel" :options="devisTypeOptions" optionLabel="label"
                             optionValue="value" />
@@ -154,8 +210,8 @@ const handlePreview = (row) => emit('preview', row);
                 </div>
             </div>
 
-            <DataTable class="rounded-xl overflow-hidden" :value="devis" dataKey="id" :loading="devisLoading" paginator
-                :rows="10" :rowsPerPageOptions="[5, 10, 20]" responsiveLayout="scroll">
+            <DataTable class="rounded-xl overflow-hidden" :value="filteredDevis" dataKey="id" :loading="devisLoading"
+                paginator :rows="10" :rowsPerPageOptions="[5, 10, 20]" responsiveLayout="scroll">
                 <Column field="date" header="Date" sortable>
                     <template #body="{ data }">{{ formatDate(data.date) }}</template>
                 </Column>
@@ -205,6 +261,11 @@ const handlePreview = (row) => emit('preview', row);
                 </div>
                 <div class="filters">
                     <div class="filter-item">
+                        <label>Recherche</label>
+                        <InputText v-model="paymentsSearch" placeholder="Tapez quelque chose..."
+                            fluid />
+                    </div>
+                    <div class="filter-item">
                         <label>Période</label>
                         <DatePicker v-model="paymentRangeModel" selectionMode="range" dateFormat="yy-mm-dd" showIcon
                             fluid />
@@ -215,8 +276,9 @@ const handlePreview = (row) => emit('preview', row);
                 </div>
             </div>
 
-            <DataTable class="rounded-xl overflow-hidden" :value="payments" dataKey="pId" :loading="paymentsLoading"
-                paginator :rows="10" :rowsPerPageOptions="[5, 10, 20]" responsiveLayout="scroll">
+            <DataTable class="rounded-xl overflow-hidden" :value="filteredPayments" dataKey="pId"
+                :loading="paymentsLoading" paginator :rows="10" :rowsPerPageOptions="[5, 10, 20]"
+                responsiveLayout="scroll">
                 <Column field="date" header="Date" sortable>
                     <template #body="{ data }">{{ formatDate(data.date, true) }}</template>
                 </Column>
@@ -241,6 +303,12 @@ const handlePreview = (row) => emit('preview', row);
 </template>
 
 <style scoped>
+.stat-cards {
+    position: sticky;
+    top: 5rem;
+    z-index: 10;
+}
+
 .stat-card {
     display: grid;
     grid-template-columns: auto 1fr;

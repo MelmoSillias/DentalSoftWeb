@@ -3,6 +3,7 @@
 namespace App\Entity;
 
 use App\Repository\PaiementDevisRepository;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: PaiementDevisRepository::class)]
@@ -27,8 +28,18 @@ class PaiementDevis
     #[ORM\Column(type: 'float')]
     private float $montant;
 
-    #[ORM\OneToOne(cascade: ['persist', 'remove'])]
+    #[ORM\ManyToOne(targetEntity: Consultation::class, inversedBy: 'paiementDevis')]
+    #[ORM\JoinColumn(nullable: true)]
     private ?Consultation $consultation = null;
+
+    #[ORM\Column(length: 64, nullable: true)]
+    private ?string $groupePaiement = null;
+
+    #[ORM\Column(length: 32, options: ['default' => 'direct'])]
+    private string $rolePaiement = 'direct';
+
+    #[ORM\Column(type: Types::FLOAT, nullable: true)]
+    private ?float $tauxPriseEnCharge = null;
 
     #[ORM\OneToOne(mappedBy: 'paiementDevis', cascade: ['persist', 'remove'])]
     private ?Transaction $transaction = null;
@@ -52,6 +63,39 @@ class PaiementDevis
     {
         $this->consultation = $consultation;
 
+        return $this;
+    }
+
+    public function getGroupePaiement(): ?string
+    {
+        return $this->groupePaiement;
+    }
+
+    public function setGroupePaiement(?string $groupePaiement): static
+    {
+        $this->groupePaiement = $groupePaiement;
+        return $this;
+    }
+
+    public function getRolePaiement(): string
+    {
+        return $this->rolePaiement;
+    }
+
+    public function setRolePaiement(string $rolePaiement): static
+    {
+        $this->rolePaiement = $rolePaiement;
+        return $this;
+    }
+
+    public function getTauxPriseEnCharge(): ?float
+    {
+        return $this->tauxPriseEnCharge;
+    }
+
+    public function setTauxPriseEnCharge(?float $tauxPriseEnCharge): static
+    {
+        $this->tauxPriseEnCharge = $tauxPriseEnCharge;
         return $this;
     }
 

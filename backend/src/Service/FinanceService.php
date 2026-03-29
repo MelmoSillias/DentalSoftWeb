@@ -52,8 +52,27 @@ class FinanceService
         ];
     }
 
-    public function getBarParCompteAnnuel(): array
+    public function getAvailableTransactionYears(): array
     {
+        $years = [];
+
+        foreach ($this->transactionRepo->findAll() as $transaction) {
+            $years[] = (int) $transaction->getDateTransaction()->format('Y');
+        }
+
+        $years = array_values(array_unique($years));
+        rsort($years);
+
+        if (empty($years)) {
+            return [(int) date('Y')];
+        }
+
+        return $years;
+    }
+
+    public function getBarParCompteAnnuel(?int $year = null): array
+    {
+        $targetYear = (string) ($year ?? (int) date('Y'));
         $comptes = $this->modeRepo->findBy(['actif' => true]);
         $datasets = [
             'labels'   => [],
@@ -67,7 +86,7 @@ class FinanceService
             $sortie = 0;
 
             foreach ($mode->getTransactions() as $t) {
-                if ($t->getDateTransaction()->format('Y') !== date('Y')) {
+                if ($t->getDateTransaction()->format('Y') !== $targetYear) {
                     continue;
                 }
 
@@ -87,8 +106,9 @@ class FinanceService
         return $datasets;
     }
 
-    public function getBarPointChartData(): array
+    public function getBarPointChartData(?int $year = null): array
     {
+        $targetYear = (string) ($year ?? (int) date('Y'));
         $comptes = $this->modeRepo->findBy(['actif' => true]);
         $labels = [];
         $entrees = [];
@@ -104,7 +124,7 @@ class FinanceService
             $totalOut = 0;
 
             foreach ($mode->getTransactions() as $t) {
-                if ($t->getDateTransaction()->format('Y') !== date('Y')) {
+                if ($t->getDateTransaction()->format('Y') !== $targetYear) {
                     continue;
                 }
 
@@ -131,13 +151,14 @@ class FinanceService
         ];
     }
 
-    public function getEvolutionCapitalAnnuel(): array
+    public function getEvolutionCapitalAnnuel(?int $year = null): array
     {
+        $targetYear = (string) ($year ?? (int) date('Y'));
         $evolution = array_fill(0, 12, 0);
         $cumul = 0;
 
         foreach ($this->transactionRepo->findAll() as $t) {
-            if ($t->getDateTransaction()->format('Y') !== date('Y')) {
+            if ($t->getDateTransaction()->format('Y') !== $targetYear) {
                 continue;
             }
 
@@ -149,8 +170,9 @@ class FinanceService
         return $evolution;
     }
 
-    public function getGraphDatasetsParCompteComplet(): array
+    public function getGraphDatasetsParCompteComplet(?int $year = null): array
     {
+        $targetYear = (string) ($year ?? (int) date('Y'));
         $colorMap = ['#007bff', '#28a745', '#ffc107', '#dc3545', '#6f42c1', '#17a2b8'];
 
         $datasets = [];
@@ -163,6 +185,10 @@ class FinanceService
             $soldes  = array_fill(0, 12, 0);
 
             foreach ($mode->getTransactions() as $t) {
+                if ($t->getDateTransaction()->format('Y') !== $targetYear) {
+                    continue;
+                }
+
                 $mois = (int) $t->getDateTransaction()->format('n') - 1;
                 if ($t->getType() === 'Entrée') {
                     $entrees[$mois] += $t->getMontant();
@@ -225,6 +251,9 @@ class FinanceService
                 'id'      => $mode->getId(),
                 'libelle' => $mode->getLibelle(),
                 'type'    => $mode->getType(),
+                'typeKey' => $mode->getTypeKey(),
+                'family'  => $mode->getFamilyKey(),
+                'coverageRate' => $mode->getCoverageRate(),
                 'solde'   => $solde,
             ];
         }
@@ -246,6 +275,12 @@ class FinanceService
         $transaction->setDateTransaction($date);
         $transaction->setModeDePaiement($mode);
 
+        if ($mode->isAutoValidated()) {
+            $transaction->markValidated();
+        } else {
+            $transaction->markPending();
+        }
+
         $this->em->persist($transaction);
         $this->em->flush();
 
@@ -265,14 +300,21 @@ class FinanceService
         return array_map(function (Transaction $transaction) {
             return [
                 'date' => $transaction->getDateTransaction()->format('Y-m-d'),
+                'dateTransaction' => $transaction->getDateTransaction()->format('Y-m-d H:i:s'),
                 'id' => $transaction->getId(),
                 'description' => $transaction->getDescription(),
                 'type' => $transaction->getType(),
                 'amount' => $transaction->getMontant(),
+                'validated' => $transaction->isValidated(),
+                'validationStatus' => $transaction->getValidationStatus(),
+                'validationComment' => $transaction->getValidationComment(),
                 'modeDePaiement' => [
                     'id' => $transaction->getModeDePaiement()->getId(),
                     'libelle' => $transaction->getModeDePaiement()->getLibelle(),
                     'type' => $transaction->getModeDePaiement()->getType(),
+                    'typeKey' => $transaction->getModeDePaiement()->getTypeKey(),
+                    'family' => $transaction->getModeDePaiement()->getFamilyKey(),
+                    'coverageRate' => $transaction->getModeDePaiement()->getCoverageRate(),
                 ],
             ];
         }, $transactions);
@@ -287,6 +329,9 @@ class FinanceService
                 'id' => $mode->getId(),
                 'libelle' => $mode->getLibelle(),
                 'type' => $mode->getType(),
+                'typeKey' => $mode->getTypeKey(),
+                'family' => $mode->getFamilyKey(),
+                'coverageRate' => $mode->getCoverageRate(),
                 'actif' => $mode->isActif(),
                 'notes' => $mode->getNotes(),
             ];
@@ -298,6 +343,9 @@ class FinanceService
         $mode = new ModeDePaiement();
         $mode->setLibelle($data['libelle'] ?? '');
         $mode->setType($data['type'] ?? '');
+        $mode->setTypeKey($data['typeKey'] ?? null);
+        $mode->setFamilyKey($data['family'] ?? 'classic');
+        $mode->setCoverageRate(isset($data['coverageRate']) ? (float) $data['coverageRate'] : null);
         $mode->setNotes($data['notes'] ?? null);
         $mode->setActif(true);
 
@@ -349,5 +397,26 @@ class FinanceService
         $this->em->flush();
 
         return ['message' => 'Transfert effectué avec succès'];
+    }
+
+    public function updateTransactionValidationStatus(int $id, string $status, ?string $comment = null): array
+    {
+        $transaction = $this->transactionRepo->find($id);
+        if (!$transaction) {
+            return ['error' => 'Transaction introuvable', 'status' => 404];
+        }
+
+        if ($status === 'validated') {
+            $transaction->markValidated();
+            $transaction->setValidationComment(null);
+        } elseif ($status === 'rejected') {
+            $transaction->markRejected($comment);
+        } else {
+            return ['error' => 'Statut de validation invalide', 'status' => 400];
+        }
+
+        $this->em->flush();
+
+        return ['success' => true];
     }
 }

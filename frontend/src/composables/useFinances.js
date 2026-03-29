@@ -4,6 +4,8 @@ import { apiPrefix } from '@/config';
 import http from '@/service/http';
 
 const defaultChartState = () => ({
+    year: new Date().getFullYear(),
+    availableYears: [new Date().getFullYear()],
     months: [],
     datasetsComptes: [],
     barSoldeChart: {
@@ -49,11 +51,12 @@ export function useFinances() {
         throw err;
     };
 
-    const fetchChartData = async () => {
+    const fetchChartData = async (year = null) => {
         loading.value.charts = true;
         error.value = null;
         try {
-            const res = await http.get(`${apiPrefix}/finances/chart-data`, { headers: buildHeaders(false) });
+            const params = year ? `?year=${encodeURIComponent(year)}` : '';
+            const res = await http.get(`${apiPrefix}/finances/chart-data${params}`, { headers: buildHeaders(false) });
             const data = res.data;
             chartData.value = {
                 ...defaultChartState(),
@@ -90,6 +93,9 @@ export function useFinances() {
                 nom: payload?.nom || payload?.libelle || '',
                 libelle: payload?.libelle || payload?.nom || '',
                 type: payload?.type || null,
+                typeKey: payload?.typeKey || null,
+                family: payload?.family || null,
+                coverageRate: typeof payload?.coverageRate === 'number' ? payload.coverageRate : null,
                 notes: payload?.notes || null
             };
             const res = await http.post(`${apiPrefix}/payment-methods`, body, {
@@ -111,6 +117,9 @@ export function useFinances() {
                 nom: payload?.nom || payload?.libelle || '',
                 libelle: payload?.libelle || payload?.nom || '',
                 type: payload?.type || null,
+                typeKey: payload?.typeKey || null,
+                family: payload?.family || null,
+                coverageRate: typeof payload?.coverageRate === 'number' ? payload.coverageRate : null,
                 notes: payload?.notes || null,
                 actif: typeof payload?.actif === 'boolean' ? payload.actif : undefined
             };
@@ -222,6 +231,36 @@ export function useFinances() {
         }
     };
 
+    const validateTransaction = async (id) => {
+        loading.value.action = true;
+        error.value = null;
+        try {
+            const res = await http.patch(`${apiPrefix}/transactions/${id}/validate`, {}, {
+                headers: buildHeaders(true)
+            });
+            return res.data ?? null;
+        } catch (err) {
+            handleError(err);
+        } finally {
+            loading.value.action = false;
+        }
+    };
+
+    const rejectTransaction = async (id, payload = {}) => {
+        loading.value.action = true;
+        error.value = null;
+        try {
+            const res = await http.patch(`${apiPrefix}/transactions/${id}/reject`, payload, {
+                headers: buildHeaders(true)
+            });
+            return res.data ?? null;
+        } catch (err) {
+            handleError(err);
+        } finally {
+            loading.value.action = false;
+        }
+    };
+
     return {
         chartData,
         paymentMethods,
@@ -236,6 +275,8 @@ export function useFinances() {
         togglePaymentMethod,
         fetchTransactionsRange,
         createTransaction,
-        transferInterCompte
+        transferInterCompte,
+        validateTransaction,
+        rejectTransaction
     };
 }

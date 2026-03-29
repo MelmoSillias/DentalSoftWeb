@@ -1,12 +1,5 @@
 import { computed, reactive } from 'vue';
-
-const layoutConfig = reactive({
-    preset: 'Aura',
-    primary: 'sky',
-    surface: null,
-    darkTheme: false,
-    menuMode: 'static'
-});
+import { useUiSettingsStore } from '@/stores/uiSettings';
 
 const layoutState = reactive({
     staticMenuDesktopInactive: false,
@@ -19,23 +12,21 @@ const layoutState = reactive({
 });
 
 export function useLayout() {
+    const uiSettings = useUiSettingsStore();
+    const { layoutConfig } = uiSettings;
+
     const setActiveMenuItem = (item) => {
         layoutState.activeMenuItem = item.value || item;
     };
 
     const toggleDarkMode = () => {
         if (!document.startViewTransition) {
-            executeDarkModeToggle();
+            uiSettings.toggleDarkMode();
 
             return;
         }
 
-        document.startViewTransition(() => executeDarkModeToggle(event));
-    };
-
-    const executeDarkModeToggle = () => {
-        layoutConfig.darkTheme = !layoutConfig.darkTheme;
-        document.documentElement.classList.toggle('app-dark');
+        document.startViewTransition(() => uiSettings.toggleDarkMode());
     };
 
     const toggleMenu = () => {

@@ -146,16 +146,16 @@ const router = createRouter({
                     component: () => import('@/views/manual/UserManual.vue'),
                     meta: { requiresAuth: true, roles: ['ROLE_ADMIN'], fixedWidth: true }
                 },
-                {
-                   path: '/parametres/fileOptions',
-                   name: 'settings-fileOptions',
-                   component: () => import('@/views/settings/FilesOptions.vue'),
-                   meta: { requiresAuth: true, roles: ['ROLE_ADMIN', "ROLE_SECRETAIRE", "ROLE_TOPO"], fixedWidth: true }
-                },
+                // {
+                //    path: '/parametres/fileOptions',
+                //    name: 'settings-fileOptions',
+                //    component: () => import('@/views/settings/FilesOptions.vue'),
+                //    meta: { requiresAuth: true, roles: ['ROLE_ADMIN', "ROLE_SECRETAIRE", "ROLE_TOPO"], fixedWidth: true }
+                // },
                 {
                     path: '/parametres/apparence',
                     name: 'settings-apparence',
-                    component: () => import('@/views/settings/Appearance.vue'),
+                    component: () => import('@/views/settings/GeneralOptions.vue'),
                     meta: { requiresAuth: true, roles: ['ROLE_ADMIN', "ROLE_SECRETAIRE", "ROLE_TOPO"], fixedWidth: true }
                 }
             ]
@@ -175,6 +175,11 @@ const router = createRouter({
             path: '/auth/access',
             name: 'accessDenied',
             component: () => import('@/views/pages/auth/Access.vue')
+        },
+        {
+            path: '/landing',
+            name: 'landing',
+            component: () => import('@/views/pages/Landing.vue')
         },
         {
             path: '/auth/error',

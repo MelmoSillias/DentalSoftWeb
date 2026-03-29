@@ -50,6 +50,9 @@ const refreshDay = async () => {
     loadingDay.value = true;
     try {
         dayEvents.value = await props.api.fetchEventsByDay(selectedDate.value, props.lockedMedecinId);
+    } catch (err) {
+        console.error('Erreur chargement agenda du jour:', err);
+        dayEvents.value = [];
     } finally {
         loadingDay.value = false;
     }
@@ -60,6 +63,9 @@ const refreshStats = async () => {
     loadingStats.value = true;
     try {
         stats.value = await props.api.fetchStats(selectedDate.value, props.lockedMedecinId);
+    } catch (err) {
+        console.error('Erreur chargement statistiques rendez-vous:', err);
+        stats.value = { pending: 0, validated: 0, postponed: 0, cancelled: 0 };
     } finally {
         loadingStats.value = false;
     }

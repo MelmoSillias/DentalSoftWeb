@@ -8,6 +8,7 @@ import { registerSW } from 'virtual:pwa-register';
 import { createApp } from 'vue';
 import App from './App.vue';
 import router from './router';
+import { useUiSettingsStore } from '@/stores/uiSettings';
 // main.js ou main.ts
 
 
@@ -163,6 +164,10 @@ app.use(PrimeVue, {
  
 const pinia = createPinia();
 app.use(pinia);
+
+const uiSettings = useUiSettingsStore(pinia);
+uiSettings.initialize();
+
 app.use(router);
 app.use(ToastService);
 app.use(ConfirmationService);

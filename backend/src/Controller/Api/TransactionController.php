@@ -53,6 +53,31 @@ class TransactionController extends AbstractController
         return $this->json(['message' => 'Transaction enregistrée avec succès']);
     }
 
+    #[Route('/api/transactions/{id}/validate', name: 'api_transaction_validate', methods: ['PATCH'])]
+    public function validateTransaction(int $id): JsonResponse
+    {
+        $result = $this->financeService->updateTransactionValidationStatus($id, 'validated');
+
+        if (isset($result['error'])) {
+            return $this->json(['error' => $result['error']], $result['status'] ?? 400);
+        }
+
+        return $this->json(['message' => 'Transaction validée avec succès']);
+    }
+
+    #[Route('/api/transactions/{id}/reject', name: 'api_transaction_reject', methods: ['PATCH'])]
+    public function rejectTransaction(int $id, Request $request): JsonResponse
+    {
+        $data = json_decode($request->getContent(), true) ?: [];
+        $result = $this->financeService->updateTransactionValidationStatus($id, 'rejected', $data['comment'] ?? null);
+
+        if (isset($result['error'])) {
+            return $this->json(['error' => $result['error']], $result['status'] ?? 400);
+        }
+
+        return $this->json(['message' => 'Transaction rejetée avec succès']);
+    }
+
 
 
     #[Route('/api/transactions/intercompte', name: 'api_transactions_intercompte', methods: ['POST'])]

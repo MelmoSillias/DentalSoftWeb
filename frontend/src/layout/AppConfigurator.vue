@@ -1,12 +1,47 @@
 <script setup>
 import { useLayout } from '@/layout/composables/layout';
-import { $t, updatePreset, updateSurfacePalette } from '@primeuix/themes';
+import { updatePreset, updateSurfacePalette } from '@primeuix/themes';
 import Aura from '@primeuix/themes/aura';
 import Lara from '@primeuix/themes/lara';
 import Nora from '@primeuix/themes/nora';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
+import { useUiSettingsStore } from '@/stores/uiSettings';
+import Select from 'primevue/select';
+import SelectButton from 'primevue/selectbutton';
 
 const { layoutConfig, isDarkTheme } = useLayout();
+const uiSettings = useUiSettingsStore();
+
+const props = defineProps({
+    embedded: {
+        type: Boolean,
+        default: false
+    },
+    showMenuMode: {
+        type: Boolean,
+        default: true
+    },
+    showPresets: {
+        type: Boolean,
+        default: true
+    },
+    showSurface: {
+        type: Boolean,
+        default: true
+    },
+    showPrimary: {
+        type: Boolean,
+        default: true
+    },
+    showThemeMode: {
+        type: Boolean,
+        default: true
+    },
+    showTypography: {
+        type: Boolean,
+        default: true
+    }
+});
 
 const presets = {
     Aura,
@@ -22,6 +57,34 @@ const menuModeOptions = ref([
     { label: 'Overlay', value: 'overlay' }
 ]);
 
+const themeOptions = ref([
+    { label: 'Clair', value: 'light' },
+    { label: 'Sombre', value: 'dark' },
+    { label: 'Systeme', value: 'system' }
+]);
+
+const fontFamilyOptions = ref(['Inter', 'Roboto', 'Open Sans', 'System']);
+const fontSizeOptions = ref([
+    { label: 'Petit', value: 'small' },
+    { label: 'Normal', value: 'normal' },
+    { label: 'Grand', value: 'large' }
+]);
+
+const themeMode = computed({
+    get: () => uiSettings.themeMode,
+    set: (value) => uiSettings.setThemeMode(value)
+});
+
+const fontFamily = computed({
+    get: () => uiSettings.fontFamily,
+    set: (value) => uiSettings.setFontFamily(value)
+});
+
+const fontSize = computed({
+    get: () => uiSettings.fontSize,
+    set: (value) => uiSettings.setFontSize(value)
+});
+
 const primaryColors = ref([
     { name: 'emerald', palette: { 50: '#ecfdf5', 100: '#d1fae5', 200: '#a7f3d0', 300: '#6ee7b7', 400: '#34d399', 500: '#10b981', 600: '#059669', 700: '#047857', 800: '#065f46', 900: '#064e3b', 950: '#022c22' } },
     { name: 'green', palette: { 50: '#f0fdf4', 100: '#dcfce7', 200: '#bbf7d0', 300: '#86efac', 400: '#4ade80', 500: '#22c55e', 600: '#16a34a', 700: '#15803d', 800: '#166534', 900: '#14532d', 950: '#052e16' } },
@@ -29,9 +92,8 @@ const primaryColors = ref([
     { name: 'orange', palette: { 50: '#fff7ed', 100: '#ffedd5', 200: '#fed7aa', 300: '#fdba74', 400: '#fb923c', 500: '#f97316', 600: '#ea580c', 700: '#c2410c', 800: '#9a3412', 900: '#7c2d12', 950: '#431407' } },
     { name: 'amber', palette: { 50: '#fffbeb', 100: '#fef3c7', 200: '#fde68a', 300: '#fcd34d', 400: '#fbbf24', 500: '#f59e0b', 600: '#d97706', 700: '#b45309', 800: '#92400e', 900: '#78350f', 950: '#451a03' } },
     { name: 'yellow', palette: { 50: '#fefce8', 100: '#fef9c3', 200: '#fef08a', 300: '#fde047', 400: '#facc15', 500: '#eab308', 600: '#ca8a04', 700: '#a16207', 800: '#854d0e', 900: '#713f12', 950: '#422006' } },
-    { name: 'teal', palette: { 50: '#f0fdfa', 100: '#ccfbf1', 200: '#99f6e4', 300: '#5eead4', 400: '#2dd4bf', 500: '#14b8a6', 600: '#0d9488', 700: '#0f766e', 800: '#115e59', 900: '#134e4a', 950: '#042f2e' } },
-    { name: 'sky', palette: { 50: '#ecfeff', 100: '#cffafe', 200: '#a5f3fc', 300: '#67e8f9', 400: '#22d3ee', 500: '#06b6d4', 600: '#0891b2', 700: '#0e7490', 800: '#155e75', 900: '#164e63', 950: '#083344' } },
-    { name: 'sky', palette: { 50: '#f0f9ff', 100: '#e0f2fe', 200: '#bae6fd', 300: '#7dd3fc', 400: '#38bdf8', 500: '#0ea5e9', 600: '#0284c7', 700: '#0369a1', 800: '#075985', 900: '#0c4a6e', 950: '#082f49' } },
+    { name: 'teal', palette: { 50: '#f0fdfa', 100: '#ccfbf1', 200: '#99f6e4', 300: '#5eead4', 400: '#2dd4bf', 500: '#14b8a6', 600: '#0d9488', 700: '#0f766e', 800: '#115e59', 900: '#134e4a', 950: '#042f2e' } }, 
+    { name: 'skyblue', palette: { 50: '#ecfeff', 100: '#cffafe', 200: '#a5f3fc', 300: '#67e8f9', 400: '#22d3ee', 500: '#06b6d4', 600: '#0891b2', 700: '#0e7490', 800: '#155e75', 900: '#164e63', 950: '#083344' } }, 
     { name: 'blue', palette: { 50: '#eff6ff', 100: '#dbeafe', 200: '#bfdbfe', 300: '#93c5fd', 400: '#60a5fa', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8', 800: '#1e40af', 900: '#1e3a8a', 950: '#172554' } },
     { name: 'indigo', palette: { 50: '#eef2ff', 100: '#e0e7ff', 200: '#c7d2fe', 300: '#a5b4fc', 400: '#818cf8', 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca', 800: '#3730a3', 900: '#312e81', 950: '#1e1b4b' } },
     { name: 'violet', palette: { 50: '#f5f3ff', 100: '#ede9fe', 200: '#ddd6fe', 300: '#c4b5fd', 400: '#a78bfa', 500: '#8b5cf6', 600: '#7c3aed', 700: '#6d28d9', 800: '#5b21b6', 900: '#4c1d95', 950: '#2e1065' } },
@@ -168,9 +230,9 @@ function getPresetExt() {
 
 function updateColors(type, color) {
     if (type === 'primary') {
-        layoutConfig.primary = color.name;
+        uiSettings.setPrimaryName(color.name);
     } else if (type === 'surface') {
-        layoutConfig.surface = color.name;
+        uiSettings.setSurfaceName(color.name);
     }
 
     applyTheme(type, color);
@@ -185,23 +247,40 @@ function applyTheme(type, color) {
 }
 
 function onPresetChange() {
-    layoutConfig.preset = preset.value;
     const presetValue = presets[preset.value];
     const surfacePalette = surfaces.value.find((s) => s.name === layoutConfig.surface)?.palette;
 
-    $t().preset(presetValue).preset(getPresetExt()).surfacePalette(surfacePalette).use({ useDefaultOptions: true });
+    uiSettings.setLayoutTheme({
+        presetName: preset.value,
+        presetValue,
+        presetExt: getPresetExt(),
+        surfacePalette
+    });
 }
 
 function onMenuModeChange() {
-    layoutConfig.menuMode = menuMode.value;
+    uiSettings.setMenuMode(menuMode.value);
 }
+
+const panelClass = computed(() => {
+    if (props.embedded) {
+        return 'config-panel embedded';
+    }
+
+    return 'config-panel hidden absolute top-[3.25rem] right-0 w-64 p-4 bg-surface-0 dark:bg-surface-900 border border-surface rounded-border origin-top shadow-[0px_3px_5px_rgba(0,0,0,0.02),0px_0px_2px_rgba(0,0,0,0.05),0px_1px_4px_rgba(0,0,0,0.08)]';
+});
 </script>
 
 <template>
-    <div
-        class="config-panel hidden absolute top-[3.25rem] right-0 w-64 p-4 bg-surface-0 dark:bg-surface-900 border border-surface rounded-border origin-top shadow-[0px_3px_5px_rgba(0,0,0,0.02),0px_0px_2px_rgba(0,0,0,0.05),0px_1px_4px_rgba(0,0,0,0.08)]">
+    <div :class="panelClass">
         <div class="flex flex-col gap-4">
-            <div>
+            <div v-if="showThemeMode" :id="embedded ? 'appearance-theme' : null">
+                <span class="text-sm text-muted-color font-semibold">Theme</span>
+                <div class="pt-2">
+                    <SelectButton v-model="themeMode" :options="themeOptions" optionLabel="label" optionValue="value" :allowEmpty="false" class="w-full" />
+                </div>
+            </div>
+            <div v-if="showPrimary" :id="embedded ? 'appearance-primary' : null">
                 <span class="text-sm text-muted-color font-semibold">Primary</span>
                 <div class="pt-2 flex gap-2 flex-wrap justify-between">
                     <button v-for="primaryColor of primaryColors" :key="primaryColor.name" type="button"
@@ -210,7 +289,7 @@ function onMenuModeChange() {
                         :style="{ backgroundColor: `${primaryColor.name === 'noir' ? 'var(--text-color)' : primaryColor.palette['500']}` }"></button>
                 </div>
             </div>
-            <div>
+            <div v-if="showSurface" :id="embedded ? 'appearance-surface' : null">
                 <span class="text-sm text-muted-color font-semibold">Surface</span>
                 <div class="pt-2 flex gap-2 flex-wrap justify-between">
                     <button v-for="surface of surfaces" :key="surface.name" type="button" :title="surface.name"
@@ -220,11 +299,19 @@ function onMenuModeChange() {
                         ]" :style="{ backgroundColor: `${surface.palette['500']}` }"></button>
                 </div>
             </div>
-            <div class="flex flex-col gap-2">
+            <div v-if="showPresets" class="flex flex-col gap-2" :id="embedded ? 'appearance-presets' : null">
                 <span class="text-sm text-muted-color font-semibold">Presets</span>
                 <SelectButton v-model="preset" @change="onPresetChange" :options="presetOptions" :allowEmpty="false" />
             </div>
-            <div class="flex flex-col gap-2">
+            <div v-if="showTypography" class="flex flex-col gap-2" :id="embedded ? 'appearance-font-family' : null">
+                <span class="text-sm text-muted-color font-semibold">Police</span>
+                <Select v-model="fontFamily" :options="fontFamilyOptions" class="w-full" />
+            </div>
+            <div v-if="showTypography" class="flex flex-col gap-2" :id="embedded ? 'appearance-font-size' : null">
+                <span class="text-sm text-muted-color font-semibold">Taille texte</span>
+                <SelectButton v-model="fontSize" :options="fontSizeOptions" optionLabel="label" optionValue="value" :allowEmpty="false" />
+            </div>
+            <div v-if="showMenuMode" class="flex flex-col gap-2">
                 <span class="text-sm text-muted-color font-semibold">Menu Mode</span>
                 <SelectButton v-model="menuMode" @change="onMenuModeChange" :options="menuModeOptions"
                     :allowEmpty="false" optionLabel="label" optionValue="value" />
@@ -232,3 +319,14 @@ function onMenuModeChange() {
         </div>
     </div>
 </template>
+
+<style scoped>
+.config-panel.embedded {
+    position: static;
+    width: 100%;
+    padding: 0;
+    border: none;
+    box-shadow: none;
+    background: transparent;
+}
+</style>

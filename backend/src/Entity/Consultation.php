@@ -52,8 +52,8 @@ class Consultation
     #[ORM\Column(type: 'datetime', nullable: true)]
     private ?\DateTimeInterface $CreatedAt = null;
 
-    #[ORM\OneToOne(mappedBy: 'consultation', cascade: ['persist', 'remove'])]
-    private ?PaiementDevis $paiementDevis = null;
+    #[ORM\OneToMany(mappedBy: 'consultation', targetEntity: PaiementDevis::class, cascade: ['persist', 'remove'])]
+    private Collection $paiementDevis;
 
     #[ORM\OneToOne(inversedBy: 'consultation', cascade: ['persist', 'remove'])]
     private ?Devis $facture = null;
@@ -65,6 +65,7 @@ class Consultation
     public function __construct()
     {
         $this->actes = new ArrayCollection(); 
+        $this->paiementDevis = new ArrayCollection();
         $this->ordonnances = new ArrayCollection();
     }
 
@@ -113,22 +114,44 @@ class Consultation
  
     public function getPaiementDevis(): ?PaiementDevis
     {
+        return $this->paiementDevis->first() ?: null;
+    }
+
+    public function getPaiementsDevis(): Collection
+    {
         return $this->paiementDevis;
     }
 
     public function setPaiementDevis(?PaiementDevis $paiementDevis): self
     {
-        // Unset the owning side of the relation if necessary
-        if ($paiementDevis === null && $this->paiementDevis !== null) {
-            $this->paiementDevis->setConsultation(null);
+        foreach ($this->paiementDevis as $existingPaiement) {
+            $existingPaiement->setConsultation(null);
         }
 
-        // Set the owning side of the relation if necessary
-        if ($paiementDevis !== null && $paiementDevis->getConsultation() !== $this) {
+        $this->paiementDevis->clear();
+
+        if ($paiementDevis !== null) {
+            $this->addPaiementDevis($paiementDevis);
+        }
+
+        return $this;
+    }
+
+    public function addPaiementDevis(PaiementDevis $paiementDevis): self
+    {
+        if (!$this->paiementDevis->contains($paiementDevis)) {
+            $this->paiementDevis->add($paiementDevis);
             $paiementDevis->setConsultation($this);
         }
 
-        $this->paiementDevis = $paiementDevis;
+        return $this;
+    }
+
+    public function removePaiementDevis(PaiementDevis $paiementDevis): self
+    {
+        if ($this->paiementDevis->removeElement($paiementDevis) && $paiementDevis->getConsultation() === $this) {
+            $paiementDevis->setConsultation(null);
+        }
 
         return $this;
     }

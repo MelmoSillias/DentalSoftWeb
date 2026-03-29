@@ -2,9 +2,10 @@
 import Button from 'primevue/button';
 import DataView from 'primevue/dataview';
 import DatePicker from 'primevue/datepicker';
+import InputText from 'primevue/inputtext';
 import Select from 'primevue/select';
 import Tag from 'primevue/tag';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 
 const props = defineProps({
     devis: { type: Array, default: () => [] },
@@ -29,10 +30,21 @@ const devisTypeOptions = [
     { label: 'Factures impayées', value: 'impaye' }
 ];
 
-const safeDevis = computed(() => 
-    { 
-        return (Array.isArray(props.devis) ? props.devis : [])
-    });
+const safeDevis = computed(() => (Array.isArray(props.devis) ? props.devis : []));
+
+const devisSearch = ref('');
+
+const normalizeText = (value) => String(value ?? '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+
+const matchesQuery = (parts, query) => {
+    if (!query) return true;
+    return parts.some((part) => normalizeText(part).includes(query));
+};
+
+const devisSearchQuery = computed(() => normalizeText(devisSearch.value.trim()));
 
 const devisTypeModel = computed({
     get: () => props.devisType,
@@ -60,9 +72,25 @@ const canModify = (row) => (Number(row.montant) === Number(row.reste)) && !row.i
 const canPreview = (row) => !(Number(row.montant) === 0 && Number(row.reste) === 0);
 const targetIsFree = (row) => !row.isRegle && Number(row.reste) === 0;
 
+const filteredDevis = computed(() => {
+    const query = devisSearchQuery.value;
+    return safeDevis.value.filter((row) => {
+        const patient = formatPatient(row);
+        const status = computeStatus(row).label;
+        return matchesQuery([
+            patient,
+            row.telephone,
+            row.date,
+            row.montant,
+            row.reste,
+            status
+        ], query);
+    });
+});
+
 const groups = computed(() => {
     const buckets = { impaye: [], partiel: [], paye: [] };
-    safeDevis.value.forEach((row) => {
+    filteredDevis.value.forEach((row) => {
         const status = computeStatus(row);
         if (status.label === 'Impayé') buckets.impaye.push(row);
         else if (status.label === 'Partiellement payé') buckets.partiel.push(row);
@@ -72,9 +100,9 @@ const groups = computed(() => {
 });
 
 const stats = computed(() => {
-    const totalRestant = safeDevis.value.reduce((sum, r) => sum + (Number(r.reste) || 0), 0);
+    const totalRestant = filteredDevis.value.reduce((sum, r) => sum + (Number(r.reste) || 0), 0);
     return {
-        count: safeDevis.value.length,
+        count: filteredDevis.value.length,
         restant: totalRestant,
         breakdown: `${groups.value.impaye.length}/${groups.value.partiel.length}/${groups.value.paye.length}`
     };
@@ -97,6 +125,11 @@ const formatPatient = (row) => {
                     <p class="section-title">Cartes par statut et liste détaillée, selon vos filtres.</p>
                 </div>
                 <div class="filters">
+                    <div class="filter-item">
+                        <label>Recherche</label>
+                        <InputText v-model="devisSearch" placeholder="Tapez quelque chose..."
+                            fluid />
+                    </div>
                     <div class="filter-item">
                         <label>Affichage</label>
                         <Select v-model="devisTypeModel" :options="devisTypeOptions" optionLabel="label"
@@ -135,9 +168,9 @@ const formatPatient = (row) => {
                 </div>
             </div>
 
-            <div v-if="!safeDevis.length" class="empty">Aucune facture à afficher pour ces filtres.</div>
+            <div v-if="!filteredDevis.length" class="empty">Aucune facture à afficher pour ces filtres.</div>
 
-            <DataView v-else :value="safeDevis" paginator :rows="6" :rowsPerPageOptions="[6, 12, 24]"
+            <DataView v-else :value="filteredDevis" paginator :rows="6" :rowsPerPageOptions="[6, 12, 24]"
                 :loading="devisLoading">
                 <template #list="slotProps">
                     <div class="flex flex-col gap-3">

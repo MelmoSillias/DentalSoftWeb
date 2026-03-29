@@ -269,7 +269,7 @@ function getBorderColor(index) {
         <div class="bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-900/20 dark:to-amber-800/20 rounded-2xl p-5 border border-amber-200/50 dark:border-amber-800/50 mb-6">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-sm text-amber-700 dark:text-amber-300 font-medium">Consultations en cours</p>
+                    <p class="text-sm text-amber-700 dark:text-amber-300 font-medium">File D'attente</p>
                     <p class="text-2xl font-bold text-amber-900 dark:text-amber-100 mt-2">
                         {{ sortedConsultations.length }}
                         <span class="text-base font-normal text-amber-600 dark:text-amber-400 ml-1">en attente</span>

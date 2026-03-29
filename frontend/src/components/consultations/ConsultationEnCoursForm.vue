@@ -267,9 +267,10 @@ const soinsList = [
 ];
 
 const consultationTypes = [
-    { label: 'Controle', value: 'controle' },
-    { label: 'Traitement', value: 'traitement' },
-    { label: 'Urgence', value: 'urgence' },
+    { label: 'Première Consultation', value: 'initiale' },
+    { label: 'Contrôle ou prévention', value: 'controle' },
+    { label: 'Suivi de traitement', value: 'traitement' },
+    { label: 'Urgence Dentaire', value: 'urgence' },
     { label: 'Autre', value: 'autre' }
 ];
 

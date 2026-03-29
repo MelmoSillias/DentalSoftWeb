@@ -555,7 +555,7 @@ onMounted(async () => {
 </script>
 
 <template>
-    <section class="min-h-screen bg-gradient-to-br from-surface-50 to-surface-100/60 dark:from-surface-900 dark:to-surface-800/90 p-3 sm:p-4 md:p-6 lg:p-8 transition-colors duration-300">
+    <section class="min-h-screen bg-surface-50 dark:bg-surface-900 p-3 sm:p-4 md:p-6 lg:p-8 transition-colors duration-300">
         <div class="mb-6 md:mb-8">
             <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
                 <div class="space-y-2 flex-1">

@@ -10,9 +10,16 @@ import {
 import { fetchTicketPrintData } from '@/services/printService';
 import PrintTicketBody from '@/components/print/PrintTicketBody.vue';
 import { usePrinter } from '@/composables/usePrinter';
+import {
+    buildPaymentMethodGroups,
+    getPaymentCoverageRate,
+    getPaymentMethodDefinition,
+    getDefaultClassicMethod
+} from '@/utils/paymentMethodUtils';
 import Button from 'primevue/button';
 import ConfirmPopup from 'primevue/confirmpopup';
 import DatePicker from 'primevue/datepicker';
+import InputNumber from 'primevue/inputnumber';
 import InputText from 'primevue/inputtext';
 import Textarea from 'primevue/textarea';
 import { useConfirm } from 'primevue/useconfirm';
@@ -37,6 +44,7 @@ const toast = useToast();
 const token = localStorage.getItem('token');
 const loading = ref(false);
 const { printComponent } = usePrinter();
+const CONSULTATION_AMOUNT = 5000;
 
 const patients = ref([]);
 const patientsLoading = ref(false);
@@ -50,7 +58,10 @@ const form = reactive({
     dateConsultation: new Date(),
     medecinId: null,
     payant: false,
-    modePaiementId: null
+    modePaiementId: null,
+    insuranceEnabled: false,
+    insuranceModeId: null,
+    insuranceRate: 0
 });
 
 const hasActiveConsultation = ref(false);
@@ -136,17 +147,97 @@ const medecinOptions = computed(() =>
 );
 
 const paymentMethodOptions = computed(() =>
-    paymentMethods.value
+    buildPaymentMethodGroups(paymentMethods.value).classics
         .filter((m) => m.actif !== false)
-        .map((m) => ({ label: m.libelle, value: m.id }))
+        .map((m) => ({
+            label: `${m.libelle}${getPaymentMethodDefinition(m).label !== 'Autre' ? ` (${getPaymentMethodDefinition(m).label})` : ''}`,
+            value: m.id
+        }))
 );
+
+const insuranceMethodOptions = computed(() =>
+    buildPaymentMethodGroups(paymentMethods.value).insurances
+        .filter((m) => m.actif !== false)
+        .map((m) => ({
+            label: `${m.libelle} (${getPaymentCoverageRate(m).toLocaleString('fr-FR')}%)`,
+            value: m.id
+        }))
+);
+
+const selectedInsuranceMethod = computed(() =>
+    paymentMethods.value.find((method) => Number(method?.id) === Number(form.insuranceModeId)) || null
+);
+
+const insuranceCoveredAmount = computed(() => {
+    if (!form.payant || !form.insuranceEnabled) {
+        return 0;
+    }
+
+    return Math.max(0, (CONSULTATION_AMOUNT * Number(form.insuranceRate || 0)) / 100);
+});
+
+const patientRemainingAmount = computed(() => Math.max(0, CONSULTATION_AMOUNT - insuranceCoveredAmount.value));
+const requiresClassicPayment = computed(() => form.payant && patientRemainingAmount.value > 0);
 
 const resetForm = () => {
     form.notes = '';
     form.dateConsultation = new Date();
     form.medecinId = null; 
     form.modePaiementId = null;
+    form.insuranceEnabled = false;
+    form.insuranceModeId = null;
+    form.insuranceRate = 0;
 };
+
+watch(
+    () => form.payant,
+    (isPayant) => {
+        if (isPayant) {
+            if (!form.modePaiementId) {
+                form.modePaiementId = getDefaultClassicMethod(paymentMethods.value)?.id ?? null;
+            }
+            return;
+        }
+
+        form.modePaiementId = null;
+        form.insuranceEnabled = false;
+        form.insuranceModeId = null;
+        form.insuranceRate = 0;
+    }
+);
+
+watch(
+    () => form.insuranceEnabled,
+    (enabled) => {
+        if (enabled) {
+            const defaultInsurance = buildPaymentMethodGroups(paymentMethods.value).insurances.find((method) => method.actif !== false) || null;
+            if (!form.insuranceModeId && defaultInsurance) {
+                form.insuranceModeId = defaultInsurance.id;
+            }
+            if (!(Number(form.insuranceRate) > 0)) {
+                form.insuranceRate = getPaymentCoverageRate(defaultInsurance);
+            }
+            return;
+        }
+
+        form.insuranceModeId = null;
+        form.insuranceRate = 0;
+    }
+);
+
+watch(
+    () => form.insuranceModeId,
+    (modeId) => {
+        if (!modeId) {
+            return;
+        }
+
+        const method = paymentMethods.value.find((item) => Number(item?.id) === Number(modeId));
+        if (method) {
+            form.insuranceRate = getPaymentCoverageRate(method);
+        }
+    }
+);
 
 const formatDatePart = (dateValue) => {
     const d = dateValue ? new Date(dateValue) : null;
@@ -215,8 +306,16 @@ const saveConsultation = async () => {
         toast.add({ severity: 'warn', summary: 'Médecin requis', detail: 'Sélectionnez un médecin.', life: 2500 });
         return;
     }
-    if (form.payant && !form.modePaiementId) {
-        toast.add({ severity: 'warn', summary: 'Mode de paiement requis', detail: 'Choisissez un mode de paiement.', life: 2500 });
+    if (form.payant && form.insuranceEnabled && !form.insuranceModeId) {
+        toast.add({ severity: 'warn', summary: 'Assurance requise', detail: 'Choisissez un assureur.', life: 2500 });
+        return;
+    }
+    if (form.payant && form.insuranceEnabled && !(Number(form.insuranceRate) > 0)) {
+        toast.add({ severity: 'warn', summary: 'Taux requis', detail: 'Indiquez un pourcentage de prise en charge valide.', life: 2500 });
+        return;
+    }
+    if (requiresClassicPayment.value && !form.modePaiementId) {
+        toast.add({ severity: 'warn', summary: 'Mode de paiement requis', detail: 'Choisissez un mode de paiement patient.', life: 2500 });
         return;
     }
 
@@ -233,9 +332,15 @@ const saveConsultation = async () => {
             patient_id: selectedPatientId.value,
             medecin_id: form.medecinId,
             payant: form.payant ? 1 : 0,
-            mode_paiement_id: form.payant ? form.modePaiementId : null,
+            mode_paiement_id: requiresClassicPayment.value ? form.modePaiementId : null,
             consultation_date: consultationDate,
             consultation_time: consultationTime,
+            insurance_enabled: form.payant && form.insuranceEnabled ? 1 : 0,
+            insurance_mode_id: form.payant && form.insuranceEnabled ? form.insuranceModeId : null,
+            insurance_rate: form.payant && form.insuranceEnabled ? Number(form.insuranceRate || 0) : null,
+            patient_amount: form.payant ? patientRemainingAmount.value : 0,
+            insurance_amount: form.payant && form.insuranceEnabled ? insuranceCoveredAmount.value : 0,
+            consultation_amount: form.payant ? CONSULTATION_AMOUNT : 0,
             notes: form.notes || null
         };
         const saved = await createConsultationForPatient(selectedPatientId.value, payload, token);
@@ -314,14 +419,44 @@ const handleSubmit = (event) => {
                 <label class="font-semibold">Consultation payante</label>
                 <div class="flex items-center gap-2">
                     <ToggleSwitch v-model="form.payant" />
-                    <span class="text-sm text-gray-600">{{ form.payant ? 'Payante (5000)' : 'Gratuite' }}</span>
+                    <span class="text-sm text-gray-600">{{ form.payant ? `Payante (${CONSULTATION_AMOUNT})` : 'Gratuite' }}</span>
                 </div>
             </div>
             <div class="flex flex-col gap-2" v-if="form.payant">
-                <label class="font-semibold">Mode de paiement</label>
+                <label class="font-semibold">Mode de paiement patient</label>
                 <Select v-model="form.modePaiementId" :options="paymentMethodOptions  || []" optionLabel="label"
                     optionValue="value" placeholder="Choisir un mode de paiement" class="w-full" />
-                <small class="text-gray-500">Le mode de paiement est requis pour les consultations payantes.</small>
+                <small class="text-gray-500">
+                    {{ requiresClassicPayment ? 'Le mode de paiement patient est requis pour la part non couverte.' : 'Aucune part patient restante si l’assurance couvre 100 %.' }}
+                </small>
+            </div>
+            <div class="flex flex-col gap-2 md:col-span-2" v-if="form.payant">
+                <label class="font-semibold">Assurance</label>
+                <div class="flex items-center gap-2">
+                    <ToggleSwitch v-model="form.insuranceEnabled" />
+                    <span class="text-sm text-gray-600">{{ form.insuranceEnabled ? 'Prise en charge activée' : 'Aucune assurance' }}</span>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 md:col-span-2 p-4 rounded-xl border border-surface-200 bg-surface-50/70" v-if="form.payant && form.insuranceEnabled">
+                <div class="flex flex-col gap-2">
+                    <label class="font-semibold">Assureur</label>
+                    <Select v-model="form.insuranceModeId" :options="insuranceMethodOptions || []" optionLabel="label"
+                        optionValue="value" placeholder="Choisir une assurance" class="w-full" />
+                </div>
+                <div class="flex flex-col gap-2">
+                    <label class="font-semibold">Prise en charge (%)</label>
+                    <InputNumber v-model="form.insuranceRate" mode="decimal" locale="fr-FR" :min="0" :max="100"
+                        :minFractionDigits="0" :maxFractionDigits="2" inputClass="w-full" class="w-full" />
+                </div>
+                <div class="flex flex-col gap-2">
+                    <label class="font-semibold">Reste patient</label>
+                    <InputNumber :modelValue="patientRemainingAmount" mode="decimal" locale="fr-FR" :min="0"
+                        inputClass="w-full" class="w-full" disabled />
+                </div>
+                <div class="md:col-span-3 text-sm text-gray-600">
+                    Couverture calculée : {{ insuranceCoveredAmount.toLocaleString('fr-FR') }} sur {{ CONSULTATION_AMOUNT.toLocaleString('fr-FR') }}.
+                    <span v-if="selectedInsuranceMethod">Assureur sélectionné : {{ selectedInsuranceMethod.libelle }}.</span>
+                </div>
             </div>
             <div class="md:col-span-2 flex flex-col gap-2">
                 <label class="font-semibold">Notes</label>

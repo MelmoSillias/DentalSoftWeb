@@ -24,7 +24,7 @@ const openEditForm = (consumable) => {
     showForm.value = true
 }
 
-const toogleAddRetireForm = (value, consumable) => {
+const toggleAddRetireForm = (value, consumable) => {
     addRetireFormType.value = value
     editConsumable.value = consumable
     showAddRetireForm.value = true 
@@ -434,7 +434,7 @@ const confirmDelete = async (consumable) => {
                                                     label="Ajouter stock" 
                                                     outlined
                                                     class="rounded-xl px-4"
-                                                    @click="toogleAddRetireForm('add', item)"
+                                                    @click="toggleAddRetireForm('add', item)"
                                                 />
                                                 <Button 
                                                     icon="pi pi-minus" 
@@ -442,7 +442,7 @@ const confirmDelete = async (consumable) => {
                                                     label="Retirer stock" 
                                                     outlined
                                                     class="rounded-xl px-4"
-                                                    @click="toogleAddRetireForm('retire', item)"
+                                                    @click="toggleAddRetireForm('retire', item)"
                                                 />
                                                 <Button 
                                                     icon="pi pi-pencil" 

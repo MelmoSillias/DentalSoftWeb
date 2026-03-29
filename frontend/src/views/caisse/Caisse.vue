@@ -9,6 +9,12 @@ import PrintTicketBody from '@/components/print/PrintTicketBody.vue';
 import { usePrinter } from '@/composables/usePrinter';
 import { useAuthStore } from '@/stores/auth';
 import {
+	buildPaymentMethodGroups,
+	getDefaultClassicMethod,
+	getPaymentCoverageRate,
+	getPaymentMethodDefinition
+} from '@/utils/paymentMethodUtils';
+import {
 	fetchDevis,
 	fetchDevisDetail,
 	fetchFactureLines,
@@ -81,7 +87,15 @@ const formatFcfa = (value) => `${Number(value || 0).toLocaleString('fr-FR')} FCF
 const paymentMethods = ref([]);
 const payDialogVisible = ref(false);
 const selectedDevis = ref(null);
-const payForm = ref({ montant: 0, modeId: null, date: toApiDate(today), time: currentTime() });
+const payForm = ref({
+	montant: 0,
+	modeId: null,
+	date: toApiDate(today),
+	time: currentTime(),
+	insuranceEnabled: false,
+	insuranceModeId: null,
+	insuranceRate: 0
+});
 
 const validateDialogVisible = ref(false);
 const pendingDevis = ref(null);
@@ -131,9 +145,69 @@ const factureTotal = computed(() => factureLines.value.reduce((sum, line) => sum
 const remainingAfterPay = computed(() => {
 	if (!selectedDevis.value) return 0;
 	const reste = Number(selectedDevis.value.reste) || 0;
-	const montant = Number(payForm.value.montant) || 0;
-	return Math.max(0, reste - montant);
+	const montantPatient = Number(payForm.value.montant) || 0;
+	return Math.max(0, reste - montantPatient - insuranceCoveredAmount.value);
 });
+
+const classicPaymentOptions = computed(() =>
+	buildPaymentMethodGroups(paymentMethods.value).classics
+		.filter((method) => method.actif !== false)
+		.map((method) => ({
+			label: `${method.libelle}${getPaymentMethodDefinition(method).label !== 'Autre' ? ` (${getPaymentMethodDefinition(method).label})` : ''}`,
+			value: method.id
+		}))
+);
+
+const insurancePaymentOptions = computed(() =>
+	buildPaymentMethodGroups(paymentMethods.value).insurances
+		.filter((method) => method.actif !== false)
+		.map((method) => ({
+			label: `${method.libelle} (${getPaymentCoverageRate(method).toLocaleString('fr-FR')}%)`,
+			value: method.id
+		}))
+);
+
+const selectedInsuranceMethod = computed(() =>
+	paymentMethods.value.find((method) => Number(method?.id) === Number(payForm.value.insuranceModeId)) || null
+);
+
+const insuranceCoveredAmount = computed(() => {
+	if (!selectedDevis.value || !payForm.value.insuranceEnabled) {
+		return 0;
+	}
+
+	const baseAmount = Number(selectedDevis.value.reste) || 0;
+	return Math.max(0, (baseAmount * Number(payForm.value.insuranceRate || 0)) / 100);
+});
+
+const patientPortionAmount = computed(() => {
+	if (!selectedDevis.value) {
+		return 0;
+	}
+
+	const baseAmount = Number(selectedDevis.value.reste) || 0;
+	return Math.max(0, baseAmount - insuranceCoveredAmount.value);
+});
+
+const hasRecordedPatientPayment = computed(() => {
+	if (!selectedDevis.value) {
+		return false;
+	}
+
+	return payments.value.some((payment) => Number(payment?.devisId) === Number(selectedDevis.value.id));
+});
+
+const invoiceAllowsInsurance = computed(() => {
+	if (!selectedDevis.value) {
+		return false;
+	}
+
+	const total = Number(selectedDevis.value.montant) || 0;
+	const reste = Number(selectedDevis.value.reste) || 0;
+	return total > 0 && total === reste && !hasRecordedPatientPayment.value;
+});
+
+const requiresClassicPayment = computed(() => patientPortionAmount.value > 0);
 
 const setActiveView = (view) => {
 	const allowed = ['overview', 'factures', 'paiements'];
@@ -183,30 +257,92 @@ const loadPaymentMethods = async () => {
 
 const openPayDialog = async (row) => {
 	selectedDevis.value = row;
+	await loadPaymentMethods();
+	const defaultClassicMethod = getDefaultClassicMethod(paymentMethods.value);
 	payForm.value = {
 		montant: Number(row.reste) || 0,
-		modeId: null,
+		modeId: defaultClassicMethod?.id ?? null,
 		date: toApiDate(new Date()),
-		time: currentTime()
+		time: currentTime(),
+		insuranceEnabled: false,
+		insuranceModeId: null,
+		insuranceRate: 0
 	};
-	await loadPaymentMethods();
 	payDialogVisible.value = true;
 };
+
+watch(
+	() => payForm.value.insuranceEnabled,
+	(enabled) => {
+		if (!enabled) {
+			payForm.value.insuranceModeId = null;
+			payForm.value.insuranceRate = 0;
+			payForm.value.montant = Number(selectedDevis.value?.reste) || 0;
+			return;
+		}
+
+		if (!invoiceAllowsInsurance.value) {
+			payForm.value.insuranceEnabled = false;
+			return;
+		}
+
+		const defaultInsurance = buildPaymentMethodGroups(paymentMethods.value).insurances.find((method) => method.actif !== false) || null;
+		payForm.value.insuranceModeId = payForm.value.insuranceModeId || defaultInsurance?.id || null;
+		payForm.value.insuranceRate = getPaymentCoverageRate(defaultInsurance);
+		payForm.value.montant = patientPortionAmount.value;
+	}
+);
+
+watch(
+	() => payForm.value.insuranceModeId,
+	(modeId) => {
+		if (!modeId) {
+			return;
+		}
+
+		const method = paymentMethods.value.find((item) => Number(item?.id) === Number(modeId));
+		if (method) {
+			payForm.value.insuranceRate = getPaymentCoverageRate(method);
+			payForm.value.montant = patientPortionAmount.value;
+		}
+	}
+);
+
+watch(
+	() => payForm.value.insuranceRate,
+	() => {
+		if (payForm.value.insuranceEnabled) {
+			payForm.value.montant = patientPortionAmount.value;
+		}
+	}
+);
 
 const submitPayment = async () => {
 	
 	if (!selectedDevis.value) return;
-	const montant = Number(payForm.value.montant) || 0;
+	const montant = payForm.value.insuranceEnabled ? patientPortionAmount.value : Number(payForm.value.montant) || 0;
 	const max = Number(selectedDevis.value.reste) || 0;
-	if (!montant || montant < 0) {
+	if (!payForm.value.insuranceEnabled && (!montant || montant < 0)) {
 		toast.add({ severity: 'warn', summary: 'Montant', detail: 'Saisissez un montant valide', life: 2500 });
 		return;
 	}
-	if (montant > max) {
+	if ((montant + insuranceCoveredAmount.value) > max) {
 		toast.add({ severity: 'warn', summary: 'Montant', detail: `Le montant ne peut dépasser ${formatFcfa(max)}`, life: 2500 });
 		return;
 	}
-	if (!payForm.value.modeId || !payForm.value.date || !payForm.value.time) {
+	if (payForm.value.insuranceEnabled && !invoiceAllowsInsurance.value) {
+		toast.add({ severity: 'warn', summary: 'Assurance', detail: 'L’assurance n’est disponible que pour une facture sans paiement enregistré.', life: 3000 });
+		return;
+	}
+	if (payForm.value.insuranceEnabled && !payForm.value.insuranceModeId) {
+		toast.add({ severity: 'warn', summary: 'Assurance', detail: 'Choisissez une assurance.', life: 2500 });
+		return;
+	}
+	if (payForm.value.insuranceEnabled && !(Number(payForm.value.insuranceRate) > 0)) {
+		toast.add({ severity: 'warn', summary: 'Assurance', detail: 'Indiquez un pourcentage de prise en charge valide.', life: 2500 });
+		return;
+	}
+	if ((requiresClassicPayment.value && !payForm.value.modeId) || !payForm.value.date || !payForm.value.time) {
 		toast.add({ severity: 'warn', summary: 'Paiement', detail: 'Mode, date et heure sont requis', life: 2500 });
 		return;
 	}
@@ -214,9 +350,15 @@ const submitPayment = async () => {
 		payLoading.value = true;
 		const res = await payDevis(selectedDevis.value.id, {
 			montant,
-			modeId: payForm.value.modeId,
+			modeId: requiresClassicPayment.value ? payForm.value.modeId : null,
 			date: payForm.value.date,
-			time: payForm.value.time
+			time: payForm.value.time,
+			insurance_enabled: payForm.value.insuranceEnabled ? 1 : 0,
+			insurance_mode_id: payForm.value.insuranceEnabled ? payForm.value.insuranceModeId : null,
+			insurance_rate: payForm.value.insuranceEnabled ? Number(payForm.value.insuranceRate || 0) : null,
+			patient_amount: montant,
+			insurance_amount: payForm.value.insuranceEnabled ? insuranceCoveredAmount.value : 0,
+			facture_amount: Number(selectedDevis.value.reste || selectedDevis.value.montant || 0)
 		}, token);
 		const devisId = selectedDevis.value.id;
 		const paymentId = res?.paiement_id ?? res?.paiementId ?? null;
@@ -495,11 +637,42 @@ onMounted(() => {
 
 		<Dialog v-model:visible="payDialogVisible" header="Régler la facture" :modal="true" :style="{ width: '480px' }">
 			<div class="flex flex-col gap-3">
+				<div v-if="invoiceAllowsInsurance" class="rounded-xl border border-surface-200 bg-surface-50/70 p-3">
+					<div class="flex items-center gap-2">
+						<ToggleSwitch v-model="payForm.insuranceEnabled" />
+						<span class="text-sm text-gray-600">{{ payForm.insuranceEnabled ? 'Prise en charge assurance activée' : 'Activer une assurance pour cette facture' }}</span>
+					</div>
+				</div>
+				<div v-else class="rounded-xl border border-dashed border-surface-200 bg-surface-50/50 p-3 text-sm text-gray-600">
+					L’assurance n’est proposée qu’une seule fois et uniquement pour une facture sans paiement déjà enregistré.
+				</div>
+				<div v-if="payForm.insuranceEnabled" class="grid grid-cols-1 gap-3 rounded-xl border border-surface-200 bg-surface-50/70 p-4">
+					<div>
+						<label class="text-sm text-gray-600">Assurance</label>
+						<Select v-model="payForm.insuranceModeId" :options="insurancePaymentOptions" optionLabel="label"
+							optionValue="value" placeholder="Sélectionner une assurance" />
+					</div>
+					<div class="grid grid-cols-2 gap-3">
+						<div>
+							<label class="text-sm text-gray-600">Prise en charge (%)</label>
+							<InputNumber v-model="payForm.insuranceRate" mode="decimal" locale="fr-FR" :min="0" :max="100"
+								:minFractionDigits="0" :maxFractionDigits="2" inputClass="w-full" class="w-full" />
+						</div>
+						<div>
+							<label class="text-sm text-gray-600">Part assurance</label>
+							<InputNumber :modelValue="insuranceCoveredAmount" mode="decimal" locale="fr-FR" inputClass="w-full"
+								class="w-full" disabled />
+						</div>
+					</div>
+				</div>
 				<div>
-					<label class="text-sm text-gray-600">Mode de paiement</label>
+					<label class="text-sm text-gray-600">Mode de paiement patient</label>
 					<Select v-model="payForm.modeId"
-						:options="paymentMethods.map((m) => ({ label: m.libelle, value: m.id, disabled: !m.actif }))"
+						:options="classicPaymentOptions"
 						optionLabel="label" optionValue="value" optionDisabled="disabled" placeholder="Sélectionner" />
+					<p class="mt-1 text-xs text-gray-500">
+						{{ requiresClassicPayment ? 'Le mode patient couvre la part restante après assurance.' : 'Aucune part patient à encaisser.' }}
+					</p>
 				</div>
 				<div class="grid grid-cols-2 gap-3">
 					<div>
@@ -512,9 +685,12 @@ onMounted(() => {
 					</div>
 				</div>
 				<div>
-					<label class="text-sm text-gray-600">Montant</label>
-					<InputNumber v-model="payForm.montant" mode="decimal" locale="fr-FR" :min="0" class="w-full" />
+					<label class="text-sm text-gray-600">Montant patient</label>
+					<InputNumber v-model="payForm.montant" mode="decimal" locale="fr-FR" :min="0" class="w-full" :disabled="payForm.insuranceEnabled" />
 					<p class="text-xs text-gray-500 mt-1">Reste après paiement : {{ formatFcfa(remainingAfterPay) }}</p>
+					<p v-if="payForm.insuranceEnabled && selectedInsuranceMethod" class="text-xs text-gray-500 mt-1">
+						Assureur sélectionné : {{ selectedInsuranceMethod.libelle }}.
+					</p>
 				</div>
 			</div>
 			<template #footer>

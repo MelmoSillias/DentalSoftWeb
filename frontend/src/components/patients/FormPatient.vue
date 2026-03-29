@@ -243,9 +243,12 @@ const handleSubmit = (event) => {
                 <Textarea id="notes" v-model="form.notes" rows="3" autoResize
                     placeholder="Informations complémentaires" />
             </div>
-            <div class="md:col-span-2 flex flex-col gap-3 border border-surface-200 rounded-xl p-4">
-                <h4 class="font-semibold text-surface-800">Communication SMS</h4>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+            <div class="md:col-span-2 flex flex-col gap-3 rounded-xl p-4">
+                <Accordion value="">
+                    <AccordionPanel value="0">
+                        <AccordionHeader> <i class="pi pi-send"></i> Communication SMS</AccordionHeader>
+                        <AccordionContent>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
                     <div class="flex items-center gap-2">
                         <Checkbox inputId="sms-created" v-model="form.smsPreferences.patientCreated" binary />
                         <label for="sms-created">Envoyer accusé lors de la création du patient</label>
@@ -275,6 +278,10 @@ const handleSubmit = (event) => {
                         <label for="sms-black">Blacklist numéro (bloquer envoi SMS)</label>
                     </div>
                 </div>
+                        </AccordionContent>
+                    </AccordionPanel> 
+                </Accordion> 
+                
             </div>
         </div>
         <div class="flex gap-2 justify-end">

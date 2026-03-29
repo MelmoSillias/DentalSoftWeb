@@ -46,6 +46,79 @@ const normalizeRdv = (raw = {}) => {
     };
 };
 
+const normalizeStats = (raw) => {
+    const defaults = { pending: 0, validated: 0, postponed: 0, cancelled: 0 };
+    if (!raw || typeof raw !== 'object') return defaults;
+
+    return {
+        pending: Number(raw.pending ?? 0) || 0,
+        validated: Number(raw.validated ?? 0) || 0,
+        postponed: Number(raw.postponed ?? 0) || 0,
+        cancelled: Number(raw.cancelled ?? 0) || 0
+    };
+};
+
+const extractFirstJsonObject = (value) => {
+    if (typeof value !== 'string') return null;
+    const source = value.trim();
+    const start = source.indexOf('{');
+    if (start === -1) return null;
+
+    let depth = 0;
+    let inString = false;
+    let escaped = false;
+
+    for (let i = start; i < source.length; i += 1) {
+        const ch = source[i];
+
+        if (inString) {
+            if (escaped) {
+                escaped = false;
+            } else if (ch === '\\') {
+                escaped = true;
+            } else if (ch === '"') {
+                inString = false;
+            }
+            continue;
+        }
+
+        if (ch === '"') {
+            inString = true;
+            continue;
+        }
+
+        if (ch === '{') {
+            depth += 1;
+        } else if (ch === '}') {
+            depth -= 1;
+            if (depth === 0) {
+                return source.slice(start, i + 1);
+            }
+        }
+    }
+
+    return null;
+};
+
+const parseStatsPayload = (payload) => {
+    if (payload && typeof payload === 'object') {
+        return normalizeStats(payload);
+    }
+
+    if (typeof payload === 'string') {
+        const firstJson = extractFirstJsonObject(payload);
+        if (firstJson) {
+            try {
+                return normalizeStats(JSON.parse(firstJson));
+            } catch (_) {
+                return normalizeStats(null);
+            }
+        }
+    }
+
+    return normalizeStats(null);
+};
+
 function buildMockEvents(baseDate) {
     const day = startOfDay(baseDate);
     return [
@@ -193,7 +266,7 @@ export function useRdvApi() {
         const params = { date: dateStr };
         if (medecinId) params.medecin = medecinId;
         const res = await http.get('rdv/stats', { params });
-        return res.data || { pending: 0, validated: 0, postponed: 0, cancelled: 0 };
+        return parseStatsPayload(res.data);
     };
 
     const searchPatients = async (query) => {

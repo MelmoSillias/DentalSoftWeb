@@ -26,9 +26,38 @@ class Transaction
     #[ORM\Column(type: Types::DATETIME_MUTABLE)]
     private ?\DateTimeInterface $dateTransaction = null;
 
+    #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
+    private bool $validated = false;
+
+    #[ORM\Column(length: 20, options: ['default' => 'pending'])]
+    private string $validationStatus = 'pending';
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $validationComment = null;
+
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $validatedAt = null;
+
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $rejectedAt = null;
+
+    #[ORM\Column(length: 32, options: ['default' => 'direct'])]
+    private string $rolePaiement = 'direct';
+
+    #[ORM\Column(type: Types::FLOAT, nullable: true)]
+    private ?float $tauxPriseEnCharge = null;
+
     #[ORM\ManyToOne(inversedBy: 'transactions')] 
     #[ORM\JoinColumn(nullable: false)]
     private ?ModeDePaiement $modeDePaiement = null;
+
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(nullable: true)]
+    private ?Devis $devis = null;
+
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(nullable: true)]
+    private ?Consultation $consultation = null;
 
     #[ORM\OneToOne(inversedBy: 'transaction', cascade: ['persist', 'remove'])]
     private ?PaiementDevis $paiementDevis = null;
@@ -87,27 +116,168 @@ class Transaction
         return $this;
     }
 
+    public function isValidated(): bool
+    {
+        return $this->validated;
+    }
+
+    public function setValidated(bool $validated): static
+    {
+        $this->validated = $validated;
+        $this->validationStatus = $validated ? 'validated' : 'pending';
+
+        return $this;
+    }
+
+    public function getValidationStatus(): string
+    {
+        return $this->validationStatus;
+    }
+
+    public function setValidationStatus(string $validationStatus): static
+    {
+        $this->validationStatus = $validationStatus;
+        $this->validated = $validationStatus === 'validated';
+
+        return $this;
+    }
+
+    public function getValidationComment(): ?string
+    {
+        return $this->validationComment;
+    }
+
+    public function setValidationComment(?string $validationComment): static
+    {
+        $this->validationComment = $validationComment;
+
+        return $this;
+    }
+
+    public function getValidatedAt(): ?\DateTimeImmutable
+    {
+        return $this->validatedAt;
+    }
+
+    public function setValidatedAt(?\DateTimeImmutable $validatedAt): static
+    {
+        $this->validatedAt = $validatedAt;
+
+        return $this;
+    }
+
+    public function getRejectedAt(): ?\DateTimeImmutable
+    {
+        return $this->rejectedAt;
+    }
+
+    public function setRejectedAt(?\DateTimeImmutable $rejectedAt): static
+    {
+        $this->rejectedAt = $rejectedAt;
+
+        return $this;
+    }
+
+    public function getRolePaiement(): string
+    {
+        return $this->rolePaiement;
+    }
+
+    public function setRolePaiement(string $rolePaiement): static
+    {
+        $this->rolePaiement = $rolePaiement;
+
+        return $this;
+    }
+
+    public function getTauxPriseEnCharge(): ?float
+    {
+        return $this->tauxPriseEnCharge;
+    }
+
+    public function setTauxPriseEnCharge(?float $tauxPriseEnCharge): static
+    {
+        $this->tauxPriseEnCharge = $tauxPriseEnCharge;
+
+        return $this;
+    }
+
     public function getModeDePaiement(): ?ModeDePaiement
-{
-    return $this->modeDePaiement;
-}
+    {
+        return $this->modeDePaiement;
+    }
 
-public function setModeDePaiement(?ModeDePaiement $mode): static
-{
-    $this->modeDePaiement = $mode;
-    return $this;
-}
+    public function setModeDePaiement(?ModeDePaiement $mode): static
+    {
+        $this->modeDePaiement = $mode;
+        return $this;
+    }
 
-public function getPaiementDevis(): ?PaiementDevis
-{
-    return $this->paiementDevis;
-}
+    public function getDevis(): ?Devis
+    {
+        return $this->devis;
+    }
 
-public function setPaiementDevis(?PaiementDevis $paiementDevis): static
-{
-    $this->paiementDevis = $paiementDevis;
+    public function setDevis(?Devis $devis): static
+    {
+        $this->devis = $devis;
 
-    return $this;
-}
+        return $this;
+    }
+
+    public function getConsultation(): ?Consultation
+    {
+        return $this->consultation;
+    }
+
+    public function setConsultation(?Consultation $consultation): static
+    {
+        $this->consultation = $consultation;
+
+        return $this;
+    }
+
+    public function getPaiementDevis(): ?PaiementDevis
+    {
+        return $this->paiementDevis;
+    }
+
+    public function setPaiementDevis(?PaiementDevis $paiementDevis): static
+    {
+        $this->paiementDevis = $paiementDevis;
+
+        return $this;
+    }
+
+    public function markPending(): static
+    {
+        $this->validated = false;
+        $this->validationStatus = 'pending';
+        $this->validatedAt = null;
+        $this->rejectedAt = null;
+
+        return $this;
+    }
+
+    public function markValidated(?\DateTimeImmutable $validatedAt = null): static
+    {
+        $this->validated = true;
+        $this->validationStatus = 'validated';
+        $this->validatedAt = $validatedAt ?? new \DateTimeImmutable();
+        $this->rejectedAt = null;
+
+        return $this;
+    }
+
+    public function markRejected(?string $comment = null, ?\DateTimeImmutable $rejectedAt = null): static
+    {
+        $this->validated = false;
+        $this->validationStatus = 'rejected';
+        $this->validationComment = $comment;
+        $this->rejectedAt = $rejectedAt ?? new \DateTimeImmutable();
+        $this->validatedAt = null;
+
+        return $this;
+    }
 
 }

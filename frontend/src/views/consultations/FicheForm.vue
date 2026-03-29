@@ -612,7 +612,7 @@ watch(
 onBeforeUnmount(() => {
     window.removeEventListener('scroll', handleScroll);
     window.removeEventListener('beforeunload', handleBeforeUnload);
-    useLayout().toggleMenu();
+    if (useLayout().isSidebarActive) useLayout().toggleMenu();
 });
 
 </script>

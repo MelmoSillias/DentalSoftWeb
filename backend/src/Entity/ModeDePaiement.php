@@ -5,6 +5,7 @@ namespace App\Entity;
 use App\Repository\ModeDePaiementRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: ModeDePaiementRepository::class)]
@@ -20,6 +21,15 @@ class ModeDePaiement
 
     #[ORM\Column(length: 50)]
     private ?string $type = null; // Exemple : "Mobile Money", "Espèces", "Assurance"
+
+    #[ORM\Column(length: 50, nullable: true)]
+    private ?string $typeKey = null;
+
+    #[ORM\Column(length: 20, options: ['default' => 'classic'])]
+    private string $familyKey = 'classic';
+
+    #[ORM\Column(type: Types::FLOAT, nullable: true)]
+    private ?float $coverageRate = null;
 
     #[ORM\Column(type: 'boolean')]
     private bool $actif = true;
@@ -63,6 +73,39 @@ class ModeDePaiement
         return $this;
     }
 
+    public function getTypeKey(): ?string
+    {
+        return $this->typeKey;
+    }
+
+    public function setTypeKey(?string $typeKey): static
+    {
+        $this->typeKey = $typeKey;
+        return $this;
+    }
+
+    public function getFamilyKey(): string
+    {
+        return $this->familyKey;
+    }
+
+    public function setFamilyKey(string $familyKey): static
+    {
+        $this->familyKey = $familyKey;
+        return $this;
+    }
+
+    public function getCoverageRate(): ?float
+    {
+        return $this->coverageRate;
+    }
+
+    public function setCoverageRate(?float $coverageRate): static
+    {
+        $this->coverageRate = $coverageRate;
+        return $this;
+    }
+
     public function isActif(): bool
     {
         return $this->actif;
@@ -89,5 +132,24 @@ class ModeDePaiement
     public function getTransactions(): Collection
     {
         return $this->transactions;
+    }
+
+    public function isInsurance(): bool
+    {
+        if ($this->familyKey === 'insurance') {
+            return true;
+        }
+
+        return str_contains(strtolower((string) $this->type), 'assur');
+    }
+
+    public function isAutoValidated(): bool
+    {
+        if (in_array($this->typeKey, ['cash', 'mobile_money'], true)) {
+            return true;
+        }
+
+        $normalizedType = strtolower((string) $this->type);
+        return str_contains($normalizedType, 'esp') || str_contains($normalizedType, 'cash') || (str_contains($normalizedType, 'mobile') && str_contains($normalizedType, 'money'));
     }
 }

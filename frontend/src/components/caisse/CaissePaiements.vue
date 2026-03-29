@@ -3,9 +3,10 @@ import Accordion from 'primevue/accordion';
 import AccordionPanel from 'primevue/accordionpanel';
 import Button from 'primevue/button';
 import DatePicker from 'primevue/datepicker';
+import InputText from 'primevue/inputtext';
 import ProgressBar from 'primevue/progressbar';
 import Tag from 'primevue/tag';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 
 const props = defineProps({
     payments: { type: Array, default: () => [] },
@@ -27,8 +28,36 @@ const paymentRangeModel = computed({
     set: (val) => emit('update:paymentRange', val || [])
 });
 
-const totals = computed(() => {
+const paymentsSearch = ref('');
+
+const normalizeText = (value) => String(value ?? '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+
+const matchesQuery = (parts, query) => {
+    if (!query) return true;
+    return parts.some((part) => normalizeText(part).includes(query));
+};
+
+const paymentsSearchQuery = computed(() => normalizeText(paymentsSearch.value.trim()));
+
+const filteredPayments = computed(() => {
     const list = Array.isArray(props.payments) ? props.payments : [];
+    const query = paymentsSearchQuery.value;
+    return list.filter((p) => matchesQuery([
+        p.patient,
+        p.telephone,
+        p.date,
+        formatDate(p.date, true),
+        p.montant,
+        p.mode,
+        p.type
+    ], query));
+});
+
+const totals = computed(() => {
+    const list = filteredPayments.value;
     const total = list.reduce((sum, p) => sum + (Number(p.montant) || 0), 0);
     return { count: list.length, montant: total };
 });
@@ -46,8 +75,7 @@ const formatDate = (value, withTime = false) => {
 
 const paymentsByMode = computed(() => {
     const bucket = {};
-    const list = Array.isArray(props.payments) ? props.payments : [];
-    list.forEach((p) => {
+    filteredPayments.value.forEach((p) => {
         const key = p.mode || 'Autre';
         bucket[key] = bucket[key] || [];
         bucket[key].push(p);
@@ -57,8 +85,7 @@ const paymentsByMode = computed(() => {
 
 const miniChart = computed(() => {
     const byDay = {};
-    const list = Array.isArray(props.payments) ? props.payments : [];
-    list.forEach((p) => {
+    filteredPayments.value.forEach((p) => {
         const key = p.date ? new Date(p.date).toISOString().slice(0, 10) : '—';
         byDay[key] = (byDay[key] || 0) + (Number(p.montant) || 0);
     });
@@ -77,6 +104,11 @@ const miniChart = computed(() => {
                     <p class="section-title">Période, montants et ventilation par mode de paiement.</p>
                 </div>
                 <div class="filters">
+                    <div class="filter-item">
+                        <label>Recherche</label>
+                        <InputText v-model="paymentsSearch" placeholder="Tapez quelque chose..."
+                            fluid />
+                    </div>
                     <div class="filter-item">
                         <label>Période</label>
                         <DatePicker v-model="paymentRangeModel" selectionMode="range" dateFormat="yy-mm-dd" showIcon

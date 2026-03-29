@@ -23,11 +23,11 @@ public function findByDateRange(?\DateTimeInterface $from, ?\DateTimeInterface $
 {
     $qb = $this->createQueryBuilder('t');
     if ($from) {
-        $qb->andWhere('t.date >= :from')
+        $qb->andWhere('t.dateTransaction >= :from')
            ->setParameter('from', $from->format('Y-m-d').' 00:00:00');
     }
     if ($to) {
-        $qb->andWhere('t.date <= :to')
+        $qb->andWhere('t.dateTransaction <= :to')
            ->setParameter('to', $to->format('Y-m-d').' 23:59:59');
     }
     return $qb->getQuery()->getResult();
