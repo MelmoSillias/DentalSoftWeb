@@ -3,6 +3,9 @@ import QuickClotureConsultationDialog from '@/components/consultations/QuickClot
 import FormCreateConsultation from '@/components/patients/FormCreateConsultation.vue';
 import { cancelConsultation, fetchPendingConsultations, normalizeConsultation } from '@/services/consultations';
 import { useAuthStore } from '@/stores/auth';
+import { GUIDED_TOUR_START_EVENT } from '@/tours';
+import { createConsultationsCardsTour } from '@/tours/consultationsCardsTour';
+import { startTourGuide } from '@/tours/tourGuideClient';
 import Button from 'primevue/button';
 import ConfirmPopup from 'primevue/confirmpopup';
 import Dialog from 'primevue/dialog';
@@ -11,7 +14,7 @@ import { useConfirm } from 'primevue/useconfirm';
 import Tag from 'primevue/tag';
 import Toast from 'primevue/toast'; 
 import { useToast } from 'primevue/usetoast';
-import { computed, onMounted, ref } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 const router = useRouter();
@@ -29,6 +32,7 @@ const quickMenus = {};
 const quickDialogVisible = ref(false);
 const quickDialogConsultation = ref(null);
 const quickDialogActionMode = ref('continue');
+const isGuidedTourStarting = ref(false);
 
 const loadPending = async () => {
     loading.value = true;
@@ -45,6 +49,12 @@ const loadPending = async () => {
 
 onMounted(() => {
     loadPending();
+    window.addEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
+});
+
+onBeforeUnmount(() => {
+    window.removeEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
+    resetTourDialogs();
 });
 
 const sortedConsultations = computed(() => {
@@ -233,6 +243,98 @@ const handleQuickDialogDone = async () => {
     await loadPending();
 };
 
+const firstConsultation = computed(() => sortedConsultations.value[0] || null);
+
+const resetTourDialogs = () => {
+    openCreateConsultationDialog.value = false;
+    consultationPatient.value = null;
+    quickDialogVisible.value = false;
+    quickDialogConsultation.value = null;
+    quickDialogActionMode.value = 'continue';
+};
+
+const openTourCreateConsultationDialog = () => {
+    consultationPatient.value = null;
+    openCreateConsultationDialog.value = true;
+};
+
+const resolveTourQuickActionMode = (consultation) => {
+    if (!consultation) return 'continue';
+    if (!isLinked(consultation) && patientHasFiche(consultation)) return 'continue-last';
+    if (isLinked(consultation)) return 'continue';
+    return 'new-fiche';
+};
+
+const openTourQuickDialog = () => {
+    const consultation = firstConsultation.value;
+    if (!consultation) return;
+    quickDialogConsultation.value = consultation;
+    quickDialogActionMode.value = resolveTourQuickActionMode(consultation);
+    quickDialogVisible.value = true;
+};
+
+const handleGuidedTourRequest = async (event) => {
+    if (event?.detail?.routeName !== 'consultations-cards' || isGuidedTourStarting.value) {
+        return;
+    }
+
+    if (loading.value) {
+        toast.add({
+            severity: 'warn',
+            summary: 'Aide guidée',
+            detail: 'Attendez la fin du chargement de la file d attente avant de lancer le tour.',
+            life: 3000
+        });
+        return;
+    }
+
+    if (openCreateConsultationDialog.value || quickDialogVisible.value) {
+        toast.add({
+            severity: 'warn',
+            summary: 'Aide guidée',
+            detail: 'Fermez les fenetres ouvertes avant de lancer le tour.',
+            life: 3000
+        });
+        return;
+    }
+
+    isGuidedTourStarting.value = true;
+
+    try {
+        resetTourDialogs();
+        await nextTick();
+
+        const consultation = firstConsultation.value;
+        const steps = createConsultationsCardsTour({
+            hasConsultations: sortedConsultations.value.length > 0,
+            isMedecin: isMedecin.value,
+            openCreateConsultationDialog: openTourCreateConsultationDialog,
+            openQuickDialog: openTourQuickDialog,
+            closeAllDialogs: resetTourDialogs,
+            firstConsultationHasContinueAction: consultation ? showActions.continue(consultation) : false,
+            firstConsultationHasNewFicheAction: consultation ? showActions.newFiche(consultation) : false,
+            firstConsultationCanCancel: consultation ? showActions.cancel(consultation) : false
+        });
+
+        await startTourGuide({
+            group: 'consultations-cards',
+            steps,
+            onAfterExit: resetTourDialogs,
+            onFinish: resetTourDialogs
+        });
+    } catch (error) {
+        console.error('Erreur lancement guided tour file attente', error);
+        toast.add({
+            severity: 'error',
+            summary: 'Aide guidée',
+            detail: 'Impossible de lancer le tour de la file d attente.',
+            life: 3000
+        });
+    } finally {
+        isGuidedTourStarting.value = false;
+    }
+};
+
 function getBorderColor(index) {
             if (index === 0) return 'emerald' // Plus ancien
             if (index < 3) return 'amber'    // Ancien
@@ -266,7 +368,7 @@ function getBorderColor(index) {
 <template>
     <div class="mb-6 md:mb-8">
         <!-- Stats Card -->
-        <div class="bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-900/20 dark:to-amber-800/20 rounded-2xl p-5 border border-amber-200/50 dark:border-amber-800/50 mb-6">
+        <div data-tour="consultations-cards.stats" class="bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-900/20 dark:to-amber-800/20 rounded-2xl p-5 border border-amber-200/50 dark:border-amber-800/50 mb-6">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-sm text-amber-700 dark:text-amber-300 font-medium">File D'attente</p>
@@ -280,7 +382,7 @@ function getBorderColor(index) {
         </div>
 
         <!-- Main Card -->
-        <div class="card p-5 md:p-6 border-0 rounded-2xl bg-gradient-to-r from-surface-0 to-surface-50/80 dark:from-surface-800 dark:to-surface-900/80 shadow-xl backdrop-blur-sm">
+        <div data-tour="consultations-cards.header" class="card p-5 md:p-6 border-0 rounded-2xl bg-gradient-to-r from-surface-0 to-surface-50/80 dark:from-surface-800 dark:to-surface-900/80 shadow-xl backdrop-blur-sm">
             <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
                 <div class="space-y-2">
                     <div class="flex items-center gap-3">
@@ -299,6 +401,7 @@ function getBorderColor(index) {
                 </div>
                 <div class="flex items-center gap-2">
                     <Button 
+                        data-tour="consultations-cards.refresh"
                         icon="pi pi-refresh" 
                         label="Rafraîchir" 
                         :loading="loading" 
@@ -311,6 +414,7 @@ function getBorderColor(index) {
 
             <!-- Empty State -->
             <div v-if="!loading && !sortedConsultations.length" 
+                data-tour="consultations-cards.empty-state"
                 class="text-center py-16 rounded-xl border-2 border-dashed border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-br from-surface-50/50 to-surface-0/30 dark:from-surface-800/30 dark:to-surface-900/20">
                 <div class="inline-flex items-center justify-center w-20 h-20 rounded-full bg-surface-100 dark:bg-surface-800 mb-6">
                     <i class="fas fa-check-circle text-4xl text-surface-400"></i>
@@ -323,6 +427,7 @@ function getBorderColor(index) {
                 </p>
                 <Button 
                     v-if="!isMedecin"
+                    data-tour="consultations-cards.empty-create-button"
                     icon="fas fa-plus" 
                     label="Créer une consultation" 
                     severity="secondary"
@@ -337,6 +442,7 @@ function getBorderColor(index) {
                 <div 
                     v-for="(consultation, idx) in sortedConsultations" 
                     :key="consultation.id"
+                    :data-tour="idx === 0 ? 'consultations-cards.first-card' : null"
                     class="relative overflow-hidden rounded-2xl border transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 flex flex-col h-full group"
                     :class="[
                         'border-' + getBorderColor(idx) + '-200/50 dark:border-' + getBorderColor(idx) + '-800/50',
@@ -353,7 +459,7 @@ function getBorderColor(index) {
                     <div class="p-5 pt-6">
                         <div class="flex items-start justify-between gap-3 mb-4">
                             <div class="flex-1">
-                                <div class="flex items-center gap-3 mb-3">
+                                <div class="flex items-center gap-3 mb-3" :data-tour="idx === 0 ? 'consultations-cards.patient-block' : null">
                                     <div class="w-12 h-12 rounded-full bg-gradient-to-br from-primary-100 to-primary-200 dark:from-primary-900/30 dark:to-primary-800/30 flex items-center justify-center">
                                         <i class="fas fa-user-md text-primary-600 dark:text-primary-400"></i>
                                     </div>
@@ -381,7 +487,7 @@ function getBorderColor(index) {
                                 </div>
 
                                 <!-- Timeline Info -->
-                                <div class="space-y-3 mt-4">
+                                <div class="space-y-3 mt-4" :data-tour="idx === 0 ? 'consultations-cards.timeline' : null">
                                     <div class="flex items-center justify-between">
                                         <div class="flex items-center gap-2">
                                             <div class="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
@@ -414,7 +520,7 @@ function getBorderColor(index) {
                         </div>
 
                         <!-- Progress Indicator -->
-                        <div class="mt-4">
+                        <div class="mt-4" :data-tour="idx === 0 ? 'consultations-cards.progress' : null">
                             <div class="flex justify-between text-xs text-surface-500 dark:text-surface-400 mb-1">
                                 <span>Temps d'attente</span>
                                 <span>{{ getWaitTimePercentage(consultation.createdAt) }}%</span>
@@ -433,6 +539,7 @@ function getBorderColor(index) {
                     <div class="mt-auto p-4 border-t border-surface-100 dark:border-surface-700/50 bg-surface-50/50 dark:bg-surface-800/30">
                         <div class="flex flex-wrap gap-2">
                             <Button
+                                :data-tour="idx === 0 ? 'consultations-cards.quick-actions' : null"
                                 icon="pi pi-bolt"
                                 label="Actions rapides"
                                 severity="contrast"
@@ -452,6 +559,7 @@ function getBorderColor(index) {
 
                             <Button 
                                 v-if="showActions.continue(consultation)" 
+                                :data-tour="idx === 0 ? 'consultations-cards.continue-action' : null"
                                 :label="continueLabel(consultation)" 
                                 icon="pi pi-forward" 
                                 severity="secondary"
@@ -461,6 +569,7 @@ function getBorderColor(index) {
                             />
                             <Button 
                                 v-if="showActions.newFiche(consultation)" 
+                                :data-tour="idx === 0 ? 'consultations-cards.new-fiche-action' : null"
                                 label="Nouvelle fiche" 
                                 icon="pi pi-plus-circle" 
                                 severity="success"
@@ -470,6 +579,7 @@ function getBorderColor(index) {
                             />
                             <Button 
                                 v-if="showActions.cancel(consultation)" 
+                                :data-tour="idx === 0 ? 'consultations-cards.cancel-action' : null"
                                 label="Annuler" 
                                 icon="pi pi-times" 
                                 severity="danger"
@@ -500,6 +610,7 @@ function getBorderColor(index) {
     <Dialog 
         v-if="!isMedecin"
         v-model:visible="openCreateConsultationDialog" 
+        data-tour="consultations-cards.create-dialog"
         header="Créer une nouvelle consultation" 
         :modal="true" 
         :closable="true" 
@@ -532,6 +643,7 @@ function getBorderColor(index) {
 
     <QuickClotureConsultationDialog
         v-model:visible="quickDialogVisible"
+        data-tour="consultations-cards.quick-dialog"
         :consultation="quickDialogConsultation"
         :action-mode="quickDialogActionMode"
         @saved="handleQuickDialogDone"

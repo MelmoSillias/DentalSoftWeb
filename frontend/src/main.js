@@ -81,6 +81,7 @@ if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
 }
  
 import '@/assets/styles.scss';
+import '@/assets/tourguide.scss';
  
 if (import.meta.env.DEV) {
     const originalWarn = console.warn;

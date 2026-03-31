@@ -7,13 +7,16 @@ import PrintDataTablePage from '@/components/print/PrintDataTablePage.vue';
 import { usePrinter } from '@/composables/usePrinter';
 import { usePatients } from '@/composables/usePatients';
 import { useAuthStore } from '@/stores/auth';
+import { GUIDED_TOUR_START_EVENT } from '@/tours';
+import { createPatientsListTour } from '@/tours/patientsListTour';
+import { startTourGuide } from '@/tours/tourGuideClient';
 import Button from 'primevue/button';
 import Column from 'primevue/column';
 import DataTable from 'primevue/datatable';
 import Dialog from 'primevue/dialog';
 import InputText from 'primevue/inputtext'; 
 import { useToast } from 'primevue/usetoast';
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { InputIcon } from 'primevue';
 
@@ -34,6 +37,7 @@ const lastTouchedId = ref(null);
 let highlightTimeout = null;
 const toolbarConsultLoading = ref(false);
 const consultationLoading = ref({});
+const isGuidedTourStarting = ref(false);
 
 const showPatientDialog = ref(false);
 const showConsultationDialog = ref(false);
@@ -275,9 +279,100 @@ const handleSort = (event) => {
 
 const rowClass = (data) => ({ 'row-highlight': data.id === lastTouchedId.value });
 
+const resetTourDialogs = () => {
+    showPatientDialog.value = false;
+    showConsultationDialog.value = false;
+    showRdvDialog.value = false;
+    showActiveConsultWarn.value = false;
+    editingPatient.value = null;
+    consultationPatient.value = null;
+    rdvPatient.value = null;
+    activeConsultWarnPatient.value = null;
+    activeConsultInfo.value = { hasActive: false, consultationId: null, hasFiche: false };
+};
+
+const hasOpenPatientDialog = computed(() => (
+    showPatientDialog.value
+    || showConsultationDialog.value
+    || showRdvDialog.value
+    || showActiveConsultWarn.value
+));
+
+const openTourConsultationWarning = () => {
+    activeConsultWarnPatient.value = patients.value[0] || { fullname: 'Patient de demonstration', nom: 'Patient' };
+    activeConsultInfo.value = { hasActive: true, consultationId: null, hasFiche: true };
+    showActiveConsultWarn.value = true;
+};
+
+const handleGuidedTourRequest = async (event) => {
+    if (event?.detail?.routeName !== 'patients-liste' || isGuidedTourStarting.value) {
+        return;
+    }
+
+    if (loading.value) {
+        toast.add({
+            severity: 'warn',
+            summary: 'Aide guidée',
+            detail: 'Attendez la fin du chargement des patients avant de lancer le tour.',
+            life: 3000
+        });
+        return;
+    }
+
+    if (hasOpenPatientDialog.value) {
+        toast.add({
+            severity: 'warn',
+            summary: 'Aide guidée',
+            detail: 'Fermez d abord les fenetres ouvertes avant de lancer le tour.',
+            life: 3000
+        });
+        return;
+    }
+
+    isGuidedTourStarting.value = true;
+
+    try {
+        resetTourDialogs();
+        await nextTick();
+
+        const steps = createPatientsListTour({
+            hasPatients: patients.value.length > 0,
+            isMedecin: isMedecin.value,
+            openCreatePatientDialog: openCreatePatient,
+            openRendezVousDialog: () => openRendezVous(),
+            openConsultationDialog: () => openConsultation(),
+            openDuplicateConsultationDialog: openTourConsultationWarning,
+            closeAllDialogs: resetTourDialogs
+        });
+
+        await startTourGuide({
+            group: 'patients-liste',
+            steps,
+            onAfterExit: resetTourDialogs,
+            onFinish: resetTourDialogs
+        });
+    } catch (error) {
+        console.error('Erreur lancement guided tour patients', error);
+        toast.add({
+            severity: 'error',
+            summary: 'Aide guidée',
+            detail: 'Impossible de lancer le tour guide sur la page patients.',
+            life: 3000
+        });
+    } finally {
+        isGuidedTourStarting.value = false;
+    }
+};
+
 onBeforeUnmount(() => {
     if (highlightTimeout) clearTimeout(highlightTimeout);
     if (searchTimeout) clearTimeout(searchTimeout);
+    window.removeEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
+    resetTourDialogs();
+});
+
+onMounted(() => {
+    window.addEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
 });
 </script>
 
@@ -287,7 +382,7 @@ onBeforeUnmount(() => {
         <!-- Header Section -->
         <div class="mb-6 md:mb-8 w-full">
             <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-                <div class="space-y-2">
+                <div class="space-y-2" data-tour="patients-list.header">
                     <div class="flex items-center gap-3">
                         <div class="p-2.5 rounded-xl bg-primary-500/10 dark:bg-primary-500/20">
                             <i class="fas fa-user-injured text-primary-600 dark:text-primary-400 text-xl"></i>
@@ -303,15 +398,18 @@ onBeforeUnmount(() => {
                         </div>
                     </div>
                 </div>
-                <div class="flex flex-row   gap-3 w-full md:w-auto">
+                <div class="flex flex-row gap-3 w-full md:w-auto" data-tour="patients-list.toolbar">
                     <Button label="Nouveau rendez-vous" icon="fas fa-calendar-plus" severity="warn"
+                        data-tour="patients-list.rdv-button"
                         class=" sm:w-auto shadow-lg hover:shadow-xl transition-all duration-300 bg-gradient-to-r from-blue-500 to-blue-600 border-0 text-white px-5 py-2.5 rounded-xl font-medium"
                         @click="openRendezVous()" :pt="{ label: { class: 'hidden sm:inline' } }" />
                     <Button v-if="!isMedecin" label="Nouvelle consultation" severity="success" icon="fas fa-stethoscope"
+                        data-tour="patients-list.consultation-button"
                         class="sm:w-auto shadow-lg hover:shadow-xl transition-all duration-300 bg-gradient-to-r from-green-500 to-green-600 border-0 text-white px-5 py-2.5 rounded-xl font-medium"
                         :loading="toolbarConsultLoading" @click="openConsultation()"
                         :pt="{ label: { class: 'hidden sm:inline' } }" />
                     <Button label="Ajouter un patient" icon="fas fa-plus"
+                        data-tour="patients-list.add-patient-button"
                         class="sm:w-auto shadow-lg hover:shadow-xl transition-all duration-300 bg-gradient-to-r from-primary-500 to-primary-600 border-0 text-white px-5 py-2.5 rounded-xl font-medium"
                         @click="openCreatePatient" :pt="{ label: { class: 'hidden sm:inline' } }" />
                 </div>
@@ -333,7 +431,7 @@ onBeforeUnmount(() => {
                             {{ totalRecords || patients.length }} patient(s) au total
                         </p>
                     </div>
-                     <div class=" sm:w-auto col-6">
+                     <div class="sm:w-auto col-6" data-tour="patients-list.search">
                         <label
                             class="block text-sm md:text-base font-medium text-surface-700 dark:text-surface-300 mb-2">
                             Rechercher un patient
@@ -348,7 +446,7 @@ onBeforeUnmount(() => {
             </div>
 
             <!-- Data Table -->
-            <div class="m-2 p-2 border-rounded-1 overflow-x-auto">
+            <div class="m-2 p-2 border-rounded-1 overflow-x-auto" data-tour="patients-list.table">
                 <DataTable :value="patients" dataKey="id" :loading="loading" :paginator="true" lazy
                     :rows="rowsPerPage" :rowsPerPageOptions="[5, 10, 20, 50]" :first="first"
                     :totalRecords="totalRecords" @page="handlePage" @sort="handleSort"
@@ -455,7 +553,7 @@ onBeforeUnmount(() => {
 
                     <Column header="Actions" :style="{ minWidth: '200px' }">
                         <template #body="{ data }">
-                            <div class="flex flex-wrap items-center gap-2">
+                            <div class="flex flex-wrap items-center gap-2" :data-tour="data.id === patients[0]?.id ? 'patients-list.row-actions' : null">
                                 <Button icon="pi pi-eye" severity="info" text rounded
                                     v-tooltip.top="'Voir dossier médical'"
                                     class="hover:bg-blue-50 dark:hover:bg-blue-900/20" @click="openDossier(data)" />
@@ -480,7 +578,7 @@ onBeforeUnmount(() => {
                             <div class="text-sm text-surface-600 dark:text-surface-400">
                                 {{ totalRecords || patients.length }} patient(s) retrouvés (s)
                             </div>
-                            <div class="flex items-center gap-3">
+                            <div class="flex items-center gap-3" data-tour="patients-list.export">
                                 <Button icon="pi pi-download" severity="secondary" text size="small" label="Exporter"
                                     class="text-surface-600 dark:text-surface-400 hover:text-primary-600 dark:hover:text-primary-400"
                                     @click="printPatients" />
@@ -524,7 +622,7 @@ onBeforeUnmount(() => {
         </div>
 
         <!-- Stats Overview -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-0 md:mb-8 mt-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-0 md:mb-8 mt-6" data-tour="patients-list.stats">
             <div
                 class="bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-900/20 dark:to-blue-800/20 rounded-2xl p-4 sm:p-5 border border-blue-200/50 dark:border-blue-800/50">
                 <div class="flex items-center justify-between">
@@ -599,8 +697,10 @@ onBeforeUnmount(() => {
                     </div>
                 </div>
             </template>
-            <FormPatient :patient="editingPatient" @saved="handlePatientSaved" @cancel="showPatientDialog = false"
-                class="mt-2" />
+            <div data-tour="patients-list.dialog.patient">
+                <FormPatient :patient="editingPatient" @saved="handlePatientSaved" @cancel="showPatientDialog = false"
+                    class="mt-2" />
+            </div>
         </Dialog>
 
         <Dialog v-model:visible="showConsultationDialog" modal :style="{ width: '50rem' }" :pt="{
@@ -623,8 +723,10 @@ onBeforeUnmount(() => {
                     </div>
                 </div>
             </template>
-            <FormCreateConsultation :patient="consultationPatient" :patient-id="consultationPatient?.id"
-                @saved="handleConsultationSaved" @cancel="showConsultationDialog = false" />
+            <div data-tour="patients-list.dialog.consultation">
+                <FormCreateConsultation :patient="consultationPatient" :patient-id="consultationPatient?.id"
+                    @saved="handleConsultationSaved" @cancel="showConsultationDialog = false" />
+            </div>
         </Dialog>
 
         <Dialog v-model:visible="showActiveConsultWarn" modal :style="{ width: '35rem' }" :pt="{
@@ -632,7 +734,7 @@ onBeforeUnmount(() => {
             header: 'bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900 dark:to-surface-800 px-6 py-4 border-b',
             content: 'p-0 mt-4'
         }">
-            <div class="p-6">
+            <div class="p-6" data-tour="patients-list.dialog.active-warning">
                 <div class="flex items-center gap-3 mb-4">
                     <div class="p-2 rounded-lg bg-amber-100 dark:bg-amber-900/30">
                         <i class="fas fa-exclamation-triangle text-amber-600 dark:text-amber-400"></i>
@@ -682,8 +784,10 @@ onBeforeUnmount(() => {
                     </div>
                 </div>
             </template>
-            <FormRendezVous :patient="rdvPatient" :patient-id="rdvPatient?.id" @saved="handleRdvSaved"
-                @cancel="showRdvDialog = false" />
+            <div data-tour="patients-list.dialog.rdv">
+                <FormRendezVous :patient="rdvPatient" :patient-id="rdvPatient?.id" @saved="handleRdvSaved"
+                    @cancel="showRdvDialog = false" />
+            </div>
         </Dialog>
     </section>
 </template>

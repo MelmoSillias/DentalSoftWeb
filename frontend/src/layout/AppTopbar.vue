@@ -9,10 +9,13 @@ import OverlayBadge from 'primevue/overlaybadge';
 import { useToast } from 'primevue/usetoast';
 import router from '@/router';
 import { useMercureNotifications } from '@/composables/useMercureNotifications';
+import { useRoute } from 'vue-router';
+import { isGuidedTourRoute, requestGuidedTourStart } from '@/tours';
 
 const { toggleMenu, toggleDarkMode, isDarkTheme } = useLayout();
 const auth = useAuthStore();
 const toast = useToast();
+const route = useRoute();
 const currentTime = ref('');
 const currentDate = ref('');
 const showNotificationsPopover = ref(false);
@@ -90,6 +93,7 @@ if (onNotificationReceived) {
 }
 
 const topbarNotifications = computed(() => notifications.value.slice(0, 5));
+const isGuidedTourAvailable = computed(() => isGuidedTourRoute(route.name));
 
 function getNotificationIcon(notification) {
     const type = notification?.type;
@@ -237,6 +241,20 @@ async function handleNotificationClick(notification) {
         // ignore
     }
 }
+
+function handleStartGuidedTour() {
+    if (!isGuidedTourAvailable.value) {
+        toast.add({
+            severity: 'info',
+            summary: 'Aide guidée',
+            detail: 'Aucun tour n est encore disponible sur cette page.',
+            life: 2500
+        });
+        return;
+    }
+
+    requestGuidedTourStart(route.name);
+}
 </script>
 
 <template>
@@ -258,6 +276,16 @@ async function handleNotificationClick(notification) {
             <div class="layout-config-menu">
                 <button type="button" class="layout-topbar-action" @click="toggleDarkMode">
                     <i :class="['pi', { 'pi-moon': isDarkTheme, 'pi-sun': !isDarkTheme }]"></i>
+                </button>
+                <button
+                    type="button"
+                    class="layout-topbar-action"
+                    :class="{ 'layout-topbar-action-disabled': !isGuidedTourAvailable }"
+                    @click="handleStartGuidedTour"
+                    :aria-disabled="!isGuidedTourAvailable"
+                    title="Aide guidée"
+                >
+                    <i class="pi pi-question-circle"></i>
                 </button>
                 <!-- <div class="relative">
                      <button
@@ -430,6 +458,10 @@ async function handleNotificationClick(notification) {
 .layout-topbar-action:hover {
     color: #fff;
     background-color: rgba(255, 255, 255, 0.12);
+}
+
+.layout-topbar-action-disabled {
+    opacity: 0.55;
 }
 
 .notification-badge {
