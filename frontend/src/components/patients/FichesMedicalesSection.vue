@@ -68,7 +68,7 @@ function openExpanded() {
 
 <template>
     <div class="bg-surface-0 dark:bg-surface-800/80 rounded-2xl shadow-lg border border-surface-200/50 dark:border-surface-700/50 overflow-hidden backdrop-blur-sm">
-        <div class="p-5 border-b border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900/50 dark:to-surface-800">
+        <div class="p-5 border-b border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900/50 dark:to-surface-800" data-tour="patients-dossier.fiches-toolbar">
             <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-100 flex items-center gap-2">
                     <i class="pi pi-file-medical text-primary-500"></i>
@@ -105,6 +105,7 @@ function openExpanded() {
                         outlined
                         :disabled="!orderedFiches.length"
                         @click="openExpanded"
+                        data-tour="patients-dossier.fiches-expand"
                         :pt="{ label: { class: 'hidden sm:inline' } }"
                     />
                     <Button
@@ -114,13 +115,14 @@ function openExpanded() {
                         severity="primary"
                         class="bg-gradient-to-r from-primary-500 to-primary-600 border-0"
                         @click="emit('new-consultation')"
+                        data-tour="patients-dossier.fiches-new-consultation"
                         :pt="{ label: { class: 'hidden sm:inline' } }"
                     />
                 </div>
             </div>
         </div>
         <div class="p-5">
-            <div class="relative">
+            <div class="relative" data-tour="patients-dossier.fiches-preview">
                 <Carousel
                     :value="orderedFiches"
                     :numVisible="1"
@@ -156,7 +158,7 @@ function openExpanded() {
                     />
                 </div>
 
-                <div class="mt-6 pt-6 border-t border-surface-200/50 dark:border-surface-700/50">
+                <div class="mt-6 pt-6 border-t border-surface-200/50 dark:border-surface-700/50" data-tour="patients-dossier.fiches-jump">
                     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div class="text-sm text-surface-600 dark:text-surface-400">
                             Fiche {{ currentFicheIndex + 1 }} sur {{ orderedFiches.length }}

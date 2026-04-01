@@ -1,4 +1,24 @@
 import { apiPrefix } from '@/config';
+import {
+    addPatientAllergyTourMock,
+    addPatientAntecedentTourMock,
+    checkConsultationActiveTourMock,
+    createConsultationForPatientTourMock,
+    createPatientTourMock,
+    createRdvForPatientTourMock,
+    deletePatientAllergyTourMock,
+    deletePatientAntecedentTourMock,
+    deleteConsultationTourMock,
+    fetchMedecinsTourMock,
+    fetchPatientConsultationsTourMock,
+    fetchPatientDossierTourMock,
+    fetchPatientByIdTourMock,
+    fetchPaymentMethodsTourMock,
+    isPatientsTourMockEnabled,
+    listPatientsTourMock,
+    searchPatientsTourMock,
+    updatePatientTourMock
+} from '@/services/patientsTourMock';
 import { ref } from 'vue';
 import { useAuthStore } from '@/stores/auth'; 
 import http from '@/service/http';
@@ -120,11 +140,12 @@ export function usePatients() {
         loading.value = true;
         error.value = null;
         try {
-            const res = await http.get(`${apiPrefix}/patients`, {
-                headers: buildAuthHeaders(true),
-                params: { page, limit, q, sortField, sortOrder }
-            });
-            const data = res.data || {};
+            const data = isPatientsTourMockEnabled()
+                ? listPatientsTourMock({ page, limit, q, sortField, sortOrder })
+                : (await http.get(`${apiPrefix}/patients`, {
+                    headers: buildAuthHeaders(true),
+                    params: { page, limit, q, sortField, sortOrder }
+                })).data || {};
             const list = Array.isArray(data.items) ? data.items.map(normalizePatient) : [];
             patients.value = list;
             totalRecords.value = data.total ?? list.length;
@@ -141,10 +162,11 @@ export function usePatients() {
         loading.value = true;
         error.value = null;
         try {
-            const res = await http.get(`${apiPrefix}/patient/${patientId}`, {
-                headers: buildAuthHeaders(true)
-            });
-            const data = res.data;
+            const data = isPatientsTourMockEnabled()
+                ? fetchPatientByIdTourMock(patientId)
+                : (await http.get(`${apiPrefix}/patient/${patientId}`, {
+                    headers: buildAuthHeaders(true)
+                })).data;
             const normalized = normalizePatient(data);
             return { ...data, ...normalized };
         } catch (err) {
@@ -159,10 +181,11 @@ export function usePatients() {
         loading.value = true;
         error.value = null;
         try {
-            const res = await http.post(`${apiPrefix}/patient/add`, payload, {
-                headers: buildAuthHeaders(true)
-            });
-            const data = res.data;
+            const data = isPatientsTourMockEnabled()
+                ? createPatientTourMock(payload)
+                : (await http.post(`${apiPrefix}/patient/add`, payload, {
+                    headers: buildAuthHeaders(true)
+                })).data;
             return normalizePatient(data);
         } catch (err) {
             error.value = err;
@@ -176,11 +199,12 @@ export function usePatients() {
         loading.value = true;
         error.value = null;
         try {
-            const res = await http.get(`${apiPrefix}/patients/medecin`, {
-                headers: buildAuthHeaders(true),
-                params: { page, limit, q, sortField, sortOrder }
-            });
-            const data = res.data || {};
+            const data = isPatientsTourMockEnabled()
+                ? listPatientsTourMock({ page, limit, q, sortField, sortOrder })
+                : (await http.get(`${apiPrefix}/patients/medecin`, {
+                    headers: buildAuthHeaders(true),
+                    params: { page, limit, q, sortField, sortOrder }
+                })).data || {};
             const list = Array.isArray(data.items) ? data.items.map(normalizePatient) : [];
             patients.value = list;
             totalRecords.value = data.total ?? list.length;
@@ -197,10 +221,11 @@ export function usePatients() {
         loading.value = true;
         error.value = null;
         try {
-            const res = await http.post(`${apiPrefix}/patient/${patientId}/update`, payload, {
-                headers: buildAuthHeaders(true)
-            });
-            const data = res.data;
+            const data = isPatientsTourMockEnabled()
+                ? updatePatientTourMock(patientId, payload)
+                : (await http.post(`${apiPrefix}/patient/${patientId}/update`, payload, {
+                    headers: buildAuthHeaders(true)
+                })).data;
             return normalizePatient(data);
         } catch (err) {
             error.value = err;
@@ -214,11 +239,16 @@ export function usePatients() {
         loading.value = true;
         error.value = null;
         try {
-            const res = await http.get(`${apiPrefix}/patients/search`, {
-                headers: buildAuthHeaders(true),
-                params: { q: query, limit }
-            });
-            const results = Array.isArray(res.data?.results) ? res.data.results : [];
+            let results = [];
+            if (isPatientsTourMockEnabled()) {
+                results = searchPatientsTourMock(query, limit);
+            } else {
+                const res = await http.get(`${apiPrefix}/patients/search`, {
+                    headers: buildAuthHeaders(true),
+                    params: { q: query, limit }
+                });
+                results = Array.isArray(res.data?.results) ? res.data.results : [];
+            }
             const list = results.map(normalizePatient);
             patients.value = list;
             totalRecords.value = list.length;
@@ -236,10 +266,11 @@ export function usePatients() {
         error.value = null;
 
         try {
-            const res = await http.get(`${apiPrefix}/patient/${patientId}/dossier`, {
-                headers: buildAuthHeaders(true)
-            });
-            const data = res.data;
+            const data = isPatientsTourMockEnabled()
+                ? fetchPatientDossierTourMock(patientId)
+                : (await http.get(`${apiPrefix}/patient/${patientId}/dossier`, {
+                    headers: buildAuthHeaders(true)
+                })).data;
             patientDossier.value = normalizePatientDossier(data);
             return patientDossier.value;
         } catch (err) {
@@ -255,14 +286,95 @@ export function usePatients() {
         error.value = null;
 
         try {
-            const res = await http.get(`${apiPrefix}/patient/${patientId}/consultations`, {
-                headers: buildAuthHeaders(true)
-            });
-            const data = res.data;
+            const data = isPatientsTourMockEnabled()
+                ? fetchPatientConsultationsTourMock(patientId)
+                : (await http.get(`${apiPrefix}/patient/${patientId}/consultations`, {
+                    headers: buildAuthHeaders(true)
+                })).data;
             return Array.isArray(data) ? data : [];
         } catch (err) {
             error.value = err;
             return [];
+        } finally {
+            loading.value = false;
+        }
+    };
+
+    const addPatientAntecedent = async (patientId, payload, token) => {
+        loading.value = true;
+        error.value = null;
+        try {
+            if (isPatientsTourMockEnabled()) {
+                return addPatientAntecedentTourMock(patientId, payload);
+            }
+
+            const res = await http.post(`${apiPrefix}/patient/${patientId}/antecedents`, payload, {
+                headers: buildAuthHeaders(true)
+            });
+            return res.data;
+        } catch (err) {
+            error.value = err;
+            return null;
+        } finally {
+            loading.value = false;
+        }
+    };
+
+    const deletePatientAntecedent = async (patientId, antecedentId, token) => {
+        loading.value = true;
+        error.value = null;
+        try {
+            if (isPatientsTourMockEnabled()) {
+                return deletePatientAntecedentTourMock(patientId, antecedentId);
+            }
+
+            const res = await http.delete(`${apiPrefix}/patient/${patientId}/antecedents/${antecedentId}`, {
+                headers: buildAuthHeaders(true)
+            });
+            return res.data;
+        } catch (err) {
+            error.value = err;
+            return null;
+        } finally {
+            loading.value = false;
+        }
+    };
+
+    const addPatientAllergy = async (patientId, payload, token) => {
+        loading.value = true;
+        error.value = null;
+        try {
+            if (isPatientsTourMockEnabled()) {
+                return addPatientAllergyTourMock(patientId, payload);
+            }
+
+            const res = await http.post(`${apiPrefix}/patient/${patientId}/allergies`, payload, {
+                headers: buildAuthHeaders(true)
+            });
+            return res.data;
+        } catch (err) {
+            error.value = err;
+            return null;
+        } finally {
+            loading.value = false;
+        }
+    };
+
+    const deletePatientAllergy = async (patientId, allergyId, token) => {
+        loading.value = true;
+        error.value = null;
+        try {
+            if (isPatientsTourMockEnabled()) {
+                return deletePatientAllergyTourMock(patientId, allergyId);
+            }
+
+            const res = await http.delete(`${apiPrefix}/patient/${patientId}/allergies/${allergyId}`, {
+                headers: buildAuthHeaders(true)
+            });
+            return res.data;
+        } catch (err) {
+            error.value = err;
+            return null;
         } finally {
             loading.value = false;
         }
@@ -288,6 +400,10 @@ export function usePatients() {
         loading.value = true;
         error.value = null;
         try {
+            if (isPatientsTourMockEnabled()) {
+                return createConsultationForPatientTourMock(patientId, payload);
+            }
+
             const res = await http.post(`${apiPrefix}/patient/${patientId}/consultation/create`, payload, {
                 headers: buildAuthHeaders(true)
             });
@@ -304,6 +420,10 @@ export function usePatients() {
         loading.value = true;
         error.value = null;
         try {
+            if (isPatientsTourMockEnabled()) {
+                return checkConsultationActiveTourMock(patientId);
+            }
+
             const res = await http.get(`${apiPrefix}/patient/${patientId}/consultation-en-cours`, {
                 headers: buildAuthHeaders(true)
             });
@@ -320,6 +440,10 @@ export function usePatients() {
         loading.value = true;
         error.value = null;
         try {
+            if (isPatientsTourMockEnabled()) {
+                return deleteConsultationTourMock(consultationId);
+            }
+
             const res = await http.delete(`${apiPrefix}/consultations/${consultationId}`, {
                 headers: buildAuthHeaders(true)
             });
@@ -336,10 +460,11 @@ export function usePatients() {
         loading.value = true;
         error.value = null;
         try {
-            const res = await http.get(`${apiPrefix}/medecins`, {
-                headers: buildAuthHeaders(true)
-            });
-            const data = res.data;
+            const data = isPatientsTourMockEnabled()
+                ? fetchMedecinsTourMock()
+                : (await http.get(`${apiPrefix}/medecins`, {
+                    headers: buildAuthHeaders(true)
+                })).data;
             return Array.isArray(data) ? data : [];
         } catch (err) {
             error.value = err;
@@ -353,10 +478,11 @@ export function usePatients() {
         loading.value = true;
         error.value = null;
         try {
-            const res = await http.get(`${apiPrefix}/payment-methods`, {
-                headers: buildAuthHeaders(true)
-            });
-            const data = res.data;
+            const data = isPatientsTourMockEnabled()
+                ? fetchPaymentMethodsTourMock()
+                : (await http.get(`${apiPrefix}/payment-methods`, {
+                    headers: buildAuthHeaders(true)
+                })).data;
             return Array.isArray(data) ? data : [];
         } catch (err) {
             error.value = err;
@@ -370,10 +496,16 @@ export function usePatients() {
         loading.value = true;
         error.value = null;
         try {
+            if (isPatientsTourMockEnabled()) {
+                return createRdvForPatientTourMock(patientId, payload);
+            }
+
             const res = await http.post(
                 `${apiPrefix}/patient/${patientId}/rdv/create`,
                 { ...payload, patient_id: patientId },
-                { headers: buildAuthHeaders(true) }
+                {
+                    headers: buildAuthHeaders(true)
+                }
             );
             return res.data;
         } catch (err) {
@@ -435,6 +567,10 @@ export function usePatients() {
         searchPatients,
         fetchPatientDossier,
         fetchPatientConsultations,
+        addPatientAntecedent,
+        deletePatientAntecedent,
+        addPatientAllergy,
+        deletePatientAllergy,
         updatePatientDossier,
         createConsultationForPatient,
         checkConsultationActive,

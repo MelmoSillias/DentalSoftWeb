@@ -98,10 +98,11 @@ export function createPatientsListTour({
         {
             group: 'patients-liste',
             order: 90,
+            target: '[data-tour="patients-list.dialog.patient"]',
             title: 'Formulaire patient',
             content: 'Le formulaire patient s ouvre pour creer un nouveau dossier ou modifier un dossier existant sans quitter la liste.',
             beforeEnter: async () => {
-                openCreatePatientDialog();
+                await openCreatePatientDialog();
                 await flushUi();
             },
             afterLeave: async () => {
@@ -119,10 +120,11 @@ export function createPatientsListTour({
         {
             group: 'patients-liste',
             order: 110,
+            target: '[data-tour="patients-list.dialog.rdv"]',
             title: 'Formulaire de rendez-vous',
             content: 'Le dialogue permet de planifier un nouveau rendez-vous pour un patient existant ou depuis le flux de creation.',
             beforeEnter: async () => {
-                openRendezVousDialog();
+                await openRendezVousDialog();
                 await flushUi();
             },
             afterLeave: async () => {
@@ -144,10 +146,11 @@ export function createPatientsListTour({
             {
                 group: 'patients-liste',
                 order: 130,
+                target: '[data-tour="patients-list.dialog.consultation"]',
                 title: 'Formulaire de consultation',
                 content: 'Le dialogue de consultation permet de demarrer rapidement une prise en charge depuis la liste des patients.',
                 beforeEnter: async () => {
-                    openConsultationDialog();
+                    await openConsultationDialog();
                     await flushUi();
                 },
                 afterLeave: async () => {
@@ -158,10 +161,11 @@ export function createPatientsListTour({
             {
                 group: 'patients-liste',
                 order: 140,
+                target: '[data-tour="patients-list.dialog.active-warning"]',
                 title: 'Protection contre les doublons',
-                content: 'Si une consultation est deja en cours pour un patient, la page affiche un avertissement au lieu de creer un doublon.',
+                content: 'Si une consultation est deja en cours pour un patient, la page affiche un avertissement au lieu de creer un doublon. Tant qu aucune fiche n a ete saisie, vous pouvez aussi annuler cette consultation directement depuis ce dialogue.',
                 beforeEnter: async () => {
-                    openDuplicateConsultationDialog();
+                    await openDuplicateConsultationDialog();
                     await flushUi();
                 },
                 afterLeave: async () => {

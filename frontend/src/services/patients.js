@@ -1,4 +1,24 @@
 import { apiPrefix } from '@/config';
+import {
+    addPatientAllergyTourMock,
+    addPatientAntecedentTourMock,
+    checkConsultationActiveTourMock,
+    createConsultationForPatientTourMock,
+    createPatientTourMock,
+    createRdvForPatientTourMock,
+    deletePatientAllergyTourMock,
+    deletePatientAntecedentTourMock,
+    deleteConsultationTourMock,
+    fetchMedecinsTourMock,
+    fetchPatientConsultationsTourMock,
+    fetchPatientDossierTourMock,
+    fetchPatientByIdTourMock,
+    fetchPaymentMethodsTourMock,
+    isPatientsTourMockEnabled,
+    listPatientsTourMock,
+    searchPatientsTourMock,
+    updatePatientTourMock
+} from '@/services/patientsTourMock';
 import http from '@/service/http';
 
 const axios = http;
@@ -34,6 +54,10 @@ export const normalizePatient = (raw = {}) => ({
 });
 
 export const fetchPatients = async (token, { page = 1, limit = 10, q = '', sortField = null, sortOrder = null } = {}) => {
+    if (isPatientsTourMockEnabled()) {
+        return listPatientsTourMock({ page, limit, q, sortField, sortOrder });
+    }
+
     const res = await axios.get(`${apiPrefix}/patients`, {
         headers: authHeaders(token),
         params: { page, limit, q, sortField, sortOrder }
@@ -44,17 +68,31 @@ export const fetchPatients = async (token, { page = 1, limit = 10, q = '', sortF
 };
 
 export const fetchPatientById = async (patientId, token) => {
+    if (isPatientsTourMockEnabled()) {
+        const data = fetchPatientByIdTourMock(patientId);
+        const normalized = normalizePatient(data || {});
+        return data ? { ...data, ...normalized } : null;
+    }
+
     const res = await axios.get(`${apiPrefix}/patient/${patientId}`, { headers: authHeaders(token) });
     const normalized = normalizePatient(res.data);
     return { ...res.data, ...normalized };
 };
 
 export const createPatient = async (payload, token) => {
+    if (isPatientsTourMockEnabled()) {
+        return normalizePatient(createPatientTourMock(payload));
+    }
+
     const res = await axios.post(`${apiPrefix}/patient/add`, payload, { headers: authHeaders(token) });
     return normalizePatient(res.data);
 };
 
 export const fetchPatientsByMedecin = async (token, { page = 1, limit = 10, q = '', sortField = null, sortOrder = null } = {}) => {
+    if (isPatientsTourMockEnabled()) {
+        return listPatientsTourMock({ page, limit, q, sortField, sortOrder });
+    }
+
     const res = await axios.get(`${apiPrefix}/patients/medecin`, {
         headers: authHeaders(token),
         params: { page, limit, q, sortField, sortOrder }
@@ -65,6 +103,11 @@ export const fetchPatientsByMedecin = async (token, { page = 1, limit = 10, q = 
 };
 
 export const updatePatient = async (patientId, payload, token) => {
+    if (isPatientsTourMockEnabled()) {
+        const data = updatePatientTourMock(patientId, payload);
+        return data ? normalizePatient(data) : null;
+    }
+
     const res = await axios.post(`${apiPrefix}/patient/${patientId}/update`, payload, {
         headers: authHeaders(token)
     });
@@ -72,6 +115,10 @@ export const updatePatient = async (patientId, payload, token) => {
 };
 
 export const searchPatients = async (query, token, limit = 20) => {
+    if (isPatientsTourMockEnabled()) {
+        return searchPatientsTourMock(query, limit).map(normalizePatient);
+    }
+
     const res = await axios.get(`${apiPrefix}/patients/search`, {
         headers: authHeaders(token),
         params: { q: query, limit }
@@ -81,11 +128,19 @@ export const searchPatients = async (query, token, limit = 20) => {
 };
 
 export const fetchPatientDossier = async (patientId, token) => {
+    if (isPatientsTourMockEnabled()) {
+        return fetchPatientDossierTourMock(patientId);
+    }
+
     const res = await axios.get(`${apiPrefix}/patient/${patientId}/dossier`, { headers: authHeaders(token) });
     return res.data;
 };
 
 export const fetchPatientConsultations = async (patientId, token) => {
+    if (isPatientsTourMockEnabled()) {
+        return fetchPatientConsultationsTourMock(patientId);
+    }
+
     const res = await axios.get(`${apiPrefix}/patient/${patientId}/consultations`, { headers: authHeaders(token) });
     return Array.isArray(res.data) ? res.data : [];
 };
@@ -98,6 +153,10 @@ export const updatePatientDossier = async (patientId, payload, token) => {
 };
 
 export const createConsultationForPatient = async (patientId, payload, token) => {
+    if (isPatientsTourMockEnabled()) {
+        return createConsultationForPatientTourMock(patientId, payload);
+    }
+
     const res = await axios.post(`${apiPrefix}/patient/${patientId}/consultation/create`, payload, {
         headers: authHeaders(token)
     });
@@ -105,6 +164,10 @@ export const createConsultationForPatient = async (patientId, payload, token) =>
 };
 
 export const addPatientAntecedent = async (patientId, payload, token) => {
+    if (isPatientsTourMockEnabled()) {
+        return addPatientAntecedentTourMock(patientId, payload);
+    }
+
     const res = await axios.post(`${apiPrefix}/patient/${patientId}/antecedents`, payload, {
         headers: authHeaders(token)
     });
@@ -112,6 +175,10 @@ export const addPatientAntecedent = async (patientId, payload, token) => {
 };
 
 export const deletePatientAntecedent = async (patientId, antecedentId, token) => {
+    if (isPatientsTourMockEnabled()) {
+        return deletePatientAntecedentTourMock(patientId, antecedentId);
+    }
+
     const res = await axios.delete(`${apiPrefix}/patient/${patientId}/antecedents/${antecedentId}`, {
         headers: authHeaders(token)
     });
@@ -119,6 +186,10 @@ export const deletePatientAntecedent = async (patientId, antecedentId, token) =>
 };
 
 export const addPatientAllergy = async (patientId, payload, token) => {
+    if (isPatientsTourMockEnabled()) {
+        return addPatientAllergyTourMock(patientId, payload);
+    }
+
     const res = await axios.post(`${apiPrefix}/patient/${patientId}/allergies`, payload, {
         headers: authHeaders(token)
     });
@@ -126,6 +197,10 @@ export const addPatientAllergy = async (patientId, payload, token) => {
 };
 
 export const deletePatientAllergy = async (patientId, allergyId, token) => {
+    if (isPatientsTourMockEnabled()) {
+        return deletePatientAllergyTourMock(patientId, allergyId);
+    }
+
     const res = await axios.delete(`${apiPrefix}/patient/${patientId}/allergies/${allergyId}`, {
         headers: authHeaders(token)
     });
@@ -133,6 +208,10 @@ export const deletePatientAllergy = async (patientId, allergyId, token) => {
 };
 
 export const checkConsultationActive = async (patientId, token) => {
+    if (isPatientsTourMockEnabled()) {
+        return checkConsultationActiveTourMock(patientId);
+    }
+
     const res = await axios.get(`${apiPrefix}/patient/${patientId}/consultation-en-cours`, {
         headers: authHeaders(token)
     });
@@ -140,6 +219,10 @@ export const checkConsultationActive = async (patientId, token) => {
 };
 
 export const deleteConsultation = async (consultationId, token) => { 
+    if (isPatientsTourMockEnabled()) {
+        return deleteConsultationTourMock(consultationId);
+    }
+
     const res = await axios.delete(`${apiPrefix}/consultations/${consultationId}`, {
         headers: authHeaders(token)
     });
@@ -147,16 +230,28 @@ export const deleteConsultation = async (consultationId, token) => {
 };
 
 export const fetchMedecins = async (token) => {
+    if (isPatientsTourMockEnabled()) {
+        return fetchMedecinsTourMock();
+    }
+
     const res = await axios.get(`${apiPrefix}/medecins`, { headers: authHeaders(token) });
     return Array.isArray(res.data) ? res.data : [];
 };
 
 export const fetchPaymentMethods = async (token) => {
+    if (isPatientsTourMockEnabled()) {
+        return fetchPaymentMethodsTourMock();
+    }
+
     const res = await axios.get(`${apiPrefix}/payment-methods`, { headers: authHeaders(token) });
     return Array.isArray(res.data) ? res.data : [];
 };
 
 export const createRdvForPatient = async (patientId, payload, token) => {
+    if (isPatientsTourMockEnabled()) {
+        return createRdvForPatientTourMock(patientId, payload);
+    }
+
     const res = await axios.post(
         `${apiPrefix}/patient/${patientId}/rdv/create`,
         { ...payload, patient_id: patientId },

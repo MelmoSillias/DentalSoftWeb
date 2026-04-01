@@ -166,7 +166,7 @@ function getRDVStatusColor(status) {
 
 <template>
     <div class="bg-surface-0 dark:bg-surface-800/80 rounded-2xl shadow-lg border border-surface-200/50 dark:border-surface-700/50 overflow-hidden backdrop-blur-sm">
-        <div class="border-b border-surface-200/50 dark:border-surface-700/50">
+        <div class="border-b border-surface-200/50 dark:border-surface-700/50" data-tour="patients-dossier.finance-tabs">
             <div class="flex">
                 <button
                     v-for="tab in tabs"
@@ -186,7 +186,7 @@ function getRDVStatusColor(status) {
                 </button>
             </div>
         </div>
-        <div class="p-5">
+        <div class="p-5" data-tour="patients-dossier.finance-content">
             <div v-if="activeTab === 'rdv'" class="space-y-4">
                 <div v-for="rdv in rdvs" :key="rdv.id" class="p-4 rounded-xl border border-surface-200/50 dark:border-surface-700/50 hover:border-primary-300/50 dark:hover:border-primary-700/50 transition-colors">
                     <div class="flex items-center justify-between">

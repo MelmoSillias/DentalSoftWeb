@@ -6,6 +6,13 @@ import FormRendezVous from '@/components/patients/FormRendezVous.vue';
 import PrintDataTablePage from '@/components/print/PrintDataTablePage.vue';
 import { usePrinter } from '@/composables/usePrinter';
 import { usePatients } from '@/composables/usePatients';
+import {
+    activatePatientsTourMock,
+    deactivatePatientsTourMock,
+    getPatientsTourMockActivePatient,
+    resetPatientsTourMockData,
+    resolvePatientsTourMockScenario
+} from '@/services/patientsTourMock';
 import { useAuthStore } from '@/stores/auth';
 import { GUIDED_TOUR_START_EVENT } from '@/tours';
 import { createPatientsListTour } from '@/tours/patientsListTour';
@@ -38,6 +45,10 @@ let highlightTimeout = null;
 const toolbarConsultLoading = ref(false);
 const consultationLoading = ref({});
 const isGuidedTourStarting = ref(false);
+let guidedTourTableState = null;
+let guidedTourDemoActive = false;
+let guidedTourCleanupPromise = null;
+let syncingTourState = false;
 
 const showPatientDialog = ref(false);
 const showConsultationDialog = ref(false);
@@ -56,6 +67,16 @@ const setConsultationLoading = (key, value) => {
 };
 
 let searchTimeout = null;
+
+const wait = (ms = 220) => new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+});
+
+const cloneValue = (value) => {
+    if (value === undefined) return undefined;
+    if (value === null) return null;
+    return JSON.parse(JSON.stringify(value));
+};
 
 const loadPatients = async ({ page = 1, limit = rowsPerPage.value, q = searchQuery.value, sort = sortField.value, order = sortOrder.value } = {}) => {
     const orderValue = order === 1 ? 'asc' : order === -1 ? 'desc' : null;
@@ -257,6 +278,7 @@ const formatConsultationDate = (dateValue) => {
 };
 
 watch(searchQuery, () => {
+    if (syncingTourState) return;
     first.value = 0;
     if (searchTimeout) clearTimeout(searchTimeout);
     searchTimeout = setTimeout(() => {
@@ -298,10 +320,100 @@ const hasOpenPatientDialog = computed(() => (
     || showActiveConsultWarn.value
 ));
 
-const openTourConsultationWarning = () => {
-    activeConsultWarnPatient.value = patients.value[0] || { fullname: 'Patient de demonstration', nom: 'Patient' };
-    activeConsultInfo.value = { hasActive: true, consultationId: null, hasFiche: true };
-    showActiveConsultWarn.value = true;
+const captureTableState = () => ({
+    patients: cloneValue(patients.value),
+    totalRecords: totalRecords.value,
+    searchQuery: searchQuery.value,
+    first: first.value,
+    rowsPerPage: rowsPerPage.value,
+    sortField: sortField.value,
+    sortOrder: sortOrder.value,
+    lastTouchedId: lastTouchedId.value
+});
+
+const restoreTableState = async (state) => {
+    if (!state) {
+        await loadPatients({ page: 1, limit: rowsPerPage.value });
+        return;
+    }
+
+    if (searchTimeout) clearTimeout(searchTimeout);
+    syncingTourState = true;
+    searchQuery.value = state.searchQuery;
+    first.value = state.first;
+    rowsPerPage.value = state.rowsPerPage;
+    sortField.value = state.sortField;
+    sortOrder.value = state.sortOrder;
+    patients.value = cloneValue(state.patients) || [];
+    totalRecords.value = state.totalRecords ?? patients.value.length;
+    lastTouchedId.value = state.lastTouchedId ?? null;
+    await nextTick();
+    syncingTourState = false;
+};
+
+const prepareGuidedTourDemo = async () => {
+    guidedTourTableState = captureTableState();
+    const scenario = resolvePatientsTourMockScenario('static');
+
+    activatePatientsTourMock(scenario);
+    resetPatientsTourMockData(scenario);
+    guidedTourDemoActive = true;
+
+    if (searchTimeout) clearTimeout(searchTimeout);
+    syncingTourState = true;
+    searchQuery.value = '';
+    first.value = 0;
+    sortField.value = null;
+    sortOrder.value = null;
+    await nextTick();
+    syncingTourState = false;
+    await loadPatients({ page: 1, limit: rowsPerPage.value, q: '', sort: null, order: null });
+    await nextTick();
+};
+
+const cleanupGuidedTourDemo = async () => {
+    if (!guidedTourDemoActive) {
+        resetTourDialogs();
+        return;
+    }
+
+    if (guidedTourCleanupPromise) {
+        return guidedTourCleanupPromise;
+    }
+
+    guidedTourCleanupPromise = (async () => {
+        resetTourDialogs();
+        deactivatePatientsTourMock();
+        guidedTourDemoActive = false;
+        const stateToRestore = guidedTourTableState;
+        guidedTourTableState = null;
+        await restoreTableState(stateToRestore);
+    })().finally(() => {
+        guidedTourCleanupPromise = null;
+    });
+
+    return guidedTourCleanupPromise;
+};
+
+const findTourDuplicateConsultationPatient = () => (
+    patients.value.find((patient) => Number(patient?.derniereConsultation?.statut) === 0)
+    || patients.value[0]
+    || null
+);
+
+const openTourConsultationWarning = async () => {
+    resetTourDialogs();
+    await nextTick();
+    await wait();
+
+    const patient = getPatientsTourMockActivePatient() || findTourDuplicateConsultationPatient();
+    if (!patient?.id) {
+        return;
+    }
+
+    await openConsultation(patient);
+    await nextTick();
+    await wait();
 };
 
 const handleGuidedTourRequest = async (event) => {
@@ -332,6 +444,8 @@ const handleGuidedTourRequest = async (event) => {
     isGuidedTourStarting.value = true;
 
     try {
+        await cleanupGuidedTourDemo();
+        await prepareGuidedTourDemo();
         resetTourDialogs();
         await nextTick();
 
@@ -348,11 +462,12 @@ const handleGuidedTourRequest = async (event) => {
         await startTourGuide({
             group: 'patients-liste',
             steps,
-            onAfterExit: resetTourDialogs,
-            onFinish: resetTourDialogs
+            onAfterExit: cleanupGuidedTourDemo,
+            onFinish: cleanupGuidedTourDemo
         });
     } catch (error) {
         console.error('Erreur lancement guided tour patients', error);
+        await cleanupGuidedTourDemo();
         toast.add({
             severity: 'error',
             summary: 'Aide guidée',
@@ -367,6 +482,8 @@ const handleGuidedTourRequest = async (event) => {
 onBeforeUnmount(() => {
     if (highlightTimeout) clearTimeout(highlightTimeout);
     if (searchTimeout) clearTimeout(searchTimeout);
+    deactivatePatientsTourMock();
+    guidedTourDemoActive = false;
     window.removeEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
     resetTourDialogs();
 });
@@ -745,6 +862,10 @@ onMounted(() => {
                 <p class="text-surface-700 dark:text-surface-300 mb-4">
                     Une consultation est déjà ouverte pour ce patient. Clôturez-la ou continuez-la avant d'en créer une
                     nouvelle.
+                </p>
+
+                <p v-if="!activeConsultInfo.hasFiche" class="text-sm text-surface-600 dark:text-surface-400 mb-4">
+                    Si cette consultation a été ouverte par erreur, vous pouvez l annuler directement depuis ce dialogue.
                 </p>
 
                 <div v-if="activeConsultInfo.hasFiche"

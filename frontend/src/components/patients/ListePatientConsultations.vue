@@ -57,7 +57,7 @@ const consultationMontant = (consultation) =>
 
 <template>
     <div class="bg-surface-0 dark:bg-surface-800/80 rounded-2xl shadow-lg border border-surface-200/50 dark:border-surface-700/50 overflow-hidden backdrop-blur-sm">
-        <div class="px-5 md:px-6 py-4 border-b border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900/50 dark:to-surface-800">
+        <div class="px-5 md:px-6 py-4 border-b border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900/50 dark:to-surface-800" data-tour="patients-dossier.consultations-toolbar">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div class="space-y-1">
                     <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-100">
@@ -71,7 +71,7 @@ const consultationMontant = (consultation) =>
             </div>
         </div>
 
-        <div class="px-5 md:px-6 py-4 border-b border-surface-200/50 dark:border-surface-700/50 bg-surface-0/50 dark:bg-surface-800/30">
+        <div class="px-5 md:px-6 py-4 border-b border-surface-200/50 dark:border-surface-700/50 bg-surface-0/50 dark:bg-surface-800/30" data-tour="patients-dossier.consultations-filter">
             <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">
                 Rechercher une consultation
             </label>
@@ -81,7 +81,7 @@ const consultationMontant = (consultation) =>
             </span>
         </div>
 
-        <div class="p-2">
+        <div class="p-2" data-tour="patients-dossier.consultations-table">
             <DataTable
                 ref="dt"
                 :value="consultations"

@@ -126,7 +126,9 @@
                     </div>
                 </div>
             </template>
-            <FormCreateConsultation :patient="patient" :patient-id="patient?.id" @saved="handleConsultationSaved" @cancel="showConsultationDialog = false" />
+            <div data-tour="patients-dossier.dialog.consultation">
+                <FormCreateConsultation :patient="patient" :patient-id="patient?.id" @saved="handleConsultationSaved" @cancel="showConsultationDialog = false" />
+            </div>
         </Dialog>
 
         <Dialog v-model:visible="showRdvDialog" modal :style="{ width: '45rem' }" :pt="{
@@ -147,7 +149,9 @@
                     </div>
                 </div>
             </template>
-            <FormRendezVous :patient="patient" :patient-id="patient?.id" @saved="handleRdvSaved" @cancel="showRdvDialog = false" />
+            <div data-tour="patients-dossier.dialog.rdv">
+                <FormRendezVous :patient="patient" :patient-id="patient?.id" @saved="handleRdvSaved" @cancel="showRdvDialog = false" />
+            </div>
         </Dialog>
 
         <Dialog v-model:visible="showEditDialog" modal :style="{ width: '45rem' }" :pt="{
@@ -171,7 +175,7 @@
                     </div>
                 </div>
             </template>
-            <div data-tour="patients-dossier.dialogs">
+            <div data-tour="patients-dossier.dialog.edit">
                 <FormPatient :patient="patient" @saved="handlePatientSaved" @cancel="showEditDialog = false" class="mt-2" />
             </div>
         </Dialog>
@@ -204,7 +208,7 @@
                     </div>
                 </div>
             </template>
-            <div class="p-6 space-y-5">
+            <div class="p-6 space-y-5" data-tour="patients-dossier.dialog.print">
                 <div class="space-y-3">
                     <div v-for="item in printSectionOptions" :key="item.key" class="flex items-center gap-3">
                         <Checkbox
@@ -248,6 +252,13 @@ import PrintDossierBody from '@/components/print/PrintDossierBody.vue';
 import PrintFicheV2Body from '@/components/print/PrintFicheV2Body.vue';
 import { usePrinter } from '@/composables/usePrinter';
 import { usePatients } from '@/composables/usePatients';  
+import {
+    activatePatientsTourMock,
+    deactivatePatientsTourMock,
+    getPatientsTourMockPrimaryPatientId,
+    resetPatientsTourMockData,
+    resolvePatientsTourMockScenario
+} from '@/services/patientsTourMock';
 import { addPatientAllergy, addPatientAntecedent, deletePatientAllergy, deletePatientAntecedent } from '@/services/patients';
 import { fetchPatientDossierPrintData, fetchPatientFichePrintData } from '@/services/printService';
 import { useAuthStore } from '@/stores/auth';
@@ -305,6 +316,9 @@ const printIncludeEmpty = ref(false);
 const printSections = ref([]);
 const isGuidedTourStarting = ref(false);
 let patientSearchTimeout = null;
+let guidedTourPageState = null;
+let guidedTourDemoActive = false;
+let guidedTourCleanupPromise = null;
 
 const printSectionOptions = [
     { key: 'entretien', label: 'Entretien verbal' },
@@ -332,6 +346,14 @@ const hasOpenDialogs = computed(() => (
     || showAllergyDialog.value
     || showPrintDialog.value
 ));
+
+const cloneValue = (value) => {
+    if (value === undefined) return undefined;
+    if (value === null) return null;
+    return JSON.parse(JSON.stringify(value));
+};
+
+const getDisplayedPatientId = () => (guidedTourDemoActive ? patient.value?.id ?? null : props.patientId ?? patient.value?.id ?? null);
 
 const ensurePatientLists = () => {
     if (!Array.isArray(patient.value.antecedents)) patient.value.antecedents = [];
@@ -480,6 +502,8 @@ onBeforeUnmount(() => {
     if (patientSearchTimeout) {
         clearTimeout(patientSearchTimeout);
     }
+    deactivatePatientsTourMock();
+    guidedTourDemoActive = false;
     window.removeEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
     resetTourDialogs();
 });
@@ -487,6 +511,7 @@ onBeforeUnmount(() => {
 watch(
     () => props.patientId,
     async (newId) => {
+        if (guidedTourDemoActive) return;
         if (newId == null) return;
         await loadDossier(newId);
         await loadConsultations(newId);
@@ -497,22 +522,26 @@ watch(
 
 const handlePatientSelect = (value) => {
     if (!value) return;
+    if (guidedTourDemoActive) {
+        selectedPatientId.value = value;
+        return;
+    }
     router.push({ name: 'patients-dossier', params: { patientId: value } });
 };
 
 const handleRdvSaved = async () => {
     showRdvDialog.value = false;
-    await loadDossier(props.patientId ?? patient.value?.id);
+    await loadDossier(getDisplayedPatientId());
 };
 
 const handleConsultationSaved = async () => {
     showConsultationDialog.value = false;
-    await loadConsultations(props.patientId ?? patient.value?.id);
+    await loadConsultations(getDisplayedPatientId());
 };
 
 const handlePatientSaved = async () => {
     showEditDialog.value = false;
-    await loadDossier(props.patientId ?? patient.value?.id);
+    await loadDossier(getDisplayedPatientId());
 };
 
 const resetTourDialogs = () => {
@@ -524,9 +553,92 @@ const resetTourDialogs = () => {
     showPrintDialog.value = false;
 };
 
+const capturePageState = () => ({
+    patient: cloneValue(patient.value),
+    consultations: cloneValue(consultations.value),
+    patientOptions: cloneValue(patientOptions.value),
+    selectedPatientId: selectedPatientId.value,
+    selectedFicheForPrint: cloneValue(selectedFicheForPrint.value),
+    printSections: cloneValue(printSections.value),
+    printIncludeEmpty: printIncludeEmpty.value
+});
+
+const restorePageState = async (state) => {
+    if (!state) return;
+
+    patient.value = cloneValue(state.patient) || patientStore.normalizePatientDossier();
+    consultations.value = cloneValue(state.consultations) || [];
+    patientOptions.value = cloneValue(state.patientOptions) || [];
+    selectedPatientId.value = state.selectedPatientId ?? null;
+    selectedFicheForPrint.value = cloneValue(state.selectedFicheForPrint) || null;
+    printSections.value = cloneValue(state.printSections) || [];
+    printIncludeEmpty.value = Boolean(state.printIncludeEmpty);
+    await nextTick();
+};
+
+const prepareGuidedTourDemo = async () => {
+    guidedTourPageState = capturePageState();
+    const scenario = resolvePatientsTourMockScenario('static');
+    const demoPatientId = getPatientsTourMockPrimaryPatientId();
+
+    activatePatientsTourMock(scenario);
+    resetPatientsTourMockData(scenario);
+    guidedTourDemoActive = true;
+
+    await loadPatientOptions();
+    selectedPatientId.value = demoPatientId;
+    await ensureSelectedPatientOption(demoPatientId);
+    await loadDossier(demoPatientId);
+    await loadConsultations(demoPatientId);
+    await nextTick();
+};
+
+const cleanupGuidedTourDemo = async () => {
+    if (!guidedTourDemoActive) {
+        resetTourDialogs();
+        return;
+    }
+
+    if (guidedTourCleanupPromise) {
+        return guidedTourCleanupPromise;
+    }
+
+    guidedTourCleanupPromise = (async () => {
+        resetTourDialogs();
+        deactivatePatientsTourMock();
+        guidedTourDemoActive = false;
+        const stateToRestore = guidedTourPageState;
+        guidedTourPageState = null;
+        await restorePageState(stateToRestore);
+    })().finally(() => {
+        guidedTourCleanupPromise = null;
+    });
+
+    return guidedTourCleanupPromise;
+};
+
 const openTourEditDialog = () => {
-    if (!currentPatientId.value) return;
+    if (!patient.value?.id) return;
     showEditDialog.value = true;
+};
+
+const openTourRdvDialog = () => {
+    if (!patient.value?.id) return;
+    showRdvDialog.value = true;
+};
+
+const openTourConsultationDialog = () => {
+    if (!patient.value?.id || isMedecin.value || isReception.value) return;
+    showConsultationDialog.value = true;
+};
+
+const openTourPrintDialog = () => {
+    const fiche = fiches.value[0] || null;
+    if (!fiche) return;
+    selectedFicheForPrint.value = cloneValue(fiche);
+    printSections.value = printSectionOptions.map((item) => item.key);
+    printIncludeEmpty.value = false;
+    showPrintDialog.value = true;
 };
 
 const handleGuidedTourRequest = async (event) => {
@@ -547,24 +659,32 @@ const handleGuidedTourRequest = async (event) => {
     isGuidedTourStarting.value = true;
 
     try {
+        await cleanupGuidedTourDemo();
+        await prepareGuidedTourDemo();
         resetTourDialogs();
         await nextTick();
 
         const steps = createPatientsDossierTour({
             hasPatientContext: Boolean(currentPatientId.value),
             isMedecin: isMedecin.value,
+            isReception: isReception.value,
+            hasFiches: fiches.value.length > 0,
             openEditPatientDialog: openTourEditDialog,
+            openRdvDialog: openTourRdvDialog,
+            openConsultationDialog: openTourConsultationDialog,
+            openPrintDialog: openTourPrintDialog,
             closeAllDialogs: resetTourDialogs
         });
 
         await startTourGuide({
             group: 'patients-dossier',
             steps,
-            onAfterExit: resetTourDialogs,
-            onFinish: resetTourDialogs
+            onAfterExit: cleanupGuidedTourDemo,
+            onFinish: cleanupGuidedTourDemo
         });
     } catch (error) {
         console.error('Erreur lancement guided tour dossier patient', error);
+        await cleanupGuidedTourDemo();
         toast.add({
             severity: 'error',
             summary: 'Aide guidee',
@@ -581,7 +701,7 @@ const goBackToList = () => {
 };
 
 const handlePrintDossier = async () => {
-    const patientId = props.patientId ?? patient.value?.id;
+    const patientId = getDisplayedPatientId();
     if (!patientId) return;
     try {
         const res = await fetchPatientDossierPrintData(patientId, localStorage.getItem('token'));
@@ -602,7 +722,7 @@ const handlePrintFiche = async (fiche) => {
 };
 
 const submitPrint = async () => {
-    const patientId = props.patientId ?? patient.value?.id;
+    const patientId = getDisplayedPatientId();
     const ficheId = selectedFicheForPrint.value?.id ?? null;
     if (!patientId || !ficheId) return;
     try {

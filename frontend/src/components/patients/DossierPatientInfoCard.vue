@@ -28,7 +28,7 @@ const emit = defineEmits([
             </h3>
         </div>
         <div class="p-5">
-            <div class="flex flex-col items-center mb-6">
+            <div class="flex flex-col items-center mb-6" data-tour="patients-dossier.identity">
                 <div class="w-24 h-24 rounded-full bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center text-white text-3xl font-bold mb-4 shadow-lg">
                     {{ patient.initials }}
                 </div>
@@ -36,7 +36,7 @@ const emit = defineEmits([
                 <p class="text-surface-600 dark:text-surface-400">{{ patient.numeroDossier }}</p>
             </div>
 
-            <div class="space-y-3">
+            <div class="space-y-3" data-tour="patients-dossier.personal-details">
                 <div class="flex items-center justify-between p-3 rounded-xl bg-surface-50 dark:bg-surface-700/50">
                     <span class="text-surface-600 dark:text-surface-400">Date de naissance</span>
                     <span class="font-medium text-surface-900 dark:text-surface-100">{{ patient.dateNaissance }}</span>
@@ -63,7 +63,7 @@ const emit = defineEmits([
                 </div>
             </div>
 
-            <div class="mt-6 pt-6 border-t border-surface-200/50 dark:border-surface-700/50">
+            <div class="mt-6 pt-6 border-t border-surface-200/50 dark:border-surface-700/50" data-tour="patients-dossier.contact">
                 <h4 class="text-sm font-medium text-surface-700 dark:text-surface-300 mb-3">Contact</h4>
                 <div class="space-y-2">
                     <div class="flex items-center gap-2 text-surface-700 dark:text-surface-300">
@@ -81,7 +81,7 @@ const emit = defineEmits([
                 </div>
             </div>
 
-            <div class="mt-6 pt-6 border-t border-surface-200/50 dark:border-surface-700/50">
+            <div class="mt-6 pt-6 border-t border-surface-200/50 dark:border-surface-700/50" data-tour="patients-dossier.antecedents">
                 <div class="flex items-center justify-between mb-3">
                     <h4 class="text-sm font-medium text-surface-700 dark:text-surface-300">Antécédents médicaux</h4>
                     <Button icon="pi pi-plus" label="Ajouter" size="small" outlined @click="emit('add-antecedent')" />
@@ -102,7 +102,7 @@ const emit = defineEmits([
                 <p v-else class="text-sm text-surface-500 dark:text-surface-400">Aucun antécédent renseigné.</p>
             </div>
 
-            <div class="mt-6 pt-6 border-t border-surface-200/50 dark:border-surface-700/50">
+            <div class="mt-6 pt-6 border-t border-surface-200/50 dark:border-surface-700/50" data-tour="patients-dossier.allergies">
                 <div class="flex items-center justify-between mb-3">
                     <h4 class="text-sm font-medium text-surface-700 dark:text-surface-300">Allergies</h4>
                     <Button icon="pi pi-plus" label="Ajouter" size="small" outlined @click="emit('add-allergy')" />
@@ -120,7 +120,7 @@ const emit = defineEmits([
                 <p v-else class="text-sm text-surface-500 dark:text-surface-400">Aucune allergie renseignée.</p>
             </div>
 
-            <div class="mt-6 pt-6 border-t border-surface-200/50 dark:border-surface-700/50">
+            <div class="mt-6 pt-6 border-t border-surface-200/50 dark:border-surface-700/50" data-tour="patients-dossier.emergency-contact">
                 <h4 class="text-sm font-medium text-surface-700 dark:text-surface-300 mb-3">Contact d'urgence</h4>
                 <div v-if="patient.contactUrgence" class="space-y-2">
                     <div class="flex items-center justify-between p-3 rounded-xl bg-surface-50 dark:bg-surface-700/50">
