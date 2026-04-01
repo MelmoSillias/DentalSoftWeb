@@ -157,7 +157,7 @@ const handlePreview = (row) => emit('preview', row);
 
 <template>
     <div class="flex flex-col gap-5">
-        <div class="grid md:grid-cols-3 gap-3 stat-cards">
+        <div class="grid md:grid-cols-3 gap-3 stat-cards" data-tour="caisse-overview.stats">
             <div class="stat-card stat-primary">
                 <div class="icon pi pi-file" aria-hidden="true"></div>
                 <div>
@@ -184,7 +184,7 @@ const handlePreview = (row) => emit('preview', row);
             </div>
         </div>
 
-        <div class="section-card">
+        <div class="section-card" data-tour="caisse-overview.factures">
             <div class="section-header">
                 <div>
                     <p class="section-eyebrow">Factures impayées</p>
@@ -253,7 +253,7 @@ const handlePreview = (row) => emit('preview', row);
             </DataTable>
         </div>
 
-        <div class="section-card">
+        <div class="section-card" data-tour="caisse-overview.payments">
             <div class="section-header">
                 <div>
                     <p class="section-eyebrow text-success">Paiements enregistrés</p>

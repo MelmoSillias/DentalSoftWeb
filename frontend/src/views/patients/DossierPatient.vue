@@ -18,7 +18,7 @@
                 <div class="flex items-center gap-2">
                     <Button icon="pi pi-arrow-left" label="Retour à la liste" severity="secondary" outlined @click="goBackToList" />
                 </div>
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-2" data-tour="patients-dossier.selector">
                     <Select
                         v-model="selectedPatientId"
                         :options="patientOptions"
@@ -38,16 +38,18 @@
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <!-- Colonne de gauche : Infos patient -->
             <div class="lg:col-span-1 space-y-6">
-                <DossierPatientInfoCard
-                    :patient="patient"
-                    @print-dossier="handlePrintDossier"
-                    @edit="() => (showEditDialog = true)"
-                    @new-rdv="() => (showRdvDialog = true)"
-                    @add-antecedent="() => (showAntecedentDialog = true)"
-                    @add-allergy="() => (showAllergyDialog = true)"
-                    @delete-antecedent="handleDeleteAntecedent"
-                    @delete-allergy="handleDeleteAllergy"
-                />
+                <div data-tour="patients-dossier.info-card">
+                    <DossierPatientInfoCard
+                        :patient="patient"
+                        @print-dossier="handlePrintDossier"
+                        @edit="() => (showEditDialog = true)"
+                        @new-rdv="() => (showRdvDialog = true)"
+                        @add-antecedent="() => (showAntecedentDialog = true)"
+                        @add-allergy="() => (showAllergyDialog = true)"
+                        @delete-antecedent="handleDeleteAntecedent"
+                        @delete-allergy="handleDeleteAllergy"
+                    />
+                </div>
 
                 <!-- Statistiques rapides -->
                 <!-- <div class="bg-surface-0 dark:bg-surface-800/80 rounded-2xl shadow-lg border border-surface-200/50 dark:border-surface-700/50 overflow-hidden backdrop-blur-sm">
@@ -80,25 +82,29 @@
 
             <!-- Colonne centrale : Fiches médicales -->
             <div class="lg:col-span-2 space-y-6">
-                <ListePatientConsultations
-                    v-if="isReception"
-                    :consultations="consultations"
-                    :loading="consultationsLoading"
-                />
-                <FichesMedicalesSection
-                    v-else
-                    :fiches="fiches"
-                    :can-create-consultation="!isMedecin"
-                    @print-fiche="handlePrintFiche"
-                    @new-consultation="() => (showConsultationDialog = true)"
-                />
-                <RdvPaiementsSection
-                    :rdvs="rdvs"
-                    :paiements="paiements"
-                    :factures="factures"
-                    :consultations="consultations"
-                    :show-consultations="showConsultationsTab"
-                />
+                <div data-tour="patients-dossier.medical">
+                    <ListePatientConsultations
+                        v-if="isReception"
+                        :consultations="consultations"
+                        :loading="consultationsLoading"
+                    />
+                    <FichesMedicalesSection
+                        v-else
+                        :fiches="fiches"
+                        :can-create-consultation="!isMedecin"
+                        @print-fiche="handlePrintFiche"
+                        @new-consultation="() => (showConsultationDialog = true)"
+                    />
+                </div>
+                <div data-tour="patients-dossier.finance">
+                    <RdvPaiementsSection
+                        :rdvs="rdvs"
+                        :paiements="paiements"
+                        :factures="factures"
+                        :consultations="consultations"
+                        :show-consultations="showConsultationsTab"
+                    />
+                </div>
             </div>
         </div>
 
@@ -165,7 +171,9 @@
                     </div>
                 </div>
             </template>
-            <FormPatient :patient="patient" @saved="handlePatientSaved" @cancel="showEditDialog = false" class="mt-2" />
+            <div data-tour="patients-dossier.dialogs">
+                <FormPatient :patient="patient" @saved="handlePatientSaved" @cancel="showEditDialog = false" class="mt-2" />
+            </div>
         </Dialog>
 
         <AntecedentDialogForm
@@ -243,12 +251,15 @@ import { usePatients } from '@/composables/usePatients';
 import { addPatientAllergy, addPatientAntecedent, deletePatientAllergy, deletePatientAntecedent } from '@/services/patients';
 import { fetchPatientDossierPrintData, fetchPatientFichePrintData } from '@/services/printService';
 import { useAuthStore } from '@/stores/auth';
+import { GUIDED_TOUR_START_EVENT } from '@/tours';
+import { createPatientsDossierTour } from '@/tours/patientsDossierTour';
+import { startTourGuide } from '@/tours/tourGuideClient';
 import Button from 'primevue/button';
 import Checkbox from 'primevue/checkbox';
 import Dialog from 'primevue/dialog';
 import Select from 'primevue/select';
 import { useToast } from 'primevue/usetoast';
-import { computed, ref, onMounted, watch } from 'vue';
+import { computed, ref, onBeforeUnmount, onMounted, nextTick, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
 const props = defineProps({
@@ -292,6 +303,7 @@ const showPrintDialog = ref(false);
 const selectedFicheForPrint = ref(null);
 const printIncludeEmpty = ref(false);
 const printSections = ref([]);
+const isGuidedTourStarting = ref(false);
 let patientSearchTimeout = null;
 
 const printSectionOptions = [
@@ -311,6 +323,15 @@ const isReception = computed(() => Boolean(auth.user?.roles?.includes('ROLE_RECE
 const isMedecin = computed(() => Boolean(auth.user?.roles?.includes('ROLE_MEDECIN')));
 const isAdmin = computed(() => Boolean(auth.user?.roles?.includes('ROLE_ADMIN')));
 const showConsultationsTab = computed(() => isAdmin.value || isMedecin.value);
+const currentPatientId = computed(() => props.patientId ?? patient.value?.id ?? null);
+const hasOpenDialogs = computed(() => (
+    showRdvDialog.value
+    || showConsultationDialog.value
+    || showEditDialog.value
+    || showAntecedentDialog.value
+    || showAllergyDialog.value
+    || showPrintDialog.value
+));
 
 const ensurePatientLists = () => {
     if (!Array.isArray(patient.value.antecedents)) patient.value.antecedents = [];
@@ -445,6 +466,7 @@ const loadConsultations = async (patientId) => {
 };
 
 onMounted(async () => {
+    window.addEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
     if (props.patientId != null) {
         await loadDossier(props.patientId);
         await loadConsultations(props.patientId);
@@ -452,6 +474,14 @@ onMounted(async () => {
     }
     await loadPatientOptions();
     await ensureSelectedPatientOption(selectedPatientId.value);
+});
+
+onBeforeUnmount(() => {
+    if (patientSearchTimeout) {
+        clearTimeout(patientSearchTimeout);
+    }
+    window.removeEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
+    resetTourDialogs();
 });
 
 watch(
@@ -483,6 +513,67 @@ const handleConsultationSaved = async () => {
 const handlePatientSaved = async () => {
     showEditDialog.value = false;
     await loadDossier(props.patientId ?? patient.value?.id);
+};
+
+const resetTourDialogs = () => {
+    showRdvDialog.value = false;
+    showConsultationDialog.value = false;
+    showEditDialog.value = false;
+    showAntecedentDialog.value = false;
+    showAllergyDialog.value = false;
+    showPrintDialog.value = false;
+};
+
+const openTourEditDialog = () => {
+    if (!currentPatientId.value) return;
+    showEditDialog.value = true;
+};
+
+const handleGuidedTourRequest = async (event) => {
+    if (event?.detail?.routeName !== 'patients-dossier' || isGuidedTourStarting.value) {
+        return;
+    }
+
+    if (hasOpenDialogs.value) {
+        toast.add({
+            severity: 'warn',
+            summary: 'Aide guidee',
+            detail: 'Fermez les fenetres ouvertes avant de lancer le tour.',
+            life: 3000
+        });
+        return;
+    }
+
+    isGuidedTourStarting.value = true;
+
+    try {
+        resetTourDialogs();
+        await nextTick();
+
+        const steps = createPatientsDossierTour({
+            hasPatientContext: Boolean(currentPatientId.value),
+            isMedecin: isMedecin.value,
+            openEditPatientDialog: openTourEditDialog,
+            closeAllDialogs: resetTourDialogs
+        });
+
+        await startTourGuide({
+            group: 'patients-dossier',
+            steps,
+            onAfterExit: resetTourDialogs,
+            onFinish: resetTourDialogs
+        });
+    } catch (error) {
+        console.error('Erreur lancement guided tour dossier patient', error);
+        toast.add({
+            severity: 'error',
+            summary: 'Aide guidee',
+            detail: 'Impossible de lancer le tour du dossier patient.',
+            life: 3000
+        });
+    } finally {
+        isGuidedTourStarting.value = false;
+    }
 };
 
 const goBackToList = () => {

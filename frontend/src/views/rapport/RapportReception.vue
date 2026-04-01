@@ -61,12 +61,12 @@ function printSection() {
 
 <template>
     <div class="space-y-6">
-        <div class="flex flex-wrap items-center justify-between gap-4">
+        <div class="flex flex-wrap items-center justify-between gap-4" data-tour="rapports-reception.date">
             <div>
                 <h2 class="text-2xl font-semibold text-surface-900 dark:text-surface-0">Bienvenue, Réceptionniste</h2>
                 <p class="text-sm text-surface-500 dark:text-surface-400">Journée du {{ periodLabel }}</p>
             </div>
-            <div class="flex flex-wrap items-center gap-3">
+            <div class="flex flex-wrap items-center gap-3" data-tour="rapports-reception.print">
                 <DatePicker
                     v-model="selectedDate"
                     showIcon
@@ -78,16 +78,18 @@ function printSection() {
             </div>
         </div>
 
-        <div id="reception-daily-stats">
+        <div id="reception-daily-stats" data-tour="rapports-reception.daily">
             <ReceptionStatsSection :stats="receptionStats" :loading="receptionLoading" />
         </div>
 
-        <DoctorReportsTable
-            title="Rapports périodiques par médecin"
-            :data="receptionDoctorReports"
-            :loading="receptionLoading"
-            :period-label="periodLabel"
-            variant="reception"
-        />
+        <div data-tour="rapports-reception.doctors">
+            <DoctorReportsTable
+                title="Rapports périodiques par médecin"
+                :data="receptionDoctorReports"
+                :loading="receptionLoading"
+                :period-label="periodLabel"
+                variant="reception"
+            />
+        </div>
     </div>
 </template>

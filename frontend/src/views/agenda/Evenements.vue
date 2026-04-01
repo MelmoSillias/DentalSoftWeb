@@ -1,12 +1,12 @@
 <template>
 	<section class="flex flex-col gap-4 rounded-2xl bg-surface-0 p-5 shadow-sm dark:bg-surface-900 dark:shadow-none dark:ring-1 dark:ring-surface-700">
 		<Toast ref="toast" />
-		<div class="flex flex-wrap items-center justify-between gap-4 border-b border-surface-200 pb-3 dark:border-surface-700">
+		<div data-tour="agenda-events.header" class="flex flex-wrap items-center justify-between gap-4 border-b border-surface-200 pb-3 dark:border-surface-700">
 			<div class="space-y-1">
 				<h2 class="text-2xl font-semibold text-surface-900 dark:text-surface-200">Gestion des Evenements</h2>
 				<Breadcrumb :home="breadcrumbHome" :model="breadcrumbItems" />
 			</div> 
-			<div class=" "> 
+			<div data-tour="agenda-events.create" class=" "> 
 				<Button label="Nouvel Événement" icon="pi pi-plus" class="p-button-primary" @click="showForm = true" />
 			</div>
 		</div>
@@ -14,21 +14,25 @@
 		<div class="card shadow mb-4">
 			
 			<div class="card-body">
-				<div id="calendar-holder">
-					<FullCalendar :options="calendarOptions" ref="calendarRef" />
+				<div id="calendar-holder" data-tour="agenda-events.calendar">
+					<div data-tour="agenda-events.status">
+						<FullCalendar :options="calendarOptions" ref="calendarRef" />
+					</div>
 				</div>
 			</div>
 		</div>
 
 		<EventForm :visible="showForm" @create="handleCreate" @hide="showForm=false" />
 
-		<EventActions :visible="actionsVisible" :eventId="selectedEventId" @delete="handleDelete" @validate="handleValidate" @hide="actionsVisible=false" />
+		<div data-tour="agenda-events.actions">
+			<EventActions :visible="actionsVisible" :eventId="selectedEventId" @delete="handleDelete" @validate="handleValidate" @hide="actionsVisible=false" />
+		</div>
  
 	</section>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import FullCalendar from '@fullcalendar/vue3'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import timeGridPlugin from '@fullcalendar/timegrid'
@@ -40,6 +44,9 @@ import Toast from 'primevue/toast'
 import EventForm from '@/components/agenda/EventForm.vue'
 import EventActions from '@/components/agenda/EventActions.vue'
 import { useEvents } from '@/composables/useEvents'
+import { GUIDED_TOUR_START_EVENT } from '@/tours'
+import { createAgendaEvenementsTour } from '@/tours/agendaEvenementsTour'
+import { startTourGuide } from '@/tours/tourGuideClient'
 
 const { events, fetchEvents, createEvent, deleteEvent, validateEvent } = useEvents()
 
@@ -48,12 +55,20 @@ const showForm = ref(false)
 const actionsVisible = ref(false)
 const selectedEventId = ref(null)
 const toast = ref(null)
+const isGuidedTourStarting = ref(false)
 
 const breadcrumbHome = { icon: 'pi pi-home', to: '/dashboard' };
 const breadcrumbItems = [
 	{ label: 'Agenda' },
 	{ label: 'Evenements', class: 'font-semibold' }
 ];
+
+const firstEventId = computed(() => {
+	if (!Array.isArray(events.value) || !events.value.length) return null
+	return events.value[0]?.id ?? null
+})
+
+const hasOpenDialogs = computed(() => showForm.value || actionsVisible.value)
 
 const calendarOptions = {
 	plugins: [dayGridPlugin, timeGridPlugin, interactionPlugin],
@@ -86,7 +101,72 @@ const calendarOptions = {
 onMounted(() => {
 	// initial fetch
 	fetchEvents()
+	window.addEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest)
 })
+
+onBeforeUnmount(() => {
+	window.removeEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest)
+	resetTourDialogs()
+})
+
+const resetTourDialogs = () => {
+	showForm.value = false
+	actionsVisible.value = false
+	selectedEventId.value = null
+}
+
+const openTourActionsDialog = () => {
+	if (!firstEventId.value) return
+	selectedEventId.value = firstEventId.value
+	actionsVisible.value = true
+}
+
+const handleGuidedTourRequest = async (event) => {
+	if (event?.detail?.routeName !== 'agenda-evenements' || isGuidedTourStarting.value) {
+		return
+	}
+
+	if (hasOpenDialogs.value) {
+		toast.value?.add({
+			severity: 'warn',
+			summary: 'Aide guidee',
+			detail: 'Fermez les fenetres ouvertes avant de lancer le tour.',
+			life: 3000
+		})
+		return
+	}
+
+	isGuidedTourStarting.value = true
+
+	try {
+		await fetchEvents()
+		resetTourDialogs()
+		await nextTick()
+
+		const steps = createAgendaEvenementsTour({
+			hasEvents: Array.isArray(events.value) && events.value.length > 0,
+			openActionsDialog: openTourActionsDialog,
+			closeAllDialogs: resetTourDialogs
+		})
+
+		await startTourGuide({
+			group: 'agenda-evenements',
+			steps,
+			onAfterExit: resetTourDialogs,
+			onFinish: resetTourDialogs
+		})
+	} catch (error) {
+		console.error('Erreur lancement guided tour agenda evenements', error)
+		toast.value?.add({
+			severity: 'error',
+			summary: 'Aide guidee',
+			detail: 'Impossible de lancer le tour de la page evenements.',
+			life: 3000
+		})
+	} finally {
+		isGuidedTourStarting.value = false
+	}
+}
 
 async function handleCreate(payload) {
 	try {

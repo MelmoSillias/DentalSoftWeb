@@ -1,10 +1,13 @@
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useConsumables } from '@/composables/useConsumables'
 import { useStockVariations } from '@/composables/useStockVariations'
 import ConsumableForm from '@/components/consumables/ConsumableForm.vue'
 import AddRetireStockForm from '@/components/consumables/AddRetireStockForm.vue'
 import { useEmployees } from '@/composables/useEmployees'
+import { GUIDED_TOUR_START_EVENT } from '@/tours'
+import { createAdministrationConsumablesTour } from '@/tours/administrationConsumablesTour'
+import { startTourGuide } from '@/tours/tourGuideClient'
 import PrintDataTablePage from '@/components/print/PrintDataTablePage.vue'
 import { usePrinter } from '@/composables/usePrinter'
 import { useToast } from 'primevue/usetoast'
@@ -16,6 +19,7 @@ const addRetireFormType = ref("add")
 const showDetails = ref(false)
 const detailConsumable = ref(null)
 const toast = useToast()
+const isGuidedTourStarting = ref(false)
 
 const editConsumable = ref(null)
 
@@ -50,6 +54,7 @@ const today = new Date();
 const startOfYear = new Date(new Date().getFullYear(), 0, 1);
 
 const menuValue = ref('list');
+const hasOpenDialogs = computed(() => showForm.value || showAddRetireForm.value || showDetails.value)
 const filters = ref({
     consumableId: null,
     period: [ startOfYear, today],
@@ -151,7 +156,13 @@ watch(filters, async (newF, oldF) => {
 onMounted(() => {
     consumablesStore.fetchConsumables(); 
     stockVariationsStore.fetchStockVariations(filters.value.consumableId, filters.value.period[0], filters.value.period[1]);
+    window.addEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
 
+});
+
+onBeforeUnmount(() => {
+    window.removeEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
+    resetTourDialogs();
 });
 
 const openDetails = async (consumable) => {
@@ -174,6 +185,67 @@ const confirmDelete = async (consumable) => {
     }
 };
 
+const setTourMode = (value) => {
+    menuValue.value = value;
+};
+
+const resetTourDialogs = () => {
+    showForm.value = false;
+    showAddRetireForm.value = false;
+    showDetails.value = false;
+    editConsumable.value = null;
+    detailConsumable.value = null;
+};
+
+const openTourCreateDialog = () => {
+    editConsumable.value = null;
+    showForm.value = true;
+};
+
+const handleGuidedTourRequest = async (event) => {
+    if (event?.detail?.routeName !== 'administration-consommables' || isGuidedTourStarting.value) {
+        return;
+    }
+
+    if (hasOpenDialogs.value) {
+        toast.add({
+            severity: 'warn',
+            summary: 'Aide guidee',
+            detail: 'Fermez les fenetres ouvertes avant de lancer le tour.',
+            life: 3000
+        });
+        return;
+    }
+
+    isGuidedTourStarting.value = true;
+
+    try {
+        await nextTick();
+        const steps = createAdministrationConsumablesTour({
+            setMode: setTourMode,
+            openCreateDialog: openTourCreateDialog,
+            closeAllDialogs: resetTourDialogs
+        });
+
+        await startTourGuide({
+            group: 'administration-consommables',
+            steps,
+            onAfterExit: resetTourDialogs,
+            onFinish: resetTourDialogs
+        });
+    } catch (error) {
+        console.error('Erreur lancement guided tour consommables', error);
+        toast.add({
+            severity: 'error',
+            summary: 'Aide guidee',
+            detail: 'Impossible de lancer le tour des consommables.',
+            life: 3000
+        });
+    } finally {
+        isGuidedTourStarting.value = false;
+    }
+};
+
 </script>
 <template>
     <section
@@ -181,7 +253,7 @@ const confirmDelete = async (consumable) => {
         <Toast />
         
         <!-- Header Section -->
-        <div class="mb-6 md:mb-8">
+        <div class="mb-6 md:mb-8" data-tour="admin-consumables.header">
             <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
                 <div class="space-y-2">
                     <div class="flex items-center gap-3">
@@ -212,7 +284,7 @@ const confirmDelete = async (consumable) => {
         </div>
 
         <!-- Mode Selection Card -->
-        <div class="mb-6 md:mb-8">
+        <div class="mb-6 md:mb-8" data-tour="admin-consumables.mode">
             <div class="card p-5 md:p-6 border-0 rounded-2xl bg-gradient-to-r from-surface-0 to-surface-50/80 dark:from-surface-800 dark:to-surface-900/80 shadow-lg backdrop-blur-sm">
                 <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
@@ -258,7 +330,7 @@ const confirmDelete = async (consumable) => {
         </div>
 
         <!-- Stats Overview -->
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 md:mb-8">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 md:mb-8" data-tour="admin-consumables.stats">
             <div class="bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-900/20 dark:to-blue-800/20 rounded-2xl p-5 border border-blue-200/50 dark:border-blue-800/50">
                 <div class="flex items-center justify-between">
                     <div>
@@ -307,7 +379,7 @@ const confirmDelete = async (consumable) => {
         </div>
 
         <!-- List View -->
-        <div v-if="menuValue === 'list'" class="bg-surface-0 dark:bg-surface-800/80 rounded-2xl shadow-xl overflow-hidden border border-surface-200/50 dark:border-surface-700/50 backdrop-blur-sm">
+        <div v-if="menuValue === 'list'" data-tour="admin-consumables.list" class="bg-surface-0 dark:bg-surface-800/80 rounded-2xl shadow-xl overflow-hidden border border-surface-200/50 dark:border-surface-700/50 backdrop-blur-sm">
             <!-- List Header -->
             <div class="px-5 md:px-6 py-4 border-b border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900/50 dark:to-surface-800">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -500,7 +572,7 @@ const confirmDelete = async (consumable) => {
         </div>
 
         <!-- Variations View -->
-        <div v-else-if="menuValue === 'vars'" class="bg-surface-0 dark:bg-surface-800/80 rounded-2xl shadow-xl overflow-hidden border border-surface-200/50 dark:border-surface-700/50 backdrop-blur-sm">
+        <div v-else-if="menuValue === 'vars'" data-tour="admin-consumables.variations" class="bg-surface-0 dark:bg-surface-800/80 rounded-2xl shadow-xl overflow-hidden border border-surface-200/50 dark:border-surface-700/50 backdrop-blur-sm">
             <!-- Table Header -->
             <div class="px-5 md:px-6 py-4 border-b border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900/50 dark:to-surface-800">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -712,7 +784,9 @@ const confirmDelete = async (consumable) => {
             content: 'p-0 mt-4'
         }"
     >
-        <ConsumableForm @saved="showForm = false" @close="showForm = false" :consumable="editConsumable" />
+        <div data-tour="admin-consumables.dialogs">
+            <ConsumableForm @saved="showForm = false" @close="showForm = false" :consumable="editConsumable" />
+        </div>
     </Dialog>
 
     <Dialog 

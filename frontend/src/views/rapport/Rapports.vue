@@ -1,17 +1,30 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import Breadcrumb from 'primevue/breadcrumb';
 import Toast from 'primevue/toast';
 import { useAuthStore } from '@/stores/auth';
+import { GUIDED_TOUR_START_EVENT } from '@/tours';
+import { createRapportsTour, resolveRapportsTourGroup } from '@/tours/rapportsTour';
+import { startTourGuide } from '@/tours/tourGuideClient';
 import RapportAdmin from '@/views/rapport/RapportAdmin.vue';
 import RapportMedecin from '@/views/rapport/RapportMedecin.vue';
 import RapportReception from '@/views/rapport/RapportReception.vue';
+import { useToast } from 'primevue/usetoast';
 
 const auth = useAuthStore();
+const toast = useToast();
 const roles = computed(() => auth.user?.roles || []);
 const isAdmin = computed(() => roles.value.includes('ROLE_ADMIN'));
 const isMedecin = computed(() => roles.value.includes('ROLE_MEDECIN'));
 const isReception = computed(() => roles.value.includes('ROLE_RECEPTION'));
+const isGuidedTourStarting = ref(false);
+
+const reportRole = computed(() => {
+    if (isAdmin.value) return 'admin';
+    if (isMedecin.value) return 'medecin';
+    if (isReception.value) return 'reception';
+    return 'admin';
+});
 
 const breadcrumbHome = { icon: 'pi pi-home', to: '/' };
 const breadcrumbItems = computed(() => {
@@ -19,6 +32,41 @@ const breadcrumbItems = computed(() => {
     if (isMedecin.value) return [{ label: 'Rapports' }, { label: 'Médecin' }];
     if (isReception.value) return [{ label: 'Rapports' }, { label: 'Réception' }];
     return [{ label: 'Rapports' }];
+});
+
+const handleGuidedTourRequest = async (event) => {
+    if (event?.detail?.routeName !== 'rapports' || isGuidedTourStarting.value) {
+        return;
+    }
+
+    isGuidedTourStarting.value = true;
+
+    try {
+        const role = reportRole.value;
+        const steps = createRapportsTour({ role });
+        await startTourGuide({
+            group: resolveRapportsTourGroup(role),
+            steps
+        });
+    } catch (error) {
+        console.error('Erreur lancement guided tour rapports', error);
+        toast.add({
+            severity: 'error',
+            summary: 'Aide guidee',
+            detail: 'Impossible de lancer le tour de la page rapports.',
+            life: 3000
+        });
+    } finally {
+        isGuidedTourStarting.value = false;
+    }
+};
+
+onMounted(() => {
+    window.addEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
+});
+
+onBeforeUnmount(() => {
+    window.removeEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
 });
 </script>
 

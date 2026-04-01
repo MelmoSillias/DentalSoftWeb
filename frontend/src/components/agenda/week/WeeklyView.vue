@@ -236,7 +236,7 @@ defineExpose({ reloadOnAction });
 <template>
   <section class="weekly-view-page flex flex-col gap-3 xs:gap-4 p-0.5 xs:p-1">
     <!-- Filtres – plus moderne et espacé -->
-    <div class="flex flex-row  items-center gap-3 xs:gap-4 rounded-xl xs:rounded-2xl bg-white p-3 xs:p-4 shadow-sm ring-1 ring-gray-200/70 dark:bg-gray-800 dark:ring-gray-700/60 dark:shadow-gray-900/20">
+    <div data-tour="agenda-rdv.scope" class="flex flex-row  items-center gap-3 xs:gap-4 rounded-xl xs:rounded-2xl bg-white p-3 xs:p-4 shadow-sm ring-1 ring-gray-200/70 dark:bg-gray-800 dark:ring-gray-700/60 dark:shadow-gray-900/20">
       <Select
         v-model="filters.medecinId"
         :options="medecinsOptions"

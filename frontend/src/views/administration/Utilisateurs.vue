@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import Breadcrumb from 'primevue/breadcrumb';
 import Button from 'primevue/button';
 import Column from 'primevue/column';
@@ -15,6 +15,9 @@ import Dialog from 'primevue/dialog';
 import { useUsers } from '@/composables/useUsers';
 import { useEmployees } from '@/composables/useEmployees';
 import UserForm from '@/components/administration/UserForm.vue';
+import { GUIDED_TOUR_START_EVENT } from '@/tours';
+import { createAdministrationUsersTour } from '@/tours/administrationUsersTour';
+import { startTourGuide } from '@/tours/tourGuideClient';
 
 const toast = useToast();
 const confirm = useConfirm();
@@ -40,6 +43,7 @@ const resetTargetUser = ref(null);
 
 const groupByType = ref(false);
 const expandedGroups = ref([]);
+const isGuidedTourStarting = ref(false);
 
 const usersView = computed(() =>
     (users.value || []).map((user) => {
@@ -212,6 +216,73 @@ const toggleGrouping = () => {
     }
 };
 
+const hasOpenDialogs = computed(() => formVisible.value || resetDialogVisible.value);
+const firstUser = computed(() => (usersView.value || [])[0] || null);
+
+const resetTourDialogs = () => {
+    formVisible.value = false;
+    currentUser.value = null;
+    resetDialogVisible.value = false;
+    resetTargetUser.value = null;
+    resetPasswordValue.value = '';
+};
+
+const openTourCreateDialog = () => {
+    openCreate();
+};
+
+const openTourResetDialog = () => {
+    if (!firstUser.value) return;
+    openResetPassword(firstUser.value);
+};
+
+const handleGuidedTourRequest = async (event) => {
+    if (event?.detail?.routeName !== 'administration-utilisateurs' || isGuidedTourStarting.value) {
+        return;
+    }
+
+    if (loading.value || hasOpenDialogs.value) {
+        toast.add({
+            severity: 'warn',
+            summary: 'Aide guidee',
+            detail: 'Attendez la fin du chargement et fermez les fenetres ouvertes avant de lancer le tour.',
+            life: 3000
+        });
+        return;
+    }
+
+    isGuidedTourStarting.value = true;
+
+    try {
+        resetTourDialogs();
+        await nextTick();
+
+        const steps = createAdministrationUsersTour({
+            hasUsers: usersView.value.length > 0,
+            openCreateDialog: openTourCreateDialog,
+            openResetDialog: openTourResetDialog,
+            closeAllDialogs: resetTourDialogs
+        });
+
+        await startTourGuide({
+            group: 'administration-utilisateurs',
+            steps,
+            onAfterExit: resetTourDialogs,
+            onFinish: resetTourDialogs
+        });
+    } catch (error) {
+        console.error('Erreur lancement guided tour utilisateurs', error);
+        toast.add({
+            severity: 'error',
+            summary: 'Aide guidee',
+            detail: 'Impossible de lancer le tour de la page utilisateurs.',
+            life: 3000
+        });
+    } finally {
+        isGuidedTourStarting.value = false;
+    }
+};
+
 watch(search, (value) => {
     filters.value.global.value = value;
 });
@@ -219,6 +290,12 @@ watch(search, (value) => {
 onMounted(() => {
     loadUsers();
     loadEmployees();
+    window.addEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
+});
+
+onBeforeUnmount(() => {
+    window.removeEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
+    resetTourDialogs();
 });
 </script>
 
@@ -228,7 +305,7 @@ onMounted(() => {
         <Toast />
         <ConfirmPopup />
 
-        <div class="mb-6 md:mb-8">
+        <div data-tour="admin-users.header" class="mb-6 md:mb-8">
             <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
                 <div class="space-y-2">
                     <div class="flex items-center gap-3">
@@ -243,7 +320,7 @@ onMounted(() => {
                         </div>
                     </div>
                 </div>
-                <div class="flex flex-wrap items-center gap-3">
+                <div data-tour="admin-users.grouping" class="flex flex-wrap items-center gap-3">
                     <Button
                         icon="pi pi-sitemap"
                         :label="groupByType ? 'Regroupement actif' : 'Regrouper par type'"
@@ -263,7 +340,7 @@ onMounted(() => {
             </div>
         </div>
 
-        <div class="mb-6 md:mb-8">
+        <div data-tour="admin-users.search" class="mb-6 md:mb-8">
             <div class="card p-5 md:p-6 border-0 rounded-2xl bg-gradient-to-r from-surface-0 to-surface-50/80 dark:from-surface-800 dark:to-surface-900/80 shadow-lg backdrop-blur-sm">
                 <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-100 mb-4 flex items-center gap-2">
                     <i class="pi pi-filter text-primary-500"></i>
@@ -287,7 +364,7 @@ onMounted(() => {
             </div>
         </div>
 
-        <div class="bg-surface-0 dark:bg-surface-800/80 rounded-2xl shadow-xl overflow-hidden border border-surface-200/50 dark:border-surface-700/50 backdrop-blur-sm">
+        <div data-tour="admin-users.table" class="bg-surface-0 dark:bg-surface-800/80 rounded-2xl shadow-xl overflow-hidden border border-surface-200/50 dark:border-surface-700/50 backdrop-blur-sm">
             <div class="px-5 md:px-6 py-4 border-b border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900/50 dark:to-surface-800">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
@@ -341,7 +418,7 @@ onMounted(() => {
                 </Column> 
                 <Column header="Actions" style="min-width: 200px">
                     <template #body="{ data }">
-                        <div class="flex flex-wrap gap-2">
+                        <div data-tour="admin-users.actions" class="flex flex-wrap gap-2">
                             <Button icon="pi pi-pencil" severity="secondary" text @click="openEdit(data)" />
                             <Button icon="pi pi-key" severity="info" text @click="openResetPassword(data)" /> 
                             <Button icon="pi pi-trash" severity="danger" text @click="confirmDelete(data, $event)" />
@@ -357,34 +434,36 @@ onMounted(() => {
             </DataTable>
         </div>
 
-        <UserForm
-            v-model:visible="formVisible"
-            :mode="formMode"
-            :user="currentUser"
-            :employees="employees"
-            :loading="loading"
-            @submit="confirmFormSubmit" />
+        <div data-tour="admin-users.dialogs">
+            <UserForm
+                v-model:visible="formVisible"
+                :mode="formMode"
+                :user="currentUser"
+                :employees="employees"
+                :loading="loading"
+                @submit="confirmFormSubmit" />
 
-        <Dialog header="Réinitialiser le mot de passe" v-model:visible="resetDialogVisible" :style="{ width: '420px' }" :modal="true">
-            <div class="flex flex-col gap-3">
-                <label for="reset-password" class="font-medium">Nouveau mot de passe</label>
-                <Password
-                    inputId="reset-password"
-                    v-model="resetPasswordValue"
-                    toggleMask
-                    :feedback="false"
-                    placeholder="Saisir un mot de passe"
-                    :inputProps="{
-                        autocomplete: 'new-password',
-                        name: 'user-reset-password',
-                        'data-lpignore': 'true'
-                    }"
-                />
-            </div>
-            <template #footer>
-                <Button label="Annuler" icon="pi pi-times" severity="secondary" text @click="resetDialogVisible = false" />
-                <Button label="Réinitialiser" icon="pi pi-check" @click="confirmResetPassword" />
-            </template>
-        </Dialog>
+            <Dialog header="Réinitialiser le mot de passe" v-model:visible="resetDialogVisible" :style="{ width: '420px' }" :modal="true">
+                <div class="flex flex-col gap-3">
+                    <label for="reset-password" class="font-medium">Nouveau mot de passe</label>
+                    <Password
+                        inputId="reset-password"
+                        v-model="resetPasswordValue"
+                        toggleMask
+                        :feedback="false"
+                        placeholder="Saisir un mot de passe"
+                        :inputProps="{
+                            autocomplete: 'new-password',
+                            name: 'user-reset-password',
+                            'data-lpignore': 'true'
+                        }"
+                    />
+                </div>
+                <template #footer>
+                    <Button label="Annuler" icon="pi pi-times" severity="secondary" text @click="resetDialogVisible = false" />
+                    <Button label="Réinitialiser" icon="pi pi-check" @click="confirmResetPassword" />
+                </template>
+            </Dialog>
+        </div>
     </section>
 </template>

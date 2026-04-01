@@ -15,6 +15,9 @@ import {
 } from '@/services/consultations';
 
 import { useAuthStore } from '@/stores/auth';
+import { GUIDED_TOUR_START_EVENT } from '@/tours';
+import { createConsultationsTableTour } from '@/tours/consultationsTableTour';
+import { startTourGuide } from '@/tours/tourGuideClient';
 import { FilterMatchMode } from '@primevue/core/api';
 import Button from 'primevue/button';
 import Column from 'primevue/column';
@@ -27,7 +30,7 @@ import Tag from 'primevue/tag';
 import Toast from 'primevue/toast';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
-import { computed, onMounted, ref } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 const router = useRouter();
@@ -60,6 +63,7 @@ const quickMenus = {};
 const quickDialogVisible = ref(false);
 const quickDialogConsultation = ref(null);
 const quickDialogActionMode = ref('continue');
+const isGuidedTourStarting = ref(false);
 
 const headerTitle = computed(() => `Consultations du ${formatDisplayDate(selectedDate.value)}`);
 const isAdmin = computed(() => Boolean(auth.user?.roles?.includes('ROLE_ADMIN')));
@@ -148,6 +152,12 @@ const loadConsultations = async () => {
 
 onMounted(() => {
     loadConsultations();
+    window.addEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
+});
+
+onBeforeUnmount(() => {
+    window.removeEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
+    resetTourDialogs();
 });
 
 const onDateChange = () => {
@@ -322,6 +332,107 @@ const handleQuickDialogDone = async () => {
     await loadConsultations();
 };
 
+const firstOpenConsultation = computed(() => consultations.value.find((c) => !isClosed(c)) || null);
+
+const hasOpenDialogs = computed(() => (
+    showCreateDialog.value
+    || quickDialogVisible.value
+    || detailsDialogVisible.value
+    || factureDialogVisible.value
+));
+
+const resetTourDialogs = () => {
+    showCreateDialog.value = false;
+    quickDialogVisible.value = false;
+    quickDialogConsultation.value = null;
+    quickDialogActionMode.value = 'continue';
+    detailsDialogVisible.value = false;
+    detailsLoading.value = false;
+    detailsLoadingId.value = null;
+    detailData.value = null;
+    factureDialogVisible.value = false;
+    factureConsultation.value = null;
+    factureLines.value = [];
+};
+
+const openTourCreateConsultationDialog = () => {
+    showCreateDialog.value = true;
+};
+
+const resolveTourQuickActionMode = (consultation) => {
+    if (!consultation) return 'continue';
+    if (!isLinked(consultation) && patientHasFiche(consultation)) return 'continue-last';
+    if (isLinked(consultation)) return 'continue';
+    return 'new-fiche';
+};
+
+const openTourQuickDialog = () => {
+    const consultation = firstOpenConsultation.value;
+    if (!consultation) return;
+    quickDialogConsultation.value = consultation;
+    quickDialogActionMode.value = resolveTourQuickActionMode(consultation);
+    quickDialogVisible.value = true;
+};
+
+const handleGuidedTourRequest = async (event) => {
+    if (event?.detail?.routeName !== 'consultations-table' || isGuidedTourStarting.value) {
+        return;
+    }
+
+    if (loading.value) {
+        toast.add({
+            severity: 'warn',
+            summary: 'Aide guidee',
+            detail: 'Attendez la fin du chargement des consultations avant de lancer le tour.',
+            life: 3000
+        });
+        return;
+    }
+
+    if (hasOpenDialogs.value) {
+        toast.add({
+            severity: 'warn',
+            summary: 'Aide guidee',
+            detail: 'Fermez les fenetres ouvertes avant de lancer le tour.',
+            life: 3000
+        });
+        return;
+    }
+
+    isGuidedTourStarting.value = true;
+
+    try {
+        resetTourDialogs();
+        await nextTick();
+
+        const steps = createConsultationsTableTour({
+            hasConsultations: consultations.value.length > 0,
+            hasOpenConsultation: Boolean(firstOpenConsultation.value),
+            isMedecin: isMedecin.value,
+            openCreateConsultationDialog: openTourCreateConsultationDialog,
+            openQuickDialog: openTourQuickDialog,
+            closeAllDialogs: resetTourDialogs
+        });
+
+        await startTourGuide({
+            group: 'consultations-table',
+            steps,
+            onAfterExit: resetTourDialogs,
+            onFinish: resetTourDialogs
+        });
+    } catch (error) {
+        console.error('Erreur lancement guided tour consultations table', error);
+        toast.add({
+            severity: 'error',
+            summary: 'Aide guidee',
+            detail: 'Impossible de lancer le tour de la table des consultations.',
+            life: 3000
+        });
+    } finally {
+        isGuidedTourStarting.value = false;
+    }
+};
+
 const currentFactureLoading = computed(() => {
     const id = factureConsultation.value?.id;
     return id ? factureLoading.value[id] === true : false;
@@ -383,7 +494,7 @@ const currentFactureLoading = computed(() => {
     <section class="min-h-screen p-4 md:p-6 lg:p-8 transition-colors duration-300">
         <ConfirmPopup group="cancel-consultation" />
         <!-- Header Section -->
-        <div class="mb-6 md:mb-8">
+        <div class="mb-6 md:mb-8" data-tour="consultations-table.header">
             <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
                 <div class="space-y-2">
                     <div class="flex items-center gap-3">
@@ -403,6 +514,7 @@ const currentFactureLoading = computed(() => {
                 <div class="flex flex-wrap gap-3">
                     <Button 
                         v-if="!isMedecin"
+                        data-tour="consultations-table.create-button"
                         icon="pi pi-calendar-plus" 
                         label="Nouvelle consultation" 
                         class="shadow-lg hover:shadow-xl transition-all duration-300 bg-gradient-to-r from-primary-500 to-primary-600 border-0 text-white px-5 py-2.5 rounded-xl font-medium"
@@ -451,7 +563,7 @@ const currentFactureLoading = computed(() => {
             </div>
 
             <!-- Filters & Controls -->
-            <div class="px-5 md:px-6 py-4 border-b border-surface-200/50 dark:border-surface-700/50 bg-surface-0/50 dark:bg-surface-800/30">
+            <div class="px-5 md:px-6 py-4 border-b border-surface-200/50 dark:border-surface-700/50 bg-surface-0/50 dark:bg-surface-800/30" data-tour="consultations-table.filters">
                 <div class="flex flex-col lg:flex-row lg:items-center gap-4">
                     <!-- Search -->
                     <div class="col-6 w-full">
@@ -505,6 +617,7 @@ const currentFactureLoading = computed(() => {
 
             <!-- Data Table -->
             <DataTable 
+                data-tour="consultations-table.table"
                 :value="consultations" 
                 dataKey="id" 
                 :loading="loading" 
@@ -620,7 +733,7 @@ const currentFactureLoading = computed(() => {
                         </div>
                     </template>
                     <template #body="{ data }">
-                        <div class="flex flex-col gap-1">
+                        <div class="flex flex-col gap-1" data-tour="consultations-table.status">
                             <Tag 
                                 :value="stateLabel(data).label" 
                                 :severity="stateLabel(data).severity"
@@ -642,7 +755,7 @@ const currentFactureLoading = computed(() => {
                         </div>
                     </template>
                     <template #body="{ data }">
-                        <div class="flex items-center gap-2">
+                        <div class="flex items-center gap-2" data-tour="consultations-table.actions">
                             <Button 
                                 icon="pi pi-eye" 
                                 severity="info" 
@@ -766,7 +879,9 @@ const currentFactureLoading = computed(() => {
                     </div>
                 </div>
             </template>
-            <FormCreateConsultation @saved="handleCreateSaved" @cancel="showCreateDialog = false" />
+            <div data-tour="consultations-table.dialog.create">
+                <FormCreateConsultation @saved="handleCreateSaved" @cancel="showCreateDialog = false" />
+            </div>
         </Dialog>
 
         <!-- Stats Overview -->

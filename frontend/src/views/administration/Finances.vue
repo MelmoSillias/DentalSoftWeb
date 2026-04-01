@@ -5,7 +5,7 @@
 
         <div class="mb-6 md:mb-8">
             <div class="mb-6 flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
-                <div class="space-y-3">
+                <div class="space-y-3" data-tour="admin-finances.header">
                     <div class="flex items-center gap-4">
                         <div class="rounded-2xl bg-gradient-to-br from-primary-500 to-primary-600 p-3 shadow-lg">
                             <i class="pi pi-wallet text-2xl text-white"></i>
@@ -42,7 +42,7 @@
             </div>
         </div>
 
-        <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4" data-tour="admin-finances.kpi">
             <article class="rounded-2xl border border-primary-200/70 bg-gradient-to-br from-primary-50/80 to-primary-100/50 p-5 shadow-md backdrop-blur-sm dark:border-primary-800/40 dark:from-primary-900/30 dark:to-primary-800/20">
                 <div class="flex items-center justify-between gap-4">
                     <div>
@@ -105,7 +105,7 @@
         </div>
 
         <Tabs :value="activeTab" @update:value="setActiveTab">
-            <TabList>
+            <TabList data-tour="admin-finances.tabs">
                 <Tab value="tables">Tableaux</Tab>
                 <Tab value="charts">Graphiques</Tab>
             </TabList>
@@ -113,7 +113,7 @@
             <TabPanels class="mt-4">
                 <TabPanel value="tables">
                     <div class="space-y-6">
-                        <section class="overflow-hidden rounded-2xl border border-surface-200/70 bg-surface-0/80 shadow-xl backdrop-blur-sm dark:border-surface-700/50 dark:bg-surface-800/80">
+                        <section data-tour="admin-finances.transactions" class="overflow-hidden rounded-2xl border border-surface-200/70 bg-surface-0/80 shadow-xl backdrop-blur-sm dark:border-surface-700/50 dark:bg-surface-800/80">
                             <div class="border-b border-surface-200/50 bg-gradient-to-r from-surface-50/50 to-surface-0/30 px-5 py-4 dark:border-surface-700/50 dark:from-surface-900/50 dark:to-surface-800/30 md:px-6">
                                 <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
                                     <div>
@@ -189,7 +189,7 @@
                                 </Column>
                                 <Column header="Actions" style="width: 190px">
                                     <template #body="{ data }">
-                                        <div v-if="data.statusKey === 'pending'" class="flex gap-2">
+                                        <div v-if="data.statusKey === 'pending'" class="flex gap-2" data-tour="admin-finances.validation">
                                             <Button icon="pi pi-check" text severity="success" title="Valider" @click="handleValidateTransaction(data)" />
                                             <Button icon="pi pi-times" text severity="danger" title="Rejeter" @click="handleRejectTransaction(data)" />
                                         </div>
@@ -199,7 +199,7 @@
                             </DataTable>
                         </section>
 
-                        <section class="overflow-hidden rounded-2xl border border-surface-200/70 bg-surface-0/80 shadow-xl backdrop-blur-sm dark:border-surface-700/50 dark:bg-surface-800/80">
+                        <section data-tour="admin-finances.methods" class="overflow-hidden rounded-2xl border border-surface-200/70 bg-surface-0/80 shadow-xl backdrop-blur-sm dark:border-surface-700/50 dark:bg-surface-800/80">
                             <div class="border-b border-surface-200/50 bg-gradient-to-r from-surface-50/50 to-surface-0/30 px-5 py-4 dark:border-surface-700/50 dark:from-surface-900/50 dark:to-surface-800/30 md:px-6">
                                 <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                                     <div>
@@ -278,7 +278,7 @@
                 <TabPanel value="charts">
                     <div class="space-y-6">
                         <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
-                            <section class="rounded-2xl border border-surface-200/70 bg-surface-0/80 p-5 shadow-xl backdrop-blur-sm dark:border-surface-700/50 dark:bg-surface-800/80 xl:col-span-2 md:p-6">
+                            <section data-tour="admin-finances.monthly-flow" class="rounded-2xl border border-surface-200/70 bg-surface-0/80 p-5 shadow-xl backdrop-blur-sm dark:border-surface-700/50 dark:bg-surface-800/80 xl:col-span-2 md:p-6">
                                 <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                                     <div>
                                         <h2 class="text-lg font-semibold text-surface-900 dark:text-surface-100 md:text-xl">Flux mensuel global</h2>
@@ -295,7 +295,7 @@
                                 </div>
                             </section>
 
-                            <section class="rounded-2xl border border-surface-200/70 bg-surface-0/80 p-5 shadow-xl backdrop-blur-sm dark:border-surface-700/50 dark:bg-surface-800/80 md:p-6">
+                            <section data-tour="admin-finances.distribution" class="rounded-2xl border border-surface-200/70 bg-surface-0/80 p-5 shadow-xl backdrop-blur-sm dark:border-surface-700/50 dark:bg-surface-800/80 md:p-6">
                                 <div class="mb-6">
                                     <h2 class="text-lg font-semibold text-surface-900 dark:text-surface-100 md:text-xl">Répartition des encaissements</h2>
                                     <p class="text-sm text-surface-500 dark:text-surface-400">Transactions d'entrée regroupées par mode sur la période affichée.</p>
@@ -308,7 +308,7 @@
                         </div>
 
                         <div class="grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
-                            <section class="rounded-2xl border border-surface-200/70 bg-surface-0/80 p-5 shadow-xl backdrop-blur-sm dark:border-surface-700/50 dark:bg-surface-800/80 md:p-6">
+                            <section data-tour="admin-finances.accounts" class="rounded-2xl border border-surface-200/70 bg-surface-0/80 p-5 shadow-xl backdrop-blur-sm dark:border-surface-700/50 dark:bg-surface-800/80 md:p-6">
                                 <div class="mb-6">
                                     <h2 class="text-lg font-semibold text-surface-900 dark:text-surface-100 md:text-xl">Solde par compte</h2>
                                     <p class="text-sm text-surface-500 dark:text-surface-400">Entrées, sorties et solde courant par compte actif.</p>
@@ -330,7 +330,7 @@
                                 </div>
                             </section>
 
-                            <section class="rounded-2xl border border-surface-200/70 bg-surface-0/80 p-5 shadow-xl backdrop-blur-sm dark:border-surface-700/50 dark:bg-surface-800/80 md:p-6">
+                            <section data-tour="admin-finances.status" class="rounded-2xl border border-surface-200/70 bg-surface-0/80 p-5 shadow-xl backdrop-blur-sm dark:border-surface-700/50 dark:bg-surface-800/80 md:p-6">
                                 <div class="mb-6">
                                     <h2 class="text-lg font-semibold text-surface-900 dark:text-surface-100 md:text-xl">Statuts de validation</h2>
                                     <p class="text-sm text-surface-500 dark:text-surface-400">Visibilité immédiate sur les flux en attente, validés et rejetés.</p>
@@ -357,22 +357,24 @@
             </TabPanels>
         </Tabs>
 
-        <TransactionFormDialog
-            v-model:visible="transactionDialogVisible"
-            :payment-methods="paymentMethodsView"
-            :loading="loading.action"
-            @submit="handleTransactionSubmit" />
+        <div data-tour="admin-finances.dialogs">
+            <TransactionFormDialog
+                v-model:visible="transactionDialogVisible"
+                :payment-methods="paymentMethodsView"
+                :loading="loading.action"
+                @submit="handleTransactionSubmit" />
 
-        <PaymentModeFormDialog
-            v-model:visible="modeDialogVisible"
-            :mode="editingMode"
-            :loading="loading.action"
-            @submit="handleModeSubmit" />
+            <PaymentModeFormDialog
+                v-model:visible="modeDialogVisible"
+                :mode="editingMode"
+                :loading="loading.action"
+                @submit="handleModeSubmit" />
+        </div>
     </section>
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import Breadcrumb from 'primevue/breadcrumb';
 import Button from 'primevue/button';
 import Chart from 'primevue/chart';
@@ -388,6 +390,9 @@ import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
 import PaymentModeFormDialog from '@/components/administration/finances/PaymentModeFormDialog.vue';
 import TransactionFormDialog from '@/components/administration/finances/TransactionFormDialog.vue';
+import { GUIDED_TOUR_START_EVENT } from '@/tours';
+import { createAdministrationFinancesTour, resolveAdministrationFinancesTourGroup } from '@/tours/administrationFinancesTour';
+import { startTourGuide } from '@/tours/tourGuideClient';
 import { useFinances } from '@/composables/useFinances';
 import {
     formatCoverageRate,
@@ -427,6 +432,7 @@ const activeTab = ref('tables');
 const transactionDialogVisible = ref(false);
 const modeDialogVisible = ref(false);
 const editingMode = ref(null);
+const isGuidedTourStarting = ref(false);
 
 const today = new Date();
 const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -440,6 +446,8 @@ const modeSearch = ref('');
 const setActiveTab = (value) => {
     activeTab.value = value || 'tables';
 };
+
+const hasOpenDialogs = computed(() => transactionDialogVisible.value || modeDialogVisible.value);
 
 const transactionStatusOptions = [
     { label: 'Tous les statuts', value: 'all' },
@@ -1021,6 +1029,50 @@ const handleRejectTransaction = (row) => {
     });
 };
 
+const resetTourDialogs = () => {
+    transactionDialogVisible.value = false;
+    modeDialogVisible.value = false;
+    editingMode.value = null;
+};
+
+const handleGuidedTourRequest = async (event) => {
+    if (event?.detail?.routeName !== 'administration-finances' || isGuidedTourStarting.value) {
+        return;
+    }
+
+    if (loading.transactions || loading.methods || loading.chart || hasOpenDialogs.value) {
+        toast.add({
+            severity: 'warn',
+            summary: 'Aide guidee',
+            detail: 'Attendez la fin du chargement et fermez les fenetres ouvertes avant de lancer le tour.',
+            life: 3000
+        });
+        return;
+    }
+
+    isGuidedTourStarting.value = true;
+
+    try {
+        const steps = createAdministrationFinancesTour({ activeTab: activeTab.value });
+        await startTourGuide({
+            group: resolveAdministrationFinancesTourGroup(activeTab.value),
+            steps,
+            onAfterExit: resetTourDialogs,
+            onFinish: resetTourDialogs
+        });
+    } catch (error) {
+        console.error('Erreur lancement guided tour finances', error);
+        toast.add({
+            severity: 'error',
+            summary: 'Aide guidee',
+            detail: 'Impossible de lancer le tour de la page finances.',
+            life: 3000
+        });
+    } finally {
+        isGuidedTourStarting.value = false;
+    }
+};
+
 watch(transactionRange, () => {
     loadTransactions();
 });
@@ -1037,5 +1089,11 @@ onMounted(async () => {
     if (chartData.value?.year) {
         selectedYear.value = Number(chartData.value.year);
     }
+    window.addEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
+});
+
+onBeforeUnmount(() => {
+    window.removeEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
+    resetTourDialogs();
 });
 </script>

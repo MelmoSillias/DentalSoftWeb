@@ -1,9 +1,12 @@
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import Breadcrumb from 'primevue/breadcrumb';
 import DatePicker from 'primevue/datepicker';
 import SelectButton from 'primevue/selectbutton';
 import { useAuthStore } from '@/stores/auth';
+import { GUIDED_TOUR_START_EVENT } from '@/tours';
+import { createDashboardTour } from '@/tours/dashboardTour';
+import { startTourGuide } from '@/tours/tourGuideClient';
 import { useDashboards } from '@/composables/useDashboards';
 import { useProfile } from '@/composables/useProfile';
 import DashboardQuickStats from '@/components/dashboard/DashboardQuickStats.vue';
@@ -33,6 +36,7 @@ const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1
 const selectedRange = ref([startOfMonth, new Date()]);
 
 const selectedPeriod = ref('month');
+const isGuidedTourStarting = ref(false);
 
 const breadcrumbHome = { icon: 'pi pi-home', to: '/' };
 const breadcrumbItems = [{ label: 'Dashboard' }, { label: 'Tableau de bord' }];
@@ -531,6 +535,42 @@ const handleMarkAll = async () => {
     await markAllNotificationsRead();
 };
 
+const handleGuidedTourRequest = async (event) => {
+    if (event?.detail?.routeName !== 'dashboard' || isGuidedTourStarting.value) {
+        return;
+    }
+
+    if (loading.value) {
+        toast.add({
+            severity: 'warn',
+            summary: 'Aide guidee',
+            detail: 'Attendez la fin du chargement des indicateurs avant de lancer le tour.',
+            life: 3000
+        });
+        return;
+    }
+
+    isGuidedTourStarting.value = true;
+
+    try {
+        const steps = createDashboardTour({ role: role.value });
+        await startTourGuide({
+            group: 'dashboard',
+            steps
+        });
+    } catch (error) {
+        console.error('Erreur lancement guided tour dashboard', error);
+        toast.add({
+            severity: 'error',
+            summary: 'Aide guidee',
+            detail: 'Impossible de lancer le tour du dashboard.',
+            life: 3000
+        });
+    } finally {
+        isGuidedTourStarting.value = false;
+    }
+};
+
 watch(
     () => [role.value, filterParams.value],
     async () => {
@@ -549,14 +589,19 @@ watch(
 );
 
 onMounted(async () => {
+    window.addEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
     await fetchProfile();
     await fetchNotifications(notificationsFilter.value);
+});
+
+onBeforeUnmount(() => {
+    window.removeEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
 });
 </script>
 
 <template>
     <section class="min-h-screen bg-surface-50 dark:bg-surface-900 p-3 sm:p-4 md:p-6 lg:p-8 transition-colors duration-300">
-        <div class="mb-6 md:mb-8">
+        <div class="mb-6 md:mb-8" data-tour="dashboard.header">
             <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
                 <div class="space-y-2 flex-1">
                     <div class="flex items-center gap-3">
@@ -574,7 +619,7 @@ onMounted(async () => {
                     </div>
                 </div>
 
-                <div class="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-2 sm:gap-3 w-full lg:w-auto">
+                <div class="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-2 sm:gap-3 w-full lg:w-auto" data-tour="dashboard.filters">
                     <SelectButton
                         v-model="filterMode"
                         :options="filterOptions"
@@ -613,10 +658,12 @@ onMounted(async () => {
             </div>
         </div>
 
-        <DashboardQuickStats :cards="quickCards" :loading="loading" />
+        <div data-tour="dashboard.quick-stats">
+            <DashboardQuickStats :cards="quickCards" :loading="loading" />
+        </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 md:mb-8">
-            <div class="lg:col-span-2">
+            <div class="lg:col-span-2" data-tour="dashboard.main-report">
                 <div v-if="showReceptionReports">
                     <DoctorReportsTable
                         title="Rapports periodiques par medecin"
@@ -637,19 +684,21 @@ onMounted(async () => {
                 </div>
             </div>
 
-            <div class="lg:col-span-1">
+            <div class="lg:col-span-1" data-tour="dashboard.tabs-panel">
                 <DashboardTabsPanel :role="role" :tabs="tabs" :loading="loading" />
             </div>
         </div>
 
-        <ProfileNotificationsSection
-            :notifications="notifications"
-            :unread-count="unreadCount"
-            :loading="notificationsLoading"
-            :filter="notificationsFilter"
-            @filter-change="handleFilterChange"
-            @mark-read="handleMarkRead"
-            @mark-all="handleMarkAll"
-        />
+        <div data-tour="dashboard.notifications">
+            <ProfileNotificationsSection
+                :notifications="notifications"
+                :unread-count="unreadCount"
+                :loading="notificationsLoading"
+                :filter="notificationsFilter"
+                @filter-change="handleFilterChange"
+                @mark-read="handleMarkRead"
+                @mark-all="handleMarkAll"
+            />
+        </div>
     </section>
 </template>

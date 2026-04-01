@@ -7,6 +7,9 @@ import PrintPaymentsListBody from '@/components/print/PrintPaymentsListBody.vue'
 import PrintReceiptBody from '@/components/print/PrintReceiptBody.vue';
 import PrintTicketBody from '@/components/print/PrintTicketBody.vue';
 import { usePrinter } from '@/composables/usePrinter';
+import { GUIDED_TOUR_START_EVENT } from '@/tours';
+import { createCaisseTour, resolveCaisseTourGroup } from '@/tours/caisseTour';
+import { startTourGuide } from '@/tours/tourGuideClient';
 import { useAuthStore } from '@/stores/auth';
 import {
 	buildPaymentMethodGroups,
@@ -38,7 +41,7 @@ import InputText from 'primevue/inputtext';
 import Select from 'primevue/select';
 import Tag from 'primevue/tag';
 import { useToast } from 'primevue/usetoast';
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 const toast = useToast();
 const token = localStorage.getItem('token');
@@ -109,6 +112,7 @@ const previewDialogVisible = ref(false);
 const previewLoading = ref(false);
 const previewData = ref(null);
 const payLoading = ref(false);
+const isGuidedTourStarting = ref(false);
 
 // Explicit setters avoid template auto-unwrapping issues on refs
 const setDevisType = (val) => {
@@ -216,6 +220,17 @@ const setActiveView = (view) => {
 	localStorage.setItem(viewStorageKey, normalized);
 };
 
+const hasOpenDialogs = computed(() => (
+	payDialogVisible.value
+	|| validateDialogVisible.value
+	|| factureDialogVisible.value
+	|| previewDialogVisible.value
+));
+
+const firstPayableDevis = computed(() => devis.value.find((row) => !row?.isRegle) || null);
+const firstPreviewableDevis = computed(() => devis.value.find((row) => !(Number(row?.montant) === 0 && Number(row?.reste) === 0)) || null);
+const firstModifiableDevis = computed(() => devis.value.find((row) => (Number(row?.montant) === Number(row?.reste)) && !row?.isRegle) || null);
+
 const loadDevis = async () => {
 	if (!devisRange.value || devisRange.value.length < 2) return;
 	try {
@@ -269,6 +284,11 @@ const openPayDialog = async (row) => {
 		insuranceRate: 0
 	};
 	payDialogVisible.value = true;
+};
+
+const openTourPaymentDialog = async () => {
+	if (!firstPayableDevis.value) return;
+	await openPayDialog(firstPayableDevis.value);
 };
 
 watch(
@@ -439,6 +459,11 @@ const openModifyDialog = async (row) => {
 	}
 };
 
+const openTourModifyDialog = async () => {
+	if (!firstModifiableDevis.value) return;
+	await openModifyDialog(firstModifiableDevis.value);
+};
+
 const createEmptyLine = () => ({ dent: '', type: '', description: '', prix: 0, quantite: 1 });
 
 const addFactureLine = () => {
@@ -476,6 +501,82 @@ const openPreviewDialog = async (row) => {
 		toast.add({ severity: 'error', summary: 'Facture', detail: 'Aperçu indisponible', life: 3500 });
 	} finally {
 		previewLoading.value = false;
+	}
+};
+
+const openTourPreviewDialog = async () => {
+	if (!firstPreviewableDevis.value) return;
+	await openPreviewDialog(firstPreviewableDevis.value);
+};
+
+const resetTourDialogs = () => {
+	payDialogVisible.value = false;
+	validateDialogVisible.value = false;
+	factureDialogVisible.value = false;
+	previewDialogVisible.value = false;
+	pendingDevis.value = null;
+	selectedDevis.value = null;
+	factureConsultId.value = null;
+};
+
+const handleGuidedTourRequest = async (event) => {
+	if (event?.detail?.routeName !== 'caisse' || isGuidedTourStarting.value) {
+		return;
+	}
+
+	if (devisLoading.value || paymentsLoading.value) {
+		toast.add({
+			severity: 'warn',
+			summary: 'Aide guidee',
+			detail: 'Attendez la fin du chargement de la caisse avant de lancer le tour.',
+			life: 3000
+		});
+		return;
+	}
+
+	if (hasOpenDialogs.value) {
+		toast.add({
+			severity: 'warn',
+			summary: 'Aide guidee',
+			detail: 'Fermez les fenetres ouvertes avant de lancer le tour.',
+			life: 3000
+		});
+		return;
+	}
+
+	isGuidedTourStarting.value = true;
+
+	try {
+		resetTourDialogs();
+		await nextTick();
+
+		const steps = createCaisseTour({
+			activeView: activeView.value,
+			canOpenPaymentDialog: Boolean(firstPayableDevis.value),
+			canOpenPreviewDialog: Boolean(firstPreviewableDevis.value),
+			canOpenModifyDialog: Boolean(firstModifiableDevis.value),
+			openPaymentDialog: openTourPaymentDialog,
+			openPreviewDialog: openTourPreviewDialog,
+			openModifyDialog: openTourModifyDialog,
+			closeAllDialogs: resetTourDialogs
+		});
+
+		await startTourGuide({
+			group: resolveCaisseTourGroup(activeView.value),
+			steps,
+			onAfterExit: resetTourDialogs,
+			onFinish: resetTourDialogs
+		});
+	} catch (error) {
+		console.error('Erreur lancement guided tour caisse', error);
+		toast.add({
+			severity: 'error',
+			summary: 'Aide guidee',
+			detail: 'Impossible de lancer le tour de la caisse.',
+			life: 3000
+		});
+	} finally {
+		isGuidedTourStarting.value = false;
 	}
 };
 
@@ -589,6 +690,12 @@ watch(paymentRange, loadPayments, { immediate: true });
 
 onMounted(() => {
 	setActiveView(activeView.value);
+	window.addEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
+});
+
+onBeforeUnmount(() => {
+	window.removeEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
+	resetTourDialogs();
 });
 </script>
 
@@ -604,7 +711,7 @@ onMounted(() => {
 		</div>
 
 		<Tabs :value="activeView" @update:value="setActiveView">
-			<TabList>
+			<TabList data-tour="caisse.tabs">
 				<Tab value="overview">Vue d'ensemble</Tab>
 				<Tab value="factures">Factures</Tab>
 				<Tab value="paiements">Paiements</Tab>
@@ -636,7 +743,7 @@ onMounted(() => {
 		</Tabs>
 
 		<Dialog v-model:visible="payDialogVisible" header="Régler la facture" :modal="true" :style="{ width: '480px' }">
-			<div class="flex flex-col gap-3">
+			<div class="flex flex-col gap-3" data-tour="caisse-overview.payment-dialog">
 				<div v-if="invoiceAllowsInsurance" class="rounded-xl border border-surface-200 bg-surface-50/70 p-3">
 					<div class="flex items-center gap-2">
 						<ToggleSwitch v-model="payForm.insuranceEnabled" />
@@ -711,7 +818,7 @@ onMounted(() => {
 
 		<Dialog v-model:visible="factureDialogVisible" header="Modifier la facture" :modal="true"
 			:style="{ width: '720px' }">
-			<div class="flex flex-col gap-3">
+			<div class="flex flex-col gap-3" data-tour="caisse-factures.modify">
 				<div v-for="(line, idx) in factureLines" :key="idx" class="border rounded p-3 flex flex-col gap-2">
 					<div class="grid md:grid-cols-2 gap-2">
 						<InputText v-model="line.dent" placeholder="Dent" />
@@ -740,46 +847,48 @@ onMounted(() => {
 
 		<Dialog v-model:visible="previewDialogVisible" header="Détail de la facture" :modal="true"
 			:style="{ width: '820px' }">
-			<div v-if="previewLoading" class="p-4 text-center text-gray-600">Chargement...</div>
-			<div v-else-if="previewData" class="flex flex-col gap-3">
-				<div class="flex items-center justify-between">
-					<div>
-						<p class="font-semibold">Facture n° {{ String(previewData.id).padStart(4, '0') }}</p>
-						<p class="text-sm text-gray-600">Date : {{ previewData.date }}</p>
-						<p class="text-sm text-gray-600">Patient : {{ previewData.patient?.nom }} {{
-							previewData.patient?.prenom
-						}}</p>
+			<div data-tour="caisse-factures.preview">
+				<div v-if="previewLoading" class="p-4 text-center text-gray-600">Chargement...</div>
+				<div v-else-if="previewData" class="flex flex-col gap-3">
+					<div class="flex items-center justify-between">
+						<div>
+							<p class="font-semibold">Facture n° {{ String(previewData.id).padStart(4, '0') }}</p>
+							<p class="text-sm text-gray-600">Date : {{ previewData.date }}</p>
+							<p class="text-sm text-gray-600">Patient : {{ previewData.patient?.nom }} {{
+								previewData.patient?.prenom
+							}}</p>
+						</div>
+						<Tag :value="'Reste ' + formatFcfa(previewData.reste)" severity="warning" />
 					</div>
-					<Tag :value="'Reste ' + formatFcfa(previewData.reste)" severity="warning" />
+					<table class="w-full text-sm">
+						<thead>
+							<tr class="text-left border-b">
+								<th class="py-2">Désignation</th>
+								<th class="py-2">Qté</th>
+								<th class="py-2 text-right">Prix</th>
+								<th class="py-2 text-right">Total</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr v-for="(c, idx) in previewData.contenus || []" :key="idx" class="border-b">
+								<td class="py-2">{{ c.designation }}</td>
+								<td class="py-2">{{ c.qte }}</td>
+								<td class="py-2 text-right">{{ formatFcfa(c.montant) }}</td>
+								<td class="py-2 text-right">{{ formatFcfa(c.total) }}</td>
+							</tr>
+						</tbody>
+						<tfoot>
+							<tr>
+								<th colspan="3" class="py-2 text-right">Total TTC</th>
+								<th class="py-2 text-right">{{ formatFcfa(previewData.montant) }}</th>
+							</tr>
+							<tr>
+								<th colspan="3" class="py-2 text-right">Reste à payer</th>
+								<th class="py-2 text-right">{{ formatFcfa(previewData.reste) }}</th>
+							</tr>
+						</tfoot>
+					</table>
 				</div>
-				<table class="w-full text-sm">
-					<thead>
-						<tr class="text-left border-b">
-							<th class="py-2">Désignation</th>
-							<th class="py-2">Qté</th>
-							<th class="py-2 text-right">Prix</th>
-							<th class="py-2 text-right">Total</th>
-						</tr>
-					</thead>
-					<tbody>
-						<tr v-for="(c, idx) in previewData.contenus || []" :key="idx" class="border-b">
-							<td class="py-2">{{ c.designation }}</td>
-							<td class="py-2">{{ c.qte }}</td>
-							<td class="py-2 text-right">{{ formatFcfa(c.montant) }}</td>
-							<td class="py-2 text-right">{{ formatFcfa(c.total) }}</td>
-						</tr>
-					</tbody>
-					<tfoot>
-						<tr>
-							<th colspan="3" class="py-2 text-right">Total TTC</th>
-							<th class="py-2 text-right">{{ formatFcfa(previewData.montant) }}</th>
-						</tr>
-						<tr>
-							<th colspan="3" class="py-2 text-right">Reste à payer</th>
-							<th class="py-2 text-right">{{ formatFcfa(previewData.reste) }}</th>
-						</tr>
-					</tfoot>
-				</table>
 			</div>
 			<template #footer>
 				<Button label="Fermer" text @click="previewDialogVisible = false" />

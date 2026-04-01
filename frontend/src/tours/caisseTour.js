@@ -1,0 +1,204 @@
+import { nextTick } from 'vue';
+import { getTourGuideClient } from './tourGuideClient';
+
+function wait(ms = 120) {
+    return new Promise((resolve) => {
+        window.setTimeout(resolve, ms);
+    });
+}
+
+async function refreshTourLayout() {
+    const tg = getTourGuideClient();
+
+    if (!tg?.isVisible) {
+        return;
+    }
+
+    await tg.updatePositions().catch(() => undefined);
+}
+
+async function flushUi() {
+    await nextTick();
+    await wait();
+    await refreshTourLayout();
+}
+
+export function resolveCaisseTourGroup(activeView) {
+    if (activeView === 'factures') return 'caisse:factures';
+    if (activeView === 'paiements') return 'caisse:paiements';
+    return 'caisse:overview';
+}
+
+export function createCaisseTour({
+    activeView,
+    canOpenPaymentDialog,
+    canOpenPreviewDialog,
+    canOpenModifyDialog,
+    openPaymentDialog,
+    openPreviewDialog,
+    openModifyDialog,
+    closeAllDialogs
+}) {
+    if (activeView === 'factures') {
+        const steps = [
+            {
+                group: 'caisse:factures',
+                order: 10,
+                target: '[data-tour="caisse.tabs"]',
+                title: 'Choisir la sous-vue',
+                content: 'Les onglets separent la vue d ensemble, les factures et les paiements selon le besoin du moment.'
+            },
+            {
+                group: 'caisse:factures',
+                order: 20,
+                target: '[data-tour="caisse-factures.filters"]',
+                title: 'Filtrer les factures',
+                content: 'Recherchez, changez la periode et limitez l affichage aux factures impayees si besoin.'
+            },
+            {
+                group: 'caisse:factures',
+                order: 30,
+                target: '[data-tour="caisse-factures.cards"]',
+                title: 'Lire les cartes facture',
+                content: 'Chaque carte montre le patient, le montant, le reste et le statut de paiement.'
+            },
+            {
+                group: 'caisse:factures',
+                order: 40,
+                target: '[data-tour="caisse-factures.actions"]',
+                title: 'Agir sur une facture',
+                content: 'Depuis une carte, vous pouvez regler, valider une facture vide, modifier, previsualiser ou envoyer la facture par SMS.'
+            }
+        ];
+
+        if (canOpenPreviewDialog) {
+            steps.push({
+                group: 'caisse:factures',
+                order: 50,
+                target: '[data-tour="caisse-factures.preview"]',
+                title: 'Verifier avant impression',
+                content: 'L apercu detaille la facture et permet une verification avant impression ou envoi.',
+                beforeEnter: async () => {
+                    await openPreviewDialog();
+                    await flushUi();
+                },
+                afterLeave: async () => {
+                    closeAllDialogs();
+                    await flushUi();
+                }
+            });
+        }
+
+        if (canOpenModifyDialog) {
+            steps.push({
+                group: 'caisse:factures',
+                order: 60,
+                target: '[data-tour="caisse-factures.modify"]',
+                title: 'Corriger les lignes facture',
+                content: 'La modale de modification sert a ajuster les soins, quantites et montants avant validation.',
+                beforeEnter: async () => {
+                    await openModifyDialog();
+                    await flushUi();
+                },
+                afterLeave: async () => {
+                    closeAllDialogs();
+                    await flushUi();
+                }
+            });
+        }
+
+        return steps;
+    }
+
+    if (activeView === 'paiements') {
+        return [
+            {
+                group: 'caisse:paiements',
+                order: 10,
+                target: '[data-tour="caisse.tabs"]',
+                title: 'Choisir la sous-vue',
+                content: 'Les onglets separent la vue d ensemble, les factures et les paiements selon le besoin du moment.'
+            },
+            {
+                group: 'caisse:paiements',
+                order: 20,
+                target: '[data-tour="caisse-paiements.filters"]',
+                title: 'Filtrer la periode',
+                content: 'Choisissez la plage de dates et la recherche libre pour limiter les paiements affiches.'
+            },
+            {
+                group: 'caisse:paiements',
+                order: 30,
+                target: '[data-tour="caisse-paiements.totals"]',
+                title: 'Lire les totaux',
+                content: 'Cette synthese donne le nombre de paiements visibles et le montant total encaisse sur la periode.'
+            },
+            {
+                group: 'caisse:paiements',
+                order: 40,
+                target: '[data-tour="caisse-paiements.accordion"]',
+                title: 'Explorer par mode de paiement',
+                content: 'Les paiements sont regroupes par mode pour faciliter le controle de caisse et les rapprochements.'
+            },
+            {
+                group: 'caisse:paiements',
+                order: 50,
+                target: '[data-tour="caisse-paiements.row-actions"]',
+                title: 'Imprimer et envoyer',
+                content: 'Chaque ligne permet d imprimer un paiement ou un ticket et d envoyer le recu par SMS.'
+            }
+        ];
+    }
+
+    const overviewSteps = [
+        {
+            group: 'caisse:overview',
+            order: 10,
+            target: '[data-tour="caisse.tabs"]',
+            title: 'Choisir la sous-vue',
+            content: 'Les onglets separent la vue d ensemble, les factures et les paiements selon le besoin du moment.'
+        },
+        {
+            group: 'caisse:overview',
+            order: 20,
+            target: '[data-tour="caisse-overview.stats"]',
+            title: 'Lire les chiffres du jour',
+            content: 'Les cartes de synthese donnent le volume visible de factures, le restant du et la recette sur la periode.'
+        },
+        {
+            group: 'caisse:overview',
+            order: 30,
+            target: '[data-tour="caisse-overview.factures"]',
+            title: 'Gerer les factures impayees',
+            content: 'Ce bloc permet de filtrer les factures, de les regler, de les modifier ou de les previsualiser.'
+        }
+    ];
+
+    if (canOpenPaymentDialog) {
+        overviewSteps.push({
+            group: 'caisse:overview',
+            order: 40,
+            target: '[data-tour="caisse-overview.payment-dialog"]',
+            title: 'Enregistrer un paiement',
+            content: 'La modale de reglement gere le montant patient, le mode de paiement, les assurances et le reste a payer.',
+            beforeEnter: async () => {
+                await openPaymentDialog();
+                await flushUi();
+            },
+            afterLeave: async () => {
+                closeAllDialogs();
+                await flushUi();
+            }
+        });
+    }
+
+    overviewSteps.push({
+        group: 'caisse:overview',
+        order: 50,
+        target: '[data-tour="caisse-overview.payments"]',
+        title: 'Suivre les encaissements',
+        content: 'La seconde zone resume les paiements deja enregistres et permet d imprimer ou d envoyer les recus.'
+    });
+
+    return overviewSteps;
+}

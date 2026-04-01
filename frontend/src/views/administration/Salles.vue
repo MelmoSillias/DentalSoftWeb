@@ -1,11 +1,14 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useSalles } from '@/composables/useSalles';
 import AddSalleDialog from '@/components/salles/AddSalleDialog.vue';
 import EditSalleDialog from '@/components/salles/EditSalleDialog.vue';
 import SallesTable from '@/components/salles/SallesTable.vue'; 
 import PrintDataTablePage from '@/components/print/PrintDataTablePage.vue';
 import { usePrinter } from '@/composables/usePrinter';
+import { GUIDED_TOUR_START_EVENT } from '@/tours';
+import { createAdministrationSallesTour } from '@/tours/administrationSallesTour';
+import { startTourGuide } from '@/tours/tourGuideClient';
 import Button from 'primevue/button';
 import ConfirmPopup from 'primevue/confirmpopup';
 import Toast from 'primevue/toast';
@@ -26,11 +29,19 @@ const breadcrumbItems = ref([
 const addDialogVisible = ref(false);
 const editDialogVisible = ref(false);
 const currentSalle = ref(null);
+const isGuidedTourStarting = ref(false);
 
 const totalLabel = computed(() => (salles.value?.length ? `${salles.value.length} salle(s)` : ''));
+const hasOpenDialogs = computed(() => addDialogVisible.value || editDialogVisible.value);
 
 onMounted(() => {
   fetchSalles();
+  window.addEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
+  resetTourDialogs();
 });
 
 const openAdd = () => {
@@ -130,6 +141,53 @@ const printSalles = async () => {
     rows
   });
 };
+
+const resetTourDialogs = () => {
+  addDialogVisible.value = false;
+  editDialogVisible.value = false;
+  currentSalle.value = null;
+};
+
+const handleGuidedTourRequest = async (event) => {
+  if (event?.detail?.routeName !== 'administration-salles' || isGuidedTourStarting.value) {
+    return;
+  }
+
+  if (hasOpenDialogs.value) {
+    toast.add({
+      severity: 'warn',
+      summary: 'Aide guidee',
+      detail: 'Fermez les fenetres ouvertes avant de lancer le tour.',
+      life: 3000
+    });
+    return;
+  }
+
+  isGuidedTourStarting.value = true;
+
+  try {
+    const steps = createAdministrationSallesTour({
+      openAddDialog: openAdd,
+      closeAllDialogs: resetTourDialogs
+    });
+    await startTourGuide({
+      group: 'administration-salles',
+      steps,
+      onAfterExit: resetTourDialogs,
+      onFinish: resetTourDialogs
+    });
+  } catch (error) {
+    console.error('Erreur lancement guided tour salles', error);
+    toast.add({
+      severity: 'error',
+      summary: 'Aide guidee',
+      detail: 'Impossible de lancer le tour des salles.',
+      life: 3000
+    });
+  } finally {
+    isGuidedTourStarting.value = false;
+  }
+};
 </script>
 
  <template>
@@ -138,7 +196,7 @@ const printSalles = async () => {
     <ConfirmPopup />
 
     <!-- Header Section -->
-    <div class="mb-6 md:mb-8">
+    <div class="mb-6 md:mb-8" data-tour="admin-salles.header">
       <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
         <div class="space-y-2">
           <div class="flex items-center gap-3">
@@ -169,7 +227,7 @@ const printSalles = async () => {
     </div>
 
     <!-- Main Content Card -->
-    <div class="bg-surface-0 dark:bg-surface-800/80 rounded-2xl shadow-xl overflow-hidden border border-surface-200/50 dark:border-surface-700/50 backdrop-blur-sm">
+    <div class="bg-surface-0 dark:bg-surface-800/80 rounded-2xl shadow-xl overflow-hidden border border-surface-200/50 dark:border-surface-700/50 backdrop-blur-sm" data-tour="admin-salles.table">
       <!-- Table Header -->
       <div class="px-5 md:px-6 py-4 border-b border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900/50 dark:to-surface-800">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -204,13 +262,13 @@ const printSalles = async () => {
       </div>
 
       <!-- Table Content -->
-      <div class="p-0">
+      <div class="p-0" data-tour="admin-salles.actions">
         <SallesTable :salles="salles" :loading="loading" @edit="openEdit" @delete="handleDelete" />
       </div>
     </div>
 
     <!-- Stats Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-6" data-tour="admin-salles.stats">
       <div class="bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-900/20 dark:to-blue-800/20 rounded-2xl p-5 border border-blue-200/50 dark:border-blue-800/50">
         <div class="flex items-center justify-between">
           <div>
@@ -259,12 +317,14 @@ const printSalles = async () => {
     </div>
 
     <!-- Dialogs -->
-    <AddSalleDialog
-      :visible="addDialogVisible"
-      :loading="loading"
-      @update:visible="(value) => (addDialogVisible = value)"
-      @submit="handleAddSubmit"
-    />
+    <div data-tour="admin-salles.dialogs">
+      <AddSalleDialog
+        :visible="addDialogVisible"
+        :loading="loading"
+        @update:visible="(value) => (addDialogVisible = value)"
+        @submit="handleAddSubmit"
+      />
+    </div>
     <EditSalleDialog
       :visible="editDialogVisible"
       :salle="currentSalle"

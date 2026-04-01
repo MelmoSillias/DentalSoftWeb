@@ -103,7 +103,7 @@ const miniChart = computed(() => {
                     <p class="section-eyebrow text-success">Vue Paiements</p>
                     <p class="section-title">Période, montants et ventilation par mode de paiement.</p>
                 </div>
-                <div class="filters">
+                <div class="filters" data-tour="caisse-paiements.filters">
                     <div class="filter-item">
                         <label>Recherche</label>
                         <InputText v-model="paymentsSearch" placeholder="Tapez quelque chose..."
@@ -119,7 +119,7 @@ const miniChart = computed(() => {
                     <Button label="Rafraîchir" icon="pi pi-refresh" text @click="emit('refresh-payments')" />
                 </div>
             </div>
-            <div class="grid md:grid-cols-3 gap-3 mb-4">
+            <div class="grid md:grid-cols-3 gap-3 mb-4" data-tour="caisse-paiements.totals">
                 <div class="stat-card stat-primary">
                     <div class="icon pi pi-wallet"></div>
                     <div>
@@ -150,7 +150,7 @@ const miniChart = computed(() => {
                 </div> -->
             </div>
 
-            <Accordion v-if="Object.keys(paymentsByMode).length">
+            <Accordion v-if="Object.keys(paymentsByMode).length" data-tour="caisse-paiements.accordion">
                 <AccordionPanel v-for="(list, mode) in paymentsByMode" :key="mode" :header="`${mode} (${list.length})`">
                     <div class="flex flex-col gap-2">
                         <div v-for="row in list" :key="row.pId" class="payment-row">
@@ -162,7 +162,7 @@ const miniChart = computed(() => {
                             </div>
                             <div class="text-right">
                                 <div class="font-semibold">{{ formatFcfa(row.montant) }}</div>
-                                <div class="flex gap-2 justify-end mt-2">
+                                <div class="flex gap-2 justify-end mt-2" data-tour="caisse-paiements.row-actions">
                                     <Button :icon="row.type === 'devis' ? 'pi pi-print' : 'pi pi-ticket'" text
                                         @click="emit(row.type === 'devis' ? 'print-payment' : 'print-receipt', row)" />
                                     <Button icon="pi pi-send" text @click="emit('send-receipt-sms', row)" />

@@ -66,7 +66,7 @@ onMounted(() => {
 
 <template>
     <div class="space-y-6">
-        <div class="flex flex-wrap items-center justify-between gap-4">
+        <div class="flex flex-wrap items-center justify-between gap-4" data-tour="rapports-medecin.range">
             <div>
                 <h2 class="text-2xl font-semibold text-surface-900 dark:text-surface-0">
                     Bienvenue Dr {{ connectedMedecinFullName }}
@@ -86,10 +86,20 @@ onMounted(() => {
             </div>
         </div>
 
-        <MedecinGlobalStatsSection :data="medecinData" :loading="medecinLoading" />
-        <MedecinQuickStatsSection :stats="medecinData.stats" :loading="medecinLoading" />
-        <MedecinPeriodicDetailsSection :period="medecinData.period" :loading="medecinLoading" />
-        <MedecinMedicalActsSection :acts="medecinData.period?.paiements_period || []" :loading="medecinLoading" />
-        <MedecinProfileSection :data="medecinData" :loading="medecinLoading" />
+        <div data-tour="rapports-medecin.global">
+            <MedecinGlobalStatsSection :data="medecinData" :loading="medecinLoading" />
+        </div>
+        <div data-tour="rapports-medecin.quick">
+            <MedecinQuickStatsSection :stats="medecinData.stats" :loading="medecinLoading" />
+        </div>
+        <div data-tour="rapports-medecin.periodic">
+            <MedecinPeriodicDetailsSection :period="medecinData.period" :loading="medecinLoading" />
+        </div>
+        <div data-tour="rapports-medecin.acts">
+            <MedecinMedicalActsSection :acts="medecinData.period?.paiements_period || []" :loading="medecinLoading" />
+        </div>
+        <div data-tour="rapports-medecin.profile">
+            <MedecinProfileSection :data="medecinData" :loading="medecinLoading" />
+        </div>
     </div>
 </template>

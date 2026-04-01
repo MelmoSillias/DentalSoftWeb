@@ -124,7 +124,7 @@ const formatPatient = (row) => {
                     <p class="section-eyebrow">Vue Factures</p>
                     <p class="section-title">Cartes par statut et liste détaillée, selon vos filtres.</p>
                 </div>
-                <div class="filters">
+                <div class="filters" data-tour="caisse-factures.filters">
                     <div class="filter-item">
                         <label>Recherche</label>
                         <InputText v-model="devisSearch" placeholder="Tapez quelque chose..."
@@ -170,7 +170,7 @@ const formatPatient = (row) => {
 
             <div v-if="!filteredDevis.length" class="empty">Aucune facture à afficher pour ces filtres.</div>
 
-            <DataView v-else :value="filteredDevis" paginator :rows="6" :rowsPerPageOptions="[6, 12, 24]"
+            <DataView v-else data-tour="caisse-factures.cards" :value="filteredDevis" paginator :rows="6" :rowsPerPageOptions="[6, 12, 24]"
                 :loading="devisLoading">
                 <template #list="slotProps">
                     <div class="flex flex-col gap-3">
@@ -196,7 +196,7 @@ const formatPatient = (row) => {
                                     ]">{{ formatFcfa(row.reste) }}</span></div>
                                 </div>
 
-                                <div class="dv-actions">
+                                <div class="dv-actions" data-tour="caisse-factures.actions">
                                     <Button v-if="!row.isRegle" :label="targetIsFree(row) ? 'Valider' : 'Régler'" size="small"
                                 :severity="targetIsFree(row) ? 'secondary' : 'success'" icon="pi pi-wallet"
                                 @click="targetIsFree(row) ? emit('validate-free', row) : emit('pay', row)" />

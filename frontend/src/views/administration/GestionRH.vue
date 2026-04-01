@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import Breadcrumb from 'primevue/breadcrumb';
 import Button from 'primevue/button';
@@ -16,6 +16,9 @@ import EmployeeForm from '@/components/administration/EmployeeForm.vue';
 import PrintDataTablePage from '@/components/print/PrintDataTablePage.vue';
 import { usePrinter } from '@/composables/usePrinter';
 import { useEmployees } from '@/composables/useEmployees';
+import { GUIDED_TOUR_START_EVENT } from '@/tours';
+import { createAdministrationGestionRHTour } from '@/tours/administrationGestionRHTour';
+import { startTourGuide } from '@/tours/tourGuideClient';
 
 const toast = useToast();
 const confirm = useConfirm();
@@ -47,6 +50,7 @@ const expandedGroups = ref([]);
 const formVisible = ref(false);
 const formMode = ref('create');
 const currentEmployee = ref(null);
+const isGuidedTourStarting = ref(false);
 
 const groupedCounts = computed(() => {
     const map = new Map();
@@ -111,6 +115,71 @@ const openEdit = (employee) => {
     formVisible.value = true;
 };
 
+const hasOpenDialogs = computed(() => formVisible.value);
+const firstEmployee = computed(() => (employees.value || [])[0] || null);
+
+const resetTourDialogs = () => {
+    formVisible.value = false;
+    formMode.value = 'create';
+    currentEmployee.value = null;
+};
+
+const openTourCreateDialog = () => {
+    openCreate();
+};
+
+const openTourEditDialog = () => {
+    if (!firstEmployee.value) return;
+    openEdit(firstEmployee.value);
+};
+
+const handleGuidedTourRequest = async (event) => {
+    if (event?.detail?.routeName !== 'administration-gestionrh' || isGuidedTourStarting.value) {
+        return;
+    }
+
+    if (loading.value || hasOpenDialogs.value) {
+        toast.add({
+            severity: 'warn',
+            summary: 'Aide guidee',
+            detail: 'Attendez la fin du chargement et fermez les fenetres ouvertes avant de lancer le tour.',
+            life: 3000
+        });
+        return;
+    }
+
+    isGuidedTourStarting.value = true;
+
+    try {
+        resetTourDialogs();
+        await nextTick();
+
+        const steps = createAdministrationGestionRHTour({
+            hasEmployees: (employees.value || []).length > 0,
+            openCreateDialog: openTourCreateDialog,
+            openEditDialog: openTourEditDialog,
+            closeAllDialogs: resetTourDialogs
+        });
+
+        await startTourGuide({
+            group: 'administration-gestionrh',
+            steps,
+            onAfterExit: resetTourDialogs,
+            onFinish: resetTourDialogs
+        });
+    } catch (error) {
+        console.error('Erreur lancement guided tour gestion rh', error);
+        toast.add({
+            severity: 'error',
+            summary: 'Aide guidee',
+            detail: 'Impossible de lancer le tour de la page gestion RH.',
+            life: 3000
+        });
+    } finally {
+        isGuidedTourStarting.value = false;
+    }
+};
+
 const confirmSave = (payload, event) => {
     confirm.require({
         target: event?.currentTarget,
@@ -171,6 +240,12 @@ watch(typeFilter, () => loadEmployees({ page: 0, rows: tableState.value.rows }))
 
 onMounted(() => {
     loadEmployees();
+    window.addEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
+});
+
+onBeforeUnmount(() => {
+    window.removeEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
+    resetTourDialogs();
 });
 </script>
 <template>
@@ -180,7 +255,7 @@ onMounted(() => {
         <ConfirmPopup />
 
         <!-- Header Section -->
-        <div class="mb-6 md:mb-8">
+        <div data-tour="admin-rh.header" class="mb-6 md:mb-8">
             <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
                 <div class="space-y-2">
                     <div class="flex items-center gap-3">
@@ -209,7 +284,7 @@ onMounted(() => {
         </div>
 
         <!-- Filters Card -->
-        <div class="mb-6 md:mb-8">
+        <div data-tour="admin-rh.filters" class="mb-6 md:mb-8">
             <div class="card p-5 md:p-6 border-0 rounded-2xl bg-gradient-to-r from-surface-0 to-surface-50/80 dark:from-surface-800 dark:to-surface-900/80 shadow-lg backdrop-blur-sm">
                 <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-100 mb-4 flex items-center gap-2">
                     <i class="pi pi-filter text-primary-500"></i>
@@ -275,7 +350,7 @@ onMounted(() => {
         </div>
 
         <!-- Data Table Card -->
-        <div class="bg-surface-0 dark:bg-surface-800/80 rounded-2xl shadow-xl overflow-hidden border border-surface-200/50 dark:border-surface-700/50 backdrop-blur-sm">
+        <div data-tour="admin-rh.table" class="bg-surface-0 dark:bg-surface-800/80 rounded-2xl shadow-xl overflow-hidden border border-surface-200/50 dark:border-surface-700/50 backdrop-blur-sm">
             <!-- Table Header -->
             <div class="px-5 md:px-6 py-4 border-b border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900/50 dark:to-surface-800">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -408,7 +483,7 @@ onMounted(() => {
                 
                 <Column field="telephone" header="Téléphone">
                     <template #body="{ data }">
-                        <div class="flex items-center gap-2">
+                        <div data-tour="admin-rh.actions" class="flex items-center gap-2">
                             <i class="pi pi-phone text-surface-400"></i>
                             <span class="text-surface-700 dark:text-surface-300 font-mono">{{ data.telephone }}</span>
                         </div>
@@ -501,7 +576,7 @@ onMounted(() => {
         </div>
 
         <!-- Stats Cards (Optional addition) -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
+        <div data-tour="admin-rh.stats" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
             <div class="bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-900/20 dark:to-blue-800/20 rounded-2xl p-5 border border-blue-200/50 dark:border-blue-800/50">
                 <div class="flex items-center justify-between">
                     <div>
@@ -543,13 +618,15 @@ onMounted(() => {
             </div>
         </div>
 
-        <EmployeeForm 
-            v-model:visible="formVisible" 
-            :mode="formMode" 
-            :employee="currentEmployee" 
-            :loading="loading"
-            @submit="confirmSave" 
-        />
+        <div data-tour="admin-rh.dialogs">
+            <EmployeeForm 
+                v-model:visible="formVisible" 
+                :mode="formMode" 
+                :employee="currentEmployee" 
+                :loading="loading"
+                @submit="confirmSave" 
+            />
+        </div>
     </section>
 </template>
  

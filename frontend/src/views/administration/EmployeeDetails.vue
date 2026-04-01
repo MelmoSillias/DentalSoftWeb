@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import Breadcrumb from 'primevue/breadcrumb';
 import Button from 'primevue/button';
@@ -17,6 +17,9 @@ import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
 import { filePrefix } from '@/config';
 import { useEmployeeDetails } from '@/composables/useEmployeeDetails';
+import { GUIDED_TOUR_START_EVENT } from '@/tours';
+import { createAdministrationEmployeeDetailsTour } from '@/tours/administrationEmployeeDetailsTour';
+import { startTourGuide } from '@/tours/tourGuideClient';
 
 const route = useRoute();
 const router = useRouter();
@@ -55,6 +58,7 @@ const daysOptions = [
 const { employee, loading, error, fetchEmployee, updateEmployee } = useEmployeeDetails();
 
 const files = ref([]);
+const isGuidedTourStarting = ref(false);
 
 const form = ref({
     nom: '',
@@ -177,6 +181,41 @@ const confirmSave = (event) => {
             }
         }
     });
+};
+
+const handleGuidedTourRequest = async (event) => {
+    if (event?.detail?.routeName !== 'administration-employee-details' || isGuidedTourStarting.value) {
+        return;
+    }
+
+    if (loading.value) {
+        toast.add({
+            severity: 'warn',
+            summary: 'Aide guidee',
+            detail: 'Attendez la fin du chargement de la fiche employe avant de lancer le tour.',
+            life: 3000
+        });
+        return;
+    }
+
+    isGuidedTourStarting.value = true;
+
+    try {
+        await startTourGuide({
+            group: 'administration-employee-details',
+            steps: createAdministrationEmployeeDetailsTour()
+        });
+    } catch (error) {
+        console.error('Erreur lancement guided tour details employe', error);
+        toast.add({
+            severity: 'error',
+            summary: 'Aide guidee',
+            detail: 'Impossible de lancer le tour de la fiche employe.',
+            life: 3000
+        });
+    } finally {
+        isGuidedTourStarting.value = false;
+    }
 };
 
 const onFilesSelect = (event) => {
@@ -308,6 +347,11 @@ watch(employeeId, () => {
 
 onMounted(() => {
     loadEmployee();
+    window.addEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
+});
+
+onBeforeUnmount(() => {
+    window.removeEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
 });
 </script>
 
@@ -316,7 +360,7 @@ onMounted(() => {
         <Toast />
         <ConfirmPopup />
 
-        <div class="mb-6 md:mb-8">
+        <div data-tour="admin-employee-details.header" class="mb-6 md:mb-8">
             <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
                 <div class="space-y-2">
                     <div class="flex items-center gap-3">
@@ -352,7 +396,7 @@ onMounted(() => {
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div class="lg:col-span-2 space-y-6">
-                <div class="bg-surface-0 dark:bg-surface-800/80 rounded-2xl shadow-lg border border-surface-200/50 dark:border-surface-700/50 overflow-hidden">
+                <div data-tour="admin-employee-details.personal" class="bg-surface-0 dark:bg-surface-800/80 rounded-2xl shadow-lg border border-surface-200/50 dark:border-surface-700/50 overflow-hidden">
                     <div class="px-6 py-4 border-b border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900/50 dark:to-surface-800">
                         <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-100 flex items-center gap-2">
                             <i class="pi pi-user text-primary-500"></i>
@@ -397,7 +441,7 @@ onMounted(() => {
                     </div>
                 </div>
 
-                <div class="bg-surface-0 dark:bg-surface-800/80 rounded-2xl shadow-lg border border-surface-200/50 dark:border-surface-700/50 overflow-hidden">
+                <div data-tour="admin-employee-details.rh" class="bg-surface-0 dark:bg-surface-800/80 rounded-2xl shadow-lg border border-surface-200/50 dark:border-surface-700/50 overflow-hidden">
                     <div class="px-6 py-4 border-b border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900/50 dark:to-surface-800">
                         <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-100 flex items-center gap-2">
                             <i class="pi pi-briefcase text-primary-500"></i>
@@ -460,7 +504,7 @@ onMounted(() => {
                     </div>
                 </div>
 
-                <div class="bg-surface-0 dark:bg-surface-800/80 rounded-2xl shadow-lg border border-surface-200/50 dark:border-surface-700/50 overflow-hidden">
+                <div data-tour="admin-employee-details.documents" class="bg-surface-0 dark:bg-surface-800/80 rounded-2xl shadow-lg border border-surface-200/50 dark:border-surface-700/50 overflow-hidden">
                     <div class="px-6 py-4 border-b border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900/50 dark:to-surface-800">
                         <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-100 flex items-center gap-2">
                             <i class="pi pi-file text-primary-500"></i>
@@ -508,7 +552,7 @@ onMounted(() => {
             </div>
 
             <div class="space-y-6">
-                <div class="bg-surface-0 dark:bg-surface-800/80 rounded-2xl shadow-lg border border-surface-200/50 dark:border-surface-700/50 overflow-hidden">
+                <div data-tour="admin-employee-details.conges" class="bg-surface-0 dark:bg-surface-800/80 rounded-2xl shadow-lg border border-surface-200/50 dark:border-surface-700/50 overflow-hidden">
                     <div class="px-6 py-4 border-b border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900/50 dark:to-surface-800">
                         <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-100 flex items-center gap-2">
                             <i class="pi pi-calendar text-primary-500"></i>
@@ -555,42 +599,44 @@ onMounted(() => {
                     </div>
                 </div>
 
-                <div class="bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-900/20 dark:to-blue-800/20 rounded-2xl p-5 border border-blue-200/50 dark:border-blue-800/50">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm text-blue-700 dark:text-blue-300 font-medium">Employe</p>
-                            <p class="text-2xl font-bold text-blue-900 dark:text-blue-100 mt-2">
-                                {{ employee?.fullname || employee?.nom || '-' }}
-                            </p>
+                <div data-tour="admin-employee-details.summary">
+                    <div class="bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-900/20 dark:to-blue-800/20 rounded-2xl p-5 border border-blue-200/50 dark:border-blue-800/50">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm text-blue-700 dark:text-blue-300 font-medium">Employe</p>
+                                <p class="text-2xl font-bold text-blue-900 dark:text-blue-100 mt-2">
+                                    {{ employee?.fullname || employee?.nom || '-' }}
+                                </p>
+                            </div>
+                            <i class="pi pi-user text-2xl text-blue-500"></i>
                         </div>
-                        <i class="pi pi-user text-2xl text-blue-500"></i>
                     </div>
-                </div>
 
-                <div class="bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-emerald-900/20 dark:to-emerald-800/20 rounded-2xl p-5 border border-emerald-200/50 dark:border-emerald-800/50">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm text-emerald-700 dark:text-emerald-300 font-medium">Type</p>
-                            <p class="text-2xl font-bold text-emerald-900 dark:text-emerald-100 mt-2">
-                                {{ employee?.type || '-' }}
-                            </p>
+                    <div class="bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-emerald-900/20 dark:to-emerald-800/20 rounded-2xl p-5 border border-emerald-200/50 dark:border-emerald-800/50 mt-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm text-emerald-700 dark:text-emerald-300 font-medium">Type</p>
+                                <p class="text-2xl font-bold text-emerald-900 dark:text-emerald-100 mt-2">
+                                    {{ employee?.type || '-' }}
+                                </p>
+                            </div>
+                            <i class="pi pi-briefcase text-2xl text-emerald-500"></i>
                         </div>
-                        <i class="pi pi-briefcase text-2xl text-emerald-500"></i>
                     </div>
-                </div>
 
-                <div class="bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-900/20 dark:to-amber-800/20 rounded-2xl p-5 border border-amber-200/50 dark:border-amber-800/50">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm text-amber-700 dark:text-amber-300 font-medium">{{ salaireCard.title }}</p>
-                            <p class="text-2xl font-bold text-amber-900 dark:text-amber-100 mt-2">
-                                {{ salaireCard.value }}
-                            </p>
-                            <p v-if="salaireCard.sub" class="text-xs text-amber-600 dark:text-amber-300 mt-1">
-                                {{ salaireCard.sub }}
-                            </p>
+                    <div class="bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-900/20 dark:to-amber-800/20 rounded-2xl p-5 border border-amber-200/50 dark:border-amber-800/50 mt-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm text-amber-700 dark:text-amber-300 font-medium">{{ salaireCard.title }}</p>
+                                <p class="text-2xl font-bold text-amber-900 dark:text-amber-100 mt-2">
+                                    {{ salaireCard.value }}
+                                </p>
+                                <p v-if="salaireCard.sub" class="text-xs text-amber-600 dark:text-amber-300 mt-1">
+                                    {{ salaireCard.sub }}
+                                </p>
+                            </div>
+                            <i class="pi pi-wallet text-2xl text-amber-500"></i>
                         </div>
-                        <i class="pi pi-wallet text-2xl text-amber-500"></i>
                     </div>
                 </div>
             </div>

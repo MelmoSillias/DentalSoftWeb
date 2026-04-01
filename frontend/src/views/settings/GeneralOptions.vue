@@ -9,6 +9,9 @@ import SelectButton from 'primevue/selectbutton';
 import Divider from 'primevue/divider';
 import AppConfigurator from '@/layout/AppConfigurator.vue';
 import { useUiSettingsStore } from '@/stores/uiSettings';
+import { GUIDED_TOUR_START_EVENT } from '@/tours';
+import { createSettingsApparenceTour } from '@/tours/settingsApparenceTour';
+import { startTourGuide } from '@/tours/tourGuideClient';
 import {
     fetchSmsLogs,
     fetchSmsSettings,
@@ -26,6 +29,7 @@ import {
 const toast = useToast();
 const token = localStorage.getItem('token');
 const uiSettings = useUiSettingsStore();
+const isGuidedTourStarting = ref(false);
 
 const sections = [
     { id: 'appearance', label: 'Apparence' },
@@ -258,6 +262,31 @@ const processQueueAction = async () => {
     }
 };
 
+const handleGuidedTourRequest = async (event) => {
+    if (event?.detail?.routeName !== 'settings-apparence' || isGuidedTourStarting.value) {
+        return;
+    }
+
+    isGuidedTourStarting.value = true;
+
+    try {
+        await startTourGuide({
+            group: 'settings-apparence',
+            steps: createSettingsApparenceTour()
+        });
+    } catch (error) {
+        console.error('Erreur lancement guided tour parametres apparence', error);
+        toast.add({
+            severity: 'error',
+            summary: 'Aide guidee',
+            detail: 'Impossible de lancer le tour de la page parametres.',
+            life: 3000
+        });
+    } finally {
+        isGuidedTourStarting.value = false;
+    }
+};
+
 watch(activeSection, (value) => {
     if (value === 'sms-api') {
         loadSmsData();
@@ -284,20 +313,24 @@ onMounted(() => {
     if (activeSection.value === 'sms-api') {
         loadSmsData();
     }
+
+    window.addEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
 });
 
 onBeforeUnmount(() => {
     if (observer) {
         observer.disconnect();
     }
+
+    window.removeEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
 });
 </script>
 
 <template>
     <div class="settings-page">
-        <div class="settings-main"> 
+        <div class="settings-main" data-tour="settings-appearance.main"> 
 
-            <section id="appearance" class="settings-section">
+            <section id="appearance" class="settings-section" data-tour="settings-appearance.theme">
                 <h2 class="text-xl font-semibold mb-3 section-title"> <i class="pi pi-objects-column pr-2"></i> Apparence</h2>
                 <div class="panel">
                     <AppConfigurator
@@ -319,7 +352,7 @@ onBeforeUnmount(() => {
             <section id="sms-api" class="settings-section">
                 <h2 class="text-xl font-semibold mb-3 section-title"> <i class="pi pi-send pr-2"></i> API SMS</h2>
 
-                <div class="panel mb-4">
+                <div class="panel mb-4" data-tour="settings-appearance.sms-config">
                     <h3 class="font-semibold mb-3">Configuration API</h3>
                     <div class="grid md:grid-cols-2 gap-3">
                         <div>
@@ -359,7 +392,7 @@ onBeforeUnmount(() => {
                     </div>
                 </div>
 
-                <div class="panel mb-4">
+                <div class="panel mb-4" data-tour="settings-appearance.sms-templates">
                     <h3 class="font-semibold mb-3">Gestion du solde</h3>
                     <div class="grid md:grid-cols-4 gap-3">
                         <div class="metric-card">
@@ -483,7 +516,7 @@ onBeforeUnmount(() => {
             </section>
         </div>
 
-        <aside class="settings-sidebar">
+        <aside class="settings-sidebar" data-tour="settings-appearance.navigation">
             <div class="sidebar-card">
                 <p class="font-semibold mb-3">Sections</p>
                 <nav class="flex flex-col gap-2">

@@ -94,7 +94,7 @@ function printSection(id) {
 
 <template>
     <div class="space-y-6">
-        <div class="flex flex-wrap items-center justify-between gap-4">
+        <div class="flex flex-wrap items-center justify-between gap-4" data-tour="rapports-admin.range">
             <div>
                 <h2 class="text-2xl font-semibold text-surface-900 dark:text-surface-0">Tableau de bord</h2>
                 <p class="text-sm text-surface-500 dark:text-surface-400">Suivi global de l'activité du cabinet</p>
@@ -112,35 +112,45 @@ function printSection(id) {
             </div>
         </div>
 
-        <AdminGlobalStatsSection :stats="adminGlobalStats" :loading="adminLoading" @print="printSection" />
+        <div data-tour="rapports-admin.global">
+            <AdminGlobalStatsSection :stats="adminGlobalStats" :loading="adminLoading" @print="printSection" />
+        </div>
 
-        <AdminNonPeriodicDetailsSection
-            :employee-distribution="adminEmployeeDistribution"
-            :low-stock="adminLowStockConsumables"
-            :patients="adminGlobalPatients"
-            :loading="adminLoading"
-            @print="printSection"
-        />
+        <div data-tour="rapports-admin.non-periodic">
+            <AdminNonPeriodicDetailsSection
+                :employee-distribution="adminEmployeeDistribution"
+                :low-stock="adminLowStockConsumables"
+                :patients="adminGlobalPatients"
+                :loading="adminLoading"
+                @print="printSection"
+            />
+        </div>
 
-        <AdminPeriodicDetailsSection
-            :patients="adminPeriodicPatients"
-            :consultations="adminPeriodicConsultations"
-            :appointments="adminPeriodicAppointments"
-            :room-usage="adminRoomUsage"
-            :payment-balances="adminPaymentBalances"
-            :payment-frequency="adminPaymentFrequency"
-            :loading="adminLoading"
-            @print="printSection"
-        />
+        <div data-tour="rapports-admin.periodic">
+            <AdminPeriodicDetailsSection
+                :patients="adminPeriodicPatients"
+                :consultations="adminPeriodicConsultations"
+                :appointments="adminPeriodicAppointments"
+                :room-usage="adminRoomUsage"
+                :payment-balances="adminPaymentBalances"
+                :payment-frequency="adminPaymentFrequency"
+                :loading="adminLoading"
+                @print="printSection"
+            />
+        </div>
 
-        <AdminActsStatsSection :acts-stats="adminActsStats" :loading="adminLoading" @print="printSection" />
+        <div data-tour="rapports-admin.acts">
+            <AdminActsStatsSection :acts-stats="adminActsStats" :loading="adminLoading" @print="printSection" />
+        </div>
 
-        <DoctorReportsTable
-            :data="adminDoctorReports"
-            :loading="adminLoading"
-            :period-label="periodLabel"
-            :show-kpi="true"
-            variant="admin"
-        />
+        <div data-tour="rapports-admin.doctors">
+            <DoctorReportsTable
+                :data="adminDoctorReports"
+                :loading="adminLoading"
+                :period-label="periodLabel"
+                :show-kpi="true"
+                variant="admin"
+            />
+        </div>
     </div>
 </template>

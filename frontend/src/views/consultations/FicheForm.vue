@@ -19,13 +19,16 @@ import { usePrinter } from '@/composables/usePrinter';
 import { addPatientAllergy, addPatientAntecedent, deletePatientAllergy, deletePatientAntecedent } from '@/services/patients';
 import { fetchOrdonnancePrintData } from '@/services/printService';
 import { useAuthStore } from '@/stores/auth';
+import { GUIDED_TOUR_START_EVENT } from '@/tours';
+import { createConsultationsFormTour } from '@/tours/consultationsFormTour';
+import { startTourGuide } from '@/tours/tourGuideClient';
 import Button from 'primevue/button';
 import ConfirmDialog from 'primevue/confirmdialog';
 import SelectButton from 'primevue/selectbutton';
 import Toast from 'primevue/toast';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import { useLayout } from '@/layout/composables/layout';
 
@@ -75,6 +78,7 @@ const savingAntecedent = ref(false);
 const savingAllergy = ref(false);
 const isIndicatorFloating = ref(false);
 const allowRouteLeaveAfterCloture = ref(false);
+const isGuidedTourStarting = ref(false);
 
 const displayModeOptions = [
     { label: 'Onglets', value: 'tabs' },
@@ -559,6 +563,64 @@ const handleBeforeUnload = (event) => {
     event.returnValue = '';
 };
 
+const hasOpenDialogs = computed(() => showAntecedentDialog.value || showAllergyDialog.value || ordonnanceModalVisible.value);
+
+const setTourSection = (sectionId) => {
+    activeSection.value = sectionId;
+};
+
+const resetTourDialogs = () => {
+    showAntecedentDialog.value = false;
+    showAllergyDialog.value = false;
+    ordonnanceModalVisible.value = false;
+};
+
+const handleGuidedTourRequest = async (event) => {
+    if (event?.detail?.routeName !== 'consultations-form' || isGuidedTourStarting.value) {
+        return;
+    }
+
+    if (pageLoading.value || loading.value || hasOpenDialogs.value) {
+        toast.add({
+            severity: 'warn',
+            summary: 'Aide guidee',
+            detail: 'Attendez la fin du chargement et fermez les fenetres ouvertes avant de lancer le tour.',
+            life: 3000
+        });
+        return;
+    }
+
+    isGuidedTourStarting.value = true;
+
+    try {
+        resetTourDialogs();
+        await nextTick();
+
+        const steps = createConsultationsFormTour({
+            setSection: setTourSection,
+            openOrdonnanceDialog: openOrdonnanceModal,
+            closeAllDialogs: resetTourDialogs
+        });
+
+        await startTourGuide({
+            group: 'consultations-form',
+            steps,
+            onAfterExit: resetTourDialogs,
+            onFinish: resetTourDialogs
+        });
+    } catch (error) {
+        console.error('Erreur lancement guided tour fiche consultation', error);
+        toast.add({
+            severity: 'error',
+            summary: 'Aide guidee',
+            detail: 'Impossible de lancer le tour de la fiche medicale.',
+            life: 3000
+        });
+    } finally {
+        isGuidedTourStarting.value = false;
+    }
+};
+
 const confirmLeave = () => new Promise((resolve) => {
     confirm.require({
         message: 'Des modifications ne sont pas enregistrees. Quitter le formulaire ?',
@@ -593,6 +655,7 @@ onMounted(async () => {
         pageLoading.value = false;
     }
     handleScroll();
+    window.addEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
     window.addEventListener('scroll', handleScroll, { passive: true });
     window.addEventListener('beforeunload', handleBeforeUnload);
 });
@@ -610,8 +673,10 @@ watch(
 );
 
 onBeforeUnmount(() => {
+    window.removeEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
     window.removeEventListener('scroll', handleScroll);
     window.removeEventListener('beforeunload', handleBeforeUnload);
+    resetTourDialogs();
     if (useLayout().isSidebarActive) useLayout().toggleMenu();
 });
 
@@ -624,7 +689,7 @@ onBeforeUnmount(() => {
         <Toast />
         
         <div v-if ="!pageLoading">
-            <div class="mb-6 md:mb-8 gap-4 flex flex-row justify-items-strech rounded-2xl bg-surface-0/80 dark:bg-surface-800/80 backdrop-blur-sm border border-surface-200/50 dark:border-surface-700/50">
+            <div data-tour="consultations-form.header" class="mb-6 md:mb-8 gap-4 flex flex-row justify-items-strech rounded-2xl bg-surface-0/80 dark:bg-surface-800/80 backdrop-blur-sm border border-surface-200/50 dark:border-surface-700/50">
                 <div class="inline-flex items-center gap-3 mb-4 p-3 ">
                     <div class="p-2.5 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600">
                         <i class="pi pi-file text-white text-xl"></i>
@@ -635,98 +700,122 @@ onBeforeUnmount(() => {
                     </div>
                 </div>
                 <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-                    <div class="flex items-center gap-2">
+                    <div data-tour="consultations-form.navigation" class="flex items-center gap-2">
                         <Button icon="pi pi-arrow-left" label="Retour" severity="danger" @click="() => router.back()" />
                     </div>
-                    <div class="flex items-center gap-2">
+                    <div data-tour="consultations-form.display-mode" class="flex items-center gap-2">
                         <SelectButton v-model="switcherMode" :options="displayModeOptions" optionLabel="label" optionValue="value" />
                     </div>
                 </div>
             </div>
 
             <div class="p-6 bg-surface-0 dark:bg-surface-800/80 rounded-2xl shadow-xl border border-surface-200/50 dark:border-surface-700/50 backdrop-blur-sm">
-                <SaveIndicator
-                    v-model:auto-save-enabled="autoSaveEnabled"
-                    :loading="loading"
-                    :saving-count="savingCount"
-                    :last-saved-at="lastSavedAt"
-                    :dirty-sections="dirtySectionsList"
-                    :floating="isIndicatorFloating"
-                    @save-all="() => saveAll({ silent: false })"
-                />
+                <div data-tour="consultations-form.save-indicator">
+                    <SaveIndicator
+                        v-model:auto-save-enabled="autoSaveEnabled"
+                        :loading="loading"
+                        :saving-count="savingCount"
+                        :last-saved-at="lastSavedAt"
+                        :dirty-sections="dirtySectionsList"
+                        :floating="isIndicatorFloating"
+                        @save-all="() => saveAll({ silent: false })"
+                    />
+                </div>
 
-                <SectionSwitcher v-model="activeSection" :sections="sections" :mode="switcherMode" :init-key="sectionInitKey">
+                <div data-tour="consultations-form.switcher">
+                    <SectionSwitcher v-model="activeSection" :sections="sections" :mode="switcherMode" :init-key="sectionInitKey">
                     <template #infos>
-                        <FichePatientInfoSection
-                            :patient="data.patient"
-                            @add-antecedent="() => (showAntecedentDialog = true)"
-                            @add-allergy="() => (showAllergyDialog = true)"
-                            @delete-antecedent="handleDeleteAntecedent"
-                            @delete-allergy="handleDeleteAllergy"
-                        />
+                        <div data-tour="consultations-form.section.infos">
+                            <FichePatientInfoSection
+                                :patient="data.patient"
+                                @add-antecedent="() => (showAntecedentDialog = true)"
+                                @add-allergy="() => (showAllergyDialog = true)"
+                                @delete-antecedent="handleDeleteAntecedent"
+                                @delete-allergy="handleDeleteAllergy"
+                            />
+                        </div>
                     </template>
 
                     <template #entretien>
-                        <EntretienVerbalForm v-model="data.entretien" :saving="saving.entretien" @save="saveEntretienSection" />
+                        <div data-tour="consultations-form.section.entretien">
+                            <EntretienVerbalForm v-model="data.entretien" :saving="saving.entretien" @save="saveEntretienSection" />
+                        </div>
                     </template>
 
                     <template #examens>
-                        <ExamensFicheForm v-model="data.examens" :saving="saving.examens" @save="saveExamensSection" />
+                        <div data-tour="consultations-form.section.examens">
+                            <ExamensFicheForm v-model="data.examens" :saving="saving.examens" @save="saveExamensSection" />
+                        </div>
                     </template>
 
                     <template #documents>
-                        <FicheDocumentsForm v-model="data.documents" :saving="saving.documents" @save="saveDocumentsSection" />
+                        <div data-tour="consultations-form.section.documents">
+                            <FicheDocumentsForm v-model="data.documents" :saving="saving.documents" @save="saveDocumentsSection" />
+                        </div>
                     </template>
 
                     <template #bilans>
-                        <FicheBilansForm v-model="data.bilans" :saving="saving.bilans" :patient-age="ageNumber" @save="saveBilansSection" />
+                        <div data-tour="consultations-form.section.bilans">
+                            <FicheBilansForm v-model="data.bilans" :saving="saving.bilans" :patient-age="ageNumber" @save="saveBilansSection" />
+                        </div>
                     </template>
 
                     <template #plan-traitement>
-                        <FichePlanTraitementForm v-model="data.planTraitement" :saving="saving.planTraitement" @save="savePlanTraitementSection" />
+                        <div data-tour="consultations-form.section.plan-traitement">
+                            <FichePlanTraitementForm v-model="data.planTraitement" :saving="saving.planTraitement" @save="savePlanTraitementSection" />
+                        </div>
                     </template>
 
                     <template #devis>
-                        <DevisForm v-model="data.devis" :saving="saving.devis" @save="saveDevisSection" />
+                        <div data-tour="consultations-form.section.devis">
+                            <DevisForm v-model="data.devis" :saving="saving.devis" @save="saveDevisSection" />
+                        </div>
                     </template>
 
                     <template #seances>
-                        <SeancesSection :sessions="data.sessions" />
+                        <div data-tour="consultations-form.section.seances">
+                            <SeancesSection :sessions="data.sessions" />
+                        </div>
                     </template>
 
                     <template #consult>
-                        <ConsultationEnCoursForm
-                            v-model="data.consultation"
-                            :formule-dentaire="data.bilans?.bilanDentaire?.formuleDentaire"
-                            :medecins="data.medecins"
-                            :medecins-options="medecinsOptions"
-                            :infirmiers="data.infirmiers"
-                            :infirmiers-options="infirmiersOptions"
-                            :salles="data.salles"
-                            :salles-options="sallesOptions"
-                            :ordonnances="data.ordonnances"
-                            :medecin-readonly="isMedecinUser"
-                            :loading="loading"
-                            :saving="saving.consult"
-                            :cloture-loading="false"
-                            @save="saveConsultSection"
-                            @cloture="handleCloture"
-                            @open-ordonnance="openOrdonnanceModal"
-                            @print-ordonnance="handlePrintOrdonnance"
-                        />
+                        <div data-tour="consultations-form.section.consult">
+                            <ConsultationEnCoursForm
+                                v-model="data.consultation"
+                                :formule-dentaire="data.bilans?.bilanDentaire?.formuleDentaire"
+                                :medecins="data.medecins"
+                                :medecins-options="medecinsOptions"
+                                :infirmiers="data.infirmiers"
+                                :infirmiers-options="infirmiersOptions"
+                                :salles="data.salles"
+                                :salles-options="sallesOptions"
+                                :ordonnances="data.ordonnances"
+                                :medecin-readonly="isMedecinUser"
+                                :loading="loading"
+                                :saving="saving.consult"
+                                :cloture-loading="false"
+                                @save="saveConsultSection"
+                                @cloture="handleCloture"
+                                @open-ordonnance="openOrdonnanceModal"
+                                @print-ordonnance="handlePrintOrdonnance"
+                            />
+                        </div>
                     </template>
-                </SectionSwitcher>
+                    </SectionSwitcher>
+                </div>
             </div>
 
-            <AntecedentDialogForm v-model="showAntecedentDialog" :loading="savingAntecedent" @save="handleSaveAntecedent" />
-            <AllergyDialogForm v-model="showAllergyDialog" :loading="savingAllergy" @save="handleSaveAllergy" />
-            <OrdonnanceModal
-                v-model="ordonnanceDraft"
-                v-model:visible="ordonnanceModalVisible"
-                :medecin-readonly="true"
-                :saving="saving.consult"
-                @save="saveOrdonnanceSection"
-            />
+            <div data-tour="consultations-form.dialogs">
+                <AntecedentDialogForm v-model="showAntecedentDialog" :loading="savingAntecedent" @save="handleSaveAntecedent" />
+                <AllergyDialogForm v-model="showAllergyDialog" :loading="savingAllergy" @save="handleSaveAllergy" />
+                <OrdonnanceModal
+                    v-model="ordonnanceDraft"
+                    v-model:visible="ordonnanceModalVisible"
+                    :medecin-readonly="true"
+                    :saving="saving.consult"
+                    @save="saveOrdonnanceSection"
+                />
+            </div>
         </div>
         <div v-else class="flex flex-col items-center justify-center min-h-[300px]">
             <div class="relative mb-4">

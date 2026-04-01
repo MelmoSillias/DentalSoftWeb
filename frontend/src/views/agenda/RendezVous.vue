@@ -7,7 +7,7 @@ import TabPanels from 'primevue/tabpanels';
 import Tabs from 'primevue/tabs';
 import Toast from 'primevue/toast';
 import { useToast } from 'primevue/usetoast';
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import DailyView from '@/components/agenda/day/DailyView.vue';
 import StatusLegend from '@/components/agenda/shared/StatusLegend.vue';
 import CancelRdvDialog from '@/components/agenda/shared/CancelRdvDialog.vue';
@@ -15,8 +15,10 @@ import CreateRdvDialog from '@/components/agenda/shared/CreateRdvDialog.vue';
 import ReportRdvDialog from '@/components/agenda/shared/ReportRdvDialog.vue';
 import ValidateRdvDialog from '@/components/agenda/shared/ValidateRdvDialog.vue';
 import WeeklyView from '@/components/agenda/week/WeeklyView.vue';
+import { GUIDED_TOUR_START_EVENT } from '@/tours';
+import { createAgendaRendezvousTour } from '@/tours/agendaRendezvousTour';
+import { startTourGuide } from '@/tours/tourGuideClient';
 import { scheduleAppointmentReminderSms, sendAppointmentReminderSms } from '@/services/smsService';
-import { onMounted as vueOnMounted, nextTick } from 'vue';
 import { useRdvApi } from '@/composables/useRdvApi';
 import { useAuthStore } from '@/stores/auth';
 import { addMinutes } from '@/utils/dateUtils';
@@ -86,6 +88,7 @@ const smsScheduleOptions = ref([
 ]);
 const smsLoading = ref(false);
 const token = localStorage.getItem('token');
+const isGuidedTourStarting = ref(false);
 
 
 
@@ -95,6 +98,15 @@ const dialogState = reactive({
 	cancel: false,
 	report: false
 });
+
+const hasOpenDialogs = computed(() => (
+	dialogState.create
+	|| dialogState.validate
+	|| dialogState.cancel
+	|| dialogState.report
+	|| smsDialogVisible.value
+	|| smsScheduleDialogVisible.value
+));
 
 const createDefaults = reactive({
 	start: new Date(),
@@ -260,29 +272,103 @@ const submitReport = async (payload) => {
 	}
 };
 
+const resetTourDialogs = () => {
+	dialogState.create = false;
+	dialogState.validate = false;
+	dialogState.cancel = false;
+	dialogState.report = false;
+	smsDialogVisible.value = false;
+	smsScheduleDialogVisible.value = false;
+	currentRdv.value = null;
+};
+
+const openTourCreateDialog = () => {
+	openCreate({
+		start: new Date(),
+		end: addMinutes(new Date(), 30),
+		medecinId: isMedecinUser.value ? connectedMedecinId.value : null
+	});
+};
+
+const handleGuidedTourRequest = async (event) => {
+	if (event?.detail?.routeName !== 'agenda-rendezvous' || isGuidedTourStarting.value) {
+		return;
+	}
+
+	if (hasOpenDialogs.value) {
+		toast.add({
+			severity: 'warn',
+			summary: 'Aide guidee',
+			detail: 'Fermez les fenetres ouvertes avant de lancer le tour.',
+			life: 3000
+		});
+		return;
+	}
+
+	isGuidedTourStarting.value = true;
+
+	try {
+		activeIndex.value = 'week';
+		resetTourDialogs();
+		await nextTick();
+
+		const steps = createAgendaRendezvousTour({
+			isMedecin: isMedecinUser.value,
+			openCreateDialog: openTourCreateDialog,
+			closeAllDialogs: resetTourDialogs
+		});
+
+		await startTourGuide({
+			group: 'agenda-rendezvous',
+			steps,
+			onAfterExit: resetTourDialogs,
+			onFinish: resetTourDialogs
+		});
+	} catch (error) {
+		console.error('Erreur lancement guided tour agenda rendez-vous', error);
+		toast.add({
+			severity: 'error',
+			summary: 'Aide guidee',
+			detail: 'Impossible de lancer le tour de la page rendez-vous.',
+			life: 3000
+		});
+	} finally {
+		isGuidedTourStarting.value = false;
+	}
+};
+
 onMounted(() => {
 	useLayout().layoutState.overlayMenuActive = false; // Ferme le menu si on arrive sur cette page depuis un lien direct
+	window.addEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
+});
+
+onBeforeUnmount(() => {
+	window.removeEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
+	resetTourDialogs();
 });
 </script>
 
 <template>
 	<section class="flex flex-col gap-3 xs:gap-4 rounded-xl xs:rounded-2xl bg-surface-0 p-4 xs:p-5 shadow-sm dark:bg-surface-900 dark:shadow-none dark:ring-1 dark:ring-surface-700 sm:shadow-none sm:ring-0 sm:m-0">
 		<Toast />
-		<div class="flex flex-wrap items-center justify-between gap-3 xs:gap-4 border-b border-surface-200 pb-2 xs:pb-3 dark:border-surface-700">
+		<div data-tour="agenda-rdv.header" class="flex flex-wrap items-center justify-between gap-3 xs:gap-4 border-b border-surface-200 pb-2 xs:pb-3 dark:border-surface-700">
 			<div class="space-y-0.5 xs:space-y-1">
 				<h2 class="text-xl xs:text-2xl font-semibold text-surface-900 dark:text-surface-200">Gestion des Rendez-vous</h2>
 				<Breadcrumb :home="breadcrumbHome" :model="breadcrumbItems" />
 			</div>
-			<StatusLegend />
+			<div data-tour="agenda-rdv.legend">
+				<StatusLegend />
+			</div>
 		</div>
 
 		<Tabs v-model:value="activeIndex">
-			<TabList>
+			<TabList data-tour="agenda-rdv.tabs">
 				<Tab value="week">Vue hebdomadaire</Tab>
 				<Tab value="day">Vue journalière</Tab>
 			</TabList>
 			<TabPanels>
 				<TabPanel value="week">
+					<div data-tour="agenda-rdv.calendar">
 					       <WeeklyView
 						       ref="weeklyViewRef"
 						       :medecins="scopedMedecinsList"
@@ -297,8 +383,10 @@ onMounted(() => {
 					       	@request-sms-reminder="openSmsReminder"
 					       	@request-sms-schedule="openScheduleReminder"
 					       />
+					</div>
 				</TabPanel>
 				<TabPanel value="day">
+					<div data-tour="agenda-rdv.calendar">
 					<DailyView
 						:medecins="scopedMedecinsList"
 						:api="api"
@@ -309,10 +397,12 @@ onMounted(() => {
 						@request-cancel="openCancel"
 						@request-report="openReport"
 					/>
+					</div>
 				</TabPanel>
 			</TabPanels>
 		</Tabs>
 
+		<div data-tour="agenda-rdv.dialogs">
 		<CreateRdvDialog
 			v-model:visible="dialogState.create"
 			:medecins="scopedMedecinsList"
@@ -352,6 +442,7 @@ onMounted(() => {
 			:loading="actionLoading"
 			@submit="submitReport"
 		/>
+		</div>
 
 		<Dialog v-model:visible="smsDialogVisible" modal header="Envoyer rappel SMS" :style="{ width: '38rem' }">
 			<div class="flex flex-col gap-3">
