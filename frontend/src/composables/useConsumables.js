@@ -1,4 +1,14 @@
 import { ref, computed } from 'vue';
+import {
+    addConsumableTourMock,
+    addStockTourMock,
+    deleteConsumableTourMock,
+    editConsumableTourMock,
+    fetchConsumablesTourMock,
+    getConsumableTourMock,
+    isAdminTourMockEnabled,
+    withdrawStockTourMock
+} from '@/services/adminTourMock';
 import { useAuthStore } from '@/stores/auth';
 import { apiPrefix } from '@/config'; 
 import http from '@/service/http';
@@ -42,6 +52,18 @@ export function useConsumables() {
         loading.value = true;
         error.value = null;
         try {
+            if (isAdminTourMockEnabled()) {
+                const rows = fetchConsumablesTourMock();
+                consumables.value = rows.map(normalizeConsumable).filter(Boolean);
+                return {
+                    consumables,
+                    loading,
+                    error,
+                    totalConsumables,
+                    fetchConsumables
+                };
+            }
+
             const response = await http.get(`${apiPrefix}/consumables`, {
                 headers: getHeaders()
             });
@@ -66,6 +88,12 @@ export function useConsumables() {
     async function addConsumable(consumable) {
         loading.value = true; 
         try {
+            if (isAdminTourMockEnabled()) {
+                const result = addConsumableTourMock(consumable);
+                await fetchConsumables();
+                return result;
+            }
+
             const response = await http.post(`${apiPrefix}/consumables`, consumable, {
                 headers: getHeaders(true)
             });
@@ -80,6 +108,12 @@ export function useConsumables() {
     async function editConsumable(id, updates) {
         loading.value = true;
         try {
+            if (isAdminTourMockEnabled()) {
+                const result = editConsumableTourMock(id, updates);
+                await fetchConsumables();
+                return result;
+            }
+
             const response = await http.put(`${apiPrefix}/consumables/${id}`, updates, {
                 headers: getHeaders(true)
             });
@@ -94,6 +128,10 @@ export function useConsumables() {
 
     async function addStock(consumableId, values) {
         try {
+            if (isAdminTourMockEnabled()) {
+                return addStockTourMock(consumableId, values);
+            }
+
             const response = await http.post(`${apiPrefix}/consumables/${consumableId}/stock`, values, {
                 headers: getHeaders(true)
             });
@@ -118,6 +156,10 @@ export function useConsumables() {
             employe: values?.employe ?? values?.employee ?? null
         };
         try {
+            if (isAdminTourMockEnabled()) {
+                return withdrawStockTourMock(consumableId, payload);
+            }
+
             const response = await http.post(`${apiPrefix}/consumables/${consumableId}/withdraw`, payload, {
                 headers: getHeaders(true)
             });
@@ -138,6 +180,10 @@ export function useConsumables() {
 
     async function getConsumable(consumableId) {
         try {
+            if (isAdminTourMockEnabled()) {
+                return normalizeConsumable(getConsumableTourMock(consumableId));
+            }
+
             const response = await http.get(`${apiPrefix}/consumables/${consumableId}`, {
                 headers: getHeaders()
             });
@@ -152,6 +198,10 @@ export function useConsumables() {
 
     async function deleteConsumable(consumableId, csrfToken) {
         try {
+            if (isAdminTourMockEnabled()) {
+                return deleteConsumableTourMock(consumableId);
+            }
+
             const body = new URLSearchParams();
             if (csrfToken) body.append('_token', csrfToken);
             await http.delete(`${apiPrefix}/consumables/${consumableId}`, {

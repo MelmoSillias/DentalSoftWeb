@@ -5,6 +5,11 @@ import QuickClotureConsultationDialog from '@/components/consultations/QuickClot
 import FormCreateConsultation from '@/components/patients/FormCreateConsultation.vue';
 import PrintDataTablePage from '@/components/print/PrintDataTablePage.vue';
 import { usePrinter } from '@/composables/usePrinter';
+import {
+    activateConsultationsTourMock,
+    deactivateConsultationsTourMock,
+    resetConsultationsTourMockData
+} from '@/services/consultationsTourMock';
 
 import {
     cancelConsultation,
@@ -13,6 +18,7 @@ import {
     fetchConsultationsByDate,
     updateConsultationInvoice
 } from '@/services/consultations';
+import { activatePatientsTourMock, deactivatePatientsTourMock, resetPatientsTourMockData } from '@/services/patientsTourMock';
 
 import { useAuthStore } from '@/stores/auth';
 import { GUIDED_TOUR_START_EVENT } from '@/tours';
@@ -64,6 +70,9 @@ const quickDialogVisible = ref(false);
 const quickDialogConsultation = ref(null);
 const quickDialogActionMode = ref('continue');
 const isGuidedTourStarting = ref(false);
+let guidedTourPageState = null;
+let guidedTourDemoActive = false;
+let guidedTourCleanupPromise = null;
 
 const headerTitle = computed(() => `Consultations du ${formatDisplayDate(selectedDate.value)}`);
 const isAdmin = computed(() => Boolean(auth.user?.roles?.includes('ROLE_ADMIN')));
@@ -157,6 +166,9 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
     window.removeEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
+    deactivateConsultationsTourMock();
+    deactivatePatientsTourMock();
+    guidedTourDemoActive = false;
     resetTourDialogs();
 });
 
@@ -332,7 +344,22 @@ const handleQuickDialogDone = async () => {
     await loadConsultations();
 };
 
+const cloneValue = (value) => {
+    if (value === undefined) return undefined;
+    if (value === null) return null;
+    return JSON.parse(JSON.stringify(value));
+};
+
+const waitForTourUi = (ms = 180) => new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+});
+
 const firstOpenConsultation = computed(() => consultations.value.find((c) => !isClosed(c)) || null);
+const repriseConsultation = computed(() => consultations.value.find((c) => !isClosed(c) && !isLinked(c) && patientHasFiche(c)) || null);
+const linkedConsultation = computed(() => consultations.value.find((c) => !isClosed(c) && isLinked(c)) || null);
+const freshConsultation = computed(() => consultations.value.find((c) => !isClosed(c) && !isLinked(c) && !patientHasFiche(c)) || null);
+const closedConsultation = computed(() => consultations.value.find((c) => isClosed(c)) || null);
+const urgentConsultation = computed(() => consultations.value.find((c) => Boolean(c.urgence)) || null);
 
 const hasOpenDialogs = computed(() => (
     showCreateDialog.value
@@ -355,8 +382,74 @@ const resetTourDialogs = () => {
     factureLines.value = [];
 };
 
-const openTourCreateConsultationDialog = () => {
+const capturePageState = () => ({
+    consultations: cloneValue(consultations.value),
+    canceling: cloneValue(canceling.value),
+    factureLoading: cloneValue(factureLoading.value),
+    selectedDate: selectedDate.value ? new Date(selectedDate.value).toISOString() : null,
+    filters: cloneValue(filters.value)
+});
+
+const restorePageState = async (state) => {
+    if (!state) return;
+
+    consultations.value = cloneValue(state.consultations) || [];
+    canceling.value = cloneValue(state.canceling) || {};
+    factureLoading.value = cloneValue(state.factureLoading) || {};
+    selectedDate.value = state.selectedDate ? new Date(state.selectedDate) : new Date();
+    filters.value = cloneValue(state.filters) || {
+        global: { value: null, matchMode: FilterMatchMode.CONTAINS }
+    };
+    await nextTick();
+};
+
+const prepareGuidedTourDemo = async () => {
+    guidedTourPageState = capturePageState();
+    activatePatientsTourMock('static');
+    resetPatientsTourMockData('static');
+    activateConsultationsTourMock();
+    resetConsultationsTourMockData();
+    guidedTourDemoActive = true;
+    selectedDate.value = new Date();
+    filters.value = {
+        global: { value: null, matchMode: FilterMatchMode.CONTAINS }
+    };
+
+    await loadConsultations();
+    await nextTick();
+};
+
+const cleanupGuidedTourDemo = async () => {
+    if (!guidedTourDemoActive) {
+        resetTourDialogs();
+        return;
+    }
+
+    if (guidedTourCleanupPromise) {
+        return guidedTourCleanupPromise;
+    }
+
+    guidedTourCleanupPromise = (async () => {
+        resetTourDialogs();
+        deactivateConsultationsTourMock();
+        deactivatePatientsTourMock();
+        guidedTourDemoActive = false;
+        const stateToRestore = guidedTourPageState;
+        guidedTourPageState = null;
+        await restorePageState(stateToRestore);
+    })().finally(() => {
+        guidedTourCleanupPromise = null;
+    });
+
+    return guidedTourCleanupPromise;
+};
+
+const openTourCreateConsultationDialog = async () => {
+    resetTourDialogs();
+    await nextTick();
+    await waitForTourUi();
     showCreateDialog.value = true;
+    await nextTick();
 };
 
 const resolveTourQuickActionMode = (consultation) => {
@@ -366,12 +459,36 @@ const resolveTourQuickActionMode = (consultation) => {
     return 'new-fiche';
 };
 
-const openTourQuickDialog = () => {
-    const consultation = firstOpenConsultation.value;
+const openTourQuickDialog = async () => {
+    const consultation = repriseConsultation.value || linkedConsultation.value || freshConsultation.value || firstOpenConsultation.value;
     if (!consultation) return;
+    resetTourDialogs();
+    await nextTick();
+    await waitForTourUi(220);
     quickDialogConsultation.value = consultation;
     quickDialogActionMode.value = resolveTourQuickActionMode(consultation);
     quickDialogVisible.value = true;
+    await nextTick();
+};
+
+const openTourDetailsDialog = async () => {
+    const consultation = closedConsultation.value || firstOpenConsultation.value;
+    if (!consultation) return;
+    resetTourDialogs();
+    await nextTick();
+    await waitForTourUi();
+    await openDetails(consultation);
+    await nextTick();
+};
+
+const openTourFactureDialog = async () => {
+    const consultation = closedConsultation.value;
+    if (!consultation) return;
+    resetTourDialogs();
+    await nextTick();
+    await waitForTourUi();
+    await openFacture(consultation);
+    await nextTick();
 };
 
 const handleGuidedTourRequest = async (event) => {
@@ -402,26 +519,37 @@ const handleGuidedTourRequest = async (event) => {
     isGuidedTourStarting.value = true;
 
     try {
+        await cleanupGuidedTourDemo();
+        await prepareGuidedTourDemo();
         resetTourDialogs();
         await nextTick();
 
         const steps = createConsultationsTableTour({
             hasConsultations: consultations.value.length > 0,
             hasOpenConsultation: Boolean(firstOpenConsultation.value),
+            hasRepriseCase: Boolean(repriseConsultation.value),
+            hasLinkedCase: Boolean(linkedConsultation.value),
+            hasFreshCase: Boolean(freshConsultation.value),
+            hasClosedCase: Boolean(closedConsultation.value),
+            hasUrgentCase: Boolean(urgentConsultation.value),
+            isAdmin: isAdmin.value,
             isMedecin: isMedecin.value,
             openCreateConsultationDialog: openTourCreateConsultationDialog,
             openQuickDialog: openTourQuickDialog,
+            openDetailsDialog: openTourDetailsDialog,
+            openFactureDialog: openTourFactureDialog,
             closeAllDialogs: resetTourDialogs
         });
 
         await startTourGuide({
             group: 'consultations-table',
             steps,
-            onAfterExit: resetTourDialogs,
-            onFinish: resetTourDialogs
+            onAfterExit: cleanupGuidedTourDemo,
+            onFinish: cleanupGuidedTourDemo
         });
     } catch (error) {
         console.error('Erreur lancement guided tour consultations table', error);
+        await cleanupGuidedTourDemo();
         toast.add({
             severity: 'error',
             summary: 'Aide guidee',
@@ -733,13 +861,13 @@ const currentFactureLoading = computed(() => {
                         </div>
                     </template>
                     <template #body="{ data }">
-                        <div class="flex flex-col gap-1" data-tour="consultations-table.status">
+                        <div class="flex flex-col gap-1" :data-tour="data.id === 9202 ? 'consultations-table.status' : null">
                             <Tag 
                                 :value="stateLabel(data).label" 
                                 :severity="stateLabel(data).severity"
                                 class="px-3 py-1.5 rounded-full font-medium shadow-sm"
                             />
-                            <div v-if="data.urgence" class="flex items-center gap-1">
+                            <div v-if="data.urgence" class="flex items-center gap-1" :data-tour="data.id === 9202 ? 'consultations-table.case-urgent' : null">
                                 <i class="pi pi-exclamation-triangle text-xs text-red-500"></i>
                                 <span class="text-xs text-red-600 dark:text-red-400">Urgent</span>
                             </div>
@@ -755,7 +883,7 @@ const currentFactureLoading = computed(() => {
                         </div>
                     </template>
                     <template #body="{ data }">
-                        <div class="flex items-center gap-2" data-tour="consultations-table.actions">
+                        <div class="flex items-center gap-2" :data-tour="data.id === 9201 ? 'consultations-table.actions' : null">
                             <Button 
                                 icon="pi pi-eye" 
                                 severity="info" 
@@ -885,7 +1013,7 @@ const currentFactureLoading = computed(() => {
         </Dialog>
 
         <!-- Stats Overview -->
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 md:mb-8">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 md:mb-8" data-tour="consultations-table.stats">
             <div class="bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-900/20 dark:to-blue-800/20 rounded-2xl p-5 border border-blue-200/50 dark:border-blue-800/50">
                 <div class="flex items-center justify-between">
                     <div>
@@ -926,6 +1054,7 @@ const currentFactureLoading = computed(() => {
             :visible="detailsDialogVisible" 
             :details="detailData" 
             :loading="detailsLoading"
+            tourTarget="consultations-table.dialog.details"
             @update:visible="(val) => (detailsDialogVisible = val)" 
         />
 
@@ -934,6 +1063,7 @@ const currentFactureLoading = computed(() => {
             :lines="factureLines" 
             :loading="currentFactureLoading"
             :saving="factureSaving" 
+            tourTarget="consultations-table.dialog.facture"
             @update:visible="closeFactureModal" 
             @save="handleSaveFacture" 
         />
@@ -942,6 +1072,7 @@ const currentFactureLoading = computed(() => {
             v-model:visible="quickDialogVisible"
             :consultation="quickDialogConsultation"
             :action-mode="quickDialogActionMode"
+            tourTarget="consultations-table.dialog.quick"
             @saved="handleQuickDialogDone"
             @closed="handleQuickDialogDone"
         />

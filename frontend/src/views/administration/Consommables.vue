@@ -1,5 +1,6 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { activateAdminTourMock, deactivateAdminTourMock, resetAdminTourMockData } from '@/services/adminTourMock'
 import { useConsumables } from '@/composables/useConsumables'
 import { useStockVariations } from '@/composables/useStockVariations'
 import ConsumableForm from '@/components/consumables/ConsumableForm.vue'
@@ -20,6 +21,9 @@ const showDetails = ref(false)
 const detailConsumable = ref(null)
 const toast = useToast()
 const isGuidedTourStarting = ref(false)
+let guidedTourPageState = null
+let guidedTourDemoActive = false
+let guidedTourCleanupPromise = null
 
 const editConsumable = ref(null)
 
@@ -162,6 +166,8 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
     window.removeEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
+    deactivateAdminTourMock();
+    guidedTourDemoActive = false;
     resetTourDialogs();
 });
 
@@ -189,6 +195,20 @@ const setTourMode = (value) => {
     menuValue.value = value;
 };
 
+const cloneValue = (value) => {
+    if (value === undefined) return undefined;
+    if (value === null) return null;
+    return JSON.parse(JSON.stringify(value));
+};
+
+const waitForTourUi = (ms = 180) => new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+});
+
+const firstConsumable = computed(() => getConsumablesList()[0] || null);
+const lowStockConsumable = computed(() => getConsumablesList().find((item) => getSeverity(item) === 'warning') || null);
+const outOfStockConsumable = computed(() => getConsumablesList().find((item) => getSeverity(item) === 'danger') || null);
+
 const resetTourDialogs = () => {
     showForm.value = false;
     showAddRetireForm.value = false;
@@ -197,9 +217,93 @@ const resetTourDialogs = () => {
     detailConsumable.value = null;
 };
 
-const openTourCreateDialog = () => {
+const capturePageState = () => ({
+    menuValue: menuValue.value,
+    filters: cloneValue(filters.value),
+    consumables: cloneValue(consumables.value),
+    variations: cloneValue(stockVariationsStore.variations.value)
+});
+
+const restorePageState = async (state) => {
+    if (!state) return;
+    menuValue.value = state.menuValue || 'list';
+    filters.value = cloneValue(state.filters) || {
+        consumableId: null,
+        period: [startOfYear, today]
+    };
+    consumables.value = cloneValue(state.consumables) || [];
+    stockVariationsStore.variations.value = cloneValue(state.variations) || [];
+    await nextTick();
+};
+
+const prepareGuidedTourDemo = async () => {
+    guidedTourPageState = capturePageState();
+    activateAdminTourMock();
+    resetAdminTourMockData();
+    guidedTourDemoActive = true;
+    menuValue.value = 'list';
+    filters.value = {
+        consumableId: null,
+        period: [startOfYear, today]
+    };
+    await consumablesStore.fetchConsumables();
+    await stockVariationsStore.fetchStockVariations(filters.value.consumableId, filters.value.period[0], filters.value.period[1]);
+    await nextTick();
+};
+
+const cleanupGuidedTourDemo = async () => {
+    if (!guidedTourDemoActive) {
+        resetTourDialogs();
+        return;
+    }
+
+    if (guidedTourCleanupPromise) {
+        return guidedTourCleanupPromise;
+    }
+
+    guidedTourCleanupPromise = (async () => {
+        resetTourDialogs();
+        deactivateAdminTourMock();
+        guidedTourDemoActive = false;
+        const stateToRestore = guidedTourPageState;
+        guidedTourPageState = null;
+        await restorePageState(stateToRestore);
+    })().finally(() => {
+        guidedTourCleanupPromise = null;
+    });
+
+    return guidedTourCleanupPromise;
+};
+
+const openTourCreateDialog = async () => {
+    resetTourDialogs();
+    await nextTick();
+    await waitForTourUi();
     editConsumable.value = null;
     showForm.value = true;
+    await nextTick();
+};
+
+const openTourStockDialog = async (mode = 'withdraw') => {
+    const target = lowStockConsumable.value || outOfStockConsumable.value || firstConsumable.value;
+    if (!target) return;
+    resetTourDialogs();
+    await nextTick();
+    await waitForTourUi();
+    addRetireFormType.value = mode === 'add' ? 'add' : 'withdraw';
+    editConsumable.value = target;
+    showAddRetireForm.value = true;
+    await nextTick();
+};
+
+const openTourDetailsDialog = async () => {
+    const target = outOfStockConsumable.value || lowStockConsumable.value || firstConsumable.value;
+    if (!target) return;
+    resetTourDialogs();
+    await nextTick();
+    await waitForTourUi();
+    await openDetails(target);
+    await nextTick();
 };
 
 const handleGuidedTourRequest = async (event) => {
@@ -220,21 +324,26 @@ const handleGuidedTourRequest = async (event) => {
     isGuidedTourStarting.value = true;
 
     try {
+        await cleanupGuidedTourDemo();
+        await prepareGuidedTourDemo();
         await nextTick();
         const steps = createAdministrationConsumablesTour({
             setMode: setTourMode,
             openCreateDialog: openTourCreateDialog,
+            openStockDialog: openTourStockDialog,
+            openDetailsDialog: openTourDetailsDialog,
             closeAllDialogs: resetTourDialogs
         });
 
         await startTourGuide({
             group: 'administration-consommables',
             steps,
-            onAfterExit: resetTourDialogs,
-            onFinish: resetTourDialogs
+            onAfterExit: cleanupGuidedTourDemo,
+            onFinish: cleanupGuidedTourDemo
         });
     } catch (error) {
         console.error('Erreur lancement guided tour consommables', error);
+        await cleanupGuidedTourDemo();
         toast.add({
             severity: 'error',
             summary: 'Aide guidee',
@@ -784,7 +893,7 @@ const handleGuidedTourRequest = async (event) => {
             content: 'p-0 mt-4'
         }"
     >
-        <div data-tour="admin-consumables.dialogs">
+        <div data-tour="admin-consumables.dialog.create">
             <ConsumableForm @saved="showForm = false" @close="showForm = false" :consumable="editConsumable" />
         </div>
     </Dialog>
@@ -822,12 +931,14 @@ const handleGuidedTourRequest = async (event) => {
                 </div>
             </div>
         </template>
-        <AddRetireStockForm 
-            @saved="showAddRetireForm = false" 
-            @cancelled="showAddRetireForm = false" 
-            :mode="addRetireFormType" 
-            :consumable="editConsumable"
-        />
+        <div data-tour="admin-consumables.dialog.stock">
+            <AddRetireStockForm 
+                @saved="showAddRetireForm = false" 
+                @cancelled="showAddRetireForm = false" 
+                :mode="addRetireFormType" 
+                :consumable="editConsumable"
+            />
+        </div>
     </Dialog>
 
     <Dialog 
@@ -841,7 +952,7 @@ const handleGuidedTourRequest = async (event) => {
             content: 'p-6'
         }"
     >
-        <div v-if="detailConsumable" class="space-y-4">
+        <div v-if="detailConsumable" class="space-y-4" data-tour="admin-consumables.dialog.details">
             <div>
                 <p class="text-xs text-surface-500 dark:text-surface-400">Nom</p>
                 <p class="text-lg font-semibold text-surface-900 dark:text-surface-100">{{ detailConsumable.nom }}</p>

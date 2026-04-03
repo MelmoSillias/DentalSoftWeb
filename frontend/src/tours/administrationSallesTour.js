@@ -20,7 +20,14 @@ async function flushUi() {
     await refreshTourLayout();
 }
 
-export function createAdministrationSallesTour({ openAddDialog, closeAllDialogs }) {
+async function openDialogStep(openDialog, closeAllDialogs) {
+    closeAllDialogs();
+    await flushUi();
+    await openDialog();
+    await flushUi();
+}
+
+export function createAdministrationSallesTour({ openAddDialog, openEditDialog, closeAllDialogs }) {
     return [
         {
             group: 'administration-salles',
@@ -53,16 +60,21 @@ export function createAdministrationSallesTour({ openAddDialog, closeAllDialogs 
         {
             group: 'administration-salles',
             order: 50,
-            target: '[data-tour="admin-salles.dialogs"]',
+            target: '[data-tour="admin-salles.dialog.add"]',
             title: 'Ajouter une salle',
             content: 'Les dialogues servent a creer ou modifier une salle sans quitter la liste.',
             beforeEnter: async () => {
-                openAddDialog();
-                await flushUi();
+                await openDialogStep(openAddDialog, closeAllDialogs);
             },
-            afterLeave: async () => {
-                closeAllDialogs();
-                await flushUi();
+        },
+        {
+            group: 'administration-salles',
+            order: 60,
+            target: '[data-tour="admin-salles.dialog.edit"]',
+            title: 'Modifier une salle',
+            content: 'Le dialogue d edition permet d ajuster le nom ou la description d une salle sans quitter le tableau.',
+            beforeEnter: async () => {
+                await openDialogStep(openEditDialog, closeAllDialogs);
             }
         }
     ];

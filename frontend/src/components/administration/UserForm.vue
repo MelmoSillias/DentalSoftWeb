@@ -10,7 +10,8 @@ const props = defineProps({
     mode: { type: String, default: 'create' },
     user: { type: Object, default: null },
     employees: { type: Array, default: () => [] },
-    loading: { type: Boolean, default: false }
+    loading: { type: Boolean, default: false },
+    tourTarget: { type: String, default: null }
 });
 
 const emit = defineEmits(['update:visible', 'submit']);
@@ -55,7 +56,7 @@ const handleSubmit = (event) => {
 
 <template>
     <Dialog :header="dialogTitle" v-model:visible="localVisible" :style="{ width: '520px' }" :modal="true" @hide="closeDialog">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4" :data-tour="props.tourTarget || null">
             <div class="flex flex-col gap-2">
                 <label for="user-username" class="font-medium">Nom d'utilisateur <span class="text-red-500">*</span></label>
                 <InputText id="user-username" v-model="formState.username" placeholder="Nom d'utilisateur" class="w-full" />

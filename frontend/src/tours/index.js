@@ -13,6 +13,7 @@ const supportedRoutes = new Set([
     'rapports',
     'administration-consommables',
     'administration-salles',
+    'administration-notifications',
     'administration-finances',
     'administration-utilisateurs',
     'administration-gestionrh',

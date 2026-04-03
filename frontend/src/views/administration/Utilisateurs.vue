@@ -227,13 +227,25 @@ const resetTourDialogs = () => {
     resetPasswordValue.value = '';
 };
 
-const openTourCreateDialog = () => {
+const waitForTourUi = (ms = 180) => new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+});
+
+const openTourCreateDialog = async () => {
+    resetTourDialogs();
+    await nextTick();
+    await waitForTourUi();
     openCreate();
+    await nextTick();
 };
 
-const openTourResetDialog = () => {
+const openTourResetDialog = async () => {
     if (!firstUser.value) return;
+    resetTourDialogs();
+    await nextTick();
+    await waitForTourUi();
     openResetPassword(firstUser.value);
+    await nextTick();
 };
 
 const handleGuidedTourRequest = async (event) => {
@@ -434,17 +446,17 @@ onBeforeUnmount(() => {
             </DataTable>
         </div>
 
-        <div data-tour="admin-users.dialogs">
-            <UserForm
-                v-model:visible="formVisible"
-                :mode="formMode"
-                :user="currentUser"
-                :employees="employees"
-                :loading="loading"
-                @submit="confirmFormSubmit" />
+        <UserForm
+            v-model:visible="formVisible"
+            :mode="formMode"
+            :user="currentUser"
+            :employees="employees"
+            :loading="loading"
+            tourTarget="admin-users.dialog.create"
+            @submit="confirmFormSubmit" />
 
             <Dialog header="Réinitialiser le mot de passe" v-model:visible="resetDialogVisible" :style="{ width: '420px' }" :modal="true">
-                <div class="flex flex-col gap-3">
+                <div class="flex flex-col gap-3" data-tour="admin-users.dialog.reset">
                     <label for="reset-password" class="font-medium">Nouveau mot de passe</label>
                     <Password
                         inputId="reset-password"
@@ -464,6 +476,5 @@ onBeforeUnmount(() => {
                     <Button label="Réinitialiser" icon="pi pi-check" @click="confirmResetPassword" />
                 </template>
             </Dialog>
-        </div>
     </section>
 </template>

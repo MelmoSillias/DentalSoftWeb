@@ -1,3 +1,5 @@
+import { registerCreatedPendingConsultationTourMock } from '@/services/consultationsTourMock';
+
 const DEFAULT_SCENARIO = 'static';
 
 const STATIC_MEDECINS = [
@@ -784,11 +786,15 @@ export function createConsultationForPatientTourMock(patientId, payload) {
         factureMontant: Number(payload?.consultation_amount || 0)
     });
 
-    return {
+    const result = {
         success: true,
         consultation_id: consultationId,
         paiement_id: paiementId
     };
+
+    registerCreatedPendingConsultationTourMock(existingPatient, payload, result);
+
+    return result;
 }
 
 export function checkConsultationActiveTourMock(patientId) {

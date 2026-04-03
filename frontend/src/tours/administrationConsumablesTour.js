@@ -20,7 +20,14 @@ async function flushUi() {
     await refreshTourLayout();
 }
 
-export function createAdministrationConsumablesTour({ setMode, openCreateDialog, closeAllDialogs }) {
+async function openDialogStep(openDialog, closeAllDialogs) {
+    closeAllDialogs();
+    await flushUi();
+    await openDialog();
+    await flushUi();
+}
+
+export function createAdministrationConsumablesTour({ setMode, openCreateDialog, openStockDialog, openDetailsDialog, closeAllDialogs }) {
     return [
         {
             group: 'administration-consommables',
@@ -68,17 +75,34 @@ export function createAdministrationConsumablesTour({ setMode, openCreateDialog,
         {
             group: 'administration-consommables',
             order: 60,
-            target: '[data-tour="admin-consumables.dialogs"]',
+            target: '[data-tour="admin-consumables.dialog.create"]',
             title: 'Ajouter un consommable',
             content: 'Les dialogues permettent de creer ou modifier un consommable sans quitter la page.',
             beforeEnter: async () => {
                 setMode('list');
-                openCreateDialog();
-                await flushUi();
+                await openDialogStep(openCreateDialog, closeAllDialogs);
             },
-            afterLeave: async () => {
-                closeAllDialogs();
-                await flushUi();
+        },
+        {
+            group: 'administration-consommables',
+            order: 70,
+            target: '[data-tour="admin-consumables.dialog.stock"]',
+            title: 'Ajouter ou retirer du stock',
+            content: 'Le dialogue de mouvement permet d enregistrer une entree ou une sortie de stock avec quantite, employe et description.',
+            beforeEnter: async () => {
+                setMode('list');
+                await openDialogStep(() => openStockDialog('withdraw'), closeAllDialogs);
+            }
+        },
+        {
+            group: 'administration-consommables',
+            order: 80,
+            target: '[data-tour="admin-consumables.dialog.details"]',
+            title: 'Consulter le detail d un article',
+            content: 'Le dialogue de details sert a verifier rapidement le fournisseur, le stock courant et le seuil bas d un consommable.',
+            beforeEnter: async () => {
+                setMode('list');
+                await openDialogStep(openDetailsDialog, closeAllDialogs);
             }
         }
     ];

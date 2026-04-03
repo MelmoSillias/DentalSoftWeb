@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { activateAdminTourMock, deactivateAdminTourMock, resetAdminTourMockData } from '@/services/adminTourMock';
 import { useSalles } from '@/composables/useSalles';
 import AddSalleDialog from '@/components/salles/AddSalleDialog.vue';
 import EditSalleDialog from '@/components/salles/EditSalleDialog.vue';
@@ -30,9 +31,13 @@ const addDialogVisible = ref(false);
 const editDialogVisible = ref(false);
 const currentSalle = ref(null);
 const isGuidedTourStarting = ref(false);
+let guidedTourPageState = null;
+let guidedTourDemoActive = false;
+let guidedTourCleanupPromise = null;
 
 const totalLabel = computed(() => (salles.value?.length ? `${salles.value.length} salle(s)` : ''));
 const hasOpenDialogs = computed(() => addDialogVisible.value || editDialogVisible.value);
+const firstSalle = computed(() => salles.value?.[0] || null);
 
 onMounted(() => {
   fetchSalles();
@@ -41,6 +46,8 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   window.removeEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
+  deactivateAdminTourMock();
+  guidedTourDemoActive = false;
   resetTourDialogs();
 });
 
@@ -148,6 +155,70 @@ const resetTourDialogs = () => {
   currentSalle.value = null;
 };
 
+const cloneValue = (value) => {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  return JSON.parse(JSON.stringify(value));
+};
+
+const waitForTourUi = (ms = 180) => new Promise((resolve) => {
+  window.setTimeout(resolve, ms);
+});
+
+const capturePageState = () => ({
+  salles: cloneValue(salles.value)
+});
+
+const restorePageState = async (state) => {
+  if (!state) return;
+  salles.value = cloneValue(state.salles) || [];
+};
+
+const prepareGuidedTourDemo = async () => {
+  guidedTourPageState = capturePageState();
+  activateAdminTourMock();
+  resetAdminTourMockData();
+  guidedTourDemoActive = true;
+  await fetchSalles();
+};
+
+const cleanupGuidedTourDemo = async () => {
+  if (!guidedTourDemoActive) {
+    resetTourDialogs();
+    return;
+  }
+
+  if (guidedTourCleanupPromise) {
+    return guidedTourCleanupPromise;
+  }
+
+  guidedTourCleanupPromise = (async () => {
+    resetTourDialogs();
+    deactivateAdminTourMock();
+    guidedTourDemoActive = false;
+    const stateToRestore = guidedTourPageState;
+    guidedTourPageState = null;
+    await restorePageState(stateToRestore);
+  })().finally(() => {
+    guidedTourCleanupPromise = null;
+  });
+
+  return guidedTourCleanupPromise;
+};
+
+const openTourAddDialog = async () => {
+  resetTourDialogs();
+  await waitForTourUi();
+  openAdd();
+};
+
+const openTourEditDialog = async () => {
+  if (!firstSalle.value) return;
+  resetTourDialogs();
+  await waitForTourUi();
+  openEdit(firstSalle.value);
+};
+
 const handleGuidedTourRequest = async (event) => {
   if (event?.detail?.routeName !== 'administration-salles' || isGuidedTourStarting.value) {
     return;
@@ -166,18 +237,22 @@ const handleGuidedTourRequest = async (event) => {
   isGuidedTourStarting.value = true;
 
   try {
+    await cleanupGuidedTourDemo();
+    await prepareGuidedTourDemo();
     const steps = createAdministrationSallesTour({
-      openAddDialog: openAdd,
+      openAddDialog: openTourAddDialog,
+      openEditDialog: openTourEditDialog,
       closeAllDialogs: resetTourDialogs
     });
     await startTourGuide({
       group: 'administration-salles',
       steps,
-      onAfterExit: resetTourDialogs,
-      onFinish: resetTourDialogs
+      onAfterExit: cleanupGuidedTourDemo,
+      onFinish: cleanupGuidedTourDemo
     });
   } catch (error) {
     console.error('Erreur lancement guided tour salles', error);
+    await cleanupGuidedTourDemo();
     toast.add({
       severity: 'error',
       summary: 'Aide guidee',
@@ -317,18 +392,18 @@ const handleGuidedTourRequest = async (event) => {
     </div>
 
     <!-- Dialogs -->
-    <div data-tour="admin-salles.dialogs">
-      <AddSalleDialog
-        :visible="addDialogVisible"
-        :loading="loading"
-        @update:visible="(value) => (addDialogVisible = value)"
-        @submit="handleAddSubmit"
-      />
-    </div>
+    <AddSalleDialog
+      :visible="addDialogVisible"
+      :loading="loading"
+      tourTarget="admin-salles.dialog.add"
+      @update:visible="(value) => (addDialogVisible = value)"
+      @submit="handleAddSubmit"
+    />
     <EditSalleDialog
       :visible="editDialogVisible"
       :salle="currentSalle"
       :loading="loading"
+      tourTarget="admin-salles.dialog.edit"
       @update:visible="(value) => (editDialogVisible = value)"
       @submit="handleEditSubmit"
     />

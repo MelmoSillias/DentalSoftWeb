@@ -1,4 +1,5 @@
 import { ref } from 'vue';
+import { fetchEmployeesTourMock, isAdminTourMockEnabled } from '@/services/adminTourMock';
 import { useAuthStore } from '@/stores/auth';
 import { apiPrefix } from '@/config';
 import http from '@/service/http';
@@ -22,6 +23,13 @@ export function useEmployees() {
         loading.value = true;
         error.value = null;
         try {
+            if (isAdminTourMockEnabled()) {
+                const data = fetchEmployeesTourMock();
+                employees.value = Array.isArray(data.data) ? data.data : [];
+                totalRecords.value = data.recordsFiltered ?? data.recordsTotal ?? employees.value.length;
+                return;
+            }
+
             const params = new URLSearchParams();
             params.append('start', String(page * rows));
             params.append('length', String(rows));

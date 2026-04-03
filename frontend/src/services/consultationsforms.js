@@ -1,4 +1,5 @@
 import { apiPrefix } from '@/config';
+import { closeConsultationTourMock, isConsultationsTourMockEnabled, saveConsultationTourMock } from '@/services/consultationsTourMock';
 import http from '@/service/http';
 
 const axios = http;
@@ -41,6 +42,10 @@ export const saveDevis = async (ficheId, consultId, payload, token) => {
 };
 
 export const saveConsultation = async (ficheId, consultId, payload, token) => {
+    if (isConsultationsTourMockEnabled()) {
+        return saveConsultationTourMock(ficheId, consultId, payload);
+    }
+
     const res = await axios.post(`${apiPrefix}/fiches/${ficheId}/consultations/${consultId}`, payload, {
         headers: authHeaders(token)
     });
@@ -48,6 +53,10 @@ export const saveConsultation = async (ficheId, consultId, payload, token) => {
 };
 
 export const closeConsultation = async (ficheId, consultId, token) => { 
+    if (isConsultationsTourMockEnabled()) {
+        return closeConsultationTourMock(ficheId, consultId);
+    }
+
     const res = await axios.post(
         `${apiPrefix}/fiches/${ficheId}/consultations/${consultId}/cloture`,
         {},

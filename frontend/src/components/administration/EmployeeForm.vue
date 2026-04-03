@@ -14,7 +14,8 @@ const props = defineProps({
     visible: { type: Boolean, default: false },
     mode: { type: String, default: 'create' },
     employee: { type: Object, default: () => ({}) },
-    loading: { type: Boolean, default: false }
+    loading: { type: Boolean, default: false },
+    tourTarget: { type: String, default: null }
 });
 
 const emit = defineEmits(['update:visible', 'submit', 'cancel']);
@@ -203,7 +204,7 @@ const closeDialog = () => {
 <template>
     <Dialog :visible="visible" modal :style="{ width: '70vw', maxWidth: '960px' }" :header="dialogTitle"
         @update:visible="emit('update:visible', $event)">
-        <div class="space-y-5">
+        <div class="space-y-5" :data-tour="props.tourTarget || null">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div class="space-y-1">
                     <label class="text-sm font-medium">Nom</label>

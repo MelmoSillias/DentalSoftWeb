@@ -1,6 +1,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
+import { activateAdminTourMock, deactivateAdminTourMock, resetAdminTourMockData } from '@/services/adminTourMock';
 import Breadcrumb from 'primevue/breadcrumb';
 import Button from 'primevue/button';
 import Column from 'primevue/column';
@@ -51,6 +52,9 @@ const formVisible = ref(false);
 const formMode = ref('create');
 const currentEmployee = ref(null);
 const isGuidedTourStarting = ref(false);
+let guidedTourPageState = null;
+let guidedTourDemoActive = false;
+let guidedTourCleanupPromise = null;
 
 const groupedCounts = computed(() => {
     const map = new Map();
@@ -60,6 +64,8 @@ const groupedCounts = computed(() => {
     });
     return map;
 });
+
+const allGroupKeys = computed(() => Array.from(new Set((employees.value || []).map((emp) => emp?.type || 'Non défini'))));
 
 const formatDate = (value) => {
     if (!value) return '-';
@@ -124,13 +130,94 @@ const resetTourDialogs = () => {
     currentEmployee.value = null;
 };
 
-const openTourCreateDialog = () => {
-    openCreate();
+const cloneValue = (value) => {
+    if (value === undefined) return undefined;
+    if (value === null) return null;
+    return JSON.parse(JSON.stringify(value));
 };
 
-const openTourEditDialog = () => {
+const waitForTourUi = (ms = 180) => new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+});
+
+const expandAllGroupsForTour = () => {
+    expandedGroups.value = [...allGroupKeys.value];
+};
+
+const capturePageState = () => ({
+    search: search.value,
+    typeFilter: typeFilter.value,
+    tableState: cloneValue(tableState.value),
+    expandedGroups: cloneValue(expandedGroups.value),
+    employees: cloneValue(employees.value),
+    totalRecords: totalRecords.value
+});
+
+const restorePageState = async (state) => {
+    if (!state) return;
+    search.value = state.search || '';
+    typeFilter.value = state.typeFilter ?? null;
+    tableState.value = cloneValue(state.tableState) || { page: 0, rows: 10 };
+    expandedGroups.value = cloneValue(state.expandedGroups) || [];
+    employees.value = cloneValue(state.employees) || [];
+    totalRecords.value = state.totalRecords ?? employees.value.length;
+    await nextTick();
+};
+
+const prepareGuidedTourDemo = async () => {
+    guidedTourPageState = capturePageState();
+    activateAdminTourMock();
+    resetAdminTourMockData();
+    guidedTourDemoActive = true;
+    search.value = '';
+    typeFilter.value = null;
+    tableState.value = { page: 0, rows: 10 };
+    await loadEmployees({ page: 0, rows: 10 });
+    expandAllGroupsForTour();
+    await nextTick();
+};
+
+const cleanupGuidedTourDemo = async () => {
+    if (!guidedTourDemoActive) {
+        resetTourDialogs();
+        return;
+    }
+
+    if (guidedTourCleanupPromise) {
+        return guidedTourCleanupPromise;
+    }
+
+    guidedTourCleanupPromise = (async () => {
+        resetTourDialogs();
+        deactivateAdminTourMock();
+        guidedTourDemoActive = false;
+        const stateToRestore = guidedTourPageState;
+        guidedTourPageState = null;
+        await restorePageState(stateToRestore);
+    })().finally(() => {
+        guidedTourCleanupPromise = null;
+    });
+
+    return guidedTourCleanupPromise;
+};
+
+const openTourCreateDialog = async () => {
+    resetTourDialogs();
+    expandAllGroupsForTour();
+    await nextTick();
+    await waitForTourUi();
+    openCreate();
+    await nextTick();
+};
+
+const openTourEditDialog = async () => {
     if (!firstEmployee.value) return;
+    resetTourDialogs();
+    expandAllGroupsForTour();
+    await nextTick();
+    await waitForTourUi();
     openEdit(firstEmployee.value);
+    await nextTick();
 };
 
 const handleGuidedTourRequest = async (event) => {
@@ -151,24 +238,33 @@ const handleGuidedTourRequest = async (event) => {
     isGuidedTourStarting.value = true;
 
     try {
+        await cleanupGuidedTourDemo();
+        await prepareGuidedTourDemo();
         resetTourDialogs();
+        expandAllGroupsForTour();
         await nextTick();
 
         const steps = createAdministrationGestionRHTour({
             hasEmployees: (employees.value || []).length > 0,
             openCreateDialog: openTourCreateDialog,
             openEditDialog: openTourEditDialog,
+            expandGroups: async () => {
+                expandAllGroupsForTour();
+                await nextTick();
+                await waitForTourUi();
+            },
             closeAllDialogs: resetTourDialogs
         });
 
         await startTourGuide({
             group: 'administration-gestionrh',
             steps,
-            onAfterExit: resetTourDialogs,
-            onFinish: resetTourDialogs
+            onAfterExit: cleanupGuidedTourDemo,
+            onFinish: cleanupGuidedTourDemo
         });
     } catch (error) {
         console.error('Erreur lancement guided tour gestion rh', error);
+        await cleanupGuidedTourDemo();
         toast.add({
             severity: 'error',
             summary: 'Aide guidee',
@@ -245,6 +341,8 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
     window.removeEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
+    deactivateAdminTourMock();
+    guidedTourDemoActive = false;
     resetTourDialogs();
 });
 </script>
@@ -387,8 +485,7 @@ onBeforeUnmount(() => {
             <DataTable 
                 :value="employees" 
                 :loading="loading" 
-                dataKey="id" 
-                :paginator="true" 
+                dataKey="id"  
                 :rows="tableState.rows"
                 :first="tableState.page * tableState.rows" 
                 :totalRecords="totalRecords" 
@@ -423,7 +520,7 @@ onBeforeUnmount(() => {
             >
                 <!-- Group Header -->
                 <template #groupheader="{ data }">
-                    <div class="flex items-center justify-between w-full px-4 py-3 bg-gradient-to-r from-surface-100/80 to-surface-50 dark:from-surface-800/80 dark:to-surface-900/60">
+                    <div class="flex items-center justify-between ">
                         <div class="flex items-center gap-3">
                             <i class="pi pi-folder text-primary-500"></i>
                             <span class="font-semibold text-surface-900 dark:text-surface-100">
@@ -436,21 +533,13 @@ onBeforeUnmount(() => {
                                 <span class="text-sm font-medium text-surface-700 dark:text-surface-300">
                                     {{ groupedCounts.get(data?.type || 'Non défini') || 0 }} employé(s)
                                 </span>
-                            </div>
-                            <Button 
-                                icon="pi pi-chevron-down" 
-                                text 
-                                rounded 
-                                severity="secondary" 
-                                size="small"
-                                class="text-surface-500 hover:text-surface-900 dark:hover:text-surface-100"
-                            />
+                            </div> 
                         </div>
                     </div>
                 </template>
 
                 <!-- Columns -->
-                <Column field="nom" header="Nom" :sortable="true" 
+                <Column field="nom" header="Nom & Prénom(s)" :sortable="true" 
                     :pt="{
                         headerContent: 'flex items-center gap-2',
                         sortIcon: 'text-primary-500'
@@ -460,17 +549,17 @@ onBeforeUnmount(() => {
                             <div class="w-8 h-8 rounded-full bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center text-white text-sm font-medium">
                                 {{ data.nom.charAt(0) }}{{ data.prenom.charAt(0) }}
                             </div>
-                            <span class="font-medium text-surface-900 dark:text-surface-100">{{ data.nom }}</span>
+                            <span class="font-medium text-surface-900 dark:text-surface-100">{{ data.nom + " " + data.prenom}}</span>
                         </div>
                     </template>
                 </Column>
                 
-                <Column field="prenom" header="Prénom" :sortable="true">
+                <Column field="fonction" header="Fonction" :sortable="true">
                     <template #body="{ data }">
-                        <span class="text-surface-700 dark:text-surface-300">{{ data.prenom }}</span>
+                        <span class="text-surface-700 dark:text-surface-300">{{ data.fonction }}</span>
                     </template>
                 </Column>
-                
+<!--                 
                 <Column field="type" header="Type" :sortable="true">
                     <template #body="{ data }">
                         <Tag 
@@ -479,7 +568,7 @@ onBeforeUnmount(() => {
                             class="px-3 py-1.5 rounded-full font-medium shadow-sm"
                         />
                     </template>
-                </Column>
+                </Column> -->
                 
                 <Column field="telephone" header="Téléphone">
                     <template #body="{ data }">
@@ -618,15 +707,14 @@ onBeforeUnmount(() => {
             </div>
         </div>
 
-        <div data-tour="admin-rh.dialogs">
-            <EmployeeForm 
-                v-model:visible="formVisible" 
-                :mode="formMode" 
-                :employee="currentEmployee" 
-                :loading="loading"
-                @submit="confirmSave" 
-            />
-        </div>
+        <EmployeeForm 
+            v-model:visible="formVisible" 
+            :mode="formMode" 
+            :employee="currentEmployee" 
+            :loading="loading"
+            tourTarget="admin-rh.dialog.form"
+            @submit="confirmSave" 
+        />
     </section>
 </template>
  

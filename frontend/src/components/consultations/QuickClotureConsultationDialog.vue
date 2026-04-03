@@ -1,6 +1,7 @@
 <script setup>
 import ConsultationEnCoursForm from '@/components/consultations/ConsultationEnCoursForm.vue';
 import { fetchConsultationDetails, setConsultationFiche, verifyConsultationMedecinPassword } from '@/services/consultations';
+import { isConsultationsTourMockEnabled } from '@/services/consultationsTourMock';
 import { closeConsultation, saveConsultation } from '@/services/consultationsforms';
 import { fetchMedecins, fetchInfirmiers } from '@/services/corpsmedical';
 import { fetchSalles } from '@/services/salles';
@@ -24,6 +25,10 @@ const props = defineProps({
     actionMode: {
         type: String,
         default: 'continue'
+    },
+    tourTarget: {
+        type: String,
+        default: null
     }
 });
 
@@ -64,7 +69,7 @@ const isAdmin = computed(() => Boolean(auth.user?.roles?.includes('ROLE_ADMIN'))
 const isMedecin = computed(() => Boolean(auth.user?.roles?.includes('ROLE_MEDECIN')));
 const isReception = computed(() => Boolean(auth.user?.roles?.includes('ROLE_RECEPTION') || auth.user?.roles?.includes('ROLE_RECEPTIONNISTE')));
 
-const requiresDoctorPassword = computed(() => isReception.value && !isAdmin.value && !isMedecin.value);
+const requiresDoctorPassword = computed(() => !isConsultationsTourMockEnabled() && isReception.value && !isAdmin.value && !isMedecin.value);
 const canAccessForm = computed(() => !requiresDoctorPassword.value || passwordValidated.value);
 const hasSelectedMedecin = computed(() => Number.isFinite(Number(form.value?.medecinId)) && Number(form.value?.medecinId) > 0);
 
@@ -283,56 +288,58 @@ watch(
             </div>
         </template>
 
-        <div v-if="loading" class="flex min-h-[16rem] flex-col items-center justify-center gap-3">
-            <ProgressSpinner strokeWidth="4" style="width: 44px; height: 44px" />
-            <p class="text-sm text-surface-500 dark:text-surface-400">Préparation de la consultation...</p>
-        </div>
+        <div :data-tour="props.tourTarget || null">
+            <div v-if="loading" class="flex min-h-[16rem] flex-col items-center justify-center gap-3">
+                <ProgressSpinner strokeWidth="4" style="width: 44px; height: 44px" />
+                <p class="text-sm text-surface-500 dark:text-surface-400">Préparation de la consultation...</p>
+            </div>
 
-        <template v-else>
-            <div v-if="requiresDoctorPassword && !passwordValidated" class="rounded-xl border border-amber-200 dark:border-amber-700 bg-amber-50/60 dark:bg-amber-900/20 p-4 md:p-5 mb-5">
-                <div class="flex items-start gap-3">
-                    <i class="pi pi-shield text-amber-600 mt-1"></i>
-                    <div class="flex-1 space-y-3">
-                        <p class="text-sm text-amber-900 dark:text-amber-100 font-medium">
-                            Validation médecin requise avant accès à la clôturation.
-                        </p>
-                        <Password
-                            v-model="doctorPassword"
-                            placeholder="Mot de passe du médecin pré-sélectionné"
-                            :feedback="false"
-                            toggleMask
-                            class="w-full"
-                            inputClass="w-full"
-                            @keyup.enter="verifyDoctorPassword"
-                        />
-                        <div class="flex justify-end">
-                            <Button
-                                label="Vérifier"
-                                icon="pi pi-check"
-                                :loading="verifyLoading"
-                                :disabled="!doctorPassword"
-                                class="rounded-xl"
-                                @click="verifyDoctorPassword"
+            <template v-else>
+                <div v-if="requiresDoctorPassword && !passwordValidated" class="rounded-xl border border-amber-200 dark:border-amber-700 bg-amber-50/60 dark:bg-amber-900/20 p-4 md:p-5 mb-5">
+                    <div class="flex items-start gap-3">
+                        <i class="pi pi-shield text-amber-600 mt-1"></i>
+                        <div class="flex-1 space-y-3">
+                            <p class="text-sm text-amber-900 dark:text-amber-100 font-medium">
+                                Validation médecin requise avant accès à la clôturation.
+                            </p>
+                            <Password
+                                v-model="doctorPassword"
+                                placeholder="Mot de passe du médecin pré-sélectionné"
+                                :feedback="false"
+                                toggleMask
+                                class="w-full"
+                                inputClass="w-full"
+                                @keyup.enter="verifyDoctorPassword"
                             />
+                            <div class="flex justify-end">
+                                <Button
+                                    label="Vérifier"
+                                    icon="pi pi-check"
+                                    :loading="verifyLoading"
+                                    :disabled="!doctorPassword"
+                                    class="rounded-xl"
+                                    @click="verifyDoctorPassword"
+                                />
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <ConsultationEnCoursForm
-                v-if="canAccessForm"
-                v-model="form"
-                :medecins="medecins"
-                :infirmiers="infirmiers"
-                :salles="salles"
-                :ordonnances="[]"
-                :saving="saving"
-                :cloture-loading="clotureLoading"
-                :medecin-readonly="true"
-                :hide-ordonnances="true"
-                @save="handleSave"
-                @cloture="handleCloture"
-            />
-        </template>
+                <ConsultationEnCoursForm
+                    v-if="canAccessForm"
+                    v-model="form"
+                    :medecins="medecins"
+                    :infirmiers="infirmiers"
+                    :salles="salles"
+                    :ordonnances="[]"
+                    :saving="saving"
+                    :cloture-loading="clotureLoading"
+                    :medecin-readonly="true"
+                    :hide-ordonnances="true"
+                    @save="handleSave"
+                    @cloture="handleCloture"
+                />
+            </template>
+        </div>
     </Dialog>
 </template>

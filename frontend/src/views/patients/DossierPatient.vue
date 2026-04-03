@@ -353,6 +353,10 @@ const cloneValue = (value) => {
     return JSON.parse(JSON.stringify(value));
 };
 
+const waitForTourUi = (ms = 180) => new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+});
+
 const getDisplayedPatientId = () => (guidedTourDemoActive ? patient.value?.id ?? null : props.patientId ?? patient.value?.id ?? null);
 
 const ensurePatientLists = () => {
@@ -524,6 +528,8 @@ const handlePatientSelect = (value) => {
     if (!value) return;
     if (guidedTourDemoActive) {
         selectedPatientId.value = value;
+        loadDossier(value);
+        loadConsultations(value);
         return;
     }
     router.push({ name: 'patients-dossier', params: { patientId: value } });
@@ -617,28 +623,50 @@ const cleanupGuidedTourDemo = async () => {
     return guidedTourCleanupPromise;
 };
 
-const openTourEditDialog = () => {
+const openTourEditDialog = async () => {
     if (!patient.value?.id) return;
+    resetTourDialogs();
+    await nextTick();
+    await waitForTourUi();
     showEditDialog.value = true;
+    await nextTick();
 };
 
-const openTourRdvDialog = () => {
+const openTourRdvDialog = async () => {
     if (!patient.value?.id) return;
+    resetTourDialogs();
+    await nextTick();
+    await waitForTourUi();
     showRdvDialog.value = true;
+    await nextTick();
 };
 
-const openTourConsultationDialog = () => {
+const openTourConsultationDialog = async () => {
     if (!patient.value?.id || isMedecin.value || isReception.value) return;
+    resetTourDialogs();
+    await nextTick();
+    await waitForTourUi(220);
     showConsultationDialog.value = true;
+    await nextTick();
+    await waitForTourUi(120);
+
+    if (!showConsultationDialog.value) {
+        showConsultationDialog.value = true;
+        await nextTick();
+    }
 };
 
-const openTourPrintDialog = () => {
+const openTourPrintDialog = async () => {
     const fiche = fiches.value[0] || null;
     if (!fiche) return;
+    resetTourDialogs();
+    await nextTick();
+    await waitForTourUi();
     selectedFicheForPrint.value = cloneValue(fiche);
     printSections.value = printSectionOptions.map((item) => item.key);
     printIncludeEmpty.value = false;
     showPrintDialog.value = true;
+    await nextTick();
 };
 
 const handleGuidedTourRequest = async (event) => {

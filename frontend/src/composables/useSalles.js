@@ -1,4 +1,5 @@
 import { ref } from 'vue';
+import { addSalleTourMock, deleteSalleTourMock, editSalleTourMock, fetchSallesTourMock, isAdminTourMockEnabled } from '@/services/adminTourMock';
 import { useAuthStore } from '@/stores/auth';
 import { apiPrefix } from '@/config';
 import http from '@/service/http';
@@ -22,6 +23,11 @@ export function useSalles() {
     async function fetchSalles() {
         loading.value = true;
         try {
+            if (isAdminTourMockEnabled()) {
+                salles.value = fetchSallesTourMock();
+                return;
+            }
+
             const res = await http.get(`${apiPrefix}/salles`, {
                 headers: getHeaders(false)
             });
@@ -41,6 +47,14 @@ export function useSalles() {
     async function addSalle(data) {
         loading.value = true;
         try {
+            if (isAdminTourMockEnabled()) {
+                const result = addSalleTourMock(data);
+                if (result?.salle) {
+                    salles.value = [result.salle, ...salles.value];
+                }
+                return result?.salle;
+            }
+
             const res = await http.post(`${apiPrefix}/salles`, data, {
                 headers: getHeaders(true)
             });
@@ -60,6 +74,13 @@ export function useSalles() {
     async function editSalle(id, data) {
         loading.value = true;
         try {
+            if (isAdminTourMockEnabled()) {
+                const result = editSalleTourMock(id, data);
+                const idx = salles.value.findIndex((s) => s.id === id);
+                if (idx !== -1 && result?.salle) salles.value[idx] = result.salle;
+                return result?.salle;
+            }
+
             const res = await http.put(`${apiPrefix}/salles/${id}`, data, {
                 headers: getHeaders(true)
             });
@@ -78,6 +99,12 @@ export function useSalles() {
     async function deleteSalle(id) {
         loading.value = true;
         try {
+            if (isAdminTourMockEnabled()) {
+                deleteSalleTourMock(id);
+                salles.value = salles.value.filter((s) => s.id !== id);
+                return;
+            }
+
             await http.delete(`${apiPrefix}/salles/${id}`, {
                 headers: getHeaders(false)
             });

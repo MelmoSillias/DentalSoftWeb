@@ -23,6 +23,13 @@ async function flushUi() {
     await refreshTourLayout();
 }
 
+async function openDialogStep(openDialog, closeAllDialogs) {
+    closeAllDialogs();
+    await flushUi();
+    await openDialog();
+    await flushUi();
+}
+
 export function createConsultationsCardsTour({
     hasConsultations,
     isMedecin,
@@ -31,7 +38,10 @@ export function createConsultationsCardsTour({
     closeAllDialogs,
     firstConsultationHasContinueAction,
     firstConsultationHasNewFicheAction,
-    firstConsultationCanCancel
+    firstConsultationCanCancel,
+    hasLinkedCase,
+    hasFreshCase,
+    canOpenCreateDialog
 }) {
     const steps = [
         {
@@ -99,9 +109,9 @@ export function createConsultationsCardsTour({
         {
             group: 'consultations-cards',
             order: 40,
-            target: '[data-tour="consultations-cards.first-card"]',
-            title: 'Lecture d une carte patient',
-            content: 'Chaque carte represente une consultation ouverte. Elles sont triees par anciennete pour remonter d abord les cas les plus anciens dans la file.'
+            target: '[data-tour="consultations-cards.case-last-fiche"]',
+            title: 'Cas reprise de fiche',
+            content: 'La premiere carte montre le cas d une consultation non liee a une fiche active, mais pour laquelle une derniere fiche existe deja et peut etre reprise.'
         },
         {
             group: 'consultations-cards',
@@ -133,10 +143,30 @@ export function createConsultationsCardsTour({
         }
     );
 
-    if (firstConsultationHasContinueAction) {
+    if (hasLinkedCase) {
         steps.push({
             group: 'consultations-cards',
             order: 90,
+            target: '[data-tour="consultations-cards.case-linked"]',
+            title: 'Cas fiche deja liee',
+            content: 'Cette carte represente une consultation deja rattachee a une fiche active. Le bon reflexe est alors de continuer cette fiche plutot que d en ouvrir une nouvelle.'
+        });
+    }
+
+    if (hasFreshCase) {
+        steps.push({
+            group: 'consultations-cards',
+            order: 100,
+            target: '[data-tour="consultations-cards.case-new"]',
+            title: 'Cas nouvelle fiche',
+            content: 'Cette carte illustre un patient sans fiche precedente exploitable. Dans ce cas, la creation d une nouvelle fiche est le chemin attendu.'
+        });
+    }
+
+    if (firstConsultationHasContinueAction) {
+        steps.push({
+            group: 'consultations-cards',
+            order: 110,
             target: '[data-tour="consultations-cards.continue-action"]',
             title: 'Continuer la prise en charge',
             content: 'Ce bouton reprend la consultation ou la derniere fiche deja existante pour eviter de ressaisir inutilement le contexte clinique.'
@@ -146,7 +176,7 @@ export function createConsultationsCardsTour({
     if (firstConsultationHasNewFicheAction) {
         steps.push({
             group: 'consultations-cards',
-            order: 100,
+            order: 120,
             target: '[data-tour="consultations-cards.new-fiche-action"]',
             title: 'Ouvrir une nouvelle fiche',
             content: 'Cette action cree une nouvelle fiche quand la consultation n est pas encore liee a une fiche active. Elle est utile pour repartir sur une nouvelle saisie propre.'
@@ -156,7 +186,7 @@ export function createConsultationsCardsTour({
     if (firstConsultationCanCancel) {
         steps.push({
             group: 'consultations-cards',
-            order: 110,
+            order: 130,
             target: '[data-tour="consultations-cards.cancel-action"]',
             title: 'Annuler une consultation ouverte',
             content: 'L annulation retire la consultation de la file. Elle doit etre reservee aux cas ou l ouverture est erronée ou n a plus lieu d etre.'
@@ -165,43 +195,26 @@ export function createConsultationsCardsTour({
 
     steps.push({
         group: 'consultations-cards',
-        order: 120,
+        order: 140,
+        target: '[data-tour="consultations-cards.dialog.quick"]',
         title: 'Cloturation rapide',
         content: 'Le dialogue de cloturation rapide sert a terminer une consultation sans passer par toute la fiche, en validant les informations cliniques minimales et la cloture.',
         beforeEnter: async () => {
-            openQuickDialog();
-            await flushUi();
-        },
-        afterLeave: async () => {
-            closeAllDialogs();
-            await flushUi();
+            await openDialogStep(openQuickDialog, closeAllDialogs);
         }
     });
 
-    if (!isMedecin) {
-        steps.push(
-            {
-                group: 'consultations-cards',
-                order: 130,
-                target: '[data-tour="consultations-cards.create-button"]',
-                title: 'Creer une consultation depuis la file',
-                content: 'Les profils autorises peuvent aussi ouvrir directement une nouvelle consultation depuis cette page pour alimenter la file d attente.'
-            },
-            {
-                group: 'consultations-cards',
-                order: 140,
-                title: 'Dialogue de creation',
-                content: 'Ce formulaire ouvre une nouvelle consultation et, apres enregistrement, la carte apparaitra dans la file pour etre prise en charge.',
-                beforeEnter: async () => {
-                    openCreateConsultationDialog();
-                    await flushUi();
-                },
-                afterLeave: async () => {
-                    closeAllDialogs();
-                    await flushUi();
-                }
+    if (!isMedecin && canOpenCreateDialog) {
+        steps.push({
+            group: 'consultations-cards',
+            order: 150,
+            target: '[data-tour="consultations-cards.dialog.create"]',
+            title: 'Dialogue de creation',
+            content: 'Ce formulaire ouvre une nouvelle consultation et, apres enregistrement, la carte apparaitra dans la file pour etre prise en charge.',
+            beforeEnter: async () => {
+                await openDialogStep(openCreateConsultationDialog, closeAllDialogs);
             }
-        );
+        });
     }
 
     return steps;

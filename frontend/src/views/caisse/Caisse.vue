@@ -7,6 +7,11 @@ import PrintPaymentsListBody from '@/components/print/PrintPaymentsListBody.vue'
 import PrintReceiptBody from '@/components/print/PrintReceiptBody.vue';
 import PrintTicketBody from '@/components/print/PrintTicketBody.vue';
 import { usePrinter } from '@/composables/usePrinter';
+import {
+	activateCaisseTourMock,
+	deactivateCaisseTourMock,
+	resetCaisseTourMockData
+} from '@/services/caisseTourMock';
 import { GUIDED_TOUR_START_EVENT } from '@/tours';
 import { createCaisseTour, resolveCaisseTourGroup } from '@/tours/caisseTour';
 import { startTourGuide } from '@/tours/tourGuideClient';
@@ -113,6 +118,9 @@ const previewLoading = ref(false);
 const previewData = ref(null);
 const payLoading = ref(false);
 const isGuidedTourStarting = ref(false);
+let guidedTourPageState = null;
+let guidedTourDemoActive = false;
+let guidedTourCleanupPromise = null;
 
 // Explicit setters avoid template auto-unwrapping issues on refs
 const setDevisType = (val) => {
@@ -220,6 +228,16 @@ const setActiveView = (view) => {
 	localStorage.setItem(viewStorageKey, normalized);
 };
 
+const cloneValue = (value) => {
+	if (value === undefined) return undefined;
+	if (value === null) return null;
+	return JSON.parse(JSON.stringify(value));
+};
+
+const waitForTourUi = (ms = 180) => new Promise((resolve) => {
+	window.setTimeout(resolve, ms);
+});
+
 const hasOpenDialogs = computed(() => (
 	payDialogVisible.value
 	|| validateDialogVisible.value
@@ -289,6 +307,14 @@ const openPayDialog = async (row) => {
 const openTourPaymentDialog = async () => {
 	if (!firstPayableDevis.value) return;
 	await openPayDialog(firstPayableDevis.value);
+};
+
+const openTourPaymentDialogStable = async () => {
+	resetTourDialogs();
+	await nextTick();
+	await waitForTourUi();
+	await openTourPaymentDialog();
+	await nextTick();
 };
 
 watch(
@@ -464,6 +490,14 @@ const openTourModifyDialog = async () => {
 	await openModifyDialog(firstModifiableDevis.value);
 };
 
+const openTourModifyDialogStable = async () => {
+	resetTourDialogs();
+	await nextTick();
+	await waitForTourUi();
+	await openTourModifyDialog();
+	await nextTick();
+};
+
 const createEmptyLine = () => ({ dent: '', type: '', description: '', prix: 0, quantite: 1 });
 
 const addFactureLine = () => {
@@ -509,6 +543,14 @@ const openTourPreviewDialog = async () => {
 	await openPreviewDialog(firstPreviewableDevis.value);
 };
 
+const openTourPreviewDialogStable = async () => {
+	resetTourDialogs();
+	await nextTick();
+	await waitForTourUi();
+	await openTourPreviewDialog();
+	await nextTick();
+};
+
 const resetTourDialogs = () => {
 	payDialogVisible.value = false;
 	validateDialogVisible.value = false;
@@ -517,6 +559,72 @@ const resetTourDialogs = () => {
 	pendingDevis.value = null;
 	selectedDevis.value = null;
 	factureConsultId.value = null;
+};
+
+const capturePageState = () => ({
+	activeView: activeView.value,
+	devisType: devisType.value,
+	devisRange: cloneValue(devisRange.value),
+	paymentRange: cloneValue(paymentRange.value),
+	devis: cloneValue(devis.value),
+	payments: cloneValue(payments.value),
+	paymentMethods: cloneValue(paymentMethods.value),
+	payForm: cloneValue(payForm.value),
+	factureLines: cloneValue(factureLines.value),
+	previewData: cloneValue(previewData.value),
+	selectedDevis: cloneValue(selectedDevis.value),
+	pendingDevis: cloneValue(pendingDevis.value)
+});
+
+const restorePageState = async (state) => {
+	if (!state) return;
+	setActiveView(state.activeView || 'overview');
+	devisType.value = state.devisType || 'all';
+	devisRange.value = cloneValue(state.devisRange) || [];
+	paymentRange.value = cloneValue(state.paymentRange) || [];
+	devis.value = cloneValue(state.devis) || [];
+	payments.value = cloneValue(state.payments) || [];
+	paymentMethods.value = cloneValue(state.paymentMethods) || [];
+	payForm.value = cloneValue(state.payForm) || payForm.value;
+	factureLines.value = cloneValue(state.factureLines) || [];
+	previewData.value = cloneValue(state.previewData) || null;
+	selectedDevis.value = cloneValue(state.selectedDevis) || null;
+	pendingDevis.value = cloneValue(state.pendingDevis) || null;
+	await nextTick();
+};
+
+const prepareGuidedTourDemo = async () => {
+	guidedTourPageState = capturePageState();
+	activateCaisseTourMock();
+	resetCaisseTourMockData();
+	guidedTourDemoActive = true;
+	setActiveView('overview');
+	await Promise.all([loadDevis(), loadPayments(), loadPaymentMethods()]);
+	await nextTick();
+};
+
+const cleanupGuidedTourDemo = async () => {
+	if (!guidedTourDemoActive) {
+		resetTourDialogs();
+		return;
+	}
+
+	if (guidedTourCleanupPromise) {
+		return guidedTourCleanupPromise;
+	}
+
+	guidedTourCleanupPromise = (async () => {
+		resetTourDialogs();
+		deactivateCaisseTourMock();
+		guidedTourDemoActive = false;
+		const stateToRestore = guidedTourPageState;
+		guidedTourPageState = null;
+		await restorePageState(stateToRestore);
+	})().finally(() => {
+		guidedTourCleanupPromise = null;
+	});
+
+	return guidedTourCleanupPromise;
 };
 
 const handleGuidedTourRequest = async (event) => {
@@ -547,6 +655,8 @@ const handleGuidedTourRequest = async (event) => {
 	isGuidedTourStarting.value = true;
 
 	try {
+		await cleanupGuidedTourDemo();
+		await prepareGuidedTourDemo();
 		resetTourDialogs();
 		await nextTick();
 
@@ -555,20 +665,27 @@ const handleGuidedTourRequest = async (event) => {
 			canOpenPaymentDialog: Boolean(firstPayableDevis.value),
 			canOpenPreviewDialog: Boolean(firstPreviewableDevis.value),
 			canOpenModifyDialog: Boolean(firstModifiableDevis.value),
-			openPaymentDialog: openTourPaymentDialog,
-			openPreviewDialog: openTourPreviewDialog,
-			openModifyDialog: openTourModifyDialog,
+			openPaymentDialog: openTourPaymentDialogStable,
+			openPreviewDialog: openTourPreviewDialogStable,
+			openModifyDialog: openTourModifyDialogStable,
+			switchView: async (view) => {
+				setActiveView(view);
+				resetTourDialogs();
+				await nextTick();
+				await waitForTourUi(220);
+			},
 			closeAllDialogs: resetTourDialogs
 		});
 
 		await startTourGuide({
 			group: resolveCaisseTourGroup(activeView.value),
 			steps,
-			onAfterExit: resetTourDialogs,
-			onFinish: resetTourDialogs
+			onAfterExit: cleanupGuidedTourDemo,
+			onFinish: cleanupGuidedTourDemo
 		});
 	} catch (error) {
 		console.error('Erreur lancement guided tour caisse', error);
+		await cleanupGuidedTourDemo();
 		toast.add({
 			severity: 'error',
 			summary: 'Aide guidee',
@@ -695,6 +812,8 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
 	window.removeEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
+	deactivateCaisseTourMock();
+	guidedTourDemoActive = false;
 	resetTourDialogs();
 });
 </script>

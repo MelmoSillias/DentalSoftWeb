@@ -1,4 +1,17 @@
 import { ref } from 'vue';
+import {
+    createFinancesPaymentMethodTourMock,
+    createFinancesTransactionTourMock,
+    deleteFinancesPaymentMethodTourMock,
+    fetchFinancesChartTourMock,
+    fetchFinancesPaymentMethodsTourMock,
+    fetchFinancesTransactionsTourMock,
+    isFinancesTourMockEnabled,
+    rejectFinancesTransactionTourMock,
+    toggleFinancesPaymentMethodTourMock,
+    updateFinancesPaymentMethodTourMock,
+    validateFinancesTransactionTourMock
+} from '@/services/financesTourMock';
 import { useAuthStore } from '@/stores/auth';
 import { apiPrefix } from '@/config';
 import http from '@/service/http';
@@ -55,6 +68,11 @@ export function useFinances() {
         loading.value.charts = true;
         error.value = null;
         try {
+            if (isFinancesTourMockEnabled()) {
+                chartData.value = fetchFinancesChartTourMock(year);
+                return chartData.value;
+            }
+
             const params = year ? `?year=${encodeURIComponent(year)}` : '';
             const res = await http.get(`${apiPrefix}/finances/chart-data${params}`, { headers: buildHeaders(false) });
             const data = res.data;
@@ -74,6 +92,11 @@ export function useFinances() {
         loading.value.methods = true;
         error.value = null;
         try {
+            if (isFinancesTourMockEnabled()) {
+                paymentMethods.value = fetchFinancesPaymentMethodsTourMock();
+                return paymentMethods.value;
+            }
+
             const res = await http.get(`${apiPrefix}/payment-methods`, { headers: buildHeaders(false) });
             const data = res.data;
             paymentMethods.value = Array.isArray(data) ? data : [];
@@ -89,6 +112,10 @@ export function useFinances() {
         loading.value.action = true;
         error.value = null;
         try {
+            if (isFinancesTourMockEnabled()) {
+                return createFinancesPaymentMethodTourMock(payload);
+            }
+
             const body = {
                 nom: payload?.nom || payload?.libelle || '',
                 libelle: payload?.libelle || payload?.nom || '',
@@ -113,6 +140,10 @@ export function useFinances() {
         loading.value.action = true;
         error.value = null;
         try {
+            if (isFinancesTourMockEnabled()) {
+                return updateFinancesPaymentMethodTourMock(id, payload);
+            }
+
             const body = {
                 nom: payload?.nom || payload?.libelle || '',
                 libelle: payload?.libelle || payload?.nom || '',
@@ -138,6 +169,10 @@ export function useFinances() {
         loading.value.action = true;
         error.value = null;
         try {
+            if (isFinancesTourMockEnabled()) {
+                return deleteFinancesPaymentMethodTourMock(id);
+            }
+
             const res = await http.delete(`${apiPrefix}/payment-methods/${id}`, {
                 headers: buildHeaders(false)
             });
@@ -153,6 +188,10 @@ export function useFinances() {
         loading.value.action = true;
         error.value = null;
         try {
+            if (isFinancesTourMockEnabled()) {
+                return toggleFinancesPaymentMethodTourMock(id);
+            }
+
             const res = await http.patch(
                 `${apiPrefix}/payment-methods/${id}/toggle`,
                 {},
@@ -173,6 +212,11 @@ export function useFinances() {
             if (!startDate || !endDate) {
                 throw new Error('La periode est requise.');
             }
+            if (isFinancesTourMockEnabled()) {
+                transactions.value = fetchFinancesTransactionsTourMock({ startDate, endDate });
+                return transactions.value;
+            }
+
             const params = new URLSearchParams({ startDate, endDate });
             const res = await http.get(`${apiPrefix}/transactions?${params.toString()}`, {
                 headers: buildHeaders(false)
@@ -191,6 +235,10 @@ export function useFinances() {
         loading.value.action = true;
         error.value = null;
         try {
+            if (isFinancesTourMockEnabled()) {
+                return createFinancesTransactionTourMock(payload);
+            }
+
             const body = {
                 type: payload?.type,
                 montant: Number(payload?.montant || 0),
@@ -235,6 +283,10 @@ export function useFinances() {
         loading.value.action = true;
         error.value = null;
         try {
+            if (isFinancesTourMockEnabled()) {
+                return validateFinancesTransactionTourMock(id);
+            }
+
             const res = await http.patch(`${apiPrefix}/transactions/${id}/validate`, {}, {
                 headers: buildHeaders(true)
             });
@@ -250,6 +302,10 @@ export function useFinances() {
         loading.value.action = true;
         error.value = null;
         try {
+            if (isFinancesTourMockEnabled()) {
+                return rejectFinancesTransactionTourMock(id);
+            }
+
             const res = await http.patch(`${apiPrefix}/transactions/${id}/reject`, payload, {
                 headers: buildHeaders(true)
             });

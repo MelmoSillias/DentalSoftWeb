@@ -20,6 +20,13 @@ async function flushUi() {
     await refreshTourLayout();
 }
 
+async function openDialogStep(openDialog, closeAllDialogs) {
+    closeAllDialogs();
+    await flushUi();
+    await openDialog();
+    await flushUi();
+}
+
 export function createAdministrationUsersTour({ hasUsers, openCreateDialog, openResetDialog, closeAllDialogs }) {
     const steps = [
         {
@@ -60,16 +67,11 @@ export function createAdministrationUsersTour({ hasUsers, openCreateDialog, open
         {
             group: 'administration-utilisateurs',
             order: 60,
-            target: '[data-tour="admin-users.dialogs"]',
+            target: '[data-tour="admin-users.dialog.create"]',
             title: 'Creer un utilisateur',
             content: 'Le formulaire permet de creer un compte et de le rattacher a un employe existant.',
             beforeEnter: async () => {
-                openCreateDialog();
-                await flushUi();
-            },
-            afterLeave: async () => {
-                closeAllDialogs();
-                await flushUi();
+                await openDialogStep(openCreateDialog, closeAllDialogs);
             }
         }
     ];
@@ -78,16 +80,11 @@ export function createAdministrationUsersTour({ hasUsers, openCreateDialog, open
         steps.push({
             group: 'administration-utilisateurs',
             order: 70,
-            target: '[data-tour="admin-users.dialogs"]',
+            target: '[data-tour="admin-users.dialog.reset"]',
             title: 'Reinitialiser un mot de passe',
             content: 'Utilisez cette modale pour appliquer un nouveau mot de passe temporaire a un utilisateur.',
             beforeEnter: async () => {
-                openResetDialog();
-                await flushUi();
-            },
-            afterLeave: async () => {
-                closeAllDialogs();
-                await flushUi();
+                await openDialogStep(openResetDialog, closeAllDialogs);
             }
         });
     }

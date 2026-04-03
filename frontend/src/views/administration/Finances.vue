@@ -258,7 +258,7 @@
                                 </Column>
                                 <Column header="Actions" style="width: 140px">
                                     <template #body="{ data }">
-                                        <div class="flex gap-1">
+                                        <div class="flex gap-1" data-tour="admin-finances.method-actions">
                                             <Button icon="pi pi-pencil" text severity="info" title="Modifier" @click="openEditMode(data)" />
                                             <Button
                                                 :icon="data.actif ? 'pi pi-power-off' : 'pi pi-check'"
@@ -319,7 +319,7 @@
                                 </div>
                             </section>
 
-                            <section class="rounded-2xl border border-surface-200/70 bg-surface-0/80 p-5 shadow-xl backdrop-blur-sm dark:border-surface-700/50 dark:bg-surface-800/80 md:p-6">
+                            <section data-tour="admin-finances.capital-share" class="rounded-2xl border border-surface-200/70 bg-surface-0/80 p-5 shadow-xl backdrop-blur-sm dark:border-surface-700/50 dark:bg-surface-800/80 md:p-6">
                                 <div class="mb-6">
                                     <h2 class="text-lg font-semibold text-surface-900 dark:text-surface-100 md:text-xl">Capital par compte</h2>
                                     <p class="text-sm text-surface-500 dark:text-surface-400">Répartition du capital disponible sur tous les comptes.</p>
@@ -342,7 +342,7 @@
                             </section>
                         </div>
 
-                        <section class="rounded-2xl border border-surface-200/70 bg-surface-0/80 p-5 shadow-xl backdrop-blur-sm dark:border-surface-700/50 dark:bg-surface-800/80 md:p-6">
+                        <section data-tour="admin-finances.evolution" class="rounded-2xl border border-surface-200/70 bg-surface-0/80 p-5 shadow-xl backdrop-blur-sm dark:border-surface-700/50 dark:bg-surface-800/80 md:p-6">
                             <div class="mb-6">
                                 <h2 class="text-lg font-semibold text-surface-900 dark:text-surface-100 md:text-xl">Évolution du capital</h2>
                                 <p class="text-sm text-surface-500 dark:text-surface-400">Croissance cumulée du capital sur l'année sélectionnée.</p>
@@ -357,24 +357,25 @@
             </TabPanels>
         </Tabs>
 
-        <div data-tour="admin-finances.dialogs">
-            <TransactionFormDialog
-                v-model:visible="transactionDialogVisible"
-                :payment-methods="paymentMethodsView"
-                :loading="loading.action"
-                @submit="handleTransactionSubmit" />
+        <TransactionFormDialog
+            v-model:visible="transactionDialogVisible"
+            :payment-methods="paymentMethodsView"
+            :loading="loading.action"
+            tourTarget="admin-finances.dialog.transaction"
+            @submit="handleTransactionSubmit" />
 
-            <PaymentModeFormDialog
-                v-model:visible="modeDialogVisible"
-                :mode="editingMode"
-                :loading="loading.action"
-                @submit="handleModeSubmit" />
-        </div>
+        <PaymentModeFormDialog
+            v-model:visible="modeDialogVisible"
+            :mode="editingMode"
+            :loading="loading.action"
+            tourTarget="admin-finances.dialog.mode"
+            @submit="handleModeSubmit" />
     </section>
 </template>
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { activateFinancesTourMock, deactivateFinancesTourMock, resetFinancesTourMockData } from '@/services/financesTourMock';
 import Breadcrumb from 'primevue/breadcrumb';
 import Button from 'primevue/button';
 import Chart from 'primevue/chart';
@@ -433,6 +434,9 @@ const transactionDialogVisible = ref(false);
 const modeDialogVisible = ref(false);
 const editingMode = ref(null);
 const isGuidedTourStarting = ref(false);
+let guidedTourPageState = null;
+let guidedTourDemoActive = false;
+let guidedTourCleanupPromise = null;
 
 const today = new Date();
 const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -446,6 +450,16 @@ const modeSearch = ref('');
 const setActiveTab = (value) => {
     activeTab.value = value || 'tables';
 };
+
+const cloneValue = (value) => {
+    if (value === undefined) return undefined;
+    if (value === null) return null;
+    return JSON.parse(JSON.stringify(value));
+};
+
+const waitForTourUi = (ms = 180) => new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+});
 
 const hasOpenDialogs = computed(() => transactionDialogVisible.value || modeDialogVisible.value);
 
@@ -1035,6 +1049,98 @@ const resetTourDialogs = () => {
     editingMode.value = null;
 };
 
+const capturePageState = () => ({
+    activeTab: activeTab.value,
+    selectedYear: selectedYear.value,
+    transactionRange: cloneValue(transactionRange.value),
+    transactionSearch: transactionSearch.value,
+    transactionStatusFilter: transactionStatusFilter.value,
+    modeSearch: modeSearch.value,
+    chartData: cloneValue(chartData.value),
+    paymentMethods: cloneValue(paymentMethods.value),
+    transactions: cloneValue(transactions.value)
+});
+
+const restorePageState = async (state) => {
+    if (!state) return;
+    setActiveTab(state.activeTab || 'tables');
+    selectedYear.value = state.selectedYear || today.getFullYear();
+    transactionRange.value = cloneValue(state.transactionRange) || [startOfMonth, today];
+    transactionSearch.value = state.transactionSearch || '';
+    transactionStatusFilter.value = state.transactionStatusFilter || 'all';
+    modeSearch.value = state.modeSearch || '';
+    chartData.value = cloneValue(state.chartData) || chartData.value;
+    paymentMethods.value = cloneValue(state.paymentMethods) || [];
+    transactions.value = cloneValue(state.transactions) || [];
+    await nextTick();
+};
+
+const prepareGuidedTourDemo = async () => {
+    guidedTourPageState = capturePageState();
+    activateFinancesTourMock();
+    resetFinancesTourMockData();
+    guidedTourDemoActive = true;
+    setActiveTab('tables');
+    selectedYear.value = 2026;
+    transactionRange.value = [new Date('2026-04-01'), new Date('2026-04-03')];
+    transactionSearch.value = '';
+    transactionStatusFilter.value = 'all';
+    modeSearch.value = '';
+    await refreshAll();
+    await nextTick();
+};
+
+const cleanupGuidedTourDemo = async () => {
+    if (!guidedTourDemoActive) {
+        resetTourDialogs();
+        return;
+    }
+
+    if (guidedTourCleanupPromise) {
+        return guidedTourCleanupPromise;
+    }
+
+    guidedTourCleanupPromise = (async () => {
+        resetTourDialogs();
+        deactivateFinancesTourMock();
+        guidedTourDemoActive = false;
+        const stateToRestore = guidedTourPageState;
+        guidedTourPageState = null;
+        await restorePageState(stateToRestore);
+    })().finally(() => {
+        guidedTourCleanupPromise = null;
+    });
+
+    return guidedTourCleanupPromise;
+};
+
+const switchTourTab = async (value) => {
+    setActiveTab(value);
+    resetTourDialogs();
+    await nextTick();
+    await waitForTourUi(220);
+};
+
+const openTourTransactionDialog = async () => {
+    resetTourDialogs();
+    setActiveTab('tables');
+    await nextTick();
+    await waitForTourUi();
+    transactionDialogVisible.value = true;
+    await nextTick();
+};
+
+const openTourModeDialog = async () => {
+    const firstMode = paymentMethodsView.value[0] || null;
+    resetTourDialogs();
+    setActiveTab('tables');
+    editingMode.value = firstMode;
+    await nextTick();
+    await waitForTourUi();
+    modeDialogVisible.value = true;
+    await nextTick();
+};
+
 const handleGuidedTourRequest = async (event) => {
     if (event?.detail?.routeName !== 'administration-finances' || isGuidedTourStarting.value) {
         return;
@@ -1053,15 +1159,23 @@ const handleGuidedTourRequest = async (event) => {
     isGuidedTourStarting.value = true;
 
     try {
-        const steps = createAdministrationFinancesTour({ activeTab: activeTab.value });
+        await cleanupGuidedTourDemo();
+        await prepareGuidedTourDemo();
+        const steps = createAdministrationFinancesTour({
+            switchTab: switchTourTab,
+            openTransactionDialog: openTourTransactionDialog,
+            openModeDialog: openTourModeDialog,
+            closeAllDialogs: resetTourDialogs
+        });
         await startTourGuide({
             group: resolveAdministrationFinancesTourGroup(activeTab.value),
             steps,
-            onAfterExit: resetTourDialogs,
-            onFinish: resetTourDialogs
+            onAfterExit: cleanupGuidedTourDemo,
+            onFinish: cleanupGuidedTourDemo
         });
     } catch (error) {
         console.error('Erreur lancement guided tour finances', error);
+        await cleanupGuidedTourDemo();
         toast.add({
             severity: 'error',
             summary: 'Aide guidee',
@@ -1094,6 +1208,8 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
     window.removeEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
+    deactivateFinancesTourMock();
+    guidedTourDemoActive = false;
     resetTourDialogs();
 });
 </script>

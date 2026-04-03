@@ -1,4 +1,5 @@
 import { ref } from 'vue';
+import { isAdminTourMockEnabled, sendNotificationTourMock } from '@/services/adminTourMock';
 import { useAuthStore } from '@/stores/auth';
 import { apiPrefix } from '@/config';
 import http from '@/service/http';
@@ -21,6 +22,10 @@ export function useNotifications() {
         loading.value = true;
         error.value = null;
         try {
+            if (isAdminTourMockEnabled()) {
+                return sendNotificationTourMock(payload);
+            }
+
             const response = await http.post(`${apiPrefix}/admin/notifications/send`, payload, {
                 headers: buildAuthHeaders(true)
             });

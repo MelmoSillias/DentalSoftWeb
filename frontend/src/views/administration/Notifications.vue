@@ -1,5 +1,6 @@
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, nextTick, onBeforeUnmount, onMounted, watch } from 'vue';
+import { activateAdminTourMock, deactivateAdminTourMock, resetAdminTourMockData } from '@/services/adminTourMock';
 import Breadcrumb from 'primevue/breadcrumb';
 import Button from 'primevue/button';
 import InputText from 'primevue/inputtext'; 
@@ -11,9 +12,16 @@ import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
 import { useUsers } from '@/composables/useUsers';
 import { useNotifications } from '@/composables/useNotifications';
+import { GUIDED_TOUR_START_EVENT } from '@/tours';
+import { createAdministrationNotificationsTour } from '@/tours/administrationNotificationsTour';
+import { startTourGuide } from '@/tours/tourGuideClient';
 
 const toast = useToast();
 const confirm = useConfirm();
+const isGuidedTourStarting = ref(false);
+let guidedTourPageState = null;
+let guidedTourDemoActive = false;
+let guidedTourCleanupPromise = null;
 
 const breadcrumbHome = { icon: 'pi pi-home', to: '/' };
 const breadcrumbItems = [{ label: 'Administration' }, { label: 'Notifications' }];
@@ -53,6 +61,13 @@ const recipientIds = computed(() => {
 const selectedCount = computed(() => recipientIds.value.length);
 
 const canSubmit = computed(() => Boolean(message.value?.trim()) && selectedCount.value > 0);
+const hasPreview = computed(() => Boolean(message.value));
+
+const cloneValue = (value) => {
+    if (value === undefined) return undefined;
+    if (value === null) return null;
+    return JSON.parse(JSON.stringify(value));
+};
 
 const load = async () => {
     try {
@@ -60,6 +75,68 @@ const load = async () => {
     } catch (e) {
         toast.add({ severity: 'error', summary: 'Erreur', detail: e?.message || 'Impossible de charger les utilisateurs', life: 4000 });
     }
+};
+
+const capturePageState = () => ({
+    users: cloneValue(users.value),
+    search: search.value,
+    selectedSingleUser: selectedSingleUser.value,
+    selectedByType: cloneValue(selectedByType.value),
+    selectedRecipients: Array.from(selectedRecipients.value),
+    message: message.value,
+    priority: priority.value,
+    link: link.value
+});
+
+const restorePageState = async (state) => {
+    if (!state) return;
+    users.value = cloneValue(state.users) || [];
+    search.value = state.search || '';
+    selectedSingleUser.value = state.selectedSingleUser || null;
+    selectedByType.value = cloneValue(state.selectedByType) || [];
+    selectedRecipients.value = new Set(state.selectedRecipients || []);
+    message.value = state.message || '';
+    priority.value = state.priority || 'normal';
+    link.value = state.link || '';
+    await nextTick();
+};
+
+const prepareGuidedTourDemo = async () => {
+    guidedTourPageState = capturePageState();
+    activateAdminTourMock();
+    resetAdminTourMockData();
+    guidedTourDemoActive = true;
+    await load();
+    search.value = '';
+    selectedSingleUser.value = 702;
+    selectedByType.value = ['Réception'];
+    selectedRecipients.value = new Set([701, 703, 704]);
+    message.value = 'Le cabinet ferme exceptionnellement à 16h30. Merci de clôturer vos tâches prioritaires avant cette heure.';
+    priority.value = 'high';
+    link.value = 'https://dentalsoft.local/annonces/fermeture-anticipee';
+    await nextTick();
+};
+
+const cleanupGuidedTourDemo = async () => {
+    if (!guidedTourDemoActive) {
+        return;
+    }
+
+    if (guidedTourCleanupPromise) {
+        return guidedTourCleanupPromise;
+    }
+
+    guidedTourCleanupPromise = (async () => {
+        deactivateAdminTourMock();
+        guidedTourDemoActive = false;
+        const stateToRestore = guidedTourPageState;
+        guidedTourPageState = null;
+        await restorePageState(stateToRestore);
+    })().finally(() => {
+        guidedTourCleanupPromise = null;
+    });
+
+    return guidedTourCleanupPromise;
 };
 
 const addTypeUsers = (type) => {
@@ -155,7 +232,47 @@ watch(selectedByType, (nv) => {
     nv.forEach(t => addTypeUsers(t));
 });
 
-onMounted(load);
+const handleGuidedTourRequest = async (event) => {
+    if (event?.detail?.routeName !== 'administration-notifications' || isGuidedTourStarting.value) {
+        return;
+    }
+
+    isGuidedTourStarting.value = true;
+
+    try {
+        await cleanupGuidedTourDemo();
+        await prepareGuidedTourDemo();
+        const steps = createAdministrationNotificationsTour();
+        await startTourGuide({
+            group: 'administration-notifications',
+            steps,
+            onAfterExit: cleanupGuidedTourDemo,
+            onFinish: cleanupGuidedTourDemo
+        });
+    } catch (error) {
+        console.error('Erreur lancement guided tour notifications', error);
+        await cleanupGuidedTourDemo();
+        toast.add({
+            severity: 'error',
+            summary: 'Aide guidee',
+            detail: 'Impossible de lancer le tour des notifications.',
+            life: 3000
+        });
+    } finally {
+        isGuidedTourStarting.value = false;
+    }
+};
+
+onMounted(() => {
+    load();
+    window.addEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
+});
+
+onBeforeUnmount(() => {
+    window.removeEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
+    deactivateAdminTourMock();
+    guidedTourDemoActive = false;
+});
 </script>
 
 <template>
@@ -164,7 +281,7 @@ onMounted(load);
         <ConfirmPopup />
         
         <!-- Header -->
-        <div class="mb-6 md:mb-8">
+        <div class="mb-6 md:mb-8" data-tour="admin-notifications.header">
             <div class="mb-6">
                 <div class="inline-flex items-center gap-3 mb-4 p-3 rounded-2xl bg-surface-0/80 dark:bg-surface-800/80 backdrop-blur-sm border border-surface-200/50 dark:border-surface-700/50">
                     <div class="p-2.5 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600">
@@ -179,7 +296,7 @@ onMounted(load);
             </div>
 
             <!-- Action Bar -->
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl bg-gradient-to-r from-surface-0 to-surface-50/80 dark:from-surface-800 dark:to-surface-900/80 shadow-sm border border-surface-200/50 dark:border-surface-700/50 backdrop-blur-sm">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl bg-gradient-to-r from-surface-0 to-surface-50/80 dark:from-surface-800 dark:to-surface-900/80 shadow-sm border border-surface-200/50 dark:border-surface-700/50 backdrop-blur-sm" data-tour="admin-notifications.action-bar">
                 <div class="space-y-1">
                     <h2 class="text-lg font-semibold text-surface-900 dark:text-surface-100">Configuration de l'envoi</h2>
                     <p class="text-sm text-surface-600 dark:text-surface-300">
@@ -191,6 +308,7 @@ onMounted(load);
                     icon="pi pi-send" 
                     :loading="sending"
                     @click="submit"
+                    data-tour="admin-notifications.send"
                     class="shadow-lg hover:shadow-xl transition-all duration-300 bg-gradient-to-r from-primary-500 to-primary-600 border-0 text-white px-6 py-3 rounded-xl font-medium min-w-[200px]"
                     :disabled="!canSubmit || sending"
                 />
@@ -202,7 +320,7 @@ onMounted(load);
             <!-- Left Panel - User Selection -->
             <div class="lg:col-span-2 space-y-6">
                 <!-- Search Section -->
-                <div class="bg-surface-0 dark:bg-surface-800/80 rounded-2xl shadow-lg border border-surface-200/50 dark:border-surface-700/50 overflow-hidden backdrop-blur-sm">
+                <div class="bg-surface-0 dark:bg-surface-800/80 rounded-2xl shadow-lg border border-surface-200/50 dark:border-surface-700/50 overflow-hidden backdrop-blur-sm" data-tour="admin-notifications.users">
                     <div class="p-5 border-b border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900/50 dark:to-surface-800">
                         <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-100 flex items-center gap-2">
                             <i class="pi pi-users text-primary-500"></i>
@@ -285,7 +403,7 @@ onMounted(load);
                 </div>
 
                 <!-- Quick Selection by Type -->
-                <div class="bg-surface-0 dark:bg-surface-800/80 rounded-2xl shadow-lg border border-surface-200/50 dark:border-surface-700/50 overflow-hidden backdrop-blur-sm">
+                <div class="bg-surface-0 dark:bg-surface-800/80 rounded-2xl shadow-lg border border-surface-200/50 dark:border-surface-700/50 overflow-hidden backdrop-blur-sm" data-tour="admin-notifications.types">
                     <div class="p-5 border-b border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900/50 dark:to-surface-800">
                         <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-100 flex items-center gap-2">
                             <i class="pi pi-tags text-primary-500"></i>
@@ -326,7 +444,7 @@ onMounted(load);
             <!-- Right Panel - Message & Settings -->
             <div class="space-y-6">
                 <!-- Message Content -->
-                <div class="bg-surface-0 dark:bg-surface-800/80 rounded-2xl shadow-lg border border-surface-200/50 dark:border-surface-700/50 overflow-hidden backdrop-blur-sm">
+                <div class="bg-surface-0 dark:bg-surface-800/80 rounded-2xl shadow-lg border border-surface-200/50 dark:border-surface-700/50 overflow-hidden backdrop-blur-sm" data-tour="admin-notifications.message">
                     <div class="p-5 border-b border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900/50 dark:to-surface-800">
                         <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-100 flex items-center gap-2">
                             <i class="pi pi-comment text-primary-500"></i>
@@ -403,7 +521,7 @@ onMounted(load);
                         </div>
 
                         <!-- Preview -->
-                        <div v-if="message" class="mt-6 pt-5 border-t border-surface-200/50 dark:border-surface-700/50">
+                        <div v-if="message" class="mt-6 pt-5 border-t border-surface-200/50 dark:border-surface-700/50" data-tour="admin-notifications.preview">
                             <h4 class="text-sm font-medium text-surface-700 dark:text-surface-300 mb-3 flex items-center gap-2">
                                 <i class="pi pi-eye text-surface-400"></i>
                                 Aperçu
@@ -436,7 +554,7 @@ onMounted(load);
                 </div>
 
                 <!-- Selected Recipients -->
-                <div class="bg-surface-0 dark:bg-surface-800/80 rounded-2xl shadow-lg border border-surface-200/50 dark:border-surface-700/50 overflow-hidden backdrop-blur-sm">
+                <div class="bg-surface-0 dark:bg-surface-800/80 rounded-2xl shadow-lg border border-surface-200/50 dark:border-surface-700/50 overflow-hidden backdrop-blur-sm" data-tour="admin-notifications.recipients">
                     <div class="p-5 border-b border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900/50 dark:to-surface-800">
                         <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-100 flex items-center gap-2">
                             <i class="pi pi-check-circle text-primary-500"></i>

@@ -1,7 +1,13 @@
 <script setup>
 import QuickClotureConsultationDialog from '@/components/consultations/QuickClotureConsultationDialog.vue';
+import {
+    activateConsultationsTourMock,
+    deactivateConsultationsTourMock,
+    resetConsultationsTourMockData
+} from '@/services/consultationsTourMock';
 import FormCreateConsultation from '@/components/patients/FormCreateConsultation.vue';
-import { cancelConsultation, fetchPendingConsultations, normalizeConsultation } from '@/services/consultations';
+import { cancelConsultation, fetchPendingConsultations } from '@/services/consultations';
+import { activatePatientsTourMock, deactivatePatientsTourMock, resetPatientsTourMockData } from '@/services/patientsTourMock';
 import { useAuthStore } from '@/stores/auth';
 import { GUIDED_TOUR_START_EVENT } from '@/tours';
 import { createConsultationsCardsTour } from '@/tours/consultationsCardsTour';
@@ -33,12 +39,14 @@ const quickDialogVisible = ref(false);
 const quickDialogConsultation = ref(null);
 const quickDialogActionMode = ref('continue');
 const isGuidedTourStarting = ref(false);
+let guidedTourPageState = null;
+let guidedTourDemoActive = false;
+let guidedTourCleanupPromise = null;
 
 const loadPending = async () => {
     loading.value = true;
     try {
-        const data = await fetchPendingConsultations(token);
-        consultations.value = data.map((c) => normalizeConsultation(c)); 
+        consultations.value = await fetchPendingConsultations(token);
     } catch (error) {
         console.error('Erreur lors du chargement des consultations en cours', error);
         toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de charger les consultations en cours.', life: 3000 });
@@ -54,6 +62,9 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
     window.removeEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
+    deactivateConsultationsTourMock();
+    deactivatePatientsTourMock();
+    guidedTourDemoActive = false;
     resetTourDialogs();
 });
 
@@ -244,6 +255,18 @@ const handleQuickDialogDone = async () => {
 };
 
 const firstConsultation = computed(() => sortedConsultations.value[0] || null);
+const linkedConsultation = computed(() => sortedConsultations.value.find((consultation) => isLinked(consultation)) || null);
+const freshConsultation = computed(() => sortedConsultations.value.find((consultation) => !isLinked(consultation) && !patientHasFiche(consultation)) || null);
+
+const cloneValue = (value) => {
+    if (value === undefined) return undefined;
+    if (value === null) return null;
+    return JSON.parse(JSON.stringify(value));
+};
+
+const waitForTourUi = (ms = 180) => new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+});
 
 const resetTourDialogs = () => {
     openCreateConsultationDialog.value = false;
@@ -253,9 +276,62 @@ const resetTourDialogs = () => {
     quickDialogActionMode.value = 'continue';
 };
 
-const openTourCreateConsultationDialog = () => {
+const capturePageState = () => ({
+    consultations: cloneValue(consultations.value),
+    canceling: cloneValue(canceling.value)
+});
+
+const restorePageState = async (state) => {
+    if (!state) return;
+    consultations.value = cloneValue(state.consultations) || [];
+    canceling.value = cloneValue(state.canceling) || {};
+    await nextTick();
+};
+
+const prepareGuidedTourDemo = async () => {
+    guidedTourPageState = capturePageState();
+    activatePatientsTourMock('static');
+    resetPatientsTourMockData('static');
+    activateConsultationsTourMock();
+    resetConsultationsTourMockData();
+    guidedTourDemoActive = true;
+
+    await loadPending();
+    await nextTick();
+};
+
+const cleanupGuidedTourDemo = async () => {
+    if (!guidedTourDemoActive) {
+        resetTourDialogs();
+        return;
+    }
+
+    if (guidedTourCleanupPromise) {
+        return guidedTourCleanupPromise;
+    }
+
+    guidedTourCleanupPromise = (async () => {
+        resetTourDialogs();
+        deactivateConsultationsTourMock();
+        deactivatePatientsTourMock();
+        guidedTourDemoActive = false;
+        const stateToRestore = guidedTourPageState;
+        guidedTourPageState = null;
+        await restorePageState(stateToRestore);
+    })().finally(() => {
+        guidedTourCleanupPromise = null;
+    });
+
+    return guidedTourCleanupPromise;
+};
+
+const openTourCreateConsultationDialog = async () => {
+    resetTourDialogs();
+    await nextTick();
+    await waitForTourUi();
     consultationPatient.value = null;
     openCreateConsultationDialog.value = true;
+    await nextTick();
 };
 
 const resolveTourQuickActionMode = (consultation) => {
@@ -265,12 +341,22 @@ const resolveTourQuickActionMode = (consultation) => {
     return 'new-fiche';
 };
 
-const openTourQuickDialog = () => {
+const openTourQuickDialog = async () => {
     const consultation = firstConsultation.value;
     if (!consultation) return;
+    resetTourDialogs();
+    await nextTick();
+    await waitForTourUi(220);
     quickDialogConsultation.value = consultation;
     quickDialogActionMode.value = resolveTourQuickActionMode(consultation);
     quickDialogVisible.value = true;
+    await nextTick();
+    await waitForTourUi(120);
+
+    if (!quickDialogVisible.value) {
+        quickDialogVisible.value = true;
+        await nextTick();
+    }
 };
 
 const handleGuidedTourRequest = async (event) => {
@@ -301,6 +387,8 @@ const handleGuidedTourRequest = async (event) => {
     isGuidedTourStarting.value = true;
 
     try {
+        await cleanupGuidedTourDemo();
+        await prepareGuidedTourDemo();
         resetTourDialogs();
         await nextTick();
 
@@ -313,17 +401,21 @@ const handleGuidedTourRequest = async (event) => {
             closeAllDialogs: resetTourDialogs,
             firstConsultationHasContinueAction: consultation ? showActions.continue(consultation) : false,
             firstConsultationHasNewFicheAction: consultation ? showActions.newFiche(consultation) : false,
-            firstConsultationCanCancel: consultation ? showActions.cancel(consultation) : false
+            firstConsultationCanCancel: consultation ? showActions.cancel(consultation) : false,
+            hasLinkedCase: Boolean(linkedConsultation.value),
+            hasFreshCase: Boolean(freshConsultation.value),
+            canOpenCreateDialog: !isMedecin.value
         });
 
         await startTourGuide({
             group: 'consultations-cards',
             steps,
-            onAfterExit: resetTourDialogs,
-            onFinish: resetTourDialogs
+            onAfterExit: cleanupGuidedTourDemo,
+            onFinish: cleanupGuidedTourDemo
         });
     } catch (error) {
         console.error('Erreur lancement guided tour file attente', error);
+        await cleanupGuidedTourDemo();
         toast.add({
             severity: 'error',
             summary: 'Aide guidée',
@@ -442,7 +534,7 @@ function getBorderColor(index) {
                 <div 
                     v-for="(consultation, idx) in sortedConsultations" 
                     :key="consultation.id"
-                    :data-tour="idx === 0 ? 'consultations-cards.first-card' : null"
+                    :data-tour="idx === 0 ? 'consultations-cards.case-last-fiche' : idx === 1 ? 'consultations-cards.case-linked' : idx === 2 ? 'consultations-cards.case-new' : null"
                     class="relative overflow-hidden rounded-2xl border transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 flex flex-col h-full group"
                     :class="[
                         'border-' + getBorderColor(idx) + '-200/50 dark:border-' + getBorderColor(idx) + '-800/50',
@@ -466,7 +558,7 @@ function getBorderColor(index) {
                                     <div class="flex-1">
                                         <div class="flex items-center gap-2 mb-1">
                                             <h3 class="text-lg font-bold text-surface-900 dark:text-surface-100 truncate">
-                                                {{ consultation.patient || 'Patient inconnu' }}
+                                                {{ consultation.patientName || consultation.patient || 'Patient inconnu' }}
                                             </h3>
                                             <Tag 
                                                 v-if="consultation.statut" 
@@ -636,16 +728,18 @@ function getBorderColor(index) {
                 </div>
             </template> 
         
-        <FormCreateConsultation @cancel="openCreateConsultationDialog = false"  @saved="() => { openCreateConsultationDialog = false; loadPending(); }" />
+        <div data-tour="consultations-cards.dialog.create">
+            <FormCreateConsultation @cancel="openCreateConsultationDialog = false"  @saved="() => { openCreateConsultationDialog = false; loadPending(); }" />
+        </div>
     </Dialog>
 
     <ConfirmPopup />
 
     <QuickClotureConsultationDialog
         v-model:visible="quickDialogVisible"
-        data-tour="consultations-cards.quick-dialog"
         :consultation="quickDialogConsultation"
         :action-mode="quickDialogActionMode"
+        tourTarget="consultations-cards.dialog.quick"
         @saved="handleQuickDialogDone"
         @closed="handleQuickDialogDone"
     />

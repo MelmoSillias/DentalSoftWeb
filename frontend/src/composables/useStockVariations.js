@@ -1,5 +1,6 @@
 import { useAuthStore } from "@/stores/auth";
 import { apiPrefix } from "@/config"; 
+import { fetchStockVariationsTourMock, isAdminTourMockEnabled } from '@/services/adminTourMock';
 import { ref } from "vue";
 import http from '@/service/http';
 
@@ -26,6 +27,11 @@ export function useStockVariations(){
         }
 
         try {
+            if (isAdminTourMockEnabled()) {
+                variations.value = fetchStockVariationsTourMock(consumableId, start, end);
+                return;
+            }
+
             const response = await http.get(`${apiPrefix}/stocks?${params}`, {
                 headers: {
                     Authorization: `Bearer ${useAuth.token}`

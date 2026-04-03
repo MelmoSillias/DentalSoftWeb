@@ -1,4 +1,15 @@
 import { apiPrefix } from '@/config';
+import {
+    cancelConsultationTourMock,
+    fetchConsultationDetailsTourMock,
+    fetchConsultationInvoiceTourMock,
+    fetchConsultationsByDateTourMock,
+    fetchPendingConsultationsTourMock,
+    isConsultationsTourMockEnabled,
+    setConsultationFicheTourMock,
+    updateConsultationInvoiceTourMock,
+    verifyConsultationMedecinPasswordTourMock
+} from '@/services/consultationsTourMock';
 import http from '@/service/http';
 
 const axios = http;
@@ -49,16 +60,28 @@ export const normalizeConsultation = (raw = {}) => {
 };
 
 export const fetchPendingConsultations = async (token) => {
+    if (isConsultationsTourMockEnabled()) {
+        return fetchPendingConsultationsTourMock().map((c) => normalizeConsultation(c));
+    }
+
     const res = await axios.get(`${apiPrefix}/consultations/pending`, { headers: authHeaders(token) });
     const data = Array.isArray(res.data) ? res.data : [];
     return data.map((c) => normalizeConsultation(c));
 };
 
 export const cancelConsultation = async (consultationId, token) => {
+    if (isConsultationsTourMockEnabled()) {
+        return cancelConsultationTourMock(consultationId);
+    }
+
     await axios.delete(`${apiPrefix}/consultations/${consultationId}`, { headers: authHeaders(token) });
 };
 
 export const fetchConsultationsByDate = async (date, token) => {
+    if (isConsultationsTourMockEnabled()) {
+        return fetchConsultationsByDateTourMock(date).map((c) => normalizeConsultation(c));
+    }
+
     const res = await axios.get(`${apiPrefix}/consultations/day`, {
         headers: authHeaders(token),
         params: { date }
@@ -69,6 +92,10 @@ export const fetchConsultationsByDate = async (date, token) => {
 };
 
 export const fetchConsultationDetails = async (consultationId, token) => {
+    if (isConsultationsTourMockEnabled()) {
+        return fetchConsultationDetailsTourMock(consultationId);
+    }
+
     const headers = authHeaders(token);
     const baseUrl = apiPrefix.replace(/\/$/, '');
     const candidates = [
@@ -115,6 +142,10 @@ export const fetchConsultationDetails = async (consultationId, token) => {
 };
 
 export const verifyConsultationMedecinPassword = async (consultationId, password, token) => {
+    if (isConsultationsTourMockEnabled()) {
+        return verifyConsultationMedecinPasswordTourMock(consultationId, password);
+    }
+
     const res = await axios.post(
         `${apiPrefix}/consultations/${consultationId}/verify-medecin-password`,
         { password },
@@ -125,6 +156,10 @@ export const verifyConsultationMedecinPassword = async (consultationId, password
 };
 
 export const fetchConsultationInvoice = async (consultationId, token) => {
+    if (isConsultationsTourMockEnabled()) {
+        return fetchConsultationInvoiceTourMock(consultationId);
+    }
+
     const res = await axios.get(`${apiPrefix}/consultations/${consultationId}/facture`, { headers: authHeaders(token) });
     const lines = Array.isArray(res.data) ? res.data : Array.isArray(res.data?.lignes) ? res.data.lignes : [];
     return lines.map((line, idx) => ({
@@ -138,6 +173,10 @@ export const fetchConsultationInvoice = async (consultationId, token) => {
 };
 
 export const updateConsultationInvoice = async (consultationId, lignes = [], token) => {
+    if (isConsultationsTourMockEnabled()) {
+        return updateConsultationInvoiceTourMock(consultationId, lignes);
+    }
+
     const payload = {
         lignes: (lignes || []).map((l) => ({
             dent: l.dent || '',
@@ -157,6 +196,10 @@ export const updateConsultationInvoice = async (consultationId, lignes = [], tok
 export const setConsultationFiche = async (consultationId, ficheId = null, token) => {
     if (!consultationId) {
         throw new Error('consultationId requis');
+    }
+
+    if (isConsultationsTourMockEnabled()) {
+        return setConsultationFicheTourMock(consultationId, ficheId);
     }
 
     const suffix = ficheId ? `/${ficheId}` : '';

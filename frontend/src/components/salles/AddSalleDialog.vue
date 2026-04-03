@@ -7,7 +7,11 @@ import Button from 'primevue/button';
 
 const props = defineProps({
     visible: Boolean,
-    loading: Boolean
+    loading: Boolean,
+    tourTarget: {
+        type: String,
+        default: null
+    }
 });
 const emit = defineEmits(['update:visible', 'submit']);
 
@@ -34,7 +38,7 @@ const submit = (event) => {
 
 <template>
     <Dialog :visible="visible" modal header="Ajouter une salle" :style="{ width: '34rem' }" @update:visible="close">
-        <form class="flex flex-col gap-4" @submit.prevent>
+        <form class="flex flex-col gap-4" :data-tour="props.tourTarget || null" @submit.prevent>
             <div class="grid grid-cols-1 gap-4">
                 <div class="flex flex-col gap-2">
                     <label class="text-sm font-medium text-gray-700 dark:text-gray-200">Nom</label>
