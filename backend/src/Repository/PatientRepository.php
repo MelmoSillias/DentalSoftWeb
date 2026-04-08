@@ -70,6 +70,35 @@ class PatientRepository extends ServiceEntityRepository
         return $patient;
     }
 
+    public function findOneByPortalIdentifier(string $identifier): ?Patient
+    {
+        $identifier = trim($identifier);
+        if ($identifier === '') {
+            return null;
+        }
+
+        $normalized = mb_strtolower($identifier);
+        $digits = preg_replace('/\D+/', '', $identifier) ?? '';
+
+        $qb = $this->createQueryBuilder('p')
+            ->where('LOWER(p.email) = :normalized')
+            ->orWhere('LOWER(p.numCarnet) = :normalized')
+            ->setParameter('normalized', $normalized)
+            ->setMaxResults(1);
+
+        if ($digits !== '') {
+            $qb->orWhere("REPLACE(REPLACE(REPLACE(REPLACE(p.telephone, ' ', ''), '-', ''), '.', ''), '+', '') = :digits")
+               ->setParameter('digits', $digits);
+        }
+
+        if (ctype_digit($identifier)) {
+            $qb->orWhere('p.id = :id')
+               ->setParameter('id', (int) $identifier);
+        }
+
+        return $qb->getQuery()->getOneOrNullResult();
+    }
+
     public function findPatientById(int $id): ?array
     {
         return $this->createQueryBuilder('p')

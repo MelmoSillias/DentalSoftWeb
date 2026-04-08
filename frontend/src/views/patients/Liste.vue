@@ -745,8 +745,7 @@ onMounted(() => {
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-sm text-blue-700 dark:text-blue-300 font-medium">Total Patients</p>
-                        <p class="text-2xl font-bold text-blue-900 dark:text-blue-100 mt-2">{{ patients.length
-                        }}</p>
+                        <p class="text-2xl font-bold text-blue-900 dark:text-blue-100 mt-2">{{ totalRecords || patients.length }}</p>
                     </div>
                     <i class="fas fa-users text-2xl text-blue-500"></i>
                 </div>

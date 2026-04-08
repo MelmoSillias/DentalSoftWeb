@@ -91,7 +91,37 @@ final class SmsConfigService
             return ['valid' => false, 'message' => 'Configuration SMS incomplète (Client ID / Secret / Sender).'];
         }
 
+        if (!$this->looksLikePhoneAddress((string) $config->getSenderName())) {
+            return [
+                'valid' => false,
+                'message' => 'Sender Address invalide. Utilisez un numéro international (ex: +22370000000 ou tel:+22370000000).',
+            ];
+        }
+
         return ['valid' => true];
+    }
+
+    private function looksLikePhoneAddress(string $value): bool
+    {
+        $trimmed = trim($value);
+        if ($trimmed === '') {
+            return false;
+        }
+
+        if (str_starts_with($trimmed, 'tel:')) {
+            $trimmed = substr($trimmed, 4);
+        }
+
+        $normalized = preg_replace('/[^\d+]/', '', $trimmed) ?: '';
+        if ($normalized === '') {
+            return false;
+        }
+
+        if (str_starts_with($normalized, '+')) {
+            return (bool) preg_match('/^\+[1-9]\d{5,14}$/', $normalized);
+        }
+
+        return (bool) preg_match('/^\d{6,15}$/', $normalized);
     }
 
     private function sanitizeString(mixed $value): ?string

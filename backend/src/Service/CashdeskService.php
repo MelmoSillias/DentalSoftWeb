@@ -301,32 +301,32 @@ class CashdeskService
             'type' => $isFacture ? 'Facture' : 'Devis',
         ];
 
-        $fiche = $devis->getFiche();
-        $patient = $fiche->getPatient();
-        $contenus = $devis->getContenus();
+        // $fiche = $devis->getFiche();
+        // $patient = $fiche->getPatient();
+        // $contenus = $devis->getContenus();
 
-        $contenuArr = array_map(function (ContenuDevis $c) {
-            return [
-                'designation' => $c->getDesignation(),
-                'qte' => $c->getQte(),
-                'montant' => $c->getMontant(),
-                'total' => $c->getQte() * $c->getMontant(),
-            ];
-        }, $contenus->toArray());
+        // $contenuArr = array_map(function (ContenuDevis $c) {
+        //     return [
+        //         'designation' => $c->getDesignation(),
+        //         'qte' => $c->getQte(),
+        //         'montant' => $c->getMontant(),
+        //         'total' => $c->getQte() * $c->getMontant(),
+        //     ];
+        // }, $contenus->toArray());
 
-        return [
-            'id' => $devis->getId(),
-            'date' => $devis->getDate()->format('Y-m-d'),
-            'consultation' => $devis->getConsultation() ? $devis->getConsultation()->getId() : null,
-            'montant' =>  $devis->getMontant(),
-            'reste' => $devis->getStatut() === 1 ? $devis->getReste() : 0,
-            'patient' => [
-                'nom' => $patient->getNom(),
-                'prenom' => $patient->getPrenom(),
-                'telephone' => $patient->getTelephone(),
-            ],
-            'contenus' => $contenuArr,
-        ];
+        // return [
+        //     'id' => $devis->getId(),
+        //     'date' => $devis->getDate()->format('Y-m-d'),
+        //     'consultation' => $devis->getConsultation() ? $devis->getConsultation()->getId() : null,
+        //     'montant' =>  $devis->getMontant(),
+        //     'reste' => $devis->getStatut() === 1 ? $devis->getReste() : 0,
+        //     'patient' => [
+        //         'nom' => $patient->getNom(),
+        //         'prenom' => $patient->getPrenom(),
+        //         'telephone' => $patient->getTelephone(),
+        //     ],
+        //     'contenus' => $contenuArr,
+        // ];
     }
 
     public function payerDevis(int $id, int $modeId, float $montant, ?string $date = null, ?string $time = null): array

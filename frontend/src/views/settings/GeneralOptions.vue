@@ -108,6 +108,13 @@ const saveAppearance = () => {
     toast.add({ severity: 'success', summary: 'Apparence', detail: 'Parametres enregistres.', life: 2500 });
 };
 
+const extractApiError = (error, fallback) => {
+    return error?.response?.data?.error
+        || error?.response?.data?.message
+        || error?.message
+        || fallback;
+};
+
 const scrollToSection = async (id) => {
     activeSection.value = id;
     await nextTick();
@@ -146,7 +153,7 @@ const loadSmsData = async () => {
         smsLoaded.value = true;
     } catch (error) {
         console.error(error);
-        toast.add({ severity: 'error', summary: 'SMS', detail: 'Chargement des données SMS impossible.', life: 3500 });
+        toast.add({ severity: 'error', summary: 'SMS', detail: extractApiError(error, 'Chargement des données SMS impossible.'), life: 3500 });
     } finally {
         smsLoading.value = false;
     }
@@ -171,7 +178,7 @@ const saveSmsConfigAction = async () => {
         toast.add({ severity: 'success', summary: 'SMS', detail: 'Configuration sauvegardée.', life: 2500 });
     } catch (error) {
         console.error(error);
-        toast.add({ severity: 'error', summary: 'SMS', detail: 'Sauvegarde impossible.', life: 3500 });
+        toast.add({ severity: 'error', summary: 'SMS', detail: extractApiError(error, 'Sauvegarde impossible.'), life: 3500 });
     } finally {
         smsSaving.value = false;
     }
@@ -184,7 +191,7 @@ const testConnectionAction = async () => {
         toast.add({ severity: res.success ? 'success' : 'warn', summary: 'SMS', detail: res.message || 'Test terminé.', life: 3000 });
     } catch (error) {
         console.error(error);
-        toast.add({ severity: 'error', summary: 'SMS', detail: 'Connexion API impossible.', life: 3500 });
+        toast.add({ severity: 'error', summary: 'SMS', detail: extractApiError(error, 'Connexion API impossible.'), life: 5500, action: { label: 'Ok', class: 'p-button-text', onClick: () => console.error(error) } });
     } finally {
         smsTesting.value = false;
     }
@@ -198,7 +205,7 @@ const sendSmsTestAction = async () => {
         await refreshSmsData();
     } catch (error) {
         console.error(error);
-        toast.add({ severity: 'error', summary: 'SMS test', detail: 'Envoi test impossible.', life: 3500 });
+        toast.add({ severity: 'error', summary: 'SMS test', detail: extractApiError(error, 'Envoi test impossible.'), life: 5500, action: { label: 'Ok', class: 'p-button-text', onClick: () => console.error(error) } });
     } finally {
         smsSendingTest.value = false;
     }
@@ -216,7 +223,7 @@ const saveTemplatesAction = async () => {
         toast.add({ severity: 'success', summary: 'Templates', detail: 'Templates sauvegardés.', life: 2500 });
     } catch (error) {
         console.error(error);
-        toast.add({ severity: 'error', summary: 'Templates', detail: 'Sauvegarde impossible.', life: 3500 });
+        toast.add({ severity: 'error', summary: 'Templates', detail: extractApiError(error, 'Sauvegarde impossible.'), life: 3500 });
     } finally {
         smsTemplateSaving.value = false;
     }
@@ -229,7 +236,7 @@ const previewTemplateAction = async () => {
         previewResult.value = res.message || '';
     } catch (error) {
         console.error(error);
-        toast.add({ severity: 'warn', summary: 'Preview', detail: 'Preview indisponible.', life: 3000 });
+        toast.add({ severity: 'warn', summary: 'Preview', detail: extractApiError(error, 'Preview indisponible.'), life: 3000 });
     }
 };
 
@@ -245,7 +252,7 @@ const sendManualSmsAction = async () => {
         await refreshSmsData();
     } catch (error) {
         console.error(error);
-        toast.add({ severity: 'error', summary: 'SMS manuel', detail: 'Envoi impossible.', life: 3500 });
+        toast.add({ severity: 'error', summary: 'SMS manuel', detail: extractApiError(error, 'Envoi impossible.'), life: 5500, action: { label: 'Ok', class: 'p-button-text', onClick: () => console.error(error) } });
     }
 };
 
@@ -256,7 +263,7 @@ const processQueueAction = async () => {
         toast.add({ severity: 'success', summary: 'Queue SMS', detail: 'Traitement de queue lancé.', life: 2500 });
     } catch (error) {
         console.error(error);
-        toast.add({ severity: 'error', summary: 'Queue SMS', detail: 'Lancement impossible.', life: 3500 });
+        toast.add({ severity: 'error', summary: 'Queue SMS', detail: extractApiError(error, 'Lancement impossible.'), life: 3500 });
     } finally {
         smsQueueing.value = false;
     }
@@ -372,8 +379,9 @@ onBeforeUnmount(() => {
                             <InputText v-model="smsConfig.clientSecret" type="password" placeholder="Laisser vide pour conserver" />
                         </div>
                         <div>
-                            <label class="label">Sender Name</label>
-                            <InputText v-model="smsConfig.senderName" placeholder="ex: ORODENT" />
+                            <label class="label">Sender Address (Orange)</label>
+                            <InputText v-model="smsConfig.senderName" placeholder="ex: tel:+22370000000" />
+                            <small class="text-surface-500">Utiliser le numéro d'envoi Orange au format international.</small>
                         </div>
                         <div>
                             <label class="label">Base URL API</label>

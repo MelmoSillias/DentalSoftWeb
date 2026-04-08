@@ -16,12 +16,18 @@ export const saveSmsSettings = async (payload, token) => {
 };
 
 export const testSmsConnection = async (token) => {
-    const res = await axios.post(`${apiPrefix}/sms/test-connection`, {}, { headers: authHeaders(token) });
+    const res = await axios.post(`${apiPrefix}/sms/test-connection`, {}, {
+        headers: authHeaders(token),
+        validateStatus: () => true
+    });
     return res.data;
 };
 
 export const sendSmsTest = async (payload, token) => {
-    const res = await axios.post(`${apiPrefix}/sms/test-send`, payload, { headers: authHeaders(token) });
+    const res = await axios.post(`${apiPrefix}/sms/test-send`, payload, {
+        headers: authHeaders(token),
+        validateStatus: () => true
+    });
     return res.data;
 };
 

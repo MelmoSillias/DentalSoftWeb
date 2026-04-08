@@ -4,6 +4,12 @@ controllers:
         namespace: App\Controller
     type: attribute
 
+api_patients_controllers:
+    resource:
+        path: ../src/ApiPatients/
+        namespace: App\ApiPatients
+    type: attribute
+
 # config/routes.yaml
 api_login_check:
     path: /api/login_check

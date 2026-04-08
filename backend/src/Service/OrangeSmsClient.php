@@ -50,8 +50,8 @@ final class OrangeSmsClient
             }
 
             $token = $this->requestToken($config);
-            $sender = $this->normalizeTelAddress($senderOverride ?: (string) $config->getSenderName());
-            $recipient = $this->normalizeTelAddress($phone);
+            $sender = $this->normalizeTelAddress($senderOverride ?: (string) $config->getSenderName(), 'Sender Address');
+            $recipient = $this->normalizeTelAddress($phone, 'Numéro destinataire');
 
             $endpoint = sprintf(
                 '%s/smsmessaging/v1/outbound/%s/requests',
@@ -90,9 +90,7 @@ final class OrangeSmsClient
                 return ['success' => true, 'providerMessageId' => $messageId];
             }
 
-            $errorText = $data['requestError']['serviceException']['text']
-                ?? $data['requestError']['policyException']['text']
-                ?? ('Erreur Orange HTTP ' . $status);
+            $errorText = $this->extractOrangeError($data, $status);
 
             return ['success' => false, 'error' => $errorText];
         } catch (TransportExceptionInterface $exception) {
@@ -136,7 +134,7 @@ final class OrangeSmsClient
         return $token;
     }
 
-    private function normalizeTelAddress(string $phone): string
+    private function normalizeTelAddress(string $phone, string $fieldLabel = 'Numéro SMS'): string
     {
         $phone = trim($phone);
         if (str_starts_with($phone, 'tel:')) {
@@ -145,7 +143,7 @@ final class OrangeSmsClient
 
         $normalized = preg_replace('/[^\d+]/', '', $phone) ?: '';
         if ($normalized === '') {
-            throw new \RuntimeException('Numéro SMS invalide.');
+            throw new \RuntimeException($fieldLabel . ' invalide.');
         }
 
         if (!str_starts_with($normalized, '+')) {
@@ -153,5 +151,72 @@ final class OrangeSmsClient
         }
 
         return 'tel:' . $normalized;
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    private function extractOrangeError(array $data, int $status): string
+    {
+        $requestError = $data['requestError'] ?? null;
+        if (!is_array($requestError)) {
+            return 'Erreur Orange HTTP ' . $status;
+        }
+
+        $service = $requestError['serviceException'] ?? null;
+        if (is_array($service)) {
+            return $this->formatOrangeException($service, $status);
+        }
+
+        $policy = $requestError['policyException'] ?? null;
+        if (is_array($policy)) {
+            return $this->formatOrangeException($policy, $status);
+        }
+
+        return 'Erreur Orange HTTP ' . $status;
+    }
+
+    /**
+     * @param array<string, mixed> $exception
+     */
+    private function formatOrangeException(array $exception, int $status): string
+    {
+        $text = isset($exception['text']) && is_string($exception['text']) ? trim($exception['text']) : '';
+        $messageId = isset($exception['messageId']) && is_string($exception['messageId']) ? trim($exception['messageId']) : '';
+
+        $variables = $exception['variables'] ?? null;
+        if ($text !== '' && is_array($variables)) {
+            $i = 1;
+            foreach ($variables as $value) {
+                if (!is_scalar($value)) {
+                    $i++;
+                    continue;
+                }
+
+                $text = str_replace('%' . $i, (string) $value, $text);
+                $i++;
+            }
+        }
+
+        if ($text === '' && $messageId === '') {
+            return 'Erreur Orange HTTP ' . $status;
+        }
+
+        if ($text === '') {
+            return 'Erreur Orange (code: ' . $messageId . ')';
+        }
+
+        // Orange often wraps account-level authorization failures as SVC0001 + AAS SVC0002.
+        // Provide a direct, actionable explanation for users.
+        $normalizedText = strtoupper($text);
+        if (str_contains($normalizedText, 'AAS ERROR SVC0002') || $messageId === 'SVC0002') {
+            return 'Accès API Orange refusé (SVC0002). Vérifiez que votre application est bien abonnée à SMS Mali (sms-ml), que le sender est autorisé sur votre contrat, et que les permissions de production/sandbox sont actives.';
+        }
+
+        if ($messageId !== '' && !str_contains($text, $messageId)) {
+            return $text . ' (code: ' . $messageId . ')';
+        }
+
+        return $text;
     }
 }
