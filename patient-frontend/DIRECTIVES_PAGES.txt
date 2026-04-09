@@ -1,0 +1,37 @@
+DIRECTIVES STANDARD - CREATION DES PAGES (PATIENT-FRONTEND)
+
+1) Architecture
+- Utiliser Vue 3 + Vite + Router + Pinia.
+- Respecter l'architecture modulaire: composables, layout, stores, views, services.
+- Conserver PrimeVue v4 (preset par defaut), sans redesign system non demande.
+
+2) UX de chargement
+- Toujours prevoir un etat loading pour chaque bloc principal.
+- Utiliser PrimeVue Skeleton pour les placeholders pendant les appels API.
+- Eviter les ecrans vides sans feedback pendant les chargements.
+
+3) UX empty state
+- Prevoir une version empty explicite pour chaque section metier (stats, listes, cartes).
+- Afficher un message court, clair et orienté utilisateur.
+- Distinguer empty state et erreur (ce ne sont pas les memes cas).
+
+4) Gestion erreurs + Toast
+- Centraliser les erreurs reseau/API dans le service d'appel HTTP.
+- Afficher des toasts PrimeVue globalement.
+- En DEV: message detaille (endpoint, methode, code HTTP, message backend).
+- En PROD: message doux et non technique.
+
+5) Responsive
+- Mobile-first sur toutes les pages.
+- Verifier les composants overlays (toast, dialogs, dropdowns) sur petits ecrans.
+- Les regles responsive globales doivent aller dans le CSS global.
+
+6) Donnees/API
+- Connecter les pages aux vrais endpoints disponibles.
+- Ne pas inventer des routes backend.
+- Ajouter des fallbacks defensifs sur les champs potentiellement absents.
+
+7) Qualite
+- Eviter les regressions visuelles et fonctionnelles.
+- Garder des composants simples, testables et reutilisables.
+- Ajouter des commentaires uniquement si la logique est non evidente.

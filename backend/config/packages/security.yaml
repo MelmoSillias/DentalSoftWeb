@@ -30,6 +30,7 @@ security:
             pattern: ^/api/login
             stateless: true
             provider: users_in_database
+            user_checker: App\Security\UserEnabledChecker
             json_login:
                 check_path: /api/login_check
                 username_path: username
@@ -42,12 +43,14 @@ security:
             pattern: ^/api
             stateless: true
             provider: users_in_database
+            user_checker: App\Security\UserEnabledChecker
             jwt: ~
 
         # 🌐 SITE WEB CLASSIQUE
         main:
             lazy: true
             provider: users_in_database
+            user_checker: App\Security\UserEnabledChecker
             custom_authenticator: App\Security\DSAuthenticator
             entry_point: form_login
 
@@ -72,7 +75,7 @@ security:
         - { path: ^/api/login, roles: PUBLIC_ACCESS }
         - { path: ^/api/token/validate, roles: PUBLIC_ACCESS }
         - { path: ^/api, roles: PUBLIC_ACCESS, methods: [OPTIONS] }
-        - { path: ^/api/patient, roles: ROLE_PATIENT }
+        - { path: ^/api/patient/me(?:/|$), roles: ROLE_PATIENT }
         - { path: ^/api/me, roles: IS_AUTHENTICATED_FULLY }
         - { path: ^/api/me/notifications, roles: IS_AUTHENTICATED_FULLY }
         - { path: ^/api, roles: [ROLE_ADMIN, ROLE_MEDECIN, ROLE_RECEPTION, ROLE_RECEPTIONNISTE] }

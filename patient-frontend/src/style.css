@@ -43,6 +43,52 @@ body {
     color: var(--p-text-muted-color);
 }
 
+/* PrimeVue Toast (global) */
+.p-toast {
+    width: min(92vw, 26rem);
+}
+
+.p-toast .p-toast-message {
+    margin-bottom: 0.6rem;
+}
+
+.p-toast .p-toast-message-content {
+    gap: 0.65rem;
+}
+
+.p-toast .p-toast-summary,
+.p-toast .p-toast-detail {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+@media (max-width: 640px) {
+    .p-toast.p-toast-top-right,
+    .p-toast.p-toast-top-left,
+    .p-toast.p-toast-top-center,
+    .p-toast.p-toast-bottom-right,
+    .p-toast.p-toast-bottom-left,
+    .p-toast.p-toast-bottom-center {
+        left: 0.5rem;
+        right: 0.5rem;
+        width: auto;
+    }
+
+    .p-toast .p-toast-message-content {
+        padding: 0.7rem 0.75rem;
+        align-items: flex-start;
+    }
+
+    .p-toast .p-toast-summary {
+        font-size: 0.92rem;
+    }
+
+    .p-toast .p-toast-detail {
+        font-size: 0.84rem;
+        line-height: 1.35;
+    }
+}
+
 @media (min-width: 768px) {
     .app-content {
         padding: 1.25rem;

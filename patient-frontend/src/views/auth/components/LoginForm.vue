@@ -18,8 +18,8 @@ async function onSubmit() {
         <template #content>
             <form class="login-form" @submit.prevent="onSubmit">
                 <div class="field-block">
-                    <label for="email">Email</label>
-                    <PvInputText id="email" v-model="form.email" type="email" placeholder="email@exemple.com" />
+                    <label for="email">Identifiant patient</label>
+                    <PvInputText id="email" v-model="form.email" type="text" placeholder="Nom d'utilisateur" />
                 </div>
 
                 <div class="field-block">

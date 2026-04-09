@@ -64,6 +64,13 @@ export function createPatientsDossierTour({
         },
         {
             group: 'patients-dossier',
+            order: 35,
+            target: '[data-tour="patients-dossier.portal-account"]',
+            title: 'Compte espace patient',
+            content: 'Cette nouvelle section permet de creer le compte patient, reinitialiser le mot de passe a 123, puis activer ou desactiver l acces au portail.'
+        },
+        {
+            group: 'patients-dossier',
             order: 40,
             target: '[data-tour="patients-dossier.actions"]',
             title: 'Actions du dossier',

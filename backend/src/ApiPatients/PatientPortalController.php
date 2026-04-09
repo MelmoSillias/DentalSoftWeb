@@ -320,6 +320,12 @@ final class PatientPortalController extends AbstractController
             return null;
         }
 
+        // Preferred mapping: explicit relation set from patient dossier account management.
+        $linked = $user->getPortalPatient();
+        if ($linked instanceof Patient) {
+            return $linked;
+        }
+
         $identifier = (string) $user->getUserIdentifier();
         if ($identifier === '') {
             return null;

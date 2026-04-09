@@ -15,7 +15,10 @@ const emit = defineEmits([
     'add-antecedent',
     'add-allergy',
     'delete-antecedent',
-    'delete-allergy'
+    'delete-allergy',
+    'create-portal-account',
+    'reset-portal-password',
+    'toggle-portal-active'
 ]);
 </script>
 
@@ -137,6 +140,53 @@ const emit = defineEmits([
                     </div>
                 </div>
                 <p v-else class="text-sm text-surface-500 dark:text-surface-400">Aucun contact d'urgence renseigné.</p>
+            </div>
+
+            <div class="mt-6 pt-6 border-t border-surface-200/50 dark:border-surface-700/50" data-tour="patients-dossier.portal-account">
+                <div class="flex items-center justify-between mb-3">
+                    <h4 class="text-sm font-medium text-surface-700 dark:text-surface-300">Compte espace patient</h4>
+                    <Button
+                        v-if="!patient.portalAccount"
+                        icon="pi pi-user-plus"
+                        label="Créer"
+                        size="small"
+                        outlined
+                        @click="emit('create-portal-account')"
+                    />
+                </div>
+
+                <div v-if="patient.portalAccount" class="space-y-2">
+                    <div class="flex items-center justify-between p-3 rounded-xl bg-surface-50 dark:bg-surface-700/50">
+                        <span class="text-surface-600 dark:text-surface-400">Identifiant</span>
+                        <span class="font-medium text-surface-900 dark:text-surface-100">{{ patient.portalAccount.username }}</span>
+                    </div>
+                    <div class="flex items-center justify-between p-3 rounded-xl bg-surface-50 dark:bg-surface-700/50">
+                        <span class="text-surface-600 dark:text-surface-400">Statut</span>
+                        <span :class="patient.portalAccount.active ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'" class="font-medium">
+                            {{ patient.portalAccount.active ? 'Actif' : 'Désactivé' }}
+                        </span>
+                    </div>
+                    <div class="flex flex-wrap gap-2 pt-1">
+                        <Button
+                            icon="pi pi-key"
+                            label="Mot de passe = 123"
+                            size="small"
+                            outlined
+                            @click="emit('reset-portal-password')"
+                        />
+                        <Button
+                            :icon="patient.portalAccount.active ? 'pi pi-user-minus' : 'pi pi-user-check'"
+                            :label="patient.portalAccount.active ? 'Désactiver' : 'Activer'"
+                            size="small"
+                            :severity="patient.portalAccount.active ? 'danger' : 'success'"
+                            @click="emit('toggle-portal-active', !patient.portalAccount.active)"
+                        />
+                    </div>
+                </div>
+
+                <p v-else class="text-sm text-surface-500 dark:text-surface-400">
+                    Aucun compte lié. Cliquez sur Créer pour générer un identifiant (mot de passe par défaut: 123).
+                </p>
             </div>
         </div> 
     

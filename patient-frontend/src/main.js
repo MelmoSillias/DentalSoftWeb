@@ -2,6 +2,7 @@ import { createApp } from 'vue';
 import { createPinia } from 'pinia';
 import PrimeVue from 'primevue/config';
 import Aura from '@primeuix/themes/aura';
+import ToastService from 'primevue/toastservice';
 
 import App from './App.vue';
 import router from './router';
@@ -14,6 +15,8 @@ import Password from 'primevue/password';
 import Breadcrumb from 'primevue/breadcrumb';
 import Divider from 'primevue/divider';
 import Tag from 'primevue/tag';
+import Toast from 'primevue/toast';
+import Skeleton from 'primevue/skeleton';
 
 import 'primeicons/primeicons.css';
 import './style.css';
@@ -23,6 +26,7 @@ const pinia = createPinia();
 
 app.use(pinia);
 app.use(router);
+app.use(ToastService);
 app.use(PrimeVue, {
 	theme: {
 		preset: Aura,
@@ -40,5 +44,7 @@ app.component('PvPassword', Password);
 app.component('PvBreadcrumb', Breadcrumb);
 app.component('PvDivider', Divider);
 app.component('PvTag', Tag);
+app.component('PvToast', Toast);
+app.component('PvSkeleton', Skeleton);
 
 app.mount('#app');

@@ -1,5 +1,6 @@
 import { computed, ref } from 'vue';
 import { defineStore } from 'pinia';
+import { fetchCurrentUser, loginPatient } from '../services/patientPortal';
 
 const TOKEN_KEY = 'patient_portal_token';
 const USER_KEY = 'patient_portal_user';
@@ -24,22 +25,34 @@ export const useAuthStore = defineStore('auth', () => {
     }
 
     async function login({ email, password }) {
-        if (!email || !password) {
-            throw new Error('Email et mot de passe requis.');
+        const identifier = (email || '').trim();
+        if (!identifier || !password) {
+            throw new Error('Identifiant et mot de passe requis.');
         }
 
-        const fakeToken = `patient-${Date.now()}`;
-        const fakeUser = {
-            id: 1,
-            name: 'Patient Demo',
-            email
+        const loginResponse = await loginPatient(identifier, password);
+        const jwtToken = loginResponse?.token;
+        if (!jwtToken) {
+            throw new Error('Token JWT absent de la réponse.');
+        }
+
+        const me = await fetchCurrentUser(jwtToken);
+        const meUser = me?.user || {};
+        const employee = me?.employee || null;
+
+        const connectedUser = {
+            id: meUser?.id || null,
+            username: meUser?.username || identifier,
+            roles: Array.isArray(meUser?.roles) ? meUser.roles : [],
+            name: employee ? `${employee?.nom || ''} ${employee?.prenom || ''}`.trim() : meUser?.username || identifier,
+            email: employee?.email || null
         };
 
-        token.value = fakeToken;
-        user.value = fakeUser;
+        token.value = jwtToken;
+        user.value = connectedUser;
 
-        localStorage.setItem(TOKEN_KEY, fakeToken);
-        localStorage.setItem(USER_KEY, JSON.stringify(fakeUser));
+        localStorage.setItem(TOKEN_KEY, jwtToken);
+        localStorage.setItem(USER_KEY, JSON.stringify(connectedUser));
     }
 
     function logout() {

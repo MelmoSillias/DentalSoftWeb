@@ -1,0 +1,9 @@
+Paramètre Admin à implémenter : 
+
+- Permissions de voir ou non le numéro de télephone des patients pour les ROLE_MEDECIN :
+    - Dans GlobalSettings, ajouter une option "Afficher le numéro de téléphone des patients pour les médecins" (checkbox)
+    - Dans le template de la liste des patients, dossier patient et les différentes vues consultation vérifier cette option pour afficher ou masquer le numéro de téléphone
+
+- Automiquement créer les paiements assurances lorsque sans attendre que la transaction soit validée pour les assureurs :
+  - après la création de consultation payante ou de Paiement d'une facture, si le paramètre est activé, créer automatiquement les paiements assurances associés à la consultation ou à la facture, même si la transaction n'est pas encore validée. Cela permettra de gagner du temps et d'avoir une meilleure visibilité sur les paiements en cours pour les assureurs.
+  

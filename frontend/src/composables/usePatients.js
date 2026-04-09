@@ -1,5 +1,11 @@
 import { apiPrefix } from '@/config';
 import {
+    createPatientPortalUser,
+    fetchPatientPortalUser,
+    resetPatientPortalPassword,
+    togglePatientPortalUser
+} from '@/services/patients';
+import {
     addPatientAllergyTourMock,
     addPatientAntecedentTourMock,
     checkConsultationActiveTourMock,
@@ -120,6 +126,7 @@ export function usePatients() {
                 unsubscribed: false,
                 blacklisted: false
             },
+            portalAccount: dossier.portalAccount ?? null,
             allergies,
             antecedents,
             stats: {
@@ -516,6 +523,62 @@ export function usePatients() {
         }
     };
 
+    const fetchPortalAccount = async (patientId, token) => {
+        loading.value = true;
+        error.value = null;
+        try {
+            const data = await fetchPatientPortalUser(patientId, token || auth?.token);
+            return data?.account ?? null;
+        } catch (err) {
+            error.value = err;
+            return null;
+        } finally {
+            loading.value = false;
+        }
+    };
+
+    const createPortalAccount = async (patientId, token) => {
+        loading.value = true;
+        error.value = null;
+        try {
+            const data = await createPatientPortalUser(patientId, token || auth?.token);
+            return data?.account ?? null;
+        } catch (err) {
+            error.value = err;
+            return null;
+        } finally {
+            loading.value = false;
+        }
+    };
+
+    const resetPortalAccountPassword = async (patientId, token) => {
+        loading.value = true;
+        error.value = null;
+        try {
+            const data = await resetPatientPortalPassword(patientId, token || auth?.token);
+            return data?.account ?? null;
+        } catch (err) {
+            error.value = err;
+            return null;
+        } finally {
+            loading.value = false;
+        }
+    };
+
+    const togglePortalAccountActive = async (patientId, active, token) => {
+        loading.value = true;
+        error.value = null;
+        try {
+            const data = await togglePatientPortalUser(patientId, active, token || auth?.token);
+            return data?.account ?? null;
+        } catch (err) {
+            error.value = err;
+            return null;
+        } finally {
+            loading.value = false;
+        }
+    };
+
     const printPatientInfosPerso = async (patientId, token) => {
         loading.value = true;
         error.value = null;
@@ -578,6 +641,10 @@ export function usePatients() {
         fetchMedecins,
         fetchPaymentMethods,
         createRdvForPatient,
+        fetchPortalAccount,
+        createPortalAccount,
+        resetPortalAccountPassword,
+        togglePortalAccountActive,
         printPatientInfosPerso,
         printPatientFiche
     };

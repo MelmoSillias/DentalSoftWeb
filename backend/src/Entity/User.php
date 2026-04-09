@@ -37,6 +37,12 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\OneToMany(mappedBy: 'user', targetEntity: Notification::class, orphanRemoval: true)]
     private Collection $notifications;
 
+    #[ORM\OneToOne(mappedBy: 'portalUser', targetEntity: Patient::class)]
+    private ?Patient $portalPatient = null;
+
+    #[ORM\Column(options: ['default' => true])]
+    private bool $active = true;
+
     public function __construct()
     {
         $this->notifications = new ArrayCollection();
@@ -68,6 +74,38 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function __toString(): string
     {
         return $this->username;
+    }
+
+    public function isActive(): bool
+    {
+        return $this->active;
+    }
+
+    public function setActive(bool $active): static
+    {
+        $this->active = $active;
+
+        return $this;
+    }
+
+    public function getPortalPatient(): ?Patient
+    {
+        return $this->portalPatient;
+    }
+
+    public function setPortalPatient(?Patient $portalPatient): static
+    {
+        if ($portalPatient === null && $this->portalPatient !== null) {
+            $this->portalPatient->setPortalUser(null);
+        }
+
+        if ($portalPatient !== null && $portalPatient->getPortalUser() !== $this) {
+            $portalPatient->setPortalUser($this);
+        }
+
+        $this->portalPatient = $portalPatient;
+
+        return $this;
     }
 
     public function getId(): ?int

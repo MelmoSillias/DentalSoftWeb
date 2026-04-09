@@ -48,6 +48,9 @@
                         @add-allergy="() => (showAllergyDialog = true)"
                         @delete-antecedent="handleDeleteAntecedent"
                         @delete-allergy="handleDeleteAllergy"
+                        @create-portal-account="handleCreatePortalAccount"
+                        @reset-portal-password="handleResetPortalPassword"
+                        @toggle-portal-active="handleTogglePortalActive"
                     />
                 </div>
 
@@ -426,6 +429,55 @@ const handleDeleteAllergy = async (item) => {
         console.error('Erreur suppression allergie', error);
         toast.add({ severity: 'error', summary: 'Erreur', detail: 'Suppression impossible.', life: 3000 });
     }
+};
+
+const handleCreatePortalAccount = async () => {
+    if (!patient.value?.id) return;
+
+    const account = await patientStore.createPortalAccount(patient.value.id, token);
+    if (!account) {
+        toast.add({ severity: 'error', summary: 'Compte patient', detail: 'Création impossible.', life: 3000 });
+        return;
+    }
+
+    patient.value.portalAccount = account;
+    toast.add({
+        severity: 'success',
+        summary: 'Compte patient',
+        detail: `Compte créé (${account.username}) - mot de passe par défaut: 123`,
+        life: 4500
+    });
+};
+
+const handleResetPortalPassword = async () => {
+    if (!patient.value?.id || !patient.value?.portalAccount) return;
+
+    const account = await patientStore.resetPortalAccountPassword(patient.value.id, token);
+    if (!account) {
+        toast.add({ severity: 'error', summary: 'Compte patient', detail: 'Réinitialisation impossible.', life: 3000 });
+        return;
+    }
+
+    patient.value.portalAccount = account;
+    toast.add({ severity: 'success', summary: 'Compte patient', detail: 'Mot de passe réinitialisé à 123.', life: 3500 });
+};
+
+const handleTogglePortalActive = async (active) => {
+    if (!patient.value?.id || !patient.value?.portalAccount) return;
+
+    const account = await patientStore.togglePortalAccountActive(patient.value.id, Boolean(active), token);
+    if (!account) {
+        toast.add({ severity: 'error', summary: 'Compte patient', detail: 'Mise à jour du statut impossible.', life: 3000 });
+        return;
+    }
+
+    patient.value.portalAccount = account;
+    toast.add({
+        severity: 'success',
+        summary: 'Compte patient',
+        detail: account.active ? 'Compte activé.' : 'Compte désactivé.',
+        life: 3000
+    });
 };
 
 const loadPatientOptions = async (query = '') => {

@@ -174,6 +174,63 @@ final class PatientController extends AbstractController
         return $this->json($this->patientService->listPatientConsultations($id));
     }
 
+    #[Route('/api/patient/{id}/portal-user', name: 'api_patient_portal_user_get', methods: ['GET'])]
+    public function getPortalUser(int $id): JsonResponse
+    {
+        if ($denied = $this->denyPortalUserManagementIfUnauthorized()) {
+            return $denied;
+        }
+
+        $result = $this->patientService->getPatientPortalAccountData($id);
+        $status = $result['status'] ?? (isset($result['error']) ? 400 : 200);
+
+        return $this->json($result, $status);
+    }
+
+    #[Route('/api/patient/{id}/portal-user/create', name: 'api_patient_portal_user_create', methods: ['POST'])]
+    public function createPortalUser(int $id): JsonResponse
+    {
+        if ($denied = $this->denyPortalUserManagementIfUnauthorized()) {
+            return $denied;
+        }
+
+        $result = $this->patientService->createPatientPortalAccount($id);
+        $status = $result['status'] ?? (isset($result['error']) ? 400 : 200);
+
+        return $this->json($result, $status);
+    }
+
+    #[Route('/api/patient/{id}/portal-user/reset-password', name: 'api_patient_portal_user_reset_password', methods: ['POST'])]
+    public function resetPortalUserPassword(int $id): JsonResponse
+    {
+        if ($denied = $this->denyPortalUserManagementIfUnauthorized()) {
+            return $denied;
+        }
+
+        $result = $this->patientService->resetPatientPortalPassword($id);
+        $status = $result['status'] ?? (isset($result['error']) ? 400 : 200);
+
+        return $this->json($result, $status);
+    }
+
+    #[Route('/api/patient/{id}/portal-user/active', name: 'api_patient_portal_user_toggle_active', methods: ['PATCH'])]
+    public function togglePortalUserActive(int $id, Request $request): JsonResponse
+    {
+        if ($denied = $this->denyPortalUserManagementIfUnauthorized()) {
+            return $denied;
+        }
+
+        $payload = json_decode($request->getContent(), true) ?? [];
+        if (!array_key_exists('active', $payload)) {
+            return $this->json(['error' => 'Champ active manquant'], 400);
+        }
+
+        $result = $this->patientService->togglePatientPortalAccount($id, (bool) $payload['active']);
+        $status = $result['status'] ?? (isset($result['error']) ? 400 : 200);
+
+        return $this->json($result, $status);
+    }
+
     #[Route('/api/patient/{id}/dossier/update', name: 'api_patient_dossier_update', methods: ['PUT'])]
     public function updateDossier(int $id, Request $request): JsonResponse
     {
@@ -282,5 +339,18 @@ final class PatientController extends AbstractController
         }
 
         return $this->json($context);
+    }
+
+    private function denyPortalUserManagementIfUnauthorized(): ?JsonResponse
+    {
+        if (
+            !$this->isGranted('ROLE_ADMIN')
+            && !$this->isGranted('ROLE_RECEPTION')
+            && !$this->isGranted('ROLE_RECEPTIONNISTE')
+        ) {
+            return $this->json(['error' => 'Accès refusé'], 403);
+        }
+
+        return null;
     }
 }

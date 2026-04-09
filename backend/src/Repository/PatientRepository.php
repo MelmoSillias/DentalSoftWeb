@@ -80,23 +80,26 @@ class PatientRepository extends ServiceEntityRepository
         $normalized = mb_strtolower($identifier);
         $digits = preg_replace('/\D+/', '', $identifier) ?? '';
 
-        $qb = $this->createQueryBuilder('p')
-            ->where('LOWER(p.email) = :normalized')
-            ->orWhere('LOWER(p.numCarnet) = :normalized')
-            ->setParameter('normalized', $normalized)
-            ->setMaxResults(1);
+        $conditions = [
+            'LOWER(COALESCE(email, \'\')) = :normalized',
+            'LOWER(COALESCE(num_carnet, \'\')) = :normalized',
+        ];
+        $params = ['normalized' => $normalized];
 
         if ($digits !== '') {
-            $qb->orWhere("REPLACE(REPLACE(REPLACE(REPLACE(p.telephone, ' ', ''), '-', ''), '.', ''), '+', '') = :digits")
-               ->setParameter('digits', $digits);
+            $conditions[] = "REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(telephone, ''), ' ', ''), '-', ''), '.', ''), '+', '') = :digits";
+            $params['digits'] = $digits;
         }
 
         if (ctype_digit($identifier)) {
-            $qb->orWhere('p.id = :id')
-               ->setParameter('id', (int) $identifier);
+            $conditions[] = 'id = :id';
+            $params['id'] = (int) $identifier;
         }
 
-        return $qb->getQuery()->getOneOrNullResult();
+        $sql = sprintf('SELECT id FROM patient WHERE %s ORDER BY id DESC LIMIT 1', implode(' OR ', $conditions));
+        $id = $this->getEntityManager()->getConnection()->fetchOne($sql, $params);
+
+        return $id ? $this->find((int) $id) : null;
     }
 
     public function findPatientById(int $id): ?array
@@ -156,10 +159,10 @@ class PatientRepository extends ServiceEntityRepository
                 "LOWER(CONCAT(p.prenom, ' ', p.nom)) LIKE :term"
             );
 
-            // Si contient des chiffres → recherche téléphone optimisée
+            // Si contient des chiffres -> recherche telephone sans fonction SQL non supportee en DQL
             $digits = preg_replace('/\D+/', '', $normalized);
             if (!empty($digits)) {
-                $orX->add('REPLACE(p.telephone, \' \', \'\') LIKE :digits');
+                $orX->add('p.telephone LIKE :digits');
                 $qb->setParameter('digits', '%' . $digits . '%');
             }
 

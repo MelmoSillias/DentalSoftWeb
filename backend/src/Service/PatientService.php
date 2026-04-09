@@ -22,12 +22,14 @@ use App\Repository\ConsultationRepository;
 use App\Repository\EmployeRepository;
 use App\Repository\PatientRepository;
 use App\Repository\SalleRepository;
+use App\Repository\UserRepository;
 use DateTime;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use App\Service\CashdeskService;
 use App\Service\FicheMedicaleService;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
+use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Contracts\Cache\CacheInterface;
 use Symfony\Contracts\Cache\ItemInterface;
 
@@ -42,6 +44,8 @@ class PatientService
         private ConsultationNotificationService $consultationNotificationService,
         private NotificationRecipientResolver $notificationRecipientResolver,
         private RdvNotificationService $rdvNotificationService,
+        private UserRepository $userRepo,
+        private UserPasswordHasherInterface $passwordHasher,
         private CashdeskService $cashdeskService,
         private FicheMedicaleService $ficheMedicaleService,
         private SmsService $smsService,
@@ -361,11 +365,11 @@ class PatientService
             "LOWER(CONCAT(p.prenom, ' ', p.nom)) LIKE :term"
         );
 
-        // Optimisation téléphone (ignore espaces)
+        // Recherche numerique telephone (sans fonctions SQL custom en DQL)
         $digits = preg_replace('/\D+/', '', $term);
         if (!empty($digits)) {
-            $orX->add("REPLACE(p.telephone, ' ', '') LIKE :digits");
-            $qb->setParameter('digits', '%' . $digits . '%');
+            $orX->add('p.telephone LIKE :digitsRaw');
+            $qb->setParameter('digitsRaw', '%' . $digits . '%');
         }
 
         $qb->andWhere($orX)
@@ -594,6 +598,141 @@ class PatientService
         ];
     }
 
+    public function getPatientPortalAccountData(int $id): array
+    {
+        $patient = $this->patientRepo->find($id);
+        if (!$patient) {
+            return ['error' => 'Patient introuvable', 'status' => 404];
+        }
+
+        return [
+            'success' => true,
+            'account' => $this->formatPortalAccount($patient),
+        ];
+    }
+
+    public function createPatientPortalAccount(int $id): array
+    {
+        $patient = $this->patientRepo->find($id);
+        if (!$patient) {
+            return ['error' => 'Patient introuvable', 'status' => 404];
+        }
+
+        if ($patient->getPortalUser() instanceof User) {
+            return [
+                'success' => true,
+                'message' => 'Compte utilisateur deja lie au patient.',
+                'account' => $this->formatPortalAccount($patient),
+            ];
+        }
+
+        $username = $this->buildUniquePatientUsername($patient);
+        $user = new User();
+        $user->setUsername($username);
+        $user->setRoles(['ROLE_PATIENT']);
+        $user->setActive(true);
+        $user->setPassword($this->passwordHasher->hashPassword($user, '123'));
+
+        $patient->setPortalUser($user);
+
+        $this->em->persist($user);
+        $this->em->persist($patient);
+        $this->em->flush();
+
+        return [
+            'success' => true,
+            'message' => 'Compte patient cree avec succes.',
+            'account' => $this->formatPortalAccount($patient),
+        ];
+    }
+
+    public function resetPatientPortalPassword(int $id): array
+    {
+        $patient = $this->patientRepo->find($id);
+        if (!$patient) {
+            return ['error' => 'Patient introuvable', 'status' => 404];
+        }
+
+        $user = $patient->getPortalUser();
+        if (!$user instanceof User) {
+            return ['error' => 'Aucun compte utilisateur lie a ce patient', 'status' => 404];
+        }
+
+        $user->setPassword($this->passwordHasher->hashPassword($user, '123'));
+        $this->em->persist($user);
+        $this->em->flush();
+
+        return [
+            'success' => true,
+            'message' => 'Mot de passe reinitialise a 123.',
+            'account' => $this->formatPortalAccount($patient),
+        ];
+    }
+
+    public function togglePatientPortalAccount(int $id, bool $active): array
+    {
+        $patient = $this->patientRepo->find($id);
+        if (!$patient) {
+            return ['error' => 'Patient introuvable', 'status' => 404];
+        }
+
+        $user = $patient->getPortalUser();
+        if (!$user instanceof User) {
+            return ['error' => 'Aucun compte utilisateur lie a ce patient', 'status' => 404];
+        }
+
+        $user->setActive($active);
+        $this->em->persist($user);
+        $this->em->flush();
+
+        return [
+            'success' => true,
+            'message' => $active ? 'Compte active.' : 'Compte desactive.',
+            'account' => $this->formatPortalAccount($patient),
+        ];
+    }
+
+    private function formatPortalAccount(Patient $patient): ?array
+    {
+        $user = $patient->getPortalUser();
+        if (!$user instanceof User) {
+            return null;
+        }
+
+        return [
+            'id' => $user->getId(),
+            'username' => $user->getUsername(),
+            'active' => $user->isActive(),
+            'roles' => $user->getRoles(),
+            'defaultPassword' => '123',
+        ];
+    }
+
+    private function buildUniquePatientUsername(Patient $patient): string
+    {
+        $raw = sprintf(
+            '%s%s%s%s',
+            $patient->getNom() ?? '',
+            $patient->getPrenom() ?? '',
+            $patient->getAge() ?? 0,
+            $patient->getDateInscription()?->format('Ymd') ?? (new DateTime())->format('Ymd')
+        );
+
+        $base = strtolower((string) preg_replace('/[^a-zA-Z0-9]+/', '', iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $raw) ?: $raw));
+        if ($base === '') {
+            $base = 'patient' . ($patient->getId() ?? (new DateTime())->format('His'));
+        }
+
+        $username = $base;
+        $i = 1;
+        while ($this->userRepo->findOneBy(['username' => $username]) !== null) {
+            $i++;
+            $username = $base . $i;
+        }
+
+        return $username;
+    }
+
     public function getDossierData(int $id): ?array
     {
         $patient = $this->patientRepo->find($id);
@@ -689,6 +828,7 @@ class PatientService
             'groupeSanguin' => $patient->getGroupeSanguin(),
             'dateInscription' => $patient->getDateInscription()->format('Y-m-d H:i'),
             'contactUrgence' => $contactUrgence,
+            'portalAccount' => $this->formatPortalAccount($patient),
             'smsPreferences' => $this->extractSmsPreferences($patient),
             'allergies' => $allergies,
             'antecedents' => $antecedents,

@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 use App\Config\sexeEnum;
+use App\Entity\User;
 
 use App\Repository\PatientRepository; 
 use Doctrine\Common\Collections\ArrayCollection;
@@ -116,6 +117,10 @@ class Patient
 
     #[ORM\Column(options: ['default' => false])]
     private bool $smsBlacklisted = false;
+
+    #[ORM\OneToOne(inversedBy: 'portalPatient', targetEntity: User::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL', unique: true)]
+    private ?User $portalUser = null;
 
     public function __construct()
     {
@@ -608,6 +613,22 @@ class Patient
     public function setReferencement(string $referencement): static
     {
         $this->referencement = $referencement;
+
+        return $this;
+    }
+
+    public function getPortalUser(): ?User
+    {
+        return $this->portalUser;
+    }
+
+    public function setPortalUser(?User $portalUser): static
+    {
+        $this->portalUser = $portalUser;
+
+        if ($portalUser !== null && $portalUser->getPortalPatient() !== $this) {
+            $portalUser->setPortalPatient($this);
+        }
 
         return $this;
     }

@@ -50,6 +50,7 @@ export const normalizePatient = (raw = {}) => ({
         unsubscribed: raw.smsUnsubscribed ?? false,
         blacklisted: raw.smsBlacklisted ?? false
     },
+    portalAccount: raw.portalAccount ?? null,
     derniereConsultation: raw.derniereConsultation ?? raw.derniere_consultation ?? null
 });
 
@@ -275,5 +276,37 @@ export const printPatientFiche = async (patientId, ficheId, token) => {
         headers: authHeaders(token),
         responseType: 'blob'
     });
+    return res.data;
+};
+
+export const fetchPatientPortalUser = async (patientId, token) => {
+    const res = await axios.get(`${apiPrefix}/patient/${patientId}/portal-user`, {
+        headers: authHeaders(token)
+    });
+
+    return res.data;
+};
+
+export const createPatientPortalUser = async (patientId, token) => {
+    const res = await axios.post(`${apiPrefix}/patient/${patientId}/portal-user/create`, {}, {
+        headers: authHeaders(token)
+    });
+
+    return res.data;
+};
+
+export const resetPatientPortalPassword = async (patientId, token) => {
+    const res = await axios.post(`${apiPrefix}/patient/${patientId}/portal-user/reset-password`, {}, {
+        headers: authHeaders(token)
+    });
+
+    return res.data;
+};
+
+export const togglePatientPortalUser = async (patientId, active, token) => {
+    const res = await axios.patch(`${apiPrefix}/patient/${patientId}/portal-user/active`, { active }, {
+        headers: authHeaders(token)
+    });
+
     return res.data;
 };
