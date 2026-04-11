@@ -21,6 +21,7 @@ export const useAuthStore = defineStore('auth', {
                 localStorage.setItem('token', this.token); 
                 await this.fetchUser(); 
             } catch (err) {
+                this.logout();
                 this.error = err.response?.data?.message || 'Erreur de connexion'; 
                 throw err;
             } finally {
@@ -51,10 +52,12 @@ export const useAuthStore = defineStore('auth', {
                 const res = await http.get('me');
                 this.user = res.data.user;
                 this.mercure = res.data.mercure || null;
+                return res.data;
             } catch (err) {
                 if (err.response && err.response.status === 401) {
                     this.logout();
                 }
+                throw err;
             }
         },
 

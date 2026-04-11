@@ -46,8 +46,9 @@ class ProfileController extends AbstractController
             if (is_array($ids) && $ids !== []) {
                 $repo = $em->getRepository(Notification::class);
                 $list = $repo->findBy(['id' => $ids, 'recipient' => $user]);
+                /** @var Notification $notif */
                 foreach ($list as $notif) {
-                    $notif->setStatus(NotificationStatus::LU);
+                    $notif->setEtatVu('vu');
                 }
                 $em->flush();
                 $this->addFlash('success', 'Notifications marquées comme lues.');
@@ -78,9 +79,9 @@ class ProfileController extends AbstractController
             return [
                 'id' => $n->getId(),
                 'message' => $n->getMessage(),
-                'status' => $n->getStatus()->value,
-                'priority' => $n->getPriority()->value,
-                'createdAt' => $n->getCreatedAt()?->format('Y-m-d H:i'),
+                'status' => $n->getEtatVu(),
+                'priority' => $n->getPriority()?->value,
+                'createdAt' => $n->getDateEnvoi()?->format('Y-m-d H:i'),
                 'link' => $n->getLink(),
                 'goUrl' => $urlGenerator->generate('app_notifications_go', ['id' => $n->getId()]),
             ];
@@ -105,7 +106,7 @@ class ProfileController extends AbstractController
         $repo = $em->getRepository(Notification::class);
         $list = $repo->findBy(['id' => $ids, 'recipient' => $user]);
         foreach ($list as $notif) {
-            $notif->setStatus(NotificationStatus::LU);
+            $notif->setEtatVu('vu');
         }
         $em->flush();
 
@@ -120,8 +121,8 @@ class ProfileController extends AbstractController
             return $this->redirectToRoute('app_login');
         }
 
-        if ($notification->getStatus() === NotificationStatus::NON_LU) {
-            $notification->setStatus(NotificationStatus::LU);
+        if ($notification->getEtatVu() === 'non_lu') {
+            $notification->setEtatVu('vu');
             $em->flush();
         }
 

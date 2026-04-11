@@ -15,17 +15,17 @@ export async function fetchCurrentUser(token) {
 }
 
 export async function fetchPatientDashboard(token) {
-    return apiRequest('/api/patient/me/dashboard', { token });
+    return apiRequest('/api/portal-patient/me/dashboard', { token });
 }
 
 export async function fetchPatientConsultations(token) {
-    return apiRequest('/api/patient/me/consultations', { token });
+    return apiRequest('/api/portal-patient/me/consultations', { token });
 }
 
 export async function fetchPatientAppointments(token) {
-    return apiRequest('/api/patient/me/rdvs', { token });
+    return apiRequest('/api/portal-patient/me/rdvs', { token });
 }
 
 export async function fetchPatientPayments(token) {
-    return apiRequest('/api/patient/me/paiements', { token });
+    return apiRequest('/api/portal-patient/me/paiements', { token });
 }

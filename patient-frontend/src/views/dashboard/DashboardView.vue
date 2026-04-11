@@ -6,6 +6,7 @@ import NextAppointmentCard from './components/NextAppointmentCard.vue';
 import LastConsultationCard from './components/LastConsultationCard.vue';
 import { useAuthStore } from '../../stores/auth';
 import { fetchPatientAppointments, fetchPatientConsultations, fetchPatientDashboard, fetchPatientPayments } from '../../services/patientPortal';
+import Divider from 'primevue/divider';
 
 const authStore = useAuthStore();
 const dashboardStats = ref({
@@ -21,10 +22,10 @@ const loadError = ref('');
 const isLoading = ref(true);
 
 const stats = computed(() => [
-    { key: 'consultations', label: 'Consultations', value: dashboardStats.value.consultations, hint: 'Historique total' },
-    { key: 'spent', label: 'Montant dépensé', value: `${Math.round(totalPaid.value).toLocaleString('fr-FR')} FCFA`, hint: 'Cumul paiements' },
-    { key: 'rdv', label: 'Rendez-vous', value: dashboardStats.value.rdvs, hint: 'Suivi patient' },
-    { key: 'docs', label: 'Documents', value: dashboardStats.value.devisFactures, hint: 'Devis et factures' }
+    { key: 'consultations', label: 'Consultations', value: dashboardStats.value.consultations, hint: 'Historique total', icon: 'pi pi-stethoscope', color: 'blue' },
+    { key: 'spent', label: 'Montant dépensé', value: `${Math.round(totalPaid.value).toLocaleString('fr-FR')} FCFA`, hint: 'Cumul paiements', icon: 'pi pi-wallet', color: 'green' },
+    { key: 'rdv', label: 'Rendez-vous', value: dashboardStats.value.rdvs, hint: 'Suivi patient', icon: 'pi pi-calendar', color: 'orange' },
+    { key: 'docs', label: 'Documents', value: dashboardStats.value.devisFactures, hint: 'Devis et factures', icon: 'pi pi-file', color: 'purple' }
 ]);
 
 const statsEmpty = computed(() => {
@@ -129,17 +130,27 @@ onMounted(async () => {
 <template>
     <AppLayout>
         <section class="dashboard-stack">
-            <PvCard v-if="loadError">
+            <Card v-if="loadError">
                 <template #content>
                     <p class="muted">{{ loadError }}</p>
                 </template>
-            </PvCard>
+            </Card>
             <StatsGrid :stats="stats" :loading="isLoading" :empty="!isLoading && statsEmpty" />
+
+            <Divider align="center">
+                <b>Prochain rendez-vous</b>
+            </Divider>
+
             <NextAppointmentCard
                 :appointment="nextAppointment"
                 :loading="isLoading"
                 :empty="!isLoading && appointmentsEmpty"
             />
+
+                <Divider align="center">
+                    <b>Dernière consultation</b>
+                </Divider>
+
             <LastConsultationCard
                 :consultation="lastConsultation"
                 :loading="isLoading"

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\ApiPatients;
+namespace App\Controller\ApiPortalPatient;
 
 use App\Entity\Consultation;
 use App\Entity\Devis;
@@ -22,7 +22,7 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
-#[Route('/api/patient/me', name: 'api_patient_me_')]
+#[Route('/api/portal-patient/me', name: 'api_patient_me_')]
 #[IsGranted('ROLE_PATIENT')]
 final class PatientPortalController extends AbstractController
 {
@@ -139,7 +139,7 @@ final class PatientPortalController extends AbstractController
             'devisId' => $t->getDevis()?->getId(),
             'recu' => [
                 'label' => 'Recu #' . $t->getId(),
-                'printDataUrl' => '/api/patient/me/paiements/' . $t->getId() . '/recu',
+                'printDataUrl' => '/api/portal-patient/me/paiements/' . $t->getId() . '/recu',
             ],
         ], $transactions);
 

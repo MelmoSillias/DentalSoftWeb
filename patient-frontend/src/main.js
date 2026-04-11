@@ -36,15 +36,15 @@ app.use(PrimeVue, {
 	}
 });
 
-app.component('PvButton', Button);
-app.component('PvCard', Card);
-app.component('PvAvatar', Avatar);
-app.component('PvInputText', InputText);
-app.component('PvPassword', Password);
-app.component('PvBreadcrumb', Breadcrumb);
-app.component('PvDivider', Divider);
-app.component('PvTag', Tag);
-app.component('PvToast', Toast);
-app.component('PvSkeleton', Skeleton);
+app.component('Button', Button);
+app.component('Card', Card);
+app.component('Avatar', Avatar);
+app.component('InputText', InputText);
+app.component('Password', Password);
+app.component('Breadcrumb', Breadcrumb);
+app.component('Divider', Divider);
+app.component('Tag', Tag);
+app.component('Toast', Toast);
+app.component('Skeleton', Skeleton);
 
 app.mount('#app');

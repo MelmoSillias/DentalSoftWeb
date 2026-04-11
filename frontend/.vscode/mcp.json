@@ -1,0 +1,15 @@
+{
+	"servers": {
+		"primevue": {
+			"command": "npx",
+			"args": [
+				"-y",
+				"@primevue/mcp"
+			],
+			"type": "stdio"
+		}
+	},
+	"inputs": []
+} 
+
+// Pour lancer le serveur : npx -y -p @modelcontextprotocol/sdk@1.27.0 -p @primevue/mcp primevue-mcp

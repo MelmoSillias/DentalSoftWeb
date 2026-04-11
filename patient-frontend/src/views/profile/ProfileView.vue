@@ -9,18 +9,18 @@ const user = computed(() => authStore.user || { name: 'Patient', email: '-' });
 
 <template>
     <AppLayout>
-        <PvCard>
+        <Card>
             <template #title>Mon profil</template>
             <template #content>
                 <div class="profile-head">
-                    <PvAvatar icon="pi pi-user" shape="circle" size="xlarge" />
+                    <Avatar icon="pi pi-user" shape="circle" size="xlarge" />
                     <div>
                         <p><strong>{{ user.name }}</strong></p>
                         <p class="muted">{{ user.email }}</p>
                     </div>
                 </div>
             </template>
-        </PvCard>
+        </Card>
     </AppLayout>
 </template>
 

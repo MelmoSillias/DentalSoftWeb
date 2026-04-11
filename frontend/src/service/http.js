@@ -4,6 +4,7 @@ import axios from 'axios';
 import { apiPrefix } from '@/config';
 import { useAuthStore } from '@/stores/auth';
 import router from '@/router';
+import { getDeviceMetadata } from '@/utils/deviceFingerprint';
 
 const http = axios.create({
     baseURL: apiPrefix
@@ -18,6 +19,11 @@ http.interceptors.request.use(
             if (token) {
                 config.headers.Authorization = `Bearer ${token}`;
             }
+
+            const device = getDeviceMetadata();
+            config.headers['X-Device-Id'] = device.id;
+            config.headers['X-Device-Name'] = device.name;
+            config.headers['X-Device-Type'] = device.type;
         } catch (_) {
             // Pinia pas initialisé encore, fallback localStorage déjà géré
         }

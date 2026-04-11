@@ -1,7 +1,7 @@
 <script setup>
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
-import { usePageMeta } from '../composables/usePageMeta';
+import { usePageMeta } from '../composables/usePageMeta'; 
 
 const props = defineProps({
     dark: {
@@ -23,13 +23,13 @@ function openProfile() {
 
 <template>
     <header class="top-header">
-        <div class="title-block">
+        <div class="title-block bg-blue p-2 rounded">
             <h1 class="page-title">{{ title }}</h1>
-            <PvBreadcrumb :home="home" :model="breadcrumbItems" />
+            <Breadcrumb :home="home" :model="breadcrumbItems" />
         </div>
 
         <div class="actions">
-            <PvButton
+            <Button
                 text
                 rounded
                 :icon="props.dark ? 'pi pi-moon' : 'pi pi-sun'"
@@ -37,7 +37,7 @@ function openProfile() {
                 @click="emit('toggle-theme')"
             />
             <button class="avatar-trigger" type="button" @click="openProfile" aria-label="Aller au profil">
-                <PvAvatar shape="circle" icon="pi pi-user" size="normal" />
+                <Avatar shape="circle" icon="pi pi-user" size="normal" />
             </button>
         </div>
     </header>
@@ -48,8 +48,7 @@ function openProfile() {
     position: sticky;
     top: 0;
     z-index: 20;
-    backdrop-filter: blur(10px);
-    background: color-mix(in srgb, var(--p-surface-0), transparent 12%);
+    backdrop-filter: blur(10px); 
     border-bottom: 1px solid var(--p-surface-200);
     padding: 0.75rem 1rem;
     display: flex;
@@ -79,8 +78,7 @@ function openProfile() {
 }
 
 .avatar-trigger {
-    border: 0;
-    background: transparent;
+    border: 0; 
     padding: 0;
     cursor: pointer;
 }

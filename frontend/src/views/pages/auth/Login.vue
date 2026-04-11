@@ -36,7 +36,7 @@ const onSubmit = async () => {
                     errorMessage.value = "Nom d'utilisateur ou mot de passe incorrect.";
                     break;
                 case 403:
-                    errorMessage.value = "Accès refusé. Vous n'êtes pas autorisé à accéder à cette ressource.";
+                    errorMessage.value = e.response?.data?.message || "Accès refusé. Vous n'êtes pas autorisé à accéder à cette ressource.";
                     break;
                 case 404:
                     errorMessage.value = 'Serveur non trouvé. Veuillez réessayer plus tard.';

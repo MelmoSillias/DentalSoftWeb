@@ -22,13 +22,13 @@ function logout() {
 </script>
 
 <template>
-    <div class="app-shell">
+    <div class="app-shell bg-blue-500 min-h-screen flex flex-row">
         <AppHeader :dark="isDark" @toggle-theme="toggleTheme" />
 
         <main class="app-content">
             <slot />
-            <PvDivider />
-            <PvButton
+            <Divider />
+            <Button
                 v-if="route.path !== '/login'"
                 severity="secondary"
                 label="Se déconnecter"

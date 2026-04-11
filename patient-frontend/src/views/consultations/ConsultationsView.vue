@@ -4,11 +4,11 @@ import AppLayout from '../../layout/AppLayout.vue';
 
 <template>
     <AppLayout>
-        <PvCard>
+        <Card>
             <template #title>Consultations</template>
             <template #content>
                 <p class="muted">Liste des consultations à brancher sur l'API patient.</p>
             </template>
-        </PvCard>
+        </Card>
     </AppLayout>
 </template>

@@ -5,6 +5,8 @@ import { apiPrefix } from '@/config';
 import http from '@/service/http';
 
 const users = ref([]);
+const availableEmployees = ref([]);
+const availablePatients = ref([]);
 const totalRecords = ref(0);
 const loading = ref(false);
 const error = ref(null);
@@ -116,16 +118,92 @@ export function useUsers() {
         }
     }
 
+    async function fetchUserAssociations() {
+        loading.value = true;
+        error.value = null;
+        try {
+            const response = await http.get(`${apiPrefix}/users/associations`, {
+                headers: buildAuthHeaders()
+            });
+            const data = response.data || {};
+            availableEmployees.value = Array.isArray(data.employees) ? data.employees : [];
+            availablePatients.value = Array.isArray(data.patients) ? data.patients : [];
+            return data;
+        } catch (err) {
+            error.value = err.message;
+            availableEmployees.value = [];
+            availablePatients.value = [];
+            throw err;
+        } finally {
+            loading.value = false;
+        }
+    }
+
+    async function fetchUserDevices(userId) {
+        try {
+            const response = await http.get(`${apiPrefix}/users/${userId}/devices`, {
+                headers: buildAuthHeaders()
+            });
+            return response.data;
+        } catch (err) {
+            error.value = err.message;
+            throw err;
+        }
+    }
+
+    async function approveUserDevice(userId, deviceId) {
+        try {
+            const response = await http.post(`${apiPrefix}/users/${userId}/devices/${deviceId}/approve`, {}, {
+                headers: buildAuthHeaders(true)
+            });
+            return response.data;
+        } catch (err) {
+            error.value = err.message;
+            throw err;
+        }
+    }
+
+    async function rejectUserDevice(userId, deviceId) {
+        try {
+            const response = await http.post(`${apiPrefix}/users/${userId}/devices/${deviceId}/reject`, {}, {
+                headers: buildAuthHeaders(true)
+            });
+            return response.data;
+        } catch (err) {
+            error.value = err.message;
+            throw err;
+        }
+    }
+
+    async function deleteUserDevice(userId, deviceId) {
+        try {
+            const response = await http.delete(`${apiPrefix}/users/${userId}/devices/${deviceId}`, {
+                headers: buildAuthHeaders(true)
+            });
+            return response.data;
+        } catch (err) {
+            error.value = err.message;
+            throw err;
+        }
+    }
+
     return {
         users,
+        availableEmployees,
+        availablePatients,
         totalRecords,
         loading,
         error,
         fetchUsers,
+        fetchUserAssociations,
+        fetchUserDevices,
         addUser,
         updateUser,
         resetPassword,
         deleteUser,
-        toggleUserStatus
+        toggleUserStatus,
+        approveUserDevice,
+        rejectUserDevice,
+        deleteUserDevice
     };
 }

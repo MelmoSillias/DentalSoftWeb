@@ -13,26 +13,26 @@ async function onSubmit() {
 </script>
 
 <template>
-    <PvCard>
+    <Card>
         <template #title>Connexion patient</template>
         <template #content>
             <form class="login-form" @submit.prevent="onSubmit">
                 <div class="field-block">
                     <label for="email">Identifiant patient</label>
-                    <PvInputText id="email" v-model="form.email" type="text" placeholder="Nom d'utilisateur" />
+                    <InputText id="email" v-model="form.email" type="text" placeholder="Nom d'utilisateur" />
                 </div>
 
                 <div class="field-block">
                     <label for="password">Mot de passe</label>
-                    <PvPassword id="password" v-model="form.password" :feedback="false" toggle-mask fluid />
+                    <Password id="password" v-model="form.password" :feedback="false" toggle-mask fluid />
                 </div>
 
                 <small v-if="errorMessage" class="error">{{ errorMessage }}</small>
 
-                <PvButton type="submit" label="Se connecter" icon="pi pi-sign-in" :loading="loading" fluid />
+                <Button type="submit" label="Se connecter" icon="pi pi-sign-in" :loading="loading" fluid />
             </form>
         </template>
-    </PvCard>
+    </Card>
 </template>
 
 <style scoped>

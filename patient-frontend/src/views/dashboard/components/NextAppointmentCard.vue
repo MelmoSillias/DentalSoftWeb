@@ -1,4 +1,5 @@
-<script setup>
+<script setup> 
+
 defineProps({
     appointment: {
         type: Object,
@@ -16,17 +17,19 @@ defineProps({
 </script>
 
 <template>
-    <PvCard>
-        <template #title>Prochain rendez-vous</template>
+    <Card> 
         <template #content>
             <template v-if="loading">
                 <div class="row" v-for="n in 4" :key="`rdv-skeleton-${n}`">
-                    <PvSkeleton width="4.5rem" height="0.9rem" />
-                    <PvSkeleton width="7rem" height="0.9rem" />
+                    <Skeleton width="4.5rem" height="0.9rem" />
+                    <Skeleton width="7rem" height="0.9rem" />
                 </div>
             </template>
 
-            <p v-else-if="empty" class="muted">Aucun rendez-vous à venir.</p>
+            <p v-else-if="empty" class="muted">
+                Aucun rendez-vous à venir.
+                <Button label="Prendre rendez-vous" severity="secondary" class="ml-2" @click="$emit('book')"/>
+            </p>
 
             <template v-else>
                 <div class="row"><span class="muted">Date</span><strong>{{ appointment.date }}</strong></div>
@@ -34,11 +37,11 @@ defineProps({
                 <div class="row"><span class="muted">Médecin</span><strong>{{ appointment.doctor }}</strong></div>
                 <div class="row">
                 <span class="muted">Statut</span>
-                <PvTag :value="appointment.status" severity="info" />
+                <Tag :value="appointment.status" severity="info" />
                 </div>
             </template>
         </template>
-    </PvCard>
+    </Card>
 </template>
 
 <style scoped>

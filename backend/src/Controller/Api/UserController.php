@@ -4,6 +4,7 @@ namespace App\Controller\Api;
 
 use App\Entity\User;
 use App\Service\UserManagementService;
+use App\Service\UserDeviceService;
 use App\Service\EmployeeService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -15,6 +16,7 @@ class UserController extends AbstractController
     public function __construct(
         private UserManagementService $userService,
         private EmployeeService $employeeService,
+        private UserDeviceService $userDeviceService,
     ) {
     }
 
@@ -52,6 +54,14 @@ class UserController extends AbstractController
         return new JsonResponse([
             'data' => $result,
         ]);
+    }
+
+    #[Route('/api/users/associations', name: 'api_users_associations', methods: ['GET'])]
+    public function listUserAssociations(): JsonResponse
+    {
+        $result = $this->userService->getAvailableAssociations();
+
+        return new JsonResponse($result);
     }
 
     #[Route('/api/users/{id}', name: 'api_users_update', methods: ['PUT'])]
@@ -100,6 +110,61 @@ class UserController extends AbstractController
             $payload,
             $actor instanceof User ? $actor : null,
         );
+        $status = $result['status'] ?? (isset($result['error']) ? 400 : 200);
+
+        return new JsonResponse($result, $status);
+    }
+
+    #[Route('/api/users/{id}/devices', name: 'api_users_devices_list', methods: ['GET'])]
+    public function listUserDevices(int $id): JsonResponse
+    {
+        $this->denyAccessUnlessGranted('ROLE_ADMIN');
+
+        return new JsonResponse([
+            'maxDevices' => $this->userDeviceService->getMaxDevicesPerUser(),
+            'devices' => $this->userDeviceService->listDevicesForUser($id),
+            'logs' => $this->userDeviceService->getUserAccessLogs($id, 30),
+        ]);
+    }
+
+    #[Route('/api/users/{id}/devices/{deviceId}/approve', name: 'api_users_devices_approve', methods: ['POST'])]
+    public function approveUserDevice(int $id, int $deviceId): JsonResponse
+    {
+        $this->denyAccessUnlessGranted('ROLE_ADMIN');
+
+        $actor = $this->getUser();
+        $result = $this->userDeviceService->approveDevice(
+            $id,
+            $deviceId,
+            $actor instanceof User ? $actor : null,
+        );
+        $status = $result['status'] ?? (isset($result['error']) ? 400 : 200);
+
+        return new JsonResponse($result, $status);
+    }
+
+    #[Route('/api/users/{id}/devices/{deviceId}/reject', name: 'api_users_devices_reject', methods: ['POST'])]
+    public function rejectUserDevice(int $id, int $deviceId): JsonResponse
+    {
+        $this->denyAccessUnlessGranted('ROLE_ADMIN');
+
+        $actor = $this->getUser();
+        $result = $this->userDeviceService->rejectDevice(
+            $id,
+            $deviceId,
+            $actor instanceof User ? $actor : null,
+        );
+        $status = $result['status'] ?? (isset($result['error']) ? 400 : 200);
+
+        return new JsonResponse($result, $status);
+    }
+
+    #[Route('/api/users/{id}/devices/{deviceId}', name: 'api_users_devices_delete', methods: ['DELETE'])]
+    public function deleteUserDevice(int $id, int $deviceId): JsonResponse
+    {
+        $this->denyAccessUnlessGranted('ROLE_ADMIN');
+
+        $result = $this->userDeviceService->deleteDevice($id, $deviceId);
         $status = $result['status'] ?? (isset($result['error']) ? 400 : 200);
 
         return new JsonResponse($result, $status);

@@ -16,13 +16,12 @@ defineProps({
 </script>
 
 <template>
-    <PvCard>
-        <template #title>Dernière consultation</template>
+    <Card> 
         <template #content>
             <template v-if="loading">
-                <PvSkeleton width="75%" height="1rem" class="mb-2" />
-                <PvSkeleton width="100%" height="0.9rem" class="mb-2" />
-                <PvSkeleton width="92%" height="0.9rem" />
+                <Skeleton width="75%" height="1rem" class="mb-2" />
+                <Skeleton width="100%" height="0.9rem" class="mb-2" />
+                <Skeleton width="92%" height="0.9rem" />
             </template>
 
             <p v-else-if="empty" class="muted">Aucune consultation enregistrée pour l'instant.</p>
@@ -32,7 +31,7 @@ defineProps({
                 <p class="muted">{{ consultation.summary }}</p>
             </template>
         </template>
-    </PvCard>
+    </Card>
 </template>
 
 <style scoped>
