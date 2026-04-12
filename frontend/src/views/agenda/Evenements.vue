@@ -1,5 +1,5 @@
 <template>
-	<section class="flex flex-col gap-4 rounded-2xl bg-surface-0 p-5 shadow-sm dark:bg-surface-900 dark:shadow-none dark:ring-1 dark:ring-surface-700">
+	<section class="flex flex-col ml-6 gap-4 rounded-2xl bg-surface-0 p-5 shadow-sm dark:bg-surface-900 dark:shadow-none dark:ring-1 dark:ring-surface-700">
 		<Toast ref="toast" />
 		<div data-tour="agenda-events.header" class="flex flex-wrap items-center justify-between gap-4 border-b border-surface-200 pb-3 dark:border-surface-700">
 			<div class="space-y-1">

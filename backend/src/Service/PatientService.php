@@ -49,6 +49,7 @@ class PatientService
         private CashdeskService $cashdeskService,
         private FicheMedicaleService $ficheMedicaleService,
         private SmsService $smsService,
+        private GlobalSettingsService $globalSettingsService,
         private CacheInterface $cache,
         private EventDispatcherInterface $eventDispatcher,
     ) {
@@ -461,8 +462,65 @@ class PatientService
     public function createConsultation(array $data, ?User $triggeredBy = null): array
     {
         try {
+            $isMedecinRequired = $this->globalSettingsService->isMedecinRequiredOnConsultationCreation();
+            if ($isMedecinRequired && empty($data['medecin_id'])) {
+                return [
+                    'error' => 'Le médecin est requis pour créer la consultation.',
+                    'status' => 400,
+                ];
+            }
+
             if (($data['payant'] ?? 0) == 1) {
-                if (!isset($data['mode_paiement_id'])) {
+                $insuranceEnabled = (bool) (($data['insurance_enabled'] ?? $data['insuranceEnabled'] ?? 0) == 1);
+                $consultationAmount = (float) ($data['consultation_amount'] ?? 5000);
+                if ($consultationAmount <= 0) {
+                    $consultationAmount = 5000;
+                }
+
+                $insuranceRate = max(0, min(100, (float) ($data['insurance_rate'] ?? $data['insuranceRate'] ?? 0)));
+                $insuranceAmount = (float) ($data['insurance_amount'] ?? $data['insuranceAmount'] ?? 0);
+
+                $insuranceModeId = (int) ($data['insurance_mode_id'] ?? $data['insuranceModeId'] ?? 0);
+                $insuranceMode = null;
+                if ($insuranceEnabled) {
+                    $insuranceMode = $this->em->getRepository(ModeDePaiement::class)->find($insuranceModeId);
+                    if (!$insuranceMode) {
+                        return [
+                            'error' => 'Mode assurance invalide.',
+                            'status' => 400,
+                        ];
+                    }
+
+                    if ($insuranceRate <= 0) {
+                        $insuranceRate = max(0, min(100, (float) ($insuranceMode->getCoverageRate() ?? 0)));
+                    }
+                }
+
+                if ($insuranceEnabled && $insuranceAmount <= 0 && $insuranceRate > 0) {
+                    $insuranceAmount = ($consultationAmount * $insuranceRate) / 100;
+                }
+
+                $patientAmount = (float) ($data['patient_amount'] ?? $data['patientAmount'] ?? $consultationAmount);
+
+                if ($insuranceEnabled && $insuranceAmount <= 0 && $patientAmount > 0 && $patientAmount < $consultationAmount) {
+                    $insuranceAmount = $consultationAmount - $patientAmount;
+                }
+
+                if ($insuranceEnabled) {
+                    $patientAmount = $consultationAmount - $insuranceAmount;
+                }
+
+                $insuranceAmount = max(0, min($consultationAmount, $insuranceAmount));
+                $patientAmount = max(0, min($consultationAmount - $insuranceAmount, $patientAmount));
+
+                if ($insuranceEnabled && $insuranceAmount <= 0) {
+                    return [
+                        'error' => 'Le mode assurance et le montant assurance sont requis.',
+                        'status' => 400,
+                    ];
+                }
+
+                if ($patientAmount > 0 && !isset($data['mode_paiement_id'])) {
                     return [
                         'error' => 'Le mode de paiement est requis pour une consultation payante.',
                         'status' => 400,
@@ -470,33 +528,73 @@ class PatientService
                 }
 
                 $consultation = $this->consultationRepo->NewConsultation($data, $this->patientRepo, $this->employeRepo);
-                $modePaiement = $this->em->getRepository(ModeDePaiement::class)->find($data['mode_paiement_id']);
+                $createdPaiementId = null;
+                $timestamp = new DateTime();
 
-                if (!$modePaiement) {
-                    return [
-                        'error' => 'Mode de paiement invalide.',
-                        'status' => 400,
-                    ];
+                if ($patientAmount > 0) {
+                    $modePaiement = $this->em->getRepository(ModeDePaiement::class)->find($data['mode_paiement_id']);
+
+                    if (!$modePaiement) {
+                        return [
+                            'error' => 'Mode de paiement invalide.',
+                            'status' => 400,
+                        ];
+                    }
+
+                    $paiement = new PaiementDevis();
+                    $paiement->setDevis(null);
+                    $paiement->setMode($modePaiement);
+                    $paiement->setMontant($patientAmount);
+                    $paiement->setDate($timestamp);
+                    $paiement->setConsultation($consultation);
+                    $paiement->setRolePaiement('patient');
+                    $this->em->persist($paiement);
+
+                    $transaction = new Transaction();
+                    $transaction->setType('Entrée');
+                    $transaction->setMontant($patientAmount);
+                    $transaction->setDateTransaction($timestamp);
+                    $transaction->setDescription('Ticket de consultation #' . $consultation->getId() . ' | Part patient');
+                    $transaction->setModeDePaiement($modePaiement);
+                    $transaction->setConsultation($consultation);
+                    $transaction->setRolePaiement('patient');
+                    $transaction->markValidated();
+                    $transaction->setPaiementDevis($paiement);
+                    $this->em->persist($transaction);
                 }
 
-                $paiement = new PaiementDevis();
-                $paiement->setDevis(null);
-                $paiement->setMode($modePaiement);
-                $paiement->setMontant(5000);
-                $paiement->setDate(new DateTime());
-                $paiement->setConsultation($consultation);
-                $this->em->persist($paiement);
+                if ($insuranceEnabled && $insuranceAmount > 0) {
+                    $insuranceTx = new Transaction();
+                    $insuranceTx->setType('Entrée');
+                    $insuranceTx->setMontant($insuranceAmount);
+                    $insuranceTx->setDateTransaction($timestamp);
+                    $insuranceTx->setDescription('Ticket de consultation #' . $consultation->getId() . ' | Part assurance');
+                    $insuranceTx->setModeDePaiement($insuranceMode);
+                    $insuranceTx->setConsultation($consultation);
+                    $insuranceTx->setRolePaiement('insurance');
+                    $insuranceTx->setTauxPriseEnCharge($insuranceRate > 0 ? $insuranceRate : null);
+                    $insuranceTx->markPending();
+                    $this->em->persist($insuranceTx);
 
-                $transaction = new Transaction();
-                $transaction->setType('Entrée');
-                $transaction->setMontant(5000);
-                $transaction->setDateTransaction(new DateTime());
-                $transaction->setDescription('Ticket de consultation #' . $consultation->getId());
-                $transaction->setModeDePaiement($modePaiement);
-                $transaction->setPaiementDevis($paiement);
-                $this->em->persist($transaction);
+                    if ($this->globalSettingsService->isDirectInsurancePaymentEnabled()) {
+                        $insurancePay = new PaiementDevis();
+                        $insurancePay->setDevis(null);
+                        $insurancePay->setMode($insuranceMode);
+                        $insurancePay->setMontant($insuranceAmount);
+                        $insurancePay->setDate($timestamp);
+                        $insurancePay->setConsultation($consultation);
+                        $insurancePay->setRolePaiement('insurance');
+                        $insurancePay->setTauxPriseEnCharge($insuranceRate > 0 ? $insuranceRate : null);
+                        $insuranceTx->setPaiementDevis($insurancePay);
+                        $this->em->persist($insurancePay);
+                    }
+                }
 
                 $this->em->flush();
+
+                if ($consultation->getPaiementDevis()) {
+                    $createdPaiementId = $consultation->getPaiementDevis()->getId();
+                }
 
                 $this->consultationNotificationService->notifyCreation($consultation, $triggeredBy);
 
@@ -504,7 +602,7 @@ class PatientService
                     'success' => true,
                     'status' => 200,
                     'consultation_id' => $consultation->getId(),
-                    'paiement_id' => $paiement->getId(),
+                    'paiement_id' => $createdPaiementId,
                 ];
             }
 

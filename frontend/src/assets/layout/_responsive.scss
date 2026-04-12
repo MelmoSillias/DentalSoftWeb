@@ -40,9 +40,11 @@
         }
 
         &.layout-static {
-            .layout-main-container {
-                margin-left: 22rem;
+            .layout-content {
+                grid-template-columns: 300px 1fr;
             }
+
+            
 
             &.layout-static-inactive {
                 .layout-sidebar {
@@ -50,10 +52,9 @@
                     left: 0;
                 }
 
-                .layout-main-container {
-                    margin-left: 0;
-                    padding-left: 2rem;
-                }
+                .layout-content {
+                    grid-template-columns: 0 1fr;
+                } 
             }
         }
 
@@ -72,6 +73,10 @@
         .layout-main-container {
             margin-left: 0;
             padding-left: 2rem;
+        }
+
+        .layout-content {
+            grid-template-columns: 0 1fr;
         }
 
         .layout-sidebar {
@@ -100,6 +105,9 @@
         &.layout-mobile-active {
             .layout-sidebar {
                 transform: translateX(0);
+                box-shadow: 0px 3px 5px rgba(0, 0, 0, 0.02),
+                    0px 0px 2px rgba(0, 0, 0, 0.05),
+                    0px 1px 4px rgba(0, 0, 0, 0.08);
             }
 
             .layout-mask {

@@ -7,6 +7,7 @@ import {
 } from '@/services/consultationsTourMock';
 import FormCreateConsultation from '@/components/patients/FormCreateConsultation.vue';
 import { cancelConsultation, fetchPendingConsultations } from '@/services/consultations';
+import { fetchPublicGeneralSettings } from '@/services/globalSettingsService';
 import { activatePatientsTourMock, deactivatePatientsTourMock, resetPatientsTourMockData } from '@/services/patientsTourMock';
 import { useAuthStore } from '@/stores/auth';
 import { GUIDED_TOUR_START_EVENT } from '@/tours';
@@ -39,6 +40,7 @@ const quickDialogVisible = ref(false);
 const quickDialogConsultation = ref(null);
 const quickDialogActionMode = ref('continue');
 const isGuidedTourStarting = ref(false);
+const allowReceptionQuickClose = ref(true);
 let guidedTourPageState = null;
 let guidedTourDemoActive = false;
 let guidedTourCleanupPromise = null;
@@ -55,7 +57,18 @@ const loadPending = async () => {
     }
 };
 
+const loadQuickClosePolicy = async () => {
+    try {
+        const settings = await fetchPublicGeneralSettings(token);
+        allowReceptionQuickClose.value = settings?.allowReceptionQuickCloseConsultation !== false;
+    } catch (error) {
+        console.error('Erreur chargement politique de clôturation rapide', error);
+        allowReceptionQuickClose.value = true;
+    }
+};
+
 onMounted(() => {
+    loadQuickClosePolicy();
     loadPending();
     window.addEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
 });
@@ -127,6 +140,8 @@ const patientHasFiche = (consultation) => Boolean(consultation.hasFiche || consu
 const isClosed = (consultation) => Number(consultation?.state) === 1;
 const isAdmin = computed(() => Boolean(auth.user?.roles?.includes('ROLE_ADMIN')));
 const isMedecin = computed(() => Boolean(auth.user?.roles?.includes('ROLE_MEDECIN')));
+const isReception = computed(() => Boolean(auth.user?.roles?.includes('ROLE_RECEPTION') || auth.user?.roles?.includes('ROLE_RECEPTIONNISTE')));
+const canUseQuickActions = computed(() => !isReception.value || allowReceptionQuickClose.value);
 
 const medecinLabel = (consultation) => {
     const value = consultation?.medecin;
@@ -458,7 +473,7 @@ function getBorderColor(index) {
 </script>
 
 <template>
-    <div class="mb-6 md:mb-8">
+    <div class="m-6 md:mb-8">
         <!-- Stats Card -->
         <div data-tour="consultations-cards.stats" class="bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-900/20 dark:to-amber-800/20 rounded-2xl p-5 border border-amber-200/50 dark:border-amber-800/50 mb-6">
             <div class="flex items-center justify-between">
@@ -631,6 +646,7 @@ function getBorderColor(index) {
                     <div class="mt-auto p-4 border-t border-surface-100 dark:border-surface-700/50 bg-surface-50/50 dark:bg-surface-800/30">
                         <div class="flex flex-wrap gap-2">
                             <Button
+                                v-if="canUseQuickActions"
                                 :data-tour="idx === 0 ? 'consultations-cards.quick-actions' : null"
                                 icon="pi pi-bolt"
                                 label="Actions rapides"
@@ -641,7 +657,7 @@ function getBorderColor(index) {
                                 :disabled="isClosed(consultation)"
                                 @click="toggleQuickActions($event, consultation)"
                             />
-                            <Menu :ref="(el) => setQuickMenuRef(consultation.id, el)" :model="quickActionItems(consultation)" popup>
+                            <Menu v-if="canUseQuickActions" :ref="(el) => setQuickMenuRef(consultation.id, el)" :model="quickActionItems(consultation)" popup>
                                 <template #start>
                                     <div class="px-3 pt-3 pb-2 text-xs font-semibold uppercase tracking-wide text-surface-500">
                                         Actions rapides
@@ -736,6 +752,7 @@ function getBorderColor(index) {
     <ConfirmPopup />
 
     <QuickClotureConsultationDialog
+        v-if="canUseQuickActions"
         v-model:visible="quickDialogVisible"
         :consultation="quickDialogConsultation"
         :action-mode="quickDialogActionMode"

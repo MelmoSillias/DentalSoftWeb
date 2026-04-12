@@ -14,6 +14,7 @@ import AllergyDialogForm from '@/components/patients/AllergyDialogForm.vue';
 import AntecedentDialogForm from '@/components/patients/AntecedentDialogForm.vue';
 import { usePrinter } from '@/composables/usePrinter';
 import { setConsultationFiche } from '@/services/consultations';
+import { fetchPublicGeneralSettings } from '@/services/globalSettingsService';
 import { addPatientAllergy, addPatientAntecedent, deletePatientAllergy, deletePatientAntecedent } from '@/services/patients';
 import {
     closeConsultation,
@@ -87,6 +88,7 @@ const isIndicatorFloating = ref(false);
 const allowRouteLeaveAfterCloture = ref(false);
 let autosaveTimer = null;
 let ignoreNextDirty = false;
+const isMedecinOptionalOnCreation = ref(false);
 
 const displayModeOptions = [
     { label: 'Onglets', value: 'tabs' },
@@ -324,6 +326,16 @@ const loadReferenceData = async () => {
     }
 };
 
+const loadConsultationPolicy = async () => {
+    try {
+        const settings = await fetchPublicGeneralSettings(token);
+        isMedecinOptionalOnCreation.value = settings?.requireMedecinOnConsultationCreation === false;
+    } catch (error) {
+        console.error('Erreur chargement politique consultation', error);
+        isMedecinOptionalOnCreation.value = false;
+    }
+};
+
 const ensureFicheLinked = async () => {
     if (!consultId.value) return null;
 
@@ -357,11 +369,12 @@ const loadData = async () => {
 
         const [_, res] = await Promise.all([
             loadReferenceData(),
+            loadConsultationPolicy(),
             loadConsultationForm(ficheId.value, consultId.value, token)
         ]);
         ignoreNextDirty = true;
         hydrateFromResponse(res);
-        if (isMedecinUser.value && !data.consultation.medecinId) {
+        if (isMedecinOptionalOnCreation.value && isMedecinUser.value && !data.consultation.medecinId) {
             const fallbackMedecinId = resolveConnectedMedecinId();
             if (fallbackMedecinId) {
                 data.consultation = { ...data.consultation, medecinId: fallbackMedecinId };

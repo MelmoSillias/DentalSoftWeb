@@ -821,8 +821,7 @@ onBeforeUnmount(() => {
 <template>
 	<div class="page-shell">
 		<div class="flex flex-wrap items-center justify-between gap-3 mb-4">
-			<div>
-				<p class="eyebrow">Caisse</p>
+			<div> 
 				<h1 class="text-2xl font-semibold mb-1">Gestion de la caisse</h1>
 				<p class="muted">Suivi des factures et paiements avec PrimeVue.</p>
 			</div>

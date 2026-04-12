@@ -8,6 +8,7 @@ use App\Entity\FicheMedicale;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 
 #[Route('/api/fiches/{ficheId}/consultations/{consultationId}', name: 'api_fiche_consultation_')]
@@ -15,10 +16,20 @@ class FicheConsultationController extends AbstractController
 {
     public function __construct(private ConsultationService $consultationService, private FicheMedicaleService $ficheMedicaleService) {}
 
+    private function restrictToConnectedMedecin(): bool
+    {
+        return $this->isGranted('ROLE_MEDECIN') && !$this->isGranted('ROLE_ADMIN');
+    }
+
     #[Route('/json', name: 'json', methods: ['GET'])]
     public function getJson(int $ficheId, int $consultationId): JsonResponse
     {
-        [$fiche, $consult] = $this->consultationService->getFicheAndConsultation($ficheId, $consultationId);
+        [$fiche, $consult] = $this->consultationService->getFicheAndConsultation(
+            $ficheId,
+            $consultationId,
+            $this->getUser(),
+            $this->restrictToConnectedMedecin(),
+        );
 
         if ($fiche instanceof FicheMedicale) {
             $ficheData = $this->ficheMedicaleService->getFicheJson($ficheId);
@@ -44,7 +55,12 @@ class FicheConsultationController extends AbstractController
     public function updateMotif(Request $request, int $ficheId, int $consultationId): JsonResponse
     {
         $data = json_decode($request->getContent(), true) ?? [];
-        [$fiche, ] = $this->consultationService->getFicheAndConsultation($ficheId, $consultationId);
+        [$fiche, ] = $this->consultationService->getFicheAndConsultation(
+            $ficheId,
+            $consultationId,
+            $this->getUser(),
+            $this->restrictToConnectedMedecin(),
+        );
 
         if ($fiche instanceof FicheMedicale) {
             $this->ficheMedicaleService->updateEntretien($ficheId, $data);
@@ -58,7 +74,12 @@ class FicheConsultationController extends AbstractController
     public function updateExamens(Request $request, int $ficheId, int $consultationId): JsonResponse
     {
         $data = json_decode($request->getContent(), true) ?? [];
-        [$fiche, ] = $this->consultationService->getFicheAndConsultation($ficheId, $consultationId);
+        [$fiche, ] = $this->consultationService->getFicheAndConsultation(
+            $ficheId,
+            $consultationId,
+            $this->getUser(),
+            $this->restrictToConnectedMedecin(),
+        );
 
         if ($fiche instanceof FicheMedicale) {
             $this->ficheMedicaleService->updateExamens($ficheId, $data);
@@ -73,7 +94,12 @@ class FicheConsultationController extends AbstractController
     {
         $data  = json_decode($request->get('data'), true) ?? [];
         $files = $request->files->get('documentsFiles', []);
-        [$fiche, ] = $this->consultationService->getFicheAndConsultation($ficheId, $consultationId);
+        [$fiche, ] = $this->consultationService->getFicheAndConsultation(
+            $ficheId,
+            $consultationId,
+            $this->getUser(),
+            $this->restrictToConnectedMedecin(),
+        );
 
         if ($fiche instanceof FicheMedicale) {
             $this->ficheMedicaleService->updateDocuments($ficheId, $data, $files ?: []);
@@ -87,7 +113,12 @@ class FicheConsultationController extends AbstractController
     public function updateDevis(Request $request, int $ficheId, int $consultationId): JsonResponse
     {
         $data = json_decode($request->getContent(), true) ?? [];
-        [$fiche, ] = $this->consultationService->getFicheAndConsultation($ficheId, $consultationId);
+        [$fiche, ] = $this->consultationService->getFicheAndConsultation(
+            $ficheId,
+            $consultationId,
+            $this->getUser(),
+            $this->restrictToConnectedMedecin(),
+        );
 
         if ($fiche instanceof FicheMedicale) {
             $this->ficheMedicaleService->updateDevis($ficheId, $data);
@@ -103,7 +134,15 @@ class FicheConsultationController extends AbstractController
         $data = json_decode($request->getContent(), true) ?? [];
         try {
             // updateConsultation now supports both fiche types via service
-            $this->consultationService->updateConsultation($ficheId, $consultationId, $data);
+            $this->consultationService->updateConsultation(
+                $ficheId,
+                $consultationId,
+                $data,
+                $this->getUser(),
+                $this->restrictToConnectedMedecin(),
+            );
+        } catch (ConflictHttpException $e) {
+            return new JsonResponse(['error' => $e->getMessage()], 409);
         } catch (\InvalidArgumentException $e) {
             return new JsonResponse(['error' => $e->getMessage()], 400);
         }
@@ -115,7 +154,14 @@ class FicheConsultationController extends AbstractController
     {
         try {
             // clotureConsultation will handle both fiche types
-            $this->consultationService->clotureConsultation($ficheId, $consultationId);
+            $this->consultationService->clotureConsultation(
+                $ficheId,
+                $consultationId,
+                $this->getUser(),
+                $this->restrictToConnectedMedecin(),
+            );
+        } catch (ConflictHttpException $e) {
+            return new JsonResponse(['error' => $e->getMessage()], 409);
         } catch (\InvalidArgumentException $e) {
             return new JsonResponse(['error' => $e->getMessage()], 400);
         }

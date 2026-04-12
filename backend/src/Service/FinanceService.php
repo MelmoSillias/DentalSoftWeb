@@ -3,6 +3,7 @@
 namespace App\Service;
 
 use App\Entity\ModeDePaiement;
+use App\Entity\PaiementDevis;
 use App\Entity\Transaction;
 use App\Repository\ModeDePaiementRepository;
 use App\Repository\TransactionRepository;
@@ -409,6 +410,30 @@ class FinanceService
         if ($status === 'validated') {
             $transaction->markValidated();
             $transaction->setValidationComment(null);
+
+            if (
+                $transaction->getPaiementDevis() === null
+                && $transaction->getType() === 'Entrée'
+                && $transaction->getRolePaiement() === 'insurance'
+            ) {
+                $paiement = new PaiementDevis();
+                $paiement->setMode($transaction->getModeDePaiement());
+                $paiement->setMontant((float) ($transaction->getMontant() ?? 0));
+                $paiement->setDate($transaction->getDateTransaction() ?? new \DateTime());
+                $paiement->setRolePaiement($transaction->getRolePaiement());
+                $paiement->setTauxPriseEnCharge($transaction->getTauxPriseEnCharge());
+
+                if ($transaction->getDevis()) {
+                    $paiement->setDevis($transaction->getDevis());
+                }
+
+                if ($transaction->getConsultation()) {
+                    $paiement->setConsultation($transaction->getConsultation());
+                }
+
+                $transaction->setPaiementDevis($paiement);
+                $this->em->persist($paiement);
+            }
         } elseif ($status === 'rejected') {
             $transaction->markRejected($comment);
         } else {

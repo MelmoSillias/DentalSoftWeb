@@ -16,6 +16,7 @@ import FichePlanTraitementForm from '@/components/fiche-medicale/FichePlanTraite
 import SeancesSection from '@/components/fiche-medicale/SeancesSection.vue';
 import { useConsultationsForm } from '@/composables/useConsultationsForm';
 import { usePrinter } from '@/composables/usePrinter';
+import { fetchPublicGeneralSettings } from '@/services/globalSettingsService';
 import { addPatientAllergy, addPatientAntecedent, deletePatientAllergy, deletePatientAntecedent } from '@/services/patients';
 import { fetchOrdonnancePrintData } from '@/services/printService';
 import { useAuthStore } from '@/stores/auth';
@@ -79,6 +80,7 @@ const savingAllergy = ref(false);
 const isIndicatorFloating = ref(false);
 const allowRouteLeaveAfterCloture = ref(false);
 const isGuidedTourStarting = ref(false);
+const isMedecinOptionalOnCreation = ref(false);
 
 const displayModeOptions = [
     { label: 'Onglets', value: 'tabs' },
@@ -155,6 +157,16 @@ const isMedecinUser = computed(() => Boolean(auth.user?.roles?.includes('ROLE_ME
 const hasUnsavedChanges = computed(() => dirtySectionsList.value.length > 0);
 
 const isClosedConsultationError = (error) => Number(error?.response?.status) === 409;
+
+const loadConsultationPolicy = async () => {
+    try {
+        const settings = await fetchPublicGeneralSettings(token);
+        isMedecinOptionalOnCreation.value = settings?.requireMedecinOnConsultationCreation === false;
+    } catch (error) {
+        console.error('Erreur chargement politique consultation', error);
+        isMedecinOptionalOnCreation.value = false;
+    }
+};
 
 const redirectClosedConsultation = () => {
     Object.keys(dirty).forEach((key) => {
@@ -642,7 +654,7 @@ onBeforeRouteLeave(async () => {
 onMounted(async () => {
     try {
         pageLoading.value = true;
-        await loadData();
+        await Promise.all([loadData(), loadConsultationPolicy()]);
         useLayout().toggleMenu()
     } catch (error) {
         if (isClosedConsultationError(error)) {
@@ -661,8 +673,9 @@ onMounted(async () => {
 });
 
 watch(
-    () => [isMedecinUser.value, data.consultation?.medecinId, medecinsOptions.value.length],
+    () => [isMedecinUser.value, isMedecinOptionalOnCreation.value, data.consultation?.medecinId, medecinsOptions.value.length],
     () => {
+        if (!isMedecinOptionalOnCreation.value) return;
         if (!isMedecinUser.value) return;
         if (data.consultation?.medecinId) return;
         const fallbackMedecinId = resolveConnectedMedecinId();

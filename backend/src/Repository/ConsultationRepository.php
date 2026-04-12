@@ -19,11 +19,15 @@ class ConsultationRepository extends ServiceEntityRepository
         $entityManager = $this->getEntityManager();
         
         // Récupération des entités
-        $medecin = $empRepo->find($data['medecin_id']);
+        $medecin = !empty($data['medecin_id']) ? $empRepo->find($data['medecin_id']) : null;
         $patient = $patientRepo->find($data['patient_id']);
         
-        if (!$medecin || !$patient) {
-            throw new \Exception('Médecin ou patient introuvable');
+        if (!$patient) {
+            throw new \Exception('Patient introuvable');
+        }
+
+        if (!empty($data['medecin_id']) && !$medecin) {
+            throw new \Exception('Médecin introuvable');
         }
         // Création de la nouvelle consultation
         $consultation = new Consultation();

@@ -20,6 +20,7 @@ class UserDeviceService
         private EntityManagerInterface $em,
         private NotificationService $notificationService,
         private NotificationRecipientResolver $recipientResolver,
+        private GlobalSettingsService $globalSettingsService,
         private int $maxDevicesPerUser = 2,
     ) {
     }
@@ -68,8 +69,10 @@ class UserDeviceService
         $now = new \DateTimeImmutable();
 
         if (!$device) {
+            $autoApproveEnabled = $this->globalSettingsService->isAutoApproveDevicesEnabled();
             $isBootstrapAdminDevice = in_array('ROLE_ADMIN', $user->getRoles(), true)
                 && $this->userDeviceRepo->countApprovedByUser($user) === 0;
+            $shouldAutoApprove = $autoApproveEnabled || $isBootstrapAdminDevice;
 
             $device = (new UserDevice())
                 ->setUser($user)
@@ -80,18 +83,18 @@ class UserDeviceService
                 ->setIpAddress($context['ip'])
                 ->setRequestedAt($now)
                 ->setLastSeenAt($now)
-                ->setStatus($isBootstrapAdminDevice ? UserDevice::STATUS_APPROVED : UserDevice::STATUS_PENDING)
-                ->setValidatedAt($isBootstrapAdminDevice ? $now : null);
+                ->setStatus($shouldAutoApprove ? UserDevice::STATUS_APPROVED : UserDevice::STATUS_PENDING)
+                ->setValidatedAt($shouldAutoApprove ? $now : null);
 
             $this->em->persist($device);
-            $this->logAccess($user, $device, $request, $isBootstrapAdminDevice ? 'allowed' : UserDevice::STATUS_PENDING);
+            $this->logAccess($user, $device, $request, $shouldAutoApprove ? 'allowed' : UserDevice::STATUS_PENDING);
             $this->em->flush();
 
-            if (!$isBootstrapAdminDevice) {
+            if (!$shouldAutoApprove) {
                 $this->notifyNewDeviceRequest($user, $device);
             }
 
-            if ($isBootstrapAdminDevice) {
+            if ($shouldAutoApprove) {
                 return [
                     'allowed' => true,
                     'code' => 200,

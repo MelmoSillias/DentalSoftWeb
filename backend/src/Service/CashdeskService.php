@@ -20,6 +20,7 @@ class CashdeskService
         private PaiementDevisRepository $paiementRepo,
         private ModeDePaiementRepository $modeRepo,
         private EntityManagerInterface $em,
+        private GlobalSettingsService $globalSettingsService,
     ) {
     }
 
@@ -329,28 +330,28 @@ class CashdeskService
         // ];
     }
 
-    public function payerDevis(int $id, int $modeId, float $montant, ?string $date = null, ?string $time = null): array
+    public function payerDevis(int $id, array $payload = []): array
     {
         $devis = $this->devisRepo->find($id);
         if (!$devis) {
             return ['error' => 'Devis introuvable'];
         }
 
+        $modeId = (int) ($payload['modeId'] ?? 0);
+        $montant = (float) ($payload['montant'] ?? 0);
+        $date = $payload['date'] ?? null;
+        $time = $payload['time'] ?? null;
+        $insuranceEnabled = (bool) (($payload['insurance_enabled'] ?? $payload['insuranceEnabled'] ?? 0) == 1);
+        $insuranceModeId = (int) ($payload['insurance_mode_id'] ?? $payload['insuranceModeId'] ?? 0);
+        $insuranceRate = max(0, min(100, (float) ($payload['insurance_rate'] ?? $payload['insuranceRate'] ?? 0)));
+        $insuranceAmountInput = (float) ($payload['insurance_amount'] ?? $payload['insuranceAmount'] ?? 0);
+        $patientAmountInput = (float) ($payload['patient_amount'] ?? $payload['patientAmount'] ?? $montant);
+
         if ($devis->getReste() <= 0) {
             $devis->setStatut(1);
             $this->em->flush();
             return ['success' => true];
         }
-
-        $mode = $this->modeRepo->find($modeId);
-        if (!$mode || $montant <= 0 || $montant > $devis->getReste()) {
-            return ['error' => 'Données invalides'];
-        }
-
-        $paiement = new PaiementDevis();
-        $paiement->setDevis($devis);
-        $paiement->setMode($mode);
-        $paiement->setMontant($montant);
 
         $timestamp = new \DateTime();
         if (!empty($date) && !empty($time)) {
@@ -361,28 +362,136 @@ class CashdeskService
             }
         }
 
-        $paiement->setDate($timestamp);
+        $createdPayment = null;
+        $totalRemaining = (float) $devis->getReste();
 
-        $devis->setReste($devis->getReste() - $montant);
+        if ($insuranceEnabled) {
+            $insuranceMode = $this->modeRepo->find($insuranceModeId);
+            if (!$insuranceMode) {
+                return ['error' => 'Données invalides'];
+            }
+
+            if ($insuranceRate <= 0) {
+                $insuranceRate = max(0, min(100, (float) ($insuranceMode->getCoverageRate() ?? 0)));
+            }
+
+            $insuranceAmount = $insuranceAmountInput;
+            if ($insuranceAmount <= 0 && $insuranceRate > 0) {
+                $insuranceAmount = ($totalRemaining * $insuranceRate) / 100;
+            }
+
+            if ($insuranceAmount <= 0 && $patientAmountInput > 0 && $patientAmountInput < $totalRemaining) {
+                $insuranceAmount = $totalRemaining - $patientAmountInput;
+            }
+
+            $insuranceAmount = max(0, min($totalRemaining, $insuranceAmount));
+
+            $patientAmount = $patientAmountInput;
+            if ($patientAmount <= 0) {
+                $patientAmount = $totalRemaining - $insuranceAmount;
+            }
+            $patientAmount = max(0, min($totalRemaining - $insuranceAmount, $patientAmount));
+
+            if (($patientAmount + $insuranceAmount) <= 0 || ($patientAmount + $insuranceAmount) > $totalRemaining) {
+                return ['error' => 'Données invalides'];
+            }
+
+            if ($patientAmount > 0) {
+                $modePatient = $this->modeRepo->find($modeId);
+                if (!$modePatient) {
+                    return ['error' => 'Données invalides'];
+                }
+
+                $paiementPatient = new PaiementDevis();
+                $paiementPatient->setDevis($devis);
+                $paiementPatient->setMode($modePatient);
+                $paiementPatient->setMontant($patientAmount);
+                $paiementPatient->setDate($timestamp);
+                $paiementPatient->setRolePaiement('patient');
+
+                $txPatient = new Transaction();
+                $txPatient->setType('Entrée');
+                $txPatient->setMontant($patientAmount);
+                $txPatient->setDateTransaction($timestamp);
+                $txPatient->setDescription('Paiement de la facture | Devis #' . $devis->getId() . ' | Part patient');
+                $txPatient->setModeDePaiement($modePatient);
+                $txPatient->setDevis($devis);
+                $txPatient->setRolePaiement('patient');
+                $txPatient->markValidated();
+                $txPatient->setPaiementDevis($paiementPatient);
+
+                $this->em->persist($txPatient);
+                $this->em->persist($paiementPatient);
+                $createdPayment = $paiementPatient;
+            }
+
+            if ($insuranceAmount > 0) {
+                $txInsurance = new Transaction();
+                $txInsurance->setType('Entrée');
+                $txInsurance->setMontant($insuranceAmount);
+                $txInsurance->setDateTransaction($timestamp);
+                $txInsurance->setDescription('Paiement de la facture | Devis #' . $devis->getId() . ' | Part assurance');
+                $txInsurance->setModeDePaiement($insuranceMode);
+                $txInsurance->setDevis($devis);
+                $txInsurance->setRolePaiement('insurance');
+                $txInsurance->setTauxPriseEnCharge($insuranceRate > 0 ? $insuranceRate : null);
+                $txInsurance->markPending();
+
+                if ($this->globalSettingsService->isDirectInsurancePaymentEnabled()) {
+                    $payInsurance = new PaiementDevis();
+                    $payInsurance->setDevis($devis);
+                    $payInsurance->setMode($insuranceMode);
+                    $payInsurance->setMontant($insuranceAmount);
+                    $payInsurance->setDate($timestamp);
+                    $payInsurance->setRolePaiement('insurance');
+                    $payInsurance->setTauxPriseEnCharge($insuranceRate > 0 ? $insuranceRate : null);
+                    $txInsurance->setPaiementDevis($payInsurance);
+                    $this->em->persist($payInsurance);
+                    if ($createdPayment === null) {
+                        $createdPayment = $payInsurance;
+                    }
+                }
+
+                $this->em->persist($txInsurance);
+            }
+
+            $devis->setReste($devis->getReste() - ($patientAmount + $insuranceAmount));
+        } else {
+            $mode = $this->modeRepo->find($modeId);
+            if (!$mode || $montant <= 0 || $montant > $devis->getReste()) {
+                return ['error' => 'Données invalides'];
+            }
+
+            $paiement = new PaiementDevis();
+            $paiement->setDevis($devis);
+            $paiement->setMode($mode);
+            $paiement->setMontant($montant);
+            $paiement->setDate($timestamp);
+
+            $devis->setReste($devis->getReste() - $montant);
+
+            $transaction = new Transaction();
+            $transaction->setType('Entrée');
+            $transaction->setMontant($paiement->getMontant());
+            $transaction->setDateTransaction($timestamp);
+            $transaction->setDescription('Paiement de la facture | Devis #' . $devis->getId());
+            $transaction->setModeDePaiement($mode);
+            $transaction->setPaiementDevis($paiement);
+
+            $this->em->persist($transaction);
+            $this->em->persist($paiement);
+            $createdPayment = $paiement;
+        }
+
         if ($devis->getReste() <= 0) {
             $devis->setReste(0);
             $devis->setStatut(1);
         }
 
-        $transaction = new Transaction();
-        $transaction->setType('Entrée');
-        $transaction->setMontant($paiement->getMontant());
-        $transaction->setDateTransaction($timestamp);
-        $transaction->setDescription('Paiement de la facture | Devis #' . $devis->getId());
-        $transaction->setModeDePaiement($mode);
-        $transaction->setPaiementDevis($paiement);
-
-        $this->em->persist($transaction);
-        $this->em->persist($paiement);
         $this->em->persist($devis);
         $this->em->flush();
 
-        return ['success' => true, 'paiement_id' => $paiement->getId()];
+        return ['success' => true, 'paiement_id' => $createdPayment?->getId()];
     }
 
     public function paiementsForPeriod(DateTimeInterface $start, DateTimeInterface $end): array

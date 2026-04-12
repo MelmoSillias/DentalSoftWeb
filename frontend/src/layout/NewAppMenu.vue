@@ -14,6 +14,19 @@ const isAdmin = computed(() => hasRole('ROLE_ADMIN'));
 const isMedecin = computed(() => hasRole('ROLE_MEDECIN'));
 const isReception = computed(() => hasRole('ROLE_RECEPTION'));
 
+/*
+    Nouvelle Structure Items de Menu 
+
+    sections : {
+        label: 'Section',   
+        items: [
+            { label: 'Item 1', icon: 'pi pi-fw pi-icon', to: '/route1' },
+            { label: 'Item 2', icon: 'pi pi-fw pi-icon', to: '/route2' },
+        ] 
+    }
+
+*/
+
 // Menu de base
 const baseModel = ref([
     {
@@ -122,8 +135,7 @@ const model = computed(() => {
 <template>
     <ul class="layout-menu">
         <template v-for="(item, i) in model" :key="i">
-            <app-menu-item v-if="!item.separator" :item="item" :index="i"></app-menu-item>
-            <li v-if="item.separator" class="menu-separator"></li>
+           
         </template>
     </ul>
 </template>

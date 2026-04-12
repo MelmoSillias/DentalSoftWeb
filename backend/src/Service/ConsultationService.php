@@ -60,6 +60,36 @@ class ConsultationService
         return $this->employeRepo->findOneBy(['user' => $user]);
     }
 
+    private function isMedecinUser(?object $user): bool
+    {
+        return $user instanceof User && in_array('ROLE_MEDECIN', $user->getRoles(), true);
+    }
+
+    private function enforceMedecinOwnership(Consultation $consultation, ?object $user, bool $restrictToMedecin): ?Employe
+    {
+        if (!$restrictToMedecin || !$this->isMedecinUser($user)) {
+            return null;
+        }
+
+        $actorMedecin = $this->getMedecinForUser($user);
+        if (!$actorMedecin) {
+            throw new ConflictHttpException('Aucun médecin lié à ce compte.');
+        }
+
+        $currentMedecin = $consultation->getMedecin();
+        if ($currentMedecin && $currentMedecin->getId() !== $actorMedecin->getId()) {
+            throw new ConflictHttpException('Cette consultation est déjà prise en charge par un autre médecin.');
+        }
+
+        if (!$currentMedecin) {
+            $consultation->setMedecin($actorMedecin);
+            $this->em->persist($consultation);
+            $this->em->flush();
+        }
+
+        return $actorMedecin;
+    }
+
     public function verifyConsultationMedecinPassword(int $consultationId, string $plainPassword): bool
     {
         $consultation = $this->consultationRepo->find($consultationId);
@@ -192,12 +222,14 @@ class ConsultationService
         ];
     }
 
-    public function getFicheAndConsultation(int $ficheId, int $consultationId): array
+    public function getFicheAndConsultation(int $ficheId, int $consultationId, ?object $user = null, bool $restrictToMedecin = false): array
     {
         $consultation = $this->em->getRepository(Consultation::class)->find($consultationId);
         if (!$consultation) {
             throw new NotFoundHttpException("Consultation {$consultationId} introuvable");
         }
+
+        $this->enforceMedecinOwnership($consultation, $user, $restrictToMedecin);
 
         $this->ensureConsultationOpen($consultation);
 
@@ -518,12 +550,14 @@ class ConsultationService
         $this->em->flush();
     }
 
-    public function updateConsultation(int $ficheId, int $consultationId, array $data): void
+    public function updateConsultation(int $ficheId, int $consultationId, array $data, ?object $user = null, bool $restrictToMedecin = false): void
     {
-        [, $consultation] = $this->getFicheAndConsultation($ficheId, $consultationId);
+        [, $consultation] = $this->getFicheAndConsultation($ficheId, $consultationId, $user, $restrictToMedecin);
         $this->ensureConsultationOpen($consultation);
 
-        $medecinId = $data['medecinId'] ?? $consultation->getMedecin()?->getId();
+        $actorMedecin = $this->enforceMedecinOwnership($consultation, $user, $restrictToMedecin);
+
+        $medecinId = $actorMedecin?->getId() ?? ($data['medecinId'] ?? $consultation->getMedecin()?->getId());
         if (!$medecinId) {
             throw new \InvalidArgumentException('Le médecin est obligatoire pour enregistrer la consultation.');
         }
@@ -567,10 +601,12 @@ class ConsultationService
         $this->em->flush();
     }
 
-    public function clotureConsultation(int $ficheId, int $consultationId): void
+    public function clotureConsultation(int $ficheId, int $consultationId, ?object $user = null, bool $restrictToMedecin = false): void
     {
-        [$fiche, $consultation] = $this->getFicheAndConsultation($ficheId, $consultationId);
+        [$fiche, $consultation] = $this->getFicheAndConsultation($ficheId, $consultationId, $user, $restrictToMedecin);
         $this->ensureConsultationOpen($consultation);
+
+        $this->enforceMedecinOwnership($consultation, $user, $restrictToMedecin);
 
         if (!$consultation->getMedecin()) {
             throw new \InvalidArgumentException('Le médecin est obligatoire pour clôturer la consultation.');
@@ -780,7 +816,10 @@ class ConsultationService
             if (!$medecin) {
                 return [];
             }
-            $consults = $this->consultationRepo->findPendingConsultationsByMedecin($medecin->getId());
+            $consults = array_values(array_filter(
+                $this->consultationRepo->findPendingConsultations(),
+                fn (Consultation $c) => !$c->getMedecin() || $c->getMedecin()?->getId() === $medecin->getId()
+            ));
         } else {
             $consults = $this->consultationRepo->findBy(['statut' => 0]);
         }
@@ -806,13 +845,15 @@ class ConsultationService
         }, $consults);
     }
 
-    public function linkOrCreateFiche(int $consultationId, ?int $ficheId = null): array
+    public function linkOrCreateFiche(int $consultationId, ?int $ficheId = null, ?object $user = null, bool $restrictToMedecin = false): array
     {
         $consultation = $this->consultationRepo->find($consultationId);
 
         if (!$consultation) {
             throw new NotFoundHttpException('Consultation introuvable');
         }
+
+        $this->enforceMedecinOwnership($consultation, $user, $restrictToMedecin);
 
         $this->ensureConsultationOpen($consultation);
 

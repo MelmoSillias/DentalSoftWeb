@@ -7,6 +7,7 @@ import {
     fetchPaymentMethods,
     normalizePatient
 } from '@/services/patients';
+import { fetchPublicGeneralSettings } from '@/services/globalSettingsService';
 import { fetchTicketPrintData } from '@/services/printService';
 import PrintTicketBody from '@/components/print/PrintTicketBody.vue';
 import { usePrinter } from '@/composables/usePrinter';
@@ -66,6 +67,7 @@ const form = reactive({
 
 const hasActiveConsultation = ref(false);
 const checkingActive = ref(false);
+const requireMedecinOnCreation = ref(true);
 let patientSearchTimeout = null;
 
 const isPatientPreselected = computed(() => Boolean(props.patient?.id || props.patientId));
@@ -112,9 +114,20 @@ onMounted(() => {
     if (!isPatientPreselected.value) {
         loadPatients();
     }
+    loadConsultationCreationPolicy();
     loadMedecins();
     loadPaymentMethods();
 });
+
+const loadConsultationCreationPolicy = async () => {
+    try {
+        const settings = await fetchPublicGeneralSettings(token);
+        requireMedecinOnCreation.value = settings?.requireMedecinOnConsultationCreation !== false;
+    } catch (error) {
+        console.error('Erreur lors du chargement de la politique consultation', error);
+        requireMedecinOnCreation.value = true;
+    }
+};
 
 watch(
     () => [props.patient, props.patientId],
@@ -302,7 +315,7 @@ const saveConsultation = async () => {
         toast.add({ severity: 'warn', summary: 'Consultation active', detail: 'Une consultation est déjà en cours pour ce patient.', life: 3000 });
         return;
     }
-    if (!form.medecinId) {
+    if (requireMedecinOnCreation.value && !form.medecinId) {
         toast.add({ severity: 'warn', summary: 'Médecin requis', detail: 'Sélectionnez un médecin.', life: 2500 });
         return;
     }
@@ -330,7 +343,7 @@ const saveConsultation = async () => {
     try {
         const payload = {
             patient_id: selectedPatientId.value,
-            medecin_id: form.medecinId,
+            medecin_id: form.medecinId || null,
             payant: form.payant ? 1 : 0,
             mode_paiement_id: requiresClassicPayment.value ? form.modePaiementId : null,
             consultation_date: consultationDate,
@@ -405,7 +418,7 @@ const handleSubmit = (event) => {
                 <InputText :value="patientDisplayName" disabled />
             </div>
             <div class="flex flex-col gap-2">
-                <label class="font-semibold">Médecin</label>
+                <label class="font-semibold">Médecin {{ requireMedecinOnCreation ? '' : '(optionnel)' }}</label>
                 <Select v-model="form.medecinId" :options="medecinOptions  || []" optionLabel="label" optionValue="value"
                     placeholder="Choisir un médecin" class="w-full" />
             </div>

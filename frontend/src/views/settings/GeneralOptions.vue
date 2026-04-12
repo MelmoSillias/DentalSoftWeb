@@ -25,6 +25,7 @@ import {
     sendSmsTest,
     testSmsConnection
 } from '@/services/smsService';
+import { fetchGeneralSettings, saveGeneralSettings } from '@/services/globalSettingsService';
 
 const toast = useToast();
 const token = localStorage.getItem('token');
@@ -39,6 +40,7 @@ const sections = [
     { id: 'appearance-presets', label: 'Presets' },
     { id: 'appearance-font-family', label: 'Police' },
     { id: 'appearance-font-size', label: 'Taille texte' },
+    { id: 'general-devices-security', label: 'Securite appareils' },
     { id: 'sms-api', label: 'API SMS' }
 ];
 const activeSection = ref('appearance');
@@ -46,15 +48,25 @@ let observer = null;
 
 const smsLoading = ref(false);
 const smsLoaded = ref(false);
+const generalSettingsLoaded = ref(false);
 const smsTesting = ref(false);
 const smsSendingTest = ref(false);
 const smsSaving = ref(false);
+const devicePolicySaving = ref(false);
 const smsQueueing = ref(false);
 const smsTemplateSaving = ref(false);
+
+const devicePolicy = reactive({
+    autoApproveDevices: true,
+    requireMedecinOnConsultationCreation: true,
+    allowReceptionQuickCloseConsultation: true,
+    paiementDirectAssurance: false
+});
 
 const smsConfig = reactive({
     provider: 'orange',
     enabled: false,
+    autoApproveDevices: true,
     clientId: '',
     clientSecret: '',
     senderName: '',
@@ -125,20 +137,20 @@ const loadSmsData = async () => {
     if (smsLoaded.value || smsLoading.value) return;
     smsLoading.value = true;
     try {
-        const [settings, stats, logs, templates] = await Promise.all([
-            fetchSmsSettings(token),
+        const smsSettings = await fetchSmsSettings(token);
+        smsConfig.provider = smsSettings.provider || 'orange';
+        smsConfig.enabled = Boolean(smsSettings.enabled);
+        smsConfig.clientId = smsSettings.clientId || '';
+        smsConfig.clientSecret = '';
+        smsConfig.senderName = smsSettings.senderName || '';
+        smsConfig.baseUrl = smsSettings.baseUrl || 'https://api.orange.com';
+        smsConfig.oauthUrl = smsSettings.oauthUrl || 'https://api.orange.com/oauth/v3/token';
+
+        const [stats, logs, templates] = await Promise.all([
             fetchSmsStats(token),
             fetchSmsLogs({ limit: 50 }, token),
             fetchSmsTemplates(token)
         ]);
-
-        smsConfig.provider = settings.provider || 'orange';
-        smsConfig.enabled = Boolean(settings.enabled);
-        smsConfig.clientId = settings.clientId || '';
-        smsConfig.clientSecret = '';
-        smsConfig.senderName = settings.senderName || '';
-        smsConfig.baseUrl = settings.baseUrl || 'https://api.orange.com';
-        smsConfig.oauthUrl = settings.oauthUrl || 'https://api.orange.com/oauth/v3/token';
 
         smsStats.balance = stats.balance || smsStats.balance;
         smsStats.dailyConsumption = stats.dailyConsumption || {};
@@ -156,6 +168,23 @@ const loadSmsData = async () => {
         toast.add({ severity: 'error', summary: 'SMS', detail: extractApiError(error, 'Chargement des données SMS impossible.'), life: 3500 });
     } finally {
         smsLoading.value = false;
+    }
+};
+
+const loadGeneralSettings = async () => {
+    if (generalSettingsLoaded.value) return;
+
+    try {
+        const settings = await fetchGeneralSettings(token);
+        devicePolicy.autoApproveDevices = settings.autoApproveDevices !== false;
+        devicePolicy.requireMedecinOnConsultationCreation = settings.requireMedecinOnConsultationCreation !== false;
+        devicePolicy.allowReceptionQuickCloseConsultation = settings.allowReceptionQuickCloseConsultation !== false;
+        devicePolicy.paiementDirectAssurance = settings.paiementDirectAssurance === true;
+
+        generalSettingsLoaded.value = true;
+    } catch (error) {
+        console.error(error);
+        toast.add({ severity: 'error', summary: 'Parametres', detail: extractApiError(error, 'Chargement des paramètres impossible.'), life: 3500 });
     }
 };
 
@@ -181,6 +210,27 @@ const saveSmsConfigAction = async () => {
         toast.add({ severity: 'error', summary: 'SMS', detail: extractApiError(error, 'Sauvegarde impossible.'), life: 3500 });
     } finally {
         smsSaving.value = false;
+    }
+};
+
+const saveDevicePolicyAction = async () => {
+    devicePolicySaving.value = true;
+    try {
+        await saveGeneralSettings(
+            {
+                autoApproveDevices: devicePolicy.autoApproveDevices,
+                requireMedecinOnConsultationCreation: devicePolicy.requireMedecinOnConsultationCreation,
+                allowReceptionQuickCloseConsultation: devicePolicy.allowReceptionQuickCloseConsultation,
+                paiementDirectAssurance: devicePolicy.paiementDirectAssurance
+            },
+            token
+        );
+        toast.add({ severity: 'success', summary: 'Securite appareils', detail: 'Parametre enregistre.', life: 2500 });
+    } catch (error) {
+        console.error(error);
+        toast.add({ severity: 'error', summary: 'Securite appareils', detail: extractApiError(error, 'Sauvegarde impossible.'), life: 3500 });
+    } finally {
+        devicePolicySaving.value = false;
     }
 };
 
@@ -298,6 +348,10 @@ watch(activeSection, (value) => {
     if (value === 'sms-api') {
         loadSmsData();
     }
+
+    if (value === 'general-devices-security') {
+        loadGeneralSettings();
+    }
 });
 
 onMounted(() => {
@@ -319,6 +373,10 @@ onMounted(() => {
 
     if (activeSection.value === 'sms-api') {
         loadSmsData();
+    }
+
+    if (activeSection.value === 'general-devices-security') {
+        loadGeneralSettings();
     }
 
     window.addEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
@@ -519,6 +577,64 @@ onBeforeUnmount(() => {
                     </div>
                     <div class="mt-3 flex justify-end">
                         <Button label="Envoyer SMS manuel" icon="pi pi-send" @click="sendManualSmsAction" />
+                    </div>
+                </div>
+            </section>
+
+            <section id="general-devices-security" class="settings-section">
+                <h2 class="text-xl font-semibold mb-3 section-title"> <i class="pi pi-shield pr-2"></i> Securite appareils</h2>
+                <div class="panel mb-4">
+                    <div class="grid md:grid-cols-1 gap-3 items-end">
+                        <div>
+                            <label class="label">AutoApprove</label>
+                            <SelectButton
+                                v-model="devicePolicy.autoApproveDevices"
+                                :options="[{ label: 'Activé', value: true }, { label: 'Désactivé', value: false }]"
+                                optionLabel="label"
+                                optionValue="value"
+                                :allowEmpty="false"
+                            />
+                            <p class="text-surface-500"><span><i class="pi pi-info-circle"></i></span> Active l'approbation automatique des nouveaux appareils.</p>
+                        </div>
+                        <Divider />
+                        <div>
+                            <label class="label">Médecin requis à la création consultation</label>
+                            <SelectButton
+                                v-model="devicePolicy.requireMedecinOnConsultationCreation"
+                                :options="[{ label: 'Activé', value: true }, { label: 'Désactivé', value: false }]"
+                                optionLabel="label"
+                                optionValue="value"
+                                :allowEmpty="false"
+                            />
+                            <p class="text-surface-500"><span><i class="pi pi-info-circle"></i></span> Si désactivé, la consultation peut être créée sans médecin assigné.</p>
+                        </div>
+                            <Divider />
+                        <div>
+                            <label class="label">Clôture rapide par réceptionniste</label>
+                            <SelectButton
+                                v-model="devicePolicy.allowReceptionQuickCloseConsultation"
+                                :options="[{ label: 'Activé', value: true }, { label: 'Désactivé', value: false }]"
+                                optionLabel="label"
+                                optionValue="value"
+                                :allowEmpty="false"
+                            />
+                            <p class="text-surface-500"><span><i class="pi pi-info-circle"></i></span> Autorise l'option de clôturation rapide côté réception.</p>
+                        </div>
+                        <Divider />
+                        <div>
+                            <label class="label">Paiement direct assurance</label>
+                            <SelectButton
+                                v-model="devicePolicy.paiementDirectAssurance"
+                                :options="[{ label: 'Activé', value: true }, { label: 'Désactivé', value: false }]"
+                                optionLabel="label"
+                                optionValue="value"
+                                :allowEmpty="false"
+                            />
+                            <p class="text-surface-500"><span><i class="pi pi-info-circle"></i></span> Si activé, la part assurance crée un paiement immédiat sans attendre la validation de transaction.</p>
+                        </div>
+                        <div class="flex justify-end">
+                            <Button label="Sauvegarder" icon="pi pi-save" :loading="devicePolicySaving" @click="saveDevicePolicyAction" />
+                        </div>
                     </div>
                 </div>
             </section>

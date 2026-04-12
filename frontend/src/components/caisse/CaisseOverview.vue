@@ -305,7 +305,7 @@ const handlePreview = (row) => emit('preview', row);
 <style scoped>
 .stat-cards {
     position: sticky;
-    top: 5rem;
+    top: 0rem;
     z-index: 10;
 }
 
@@ -318,6 +318,7 @@ const handlePreview = (row) => emit('preview', row);
     color: #0f172a;
     background: linear-gradient(135deg, #f8fafc, #eef2ff);
     border: 1px solid #e2e8f0;
+    backdrop-filter: blur(10px);
 }
  
 
@@ -345,17 +346,17 @@ const handlePreview = (row) => emit('preview', row);
 }
 
 .stat-primary {
-    background: linear-gradient(135deg, #e0f2fe, #eef2ff);
+    background: linear-gradient(135deg, #e0f2fe71, #eef2ff73);
     border-color: #cbd5e1;
 }
 
 .stat-warning {
-    background: linear-gradient(135deg, #fff7ed, #fef3c7);
+    background: linear-gradient(135deg, #fff7ed75, #fef3c771);
     border-color: #fde68a;
 }
 
 .stat-success {
-    background: linear-gradient(135deg, #ecfdf3, #dcfce7);
+    background: linear-gradient(135deg, #ecfdf37e, #dcfce783);
     border-color: #bbf7d0;
 }
 

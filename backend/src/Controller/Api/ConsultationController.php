@@ -8,13 +8,18 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use App\Service\ConsultationService;
+use App\Service\GlobalSettingsService;
 use App\Entity\Consultation;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 
 final class ConsultationController extends AbstractController{
 
-    public function __construct(private ConsultationService $consultationService)
+    public function __construct(
+        private ConsultationService $consultationService,
+        private GlobalSettingsService $globalSettingsService,
+    )
     {
     }
 
@@ -32,9 +37,17 @@ final class ConsultationController extends AbstractController{
         $ficheId = $ficheId !== null ? (int) $ficheId : null;
 
         try {
-            $result = $this->consultationService->linkOrCreateFiche((int) $consultationId, $ficheId);
+            $restrictToMedecin = $this->isGranted('ROLE_MEDECIN') && !$this->isGranted('ROLE_ADMIN');
+            $result = $this->consultationService->linkOrCreateFiche(
+                (int) $consultationId,
+                $ficheId,
+                $this->getUser(),
+                $restrictToMedecin,
+            );
         } catch (NotFoundHttpException $e) {
             return $this->json(['error' => $e->getMessage()], 404);
+        } catch (ConflictHttpException $e) {
+            return $this->json(['error' => $e->getMessage()], 409);
         } catch (\InvalidArgumentException $e) {
             return $this->json(['error' => $e->getMessage()], 400);
         }
@@ -183,6 +196,10 @@ final class ConsultationController extends AbstractController{
     #[Route('/api/consultations/{id}/verify-medecin-password', name: 'api_consultation_verify_medecin_password', methods: ['POST'])]
     public function verifyMedecinPassword(Request $request, int $id): JsonResponse
     {
+        if (!$this->globalSettingsService->isReceptionQuickCloseConsultationAllowed()) {
+            return $this->json(['error' => 'La clôturation rapide est désactivée.'], 403);
+        }
+
         if (!$this->isGranted('ROLE_RECEPTION') && !$this->isGranted('ROLE_RECEPTIONNISTE')) {
             return $this->json(['error' => 'Accès refusé'], 403);
         }

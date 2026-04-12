@@ -1,17 +1,17 @@
 @use 'mixins' as *;
 
-.layout-sidebar {
-    position: fixed;
-    width: 20rem;
-    height: calc(100vh - 8rem);
-    z-index: 999;
+
+.layout-sidebar { 
+    width: 20rem; 
+    z-index: 999; 
+    height: calc(100vh - 4rem);
     overflow-y: auto;
     -moz-user-select: none; 
     -ms-user-select: none;
     -webkit-user-select: none;
-    user-select: none;
-    top: 6rem;
-    left: 2rem;
+    user-select: none; 
+    grid-column-start: 1;
+    grid-column-end: 1; 
     transition:
         transform var(--layout-section-transition-duration),
         left var(--layout-section-transition-duration);
@@ -111,6 +111,7 @@
             li {
                 a {
                     margin-left: 1rem;
+                    border-left: 1px solid gray;
                 }
 
                 li {

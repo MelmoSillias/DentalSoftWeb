@@ -18,6 +18,7 @@ import {
     fetchConsultationsByDate,
     updateConsultationInvoice
 } from '@/services/consultations';
+import { fetchPublicGeneralSettings } from '@/services/globalSettingsService';
 import { activatePatientsTourMock, deactivatePatientsTourMock, resetPatientsTourMockData } from '@/services/patientsTourMock';
 
 import { useAuthStore } from '@/stores/auth';
@@ -70,6 +71,7 @@ const quickDialogVisible = ref(false);
 const quickDialogConsultation = ref(null);
 const quickDialogActionMode = ref('continue');
 const isGuidedTourStarting = ref(false);
+const allowReceptionQuickClose = ref(true);
 let guidedTourPageState = null;
 let guidedTourDemoActive = false;
 let guidedTourCleanupPromise = null;
@@ -77,6 +79,8 @@ let guidedTourCleanupPromise = null;
 const headerTitle = computed(() => `Consultations du ${formatDisplayDate(selectedDate.value)}`);
 const isAdmin = computed(() => Boolean(auth.user?.roles?.includes('ROLE_ADMIN')));
 const isMedecin = computed(() => Boolean(auth.user?.roles?.includes('ROLE_MEDECIN')));
+const isReception = computed(() => Boolean(auth.user?.roles?.includes('ROLE_RECEPTION') || auth.user?.roles?.includes('ROLE_RECEPTIONNISTE')));
+const canUseQuickActions = computed(() => !isReception.value || allowReceptionQuickClose.value);
 const totalCountLabel = computed(() => (consultations.value?.length ? `${consultations.value.length} consultation(s)` : ''));
 
 const filterGlobalValue = computed({
@@ -159,7 +163,18 @@ const loadConsultations = async () => {
     }
 };
 
+const loadQuickClosePolicy = async () => {
+    try {
+        const settings = await fetchPublicGeneralSettings(token);
+        allowReceptionQuickClose.value = settings?.allowReceptionQuickCloseConsultation !== false;
+    } catch (error) {
+        console.error('Erreur chargement politique de clôturation rapide', error);
+        allowReceptionQuickClose.value = true;
+    }
+};
+
 onMounted(() => {
+    loadQuickClosePolicy();
     loadConsultations();
     window.addEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
 });
@@ -927,6 +942,7 @@ const currentFactureLoading = computed(() => {
                             />
 
                             <Button
+                                v-if="canUseQuickActions"
                                 icon="pi pi-bolt"
                                 label="Actions rapides"
                                 severity="contrast"
@@ -936,7 +952,7 @@ const currentFactureLoading = computed(() => {
                                 :disabled="isClosed(data)"
                                 @click="toggleQuickActions($event, data)"
                             />
-                            <Menu :ref="(el) => setQuickMenuRef(data.id, el)" :model="quickActionItems(data)" popup>
+                            <Menu v-if="canUseQuickActions" :ref="(el) => setQuickMenuRef(data.id, el)" :model="quickActionItems(data)" popup>
                                 <template #start>
                                     <div class="px-3 pt-3 pb-2 text-xs font-semibold uppercase tracking-wide text-surface-500">
                                         Actions rapides
@@ -1069,6 +1085,7 @@ const currentFactureLoading = computed(() => {
         />
 
         <QuickClotureConsultationDialog
+            v-if="canUseQuickActions"
             v-model:visible="quickDialogVisible"
             :consultation="quickDialogConsultation"
             :action-mode="quickDialogActionMode"

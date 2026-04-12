@@ -430,7 +430,7 @@ function handleStartGuidedTour() {
 </template>
 
 <style scoped>
-.layout-topbar {
+/* .layout-topbar {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -438,7 +438,7 @@ function handleStartGuidedTour() {
     padding: 0 1rem;
     background-color: var(--primary-color);
     border-bottom: 1px solid rgba(255, 255, 255, 0.18);
-}
+} */
 
 .layout-topbar-logo span {
     text-wrap-mode: nowrap;

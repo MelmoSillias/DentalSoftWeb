@@ -35,6 +35,7 @@ onBeforeMount(() => {
     const activeItem = layoutState.activeMenuItem;
 
     isActiveMenu.value = activeItem === itemKey.value || activeItem ? activeItem.startsWith(itemKey.value + '-') : false;
+    console.log('Mounted menu item:', props.item);
 });
 
 watch(
@@ -82,7 +83,7 @@ function checkActiveRoute(item) {
 </script>
 
 <template>
-    <li :class="{ 'layout-root-menuitem': root, 'active-menuitem': isActiveMenu }">
+    <!-- <li :class="{ 'layout-root-menuitem': root, 'active-menuitem': isActiveMenu }">
         <div v-if="root && item.visible !== false" class="layout-menuitem-root-text">{{ item.label }}</div>
         <a v-if="(!item.to || item.items) && item.visible !== false" :href="item.url" @click="itemClick($event, item, index)" :class="item.class" :target="item.target" tabindex="0">
             <i :class="item.icon" class="layout-menuitem-icon"></i>
@@ -105,7 +106,42 @@ function checkActiveRoute(item) {
                 <app-menu-item v-for="(child, i) in item.items" :key="child" :index="i" :item="child" :parentItemKey="itemKey" :root="false"></app-menu-item>
             </ul>
         </Transition>
+    </li> -->
+
+    <li class="nav-link-root">
+        <Divider align="right">{{ props.item.label }}</Divider>
+        <ul class="border-l-[1px] border-gray-300 dark:border-gray-700 ml-2">
+            <li v-for="(child, i) in props.item.items" :key="child">
+                <template v-if="child.visible !== false">
+                    <a v-if="(!child.to || child.items) && child.visible !== false" :href="child.url" @click="itemClick($event, child, i)" :class="child.class" :target="child.target" tabindex="0">
+                        <i :class="child.icon" class="layout-menuitem-icon"></i>
+                        <span class="layout-menuitem-text">{{ child.label }}</span>
+                        <i class="pi pi-fw pi-angle-down layout-submenu-toggler" v-if="child.items"></i>
+                    </a>
+                    <router-link 
+                        v-if="child.to && !child.items && child.visible !== false"
+                        @click="itemClick($event, child, i)"
+                        :class="[child.class, { 'active-route': checkActiveRoute(child) }]"
+                        tabindex="0"
+                        :to="typeof child.to === 'object' ? child.to : { path: child.to }"
+                    >
+                        <i :class="child.icon" class="layout-menuitem-icon"></i>
+                        <span class="layout-menuitem-text">{{ child.label }}</span>
+                        <i class="pi pi-fw pi-angle-down layout-submenu-toggler" v-if="child.items"></i>
+                    </router-link>
+                    
+                </template>
+            </li>
+        </ul>
+        
+        
     </li>
+
 </template>
 
-<style lang="scss" scoped></style>
+<style lang="scss" scoped>
+:deep(.p-divider-content) {
+    color : var(--primary-color);
+    font-weight: bold;
+}
+</style>

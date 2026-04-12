@@ -75,13 +75,7 @@ class CaisseController extends AbstractController
     {
         $payload = $request->getContentTypeFormat() === 'json' ? $request->toArray() : $request->request->all();
 
-        $result = $this->cashdeskService->payerDevis(
-            $id,
-            (int) ($payload['modeId'] ?? 0),
-            (float) ($payload['montant'] ?? 0),
-            $payload['date'] ?? null,
-            $payload['time'] ?? null
-        );
+        $result = $this->cashdeskService->payerDevis($id, $payload);
 
         if (!isset($result['error']) && isset($result['paiement_id'])) {
             $paiement = $this->paiementRepository->find((int) $result['paiement_id']);
