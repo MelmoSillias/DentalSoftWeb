@@ -322,8 +322,9 @@ const confirmDelete = (event, employee) => {
 
 const detailsUrl = (employee) =>
     router.resolve({ name: 'administration-employee-details', params: { id: employee.id } }).href;
+
 const openDetails = (employee) => {
-    window.open(detailsUrl(employee), '_blank');
+    router.push({ name: 'administration-employee-details', params: { id: employee.id } });
 };
 
 let searchTimer = null;

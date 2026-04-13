@@ -161,7 +161,21 @@ const soinsList = [
 
 const factureTotal = computed(() => factureLines.value.reduce((sum, line) => sum + (Number(line.prix) || 0) * (Number(line.quantite) || 0), 0));
 
-const selectedDevisInsurance = computed(() => selectedDevis.value?.insurance || null);
+const isAdminUser = computed(() => Array.isArray(authStore.user?.roles) && authStore.user.roles.includes('ROLE_ADMIN'));
+
+const activeInvoiceContext = computed(() => {
+	if (selectedDevis.value?.id) {
+		return selectedDevis.value;
+	}
+
+	if (previewData.value?.id) {
+		return previewData.value;
+	}
+
+	return null;
+});
+
+const selectedDevisInsurance = computed(() => activeInvoiceContext.value?.insurance || null);
 
 const invoiceHasInsurance = computed(() => selectedDevisInsurance.value?.hasInsurance === true);
 
@@ -285,11 +299,11 @@ const maxClientPaymentAmount = computed(() => {
 });
 
 const canResetInvoicePayments = computed(() => {
-	if (!selectedDevis.value) {
+	if (!isAdminUser.value || !activeInvoiceContext.value) {
 		return false;
 	}
 
-	return hasExistingPayments.value || (Number(selectedDevis.value.reste) || 0) !== (Number(selectedDevis.value.montant) || 0);
+	return hasExistingPayments.value || (Number(activeInvoiceContext.value.reste) || 0) !== (Number(activeInvoiceContext.value.montant) || 0);
 });
 
 const remainingAfterPay = computed(() => {
@@ -483,9 +497,7 @@ watch(
 		const defaultInsurance = buildPaymentMethodGroups(paymentMethods.value).insurances.find((method) => method.actif !== false) || null;
 		payForm.value.insuranceModeId = payForm.value.insuranceModeId || defaultInsurance?.id || null;
 		payForm.value.insuranceRate = getPaymentCoverageRate(defaultInsurance);
-		if ((Number(payForm.value.montant) || 0) > maxClientPaymentAmount.value) {
-			payForm.value.montant = maxClientPaymentAmount.value;
-		}
+		payForm.value.montant = 0;
 	}
 );
 
@@ -602,8 +614,12 @@ const submitPayment = async () => {
 };
 
 const confirmResetPaymentDialog = () => {
-	if (!selectedDevis.value || !canResetInvoicePayments.value) {
+	if (!activeInvoiceContext.value || !canResetInvoicePayments.value) {
 		return;
+	}
+
+	if (!selectedDevis.value?.id && activeInvoiceContext.value?.id) {
+		selectedDevis.value = activeInvoiceContext.value;
 	}
 
 	resetPaymentDialogVisible.value = true;
@@ -715,6 +731,7 @@ const openPreviewDialog = async (row) => {
 	previewDialogVisible.value = true;
 	previewLoading.value = true;
 	previewDialogTab.value = 'services';
+	selectedDevis.value = row;
 	try {
 		previewData.value = await fetchDevisDetail(row.id, token);
 	} catch (error) {
@@ -1051,19 +1068,19 @@ onBeforeUnmount(() => {
 		<Dialog v-model:visible="payDialogVisible" header="Régler la facture" :modal="true" :style="{ width: '720px' }">
 			<div class="flex flex-col gap-4" data-tour="caisse-overview.payment-dialog">
 				<div class="grid gap-3 md:grid-cols-4">
-					<div class="rounded-xl border border-surface-200 bg-surface-50/70 p-3">
+					<div class="rounded-xl border border-surface-200 bg-surface-50/70 dark:bg-surface-800 p-3">
 						<p class="text-xs uppercase tracking-wide text-gray-500">Montant total</p>
 						<p class="mt-1 text-base font-semibold">{{ formatFcfa(selectedDevis?.montant) }}</p>
 					</div>
-					<div class="rounded-xl border border-surface-200 bg-surface-50/70 p-3">
+					<div class="rounded-xl border border-surface-200 bg-surface-50/70 dark:bg-surface-800 p-3">
 						<p class="text-xs uppercase tracking-wide text-gray-500">Part assurance</p>
 						<p class="mt-1 text-base font-semibold">{{ formatFcfa(insuranceCoveredAmount) }}</p>
 					</div>
-					<div class="rounded-xl border border-surface-200 bg-surface-50/70 p-3">
+					<div class="rounded-xl border border-surface-200 bg-surface-50/70 dark:bg-surface-800 p-3">
 						<p class="text-xs uppercase tracking-wide text-gray-500">Déjà payé client</p>
 						<p class="mt-1 text-base font-semibold">{{ formatFcfa(patientAlreadyPaidAmount) }}</p>
 					</div>
-					<div class="rounded-xl border border-surface-200 bg-surface-50/70 p-3">
+					<div class="rounded-xl border border-surface-200 bg-surface-50/70 dark:bg-surface-800 p-3">
 						<p class="text-xs uppercase tracking-wide text-gray-500">Reste à payer</p>
 						<p class="mt-1 text-base font-semibold">{{ formatFcfa(patientOutstandingAmount) }}</p>
 					</div>
@@ -1082,43 +1099,43 @@ onBeforeUnmount(() => {
 					<TabPanels class="mt-4">
 						<TabPanel value="client">
 							<div class="flex flex-col gap-4">
-								<div class="rounded-xl border border-surface-200 bg-surface-50/70 p-4">
-									<p class="text-sm font-medium text-gray-700">Synthèse de la facture</p>
+								<div class="rounded-xl border border-surface-200 bg-surface-50/70 p-4 dark:bg-surface-800">
+									<p class="text-sm font-medium text-gray-700 dark:text-gray-300">Synthèse de la facture</p>
 									<div class="mt-3 grid gap-3 md:grid-cols-2">
 										<div>
-											<p class="text-xs uppercase tracking-wide text-gray-500">Part assurance</p>
+											<p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Part assurance</p>
 											<p class="mt-1 text-sm font-semibold">{{ formatFcfa(insuranceCoveredAmount) }}</p>
 										</div>
 										<div>
-											<p class="text-xs uppercase tracking-wide text-gray-500">Reste client à encaisser</p>
+											<p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Reste client à encaisser</p>
 											<p class="mt-1 text-sm font-semibold">{{ formatFcfa(patientOutstandingAmount) }}</p>
 										</div>
 									</div>
 								</div>
 								<div>
-									<label class="text-sm text-gray-600">Mode de paiement client</label>
+									<label class="text-sm text-gray-600 dark:text-gray-400">Mode de paiement client</label>
 									<Select v-model="payForm.modeId" :options="classicPaymentOptions" optionLabel="label"
 										optionValue="value" optionDisabled="disabled" placeholder="Sélectionner" />
-									<p class="mt-1 text-xs text-gray-500">
-										{{ requiresClassicPayment ? 'Choisissez le mode utilisé pour la tranche client en cours.' : 'Aucune part client à encaisser pour cette facture.' }}
+									<p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+										{{ requiresClassicPayment ? 'Choisissez le mode utilisé pour la tranche client en cours.' : 'Laissez le montant à 0 pour confirmer uniquement la partie assurance.' }}
 									</p>
 								</div>
 								<div class="grid grid-cols-2 gap-3">
 									<div>
-										<label class="text-sm text-gray-600">Date</label>
+										<label class="text-sm text-gray-600 dark:text-gray-400">Date</label>
 										<InputText v-model="payForm.date" type="date" class="w-full" />
 									</div>
 									<div>
-										<label class="text-sm text-gray-600">Heure</label>
+										<label class="text-sm text-gray-600 dark:text-gray-400">Heure</label>
 										<InputText v-model="payForm.time" type="time" class="w-full" />
 									</div>
 								</div>
 								<div>
-									<label class="text-sm text-gray-600">Montant client</label>
+									<label class="text-sm text-gray-600 dark:text-gray-400">Montant client</label>
 									<InputNumber v-model="payForm.montant" mode="decimal" locale="fr-FR" :min="0" class="w-full"
 										:max="maxClientPaymentAmount" />
-									<p class="mt-1 text-xs text-gray-500">Reste après paiement : {{ formatFcfa(remainingAfterPay) }}</p>
-									<p v-if="(payForm.insuranceEnabled || invoiceHasInsurance) && selectedInsuranceMethod" class="mt-1 text-xs text-gray-500">
+									<p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Reste après paiement : {{ formatFcfa(remainingAfterPay) }}</p>
+									<p v-if="(payForm.insuranceEnabled || invoiceHasInsurance) && selectedInsuranceMethod" class="mt-1 text-xs text-gray-500 dark:text-gray-400">
 										Assureur sélectionné : {{ selectedInsuranceMethod.libelle }}.
 									</p>
 								</div>
@@ -1126,40 +1143,40 @@ onBeforeUnmount(() => {
 						</TabPanel>
 						<TabPanel value="assurance">
 							<div class="flex flex-col gap-4">
-								<div class="flex items-start justify-between gap-3 rounded-xl border border-surface-200 bg-surface-50/70 p-4">
+								<div class="flex items-start justify-between gap-3 rounded-xl border border-surface-200 bg-surface-50/70 p-4 dark:bg-surface-800">
 									<div>
-										<p class="text-sm font-medium text-gray-700">État de la prise en charge</p>
-										<p class="mt-1 text-xs text-gray-500">{{ insuranceHelperMessage }}</p>
+										<p class="text-sm font-medium text-gray-700 dark:text-gray-300">État de la prise en charge</p>
+										<p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ insuranceHelperMessage }}</p>
 									</div>
 									<Tag :value="insuranceStatusLabel" :severity="insuranceStatusSeverity" />
 								</div>
 
-								<div v-if="invoiceAllowsInsurance" class="rounded-xl border border-surface-200 bg-surface-50/70 p-4">
+								<div v-if="invoiceAllowsInsurance" class="rounded-xl border border-surface-200 bg-surface-50/70 p-4 dark:bg-surface-800">
 									<div class="flex items-center gap-2">
 										<ToggleSwitch v-model="payForm.insuranceEnabled" />
-										<span class="text-sm text-gray-600">{{ payForm.insuranceEnabled ? 'Facture marquée comme assurée' : 'Marquer cette facture comme assurée' }}</span>
+										<span class="text-sm text-gray-600 dark:text-gray-400">{{ payForm.insuranceEnabled ? 'Facture marquée comme assurée' : 'Marquer cette facture comme assurée' }}</span>
 									</div>
 								</div>
-								<div v-else class="rounded-xl border border-dashed border-surface-200 bg-surface-50/50 p-4 text-sm text-gray-600">
+								<div v-else class="rounded-xl border border-dashed border-surface-200 bg-surface-50/50 dark:bg-surface-800 p-4 text-sm text-gray-600 dark:text-gray-400">
 									{{ insuranceSectionDisabledReason }}
 								</div>
 
-								<div class="grid grid-cols-1 gap-3 rounded-xl border border-surface-200 bg-surface-50/70 p-4">
+								<div class="grid grid-cols-1 gap-3 rounded-xl border border-surface-200 bg-surface-50/70 dark:bg-surface-800 p-4">
 									<div>
-										<label class="text-sm text-gray-600">Assurance</label>
+										<label class="text-sm text-gray-600 dark:text-gray-400">Assurance</label>
 										<Select v-model="payForm.insuranceModeId" :options="insurancePaymentOptions" optionLabel="label"
 											optionValue="value" placeholder="Sélectionner une assurance"
 											:disabled="invoiceHasInsurance || !payForm.insuranceEnabled" />
 									</div>
 									<div class="grid grid-cols-2 gap-3">
 										<div>
-											<label class="text-sm text-gray-600">Prise en charge (%)</label>
+											<label class="text-sm text-gray-600 dark:text-gray-400">Prise en charge (%)</label>
 											<InputNumber v-model="payForm.insuranceRate" mode="decimal" locale="fr-FR" :min="0" :max="100"
 												:minFractionDigits="0" :maxFractionDigits="2" inputClass="w-full" class="w-full"
 												:disabled="invoiceHasInsurance || !payForm.insuranceEnabled" />
 										</div>
 										<div>
-											<label class="text-sm text-gray-600">Montant assurance</label>
+											<label class="text-sm text-gray-600 dark:text-gray-400">Montant assurance</label>
 											<InputNumber :modelValue="insuranceCoveredAmount" mode="decimal" locale="fr-FR" inputClass="w-full"
 												class="w-full" disabled />
 										</div>
@@ -1359,6 +1376,8 @@ onBeforeUnmount(() => {
 				</div>
 			</div>
 			<template #footer>
+				<Button v-if="canResetInvoicePayments" label="Réinitialiser la facture" severity="danger" outlined icon="pi pi-refresh"
+					@click="confirmResetPaymentDialog" />
 				<Button label="Fermer" text @click="previewDialogVisible = false" />
 				<Button label="Imprimer" icon="pi pi-print" severity="info" @click="printInvoice" />
 			</template>

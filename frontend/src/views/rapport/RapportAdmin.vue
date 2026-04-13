@@ -63,6 +63,7 @@ watch(
 
 onMounted(() => {
     refresh(true);
+    
 });
 
 function printSection(id) {

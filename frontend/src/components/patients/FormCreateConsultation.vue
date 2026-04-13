@@ -432,14 +432,14 @@ const handleSubmit = (event) => {
                 <label class="font-semibold">Consultation payante</label>
                 <div class="flex items-center gap-2">
                     <ToggleSwitch v-model="form.payant" />
-                    <span class="text-sm text-gray-600">{{ form.payant ? `Payante (${CONSULTATION_AMOUNT})` : 'Gratuite' }}</span>
+                    <span class="text-sm text-gray-600 dark:text-gray-400">{{ form.payant ? `Payante (${CONSULTATION_AMOUNT})` : 'Gratuite' }}</span>
                 </div>
             </div>
             <div class="flex flex-col gap-2" v-if="form.payant">
                 <label class="font-semibold">Mode de paiement patient</label>
                 <Select v-model="form.modePaiementId" :options="paymentMethodOptions  || []" optionLabel="label"
                     optionValue="value" placeholder="Choisir un mode de paiement" class="w-full" />
-                <small class="text-gray-500">
+                <small class="text-gray-500 dark:text-gray-400">
                     {{ requiresClassicPayment ? 'Le mode de paiement patient est requis pour la part non couverte.' : 'Aucune part patient restante si l’assurance couvre 100 %.' }}
                 </small>
             </div>
@@ -447,10 +447,10 @@ const handleSubmit = (event) => {
                 <label class="font-semibold">Assurance</label>
                 <div class="flex items-center gap-2">
                     <ToggleSwitch v-model="form.insuranceEnabled" />
-                    <span class="text-sm text-gray-600">{{ form.insuranceEnabled ? 'Prise en charge activée' : 'Aucune assurance' }}</span>
+                    <span class="text-sm text-gray-600 dark:text-gray-400">{{ form.insuranceEnabled ? 'Prise en charge activée' : 'Aucune assurance' }}</span>
                 </div>
             </div>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 md:col-span-2 p-4 rounded-xl border border-surface-200 bg-surface-50/70" v-if="form.payant && form.insuranceEnabled">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 md:col-span-2 p-4 rounded-xl border border-surface-200 bg-surface-50/70 dark:bg-surface-800/70 dark:border-surface-700" v-if="form.payant && form.insuranceEnabled">
                 <div class="flex flex-col gap-2">
                     <label class="font-semibold">Assureur</label>
                     <Select v-model="form.insuranceModeId" :options="insuranceMethodOptions || []" optionLabel="label"
@@ -466,7 +466,7 @@ const handleSubmit = (event) => {
                     <InputNumber :modelValue="patientRemainingAmount" mode="decimal" locale="fr-FR" :min="0"
                         inputClass="w-full" class="w-full" disabled />
                 </div>
-                <div class="md:col-span-3 text-sm text-gray-600">
+                <div class="md:col-span-3 text-sm text-gray-600 dark:text-gray-400">
                     Couverture calculée : {{ insuranceCoveredAmount.toLocaleString('fr-FR') }} sur {{ CONSULTATION_AMOUNT.toLocaleString('fr-FR') }}.
                     <span v-if="selectedInsuranceMethod">Assureur sélectionné : {{ selectedInsuranceMethod.libelle }}.</span>
                 </div>

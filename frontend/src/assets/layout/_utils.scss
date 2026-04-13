@@ -75,3 +75,20 @@
   backdrop-filter: blur(6px);
   
 }
+
+.layout-sidebar  {
+  scrollbar-color: rgb(180, 180, 180) transparent; /* Firefox */
+}
+
+.layout-sidebar::-webkit-scrollbar-thumb {
+  background: rgb(180, 180, 180) transparent;
+}
+
+.appdark .layout-sidebar  {
+  scrollbar-color: rgb(90, 90, 90) transparent; /* Firefox */
+}
+
+.appdark .layout-sidebar::-webkit-scrollbar-thumb {
+  background: rgb(90, 90, 90) transparent;
+}
+
