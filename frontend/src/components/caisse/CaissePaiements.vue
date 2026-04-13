@@ -5,6 +5,7 @@ import Button from 'primevue/button';
 import DatePicker from 'primevue/datepicker';
 import InputText from 'primevue/inputtext';
 import ProgressBar from 'primevue/progressbar';
+import Select from 'primevue/select';
 import Tag from 'primevue/tag';
 import { computed, ref } from 'vue';
 
@@ -29,6 +30,8 @@ const paymentRangeModel = computed({
 });
 
 const paymentsSearch = ref('');
+const paymentFamilyFilter = ref('non-insurance');
+const paymentModeFilter = ref('all');
 
 const normalizeText = (value) => String(value ?? '')
     .toLowerCase()
@@ -42,18 +45,87 @@ const matchesQuery = (parts, query) => {
 
 const paymentsSearchQuery = computed(() => normalizeText(paymentsSearch.value.trim()));
 
-const filteredPayments = computed(() => {
+const paymentFamilyOptions = [
+    { label: 'Modes non assurances', value: 'non-insurance' },
+    { label: 'Modes assurances', value: 'insurance' },
+    { label: 'Tous les modes', value: 'all' }
+];
+
+const computeRoleTag = (payment) => {
+    if (payment?.rolePaiement === 'insurance') {
+        return payment?.insuranceStatus === 'pending'
+            ? { label: 'Assurance en attente', severity: 'warning' }
+            : { label: 'Assurance', severity: 'info' };
+    }
+
+    return { label: 'Client', severity: 'success' };
+};
+
+const computeModeTag = (payment) => {
+    if (payment?.rolePaiement === 'insurance') {
+        return {
+            label: payment?.mode || 'Assurance',
+            severity: payment?.insuranceStatus === 'pending' ? 'warning' : 'info'
+        };
+    }
+
+    return {
+        label: payment?.mode || '—',
+        severity: 'success'
+    };
+};
+
+const familyFilteredPayments = computed(() => {
     const list = Array.isArray(props.payments) ? props.payments : [];
+    if (paymentFamilyFilter.value === 'all') {
+        return list;
+    }
+
+    const wantsInsurance = paymentFamilyFilter.value === 'insurance';
+    return list.filter((payment) => (payment?.rolePaiement === 'insurance') === wantsInsurance);
+});
+
+const paymentModeOptions = computed(() => {
+    const options = familyFilteredPayments.value.reduce((acc, payment) => {
+        const modeId = Number(payment?.modeId);
+        if (!Number.isFinite(modeId) || modeId <= 0) {
+            return acc;
+        }
+
+        if (!acc.some((option) => option.value === modeId)) {
+            acc.push({ label: payment?.mode || 'Autre', value: modeId });
+        }
+
+        return acc;
+    }, [{ label: 'Tous les modes', value: 'all' }]);
+
+    return options.sort((left, right) => {
+        if (left.value === 'all') return -1;
+        if (right.value === 'all') return 1;
+        return String(left.label).localeCompare(String(right.label), 'fr');
+    });
+});
+
+const filteredPayments = computed(() => {
+    const list = familyFilteredPayments.value;
     const query = paymentsSearchQuery.value;
-    return list.filter((p) => matchesQuery([
+    return list.filter((p) => {
+        if (paymentModeFilter.value !== 'all' && Number(p?.modeId) !== Number(paymentModeFilter.value)) {
+            return false;
+        }
+
+        return matchesQuery([
         p.patient,
         p.telephone,
         p.date,
         formatDate(p.date, true),
         p.montant,
         p.mode,
-        p.type
-    ], query));
+        p.type,
+        p.rolePaiement,
+        computeRoleTag(p).label
+    ], query);
+    });
 });
 
 const totals = computed(() => {
@@ -93,6 +165,14 @@ const miniChart = computed(() => {
     const max = Math.max(...keys.map((k) => byDay[k]), 1);
     return keys.map((key) => ({ day: key, value: byDay[key], pct: Math.round((byDay[key] / max) * 100) }));
 });
+
+const handlePaymentFamilyChange = (value) => {
+    paymentFamilyFilter.value = value;
+    const optionStillExists = paymentModeOptions.value.some((option) => option.value === paymentModeFilter.value);
+    if (!optionStillExists) {
+        paymentModeFilter.value = 'all';
+    }
+};
 </script>
 
 <template>
@@ -113,6 +193,16 @@ const miniChart = computed(() => {
                         <label>Période</label>
                         <DatePicker v-model="paymentRangeModel" selectionMode="range" dateFormat="yy-mm-dd" showIcon
                             fluid />
+                    </div>
+                    <div class="filter-item">
+                        <label>Famille de modes</label>
+                        <Select :modelValue="paymentFamilyFilter" :options="paymentFamilyOptions" optionLabel="label"
+                            optionValue="value" @update:modelValue="handlePaymentFamilyChange" />
+                    </div>
+                    <div class="filter-item">
+                        <label>Mode de paiement</label>
+                        <Select v-model="paymentModeFilter" :options="paymentModeOptions" optionLabel="label"
+                            optionValue="value" />
                     </div>
                     <Button label="Imprimer la période" icon="pi pi-print" severity="primary"
                         @click="emit('print-payments')" />
@@ -158,7 +248,10 @@ const miniChart = computed(() => {
                                 <div class="text-sm text-gray-500">{{ formatDate(row.date, true) }}</div>
                                 <div class="font-semibold">{{ row.patient || '—' }}</div>
                                 <div class="text-sm text-gray-600">{{ row.telephone || '' }}</div>
-                                <Tag :value="row.mode || '—'" severity="success" />
+                                <div class="mt-2 flex flex-wrap gap-2">
+                                    <Tag :value="computeModeTag(row).label" :severity="computeModeTag(row).severity" />
+                                    <Tag :value="computeRoleTag(row).label" :severity="computeRoleTag(row).severity" />
+                                </div>
                             </div>
                             <div class="text-right">
                                 <div class="font-semibold">{{ formatFcfa(row.montant) }}</div>

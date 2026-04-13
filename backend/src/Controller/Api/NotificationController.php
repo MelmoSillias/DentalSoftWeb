@@ -2,6 +2,7 @@
 
 namespace App\Controller\Api;
 
+use App\Entity\User;
 use App\Entity\Notification;
 use App\Repository\NotificationRepository;
 use App\Service\MercureAuthorizationService;
@@ -17,8 +18,15 @@ class NotificationController extends AbstractController
     public function list(Request $request, NotificationRepository $notificationRepository): JsonResponse
     {
         $user = $this->getUser();
-        if (!$user) {
+        if (!$user instanceof User) {
             return $this->json(['error' => 'Unauthenticated'], 401);
+        }
+
+        if (!$user->isNotificationsEnabled()) {
+            return $this->json([
+                'items' => [],
+                'filter' => 'all',
+            ]);
         }
 
         $filter = $request->query->get('filter', 'all');
@@ -40,8 +48,12 @@ class NotificationController extends AbstractController
     public function markRead(Request $request, NotificationService $notificationService): JsonResponse
     {
         $user = $this->getUser();
-        if (!$user) {
+        if (!$user instanceof User) {
             return $this->json(['error' => 'Unauthenticated'], 401);
+        }
+
+        if (!$user->isNotificationsEnabled()) {
+            return $this->json(['updated' => 0]);
         }
 
         $ids = $request->toArray()['ids'] ?? [];
@@ -58,8 +70,12 @@ class NotificationController extends AbstractController
     public function markAll(NotificationService $notificationService): JsonResponse
     {
         $user = $this->getUser();
-        if (!$user) {
+        if (!$user instanceof User) {
             return $this->json(['error' => 'Unauthenticated'], 401);
+        }
+
+        if (!$user->isNotificationsEnabled()) {
+            return $this->json(['updated' => 0]);
         }
 
         $updated = $notificationService->markAsRead($user);
@@ -71,8 +87,12 @@ class NotificationController extends AbstractController
     public function mercure(MercureAuthorizationService $mercureAuthorizationService): JsonResponse
     {
         $user = $this->getUser();
-        if (!$user) {
+        if (!$user instanceof User) {
             return $this->json(['error' => 'Unauthenticated'], 401);
+        }
+
+        if (!$user->isNotificationsEnabled()) {
+            return $this->json([]);
         }
 
         $subscription = $mercureAuthorizationService->buildSubscription($user);

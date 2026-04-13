@@ -12,6 +12,8 @@ use App\Entity\ContenuDevis;
 use App\Entity\Devis;
 use App\Entity\DocumentMedical;
 use App\Entity\Employe;
+use App\Entity\PaiementDevis;
+use App\Entity\Transaction;
 use App\Entity\User;
 use App\Entity\FicheMedicale;
 use App\Entity\FicheObservation;
@@ -980,29 +982,63 @@ class ConsultationService
         if (!$consultation) {
             return false;
         }
- 
 
-        if ($consultation->getPaiementDevis()) {
-            $paiementDevis = $consultation->getPaiementDevis();
-            $transaction = $paiementDevis->getTransaction();
+        $facture = $consultation->getFacture();
 
-            $paiementDevis->setTransaction(null);
-            $paiementDevis->setConsultation(null);
-            $consultation->setPaiementDevis(null);
+        $paymentsQb = $this->em->getRepository(PaiementDevis::class)->createQueryBuilder('p')
+            ->where('p.consultation = :consultation')
+            ->setParameter('consultation', $consultation);
 
-            $this->em->flush();
-
-            if ($transaction) {
-                $this->em->remove($transaction);
-            }
-            $this->em->remove($paiementDevis);
-            $this->em->remove($consultation);
-
-            $this->em->flush();
-        } else {
-            $this->em->remove($consultation);
-            $this->em->flush();
+        if ($facture) {
+            $paymentsQb->orWhere('p.devis = :devis')
+                ->setParameter('devis', $facture);
         }
+
+        $allPaiements = $paymentsQb->getQuery()->getResult();
+        $allPaiements = array_values(array_filter($allPaiements, fn ($p) => $p instanceof PaiementDevis));
+        $paiementIds = array_values(array_unique(array_map(fn (PaiementDevis $p) => $p->getId(), array_filter($allPaiements, fn (PaiementDevis $p) => $p->getId() !== null))));
+
+        $txQb = $this->em->getRepository(Transaction::class)->createQueryBuilder('t')
+            ->where('t.consultation = :consultation')
+            ->setParameter('consultation', $consultation);
+
+        if ($facture) {
+            $txQb->orWhere('t.devis = :devis')
+                ->setParameter('devis', $facture);
+        }
+
+        if (!empty($paiementIds)) {
+            $txQb->orWhere('t.paiementDevis IN (:paiementIds)')
+                ->setParameter('paiementIds', $paiementIds);
+        }
+
+        $transactions = $txQb->getQuery()->getResult();
+
+        foreach ($transactions as $transaction) {
+            $paiement = $transaction->getPaiementDevis();
+            if ($paiement instanceof PaiementDevis && !in_array($paiement, $allPaiements, true)) {
+                $allPaiements[] = $paiement;
+            }
+
+            $transaction->setPaiementDevis(null);
+            $transaction->setConsultation(null);
+            $transaction->setDevis(null);
+            $this->em->remove($transaction);
+        }
+
+        foreach ($allPaiements as $paiement) {
+            $paiement->setConsultation(null);
+            $paiement->setDevis(null);
+            $this->em->remove($paiement);
+        }
+
+        if ($facture) {
+            $consultation->setFacture(null);
+            $this->em->remove($facture);
+        }
+
+        $this->em->remove($consultation);
+        $this->em->flush();
 
         $this->eventDispatcher->dispatch(
             new EntityActionEvent(

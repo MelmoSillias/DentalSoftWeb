@@ -494,6 +494,16 @@ const formatDateTime = (value) => {
     });
 };
 
+const formatLocalDateForApi = (value) => {
+    if (!value) return '';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
 const resolveTransactionStatus = (row) => {
     const rawStatus = normalizeText(row?.validationStatus || row?.status || row?.validation_status || '');
     const validated = row?.validated ?? row?.isValidated ?? row?.is_validated;
@@ -874,8 +884,8 @@ const loadTransactions = async () => {
     }
 
     await fetchTransactionsRange({
-        startDate: new Date(start).toISOString().slice(0, 10),
-        endDate: new Date(end).toISOString().slice(0, 10)
+        startDate: formatLocalDateForApi(start),
+        endDate: formatLocalDateForApi(end)
     });
 };
 

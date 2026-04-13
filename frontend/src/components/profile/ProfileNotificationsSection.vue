@@ -9,10 +9,11 @@ const props = defineProps({
     notifications: { type: Array, default: () => [] },
     unreadCount: { type: Number, default: 0 },
     loading: { type: Boolean, default: false },
-    filter: { type: String, default: 'all' }
+    filter: { type: String, default: 'all' },
+    notificationsEnabled: { type: Boolean, default: true }
 });
 
-const emit = defineEmits(['filter-change', 'mark-read', 'mark-all']);
+const emit = defineEmits(['filter-change', 'mark-read', 'mark-all', 'notifications-enabled-change']);
 const confirm = useConfirm();
 
 const filterOptions = [
@@ -49,16 +50,31 @@ const markAll = (event) => {
             </div>
         </div>
         <div class="p-4 sm:p-5 flex flex-col gap-4">
+            <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <span class="text-xs text-surface-600">Réception des notifications</span>
+                <SelectButton
+                    :modelValue="notificationsEnabled"
+                    :options="[{ label: 'Activées', value: true }, { label: 'Désactivées', value: false }]"
+                    optionLabel="label"
+                    optionValue="value"
+                    :allowEmpty="false"
+                    @update:modelValue="emit('notifications-enabled-change', $event)"
+                />
+            </div>
+
             <SelectButton
                 :options="filterOptions"
                 optionLabel="label"
                 optionValue="value"
                 :modelValue="filter"
                 class="w-full sm:w-auto"
+                :disabled="!notificationsEnabled"
                 @update:modelValue="emit('filter-change', $event)"
             />
 
-            <div v-if="loading" class="text-sm text-surface-500">Chargement...</div>
+            <div v-if="!notificationsEnabled" class="text-sm text-surface-500">Notifications désactivées pour ce compte.</div>
+
+            <div v-else-if="loading" class="text-sm text-surface-500">Chargement...</div>
 
             <div v-else class="space-y-3">
                 <div v-for="item in filteredItems" :key="item.id" class="p-3 sm:p-4 rounded-xl border border-surface-200/50 dark:border-surface-700/50 hover:border-primary-300/50 transition">

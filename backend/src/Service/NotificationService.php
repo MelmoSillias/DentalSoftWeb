@@ -26,6 +26,10 @@ final class NotificationService
         ?string $type = null,
         ?User $emitter = null,
     ): Notification {
+        if (!$recipient->isNotificationsEnabled()) {
+            return $this->buildNotification($recipient, $message, $priority, $link, $type, $emitter);
+        }
+
         $notification = $this->buildNotification($recipient, $message, $priority, $link, $type, $emitter);
 
         $this->entityManager->persist($notification);
@@ -51,6 +55,10 @@ final class NotificationService
 
         foreach ($recipients as $recipient) {
             if (!$recipient instanceof User) {
+                continue;
+            }
+
+            if (!$recipient->isNotificationsEnabled()) {
                 continue;
             }
 

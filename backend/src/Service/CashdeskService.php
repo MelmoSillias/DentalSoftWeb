@@ -10,6 +10,7 @@ use App\Entity\Transaction;
 use App\Repository\DevisRepository;
 use App\Repository\ModeDePaiementRepository;
 use App\Repository\PaiementDevisRepository;
+use App\Repository\TransactionRepository;
 use DateTimeInterface;
 use Doctrine\ORM\EntityManagerInterface;
 
@@ -19,9 +20,195 @@ class CashdeskService
         private DevisRepository $devisRepo,
         private PaiementDevisRepository $paiementRepo,
         private ModeDePaiementRepository $modeRepo,
+        private TransactionRepository $transactionRepo,
         private EntityManagerInterface $em,
         private GlobalSettingsService $globalSettingsService,
     ) {
+    }
+
+    private function buildInsuranceMetadata(Devis $devis): array
+    {
+        $insuranceTransactions = $this->transactionRepo->createQueryBuilder('t')
+            ->leftJoin('t.modeDePaiement', 'm')->addSelect('m')
+            ->where('t.devis = :devis')
+            ->andWhere('t.rolePaiement = :role')
+            ->setParameter('devis', $devis)
+            ->setParameter('role', 'insurance')
+            ->orderBy('t.dateTransaction', 'DESC')
+            ->addOrderBy('t.id', 'DESC')
+            ->getQuery()
+            ->getResult();
+
+        $insurancePayments = [];
+        $patientPaidAmount = 0.0;
+
+        foreach ($devis->getPaiements() as $payment) {
+            $role = $payment->getRolePaiement();
+            if ($role === 'insurance') {
+                $insurancePayments[] = $payment;
+                continue;
+            }
+
+            $patientPaidAmount += (float) $payment->getMontant();
+        }
+
+        usort($insurancePayments, static function (PaiementDevis $left, PaiementDevis $right): int {
+            $leftDate = $left->getDate()?->getTimestamp() ?? 0;
+            $rightDate = $right->getDate()?->getTimestamp() ?? 0;
+
+            if ($leftDate === $rightDate) {
+                return ($right->getId() ?? 0) <=> ($left->getId() ?? 0);
+            }
+
+            return $rightDate <=> $leftDate;
+        });
+
+        $latestTransaction = $insuranceTransactions[0] ?? null;
+        $latestPayment = $insurancePayments[0] ?? null;
+        $referenceMode = $latestPayment?->getMode() ?? $latestTransaction?->getModeDePaiement();
+        $insuranceAmount = (float) ($latestPayment?->getMontant() ?? $latestTransaction?->getMontant() ?? 0);
+        $insurancePaidAmount = array_reduce(
+            $insurancePayments,
+            static fn (float $sum, PaiementDevis $payment): float => $sum + (float) $payment->getMontant(),
+            0.0
+        );
+        $insurancePendingAmount = array_reduce(
+            $insuranceTransactions,
+            static fn (float $sum, Transaction $transaction): float => $sum + ($transaction->getValidationStatus() === 'pending' ? (float) $transaction->getMontant() : 0.0),
+            0.0
+        );
+
+        if ($latestPayment !== null) {
+            $status = 'validated';
+        } elseif ($latestTransaction !== null) {
+            $status = $latestTransaction->getValidationStatus();
+        } else {
+            $status = 'none';
+        }
+
+        return [
+            'hasInsurance' => $latestTransaction !== null || $latestPayment !== null,
+            'insuranceStatus' => $status,
+            'insuranceModeId' => $referenceMode?->getId(),
+            'insuranceModeLabel' => $referenceMode?->getLibelle(),
+            'insuranceRate' => $latestPayment?->getTauxPriseEnCharge() ?? $latestTransaction?->getTauxPriseEnCharge(),
+            'insuranceAmount' => $insuranceAmount,
+            'insurancePaidAmount' => $insurancePaidAmount,
+            'insurancePendingAmount' => $insurancePendingAmount,
+            'insuranceTransactionId' => $latestTransaction?->getId(),
+            'insurancePaymentId' => $latestPayment?->getId(),
+            'patientPaidAmount' => $patientPaidAmount,
+            'patientRemainingAmount' => max(0.0, (float) $devis->getReste()),
+        ];
+    }
+
+    private function mapFactureListItem(Devis $devis, bool $consultationIsGuaranteed = false): array
+    {
+        $patient = $devis->getFicheMedicale()?->getPatient() ?? $devis->getFiche()?->getPatient();
+        $consultationId = $consultationIsGuaranteed
+            ? $devis->getConsultation()->getId()
+            : $devis->getConsultation()?->getId();
+
+        return [
+            'id' => $devis->getId(),
+            'date' => $devis->getDate()->format('Y-m-d'),
+            'consultation' => $consultationId,
+            'montant' => $devis->getMontant(),
+            'reste' => $devis->getReste(),
+            'statut' => $devis->getStatut(),
+            'isRegle' => $devis->getStatut() == 1,
+            'patient' => [
+                'nom' => $patient?->getNom() ?? '',
+                'prenom' => $patient?->getPrenom() ?? '',
+            ],
+            'telephone' => $patient?->getTelephone(),
+            'insurance' => $this->buildInsuranceMetadata($devis),
+        ];
+    }
+
+    private function buildDevisPaymentDetails(Devis $devis): array
+    {
+        $details = [];
+
+        foreach ($devis->getPaiements() as $payment) {
+            $transaction = $payment->getTransaction();
+            $details[] = [
+                'id' => $payment->getId(),
+                'sourceType' => 'payment',
+                'rolePaiement' => $payment->getRolePaiement(),
+                'mode' => $payment->getMode()?->getLibelle(),
+                'modeId' => $payment->getMode()?->getId(),
+                'montant' => $payment->getMontant(),
+                'date' => $payment->getDate()?->format('Y-m-d H:i:s'),
+                'status' => $transaction?->getValidationStatus() ?? 'validated',
+                'insuranceRate' => $payment->getTauxPriseEnCharge(),
+                'description' => $transaction?->getDescription(),
+            ];
+        }
+
+        $pendingInsuranceTransactions = $this->transactionRepo->createQueryBuilder('t')
+            ->leftJoin('t.modeDePaiement', 'm')->addSelect('m')
+            ->where('t.devis = :devis')
+            ->andWhere('t.rolePaiement = :role')
+            ->andWhere('t.paiementDevis IS NULL')
+            ->setParameter('devis', $devis)
+            ->setParameter('role', 'insurance')
+            ->orderBy('t.dateTransaction', 'DESC')
+            ->addOrderBy('t.id', 'DESC')
+            ->getQuery()
+            ->getResult();
+
+        foreach ($pendingInsuranceTransactions as $transaction) {
+            $details[] = [
+                'id' => $transaction->getId(),
+                'sourceType' => 'transaction',
+                'rolePaiement' => $transaction->getRolePaiement(),
+                'mode' => $transaction->getModeDePaiement()?->getLibelle(),
+                'modeId' => $transaction->getModeDePaiement()?->getId(),
+                'montant' => (float) ($transaction->getMontant() ?? 0),
+                'date' => $transaction->getDateTransaction()?->format('Y-m-d H:i:s'),
+                'status' => $transaction->getValidationStatus(),
+                'insuranceRate' => $transaction->getTauxPriseEnCharge(),
+                'description' => $transaction->getDescription(),
+            ];
+        }
+
+        usort($details, static function (array $left, array $right): int {
+            $leftTime = strtotime((string) ($left['date'] ?? '')) ?: 0;
+            $rightTime = strtotime((string) ($right['date'] ?? '')) ?: 0;
+
+            if ($leftTime === $rightTime) {
+                return ((int) ($right['id'] ?? 0)) <=> ((int) ($left['id'] ?? 0));
+            }
+
+            return $rightTime <=> $leftTime;
+        });
+
+        return $details;
+    }
+
+    private function hasInsuranceAlreadyRecorded(Devis $devis): bool
+    {
+        $insuranceTransactionCount = (int) $this->transactionRepo->createQueryBuilder('t')
+            ->select('COUNT(t.id)')
+            ->where('t.devis = :devis')
+            ->andWhere('t.rolePaiement = :role')
+            ->setParameter('devis', $devis)
+            ->setParameter('role', 'insurance')
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        if ($insuranceTransactionCount > 0) {
+            return true;
+        }
+
+        foreach ($devis->getPaiements() as $payment) {
+            if ($payment->getRolePaiement() === 'insurance') {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public function listDevisByPeriod(DateTimeInterface $start, DateTimeInterface $end): array
@@ -42,22 +229,7 @@ class CashdeskService
             ->getResult();
 
         return array_map(function (Devis $d) {
-            $patient = $d->getFicheMedicale()?->getPatient() ?? $d->getFiche()?->getPatient();
-
-            return [
-                'id' => $d->getId(),
-                'date' => $d->getDate()->format('Y-m-d'),
-                'consultation' => $d->getConsultation()?->getId(),
-                'montant' => $d->getMontant(),
-                'reste' => $d->getReste(),
-                'statut' => $d->getStatut(),
-                'isRegle' => $d->getStatut() == 1,
-                'patient' => [
-                    'nom' => $patient?->getNom() ?? '',
-                    'prenom' => $patient?->getPrenom() ?? '',
-                ],
-                'telephone' => $patient?->getTelephone(),
-            ];
+            return $this->mapFactureListItem($d);
         }, $devis);
     }
 
@@ -76,21 +248,7 @@ class CashdeskService
             ->getResult();
 
         return array_map(function (Devis $d) {
-            $patient = $d->getFicheMedicale()?->getPatient() ?? $d->getFiche()?->getPatient();
-
-            return [
-                'id' => $d->getId(),
-                'date' => $d->getDate()->format('Y-m-d'),
-                'consultation' => $d->getConsultation()->getId(),
-                'montant' => $d->getMontant(),
-                'reste' => $d->getReste(),
-                'isRegle' => $d->getStatut() == 1,
-                'patient' => [
-                    'nom' => $patient?->getNom() ?? '',
-                    'prenom' => $patient?->getPrenom() ?? '',
-                ],
-                'telephone' => $patient?->getTelephone(),
-            ];
+            return $this->mapFactureListItem($d, true);
         }, $devis);
     }
 
@@ -111,21 +269,7 @@ class CashdeskService
             ->getResult();
 
         return array_map(function (Devis $d) {
-            $patient = $d->getFicheMedicale()?->getPatient() ?? $d->getFiche()?->getPatient();
-
-            return [
-                'id' => $d->getId(),
-                'date' => $d->getDate()->format('Y-m-d'),
-                'consultation' => $d->getConsultation()->getId(),
-                'montant' => $d->getMontant(),
-                'reste' => $d->getReste(),
-                'isRegle' => $d->getStatut() == 1,
-                'patient' => [
-                    'nom' => $patient?->getNom() ?? '',
-                    'prenom' => $patient?->getPrenom() ?? '',
-                ],
-                'telephone' => $patient?->getTelephone(),
-            ];
+            return $this->mapFactureListItem($d, true);
         }, $devis);
     }
 
@@ -145,21 +289,7 @@ class CashdeskService
             ->getResult();
 
         return array_map(function (Devis $d) {
-            $patient = $d->getFicheMedicale()?->getPatient() ?? $d->getFiche()?->getPatient();
-
-            return [
-                'id' => $d->getId(),
-                'date' => $d->getDate()->format('Y-m-d'),
-                'consultation' => $d->getConsultation()->getId(),
-                'montant' => $d->getMontant(),
-                'reste' => $d->getReste(),
-                'isRegle' => $d->getStatut() == 1,
-                'patient' => [
-                    'nom' => $patient?->getNom() ?? '',
-                    'prenom' => $patient?->getPrenom() ?? '',
-                ],
-                'telephone' => $patient?->getTelephone(),
-            ];
+            return $this->mapFactureListItem($d, true);
         }, $devis);
     }
 
@@ -198,9 +328,13 @@ class CashdeskService
                 'telephone' => $patient?->getTelephone(),
                 'montant' => $p->getMontant(),
                 'mode' => $p->getMode()->getLibelle(),
+                'modeId' => $p->getMode()->getId(),
                 'date' => $p->getDate()->format('Y-m-d H:i:s'),
                 'type' => $devis ? 'devis' : 'ticket',
                 'pId' => $p->getId(),
+                'rolePaiement' => $p->getRolePaiement(),
+                'insuranceRate' => $p->getTauxPriseEnCharge(),
+                'insuranceStatus' => $p->getRolePaiement() === 'insurance' ? ($p->getTransaction()?->getValidationStatus() ?? 'validated') : 'validated',
             ];
         }, $paiements);
     }
@@ -293,13 +427,16 @@ class CashdeskService
             'consultation' => $consultation?->getId(),
             'montant' =>  $devis->getMontant(),
             'reste' => $isFacture ? $devis->getReste() : 0,
+            'isRegle' => $devis->getStatut() == 1,
             'patient' => [
                 'nom' => $patient?->getNom() ?? '',
                 'prenom' => $patient?->getPrenom() ?? '',
                 'telephone' => $patient?->getTelephone() ?? '',
             ],
             'contenus' => $contenuArr,
+            'paiements' => $isFacture ? $this->buildDevisPaymentDetails($devis) : [],
             'type' => $isFacture ? 'Facture' : 'Devis',
+            'insurance' => $isFacture ? $this->buildInsuranceMetadata($devis) : null,
         ];
 
         // $fiche = $devis->getFiche();
@@ -366,6 +503,10 @@ class CashdeskService
         $totalRemaining = (float) $devis->getReste();
 
         if ($insuranceEnabled) {
+            if ($this->hasInsuranceAlreadyRecorded($devis)) {
+                return ['error' => 'Une assurance est déjà enregistrée pour cette facture'];
+            }
+
             $insuranceMode = $this->modeRepo->find($insuranceModeId);
             if (!$insuranceMode) {
                 return ['error' => 'Données invalides'];
@@ -467,6 +608,7 @@ class CashdeskService
             $paiement->setMode($mode);
             $paiement->setMontant($montant);
             $paiement->setDate($timestamp);
+            $paiement->setRolePaiement('patient');
 
             $devis->setReste($devis->getReste() - $montant);
 
@@ -476,6 +618,9 @@ class CashdeskService
             $transaction->setDateTransaction($timestamp);
             $transaction->setDescription('Paiement de la facture | Devis #' . $devis->getId());
             $transaction->setModeDePaiement($mode);
+            $transaction->setDevis($devis);
+            $transaction->setRolePaiement('patient');
+            $transaction->markValidated();
             $transaction->setPaiementDevis($paiement);
 
             $this->em->persist($transaction);
@@ -492,6 +637,57 @@ class CashdeskService
         $this->em->flush();
 
         return ['success' => true, 'paiement_id' => $createdPayment?->getId()];
+    }
+
+    public function resetDevisPayments(int $id): array
+    {
+        $devis = $this->devisRepo->find($id);
+        if (!$devis) {
+            return ['error' => 'Devis introuvable'];
+        }
+
+        $allPaiements = $devis->getPaiements()->toArray();
+        $paiementIds = array_values(array_filter(array_map(
+            static fn (PaiementDevis $paiement): ?int => $paiement->getId(),
+            $allPaiements
+        )));
+
+        $txQb = $this->transactionRepo->createQueryBuilder('t')
+            ->where('t.devis = :devis')
+            ->setParameter('devis', $devis);
+
+        if (!empty($paiementIds)) {
+            $txQb->orWhere('t.paiementDevis IN (:paiementIds)')
+                ->setParameter('paiementIds', $paiementIds);
+        }
+
+        $transactions = $txQb->getQuery()->getResult();
+
+        foreach ($transactions as $transaction) {
+            $paiement = $transaction->getPaiementDevis();
+            if ($paiement instanceof PaiementDevis && !in_array($paiement, $allPaiements, true)) {
+                $allPaiements[] = $paiement;
+            }
+
+            $transaction->setPaiementDevis(null);
+            $transaction->setDevis(null);
+            $transaction->setConsultation(null);
+            $this->em->remove($transaction);
+        }
+
+        foreach ($allPaiements as $paiement) {
+            $paiement->setDevis(null);
+            $paiement->setConsultation(null);
+            $this->em->remove($paiement);
+        }
+
+        $devis->setReste((float) $devis->getMontant());
+        $devis->setStatut(0);
+
+        $this->em->persist($devis);
+        $this->em->flush();
+
+        return ['success' => true];
     }
 
     public function paiementsForPeriod(DateTimeInterface $start, DateTimeInterface $end): array

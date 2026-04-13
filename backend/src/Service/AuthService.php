@@ -64,6 +64,10 @@ final class AuthService
         $employee = $this->employeRepository->findOneBy(['user' => $user]);
         $notifications = $this->notificationRepository->findLatestForUser($user, 20);
         $unreadCount = $this->notificationRepository->countUnread($user);
+        if (!$user->isNotificationsEnabled()) {
+            $notifications = [];
+            $unreadCount = 0;
+        }
         $activity = $this->getActivityFeed($user);
         $mercure = $this->mercureAuthorizationService->buildSubscription($user);
 
@@ -72,6 +76,7 @@ final class AuthService
                 'id' => $user->getId(),
                 'username' => $user->getUsername(),
                 'roles' => $user->getRoles(),
+                'notificationsEnabled' => $user->isNotificationsEnabled(),
             ],
             'employee' => $employee ? [
                 'id' => $employee->getId(),
@@ -108,6 +113,10 @@ final class AuthService
 
         if (isset($data['username']) && is_string($data['username']) && $data['username'] !== '') {
             $user->setUsername($data['username']);
+        }
+
+        if (array_key_exists('notificationsEnabled', $data)) {
+            $user->setNotificationsEnabled((bool) $data['notificationsEnabled']);
         }
 
         $employee = $this->employeRepository->findOneBy(['user' => $user]);

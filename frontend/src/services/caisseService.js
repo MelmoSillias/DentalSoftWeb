@@ -60,6 +60,15 @@ export const payDevis = async (devisId, payload = {}, token) => {
     return res.data;
 };
 
+export const resetDevisPayments = async (devisId, token) => {
+    if (isCaisseTourMockEnabled()) {
+        return { success: true };
+    }
+
+    const res = await axios.delete(`${apiPrefix}/devis/${devisId}/payments/reset`, withHeaders(token));
+    return res.data;
+};
+
 export const validateEmptyDevis = async (devisId, token) => {
     if (isCaisseTourMockEnabled()) {
         return validateEmptyDevisTourMock(devisId);

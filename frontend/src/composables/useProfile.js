@@ -31,6 +31,9 @@ export function useProfile() {
                 headers: buildAuthHeaders(auth.token)
             });
             profile.value = res.data;
+            if (auth.user && profile.value?.user) {
+                auth.user = { ...auth.user, ...profile.value.user };
+            }
             return profile.value;
         } catch (err) {
             error.value = err;
@@ -108,6 +111,28 @@ export function useProfile() {
         return data;
     };
 
+    const setNotificationsEnabled = async (enabled) => {
+        loading.value = true;
+        error.value = null;
+        try {
+            const res = await http.put(
+                `${apiPrefix}/me`,
+                { notificationsEnabled: Boolean(enabled) },
+                { headers: buildAuthHeaders(auth.token) }
+            );
+            await fetchProfile();
+            if (auth.user) {
+                auth.user = { ...auth.user, notificationsEnabled: Boolean(enabled) };
+            }
+            return res.data;
+        } catch (err) {
+            error.value = err;
+            throw err;
+        } finally {
+            loading.value = false;
+        }
+    };
+
     return {
         profile,
         user,
@@ -123,6 +148,7 @@ export function useProfile() {
         changePassword,
         fetchNotifications,
         markNotificationsRead,
-        markAllNotificationsRead
+        markAllNotificationsRead,
+        setNotificationsEnabled
     };
 }

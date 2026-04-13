@@ -17,12 +17,19 @@ class TransactionController extends AbstractController
     #[Route('/api/transactions', name: 'api_transactions_list', methods: ['GET'])]
     public function list(Request $request): JsonResponse
     {
-
         $start = $request->query->get('startDate');
         $end = $request->query->get('endDate');
 
-        $startDate = new \DateTime($start);
-        $endDate = new \DateTime($end);
+        if (!$start || !$end) {
+            return $this->json(['error' => 'startDate et endDate sont requis.'], 400);
+        }
+
+        try {
+            $startDate = (new \DateTime($start))->setTime(0, 0, 0);
+            $endDate = (new \DateTime($end))->setTime(23, 59, 59);
+        } catch (\Exception) {
+            return $this->json(['error' => 'Période invalide.'], 400);
+        }
 
 
         $transactions = $this->financeService->getTransactionsByDateRange($startDate, $endDate);

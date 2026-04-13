@@ -58,6 +58,17 @@ const devisRangeModel = computed({
 
 const formatFcfa = (value) => `${Number(value || 0).toLocaleString('fr-FR')} FCFA`;
 
+const computeInsuranceBadge = (row) => {
+    const insurance = row?.insurance;
+    if (!insurance?.hasInsurance) {
+        return null;
+    }
+
+    return insurance.insuranceStatus === 'pending'
+        ? { label: 'Assurance en attente', severity: 'warning' }
+        : { label: 'Assurance', severity: 'info' };
+};
+
 const computeStatus = (row) => {
     const montant = Number(row.montant) || 0;
     const reste = Number(row.reste) || 0;
@@ -77,13 +88,16 @@ const filteredDevis = computed(() => {
     return safeDevis.value.filter((row) => {
         const patient = formatPatient(row);
         const status = computeStatus(row).label;
+        const insuranceLabel = computeInsuranceBadge(row)?.label || '';
         return matchesQuery([
             patient,
             row.telephone,
             row.date,
             row.montant,
             row.reste,
-            status
+            status,
+            insuranceLabel,
+            row?.insurance?.insuranceModeLabel
         ], query);
     });
 });
@@ -176,7 +190,11 @@ const formatPatient = (row) => {
                     <div class="flex flex-col gap-3">
                         <div v-for="(row, index) in slotProps.items" :key="row.id || index" class="dataview-item">
                             <div class="status-chip">
-                                <Tag :value="computeStatus(row).label" :severity="computeStatus(row).severity" />
+                                <div class="flex flex-wrap gap-2 justify-end">
+                                    <Tag :value="computeStatus(row).label" :severity="computeStatus(row).severity" />
+                                    <Tag v-if="computeInsuranceBadge(row)" :value="computeInsuranceBadge(row).label"
+                                        :severity="computeInsuranceBadge(row).severity" icon="pi pi-shield" />
+                                </div>
                             </div>
 
                             <div class="dataview-body">

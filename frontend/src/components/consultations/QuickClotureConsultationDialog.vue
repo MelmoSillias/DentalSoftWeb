@@ -194,8 +194,8 @@ const handleSave = async ({ silent = false } = {}) => {
         await saveConsultation(ficheId.value, props.consultation.id, buildPayload(), token);
         if (!silent) {
             toast.add({ severity: 'success', summary: 'Consultation sauvegardée', detail: 'Données enregistrées.', life: 2200 });
+            emit('saved');
         }
-        emit('saved');
         return true;
     } catch (error) {
         console.error('Erreur sauvegarde rapide', error);
@@ -207,14 +207,16 @@ const handleSave = async ({ silent = false } = {}) => {
 };
 
 const handleCloture = async () => {
-    if (!props.consultation?.id || !ficheId.value || !canAccessForm.value) return;
+    const consultationId = Number(props.consultation?.id);
+    const currentFicheId = ficheId.value;
+    if (!Number.isFinite(consultationId) || consultationId <= 0 || !currentFicheId || !canAccessForm.value) return;
 
     clotureLoading.value = true;
     try {
         const saved = await handleSave({ silent: true });
         if (!saved) return;
 
-        await closeConsultation(ficheId.value, props.consultation.id, token);
+        await closeConsultation(currentFicheId, consultationId, token);
         toast.add({ severity: 'success', summary: 'Consultation clôturée', detail: 'Clôture rapide effectuée.', life: 2500 });
         emit('closed');
         visibleProxy.value = false;

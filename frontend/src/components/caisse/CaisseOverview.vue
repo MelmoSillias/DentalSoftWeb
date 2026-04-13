@@ -57,6 +57,8 @@ const paymentRangeModel = computed({
 
 const devisSearch = ref('');
 const paymentsSearch = ref('');
+const paymentFamilyFilter = ref('non-insurance');
+const paymentModeFilter = ref('all');
 
 const normalizeText = (value) => String(value ?? '')
     .toLowerCase()
@@ -70,6 +72,12 @@ const matchesQuery = (parts, query) => {
 
 const devisSearchQuery = computed(() => normalizeText(devisSearch.value.trim()));
 const paymentsSearchQuery = computed(() => normalizeText(paymentsSearch.value.trim()));
+
+const paymentFamilyOptions = [
+    { label: 'Modes non assurances', value: 'non-insurance' },
+    { label: 'Modes assurances', value: 'insurance' },
+    { label: 'Tous les modes', value: 'all' }
+];
 
 const filteredDevis = computed(() => {
     const list = Array.isArray(props.devis) ? props.devis : [];
@@ -91,18 +99,89 @@ const filteredDevis = computed(() => {
     });
 });
 
-const filteredPayments = computed(() => {
+const computePaymentRoleTag = (payment) => {
+    if (payment?.rolePaiement === 'insurance') {
+        return payment?.insuranceStatus === 'pending'
+            ? { label: 'Assurance en attente', severity: 'warning' }
+            : { label: 'Assurance', severity: 'info' };
+    }
+
+    return { label: 'Client', severity: 'success' };
+};
+
+const computePaymentModeTag = (payment) => {
+    if (payment?.rolePaiement === 'insurance') {
+        return {
+            label: payment?.mode || 'Assurance',
+            severity: payment?.insuranceStatus === 'pending' ? 'warning' : 'info'
+        };
+    }
+
+    return {
+        label: payment?.mode || '—',
+        severity: 'success'
+    };
+};
+
+const familyFilteredPayments = computed(() => {
     const list = Array.isArray(props.payments) ? props.payments : [];
+    if (paymentFamilyFilter.value === 'all') {
+        return list;
+    }
+
+    const wantsInsurance = paymentFamilyFilter.value === 'insurance';
+    return list.filter((payment) => (payment?.rolePaiement === 'insurance') === wantsInsurance);
+});
+
+const paymentModeOptions = computed(() => {
+    const options = familyFilteredPayments.value.reduce((acc, payment) => {
+        const modeId = Number(payment?.modeId);
+        if (!Number.isFinite(modeId) || modeId <= 0) {
+            return acc;
+        }
+
+        if (!acc.some((option) => option.value === modeId)) {
+            acc.push({ label: payment?.mode || 'Autre', value: modeId });
+        }
+
+        return acc;
+    }, [{ label: 'Tous les modes', value: 'all' }]);
+
+    return options.sort((left, right) => {
+        if (left.value === 'all') return -1;
+        if (right.value === 'all') return 1;
+        return String(left.label).localeCompare(String(right.label), 'fr');
+    });
+});
+
+const handlePaymentFamilyChange = (value) => {
+    paymentFamilyFilter.value = value;
+    const optionStillExists = paymentModeOptions.value.some((option) => option.value === paymentModeFilter.value);
+    if (!optionStillExists) {
+        paymentModeFilter.value = 'all';
+    }
+};
+
+const filteredPayments = computed(() => {
+    const list = familyFilteredPayments.value;
     const query = paymentsSearchQuery.value;
-    return list.filter((row) => matchesQuery([
+    return list.filter((row) => {
+        if (paymentModeFilter.value !== 'all' && Number(row?.modeId) !== Number(paymentModeFilter.value)) {
+            return false;
+        }
+
+        return matchesQuery([
         row.patient,
         row.telephone,
         row.date,
         formatDate(row.date, true),
         row.montant,
         row.mode,
-        row.type
-    ], query));
+        row.type,
+        row.rolePaiement,
+        computePaymentRoleTag(row).label
+    ], query);
+    });
 });
 
 const devisTotals = computed(() => {
@@ -142,6 +221,17 @@ const computeStatus = (row) => {
     if (!row.isRegle && reste === 0) return { label: 'Vide non validé', severity: 'secondary' };
     if (reste === montant) return { label: 'Impayé', severity: 'danger' };
     return { label: 'Partiellement payé', severity: 'warning' };
+};
+
+const computeInsuranceBadge = (row) => {
+    const insurance = row?.insurance;
+    if (!insurance?.hasInsurance) {
+        return null;
+    }
+
+    return insurance.insuranceStatus === 'pending'
+        ? { label: 'Assurance en attente', severity: 'warning' }
+        : { label: 'Assurance', severity: 'info' };
 };
 
 const canModify = (row) => (Number(row.montant) === Number(row.reste)) && !row.isRegle;
@@ -230,7 +320,11 @@ const handlePreview = (row) => emit('preview', row);
                 </Column>
                 <Column header="Statut">
                     <template #body="{ data }">
-                        <Tag :value="computeStatus(data).label" :severity="computeStatus(data).severity" />
+                        <div class="flex flex-wrap gap-2">
+                            <Tag :value="computeStatus(data).label" :severity="computeStatus(data).severity" />
+                            <Tag v-if="computeInsuranceBadge(data)" :value="computeInsuranceBadge(data).label"
+                                :severity="computeInsuranceBadge(data).severity" icon="pi pi-shield" />
+                        </div>
                     </template>
                 </Column>
                 <Column header="Actions" style="width: 240px">
@@ -287,7 +381,14 @@ const handlePreview = (row) => emit('preview', row);
                 <Column field="montant" header="Montant" sortable>
                     <template #body="{ data }">{{ formatFcfa(data.montant) }}</template>
                 </Column>
-                <Column field="mode" header="Mode" sortable></Column>
+                <Column field="mode" header="Mode" sortable>
+                    <template #body="{ data }">
+                        <div class="flex flex-wrap gap-2">
+                            <Tag :value="computePaymentModeTag(data).label" :severity="computePaymentModeTag(data).severity" />
+                            <Tag :value="computePaymentRoleTag(data).label" :severity="computePaymentRoleTag(data).severity" />
+                        </div>
+                    </template>
+                </Column>
                 <Column header="Actions" style="width: 140px">
                     <template #body="{ data }">
                         <div class="flex gap-2">
@@ -297,6 +398,14 @@ const handlePreview = (row) => emit('preview', row);
                         </div>
                     </template>
                 </Column>
+                <template #paginatorend>
+                    <div class="payment-paginator-filters">
+                        <Select :modelValue="paymentFamilyFilter" :options="paymentFamilyOptions" optionLabel="label"
+                            optionValue="value" @update:modelValue="handlePaymentFamilyChange" />
+                        <Select v-model="paymentModeFilter" :options="paymentModeOptions" optionLabel="label"
+                            optionValue="value" />
+                    </div>
+                </template>
             </DataTable>
         </div>
     </div>
@@ -402,7 +511,7 @@ const handlePreview = (row) => emit('preview', row);
 .section-card {
     background: var(--surface-card);
     border-radius: 14px;
-    padding: 1.25rem;
+    padding: 0 0rem 1.25rem 0rem;
     border: 1px solid var(--surface-border);
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
 }
@@ -414,6 +523,9 @@ const handlePreview = (row) => emit('preview', row);
     justify-content: space-between;
     align-items: flex-start;
     margin-bottom: 1rem;
+    padding: 1rem 1rem 0.95rem;
+    border-radius: 12px 12px 0 0;
+    background: linear-gradient(135deg, rgba(226, 232, 240, 0.9), rgba(203, 213, 225, 0.72));
 }
 
 .section-eyebrow {
@@ -424,7 +536,7 @@ const handlePreview = (row) => emit('preview', row);
 }
 
 .section-title {
-    color: #0f172a;
+    color: #020617;
     font-weight: 600;
 }
 
@@ -456,11 +568,28 @@ const handlePreview = (row) => emit('preview', row);
 .app-dark .section-title {
     color: #e2e8f0;
 }
+
+.app-dark .section-header {
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.96), rgba(15, 23, 42, 0.88));
+}
  
 
 .app-dark .filter-item label {
     font-size: 0.85rem;
     color: #94a3b8;
+}
+
+.payment-paginator-filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    padding-left: 0.75rem;
+}
+
+.payment-paginator-filters :deep(.p-select) {
+    min-width: 220px;
 }
 
 </style>

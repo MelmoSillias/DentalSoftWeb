@@ -94,6 +94,14 @@ class CaisseController extends AbstractController
         return new JsonResponse($result, isset($result['error']) ? 400 : 200);
     }
 
+    #[Route('/api/devis/{id}/payments/reset', name: 'api_devis_payments_reset', methods: ['DELETE'])]
+    public function resetDevisPayments(int $id): JsonResponse
+    {
+        $result = $this->cashdeskService->resetDevisPayments($id);
+
+        return new JsonResponse($result, isset($result['error']) ? 404 : 200);
+    }
+
     #[Route('/api/devis/{id}/print', name: 'api_devis_print', methods: ['GET'])]
     public function printDevis(int $id): Response
     {

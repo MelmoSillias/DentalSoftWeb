@@ -46,6 +46,9 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(options: ['default' => true])]
     private bool $active = true;
 
+    #[ORM\Column(options: ['default' => true])]
+    private bool $notificationsEnabled = true;
+
     public function __construct()
     {
         $this->notifications = new ArrayCollection();
@@ -88,6 +91,18 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setActive(bool $active): static
     {
         $this->active = $active;
+
+        return $this;
+    }
+
+    public function isNotificationsEnabled(): bool
+    {
+        return $this->notificationsEnabled;
+    }
+
+    public function setNotificationsEnabled(bool $notificationsEnabled): static
+    {
+        $this->notificationsEnabled = $notificationsEnabled;
 
         return $this;
     }

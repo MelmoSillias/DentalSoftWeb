@@ -73,6 +73,7 @@ security:
     access_control:
         # API
         - { path: ^/api/login, roles: PUBLIC_ACCESS }
+        - { path: ^/api/health, roles: PUBLIC_ACCESS }
         - { path: ^/api/token/validate, roles: PUBLIC_ACCESS }
         - { path: ^/api, roles: PUBLIC_ACCESS, methods: [OPTIONS] }
         - { path: ^/api/portal-patient/me(?:/|$), roles: ROLE_PATIENT }

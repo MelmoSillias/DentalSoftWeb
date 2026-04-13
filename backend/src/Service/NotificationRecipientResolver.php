@@ -93,6 +93,10 @@ final class NotificationRecipientResolver
                 continue;
             }
 
+            if (!$user->isNotificationsEnabled()) {
+                continue;
+            }
+
             $bucket[$user->getId() ?? spl_object_id($user)] = $user;
         }
 

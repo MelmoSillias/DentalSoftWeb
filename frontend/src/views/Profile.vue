@@ -26,7 +26,8 @@ const {
 	changePassword,
 	fetchNotifications,
 	markNotificationsRead,
-	markAllNotificationsRead
+	markAllNotificationsRead,
+	setNotificationsEnabled
 } = useProfile();
 
 const breadcrumbHome = { icon: 'pi pi-home', to: '/' };
@@ -104,6 +105,17 @@ const handleMarkAll = async () => {
 	}
 };
 
+const notificationsEnabled = computed(() => user.value?.notificationsEnabled !== false);
+
+const handleNotificationsEnabledChange = async (enabled) => {
+	try {
+		await setNotificationsEnabled(Boolean(enabled));
+		toast.add({ severity: 'success', summary: 'Notifications', detail: enabled ? 'Notifications activées.' : 'Notifications désactivées.', life: 2200 });
+	} catch (err) {
+		toast.add({ severity: 'error', summary: 'Notifications', detail: 'Impossible de mettre à jour ce paramètre.' });
+	}
+};
+
 onMounted(async () => {
 	await fetchProfile();
 });
@@ -142,9 +154,11 @@ onMounted(async () => {
 					:unread-count="unreadCount"
 					:loading="loading"
 					:filter="notificationsFilter"
+					:notifications-enabled="notificationsEnabled"
 					@filter-change="handleFilterChange"
 					@mark-read="handleMarkRead"
 					@mark-all="handleMarkAll"
+					@notifications-enabled-change="handleNotificationsEnabledChange"
 				/>
 			</div>
 		</div>

@@ -34,14 +34,13 @@ onBeforeMount(() => {
 
     const activeItem = layoutState.activeMenuItem;
 
-    isActiveMenu.value = activeItem === itemKey.value || activeItem ? activeItem.startsWith(itemKey.value + '-') : false;
-    console.log('Mounted menu item:', props.item);
+    isActiveMenu.value = activeItem === itemKey.value || (activeItem ? activeItem.startsWith(itemKey.value + '-') : false);
 });
 
 watch(
     () => layoutState.activeMenuItem,
     (newVal) => {
-        isActiveMenu.value = newVal === itemKey.value || newVal.startsWith(itemKey.value + '-');
+        isActiveMenu.value = newVal === itemKey.value || (newVal ? newVal.startsWith(itemKey.value + '-') : false);
     }
 );
 
@@ -59,7 +58,7 @@ function itemClick(event, item) {
         item.command({ originalEvent: event, item: item });
     }
 
-    const foundItemKey = item.items ? (isActiveMenu.value ? props.parentItemKey : itemKey) : itemKey.value;
+    const foundItemKey = item.items ? (isActiveMenu.value ? props.parentItemKey : itemKey.value) : itemKey.value;
 
     setActiveMenuItem(foundItemKey);
 }
@@ -109,7 +108,7 @@ function checkActiveRoute(item) {
     </li> -->
 
     <li class="nav-link-root">
-        <Divider align="right">{{ props.item.label }}</Divider>
+        <Divider align="right" class="mb-0">{{ props.item.label }}</Divider>
         <ul class="border-l-[1px] border-gray-300 dark:border-gray-700 ml-2">
             <li v-for="(child, i) in props.item.items" :key="child">
                 <template v-if="child.visible !== false">
@@ -143,5 +142,9 @@ function checkActiveRoute(item) {
 :deep(.p-divider-content) {
     color : var(--primary-color);
     font-weight: bold;
+}
+
+:deep(.p-divider) {
+    margin-bottom: 0;
 }
 </style>

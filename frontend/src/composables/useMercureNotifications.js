@@ -136,6 +136,11 @@ export function useMercureNotifications() {
 
     const start = async () => {
         if (!auth.token) return;
+        if (auth.user && auth.user.notificationsEnabled === false) {
+            disconnect();
+            notificationsStore.setNotifications([]);
+            return;
+        }
         await loadInitialNotifications();
         await connect();
     };
@@ -164,6 +169,25 @@ export function useMercureNotifications() {
                 disconnect();
                 notificationsStore.setNotifications([]);
                 recentEventIds.clear();
+            }
+        }
+    );
+
+    watch(
+        () => auth.user?.notificationsEnabled,
+        async (enabled) => {
+            if (enabled === false) {
+                disconnect();
+                notificationsStore.setNotifications([]);
+                return;
+            }
+
+            if (enabled === true && auth.token) {
+                try {
+                    await start();
+                } catch (_) {
+                    // ignore
+                }
             }
         }
     );

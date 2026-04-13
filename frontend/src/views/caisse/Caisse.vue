@@ -29,9 +29,11 @@ import {
 	fetchPaymentMethods,
 	fetchPayments,
 	payDevis,
+	resetDevisPayments,
 	updateFactureLines,
 	validateEmptyDevis
 } from '@/services/caisseService';
+import { fetchPublicGeneralSettings } from '@/services/globalSettingsService';
 import {
 	fetchInvoicePrintData,
 	fetchPaymentsListPrintData,
@@ -95,6 +97,8 @@ const formatFcfa = (value) => `${Number(value || 0).toLocaleString('fr-FR')} FCF
 const paymentMethods = ref([]);
 const payDialogVisible = ref(false);
 const selectedDevis = ref(null);
+const paymentDialogTab = ref('client');
+const publicGeneralSettings = ref({ paiementDirectAssurance: false });
 const payForm = ref({
 	montant: 0,
 	modeId: null,
@@ -107,6 +111,8 @@ const payForm = ref({
 
 const validateDialogVisible = ref(false);
 const pendingDevis = ref(null);
+const resetPaymentDialogVisible = ref(false);
+const resetPaymentsLoading = ref(false);
 
 const factureDialogVisible = ref(false);
 const factureConsultId = ref(null);
@@ -116,6 +122,7 @@ const factureSaving = ref(false);
 const previewDialogVisible = ref(false);
 const previewLoading = ref(false);
 const previewData = ref(null);
+const previewDialogTab = ref('services');
 const payLoading = ref(false);
 const isGuidedTourStarting = ref(false);
 let guidedTourPageState = null;
@@ -154,11 +161,143 @@ const soinsList = [
 
 const factureTotal = computed(() => factureLines.value.reduce((sum, line) => sum + (Number(line.prix) || 0) * (Number(line.quantite) || 0), 0));
 
+const selectedDevisInsurance = computed(() => selectedDevis.value?.insurance || null);
+
+const invoiceHasInsurance = computed(() => selectedDevisInsurance.value?.hasInsurance === true);
+
+const effectiveInsuranceRate = computed(() => {
+	if (invoiceHasInsurance.value) {
+		return Number(selectedDevisInsurance.value?.insuranceRate) || 0;
+	}
+
+	if (payForm.value.insuranceEnabled) {
+		return Number(payForm.value.insuranceRate) || 0;
+	}
+
+	return 0;
+});
+
+const effectiveInsuranceAmount = computed(() => {
+	if (invoiceHasInsurance.value) {
+		return Number(selectedDevisInsurance.value?.insuranceAmount) || 0;
+	}
+
+	if (!selectedDevis.value || !payForm.value.insuranceEnabled) {
+		return 0;
+	}
+
+	const baseAmount = Number(selectedDevis.value.reste) || 0;
+	return Math.max(0, (baseAmount * effectiveInsuranceRate.value) / 100);
+});
+
+const patientAlreadyPaidAmount = computed(() => Number(selectedDevisInsurance.value?.patientPaidAmount) || 0);
+
+const hasExistingPayments = computed(() => patientAlreadyPaidAmount.value > 0 || invoiceHasInsurance.value);
+
+const insuranceSectionDisabledReason = computed(() => {
+	if (invoiceHasInsurance.value) {
+		return 'Cette facture a déjà une assurance liée. La prise en charge n’est plus modifiable.';
+	}
+
+	if (patientAlreadyPaidAmount.value > 0) {
+		return 'Des paiements sont déjà enregistrés sur cette facture. L’assurance ne peut plus être activée.';
+	}
+
+	if (!selectedDevis.value || (Number(selectedDevis.value.montant) || 0) <= 0 || (Number(selectedDevis.value.reste) || 0) <= 0) {
+		return 'La prise en charge assurance n’est pas disponible pour cette facture.';
+	}
+
+	return null;
+});
+
+const insuranceStatusLabel = computed(() => {
+	if (!invoiceHasInsurance.value) {
+		return 'Aucune assurance rattachée';
+	}
+
+	return selectedDevisInsurance.value?.insuranceStatus === 'pending'
+		? 'Assurance enregistrée en attente de validation'
+		: 'Assurance enregistrée';
+});
+
+const insuranceStatusSeverity = computed(() => {
+	if (!invoiceHasInsurance.value) {
+		return 'secondary';
+	}
+
+	return selectedDevisInsurance.value?.insuranceStatus === 'pending' ? 'warning' : 'success';
+});
+
+const previewPayments = computed(() => Array.isArray(previewData.value?.paiements) ? previewData.value.paiements : []);
+
+const previewPaymentRoleTag = (payment) => {
+	if (payment?.rolePaiement === 'insurance') {
+		return payment?.status === 'pending'
+			? { label: 'Assurance en attente', severity: 'warning' }
+			: { label: 'Assurance', severity: 'info' };
+	}
+
+	return { label: 'Client', severity: 'success' };
+};
+
+const previewPaymentModeTag = (payment) => {
+	if (payment?.rolePaiement === 'insurance') {
+		return {
+			label: payment?.mode || 'Assurance',
+			severity: payment?.status === 'pending' ? 'warning' : 'info'
+		};
+	}
+
+	return {
+		label: payment?.mode || '—',
+		severity: 'success'
+	};
+};
+
+const previewServicesTotal = computed(() => (previewData.value?.contenus || []).reduce((sum, line) => sum + (Number(line?.total) || 0), 0));
+
+const patientOutstandingAmount = computed(() => {
+	if (!selectedDevis.value) {
+		return 0;
+	}
+
+	if (invoiceHasInsurance.value) {
+		return Number(selectedDevis.value.reste) || 0;
+	}
+
+	const total = Number(selectedDevis.value.montant) || 0;
+	return Math.max(0, total - patientAlreadyPaidAmount.value - effectiveInsuranceAmount.value);
+});
+
+const insuranceHelperMessage = computed(() => publicGeneralSettings.value?.paiementDirectAssurance
+	? 'Le paiement assurance sera créé automatiquement avec une transaction en attente.'
+	: 'Une transaction assurance en attente sera créée. Le paiement assurance sera ajouté après validation.'
+);
+
+const maxClientPaymentAmount = computed(() => {
+	if (!selectedDevis.value) {
+		return 0;
+	}
+
+	const base = Number(selectedDevis.value.reste) || 0;
+	const reservedInsurance = invoiceHasInsurance.value ? 0 : effectiveInsuranceAmount.value;
+	return Math.max(0, base - reservedInsurance);
+});
+
+const canResetInvoicePayments = computed(() => {
+	if (!selectedDevis.value) {
+		return false;
+	}
+
+	return hasExistingPayments.value || (Number(selectedDevis.value.reste) || 0) !== (Number(selectedDevis.value.montant) || 0);
+});
+
 const remainingAfterPay = computed(() => {
 	if (!selectedDevis.value) return 0;
 	const reste = Number(selectedDevis.value.reste) || 0;
 	const montantPatient = Number(payForm.value.montant) || 0;
-	return Math.max(0, reste - montantPatient - insuranceCoveredAmount.value);
+	const insuranceAmount = invoiceHasInsurance.value ? 0 : effectiveInsuranceAmount.value;
+	return Math.max(0, reste - montantPatient - insuranceAmount);
 });
 
 const classicPaymentOptions = computed(() =>
@@ -184,12 +323,11 @@ const selectedInsuranceMethod = computed(() =>
 );
 
 const insuranceCoveredAmount = computed(() => {
-	if (!selectedDevis.value || !payForm.value.insuranceEnabled) {
-		return 0;
+	if (invoiceHasInsurance.value) {
+		return Number(selectedDevisInsurance.value?.insuranceAmount) || 0;
 	}
 
-	const baseAmount = Number(selectedDevis.value.reste) || 0;
-	return Math.max(0, (baseAmount * Number(payForm.value.insuranceRate || 0)) / 100);
+	return effectiveInsuranceAmount.value;
 });
 
 const patientPortionAmount = computed(() => {
@@ -197,16 +335,11 @@ const patientPortionAmount = computed(() => {
 		return 0;
 	}
 
-	const baseAmount = Number(selectedDevis.value.reste) || 0;
-	return Math.max(0, baseAmount - insuranceCoveredAmount.value);
-});
-
-const hasRecordedPatientPayment = computed(() => {
-	if (!selectedDevis.value) {
-		return false;
+	if (invoiceHasInsurance.value) {
+		return Number(selectedDevis.value.reste) || 0;
 	}
 
-	return payments.value.some((payment) => Number(payment?.devisId) === Number(selectedDevis.value.id));
+	return patientOutstandingAmount.value;
 });
 
 const invoiceAllowsInsurance = computed(() => {
@@ -216,10 +349,10 @@ const invoiceAllowsInsurance = computed(() => {
 
 	const total = Number(selectedDevis.value.montant) || 0;
 	const reste = Number(selectedDevis.value.reste) || 0;
-	return total > 0 && total === reste && !hasRecordedPatientPayment.value;
+	return total > 0 && reste > 0 && !invoiceHasInsurance.value && patientAlreadyPaidAmount.value <= 0;
 });
 
-const requiresClassicPayment = computed(() => patientPortionAmount.value > 0);
+const requiresClassicPayment = computed(() => (Number(payForm.value.montant) || 0) > 0);
 
 const setActiveView = (view) => {
 	const allowed = ['overview', 'factures', 'paiements'];
@@ -288,19 +421,32 @@ const loadPaymentMethods = async () => {
 	}
 };
 
+const loadPublicGeneralSettings = async () => {
+	try {
+		const settings = await fetchPublicGeneralSettings(token);
+		publicGeneralSettings.value = {
+			paiementDirectAssurance: settings?.paiementDirectAssurance === true
+		};
+	} catch (error) {
+		console.error(error);
+	}
+};
+
 const openPayDialog = async (row) => {
 	selectedDevis.value = row;
 	await loadPaymentMethods();
 	const defaultClassicMethod = getDefaultClassicMethod(paymentMethods.value);
+	const existingInsurance = row?.insurance || null;
 	payForm.value = {
 		montant: Number(row.reste) || 0,
 		modeId: defaultClassicMethod?.id ?? null,
 		date: toApiDate(new Date()),
 		time: currentTime(),
 		insuranceEnabled: false,
-		insuranceModeId: null,
-		insuranceRate: 0
+		insuranceModeId: existingInsurance?.insuranceModeId ?? null,
+		insuranceRate: Number(existingInsurance?.insuranceRate) || 0
 	};
+	paymentDialogTab.value = existingInsurance?.hasInsurance ? 'client' : 'assurance';
 	payDialogVisible.value = true;
 };
 
@@ -321,8 +467,10 @@ watch(
 	() => payForm.value.insuranceEnabled,
 	(enabled) => {
 		if (!enabled) {
-			payForm.value.insuranceModeId = null;
-			payForm.value.insuranceRate = 0;
+			if (!invoiceHasInsurance.value) {
+				payForm.value.insuranceModeId = null;
+				payForm.value.insuranceRate = 0;
+			}
 			payForm.value.montant = Number(selectedDevis.value?.reste) || 0;
 			return;
 		}
@@ -335,7 +483,9 @@ watch(
 		const defaultInsurance = buildPaymentMethodGroups(paymentMethods.value).insurances.find((method) => method.actif !== false) || null;
 		payForm.value.insuranceModeId = payForm.value.insuranceModeId || defaultInsurance?.id || null;
 		payForm.value.insuranceRate = getPaymentCoverageRate(defaultInsurance);
-		payForm.value.montant = patientPortionAmount.value;
+		if ((Number(payForm.value.montant) || 0) > maxClientPaymentAmount.value) {
+			payForm.value.montant = maxClientPaymentAmount.value;
+		}
 	}
 );
 
@@ -349,7 +499,9 @@ watch(
 		const method = paymentMethods.value.find((item) => Number(item?.id) === Number(modeId));
 		if (method) {
 			payForm.value.insuranceRate = getPaymentCoverageRate(method);
-			payForm.value.montant = patientPortionAmount.value;
+			if ((Number(payForm.value.montant) || 0) > maxClientPaymentAmount.value) {
+				payForm.value.montant = maxClientPaymentAmount.value;
+			}
 		}
 	}
 );
@@ -357,8 +509,8 @@ watch(
 watch(
 	() => payForm.value.insuranceRate,
 	() => {
-		if (payForm.value.insuranceEnabled) {
-			payForm.value.montant = patientPortionAmount.value;
+		if (payForm.value.insuranceEnabled && (Number(payForm.value.montant) || 0) > maxClientPaymentAmount.value) {
+			payForm.value.montant = maxClientPaymentAmount.value;
 		}
 	}
 );
@@ -366,25 +518,31 @@ watch(
 const submitPayment = async () => {
 	
 	if (!selectedDevis.value) return;
-	const montant = payForm.value.insuranceEnabled ? patientPortionAmount.value : Number(payForm.value.montant) || 0;
+	const isNewInsurancePayment = payForm.value.insuranceEnabled && invoiceAllowsInsurance.value;
+	const montant = Number(payForm.value.montant) || 0;
+	const insuranceAmount = isNewInsurancePayment ? effectiveInsuranceAmount.value : 0;
 	const max = Number(selectedDevis.value.reste) || 0;
-	if (!payForm.value.insuranceEnabled && (!montant || montant < 0)) {
+	if (montant < 0) {
 		toast.add({ severity: 'warn', summary: 'Montant', detail: 'Saisissez un montant valide', life: 2500 });
 		return;
 	}
-	if ((montant + insuranceCoveredAmount.value) > max) {
+	if ((montant + insuranceAmount) <= 0) {
+		toast.add({ severity: 'warn', summary: 'Montant', detail: 'Saisissez un montant valide', life: 2500 });
+		return;
+	}
+	if ((montant + insuranceAmount) > max) {
 		toast.add({ severity: 'warn', summary: 'Montant', detail: `Le montant ne peut dépasser ${formatFcfa(max)}`, life: 2500 });
 		return;
 	}
 	if (payForm.value.insuranceEnabled && !invoiceAllowsInsurance.value) {
-		toast.add({ severity: 'warn', summary: 'Assurance', detail: 'L’assurance n’est disponible que pour une facture sans paiement enregistré.', life: 3000 });
+		toast.add({ severity: 'warn', summary: 'Assurance', detail: 'Une assurance est déjà enregistrée pour cette facture.', life: 3000 });
 		return;
 	}
-	if (payForm.value.insuranceEnabled && !payForm.value.insuranceModeId) {
+	if (isNewInsurancePayment && !payForm.value.insuranceModeId) {
 		toast.add({ severity: 'warn', summary: 'Assurance', detail: 'Choisissez une assurance.', life: 2500 });
 		return;
 	}
-	if (payForm.value.insuranceEnabled && !(Number(payForm.value.insuranceRate) > 0)) {
+	if (isNewInsurancePayment && !(Number(payForm.value.insuranceRate) > 0)) {
 		toast.add({ severity: 'warn', summary: 'Assurance', detail: 'Indiquez un pourcentage de prise en charge valide.', life: 2500 });
 		return;
 	}
@@ -399,11 +557,11 @@ const submitPayment = async () => {
 			modeId: requiresClassicPayment.value ? payForm.value.modeId : null,
 			date: payForm.value.date,
 			time: payForm.value.time,
-			insurance_enabled: payForm.value.insuranceEnabled ? 1 : 0,
-			insurance_mode_id: payForm.value.insuranceEnabled ? payForm.value.insuranceModeId : null,
-			insurance_rate: payForm.value.insuranceEnabled ? Number(payForm.value.insuranceRate || 0) : null,
+			insurance_enabled: isNewInsurancePayment ? 1 : 0,
+			insurance_mode_id: isNewInsurancePayment ? payForm.value.insuranceModeId : null,
+			insurance_rate: isNewInsurancePayment ? Number(payForm.value.insuranceRate || 0) : null,
 			patient_amount: montant,
-			insurance_amount: payForm.value.insuranceEnabled ? insuranceCoveredAmount.value : 0,
+			insurance_amount: insuranceAmount,
 			facture_amount: Number(selectedDevis.value.reste || selectedDevis.value.montant || 0)
 		}, token);
 		const devisId = selectedDevis.value.id;
@@ -440,6 +598,34 @@ const submitPayment = async () => {
 		toast.add({ severity: 'error', summary: 'Paiement', detail: 'Enregistrement impossible', life: 3500 });
 	} finally {
 		payLoading.value = false;
+	}
+};
+
+const confirmResetPaymentDialog = () => {
+	if (!selectedDevis.value || !canResetInvoicePayments.value) {
+		return;
+	}
+
+	resetPaymentDialogVisible.value = true;
+};
+
+const resetSelectedDevisPayments = async () => {
+	if (!selectedDevis.value) {
+		return;
+	}
+
+	try {
+		resetPaymentsLoading.value = true;
+		await resetDevisPayments(selectedDevis.value.id, token);
+		toast.add({ severity: 'success', summary: 'Facture', detail: 'La facture a été réinitialisée.', life: 3000 });
+		resetPaymentDialogVisible.value = false;
+		payDialogVisible.value = false;
+		await Promise.all([loadDevis(), loadPayments()]);
+	} catch (error) {
+		console.error(error);
+		toast.add({ severity: 'error', summary: 'Facture', detail: 'Réinitialisation impossible.', life: 3500 });
+	} finally {
+		resetPaymentsLoading.value = false;
 	}
 };
 
@@ -528,6 +714,7 @@ const saveFacture = async () => {
 const openPreviewDialog = async (row) => {
 	previewDialogVisible.value = true;
 	previewLoading.value = true;
+	previewDialogTab.value = 'services';
 	try {
 		previewData.value = await fetchDevisDetail(row.id, token);
 	} catch (error) {
@@ -805,7 +992,8 @@ const sendReceiptBySms = async (row) => {
 watch([devisRange, devisType], loadDevis, { immediate: true });
 watch(paymentRange, loadPayments, { immediate: true });
 
-onMounted(() => {
+onMounted(async () => {
+	await loadPublicGeneralSettings();
 	setActiveView(activeView.value);
 	window.addEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
 });
@@ -860,73 +1048,150 @@ onBeforeUnmount(() => {
 			</TabPanels>
 		</Tabs>
 
-		<Dialog v-model:visible="payDialogVisible" header="Régler la facture" :modal="true" :style="{ width: '480px' }">
-			<div class="flex flex-col gap-3" data-tour="caisse-overview.payment-dialog">
-				<div v-if="invoiceAllowsInsurance" class="rounded-xl border border-surface-200 bg-surface-50/70 p-3">
-					<div class="flex items-center gap-2">
-						<ToggleSwitch v-model="payForm.insuranceEnabled" />
-						<span class="text-sm text-gray-600">{{ payForm.insuranceEnabled ? 'Prise en charge assurance activée' : 'Activer une assurance pour cette facture' }}</span>
+		<Dialog v-model:visible="payDialogVisible" header="Régler la facture" :modal="true" :style="{ width: '720px' }">
+			<div class="flex flex-col gap-4" data-tour="caisse-overview.payment-dialog">
+				<div class="grid gap-3 md:grid-cols-4">
+					<div class="rounded-xl border border-surface-200 bg-surface-50/70 p-3">
+						<p class="text-xs uppercase tracking-wide text-gray-500">Montant total</p>
+						<p class="mt-1 text-base font-semibold">{{ formatFcfa(selectedDevis?.montant) }}</p>
+					</div>
+					<div class="rounded-xl border border-surface-200 bg-surface-50/70 p-3">
+						<p class="text-xs uppercase tracking-wide text-gray-500">Part assurance</p>
+						<p class="mt-1 text-base font-semibold">{{ formatFcfa(insuranceCoveredAmount) }}</p>
+					</div>
+					<div class="rounded-xl border border-surface-200 bg-surface-50/70 p-3">
+						<p class="text-xs uppercase tracking-wide text-gray-500">Déjà payé client</p>
+						<p class="mt-1 text-base font-semibold">{{ formatFcfa(patientAlreadyPaidAmount) }}</p>
+					</div>
+					<div class="rounded-xl border border-surface-200 bg-surface-50/70 p-3">
+						<p class="text-xs uppercase tracking-wide text-gray-500">Reste à payer</p>
+						<p class="mt-1 text-base font-semibold">{{ formatFcfa(patientOutstandingAmount) }}</p>
 					</div>
 				</div>
-				<div v-else class="rounded-xl border border-dashed border-surface-200 bg-surface-50/50 p-3 text-sm text-gray-600">
-					L’assurance n’est proposée qu’une seule fois et uniquement pour une facture sans paiement déjà enregistré.
-				</div>
-				<div v-if="payForm.insuranceEnabled" class="grid grid-cols-1 gap-3 rounded-xl border border-surface-200 bg-surface-50/70 p-4">
-					<div>
-						<label class="text-sm text-gray-600">Assurance</label>
-						<Select v-model="payForm.insuranceModeId" :options="insurancePaymentOptions" optionLabel="label"
-							optionValue="value" placeholder="Sélectionner une assurance" />
-					</div>
-					<div class="grid grid-cols-2 gap-3">
-						<div>
-							<label class="text-sm text-gray-600">Prise en charge (%)</label>
-							<InputNumber v-model="payForm.insuranceRate" mode="decimal" locale="fr-FR" :min="0" :max="100"
-								:minFractionDigits="0" :maxFractionDigits="2" inputClass="w-full" class="w-full" />
-						</div>
-						<div>
-							<label class="text-sm text-gray-600">Part assurance</label>
-							<InputNumber :modelValue="insuranceCoveredAmount" mode="decimal" locale="fr-FR" inputClass="w-full"
-								class="w-full" disabled />
-						</div>
-					</div>
-				</div>
-				<div>
-					<label class="text-sm text-gray-600">Mode de paiement patient</label>
-					<Select v-model="payForm.modeId"
-						:options="classicPaymentOptions"
-						optionLabel="label" optionValue="value" optionDisabled="disabled" placeholder="Sélectionner" />
-					<p class="mt-1 text-xs text-gray-500">
-						{{ requiresClassicPayment ? 'Le mode patient couvre la part restante après assurance.' : 'Aucune part patient à encaisser.' }}
-					</p>
-				</div>
-				<div class="grid grid-cols-2 gap-3">
-					<div>
-						<label class="text-sm text-gray-600">Date</label>
-						<InputText v-model="payForm.date" type="date" class="w-full" />
-					</div>
-					<div>
-						<label class="text-sm text-gray-600">Heure</label>
-						<InputText v-model="payForm.time" type="time" class="w-full" />
-					</div>
-				</div>
-				<div>
-					<label class="text-sm text-gray-600">Montant patient</label>
-					<InputNumber v-model="payForm.montant" mode="decimal" locale="fr-FR" :min="0" class="w-full" :disabled="payForm.insuranceEnabled" />
-					<p class="text-xs text-gray-500 mt-1">Reste après paiement : {{ formatFcfa(remainingAfterPay) }}</p>
-					<p v-if="payForm.insuranceEnabled && selectedInsuranceMethod" class="text-xs text-gray-500 mt-1">
-						Assureur sélectionné : {{ selectedInsuranceMethod.libelle }}.
-					</p>
-				</div>
+
+				<Tabs :value="paymentDialogTab" @update:value="paymentDialogTab = $event">
+					<TabList>
+						<Tab value="client">Paiement client</Tab>
+						<Tab value="assurance">
+							<span class="flex items-center gap-2">
+								<span>Paiement assurance</span>
+								<i v-if="invoiceHasInsurance" class="pi pi-check-circle text-green-600"></i>
+							</span>
+						</Tab>
+					</TabList>
+					<TabPanels class="mt-4">
+						<TabPanel value="client">
+							<div class="flex flex-col gap-4">
+								<div class="rounded-xl border border-surface-200 bg-surface-50/70 p-4">
+									<p class="text-sm font-medium text-gray-700">Synthèse de la facture</p>
+									<div class="mt-3 grid gap-3 md:grid-cols-2">
+										<div>
+											<p class="text-xs uppercase tracking-wide text-gray-500">Part assurance</p>
+											<p class="mt-1 text-sm font-semibold">{{ formatFcfa(insuranceCoveredAmount) }}</p>
+										</div>
+										<div>
+											<p class="text-xs uppercase tracking-wide text-gray-500">Reste client à encaisser</p>
+											<p class="mt-1 text-sm font-semibold">{{ formatFcfa(patientOutstandingAmount) }}</p>
+										</div>
+									</div>
+								</div>
+								<div>
+									<label class="text-sm text-gray-600">Mode de paiement client</label>
+									<Select v-model="payForm.modeId" :options="classicPaymentOptions" optionLabel="label"
+										optionValue="value" optionDisabled="disabled" placeholder="Sélectionner" />
+									<p class="mt-1 text-xs text-gray-500">
+										{{ requiresClassicPayment ? 'Choisissez le mode utilisé pour la tranche client en cours.' : 'Aucune part client à encaisser pour cette facture.' }}
+									</p>
+								</div>
+								<div class="grid grid-cols-2 gap-3">
+									<div>
+										<label class="text-sm text-gray-600">Date</label>
+										<InputText v-model="payForm.date" type="date" class="w-full" />
+									</div>
+									<div>
+										<label class="text-sm text-gray-600">Heure</label>
+										<InputText v-model="payForm.time" type="time" class="w-full" />
+									</div>
+								</div>
+								<div>
+									<label class="text-sm text-gray-600">Montant client</label>
+									<InputNumber v-model="payForm.montant" mode="decimal" locale="fr-FR" :min="0" class="w-full"
+										:max="maxClientPaymentAmount" />
+									<p class="mt-1 text-xs text-gray-500">Reste après paiement : {{ formatFcfa(remainingAfterPay) }}</p>
+									<p v-if="(payForm.insuranceEnabled || invoiceHasInsurance) && selectedInsuranceMethod" class="mt-1 text-xs text-gray-500">
+										Assureur sélectionné : {{ selectedInsuranceMethod.libelle }}.
+									</p>
+								</div>
+							</div>
+						</TabPanel>
+						<TabPanel value="assurance">
+							<div class="flex flex-col gap-4">
+								<div class="flex items-start justify-between gap-3 rounded-xl border border-surface-200 bg-surface-50/70 p-4">
+									<div>
+										<p class="text-sm font-medium text-gray-700">État de la prise en charge</p>
+										<p class="mt-1 text-xs text-gray-500">{{ insuranceHelperMessage }}</p>
+									</div>
+									<Tag :value="insuranceStatusLabel" :severity="insuranceStatusSeverity" />
+								</div>
+
+								<div v-if="invoiceAllowsInsurance" class="rounded-xl border border-surface-200 bg-surface-50/70 p-4">
+									<div class="flex items-center gap-2">
+										<ToggleSwitch v-model="payForm.insuranceEnabled" />
+										<span class="text-sm text-gray-600">{{ payForm.insuranceEnabled ? 'Facture marquée comme assurée' : 'Marquer cette facture comme assurée' }}</span>
+									</div>
+								</div>
+								<div v-else class="rounded-xl border border-dashed border-surface-200 bg-surface-50/50 p-4 text-sm text-gray-600">
+									{{ insuranceSectionDisabledReason }}
+								</div>
+
+								<div class="grid grid-cols-1 gap-3 rounded-xl border border-surface-200 bg-surface-50/70 p-4">
+									<div>
+										<label class="text-sm text-gray-600">Assurance</label>
+										<Select v-model="payForm.insuranceModeId" :options="insurancePaymentOptions" optionLabel="label"
+											optionValue="value" placeholder="Sélectionner une assurance"
+											:disabled="invoiceHasInsurance || !payForm.insuranceEnabled" />
+									</div>
+									<div class="grid grid-cols-2 gap-3">
+										<div>
+											<label class="text-sm text-gray-600">Prise en charge (%)</label>
+											<InputNumber v-model="payForm.insuranceRate" mode="decimal" locale="fr-FR" :min="0" :max="100"
+												:minFractionDigits="0" :maxFractionDigits="2" inputClass="w-full" class="w-full"
+												:disabled="invoiceHasInsurance || !payForm.insuranceEnabled" />
+										</div>
+										<div>
+											<label class="text-sm text-gray-600">Montant assurance</label>
+											<InputNumber :modelValue="insuranceCoveredAmount" mode="decimal" locale="fr-FR" inputClass="w-full"
+												class="w-full" disabled />
+										</div>
+									</div>
+									<p v-if="invoiceHasInsurance && selectedInsuranceMethod" class="text-xs text-gray-500">
+										Assurance liée : {{ selectedInsuranceMethod.libelle }}.
+									</p>
+								</div>
+							</div>
+						</TabPanel>
+					</TabPanels>
+				</Tabs>
 			</div>
 			<template #footer>
+				<Button v-if="canResetInvoicePayments" label="Réinitialiser la facture" severity="danger" outlined icon="pi pi-refresh"
+					@click="confirmResetPaymentDialog" />
 				<Button label="Annuler" text @click="payDialogVisible = false" />
 				<Button label="Confirmer" severity="success" icon="pi pi-check" @click="submitPayment" :loading="payLoading" />
 			</template>
 		</Dialog>
 
+		<Dialog v-model:visible="resetPaymentDialogVisible" header="Réinitialiser la facture" :modal="true" :style="{ width: '420px' }">
+			<p class="dialog-note text-sm text-gray-700">Cette action supprimera tous les paiements et toutes les transactions liées à la facture pour la remettre à son état initial.</p>
+			<template #footer>
+				<Button label="Annuler" text @click="resetPaymentDialogVisible = false" />
+				<Button label="Réinitialiser" severity="danger" icon="pi pi-refresh" @click="resetSelectedDevisPayments" :loading="resetPaymentsLoading" />
+			</template>
+		</Dialog>
+
 		<Dialog v-model:visible="validateDialogVisible" header="Valider la facture vide" :modal="true"
 			:style="{ width: '420px' }">
-			<p class="text-sm text-gray-700">Confirmer que cette facture est vide et doit être marquée comme validée.
+			<p class="dialog-note text-sm text-gray-700">Confirmer que cette facture est vide et doit être marquée comme validée.
 			</p>
 			<template #footer>
 				<Button label="Annuler" text @click="validateDialogVisible = false" />
@@ -967,45 +1232,130 @@ onBeforeUnmount(() => {
 			:style="{ width: '820px' }">
 			<div data-tour="caisse-factures.preview">
 				<div v-if="previewLoading" class="p-4 text-center text-gray-600">Chargement...</div>
-				<div v-else-if="previewData" class="flex flex-col gap-3">
-					<div class="flex items-center justify-between">
+				<div v-else-if="previewData" class="preview-dialog-content flex flex-col gap-3">
+					<div class="preview-header-card flex items-center justify-between rounded-2xl border border-surface-200 bg-surface-50/80 p-4">
 						<div>
-							<p class="font-semibold">Facture n° {{ String(previewData.id).padStart(4, '0') }}</p>
-							<p class="text-sm text-gray-600">Date : {{ previewData.date }}</p>
-							<p class="text-sm text-gray-600">Patient : {{ previewData.patient?.nom }} {{
+							<p class="text-lg font-semibold">Facture n° {{ String(previewData.id).padStart(4, '0') }}</p>
+							<p class="preview-subtext text-sm text-gray-600">Date : {{ previewData.date }}</p>
+							<p class="preview-subtext text-sm text-gray-600">Patient : {{ previewData.patient?.nom }} {{
 								previewData.patient?.prenom
 							}}</p>
 						</div>
-						<Tag :value="'Reste ' + formatFcfa(previewData.reste)" severity="warning" />
+						<div class="flex flex-col items-end gap-2">
+							<Tag :value="'Reste ' + formatFcfa(previewData.reste)" severity="warning" />
+							<Tag v-if="previewData.insurance?.hasInsurance" :value="previewData.insurance?.insuranceStatus === 'pending' ? 'Assurance en attente' : 'Assurance liée'"
+								:severity="previewData.insurance?.insuranceStatus === 'pending' ? 'warning' : 'info'" icon="pi pi-shield" />
+						</div>
 					</div>
-					<table class="w-full text-sm">
-						<thead>
-							<tr class="text-left border-b">
-								<th class="py-2">Désignation</th>
-								<th class="py-2">Qté</th>
-								<th class="py-2 text-right">Prix</th>
-								<th class="py-2 text-right">Total</th>
-							</tr>
-						</thead>
-						<tbody>
-							<tr v-for="(c, idx) in previewData.contenus || []" :key="idx" class="border-b">
-								<td class="py-2">{{ c.designation }}</td>
-								<td class="py-2">{{ c.qte }}</td>
-								<td class="py-2 text-right">{{ formatFcfa(c.montant) }}</td>
-								<td class="py-2 text-right">{{ formatFcfa(c.total) }}</td>
-							</tr>
-						</tbody>
-						<tfoot>
-							<tr>
-								<th colspan="3" class="py-2 text-right">Total TTC</th>
-								<th class="py-2 text-right">{{ formatFcfa(previewData.montant) }}</th>
-							</tr>
-							<tr>
-								<th colspan="3" class="py-2 text-right">Reste à payer</th>
-								<th class="py-2 text-right">{{ formatFcfa(previewData.reste) }}</th>
-							</tr>
-						</tfoot>
-					</table>
+					<Tabs :value="previewDialogTab" @update:value="previewDialogTab = $event">
+						<TabList>
+							<Tab value="services">Services effectués</Tab>
+							<Tab value="paiements">Détail des paiements</Tab>
+						</TabList>
+						<TabPanels class="mt-4">
+							<TabPanel value="services">
+								<div class="flex flex-col gap-4">
+									<div class="grid gap-3 md:grid-cols-3">
+										<div class="preview-summary-card rounded-xl border border-surface-200 bg-surface-50/70 p-3">
+											<p class="preview-summary-label text-xs uppercase tracking-wide text-gray-500">Actes enregistrés</p>
+											<p class="mt-1 text-base font-semibold">{{ (previewData.contenus || []).length }}</p>
+										</div>
+										<div class="preview-summary-card rounded-xl border border-surface-200 bg-surface-50/70 p-3">
+											<p class="preview-summary-label text-xs uppercase tracking-wide text-gray-500">Total des services</p>
+											<p class="mt-1 text-base font-semibold">{{ formatFcfa(previewServicesTotal) }}</p>
+										</div>
+										<div class="preview-summary-card rounded-xl border border-surface-200 bg-surface-50/70 p-3">
+											<p class="preview-summary-label text-xs uppercase tracking-wide text-gray-500">Montant facturé</p>
+											<p class="mt-1 text-base font-semibold">{{ formatFcfa(previewData.montant) }}</p>
+										</div>
+									</div>
+									<div class="preview-table-card overflow-hidden rounded-2xl border border-surface-200 bg-white/90 shadow-sm">
+										<table class="w-full text-sm">
+											<thead class="preview-table-head bg-slate-50 text-slate-700">
+												<tr class="preview-table-head-row text-left border-b border-slate-200">
+													<th class="px-4 py-3 font-medium">Désignation</th>
+													<th class="px-4 py-3 font-medium">Qté</th>
+													<th class="px-4 py-3 text-right font-medium">Prix</th>
+													<th class="px-4 py-3 text-right font-medium">Total</th>
+												</tr>
+											</thead>
+											<tbody>
+												<tr v-for="(c, idx) in previewData.contenus || []" :key="idx" class="preview-table-row border-b border-slate-100 last:border-b-0">
+													<td class="preview-table-strong px-4 py-3 font-medium text-slate-700">{{ c.designation }}</td>
+													<td class="preview-table-muted px-4 py-3 text-slate-600">{{ c.qte }}</td>
+													<td class="preview-table-muted px-4 py-3 text-right text-slate-600">{{ formatFcfa(c.montant) }}</td>
+													<td class="preview-table-strong px-4 py-3 text-right font-semibold text-slate-800">{{ formatFcfa(c.total) }}</td>
+												</tr>
+											</tbody>
+											<tfoot class="preview-table-foot bg-slate-50/80">
+												<tr>
+													<th colspan="3" class="preview-table-muted px-4 py-3 text-right font-medium text-slate-600">Total TTC</th>
+													<th class="preview-table-emphasis px-4 py-3 text-right font-semibold text-slate-900">{{ formatFcfa(previewData.montant) }}</th>
+												</tr>
+												<tr>
+													<th colspan="3" class="preview-table-muted px-4 py-3 text-right font-medium text-slate-600">Reste à payer</th>
+													<th class="preview-table-warning px-4 py-3 text-right font-semibold text-amber-700">{{ formatFcfa(previewData.reste) }}</th>
+												</tr>
+											</tfoot>
+										</table>
+									</div>
+								</div>
+							</TabPanel>
+							<TabPanel value="paiements">
+								<div class="flex flex-col gap-4">
+									<div class="grid gap-3 md:grid-cols-3">
+										<div class="preview-summary-card rounded-xl border border-surface-200 bg-surface-50/70 p-3">
+											<p class="preview-summary-label text-xs uppercase tracking-wide text-gray-500">Écritures</p>
+											<p class="mt-1 text-base font-semibold">{{ previewPayments.length }}</p>
+										</div>
+										<div class="preview-summary-card rounded-xl border border-surface-200 bg-surface-50/70 p-3">
+											<p class="preview-summary-label text-xs uppercase tracking-wide text-gray-500">Part assurance</p>
+											<p class="mt-1 text-base font-semibold">{{ formatFcfa(previewData.insurance?.insuranceAmount) }}</p>
+										</div>
+										<div class="preview-summary-card rounded-xl border border-surface-200 bg-surface-50/70 p-3">
+											<p class="preview-summary-label text-xs uppercase tracking-wide text-gray-500">Part client déjà réglée</p>
+											<p class="mt-1 text-base font-semibold">{{ formatFcfa(previewData.insurance?.patientPaidAmount) }}</p>
+										</div>
+									</div>
+									<div v-if="previewPayments.length" class="flex flex-col gap-3">
+										<div v-for="payment in previewPayments" :key="`${payment.sourceType}-${payment.id}`"
+											class="preview-payment-card rounded-2xl border border-surface-200 bg-white/90 p-4 shadow-sm">
+											<div class="flex flex-wrap items-start justify-between gap-3">
+												<div>
+													<p class="preview-payment-amount font-semibold text-slate-800">{{ formatFcfa(payment.montant) }}</p>
+													<p class="preview-payment-date text-sm text-slate-500">{{ payment.date || 'Date inconnue' }}</p>
+													<p v-if="payment.description" class="preview-payment-description mt-1 text-sm text-slate-600">{{ payment.description }}</p>
+												</div>
+												<div class="flex flex-wrap justify-end gap-2">
+													<Tag :value="previewPaymentModeTag(payment).label" :severity="previewPaymentModeTag(payment).severity" />
+													<Tag :value="previewPaymentRoleTag(payment).label" :severity="previewPaymentRoleTag(payment).severity" />
+													<Tag v-if="payment.sourceType === 'transaction'" value="Transaction" severity="secondary" />
+													<Tag v-else value="Paiement" severity="contrast" />
+												</div>
+											</div>
+											<div class="preview-payment-meta mt-3 grid gap-3 text-sm text-slate-600 md:grid-cols-3">
+												<div>
+													<p class="preview-payment-meta-label text-xs uppercase tracking-wide text-slate-400">Statut</p>
+													<p class="mt-1 font-medium">{{ payment.status === 'pending' ? 'En attente' : 'Validé' }}</p>
+												</div>
+												<div>
+													<p class="preview-payment-meta-label text-xs uppercase tracking-wide text-slate-400">Mode</p>
+													<p class="mt-1 font-medium">{{ payment.mode || '—' }}</p>
+												</div>
+												<div>
+													<p class="preview-payment-meta-label text-xs uppercase tracking-wide text-slate-400">Prise en charge</p>
+													<p class="mt-1 font-medium">{{ Number(payment.insuranceRate || 0) > 0 ? `${Number(payment.insuranceRate).toLocaleString('fr-FR')} %` : '—' }}</p>
+												</div>
+											</div>
+										</div>
+									</div>
+									<div v-else class="preview-empty-state rounded-2xl border border-dashed border-surface-200 bg-surface-50/60 p-6 text-center text-sm text-gray-500">
+										Aucun paiement enregistré pour cette facture.
+									</div>
+								</div>
+							</TabPanel>
+						</TabPanels>
+					</Tabs>
 				</div>
 			</div>
 			<template #footer>
@@ -1041,5 +1391,99 @@ onBeforeUnmount(() => {
 
 .muted {
 	color: #6b7280;
+}
+
+.dialog-note {
+	color: #374151;
+}
+
+.preview-subtext,
+.preview-summary-label {
+	color: #6b7280;
+}
+
+.preview-table-card,
+.preview-payment-card {
+	background: rgba(255, 255, 255, 0.92);
+}
+
+.preview-table-head,
+.preview-table-foot {
+	background: rgba(248, 250, 252, 0.92);
+}
+
+.preview-table-head-row,
+.preview-table-row {
+	border-color: #e5e7eb;
+}
+
+.preview-table-muted,
+.preview-payment-date,
+.preview-payment-description,
+.preview-payment-meta,
+.preview-payment-meta-label,
+.preview-empty-state {
+	color: #64748b;
+}
+
+.preview-table-strong,
+.preview-table-emphasis,
+.preview-payment-amount {
+	color: #0f172a;
+}
+
+.preview-table-warning {
+	color: #b45309;
+}
+
+.app-dark .muted,
+.app-dark .dialog-note,
+.app-dark .preview-subtext,
+.app-dark .preview-summary-label,
+.app-dark .preview-table-muted,
+.app-dark .preview-payment-date,
+.app-dark .preview-payment-description,
+.app-dark .preview-payment-meta,
+.app-dark .preview-payment-meta-label,
+.app-dark .preview-empty-state {
+	color: #94a3b8;
+}
+
+.app-dark .preview-header-card,
+.app-dark .preview-summary-card,
+.app-dark .preview-empty-state {
+	background: linear-gradient(135deg, rgba(30, 41, 59, 0.88), rgba(15, 23, 42, 0.82));
+	border-color: #334155;
+}
+
+.app-dark .preview-table-card,
+.app-dark .preview-payment-card {
+	background: rgba(15, 23, 42, 0.92);
+	border-color: #334155;
+	box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28);
+}
+
+.app-dark .preview-table-head,
+.app-dark .preview-table-foot {
+	background: rgba(30, 41, 59, 0.92);
+	color: #e2e8f0;
+}
+
+.app-dark .preview-table-head-row,
+.app-dark .preview-table-row {
+	border-color: #334155;
+}
+
+.app-dark .preview-table-strong,
+.app-dark .preview-table-emphasis,
+.app-dark .preview-payment-amount,
+.app-dark .preview-payment-card .font-medium,
+.app-dark .preview-header-card .font-semibold,
+.app-dark .preview-summary-card .font-semibold {
+	color: #f8fafc;
+}
+
+.app-dark .preview-table-warning {
+	color: #fbbf24;
 }
 </style>
