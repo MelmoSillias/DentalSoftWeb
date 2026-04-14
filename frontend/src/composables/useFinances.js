@@ -31,15 +31,89 @@ const defaultChartState = () => ({
     evolutionCapital: []
 });
 
+const defaultCrossTableState = () => ({
+    year: new Date().getFullYear(),
+    month: new Date().getMonth() + 1,
+    type: 'revenue',
+    typeLabel: 'Revenus',
+    monthLabel: '',
+    weeks: [],
+    rows: [],
+    columnTotals: [],
+    grandTotal: 0,
+    availableTypes: [
+        { label: 'Revenus', value: 'revenue' },
+        { label: 'Dépenses', value: 'expense' }
+    ],
+    transactionMotifs: {
+        revenue: ['Paiement patient', 'Remboursement assurance', 'Vente produit', 'Autre'],
+        expense: ['Achat matériel', 'Frais généraux', 'Paiement salaire', 'Maintenance', 'Autre']
+    }
+});
+
+const buildMockCrossTable = ({ year, month, type }) => {
+    const safeYear = Number(year || new Date().getFullYear());
+    const safeMonth = Number(month || new Date().getMonth() + 1);
+    const monthDate = new Date(safeYear, safeMonth - 1, 1);
+    const lastDay = new Date(safeYear, safeMonth, 0).getDate();
+    const weeksCount = Math.ceil(lastDay / 7);
+    const weeks = Array.from({ length: weeksCount }, (_, index) => {
+        const startDay = (index * 7) + 1;
+        const endDay = Math.min((index + 1) * 7, lastDay);
+        return {
+            index: index + 1,
+            label: `Semaine ${index + 1}`,
+            startDate: `${safeYear}-${String(safeMonth).padStart(2, '0')}-${String(startDay).padStart(2, '0')}`,
+            endDate: `${safeYear}-${String(safeMonth).padStart(2, '0')}-${String(endDay).padStart(2, '0')}`
+        };
+    });
+
+    const labels = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
+    const rows = labels.map((label, rowIndex) => {
+        const values = Array.from({ length: weeksCount }, (_, columnIndex) => {
+            const base = (rowIndex + 1) * (columnIndex + 2) * 2500;
+            return type === 'expense' ? Math.round(base * 0.6) : base;
+        });
+        return {
+            weekday: rowIndex + 1,
+            label,
+            values,
+            total: values.reduce((sum, value) => sum + value, 0)
+        };
+    });
+
+    const columnTotals = Array.from({ length: weeksCount }, (_, columnIndex) =>
+        rows.reduce((sum, row) => sum + Number(row.values[columnIndex] || 0), 0)
+    );
+
+    return {
+        ...defaultCrossTableState(),
+        year: safeYear,
+        month: safeMonth,
+        type,
+        typeLabel: type === 'expense' ? 'Dépenses' : 'Revenus',
+        monthLabel: monthDate.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }),
+        weeks,
+        rows,
+        columnTotals,
+        grandTotal: columnTotals.reduce((sum, value) => sum + value, 0)
+    };
+};
+
 export function useFinances() {
     const auth = useAuthStore();
 
     const chartData = ref(defaultChartState());
+    const crossTableData = ref(defaultCrossTableState());
+    const fixedCharges = ref([]);
+    const fixedChargesTotal = ref(0);
     const paymentMethods = ref([]);
     const transactions = ref([]);
 
     const loading = ref({
         charts: false,
+        crossTable: false,
+        fixedCharges: false,
         methods: false,
         transactions: false,
         action: false
@@ -105,6 +179,107 @@ export function useFinances() {
             handleError(err);
         } finally {
             loading.value.methods = false;
+        }
+    };
+
+    const fetchFixedCharges = async () => {
+        loading.value.fixedCharges = true;
+        error.value = null;
+        try {
+            if (isFinancesTourMockEnabled()) {
+                fixedCharges.value = [];
+                fixedChargesTotal.value = 0;
+                return { items: fixedCharges.value, total: fixedChargesTotal.value };
+            }
+
+            const res = await http.get(`${apiPrefix}/finances/fixed-charges`, { headers: buildHeaders(false) });
+            fixedCharges.value = Array.isArray(res.data?.items) ? res.data.items : [];
+            fixedChargesTotal.value = Number(res.data?.total || 0);
+            return { items: fixedCharges.value, total: fixedChargesTotal.value };
+        } catch (err) {
+            handleError(err);
+        } finally {
+            loading.value.fixedCharges = false;
+        }
+    };
+
+    const createFixedCharge = async (payload) => {
+        loading.value.action = true;
+        error.value = null;
+        try {
+            const res = await http.post(`${apiPrefix}/finances/fixed-charges`, {
+                designation: payload?.designation || '',
+                montant: Number(payload?.montant || 0)
+            }, {
+                headers: buildHeaders(true)
+            });
+            return res.data ?? null;
+        } catch (err) {
+            handleError(err);
+        } finally {
+            loading.value.action = false;
+        }
+    };
+
+    const updateFixedCharge = async (id, payload) => {
+        loading.value.action = true;
+        error.value = null;
+        try {
+            const res = await http.put(`${apiPrefix}/finances/fixed-charges/${id}`, {
+                designation: payload?.designation || '',
+                montant: Number(payload?.montant || 0)
+            }, {
+                headers: buildHeaders(true)
+            });
+            return res.data ?? null;
+        } catch (err) {
+            handleError(err);
+        } finally {
+            loading.value.action = false;
+        }
+    };
+
+    const deleteFixedCharge = async (id) => {
+        loading.value.action = true;
+        error.value = null;
+        try {
+            const res = await http.delete(`${apiPrefix}/finances/fixed-charges/${id}`, {
+                headers: buildHeaders(false)
+            });
+            return res.data ?? null;
+        } catch (err) {
+            handleError(err);
+        } finally {
+            loading.value.action = false;
+        }
+    };
+
+    const fetchCrossTable = async ({ year, month, type = 'revenue' } = {}) => {
+        loading.value.crossTable = true;
+        error.value = null;
+        try {
+            if (isFinancesTourMockEnabled()) {
+                crossTableData.value = buildMockCrossTable({ year, month, type });
+                return crossTableData.value;
+            }
+
+            const params = new URLSearchParams({
+                year: String(year || new Date().getFullYear()),
+                month: String(month || new Date().getMonth() + 1),
+                type: type || 'revenue'
+            });
+            const res = await http.get(`${apiPrefix}/finances/cross-table?${params.toString()}`, {
+                headers: buildHeaders(false)
+            });
+            crossTableData.value = {
+                ...defaultCrossTableState(),
+                ...(res.data || {})
+            };
+            return crossTableData.value;
+        } catch (err) {
+            handleError(err);
+        } finally {
+            loading.value.crossTable = false;
         }
     };
 
@@ -243,6 +418,7 @@ export function useFinances() {
                 type: payload?.type,
                 montant: Number(payload?.montant || 0),
                 description: payload?.description || '',
+                motif: payload?.motif || '',
                 date: payload?.date,
                 modeId: payload?.modeId
             };
@@ -279,7 +455,7 @@ export function useFinances() {
         }
     };
 
-    const validateTransaction = async (id) => {
+    const validateTransaction = async (id, payload = {}) => {
         loading.value.action = true;
         error.value = null;
         try {
@@ -287,7 +463,7 @@ export function useFinances() {
                 return validateFinancesTransactionTourMock(id);
             }
 
-            const res = await http.patch(`${apiPrefix}/transactions/${id}/validate`, {}, {
+            const res = await http.patch(`${apiPrefix}/transactions/${id}/validate`, payload, {
                 headers: buildHeaders(true)
             });
             return res.data ?? null;
@@ -317,22 +493,50 @@ export function useFinances() {
         }
     };
 
+    const deleteTransaction = async (id) => {
+        loading.value.action = true;
+        error.value = null;
+        try {
+            if (isFinancesTourMockEnabled()) {
+                return { success: true };
+            }
+
+            const res = await http.delete(`${apiPrefix}/transactions/${id}`, {
+                headers: buildHeaders(false)
+            });
+            return res.data ?? null;
+        } catch (err) {
+            handleError(err);
+        } finally {
+            loading.value.action = false;
+        }
+    };
+
     return {
         chartData,
+        crossTableData,
+        fixedCharges,
+        fixedChargesTotal,
         paymentMethods,
         transactions,
         loading,
         error,
         fetchChartData,
+        fetchCrossTable,
+        fetchFixedCharges,
         fetchPaymentMethods,
+        createFixedCharge,
         createPaymentMethod,
+        updateFixedCharge,
         updatePaymentMethod,
+        deleteFixedCharge,
         deletePaymentMethod,
         togglePaymentMethod,
         fetchTransactionsRange,
         createTransaction,
         transferInterCompte,
         validateTransaction,
-        rejectTransaction
+        rejectTransaction,
+        deleteTransaction
     };
 }

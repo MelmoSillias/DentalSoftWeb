@@ -11,6 +11,13 @@ import Textarea from 'primevue/textarea';
 const props = defineProps({
     visible: { type: Boolean, default: false },
     paymentMethods: { type: Array, default: () => [] },
+    transactionMotifs: {
+        type: Object,
+        default: () => ({
+            revenue: ['Paiement patient', 'Remboursement assurance', 'Vente produit', 'Autre'],
+            expense: ['Achat matériel', 'Frais généraux', 'Paiement salaire', 'Maintenance', 'Autre']
+        })
+    },
     loading: { type: Boolean, default: false },
     transaction: { type: Object, default: null },
     mode: { type: String, default: 'create' }
@@ -19,8 +26,9 @@ const props = defineProps({
 const emit = defineEmits(['update:visible', 'submit']);
 
 const defaultForm = () => ({
-    type: 'entry',
+    type: 'revenue',
     montant: null,
+    motif: '',
     description: '',
     date: new Date(),
     modeId: null
@@ -29,9 +37,19 @@ const defaultForm = () => ({
 const form = reactive(defaultForm());
 
 const typeOptions = [
-    { label: 'Entree', value: 'entry' },
-    { label: 'Sortie', value: 'exit' }
+    { label: 'Revenu', value: 'revenue' },
+    { label: 'Dépense', value: 'expense' }
 ];
+
+const motifOptions = computed(() => {
+    const items = form.type === 'expense' ? props.transactionMotifs?.expense : props.transactionMotifs?.revenue;
+    const values = Array.isArray(items) ? [...items] : [];
+    if (form.motif && !values.includes(form.motif)) {
+        values.unshift(form.motif);
+    }
+
+    return values.map((item) => ({ label: item, value: item }));
+});
 
 const methodOptions = computed(() =>
     (props.paymentMethods || [])
@@ -57,12 +75,24 @@ const toDateString = (value) => {
 
 const syncForm = () => {
     const source = props.transaction || {};
-    form.type = source?.type === 'Sortie' || source?.type === 'exit' ? 'exit' : source?.type === 'Entrée' ? 'entry' : 'entry';
+    form.type = source?.typeKey === 'expense' || source?.type === 'Sortie' || source?.type === 'exit' || source?.type === 'expense' ? 'expense' : 'revenue';
     form.montant = source?.montant ?? source?.amount ?? null;
+    form.motif = source?.motif || '';
     form.description = source?.description || '';
     form.date = toDate(source?.date || source?.dateTransaction || new Date());
     form.modeId = source?.modeId || source?.modeDePaiement?.id || null;
 };
+
+watch(
+    () => form.type,
+    () => {
+        const currentOptions = motifOptions.value.map((item) => item.value);
+        if (!currentOptions.includes(form.motif)) {
+            form.motif = currentOptions[0] || '';
+        }
+    },
+    { immediate: true }
+);
 
 watch(
     () => props.visible,
@@ -88,6 +118,7 @@ const submitForm = (event) => {
     const payload = {
         type: form.type,
         montant: form.montant,
+        motif: form.motif,
         description: form.description,
         date: toDateString(form.date),
         modeId: form.modeId
@@ -108,6 +139,10 @@ const submitForm = (event) => {
                 <div class="flex flex-col gap-2">
                     <label class="text-sm font-medium text-surface-700">Type</label>
                     <Select v-model="form.type" :options="typeOptions" optionLabel="label" optionValue="value" />
+                </div>
+                <div class="flex flex-col gap-2">
+                    <label class="text-sm font-medium text-surface-700">Motif</label>
+                    <Select v-model="form.motif" :options="motifOptions" optionLabel="label" optionValue="value" placeholder="Sélectionner" />
                 </div>
                 <div class="flex flex-col gap-2">
                     <label class="text-sm font-medium text-surface-700">Compte</label>
@@ -134,7 +169,7 @@ const submitForm = (event) => {
 
             <div class="flex flex-col gap-2">
                 <label class="text-sm font-medium text-surface-700">Description</label>
-                <Textarea v-model="form.description" rows="3" autoResize class="w-full" placeholder="Ex: Reglement, achat, transfert..." />
+                <Textarea v-model="form.description" rows="3" autoResize class="w-full" placeholder="Précision complémentaire facultative" />
             </div>
         </div>
 

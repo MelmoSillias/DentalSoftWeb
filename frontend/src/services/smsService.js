@@ -36,6 +36,14 @@ export const fetchSmsStats = async (token) => {
     return res.data;
 };
 
+export const fetchSmsProviderOverview = async (token) => {
+    const res = await axios.get(`${apiPrefix}/sms/provider-overview`, {
+        headers: authHeaders(token),
+        validateStatus: () => true
+    });
+    return res.data;
+};
+
 export const fetchSmsLogs = async ({ limit = 50, offset = 0 } = {}, token) => {
     const res = await axios.get(`${apiPrefix}/sms/logs`, { headers: authHeaders(token), params: { limit, offset } });
     return Array.isArray(res.data) ? res.data : [];

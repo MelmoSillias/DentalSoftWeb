@@ -34,6 +34,7 @@ import {
 	validateEmptyDevis
 } from '@/services/caisseService';
 import { fetchPublicGeneralSettings } from '@/services/globalSettingsService';
+import { defaultSoinList, normalizeSoinList } from '@/services/consultations';
 import {
 	fetchInvoicePrintData,
 	fetchPaymentsListPrintData,
@@ -98,7 +99,7 @@ const paymentMethods = ref([]);
 const payDialogVisible = ref(false);
 const selectedDevis = ref(null);
 const paymentDialogTab = ref('client');
-const publicGeneralSettings = ref({ paiementDirectAssurance: false });
+const publicGeneralSettings = ref({ paiementDirectAssurance: false, soinsList: [...defaultSoinList] });
 const payForm = ref({
 	montant: 0,
 	modeId: null,
@@ -142,22 +143,7 @@ const setPaymentRange = (val) => {
 	paymentRange.value = Array.isArray(val) ? val : [];
 };
 
-const soinsList = [
-	'Consultation',
-	'Détartrage',
-	'Extraction',
-	'Remplissage',
-	'Composite',
-	'Amalgame',
-	'Traitement de canal',
-	'Traumatisme',
-	'Couronne',
-	'Blanchiment',
-	'Radio',
-	'Prothèse',
-	'Orthodontie',
-	'Chirurgie'
-];
+const soinsList = computed(() => publicGeneralSettings.value?.soinsList || defaultSoinList);
 
 const factureTotal = computed(() => factureLines.value.reduce((sum, line) => sum + (Number(line.prix) || 0) * (Number(line.quantite) || 0), 0));
 
@@ -439,7 +425,8 @@ const loadPublicGeneralSettings = async () => {
 	try {
 		const settings = await fetchPublicGeneralSettings(token);
 		publicGeneralSettings.value = {
-			paiementDirectAssurance: settings?.paiementDirectAssurance === true
+			paiementDirectAssurance: settings?.paiementDirectAssurance === true,
+			soinsList: normalizeSoinList(settings?.soinsList)
 		};
 	} catch (error) {
 		console.error(error);

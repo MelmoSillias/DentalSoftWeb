@@ -42,7 +42,7 @@
             </div>
         </div>
 
-        <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4" data-tour="admin-finances.kpi">
+        <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5" data-tour="admin-finances.kpi">
             <article class="rounded-2xl border border-primary-200/70 bg-gradient-to-br from-primary-50/80 to-primary-100/50 p-5 shadow-md backdrop-blur-sm dark:border-primary-800/40 dark:from-primary-900/30 dark:to-primary-800/20">
                 <div class="flex items-center justify-between gap-4">
                     <div>
@@ -62,7 +62,7 @@
                 <div class="flex items-center justify-between gap-4">
                     <div>
                         <p class="text-sm font-medium text-emerald-700 dark:text-emerald-300">Transactions validées</p>
-                        <p class="mt-2 text-2xl font-bold tracking-tight text-emerald-900 dark:text-emerald-100 lg:text-3xl">
+                        <p class="mt-2 text-2xl font-bold tracking-tight text-emerald-900 dark:text-emerald-100 xl:text-3xl lg:text-xl">
                             {{ validatedTransactionsCount }}
                         </p>
                         <p class="mt-1 text-xs text-emerald-600/70 dark:text-emerald-400/70">{{ formatFcfa(validatedTransactionsAmount) }} sur la période</p>
@@ -77,7 +77,7 @@
                 <div class="flex items-center justify-between gap-4">
                     <div>
                         <p class="text-sm font-medium text-amber-700 dark:text-amber-300">En attente</p>
-                        <p class="mt-2 text-2xl font-bold tracking-tight text-amber-900 dark:text-amber-100 lg:text-3xl">
+                        <p class="mt-2 text-2xl font-bold tracking-tight text-amber-900 dark:text-amber-100 xl:text-3xl lg:text-xl">
                             {{ pendingTransactionsCount }}
                         </p>
                         <p class="mt-1 text-xs text-amber-600/70 dark:text-amber-400/70">{{ formatFcfa(pendingTransactionsAmount) }} à valider</p>
@@ -92,7 +92,7 @@
                 <div class="flex items-center justify-between gap-4">
                     <div>
                         <p class="text-sm font-medium text-slate-600 dark:text-slate-300">Modes actifs</p>
-                        <p class="mt-2 text-2xl font-bold tracking-tight text-slate-900 dark:text-surface-100 lg:text-3xl">
+                        <p class="mt-2 text-2xl font-bold tracking-tight text-slate-900 dark:text-surface-100 xl:text-3xl lg:text-xl">
                             {{ comptesActifsCount }}
                         </p>
                         <p class="mt-1 text-xs text-slate-500/70 dark:text-slate-400/70">{{ insuranceMethodsCount }} assurance(s) configurée(s)</p>
@@ -102,26 +102,47 @@
                     </div>
                 </div>
             </article>
+
+            <article class="rounded-2xl border border-rose-200/70 bg-gradient-to-br from-rose-50/80 to-rose-100/50 p-5 shadow-md backdrop-blur-sm dark:border-rose-800/40 dark:from-rose-900/20 dark:to-rose-800/20">
+                <div class="flex items-center justify-between gap-4">
+                    <div>
+                        <p class="text-sm font-medium text-rose-700 dark:text-rose-300">Charges fixes</p>
+                        <p class="mt-2 text-2xl font-bold tracking-tight text-rose-900 dark:text-rose-100 xl:text-3xl lg:text-xl">
+                            {{ formatFcfa(fixedChargesTotal) }}
+                        </p>
+                        <p class="mt-1 text-xs text-rose-600/70 dark:text-rose-400/70">{{ fixedCharges.length }} charge(s) configurée(s)</p>
+                    </div>
+                    <div class="rounded-lg bg-rose-500/10 p-2 dark:bg-rose-500/20">
+                        <i class="pi pi-building-columns text-xl text-rose-500"></i>
+                    </div>
+                </div>
+            </article>
         </div>
 
         <Tabs :value="activeTab" @update:value="setActiveTab">
             <TabList data-tour="admin-finances.tabs">
                 <Tab value="tables">Tableaux</Tab>
+                <Tab value="fixed-charges">Charges fixes</Tab>
                 <Tab value="charts">Graphiques</Tab>
             </TabList>
 
             <TabPanels class="mt-4">
                 <TabPanel value="tables">
                     <div class="space-y-6">
+                        <FinanceCrossTable
+                            title="Tableau croisé Revenus / Dépenses"
+                            subtitle="Synthèse hebdomadaire des transactions validées à partir de leur date de validation."
+                            data-tour="admin-finances.cross-table" />
+
                         <section data-tour="admin-finances.transactions" class="overflow-hidden rounded-2xl border border-surface-200/70 bg-surface-0/80 shadow-xl backdrop-blur-sm dark:border-surface-700/50 dark:bg-surface-800/80">
                             <div class="border-b border-surface-200/50 bg-gradient-to-r from-surface-50/50 to-surface-0/30 px-5 py-4 dark:border-surface-700/50 dark:from-surface-900/50 dark:to-surface-800/30 md:px-6">
                                 <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
                                     <div>
                                         <h2 class="text-lg font-semibold text-surface-900 dark:text-surface-100 md:text-xl">Historique des transactions</h2>
-                                        <p class="text-sm text-surface-500 dark:text-surface-400">Filtre par période, statut de validation et recherche libre.</p>
+                                        <p class="text-sm text-surface-500 dark:text-surface-400">Filtre par période, recherche libre et filtres détaillés en pied de tableau.</p>
                                     </div>
 
-                                    <div class="grid w-full gap-3 md:grid-cols-2 xl:w-auto xl:grid-cols-4">
+                                    <div class="grid w-full gap-3 md:grid-cols-2 xl:w-auto xl:grid-cols-3">
                                         <DatePicker
                                             v-model="transactionRange"
                                             selectionMode="range"
@@ -129,18 +150,11 @@
                                             showIcon
                                             class="w-full min-w-0 xl:w-64"
                                             inputClass="w-full" />
-                                        <Select
-                                            v-model="transactionStatusFilter"
-                                            :options="transactionStatusOptions"
-                                            optionLabel="label"
-                                            optionValue="value"
-                                            placeholder="Tous les statuts"
-                                            class="w-full min-w-0 xl:w-52" />
                                         <InputText
                                             v-model="transactionSearch"
                                             placeholder="Rechercher une transaction"
                                             class="w-full min-w-0 xl:w-72" />
-                                        <Button icon="pi pi-refresh" label="Rafraîchir" severity="secondary" outlined @click="loadTransactions" />
+                                        <Button icon="pi pi-refresh" severity="secondary" outlined @click="loadTransactions" />
                                     </div>
                                 </div>
                             </div>
@@ -171,12 +185,24 @@
                                 </Column>
                                 <Column field="typeLabel" header="Type" sortable>
                                     <template #body="{ data }">
-                                        <Tag :value="data.typeLabel" :severity="data.typeSeverity" />
+                                        <div class="flex flex-col gap-1">
+                                            <Tag :value="data.typeLabel" :severity="data.typeSeverity" />
+                                            <small class="text-surface-500 dark:text-surface-400">{{ data.motif || 'Sans motif' }}</small>
+                                        </div>
+                                    </template>
+                                    <template #footer>
+                                        <Select
+                                            v-model="transactionTypeFilter"
+                                            :options="transactionTypeOptions"
+                                            optionLabel="label"
+                                            optionValue="value"
+                                            placeholder="Tous les types"
+                                            class="w-full min-w-0" />
                                     </template>
                                 </Column>
                                 <Column field="amountValue" header="Montant" sortable>
                                     <template #body="{ data }">
-                                        <span class="font-semibold" :class="data.typeKey === 'entry' ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'">
+                                        <span class="font-semibold" :class="data.typeKey === 'revenue' ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'">
                                             {{ formatFcfa(data.amountValue) }}
                                         </span>
                                     </template>
@@ -186,14 +212,23 @@
                                     <template #body="{ data }">
                                         <Tag :value="data.statusLabel" :severity="data.statusSeverity" />
                                     </template>
+                                    <template #footer>
+                                        <Select
+                                            v-model="transactionStatusFilter"
+                                            :options="transactionStatusOptions"
+                                            optionLabel="label"
+                                            optionValue="value"
+                                            placeholder="Tous les statuts"
+                                            class="w-full min-w-0" />
+                                    </template>
                                 </Column>
-                                <Column header="Actions" style="width: 190px">
+                                <Column header="Actions" style="width: 220px">
                                     <template #body="{ data }">
-                                        <div v-if="data.statusKey === 'pending'" class="flex gap-2" data-tour="admin-finances.validation">
-                                            <Button icon="pi pi-check" text severity="success" title="Valider" @click="handleValidateTransaction(data)" />
-                                            <Button icon="pi pi-times" text severity="danger" title="Rejeter" @click="handleRejectTransaction(data)" />
+                                        <div class="flex gap-1" data-tour="admin-finances.validation">
+                                            <Button v-if="data.statusKey === 'pending'" icon="pi pi-check" text severity="success" title="Valider" @click="handleValidateTransaction(data)" />
+                                            <Button v-if="data.statusKey === 'pending'" icon="pi pi-times" text severity="danger" title="Rejeter" @click="handleRejectTransaction(data)" />
+                                            <Button icon="pi pi-trash" text severity="danger" title="Supprimer" @click="handleDeleteTransaction(data)" />
                                         </div>
-                                        <span v-else class="text-sm text-surface-400">Aucune action</span>
                                     </template>
                                 </Column>
                             </DataTable>
@@ -275,6 +310,19 @@
                     </div>
                 </TabPanel>
 
+                <TabPanel value="fixed-charges">
+                    <FixedChargesTab
+                        :items="fixedCharges"
+                        :total="fixedChargesTotal"
+                        :loading="loading.fixedCharges"
+                        :action-loading="loading.action"
+                        @create="handleCreateFixedCharge"
+                        @update="handleUpdateFixedCharge"
+                        @delete="handleDeleteFixedCharge"
+                        @create-expense="handleCreateExpenseFromFixedCharge"
+                        @create-global-expense="handleCreateGlobalExpenseFromFixedCharges" />
+                </TabPanel>
+
                 <TabPanel value="charts">
                     <div class="space-y-6">
                         <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
@@ -282,7 +330,7 @@
                                 <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                                     <div>
                                         <h2 class="text-lg font-semibold text-surface-900 dark:text-surface-100 md:text-xl">Flux mensuel global</h2>
-                                        <p class="text-sm text-surface-500 dark:text-surface-400">Entrées, dépenses et résultat net sur l'année sélectionnée.</p>
+                                        <p class="text-sm text-surface-500 dark:text-surface-400">Revenus, dépenses et résultat net sur l'année sélectionnée.</p>
                                     </div>
                                     <div class="flex items-center gap-2">
                                         <Select v-model="selectedYear" :options="yearOptions" optionLabel="label" optionValue="value" class="w-40" />
@@ -298,7 +346,7 @@
                             <section data-tour="admin-finances.distribution" class="rounded-2xl border border-surface-200/70 bg-surface-0/80 p-5 shadow-xl backdrop-blur-sm dark:border-surface-700/50 dark:bg-surface-800/80 md:p-6">
                                 <div class="mb-6">
                                     <h2 class="text-lg font-semibold text-surface-900 dark:text-surface-100 md:text-xl">Répartition des encaissements</h2>
-                                    <p class="text-sm text-surface-500 dark:text-surface-400">Transactions d'entrée regroupées par mode sur la période affichée.</p>
+                                    <p class="text-sm text-surface-500 dark:text-surface-400">Transactions de revenu regroupées par mode sur la période affichée.</p>
                                 </div>
 
                                 <div class="h-80">
@@ -311,7 +359,7 @@
                             <section data-tour="admin-finances.accounts" class="rounded-2xl border border-surface-200/70 bg-surface-0/80 p-5 shadow-xl backdrop-blur-sm dark:border-surface-700/50 dark:bg-surface-800/80 md:p-6">
                                 <div class="mb-6">
                                     <h2 class="text-lg font-semibold text-surface-900 dark:text-surface-100 md:text-xl">Solde par compte</h2>
-                                    <p class="text-sm text-surface-500 dark:text-surface-400">Entrées, sorties et solde courant par compte actif.</p>
+                                    <p class="text-sm text-surface-500 dark:text-surface-400">Revenus, dépenses et solde courant par compte actif.</p>
                                 </div>
 
                                 <div class="h-80">
@@ -360,9 +408,32 @@
         <TransactionFormDialog
             v-model:visible="transactionDialogVisible"
             :payment-methods="paymentMethodsView"
+            :transaction-motifs="transactionMotifs"
+            :transaction="draftTransaction"
             :loading="loading.action"
             tourTarget="admin-finances.dialog.transaction"
             @submit="handleTransactionSubmit" />
+
+        <Dialog
+            v-model:visible="validationDialogVisible"
+            modal
+            header="Confirmer la validation"
+            :style="{ width: '420px' }">
+            <div class="space-y-4">
+                <p class="text-sm text-surface-600 dark:text-surface-300">
+                    Choisissez la date de validation qui servira aux rapports et au tableau croisé.
+                </p>
+                <div class="flex flex-col gap-2">
+                    <label class="text-sm font-medium text-surface-700 dark:text-surface-200">Date de validation</label>
+                    <DatePicker v-model="transactionValidationDate" dateFormat="yy-mm-dd" showIcon class="w-full" />
+                </div>
+            </div>
+
+            <template #footer>
+                <Button label="Annuler" text @click="closeValidationDialog" />
+                <Button label="Valider" icon="pi pi-check" :loading="loading.action" @click="confirmTransactionValidation" />
+            </template>
+        </Dialog>
 
         <PaymentModeFormDialog
             v-model:visible="modeDialogVisible"
@@ -374,7 +445,7 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { activateFinancesTourMock, deactivateFinancesTourMock, resetFinancesTourMockData } from '@/services/financesTourMock';
 import Breadcrumb from 'primevue/breadcrumb';
 import Button from 'primevue/button';
@@ -383,14 +454,18 @@ import Column from 'primevue/column';
 import ConfirmPopup from 'primevue/confirmpopup';
 import DataTable from 'primevue/datatable';
 import DatePicker from 'primevue/datepicker';
+import Dialog from 'primevue/dialog';
 import InputText from 'primevue/inputtext';
 import Select from 'primevue/select';
 import Tag from 'primevue/tag';
 import Toast from 'primevue/toast';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
+import FinanceCrossTable from '@/components/finances/FinanceCrossTable.vue';
+import FixedChargesTab from '@/components/finances/FixedChargesTab.vue';
 import PaymentModeFormDialog from '@/components/administration/finances/PaymentModeFormDialog.vue';
 import TransactionFormDialog from '@/components/administration/finances/TransactionFormDialog.vue';
+import { fetchGeneralSettings } from '@/services/globalSettingsService';
 import { GUIDED_TOUR_START_EVENT } from '@/tours';
 import { createAdministrationFinancesTour, resolveAdministrationFinancesTourGroup } from '@/tours/administrationFinancesTour';
 import { startTourGuide } from '@/tours/tourGuideClient';
@@ -411,19 +486,26 @@ const confirm = useConfirm();
 
 const {
     chartData,
+    fixedCharges,
+    fixedChargesTotal,
     paymentMethods,
     transactions,
     loading,
     fetchChartData,
+    fetchFixedCharges,
     fetchPaymentMethods,
     fetchTransactionsRange,
+    createFixedCharge,
     createTransaction,
     createPaymentMethod,
+    updateFixedCharge,
     updatePaymentMethod,
+    deleteFixedCharge,
     deletePaymentMethod,
     togglePaymentMethod,
     validateTransaction,
-    rejectTransaction
+    rejectTransaction,
+    deleteTransaction
 } = useFinances();
 
 const breadcrumbHome = { icon: 'pi pi-home', to: '/' };
@@ -431,9 +513,13 @@ const breadcrumbItems = [{ label: 'Administration' }, { label: 'Finances' }];
 
 const activeTab = ref('tables');
 const transactionDialogVisible = ref(false);
+const draftTransaction = ref(null);
 const modeDialogVisible = ref(false);
+const validationDialogVisible = ref(false);
 const editingMode = ref(null);
 const isGuidedTourStarting = ref(false);
+const transactionValidationDate = ref(new Date());
+const transactionToValidate = ref(null);
 let guidedTourPageState = null;
 let guidedTourDemoActive = false;
 let guidedTourCleanupPromise = null;
@@ -445,7 +531,12 @@ const selectedYear = ref(today.getFullYear());
 const transactionRange = ref([startOfMonth, today]);
 const transactionSearch = ref('');
 const transactionStatusFilter = ref('all');
+const transactionTypeFilter = ref('all');
 const modeSearch = ref('');
+const transactionMotifs = ref({
+    revenue: ['Paiement patient', 'Remboursement assurance', 'Vente produit', 'Autre'],
+    expense: ['Charge fixe', 'Achat matériel', 'Frais généraux', 'Paiement salaire', 'Maintenance', 'Autre']
+});
 
 const setActiveTab = (value) => {
     activeTab.value = value || 'tables';
@@ -461,13 +552,19 @@ const waitForTourUi = (ms = 180) => new Promise((resolve) => {
     window.setTimeout(resolve, ms);
 });
 
-const hasOpenDialogs = computed(() => transactionDialogVisible.value || modeDialogVisible.value);
+const hasOpenDialogs = computed(() => transactionDialogVisible.value || modeDialogVisible.value || validationDialogVisible.value);
 
 const transactionStatusOptions = [
     { label: 'Tous les statuts', value: 'all' },
     { label: 'En attente', value: 'pending' },
     { label: 'Validées', value: 'validated' },
     { label: 'Rejetées', value: 'rejected' }
+];
+
+const transactionTypeOptions = [
+    { label: 'Tous les types', value: 'all' },
+    { label: 'Revenus', value: 'revenue' },
+    { label: 'Dépenses', value: 'expense' }
 ];
 
 const normalizeText = (value) => normalizePaymentString(value).replace(/_/g, ' ');
@@ -520,15 +617,29 @@ const resolveTransactionStatus = (row) => {
     return { key: 'pending', label: 'En attente', severity: 'warning' };
 };
 
+const resolveTransactionTypeKey = (row) => {
+    const sourceType = row?.typeKey || row?.type || '';
+    const normalizedType = normalizeText(sourceType);
+
+    if (normalizedType.includes('revenu') || normalizedType.includes('entry') || normalizedType.includes('entree')) {
+        return 'revenue';
+    }
+
+    if (normalizedType.includes('depense') || normalizedType.includes('expense') || normalizedType.includes('sortie') || normalizedType.includes('exit')) {
+        return 'expense';
+    }
+
+    return 'other';
+};
+
 const transactionsView = computed(() =>
     (transactions.value || []).map((row) => {
-        const typeLabel = row?.type || '--';
-        const normalizedType = normalizeText(typeLabel);
-        const typeKey = normalizedType.includes('entree') ? 'entry' : normalizedType.includes('sortie') ? 'exit' : 'other';
+        const typeKey = resolveTransactionTypeKey(row);
         const status = resolveTransactionStatus(row);
         const dateValue = row?.dateTransaction || row?.date;
         const mode = row?.modeDePaiement || {};
         const modeLabel = mode?.libelle || mode?.label || row?.mode || '--';
+        const typeLabel = typeKey === 'expense' ? 'Dépense' : typeKey === 'revenue' ? 'Revenu' : (row?.typeLabel || row?.type || '--');
 
         return {
             ...row,
@@ -536,7 +647,7 @@ const transactionsView = computed(() =>
             amountValue: Number(row?.amount ?? row?.montant ?? 0),
             typeKey,
             typeLabel,
-            typeSeverity: typeKey === 'entry' ? 'success' : typeKey === 'exit' ? 'danger' : 'secondary',
+            typeSeverity: typeKey === 'revenue' ? 'success' : typeKey === 'expense' ? 'danger' : 'secondary',
             modeLabel,
             statusKey: status.key,
             statusLabel: status.label,
@@ -544,6 +655,7 @@ const transactionsView = computed(() =>
             searchBlob: normalizeText([
                 formatDateTime(dateValue),
                 row?.description,
+                row?.motif,
                 typeLabel,
                 modeLabel,
                 status.label,
@@ -558,8 +670,9 @@ const filteredTransactionsView = computed(() => {
     const searchQuery = normalizeText(transactionSearch.value);
     return transactionsView.value.filter((row) => {
         const matchesStatus = transactionStatusFilter.value === 'all' || row.statusKey === transactionStatusFilter.value;
+        const matchesType = transactionTypeFilter.value === 'all' || row.typeKey === transactionTypeFilter.value;
         const matchesSearch = !searchQuery || row.searchBlob.includes(searchQuery);
-        return matchesStatus && matchesSearch;
+        return matchesStatus && matchesType && matchesSearch;
     });
 });
 
@@ -655,7 +768,7 @@ const monthlyFlowData = computed(() => {
         datasets: [
             {
                 type: 'bar',
-                label: 'Entrées',
+                label: 'Revenus',
                 data: revenues,
                 backgroundColor: documentStyle.getPropertyValue('--p-emerald-500') || '#10b981',
                 borderRadius: 6
@@ -689,7 +802,7 @@ const accountFlowData = computed(() => {
         datasets: [
             {
                 type: 'bar',
-                label: 'Entrées',
+                label: 'Revenus',
                 data: chart.entrees || [],
                 backgroundColor: documentStyle.getPropertyValue('--p-emerald-500') || '#10b981',
                 borderRadius: 6
@@ -760,7 +873,7 @@ const capitalShareData = computed(() => {
 });
 
 const paymentDistributionData = computed(() => {
-    const rows = filteredTransactionsView.value.filter((row) => row.typeKey === 'entry');
+    const rows = filteredTransactionsView.value.filter((row) => row.typeKey === 'revenue');
     const bucket = new Map();
     const documentStyle = getComputedStyle(document.documentElement);
     const colors = [
@@ -890,11 +1003,31 @@ const loadTransactions = async () => {
 };
 
 const refreshAll = async () => {
-    await Promise.all([fetchChartData(selectedYear.value), fetchPaymentMethods()]);
+    await Promise.all([fetchChartData(selectedYear.value), fetchPaymentMethods(), fetchFixedCharges()]);
     await loadTransactions();
 };
 
+const loadTransactionMotifs = async () => {
+    try {
+        const token = localStorage.getItem('token');
+        const settings = await fetchGeneralSettings(token);
+        if (settings?.transactionMotifs) {
+            const expense = Array.isArray(settings.transactionMotifs?.expense) ? [...settings.transactionMotifs.expense] : [];
+            if (!expense.includes('Charge fixe')) {
+                expense.unshift('Charge fixe');
+            }
+            transactionMotifs.value = {
+                ...settings.transactionMotifs,
+                expense
+            };
+        }
+    } catch (error) {
+        console.error('Erreur chargement motifs transaction', error);
+    }
+};
+
 const openTransactionDialog = () => {
+    draftTransaction.value = null;
     transactionDialogVisible.value = true;
 };
 
@@ -909,8 +1042,8 @@ const openEditMode = (mode) => {
 };
 
 const handleTransactionSubmit = ({ payload, event }) => {
-    if (!payload?.modeId || !payload?.montant || !payload?.date) {
-        toast.add({ severity: 'warn', summary: 'Champs requis', detail: 'Compte, montant et date sont obligatoires.', life: 3000 });
+    if (!payload?.modeId || !payload?.montant || !payload?.date || !payload?.motif) {
+        toast.add({ severity: 'warn', summary: 'Champs requis', detail: 'Compte, montant, motif et date sont obligatoires.', life: 3000 });
         return;
     }
 
@@ -925,12 +1058,76 @@ const handleTransactionSubmit = ({ payload, event }) => {
                 await createTransaction(payload);
                 toast.add({ severity: 'success', summary: 'Transaction', detail: 'Transaction enregistrée.', life: 3000 });
                 transactionDialogVisible.value = false;
+                draftTransaction.value = null;
                 await refreshAll();
             } catch (error) {
                 toast.add({ severity: 'error', summary: 'Erreur', detail: error?.message || 'Enregistrement impossible.', life: 3500 });
             }
         }
     });
+};
+
+const handleCreateFixedCharge = async (payload) => {
+    try {
+        await createFixedCharge(payload);
+        toast.add({ severity: 'success', summary: 'Charges fixes', detail: 'Charge fixe enregistrée.', life: 3000 });
+        await fetchFixedCharges();
+    } catch (error) {
+        toast.add({ severity: 'error', summary: 'Erreur', detail: error?.message || 'Enregistrement impossible.', life: 3500 });
+    }
+};
+
+const handleUpdateFixedCharge = async ({ id, payload }) => {
+    try {
+        await updateFixedCharge(id, payload);
+        toast.add({ severity: 'success', summary: 'Charges fixes', detail: 'Charge fixe mise à jour.', life: 3000 });
+        await fetchFixedCharges();
+    } catch (error) {
+        toast.add({ severity: 'error', summary: 'Erreur', detail: error?.message || 'Mise à jour impossible.', life: 3500 });
+    }
+};
+
+const handleDeleteFixedCharge = (charge) => {
+    confirm.require({
+        message: 'Supprimer cette charge fixe ? ',
+        icon: 'pi pi-exclamation-triangle',
+        acceptClass: 'p-button-danger',
+        acceptLabel: 'Supprimer',
+        rejectLabel: 'Annuler',
+        accept: async () => {
+            try {
+                await deleteFixedCharge(charge.id);
+                toast.add({ severity: 'success', summary: 'Charges fixes', detail: 'Charge fixe supprimée.', life: 3000 });
+                await fetchFixedCharges();
+            } catch (error) {
+                toast.add({ severity: 'error', summary: 'Erreur', detail: error?.message || 'Suppression impossible.', life: 3500 });
+            }
+        }
+    });
+};
+
+const handleCreateExpenseFromFixedCharge = (charge) => {
+    draftTransaction.value = {
+        typeKey: 'expense',
+        type: 'expense',
+        motif: 'Charge fixe',
+        description: `Charge fixe | ${charge.designation}`,
+        amount: Number(charge.montant || 0),
+        date: new Date()
+    };
+    transactionDialogVisible.value = true;
+};
+
+const handleCreateGlobalExpenseFromFixedCharges = () => {
+    draftTransaction.value = {
+        typeKey: 'expense',
+        type: 'expense',
+        motif: 'Charge fixe',
+        description: 'Charge fixe | Total global des charges fixes',
+        amount: Number(fixedChargesTotal.value || 0),
+        date: new Date()
+    };
+    transactionDialogVisible.value = true;
 };
 
 const handleModeSubmit = ({ payload, event }) => {
@@ -1017,21 +1214,31 @@ const handleToggleMode = ({ mode }) => {
 };
 
 const handleValidateTransaction = (row) => {
-    confirm.require({
-        message: 'Valider cette transaction en attente ?',
-        icon: 'pi pi-check-circle',
-        acceptLabel: 'Valider',
-        rejectLabel: 'Annuler',
-        accept: async () => {
-            try {
-                await validateTransaction(row.id);
-                toast.add({ severity: 'success', summary: 'Transaction', detail: 'Transaction validée.', life: 3000 });
-                await loadTransactions();
-            } catch (error) {
-                toast.add({ severity: 'error', summary: 'Erreur', detail: error?.message || 'Validation impossible.', life: 3500 });
-            }
-        }
-    });
+    transactionToValidate.value = row;
+    transactionValidationDate.value = new Date();
+    validationDialogVisible.value = true;
+};
+
+const closeValidationDialog = () => {
+    validationDialogVisible.value = false;
+    transactionToValidate.value = null;
+};
+
+const confirmTransactionValidation = async () => {
+    if (!transactionToValidate.value?.id) {
+        return;
+    }
+
+    try {
+        await validateTransaction(transactionToValidate.value.id, {
+            validatedAt: formatLocalDateForApi(transactionValidationDate.value)
+        });
+        toast.add({ severity: 'success', summary: 'Transaction', detail: 'Transaction validée.', life: 3000 });
+        closeValidationDialog();
+        await loadTransactions();
+    } catch (error) {
+        toast.add({ severity: 'error', summary: 'Erreur', detail: error?.message || 'Validation impossible.', life: 3500 });
+    }
 };
 
 const handleRejectTransaction = (row) => {
@@ -1053,10 +1260,32 @@ const handleRejectTransaction = (row) => {
     });
 };
 
+const handleDeleteTransaction = (row) => {
+    confirm.require({
+        message: 'Supprimer cette transaction et ses liens financiers associés ? ',
+        icon: 'pi pi-exclamation-triangle',
+        acceptClass: 'p-button-danger',
+        acceptLabel: 'Supprimer',
+        rejectLabel: 'Annuler',
+        accept: async () => {
+            try {
+                await deleteTransaction(row.id);
+                toast.add({ severity: 'success', summary: 'Transaction', detail: 'Transaction supprimée.', life: 3000 });
+                await refreshAll();
+            } catch (error) {
+                toast.add({ severity: 'error', summary: 'Erreur', detail: error?.message || 'Suppression impossible.', life: 3500 });
+            }
+        }
+    });
+};
+
 const resetTourDialogs = () => {
     transactionDialogVisible.value = false;
+    draftTransaction.value = null;
     modeDialogVisible.value = false;
+    validationDialogVisible.value = false;
     editingMode.value = null;
+    transactionToValidate.value = null;
 };
 
 const capturePageState = () => ({
@@ -1065,6 +1294,7 @@ const capturePageState = () => ({
     transactionRange: cloneValue(transactionRange.value),
     transactionSearch: transactionSearch.value,
     transactionStatusFilter: transactionStatusFilter.value,
+    transactionTypeFilter: transactionTypeFilter.value,
     modeSearch: modeSearch.value,
     chartData: cloneValue(chartData.value),
     paymentMethods: cloneValue(paymentMethods.value),
@@ -1078,6 +1308,7 @@ const restorePageState = async (state) => {
     transactionRange.value = cloneValue(state.transactionRange) || [startOfMonth, today];
     transactionSearch.value = state.transactionSearch || '';
     transactionStatusFilter.value = state.transactionStatusFilter || 'all';
+    transactionTypeFilter.value = state.transactionTypeFilter || 'all';
     modeSearch.value = state.modeSearch || '';
     chartData.value = cloneValue(state.chartData) || chartData.value;
     paymentMethods.value = cloneValue(state.paymentMethods) || [];
@@ -1095,6 +1326,7 @@ const prepareGuidedTourDemo = async () => {
     transactionRange.value = [new Date('2026-04-01'), new Date('2026-04-03')];
     transactionSearch.value = '';
     transactionStatusFilter.value = 'all';
+    transactionTypeFilter.value = 'all';
     modeSearch.value = '';
     await refreshAll();
     await nextTick();
@@ -1156,7 +1388,7 @@ const handleGuidedTourRequest = async (event) => {
         return;
     }
 
-    if (loading.transactions || loading.methods || loading.chart || hasOpenDialogs.value) {
+    if (loading.transactions || loading.methods || loading.charts || hasOpenDialogs.value) {
         toast.add({
             severity: 'warn',
             summary: 'Aide guidee',
@@ -1209,7 +1441,7 @@ watch(selectedYear, async (value) => {
 });
 
 onMounted(async () => {
-    await refreshAll();
+    await Promise.all([refreshAll(), loadTransactionMotifs()]);
     if (chartData.value?.year) {
         selectedYear.value = Number(chartData.value.year);
     }

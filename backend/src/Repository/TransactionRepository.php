@@ -33,6 +33,25 @@ public function findByDateRange(?\DateTimeInterface $from, ?\DateTimeInterface $
     return $qb->getQuery()->getResult();
 }
 
+public function findValidatedBetweenByTypes(\DateTimeInterface $from, \DateTimeInterface $to, array $types = []): array
+{
+    $qb = $this->createQueryBuilder('t')
+        ->andWhere('t.validationStatus = :status')
+        ->andWhere('t.validatedAt IS NOT NULL')
+        ->andWhere('t.validatedAt BETWEEN :from AND :to')
+        ->setParameter('status', 'validated')
+        ->setParameter('from', $from)
+        ->setParameter('to', $to)
+        ->orderBy('t.validatedAt', 'ASC');
+
+    if ($types !== []) {
+        $qb->andWhere('t.type IN (:types)')
+            ->setParameter('types', $types);
+    }
+
+    return $qb->getQuery()->getResult();
+}
+
 
 //    /**
 //     * @return Transaction[] Returns an array of Transaction objects

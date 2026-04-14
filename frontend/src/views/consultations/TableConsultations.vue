@@ -1,6 +1,7 @@
 <script setup>
 import ConsultationDetailsDialog from '@/components/consultations/ConsultationDetailsDialog.vue';
 import FactureModal from '@/components/consultations/FactureModal.vue';
+import { defaultSoinList, normalizeSoinList } from '@/services/consultations';
 import QuickClotureConsultationDialog from '@/components/consultations/QuickClotureConsultationDialog.vue';
 import FormCreateConsultation from '@/components/patients/FormCreateConsultation.vue';
 import PrintDataTablePage from '@/components/print/PrintDataTablePage.vue';
@@ -72,6 +73,7 @@ const quickDialogConsultation = ref(null);
 const quickDialogActionMode = ref('continue');
 const isGuidedTourStarting = ref(false);
 const allowReceptionQuickClose = ref(true);
+const soinsList = ref([...defaultSoinList]);
 let guidedTourPageState = null;
 let guidedTourDemoActive = false;
 let guidedTourCleanupPromise = null;
@@ -167,9 +169,11 @@ const loadQuickClosePolicy = async () => {
     try {
         const settings = await fetchPublicGeneralSettings(token);
         allowReceptionQuickClose.value = settings?.allowReceptionQuickCloseConsultation !== false;
+        soinsList.value = normalizeSoinList(settings?.soinsList);
     } catch (error) {
         console.error('Erreur chargement politique de clôturation rapide', error);
         allowReceptionQuickClose.value = true;
+        soinsList.value = [...defaultSoinList];
     }
 };
 
@@ -1077,6 +1081,7 @@ const currentFactureLoading = computed(() => {
         <FactureModal 
             :visible="factureDialogVisible" 
             :lines="factureLines" 
+            :soins="soinsList"
             :loading="currentFactureLoading"
             :saving="factureSaving" 
             tourTarget="consultations-table.dialog.facture"

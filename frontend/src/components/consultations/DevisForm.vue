@@ -1,9 +1,11 @@
 <script setup>
+import AutoComplete from 'primevue/autocomplete';
 import Button from 'primevue/button';
 import Calendar from 'primevue/calendar';
 import InputNumber from 'primevue/inputnumber';
 import InputText from 'primevue/inputtext';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
+import { defaultSoinList, normalizeSoinList } from '@/services/consultations';
 
 const props = defineProps({
     modelValue: {
@@ -13,6 +15,10 @@ const props = defineProps({
     saving: {
         type: Boolean,
         default: false
+    },
+    soins: {
+        type: Array,
+        default: () => defaultSoinList
     }
 });
  
@@ -22,6 +28,15 @@ const devis = computed({
     get: () => props.modelValue,
     set: (val) => emit('update:modelValue', val)
 });
+
+const soinsSuggestions = ref([]);
+const soinsList = computed(() => normalizeSoinList(props.soins));
+
+const searchSoins = (event) => {
+    const query = String(event?.query || '').toLowerCase();
+    const list = soinsList.value;
+    soinsSuggestions.value = query ? list.filter((item) => item.toLowerCase().includes(query)) : list;
+};
 
 const dateModel = computed({
     get: () => {
@@ -224,11 +239,15 @@ function subtotal(service) {
                     <div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
                         <div class="lg:col-span-2 space-y-2 flex flex-col">
                             <label class="text-xs font-medium text-surface-600 dark:text-surface-400 uppercase tracking-wider">Désignation</label>
-                            <InputText 
-                                :value="service.designation" 
+                            <AutoComplete 
+                                :modelValue="service.designation"
+                                :suggestions="soinsSuggestions"
+                                dropdown
+                                class="w-full"
+                                inputClass="w-full rounded-lg border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-800 p-2.5"
                                 placeholder="Description du service"
-                                class="w-full rounded-lg border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-800 p-2.5"
-                                @update:modelValue="(v) => updateService(idx, { designation: v })" 
+                                @complete="searchSoins"
+                                @update:modelValue="(v) => updateService(idx, { designation: v || '' })" 
                             />
                         </div>
                         <div class="space-y-2 flex flex-col">

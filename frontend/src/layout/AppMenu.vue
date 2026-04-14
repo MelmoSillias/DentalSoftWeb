@@ -26,7 +26,8 @@ const baseModel = ref([
 const settingsSection = {
     label: 'Paramètres',
     items: [
-        { label: 'Paramètres généraux', icon: 'pi pi-fw pi-cog', to: '/parametres/apparence'},
+        { label: 'Paramètres généraux', icon: 'pi pi-fw pi-cog', to: '/parametres/apparence' },
+        { label: 'API SMS', icon: 'pi pi-fw pi-send', to: '/administration/api-sms', adminOnly: true },
         // { label: 'Options des fichiers', icon: 'pi pi-fw pi-file-edit', to: '/parametres/fileOptions' },
 
     ]
@@ -110,7 +111,10 @@ const model = computed(() => {
 
     // Paramètres : mêmes rôles que dans le routage (admin, secrétaire, topo)
     if (hasAnyRole(['ROLE_ADMIN', 'ROLE_SECRETAIRE', 'ROLE_TOPO'])) {
-        menu.push(settingsSection);
+        menu.push({
+            ...settingsSection,
+            items: settingsSection.items.filter((item) => !item.adminOnly || isAdmin.value)
+        });
     }
 
     return menu;

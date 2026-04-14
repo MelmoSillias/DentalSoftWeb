@@ -48,22 +48,34 @@ class TransactionController extends AbstractController
         $result = $this->financeService->createTransaction(
             $data['type'],
             (float) $data['montant'],
-            $data['description'],
+            $data['description'] ?? null,
             new \DateTime($data['date']),
-            (int) $data['modeId']
+            (int) $data['modeId'],
+            $data['motif'] ?? null,
         );
 
         if (isset($result['error'])) {
             return $this->json(['error' => $result['error']], $result['status'] ?? 400);
         }
 
-        return $this->json(['message' => 'Transaction enregistrée avec succès']);
+        return $this->json(['message' => 'Transaction enregistrée avec succès'] + $result, 201);
     }
 
     #[Route('/api/transactions/{id}/validate', name: 'api_transaction_validate', methods: ['PATCH'])]
-    public function validateTransaction(int $id): JsonResponse
+    public function validateTransaction(int $id, Request $request): JsonResponse
     {
-        $result = $this->financeService->updateTransactionValidationStatus($id, 'validated');
+        $data = json_decode($request->getContent(), true) ?: [];
+        $validatedAt = null;
+
+        if (!empty($data['validatedAt'] ?? $data['date'])) {
+            try {
+                $validatedAt = new \DateTimeImmutable((string) ($data['validatedAt'] ?? $data['date']));
+            } catch (\Exception) {
+                return $this->json(['error' => 'Date de validation invalide.'], 400);
+            }
+        }
+
+        $result = $this->financeService->updateTransactionValidationStatus($id, 'validated', null, $validatedAt);
 
         if (isset($result['error'])) {
             return $this->json(['error' => $result['error']], $result['status'] ?? 400);
@@ -83,6 +95,18 @@ class TransactionController extends AbstractController
         }
 
         return $this->json(['message' => 'Transaction rejetée avec succès']);
+    }
+
+    #[Route('/api/transactions/{id}', name: 'api_transaction_delete', methods: ['DELETE'])]
+    public function deleteTransaction(int $id): JsonResponse
+    {
+        $result = $this->financeService->deleteTransaction($id);
+
+        if (isset($result['error'])) {
+            return $this->json(['error' => $result['error']], $result['status'] ?? 400);
+        }
+
+        return $this->json(['message' => 'Transaction supprimée avec succès']);
     }
 
 

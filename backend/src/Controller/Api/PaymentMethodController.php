@@ -123,6 +123,67 @@ class PaymentMethodController extends AbstractController
         ]);
     }
 
+    #[Route('/api/finances/cross-table', name: 'api_finances_cross_table', methods: ['GET'])]
+    public function getCrossTable(Request $request): JsonResponse
+    {
+        $year = $request->query->getInt('year', (int) date('Y'));
+        $month = $request->query->getInt('month', (int) date('n'));
+        $type = (string) $request->query->get('type', 'revenue');
+
+        if ($month < 1 || $month > 12) {
+            return $this->json(['error' => 'Le mois doit être compris entre 1 et 12.'], 400);
+        }
+
+        return $this->json($this->financeService->getMonthlyCrossTable($year, $month, $type));
+    }
+
+    #[Route('/api/finances/fixed-charges', name: 'api_finances_fixed_charges_list', methods: ['GET'])]
+    public function listFixedCharges(): JsonResponse
+    {
+        return $this->json([
+            'items' => $this->financeService->listFixedCharges(),
+            'total' => $this->financeService->getFixedChargesTotal(),
+        ]);
+    }
+
+    #[Route('/api/finances/fixed-charges', name: 'api_finances_fixed_charges_create', methods: ['POST'])]
+    public function createFixedCharge(Request $request): JsonResponse
+    {
+        $data = json_decode($request->getContent(), true) ?: [];
+        $result = $this->financeService->createFixedCharge($data);
+
+        if (isset($result['error'])) {
+            return $this->json(['error' => $result['error']], $result['status'] ?? 400);
+        }
+
+        return $this->json($result, 201);
+    }
+
+    #[Route('/api/finances/fixed-charges/{id}', name: 'api_finances_fixed_charges_update', methods: ['PUT'])]
+    public function updateFixedCharge(int $id, Request $request): JsonResponse
+    {
+        $data = json_decode($request->getContent(), true) ?: [];
+        $result = $this->financeService->updateFixedCharge($id, $data);
+
+        if (isset($result['error'])) {
+            return $this->json(['error' => $result['error']], $result['status'] ?? 400);
+        }
+
+        return $this->json($result);
+    }
+
+    #[Route('/api/finances/fixed-charges/{id}', name: 'api_finances_fixed_charges_delete', methods: ['DELETE'])]
+    public function deleteFixedCharge(int $id): JsonResponse
+    {
+        $result = $this->financeService->deleteFixedCharge($id);
+
+        if (isset($result['error'])) {
+            return $this->json(['error' => $result['error']], $result['status'] ?? 400);
+        }
+
+        return $this->json($result);
+    }
+
     private function mapMethod(ModeDePaiement $method): array
     {
         return [

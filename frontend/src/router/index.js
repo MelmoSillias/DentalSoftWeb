@@ -157,6 +157,12 @@ const router = createRouter({
                     name: 'settings-apparence',
                     component: () => import('@/views/settings/GeneralOptions.vue'),
                     meta: { requiresAuth: true, roles: ['ROLE_ADMIN', "ROLE_SECRETAIRE", "ROLE_TOPO"], fixedWidth: true }
+                },
+                {
+                    path: '/administration/api-sms',
+                    name: 'administration-api-sms',
+                    component: () => import('@/views/settings/SmsSettings.vue'),
+                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN'], fixedWidth: true }
                 }
             ]
         },

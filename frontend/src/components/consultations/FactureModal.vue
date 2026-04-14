@@ -1,4 +1,5 @@
 <script setup>
+import AutoComplete from 'primevue/autocomplete';
 import { defaultSoinList } from '@/services/consultations';
 import Button from 'primevue/button';
 import Dialog from 'primevue/dialog'; 
@@ -37,6 +38,13 @@ const props = defineProps({
 const emit = defineEmits(['update:visible', 'save']);
 
 const localLines = ref([]);
+const soinSuggestions = ref([]);
+
+const searchSoins = (event) => {
+    const query = String(event?.query || '').toLowerCase();
+    const list = Array.isArray(props.soins) && props.soins.length ? props.soins : defaultSoinList;
+    soinSuggestions.value = query ? list.filter((item) => String(item).toLowerCase().includes(query)) : list;
+};
 
 const normalizeLine = (line = {}, idx = 0) => ({
     id: line.id ?? `${Date.now()}-${idx}-${Math.round(Math.random() * 1000)}`,
@@ -96,38 +104,38 @@ const handleHide = () => emit('update:visible', false);
     <Dialog :visible="visible" modal header="Modifier la facture" :style="{ width: '52rem', maxWidth: '98vw' }"
         @update:visible="handleHide">
         <div :data-tour="props.tourTarget || null">
-            <div v-if="loading" class="p-6 text-center text-gray-600">Chargement des lignes de facture...</div>
+            <div v-if="loading" class="p-6 text-center text-gray-600 dark:text-gray-300"> <i class="pi pi-spin pi-spinner"></i> Chargement des lignes de facture...</div>
 
             <div v-else class="flex flex-col gap-4">
-                <div v-for="(line, idx) in localLines" :key="line.id" class="border rounded-lg p-3 shadow-sm">
+                <div v-for="(line, idx) in localLines" :key="line.id" class="border rounded-lg p-3 shadow-sm dark:border-gray-700 dark:bg-gray-800">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
                         <div class="flex flex-col gap-1">
-                            <label class="text-sm text-gray-600">Dent</label>
+                            <label class="text-sm text-gray-600 dark:text-gray-300">Dent</label>
                             <InputText v-model="line.dent" placeholder="Ex : 21"
                                 @update:modelValue="(val) => updateField(idx, 'dent', val)" />
                         </div>
                         <div class="flex flex-col gap-1">
-                            <label class="text-sm text-gray-600">Acte / Soin</label>
-                            <Select v-model="line.type" :options="soins" placeholder="Choisir un soin" class="w-full"
-                                showClear @update:modelValue="(val) => updateField(idx, 'type', val)" />
+                            <label class="text-sm text-gray-600 dark:text-gray-300">Acte / Soin</label>
+                            <AutoComplete v-model="line.type" :suggestions="soinSuggestions" placeholder="Choisir un soin" class="w-full"
+                                dropdown @complete="searchSoins" @update:modelValue="(val) => updateField(idx, 'type', val || '')" />
                         </div>
                     </div>
 
                     <div class="flex flex-col gap-1 mb-3">
-                        <label class="text-sm text-gray-600">Description</label>
+                        <label class="text-sm text-gray-600 dark:text-gray-300">Description</label>
                         <Textarea v-model="line.description" autoResize rows="2"
                             @update:modelValue="(val) => updateField(idx, 'description', val)" />
                     </div>
 
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
                         <div class="flex flex-col gap-1">
-                            <label class="text-sm text-gray-600">Prix (FCFA)</label>
+                            <label class="text-sm text-gray-600 dark:text-gray-300">Prix (FCFA)</label>
                             <InputNumber v-model="line.prix" mode="decimal" :minFractionDigits="0" :maxFractionDigits="2"
                                 :min="0" class="w-full" inputClass="w-full"
                                 @update:modelValue="(val) => updateField(idx, 'prix', val ?? 0)" />
                         </div>
                         <div class="flex flex-col gap-1">
-                            <label class="text-sm text-gray-600">Quantité</label>
+                            <label class="text-sm text-gray-600 dark:text-gray-300">Quantité</label>
                             <InputNumber v-model="line.quantite" :min="1" :max="999" mode="decimal" :useGrouping="false"
                                 class="w-full" inputClass="w-full"
                                 @update:modelValue="(val) => updateField(idx, 'quantite', val ?? 1)" />
@@ -141,7 +149,7 @@ const handleHide = () => emit('update:visible', false);
 
                 <div class="flex items-center justify-between gap-3 flex-wrap">
                     <Button icon="pi pi-plus" label="Ajouter une ligne" outlined severity="primary" @click="addLine" />
-                    <div class="text-right text-lg font-semibold">Total TTC : {{ totalTtc.toFixed(2) }} F CFA</div>
+                    <Tag severity="success" class="text-xl font-semibold">Total TTC : {{ totalTtc.toFixed(2) }} F CFA</Tag>
                 </div>
             </div>
         </div>

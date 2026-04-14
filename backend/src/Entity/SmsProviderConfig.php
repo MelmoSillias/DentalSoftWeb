@@ -27,7 +27,13 @@ class SmsProviderConfig
     private ?string $clientSecretEncrypted = null;
 
     #[ORM\Column(length: 255, nullable: true)]
+    private ?string $senderAddress = null;
+
+    #[ORM\Column(length: 64, nullable: true)]
     private ?string $senderName = null;
+
+    #[ORM\Column(type: Types::JSON)]
+    private array $approvedSenderNames = [];
 
     #[ORM\Column(length: 255)]
     private string $baseUrl = 'https://api.orange.com';
@@ -101,6 +107,18 @@ class SmsProviderConfig
         return $this;
     }
 
+    public function getSenderAddress(): ?string
+    {
+        return $this->senderAddress;
+    }
+
+    public function setSenderAddress(?string $senderAddress): static
+    {
+        $this->senderAddress = $senderAddress;
+
+        return $this;
+    }
+
     public function getSenderName(): ?string
     {
         return $this->senderName;
@@ -109,6 +127,24 @@ class SmsProviderConfig
     public function setSenderName(?string $senderName): static
     {
         $this->senderName = $senderName;
+
+        return $this;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public function getApprovedSenderNames(): array
+    {
+        return array_values(array_filter($this->approvedSenderNames, static fn ($value) => is_string($value) && trim($value) !== ''));
+    }
+
+    /**
+     * @param array<int, string> $approvedSenderNames
+     */
+    public function setApprovedSenderNames(array $approvedSenderNames): static
+    {
+        $this->approvedSenderNames = array_values($approvedSenderNames);
 
         return $this;
     }

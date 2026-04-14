@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import Button from 'primevue/button';
 import DatePicker from 'primevue/datepicker';
 import AdminActsStatsSection from '@/components/rapport/admin/AdminActsStatsSection.vue';
+import FinanceCrossTable from '@/components/finances/FinanceCrossTable.vue';
 import AdminGlobalStatsSection from '@/components/rapport/admin/AdminGlobalStatsSection.vue';
 import AdminNonPeriodicDetailsSection from '@/components/rapport/admin/AdminNonPeriodicDetailsSection.vue';
 import AdminPeriodicDetailsSection from '@/components/rapport/admin/AdminPeriodicDetailsSection.vue';
@@ -138,6 +139,12 @@ function printSection(id) {
                 :loading="adminLoading"
                 @print="printSection"
             />
+        </div>
+
+        <div class="rounded-2xl border border-surface-200/70 bg-surface-0/60 p-1 shadow-sm dark:border-surface-700/50 dark:bg-surface-900/30">
+            <FinanceCrossTable
+                title="Tableau croisé financier"
+                subtitle="Section dédiée au suivi hebdomadaire des revenus et dépenses validés." />
         </div>
 
         <div data-tour="rapports-admin.acts">

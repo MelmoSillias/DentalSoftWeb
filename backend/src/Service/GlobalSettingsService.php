@@ -9,6 +9,37 @@ use Doctrine\ORM\EntityManagerInterface;
 class GlobalSettingsService
 {
     private const KEY_GENERAL = 'general';
+    private const DEFAULT_TRANSACTION_MOTIFS = [
+        'revenue' => [
+            'Paiement patient',
+            'Remboursement assurance',
+            'Vente produit',
+            'Autre',
+        ],
+        'expense' => [
+            'Achat matériel',
+            'Frais généraux',
+            'Paiement salaire',
+            'Maintenance',
+            'Autre',
+        ],
+    ];
+    private const DEFAULT_SOINS_LIST = [
+        'Consultation',
+        'Détartrage',
+        'Extraction',
+        'Remplissage',
+        'Composite',
+        'Amalgame',
+        'Traitement de canal',
+        'Traumatisme',
+        'Couronne',
+        'Blanchiment',
+        'Radio',
+        'Prothèse',
+        'Orthodontie',
+        'Chirurgie',
+    ];
 
     public function __construct(
         private AppSettingRepository $appSettingRepo,
@@ -16,7 +47,7 @@ class GlobalSettingsService
     ) {
     }
 
-    /** @return array{autoApproveDevices: bool, requireMedecinOnConsultationCreation: bool, allowReceptionQuickCloseConsultation: bool, paiementDirectAssurance: bool} */
+    /** @return array{autoApproveDevices: bool, requireMedecinOnConsultationCreation: bool, allowReceptionQuickCloseConsultation: bool, paiementDirectAssurance: bool, transactionMotifs: array{revenue: string[], expense: string[]}, soinsList: string[]} */
     public function getGeneralSettings(): array
     {
         $entry = $this->appSettingRepo->findOneByKey(self::KEY_GENERAL);
@@ -27,6 +58,8 @@ class GlobalSettingsService
             'requireMedecinOnConsultationCreation' => (bool) ($value['requireMedecinOnConsultationCreation'] ?? true),
             'allowReceptionQuickCloseConsultation' => (bool) ($value['allowReceptionQuickCloseConsultation'] ?? true),
             'paiementDirectAssurance' => (bool) ($value['paiementDirectAssurance'] ?? false),
+            'transactionMotifs' => $this->sanitizeTransactionMotifs($value['transactionMotifs'] ?? null),
+            'soinsList' => $this->sanitizeStringList($value['soinsList'] ?? null, self::DEFAULT_SOINS_LIST),
         ];
     }
 
@@ -46,6 +79,8 @@ class GlobalSettingsService
             'requireMedecinOnConsultationCreation' => (bool) ($payload['requireMedecinOnConsultationCreation'] ?? ($current['requireMedecinOnConsultationCreation'] ?? false)),
             'allowReceptionQuickCloseConsultation' => (bool) ($payload['allowReceptionQuickCloseConsultation'] ?? ($current['allowReceptionQuickCloseConsultation'] ?? true)),
             'paiementDirectAssurance' => (bool) ($payload['paiementDirectAssurance'] ?? $payload['paymentDirectInsurance'] ?? ($current['paiementDirectAssurance'] ?? false)),
+            'transactionMotifs' => $this->sanitizeTransactionMotifs($payload['transactionMotifs'] ?? ($current['transactionMotifs'] ?? null)),
+            'soinsList' => $this->sanitizeStringList($payload['soinsList'] ?? ($current['soinsList'] ?? null), self::DEFAULT_SOINS_LIST),
         ]);
 
         $this->em->flush();
@@ -73,7 +108,19 @@ class GlobalSettingsService
         return $this->getGeneralSettings()['paiementDirectAssurance'];
     }
 
-    /** @return array{requireMedecinOnConsultationCreation: bool, allowReceptionQuickCloseConsultation: bool, paiementDirectAssurance: bool} */
+    /** @return array{revenue: string[], expense: string[]} */
+    public function getTransactionMotifs(): array
+    {
+        return $this->getGeneralSettings()['transactionMotifs'];
+    }
+
+    /** @return string[] */
+    public function getSoinsList(): array
+    {
+        return $this->getGeneralSettings()['soinsList'];
+    }
+
+    /** @return array{requireMedecinOnConsultationCreation: bool, allowReceptionQuickCloseConsultation: bool, paiementDirectAssurance: bool, soinsList: string[]} */
     public function getPublicGeneralSettings(): array
     {
         $settings = $this->getGeneralSettings();
@@ -82,6 +129,65 @@ class GlobalSettingsService
             'requireMedecinOnConsultationCreation' => $settings['requireMedecinOnConsultationCreation'],
             'allowReceptionQuickCloseConsultation' => $settings['allowReceptionQuickCloseConsultation'],
             'paiementDirectAssurance' => $settings['paiementDirectAssurance'],
+            'soinsList' => $settings['soinsList'],
         ];
+    }
+
+    /** @return array{revenue: string[], expense: string[]} */
+    private function sanitizeTransactionMotifs(mixed $value): array
+    {
+        $fallback = self::DEFAULT_TRANSACTION_MOTIFS;
+        $source = is_array($value) ? $value : [];
+
+        $normalize = static function (mixed $items, array $defaultItems): array {
+            if (!is_array($items)) {
+                return $defaultItems;
+            }
+
+            $clean = [];
+            foreach ($items as $item) {
+                if (!is_scalar($item)) {
+                    continue;
+                }
+
+                $label = trim((string) $item);
+                if ($label === '') {
+                    continue;
+                }
+
+                $clean[$label] = $label;
+            }
+
+            return array_values($clean ?: array_combine($defaultItems, $defaultItems));
+        };
+
+        return [
+            'revenue' => $normalize($source['revenue'] ?? null, $fallback['revenue']),
+            'expense' => $normalize($source['expense'] ?? null, $fallback['expense']),
+        ];
+    }
+
+    /** @return string[] */
+    private function sanitizeStringList(mixed $value, array $defaultItems): array
+    {
+        if (!is_array($value)) {
+            return $defaultItems;
+        }
+
+        $clean = [];
+        foreach ($value as $item) {
+            if (!is_scalar($item)) {
+                continue;
+            }
+
+            $label = trim((string) $item);
+            if ($label === '') {
+                continue;
+            }
+
+            $clean[$label] = $label;
+        }
+
+        return array_values($clean ?: array_combine($defaultItems, $defaultItems));
     }
 }

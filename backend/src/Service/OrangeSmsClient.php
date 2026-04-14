@@ -38,6 +38,86 @@ final class OrangeSmsClient
     }
 
     /**
+     * @return array<string, mixed>
+     */
+    public function fetchContractOverview(): array
+    {
+        try {
+            $config = $this->smsConfigService->getConfig();
+            $check = $this->smsConfigService->validateReadyConfig($config);
+            if (!$check['valid']) {
+                return [
+                    'success' => false,
+                    'message' => $check['message'] ?? 'Configuration SMS invalide',
+                    'contracts' => [],
+                ];
+            }
+
+            $token = $this->requestToken($config);
+            $endpoint = rtrim($config->getBaseUrl(), '/') . '/sms/admin/v1/contracts';
+            $response = $this->httpClient->request('GET', $endpoint, [
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $token,
+                    'Accept' => 'application/json',
+                ],
+            ]);
+
+            $status = $response->getStatusCode();
+            $data = $response->toArray(false);
+
+            if ($status < 200 || $status >= 300 || !is_array($data)) {
+                return [
+                    'success' => false,
+                    'message' => is_array($data) ? $this->extractOrangeError($data, $status) : 'Erreur Orange HTTP ' . $status,
+                    'contracts' => [],
+                ];
+            }
+
+            $senderAddress = (string) ($config->getSenderAddress() ?? '');
+            $countryCode = $this->inferCountryCode($senderAddress);
+            $contracts = [];
+            foreach ($data as $item) {
+                if (!is_array($item)) {
+                    continue;
+                }
+
+                $contracts[] = [
+                    'id' => $item['id'] ?? null,
+                    'country' => $item['country'] ?? null,
+                    'offerName' => $item['offerName'] ?? null,
+                    'availableUnits' => isset($item['availableUnits']) ? (int) $item['availableUnits'] : null,
+                    'status' => $item['status'] ?? null,
+                    'expirationDate' => $item['expirationDate'] ?? null,
+                    'type' => $item['type'] ?? null,
+                    'isRecommended' => $countryCode !== null && ($item['country'] ?? null) === $countryCode,
+                ];
+            }
+
+            usort($contracts, static function (array $left, array $right): int {
+                return ((int) ($right['isRecommended'] ?? 0)) <=> ((int) ($left['isRecommended'] ?? 0));
+            });
+
+            return [
+                'success' => true,
+                'message' => 'Contrat Orange chargé.',
+                'contracts' => $contracts,
+            ];
+        } catch (TransportExceptionInterface $exception) {
+            return [
+                'success' => false,
+                'message' => 'Erreur réseau Orange: ' . $exception->getMessage(),
+                'contracts' => [],
+            ];
+        } catch (\Throwable $exception) {
+            return [
+                'success' => false,
+                'message' => $exception->getMessage(),
+                'contracts' => [],
+            ];
+        }
+    }
+
+    /**
      * @return array{success: bool, providerMessageId?: string|null, error?: string}
      */
     public function sendSms(string $phone, string $message, ?string $senderOverride = null): array
@@ -50,8 +130,9 @@ final class OrangeSmsClient
             }
 
             $token = $this->requestToken($config);
-            $sender = $this->normalizeTelAddress($senderOverride ?: (string) $config->getSenderName(), 'Sender Address');
+            $sender = $this->normalizeTelAddress($senderOverride ?: (string) $config->getSenderAddress(), 'Sender Address');
             $recipient = $this->normalizeTelAddress($phone, 'Numéro destinataire');
+            $senderName = trim((string) ($config->getSenderName() ?? ''));
 
             $endpoint = sprintf(
                 '%s/smsmessaging/v1/outbound/%s/requests',
@@ -63,12 +144,15 @@ final class OrangeSmsClient
                 'outboundSMSMessageRequest' => [
                     'address' => $recipient,
                     'senderAddress' => $sender,
-                    'senderName' => $senderOverride ?: $config->getSenderName(),
                     'outboundSMSTextMessage' => [
                         'message' => mb_substr($message, 0, 160),
                     ],
                 ],
             ];
+
+            if ($senderName !== '') {
+                $payload['outboundSMSMessageRequest']['senderName'] = $senderName;
+            }
 
             $response = $this->httpClient->request('POST', $endpoint, [
                 'headers' => [
@@ -151,6 +235,19 @@ final class OrangeSmsClient
         }
 
         return 'tel:' . $normalized;
+    }
+
+    private function inferCountryCode(string $senderAddress): ?string
+    {
+        $normalized = strtoupper(trim($senderAddress));
+
+        return match (true) {
+            str_contains($normalized, '+223') => 'MLI',
+            str_contains($normalized, '+221') => 'SEN',
+            str_contains($normalized, '+225') => 'CIV',
+            str_contains($normalized, '+226') => 'BFA',
+            default => null,
+        };
     }
 
     /**

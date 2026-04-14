@@ -16,6 +16,7 @@ import FichePlanTraitementForm from '@/components/fiche-medicale/FichePlanTraite
 import SeancesSection from '@/components/fiche-medicale/SeancesSection.vue';
 import { useConsultationsForm } from '@/composables/useConsultationsForm';
 import { usePrinter } from '@/composables/usePrinter';
+import { defaultSoinList, normalizeSoinList } from '@/services/consultations';
 import { fetchPublicGeneralSettings } from '@/services/globalSettingsService';
 import { addPatientAllergy, addPatientAntecedent, deletePatientAllergy, deletePatientAntecedent } from '@/services/patients';
 import { fetchOrdonnancePrintData } from '@/services/printService';
@@ -81,6 +82,7 @@ const isIndicatorFloating = ref(false);
 const allowRouteLeaveAfterCloture = ref(false);
 const isGuidedTourStarting = ref(false);
 const isMedecinOptionalOnCreation = ref(false);
+const soinsList = ref([...defaultSoinList]);
 
 const displayModeOptions = [
     { label: 'Onglets', value: 'tabs' },
@@ -162,9 +164,11 @@ const loadConsultationPolicy = async () => {
     try {
         const settings = await fetchPublicGeneralSettings(token);
         isMedecinOptionalOnCreation.value = settings?.requireMedecinOnConsultationCreation === false;
+        soinsList.value = normalizeSoinList(settings?.soinsList);
     } catch (error) {
         console.error('Erreur chargement politique consultation', error);
         isMedecinOptionalOnCreation.value = false;
+        soinsList.value = [...defaultSoinList];
     }
 };
 
@@ -781,7 +785,7 @@ onBeforeUnmount(() => {
 
                     <template #devis>
                         <div data-tour="consultations-form.section.devis">
-                            <DevisForm v-model="data.devis" :saving="saving.devis" @save="saveDevisSection" />
+                            <DevisForm v-model="data.devis" :saving="saving.devis" :soins="soinsList" @save="saveDevisSection" />
                         </div>
                     </template>
 
@@ -795,6 +799,7 @@ onBeforeUnmount(() => {
                         <div data-tour="consultations-form.section.consult">
                             <ConsultationEnCoursForm
                                 v-model="data.consultation"
+                                :soins="soinsList"
                                 :formule-dentaire="data.bilans?.bilanDentaire?.formuleDentaire"
                                 :medecins="data.medecins"
                                 :medecins-options="medecinsOptions"

@@ -13,7 +13,7 @@ import TraitementsDocumentsForm from '@/components/consultations/TraitementsDocu
 import AllergyDialogForm from '@/components/patients/AllergyDialogForm.vue';
 import AntecedentDialogForm from '@/components/patients/AntecedentDialogForm.vue';
 import { usePrinter } from '@/composables/usePrinter';
-import { setConsultationFiche } from '@/services/consultations';
+import { defaultSoinList, normalizeSoinList, setConsultationFiche } from '@/services/consultations';
 import { fetchPublicGeneralSettings } from '@/services/globalSettingsService';
 import { addPatientAllergy, addPatientAntecedent, deletePatientAllergy, deletePatientAntecedent } from '@/services/patients';
 import {
@@ -89,6 +89,7 @@ const allowRouteLeaveAfterCloture = ref(false);
 let autosaveTimer = null;
 let ignoreNextDirty = false;
 const isMedecinOptionalOnCreation = ref(false);
+const soinsList = ref([...defaultSoinList]);
 
 const displayModeOptions = [
     { label: 'Onglets', value: 'tabs' },
@@ -330,9 +331,11 @@ const loadConsultationPolicy = async () => {
     try {
         const settings = await fetchPublicGeneralSettings(token);
         isMedecinOptionalOnCreation.value = settings?.requireMedecinOnConsultationCreation === false;
+        soinsList.value = normalizeSoinList(settings?.soinsList);
     } catch (error) {
         console.error('Erreur chargement politique consultation', error);
         isMedecinOptionalOnCreation.value = false;
+        soinsList.value = [...defaultSoinList];
     }
 };
 
@@ -960,7 +963,7 @@ const handlePrintOrdonnance = async (ordo) => {
 
                 <template #devis>
                     <div class="p-6">
-                        <DevisForm v-model="data.devis" :saving="saving.devis" @save="saveDevisSection()" />
+                        <DevisForm v-model="data.devis" :saving="saving.devis" :soins="soinsList" @save="saveDevisSection()" />
                     </div>
                 </template>
 
@@ -972,7 +975,7 @@ const handlePrintOrdonnance = async (ordo) => {
 
                 <template #consult>
                     <div class="p-6">
-                        <ConsultationEnCoursForm v-model="data.consultation" :medecins="data.medecins"
+                        <ConsultationEnCoursForm v-model="data.consultation" :medecins="data.medecins" :soins="soinsList"
                             :formule-dentaire="data.bilans?.bilanDentaire?.formuleDentaire"
                             :infirmiers="data.infirmiers" :salles="data.salles" :ordonnances="data.ordonnances"
                             :medecin-readonly="isMedecinUser"

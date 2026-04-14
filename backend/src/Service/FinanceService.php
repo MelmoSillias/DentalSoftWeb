@@ -2,20 +2,27 @@
 
 namespace App\Service;
 
+use App\Entity\ChargeFixe;
+use App\Entity\Devis;
 use App\Entity\ModeDePaiement;
 use App\Entity\PaiementDevis;
 use App\Entity\Transaction;
+use App\Repository\ChargeFixeRepository;
 use App\Repository\ModeDePaiementRepository;
 use App\Repository\TransactionRepository;
+use DateTime;
+use DateTimeImmutable;
 use DateTimeInterface;
 use Doctrine\ORM\EntityManagerInterface;
 
 class FinanceService
 {
     public function __construct(
+        private ChargeFixeRepository $chargeFixeRepo,
         private ModeDePaiementRepository $modeRepo,
         private TransactionRepository $transactionRepo,
         private EntityManagerInterface $em,
+        private GlobalSettingsService $globalSettingsService,
     ) {
     }
 
@@ -262,17 +269,96 @@ class FinanceService
         return $soldes;
     }
 
-    public function createTransaction(string $type, float $montant, ?string $description, DateTimeInterface $date, int $modeId): ?Transaction
+    public function listFixedCharges(): array
+    {
+        $charges = $this->chargeFixeRepo->findBy([], ['designation' => 'ASC']);
+
+        return array_map(fn (ChargeFixe $charge) => $this->mapFixedCharge($charge), $charges);
+    }
+
+    public function createFixedCharge(array $data): array
+    {
+        $designation = trim((string) ($data['designation'] ?? ''));
+        $montant = (float) ($data['montant'] ?? 0);
+
+        if ($designation === '') {
+            return ['error' => 'La désignation est requise.', 'status' => 400];
+        }
+
+        if ($montant <= 0) {
+            return ['error' => 'Le montant doit être supérieur à 0.', 'status' => 400];
+        }
+
+        $charge = new ChargeFixe();
+        $charge->setDesignation($designation);
+        $charge->setMontant($montant);
+
+        $this->em->persist($charge);
+        $this->em->flush();
+
+        return $this->mapFixedCharge($charge);
+    }
+
+    public function updateFixedCharge(int $id, array $data): array
+    {
+        $charge = $this->chargeFixeRepo->find($id);
+        if (!$charge) {
+            return ['error' => 'Charge fixe introuvable.', 'status' => 404];
+        }
+
+        $designation = trim((string) ($data['designation'] ?? ''));
+        $montant = (float) ($data['montant'] ?? 0);
+
+        if ($designation === '') {
+            return ['error' => 'La désignation est requise.', 'status' => 400];
+        }
+
+        if ($montant <= 0) {
+            return ['error' => 'Le montant doit être supérieur à 0.', 'status' => 400];
+        }
+
+        $charge->setDesignation($designation);
+        $charge->setMontant($montant);
+
+        $this->em->flush();
+
+        return $this->mapFixedCharge($charge);
+    }
+
+    public function deleteFixedCharge(int $id): array
+    {
+        $charge = $this->chargeFixeRepo->find($id);
+        if (!$charge) {
+            return ['error' => 'Charge fixe introuvable.', 'status' => 404];
+        }
+
+        $this->em->remove($charge);
+        $this->em->flush();
+
+        return ['success' => true];
+    }
+
+    public function getFixedChargesTotal(): float
+    {
+        return array_reduce(
+            $this->chargeFixeRepo->findAll(),
+            static fn (float $sum, ChargeFixe $charge): float => $sum + (float) ($charge->getMontant() ?? 0),
+            0.0
+        );
+    }
+
+    public function createTransaction(string $type, float $montant, ?string $description, DateTimeInterface $date, int $modeId, ?string $motif = null): array
     {
         $mode = $this->modeRepo->find($modeId);
         if (!$mode) {
-            return null;
+            return ['error' => 'Mode de paiement introuvable', 'status' => 400];
         }
 
         $transaction = new Transaction();
-        $transaction->setType($type === 'entry' ? 'Entrée' : 'Sortie');
+        $transaction->setType($this->normalizePersistedTransactionType($type));
         $transaction->setMontant($montant);
         $transaction->setDescription($description);
+        $transaction->setMotif($motif);
         $transaction->setDateTransaction($date);
         $transaction->setModeDePaiement($mode);
 
@@ -285,7 +371,10 @@ class FinanceService
         $this->em->persist($transaction);
         $this->em->flush();
 
-        return $transaction;
+        return [
+            'success' => true,
+            'transactionId' => $transaction->getId(),
+        ];
     }
 
     public function getTransactionsByDateRange(DateTimeInterface $start, DateTimeInterface $end): array
@@ -299,16 +388,22 @@ class FinanceService
             ->getResult();
 
         return array_map(function (Transaction $transaction) {
+            $typeKey = $this->resolveTransactionTypeKey($transaction->getType());
+
             return [
                 'date' => $transaction->getDateTransaction()->format('Y-m-d'),
                 'dateTransaction' => $transaction->getDateTransaction()->format('Y-m-d H:i:s'),
                 'id' => $transaction->getId(),
                 'description' => $transaction->getDescription(),
+                'motif' => $transaction->getMotif(),
                 'type' => $transaction->getType(),
+                'typeKey' => $typeKey,
+                'typeLabel' => $typeKey === 'revenue' ? 'Revenu' : ($typeKey === 'expense' ? 'Dépense' : ($transaction->getType() ?? '')), 
                 'amount' => $transaction->getMontant(),
                 'validated' => $transaction->isValidated(),
                 'validationStatus' => $transaction->getValidationStatus(),
                 'validationComment' => $transaction->getValidationComment(),
+                'validatedAt' => $transaction->getValidatedAt()?->format(DATE_ATOM),
                 'modeDePaiement' => [
                     'id' => $transaction->getModeDePaiement()->getId(),
                     'libelle' => $transaction->getModeDePaiement()->getLibelle(),
@@ -400,7 +495,7 @@ class FinanceService
         return ['message' => 'Transfert effectué avec succès'];
     }
 
-    public function updateTransactionValidationStatus(int $id, string $status, ?string $comment = null): array
+    public function updateTransactionValidationStatus(int $id, string $status, ?string $comment = null, ?DateTimeImmutable $validatedAt = null): array
     {
         $transaction = $this->transactionRepo->find($id);
         if (!$transaction) {
@@ -408,7 +503,7 @@ class FinanceService
         }
 
         if ($status === 'validated') {
-            $transaction->markValidated();
+            $transaction->markValidated($validatedAt);
             $transaction->setValidationComment(null);
 
             if (
@@ -419,7 +514,7 @@ class FinanceService
                 $paiement = new PaiementDevis();
                 $paiement->setMode($transaction->getModeDePaiement());
                 $paiement->setMontant((float) ($transaction->getMontant() ?? 0));
-                $paiement->setDate($transaction->getDateTransaction() ?? new \DateTime());
+                $paiement->setDate($validatedAt ? DateTime::createFromImmutable($validatedAt) : ($transaction->getDateTransaction() ?? new DateTime()));
                 $paiement->setRolePaiement($transaction->getRolePaiement());
                 $paiement->setTauxPriseEnCharge($transaction->getTauxPriseEnCharge());
 
@@ -435,7 +530,9 @@ class FinanceService
                 $this->em->persist($paiement);
             }
         } elseif ($status === 'rejected') {
+            $devis = $this->detachTransactionPayment($transaction);
             $transaction->markRejected($comment);
+            $this->recalculateDevisBalance($devis);
         } else {
             return ['error' => 'Statut de validation invalide', 'status' => 400];
         }
@@ -443,5 +540,210 @@ class FinanceService
         $this->em->flush();
 
         return ['success' => true];
+    }
+
+    public function deleteTransaction(int $id): array
+    {
+        $transaction = $this->transactionRepo->find($id);
+        if (!$transaction) {
+            return ['error' => 'Transaction introuvable', 'status' => 404];
+        }
+
+        $devis = $this->detachTransactionPayment($transaction);
+        if ($devis === null) {
+            $consultation = $transaction->getConsultation();
+            $devis = $transaction->getDevis() ?: $consultation?->getFacture();
+        }
+
+        $transaction->setConsultation(null);
+        $transaction->setDevis(null);
+        $this->em->remove($transaction);
+
+        $this->recalculateDevisBalance($devis);
+        $this->em->flush();
+
+        return ['success' => true];
+    }
+
+    public function getMonthlyCrossTable(int $year, int $month, string $type = 'revenue'): array
+    {
+        $month = max(1, min(12, $month));
+        $typeKey = $this->resolveTransactionTypeKey($type);
+        $from = new DateTimeImmutable(sprintf('%04d-%02d-01 00:00:00', $year, $month));
+        $to = $from->modify('last day of this month')->setTime(23, 59, 59);
+        $lastDay = (int) $to->format('j');
+        $weeksCount = (int) ceil($lastDay / 7);
+        $weeks = [];
+
+        for ($index = 1; $index <= $weeksCount; $index++) {
+            $startDay = (($index - 1) * 7) + 1;
+            $endDay = min($index * 7, $lastDay);
+            $weeks[] = [
+                'index' => $index,
+                'label' => sprintf('Semaine %d', $index),
+                'startDate' => sprintf('%04d-%02d-%02d', $year, $month, $startDay),
+                'endDate' => sprintf('%04d-%02d-%02d', $year, $month, $endDay),
+            ];
+        }
+
+        $rows = [];
+        $grid = [];
+        for ($weekday = 1; $weekday <= 7; $weekday++) {
+            $grid[$weekday] = array_fill(1, $weeksCount, 0.0);
+        }
+
+        $transactions = $this->transactionRepo->findValidatedBetweenByTypes($from, $to, $this->resolveTransactionTypeAliases($typeKey));
+        foreach ($transactions as $transaction) {
+            if (!$transaction instanceof Transaction) {
+                continue;
+            }
+
+            $validatedAt = $transaction->getValidatedAt();
+            if (!$validatedAt instanceof DateTimeImmutable) {
+                continue;
+            }
+
+            $weekday = (int) $validatedAt->format('N');
+            $weekIndex = (int) floor(((int) $validatedAt->format('j') - 1) / 7) + 1;
+            if (!isset($grid[$weekday][$weekIndex])) {
+                continue;
+            }
+
+            $grid[$weekday][$weekIndex] += (float) ($transaction->getMontant() ?? 0);
+        }
+
+        $columnTotals = array_fill(1, $weeksCount, 0.0);
+        $grandTotal = 0.0;
+        for ($weekday = 1; $weekday <= 7; $weekday++) {
+            $values = [];
+            $rowTotal = 0.0;
+
+            for ($weekIndex = 1; $weekIndex <= $weeksCount; $weekIndex++) {
+                $amount = (float) $grid[$weekday][$weekIndex];
+                $values[] = $amount;
+                $rowTotal += $amount;
+                $columnTotals[$weekIndex] += $amount;
+            }
+
+            $grandTotal += $rowTotal;
+            $rows[] = [
+                'weekday' => $weekday,
+                'label' => $this->weekdayLabel($weekday),
+                'values' => $values,
+                'total' => $rowTotal,
+            ];
+        }
+
+        return [
+            'year' => $year,
+            'month' => $month,
+            'type' => $typeKey,
+            'typeLabel' => $typeKey === 'expense' ? 'Dépenses' : 'Revenus',
+            'monthLabel' => ucfirst((new \IntlDateFormatter('fr_FR', \IntlDateFormatter::NONE, \IntlDateFormatter::NONE, null, null, 'MMMM yyyy'))->format($from)),
+            'weeks' => $weeks,
+            'rows' => $rows,
+            'columnTotals' => array_values($columnTotals),
+            'grandTotal' => $grandTotal,
+            'availableTypes' => [
+                ['label' => 'Revenus', 'value' => 'revenue'],
+                ['label' => 'Dépenses', 'value' => 'expense'],
+            ],
+            'transactionMotifs' => $this->globalSettingsService->getTransactionMotifs(),
+        ];
+    }
+
+    private function detachTransactionPayment(Transaction $transaction): ?Devis
+    {
+        $paiement = $transaction->getPaiementDevis();
+        $devis = $transaction->getDevis();
+
+        if (!$paiement instanceof PaiementDevis) {
+            return $devis ?: $transaction->getConsultation()?->getFacture();
+        }
+
+        $devis = $devis ?: $paiement->getDevis() ?: $transaction->getConsultation()?->getFacture();
+        $consultation = $transaction->getConsultation();
+
+        if ($consultation && $consultation->getPaiementDevis() === $paiement) {
+            $consultation->setPaiementDevis(null);
+        }
+
+        if ($devis && $devis->getPaiements()->contains($paiement)) {
+            $devis->removePaiement($paiement);
+        }
+
+        $transaction->setPaiementDevis(null);
+        $paiement->setConsultation(null);
+        $paiement->setDevis(null);
+        $this->em->remove($paiement);
+
+        return $devis;
+    }
+
+    private function recalculateDevisBalance(?Devis $devis): void
+    {
+        if (!$devis instanceof Devis) {
+            return;
+        }
+
+        $paidAmount = 0.0;
+        foreach ($devis->getPaiements() as $paiement) {
+            $paidAmount += (float) ($paiement->getMontant() ?? 0);
+        }
+
+        $montant = (float) ($devis->getMontant() ?? 0);
+        $reste = max(0.0, $montant - $paidAmount);
+        $devis->setReste($reste);
+        $devis->setStatut($reste <= 0.0 ? 1 : 0);
+        $this->em->persist($devis);
+    }
+
+    private function resolveTransactionTypeKey(?string $type): string
+    {
+        $value = strtolower(trim((string) $type));
+        $value = str_replace(['é', 'è', 'ê', 'ë', 'à', 'â', 'î', 'ï', 'ô', 'ù', 'û', 'ç', ' '], ['e', 'e', 'e', 'e', 'a', 'a', 'i', 'i', 'o', 'u', 'u', 'c', '_'], $value);
+
+        return match (true) {
+            in_array($value, ['entry', 'income', 'revenue', 'revenu', 'entree'], true) => 'revenue',
+            in_array($value, ['exit', 'expense', 'depense', 'sortie'], true) => 'expense',
+            default => 'other',
+        };
+    }
+
+    /** @return string[] */
+    private function resolveTransactionTypeAliases(string $typeKey): array
+    {
+        return match ($typeKey) {
+            'expense' => ['Sortie'],
+            default => ['Entrée'],
+        };
+    }
+
+    private function normalizePersistedTransactionType(string $type): string
+    {
+        return $this->resolveTransactionTypeKey($type) === 'expense' ? 'Sortie' : 'Entrée';
+    }
+
+    private function weekdayLabel(int $weekday): string
+    {
+        return match ($weekday) {
+            1 => 'Lundi',
+            2 => 'Mardi',
+            3 => 'Mercredi',
+            4 => 'Jeudi',
+            5 => 'Vendredi',
+            6 => 'Samedi',
+            7 => 'Dimanche',
+            default => 'Inconnu',
+        };
+    }
+
+    private function mapFixedCharge(ChargeFixe $charge): array
+    {
+        return [
+            'id' => $charge->getId(),
+            'designation' => $charge->getDesignation(),
+            'montant' => (float) ($charge->getMontant() ?? 0),
+        ];
     }
 }

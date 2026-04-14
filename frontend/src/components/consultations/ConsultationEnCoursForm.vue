@@ -8,6 +8,7 @@ import MultiSelect from 'primevue/multiselect';
 import ProgressSpinner from 'primevue/progressspinner';
 import Textarea from 'primevue/textarea';
 import { computed, ref, watch } from 'vue';
+import { defaultSoinList, normalizeSoinList } from '@/services/consultations';
 
 const props = defineProps({
     modelValue: {
@@ -65,6 +66,10 @@ const props = defineProps({
     hideOrdonnances: {
         type: Boolean,
         default: false
+    },
+    soins: {
+        type: Array,
+        default: () => defaultSoinList
     }
 });
 
@@ -249,22 +254,14 @@ function formatCurrency(value) {
     }).format(value);
 }
 
-const soinsList = [
-	'Consultation',
-	'Détartrage',
-	'Extraction',
-	'Remplissage',
-	'Composite',
-	'Amalgame',
-	'Traitement de canal',
-	'Traumatisme',
-	'Couronne',
-	'Blanchiment',
-	'Radio',
-	'Prothèse',
-	'Orthodontie',
-	'Chirurgie'
-];
+const soinsList = computed(() => normalizeSoinList(props.soins));
+const soinSuggestions = ref([]);
+
+const searchSoins = (event) => {
+    const query = String(event?.query || '').toLowerCase();
+    const list = soinsList.value;
+    soinSuggestions.value = query ? list.filter((item) => item.toLowerCase().includes(query)) : list;
+};
 
 const consultationTypes = [
     { label: 'Première Consultation', value: 'initiale' },
@@ -538,11 +535,14 @@ const isValidTooth = (value) => {
                             </div>
                             <div class="w-full">
                                 <FloatLabel variant="in">
-                                    <Select
-                                        :options="soinsList"
-                                        :value="acte.type"  
-                                        class="w-full rounded-lg border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800  text-sm"
-                                        @update:modelValue="(v) => updateActe(idx, { type: v })" 
+                                    <AutoComplete
+                                        :modelValue="acte.type"
+                                        :suggestions="soinSuggestions"
+                                        dropdown
+                                        class="w-full"
+                                        inputClass="w-full rounded-lg border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800 p-2 text-sm"
+                                        @complete="searchSoins"
+                                        @update:modelValue="(v) => updateActe(idx, { type: v || '' })" 
                                     />
                                     <label class="text-xs font-medium text-surface-600 dark:text-surface-400">Type d'acte</label>
                                 </FloatLabel>

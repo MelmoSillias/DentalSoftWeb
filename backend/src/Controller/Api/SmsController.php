@@ -79,6 +79,14 @@ final class SmsController extends AbstractController
         return $this->json($this->smsService->stats());
     }
 
+    #[Route('/provider-overview', name: 'provider_overview', methods: ['GET'])]
+    public function providerOverview(): JsonResponse
+    {
+        $result = $this->orangeSmsClient->fetchContractOverview();
+
+        return $this->json($result, ($result['success'] ?? false) ? 200 : 400);
+    }
+
     #[Route('/logs', name: 'logs', methods: ['GET'])]
     public function logs(Request $request): JsonResponse
     {

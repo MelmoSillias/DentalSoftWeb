@@ -44,14 +44,14 @@ final class FinancesController extends AbstractController
         $description = $request->get('description');
         $date = new \DateTime($request->get('date'));
         $modeId = $request->get('modeId');
-        $transaction = $this->financeService->createTransaction($type, (float) $montant, $description, $date, (int) $modeId);
-        if (!$transaction) {
-            return $this->json(['error' => 'Mode de paiement introuvable'], 400);
+        $result = $this->financeService->createTransaction($type, (float) $montant, $description, $date, (int) $modeId, $request->get('motif'));
+        if (isset($result['error'])) {
+            return $this->json(['error' => $result['error']], $result['status'] ?? 400);
         }
 
         return $this->json(['message' => 'Transaction enregistrée avec succès']);
     }
-    
+
 
     #[Route('/admin/finances/transactions', name: 'app_admin_finances_transactions', methods: ['GET'])]
     public function getTransactionsByDateRange(Request $request): JsonResponse

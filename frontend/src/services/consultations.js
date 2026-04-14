@@ -224,3 +224,16 @@ export const setConsultationFiche = async (consultationId, ficheId = null, token
 };
 
 export const defaultSoinList = ['Consultation', 'Détartrage', 'Extraction', 'Remplissage', 'Composite', 'Amalgame', 'Traitement de canal', 'Traumatisme', 'Couronne', 'Blanchiment', 'Radio', 'Prothèse', 'Orthodontie', 'Chirurgie'];
+
+export const normalizeSoinList = (items) => {
+    if (!Array.isArray(items)) {
+        return [...defaultSoinList];
+    }
+
+    const unique = new Set();
+    const clean = items
+        .map((item) => String(item || '').trim())
+        .filter((item) => item && !unique.has(item) && unique.add(item));
+
+    return clean.length ? clean : [...defaultSoinList];
+};
