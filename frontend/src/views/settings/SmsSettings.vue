@@ -603,7 +603,7 @@ onMounted(async () => {
                             <Tag severity="contrast" :value="`${logsFiltered.length} résultat(s)`" />
                         </div>
 
-                        <div class="mb-6 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1.2fr)]">
+                        <div class="mb-6 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1.2fr)] items-center">
                             <FloatLabel variant="on">
                                 <InputText id="logs-search" v-model="logsSearch" class="w-full" />
                                 <label for="logs-search">Recherche libre</label>
@@ -754,7 +754,7 @@ onMounted(async () => {
                             <Button label="Envoyer" icon="pi pi-send" @click="sendManualSmsAction" />
                         </div>
 
-                        <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+                        <div class="flex flex-col gap-6 md:grid md:grid-cols-2 items-center">
                             <FloatLabel variant="on">
                                 <InputText id="manual-phone" v-model="manualSms.phone" class="w-full" />
                                 <label for="manual-phone">Numéro</label>
@@ -781,3 +781,10 @@ onMounted(async () => {
         </Tabs>
     </div>
 </template>
+
+<style scoped>
+:deep(.p-floatlabel .p-inputtext) {
+    min-height: 3rem; /* Adjust based on label size */
+}
+
+</style>
