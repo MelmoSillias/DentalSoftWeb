@@ -45,6 +45,7 @@ class ConsultationService
         private EmployeRepository $employeRepo,
         private SalleRepository $salleRepo,
         private NotificationRecipientResolver $notificationRecipientResolver,
+        private MedicalFormService $medicalFormService,
         private EventDispatcherInterface $eventDispatcher,
         private UserPasswordHasherInterface $passwordHasher,
         ParameterBagInterface $params,
@@ -896,6 +897,7 @@ class ConsultationService
         if (!$fiche && !$ficheObservation) {
             $fiche = new FicheMedicale();
             $fiche->setPatient($consultation->getPatient());
+            $this->medicalFormService->initializeFicheMedicale($fiche);
             $this->em->persist($fiche);
             $created = true;
             $ficheType = 'medicale';
@@ -903,6 +905,7 @@ class ConsultationService
         }
 
         if ($ficheType === 'medicale' && $fiche instanceof FicheMedicale) {
+            $this->medicalFormService->initializeFicheMedicale($fiche);
             $consultation->setFicheMedicale($fiche);
         }
 
@@ -929,6 +932,7 @@ class ConsultationService
         if ($createNewFiche) {
             $fiche = new FicheMedicale();
             $fiche->setPatient($consultation->getPatient());
+            $this->medicalFormService->initializeFicheMedicale($fiche);
             $this->em->persist($fiche);
             $consultation->setFicheMedicale($fiche);
         } else {
@@ -940,6 +944,10 @@ class ConsultationService
                 if (!$consultation->getFicheMedicale()) {
                     $consultation->setFicheMedicale($fiche);
                 }
+            }
+
+            if ($fiche instanceof FicheMedicale) {
+                $this->medicalFormService->initializeFicheMedicale($fiche);
             }
         }
 

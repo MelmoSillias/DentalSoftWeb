@@ -159,6 +159,12 @@ const router = createRouter({
                     meta: { requiresAuth: true, roles: ['ROLE_ADMIN', "ROLE_SECRETAIRE", "ROLE_TOPO"], fixedWidth: true }
                 },
                 {
+                    path: '/parametres/formulaires/:id',
+                    name: 'settings-medical-form-editor',
+                    component: () => import('@/views/settings/MedicalFormEditor.vue'),
+                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN'], fixedWidth: true }
+                },
+                {
                     path: '/administration/api-sms',
                     name: 'administration-api-sms',
                     component: () => import('@/views/settings/SmsSettings.vue'),

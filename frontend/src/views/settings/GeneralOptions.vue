@@ -3,13 +3,16 @@ import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } 
 import { useRouter } from 'vue-router';
 import { useToast } from 'primevue/usetoast';
 import Button from 'primevue/button';
+import Column from 'primevue/column';
 import Select from 'primevue/select';
 import SelectButton from 'primevue/selectbutton';
+import DataTable from 'primevue/datatable';
 import Textarea from 'primevue/textarea';
 import ToggleSwitch from 'primevue/toggleswitch';
 import Divider from 'primevue/divider';
 import Card from 'primevue/card';
 import Badge from 'primevue/badge';
+import Tag from 'primevue/tag';
 import { useAuthStore } from '@/stores/auth';
 import { useUiSettingsStore } from '@/stores/uiSettings';
 import { useAppearanceSettings } from '@/composables/useAppearanceSettings';
@@ -17,6 +20,7 @@ import { GUIDED_TOUR_START_EVENT } from '@/tours';
 import { createSettingsApparenceTour } from '@/tours/settingsApparenceTour';
 import { startTourGuide } from '@/tours/tourGuideClient';
 import { fetchGeneralSettings, saveGeneralSettings } from '@/services/globalSettingsService';
+import { createMedicalForm, duplicateMedicalForm, fetchMedicalForms } from '@/services/medicalFormsService';
 
 const router = useRouter();
 const toast = useToast();
@@ -54,8 +58,13 @@ const generalSettingsLoaded = ref(false);
 const savingStates = reactive({
     devicePolicy: false,
     transactionMotifs: false,
-    soinsCatalog: false
+    soinsCatalog: false,
+    medicalForms: false
 });
+
+const medicalFormsLoading = ref(false);
+const medicalFormsLoaded = ref(false);
+const medicalForms = ref([]);
 
 // Settings data
 const devicePolicy = reactive({
@@ -78,22 +87,29 @@ const soinsCatalog = reactive({
 const navigation = {
     appearance: {
         label: 'Apparence',
-        icon: 'pi-palette',
+        icon: 'pi pi-desktop',
         sections: [
-            { id: 'overview', label: 'Aperçu', icon: 'pi-chart-line' },
-            { id: 'theme', label: 'Thème', icon: 'pi-sun' },
-            { id: 'colors', label: 'Couleurs', icon: 'pi-palette' },
-            { id: 'typography', label: 'Typographie', icon: 'pi-font' },
-            { id: 'layout', label: 'Disposition', icon: 'pi-layout' }
+            { id: 'overview', label: 'Aperçu', icon: 'pi pi-chart-line' },
+            { id: 'theme', label: 'Thème', icon: 'pi pi-sun' },
+            { id: 'colors', label: 'Couleurs', icon: 'pi pi-palette' },
+            { id: 'typography', label: 'Typographie', icon: 'pi pi-at' },
+            { id: 'layout', label: 'Disposition', icon: 'pi pi-cog' }
         ]
     },
     workflow: {
         label: 'Flux métier',
-        icon: 'pi-briefcase',
+        icon: 'pi pi-briefcase',
         sections: [
-            { id: 'device-security', label: 'Sécurité appareils', icon: 'pi-shield' },
-            { id: 'transaction-motifs', label: 'Motifs transaction', icon: 'pi-dollar' },
-            { id: 'soins-list', label: 'Liste des soins', icon: 'pi-heart' }
+            { id: 'device-security', label: 'Sécurité appareils', icon: 'pi pi-shield' },
+            { id: 'transaction-motifs', label: 'Motifs transaction', icon: 'pi pi-dollar' },
+            { id: 'soins-list', label: 'Liste des soins', icon: 'pi pi-heart' }
+        ]
+    },
+    medical: {
+        label: 'Fiches médicales',
+        icon: 'pi pi-file-edit',
+        sections: [
+            { id: 'medical-forms', label: 'Formulaires', icon: 'pi pi-table' }
         ]
     }
 };
@@ -179,6 +195,28 @@ const loadGeneralSettings = async (force = false) => {
     }
 };
 
+const formatDateTime = (value) => {
+    if (!value) return 'Jamais';
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return 'Jamais';
+    return parsed.toLocaleString('fr-FR');
+};
+
+const loadMedicalForms = async (force = false) => {
+    if (!canManageMedicalForms.value) return;
+    if (!force && medicalFormsLoaded.value) return;
+
+    medicalFormsLoading.value = true;
+    try {
+        medicalForms.value = await fetchMedicalForms(token);
+        medicalFormsLoaded.value = true;
+    } catch (error) {
+        toast.add({ severity: 'error', summary: 'Formulaires', detail: extractApiError(error, 'Chargement impossible'), life: 3500 });
+    } finally {
+        medicalFormsLoading.value = false;
+    }
+};
+
 const saveDevicePolicyAction = async () => {
     savingStates.devicePolicy = true;
     try {
@@ -229,6 +267,38 @@ const goToSmsPage = () => {
     router.push({ name: 'administration-api-sms' });
 };
 
+const openMedicalForm = (formId) => {
+    router.push({ name: 'settings-medical-form-editor', params: { id: formId } });
+};
+
+const createMedicalFormAction = async () => {
+    savingStates.medicalForms = true;
+    try {
+        const created = await createMedicalForm({ nom: 'Nouveau formulaire médical' }, token);
+        medicalFormsLoaded.value = false;
+        await loadMedicalForms(true);
+        openMedicalForm(created.id);
+    } catch (error) {
+        toast.add({ severity: 'error', summary: 'Formulaires', detail: extractApiError(error, 'Création impossible'), life: 3500 });
+    } finally {
+        savingStates.medicalForms = false;
+    }
+};
+
+const duplicateMedicalFormAction = async (formItem) => {
+    savingStates.medicalForms = true;
+    try {
+        const duplicated = await duplicateMedicalForm(formItem.id, { nom: `${formItem.nom} copie` }, token);
+        medicalFormsLoaded.value = false;
+        await loadMedicalForms(true);
+        openMedicalForm(duplicated.id);
+    } catch (error) {
+        toast.add({ severity: 'error', summary: 'Formulaires', detail: extractApiError(error, 'Duplication impossible'), life: 3500 });
+    } finally {
+        savingStates.medicalForms = false;
+    }
+};
+
 const handleGuidedTourRequest = async (event) => {
     if (event?.detail?.routeName !== 'settings-apparence' || isGuidedTourStarting.value) return;
     isGuidedTourStarting.value = true;
@@ -245,9 +315,11 @@ const currentThemeLabel = computed(() => themeOptions.value.find((option) => opt
 const currentFontSizeLabel = computed(() => fontSizeOptions.value.find((option) => option.value === fontSize.value)?.label || 'Normal');
 const currentSurfaceName = computed(() => layoutConfig.surface || (isDarkTheme.value ? 'zinc' : 'slate'));
 const canAccessSmsSettings = computed(() => (auth.user?.roles || []).includes('ROLE_ADMIN'));
+const canManageMedicalForms = computed(() => (auth.user?.roles || []).includes('ROLE_ADMIN'));
 
 onMounted(async () => {
     await loadGeneralSettings(true);
+    await loadMedicalForms(true);
     setupObserver();
     window.addEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
 });
@@ -606,6 +678,80 @@ onBeforeUnmount(() => {
                             </div>
                         </div>
                     </div>
+
+                    <div v-if="canManageMedicalForms" class="settings-category">
+                        <div class="settings-category-header">
+                            <div class="settings-category-title">
+                                <i class="pi pi-file-edit"></i>
+                                <h2>Fiches médicales</h2>
+                            </div>
+                        </div>
+
+                        <div id="medical-medical-forms" class="settings-section">
+                            <div class="settings-section-header">
+                                <div>
+                                    <h3>Formulaires médicaux</h3>
+                                    <p class="settings-section-description">Liste des modèles disponibles et accès rapide à leur édition.</p>
+                                </div>
+                                <div class="settings-header-actions">
+                                    <Button label="Rafraîchir" icon="pi pi-refresh" severity="secondary" outlined :loading="medicalFormsLoading" @click="loadMedicalForms(true)" />
+                                    <Button label="Nouveau formulaire" icon="pi pi-plus" :loading="savingStates.medicalForms" @click="createMedicalFormAction" />
+                                </div>
+                            </div>
+
+                            <div class="settings-card">
+                                <DataTable
+                                    :value="medicalForms"
+                                    dataKey="id"
+                                    :loading="medicalFormsLoading"
+                                    responsiveLayout="scroll"
+                                    class="medical-forms-table"
+                                >
+                                    <template #empty>
+                                        <div class="empty-state">
+                                            <i class="pi pi-file text-2xl"></i>
+                                            <p>Aucun formulaire disponible.</p>
+                                        </div>
+                                    </template>
+
+                                    <Column field="nom" header="Formulaire" style="min-width: 16rem">
+                                        <template #body="slotProps">
+                                            <div class="space-y-1">
+                                                <div class="flex items-center gap-2 flex-wrap">
+                                                    <strong>{{ slotProps.data.nom }}</strong>
+                                                    <Tag v-if="slotProps.data.isNatif" value="Natif" severity="warn" />
+                                                    <Tag v-if="!slotProps.data.actif" value="Inactif" severity="contrast" />
+                                                </div>
+                                                <p class="table-subtext">{{ slotProps.data.code }}</p>
+                                            </div>
+                                        </template>
+                                    </Column>
+                                    <Column header="Structure" style="min-width: 12rem">
+                                        <template #body="slotProps">
+                                            <div class="stats-inline">
+                                                <span>{{ slotProps.data.stats?.onglets || 0 }} onglet(s)</span>
+                                                <span>{{ slotProps.data.stats?.sections || 0 }} section(s)</span>
+                                                <span>{{ slotProps.data.stats?.champs || 0 }} champ(s)</span>
+                                            </div>
+                                        </template>
+                                    </Column>
+                                    <Column header="Mise à jour" style="min-width: 11rem">
+                                        <template #body="slotProps">
+                                            <span>{{ formatDateTime(slotProps.data.updatedAt) }}</span>
+                                        </template>
+                                    </Column>
+                                    <Column header="Actions" style="width: 12rem">
+                                        <template #body="slotProps">
+                                            <div class="table-actions">
+                                                <Button icon="pi pi-arrow-right" text rounded @click="openMedicalForm(slotProps.data.id)" />
+                                                <Button icon="pi pi-copy" text rounded severity="secondary" :disabled="savingStates.medicalForms" @click="duplicateMedicalFormAction(slotProps.data)" />
+                                            </div>
+                                        </template>
+                                    </Column>
+                                </DataTable>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </main>
         </div>
@@ -613,8 +759,7 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.settings-container {
-    min-height: 100vh;
+.settings-container { 
     background: var(--surface-ground);
 }
 
@@ -623,7 +768,7 @@ onBeforeUnmount(() => {
     background: var(--surface-0);
     border-bottom: 1px solid var(--surface-border);
     position: sticky;
-    top: -1rem;
+    top: -1.5rem;
     z-index: 10;
     backdrop-filter: blur(10px);
     background: rgba(var(--surface-0-rgb), 0.9);
@@ -844,6 +989,36 @@ onBeforeUnmount(() => {
     border-radius: 16px;
     border: 1px solid var(--surface-border);
     padding: 1.5rem;
+}
+
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 2rem 1rem;
+    color: var(--text-color-secondary);
+}
+
+.table-subtext {
+    margin: 0;
+    font-size: 0.825rem;
+    color: var(--text-color-secondary);
+}
+
+.stats-inline {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    font-size: 0.875rem;
+    color: var(--text-color-secondary);
+}
+
+.table-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
 }
 
 /* Stats Grid */

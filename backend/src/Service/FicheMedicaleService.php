@@ -15,6 +15,7 @@ use App\Entity\FicheExamen;
 use App\Entity\FicheExamenItem;
 use App\Entity\FicheExamenLabo;
 use App\Entity\FicheMedicale;
+use App\Entity\FicheMedicaleValeur;
 use App\Entity\FicheObservation;
 use App\Entity\FichePlanTraitement;
 use App\Repository\DevisRepository;
@@ -32,6 +33,7 @@ class FicheMedicaleService
     public function __construct(
         private EntityManagerInterface $em,
         private DevisRepository $devisRepo,
+        private FicheMedicaleDynamicValueService $dynamicValueService,
         ParameterBagInterface $params,
     ) {
         $this->projectDir = $params->get('kernel.project_dir');
@@ -264,7 +266,7 @@ class FicheMedicaleService
             }
         }
 
-        $this->em->flush();
+        $this->dynamicValueService->syncDynamicValues($fiche);
     }
 
     private function addExamenItems(FicheExamen $examen, array $items, string $categorie): void
@@ -422,7 +424,7 @@ class FicheMedicaleService
             }
         }
 
-        $this->em->flush();
+        $this->dynamicValueService->syncDynamicValues($fiche);
     }
 
     public function updateBilans(int $ficheId, array $data): void
@@ -493,7 +495,7 @@ class FicheMedicaleService
             $bilan->setDiagnosticPositif($data['diagnosticPositif']);
         }
 
-        $this->em->flush();
+        $this->dynamicValueService->syncDynamicValues($fiche);
     }
 
     public function updatePlanTraitement(int $ficheId, array $data): void
@@ -519,7 +521,7 @@ class FicheMedicaleService
             $this->em->persist($plan);
         }
 
-        $this->em->flush();
+        $this->dynamicValueService->syncDynamicValues($fiche);
     }
 
     public function updateDocuments(int $ficheId, array $data, array $files = []): void
@@ -608,7 +610,7 @@ class FicheMedicaleService
             }
         }
 
-        $this->em->flush();
+        $this->dynamicValueService->syncDynamicValues($fiche);
     }
 
     public function updateDevis(int $ficheId, array $data): void
@@ -658,7 +660,7 @@ class FicheMedicaleService
 
         $devis->setMontant($amount ?: $devis->getMontant());
         $this->em->persist($devis);
-        $this->em->flush();
+        $this->dynamicValueService->syncDynamicValues($fiche);
     }
 
     private function resolveLegacyFiche(FicheMedicale $fiche): ?FicheObservation
@@ -1059,6 +1061,15 @@ class FicheMedicaleService
         return [
             'id' => $fiche->getId(),
             'createdAt' => $fiche->getCreatedAt()?->format('Y-m-d H:i:s'),
+            'formulaire' => $fiche->getFormulaire() ? [
+                'id' => $fiche->getFormulaire()?->getId(),
+                'code' => $fiche->getFormulaire()?->getCode(),
+                'nom' => $fiche->getFormulaire()?->getNom(),
+                'description' => $fiche->getFormulaire()?->getDescription(),
+                'version' => $fiche->getFormulaire()?->getVersion(),
+                'isNatif' => $fiche->getFormulaire()?->isNatif(),
+            ] : null,
+            'formulaireSnapshot' => $fiche->getFormulaireSnapshot(),
             'patient' => [
                 'id' => $patient?->getId(),
                 'nom' => $patient?->getNom(),
@@ -1078,6 +1089,12 @@ class FicheMedicaleService
             'documents' => $documents,
             'devis' => $devis,
             'consultations' => $consultations,
+            'valeursDynamiques' => array_map(static fn(FicheMedicaleValeur $valeur) => [
+                'id' => $valeur->getId(),
+                'champId' => $valeur->getChamp()?->getId(),
+                'champCode' => $valeur->getChampCode(),
+                'valeur' => $valeur->getValeur(),
+            ], $fiche->getValeursDynamiques()->toArray()),
         ];
     }
 }

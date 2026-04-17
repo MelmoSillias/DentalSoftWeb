@@ -27,6 +27,13 @@ class FicheMedicale
     #[ORM\Column(type: Types::DATETIME_MUTABLE)]
     private ?\DateTimeInterface $createdAt = null;
 
+    #[ORM\ManyToOne(targetEntity: Formulaire::class, inversedBy: 'fichesMedicales')]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?Formulaire $formulaire = null;
+
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $formulaireSnapshot = null;
+
     #[ORM\OneToOne(mappedBy: 'ficheMedicale', targetEntity: FicheEntretien::class, cascade: ['persist', 'remove'])]
     private ?FicheEntretien $entretien = null;
 
@@ -48,6 +55,9 @@ class FicheMedicale
     #[ORM\OneToMany(mappedBy: 'ficheMedicale', targetEntity: Consultation::class)]
     private Collection $consultations;
 
+    #[ORM\OneToMany(mappedBy: 'ficheMedicale', targetEntity: FicheMedicaleValeur::class, cascade: ['persist', 'remove'], orphanRemoval: true)]
+    private Collection $valeursDynamiques;
+
     public function __construct()
     {
         $this->createdAt = new \DateTime();
@@ -55,6 +65,7 @@ class FicheMedicale
         $this->documents = new ArrayCollection();
         $this->devis = new ArrayCollection();
         $this->consultations = new ArrayCollection();
+        $this->valeursDynamiques = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -92,6 +103,30 @@ class FicheMedicale
     public function setCreatedAt(?\DateTimeInterface $createdAt): static
     {
         $this->createdAt = $createdAt;
+        return $this;
+    }
+
+    public function getFormulaire(): ?Formulaire
+    {
+        return $this->formulaire;
+    }
+
+    public function setFormulaire(?Formulaire $formulaire): static
+    {
+        $this->formulaire = $formulaire;
+
+        return $this;
+    }
+
+    public function getFormulaireSnapshot(): ?array
+    {
+        return $this->formulaireSnapshot;
+    }
+
+    public function setFormulaireSnapshot(?array $formulaireSnapshot): static
+    {
+        $this->formulaireSnapshot = $formulaireSnapshot;
+
         return $this;
     }
 
@@ -241,6 +276,32 @@ class FicheMedicale
         if ($this->consultations->removeElement($consultation)) {
             if ($consultation->getFicheMedicale() === $this) {
                 $consultation->setFicheMedicale(null);
+            }
+        }
+
+        return $this;
+    }
+
+    public function getValeursDynamiques(): Collection
+    {
+        return $this->valeursDynamiques;
+    }
+
+    public function addValeurDynamique(FicheMedicaleValeur $valeur): static
+    {
+        if (!$this->valeursDynamiques->contains($valeur)) {
+            $this->valeursDynamiques[] = $valeur;
+            $valeur->setFicheMedicale($this);
+        }
+
+        return $this;
+    }
+
+    public function removeValeurDynamique(FicheMedicaleValeur $valeur): static
+    {
+        if ($this->valeursDynamiques->removeElement($valeur)) {
+            if ($valeur->getFicheMedicale() === $this) {
+                $valeur->setFicheMedicale(null);
             }
         }
 
