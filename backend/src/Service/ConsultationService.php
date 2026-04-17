@@ -47,6 +47,7 @@ class ConsultationService
         private NotificationRecipientResolver $notificationRecipientResolver,
         private EventDispatcherInterface $eventDispatcher,
         private UserPasswordHasherInterface $passwordHasher,
+        private FormulaireService $formulaireService,
         ParameterBagInterface $params,
         private CacheInterface $cache,
     ) {
@@ -896,6 +897,8 @@ class ConsultationService
         if (!$fiche && !$ficheObservation) {
             $fiche = new FicheMedicale();
             $fiche->setPatient($consultation->getPatient());
+            $fiche->setFormulaireVersion($this->formulaireService->ensureDefaultPublishedForm());
+            $fiche->setMigrationState('native_dynamic');
             $this->em->persist($fiche);
             $created = true;
             $ficheType = 'medicale';
@@ -929,6 +932,8 @@ class ConsultationService
         if ($createNewFiche) {
             $fiche = new FicheMedicale();
             $fiche->setPatient($consultation->getPatient());
+            $fiche->setFormulaireVersion($this->formulaireService->ensureDefaultPublishedForm());
+            $fiche->setMigrationState('native_dynamic');
             $this->em->persist($fiche);
             $consultation->setFicheMedicale($fiche);
         } else {

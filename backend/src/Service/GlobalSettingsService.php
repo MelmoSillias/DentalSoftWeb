@@ -9,6 +9,7 @@ use Doctrine\ORM\EntityManagerInterface;
 class GlobalSettingsService
 {
     private const KEY_GENERAL = 'general';
+    private const DEFAULT_MEDICAL_FORM_CODE = 'fiche-medicale-standard';
     private const DEFAULT_TRANSACTION_MOTIFS = [
         'revenue' => [
             'Paiement patient',
@@ -47,7 +48,7 @@ class GlobalSettingsService
     ) {
     }
 
-    /** @return array{autoApproveDevices: bool, requireMedecinOnConsultationCreation: bool, allowReceptionQuickCloseConsultation: bool, paiementDirectAssurance: bool, transactionMotifs: array{revenue: string[], expense: string[]}, soinsList: string[]} */
+    /** @return array{autoApproveDevices: bool, requireMedecinOnConsultationCreation: bool, allowReceptionQuickCloseConsultation: bool, paiementDirectAssurance: bool, medicalFormsRuntimeEnabled: bool, medicalFormsBuilderEnabled: bool, medicalFormsDefaultCode: string, transactionMotifs: array{revenue: string[], expense: string[]}, soinsList: string[]} */
     public function getGeneralSettings(): array
     {
         $entry = $this->appSettingRepo->findOneByKey(self::KEY_GENERAL);
@@ -58,6 +59,9 @@ class GlobalSettingsService
             'requireMedecinOnConsultationCreation' => (bool) ($value['requireMedecinOnConsultationCreation'] ?? true),
             'allowReceptionQuickCloseConsultation' => (bool) ($value['allowReceptionQuickCloseConsultation'] ?? true),
             'paiementDirectAssurance' => (bool) ($value['paiementDirectAssurance'] ?? false),
+            'medicalFormsRuntimeEnabled' => (bool) ($value['medicalFormsRuntimeEnabled'] ?? false),
+            'medicalFormsBuilderEnabled' => (bool) ($value['medicalFormsBuilderEnabled'] ?? false),
+            'medicalFormsDefaultCode' => (string) ($value['medicalFormsDefaultCode'] ?? self::DEFAULT_MEDICAL_FORM_CODE),
             'transactionMotifs' => $this->sanitizeTransactionMotifs($value['transactionMotifs'] ?? null),
             'soinsList' => $this->sanitizeStringList($value['soinsList'] ?? null, self::DEFAULT_SOINS_LIST),
         ];
@@ -79,6 +83,9 @@ class GlobalSettingsService
             'requireMedecinOnConsultationCreation' => (bool) ($payload['requireMedecinOnConsultationCreation'] ?? ($current['requireMedecinOnConsultationCreation'] ?? false)),
             'allowReceptionQuickCloseConsultation' => (bool) ($payload['allowReceptionQuickCloseConsultation'] ?? ($current['allowReceptionQuickCloseConsultation'] ?? true)),
             'paiementDirectAssurance' => (bool) ($payload['paiementDirectAssurance'] ?? $payload['paymentDirectInsurance'] ?? ($current['paiementDirectAssurance'] ?? false)),
+            'medicalFormsRuntimeEnabled' => (bool) ($payload['medicalFormsRuntimeEnabled'] ?? ($current['medicalFormsRuntimeEnabled'] ?? false)),
+            'medicalFormsBuilderEnabled' => (bool) ($payload['medicalFormsBuilderEnabled'] ?? ($current['medicalFormsBuilderEnabled'] ?? false)),
+            'medicalFormsDefaultCode' => (string) ($payload['medicalFormsDefaultCode'] ?? ($current['medicalFormsDefaultCode'] ?? self::DEFAULT_MEDICAL_FORM_CODE)),
             'transactionMotifs' => $this->sanitizeTransactionMotifs($payload['transactionMotifs'] ?? ($current['transactionMotifs'] ?? null)),
             'soinsList' => $this->sanitizeStringList($payload['soinsList'] ?? ($current['soinsList'] ?? null), self::DEFAULT_SOINS_LIST),
         ]);
@@ -108,6 +115,21 @@ class GlobalSettingsService
         return $this->getGeneralSettings()['paiementDirectAssurance'];
     }
 
+    public function isMedicalFormsRuntimeEnabled(): bool
+    {
+        return $this->getGeneralSettings()['medicalFormsRuntimeEnabled'];
+    }
+
+    public function isMedicalFormsBuilderEnabled(): bool
+    {
+        return $this->getGeneralSettings()['medicalFormsBuilderEnabled'];
+    }
+
+    public function getMedicalFormsDefaultCode(): string
+    {
+        return $this->getGeneralSettings()['medicalFormsDefaultCode'];
+    }
+
     /** @return array{revenue: string[], expense: string[]} */
     public function getTransactionMotifs(): array
     {
@@ -120,7 +142,7 @@ class GlobalSettingsService
         return $this->getGeneralSettings()['soinsList'];
     }
 
-    /** @return array{requireMedecinOnConsultationCreation: bool, allowReceptionQuickCloseConsultation: bool, paiementDirectAssurance: bool, soinsList: string[]} */
+    /** @return array{requireMedecinOnConsultationCreation: bool, allowReceptionQuickCloseConsultation: bool, paiementDirectAssurance: bool, medicalFormsRuntimeEnabled: bool, medicalFormsBuilderEnabled: bool, medicalFormsDefaultCode: string, soinsList: string[]} */
     public function getPublicGeneralSettings(): array
     {
         $settings = $this->getGeneralSettings();
@@ -129,6 +151,9 @@ class GlobalSettingsService
             'requireMedecinOnConsultationCreation' => $settings['requireMedecinOnConsultationCreation'],
             'allowReceptionQuickCloseConsultation' => $settings['allowReceptionQuickCloseConsultation'],
             'paiementDirectAssurance' => $settings['paiementDirectAssurance'],
+            'medicalFormsRuntimeEnabled' => $settings['medicalFormsRuntimeEnabled'],
+            'medicalFormsBuilderEnabled' => $settings['medicalFormsBuilderEnabled'],
+            'medicalFormsDefaultCode' => $settings['medicalFormsDefaultCode'],
             'soinsList' => $settings['soinsList'],
         ];
     }

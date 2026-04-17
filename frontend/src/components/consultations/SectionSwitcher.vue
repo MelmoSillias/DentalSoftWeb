@@ -1,6 +1,6 @@
 <script setup>
 import Button from 'primevue/button'; 
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, ref, useSlots, watch } from 'vue';
 
 const props = defineProps({
     sections: {
@@ -22,6 +22,7 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['update:modelValue']);
+const slots = useSlots();
 
 const active = computed({
     get: () => props.modelValue || props.sections?.[0]?.id || '',
@@ -29,6 +30,7 @@ const active = computed({
 });
 
 const select = (id) => emit('update:modelValue', id);
+const activeSection = computed(() => props.sections?.find((section) => section.id === active.value) || null);
 
 const openSections = ref(new Set());
 const initialized = ref(false);
@@ -72,6 +74,8 @@ const scrollToSection = (id) => {
     el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     emit('update:modelValue', id);
 };
+
+const hasNamedSlot = (name) => Boolean(slots[name]);
 
 const setupObserver = () => {
     if (observer) observer.disconnect();
@@ -147,7 +151,13 @@ onBeforeUnmount(() => {
             </div>
 
             <div class="p-6 w-full">
-                <slot :name="active"></slot>
+                <component
+                    v-if="activeSection?.component"
+                    :is="activeSection.component"
+                    v-bind="activeSection.componentProps || {}"
+                    v-on="activeSection.componentEvents || {}"
+                />
+                <slot v-else :name="active"></slot>
             </div>
         </template>
 
@@ -213,7 +223,13 @@ onBeforeUnmount(() => {
                                 class="mt-4 animate-fade-in"
                                 :class="{ 'opacity-50': section.disabled }"
                             >
-                                <slot :name="section.id"></slot>
+                                <component
+                                    v-if="section.component"
+                                    :is="section.component"
+                                    v-bind="section.componentProps || {}"
+                                    v-on="section.componentEvents || {}"
+                                />
+                                <slot v-else-if="hasNamedSlot(section.id)" :name="section.id"></slot>
                             </div>
                         </section>
                     </template>

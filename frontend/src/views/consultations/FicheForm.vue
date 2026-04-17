@@ -14,6 +14,7 @@ import FicheDocumentsForm from '@/components/fiche-medicale/FicheDocumentsForm.v
 import FichePatientInfoSection from '@/components/fiche-medicale/FichePatientInfoSection.vue';
 import FichePlanTraitementForm from '@/components/fiche-medicale/FichePlanTraitementForm.vue';
 import SeancesSection from '@/components/fiche-medicale/SeancesSection.vue';
+import DynamicMedicalSectionRenderer from '@/components/fiche-medicale/dynamic/DynamicMedicalSectionRenderer.vue';
 import { useConsultationsForm } from '@/composables/useConsultationsForm';
 import { usePrinter } from '@/composables/usePrinter';
 import { defaultSoinList, normalizeSoinList } from '@/services/consultations';
@@ -69,7 +70,8 @@ const {
     savePlanTraitementSection: savePlanTraitement,
     saveDevisSection: saveDevis,
     saveConsultSection: saveConsult,
-    closeConsult
+    closeConsult,
+    saveDynamicSectionData
 } = useConsultationsForm({ ficheId, consultId, token, mode });
 
 const ordonnanceModalVisible = ref(false);
@@ -82,6 +84,7 @@ const isIndicatorFloating = ref(false);
 const allowRouteLeaveAfterCloture = ref(false);
 const isGuidedTourStarting = ref(false);
 const isMedecinOptionalOnCreation = ref(false);
+const medicalFormsRuntimeEnabled = ref(false);
 const soinsList = ref([...defaultSoinList]);
 
 const displayModeOptions = [
@@ -164,10 +167,12 @@ const loadConsultationPolicy = async () => {
     try {
         const settings = await fetchPublicGeneralSettings(token);
         isMedecinOptionalOnCreation.value = settings?.requireMedecinOnConsultationCreation === false;
+        medicalFormsRuntimeEnabled.value = settings?.medicalFormsRuntimeEnabled === true;
         soinsList.value = normalizeSoinList(settings?.soinsList);
     } catch (error) {
         console.error('Erreur chargement politique consultation', error);
         isMedecinOptionalOnCreation.value = false;
+        medicalFormsRuntimeEnabled.value = false;
         soinsList.value = [...defaultSoinList];
     }
 };
@@ -220,7 +225,143 @@ const getSectionStatus = (key) => {
     return { status: 'saved', label: 'Sauvegarde', saveDisabled: true };
 };
 
+const hasDynamicRuntime = computed(() => Boolean(medicalFormsRuntimeEnabled.value && data.runtime?.formulaire?.onglets?.length));
+
+const dynamicSectionDataKeyMap = {
+    entretien: 'entretien',
+    examens: 'examens',
+    documents: 'documents',
+    bilans: 'bilans',
+    'plan-traitement': 'planTraitement',
+    devis: 'devis'
+};
+
+const dynamicSectionSaveMap = {
+    entretien: () => saveEntretienSection(),
+    examens: () => saveExamensSection(),
+    documents: () => saveDocumentsSection(),
+    bilans: () => saveBilansSection(),
+    'plan-traitement': () => savePlanTraitementSection(),
+    devis: () => saveDevisSection()
+};
+
+const setDynamicSectionModel = (sectionCode, value) => {
+    const dataKey = dynamicSectionDataKeyMap[sectionCode];
+    if (dataKey) {
+        data[dataKey] = value;
+        return;
+    }
+
+    data.dynamicSections = {
+        ...(data.dynamicSections || {}),
+        [sectionCode]: value
+    };
+};
+
+const getDynamicSectionModel = (sectionCode) => {
+    const dataKey = dynamicSectionDataKeyMap[sectionCode];
+    if (dataKey) {
+        return data[dataKey];
+    }
+
+    return data.dynamicSections?.[sectionCode] || {};
+};
+
+const saveUnknownDynamicSection = async (sectionCode, { silent = false } = {}) => {
+    try {
+        await saveDynamicSectionData(sectionCode, getDynamicSectionModel(sectionCode));
+        if (!silent) {
+            toast.add({ severity: 'success', summary: 'Section enregistree', life: 2000 });
+        }
+    } catch (error) {
+        console.error(`Erreur sauvegarde section ${sectionCode}`, error);
+        if (!silent) {
+            toast.add({ severity: 'error', summary: 'Erreur', detail: 'Sauvegarde section dynamique impossible.' });
+        }
+    }
+};
+
+const buildDynamicRuntimeSections = () => {
+    const onglets = data.runtime?.formulaire?.onglets || [];
+    return onglets.flatMap((onglet) => (onglet.sections || []).map((section) => {
+        const dataKey = dynamicSectionDataKeyMap[section.code] || null;
+        const status = dataKey ? getSectionStatus(dataKey) : { status: 'saved', label: 'Runtime', saveDisabled: false };
+
+        return {
+            id: section.code,
+            label: section.title,
+            icon: 'pi pi-file-edit',
+            filled: true,
+            status: status.status,
+            statusLabel: status.label,
+            saveDisabled: status.saveDisabled,
+            saving: dataKey ? saving[dataKey] : false,
+            onSave: () => {
+                const handler = dynamicSectionSaveMap[section.code];
+                if (handler) {
+                    handler();
+                    return;
+                }
+                saveUnknownDynamicSection(section.code);
+            },
+            component: DynamicMedicalSectionRenderer,
+            componentProps: {
+                section,
+                modelValue: getDynamicSectionModel(section.code),
+                saving: dataKey ? saving[dataKey] : false,
+                patientAge: ageNumber.value,
+                soins: soinsList.value
+            },
+            componentEvents: {
+                'update:modelValue': (value) => setDynamicSectionModel(section.code, value),
+                save: () => {
+                    const handler = dynamicSectionSaveMap[section.code];
+                    if (handler) {
+                        handler();
+                        return;
+                    }
+                    saveUnknownDynamicSection(section.code);
+                }
+            }
+        };
+    }));
+};
+
 const sections = computed(() => {
+    if (hasDynamicRuntime.value) {
+        const consultStatus = getSectionStatus('consult');
+
+        return [
+            {
+                id: 'infos',
+                label: 'Informations patient',
+                filled: isSectionFilled('infos'),
+                status: 'readonly',
+                statusLabel: 'Lecture seule',
+                saveDisabled: true
+            },
+            ...buildDynamicRuntimeSections(),
+            {
+                id: 'seances',
+                label: 'Seances',
+                filled: isSectionFilled('seances'),
+                status: 'readonly',
+                statusLabel: 'Lecture seule',
+                saveDisabled: true
+            },
+            {
+                id: 'consult',
+                label: 'Consultation en cours',
+                filled: isSectionFilled('consult'),
+                status: consultStatus.status,
+                statusLabel: consultStatus.label,
+                saveDisabled: consultStatus.saveDisabled,
+                saving: saving.consult,
+                onSave: () => saveConsultSection()
+            }
+        ];
+    }
+
     const entretienStatus = getSectionStatus('entretien');
     const examensStatus = getSectionStatus('examens');
     const documentsStatus = getSectionStatus('documents');

@@ -15,9 +15,11 @@ use App\Entity\FicheExamen;
 use App\Entity\FicheExamenItem;
 use App\Entity\FicheExamenLabo;
 use App\Entity\FicheMedicale;
+use App\Entity\FicheMedicaleValeur;
 use App\Entity\FicheObservation;
 use App\Entity\FichePlanTraitement;
 use App\Repository\DevisRepository;
+use App\Repository\FicheMedicaleValeurRepository;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
@@ -27,11 +29,19 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class FicheMedicaleService
 {
+    private const SYSTEM_SECTIONS = [
+        ['id' => 'infos', 'label' => 'Informations patient', 'type' => 'system-readonly'],
+        ['id' => 'seances', 'label' => 'Seances passees', 'type' => 'system-readonly'],
+        ['id' => 'consult', 'label' => 'Consultation en cours', 'type' => 'system-editable'],
+    ];
+
     private string $projectDir;
 
     public function __construct(
         private EntityManagerInterface $em,
         private DevisRepository $devisRepo,
+        private FicheMedicaleValeurRepository $ficheMedicaleValeurRepository,
+        private FormulaireService $formulaireService,
         ParameterBagInterface $params,
     ) {
         $this->projectDir = $params->get('kernel.project_dir');
@@ -73,6 +83,291 @@ class FicheMedicaleService
             $collection->removeElement($item);
             $this->em->remove($item);
         }
+    }
+
+    private function ensureDynamicForm(FicheMedicale $fiche): void
+    {
+        $this->formulaireService->ensureFicheHasPublishedForm($fiche);
+        if ($fiche->getMigrationState() === 'legacy_unmigrated') {
+            $fiche->setMigrationState('dual_write');
+        }
+        $this->em->persist($fiche);
+    }
+
+    private function upsertDynamicField(FicheMedicale $fiche, string $fieldCode, mixed $value): void
+    {
+        $this->ensureDynamicForm($fiche);
+        $champ = $this->formulaireService->findChampByCode($fiche->getFormulaireVersion(), $fieldCode);
+        if (!$champ) {
+            throw new \RuntimeException(sprintf('Champ dynamique introuvable: %s', $fieldCode));
+        }
+
+        $entity = $this->ficheMedicaleValeurRepository->findOneBy([
+            'ficheMedicale' => $fiche,
+            'champ' => $champ,
+        ]);
+
+        if (!$entity) {
+            $entity = (new FicheMedicaleValeur())
+                ->setFicheMedicale($fiche)
+                ->setChamp($champ);
+        }
+
+        $entity->setValue($value);
+        $this->em->persist($entity);
+    }
+
+    private function syncEntretienDynamic(FicheMedicale $fiche, array $data): void
+    {
+        $etatGynecologique = $data['etatGynecologique'] ?? $data['etatGenecoloque'] ?? [
+            'allaitement' => $data['allaitement'] ?? null,
+            'grossesseEnCours' => $data['grossesseEnCours'] ?? null,
+            'menstrues' => $data['menstrues'] ?? null,
+        ];
+
+        $this->upsertDynamicField($fiche, 'entretien__motif_consultation', $data['motifConsultation'] ?? null);
+        $this->upsertDynamicField($fiche, 'entretien__anamnese', $data['anamnese'] ?? null);
+        $this->upsertDynamicField($fiche, 'entretien__etat_gynecologique', is_array($etatGynecologique) ? $etatGynecologique : []);
+        $this->upsertDynamicField($fiche, 'entretien__medicaments', is_array($data['medicaments'] ?? null) ? $data['medicaments'] : []);
+        $this->upsertDynamicField($fiche, 'entretien__affections', is_array($data['affections'] ?? null) ? $data['affections'] : []);
+        $this->upsertDynamicField($fiche, 'entretien__questions', is_array($data['questions'] ?? null) ? $data['questions'] : []);
+        $this->upsertDynamicField($fiche, 'entretien__habitudes', is_array($data['habitudes'] ?? null) ? $data['habitudes'] : []);
+    }
+
+    private function syncExamensDynamic(FicheMedicale $fiche, array $data): void
+    {
+        $this->upsertDynamicField($fiche, 'examens__exobuccal_inspection', is_array($data['exobuccalInspection'] ?? null) ? $data['exobuccalInspection'] : []);
+        $this->upsertDynamicField($fiche, 'examens__exobuccal_palpation', is_array($data['exobuccalPalpation'] ?? null) ? $data['exobuccalPalpation'] : []);
+        $this->upsertDynamicField($fiche, 'examens__chaines_ganglionnaires', is_array($data['chainesGanglionnaires'] ?? null) ? $data['chainesGanglionnaires'] : []);
+        $this->upsertDynamicField($fiche, 'examens__endobuccal_bouche_fermee', is_array($data['endobuccalBoucheFermee'] ?? null) ? $data['endobuccalBoucheFermee'] : [
+            'occlusion' => $data['occlusion'] ?? null,
+            'mediane' => $data['mediane'] ?? null,
+            'classesAngle' => $data['classesAngle'] ?? null,
+            'vestibules' => $data['vestibules'] ?? null,
+        ]);
+        $this->upsertDynamicField($fiche, 'examens__endobuccal_bouche_ouverte', is_array($data['endobuccalBoucheOuverte'] ?? null) ? $data['endobuccalBoucheOuverte'] : [
+            'hbd' => $data['hbd'] ?? null,
+            'brossage' => $data['brossage'] ?? null,
+            'soccu' => $data['soccu'] ?? null,
+            'cinematiqueMandibulaire' => $data['cinematiqueMandibulaire'] ?? null,
+            'ouvertureBuccale' => $data['ouvertureBuccale'] ?? null,
+            'temperatureBuccale' => $data['temperatureBuccale'] ?? null,
+            'amplitudeOuverture' => $data['amplitudeOuverture'] ?? null,
+            'bruitsArticulaires' => $data['bruitsArticulaires'] ?? null,
+        ]);
+        $this->upsertDynamicField($fiche, 'examens__tissus_mous_table', is_array($data['tissusMousTable'] ?? null) ? $data['tissusMousTable'] : []);
+        $this->upsertDynamicField($fiche, 'examens__tissus_durs_table', is_array($data['tissusDursTable'] ?? null) ? $data['tissusDursTable'] : []);
+        $this->upsertDynamicField($fiche, 'examens__examen_canaux_excreteurs', $data['examenCanauxExcreteurs'] ?? null);
+        $this->upsertDynamicField($fiche, 'examens__examens_bacteriologiques', is_array($data['examensBacteriologiques'] ?? null) ? $data['examensBacteriologiques'] : []);
+        $this->upsertDynamicField($fiche, 'examens__examens_serologiques', is_array($data['examensSerologiques'] ?? null) ? $data['examensSerologiques'] : []);
+        $this->upsertDynamicField($fiche, 'examens__examens_histologiques', is_array($data['examensHistologiques'] ?? null) ? $data['examensHistologiques'] : []);
+    }
+
+    private function syncBilansDynamic(FicheMedicale $fiche, array $data): void
+    {
+        $this->upsertDynamicField($fiche, 'bilans__bilan_dentaire', is_array($data['bilanDentaire'] ?? null) ? $data['bilanDentaire'] : ['formuleDentaire' => $data['formuleDentaire'] ?? []]);
+        $this->upsertDynamicField($fiche, 'bilans__bilan_radiographique', is_array($data['bilanRadiographique'] ?? null) ? $data['bilanRadiographique'] : [
+            'radiographieExtraBuccaleHypothese' => $data['radiographieExtraBuccaleHypothese'] ?? null,
+            'radiographieIntraBuccaleHypothese' => $data['radiographieIntraBuccaleHypothese'] ?? null,
+        ]);
+        $this->upsertDynamicField($fiche, 'bilans__bilan_sanguin', is_array($data['bilanSanguin'] ?? null) ? $data['bilanSanguin'] : [
+            'nfsDetaillee' => $data['nfsDetaillee'] ?? null,
+            'tpTcaInr' => $data['tpTcaInr'] ?? null,
+            'uree' => $data['uree'] ?? null,
+            'creatininemie' => $data['creatininemie'] ?? null,
+            'glycemie' => $data['glycemie'] ?? null,
+        ]);
+        $this->upsertDynamicField($fiche, 'bilans__diagnostic_positif', $data['diagnosticPositif'] ?? null);
+    }
+
+    private function syncPlanTraitementDynamic(FicheMedicale $fiche, array $data): void
+    {
+        $plans = $data['plans'] ?? $data['planTraitement'] ?? $data;
+        $this->upsertDynamicField($fiche, 'plan_traitement__items', is_array($plans) ? array_values($plans) : []);
+    }
+
+    private function syncDocumentsDynamic(FicheMedicale $fiche, array $data): void
+    {
+        $this->upsertDynamicField($fiche, 'documents__items', is_array($data['documents'] ?? null) ? array_values($data['documents']) : []);
+    }
+
+    private function syncDevisDynamic(FicheMedicale $fiche, array $data): void
+    {
+        $this->upsertDynamicField($fiche, 'devis__items', $data);
+    }
+
+    private function syncGenericDynamicSection(FicheMedicale $fiche, string $sectionCode, array $data): void
+    {
+        $this->ensureDynamicForm($fiche);
+        $section = $this->formulaireService->findSectionByCode($fiche->getFormulaireVersion(), $sectionCode);
+        if (!$section) {
+            throw new NotFoundHttpException(sprintf('Section dynamique %s introuvable.', $sectionCode));
+        }
+
+        $champs = $section->getChamps()->toArray();
+        if (count($champs) === 1 && !array_key_exists($champs[0]->getCode(), $data)) {
+            $this->upsertDynamicField($fiche, $champs[0]->getCode(), $data);
+            return;
+        }
+
+        foreach ($champs as $champ) {
+            if (!array_key_exists($champ->getCode(), $data)) {
+                continue;
+            }
+
+            $this->upsertDynamicField($fiche, $champ->getCode(), $data[$champ->getCode()]);
+        }
+    }
+
+    private function getDynamicValueMap(FicheMedicale $fiche): array
+    {
+        $values = [];
+        foreach ($this->ficheMedicaleValeurRepository->findIndexedValuesForFiche($fiche) as $code => $entity) {
+            $values[$code] = $entity->getValue();
+        }
+
+        return $values;
+    }
+
+    private function hasDynamicValues(array $values, array $codes): bool
+    {
+        foreach ($codes as $code) {
+            if (array_key_exists($code, $values)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function buildDynamicEntretienData(array $values): ?array
+    {
+        $codes = [
+            'entretien__motif_consultation',
+            'entretien__anamnese',
+            'entretien__etat_gynecologique',
+            'entretien__medicaments',
+            'entretien__affections',
+            'entretien__questions',
+            'entretien__habitudes',
+        ];
+        if (!$this->hasDynamicValues($values, $codes)) {
+            return null;
+        }
+
+        return [
+            'motifConsultation' => $values['entretien__motif_consultation'] ?? null,
+            'anamnese' => $values['entretien__anamnese'] ?? null,
+            'etatGynecologique' => is_array($values['entretien__etat_gynecologique'] ?? null) ? $values['entretien__etat_gynecologique'] : [],
+            'medicaments' => is_array($values['entretien__medicaments'] ?? null) ? $values['entretien__medicaments'] : [],
+            'affections' => is_array($values['entretien__affections'] ?? null) ? $values['entretien__affections'] : [],
+            'questions' => is_array($values['entretien__questions'] ?? null) ? $values['entretien__questions'] : [],
+            'habitudes' => is_array($values['entretien__habitudes'] ?? null) ? $values['entretien__habitudes'] : [],
+        ];
+    }
+
+    private function buildDynamicExamensData(array $values): ?array
+    {
+        $codes = [
+            'examens__exobuccal_inspection',
+            'examens__exobuccal_palpation',
+            'examens__chaines_ganglionnaires',
+            'examens__endobuccal_bouche_fermee',
+            'examens__endobuccal_bouche_ouverte',
+            'examens__tissus_mous_table',
+            'examens__tissus_durs_table',
+            'examens__examen_canaux_excreteurs',
+            'examens__examens_bacteriologiques',
+            'examens__examens_serologiques',
+            'examens__examens_histologiques',
+        ];
+        if (!$this->hasDynamicValues($values, $codes)) {
+            return null;
+        }
+
+        return [
+            'exobuccalInspection' => is_array($values['examens__exobuccal_inspection'] ?? null) ? $values['examens__exobuccal_inspection'] : [],
+            'exobuccalPalpation' => is_array($values['examens__exobuccal_palpation'] ?? null) ? $values['examens__exobuccal_palpation'] : [],
+            'chainesGanglionnaires' => is_array($values['examens__chaines_ganglionnaires'] ?? null) ? $values['examens__chaines_ganglionnaires'] : [],
+            'endobuccalBoucheFermee' => is_array($values['examens__endobuccal_bouche_fermee'] ?? null) ? $values['examens__endobuccal_bouche_fermee'] : [],
+            'endobuccalBoucheOuverte' => is_array($values['examens__endobuccal_bouche_ouverte'] ?? null) ? $values['examens__endobuccal_bouche_ouverte'] : [],
+            'tissusMousTable' => is_array($values['examens__tissus_mous_table'] ?? null) ? $values['examens__tissus_mous_table'] : [],
+            'tissusDursTable' => is_array($values['examens__tissus_durs_table'] ?? null) ? $values['examens__tissus_durs_table'] : [],
+            'examenCanauxExcreteurs' => $values['examens__examen_canaux_excreteurs'] ?? null,
+            'examensBacteriologiques' => is_array($values['examens__examens_bacteriologiques'] ?? null) ? $values['examens__examens_bacteriologiques'] : [],
+            'examensSerologiques' => is_array($values['examens__examens_serologiques'] ?? null) ? $values['examens__examens_serologiques'] : [],
+            'examensHistologiques' => is_array($values['examens__examens_histologiques'] ?? null) ? $values['examens__examens_histologiques'] : [],
+        ];
+    }
+
+    private function buildDynamicBilansData(array $values): ?array
+    {
+        $codes = [
+            'bilans__bilan_dentaire',
+            'bilans__bilan_radiographique',
+            'bilans__bilan_sanguin',
+            'bilans__diagnostic_positif',
+        ];
+        if (!$this->hasDynamicValues($values, $codes)) {
+            return null;
+        }
+
+        return [
+            'bilanDentaire' => is_array($values['bilans__bilan_dentaire'] ?? null) ? $values['bilans__bilan_dentaire'] : [],
+            'bilanRadiographique' => is_array($values['bilans__bilan_radiographique'] ?? null) ? $values['bilans__bilan_radiographique'] : [],
+            'bilanSanguin' => is_array($values['bilans__bilan_sanguin'] ?? null) ? $values['bilans__bilan_sanguin'] : [],
+            'diagnosticPositif' => $values['bilans__diagnostic_positif'] ?? null,
+        ];
+    }
+
+    private function buildDynamicRuntime(FicheMedicale $fiche, array $dynamicValues): array
+    {
+        $formulaire = $fiche->getFormulaireVersion() ?: $this->formulaireService->ensureDefaultPublishedForm();
+
+        return [
+            'systemSections' => self::SYSTEM_SECTIONS,
+            'formulaire' => $this->formulaireService->serializeFormulaire($formulaire),
+            'values' => $dynamicValues,
+            'migrationState' => $fiche->getMigrationState(),
+        ];
+    }
+
+    public function getFicheRuntime(int $ficheId): array
+    {
+        $fiche = $this->getFiche($ficheId);
+
+        return $this->buildDynamicRuntime($fiche, $this->getDynamicValueMap($fiche));
+    }
+
+    public function updateDynamicSection(int $ficheId, string $sectionCode, array $data): void
+    {
+        $fiche = $this->getFiche($ficheId);
+
+        switch ($sectionCode) {
+            case 'entretien':
+                $this->syncEntretienDynamic($fiche, $data);
+                break;
+            case 'examens':
+                $this->syncExamensDynamic($fiche, $data);
+                break;
+            case 'bilans':
+                $this->syncBilansDynamic($fiche, $data);
+                break;
+            case 'documents':
+                $this->syncDocumentsDynamic($fiche, $data);
+                break;
+            case 'plan-traitement':
+                $this->syncPlanTraitementDynamic($fiche, $data);
+                break;
+            case 'devis':
+                $this->syncDevisDynamic($fiche, $data);
+                break;
+            default:
+                $this->syncGenericDynamicSection($fiche, $sectionCode, $data);
+                break;
+        }
+
+        $this->em->flush();
     }
 
     private function getOrCreateEntretien(FicheMedicale $fiche): FicheEntretien
@@ -264,6 +559,7 @@ class FicheMedicaleService
             }
         }
 
+        $this->syncEntretienDynamic($fiche, $data);
         $this->em->flush();
     }
 
@@ -422,6 +718,7 @@ class FicheMedicaleService
             }
         }
 
+        $this->syncExamensDynamic($fiche, $data);
         $this->em->flush();
     }
 
@@ -493,6 +790,7 @@ class FicheMedicaleService
             $bilan->setDiagnosticPositif($data['diagnosticPositif']);
         }
 
+        $this->syncBilansDynamic($fiche, $data);
         $this->em->flush();
     }
 
@@ -519,12 +817,14 @@ class FicheMedicaleService
             $this->em->persist($plan);
         }
 
+        $this->syncPlanTraitementDynamic($fiche, $data);
         $this->em->flush();
     }
 
     public function updateDocuments(int $ficheId, array $data, array $files = []): void
     {
         $fiche = $this->getFiche($ficheId);
+        $dynamicDocuments = [];
 
         $this->clearCollection($fiche->getDocuments());
 
@@ -549,6 +849,13 @@ class FicheMedicaleService
                 $groupKey = uniqid('doc_', true);
             }
 
+            $dynamicDocuments[$groupKey] = [
+                'groupKey' => $groupKey,
+                'type' => $type,
+                'libelle' => $libelle,
+                'urls' => [],
+            ];
+
             $urls = $doc['urls'] ?? (isset($doc['url']) ? [$doc['url']] : []);
             if (is_array($urls)) {
                 foreach ($urls as $url) {
@@ -562,6 +869,7 @@ class FicheMedicaleService
                     $entity->setUrl($url);
                     $entity->setGroupKey($groupKey);
                     $this->em->persist($entity);
+                    $dynamicDocuments[$groupKey]['urls'][] = $url;
                 }
             }
 
@@ -605,9 +913,11 @@ class FicheMedicaleService
                 $entity->setUrl('uploads/documents/fiche-medicale/' . $movedFile->getFilename());
                 $entity->setGroupKey($groupKey);
                 $this->em->persist($entity);
+                $dynamicDocuments[$groupKey]['urls'][] = 'uploads/documents/fiche-medicale/' . $movedFile->getFilename();
             }
         }
 
+        $this->syncDocumentsDynamic($fiche, ['documents' => array_values($dynamicDocuments)]);
         $this->em->flush();
     }
 
@@ -658,6 +968,7 @@ class FicheMedicaleService
 
         $devis->setMontant($amount ?: $devis->getMontant());
         $this->em->persist($devis);
+        $this->syncDevisDynamic($fiche, $data);
         $this->em->flush();
     }
 
@@ -847,6 +1158,7 @@ class FicheMedicaleService
     {
         $fiche = $this->getFiche($ficheId);
         $patient = $fiche->getPatient();
+        $dynamicValues = $this->getDynamicValueMap($fiche);
 
         $entretien = $fiche->getEntretien();
         $examen = $fiche->getExamen();
@@ -887,6 +1199,10 @@ class FicheMedicaleService
                     'quantite' => $h->getQuantite(),
                 ], $entretien->getHabitudes()->toArray()),
             ];
+        }
+
+        if ($entretienData === null) {
+            $entretienData = $this->buildDynamicEntretienData($dynamicValues);
         }
 
         $examenData = null;
@@ -953,6 +1269,10 @@ class FicheMedicaleService
             ];
         }
 
+        if ($examenData === null) {
+            $examenData = $this->buildDynamicExamensData($dynamicValues);
+        }
+
         $bilanData = null;
         if ($bilan) {
             $bilanData = [
@@ -974,6 +1294,10 @@ class FicheMedicaleService
             ];
         }
 
+        if ($bilanData === null) {
+            $bilanData = $this->buildDynamicBilansData($dynamicValues);
+        }
+
         $plans = array_map(static fn(FichePlanTraitement $p) => [
             'id' => $p->getId(),
             'planIndex' => $p->getPlanIndex(),
@@ -981,6 +1305,10 @@ class FicheMedicaleService
             'dateSupposed' => $p->getDateSupposed()?->format('Y-m-d'),
             'description' => $p->getDescription(),
         ], $fiche->getPlansTraitement()->toArray());
+
+        if (empty($plans) && isset($dynamicValues['plan_traitement__items']) && is_array($dynamicValues['plan_traitement__items'])) {
+            $plans = array_values($dynamicValues['plan_traitement__items']);
+        }
 
         $documentsMap = [];
         foreach ($fiche->getDocuments()->toArray() as $doc) {
@@ -1000,6 +1328,10 @@ class FicheMedicaleService
         }
         $documents = array_values($documentsMap);
 
+        if (empty($documents) && isset($dynamicValues['documents__items']) && is_array($dynamicValues['documents__items'])) {
+            $documents = array_values($dynamicValues['documents__items']);
+        }
+
         $devis = array_map(static fn(Devis $d) => [
             'id' => $d->getId(),
             'date' => $d->getDate()?->format('Y-m-d'),
@@ -1015,6 +1347,10 @@ class FicheMedicaleService
                 'montantTotal' => $c->getMontantTotal(),
             ], $d->getContenus()->toArray()),
         ], $fiche->getDevis()->toArray());
+
+        if (empty($devis) && isset($dynamicValues['devis__items']) && is_array($dynamicValues['devis__items'])) {
+            $devis = [$dynamicValues['devis__items']];
+        }
 
         $consultations = array_values(array_map(static fn($c) => [
             'id' => $c->getId(),
@@ -1078,6 +1414,9 @@ class FicheMedicaleService
             'documents' => $documents,
             'devis' => $devis,
             'consultations' => $consultations,
+            'formulaireVersionId' => $fiche->getFormulaireVersion()?->getId(),
+            'migrationState' => $fiche->getMigrationState(),
+            'runtime' => $this->buildDynamicRuntime($fiche, $dynamicValues),
         ];
     }
 }

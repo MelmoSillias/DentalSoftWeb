@@ -3,8 +3,10 @@ import { fetchMedecins, fetchInfirmiers } from '@/services/corpsmedical';
 import { fetchSalles } from '@/services/salles';
 import { fetchConsultationDetails, setConsultationFiche } from '@/services/consultations';
 import { loadOrdonnances, saveConsultation, closeConsultation } from '@/services/consultationsforms';
-import { loadFicheMedicale, saveBilans, saveDevis, saveDocuments, saveEntretien, saveExamens, savePlanTraitement } from '@/services/ficheMedicale';
+import { loadFicheMedicale, saveBilans, saveDevis, saveDocuments, saveDynamicSection, saveEntretien, saveExamens, savePlanTraitement } from '@/services/ficheMedicale';
 import { filePrefix } from '@/config';
+
+const KNOWN_DYNAMIC_SECTION_CODES = new Set(['entretien', 'examens', 'documents', 'bilans', 'plan-traitement', 'devis']);
 
 const stripFilePrefix = (url) => {
     if (!url || typeof url !== 'string') return '';
@@ -96,6 +98,22 @@ const defaultConsultation = () => ({
     actes: []
 });
 
+const buildDynamicSectionState = (runtime) => {
+    const sections = runtime?.formulaire?.onglets?.flatMap((onglet) => onglet.sections || []) || [];
+    return sections.reduce((acc, section) => {
+        if (KNOWN_DYNAMIC_SECTION_CODES.has(section.code)) {
+            return acc;
+        }
+
+        acc[section.code] = (section.fields || []).reduce((sectionState, field) => {
+            sectionState[field.code] = runtime?.values?.[field.code] ?? field.defaultValue ?? null;
+            return sectionState;
+        }, {});
+
+        return acc;
+    }, {});
+};
+
 export const useConsultationsForm = ({ ficheId, consultId, token, mode }) => {
     const loading = ref(false);
     const activeSection = ref('infos');
@@ -141,6 +159,8 @@ export const useConsultationsForm = ({ ficheId, consultId, token, mode }) => {
         consultation: defaultConsultation(),
         sessions: [],
         ordonnances: [],
+        runtime: null,
+        dynamicSections: {},
         medecins: [],
         infirmiers: [],
         salles: []
@@ -313,6 +333,9 @@ export const useConsultationsForm = ({ ficheId, consultId, token, mode }) => {
             statut: s.statut ?? null,
             actes: s.actes ?? []
         })) : [];
+
+        data.runtime = fiche.runtime ?? null;
+        data.dynamicSections = buildDynamicSectionState(fiche.runtime);
 
         ignoreNextDirty = false;
         clearDirty(['entretien', 'examens', 'documents', 'bilans', 'planTraitement', 'devis', 'consult', 'ordonnances']);
@@ -496,6 +519,17 @@ export const useConsultationsForm = ({ ficheId, consultId, token, mode }) => {
         await closeConsultation(ficheId.value, consultId.value, token);
     };
 
+    const saveDynamicSectionData = async (sectionCode, payload) => {
+        if (!ficheId.value || !sectionCode) return;
+        await saveDynamicSection(ficheId.value, sectionCode, payload, token);
+        if (data.runtime?.values && payload && typeof payload === 'object' && !Array.isArray(payload)) {
+            data.runtime.values = {
+                ...data.runtime.values,
+                ...payload
+            };
+        }
+    };
+
     return {
         loading,
         activeSection,
@@ -520,6 +554,7 @@ export const useConsultationsForm = ({ ficheId, consultId, token, mode }) => {
         saveDevisSection,
         saveConsultSection,
         saveOrdonnanceSection,
-        closeConsult
+        closeConsult,
+        saveDynamicSectionData
     };
 };

@@ -27,6 +27,13 @@ class FicheMedicale
     #[ORM\Column(type: Types::DATETIME_MUTABLE)]
     private ?\DateTimeInterface $createdAt = null;
 
+    #[ORM\ManyToOne(targetEntity: Formulaire::class, inversedBy: 'fichesMedicales')]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?Formulaire $formulaireVersion = null;
+
+    #[ORM\Column(length: 30, options: ['default' => 'legacy_unmigrated'])]
+    private string $migrationState = 'legacy_unmigrated';
+
     #[ORM\OneToOne(mappedBy: 'ficheMedicale', targetEntity: FicheEntretien::class, cascade: ['persist', 'remove'])]
     private ?FicheEntretien $entretien = null;
 
@@ -48,6 +55,9 @@ class FicheMedicale
     #[ORM\OneToMany(mappedBy: 'ficheMedicale', targetEntity: Consultation::class)]
     private Collection $consultations;
 
+    #[ORM\OneToMany(mappedBy: 'ficheMedicale', targetEntity: FicheMedicaleValeur::class, cascade: ['persist', 'remove'], orphanRemoval: true)]
+    private Collection $formValues;
+
     public function __construct()
     {
         $this->createdAt = new \DateTime();
@@ -55,6 +65,7 @@ class FicheMedicale
         $this->documents = new ArrayCollection();
         $this->devis = new ArrayCollection();
         $this->consultations = new ArrayCollection();
+        $this->formValues = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -92,6 +103,30 @@ class FicheMedicale
     public function setCreatedAt(?\DateTimeInterface $createdAt): static
     {
         $this->createdAt = $createdAt;
+        return $this;
+    }
+
+    public function getFormulaireVersion(): ?Formulaire
+    {
+        return $this->formulaireVersion;
+    }
+
+    public function setFormulaireVersion(?Formulaire $formulaireVersion): static
+    {
+        $this->formulaireVersion = $formulaireVersion;
+
+        return $this;
+    }
+
+    public function getMigrationState(): string
+    {
+        return $this->migrationState;
+    }
+
+    public function setMigrationState(string $migrationState): static
+    {
+        $this->migrationState = $migrationState;
+
         return $this;
     }
 
@@ -241,6 +276,32 @@ class FicheMedicale
         if ($this->consultations->removeElement($consultation)) {
             if ($consultation->getFicheMedicale() === $this) {
                 $consultation->setFicheMedicale(null);
+            }
+        }
+
+        return $this;
+    }
+
+    public function getFormValues(): Collection
+    {
+        return $this->formValues;
+    }
+
+    public function addFormValue(FicheMedicaleValeur $formValue): static
+    {
+        if (!$this->formValues->contains($formValue)) {
+            $this->formValues[] = $formValue;
+            $formValue->setFicheMedicale($this);
+        }
+
+        return $this;
+    }
+
+    public function removeFormValue(FicheMedicaleValeur $formValue): static
+    {
+        if ($this->formValues->removeElement($formValue)) {
+            if ($formValue->getFicheMedicale() === $this) {
+                $formValue->setFicheMedicale(null);
             }
         }
 

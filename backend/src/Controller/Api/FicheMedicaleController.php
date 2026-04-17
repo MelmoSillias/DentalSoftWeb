@@ -19,6 +19,21 @@ class FicheMedicaleController extends AbstractController
         return new JsonResponse($this->ficheMedicaleService->getFicheJson($ficheId));
     }
 
+    #[Route('/runtime', methods: ['GET'], name: 'runtime')]
+    public function getRuntime(int $ficheId): JsonResponse
+    {
+        return new JsonResponse($this->ficheMedicaleService->getFicheRuntime($ficheId));
+    }
+
+    #[Route('/runtime/sections/{sectionCode}', methods: ['POST'], name: 'update_runtime_section')]
+    public function updateRuntimeSection(Request $request, int $ficheId, string $sectionCode): JsonResponse
+    {
+        $data = json_decode($request->getContent(), true) ?? [];
+        $this->ficheMedicaleService->updateDynamicSection($ficheId, $sectionCode, $data);
+
+        return new JsonResponse(['success' => true]);
+    }
+
     #[Route('/entretien', methods: ['POST'], name: 'update_entretien')]
     public function updateEntretien(Request $request, int $ficheId): JsonResponse
     {

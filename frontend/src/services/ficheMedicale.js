@@ -12,6 +12,13 @@ export const loadFicheMedicale = async (ficheId, token) => {
     return res.data;
 };
 
+export const loadFicheMedicaleRuntime = async (ficheId, token) => {
+    const res = await axios.get(`${apiPrefix}/fiches-medicales/${ficheId}/runtime`, {
+        headers: authHeaders(token)
+    });
+    return res.data;
+};
+
 export const saveEntretien = async (ficheId, payload, token) => {
     const res = await axios.post(`${apiPrefix}/fiches-medicales/${ficheId}/entretien`, payload, {
         headers: authHeaders(token)
@@ -60,6 +67,13 @@ export const saveDocuments = async (ficheId, payload, files, token) => {
 
 export const saveDevis = async (ficheId, payload, token) => {
     const res = await axios.post(`${apiPrefix}/fiches-medicales/${ficheId}/devis`, payload, {
+        headers: authHeaders(token)
+    });
+    return res.data;
+};
+
+export const saveDynamicSection = async (ficheId, sectionCode, payload, token) => {
+    const res = await axios.post(`${apiPrefix}/fiches-medicales/${ficheId}/runtime/sections/${sectionCode}`, payload, {
         headers: authHeaders(token)
     });
     return res.data;
