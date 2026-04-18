@@ -19,7 +19,9 @@ export default defineConfig({
     server: {
         sourcemapIgnoreList: (sourcePath) =>
             sourcePath.includes('/node_modules/@microsoft/fetch-event-source/')
-            || sourcePath.includes('\\node_modules\\@microsoft\\fetch-event-source\\')
+            || sourcePath.includes('\\node_modules\\@microsoft\\fetch-event-source\\'),
+        port: 5180,
+        
     },
     plugins: [
         vue(),
