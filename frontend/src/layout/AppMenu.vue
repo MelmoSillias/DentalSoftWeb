@@ -27,6 +27,7 @@ const settingsSection = {
     label: 'Paramètres',
     items: [
         { label: 'Paramètres généraux', icon: 'pi pi-fw pi-cog', to: '/parametres/apparence' },
+        { label: 'Formulaires dynamiques', icon: 'pi pi-fw pi-file-edit', to: '/parametres/formulaires' },
         { label: 'API SMS', icon: 'pi pi-fw pi-send', to: '/administration/api-sms', adminOnly: true },
         // { label: 'Options des fichiers', icon: 'pi pi-fw pi-file-edit', to: '/parametres/fileOptions' },
 

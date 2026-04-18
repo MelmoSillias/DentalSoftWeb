@@ -16,10 +16,13 @@ export default defineConfig({
             }
         }
     },
+    
     server: {
         sourcemapIgnoreList: (sourcePath) =>
             sourcePath.includes('/node_modules/@microsoft/fetch-event-source/')
-            || sourcePath.includes('\\node_modules\\@microsoft\\fetch-event-source\\')
+            || sourcePath.includes('\\node_modules\\@microsoft\\fetch-event-source\\'),
+        port: 5180, // Remplacez 3000 par le port souhaité
+        strictPort: true, // optionnel : empêche de passer au port suivant si celui-ci est occupé 
     },
     plugins: [
         vue(),

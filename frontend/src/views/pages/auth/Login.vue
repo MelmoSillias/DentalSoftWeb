@@ -257,6 +257,7 @@ const onSubmit = async () => {
     font-weight: 700;
     letter-spacing: 0.02em;
     margin: 0 0 0.5rem 0;
+    color: #e9e9e9;
 }
 
 .auth_illustration p {

@@ -159,6 +159,24 @@ const router = createRouter({
                     meta: { requiresAuth: true, roles: ['ROLE_ADMIN', "ROLE_SECRETAIRE", "ROLE_TOPO"], fixedWidth: true }
                 },
                 {
+                    path: '/parametres/formulaires',
+                    name: 'settings-forms-list',
+                    component: () => import('@/views/settings/forms/FormsList.vue'),
+                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN', 'ROLE_SECRETAIRE', 'ROLE_TOPO'], fixedWidth: true }
+                },
+                {
+                    path: '/parametres/formulaires/builder',
+                    name: 'settings-forms-builder-new',
+                    component: () => import('@/views/settings/forms/FormBuilder.vue'),
+                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN', 'ROLE_SECRETAIRE', 'ROLE_TOPO'], fixedWidth: true }
+                },
+                {
+                    path: '/parametres/formulaires/builder/:formId',
+                    name: 'settings-forms-builder',
+                    component: () => import('@/views/settings/forms/FormBuilder.vue'),
+                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN', 'ROLE_SECRETAIRE', 'ROLE_TOPO'], fixedWidth: true }
+                },
+                {
                     path: '/administration/api-sms',
                     name: 'administration-api-sms',
                     component: () => import('@/views/settings/SmsSettings.vue'),

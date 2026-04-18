@@ -3,6 +3,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } 
 import { useRouter } from 'vue-router';
 import { useToast } from 'primevue/usetoast';
 import Button from 'primevue/button';
+import InputText from 'primevue/inputtext';
 import Select from 'primevue/select';
 import SelectButton from 'primevue/selectbutton';
 import Textarea from 'primevue/textarea';
@@ -62,7 +63,10 @@ const devicePolicy = reactive({
     autoApproveDevices: true,
     requireMedecinOnConsultationCreation: true,
     allowReceptionQuickCloseConsultation: true,
-    paiementDirectAssurance: false
+    paiementDirectAssurance: false,
+    medicalFormsRuntimeEnabled: false,
+    medicalFormsBuilderEnabled: false,
+    medicalFormsDefaultCode: 'fiche-medicale-standard'
 });
 
 const transactionMotifs = reactive({
@@ -78,22 +82,23 @@ const soinsCatalog = reactive({
 const navigation = {
     appearance: {
         label: 'Apparence',
-        icon: 'pi-palette',
+        icon: 'pi pi-cog',
         sections: [
-            { id: 'overview', label: 'Aperçu', icon: 'pi-chart-line' },
-            { id: 'theme', label: 'Thème', icon: 'pi-sun' },
-            { id: 'colors', label: 'Couleurs', icon: 'pi-palette' },
-            { id: 'typography', label: 'Typographie', icon: 'pi-font' },
-            { id: 'layout', label: 'Disposition', icon: 'pi-layout' }
+            { id: 'overview', label: 'Aperçu', icon: 'pi pi-eye' },
+            { id: 'theme', label: 'Thème', icon: 'pi pi-sun' },
+            { id: 'colors', label: 'Couleurs', icon: 'pi pi-palette' },
+            { id: 'typography', label: 'Typographie', icon: 'pi pi-at' },
+            { id: 'layout', label: 'Disposition', icon: 'pi pi-th-large' }
         ]
     },
     workflow: {
         label: 'Flux métier',
-        icon: 'pi-briefcase',
+        icon: 'pi pi-briefcase',
         sections: [
-            { id: 'device-security', label: 'Sécurité appareils', icon: 'pi-shield' },
-            { id: 'transaction-motifs', label: 'Motifs transaction', icon: 'pi-dollar' },
-            { id: 'soins-list', label: 'Liste des soins', icon: 'pi-heart' }
+            { id: 'device-security', label: 'Sécurité appareils', icon: 'pi pi-shield' },
+            { id: 'dynamic-forms', label: 'Formulaires dynamiques', icon: 'pi pi-file-edit' },
+            { id: 'transaction-motifs', label: 'Motifs transaction', icon: 'pi pi-dollar' },
+            { id: 'soins-list', label: 'Liste des soins', icon: 'pi pi-heart' }
         ]
     }
 };
@@ -137,9 +142,9 @@ const setupObserver = () => {
             const visibleSections = entries.filter(e => e.isIntersecting);
             if (visibleSections.length > 0) {
                 const firstVisible = visibleSections[0];
-                const [category, sectionId] = firstVisible.target.id.split('-');
+                const [category, ...sectionParts] = firstVisible.target.id.split('-');
                 activeCategory.value = category;
-                activeSubSection.value = sectionId;
+                activeSubSection.value = sectionParts.join('-');
             }
         },
         { rootMargin: '-20% 0px -65% 0px', threshold: 0.3 }
@@ -167,6 +172,9 @@ const loadGeneralSettings = async (force = false) => {
         devicePolicy.requireMedecinOnConsultationCreation = settings.requireMedecinOnConsultationCreation !== false;
         devicePolicy.allowReceptionQuickCloseConsultation = settings.allowReceptionQuickCloseConsultation !== false;
         devicePolicy.paiementDirectAssurance = settings.paiementDirectAssurance === true;
+        devicePolicy.medicalFormsRuntimeEnabled = settings.medicalFormsRuntimeEnabled === true;
+        devicePolicy.medicalFormsBuilderEnabled = settings.medicalFormsBuilderEnabled === true;
+        devicePolicy.medicalFormsDefaultCode = settings.medicalFormsDefaultCode || 'fiche-medicale-standard';
         transactionMotifs.revenueText = (settings.transactionMotifs?.revenue || []).join('\n');
         transactionMotifs.expenseText = (settings.transactionMotifs?.expense || []).join('\n');
         soinsCatalog.text = (settings.soinsList || []).join('\n');
@@ -186,7 +194,10 @@ const saveDevicePolicyAction = async () => {
             autoApproveDevices: devicePolicy.autoApproveDevices,
             requireMedecinOnConsultationCreation: devicePolicy.requireMedecinOnConsultationCreation,
             allowReceptionQuickCloseConsultation: devicePolicy.allowReceptionQuickCloseConsultation,
-            paiementDirectAssurance: devicePolicy.paiementDirectAssurance
+            paiementDirectAssurance: devicePolicy.paiementDirectAssurance,
+            medicalFormsRuntimeEnabled: devicePolicy.medicalFormsRuntimeEnabled,
+            medicalFormsBuilderEnabled: devicePolicy.medicalFormsBuilderEnabled,
+            medicalFormsDefaultCode: String(devicePolicy.medicalFormsDefaultCode || 'fiche-medicale-standard').trim() || 'fiche-medicale-standard'
         }, token);
         toast.add({ severity: 'success', summary: 'Sécurité appareils', detail: 'Paramètres enregistrés', life: 2500 });
     } catch (error) {
@@ -229,6 +240,10 @@ const goToSmsPage = () => {
     router.push({ name: 'administration-api-sms' });
 };
 
+const goToFormsBuilder = () => {
+    router.push({ name: 'settings-forms-list' });
+};
+
 const handleGuidedTourRequest = async (event) => {
     if (event?.detail?.routeName !== 'settings-apparence' || isGuidedTourStarting.value) return;
     isGuidedTourStarting.value = true;
@@ -245,6 +260,7 @@ const currentThemeLabel = computed(() => themeOptions.value.find((option) => opt
 const currentFontSizeLabel = computed(() => fontSizeOptions.value.find((option) => option.value === fontSize.value)?.label || 'Normal');
 const currentSurfaceName = computed(() => layoutConfig.surface || (isDarkTheme.value ? 'zinc' : 'slate'));
 const canAccessSmsSettings = computed(() => (auth.user?.roles || []).includes('ROLE_ADMIN'));
+const canAccessFormsBuilder = computed(() => ['ROLE_ADMIN', 'ROLE_SECRETAIRE', 'ROLE_TOPO'].some((role) => (auth.user?.roles || []).includes(role)));
 
 onMounted(async () => {
     await loadGeneralSettings(true);
@@ -534,6 +550,82 @@ onBeforeUnmount(() => {
                                         </div>
                                         <ToggleSwitch v-model="devicePolicy.paiementDirectAssurance" />
                                     </div>
+                                    <Divider />
+                                    <div class="toggle-item">
+                                        <div class="toggle-info">
+                                            <label>Runtime formulaires dynamiques</label>
+                                            <span class="toggle-description">Active le rendu dynamique des sections dans les fiches de consultation</span>
+                                        </div>
+                                        <ToggleSwitch v-model="devicePolicy.medicalFormsRuntimeEnabled" />
+                                    </div>
+                                    <Divider />
+                                    <div class="toggle-item">
+                                        <div class="toggle-info">
+                                            <label>Builder formulaires dynamiques</label>
+                                            <span class="toggle-description">Prépare l'accès aux écrans de configuration de formulaires</span>
+                                        </div>
+                                        <ToggleSwitch v-model="devicePolicy.medicalFormsBuilderEnabled" />
+                                    </div>
+                                    <Divider />
+                                    <div class="field-group">
+                                        <label>Code formulaire médical par défaut</label>
+                                        <InputText
+                                            v-model="devicePolicy.medicalFormsDefaultCode"
+                                            placeholder="fiche-medicale-standard"
+                                        />
+                                        <span class="field-helper">Utilisé lors de la création d'une fiche si aucune version n'est liée.</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Dynamic Forms -->
+                        <div id="workflow-dynamic-forms" class="settings-section">
+                            <div class="settings-section-header">
+                                <div>
+                                    <h3>Formulaires dynamiques</h3>
+                                    <p class="settings-section-description">Suivi de l'activation progressive du runtime et du futur builder</p>
+                                </div>
+                                <div class="dynamic-forms-actions">
+                                    <Button
+                                        v-if="canAccessFormsBuilder"
+                                        label="Ouvrir le builder"
+                                        icon="pi pi-wrench"
+                                        severity="secondary"
+                                        outlined
+                                        @click="goToFormsBuilder"
+                                    />
+                                    <Button
+                                        label="Enregistrer"
+                                        icon="pi pi-save"
+                                        :loading="savingStates.devicePolicy"
+                                        @click="saveDevicePolicyAction"
+                                    />
+                                </div>
+                            </div>
+                            <div class="settings-card">
+                                <div class="stats-grid">
+                                    <div class="stat-card">
+                                        <div class="stat-icon"><i class="pi pi-play"></i></div>
+                                        <div class="stat-info">
+                                            <span class="stat-label">Runtime</span>
+                                            <strong class="stat-value">{{ devicePolicy.medicalFormsRuntimeEnabled ? 'Activé' : 'Désactivé' }}</strong>
+                                        </div>
+                                    </div>
+                                    <div class="stat-card">
+                                        <div class="stat-icon"><i class="pi pi-wrench"></i></div>
+                                        <div class="stat-info">
+                                            <span class="stat-label">Builder</span>
+                                            <strong class="stat-value">{{ devicePolicy.medicalFormsBuilderEnabled ? 'Activé' : 'Désactivé' }}</strong>
+                                        </div>
+                                    </div>
+                                    <div class="stat-card">
+                                        <div class="stat-icon"><i class="pi pi-tag"></i></div>
+                                        <div class="stat-info">
+                                            <span class="stat-label">Formulaire par défaut</span>
+                                            <strong class="stat-value">{{ devicePolicy.medicalFormsDefaultCode || 'fiche-medicale-standard' }}</strong>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -613,8 +705,7 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.settings-container {
-    min-height: 100vh;
+.settings-container { 
     background: var(--surface-ground);
 }
 
@@ -837,6 +928,12 @@ onBeforeUnmount(() => {
     color: var(--text-color-secondary);
     font-size: 0.875rem;
     margin: 0;
+}
+
+.dynamic-forms-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
 }
 
 .settings-card {

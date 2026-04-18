@@ -7,7 +7,7 @@
     // transition: margin-left var(--layout-section-transition-duration);
     max-width: 100%;  
     grid-column: 2;
-    height: 100vh;
+    height: calc(100vh - 4rem);
 
 }
 
