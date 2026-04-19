@@ -5,6 +5,10 @@ const props = defineProps({
     patient: {
         type: Object,
         required: true
+    },
+    hideActions: {
+        type: Boolean,
+        default: false
     }
 });
 
@@ -191,7 +195,7 @@ const emit = defineEmits([
         </div> 
     
         <!-- MOBILE (Visible de 0px à 640px, caché après) -->
-        <div data-tour="patients-dossier.actions" class="px-5 py-4 border-t border-surface-200/50 dark:border-surface-700/50 bg-surface-50/50 dark:bg-surface-900/50">
+        <div v-if="!hideActions" data-tour="patients-dossier.actions" class="px-5 py-4 border-t border-surface-200/50 dark:border-surface-700/50 bg-surface-50/50 dark:bg-surface-900/50">
         
             <!-- DESKTOP (Caché sur mobile, visible à partir de sm: 640px) -->
             <div class="hidden sm:flex flex-wrap gap-2">

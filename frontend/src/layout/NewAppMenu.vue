@@ -12,7 +12,7 @@ const hasRole = (role) => roles.value.includes(role);
 const hasAnyRole = (list) => list.some((r) => roles.value.includes(r));
 const isAdmin = computed(() => hasRole('ROLE_ADMIN'));
 const isMedecin = computed(() => hasRole('ROLE_MEDECIN'));
-const isReception = computed(() => hasRole('ROLE_RECEPTION'));
+const isReception = computed(() => hasAnyRole(['ROLE_RECEPTION', 'ROLE_RECEPTIONNISTE', 'ROLE_SECRETAIRE']));
 
 /*
     Nouvelle Structure Items de Menu 
@@ -31,7 +31,10 @@ const isReception = computed(() => hasRole('ROLE_RECEPTION'));
 const baseModel = ref([
     {
         label: 'Accueil',
-        items: [{ label: 'Dashboard', icon: 'pi pi-fw pi-home', to: '/dashboard', separator: true }]
+        items: [
+            { label: 'Dashboard', icon: 'pi pi-fw pi-home', to: '/dashboard' },
+            { label: 'Mode Focus', icon: 'pi pi-fw pi-eye', to: router.resolve({ name: 'focus-mode' }).href, separator: true }
+        ]
     },
     // Les autres sections seront ajoutées selon les rôles dans model computed
 ]);
@@ -139,7 +142,8 @@ const model = computed(() => {
 <template>
     <ul class="layout-menu">
         <template v-for="(item, i) in model" :key="i">
-           
+            <app-menu-item v-if="!item.separator" :item="item" :index="i"></app-menu-item>
+            <li v-if="item.separator" class="menu-separator"></li>
         </template>
     </ul>
 </template>

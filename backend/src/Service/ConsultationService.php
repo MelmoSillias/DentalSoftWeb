@@ -44,6 +44,7 @@ class ConsultationService
         private ConsultationRepository $consultationRepo,
         private EmployeRepository $employeRepo,
         private SalleRepository $salleRepo,
+        private FocusRealtimePublisher $focusRealtimePublisher,
         private NotificationRecipientResolver $notificationRecipientResolver,
         private EventDispatcherInterface $eventDispatcher,
         private UserPasswordHasherInterface $passwordHasher,
@@ -87,6 +88,7 @@ class ConsultationService
             $consultation->setMedecin($actorMedecin);
             $this->em->persist($consultation);
             $this->em->flush();
+            $this->focusRealtimePublisher->publishConsultationRefresh($consultation, 'assigned');
         }
 
         return $actorMedecin;
@@ -601,6 +603,8 @@ class ConsultationService
         }
 
         $this->em->flush();
+
+        $this->focusRealtimePublisher->publishConsultationRefresh($consultation, 'updated');
     }
 
     public function clotureConsultation(int $ficheId, int $consultationId, ?object $user = null, bool $restrictToMedecin = false): void
@@ -651,6 +655,8 @@ class ConsultationService
 
         $consultation->setStatut(1);
         $this->em->flush();
+
+        $this->focusRealtimePublisher->publishConsultationRefresh($consultation, 'closed');
 
         $this->notifyReceptionOnClosure($consultation, $facture);
     }
@@ -855,6 +861,25 @@ class ConsultationService
             throw new NotFoundHttpException('Consultation introuvable');
         }
 
+        $existingMedicalFiche = $consultation->getFicheMedicale();
+        $existingObservationFiche = $consultation->getFiche();
+        $existingLinkedFiche = $existingMedicalFiche ?? $existingObservationFiche;
+
+        if ($consultation->getStatut() === 1) {
+            $existingFicheId = $existingLinkedFiche?->getId();
+            if ($existingFicheId !== null && ($ficheId === null || $ficheId === $existingFicheId)) {
+                return [
+                    'ficheId' => $existingFicheId,
+                    'consultationId' => $consultation->getId(),
+                    'created' => false,
+                    'ficheType' => $existingMedicalFiche ? 'medicale' : 'observation',
+                    'ficheVersion' => $existingMedicalFiche ? 2 : 1,
+                ];
+            }
+
+            throw new ConflictHttpException('Cette consultation est deja cloturee.');
+        }
+
         $this->enforceMedecinOwnership($consultation, $user, $restrictToMedecin);
 
         $this->ensureConsultationOpen($consultation);
@@ -908,6 +933,11 @@ class ConsultationService
 
         $this->em->persist($consultation);
         $this->em->flush();
+
+        $this->focusRealtimePublisher->publishConsultationRefresh(
+            $consultation,
+            $created ? 'linked-created-fiche' : 'linked-fiche',
+        );
 
         return [
             'ficheId' => $ficheType === 'medicale' ? $consultation->getFicheMedicale()?->getId() : $consultation->getFiche()?->getId(),
@@ -1040,6 +1070,8 @@ class ConsultationService
         $this->em->remove($consultation);
         $this->em->flush();
 
+        $this->focusRealtimePublisher->publishConsultationRefresh($consultation, 'deleted');
+
         $this->eventDispatcher->dispatch(
             new EntityActionEvent(
                 $consultation,
@@ -1134,6 +1166,8 @@ class ConsultationService
         $this->em->persist($devis);
         $this->em->flush();
 
+        $this->focusRealtimePublisher->publishConsultationRefresh($consultation, 'invoice-updated');
+
         return ['success' => true];
     }
 
@@ -1148,16 +1182,16 @@ class ConsultationService
             ->select('c')
             ->from(Consultation::class, 'c')
             ->join('c.patient', 'p')
-            ->join('c.medecin', 'm')
+            ->leftJoin('c.medecin', 'm')
             ->where('c.CreatedAt BETWEEN :start AND :end')
             ->orderBy('c.CreatedAt', 'ASC')
             ->setParameter('start', $start)
             ->setParameter('end', $end);
 
-        if ($user && in_array('ROLE_MEDECIN', $user->getRoles())) {
+        if ($user instanceof User && in_array('ROLE_MEDECIN', $user->getRoles(), true)) {
             $medecin = $this->employeRepo->FindOneBy(['user' => $user]);
             if ($medecin) {
-                $qb->andWhere('m = :medecin')
+                $qb->andWhere('(m = :medecin OR m IS NULL)')
                     ->setParameter('medecin', $medecin);
             }
         }
@@ -1173,7 +1207,7 @@ class ConsultationService
                 'numero' => $counter++,
                 'patient' => $c->getPatient()->getFullName(),
                 'patientId' => $c->getPatient()->getId(),
-                'medecin' => $c->getMedecin()->getFullName(),
+                'medecin' => $c->getMedecin()?->getFullName(),
                 'createdAt' => $c->getCreatedAt()->format('d/m/Y H:i'),
                 'factstate' => $c->getFacture() ? ($c->getFacture()?->getStatut() == 0 && (int) $c->getFacture()->getMontant() === (int) $c->getFacture()->getReste() ? 0 : 1) : null,
                 'state' => $c->getStatut(),

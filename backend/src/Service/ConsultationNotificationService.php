@@ -9,7 +9,10 @@ use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
 final class ConsultationNotificationService
 {
-    public function __construct(private readonly EventDispatcherInterface $eventDispatcher)
+    public function __construct(
+        private readonly EventDispatcherInterface $eventDispatcher,
+        private readonly FocusRealtimePublisher $focusRealtimePublisher,
+    )
     {
     }
 
@@ -25,6 +28,11 @@ final class ConsultationNotificationService
 
     private function dispatch(Consultation $consultation, string $event, ?User $emitter): void
     {
+        $this->focusRealtimePublisher->publishConsultationRefresh(
+            $consultation,
+            $event === 'creation' ? 'created' : 'cancelled',
+        );
+
         $patient = $consultation->getPatient();
         $patientName = trim(sprintf('%s %s', $patient?->getNom() ?? '', $patient?->getPrenom() ?? '')) ?: 'un patient';
         $dateLabel = $consultation->getCreatedAt()?->format('d/m/Y H:i');

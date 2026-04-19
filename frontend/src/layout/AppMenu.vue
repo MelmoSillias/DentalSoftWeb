@@ -12,13 +12,16 @@ const hasRole = (role) => roles.value.includes(role);
 const hasAnyRole = (list) => list.some((r) => roles.value.includes(r));
 const isAdmin = computed(() => hasRole('ROLE_ADMIN'));
 const isMedecin = computed(() => hasRole('ROLE_MEDECIN'));
-const isReception = computed(() => hasRole('ROLE_RECEPTION'));
+const isReception = computed(() => hasAnyRole(['ROLE_RECEPTION', 'ROLE_RECEPTIONNISTE', 'ROLE_SECRETAIRE']));
 
 // Menu de base
 const baseModel = ref([
     {
         label: 'Accueil',
-        items: [{ label: 'Dashboard', icon: 'pi pi-fw pi-home', to: '/dashboard', separator: true }]
+        items: [
+            { label: 'Dashboard', icon: 'pi pi-fw pi-home', to: '/dashboard' },
+            { label: 'Mode Focus', icon: 'pi pi-fw pi-bolt', to: router.resolve({ name: 'focus-mode' }).href, separator: true }
+        ]
     },
     // Les autres sections seront ajoutées selon les rôles dans model computed
 ]);

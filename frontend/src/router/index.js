@@ -17,6 +17,12 @@ const router = createRouter({
                     component: () => import('@/views/Dashboard.vue'),
                     meta: { requiresAuth: true, roles: ['ROLE_ADMIN', 'ROLE_RECEPTION', 'ROLE_MEDECIN'], fixedWidth: true }
                 },
+                {
+                    path: '/focus',
+                    name: 'focus-mode',
+                    component: () => import('@/views/focus/ModeFocus.vue'),
+                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN', 'ROLE_RECEPTION', 'ROLE_RECEPTIONNISTE', 'ROLE_SECRETAIRE', 'ROLE_MEDECIN'], fixedWidth: false }
+                },
                 // Agenda
                 {
                     path: '/agenda/rendez-vous',
