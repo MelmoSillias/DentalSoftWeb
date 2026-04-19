@@ -6,6 +6,7 @@ import Column from 'primevue/column';
 import DataTable from 'primevue/datatable';
 import Dialog from 'primevue/dialog';
 import Tag from 'primevue/tag';
+import cabinetConfig from '@/cabinetConfig';
 
 const props = defineProps({
     title: { type: String, default: 'Rapports périodiques par médecin' },
@@ -21,6 +22,7 @@ const printDialogVisible = ref(false);
 
 const doctors = computed(() => props.data?.doctors || []);
 const kpi = computed(() => props.data?.kpi || {});
+const reportCabinetName = computed(() => cabinetConfig.reportCabinetName || 'CABINET DENTAIRE');
 
 function formatFcfa(amount) {
     const value = Number(amount || 0);
@@ -104,7 +106,7 @@ function printDoctorRow(row) {
         </head>
         <body>
             <div class="header">
-                <h2>CABINET DENTAIRE ORODENT
+                <h2>${reportCabinetName.value}
 </h2>
                 <p>RAPPORT DE SERVICE MÉDICAL</p>
                 <p>Rue 612 Bacodjicoroni ACI | Bamako-MALI | Tél: +223 77 27 28 61 / +223 44 51 61 85</p>
@@ -207,7 +209,7 @@ function printSummary() {
         </head>
         <body>
             <div class="header">
-                <h2>CABINET DENTAIRE ORODENT
+                <h2>${reportCabinetName.value}
 </h2>
                 <p><strong>Rapport de service (Résumé)</strong> - ${currentDate}</p>
                 <p>Rue 612 Bacodjicoroni ACI | Bamako-MALI | Tél: +223 77 27 28 61 / +223 44 51 61 85</p>

@@ -11,6 +11,7 @@ import router from '@/router';
 import { useMercureNotifications } from '@/composables/useMercureNotifications';
 import { useRoute } from 'vue-router';
 import { isGuidedTourRoute, requestGuidedTourStart } from '@/tours';
+import cabinetConfig from '@/cabinetConfig';
 
 const { toggleMenu, toggleDarkMode, isDarkTheme } = useLayout();
 const auth = useAuthStore();
@@ -265,10 +266,10 @@ function handleStartGuidedTour() {
             </button>
             <router-link to="/" class="layout-topbar-logo">
                 <div class="h-12 w-12 rounded-full rounded-50 p-1 bg-white dark:bg-white/90">
-                    <img src="@/assets/logo.png" class="app-logo" width="54" height="40" />
+                    <img src="/logo.png" class="app-logo" width="54" height="40" :alt="cabinetConfig.brandName" />
                 </div>
 
-                <span style="font-weight: 500;">Dentalsoft <br> <small>Cabinet Dentaire Orodent</small></span>
+                <span style="font-weight: 500;">{{ cabinetConfig.brandName }} <br> <small>{{ cabinetConfig.brandSubtitle }}</small></span>
 
             </router-link>
         </div>

@@ -2,8 +2,10 @@
     "name": "+-!vue",
     "version": "4.3.0",
     "scripts": {
-        "dev": "vite",
-        "build": "vite build",
+        "select:cabinet": "node ./scripts/select-cabinet.mjs",
+        "dev": "node ./scripts/select-cabinet.mjs --cabinet=default && vite",
+        "build": "node ./scripts/select-cabinet.mjs --cabinet=default && vite build",
+        "build:cabinet": "node ./scripts/build-cabinet.mjs",
         "preview": "vite preview",
         "lint": "eslint --fix . --ext .vue,.js,.jsx,.cjs,.mjs --fix --ignore-path .gitignore"
     },

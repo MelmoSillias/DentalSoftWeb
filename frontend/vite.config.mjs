@@ -5,6 +5,9 @@ import vue from '@vitejs/plugin-vue';
 import Components from 'unplugin-vue-components/vite';
 import { VitePWA } from 'vite-plugin-pwa';
 import { defineConfig } from 'vite';
+import cabinetConfig from './src/generated/cabinet-config.generated.js';
+
+const cabinetPwa = cabinetConfig.pwa || {};
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -28,17 +31,16 @@ export default defineConfig({
         // PWA plugin: génère le service worker et le manifest
         VitePWA({
             registerType: 'autoUpdate',
-            includeAssets: ['favicon.ico', 'robots.txt', 'icons/*.svg'],
+            includeAssets: cabinetPwa.includeAssets || ['favicon.ico', 'robots.txt', 'icons/*.svg'],
             manifest: {
-                name: 'DENTALSOFT - ORODENT',
-                short_name: 'DENTALSOFT',
-                description: 'Application de gestion de cabinet dentaire - ORODENT',
-                theme_color: '#5ad6f5',
-                start_url: '/',
-                display: 'standalone',
-                icons: [
-                    { src: 'logo.png', sizes: '512x512', type: 'image/png' }, 
-                ]
+                name: cabinetPwa.name || 'DENTALSOFT',
+                short_name: cabinetPwa.shortName || 'DENTALSOFT',
+                description: cabinetPwa.description || 'Application de gestion de cabinet dentaire',
+                theme_color: cabinetPwa.themeColor || '#5ad6f5',
+                background_color: cabinetPwa.backgroundColor || '#ffffff',
+                start_url: cabinetPwa.startUrl || '/',
+                display: cabinetPwa.display || 'standalone',
+                icons: cabinetPwa.icons || [{ src: 'logo.png', sizes: '512x512', type: 'image/png' }]
             }
         }),
         Components({

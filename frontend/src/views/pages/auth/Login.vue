@@ -8,6 +8,7 @@ import Password from 'primevue/password';
 import Checkbox from 'primevue/checkbox';
 import Button from 'primevue/button';
 import ProgressSpinner from 'primevue/progressspinner';
+import cabinetConfig from '@/cabinetConfig';
 
 
 const authStore = useAuthStore();
@@ -105,8 +106,8 @@ const onSubmit = async () => {
         <div class="auth_container">
             <section class="auth_illustration">
                 <div class="auth_illustration_content">
-                    <img src="@/assets/logo.png" alt="Logo Dentalsoft" class="auth_illustration_logo" />
-                    <h2>Dentalsoft - Orodent</h2>
+                    <img src="/logo.png" :alt="`Logo ${cabinetConfig.brandName}`" class="auth_illustration_logo" />
+                    <h2>{{ cabinetConfig.appTitle }}</h2>
                     <p>Votre plateforme de gestion pour cabinet dentaire.</p>
                 </div>
             </section>
@@ -115,7 +116,7 @@ const onSubmit = async () => {
                 <FloatingConfigurator container-class="auth_tools" />
 
                 <div class="auth_brand">
-                    <img src="@/assets/logo.png" alt="Logo Dentalsoft" />
+                    <img src="/logo.png" :alt="`Logo ${cabinetConfig.brandName}`" />
                 </div>
 
                 <h1>Connexion</h1>

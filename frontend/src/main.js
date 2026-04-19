@@ -9,6 +9,7 @@ import { createApp } from 'vue';
 import App from './App.vue';
 import router from './router';
 import { useUiSettingsStore } from '@/stores/uiSettings';
+import cabinetConfig from '@/cabinetConfig';
 // main.js ou main.ts
 
 
@@ -99,6 +100,17 @@ if (import.meta.env.DEV) {
 
         originalWarn(...args);
     };
+}
+
+if (typeof document !== 'undefined') {
+    if (cabinetConfig.appTitle) {
+        document.title = cabinetConfig.appTitle;
+    }
+
+    const themeColorMeta = document.querySelector('meta[name="theme-color"]');
+    if (themeColorMeta && cabinetConfig?.pwa?.themeColor) {
+        themeColorMeta.setAttribute('content', cabinetConfig.pwa.themeColor);
+    }
 }
  
 const SkyPreset = definePreset(Aura, {

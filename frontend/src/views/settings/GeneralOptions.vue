@@ -17,6 +17,7 @@ import { GUIDED_TOUR_START_EVENT } from '@/tours';
 import { createSettingsApparenceTour } from '@/tours/settingsApparenceTour';
 import { startTourGuide } from '@/tours/tourGuideClient';
 import { fetchGeneralSettings, saveGeneralSettings } from '@/services/globalSettingsService';
+import cabinetConfig from '@/cabinetConfig';
 
 const router = useRouter();
 const toast = useToast();
@@ -265,9 +266,9 @@ onBeforeUnmount(() => {
             <div class="settings-header-content">
                 <div class="settings-header-info">
                     <Badge value="Paramètres" class="settings-badge" />
-                    <h1 class="settings-header-title">Configuration du cabinet</h1>
+                    <h1 class="settings-header-title">{{ cabinetConfig.settingsTitle }}</h1>
                     <p class="settings-header-description">
-                        Personnalisez l'apparence et les flux métier de DentalSoft
+                        {{ cabinetConfig.settingsDescription }}
                     </p>
                 </div>
                 <div class="settings-header-actions">

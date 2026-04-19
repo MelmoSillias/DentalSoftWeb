@@ -13,6 +13,7 @@ import {
     sendSmsTest,
     testSmsConnection
 } from '@/services/smsService';
+import cabinetConfig from '@/cabinetConfig';
 
 export function useSmsAdminSettings(token, toast, extractApiError) {
     const smsLoading = ref(false);
@@ -57,11 +58,11 @@ export function useSmsAdminSettings(token, toast, extractApiError) {
         time: '09:30',
         amount: '25000',
         invoice_number: 'F-000123',
-        cabinet_name: 'ORODENT'
+        cabinet_name: cabinetConfig.smsCabinetName
     });
     const previewResult = ref('');
     const manualSms = reactive({ phone: '', message: '' });
-    const testSms = reactive({ phone: '', message: 'Message de test ORODENT.' });
+    const testSms = reactive({ phone: '', message: cabinetConfig.smsTestMessage });
 
     const selectedTemplate = computed(() => smsTemplates.value.find((tpl) => tpl.code === selectedTemplateCode.value) || null);
     const previewCharacters = computed(() => (previewResult.value || '').length);

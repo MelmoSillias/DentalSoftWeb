@@ -26,6 +26,7 @@ import { useLayout } from '@/layout/composables/layout';
 import Dialog from 'primevue/dialog';
 import InputText from 'primevue/inputtext';
 import SelectButton from 'primevue/selectbutton';
+import cabinetConfig from '@/cabinetConfig';
 
 const toast = useToast();
 const breadcrumbHome = { icon: 'pi pi-home', to: '/dashboard' };
@@ -210,7 +211,7 @@ const openSmsReminder = (rdv) => {
 	const when = rdv?.start ? new Date(rdv.start) : null;
 	const dateStr = when ? when.toLocaleDateString('fr-FR') : '';
 	const timeStr = when ? when.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '';
-	smsDraft.value = `Rappel : rendez-vous le ${dateStr} à ${timeStr}. Cabinet ORODENT.`.trim();
+	smsDraft.value = `Rappel : rendez-vous le ${dateStr} à ${timeStr}. Cabinet ${cabinetConfig.smsCabinetName}.`.trim();
 	smsDialogVisible.value = true;
 };
 
