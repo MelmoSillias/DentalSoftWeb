@@ -1,0 +1,1 @@
+import{h as a,a as s}from"./index-kCrd55C3.js";const r=e=>e?{Authorization:`Bearer ${e}`}:{},c=async e=>(await a.get(`${s}/settings/general`,{headers:r(e)})).data,g=async e=>(await a.get(`${s}/settings/general/public`,{headers:r(e)})).data,o=async(e,t)=>(await a.put(`${s}/settings/general`,e,{headers:r(t)})).data;export{c as a,g as f,o as s};
