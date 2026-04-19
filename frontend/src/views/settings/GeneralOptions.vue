@@ -78,22 +78,22 @@ const soinsCatalog = reactive({
 const navigation = {
     appearance: {
         label: 'Apparence',
-        icon: 'pi-palette',
+        icon: 'pi pi-display',
         sections: [
-            { id: 'overview', label: 'Aperçu', icon: 'pi-chart-line' },
-            { id: 'theme', label: 'Thème', icon: 'pi-sun' },
-            { id: 'colors', label: 'Couleurs', icon: 'pi-palette' },
-            { id: 'typography', label: 'Typographie', icon: 'pi-font' },
-            { id: 'layout', label: 'Disposition', icon: 'pi-layout' }
+            { id: 'overview', label: 'Aperçu', icon: 'pi pi-eye' },
+            { id: 'theme', label: 'Thème', icon: 'pi pi-sun' },
+            { id: 'colors', label: 'Couleurs', icon: 'pi pi-palette' },
+            { id: 'typography', label: 'Typographie', icon: 'pi pi-at' },
+            { id: 'layout', label: 'Disposition', icon: 'pi pi-th-large' }
         ]
     },
     workflow: {
         label: 'Flux métier',
-        icon: 'pi-briefcase',
+        icon: 'pi pi-briefcase',
         sections: [
-            { id: 'device-security', label: 'Sécurité appareils', icon: 'pi-shield' },
-            { id: 'transaction-motifs', label: 'Motifs transaction', icon: 'pi-dollar' },
-            { id: 'soins-list', label: 'Liste des soins', icon: 'pi-heart' }
+            { id: 'device-security', label: 'Sécurité appareils', icon: 'pi pi-shield' },
+            { id: 'transaction-motifs', label: 'Motifs transaction', icon: 'pi pi-dollar' },
+            { id: 'soins-list', label: 'Liste des soins', icon: 'pi pi-heart' }
         ]
     }
 };
@@ -620,13 +620,13 @@ onBeforeUnmount(() => {
 
 /* Header */
 .settings-header {
-    background: var(--surface-0);
+    background: var(--surface-card);
     border-bottom: 1px solid var(--surface-border);
     position: sticky;
     top: -1rem;
     z-index: 10;
     backdrop-filter: blur(10px);
-    background: rgba(var(--surface-0-rgb), 0.9);
+    background: rgba(var(--surface-card-rgb), 0.9);
 }
 
 .settings-header-content {
@@ -689,7 +689,7 @@ onBeforeUnmount(() => {
 }
 
 .settings-nav-card {
-    background: var(--surface-0);
+    background: var(--surface-card);
     border-radius: 20px;
     border: 1px solid var(--surface-border);
     overflow: hidden;
@@ -840,7 +840,7 @@ onBeforeUnmount(() => {
 }
 
 .settings-card {
-    background: var(--surface-0);
+    background: var(--surface-card);
     border-radius: 16px;
     border: 1px solid var(--surface-border);
     padding: 1.5rem;
@@ -854,7 +854,7 @@ onBeforeUnmount(() => {
 }
 
 .stat-card {
-    background: var(--surface-0);
+    background: var(--surface-card);
     border-radius: 16px;
     border: 1px solid var(--surface-border);
     padding: 1rem;

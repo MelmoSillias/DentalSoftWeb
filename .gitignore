@@ -1,3 +1,2 @@
-/backend/migrations/
-/backend/migrations-test/
+/backend/migrations*
 /prompts/
