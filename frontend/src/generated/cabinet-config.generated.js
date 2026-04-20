@@ -9,8 +9,8 @@ const cabinetConfig = {
     "smsCabinetName": "CABINET DENTAIRE OUSMANE SOW",
     "smsTestMessage": "Message de test CABINET DENTAIRE OUSMANE SOW.",
     "reportCabinetName": "CABINET DENTAIRE OUSMANE SOW",
-    "viteApiPrefix": "https://cabinetdentaireousmanesow.cloud/api",
-    "viteFilePrefix": "https://cabinetdentaireousmanesow.cloud",
+    "viteApiPrefix": "https://api.cabinetdentaireousmanesow.cloud/api",
+    "viteFilePrefix": "https://api.cabinetdentaireousmanesow.cloud",
     "brandingAssets": {
         "logo": "logo.png",
         "logoAlt": "logo.jpeg",
