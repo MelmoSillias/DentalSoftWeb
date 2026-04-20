@@ -9,8 +9,8 @@
   "smsCabinetName": "CABINET DENTAIRE OUSMANE SOW",
   "smsTestMessage": "Message de test CABINET DENTAIRE OUSMANE SOW.",
   "reportCabinetName": "CABINET DENTAIRE OUSMANE SOW",
-  "viteApiPrefix": "http://localhost:8000/api",
-  "viteFilePrefix": "http://localhost:8000", 
+  "viteApiPrefix": "https://cabinetdentaireousmanesow.cloud/api",
+  "viteFilePrefix": "https://cabinetdentaireousmanesow.cloud", 
   "brandingAssets": {
     "logo": "logo.png",
     "logoAlt": "logo.jpeg",
