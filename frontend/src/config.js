@@ -5,11 +5,11 @@ const defaultApiPrefix = 'http://localhost:8000/api';
 const defaultFilePrefix = 'http://localhost:8000';
 
 // Préfixe API: VITE_API_PREFIX > config cabinet > fallback localhost
-export const apiPrefix = import.meta.env.VITE_API_PREFIX
-	|| cabinetConfig.viteApiPrefix
+export const apiPrefix = cabinetConfig.viteApiPrefix
+	|| import.meta.env.VITE_API_PREFIX
 	|| defaultApiPrefix;
 
 // Préfixe fichiers: VITE_FILE_PREFIX > config cabinet > fallback localhost
-export const filePrefix = import.meta.env.VITE_FILE_PREFIX
-	|| cabinetConfig.viteFilePrefix
+export const filePrefix = cabinetConfig.viteFilePrefix
+	|| import.meta.env.VITE_FILE_PREFIX
 	|| defaultFilePrefix;
