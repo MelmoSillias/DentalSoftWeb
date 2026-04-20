@@ -1,14 +1,14 @@
 const cabinetConfig = {
-    "id": "default",
-    "displayName": "Cabinet Demo",
-    "appTitle": "DentalSoft - Cabinet Demo",
+    "id": "cdos",
+    "displayName": "Cabinet Dentaire Ousmane SOW",
+    "appTitle": "DentalSoft - Cabinet Dentaire Ousmane SOW",
     "brandName": "DentalSoft",
-    "brandSubtitle": "Cabinet Dentaire Demo",
+    "brandSubtitle": "Cabinet Dentaire Ousmane SOW",
     "settingsTitle": "Configuration du cabinet",
     "settingsDescription": "Personnalisez l'apparence et les flux metier de DentalSoft",
-    "smsCabinetName": "CABINET DEMO",
-    "smsTestMessage": "Message de test CABINET DEMO.",
-    "reportCabinetName": "CABINET DENTAIRE DEMO",
+    "smsCabinetName": "CABINET DENTAIRE OUSMANE SOW",
+    "smsTestMessage": "Message de test CABINET DENTAIRE OUSMANE SOW.",
+    "reportCabinetName": "CABINET DENTAIRE OUSMANE SOW",
     "viteApiPrefix": "http://localhost:8000/api",
     "viteFilePrefix": "http://localhost:8000",
     "brandingAssets": {
@@ -22,9 +22,9 @@ const cabinetConfig = {
         "notificationSound": "notification.mp3"
     },
     "pwa": {
-        "name": "DENTALSOFT - CABINET DEMO",
+        "name": "DENTALSOFT - CABINET DENTAIRE OUSMANE SOW",
         "shortName": "DENTALSOFT",
-        "description": "Application de gestion de cabinet dentaire - CABINET DEMO",
+        "description": "Application de gestion de cabinet dentaire - CABINET DENTAIRE OUSMANE SOW",
         "themeColor": "#5ad6f5",
         "backgroundColor": "#ffffff",
         "startUrl": "/",

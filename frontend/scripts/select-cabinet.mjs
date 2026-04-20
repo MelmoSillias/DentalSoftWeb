@@ -78,7 +78,9 @@ function validateConfig(cabinetId, config) {
     }
 
     if (config.id !== cabinetId) {
-        throw new Error(`Config id mismatch: expected "${cabinetId}", got "${config.id}".`);
+        // Keep cabinet id consistent with selected folder to avoid runtime mismatch.
+        console.warn(`[cabinet] Config id mismatch in ${cabinetId}/config.json: got "${config.id}", using "${cabinetId}".`);
+        config.id = cabinetId;
     }
 
     if (!config.pwa || typeof config.pwa !== 'object') {

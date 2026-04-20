@@ -1,0 +1,45 @@
+{
+  "id": "default",
+  "displayName": "CENTRE DENTAIRE MASSAMAN",
+  "appTitle": "DentalSoft - CENTRE DENTAIRE MASSAMAN",
+  "brandName": "DentalSoft",
+  "brandSubtitle": "CENTRE DENTAIRE MASSAMAN",
+  "settingsTitle": "Configuration du cabinet",
+  "settingsDescription": "Personnalisez l'apparence et les flux metier de DentalSoft",
+  "smsCabinetName": "CENTRE DENTAIRE MASSAMAN",
+  "smsTestMessage": "Message de test CENTRE DENTAIRE MASSAMAN.",
+  "reportCabinetName": "CENTRE DENTAIRE MASSAMAN",
+  "viteApiPrefix": "http://localhost:8000/api",
+  "viteFilePrefix": "http://localhost:8000",
+  "brandingAssets": {
+    "logo": "logo.png",
+    "logoAlt": "logo.jpeg",
+    "header": "header.png",
+    "headerAlt": "header.jpeg",
+    "headerLarge": "header-big.jpeg",
+    "profile": "profil.png",
+    "landingIllustration": "landing-illustration.png",
+    "notificationSound": "notification.mp3"
+  },
+  "pwa": {
+    "name": "DENTALSOFT - CENTRE DENTAIRE MASSAMAN",
+    "shortName": "DENTALSOFT",
+    "description": "Application de gestion de cabinet dentaire - CENTRE DENTAIRE MASSAMAN",
+    "themeColor": "#5ad6f5",
+    "backgroundColor": "#ffffff",
+    "startUrl": "/",
+    "display": "standalone",
+    "includeAssets": [
+      "favicon.ico",
+      "robots.txt",
+      "icons/*.svg"
+    ],
+    "icons": [
+      {
+        "src": "logo.png",
+        "sizes": "512x512",
+        "type": "image/png"
+      }
+    ]
+  }
+}

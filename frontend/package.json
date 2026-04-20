@@ -4,6 +4,7 @@
     "scripts": {
         "select:cabinet": "node ./scripts/select-cabinet.mjs",
         "dev": "node ./scripts/select-cabinet.mjs --cabinet=default && vite",
+        "dev:cabinet": "node ./scripts/dev-cabinet.mjs",
         "build": "node ./scripts/select-cabinet.mjs --cabinet=default && vite build",
         "build:cabinet": "node ./scripts/build-cabinet.mjs",
         "preview": "vite preview",

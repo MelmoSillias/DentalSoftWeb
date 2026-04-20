@@ -350,7 +350,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-	<section class="flex flex-col gap-3 xs:gap-4 rounded-xl xs:rounded-2xl bg-surface-0 p-4 xs:p-5 shadow-sm dark:bg-surface-900 dark:shadow-none dark:ring-1 dark:ring-surface-700 sm:shadow-none sm:ring-0 ">
+	<section class="flex flex-col ml-4 gap-3 xs:gap-4 rounded-xl xs:rounded-2xl bg-surface-0 p-4 xs:p-5 shadow-sm dark:bg-surface-900 dark:shadow-none dark:ring-1 dark:ring-surface-700 sm:shadow-none sm:ring-0 ">
 		<Toast />
 		<div data-tour="agenda-rdv.header" class="flex flex-wrap items-center justify-between gap-3 xs:gap-4 border-b border-surface-200 pb-2 xs:pb-3 dark:border-surface-700">
 			<div class="space-y-0.5 xs:space-y-1">
