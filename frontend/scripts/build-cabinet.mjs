@@ -42,8 +42,7 @@ function main() {
     const nodeBin = process.execPath;
     run(nodeBin, ['./scripts/select-cabinet.mjs', `--cabinet=${cabinet}`], env);
 
-    const viteBin = process.platform === 'win32' ? 'npx.cmd' : 'npx';
-    run(viteBin, ['vite', 'build'], env);
+    run(nodeBin, ['./node_modules/vite/bin/vite.js', 'build'], env);
 }
 
 main();
