@@ -49,9 +49,8 @@ class UserManagementService
 
         return match ($normalized) {
             'admin' => ['ROLE_ADMIN'],
-            'medecin' => ['ROLE_MEDECIN'],
-            // On conserve ROLE_RECEPTIONNISTE pour la compatibilite du reste de l'application.
-            'secretaire' => ['ROLE_RECEPTIONNISTE', 'ROLE_SECRETAIRE'],
+            'medecin' => ['ROLE_MEDECIN'], 
+            'secretaire' => ['ROLE_RECEPTION', 'ROLE_RECEPTIONNISTE', 'ROLE_SECRETAIRE'],
             'patient' => ['ROLE_PATIENT'],
             default => null,
         };
