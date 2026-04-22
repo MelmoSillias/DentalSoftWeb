@@ -198,11 +198,7 @@ const handleSubmit = (event) => {
             <div class="flex flex-col gap-2">
                 <label for="telephone" class="font-semibold">Téléphone</label>
                 <InputText id="telephone" v-model="form.telephone" placeholder="Téléphone" />
-            </div>
-            <div class="flex flex-col gap-2">
-                <label for="email" class="font-semibold">Email</label>
-                <InputText id="email" v-model="form.email" placeholder="Email" />
-            </div>
+            </div> 
             <div class="flex flex-col gap-2">
                 <label for="adresse" class="font-semibold">Adresse</label>
                 <InputText id="adresse" v-model="form.adresse" placeholder="Adresse" />
@@ -237,13 +233,8 @@ const handleSubmit = (event) => {
                     <InputText id="urgence-lien" v-model="form.contactUrgence.lienParente"
                         placeholder="Lien de parenté" />
                 </div>
-            </div>
-            <div class="md:col-span-2 flex flex-col gap-2">
-                <label for="notes" class="font-semibold">Notes</label>
-                <Textarea id="notes" v-model="form.notes" rows="3" autoResize
-                    placeholder="Informations complémentaires" />
-            </div>
-            <div class="md:col-span-2 flex flex-col gap-3 rounded-xl p-4">
+            </div> 
+            <!-- <div class="md:col-span-2 flex flex-col gap-3 rounded-xl p-4">
                 <Accordion value="">
                     <AccordionPanel value="0">
                         <AccordionHeader> <i class="pi pi-send"></i> Communication SMS</AccordionHeader>
@@ -282,7 +273,7 @@ const handleSubmit = (event) => {
                     </AccordionPanel> 
                 </Accordion> 
                 
-            </div>
+            </div> -->
         </div>
         <div class="flex gap-2 justify-end">
             <Button type="button" label="Annuler" severity="secondary" @click="emit('cancel')" />

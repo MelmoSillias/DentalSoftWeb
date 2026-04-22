@@ -264,7 +264,7 @@ $(function() {
         const $button = $('#btnSaveMotifSoins');
         $button.prop('disabled', true); 
         $.ajax({
-            url: `/api/fiche/${ficheId}/consultation/${consultId}/update-motif`,
+            url: `/api/fiches/${ficheId}/motif`,
             method: 'POST',
             contentType: 'application/json',
             data: JSON.stringify(collectMotifData()),
@@ -288,7 +288,7 @@ $(function() {
         $button.prop('disabled', true);
 
         $.ajax({
-            url: `/api/fiche/${ficheId}/consultation/${consultId}/update-examens`,
+            url: `/api/fiches/${ficheId}/examens`,
             method: 'POST',
             contentType: 'application/json',
             data: JSON.stringify(collectExamensData()),
@@ -312,7 +312,7 @@ $(function() {
         $button.prop('disabled', true);
 
         $.ajax({
-            url: `/api/fiche/${ficheId}/consultation/${consultId}/update-traitements`,
+            url: `/api/fiches/${ficheId}/traitements`,
             method: 'POST',
             processData: false,
             contentType: false,
@@ -337,7 +337,7 @@ $(function() {
         $button.prop('disabled', true);
 
         $.ajax({
-            url: `/api/fiche/${ficheId}/consultation/${consultId}/update-devis`,
+            url: `/api/fiches/${ficheId}/devis`,
             method: 'POST',
             contentType: 'application/json',
             data: JSON.stringify(collectDevisData()),
@@ -553,3 +553,4 @@ $(function() {
         return $blk;
     }
 });
+

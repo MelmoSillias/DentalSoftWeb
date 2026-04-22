@@ -665,7 +665,7 @@ $(function() {
         $button.prop('disabled', true);
         startSaving('motif');
         return $.ajax({
-            url: `/api/fiches/${ficheId}/consultations/${consultId}/motif`,
+            url: `/api/fiches/${ficheId}/motif`,
             method: 'POST',
             contentType: 'application/json',
             data: JSON.stringify(collectMotifData())
@@ -686,7 +686,7 @@ $(function() {
         $button.prop('disabled', true);
         startSaving('examens');
         return $.ajax({
-            url: `/api/fiches/${ficheId}/consultations/${consultId}/examens`,
+            url: `/api/fiches/${ficheId}/examens`,
             method: 'POST',
             contentType: 'application/json',
             data: JSON.stringify(collectExamensData())
@@ -707,7 +707,7 @@ $(function() {
         $button.prop('disabled', true);
         startSaving('traitements');
         return $.ajax({
-            url: `/api/fiches/${ficheId}/consultations/${consultId}/traitements`,
+            url: `/api/fiches/${ficheId}/traitements`,
             method: 'POST',
             processData: false,
             contentType: false,
@@ -729,7 +729,7 @@ $(function() {
         $button.prop('disabled', true);
         startSaving('devis');
         return $.ajax({
-            url: `/api/fiches/${ficheId}/consultations/${consultId}/devis`,
+            url: `/api/fiches/${ficheId}/devis`,
             method: 'POST',
             contentType: 'application/json',
             data: JSON.stringify(collectDevisData())
@@ -934,3 +934,4 @@ $(function() {
         return $blk;
     }
 });
+

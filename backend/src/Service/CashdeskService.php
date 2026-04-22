@@ -673,12 +673,14 @@ class CashdeskService
             $transaction->setDevis(null);
             $transaction->setConsultation(null);
             $this->em->remove($transaction);
+            $this->em->flush();
         }
 
         foreach ($allPaiements as $paiement) {
             $paiement->setDevis(null);
             $paiement->setConsultation(null);
             $this->em->remove($paiement);
+            $this->em->flush();
         }
 
         $devis->setReste((float) $devis->getMontant());

@@ -9,8 +9,8 @@
   "smsCabinetName": "CABINET DEMO",
   "smsTestMessage": "Message de test CABINET DEMO.",
   "reportCabinetName": "CABINET DENTAIRE DEMO",
-  "viteApiPrefix": "http://localhost:8000/api",
-  "viteFilePrefix": "http://localhost:8000",
+  "viteApiPrefix": "http://localhost:8010/api",
+  "viteFilePrefix": "http://localhost:8010",
   "brandingAssets": {
     "logo": "logo.png",
     "logoAlt": "logo.jpeg",

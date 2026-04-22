@@ -1,0 +1,88 @@
+security:
+    password_hashers:
+        Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface: auto
+
+    providers:
+        app_user_provider:
+            entity:
+                class: App\Entity\User
+                property: username
+
+        users_in_database:
+            entity:
+                class: App\Entity\User
+                property: username
+
+        backend_users:
+            memory:
+                users:
+                    Melmo:
+                        password: '$2y$13$zHd5PvVUKu9mZy.b0N2C/.WONc3TkaPLZ1rLOrX0gZTgZmO/Bs0a6'
+                        roles: ['ROLE_ADMIN']
+
+    firewalls:
+        dev:
+            pattern: ^/(_(profiler|wdt)|css|images|js)/
+            security: false
+
+        # 🔐 JWT LOGIN (API)
+        api_login:
+            pattern: ^/api/login
+            stateless: true
+            provider: users_in_database
+            user_checker: App\Security\UserEnabledChecker
+            json_login:
+                check_path: /api/login_check
+                username_path: username
+                password_path: password
+                success_handler: lexik_jwt_authentication.handler.authentication_success
+                failure_handler: lexik_jwt_authentication.handler.authentication_failure
+
+        # 🔐 JWT PROTECTED API
+        api:
+            pattern: ^/api
+            stateless: true
+            provider: users_in_database
+            user_checker: App\Security\UserEnabledChecker
+            jwt: ~
+
+        # 🌐 SITE WEB CLASSIQUE
+        main:
+            lazy: true
+            provider: users_in_database
+            user_checker: App\Security\UserEnabledChecker
+            custom_authenticator: App\Security\DSAuthenticator
+            entry_point: form_login
+
+            form_login:
+                login_path: app_login
+                check_path: app_login
+                default_target_path: redirect_after_login
+                enable_csrf: true
+
+            logout:
+                path: app_logout
+                target: app_login
+                invalidate_session: true
+
+            remember_me:
+                secret: '%kernel.secret%'
+                lifetime: 604800
+                path: /
+
+    access_control:
+        # API
+        - { path: ^/api/login, roles: PUBLIC_ACCESS }
+        - { path: ^/api/health, roles: PUBLIC_ACCESS }
+        - { path: ^/api/token/validate, roles: PUBLIC_ACCESS }
+        - { path: ^/api, roles: PUBLIC_ACCESS, methods: [OPTIONS] }
+        - { path: ^/api/portal-patient/me(?:/|$), roles: ROLE_PATIENT }
+        - { path: ^/api/me, roles: IS_AUTHENTICATED_FULLY }
+        - { path: ^/api/me/notifications, roles: IS_AUTHENTICATED_FULLY }
+        - { path: ^/api, roles: [ROLE_ADMIN, ROLE_MEDECIN, ROLE_RECEPTION, ROLE_RECEPTIONNISTE] }
+       
+        # WEB
+        - { path: ^/admin, roles: ROLE_ADMIN }
+        - { path: ^/medecin, roles: ROLE_MEDECIN }
+        - { path: ^/reception, roles: [ROLE_RECEPTION, ROLE_RECEPTIONNISTE] }
+        - { path: ^/profile, roles: IS_AUTHENTICATED_FULLY }
