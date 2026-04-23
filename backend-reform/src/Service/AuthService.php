@@ -2,10 +2,10 @@
 
 namespace App\Service;
 
-use App\Entity\Notification;
-use App\Entity\User;
-use App\Repository\EmployeRepository;
-use App\Repository\NotificationRepository;
+use App\Communication\Entity\Notification;
+use App\Communication\Repository\NotificationRepository;
+use App\IdentityAccess\Entity\User;
+use App\IdentityAccess\Repository\EmployeRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\File\UploadedFile;

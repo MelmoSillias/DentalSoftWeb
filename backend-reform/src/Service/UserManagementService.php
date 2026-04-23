@@ -2,14 +2,14 @@
 
 namespace App\Service;
 
-use App\Entity\Employe;
-use App\Entity\Patient;
-use App\Entity\User;
+use App\IdentityAccess\Entity\Employe;
+use App\IdentityAccess\Entity\User;
 use App\Event\EntityActionEvent;
-use App\Repository\EmployeRepository;
-use App\Repository\PatientRepository;
-use App\Repository\UserDeviceRepository;
-use App\Repository\UserRepository;
+use App\Patient\Entity\Patient;
+use App\Patient\Repository\PatientRepository;
+use App\IdentityAccess\Repository\EmployeRepository;
+use App\IdentityAccess\Repository\UserDeviceRepository;
+use App\IdentityAccess\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;

@@ -2,8 +2,8 @@
 
 namespace App\Controller\Api;
 
-use App\Entity\Consommable;
-use App\Entity\User;
+use App\Inventory\Entity\Consommable;
+use App\IdentityAccess\Entity\User;
 use App\Service\ConsommableService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;

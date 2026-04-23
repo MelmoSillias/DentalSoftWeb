@@ -2,18 +2,18 @@
 
 namespace App\Service;
 
-use App\Entity\Consultation;
-use App\Entity\Devis;
-use App\Entity\Employe;
-use App\Entity\PaiementDevis;
-use App\Entity\Rdv;
-use App\Entity\Transaction;
-use App\Repository\ActeMedicalRepository;
-use App\Repository\ConsultationRepository;
-use App\Repository\DevisRepository;
-use App\Repository\PatientRepository;
-use App\Repository\RdvRepository;
-use App\Repository\TransactionRepository;
+use App\Billing\Entity\Devis;
+use App\Billing\Entity\PaiementDevis;
+use App\Billing\Entity\Transaction;
+use App\Billing\Repository\DevisRepository;
+use App\Billing\Repository\TransactionRepository;
+use App\CareDelivery\Entity\Consultation;
+use App\CareDelivery\Repository\ActeMedicalRepository;
+use App\CareDelivery\Repository\ConsultationRepository;
+use App\IdentityAccess\Entity\Employe;
+use App\Patient\Repository\PatientRepository;
+use App\Scheduling\Entity\Rdv;
+use App\Scheduling\Repository\RdvRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Contracts\Cache\CacheInterface;
 use Symfony\Contracts\Cache\ItemInterface;

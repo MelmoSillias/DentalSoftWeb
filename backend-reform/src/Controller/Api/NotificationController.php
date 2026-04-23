@@ -2,9 +2,9 @@
 
 namespace App\Controller\Api;
 
-use App\Entity\User;
-use App\Entity\Notification;
-use App\Repository\NotificationRepository;
+use App\IdentityAccess\Entity\User;
+use App\Communication\Entity\Notification;
+use App\Communication\Repository\NotificationRepository;
 use App\Service\MercureAuthorizationService;
 use App\Service\NotificationService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;

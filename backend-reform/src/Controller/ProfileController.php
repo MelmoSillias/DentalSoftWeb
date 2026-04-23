@@ -2,9 +2,10 @@
 
 namespace App\Controller;
 
-use App\Entity\Notification;
+use App\Communication\Entity\Notification;
 use App\Enum\NotificationStatus;
-use App\Repository\NotificationRepository;
+use App\Communication\Repository\NotificationRepository;
+use App\IdentityAccess\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -117,7 +118,7 @@ class ProfileController extends AbstractController
     public function go(Notification $notification, EntityManagerInterface $em): RedirectResponse
     {
         $user = $this->getUser();
-        if (!$user || $notification->getRecipient()?->getId() !== $user->getId()) {
+        if (!$user instanceof User || $notification->getUser()?->getId() !== $user->getId()) {
             return $this->redirectToRoute('app_login');
         }
 

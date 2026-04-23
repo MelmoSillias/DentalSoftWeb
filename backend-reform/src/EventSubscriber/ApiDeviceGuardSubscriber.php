@@ -2,7 +2,7 @@
 
 namespace App\EventSubscriber;
 
-use App\Entity\User;
+use App\IdentityAccess\Entity\User;
 use App\Service\UserDeviceService;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;

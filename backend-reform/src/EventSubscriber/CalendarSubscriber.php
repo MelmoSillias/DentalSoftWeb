@@ -2,7 +2,7 @@
 
 namespace App\EventSubscriber;
 
-use App\Repository\BookingRepository;
+use App\Scheduling\Repository\BookingRepository;
 use CalendarBundle\Entity\Event;
 use CalendarBundle\Event\SetDataEvent;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;

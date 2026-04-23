@@ -2,12 +2,12 @@
 
 namespace App\Service;
 
-use App\Entity\User;
-use App\Entity\UserDevice;
-use App\Entity\UserDeviceAccessLog;
-use App\Repository\UserDeviceAccessLogRepository;
-use App\Repository\UserDeviceRepository;
-use App\Repository\UserRepository;
+use App\IdentityAccess\Entity\User;
+use App\IdentityAccess\Entity\UserDevice;
+use App\IdentityAccess\Entity\UserDeviceAccessLog;
+use App\IdentityAccess\Repository\UserDeviceAccessLogRepository;
+use App\IdentityAccess\Repository\UserDeviceRepository;
+use App\IdentityAccess\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\Request;
 

@@ -2,14 +2,14 @@
 
 namespace App\Controller\Api;
 
-use App\Entity\Devis;
-use App\Entity\PaiementDevis;
-use App\Entity\Patient;
-use App\Entity\Rdv;
+use App\Billing\Entity\Devis;
+use App\Billing\Entity\PaiementDevis;
+use App\Billing\Repository\DevisRepository;
+use App\Billing\Repository\PaiementDevisRepository;
 use App\Message\ProcessSmsQueueMessage;
-use App\Repository\DevisRepository;
-use App\Repository\PaiementDevisRepository;
-use App\Repository\RdvRepository;
+use App\Patient\Entity\Patient;
+use App\Scheduling\Entity\Rdv;
+use App\Scheduling\Repository\RdvRepository;
 use App\Service\OrangeSmsClient;
 use App\Service\SmsConfigService;
 use App\Service\SmsService;

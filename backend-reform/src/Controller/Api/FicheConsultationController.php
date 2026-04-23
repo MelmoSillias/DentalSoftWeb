@@ -4,7 +4,7 @@ namespace App\Controller\Api;
 
 use App\Service\ConsultationService;
 use App\Service\FicheMedicaleService;
-use App\Entity\FicheMedicale;
+use App\ClinicalRecord\Entity\FicheMedicale;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;

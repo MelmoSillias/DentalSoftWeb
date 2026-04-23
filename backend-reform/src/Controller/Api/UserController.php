@@ -2,7 +2,7 @@
 
 namespace App\Controller\Api;
 
-use App\Entity\User;
+use App\IdentityAccess\Entity\User;
 use App\Service\UserManagementService;
 use App\Service\UserDeviceService;
 use App\Service\EmployeeService;

@@ -3,7 +3,7 @@
 namespace App\Controller\Admin;
 
 use App\Service\SalleService;
-use App\Entity\Salle;
+use App\Scheduling\Entity\Salle;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;

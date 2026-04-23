@@ -2,9 +2,9 @@
 
 namespace App\Service;
 
-use App\Entity\Employe;
-use App\Entity\User;
-use App\Repository\UserRepository;
+use App\IdentityAccess\Entity\Employe;
+use App\IdentityAccess\Entity\User;
+use App\IdentityAccess\Repository\UserRepository;
 
 final class NotificationRecipientResolver
 {

@@ -2,8 +2,8 @@
 
 namespace App\Controller\Api;
 
-use App\Entity\Employe;
-use App\Repository\EmployeRepository;
+use App\IdentityAccess\Entity\Employe;
+use App\IdentityAccess\Repository\EmployeRepository;
 use App\Service\DashboardService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;

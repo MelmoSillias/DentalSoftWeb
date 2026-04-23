@@ -2,8 +2,8 @@
 
 namespace App\Service;
 
-use App\Entity\AppSetting;
-use App\Repository\AppSettingRepository;
+use App\Settings\Entity\AppSetting;
+use App\Settings\Repository\AppSettingRepository;
 use Doctrine\ORM\EntityManagerInterface;
 
 class GlobalSettingsService

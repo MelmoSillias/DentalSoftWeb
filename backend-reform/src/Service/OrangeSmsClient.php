@@ -2,7 +2,7 @@
 
 namespace App\Service;
 
-use App\Entity\SmsProviderConfig;
+use App\Communication\Entity\SmsProviderConfig;
 use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 

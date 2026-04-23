@@ -2,12 +2,12 @@
 
 namespace App\Service;
 
-use App\Entity\Consultation;
-use App\Entity\Employe;
-use App\Entity\Rdv;
-use App\Entity\User;
-use App\Repository\EmployeRepository;
-use App\Repository\RdvRepository;
+use App\CareDelivery\Entity\Consultation;
+use App\IdentityAccess\Entity\Employe;
+use App\IdentityAccess\Entity\User;
+use App\Scheduling\Entity\Rdv;
+use App\Scheduling\Repository\RdvRepository;
+use App\IdentityAccess\Repository\EmployeRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;

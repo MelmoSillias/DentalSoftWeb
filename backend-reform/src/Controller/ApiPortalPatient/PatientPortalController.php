@@ -2,19 +2,19 @@
 
 namespace App\Controller\ApiPortalPatient;
 
-use App\Entity\Consultation;
-use App\Entity\Devis;
-use App\Entity\Notification;
-use App\Entity\Patient;
-use App\Entity\Rdv;
-use App\Entity\Transaction;
-use App\Entity\User;
-use App\Repository\ConsultationRepository;
-use App\Repository\DevisRepository;
-use App\Repository\NotificationRepository;
-use App\Repository\PatientRepository;
-use App\Repository\RdvRepository;
-use App\Repository\TransactionRepository;
+use App\CareDelivery\Entity\Consultation;
+use App\Communication\Entity\Notification;
+use App\Communication\Repository\NotificationRepository;
+use App\IdentityAccess\Entity\User;
+use App\Billing\Entity\Devis;
+use App\Billing\Entity\Transaction;
+use App\Billing\Repository\DevisRepository;
+use App\Billing\Repository\TransactionRepository;
+use App\Patient\Entity\Patient;
+use App\Patient\Repository\PatientRepository;
+use App\Scheduling\Entity\Rdv;
+use App\Scheduling\Repository\RdvRepository;
+use App\CareDelivery\Repository\ConsultationRepository;
 use App\Service\MercureAuthorizationService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;

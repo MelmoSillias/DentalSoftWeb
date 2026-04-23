@@ -2,22 +2,22 @@
 
 namespace App\Service;
 
-use App\Entity\ContenuDevis;
-use App\Entity\Devis;
-use App\Entity\FicheBilan;
-use App\Entity\FicheDocument;
-use App\Entity\FicheEntretien;
-use App\Entity\FicheEntretienAffection;
-use App\Entity\FicheEntretienHabitude;
-use App\Entity\FicheEntretienMedicament;
-use App\Entity\FicheEntretienQuestion;
-use App\Entity\FicheExamen;
-use App\Entity\FicheExamenItem;
-use App\Entity\FicheExamenLabo;
-use App\Entity\FicheMedicale;
-use App\Entity\FicheObservation;
-use App\Entity\FichePlanTraitement;
-use App\Repository\DevisRepository;
+use App\Billing\Entity\ContenuDevis;
+use App\Billing\Entity\Devis;
+use App\Billing\Repository\DevisRepository;
+use App\ClinicalRecord\Entity\FicheBilan;
+use App\ClinicalRecord\Entity\FicheDocument;
+use App\ClinicalRecord\Entity\FicheEntretien;
+use App\ClinicalRecord\Entity\FicheEntretienAffection;
+use App\ClinicalRecord\Entity\FicheEntretienHabitude;
+use App\ClinicalRecord\Entity\FicheEntretienMedicament;
+use App\ClinicalRecord\Entity\FicheEntretienQuestion;
+use App\ClinicalRecord\Entity\FicheExamen;
+use App\ClinicalRecord\Entity\FicheExamenItem;
+use App\ClinicalRecord\Entity\FicheExamenLabo;
+use App\ClinicalRecord\Entity\FicheMedicale;
+use App\ClinicalRecord\Entity\FicheObservation;
+use App\ClinicalRecord\Entity\FichePlanTraitement;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
@@ -670,7 +670,7 @@ class FicheMedicaleService
             }
         }
 
-        $consultation = $this->em->getRepository(\App\Entity\Consultation::class)->findOneBy([
+        $consultation = $this->em->getRepository(\App\CareDelivery\Entity\Consultation::class)->findOneBy([
             'ficheMedicale' => $fiche,
         ], [
             'id' => 'ASC',

@@ -2,9 +2,9 @@
 
 namespace App\Service;
 
-use App\Entity\Consultation;
+use App\CareDelivery\Entity\Consultation;
 use App\Mercure\NotificationTopicGenerator;
-use App\Repository\UserRepository;
+use App\IdentityAccess\Repository\UserRepository;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Mercure\HubInterface;
 use Symfony\Component\Mercure\Update;

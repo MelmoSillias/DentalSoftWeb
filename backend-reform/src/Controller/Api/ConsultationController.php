@@ -2,14 +2,14 @@
 
 namespace App\Controller\Api;
 
-use App\Entity\User;
+use App\IdentityAccess\Entity\User;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use App\Service\ConsultationService;
 use App\Service\GlobalSettingsService;
-use App\Entity\Consultation;
+use App\CareDelivery\Entity\Consultation;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;

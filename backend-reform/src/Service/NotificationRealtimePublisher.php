@@ -2,7 +2,7 @@
 
 namespace App\Service;
 
-use App\Entity\Notification;
+use App\Communication\Entity\Notification;
 use App\Mercure\NotificationTopicGenerator;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Mercure\HubInterface;

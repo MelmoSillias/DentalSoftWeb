@@ -2,9 +2,9 @@
 
 namespace App\Controller\Profile;
 
-use App\Entity\User;
-use App\Repository\EmployeRepository;
-use App\Repository\NotificationRepository;
+use App\IdentityAccess\Entity\User;
+use App\Communication\Repository\NotificationRepository;
+use App\IdentityAccess\Repository\EmployeRepository;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;

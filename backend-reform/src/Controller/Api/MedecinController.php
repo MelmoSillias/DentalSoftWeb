@@ -2,7 +2,7 @@
 
 namespace App\Controller\Api;
 
-use App\Repository\EmployeRepository;
+use App\IdentityAccess\Repository\EmployeRepository;
 use App\Service\ConsultationService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;

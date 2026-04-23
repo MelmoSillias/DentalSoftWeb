@@ -2,9 +2,9 @@
 
 namespace App\EventSubscriber;
 
-use App\Entity\Notification;
-use App\Entity\User;
-use App\Repository\NotificationRepository;
+use App\Communication\Entity\Notification;
+use App\Communication\Repository\NotificationRepository;
+use App\IdentityAccess\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\SecurityBundle\Security as SecurityBundleSecurity;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;

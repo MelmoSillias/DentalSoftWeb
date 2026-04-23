@@ -2,7 +2,7 @@
 
 namespace App\Controller\Admin;
 
-use App\Entity\ModeDePaiement;
+use App\Billing\Entity\ModeDePaiement;
 use App\Service\FinanceService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;

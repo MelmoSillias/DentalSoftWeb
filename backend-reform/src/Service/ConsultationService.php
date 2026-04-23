@@ -2,27 +2,27 @@
 
 namespace App\Service;
 
-use App\Entity\ActeMedical;
-use App\Entity\Allergy;
-use App\Entity\Antecedent;
-use App\Entity\Consultation;
-use App\Entity\Ordonnance;
-use App\Entity\OrdonnanceLigne;
-use App\Entity\ContenuDevis;
-use App\Entity\Devis;
-use App\Entity\DocumentMedical;
-use App\Entity\Employe;
-use App\Entity\PaiementDevis;
-use App\Entity\Transaction;
-use App\Entity\User;
-use App\Entity\FicheMedicale;
-use App\Entity\FicheObservation;
-use App\Entity\Salle;
+use App\CareDelivery\Entity\ActeMedical;
+use App\CareDelivery\Entity\Consultation;
+use App\CareDelivery\Entity\Ordonnance;
+use App\CareDelivery\Entity\OrdonnanceLigne;
+use App\CareDelivery\Repository\ConsultationRepository;
+use App\ClinicalRecord\Entity\DocumentMedical;
+use App\ClinicalRecord\Entity\FicheMedicale;
+use App\ClinicalRecord\Entity\FicheObservation;
+use App\Billing\Entity\ContenuDevis;
+use App\Billing\Entity\Devis;
+use App\Billing\Entity\PaiementDevis;
+use App\Billing\Entity\Transaction;
+use App\Billing\Repository\DevisRepository;
+use App\IdentityAccess\Entity\Employe;
+use App\IdentityAccess\Entity\User;
 use App\Event\EntityActionEvent;
-use App\Repository\ConsultationRepository;
-use App\Repository\DevisRepository;
-use App\Repository\EmployeRepository;
-use App\Repository\SalleRepository;
+use App\Patient\Entity\Allergy;
+use App\Patient\Entity\Antecedent;
+use App\Scheduling\Entity\Salle;
+use App\Scheduling\Repository\SalleRepository;
+use App\IdentityAccess\Repository\EmployeRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
@@ -1142,7 +1142,7 @@ class ConsultationService
 
         $devis = $consultation->getFacture();
 
-        if (!$devis) {
+        if (!$devis instanceof Devis) {
             return ['error' => 'Facture non trouvée'];
         }
 

@@ -2,8 +2,8 @@
 
 namespace App\Controller\Admin;
 
-use App\Entity\User;
-use App\Repository\UserRepository;
+use App\IdentityAccess\Entity\User;
+use App\IdentityAccess\Repository\UserRepository;
 use App\Service\NotificationService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;

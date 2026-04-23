@@ -2,8 +2,8 @@
 
 namespace App\Service;
 
-use App\Entity\SmsTemplate;
-use App\Repository\SmsTemplateRepository;
+use App\Communication\Entity\SmsTemplate;
+use App\Communication\Repository\SmsTemplateRepository;
 use Doctrine\ORM\EntityManagerInterface;
 
 final class SmsTemplateService

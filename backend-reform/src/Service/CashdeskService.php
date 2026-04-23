@@ -2,15 +2,15 @@
 
 namespace App\Service;
 
-use App\Entity\ContenuDevis;
-use App\Entity\Devis;
-use App\Entity\PaiementDevis;
-use App\Entity\Patient;
-use App\Entity\Transaction;
-use App\Repository\DevisRepository;
-use App\Repository\ModeDePaiementRepository;
-use App\Repository\PaiementDevisRepository;
-use App\Repository\TransactionRepository;
+use App\Billing\Entity\ContenuDevis;
+use App\Billing\Entity\Devis;
+use App\Billing\Entity\PaiementDevis;
+use App\Billing\Entity\Transaction;
+use App\Billing\Repository\DevisRepository;
+use App\Billing\Repository\ModeDePaiementRepository;
+use App\Billing\Repository\PaiementDevisRepository;
+use App\Billing\Repository\TransactionRepository;
+use App\Patient\Entity\Patient;
 use DateTimeInterface;
 use Doctrine\ORM\EntityManagerInterface;
 

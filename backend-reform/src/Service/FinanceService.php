@@ -2,14 +2,14 @@
 
 namespace App\Service;
 
-use App\Entity\ChargeFixe;
-use App\Entity\Devis;
-use App\Entity\ModeDePaiement;
-use App\Entity\PaiementDevis;
-use App\Entity\Transaction;
-use App\Repository\ChargeFixeRepository;
-use App\Repository\ModeDePaiementRepository;
-use App\Repository\TransactionRepository;
+use App\Billing\Entity\ChargeFixe;
+use App\Billing\Entity\Devis;
+use App\Billing\Entity\ModeDePaiement;
+use App\Billing\Entity\PaiementDevis;
+use App\Billing\Entity\Transaction;
+use App\Billing\Repository\ChargeFixeRepository;
+use App\Billing\Repository\ModeDePaiementRepository;
+use App\Billing\Repository\TransactionRepository;
 use DateTime;
 use DateTimeImmutable;
 use DateTimeInterface;

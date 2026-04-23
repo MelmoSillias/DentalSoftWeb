@@ -2,8 +2,8 @@
 
 namespace App\Service;
 
-use App\Entity\Salle;
-use App\Repository\SalleRepository;
+use App\Scheduling\Entity\Salle;
+use App\Scheduling\Repository\SalleRepository;
 use Doctrine\ORM\EntityManagerInterface;
 
 class SalleService

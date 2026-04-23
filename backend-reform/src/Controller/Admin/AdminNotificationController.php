@@ -28,7 +28,7 @@ class AdminNotificationController extends AbstractController
             $priority = $data['priority'] ?? NotificationPriority::INFO;
             $emitter = $this->getUser();
 
-            $notificationService->notifyUsers($recipients, $message, $link, $priority, $emitter instanceof \App\Entity\User ? $emitter : null);
+            $notificationService->notifyUsers($recipients, $message, $link, $priority, $emitter instanceof \App\IdentityAccess\Entity\User ? $emitter : null);
 
             $this->addFlash('success', 'Notifications envoyées avec succès.');
 

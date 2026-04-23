@@ -2,9 +2,10 @@
 
 namespace App\Service;
 
-use App\Repository\BookingRepository;
-use App\Repository\EmployeRepository;
-use App\Repository\RdvRepository;
+use App\IdentityAccess\Repository\EmployeRepository;
+use App\Scheduling\Entity\Booking;
+use App\Scheduling\Repository\BookingRepository;
+use App\Scheduling\Repository\RdvRepository;
 use Doctrine\ORM\EntityManagerInterface;
 
 class AgendaService
@@ -98,7 +99,7 @@ class AgendaService
             return ['error' => 'endAt ne peut pas être avant beginAt', 'status' => 400];
         }
 
-        $booking = new \App\Entity\Booking();
+        $booking = new Booking();
         $booking->setBeginAt($beginAt)
             ->setEndAt($endAt)
             ->setTitle($data['title'])

@@ -8,10 +8,10 @@ use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Doctrine\ORM\EntityManagerInterface;
-use App\Entity\User;
-use App\Entity\Employe;
-use App\Repository\UserRepository;
-use App\Repository\EmployeRepository;
+use App\IdentityAccess\Entity\User;
+use App\IdentityAccess\Entity\Employe;
+use App\IdentityAccess\Repository\UserRepository;
+use App\IdentityAccess\Repository\EmployeRepository;
 use App\Form\UserType;
 
 final class UserController extends AbstractController

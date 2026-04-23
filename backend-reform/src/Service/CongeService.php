@@ -2,11 +2,11 @@
 
 namespace App\Service;
 
-use App\Entity\Conge;
-use App\Entity\User;
+use App\Scheduling\Entity\Conge;
+use App\IdentityAccess\Entity\User;
 use App\Event\EntityActionEvent;
-use App\Repository\CongeRepository;
-use App\Repository\EmployeRepository;  
+use App\Scheduling\Repository\CongeRepository;
+use App\IdentityAccess\Repository\EmployeRepository;
 use App\Service\NotificationRecipientResolver;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;

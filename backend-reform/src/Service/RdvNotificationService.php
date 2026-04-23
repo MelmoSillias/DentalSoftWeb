@@ -2,8 +2,8 @@
 
 namespace App\Service;
 
-use App\Entity\Rdv;
-use App\Entity\User;
+use App\Scheduling\Entity\Rdv;
+use App\IdentityAccess\Entity\User;
 use App\Event\EntityActionEvent;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 

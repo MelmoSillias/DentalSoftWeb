@@ -2,9 +2,9 @@
 
 namespace App\Service;
  
-use App\Entity\Employe;
-use App\Entity\User as EntityUser;
-use App\Repository\EmployeRepository;
+use App\IdentityAccess\Entity\Employe;
+use App\IdentityAccess\Entity\User as EntityUser;
+use App\IdentityAccess\Repository\EmployeRepository;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
 use InvalidArgumentException;

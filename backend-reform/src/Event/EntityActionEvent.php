@@ -2,7 +2,7 @@
 
 namespace App\Event;
 
-use App\Entity\User;
+use App\IdentityAccess\Entity\User;
 
 final class EntityActionEvent
 {

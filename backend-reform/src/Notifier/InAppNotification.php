@@ -2,9 +2,9 @@
 
 namespace App\Notifier;
 
-use App\Entity\Consultation;
-use App\Entity\Patient;
-use App\Entity\User;
+use App\CareDelivery\Entity\Consultation;
+use App\IdentityAccess\Entity\User;
+use App\Patient\Entity\Patient;
 use App\Enum\NotificationPriority;
 use Symfony\Component\Notifier\Notification\Notification;
 use Symfony\Component\Notifier\Recipient\RecipientInterface;

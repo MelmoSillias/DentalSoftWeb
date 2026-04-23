@@ -2,9 +2,9 @@
 
 namespace App\Controller;
 
-use App\Entity\Notification;
-use App\Entity\User;
-use App\Repository\NotificationRepository;
+use App\Communication\Entity\Notification;
+use App\Communication\Repository\NotificationRepository;
+use App\IdentityAccess\Entity\User;
 use App\Service\NotificationService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;

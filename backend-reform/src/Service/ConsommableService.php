@@ -2,14 +2,14 @@
 
 namespace App\Service;
 
-use App\Entity\Consommable;
-use App\Entity\Employe;
-use App\Entity\Stock;
-use App\Entity\User;
+use App\IdentityAccess\Entity\Employe;
+use App\IdentityAccess\Entity\User;
 use App\Event\EntityActionEvent;
-use App\Repository\ConsommableRepository;
-use App\Repository\EmployeRepository;
-use App\Repository\StockRepository;
+use App\Inventory\Entity\Consommable;
+use App\Inventory\Entity\Stock;
+use App\Inventory\Repository\ConsommableRepository;
+use App\Inventory\Repository\StockRepository;
+use App\IdentityAccess\Repository\EmployeRepository;
 use DateTime;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;

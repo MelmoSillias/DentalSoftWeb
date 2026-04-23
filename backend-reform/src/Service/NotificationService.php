@@ -2,10 +2,10 @@
 
 namespace App\Service;
 
-use App\Entity\Notification;
-use App\Entity\User;
+use App\Communication\Entity\Notification;
+use App\Communication\Repository\NotificationRepository;
+use App\IdentityAccess\Entity\User;
 use App\Enum\NotificationPriority;
-use App\Repository\NotificationRepository;
 use Doctrine\ORM\EntityManagerInterface;
 
 final class NotificationService

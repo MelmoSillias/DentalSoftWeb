@@ -2,7 +2,7 @@
 
 namespace App\Controller\Admin;
 
-use App\Entity\User;
+use App\IdentityAccess\Entity\User;
 use App\Form\ManualNotificationType;
 use App\Service\NotificationService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;

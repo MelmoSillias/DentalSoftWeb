@@ -2,12 +2,12 @@
 
 namespace App\Service;
 
-use App\Entity\Patient;
-use App\Entity\SmsLog;
-use App\Entity\SmsQueue;
-use App\Repository\PatientRepository;
-use App\Repository\SmsLogRepository;
-use App\Repository\SmsQueueRepository;
+use App\Communication\Entity\SmsLog;
+use App\Communication\Entity\SmsQueue;
+use App\Communication\Repository\SmsLogRepository;
+use App\Communication\Repository\SmsQueueRepository;
+use App\Patient\Entity\Patient;
+use App\Patient\Repository\PatientRepository;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 

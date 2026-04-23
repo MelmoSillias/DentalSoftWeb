@@ -2,9 +2,9 @@
 
 namespace App\Controller\Api;
 
-use App\Entity\Rdv;
-use App\Entity\User;
-use App\Repository\EmployeRepository;
+use App\Scheduling\Entity\Rdv;
+use App\IdentityAccess\Entity\User;
+use App\IdentityAccess\Repository\EmployeRepository;
 use App\Service\RdvService;
 use DateTime;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;

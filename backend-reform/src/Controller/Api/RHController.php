@@ -2,8 +2,8 @@
 
 namespace App\Controller\Api;
 
-use App\Entity\Conge;
-use App\Entity\Employe;
+use App\Scheduling\Entity\Conge;
+use App\IdentityAccess\Entity\Employe;
 use App\Service\EmployeeService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;

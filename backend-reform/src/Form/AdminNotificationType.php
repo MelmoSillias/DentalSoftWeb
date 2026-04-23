@@ -2,7 +2,7 @@
 
 namespace App\Form;
 
-use App\Entity\User;
+use App\IdentityAccess\Entity\User;
 use App\Enum\NotificationPriority;
 use Symfony\Bridge\Doctrine\Form\Type\EntityType;
 use Symfony\Component\Form\AbstractType;

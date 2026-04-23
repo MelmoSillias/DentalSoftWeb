@@ -2,8 +2,8 @@
 
 namespace App\Controller\Api;
 
-use App\Entity\ModeDePaiement;
-use App\Repository\ModeDePaiementRepository;
+use App\Billing\Entity\ModeDePaiement;
+use App\Billing\Repository\ModeDePaiementRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;

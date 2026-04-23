@@ -2,7 +2,7 @@
 
 namespace App\Service;
 
-use App\Entity\User;
+use App\IdentityAccess\Entity\User;
 use App\Mercure\NotificationTopicGenerator;
 
 final class MercureAuthorizationService

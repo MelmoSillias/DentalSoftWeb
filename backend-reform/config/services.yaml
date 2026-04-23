@@ -21,6 +21,15 @@ services:
         exclude:
             - '../src/DependencyInjection/'
             - '../src/Entity/'
+            - '../src/Patient/Entity/'
+            - '../src/ClinicalRecord/Entity/'
+            - '../src/CareDelivery/Entity/'
+            - '../src/IdentityAccess/Entity/'
+            - '../src/Scheduling/Entity/'
+            - '../src/Billing/Entity/'
+            - '../src/Communication/Entity/'
+            - '../src/Inventory/Entity/'
+            - '../src/Settings/Entity/'
             - '../src/Kernel.php'
     
     

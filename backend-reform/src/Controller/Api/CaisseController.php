@@ -2,10 +2,10 @@
 
 namespace App\Controller\Api;
 
-use App\Entity\Devis;
-use App\Entity\PaiementDevis;
-use App\Entity\Patient;
-use App\Repository\PaiementDevisRepository;
+use App\Billing\Entity\Devis;
+use App\Billing\Entity\PaiementDevis;
+use App\Billing\Repository\PaiementDevisRepository;
+use App\Patient\Entity\Patient;
 use App\Service\CashdeskService;
 use App\Service\SmsService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;

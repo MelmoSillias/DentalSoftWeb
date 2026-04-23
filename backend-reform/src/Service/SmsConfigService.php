@@ -2,8 +2,8 @@
 
 namespace App\Service;
 
-use App\Entity\SmsProviderConfig;
-use App\Repository\SmsProviderConfigRepository;
+use App\Communication\Entity\SmsProviderConfig;
+use App\Communication\Repository\SmsProviderConfigRepository;
 use Doctrine\ORM\EntityManagerInterface;
 
 final class SmsConfigService

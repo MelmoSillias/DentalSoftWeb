@@ -2,7 +2,7 @@
 
 namespace App\Controller\Api\Report;
 
-use App\Entity\Employe;
+use App\IdentityAccess\Entity\Employe;
 use App\Service\ReportService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;

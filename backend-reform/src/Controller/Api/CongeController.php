@@ -2,7 +2,7 @@
 
 namespace App\Controller\Api;
 
-use App\Entity\User;
+use App\IdentityAccess\Entity\User;
 use App\Service\CongeService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
