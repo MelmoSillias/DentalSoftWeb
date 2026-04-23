@@ -226,6 +226,21 @@ class ConsultationService
         ];
     }
 
+    public function getFicheById(int $ficheId): FicheObservation|FicheMedicale
+    {
+        $ficheObs = $this->em->getRepository(FicheObservation::class)->find($ficheId);
+        if ($ficheObs) {
+            return $ficheObs;
+        }
+
+        $ficheMed = $this->em->getRepository(FicheMedicale::class)->find($ficheId);
+        if ($ficheMed) {
+            return $ficheMed;
+        }
+
+        throw new NotFoundHttpException("Fiche {$ficheId} introuvable");
+    }
+
     public function getFicheAndConsultation(int $ficheId, int $consultationId, ?object $user = null, bool $restrictToMedecin = false): array
     {
         $consultation = $this->em->getRepository(Consultation::class)->find($consultationId);
@@ -402,9 +417,13 @@ class ConsultationService
         ];
     }
 
-    public function updateMotif(int $ficheId, int $consultationId, array $data): void
+    public function updateMotif(int $ficheId, array $data): void
     {
-        [$fiche,] = $this->getFicheAndConsultation($ficheId, $consultationId);
+        $fiche = $this->getFicheById($ficheId);
+        if ($fiche instanceof FicheMedicale) {
+            throw new \InvalidArgumentException('Utilisez le service FicheMedicale pour cette fiche.');
+        }
+
         $fiche
             ->setMotif($data['motif'] ?? $fiche->getMotif())
             ->setHistoireMaladie($data['histoireMaladie'] ?? $fiche->getHistoireMaladie())
@@ -412,9 +431,12 @@ class ConsultationService
         $this->em->flush();
     }
 
-    public function updateExamens(int $ficheId, int $consultationId, array $data): void
+    public function updateExamens(int $ficheId, array $data): void
     {
-        [$fiche,] = $this->getFicheAndConsultation($ficheId, $consultationId);
+        $fiche = $this->getFicheById($ficheId);
+        if ($fiche instanceof FicheMedicale) {
+            throw new \InvalidArgumentException('Utilisez le service FicheMedicale pour cette fiche.');
+        }
 
         $fiche
             ->setExoInspection($data['exoInspection'] ?? '')
@@ -436,9 +458,12 @@ class ConsultationService
         $this->em->flush();
     }
 
-    public function updateTraitements(int $ficheId, int $consultationId, array $data, array $files): void
+    public function updateTraitements(int $ficheId, array $data, array $files): void
     {
-        [$fiche,] = $this->getFicheAndConsultation($ficheId, $consultationId);
+        $fiche = $this->getFicheById($ficheId);
+        if ($fiche instanceof FicheMedicale) {
+            throw new \InvalidArgumentException('Utilisez le service FicheMedicale pour cette fiche.');
+        }
 
         $fiche
             ->setTraitementUrgence($data['traitementUrgence'] ?? '')
@@ -514,9 +539,12 @@ class ConsultationService
         $this->em->flush();
     }
 
-    public function updateDevis(int $ficheId, int $consultationId, array $data): void
+    public function updateDevis(int $ficheId, array $data): void
     {
-        [$fiche,] = $this->getFicheAndConsultation($ficheId, $consultationId);
+        $fiche = $this->getFicheById($ficheId);
+        if ($fiche instanceof FicheMedicale) {
+            throw new \InvalidArgumentException('Utilisez le service FicheMedicale pour cette fiche.');
+        }
 
         $oldDevis = $this->devisRepo->findOneBy(['fiche' => $fiche, 'type' => 0]);
         $devis = $oldDevis ?? new Devis();

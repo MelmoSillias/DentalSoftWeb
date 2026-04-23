@@ -471,10 +471,10 @@ const handleSubmit = (event) => {
                     <span v-if="selectedInsuranceMethod">Assureur sélectionné : {{ selectedInsuranceMethod.libelle }}.</span>
                 </div>
             </div>
-            <div class="md:col-span-2 flex flex-col gap-2">
+            <!-- <div class="md:col-span-2 flex flex-col gap-2">
                 <label class="font-semibold">Notes</label>
                 <Textarea v-model="form.notes" rows="3" auto-resize placeholder="Notes supplémentaires" />
-            </div>
+            </div> -->
         </div>
         <div class="flex gap-2 justify-end">
             <Button type="button" label="Annuler" severity="secondary" @click="emit('cancel')" />

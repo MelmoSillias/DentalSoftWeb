@@ -13,29 +13,29 @@ export const loadConsultationForm = async (ficheId, consultId, token) => {
     return res.data;
 };
 
-export const saveMotif = async (ficheId, consultId, payload, token) => {
-    const res = await axios.post(`${apiPrefix}/fiches/${ficheId}/consultations/${consultId}/motif`, payload, {
+export const saveMotif = async (ficheId, payload, token) => {
+    const res = await axios.post(`${apiPrefix}/fiches/${ficheId}/motif`, payload, {
         headers: authHeaders(token)
     });
     return res.data;
 };
 
-export const saveExamens = async (ficheId, consultId, payload, token) => {
-    const res = await axios.post(`${apiPrefix}/fiches/${ficheId}/consultations/${consultId}/examens`, payload, {
+export const saveExamens = async (ficheId, payload, token) => {
+    const res = await axios.post(`${apiPrefix}/fiches/${ficheId}/examens`, payload, {
         headers: authHeaders(token)
     });
     return res.data;
 };
 
-export const saveTraitementsDocuments = async (ficheId, consultId, payload, token) => {
-    const res = await axios.post(`${apiPrefix}/fiches/${ficheId}/consultations/${consultId}/traitements`, payload, {
+export const saveTraitementsDocuments = async (ficheId, payload, token) => {
+    const res = await axios.post(`${apiPrefix}/fiches/${ficheId}/traitements`, payload, {
         headers: authHeaders(token)
     });
     return res.data;
 };
 
-export const saveDevis = async (ficheId, consultId, payload, token) => {
-    const res = await axios.post(`${apiPrefix}/fiches/${ficheId}/consultations/${consultId}/devis`, payload, {
+export const saveDevis = async (ficheId, payload, token) => {
+    const res = await axios.post(`${apiPrefix}/fiches/${ficheId}/devis`, payload, {
         headers: authHeaders(token)
     });
     return res.data;

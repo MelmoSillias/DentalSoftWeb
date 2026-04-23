@@ -447,7 +447,7 @@ const saveMotifSection = async ({ silent = false } = {}) => {
     if (!dirty.motif) return;
     setSaving('motif', true);
     try {
-        await saveMotif(ficheId.value, consultId.value, data.motif, token);
+        await saveMotif(ficheId.value, data.motif, token);
         clearDirty(['motif']);
         if (!silent) toast.add({ severity: 'success', summary: 'Motif enregistré', life: 2000 });
     } catch (error) {
@@ -466,7 +466,7 @@ const saveExamensSection = async ({ silent = false } = {}) => {
     if (!dirty.examens) return;
     setSaving('examens', true);
     try {
-        await saveExamens(ficheId.value, consultId.value, data.examens, token);
+        await saveExamens(ficheId.value, data.examens, token);
         clearDirty(['examens']);
         if (!silent) toast.add({ severity: 'success', summary: 'Examens enregistrés', life: 2000 });
     } catch (error) {
@@ -485,7 +485,7 @@ const saveTraitementsSection = async ({ silent = false } = {}) => {
     if (!dirty.traitements) return;
     setSaving('traitements', true);
     try {
-        await saveTraitementsDocuments(ficheId.value, consultId.value, data.traitements, token);
+        await saveTraitementsDocuments(ficheId.value, data.traitements, token);
         clearDirty(['traitements']);
         if (!silent) toast.add({ severity: 'success', summary: 'Traitements enregistrés', life: 2000 });
     } catch (error) {
@@ -508,7 +508,7 @@ const saveDevisSection = async ({ silent = false } = {}) => {
             date: formatDateApi(data.devis.date),
             contenus: (data.devis.services || []).map((s) => ({ designation: s.designation, qte: s.qte || 1, montant: s.montant || 0 }))
         };
-        await saveDevis(ficheId.value, consultId.value, payload, token);
+        await saveDevis(ficheId.value, payload, token);
         clearDirty(['devis']);
         if (!silent) toast.add({ severity: 'success', summary: 'Devis enregistré', life: 2000 });
     } catch (error) {

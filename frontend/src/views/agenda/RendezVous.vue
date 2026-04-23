@@ -11,9 +11,9 @@ import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'v
 import DailyView from '@/components/agenda/day/DailyView.vue';
 import StatusLegend from '@/components/agenda/shared/StatusLegend.vue';
 import CancelRdvDialog from '@/components/agenda/shared/CancelRdvDialog.vue';
-import CreateRdvDialog from '@/components/agenda/shared/CreateRdvDialog.vue';
 import ReportRdvDialog from '@/components/agenda/shared/ReportRdvDialog.vue';
 import ValidateRdvDialog from '@/components/agenda/shared/ValidateRdvDialog.vue';
+import FormRendezVous from '@/components/patients/FormRendezVous.vue';
 import WeeklyView from '@/components/agenda/week/WeeklyView.vue';
 import { GUIDED_TOUR_START_EVENT } from '@/tours';
 import { createAgendaRendezvousTour } from '@/tours/agendaRendezvousTour';
@@ -21,7 +21,6 @@ import { startTourGuide } from '@/tours/tourGuideClient';
 import { scheduleAppointmentReminderSms, sendAppointmentReminderSms } from '@/services/smsService';
 import { useRdvApi } from '@/composables/useRdvApi';
 import { useAuthStore } from '@/stores/auth';
-import { addMinutes } from '@/utils/dateUtils';
 import { useLayout } from '@/layout/composables/layout';
 import Dialog from 'primevue/dialog';
 import InputText from 'primevue/inputtext';
@@ -111,7 +110,6 @@ const hasOpenDialogs = computed(() => (
 
 const createDefaults = reactive({
 	start: new Date(),
-	end: addMinutes(new Date(), 30),
 	medecinId: null
 });
 
@@ -123,20 +121,17 @@ const notify = (detail, severity = 'success') => {
 
 const openCreate = (payload = {}) => {
 	const start = payload.start ? new Date(payload.start) : new Date();
-	const end = payload.end ? new Date(payload.end) : addMinutes(start, 30);
 	createDefaults.start = start;
-	createDefaults.end = end;
 	createDefaults.medecinId = isMedecinUser.value
 		? connectedMedecinId.value
 		: (payload.medecin?.id ?? payload.medecinId ?? null);
 	dialogState.create = true;
 };
 
-const submitCreate = async (payload) => {
-	actionLoading.value = true;
+const submitCreate = async () => {
 	try {
-		await api.createRdv(payload);
 		notify('Rendez-vous créé');
+		dialogState.create = false;
 		refreshKey.value += 1;
 		nextTick(() => {
 			weeklyViewRef.value?.reloadOnAction?.();
@@ -144,8 +139,6 @@ const submitCreate = async (payload) => {
 	} catch (err) {
 		notify("Création impossible", 'error');
 		console.error(err);
-	} finally {
-		actionLoading.value = false;
 	}
 };
 
@@ -286,7 +279,6 @@ const resetTourDialogs = () => {
 const openTourCreateDialog = () => {
 	openCreate({
 		start: new Date(),
-		end: addMinutes(new Date(), 30),
 		medecinId: isMedecinUser.value ? connectedMedecinId.value : null
 	});
 };
@@ -404,17 +396,33 @@ onBeforeUnmount(() => {
 		</Tabs>
 
 		<div data-tour="agenda-rdv.dialogs">
-		<CreateRdvDialog
-			v-model:visible="dialogState.create"
-			:medecins="scopedMedecinsList"
-			:defaultDate="createDefaults.start"
-			:defaultMedecinId="createDefaults.medecinId"
-			:lockedMedecinId="isMedecinUser ? connectedMedecinId : null"
-			:medecinReadonly="isMedecinUser"
-			:loading="actionLoading"
-			:searchPatients="api.searchPatients"
-			@submit="submitCreate"
-		/>
+		<Dialog v-model:visible="dialogState.create" modal :style="{ width: '45rem' }" :pt="{
+			root: 'rounded-2xl',
+			header: 'bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900 dark:to-surface-800 px-6 py-4 border-b',
+			content: 'p-0 mt-4'
+		}">
+			<template #header>
+				<div class="flex items-center gap-3">
+					<div class="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+						<i class="fas fa-calendar-plus text-blue-600 dark:text-blue-400"></i>
+					</div>
+					<div>
+						<h4 class="m-0 text-surface-900 dark:text-surface-100">Nouveau rendez-vous</h4>
+						<p class="text-sm text-surface-500 dark:text-surface-400 mt-1">
+							Planifiez un rendez-vous depuis l'agenda
+						</p>
+					</div>
+				</div>
+			</template>
+			<FormRendezVous
+				:initial-date="createDefaults.start"
+				:initial-medecin-id="createDefaults.medecinId"
+				:locked-medecin-id="isMedecinUser ? connectedMedecinId : null"
+				:medecin-readonly="isMedecinUser"
+				@saved="submitCreate"
+				@cancel="dialogState.create = false"
+			/>
+		</Dialog>
 
 		<ValidateRdvDialog
 			v-model:visible="dialogState.validate"

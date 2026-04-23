@@ -216,7 +216,7 @@ onMounted(async () => {
 </script>
 
 <template>
-    <div class="space-y-6 pb-6">
+    <div class="space-y-6 pb-6 ml-4">
         <!-- Header Section -->
         <div class="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900/50">
             <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">

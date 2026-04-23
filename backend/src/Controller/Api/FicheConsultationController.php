@@ -11,7 +11,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 
-#[Route('/api/fiches/{ficheId}/consultations/{consultationId}', name: 'api_fiche_consultation_')]
+#[Route('/api/fiches/{ficheId}', name: 'api_fiche_consultation_')]
 class FicheConsultationController extends AbstractController
 {
     public function __construct(private ConsultationService $consultationService, private FicheMedicaleService $ficheMedicaleService) {}
@@ -21,7 +21,7 @@ class FicheConsultationController extends AbstractController
         return $this->isGranted('ROLE_MEDECIN') && !$this->isGranted('ROLE_ADMIN');
     }
 
-    #[Route('/json', name: 'json', methods: ['GET'])]
+    #[Route('/consultations/{consultationId}/json', name: 'json', methods: ['GET'])]
     public function getJson(int $ficheId, int $consultationId): JsonResponse
     {
         [$fiche, $consult] = $this->consultationService->getFicheAndConsultation(
@@ -52,83 +52,63 @@ class FicheConsultationController extends AbstractController
     }
 
     #[Route('/motif', methods: ['POST'], name: 'update_motif')]
-    public function updateMotif(Request $request, int $ficheId, int $consultationId): JsonResponse
+    public function updateMotif(Request $request, int $ficheId): JsonResponse
     {
         $data = json_decode($request->getContent(), true) ?? [];
-        [$fiche, ] = $this->consultationService->getFicheAndConsultation(
-            $ficheId,
-            $consultationId,
-            $this->getUser(),
-            $this->restrictToConnectedMedecin(),
-        );
+        $fiche = $this->consultationService->getFicheById($ficheId);
 
         if ($fiche instanceof FicheMedicale) {
             $this->ficheMedicaleService->updateEntretien($ficheId, $data);
         } else {
-            $this->consultationService->updateMotif($ficheId, $consultationId, $data);
+            $this->consultationService->updateMotif($ficheId, $data);
         }
         return new JsonResponse(['success' => true]);
     }
 
     #[Route('/examens', methods: ['POST'], name: 'update_examens')]
-    public function updateExamens(Request $request, int $ficheId, int $consultationId): JsonResponse
+    public function updateExamens(Request $request, int $ficheId): JsonResponse
     {
         $data = json_decode($request->getContent(), true) ?? [];
-        [$fiche, ] = $this->consultationService->getFicheAndConsultation(
-            $ficheId,
-            $consultationId,
-            $this->getUser(),
-            $this->restrictToConnectedMedecin(),
-        );
+        $fiche = $this->consultationService->getFicheById($ficheId);
 
         if ($fiche instanceof FicheMedicale) {
             $this->ficheMedicaleService->updateExamens($ficheId, $data);
         } else {
-            $this->consultationService->updateExamens($ficheId, $consultationId, $data);
+            $this->consultationService->updateExamens($ficheId, $data);
         }
         return new JsonResponse(['success' => true]);
     }
 
     #[Route('/traitements', methods: ['POST'], name: 'update_traitements')]
-    public function updateTraitements(Request $request, int $ficheId, int $consultationId): JsonResponse
+    public function updateTraitements(Request $request, int $ficheId): JsonResponse
     {
         $data  = json_decode($request->get('data'), true) ?? [];
         $files = $request->files->get('documentsFiles', []);
-        [$fiche, ] = $this->consultationService->getFicheAndConsultation(
-            $ficheId,
-            $consultationId,
-            $this->getUser(),
-            $this->restrictToConnectedMedecin(),
-        );
+        $fiche = $this->consultationService->getFicheById($ficheId);
 
         if ($fiche instanceof FicheMedicale) {
             $this->ficheMedicaleService->updateDocuments($ficheId, $data, $files ?: []);
         } else {
-            $this->consultationService->updateTraitements($ficheId, $consultationId, $data, $files ?: []);
+            $this->consultationService->updateTraitements($ficheId, $data, $files ?: []);
         }
         return new JsonResponse(['success' => true]);
     }
 
     #[Route('/devis', methods: ['POST'], name: 'update_devis')]
-    public function updateDevis(Request $request, int $ficheId, int $consultationId): JsonResponse
+    public function updateDevis(Request $request, int $ficheId): JsonResponse
     {
         $data = json_decode($request->getContent(), true) ?? [];
-        [$fiche, ] = $this->consultationService->getFicheAndConsultation(
-            $ficheId,
-            $consultationId,
-            $this->getUser(),
-            $this->restrictToConnectedMedecin(),
-        );
+        $fiche = $this->consultationService->getFicheById($ficheId);
 
         if ($fiche instanceof FicheMedicale) {
             $this->ficheMedicaleService->updateDevis($ficheId, $data);
         } else {
-            $this->consultationService->updateDevis($ficheId, $consultationId, $data);
+            $this->consultationService->updateDevis($ficheId, $data);
         }
         return new JsonResponse(['success' => true]);
     }
 
-    #[Route('', methods: ['POST'], name: 'update')]
+    #[Route('/consultations/{consultationId}', methods: ['POST'], name: 'update')]
     public function update(Request $request, int $ficheId, int $consultationId): JsonResponse
     {
         $data = json_decode($request->getContent(), true) ?? [];
@@ -149,7 +129,7 @@ class FicheConsultationController extends AbstractController
         return new JsonResponse(['success' => true]);
     }
 
-    #[Route('/cloture', methods: ['POST'], name: 'cloture')]
+    #[Route('/consultations/{consultationId}/cloture', methods: ['POST'], name: 'cloture')]
     public function close(Request $request, int $ficheId, int $consultationId): JsonResponse
     {
         try {

@@ -99,6 +99,15 @@ const navigation = {
     }
 };
 
+const canAccessWorkflowSettings = computed(() => (auth.user?.roles || []).includes('ROLE_ADMIN'));
+
+const visibleNavigation = computed(() => {
+    if (canAccessWorkflowSettings.value) return navigation;
+    return {
+        appearance: navigation.appearance
+    };
+});
+
 const extractApiError = (error, fallback) => {
     return error?.response?.data?.error
         || error?.response?.data?.message
@@ -115,6 +124,7 @@ const normalizeLines = (value) => {
 };
 
 const scrollToSection = async (category, sectionId) => {
+    if (!visibleNavigation.value?.[category]) return;
     activeCategory.value = category;
     activeSubSection.value = sectionId;
     await nextTick();
@@ -127,7 +137,8 @@ const scrollToSection = async (category, sectionId) => {
 // Setup intersection observer for scroll spy
 const setupObserver = () => {
     const sections = [];
-    for (const [category, data] of Object.entries(navigation)) {
+    observer?.disconnect();
+    for (const [category, data] of Object.entries(visibleNavigation.value)) {
         for (const section of data.sections) {
             sections.push({ id: `${category}-${section.id}`, category, sectionId: section.id });
         }
@@ -159,6 +170,10 @@ const saveAppearance = () => {
 };
 
 const loadGeneralSettings = async (force = false) => {
+    if (!canAccessWorkflowSettings.value) {
+        generalSettingsLoaded.value = true;
+        return;
+    }
     if (!force && generalSettingsLoaded.value) return;
 
     generalLoading.value = true;
@@ -181,6 +196,7 @@ const loadGeneralSettings = async (force = false) => {
 };
 
 const saveDevicePolicyAction = async () => {
+    if (!canAccessWorkflowSettings.value) return;
     savingStates.devicePolicy = true;
     try {
         await saveGeneralSettings({
@@ -198,6 +214,7 @@ const saveDevicePolicyAction = async () => {
 };
 
 const saveTransactionMotifsAction = async () => {
+    if (!canAccessWorkflowSettings.value) return;
     savingStates.transactionMotifs = true;
     try {
         await saveGeneralSettings({
@@ -215,6 +232,7 @@ const saveTransactionMotifsAction = async () => {
 };
 
 const saveSoinsCatalogAction = async () => {
+    if (!canAccessWorkflowSettings.value) return;
     savingStates.soinsCatalog = true;
     try {
         await saveGeneralSettings({ soinsList: normalizeLines(soinsCatalog.text) }, token);
@@ -247,8 +265,21 @@ const currentFontSizeLabel = computed(() => fontSizeOptions.value.find((option) 
 const currentSurfaceName = computed(() => layoutConfig.surface || (isDarkTheme.value ? 'zinc' : 'slate'));
 const canAccessSmsSettings = computed(() => (auth.user?.roles || []).includes('ROLE_ADMIN'));
 
+watch(canAccessWorkflowSettings, async (allowed) => {
+    if (!allowed && activeCategory.value === 'workflow') {
+        activeCategory.value = 'appearance';
+        activeSubSection.value = 'overview';
+    }
+    await nextTick();
+    setupObserver();
+}, { immediate: true });
+
 onMounted(async () => {
-    await loadGeneralSettings(true);
+    if (canAccessWorkflowSettings.value) {
+        await loadGeneralSettings(true);
+    } else {
+        generalSettingsLoaded.value = true;
+    }
     setupObserver();
     window.addEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
 });
@@ -289,7 +320,7 @@ onBeforeUnmount(() => {
             <aside class="settings-sidebar">
                 <div class="settings-nav-card">
                     <nav class="settings-nav">
-                        <div v-for="(category, key) in navigation" :key="key" class="settings-nav-group">
+						<div v-for="(category, key) in visibleNavigation" :key="key" class="settings-nav-group">
                             <div class="settings-nav-group-header">
                                 <i :class="category.icon" class="settings-nav-icon"></i>
                                 <span>{{ category.label }}</span>
@@ -480,7 +511,7 @@ onBeforeUnmount(() => {
                     </div>
 
                     <!-- Workflow Section -->
-                    <div class="settings-category">
+                    <div v-if="canAccessWorkflowSettings" class="settings-category">
                         <div class="settings-category-header">
                             <div class="settings-category-title">
                                 <i class="pi pi-briefcase"></i>

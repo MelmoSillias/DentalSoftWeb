@@ -28,6 +28,17 @@ const sexes = [
     { label: 'Femme', value: 'Femme' }
 ];
 
+const groups = [
+    { label: 'A+', value: 'A+' },
+    { label: 'A-', value: 'A-' },
+    { label: 'B+', value: 'B+' },
+    { label: 'B-', value: 'B-' },
+    { label: 'AB+', value: 'AB+' },
+    { label: 'AB-', value: 'AB-' },
+    { label: 'O+', value: 'O+' },
+    { label: 'O-', value: 'O-' }
+];
+
 const form = reactive({
     nom: '',
     prenom: '',
@@ -188,7 +199,7 @@ const handleSubmit = (event) => {
         <ConfirmPopup />
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div class="flex flex-col gap-2">
-                <label for="nom" class="font-semibold">Nom</label>
+                <label for="nom" class="font-semibold"> <span class="text-red-500">*</span> Nom</label>
                 <InputText id="nom" v-model="form.nom" placeholder="Nom" />
             </div>
             <div class="flex flex-col gap-2">
@@ -196,13 +207,9 @@ const handleSubmit = (event) => {
                 <InputText id="prenom" v-model="form.prenom" placeholder="Prénom" />
             </div>
             <div class="flex flex-col gap-2">
-                <label for="telephone" class="font-semibold">Téléphone</label>
+                <label for="telephone" class="font-semibold"> <span class="text-red-500">*</span> Téléphone</label>
                 <InputText id="telephone" v-model="form.telephone" placeholder="Téléphone" />
-            </div>
-            <div class="flex flex-col gap-2">
-                <label for="email" class="font-semibold">Email</label>
-                <InputText id="email" v-model="form.email" placeholder="Email" />
-            </div>
+            </div> 
             <div class="flex flex-col gap-2">
                 <label for="adresse" class="font-semibold">Adresse</label>
                 <InputText id="adresse" v-model="form.adresse" placeholder="Adresse" />
@@ -225,10 +232,10 @@ const handleSubmit = (event) => {
                 <InputText id="date-naissance" v-model="form.dateNaissance" type="date"
                     placeholder="Date de naissance" />
             </div>
-            <div class="flex flex-col gap-2">
+            <!-- <div class="flex flex-col gap-2">
                 <label for="groupe" class="font-semibold">Groupe sanguin</label>
                 <InputText id="groupe" v-model="form.groupeSanguin" placeholder="Ex: O+" />
-            </div>
+            </div> -->
             <div class="flex flex-col gap-2 md:col-span-2">
                 <label class="font-semibold">Contact d'urgence</label>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -237,13 +244,8 @@ const handleSubmit = (event) => {
                     <InputText id="urgence-lien" v-model="form.contactUrgence.lienParente"
                         placeholder="Lien de parenté" />
                 </div>
-            </div>
-            <div class="md:col-span-2 flex flex-col gap-2">
-                <label for="notes" class="font-semibold">Notes</label>
-                <Textarea id="notes" v-model="form.notes" rows="3" autoResize
-                    placeholder="Informations complémentaires" />
-            </div>
-            <div class="md:col-span-2 flex flex-col gap-3 rounded-xl p-4">
+            </div> 
+            <!-- <div class="md:col-span-2 flex flex-col gap-3 rounded-xl p-4">
                 <Accordion value="">
                     <AccordionPanel value="0">
                         <AccordionHeader> <i class="pi pi-send"></i> Communication SMS</AccordionHeader>
@@ -282,7 +284,7 @@ const handleSubmit = (event) => {
                     </AccordionPanel> 
                 </Accordion> 
                 
-            </div>
+            </div> -->
         </div>
         <div class="flex gap-2 justify-end">
             <Button type="button" label="Annuler" severity="secondary" @click="emit('cancel')" />

@@ -450,7 +450,7 @@ const patientHistoryState = (consultation) => {
 </script>
 
 <template>
-    <section class="min-h-screen p-0 transition-colors duration-300">
+    <section class="min-h-screen p-0 ml-4 transition-colors duration-300">
         <Toast />
         <ConfirmPopup group="focus-cancel-consultation" />
 

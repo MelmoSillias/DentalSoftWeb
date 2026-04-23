@@ -19,6 +19,22 @@ const props = defineProps({
     patientId: {
         type: [Number, String],
         default: null
+    },
+    initialDate: {
+        type: Date,
+        default: () => new Date()
+    },
+    initialMedecinId: {
+        type: [Number, String],
+        default: null
+    },
+    lockedMedecinId: {
+        type: [Number, String],
+        default: null
+    },
+    medecinReadonly: {
+        type: Boolean,
+        default: false
     }
 });
 
@@ -39,7 +55,7 @@ const isMedecinUser = computed(() => Boolean(auth.user?.roles?.includes('ROLE_ME
 
 const form = reactive({
     motif: '',
-    dateRdv: new Date(),
+    dateRdv: props.initialDate ? new Date(props.initialDate) : new Date(),
     notes: '',
     duration: 30
 });
@@ -86,6 +102,34 @@ watch(
     () => [props.patient, props.patientId],
     () => {
         selectedPatientId.value = props.patient?.id ?? props.patientId ?? null;
+    },
+    { immediate: true }
+);
+
+watch(
+    () => props.initialDate,
+    (value) => {
+        form.dateRdv = value ? new Date(value) : new Date();
+    },
+    { immediate: true }
+);
+
+watch(
+    () => props.initialMedecinId,
+    (value) => {
+        if (value !== null && value !== undefined) {
+            selectedMedecinId.value = value;
+        }
+    },
+    { immediate: true }
+);
+
+watch(
+    () => props.lockedMedecinId,
+    (value) => {
+        if (value !== null && value !== undefined) {
+            selectedMedecinId.value = value;
+        }
     },
     { immediate: true }
 );
@@ -170,6 +214,8 @@ watch(
     { immediate: true }
 );
 
+const isMedecinLocked = computed(() => isMedecinUser.value || props.medecinReadonly);
+
 const saveRendezVous = async () => {
     if (!selectedPatientId.value) {
         toast.add({ severity: 'warn', summary: 'Patient requis', detail: 'Sélectionnez un patient.', life: 2500 });
@@ -199,7 +245,7 @@ const saveRendezVous = async () => {
     loading.value = true;
     try {
         const payload = {
-            medecin_id: selectedMedecinId.value,
+            medecin_id: props.medecinReadonly ? (props.lockedMedecinId ?? selectedMedecinId.value) : selectedMedecinId.value,
             date: dateStr,
             time: timeStr,
             duration,
@@ -211,8 +257,11 @@ const saveRendezVous = async () => {
         emit('saved', saved);
         form.motif = '';
         form.notes = '';
-        form.dateRdv = new Date();
+        form.dateRdv = props.initialDate ? new Date(props.initialDate) : new Date();
         form.duration = 30;
+        if (!isPatientPreselected.value) {
+            selectedPatientId.value = null;
+        }
     } catch (error) {
         console.error('Erreur lors de la création du rendez-vous', error);
         toast.add({ severity: 'error', summary: 'Erreur', detail: "Impossible de créer le rendez-vous.", life: 3000 });
@@ -250,7 +299,7 @@ const handleSubmit = (event) => {
             <div class="flex flex-col gap-2">
                 <label class="font-semibold">Médecin</label>
                 <Select v-model="selectedMedecinId" :options="medecinOptions" optionLabel="label" optionValue="value"
-                    placeholder="Choisir un médecin" class="w-full" :disabled="isMedecinUser" />
+                    placeholder="Choisir un médecin" class="w-full" :disabled="isMedecinLocked" />
             </div>
             <div class="flex flex-col gap-2">
                 <label class="font-semibold">Durée (minutes)</label>

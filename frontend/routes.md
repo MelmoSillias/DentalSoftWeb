@@ -55,10 +55,10 @@
 - `api_consultation_facture_update` — `PUT` → `/api/consultations/{consultation}/facture/update`
 - `api_consultation_details` — `GET` → `/api/admin/consultation/{id}/details`
 - `api_fiche_consultation_json` — `GET` → `/api/fiches/{ficheId}/consultations/{consultationId}/json`
-- `api_fiche_consultation_update_motif` — `POST` → `/api/fiches/{ficheId}/consultations/{consultationId}/motif`
-- `api_fiche_consultation_update_examens` — `POST` → `/api/fiches/{ficheId}/consultations/{consultationId}/examens`
-- `api_fiche_consultation_update_traitements` — `POST` → `/api/fiches/{ficheId}/consultations/{consultationId}/traitements`
-- `api_fiche_consultation_update_devis` — `POST` → `/api/fiches/{ficheId}/consultations/{consultationId}/devis`
+- `api_fiche_consultation_update_motif` — `POST` → `/api/fiches/{ficheId}/motif`
+- `api_fiche_consultation_update_examens` — `POST` → `/api/fiches/{ficheId}/examens`
+- `api_fiche_consultation_update_traitements` — `POST` → `/api/fiches/{ficheId}/traitements`
+- `api_fiche_consultation_update_devis` — `POST` → `/api/fiches/{ficheId}/devis`
 - `api_fiche_consultation_update` — `POST` → `/api/fiches/{ficheId}/consultations/{consultationId}`
 - `api_fiche_consultation_cloture` — `POST` → `/api/fiches/{ficheId}/consultations/{consultationId}/cloture`
 - `api_consultation_check_active` — `GET` → `/api/patient/{id}/consultation-en-cours`

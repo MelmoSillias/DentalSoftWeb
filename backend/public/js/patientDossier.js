@@ -867,7 +867,7 @@ function renderRdvs() {
     // — Envois AJAX vers les nouvelles routes
     function sendMotifUpdate() {
       $.ajax({
-        url: `/api/fiche/${ficheId}/consultation/${consultId}/update-motif`,
+        url: `/api/fiches/${ficheId}/motif`,
         method: 'POST',
         contentType: 'application/json',
         data: JSON.stringify(collectMotifData()),
@@ -885,7 +885,7 @@ function renderRdvs() {
   
     function sendExamensUpdate() {
       $.ajax({
-        url: `/api/fiche/${ficheId}/consultation/${consultId}/update-examens`,
+        url: `/api/fiches/${ficheId}/examens`,
         method: 'POST',
         contentType: 'application/json',
         data: JSON.stringify(collectExamensData()),
@@ -903,7 +903,7 @@ function renderRdvs() {
   
     function sendTraitementsUpdate() {
       $.ajax({
-        url: `/api/fiche/${ficheId}/consultation/${consultId}/update-traitements`,
+        url: `/api/fiches/${ficheId}/traitements`,
         method: 'POST',
         processData: false,
         contentType: false,
@@ -922,7 +922,7 @@ function renderRdvs() {
   
     function sendDevisUpdate() {
       $.ajax({
-        url: `/api/fiche/${ficheId}/consultation/${consultId}/update-devis`,
+        url: `/api/fiches/${ficheId}/devis`,
         method: 'POST',
         contentType: 'application/json',
         data: JSON.stringify(collectDevisData()),
@@ -1022,3 +1022,4 @@ function renderRdvs() {
     });
 
 });
+

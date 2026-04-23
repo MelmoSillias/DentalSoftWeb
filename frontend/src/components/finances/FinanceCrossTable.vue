@@ -59,6 +59,41 @@ const formatWeekRange = (week) => {
 
     return `du ${start.toLocaleDateString('fr-FR')} au ${end.toLocaleDateString('fr-FR')}`;
 };
+
+const getCellDate = (week, weekday) => {
+    if (!week?.startDate || !week?.endDate || !weekday) {
+        return null;
+    }
+
+    const start = new Date(`${week.startDate}T00:00:00`);
+    const end = new Date(`${week.endDate}T00:00:00`);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+        return null;
+    }
+
+    const cursor = new Date(start);
+    while (cursor <= end) {
+        const cursorWeekday = cursor.getDay() === 0 ? 7 : cursor.getDay();
+        if (cursorWeekday === Number(weekday)) {
+            return cursor;
+        }
+        cursor.setDate(cursor.getDate() + 1);
+    }
+
+    return null;
+};
+
+const formatCellDate = (week, weekday) => {
+    const date = getCellDate(week, weekday);
+    if (!date) {
+        return '';
+    }
+
+    return date.toLocaleDateString('fr-FR', {
+        day: '2-digit',
+        month: '2-digit'
+    });
+};
 </script>
 
 <template>
@@ -107,18 +142,18 @@ const formatWeekRange = (week) => {
                 <table class="min-w-full border-separate border-spacing-0 overflow-hidden rounded-2xl text-sm">
                     <thead>
                         <tr>
-                            <th class="sticky left-0 z-10 bg-surface-900 px-4 py-4 text-left font-semibold uppercase tracking-wide text-white">
+                            <th class="sticky left-0 z-10 bg-surface-500 px-4 py-4 text-left font-semibold uppercase tracking-wide text-white dark:bg-surface-900">
                                 Jours de la semaine
                             </th>
                             <th
                                 v-for="week in weeks"
                                 :key="week.index"
-                                class="min-w-[180px] bg-surface-900 px-4 py-4 text-center font-semibold uppercase tracking-wide text-white"
+                                class="min-w-[180px] bg-surface-500 px-4 py-4 text-center font-semibold uppercase tracking-wide text-white dark:bg-surface-900"
                             >
                                 <div>{{ week.label }}</div>
                                 <div class="mt-1 text-xs font-normal normal-case text-surface-200">{{ formatWeekRange(week) }}</div>
                             </th>
-                            <th class="bg-surface-900 px-4 py-4 text-center font-semibold uppercase tracking-wide text-white">
+                            <th class=" bg-surface-900 px-4 py-4 text-center font-semibold uppercase tracking-wide text-white dark:bg-surface-900">
                                 Total
                             </th>
                         </tr>
@@ -128,8 +163,13 @@ const formatWeekRange = (week) => {
                             <th class="sticky left-0 bg-inherit px-4 py-3 text-left text-base font-semibold text-primary-600 dark:text-primary-300">
                                 {{ row.label }}
                             </th>
-                            <td v-for="(value, index) in row.values" :key="`${row.weekday}-${index}`" class="px-4 py-3 text-center font-medium text-surface-900 dark:text-surface-100">
-                                {{ formatFcfa(value) }}
+                            <td v-for="(value, index) in row.values" :key="`${row.weekday}-${index}`" class="px-4 py-3 text-surface-900 dark:text-surface-100">
+                                <div class="relative flex min-h-[5.5rem] items-center justify-center">
+                                    <span class="text-center text-base font-medium leading-snug">{{ formatFcfa(value) }}</span>
+                                    <span class="absolute bottom-0 right-0 text-xs font-semibold uppercase tracking-wide text-surface-500 dark:text-surface-400">
+                                        {{ formatCellDate(weeks[index], row.weekday) }}
+                                    </span>
+                                </div>
                             </td>
                             <td class="px-4 py-3 text-center font-semibold text-surface-900 dark:text-surface-50 min-w-[120px]">
                                 {{ formatFcfa(row.total) }}
@@ -155,6 +195,6 @@ const formatWeekRange = (week) => {
 
 <style scoped>  
     :deep(table td) {
-        height: 3rem !important;
+        height: 6.5rem !important;
     }
 </style>
