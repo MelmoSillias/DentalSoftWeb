@@ -122,16 +122,19 @@ $(document).ready(function () {
                     if (response.success) {
                         showToastModal({
                             message: 'Consultation créée avec succès !',
-                            type: 'success'
+                            type: 'success',
+                            duration: formData.payant === "1" && response.paiement_id ? 10000 : 1500,
+                            actionLabel: formData.payant === "1" && response.paiement_id ? 'Imprimer le ticket' : '',
+                            action: formData.payant === "1" && response.paiement_id
+                                ? function () {
+                                    const receiptUrl = `/api/receipts/${response.paiement_id}/print`;
+                                    const printWindow = window.open(receiptUrl, '_blank');
+                                    if (printWindow) {
+                                        printWindow.focus();
+                                    }
+                                }
+                                : null
                         });
-
-                        setTimeout(() => {
-                            if (formData.payant === "1" && response.paiement_id) {
-                                const receiptUrl = `/api/receipts/${response.paiement_id}/print`;
-                                const printWindow = window.open(receiptUrl, '_blank');
-                                printWindow.focus();
-                            }
-                        }, 3000)
 
                     } else {
                         showToastModal({

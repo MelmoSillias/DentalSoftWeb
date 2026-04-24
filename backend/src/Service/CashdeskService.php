@@ -23,6 +23,7 @@ class CashdeskService
         private TransactionRepository $transactionRepo,
         private EntityManagerInterface $em,
         private GlobalSettingsService $globalSettingsService,
+        private FocusRealtimePublisher $focusRealtimePublisher,
     ) {
     }
 
@@ -635,6 +636,7 @@ class CashdeskService
 
         $this->em->persist($devis);
         $this->em->flush();
+        $this->focusRealtimePublisher->publishDevisRefresh($devis, 'payment-updated');
 
         return ['success' => true, 'paiement_id' => $createdPayment?->getId()];
     }
@@ -688,6 +690,7 @@ class CashdeskService
 
         $this->em->persist($devis);
         $this->em->flush();
+        $this->focusRealtimePublisher->publishDevisRefresh($devis, 'payments-reset');
 
         return ['success' => true];
     }

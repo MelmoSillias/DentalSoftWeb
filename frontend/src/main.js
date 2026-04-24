@@ -7,6 +7,7 @@ import ToastService from 'primevue/toastservice';
 import { registerSW } from 'virtual:pwa-register';
 import { createApp } from 'vue';
 import App from './App.vue';
+import AppToast from '@/components/AppToast.vue';
 import router from './router';
 import { useUiSettingsStore } from '@/stores/uiSettings';
 import cabinetConfig from '@/cabinetConfig';
@@ -184,6 +185,7 @@ uiSettings.initialize();
 app.use(router);
 app.use(ToastService);
 app.use(ConfirmationService);
+app.component('AppToast', AppToast);
 
 const updateSW = registerSW({
     onNeedRefresh() {

@@ -296,12 +296,30 @@ function showToastModal({
 message,
 type = 'info',
 icon,
-duration = 1500
+duration = 1500,
+actionLabel = '',
+action = null
 } = {}) {
 const $dialog = $('#genericModalDialog');
 const $content = $('#genericModalContent');
 const $iconEl = $('#genericModalIcon');
 const $msgEl = $('#genericModalMessage');
+let $actionWrap = $('#genericModalActionWrap');
+
+if (!$actionWrap.length) {
+$msgEl.after(`
+<div id="genericModalActionWrap" class="mt-3 d-none">
+<button type="button" id="genericModalActionButton" class="btn btn-light btn-sm">
+<i class="fas fa-print mr-1"></i>
+<span id="genericModalActionLabel"></span>
+</button>
+</div>
+`);
+$actionWrap = $('#genericModalActionWrap');
+}
+
+const $actionButton = $('#genericModalActionButton');
+const $actionLabel = $('#genericModalActionLabel');
 
 // 1. Choix du style
 const bgClasses = {
@@ -324,12 +342,32 @@ $iconEl.attr('class', (icon || iconClasses[type] || iconClasses.info) + ' fa-3x 
 // 3. Message
 $msgEl.text(message);
 
-// 4. Affichage
+// 4. Action facultative
+$actionButton.off('click');
+if (actionLabel && typeof action === 'function') {
+$actionLabel.text(actionLabel);
+$actionButton
+.removeClass('btn-light btn-dark')
+.addClass(type === 'warning' ? 'btn-dark' : 'btn-light')
+.on('click', function () {
+$('#genericModal').modal('hide');
+action();
+});
+$actionWrap.removeClass('d-none');
+} else {
+$actionLabel.text('');
+$actionWrap.addClass('d-none');
+}
+
+// 5. Affichage
 $('#genericModal').modal('show');
 
-// 5. Fermeture automatique si demandé
+// 6. Fermeture automatique si demandé
+if (window.genericToastModalTimeout) {
+clearTimeout(window.genericToastModalTimeout);
+}
 if (duration > 0) {
-setTimeout(() => $('#genericModal').modal('hide'), duration);
+window.genericToastModalTimeout = setTimeout(() => $('#genericModal').modal('hide'), duration);
 }
 }
 			</script>

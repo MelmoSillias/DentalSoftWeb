@@ -40,6 +40,8 @@ export const normalizePatient = (raw = {}) => ({
     lieuNaissance: raw.lieuNaissance ?? raw.lieu_naissance ?? '',
     groupeSanguin: raw.groupeSanguin ?? raw.groupe_sanguin ?? '',
     notes: raw.notes ?? '',
+    dateInscription: raw.dateInscription ?? raw.date_inscription ?? raw.createdAt ?? raw.created_at ?? '',
+    createdAt: raw.createdAt ?? raw.created_at ?? raw.dateInscription ?? raw.date_inscription ?? '',
     contactUrgence: raw.contactUrgence ?? raw.contact_urgence ?? null,
     smsPreferences: raw.smsPreferences ?? {
         patientCreated: raw.smsPatientCreated ?? false,
@@ -86,7 +88,26 @@ export const createPatient = async (payload, token) => {
     }
 
     const res = await axios.post(`${apiPrefix}/patient/add`, payload, { headers: authHeaders(token) });
-    return normalizePatient(res.data);
+    const createdPatientId = res.data?.patientId ?? res.data?.id ?? null;
+    if (!createdPatientId) {
+        return normalizePatient(res.data);
+    }
+
+    return fetchPatientById(createdPatientId, token);
+};
+
+export const fetchAllPatients = async (token) => {
+    if (isPatientsTourMockEnabled()) {
+        const data = listPatientsTourMock({ page: 1, limit: 1000, q: '', sortField: null, sortOrder: null });
+        const items = Array.isArray(data?.items) ? data.items : Array.isArray(data) ? data : [];
+        return items.map(normalizePatient);
+    }
+
+    const res = await axios.get(`${apiPrefix}/patients`, {
+        headers: authHeaders(token)
+    });
+    const items = Array.isArray(res.data?.items) ? res.data.items : Array.isArray(res.data) ? res.data : [];
+    return items.map(normalizePatient);
 };
 
 export const fetchPatientsByMedecin = async (token, { page = 1, limit = 10, q = '', sortField = null, sortOrder = null } = {}) => {
@@ -109,10 +130,10 @@ export const updatePatient = async (patientId, payload, token) => {
         return data ? normalizePatient(data) : null;
     }
 
-    const res = await axios.post(`${apiPrefix}/patient/${patientId}/update`, payload, {
+    await axios.post(`${apiPrefix}/patient/${patientId}/update`, payload, {
         headers: authHeaders(token)
     });
-    return normalizePatient(res.data);
+    return fetchPatientById(patientId, token);
 };
 
 export const searchPatients = async (query, token, limit = 20) => {

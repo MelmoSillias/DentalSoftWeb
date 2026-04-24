@@ -21,6 +21,7 @@ import TabPanels from 'primevue/tabpanels';
 import Tabs from 'primevue/tabs';
 import Tag from 'primevue/tag';
 import { useSmsAdminSettings } from '@/composables/useSmsAdminSettings';
+import { getHttpErrorMessage } from '@/service/http';
 
 const toast = useToast();
 const token = localStorage.getItem('token');
@@ -39,12 +40,7 @@ const tabItems = [
     { value: 'manual', label: 'Envoi Manuel', icon: 'pi pi-send' }
 ];
 
-const extractApiError = (error, fallback) => {
-    return error?.response?.data?.error
-        || error?.response?.data?.message
-        || error?.message
-        || fallback;
-};
+const extractApiError = (error, fallback) => getHttpErrorMessage(error, fallback);
 
 const {
     smsLoading,
@@ -216,7 +212,7 @@ onMounted(async () => {
 </script>
 
 <template>
-    <div class="space-y-6 pb-6 ml-4">
+    <div class="space-y-6 pb-6 ml-8">
         <!-- Header Section -->
         <div class="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900/50">
             <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">

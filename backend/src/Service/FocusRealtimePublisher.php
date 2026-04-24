@@ -3,6 +3,8 @@
 namespace App\Service;
 
 use App\Entity\Consultation;
+use App\Entity\Devis;
+use App\Entity\Patient;
 use App\Mercure\NotificationTopicGenerator;
 use App\Repository\UserRepository;
 use Psr\Log\LoggerInterface;
@@ -44,6 +46,75 @@ final class FocusRealtimePublisher
             'updatedAt' => (new \DateTimeImmutable())->format(DATE_ATOM),
         ];
 
+        $this->publishPayload(
+            $payload,
+            sprintf('focus-consultation-%s-%d', $action, $consultationId),
+            'focus-consultation',
+            [
+                'consultationId' => $consultationId,
+                'action' => $action,
+            ]
+        );
+    }
+
+    public function publishPatientRefresh(Patient $patient, string $action = 'updated'): void
+    {
+        $patientId = $patient->getId();
+        if ($patientId === null) {
+            return;
+        }
+
+        $payload = [
+            'entity' => 'patient',
+            'action' => $action,
+            'patientId' => $patientId,
+            'updatedAt' => (new \DateTimeImmutable())->format(DATE_ATOM),
+        ];
+
+        $this->publishPayload(
+            $payload,
+            sprintf('focus-patient-%s-%d', $action, $patientId),
+            'focus-patient',
+            [
+                'patientId' => $patientId,
+                'action' => $action,
+            ]
+        );
+    }
+
+    public function publishDevisRefresh(Devis $devis, string $action = 'updated'): void
+    {
+        $devisId = $devis->getId();
+        if ($devisId === null) {
+            return;
+        }
+
+        $consultation = $devis->getConsultation();
+        $patient = $consultation?->getPatient() ?? $devis->getFicheMedicale()?->getPatient() ?? $devis->getFiche()?->getPatient();
+
+        $payload = [
+            'entity' => 'devis',
+            'action' => $action,
+            'devisId' => $devisId,
+            'consultationId' => $consultation?->getId(),
+            'patientId' => $patient?->getId(),
+            'updatedAt' => (new \DateTimeImmutable())->format(DATE_ATOM),
+        ];
+
+        $this->publishPayload(
+            $payload,
+            sprintf('focus-devis-%s-%d', $action, $devisId),
+            'focus-devis',
+            [
+                'devisId' => $devisId,
+                'action' => $action,
+            ]
+        );
+    }
+
+    private function publishPayload(array $payload, string $updateId, string $eventName, array $logContext = []): void
+    {
+
         $users = [];
         foreach ($this->userRepository->findByRoles(self::TARGET_ROLES) as $user) {
             $userId = $user->getId() ?? spl_object_id($user);
@@ -61,18 +132,16 @@ final class FocusRealtimePublisher
                     $topic,
                     json_encode($payload, JSON_THROW_ON_ERROR),
                     false,
-                    sprintf('focus-consultation-%s-%d', $action, $consultationId),
-                    'focus-consultation'
+                    $updateId,
+                    $eventName
                 );
 
                 $this->hub->publish($update);
             } catch (\Throwable $exception) {
                 $this->logger->warning('Impossible de publier la mise a jour Focus sur Mercure.', [
                     'exception' => $exception,
-                    'consultationId' => $consultationId,
-                    'action' => $action,
                     'userId' => $user->getId(),
-                ]);
+                ] + $logContext);
             }
         }
     }

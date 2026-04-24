@@ -841,7 +841,7 @@ const handlePrintOrdonnance = async (ordo) => {
 <template>
     <div class="min-h-screen p-4 md:p-6 lg:p-8 transition-colors duration-300">
         <ConfirmDialog />
-        <Toast />
+        <AppToast />
 
         <!-- Header Section -->
         <div class="mb-6 md:mb-8">

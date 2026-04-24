@@ -16,6 +16,38 @@ const axios = http;
 
 const authHeaders = (token) => (token ? { Authorization: `Bearer ${token}` } : {});
 
+const normalizeFocusPatient = (raw = {}) => ({
+    id: raw.id,
+    nom: raw.nom ?? '',
+    prenom: raw.prenom ?? '',
+    fullname: raw.fullname ?? `${raw.prenom ?? ''} ${raw.nom ?? ''}`.trim(),
+    telephone: raw.telephone ?? '',
+    createdAt: raw.createdAt ?? raw.created_at ?? raw.dateInscription ?? raw.date_inscription ?? null,
+});
+
+const normalizeFocusBilling = (raw = {}) => ({
+    invoiceId: raw.invoiceId ?? raw.id ?? null,
+    total: Number(raw.total ?? raw.montant ?? 0) || 0,
+    remaining: Number(raw.remaining ?? raw.reste ?? 0) || 0,
+    state: raw.state ?? { label: 'Aucune facture', severity: 'contrast' },
+    lines: Array.isArray(raw.lines) ? raw.lines.map((line) => ({
+        id: line.id,
+        label: line.label ?? line.designation ?? 'Soin',
+        quantity: Number(line.quantity ?? line.qte ?? 1) || 1,
+        unitPrice: Number(line.unitPrice ?? line.montant ?? 0) || 0,
+        total: Number(line.total ?? line.montantTotal ?? 0) || 0,
+    })) : [],
+    payments: Array.isArray(raw.payments) ? raw.payments.map((payment) => ({
+        id: payment.id ?? payment.pId ?? null,
+        montant: Number(payment.montant ?? 0) || 0,
+        mode: payment.mode ?? null,
+        date: payment.date ?? payment.createdAt ?? null,
+        rolePaiement: payment.rolePaiement ?? 'direct',
+        type: payment.type ?? 'paiement',
+        status: payment.status ?? 'validated',
+    })) : [],
+});
+
 export const normalizeConsultation = (raw = {}) => {
     const patient = raw.patient ?? null;
     const patientName = (raw.patientName ?? raw.patient_name ?? `${patient?.prenom ?? ''} ${patient?.nom ?? ''}`.trim()) || patient?.nom || '';
@@ -89,6 +121,34 @@ export const fetchConsultationsByDate = async (date, token) => {
 
     const payload = Array.isArray(res.data) ? res.data : Array.isArray(res.data?.data) ? res.data.data : [];
     return payload.map((c) => normalizeConsultation(c));
+};
+
+export const fetchFocusReceptionData = async (date, token) => {
+    if (isConsultationsTourMockEnabled()) {
+        return {
+            consultations: fetchConsultationsByDateTourMock(date).map((c) => normalizeConsultation(c)),
+            recentPatients: [],
+            billingByConsultation: {},
+        };
+    }
+
+    const res = await axios.get(`${apiPrefix}/focus/reception`, {
+        headers: authHeaders(token),
+        params: { date }
+    });
+
+    const payload = res.data ?? {};
+    const consultations = Array.isArray(payload.consultations) ? payload.consultations.map((c) => normalizeConsultation(c)) : [];
+    const recentPatients = Array.isArray(payload.recentPatients) ? payload.recentPatients.map((patient) => normalizeFocusPatient(patient)) : [];
+    const billingByConsultation = Object.fromEntries(
+        Object.entries(payload.billingByConsultation ?? {}).map(([consultationId, billing]) => [Number(consultationId), normalizeFocusBilling(billing)])
+    );
+
+    return {
+        consultations,
+        recentPatients,
+        billingByConsultation,
+    };
 };
 
 export const fetchConsultationDetails = async (consultationId, token) => {

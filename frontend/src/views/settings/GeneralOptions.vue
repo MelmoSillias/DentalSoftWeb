@@ -17,6 +17,7 @@ import { GUIDED_TOUR_START_EVENT } from '@/tours';
 import { createSettingsApparenceTour } from '@/tours/settingsApparenceTour';
 import { startTourGuide } from '@/tours/tourGuideClient';
 import { fetchGeneralSettings, saveGeneralSettings } from '@/services/globalSettingsService';
+import { getHttpErrorMessage } from '@/service/http';
 import cabinetConfig from '@/cabinetConfig';
 
 const router = useRouter();
@@ -108,12 +109,7 @@ const visibleNavigation = computed(() => {
     };
 });
 
-const extractApiError = (error, fallback) => {
-    return error?.response?.data?.error
-        || error?.response?.data?.message
-        || error?.message
-        || fallback;
-};
+const extractApiError = (error, fallback) => getHttpErrorMessage(error, fallback);
 
 const normalizeLines = (value) => {
     const unique = new Set();

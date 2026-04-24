@@ -2,12 +2,19 @@
 
 namespace App\Service;
 
+use App\Dto\Focus\FocusReceptionBillingDto;
+use App\Dto\Focus\FocusReceptionConsultationDto;
+use App\Dto\Focus\FocusReceptionInvoiceLineDto;
+use App\Dto\Focus\FocusReceptionPatientDto;
+use App\Dto\Focus\FocusReceptionPayloadDto;
+use App\Dto\Focus\FocusReceptionPaymentDto;
 use App\Entity\ActeMedical;
 use App\Entity\Allergy;
 use App\Entity\Antecedent;
 use App\Entity\Consultation;
 use App\Entity\Ordonnance;
 use App\Entity\OrdonnanceLigne;
+use App\Entity\Patient;
 use App\Entity\ContenuDevis;
 use App\Entity\Devis;
 use App\Entity\DocumentMedical;
@@ -170,6 +177,178 @@ class ConsultationService
                 'lastFicheVersion' => $ficheData['lastFicheVersion'],
             ];
         }, $consultations);
+    }
+
+    private function resolveDayBounds(?string $dateStr): array
+    {
+        $date = $dateStr ? (\DateTime::createFromFormat('Y-m-d', $dateStr) ?: new \DateTime()) : new \DateTime();
+
+        return [
+            (clone $date)->setTime(0, 0, 0),
+            (clone $date)->setTime(23, 59, 59),
+        ];
+    }
+
+    private function getConsultationsForDay(?string $dateStr, $user): array
+    {
+        [$start, $end] = $this->resolveDayBounds($dateStr);
+
+        $qb = $this->em->createQueryBuilder()
+            ->select('c', 'p', 'm', 'f')
+            ->from(Consultation::class, 'c')
+            ->join('c.patient', 'p')
+            ->leftJoin('c.medecin', 'm')
+            ->leftJoin('c.facture', 'f')
+            ->where('c.CreatedAt BETWEEN :start AND :end')
+            ->orderBy('c.CreatedAt', 'ASC')
+            ->setParameter('start', $start)
+            ->setParameter('end', $end);
+
+        if ($user instanceof User && in_array('ROLE_MEDECIN', $user->getRoles(), true)) {
+            $medecin = $this->employeRepo->FindOneBy(['user' => $user]);
+            if ($medecin) {
+                $qb->andWhere('(m = :medecin OR m IS NULL)')
+                    ->setParameter('medecin', $medecin);
+            }
+        }
+
+        return $qb->getQuery()->getResult();
+    }
+
+    private function resolveFocusFactState(?Devis $facture): ?int
+    {
+        if (!$facture) {
+            return null;
+        }
+
+        if ($facture->getStatut() == 0 && (int) $facture->getMontant() === (int) $facture->getReste()) {
+            return 0;
+        }
+
+        return 1;
+    }
+
+    private function buildFocusConsultationDto(Consultation $consultation, int $counter): FocusReceptionConsultationDto
+    {
+        $ficheData = $this->resolvePendingFicheData($consultation);
+        $patient = $consultation->getPatient();
+
+        return new FocusReceptionConsultationDto([
+            'id' => $consultation->getId(),
+            'numero' => $counter,
+            'patient' => [
+                'id' => $patient->getId(),
+                'nom' => $patient->getNom(),
+                'prenom' => $patient->getPrenom(),
+                'telephone' => $patient->getTelephone(),
+            ],
+            'patientName' => $patient->getFullName(),
+            'patientId' => $patient->getId(),
+            'medecin' => $consultation->getMedecin()?->getFullName(),
+            'createdAt' => $consultation->getCreatedAt()?->format(DATE_ATOM),
+            'motif' => $ficheData['motif'],
+            'factstate' => $this->resolveFocusFactState($consultation->getFacture()),
+            'state' => $consultation->getStatut(),
+            'hasFiche' => $ficheData['hasFiche'],
+            'ficheId' => $ficheData['ficheId'],
+            'ficheType' => $ficheData['ficheType'],
+            'ficheVersion' => $ficheData['ficheVersion'],
+            'lastFicheId' => $ficheData['lastFicheId'],
+            'lastFicheType' => $ficheData['lastFicheType'],
+            'lastFicheVersion' => $ficheData['lastFicheVersion'],
+        ]);
+    }
+
+    private function buildFocusPatientDto(Patient $patient): FocusReceptionPatientDto
+    {
+        return new FocusReceptionPatientDto(
+            $patient->getId(),
+            $patient->getNom() ?? '',
+            $patient->getPrenom() ?? '',
+            $patient->getFullName(),
+            $patient->getTelephone(),
+            $patient->getDateInscription()?->format(DATE_ATOM),
+        );
+    }
+
+    private function buildFocusBillingDto(Devis $facture): FocusReceptionBillingDto
+    {
+        $lines = array_map(
+            static fn (ContenuDevis $line) => new FocusReceptionInvoiceLineDto(
+                $line->getId() ?? 0,
+                $line->getDesignation() ?? 'Soin',
+                $line->getQte(),
+                $line->getMontant(),
+                $line->getMontantTotal(),
+            ),
+            $facture->getContenus()->toArray()
+        );
+
+        $payments = $facture->getPaiements()->toArray();
+        usort($payments, static function (PaiementDevis $left, PaiementDevis $right): int {
+            $leftTime = $left->getDate()?->getTimestamp() ?? 0;
+            $rightTime = $right->getDate()?->getTimestamp() ?? 0;
+
+            if ($leftTime === $rightTime) {
+                return ($right->getId() ?? 0) <=> ($left->getId() ?? 0);
+            }
+
+            return $rightTime <=> $leftTime;
+        });
+
+        $paymentDtos = array_map(
+            static fn (PaiementDevis $payment) => new FocusReceptionPaymentDto(
+                $payment->getId() ?? 0,
+                $payment->getMontant(),
+                $payment->getMode()?->getLibelle(),
+                $payment->getDate()?->format(DATE_ATOM),
+                $payment->getRolePaiement(),
+                'paiement',
+                $payment->getTransaction()?->getValidationStatus() ?? 'validated',
+            ),
+            $payments
+        );
+
+        return new FocusReceptionBillingDto(
+            $facture->getId() ?? 0,
+            (float) $facture->getMontant(),
+            (float) $facture->getReste(),
+            [
+                'label' => $facture->getReste() <= 0 && $facture->getMontant() > 0 ? 'Facture reglee' : ((float) $facture->getMontant() <= 0 ? 'Facture vide' : 'Facture ouverte'),
+                'severity' => $facture->getReste() <= 0 && $facture->getMontant() > 0 ? 'success' : ((float) $facture->getMontant() <= 0 ? 'contrast' : 'warn'),
+            ],
+            $lines,
+            $paymentDtos,
+        );
+    }
+
+    public function getReceptionFocusData(?string $dateStr, $user): FocusReceptionPayloadDto
+    {
+        [$start, $end] = $this->resolveDayBounds($dateStr);
+        $consultations = $this->getConsultationsForDay($dateStr, $user);
+
+        $consultationDtos = [];
+        $billingByConsultation = [];
+        $counter = 1;
+
+        foreach ($consultations as $consultation) {
+            $consultationDtos[] = $this->buildFocusConsultationDto($consultation, $counter++);
+            if ($consultation->getFacture()) {
+                $billingByConsultation[(string) $consultation->getId()] = $this->buildFocusBillingDto($consultation->getFacture());
+            }
+        }
+
+        $recentPatients = $this->em->getRepository(Patient::class)->createQueryBuilder('p')
+            ->where('p.dateInscription BETWEEN :start AND :end')
+            ->orderBy('p.dateInscription', 'DESC')
+            ->setParameter('start', $start)
+            ->setParameter('end', $end)
+            ->getQuery()
+            ->getResult();
+
+        $patientDtos = array_map(fn (Patient $patient) => $this->buildFocusPatientDto($patient), $recentPatients);
+
+        return new FocusReceptionPayloadDto($consultationDtos, $patientDtos, $billingByConsultation);
     }
 
     public function getPendingConsultationsContextForUser(?object $user, bool $restrictToMedecin): array
@@ -1201,30 +1380,7 @@ class ConsultationService
 
     public function consultationsDuJour(?string $dateStr, $user): array
     {
-        $date = $dateStr ? (\DateTime::createFromFormat('Y-m-d', $dateStr) ?: new \DateTime()) : new \DateTime();
-
-        $start = (clone $date)->setTime(0, 0, 0);
-        $end = (clone $date)->setTime(23, 59, 59);
-
-        $qb = $this->em->createQueryBuilder()
-            ->select('c')
-            ->from(Consultation::class, 'c')
-            ->join('c.patient', 'p')
-            ->leftJoin('c.medecin', 'm')
-            ->where('c.CreatedAt BETWEEN :start AND :end')
-            ->orderBy('c.CreatedAt', 'ASC')
-            ->setParameter('start', $start)
-            ->setParameter('end', $end);
-
-        if ($user instanceof User && in_array('ROLE_MEDECIN', $user->getRoles(), true)) {
-            $medecin = $this->employeRepo->FindOneBy(['user' => $user]);
-            if ($medecin) {
-                $qb->andWhere('(m = :medecin OR m IS NULL)')
-                    ->setParameter('medecin', $medecin);
-            }
-        }
-
-        $consultations = $qb->getQuery()->getResult();
+        $consultations = $this->getConsultationsForDay($dateStr, $user);
 
         $data = [];
         $counter = 1;
@@ -1237,7 +1393,7 @@ class ConsultationService
                 'patientId' => $c->getPatient()->getId(),
                 'medecin' => $c->getMedecin()?->getFullName(),
                 'createdAt' => $c->getCreatedAt()->format('d/m/Y H:i'),
-                'factstate' => $c->getFacture() ? ($c->getFacture()?->getStatut() == 0 && (int) $c->getFacture()->getMontant() === (int) $c->getFacture()->getReste() ? 0 : 1) : null,
+                'factstate' => $this->resolveFocusFactState($c->getFacture()),
                 'state' => $c->getStatut(),
                 'hasFiche' => $ficheData['hasFiche'],
                 'fiche' => $ficheData['fiche'],

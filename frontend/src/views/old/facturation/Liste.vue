@@ -258,6 +258,7 @@ const addPayment = async () => {
     }
 
     try {
+        const clientPaymentAmount = Number(newMontant.value) || 0;
         const response = await http.post(
             `${apiPrefix}/factures/${selectedInvoice.value.id}/payer`,
             {
@@ -300,7 +301,7 @@ const addPayment = async () => {
             summary: 'Succès',
             detail: 'Paiement ajouté avec succès.',
             life: 10000,
-            data: paiementId
+            data: paiementId && clientPaymentAmount > 0
                 ? {
                     actionLabel: 'Imprimer le reçu',
                     action: () => printReceiptByPaymentId(paiementId)
@@ -702,7 +703,7 @@ onMounted(() => {
         </Dialog>
 
         <!-- Toast & Confirm -->
-        <Toast />
+        <AppToast />
         <ConfirmDialog />
     </div>
 </template>

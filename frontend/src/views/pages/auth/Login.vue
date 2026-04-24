@@ -149,13 +149,13 @@ const onSubmit = async () => {
                         <div v-if="errorMessage" class="auth_error">{{ errorMessage }}</div>
                     </transition>
 
-                    <div class="auth_meta">
+                    <!-- <div class="auth_meta">
                         <div class="remember_group">
                             <Checkbox v-model="checked" id="stayconnected" binary />
                             <label for="stayconnected">Rester connecté</label>
                         </div>
                         <a href="#" class="forgot_password">Mot de passe oublié</a>
-                    </div>
+                    </div> -->
 
                     <Button type="submit" class="auth_submit_button" :disabled="loading">
                         <template v-if="loading">
@@ -258,6 +258,7 @@ const onSubmit = async () => {
     font-weight: 700;
     letter-spacing: 0.02em;
     margin: 0 0 0.5rem 0;
+    color: #e7e7e7;
 }
 
 .auth_illustration p {

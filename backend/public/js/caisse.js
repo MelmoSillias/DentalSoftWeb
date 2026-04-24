@@ -599,8 +599,23 @@ $(function () { // Variables globales pour les filtres de date
                 montant: montant,
                 modeId: modeId
             },
-            success: function () {
-                showToastModal({ message: 'Paiement enregistré avec succès.', type: 'success' });
+            success: function (response) {
+                const paiementId = response && response.paiement_id ? response.paiement_id : null;
+                showToastModal({
+                    message: 'Paiement enregistré avec succès.',
+                    type: 'success',
+                    duration: paiementId ? 10000 : 1500,
+                    actionLabel: paiementId ? 'Imprimer le ticket' : '',
+                    action: paiementId
+                        ? function () {
+                            const receiptUrl = `/api/paiement-ticket/${paiementId}/print`;
+                            const printWindow = window.open(receiptUrl, '_blank');
+                            if (printWindow) {
+                                printWindow.focus();
+                            }
+                        }
+                        : null
+                });
                 
                 modal.modal('hide');
                 $('#montantRegle').val('');

@@ -359,7 +359,7 @@ const handleGuidedTourRequest = async (event) => {
 <template>
     <section
         class="min-h-screen p-4 md:p-6 lg:p-8 transition-colors duration-300">
-        <Toast />
+        <AppToast />
         
         <!-- Header Section -->
         <div class="mb-6 md:mb-8" data-tour="admin-consumables.header">

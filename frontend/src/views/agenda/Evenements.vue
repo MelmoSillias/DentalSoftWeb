@@ -1,6 +1,6 @@
 <template>
 	<section class="flex flex-col ml-4 gap-4 rounded-2xl bg-surface-0 p-5 shadow-sm dark:bg-surface-900 dark:shadow-none dark:ring-1 dark:ring-surface-700">
-		<Toast ref="toast" />
+		<AppToast />
 		<div data-tour="agenda-events.header" class="flex flex-wrap items-center justify-between gap-4 border-b border-surface-200 pb-3 dark:border-surface-700">
 			<div class="space-y-1">
 				<h2 class="text-2xl font-semibold text-surface-900 dark:text-surface-200">Gestion des Evenements</h2>
@@ -39,7 +39,7 @@ import timeGridPlugin from '@fullcalendar/timegrid'
 import interactionPlugin from '@fullcalendar/interaction'
 
 import Button from 'primevue/button'
-import Toast from 'primevue/toast'
+import { useToast } from 'primevue/usetoast'
 
 import EventForm from '@/components/agenda/EventForm.vue'
 import EventActions from '@/components/agenda/EventActions.vue'
@@ -54,7 +54,7 @@ const calendarRef = ref(null)
 const showForm = ref(false)
 const actionsVisible = ref(false)
 const selectedEventId = ref(null)
-const toast = ref(null)
+const toast = useToast()
 const isGuidedTourStarting = ref(false)
 
 const breadcrumbHome = { icon: 'pi pi-home', to: '/dashboard' };
@@ -127,7 +127,7 @@ const handleGuidedTourRequest = async (event) => {
 	}
 
 	if (hasOpenDialogs.value) {
-		toast.value?.add({
+		toast.add({
 			severity: 'warn',
 			summary: 'Aide guidee',
 			detail: 'Fermez les fenetres ouvertes avant de lancer le tour.',
@@ -157,7 +157,7 @@ const handleGuidedTourRequest = async (event) => {
 		})
 	} catch (error) {
 		console.error('Erreur lancement guided tour agenda evenements', error)
-		toast.value?.add({
+		toast.add({
 			severity: 'error',
 			summary: 'Aide guidee',
 			detail: 'Impossible de lancer le tour de la page evenements.',
@@ -173,13 +173,13 @@ async function handleCreate(payload) {
 		const res = await createEvent(payload)
 		if (res && res.success) {
 			showForm.value = false
-			toast.value.add({ severity: 'success', summary: 'Succès', detail: 'Événement ajouté avec succès.' })
+			toast.add({ severity: 'success', summary: 'Succès', detail: 'Événement ajouté avec succès.' })
 			calendarRef.value.getApi().refetchEvents()
 		} else {
-			toast.value.add({ severity: 'error', summary: 'Erreur', detail: res?.message || 'Erreur lors de l’ajout de l’événement.' })
+			toast.add({ severity: 'error', summary: 'Erreur', detail: res?.message || 'Erreur lors de l’ajout de l’événement.' })
 		}
 	} catch (err) {
-		toast.value.add({ severity: 'error', summary: 'Erreur', detail: err?.message || 'Erreur lors de l’ajout de l’événement.' })
+		toast.add({ severity: 'error', summary: 'Erreur', detail: err?.message || 'Erreur lors de l’ajout de l’événement.' })
 	}
 }
 
@@ -188,14 +188,14 @@ async function handleDelete(id) {
 		const res = await deleteEvent(id)
 		actionsVisible.value = false
 		if (res && res.success) {
-			toast.value.add({ severity: 'success', summary: 'Succès', detail: 'Événement supprimé avec succès.' })
+			toast.add({ severity: 'success', summary: 'Succès', detail: 'Événement supprimé avec succès.' })
 			calendarRef.value.getApi().refetchEvents()
 		} else {
-			toast.value.add({ severity: 'error', summary: 'Erreur', detail: res?.message || 'Erreur lors de la suppression.' })
+			toast.add({ severity: 'error', summary: 'Erreur', detail: res?.message || 'Erreur lors de la suppression.' })
 		}
 	} catch (err) {
 		actionsVisible.value = false
-		toast.value.add({ severity: 'error', summary: 'Erreur', detail: err?.message || 'Erreur lors de la suppression.' })
+		toast.add({ severity: 'error', summary: 'Erreur', detail: err?.message || 'Erreur lors de la suppression.' })
 	}
 }
 
@@ -204,14 +204,14 @@ async function handleValidate(id) {
 		const res = await validateEvent(id)
 		actionsVisible.value = false
 		if (res && res.success) {
-			toast.value.add({ severity: 'success', summary: 'Succès', detail: 'Événement validé avec succès.' })
+			toast.add({ severity: 'success', summary: 'Succès', detail: 'Événement validé avec succès.' })
 			calendarRef.value.getApi().refetchEvents()
 		} else {
-			toast.value.add({ severity: 'error', summary: 'Erreur', detail: res?.message || 'Erreur lors de la validation.' })
+			toast.add({ severity: 'error', summary: 'Erreur', detail: res?.message || 'Erreur lors de la validation.' })
 		}
 	} catch (err) {
 		actionsVisible.value = false
-		toast.value.add({ severity: 'error', summary: 'Erreur', detail: err?.message || 'Erreur lors de la validation.' })
+		toast.add({ severity: 'error', summary: 'Erreur', detail: err?.message || 'Erreur lors de la validation.' })
 	}
 }
 </script>

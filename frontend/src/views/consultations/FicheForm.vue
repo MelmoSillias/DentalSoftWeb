@@ -703,7 +703,7 @@ onBeforeUnmount(() => {
     
     <div class="min-h-screen p-4 md:p-6 lg:p-8 transition-colors duration-300">
         <ConfirmDialog />
-        <Toast />
+        <AppToast />
         
         <div v-if ="!pageLoading">
             <div data-tour="consultations-form.header" class="mb-6 md:mb-8 gap-4 flex flex-row justify-items-strech rounded-2xl bg-surface-0/80 dark:bg-surface-800/80 backdrop-blur-sm border border-surface-200/50 dark:border-surface-700/50">

@@ -1,6 +1,6 @@
 <template>
     <section class="min-h-screen bg-gradient-to-br from-surface-50 via-surface-50/80 to-surface-100/60 p-4 transition-colors duration-300 dark:from-surface-900 dark:via-surface-900/80 dark:to-surface-800/90 md:p-6 lg:p-8">
-        <Toast />
+        <AppToast />
         <ConfirmPopup />
 
         <div class="mb-6 md:mb-8">

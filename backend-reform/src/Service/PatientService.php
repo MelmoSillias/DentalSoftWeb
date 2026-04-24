@@ -52,6 +52,7 @@ class PatientService
         private GlobalSettingsService $globalSettingsService,
         private CacheInterface $cache,
         private EventDispatcherInterface $eventDispatcher,
+        private FocusRealtimePublisher $focusRealtimePublisher,
     ) {
     }
 
@@ -254,6 +255,7 @@ class PatientService
             $this->em->flush();
 
             $this->notifyPatientCreation($patient, $actor);
+            $this->focusRealtimePublisher->publishPatientRefresh($patient, 'created');
             $this->smsService->queueTemplateForPatient($patient, 'patient_created', [
                 'patient_name' => trim(($patient->getPrenom() ?? '') . ' ' . ($patient->getNom() ?? '')),
                 'cabinet_name' => 'ORODENT',
@@ -309,6 +311,7 @@ class PatientService
             }
 
             $this->em->flush();
+            $this->focusRealtimePublisher->publishPatientRefresh($patient, 'updated');
 
             return ['success' => true, 'status' => 200];
         } catch (\Exception $e) {
@@ -529,6 +532,7 @@ class PatientService
 
                 $consultation = $this->consultationRepo->NewConsultation($data, $this->patientRepo, $this->employeRepo);
                 $createdPaiementId = null;
+                $patientPayment = null;
                 $timestamp = new DateTime();
 
                 if ($patientAmount > 0) {
@@ -549,6 +553,7 @@ class PatientService
                     $paiement->setConsultation($consultation);
                     $paiement->setRolePaiement('patient');
                     $this->em->persist($paiement);
+                    $patientPayment = $paiement;
 
                     $transaction = new Transaction();
                     $transaction->setType('Entrée');
@@ -592,7 +597,9 @@ class PatientService
 
                 $this->em->flush();
 
-                if ($consultation->getPaiementDevis()) {
+                if ($patientPayment instanceof PaiementDevis && $patientPayment->getId() !== null) {
+                    $createdPaiementId = $patientPayment->getId();
+                } elseif ($consultation->getPaiementDevis()) {
                     $createdPaiementId = $consultation->getPaiementDevis()->getId();
                 }
 

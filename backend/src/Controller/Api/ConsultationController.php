@@ -78,6 +78,14 @@ final class ConsultationController extends AbstractController{
         return new JsonResponse($this->consultationService->ConsultationsDuJour($req->get('date'), $this->getUser()));
     }
 
+    #[Route('/api/focus/reception', name: 'api_focus_reception', methods: ['GET'])]
+    public function getReceptionFocusData(Request $req): JsonResponse
+    {
+        return $this->json(
+            $this->consultationService->getReceptionFocusData($req->get('date'), $this->getUser())->toArray()
+        );
+    }
+
     #[Route('/api/consultations/{id}', name: 'api_consultation_delete', methods: ['DELETE'])]
     public function deleteConsultation(int $id): JsonResponse
     {

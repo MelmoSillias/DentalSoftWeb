@@ -1,6 +1,5 @@
 <script setup>
 import { useLayout } from '@/layout/composables/layout';
-import Button from 'primevue/button';
 import { computed, ref, watch } from 'vue';
 import AppFooter from './AppFooter.vue';
 import AppSidebar from './AppSidebar.vue';
@@ -72,28 +71,5 @@ function isOutsideClicked(event) {
        
     </div>
 
-    <Toast>
-        <template #message="slotProps">
-            <div class="p-toast-message-text">
-                <span class="p-toast-summary">{{ slotProps.message.summary }}</span>
-                <div class="p-toast-detail">{{ slotProps.message.detail }}</div>
-                <div v-if="slotProps.message.data?.actionLabel" class="mt-2">
-                    <Button
-                        size="small"
-                        severity="primary"
-                        icon="pi pi-print"
-                        :label="slotProps.message.data.actionLabel"
-                        @click="() => {
-                            slotProps.message.data.action?.();
-                            if (typeof slotProps.closeCallback === 'function') {
-                                slotProps.closeCallback();
-                            } else if (typeof slotProps.close === 'function') {
-                                slotProps.close();
-                            }
-                        }"
-                    />
-                </div>
-            </div>
-        </template>
-    </Toast>
+        <AppToast />
 </template>

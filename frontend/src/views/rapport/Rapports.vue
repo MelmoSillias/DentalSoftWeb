@@ -72,7 +72,7 @@ onBeforeUnmount(() => {
 
 <template>
     <section class="min-h-screen p-4 md:p-6 lg:p-8 transition-colors duration-300">
-        <Toast />
+        <AppToast />
 
         <div class="mb-6 md:mb-8">
             <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">

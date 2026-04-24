@@ -267,7 +267,7 @@ const handleGuidedTourRequest = async (event) => {
 
  <template>
   <section class="min-h-screen p-4 md:p-6 lg:p-8 transition-colors duration-300">
-    <Toast />
+    <AppToast />
     <ConfirmPopup />
 
     <!-- Header Section -->

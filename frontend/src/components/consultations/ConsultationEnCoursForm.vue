@@ -111,11 +111,23 @@ const updateField = (key, value) => {
     form.value = { ...form.value, [key]: value };
 };
 
+const normalizeActeDent = (value) => {
+    if (typeof value === 'string') {
+        return value;
+    }
+
+    if (typeof value === 'number') {
+        return String(value);
+    }
+
+    return '';
+};
+
 const addActe = (dent = '') => {
     const actes = form.value.actes || [];
     form.value = {
         ...form.value,
-        actes: [...actes, { dent, type: '', description: '', quantite: 1, prix: 0 }]
+        actes: [...actes, { dent: normalizeActeDent(dent), type: '', description: '', quantite: 1, prix: 0 }]
     };
 };
 
@@ -343,10 +355,9 @@ const isValidTooth = (value) => {
         <!-- Content -->
         <div class="space-y-6">
             <!-- Personnel & Salle -->
-            <div class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/30 p-5">
-                <h4 class="text-lg font-semibold text-surface-900 dark:text-surface-100 mb-4">Personnel & Localisation</h4>
-                <div class="flex flex-col md:flex-row gap-4">
-                    <div class="flex-1 space-y-2">
+            <div class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/30 p-5"> 
+                <div class="flex flex-col md:flex-wrap gap-4">
+                    <div class="flex-1 space-y-2 col-4">
                         <label class="text-sm font-medium text-surface-700 dark:text-surface-300 flex items-center gap-2">
                             <i class="pi pi-user-md text-surface-400"></i>
                             Médecin
@@ -367,7 +378,7 @@ const isValidTooth = (value) => {
                             @update:modelValue="(v) => updateField('medecinId', v?.id ?? null)" 
                         />
                     </div>
-                    <div class="flex-1 space-y-2">
+                    <div class="flex-1 space-y-2 col-4">
                         <label class="text-sm font-medium text-surface-700 dark:text-surface-300 flex items-center gap-2">
                             <i class="pi pi-users text-surface-400"></i>
                             Infirmier(ère)s
@@ -384,7 +395,7 @@ const isValidTooth = (value) => {
                             @update:modelValue="(v) => updateField('infirmierIds', v || [])" 
                         />
                     </div>
-                    <div class="flex-1 space-y-2">
+                    <div class="flex-1 space-y-2 col-4">
                         <label class="text-sm font-medium text-surface-700 dark:text-surface-300 flex items-center gap-2">
                             <i class="pi pi-building text-surface-400"></i>
                             Salle
@@ -399,7 +410,7 @@ const isValidTooth = (value) => {
                             @update:modelValue="(v) => updateField('salleId', v)" 
                         />
                     </div>
-                    <div class="flex-1 space-y-2">
+                    <div class="flex-1 space-y-2 col-4">
                         <label class="text-sm font-medium text-surface-700 dark:text-surface-300 flex items-center gap-2">
                             <i class="pi pi-tag text-surface-400"></i>
                             Type de consultation
@@ -449,7 +460,7 @@ const isValidTooth = (value) => {
                         label="Ajouter un soin" 
                         size="small"
                         class="rounded-xl px-4 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 border-0 text-white shadow-sm hover:shadow-md transition-all"
-                        @click="addActe" 
+                        @click="addActe('')" 
                     />
                     <Button
                         icon="pi pi-list-check"

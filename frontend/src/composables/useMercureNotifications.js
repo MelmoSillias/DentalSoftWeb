@@ -32,6 +32,18 @@ export function useMercureNotifications() {
         link: item?.link || null
     });
 
+    const isFocusRealtimePayload = (payload, event) => {
+        if (event?.event === 'focus-consultation') {
+            return true;
+        }
+
+        if (typeof event?.id === 'string' && event.id.startsWith('focus-consultation-')) {
+            return true;
+        }
+
+        return ['consultation', 'patient', 'devis', 'payment'].includes(payload?.entity) && typeof payload?.action === 'string';
+    };
+
     const markEventAsSeen = (notificationId) => {
         if (!notificationId) return false;
 
@@ -112,6 +124,14 @@ export function useMercureNotifications() {
                 onmessage(event) {
                     try {
                         const payload = JSON.parse(event.data);
+                        if (isFocusRealtimePayload(payload, event)) {
+                            return;
+                        }
+
+                        if (event?.event && event.event !== 'notification') {
+                            return;
+                        }
+
                         const notif = normalizeNotification(payload);
                         if (markEventAsSeen(notif.id)) return;
                         notificationsStore.addNotification(notif);

@@ -584,7 +584,7 @@ watch(
 <template>
     <div class="min-h-[32rem]">
         <ConfirmDialog />
-        <Toast />
+        <AppToast />
 
         <div v-if="!pageLoading" class="space-y-5">
             <div class="rounded-2xl border border-surface-200/60 dark:border-surface-700/60 bg-surface-0 dark:bg-surface-800/70 p-5 shadow-sm">

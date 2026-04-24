@@ -577,8 +577,23 @@ $(function () { // Variables globales pour les filtres de date
                 date: date,
                 time: time
             },
-            success: function () {
-                showToastModal({ message: 'Paiement enregistré avec succès.', type: 'success' });
+            success: function (response) {
+                const paiementId = response && response.paiement_id ? response.paiement_id : null;
+                showToastModal({
+                    message: 'Paiement enregistré avec succès.',
+                    type: 'success',
+                    duration: paiementId ? 10000 : 1500,
+                    actionLabel: paiementId ? 'Imprimer le reçu' : '',
+                    action: paiementId
+                        ? function () {
+                            const receiptUrl = `/api/receipts/${paiementId}/print`;
+                            const printWindow = window.open(receiptUrl, '_blank');
+                            if (printWindow) {
+                                printWindow.focus();
+                            }
+                        }
+                        : null
+                });
                 
                 modal.modal('hide');
                 $('#montantRegle').val('');

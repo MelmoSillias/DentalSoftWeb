@@ -8,8 +8,64 @@ export function useFocusRealtime(onEvent) {
 
     let controller = null;
     let reconnectTimer = null;
+    let refreshInFlight = null;
+    let refreshQueued = false;
+    const recentEventIds = new Set();
 
     const mercureConfig = computed(() => auth.mercure || null);
+
+    const isFocusRealtimePayload = (payload, event) => {
+        if (event?.event === 'focus-consultation') {
+            return true;
+        }
+
+        if (typeof event?.id === 'string' && event.id.startsWith('focus-consultation-')) {
+            return true;
+        }
+
+        return ['consultation', 'patient', 'devis', 'payment'].includes(payload?.entity) && typeof payload?.action === 'string';
+    };
+
+    const markEventAsSeen = (event) => {
+        const eventId = event?.id || event?.lastEventId || null;
+        if (!eventId) {
+            return false;
+        }
+
+        const key = String(eventId);
+        if (recentEventIds.has(key)) {
+            return true;
+        }
+
+        recentEventIds.add(key);
+        if (recentEventIds.size > 200) {
+            const firstKey = recentEventIds.values().next().value;
+            if (firstKey) {
+                recentEventIds.delete(firstKey);
+            }
+        }
+
+        return false;
+    };
+
+    const runRefresh = async (payload) => {
+        if (refreshInFlight) {
+            refreshQueued = true;
+            return refreshInFlight;
+        }
+
+        refreshInFlight = Promise.resolve()
+            .then(() => (typeof onEvent === 'function' ? onEvent(payload) : undefined))
+            .finally(async () => {
+                refreshInFlight = null;
+                if (refreshQueued) {
+                    refreshQueued = false;
+                    await runRefresh(payload);
+                }
+            });
+
+        return refreshInFlight;
+    };
 
     const disconnect = () => {
         if (controller) {
@@ -25,6 +81,8 @@ export function useFocusRealtime(onEvent) {
             window.clearTimeout(reconnectTimer);
             reconnectTimer = null;
         }
+
+        refreshQueued = false;
     };
 
     const scheduleReconnect = () => {
@@ -62,23 +120,27 @@ export function useFocusRealtime(onEvent) {
             headers: {
                 Authorization: `Bearer ${config.token}`
             },
+            openWhenHidden: true,
             signal: controller.signal,
             onopen(response) {
                 if (response.ok && (response.headers.get('content-type') || '').includes('text/event-stream')) {
+                    runRefresh({ reason: 'focus-realtime-connected' });
                     return;
                 }
                 throw new Error('Mercure focus connection failed');
             },
             onmessage(event) {
-                if (event.event !== 'focus-consultation') {
-                    return;
-                }
-
                 try {
                     const payload = JSON.parse(event.data || '{}');
-                    if (typeof onEvent === 'function') {
-                        onEvent(payload);
+                    if (!isFocusRealtimePayload(payload, event)) {
+                        return;
                     }
+
+                    if (markEventAsSeen(event)) {
+                        return;
+                    }
+
+                    runRefresh(payload);
                 } catch (_) {
                     // ignore malformed focus payloads
                 }
@@ -106,8 +168,23 @@ export function useFocusRealtime(onEvent) {
         { immediate: true }
     );
 
+    const handleVisibilityChange = () => {
+        if (document.visibilityState !== 'visible' || !realtimeEnabled.value || !auth.token) {
+            return;
+        }
+
+        connect();
+    };
+
+    if (typeof document !== 'undefined') {
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+    }
+
     onUnmounted(() => {
         disconnect();
+        if (typeof document !== 'undefined') {
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+        }
     });
 
     return {
