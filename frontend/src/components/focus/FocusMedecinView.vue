@@ -143,13 +143,12 @@ const currentConsultationClosed = computed(() => Number(currentConsultation.valu
 </script>
  
 <template>
-    <div class="grid gap-4 xl:grid-cols-[300px_minmax(0,1fr)_300px]">
+    <div class="grid gap-4 xl:grid-cols-[400px_minmax(0,1fr)_300px]">
         <!-- Colonne gauche : Patient sélectionné -->
         <aside>
             <div class="rounded-xl border-2 border-surface-200 bg-white p-4 dark:border-surface-700 dark:bg-surface-900">
-                <div class="mb-2 flex items-center justify-between">
-                    <h3 class="text-sm font-semibold text-surface-900 dark:text-surface-50">Patient</h3>
-                    <button v-if="selectedPatient" @click="emit('clear-selection')" class="text-xs text-surface-400 hover:text-red-500">
+                <div class="mb-2 flex items-center justify-between absolute float-right z-50"> 
+                    <button v-if="selectedPatient" @click="emit('clear-selection')" class="text-xs text-surface-400 hover:text-red-500 border radius-50 border-red-500" >
                         <i class="pi pi-times"></i>
                     </button>
                 </div>

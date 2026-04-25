@@ -356,8 +356,8 @@ const isValidTooth = (value) => {
         <div class="space-y-6">
             <!-- Personnel & Salle -->
             <div class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/30 p-5"> 
-                <div class="flex flex-col md:flex-wrap gap-4">
-                    <div class="flex-1 space-y-2 col-4">
+                <div class="flex flex-wrap gap-4">
+                    <div class="flex-1 space-y-2 col-6 md:col-4">
                         <label class="text-sm font-medium text-surface-700 dark:text-surface-300 flex items-center gap-2">
                             <i class="pi pi-user-md text-surface-400"></i>
                             Médecin
@@ -378,7 +378,7 @@ const isValidTooth = (value) => {
                             @update:modelValue="(v) => updateField('medecinId', v?.id ?? null)" 
                         />
                     </div>
-                    <div class="flex-1 space-y-2 col-4">
+                    <div class="flex-1 space-y-2 col-6 md:col-4">
                         <label class="text-sm font-medium text-surface-700 dark:text-surface-300 flex items-center gap-2">
                             <i class="pi pi-users text-surface-400"></i>
                             Infirmier(ère)s
@@ -395,7 +395,7 @@ const isValidTooth = (value) => {
                             @update:modelValue="(v) => updateField('infirmierIds', v || [])" 
                         />
                     </div>
-                    <div class="flex-1 space-y-2 col-4">
+                    <div class="flex-1 space-y-2 col-6 md:col-4">
                         <label class="text-sm font-medium text-surface-700 dark:text-surface-300 flex items-center gap-2">
                             <i class="pi pi-building text-surface-400"></i>
                             Salle
@@ -410,7 +410,7 @@ const isValidTooth = (value) => {
                             @update:modelValue="(v) => updateField('salleId', v)" 
                         />
                     </div>
-                    <div class="flex-1 space-y-2 col-4">
+                    <div class="flex-1 space-y-2 col-6 md:col-4">
                         <label class="text-sm font-medium text-surface-700 dark:text-surface-300 flex items-center gap-2">
                             <i class="pi pi-tag text-surface-400"></i>
                             Type de consultation

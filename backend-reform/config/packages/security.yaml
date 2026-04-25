@@ -5,12 +5,12 @@ security:
     providers:
         app_user_provider:
             entity:
-                class: App\Entity\User
+                class: App\IdentityAccess\Entity\User
                 property: username
 
         users_in_database:
             entity:
-                class: App\Entity\User
+                class: App\IdentityAccess\Entity\User
                 property: username
 
         backend_users:
@@ -30,7 +30,7 @@ security:
             pattern: ^/api/login
             stateless: true
             provider: users_in_database
-            user_checker: App\Security\UserEnabledChecker
+            user_checker: App\IdentityAccess\Security\UserEnabledChecker
             json_login:
                 check_path: /api/login_check
                 username_path: username
@@ -43,15 +43,15 @@ security:
             pattern: ^/api
             stateless: true
             provider: users_in_database
-            user_checker: App\Security\UserEnabledChecker
+            user_checker: App\IdentityAccess\Security\UserEnabledChecker
             jwt: ~
 
         # 🌐 SITE WEB CLASSIQUE
         main:
             lazy: true
             provider: users_in_database
-            user_checker: App\Security\UserEnabledChecker
-            custom_authenticator: App\Security\DSAuthenticator
+            user_checker: App\IdentityAccess\Security\UserEnabledChecker
+            custom_authenticator: App\IdentityAccess\Security\DSAuthenticator
             entry_point: form_login
 
             form_login:

@@ -1,0 +1,27 @@
+
+###> symfony/framework-bundle ###
+
+/backend-reform/.env.local
+/backend-reform/.env.local.php
+/backend-reform/.env.*.local
+/backend-reform/config/secrets/prod/prod.decrypt.private.php
+/backend-reform/public/bundles/
+/backend-reform/var/
+/backend-reform/vendor/
+/backend-reform/migrations/
+###< symfony/framework-bundle ###
+
+###> phpunit/phpunit ###
+/backend-reform/phpunit.xml
+/backend-reform/.phpunit.result.cache
+###< phpunit/phpunit ###
+
+###> symfony/phpunit-bridge ###
+/backend-reform/.phpunit.result.cache
+/backend-reform/phpunit.xml
+###< symfony/phpunit-bridge ###
+
+###> symfony/asset-mapper ###
+/backend-reform/public/assets/
+/backend-reform/assets/vendor/
+###< symfony/asset-mapper ###>

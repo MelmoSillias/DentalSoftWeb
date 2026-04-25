@@ -31,41 +31,13 @@ services:
             - '../src/Inventory/Entity/'
             - '../src/Settings/Entity/'
             - '../src/Kernel.php'
-    
-    
-    App\Service\Dashboard\GlobalStatsService: ~
-    App\Service\Dashboard\PatientsStatsService: ~
-    App\Service\Dashboard\ConsultationsStatsService: ~
-    App\Service\Dashboard\AppointmentsStatsService: ~
-    App\Service\Dashboard\RoomUsageService: ~
-    App\Service\Dashboard\PaymentsBalanceService: ~
-    App\Service\Dashboard\PaymentsFrequencyService: ~
-    App\Service\Dashboard\ActsStatsService: ~
-    App\Service\Reception\AgendaService: ~
-    App\Service\Reception\CaisseService: ~
-    App\Service\Reception\ConsultationService: ~
-    App\Service\Reception\PatientService: ~
-    App\Service\Medecin\AgendaService: ~
-    App\Service\Medecin\ConsultationService: ~
-    App\Service\Medecin\PatientService: ~
-    App\Service\Admin\AgendaService: ~
-    App\Service\Admin\CaisseService: ~
-    App\Service\Admin\ConsultationService: ~
-    App\Service\Admin\FinancesService: ~
-    App\Service\Admin\ReportsService: ~
-    App\Service\Admin\RHService: ~
-    App\Service\Admin\UserService: ~
-    App\Service\Patient\PatientQueryService: ~
-    App\Service\Patient\PatientStatsService: ~
-    App\Service\Payment\TransactionService: ~
-    App\Service\Payment\ModePaiementService: ~
-    App\Service\UserDeviceService:
+    App\IdentityAccess\Service\UserDeviceService:
         arguments:
             $maxDevicesPerUser: '%user_devices_max_per_user%'
-    App\Mercure\NotificationTopicGenerator:
+    App\Communication\Mercure\NotificationTopicGenerator:
         arguments:
             $publicHubUrl: '%env(MERCURE_PUBLIC_URL)%'
-    App\Service\MercureAuthorizationService:
+    App\Communication\Service\MercureAuthorizationService:
         arguments:
             $mercureJwtSecret: '%env(MERCURE_JWT_SECRET)%'
             $mercurePublicUrl: '%env(MERCURE_PUBLIC_URL)%'
