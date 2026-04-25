@@ -2,7 +2,8 @@
 import ConsultationEnCoursForm from '@/components/consultations/ConsultationEnCoursForm.vue';
 import { fetchConsultationDetails, setConsultationFiche, verifyConsultationMedecinPassword } from '@/services/consultations';
 import { isConsultationsTourMockEnabled } from '@/services/consultationsTourMock';
-import { closeConsultation, saveConsultation } from '@/services/consultationsforms';
+import { closeConsultation } from '@/services/consultationsforms';
+import { saveTemplateForm } from '@/services/ficheMedicale';
 import { fetchMedecins, fetchInfirmiers } from '@/services/corpsmedical';
 import { fetchSalles } from '@/services/salles';
 import { useAuthStore } from '@/stores/auth';
@@ -191,7 +192,10 @@ const handleSave = async ({ silent = false } = {}) => {
 
     saving.value = true;
     try {
-        await saveConsultation(ficheId.value, props.consultation.id, buildPayload(), token);
+        await saveTemplateForm(ficheId.value, undefined, undefined, undefined, token, {
+            consultationId: props.consultation.id,
+            consultation: buildPayload()
+        });
         if (!silent) {
             toast.add({ severity: 'success', summary: 'Consultation sauvegardée', detail: 'Données enregistrées.', life: 2200 });
             emit('saved');

@@ -32,6 +32,7 @@ use App\Patient\Entity\Antecedent;
 use App\Patient\Entity\Patient;
 use App\Scheduling\Entity\Salle;
 use App\Scheduling\Repository\SalleRepository;
+use App\Settings\Service\GlobalSettingsService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
@@ -57,10 +58,16 @@ class ConsultationService
         private NotificationRecipientResolver $notificationRecipientResolver,
         private EventDispatcherInterface $eventDispatcher,
         private UserPasswordHasherInterface $passwordHasher,
+        private GlobalSettingsService $globalSettingsService,
         ParameterBagInterface $params,
         private CacheInterface $cache,
     ) {
         $this->projectDir = $params->get('kernel.project_dir');
+    }
+
+    private function resolveDefaultFormTemplate(): string
+    {
+        return $this->globalSettingsService->getDefaultFormTemplate();
     }
 
     public function getMedecinForUser(?object $user): ?Employe
@@ -125,6 +132,27 @@ class ConsultationService
         }
     }
 
+    private function extractMotifFromFicheMedicale(?FicheMedicale $ficheMedicale): string
+    {
+        if (!$ficheMedicale) {
+            return '';
+        }
+
+        $formData = $ficheMedicale->getFormData();
+        if (!is_array($formData)) {
+            return '';
+        }
+
+        $entretien = $formData['entretien'] ?? null;
+        if (!is_array($entretien)) {
+            return '';
+        }
+
+        $motif = $entretien['motifConsultation'] ?? $entretien['motif'] ?? '';
+
+        return is_string($motif) ? $motif : '';
+    }
+
     private function resolvePendingFicheData(Consultation $consultation): array
     {
         $patient = $consultation->getPatient();
@@ -153,8 +181,8 @@ class ConsultationService
             'lastFicheType' => $lastFicheCandidate instanceof FicheMedicale ? 'medicale' : ($lastFicheCandidate instanceof FicheObservation ? 'observation' : null),
             'lastFicheVersion' => $lastFicheCandidate instanceof FicheMedicale ? 2 : ($lastFicheCandidate instanceof FicheObservation ? 1 : null),
             'motif' => $linkedFiche
-                ? ($ficheMedicale?->getEntretien()?->getMotifConsultation() ?? $ficheObservation?->getMotif() ?? '')
-                : ($lastFicheMedicale?->getEntretien()?->getMotifConsultation() ?? $lastFicheObservation?->getMotif() ?? ''),
+                ? ($this->extractMotifFromFicheMedicale($ficheMedicale) ?: $ficheObservation?->getMotif() ?? '')
+                : ($this->extractMotifFromFicheMedicale($lastFicheMedicale) ?: $lastFicheObservation?->getMotif() ?? ''),
         ];
     }
 
@@ -1132,6 +1160,8 @@ class ConsultationService
         if (!$fiche && !$ficheObservation) {
             $fiche = new FicheMedicale();
             $fiche->setPatient($consultation->getPatient());
+            $fiche->setFormTemplateKey($this->resolveDefaultFormTemplate());
+            $fiche->setFormData([]);
             $this->em->persist($fiche);
             $created = true;
             $ficheType = 'medicale';
@@ -1170,6 +1200,8 @@ class ConsultationService
         if ($createNewFiche) {
             $fiche = new FicheMedicale();
             $fiche->setPatient($consultation->getPatient());
+            $fiche->setFormTemplateKey($this->resolveDefaultFormTemplate());
+            $fiche->setFormData([]);
             $this->em->persist($fiche);
             $consultation->setFicheMedicale($fiche);
         } else {

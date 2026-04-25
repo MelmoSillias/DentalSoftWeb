@@ -1,5 +1,5 @@
 <script setup>
-import EmbeddedConsultationFiche from '@/components/focus/EmbeddedConsultationFiche.vue';
+import EmbeddedConsultationFicheEntry from '@/components/focus/EmbeddedConsultationFicheEntry.vue';
 import DossierPatientInfoCard from '@/components/patients/DossierPatientInfoCard.vue';
 import Button from 'primevue/button';
 import Checkbox from 'primevue/checkbox';
@@ -187,7 +187,7 @@ const currentConsultationClosed = computed(() => Number(currentConsultation.valu
 
             <!-- Fiche intégrée -->
             <div v-if="currentConsultation && selectedPatient" class="rounded-xl border-2 border-surface-200 bg-white dark:border-surface-700 dark:bg-surface-900">
-                <EmbeddedConsultationFiche 
+                <EmbeddedConsultationFicheEntry 
                     :consultation-id="currentConsultation.id"
                     :fiche-id="selectedEmbeddedFicheId"
                     :mode="selectedEmbeddedMode"

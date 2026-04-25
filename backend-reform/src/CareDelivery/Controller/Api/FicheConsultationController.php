@@ -16,6 +16,23 @@ class FicheConsultationController extends AbstractController
 {
     public function __construct(private ConsultationService $consultationService, private FicheMedicaleService $ficheMedicaleService) {}
 
+    private function updateFicheMedicaleSection(int $ficheId, callable $mutator, array $files = []): void
+    {
+        $current = $this->ficheMedicaleService->getFicheJson($ficheId);
+        $formData = is_array($current['formData'] ?? null) ? $current['formData'] : [];
+        $formData = $mutator($formData);
+        if (!is_array($formData)) {
+            $formData = [];
+        }
+
+        $this->ficheMedicaleService->updateFromTemplate(
+            $ficheId,
+            isset($current['formTemplateKey']) ? (string) $current['formTemplateKey'] : null,
+            $formData,
+            $files,
+        );
+    }
+
     private function restrictToConnectedMedecin(): bool
     {
         return $this->isGranted('ROLE_MEDECIN') && !$this->isGranted('ROLE_ADMIN');
@@ -58,7 +75,12 @@ class FicheConsultationController extends AbstractController
         $fiche = $this->consultationService->getFicheById($ficheId);
 
         if ($fiche instanceof FicheMedicale) {
-            $this->ficheMedicaleService->updateEntretien($ficheId, $data);
+            $this->updateFicheMedicaleSection($ficheId, static function (array $formData) use ($data): array {
+                $entretien = is_array($formData['entretien'] ?? null) ? $formData['entretien'] : [];
+                $formData['entretien'] = array_merge($entretien, $data);
+
+                return $formData;
+            });
         } else {
             $this->consultationService->updateMotif($ficheId, $data);
         }
@@ -72,7 +94,11 @@ class FicheConsultationController extends AbstractController
         $fiche = $this->consultationService->getFicheById($ficheId);
 
         if ($fiche instanceof FicheMedicale) {
-            $this->ficheMedicaleService->updateExamens($ficheId, $data);
+            $this->updateFicheMedicaleSection($ficheId, static function (array $formData) use ($data): array {
+                $formData['examens'] = $data;
+
+                return $formData;
+            });
         } else {
             $this->consultationService->updateExamens($ficheId, $data);
         }
@@ -87,7 +113,23 @@ class FicheConsultationController extends AbstractController
         $fiche = $this->consultationService->getFicheById($ficheId);
 
         if ($fiche instanceof FicheMedicale) {
-            $this->ficheMedicaleService->updateDocuments($ficheId, $data, $files ?: []);
+            $this->updateFicheMedicaleSection($ficheId, static function (array $formData) use ($data): array {
+                $traitements = is_array($formData['traitementsDocuments'] ?? null) ? $formData['traitementsDocuments'] : [];
+
+                foreach (['traitementUrgence', 'traitementDentaire', 'traitementParodontal', 'traitementOrthodontique', 'autres'] as $key) {
+                    if (array_key_exists($key, $data)) {
+                        $traitements[$key] = $data[$key];
+                    }
+                }
+
+                if (isset($data['documents']) && is_array($data['documents'])) {
+                    $traitements['documents'] = $data['documents'];
+                }
+
+                $formData['traitementsDocuments'] = $traitements;
+
+                return $formData;
+            }, is_array($files) ? $files : []);
         } else {
             $this->consultationService->updateTraitements($ficheId, $data, $files ?: []);
         }
@@ -101,7 +143,11 @@ class FicheConsultationController extends AbstractController
         $fiche = $this->consultationService->getFicheById($ficheId);
 
         if ($fiche instanceof FicheMedicale) {
-            $this->ficheMedicaleService->updateDevis($ficheId, $data);
+            $this->updateFicheMedicaleSection($ficheId, static function (array $formData) use ($data): array {
+                $formData['devis'] = $data;
+
+                return $formData;
+            });
         } else {
             $this->consultationService->updateDevis($ficheId, $data);
         }

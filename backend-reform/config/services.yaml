@@ -6,6 +6,7 @@
 parameters: 
     upload_files_directory: '%kernel.project_dir%/public/upload_files'
     user_devices_max_per_user: 2
+    defaultFormTemplate: 'fiche_medicale_v2'
 
 
 services:

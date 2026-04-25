@@ -125,14 +125,7 @@ const goToConsultation = (consultation, mode = 'continue') => {
 
     if (targetFicheId) query.ficheId = targetFicheId;
 
-    const ficheType = mode === 'new-fiche'
-        ? 'medicale'
-        : linked
-          ? (consultation.ficheType || (consultation.ficheVersion === 1 ? 'observation' : 'medicale'))
-          : (consultation.lastFicheType || (consultation.lastFicheVersion === 1 ? 'observation' : 'medicale'));
-
-    const routeName = ficheType === 'observation' ? 'consultations-form-legacy' : 'consultations-form';
-    router.push({ name: routeName, query });
+    router.push({ name: 'consultations-form', query });
 };
 
 const isLinked = (consultation) => Boolean(consultation.ficheId);

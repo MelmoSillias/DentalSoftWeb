@@ -72,14 +72,8 @@ const router = createRouter({
                 {
                     path: '/consultations/form',
                     name: 'consultations-form',
-                    component: () => import('@/views/consultations/FicheForm.vue'),
+                    component: () => import('@/views/consultations/MedicalFormEntry.vue'),
                     meta: { requiresAuth: true, roles: ['ROLE_ADMIN', 'ROLE_MEDECIN'], fixedWidth: true }
-                },  
-                {
-                    path: '/consultations/form-legacy',
-                    name: 'consultations-form-legacy',
-                    component: () => import('@/views/consultations/ConsultationForm.vue'),
-                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN', 'ROLE_MEDECIN'] , fixedWidth: true}
                 },
 
                 // Caisse

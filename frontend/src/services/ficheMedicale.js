@@ -12,55 +12,54 @@ export const loadFicheMedicale = async (ficheId, token) => {
     return res.data;
 };
 
-export const saveEntretien = async (ficheId, payload, token) => {
-    const res = await axios.post(`${apiPrefix}/fiches-medicales/${ficheId}/entretien`, payload, {
-        headers: authHeaders(token)
-    });
-    return res.data;
-};
+export const saveTemplateForm = async (ficheId, formTemplateKey, formData, files, token, extraPayload = {}) => {
+    const payload = {
+        ficheId,
+        ...extraPayload
+    };
 
-export const saveExamens = async (ficheId, payload, token) => {
-    const res = await axios.post(`${apiPrefix}/fiches-medicales/${ficheId}/examens`, payload, {
-        headers: authHeaders(token)
-    });
-    return res.data;
-};
+    if (formTemplateKey !== undefined && formTemplateKey !== null) {
+        payload.formTemplateKey = formTemplateKey;
+    }
 
-export const saveBilans = async (ficheId, payload, token) => {
-    const res = await axios.post(`${apiPrefix}/fiches-medicales/${ficheId}/bilans`, payload, {
-        headers: authHeaders(token)
-    });
-    return res.data;
-};
+    if (formData !== undefined && formData !== null) {
+        payload.formData = formData;
+    }
 
-export const savePlanTraitement = async (ficheId, payload, token) => {
-    const res = await axios.post(`${apiPrefix}/fiches-medicales/${ficheId}/plan-traitement`, payload, {
-        headers: authHeaders(token)
-    });
-    return res.data;
-};
+    const hasFiles = Array.isArray(files) && files.some((docFiles) => Array.isArray(docFiles) && docFiles.some(Boolean));
 
-export const saveDocuments = async (ficheId, payload, files, token) => {
-    const formData = new FormData();
-    if (payload) formData.append('data', JSON.stringify(payload));
-    (files || []).forEach((docFiles, index) => {
-        (docFiles || []).forEach((file) => {
-            if (file) formData.append(`documentsFiles[${index}][]`, file);
+    if (hasFiles) {
+        const multipart = new FormData();
+        multipart.append('data', JSON.stringify(payload));
+        (files || []).forEach((docFiles, index) => {
+            (docFiles || []).forEach((file) => {
+                if (file) multipart.append(`documentsFiles[${index}][]`, file);
+            });
         });
-    });
 
-    const res = await axios.post(`${apiPrefix}/fiches-medicales/${ficheId}/documents`, formData, {
-        headers: {
-            ...authHeaders(token),
-            'Content-Type': 'multipart/form-data'
-        }
-    });
-    return res.data;
+        const response = await axios.post(`${apiPrefix}/fiche-medicale/update`, multipart, {
+            headers: {
+                ...authHeaders(token),
+                'Content-Type': 'multipart/form-data'
+            }
+        });
+
+        return response.data;
+    }
+
+    const response = await axios.post(
+        `${apiPrefix}/fiche-medicale/update`,
+        payload,
+        { headers: authHeaders(token) }
+    );
+
+    return response.data;
 };
 
-export const saveDevis = async (ficheId, payload, token) => {
-    const res = await axios.post(`${apiPrefix}/fiches-medicales/${ficheId}/devis`, payload, {
+export const loadFormTemplates = async (token) => {
+    const response = await axios.get(`${apiPrefix}/fiche-medicale/templates`, {
         headers: authHeaders(token)
     });
-    return res.data;
+
+    return Array.isArray(response.data) ? response.data : [];
 };

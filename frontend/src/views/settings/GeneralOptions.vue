@@ -64,8 +64,14 @@ const devicePolicy = reactive({
     autoApproveDevices: true,
     requireMedecinOnConsultationCreation: true,
     allowReceptionQuickCloseConsultation: true,
-    paiementDirectAssurance: false
+    paiementDirectAssurance: false,
+    defaultFormTemplate: 'fiche_medicale_v2'
 });
+
+const formTemplateOptions = [
+    { label: 'Fiche Medicale (v2)', value: 'fiche_medicale_v2' },
+    { label: 'Fiche Observation (v1)', value: 'fiche_observation_v1' }
+];
 
 const transactionMotifs = reactive({
     revenueText: 'Paiement patient\nRemboursement assurance\nVente produit\nAutre',
@@ -179,6 +185,7 @@ const loadGeneralSettings = async (force = false) => {
         devicePolicy.requireMedecinOnConsultationCreation = settings.requireMedecinOnConsultationCreation !== false;
         devicePolicy.allowReceptionQuickCloseConsultation = settings.allowReceptionQuickCloseConsultation !== false;
         devicePolicy.paiementDirectAssurance = settings.paiementDirectAssurance === true;
+        devicePolicy.defaultFormTemplate = settings.defaultFormTemplate || 'fiche_medicale_v2';
         transactionMotifs.revenueText = (settings.transactionMotifs?.revenue || []).join('\n');
         transactionMotifs.expenseText = (settings.transactionMotifs?.expense || []).join('\n');
         soinsCatalog.text = (settings.soinsList || []).join('\n');
@@ -199,7 +206,8 @@ const saveDevicePolicyAction = async () => {
             autoApproveDevices: devicePolicy.autoApproveDevices,
             requireMedecinOnConsultationCreation: devicePolicy.requireMedecinOnConsultationCreation,
             allowReceptionQuickCloseConsultation: devicePolicy.allowReceptionQuickCloseConsultation,
-            paiementDirectAssurance: devicePolicy.paiementDirectAssurance
+            paiementDirectAssurance: devicePolicy.paiementDirectAssurance,
+            defaultFormTemplate: devicePolicy.defaultFormTemplate
         }, token);
         toast.add({ severity: 'success', summary: 'Sécurité appareils', detail: 'Paramètres enregistrés', life: 2500 });
     } catch (error) {
@@ -561,6 +569,20 @@ onBeforeUnmount(() => {
                                             <span class="toggle-description">La part assurance crée un paiement immédiat</span>
                                         </div>
                                         <ToggleSwitch v-model="devicePolicy.paiementDirectAssurance" />
+                                    </div>
+                                    <Divider />
+                                    <div class="toggle-item align-start">
+                                        <div class="toggle-info">
+                                            <label>Formulaire par défaut</label>
+                                            <span class="toggle-description">Template utilisé à la création d'une nouvelle fiche médicale</span>
+                                        </div>
+                                        <Select
+                                            v-model="devicePolicy.defaultFormTemplate"
+                                            :options="formTemplateOptions"
+                                            optionLabel="label"
+                                            optionValue="value"
+                                            class="w-full md:w-18rem"
+                                        />
                                     </div>
                                 </div>
                             </div>
@@ -1034,6 +1056,10 @@ onBeforeUnmount(() => {
     justify-content: space-between;
     align-items: center;
     gap: 1rem;
+}
+
+.toggle-item.align-start {
+    align-items: flex-start;
 }
 
 .toggle-info {

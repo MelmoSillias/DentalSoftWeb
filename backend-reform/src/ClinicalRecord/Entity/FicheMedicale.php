@@ -2,7 +2,6 @@
 
 namespace App\ClinicalRecord\Entity;
 
-use App\Billing\Entity\Devis;
 use App\ClinicalRecord\Repository\FicheMedicaleRepository;
 use App\CareDelivery\Entity\Consultation;
 use App\IdentityAccess\Entity\Employe;
@@ -31,23 +30,11 @@ class FicheMedicale
     #[ORM\Column(type: Types::DATETIME_MUTABLE)]
     private ?\DateTimeInterface $createdAt = null;
 
-    #[ORM\OneToOne(mappedBy: 'ficheMedicale', targetEntity: FicheEntretien::class, cascade: ['persist', 'remove'])]
-    private ?FicheEntretien $entretien = null;
+    #[ORM\Column(type: Types::STRING, length: 64, nullable: true)]
+    private ?string $formTemplateKey = null;
 
-    #[ORM\OneToOne(mappedBy: 'ficheMedicale', targetEntity: FicheExamen::class, cascade: ['persist', 'remove'])]
-    private ?FicheExamen $examen = null;
-
-    #[ORM\OneToOne(mappedBy: 'ficheMedicale', targetEntity: FicheBilan::class, cascade: ['persist', 'remove'])]
-    private ?FicheBilan $bilan = null;
-
-    #[ORM\OneToMany(mappedBy: 'ficheMedicale', targetEntity: FichePlanTraitement::class, cascade: ['persist', 'remove'], orphanRemoval: true)]
-    private Collection $plansTraitement;
-
-    #[ORM\OneToMany(mappedBy: 'ficheMedicale', targetEntity: FicheDocument::class, cascade: ['persist', 'remove'], orphanRemoval: true)]
-    private Collection $documents;
-
-    #[ORM\OneToMany(mappedBy: 'ficheMedicale', targetEntity: Devis::class, cascade: ['persist', 'remove'])]
-    private Collection $devis;
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $formData = [];
 
     #[ORM\OneToMany(mappedBy: 'ficheMedicale', targetEntity: Consultation::class)]
     private Collection $consultations;
@@ -55,9 +42,6 @@ class FicheMedicale
     public function __construct()
     {
         $this->createdAt = new \DateTime();
-        $this->plansTraitement = new ArrayCollection();
-        $this->documents = new ArrayCollection();
-        $this->devis = new ArrayCollection();
         $this->consultations = new ArrayCollection();
     }
 
@@ -99,131 +83,25 @@ class FicheMedicale
         return $this;
     }
 
-    public function getEntretien(): ?FicheEntretien
+    public function getFormTemplateKey(): ?string
     {
-        return $this->entretien;
+        return $this->formTemplateKey;
     }
 
-    public function setEntretien(?FicheEntretien $entretien): static
+    public function setFormTemplateKey(?string $formTemplateKey): static
     {
-        $this->entretien = $entretien;
-
-        if ($entretien && $entretien->getFicheMedicale() !== $this) {
-            $entretien->setFicheMedicale($this);
-        }
-
+        $this->formTemplateKey = $formTemplateKey;
         return $this;
     }
 
-    public function getExamen(): ?FicheExamen
+    public function getFormData(): ?array
     {
-        return $this->examen;
+        return $this->formData;
     }
 
-    public function setExamen(?FicheExamen $examen): static
+    public function setFormData(?array $formData): static
     {
-        $this->examen = $examen;
-
-        if ($examen && $examen->getFicheMedicale() !== $this) {
-            $examen->setFicheMedicale($this);
-        }
-
-        return $this;
-    }
-
-    public function getBilan(): ?FicheBilan
-    {
-        return $this->bilan;
-    }
-
-    public function setBilan(?FicheBilan $bilan): static
-    {
-        $this->bilan = $bilan;
-
-        if ($bilan && $bilan->getFicheMedicale() !== $this) {
-            $bilan->setFicheMedicale($this);
-        }
-
-        return $this;
-    }
-
-    public function getPlansTraitement(): Collection
-    {
-        return $this->plansTraitement;
-    }
-
-    public function addPlanTraitement(FichePlanTraitement $plan): static
-    {
-        if (!$this->plansTraitement->contains($plan)) {
-            $this->plansTraitement[] = $plan;
-            $plan->setFicheMedicale($this);
-        }
-
-        return $this;
-    }
-
-    public function removePlanTraitement(FichePlanTraitement $plan): static
-    {
-        if ($this->plansTraitement->removeElement($plan)) {
-            if ($plan->getFicheMedicale() === $this) {
-                $plan->setFicheMedicale(null);
-            }
-        }
-
-        return $this;
-    }
-
-    public function getDocuments(): Collection
-    {
-        return $this->documents;
-    }
-
-    public function addDocument(FicheDocument $document): static
-    {
-        if (!$this->documents->contains($document)) {
-            $this->documents[] = $document;
-            $document->setFicheMedicale($this);
-        }
-
-        return $this;
-    }
-
-    public function removeDocument(FicheDocument $document): static
-    {
-        if ($this->documents->removeElement($document)) {
-            if ($document->getFicheMedicale() === $this) {
-                $document->setFicheMedicale(null);
-            }
-        }
-
-        return $this;
-    }
-
-    public function getDevis(): Collection
-    {
-        return $this->devis;
-    }
-
-    public function addDevis(Devis $devis): static
-    {
-        if (!$this->devis->contains($devis)) {
-            $this->devis[] = $devis;
-            /** @var \App\ClinicalRecord\Entity\FicheMedicale $currentFicheMedicale */
-            $currentFicheMedicale = $this;
-            $devis->setFicheMedicale($currentFicheMedicale);
-        }
-
-        return $this;
-    }
-
-    public function removeDevis(Devis $devis): static
-    {
-        if ($this->devis->removeElement($devis)) {
-            if ($devis->getFicheMedicale() === $this) {
-                $devis->setFicheMedicale(null);
-            }
-        }
-
+        $this->formData = $formData;
         return $this;
     }
 

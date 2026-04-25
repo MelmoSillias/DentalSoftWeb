@@ -2,8 +2,8 @@ import { computed, reactive, ref, watch } from 'vue';
 import { fetchMedecins, fetchInfirmiers } from '@/services/corpsmedical';
 import { fetchSalles } from '@/services/salles';
 import { fetchConsultationDetails, setConsultationFiche } from '@/services/consultations';
-import { loadOrdonnances, saveConsultation, closeConsultation } from '@/services/consultationsforms';
-import { loadFicheMedicale, saveBilans, saveDevis, saveDocuments, saveEntretien, saveExamens, savePlanTraitement } from '@/services/ficheMedicale';
+import { loadOrdonnances, closeConsultation } from '@/services/consultationsforms';
+import { loadFicheMedicale, saveTemplateForm } from '@/services/ficheMedicale';
 import { filePrefix } from '@/config';
 
 const stripFilePrefix = (url) => {
@@ -127,6 +127,8 @@ export const useConsultationsForm = ({ ficheId, consultId, token, mode }) => {
     const lastSavedAt = ref(null);
     const autoSaveEnabled = ref(false);
     const readyForDirty = ref(false);
+    const formTemplateKey = ref('fiche_medicale_v2');
+    const requiredTemplateFields = ref(['entretien', 'examens', 'bilans']);
     const savingCount = computed(() => Object.values(saving).filter(Boolean).length);
     const dirtySectionsList = computed(() => Object.entries(dirty).filter(([, v]) => v).map(([k]) => k));
 
@@ -152,6 +154,40 @@ export const useConsultationsForm = ({ ficheId, consultId, token, mode }) => {
     const setSaving = (key, value) => {
         if (saving[key] === undefined) return;
         saving[key] = value;
+    };
+
+    const buildDevisPayload = () => ({
+        date: normalizeDateForApi(data.devis.date),
+        type: 0,
+        contenus: (data.devis.services || []).map((s) => ({
+            designation: s.designation ?? '',
+            qte: s.qte ?? 1,
+            montant: s.montant ?? 0
+        }))
+    });
+
+    const buildDocumentsPayload = () => (data.documents?.documents || []).map((d) => ({
+        groupKey: d.groupKey ?? null,
+        type: d.type ?? 'Document',
+        libelle: d.libelle ?? '',
+        urls: (d.urls || []).map(stripFilePrefix).filter(Boolean)
+    }));
+
+    const buildTemplateFormData = () => {
+        const documents = buildDocumentsPayload();
+        const traitementsDocuments = {
+            documents,
+        };
+
+        return {
+            entretien: data.entretien,
+            examens: data.examens,
+            bilans: data.bilans,
+            planTraitement: data.planTraitement,
+            documents,
+            traitementsDocuments,
+            devis: buildDevisPayload(),
+        };
     };
 
     const clearDirty = (keys) => {
@@ -204,7 +240,12 @@ export const useConsultationsForm = ({ ficheId, consultId, token, mode }) => {
 
     const hydrateFromFiche = (res) => {
         const fiche = res || {};
+        const formData = fiche.formData && typeof fiche.formData === 'object' ? fiche.formData : {};
+        const source = Object.keys(formData).length ? formData : fiche;
         ignoreNextDirty = true;
+        formTemplateKey.value = fiche.formTemplateKey || 'fiche_medicale_v2';
+        const required = fiche.formTemplate?.structure?.required;
+        requiredTemplateFields.value = Array.isArray(required) && required.length ? required : ['entretien', 'examens', 'bilans'];
 
         data.patient = {
             id: fiche.patient?.id ?? null,
@@ -221,8 +262,8 @@ export const useConsultationsForm = ({ ficheId, consultId, token, mode }) => {
             antecedents: Array.isArray(fiche.patient?.antecedents) ? fiche.patient.antecedents : []
         };
 
-        data.entretien = fiche.entretien ? { ...defaultEntretien(), ...fiche.entretien } : defaultEntretien();
-        const examens = fiche.examens || {};
+        data.entretien = source.entretien ? { ...defaultEntretien(), ...source.entretien } : defaultEntretien();
+        const examens = source.examens || {};
         data.examens = {
             ...defaultExamens(),
             exobuccalInspection: examens.exobuccalInspection ?? {},
@@ -252,7 +293,7 @@ export const useConsultationsForm = ({ ficheId, consultId, token, mode }) => {
             examensHistologiques: examens.examensHistologiques ?? { observation: '', resultat: '' }
         };
 
-        const bilans = fiche.bilans || {};
+        const bilans = source.bilans || {};
         data.bilans = {
             ...defaultBilans(),
             bilanDentaire: bilans.bilanDentaire || { formuleDentaire: bilans.formuleDentaire ?? {} },
@@ -270,23 +311,32 @@ export const useConsultationsForm = ({ ficheId, consultId, token, mode }) => {
             diagnosticPositif: bilans.diagnosticPositif ?? ''
         };
 
+        const sourceDocuments = Array.isArray(source.documents)
+            ? source.documents
+            : Array.isArray(source.traitementsDocuments?.documents)
+                ? source.traitementsDocuments.documents
+                : Array.isArray(fiche.documents)
+                    ? fiche.documents
+                    : [];
+
         data.documents = {
-            documents: Array.isArray(fiche.documents) ? fiche.documents.map((d, idx) => ({
+            documents: sourceDocuments.map((d, idx) => ({
                 id: d.id,
                 groupKey: d.groupKey ?? `doc-${d.id ?? idx}`,
                 type: d.type ?? 'Document',
                 libelle: d.libelle ?? '',
                 urls: Array.isArray(d.urls) ? d.urls.filter(Boolean) : d.url ? [d.url] : [],
                 files: []
-            })) : []
+            }))
         };
 
-        const devis = Array.isArray(fiche.devis) ? fiche.devis[0] : fiche.devis || null;
+        const rawDevis = source.devis ?? fiche.devis;
+        const devis = Array.isArray(rawDevis) ? rawDevis[0] : rawDevis || null;
         data.devis = devis
             ? {
                   date: devis.date ?? null,
-                  services: Array.isArray(devis.contenus)
-                      ? devis.contenus.map((c) => ({
+                  services: Array.isArray(devis.contenus ?? devis.services)
+                      ? (devis.contenus ?? devis.services).map((c) => ({
                             designation: c.designation ?? '',
                             qte: c.qte ?? 1,
                             montant: c.montant ?? 0
@@ -295,7 +345,7 @@ export const useConsultationsForm = ({ ficheId, consultId, token, mode }) => {
               }
             : defaultDevis();
 
-        const plans = fiche.planTraitement ?? fiche.plansTraitement ?? [];
+        const plans = source.planTraitement ?? fiche.planTraitement ?? fiche.plansTraitement ?? [];
         data.planTraitement = Array.isArray(plans) ? plans.map((p, idx) => ({
             planIndex: p.planIndex ?? idx + 1,
             type: p.type ?? '',
@@ -373,7 +423,13 @@ export const useConsultationsForm = ({ ficheId, consultId, token, mode }) => {
         if (!dirty.entretien) return;
         setSaving('entretien', true);
         try {
-            await saveEntretien(ficheId.value, data.entretien, token);
+            await saveTemplateForm(
+                ficheId.value,
+                formTemplateKey.value,
+                buildTemplateFormData(),
+                [],
+                token
+            );
             clearDirty(['entretien']);
         } finally {
             setSaving('entretien', false);
@@ -384,7 +440,13 @@ export const useConsultationsForm = ({ ficheId, consultId, token, mode }) => {
         if (!dirty.examens) return;
         setSaving('examens', true);
         try {
-            await saveExamens(ficheId.value, data.examens, token);
+            await saveTemplateForm(
+                ficheId.value,
+                formTemplateKey.value,
+                buildTemplateFormData(),
+                [],
+                token
+            );
             clearDirty(['examens']);
         } finally {
             setSaving('examens', false);
@@ -395,7 +457,13 @@ export const useConsultationsForm = ({ ficheId, consultId, token, mode }) => {
         if (!dirty.bilans) return;
         setSaving('bilans', true);
         try {
-            await saveBilans(ficheId.value, data.bilans, token);
+            await saveTemplateForm(
+                ficheId.value,
+                formTemplateKey.value,
+                buildTemplateFormData(),
+                [],
+                token
+            );
             clearDirty(['bilans']);
         } finally {
             setSaving('bilans', false);
@@ -406,7 +474,13 @@ export const useConsultationsForm = ({ ficheId, consultId, token, mode }) => {
         if (!dirty.planTraitement) return;
         setSaving('planTraitement', true);
         try {
-            await savePlanTraitement(ficheId.value, { planTraitement: data.planTraitement }, token);
+            await saveTemplateForm(
+                ficheId.value,
+                formTemplateKey.value,
+                buildTemplateFormData(),
+                [],
+                token
+            );
             clearDirty(['planTraitement']);
         } finally {
             setSaving('planTraitement', false);
@@ -417,14 +491,14 @@ export const useConsultationsForm = ({ ficheId, consultId, token, mode }) => {
         if (!dirty.documents) return;
         setSaving('documents', true);
         try {
-            const documents = (data.documents?.documents || []).map((d) => ({
-                groupKey: d.groupKey ?? null,
-                type: d.type ?? 'Document',
-                libelle: d.libelle ?? '',
-                urls: (d.urls || []).map(stripFilePrefix).filter(Boolean)
-            }));
             const files = (data.documents?.documents || []).map((d) => d.files || []);
-            await saveDocuments(ficheId.value, { documents }, files, token);
+            await saveTemplateForm(
+                ficheId.value,
+                formTemplateKey.value,
+                buildTemplateFormData(),
+                files,
+                token
+            );
             clearDirty(['documents']);
         } finally {
             setSaving('documents', false);
@@ -435,16 +509,13 @@ export const useConsultationsForm = ({ ficheId, consultId, token, mode }) => {
         if (!dirty.devis) return;
         setSaving('devis', true);
         try {
-            const payload = {
-                date: normalizeDateForApi(data.devis.date),
-                type: 0,
-                contenus: (data.devis.services || []).map((s) => ({
-                    designation: s.designation ?? '',
-                    qte: s.qte ?? 1,
-                    montant: s.montant ?? 0
-                }))
-            };
-            await saveDevis(ficheId.value, payload, token);
+            await saveTemplateForm(
+                ficheId.value,
+                formTemplateKey.value,
+                buildTemplateFormData(),
+                [],
+                token
+            );
             clearDirty(['devis']);
         } finally {
             setSaving('devis', false);
@@ -471,7 +542,17 @@ export const useConsultationsForm = ({ ficheId, consultId, token, mode }) => {
                 payload.ordonnance = ordonnancePayload;
             }
 
-            await saveConsultation(ficheId.value, consultId.value, payload, token);
+            await saveTemplateForm(
+                ficheId.value,
+                formTemplateKey.value,
+                buildTemplateFormData(),
+                [],
+                token,
+                {
+                    consultationId: consultId.value,
+                    consultation: payload,
+                }
+            );
 
             if (shouldSaveOrdonnance) {
                 data.ordonnances = await loadOrdonnances(consultId.value, token);

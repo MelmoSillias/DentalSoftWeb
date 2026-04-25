@@ -20,12 +20,8 @@ import {
     closeConsultation,
     loadConsultationForm,
     loadOrdonnances,
-    saveConsultation,
-    saveDevis,
-    saveExamens,
-    saveMotif,
-    saveTraitementsDocuments
 } from '@/services/consultationsforms';
+import { saveTemplateForm } from '@/services/ficheMedicale';
 import { fetchOrdonnancePrintData } from '@/services/printService';
 import { useAuthStore } from '@/stores/auth';
 import { fetchInfirmiers, fetchMedecins } from '@/services/corpsmedical';
@@ -90,6 +86,7 @@ let autosaveTimer = null;
 let ignoreNextDirty = false;
 const isMedecinOptionalOnCreation = ref(false);
 const soinsList = ref([...defaultSoinList]);
+const FORM_TEMPLATE_V1 = 'fiche_observation_v1';
 
 const displayModeOptions = [
     { label: 'Onglets', value: 'tabs' },
@@ -264,6 +261,59 @@ const formatDateApi = (value) => {
     return d.toISOString().slice(0, 10);
 };
 
+const buildV1FormData = (extraSections = []) => {
+    const requiredSections = new Set(['entretien', 'examens', ...extraSections]);
+    const sections = {
+        entretien: {
+            motif: data.motif?.motif ?? '',
+            histoireMaladie: data.motif?.histoireMaladie ?? '',
+            soinsAnterieurs: data.motif?.soinsAnterieurs ?? '',
+        },
+        examens: {
+            exoInspection: data.examens?.exoInspection ?? '',
+            exoPalpation: data.examens?.exoPalpation ?? '',
+            endoInspection: data.examens?.endoInspection ?? '',
+            endoPalpation: data.examens?.endoPalpation ?? '',
+            occlusion: data.examens?.occlusion ?? '',
+            examenParodontal: data.examens?.examenParodontal ?? '',
+            diagnostic: data.examens?.diagnostic ?? '',
+            toothsCheck: data.examens?.toothsCheck ?? {},
+        },
+        traitementsDocuments: {
+            traitementUrgence: data.traitements?.traitementUrgence ?? '',
+            traitementDentaire: data.traitements?.traitementDentaire ?? '',
+            traitementParodontal: data.traitements?.traitementParodontal ?? '',
+            traitementOrthodontique: data.traitements?.traitementOrthodontique ?? '',
+            autres: data.traitements?.autres ?? '',
+            documents: (data.traitements?.documents || []).map((doc) => ({
+                type: 'Document',
+                libelle: doc?.titre || 'Document',
+                urls: doc?.url ? [doc.url] : [],
+            })),
+        },
+        devis: {
+            date: formatDateApi(data.devis?.date),
+            type: 0,
+            contenus: (data.devis?.services || []).map((s) => ({
+                designation: s.designation ?? '',
+                qte: s.qte ?? 1,
+                montant: s.montant ?? 0,
+            })),
+        },
+    };
+
+    const payload = {};
+    requiredSections.forEach((section) => {
+        if (Object.prototype.hasOwnProperty.call(sections, section)) {
+            payload[section] = sections[section];
+        }
+    });
+
+    return payload;
+};
+
+const buildV1DocumentsFiles = () => (data.traitements?.documents || []).map((doc) => (doc?.fichier ? [doc.fichier] : []));
+
 const computeAgeYears = (value) => {
     if (!value) return 0;
     const d = new Date(value);
@@ -370,11 +420,15 @@ const loadData = async () => {
         await ensureFicheLinked();
         if (!ficheId.value) throw new Error('Fiche introuvable');
 
-        const [_, res] = await Promise.all([
+        const [, , res] = await Promise.all([
             loadReferenceData(),
             loadConsultationPolicy(),
             loadConsultationForm(ficheId.value, consultId.value, token)
         ]);
+
+        if (!res || typeof res !== 'object') {
+            throw new Error('Reponse consultation invalide');
+        }
         ignoreNextDirty = true;
         hydrateFromResponse(res);
         if (isMedecinOptionalOnCreation.value && isMedecinUser.value && !data.consultation.medecinId) {
@@ -447,7 +501,13 @@ const saveMotifSection = async ({ silent = false } = {}) => {
     if (!dirty.motif) return;
     setSaving('motif', true);
     try {
-        await saveMotif(ficheId.value, data.motif, token);
+        await saveTemplateForm(
+            ficheId.value,
+            FORM_TEMPLATE_V1,
+            buildV1FormData(['entretien']),
+            [],
+            token
+        );
         clearDirty(['motif']);
         if (!silent) toast.add({ severity: 'success', summary: 'Motif enregistré', life: 2000 });
     } catch (error) {
@@ -466,7 +526,13 @@ const saveExamensSection = async ({ silent = false } = {}) => {
     if (!dirty.examens) return;
     setSaving('examens', true);
     try {
-        await saveExamens(ficheId.value, data.examens, token);
+        await saveTemplateForm(
+            ficheId.value,
+            FORM_TEMPLATE_V1,
+            buildV1FormData(['examens']),
+            [],
+            token
+        );
         clearDirty(['examens']);
         if (!silent) toast.add({ severity: 'success', summary: 'Examens enregistrés', life: 2000 });
     } catch (error) {
@@ -485,7 +551,13 @@ const saveTraitementsSection = async ({ silent = false } = {}) => {
     if (!dirty.traitements) return;
     setSaving('traitements', true);
     try {
-        await saveTraitementsDocuments(ficheId.value, data.traitements, token);
+        await saveTemplateForm(
+            ficheId.value,
+            FORM_TEMPLATE_V1,
+            buildV1FormData(['traitementsDocuments']),
+            buildV1DocumentsFiles(),
+            token
+        );
         clearDirty(['traitements']);
         if (!silent) toast.add({ severity: 'success', summary: 'Traitements enregistrés', life: 2000 });
     } catch (error) {
@@ -504,11 +576,13 @@ const saveDevisSection = async ({ silent = false } = {}) => {
     if (!dirty.devis) return;
     setSaving('devis', true);
     try {
-        const payload = {
-            date: formatDateApi(data.devis.date),
-            contenus: (data.devis.services || []).map((s) => ({ designation: s.designation, qte: s.qte || 1, montant: s.montant || 0 }))
-        };
-        await saveDevis(ficheId.value, payload, token);
+        await saveTemplateForm(
+            ficheId.value,
+            FORM_TEMPLATE_V1,
+            buildV1FormData(['devis']),
+            [],
+            token
+        );
         clearDirty(['devis']);
         if (!silent) toast.add({ severity: 'success', summary: 'Devis enregistré', life: 2000 });
     } catch (error) {
@@ -549,7 +623,10 @@ const saveConsultSection = async ({ silent = false } = {}) => {
             payload.ordonnance = ordonnanceDraft.value;
         }
 
-        await saveConsultation(ficheId.value, consultId.value, payload, token);
+        await saveTemplateForm(ficheId.value, undefined, undefined, undefined, token, {
+            consultationId: consultId.value,
+            consultation: payload
+        });
 
         if (payload.ordonnance) {
             ordonnanceModalVisible.value = false;
@@ -731,6 +808,21 @@ const redirectClosedConsultation = () => {
 function hydrateFromResponse(res) {
     const fiche = res.fiche || {};
     const consultation = res.consultation || {};
+    const entretien = fiche.entretien || {};
+    const examens = fiche.examens || {};
+    const bilans = fiche.bilans || {};
+    const plans = Array.isArray(fiche.planTraitement) ? fiche.planTraitement : [];
+
+    const planByType = (type) => {
+        const found = plans.find((plan) => plan?.type === type);
+        return found?.description || '';
+    };
+
+    const canauxText = String(examens.examenCanauxExcreteurs || '');
+    const extractCanaux = (prefix) => {
+        const line = canauxText.split('\n').find((entry) => entry.toLowerCase().startsWith(prefix.toLowerCase()));
+        return line ? line.slice(prefix.length).trim() : '';
+    };
 
     data.patient = {
         id: res.patient?.id ?? null,
@@ -738,46 +830,46 @@ function hydrateFromResponse(res) {
         prenom: res.patient?.prenom ?? '',
         telephone: res.patient?.telephone ?? '',
         sexe: res.patient?.sexe ?? '',
-        dateNaissance: res.patient?.age ?? null,
+        dateNaissance: res.patient?.dateNaissance ?? null,
         allergies: Array.isArray(res.patient?.allergies) ? res.patient.allergies : [],
         antecedents: Array.isArray(res.patient?.antecedents) ? res.patient.antecedents : []
     };
 
     data.motif = {
-        motif: fiche.motif ?? '',
-        histoireMaladie: fiche.histoireMaladie ?? '',
-        soinsAnterieurs: fiche.soinsAnterieurs ?? ''
+        motif: entretien.motifConsultation ?? '',
+        histoireMaladie: entretien.anamnese ?? '',
+        soinsAnterieurs: ''
     };
 
     data.examens = {
-        exoInspection: fiche.exoInspection ?? '',
-        exoPalpation: fiche.exoPalpation ?? '',
-        endoInspection: fiche.endoInspection ?? '',
-        endoPalpation: fiche.endoPalpation ?? '',
-        occlusion: fiche.occlusion ?? '',
-        examenParodontal: fiche.examenParodontal ?? '',
-        diagnostic: fiche.diagnostic ?? '',
-        toothsCheck: fiche.examens ?? fiche.toothsCheck ?? {}
+        exoInspection: examens.exobuccalInspection?.exoInspection ?? '',
+        exoPalpation: examens.exobuccalPalpation?.exoPalpation ?? '',
+        endoInspection: extractCanaux('Endo inspection:'),
+        endoPalpation: extractCanaux('Endo palpation:'),
+        occlusion: examens.endobuccalBoucheFermee?.occlusion ?? '',
+        examenParodontal: extractCanaux('Examen parodontal:'),
+        diagnostic: bilans.diagnosticPositif ?? '',
+        toothsCheck: examens.tissusDursTable ?? {}
     };
 
     data.traitements = {
-        traitementUrgence: fiche.traitementUrgence ?? '',
-        traitementDentaire: fiche.traitementDentaire ?? '',
-        traitementParodontal: fiche.traitementParodontal ?? '',
-        traitementOrthodontique: fiche.traitementOrthodontique ?? '',
-        autres: fiche.autres ?? '',
+        traitementUrgence: planByType('urgence'),
+        traitementDentaire: planByType('dentaire'),
+        traitementParodontal: planByType('parodontal'),
+        traitementOrthodontique: planByType('orthodontique'),
+        autres: planByType('autres'),
         documents: Array.isArray(fiche.documents)
             ? fiche.documents.map((d) => ({
                 titre: d.libelle ?? '',
-                description: d.description ?? '',
-                date: d.dateDossier ?? '',
-                url: d.url ?? '',
+                description: '',
+                date: '',
+                url: Array.isArray(d.urls) ? (d.urls[0] ?? '') : (d.url ?? ''),
                 fichier: null
             }))
             : []
     };
 
-    const devis = fiche.devis || null;
+    const devis = Array.isArray(fiche.devis) ? (fiche.devis[0] ?? null) : fiche.devis;
     data.devis = devis
         ? {
             id: devis.id,
@@ -793,10 +885,10 @@ function hydrateFromResponse(res) {
     data.sessions = Array.isArray(fiche.consultations)
         ? fiche.consultations.map((s) => ({
             id: s.id,
-            date: s.date,
-            medecin: s.medecin,
-            infirmier: s.infirmier,
-            salle: s.salle,
+            date: s.createdAt,
+            medecin: s.medecin?.name ?? '',
+            infirmier: s.infirmier?.name ?? '',
+            salle: s.salle?.name ?? '',
             noteSeance: s.noteSeance || s.note || '',
             actes: []
         }))

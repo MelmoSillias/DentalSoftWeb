@@ -9,6 +9,11 @@ use Doctrine\ORM\EntityManagerInterface;
 class GlobalSettingsService
 {
     private const KEY_GENERAL = 'general';
+    private const DEFAULT_FORM_TEMPLATE = 'fiche_medicale_v2';
+    private const ALLOWED_FORM_TEMPLATES = [
+        'fiche_observation_v1',
+        'fiche_medicale_v2',
+    ];
     private const DEFAULT_TRANSACTION_MOTIFS = [
         'revenue' => [
             'Paiement patient',
@@ -47,7 +52,7 @@ class GlobalSettingsService
     ) {
     }
 
-    /** @return array{autoApproveDevices: bool, requireMedecinOnConsultationCreation: bool, allowReceptionQuickCloseConsultation: bool, paiementDirectAssurance: bool, transactionMotifs: array{revenue: string[], expense: string[]}, soinsList: string[]} */
+    /** @return array{autoApproveDevices: bool, requireMedecinOnConsultationCreation: bool, allowReceptionQuickCloseConsultation: bool, paiementDirectAssurance: bool, defaultFormTemplate: string, transactionMotifs: array{revenue: string[], expense: string[]}, soinsList: string[]} */
     public function getGeneralSettings(): array
     {
         $entry = $this->appSettingRepo->findOneByKey(self::KEY_GENERAL);
@@ -58,6 +63,7 @@ class GlobalSettingsService
             'requireMedecinOnConsultationCreation' => (bool) ($value['requireMedecinOnConsultationCreation'] ?? true),
             'allowReceptionQuickCloseConsultation' => (bool) ($value['allowReceptionQuickCloseConsultation'] ?? true),
             'paiementDirectAssurance' => (bool) ($value['paiementDirectAssurance'] ?? false),
+            'defaultFormTemplate' => $this->sanitizeDefaultFormTemplate($value['defaultFormTemplate'] ?? null),
             'transactionMotifs' => $this->sanitizeTransactionMotifs($value['transactionMotifs'] ?? null),
             'soinsList' => $this->sanitizeStringList($value['soinsList'] ?? null, self::DEFAULT_SOINS_LIST),
         ];
@@ -79,6 +85,7 @@ class GlobalSettingsService
             'requireMedecinOnConsultationCreation' => (bool) ($payload['requireMedecinOnConsultationCreation'] ?? ($current['requireMedecinOnConsultationCreation'] ?? false)),
             'allowReceptionQuickCloseConsultation' => (bool) ($payload['allowReceptionQuickCloseConsultation'] ?? ($current['allowReceptionQuickCloseConsultation'] ?? true)),
             'paiementDirectAssurance' => (bool) ($payload['paiementDirectAssurance'] ?? $payload['paymentDirectInsurance'] ?? ($current['paiementDirectAssurance'] ?? false)),
+            'defaultFormTemplate' => $this->sanitizeDefaultFormTemplate($payload['defaultFormTemplate'] ?? ($current['defaultFormTemplate'] ?? null)),
             'transactionMotifs' => $this->sanitizeTransactionMotifs($payload['transactionMotifs'] ?? ($current['transactionMotifs'] ?? null)),
             'soinsList' => $this->sanitizeStringList($payload['soinsList'] ?? ($current['soinsList'] ?? null), self::DEFAULT_SOINS_LIST),
         ]);
@@ -108,6 +115,11 @@ class GlobalSettingsService
         return $this->getGeneralSettings()['paiementDirectAssurance'];
     }
 
+    public function getDefaultFormTemplate(): string
+    {
+        return $this->getGeneralSettings()['defaultFormTemplate'];
+    }
+
     /** @return array{revenue: string[], expense: string[]} */
     public function getTransactionMotifs(): array
     {
@@ -120,7 +132,7 @@ class GlobalSettingsService
         return $this->getGeneralSettings()['soinsList'];
     }
 
-    /** @return array{requireMedecinOnConsultationCreation: bool, allowReceptionQuickCloseConsultation: bool, paiementDirectAssurance: bool, soinsList: string[]} */
+    /** @return array{requireMedecinOnConsultationCreation: bool, allowReceptionQuickCloseConsultation: bool, paiementDirectAssurance: bool, defaultFormTemplate: string, soinsList: string[]} */
     public function getPublicGeneralSettings(): array
     {
         $settings = $this->getGeneralSettings();
@@ -129,8 +141,23 @@ class GlobalSettingsService
             'requireMedecinOnConsultationCreation' => $settings['requireMedecinOnConsultationCreation'],
             'allowReceptionQuickCloseConsultation' => $settings['allowReceptionQuickCloseConsultation'],
             'paiementDirectAssurance' => $settings['paiementDirectAssurance'],
+            'defaultFormTemplate' => $settings['defaultFormTemplate'],
             'soinsList' => $settings['soinsList'],
         ];
+    }
+
+    private function sanitizeDefaultFormTemplate(mixed $value): string
+    {
+        $candidate = is_scalar($value) ? trim((string) $value) : '';
+        if ($candidate === '') {
+            return self::DEFAULT_FORM_TEMPLATE;
+        }
+
+        if (!in_array($candidate, self::ALLOWED_FORM_TEMPLATES, true)) {
+            return self::DEFAULT_FORM_TEMPLATE;
+        }
+
+        return $candidate;
     }
 
     /** @return array{revenue: string[], expense: string[]} */

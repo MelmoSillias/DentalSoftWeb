@@ -2,23 +2,10 @@
 
 namespace App\ClinicalRecord\Service;
 
-use App\Billing\Entity\ContenuDevis;
-use App\Billing\Entity\Devis;
-use App\Billing\Repository\DevisRepository;
-use App\ClinicalRecord\Entity\FicheBilan;
-use App\ClinicalRecord\Entity\FicheDocument;
-use App\ClinicalRecord\Entity\FicheEntretien;
-use App\ClinicalRecord\Entity\FicheEntretienAffection;
-use App\ClinicalRecord\Entity\FicheEntretienHabitude;
-use App\ClinicalRecord\Entity\FicheEntretienMedicament;
-use App\ClinicalRecord\Entity\FicheEntretienQuestion;
-use App\ClinicalRecord\Entity\FicheExamen;
-use App\ClinicalRecord\Entity\FicheExamenItem;
-use App\ClinicalRecord\Entity\FicheExamenLabo;
 use App\ClinicalRecord\Entity\FicheMedicale;
-use App\ClinicalRecord\Entity\FicheObservation;
-use App\ClinicalRecord\Entity\FichePlanTraitement;
-use Doctrine\Common\Collections\Collection;
+use App\ClinicalRecord\Entity\FormTemplate;
+use App\ClinicalRecord\Repository\FormTemplateRepository;
+use App\Settings\Service\GlobalSettingsService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 use Symfony\Component\Filesystem\Filesystem;
@@ -27,14 +14,23 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class FicheMedicaleService
 {
+    private const TEMPLATE_V1 = 'fiche_observation_v1';
+    private const TEMPLATE_V2 = 'fiche_medicale_v2';
+
     private string $projectDir;
 
     public function __construct(
         private EntityManagerInterface $em,
-        private DevisRepository $devisRepo,
+        private FormTemplateRepository $formTemplateRepository,
+        private GlobalSettingsService $globalSettingsService,
         ParameterBagInterface $params,
     ) {
         $this->projectDir = $params->get('kernel.project_dir');
+    }
+
+    private function resolveDefaultFormTemplate(): string
+    {
+        return $this->globalSettingsService->getDefaultFormTemplate();
     }
 
     private function getFiche(int $ficheId): FicheMedicale
@@ -43,978 +39,278 @@ class FicheMedicaleService
         if (!$fiche) {
             throw new NotFoundHttpException("FicheMedicale {$ficheId} introuvable");
         }
+
         return $fiche;
     }
 
-    private function toBool(mixed $value): ?bool
+    private function resolveTemplateVersion(string $templateKey): int
     {
-        if ($value === null) {
-            return null;
-        }
-
-        if (is_bool($value)) {
-            return $value;
-        }
-
-        $normalized = strtolower((string) $value);
-        if (in_array($normalized, ['1', 'true', 'oui', 'yes', 'y'], true)) {
-            return true;
-        }
-        if (in_array($normalized, ['0', 'false', 'non', 'no', 'n'], true)) {
-            return false;
-        }
-
-        return null;
+        return $templateKey === self::TEMPLATE_V2 ? 2 : 1;
     }
 
-    private function clearCollection(Collection $collection): void
+    private function getTemplateByKey(string $key): FormTemplate
     {
-        foreach ($collection->toArray() as $item) {
-            $collection->removeElement($item);
-            $this->em->remove($item);
+        $template = $this->formTemplateRepository->findLatestByKey($key);
+        if (!$template) {
+            // Keep update endpoint operational even if fixtures were not loaded.
+            $template = new FormTemplate();
+            $template->setKey($key);
+            $template->setVersion($this->resolveTemplateVersion($key));
+            $template->setStructure(['required' => []]);
+            $this->em->persist($template);
+            $this->em->flush();
         }
+
+        return $template;
     }
 
-    private function getOrCreateEntretien(FicheMedicale $fiche): FicheEntretien
+    private function validateFormDataWithTemplate(FormTemplate $template, array $formData): void
     {
-        $entretien = $fiche->getEntretien();
-        if (!$entretien) {
-            $entretien = new FicheEntretien();
-            $entretien->setFicheMedicale($fiche);
-            $fiche->setEntretien($entretien);
-            $this->em->persist($entretien);
-        }
-        return $entretien;
-    }
-
-    private function getOrCreateExamen(FicheMedicale $fiche): FicheExamen
-    {
-        $examen = $fiche->getExamen();
-        if (!$examen) {
-            $examen = new FicheExamen();
-            $examen->setFicheMedicale($fiche);
-            $fiche->setExamen($examen);
-            $this->em->persist($examen);
-        }
-        return $examen;
-    }
-
-    private function getOrCreateBilan(FicheMedicale $fiche): FicheBilan
-    {
-        $bilan = $fiche->getBilan();
-        if (!$bilan) {
-            $bilan = new FicheBilan();
-            $bilan->setFicheMedicale($fiche);
-            $fiche->setBilan($bilan);
-            $this->em->persist($bilan);
-        }
-        return $bilan;
-    }
-
-    public function updateEntretien(int $ficheId, array $data): void
-    {
-        $fiche = $this->getFiche($ficheId);
-        $entretien = $this->getOrCreateEntretien($fiche);
-
-        if (array_key_exists('motifConsultation', $data)) {
-            $entretien->setMotifConsultation($data['motifConsultation']);
-        }
-        if (array_key_exists('anamnese', $data)) {
-            $entretien->setAnamnese($data['anamnese']);
+        $structure = $template->getStructure();
+        $required = $structure['required'] ?? [];
+        if (!is_array($required)) {
+            return;
         }
 
-        $etatGyneco = $data['etatGynecologique'] ?? $data['etatGenecoloque'] ?? null;
-        if (is_array($etatGyneco)) {
-            $entretien->setAllaitement($this->toBool($etatGyneco['allaitement'] ?? $etatGyneco['alaitement'] ?? null));
-            $entretien->setGrossesseEnCours($this->toBool($etatGyneco['grossesseEnCours'] ?? $etatGyneco['grossesse'] ?? null));
-            $entretien->setMenstrues($this->toBool($etatGyneco['menstrues'] ?? null));
-        } else {
-            if (array_key_exists('allaitement', $data)) {
-                $entretien->setAllaitement($this->toBool($data['allaitement']));
+        $missing = [];
+        foreach ($required as $field) {
+            if (!is_string($field)) {
+                continue;
             }
-            if (array_key_exists('grossesseEnCours', $data)) {
-                $entretien->setGrossesseEnCours($this->toBool($data['grossesseEnCours']));
-            }
-            if (array_key_exists('menstrues', $data)) {
-                $entretien->setMenstrues($this->toBool($data['menstrues']));
+
+            if (!array_key_exists($field, $formData)) {
+                $missing[] = $field;
             }
         }
 
-        if (isset($data['medicaments']) && is_array($data['medicaments'])) {
-            $incomingIds = array_filter(array_map(fn($m) => $m['id'] ?? null, $data['medicaments']));
-
-            foreach ($entretien->getMedicaments() as $existing) {
-                if ($existing->getId() && !in_array($existing->getId(), $incomingIds, true)) {
-                    $entretien->getMedicaments()->removeElement($existing);
-                    $this->em->remove($existing);
-                }
-            }
-
-            foreach ($data['medicaments'] as $m) {
-                $med = null;
-                if (!empty($m['id'])) {
-                    $med = $this->em->getRepository(FicheEntretienMedicament::class)->find($m['id']);
-                }
-                if (!$med) {
-                    $med = new FicheEntretienMedicament();
-                    $med->setEntretien($entretien);
-                }
-
-                $med->setNom($m['nom'] ?? $m['name'] ?? $m['key'] ?? (is_string($m) ? $m : null));
-                $med->setEstUtilise($this->toBool($m['estUtilise'] ?? $m['value'] ?? $m['utilise'] ?? null));
-                $med->setDetails($m['details'] ?? $m['description'] ?? null);
-
-                $this->em->persist($med);
-                if (!$entretien->getMedicaments()->contains($med)) {
-                    $entretien->getMedicaments()->add($med);
-                }
-            }
-        }
-
-        if (isset($data['affections']) && is_array($data['affections'])) {
-            $incomingIds = array_filter(array_map(fn($a) => $a['id'] ?? null, $data['affections']));
-
-            foreach ($entretien->getAffections() as $existing) {
-                if ($existing->getId() && !in_array($existing->getId(), $incomingIds, true)) {
-                    $entretien->getAffections()->removeElement($existing);
-                    $this->em->remove($existing);
-                }
-            }
-
-            foreach ($data['affections'] as $a) {
-                $aff = null;
-                if (!empty($a['id'])) {
-                    $aff = $this->em->getRepository(FicheEntretienAffection::class)->find($a['id']);
-                }
-                if (!$aff) {
-                    $aff = new FicheEntretienAffection();
-                    $aff->setEntretien($entretien);
-                }
-
-                $aff->setNom($a['nom'] ?? $a['name'] ?? $a['key'] ?? (is_string($a) ? $a : null));
-                $aff->setEstPresente($this->toBool($a['estPresente'] ?? $a['value'] ?? $a['present'] ?? null));
-                $aff->setDetails($a['details'] ?? $a['description'] ?? null);
-
-                $this->em->persist($aff);
-                if (!$entretien->getAffections()->contains($aff)) {
-                    $entretien->getAffections()->add($aff);
-                }
-            }
-        }
-
-        if (isset($data['questions']) && is_array($data['questions'])) {
-            $incomingIds = array_filter(array_map(fn($q) => $q['id'] ?? null, $data['questions']));
-
-            foreach ($entretien->getQuestions() as $existing) {
-                if ($existing->getId() && !in_array($existing->getId(), $incomingIds, true)) {
-                    $entretien->getQuestions()->removeElement($existing);
-                    $this->em->remove($existing);
-                }
-            }
-
-            foreach ($data['questions'] as $q) {
-                $question = null;
-                if (!empty($q['id'])) {
-                    $question = $this->em->getRepository(FicheEntretienQuestion::class)->find($q['id']);
-                }
-                if (!$question) {
-                    $question = new FicheEntretienQuestion();
-                    $question->setEntretien($entretien);
-                }
-
-                $question->setQuestion($q['question'] ?? $q['nom'] ?? $q['key'] ?? (is_string($q) ? $q : null));
-                $question->setReponse($this->toBool($q['reponse'] ?? $q['value'] ?? $q['oui'] ?? null));
-                $question->setPrecision($q['precision'] ?? $q['details'] ?? null);
-
-                $this->em->persist($question);
-                if (!$entretien->getQuestions()->contains($question)) {
-                    $entretien->getQuestions()->add($question);
-                }
-            }
-        }
-
-        if (isset($data['habitudes']) && is_array($data['habitudes'])) {
-            $incomingIds = array_filter(array_map(fn($h) => $h['id'] ?? null, $data['habitudes']));
-
-            foreach ($entretien->getHabitudes() as $existing) {
-                if ($existing->getId() && !in_array($existing->getId(), $incomingIds, true)) {
-                    $entretien->getHabitudes()->removeElement($existing);
-                    $this->em->remove($existing);
-                }
-            }
-
-            foreach ($data['habitudes'] as $h) {
-                $habitude = null;
-                if (!empty($h['id'])) {
-                    $habitude = $this->em->getRepository(FicheEntretienHabitude::class)->find($h['id']);
-                }
-                if (!$habitude) {
-                    $habitude = new FicheEntretienHabitude();
-                    $habitude->setEntretien($entretien);
-                }
-
-                $habitude->setType($h['type'] ?? $h['name'] ?? $h['nom'] ?? (is_string($h) ? $h : null));
-                $habitude->setEstPresente($this->toBool($h['estPresente'] ?? $h['value'] ?? $h['present'] ?? null));
-                $habitude->setQuantite($h['quantite'] ?? $h['details'] ?? null);
-
-                $this->em->persist($habitude);
-                if (!$entretien->getHabitudes()->contains($habitude)) {
-                    $entretien->getHabitudes()->add($habitude);
-                }
-            }
-        }
-
-        $this->em->flush();
-    }
-
-    private function addExamenItems(FicheExamen $examen, array $items, string $categorie): void
-    {
-        foreach ($items as $item) {
-            $entry = new FicheExamenItem();
-            $entry->setExamen($examen);
-            $entry->setCategorie($categorie);
-            $entry->setLibelle($item['libelle'] ?? $item['label'] ?? $item['name'] ?? (is_string($item) ? $item : null));
-            $entry->setEstPresent($this->toBool($item['estPresent'] ?? $item['value'] ?? $item['present'] ?? null));
-            $entry->setDetails($item['details'] ?? $item['description'] ?? null);
-            $this->em->persist($entry);
+        if ($missing !== []) {
+            throw new \InvalidArgumentException('formData incomplet. Champs obligatoires manquants: ' . implode(', ', $missing));
         }
     }
 
-    private function isAssoc(array $array): bool
+    private function normalizeDocumentEntry(array $entry): array
     {
-        return array_keys($array) !== range(0, count($array) - 1);
+        $urls = $entry['urls'] ?? (isset($entry['url']) ? [$entry['url']] : []);
+        if (!is_array($urls)) {
+            $urls = [];
+        }
+
+        return [
+            'groupKey' => isset($entry['groupKey']) && is_string($entry['groupKey']) && trim($entry['groupKey']) !== ''
+                ? trim($entry['groupKey'])
+                : uniqid('doc_', true),
+            'type' => isset($entry['type']) && is_string($entry['type']) && trim($entry['type']) !== '' ? trim($entry['type']) : 'Document',
+            'libelle' => isset($entry['libelle']) && is_string($entry['libelle']) ? trim($entry['libelle']) : '',
+            'urls' => array_values(array_filter(array_map(static fn(mixed $url): ?string => is_string($url) && trim($url) !== '' ? trim($url) : null, $urls))),
+        ];
     }
 
-    private function addExamenItemsFromMap(FicheExamen $examen, array $map, string $categorie, bool $booleanValues): void
+    private function extractDocumentsFromFormData(array $formData): array
     {
-        foreach ($map as $label => $value) {
-            $entry = new FicheExamenItem();
-            $entry->setExamen($examen);
-            $entry->setCategorie($categorie);
-            $entry->setLibelle((string) $label);
-            if ($booleanValues) {
-                $entry->setEstPresent($this->toBool($value));
-                $entry->setDetails(null);
-            } else {
-                $entry->setEstPresent($value !== null && $value !== '');
-                $entry->setDetails(is_scalar($value) ? (string) $value : null);
-            }
-            $this->em->persist($entry);
+        $documents = $formData['documents'] ?? null;
+        if (!is_array($documents)) {
+            $documents = $formData['traitementsDocuments']['documents'] ?? [];
         }
+
+        if (!is_array($documents)) {
+            return [];
+        }
+
+        $result = [];
+        foreach ($documents as $doc) {
+            if (!is_array($doc)) {
+                continue;
+            }
+            $result[] = $this->normalizeDocumentEntry($doc);
+        }
+
+        return $result;
     }
 
-    public function updateExamens(int $ficheId, array $data): void
+    private function ensureDocumentsTargetPath(array &$formData, string $templateKey): string
     {
-        $fiche = $this->getFiche($ficheId);
-        $examen = $this->getOrCreateExamen($fiche);
-
-        $endobuccalFermee = $data['endobuccalBoucheFermee'] ?? null;
-        if (is_array($endobuccalFermee)) {
-            $examen->setOcclusion($endobuccalFermee['occlusion'] ?? null);
-            $examen->setMediane($endobuccalFermee['mediane'] ?? null);
-            $examen->setClassesAngle($endobuccalFermee['classesAngle'] ?? null);
-            $examen->setVestibules($endobuccalFermee['vestibules'] ?? null);
+        if (isset($formData['documents']) && is_array($formData['documents'])) {
+            $formData['documents'] = $this->extractDocumentsFromFormData($formData);
+            return 'documents';
         }
 
-        $endobuccalOuverte = $data['endobuccalBoucheOuverte'] ?? null;
-        if (is_array($endobuccalOuverte)) {
-            $examen->setHbd($endobuccalOuverte['hbd'] ?? null);
-            $examen->setBrossage($endobuccalOuverte['brossage'] ?? null);
-            $examen->setSoccu($endobuccalOuverte['soccu'] ?? null);
-            $examen->setCinematiqueMandibulaire($endobuccalOuverte['cinematiqueMandibulaire'] ?? null);
-            $examen->setOuvertureBuccale($endobuccalOuverte['ouvertureBuccale'] ?? null);
-            $examen->setTemperatureBuccale($endobuccalOuverte['temperatureBuccale'] ?? null);
-            $examen->setAmplitudeOuverture($endobuccalOuverte['amplitudeOuverture'] ?? null);
-            $examen->setBruitsArticulaires($endobuccalOuverte['bruitsArticulaires'] ?? null);
+        if (isset($formData['traitementsDocuments']) && is_array($formData['traitementsDocuments'])) {
+            $formData['traitementsDocuments']['documents'] = $this->extractDocumentsFromFormData($formData);
+            return 'traitementsDocuments.documents';
         }
 
-        foreach ([
-            'occlusion' => 'occlusion',
-            'mediane' => 'mediane',
-            'classesAngle' => 'classesAngle',
-            'vestibules' => 'vestibules',
-            'hbd' => 'hbd',
-            'brossage' => 'brossage',
-            'soccu' => 'soccu',
-            'cinematiqueMandibulaire' => 'cinematiqueMandibulaire',
-            'ouvertureBuccale' => 'ouvertureBuccale',
-            'temperatureBuccale' => 'temperatureBuccale',
-            'amplitudeOuverture' => 'amplitudeOuverture',
-            'bruitsArticulaires' => 'bruitsArticulaires',
-            'examenCanauxExcreteurs' => 'examenCanauxExcreteurs',
-        ] as $inputKey => $setterKey) {
-            if (array_key_exists($inputKey, $data)) {
-                $method = 'set' . ucfirst($setterKey);
-                $examen->{$method}($data[$inputKey]);
+        if ($templateKey === self::TEMPLATE_V1) {
+            $formData['traitementsDocuments'] = $formData['traitementsDocuments'] ?? [];
+            if (!is_array($formData['traitementsDocuments'])) {
+                $formData['traitementsDocuments'] = [];
             }
+            $formData['traitementsDocuments']['documents'] = [];
+            return 'traitementsDocuments.documents';
         }
 
-        if (isset($data['tissusMousTable']) && is_array($data['tissusMousTable'])) {
-            $examen->setTissusMousTable($data['tissusMousTable']);
-        }
-        if (isset($data['tissusDursTable']) && is_array($data['tissusDursTable'])) {
-            $examen->setTissusDursTable($data['tissusDursTable']);
-        }
+        $formData['documents'] = [];
+        return 'documents';
+    }
 
-        if (isset($data['items']) && is_array($data['items'])) {
-            $this->clearCollection($examen->getItems());
-            foreach ($data['items'] as $item) {
-                $entry = new FicheExamenItem();
-                $entry->setExamen($examen);
-                $entry->setCategorie($item['categorie'] ?? 'autre');
-                $entry->setLibelle($item['libelle'] ?? $item['label'] ?? $item['name'] ?? null);
-                $entry->setEstPresent($this->toBool($item['estPresent'] ?? $item['value'] ?? null));
-                $entry->setDetails($item['details'] ?? $item['description'] ?? null);
-                $this->em->persist($entry);
+    private function normalizeUploadedFiles(array $files): array
+    {
+        $normalized = [];
+        foreach ($files as $index => $docFiles) {
+            if ($docFiles instanceof UploadedFile) {
+                $normalized[$index] = [$docFiles];
+                continue;
             }
-        } else {
-            $this->clearCollection($examen->getItems());
-            if (isset($data['exobuccalInspection']) && is_array($data['exobuccalInspection'])) {
-                if ($this->isAssoc($data['exobuccalInspection'])) {
-                    $this->addExamenItemsFromMap($examen, $data['exobuccalInspection'], 'exobuccal_inspection', false);
-                } else {
-                    $this->addExamenItems($examen, $data['exobuccalInspection'], 'exobuccal_inspection');
+
+            if (!is_array($docFiles)) {
+                continue;
+            }
+
+            $flat = [];
+            array_walk_recursive($docFiles, static function (mixed $item) use (&$flat): void {
+                if ($item instanceof UploadedFile) {
+                    $flat[] = $item;
                 }
-            }
-            if (isset($data['exobuccalPalpation']) && is_array($data['exobuccalPalpation'])) {
-                if ($this->isAssoc($data['exobuccalPalpation'])) {
-                    $this->addExamenItemsFromMap($examen, $data['exobuccalPalpation'], 'exobuccal_palpation', false);
-                } else {
-                    $this->addExamenItems($examen, $data['exobuccalPalpation'], 'exobuccal_palpation');
-                }
-            }
-            if (isset($data['chainesGanglionnaires']) && is_array($data['chainesGanglionnaires'])) {
-                if ($this->isAssoc($data['chainesGanglionnaires'])) {
-                    $this->addExamenItemsFromMap($examen, $data['chainesGanglionnaires'], 'chaines_ganglionnaires', true);
-                } else {
-                    $this->addExamenItems($examen, $data['chainesGanglionnaires'], 'chaines_ganglionnaires');
-                }
+            });
+
+            if ($flat !== []) {
+                $normalized[$index] = $flat;
             }
         }
 
-        if (isset($data['examensLabo']) && is_array($data['examensLabo'])) {
-            $this->clearCollection($examen->getExamensLabo());
-            foreach ($data['examensLabo'] as $item) {
-                $labo = new FicheExamenLabo();
-                $labo->setExamen($examen);
-                $labo->setType($item['type'] ?? $item['name'] ?? '');
-                $labo->setObservation($item['observation'] ?? null);
-                $labo->setResultat($item['resultat'] ?? null);
-                $this->em->persist($labo);
-            }
-        } else {
-            $this->clearCollection($examen->getExamensLabo());
-            $map = [
-                'Examens bacteriologiques' => $data['examensBacteriologiques'] ?? null,
-                'Examens serologiques' => $data['examensSerologiques'] ?? null,
-                'Examens histologiques' => $data['examensHistologiques'] ?? null,
-            ];
-            foreach ($map as $type => $payload) {
-                if (!is_array($payload)) {
-                    continue;
-                }
-                $labo = new FicheExamenLabo();
-                $labo->setExamen($examen);
-                $labo->setType($type);
-                $labo->setObservation($payload['observation'] ?? null);
-                $labo->setResultat($payload['resultat'] ?? null);
-                $this->em->persist($labo);
-            }
-        }
-
-        $this->em->flush();
+        return $normalized;
     }
 
-    public function updateBilans(int $ficheId, array $data): void
+    private function getUploadDirectory(): string
     {
-        $fiche = $this->getFiche($ficheId);
-        $bilan = $this->getOrCreateBilan($fiche);
-
-        $bilanDentaire = $data['bilanDentaire'] ?? null;
-        if (is_array($bilanDentaire) && isset($bilanDentaire['formuleDentaire']) && is_array($bilanDentaire['formuleDentaire'])) {
-            $bilan->setFormuleDentaire($bilanDentaire['formuleDentaire']);
-        }
-
-        if (isset($data['formuleDentaire']) && is_array($data['formuleDentaire'])) {
-            $bilan->setFormuleDentaire($data['formuleDentaire']);
-        }
-
-        $bilanRadiographique = $data['bilanRadiographique'] ?? null;
-        if (is_array($bilanRadiographique)) {
-            if (array_key_exists('radiographieExtraBuccaleHypothese', $bilanRadiographique)) {
-                $bilan->setRadiographieExtraBuccaleHypothese($bilanRadiographique['radiographieExtraBuccaleHypothese']);
-            }
-            if (array_key_exists('radiographieIntraBuccaleHypothese', $bilanRadiographique)) {
-                $bilan->setRadiographieIntraBuccaleHypothese($bilanRadiographique['radiographieIntraBuccaleHypothese']);
-            }
-        }
-
-        $bilanSanguin = $data['bilanSanguin'] ?? null;
-        if (is_array($bilanSanguin)) {
-            if (array_key_exists('nfsDetaillee', $bilanSanguin)) {
-                $bilan->setNfsDetaillee($bilanSanguin['nfsDetaillee']);
-            }
-            if (array_key_exists('tpTcaInr', $bilanSanguin)) {
-                $bilan->setTpTcaInr($bilanSanguin['tpTcaInr']);
-            }
-            if (array_key_exists('uree', $bilanSanguin)) {
-                $bilan->setUree($bilanSanguin['uree']);
-            }
-            if (array_key_exists('creatininemie', $bilanSanguin)) {
-                $bilan->setCreatininemie($bilanSanguin['creatininemie']);
-            }
-            if (array_key_exists('glycemie', $bilanSanguin)) {
-                $bilan->setGlycemie($bilanSanguin['glycemie']);
-            }
-        }
-
-        if (array_key_exists('radiographieExtraBuccaleHypothese', $data)) {
-            $bilan->setRadiographieExtraBuccaleHypothese($data['radiographieExtraBuccaleHypothese']);
-        }
-        if (array_key_exists('radiographieIntraBuccaleHypothese', $data)) {
-            $bilan->setRadiographieIntraBuccaleHypothese($data['radiographieIntraBuccaleHypothese']);
-        }
-        if (array_key_exists('nfsDetaillee', $data)) {
-            $bilan->setNfsDetaillee($data['nfsDetaillee']);
-        }
-        if (array_key_exists('tpTcaInr', $data)) {
-            $bilan->setTpTcaInr($data['tpTcaInr']);
-        }
-        if (array_key_exists('uree', $data)) {
-            $bilan->setUree($data['uree']);
-        }
-        if (array_key_exists('creatininemie', $data)) {
-            $bilan->setCreatininemie($data['creatininemie']);
-        }
-        if (array_key_exists('glycemie', $data)) {
-            $bilan->setGlycemie($data['glycemie']);
-        }
-        if (array_key_exists('diagnosticPositif', $data)) {
-            $bilan->setDiagnosticPositif($data['diagnosticPositif']);
-        }
-
-        $this->em->flush();
-    }
-
-    public function updatePlanTraitement(int $ficheId, array $data): void
-    {
-        $fiche = $this->getFiche($ficheId);
-
-        $plans = $data['plans'] ?? $data['planTraitement'] ?? [];
-        if (!is_array($plans)) {
-            $plans = [];
-        }
-
-        $this->clearCollection($fiche->getPlansTraitement());
-
-        foreach ($plans as $planData) {
-            $plan = new FichePlanTraitement();
-            $plan->setFicheMedicale($fiche);
-            $plan->setPlanIndex($planData['planIndex'] ?? null);
-            $plan->setType($planData['type'] ?? '');
-            $plan->setDescription($planData['description'] ?? $planData['Description'] ?? null);
-            if (!empty($planData['dateSupposed'])) {
-                $plan->setDateSupposed(new \DateTime($planData['dateSupposed']));
-            }
-            $this->em->persist($plan);
-        }
-
-        $this->em->flush();
-    }
-
-    public function updateDocuments(int $ficheId, array $data, array $files = []): void
-    {
-        $fiche = $this->getFiche($ficheId);
-
-        $this->clearCollection($fiche->getDocuments());
-
-        $fs = new Filesystem();
         $uploadDir = $this->projectDir . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'documents' . DIRECTORY_SEPARATOR . 'fiche-medicale';
-
+        $fs = new Filesystem();
         if (!$fs->exists($uploadDir)) {
             $fs->mkdir($uploadDir, 0775);
             $fs->chmod($uploadDir, 0775);
         }
 
-        $documents = $data['documents'] ?? [];
-        if (!is_array($documents)) {
-            $documents = [];
+        return $uploadDir;
+    }
+
+    private function moveUploadedFile(UploadedFile $file, string $uploadDir): string
+    {
+        $originalName = pathinfo($file->getClientOriginalName(), PATHINFO_BASENAME);
+        if (!$originalName) {
+            $extension = $file->guessExtension() ?: $file->getClientOriginalExtension();
+            $originalName = 'document' . ($extension ? '.' . $extension : '');
         }
 
-        foreach ($documents as $index => $doc) {
-            $type = $doc['type'] ?? 'Document';
-            $libelle = $doc['libelle'] ?? 'document';
-            $groupKey = $doc['groupKey'] ?? null;
-            if (!$groupKey) {
-                $groupKey = uniqid('doc_', true);
+        $filename = $originalName;
+        $namePart = pathinfo($originalName, PATHINFO_FILENAME);
+        $extensionPart = pathinfo($originalName, PATHINFO_EXTENSION);
+
+        $counter = 1;
+        while (file_exists($uploadDir . DIRECTORY_SEPARATOR . $filename)) {
+            $suffix = '_' . $counter;
+            $filename = $namePart . $suffix . ($extensionPart ? '.' . $extensionPart : '');
+            $counter++;
+        }
+
+        $movedFile = $file->move($uploadDir, $filename);
+
+        return 'uploads/documents/fiche-medicale/' . $movedFile->getFilename();
+    }
+
+    private function appendUploadedFilesToFormData(array $formData, string $templateKey, array $files): array
+    {
+        $normalizedFiles = $this->normalizeUploadedFiles($files);
+        if ($normalizedFiles === []) {
+            return $formData;
+        }
+
+        $documentsPath = $this->ensureDocumentsTargetPath($formData, $templateKey);
+        $uploadDir = $this->getUploadDirectory();
+
+        if ($documentsPath === 'documents') {
+            $documents = &$formData['documents'];
+        } else {
+            $documents = &$formData['traitementsDocuments']['documents'];
+        }
+
+        foreach ($normalizedFiles as $index => $docFiles) {
+            if (!isset($documents[$index]) || !is_array($documents[$index])) {
+                $documents[$index] = [
+                    'groupKey' => uniqid('doc_', true),
+                    'type' => 'Document',
+                    'libelle' => '',
+                    'urls' => [],
+                ];
             }
 
-            $urls = $doc['urls'] ?? (isset($doc['url']) ? [$doc['url']] : []);
-            if (is_array($urls)) {
-                foreach ($urls as $url) {
-                    if (!$url) {
-                        continue;
-                    }
-                    $entity = new FicheDocument();
-                    $entity->setFicheMedicale($fiche);
-                    $entity->setType($type);
-                    $entity->setLibelle($libelle);
-                    $entity->setUrl($url);
-                    $entity->setGroupKey($groupKey);
-                    $this->em->persist($entity);
-                }
-            }
-
-            $docFiles = $files[$index] ?? [];
-            if ($docFiles instanceof UploadedFile) {
-                $docFiles = [$docFiles];
-            }
-
-            if (!is_array($docFiles)) {
-                $docFiles = [];
-            }
+            $documents[$index] = $this->normalizeDocumentEntry($documents[$index]);
 
             foreach ($docFiles as $file) {
                 if (!$file instanceof UploadedFile) {
                     continue;
                 }
 
-                $originalName = pathinfo($file->getClientOriginalName(), PATHINFO_BASENAME);
-                if (!$originalName) {
-                    $extension = $file->guessExtension() ?: $file->getClientOriginalExtension();
-                    $originalName = 'document' . ($extension ? '.' . $extension : '');
-                }
-
-                $filename = $originalName;
-                $namePart = pathinfo($originalName, PATHINFO_FILENAME);
-                $extensionPart = pathinfo($originalName, PATHINFO_EXTENSION);
-
-                $counter = 1;
-                while (file_exists($uploadDir . DIRECTORY_SEPARATOR . $filename)) {
-                    $suffix = '_' . $counter;
-                    $filename = $namePart . $suffix . ($extensionPart ? '.' . $extensionPart : '');
-                    $counter++;
-                }
-
-                $movedFile = $file->move($uploadDir, $filename);
-
-                $entity = new FicheDocument();
-                $entity->setFicheMedicale($fiche);
-                $entity->setType($type);
-                $entity->setLibelle($libelle);
-                $entity->setUrl('uploads/documents/fiche-medicale/' . $movedFile->getFilename());
-                $entity->setGroupKey($groupKey);
-                $this->em->persist($entity);
+                $url = $this->moveUploadedFile($file, $uploadDir);
+                $documents[$index]['urls'][] = $url;
             }
+
+            $documents[$index]['urls'] = array_values(array_unique($documents[$index]['urls']));
         }
 
-        $this->em->flush();
+        return $formData;
     }
 
-    public function updateDevis(int $ficheId, array $data): void
+    private function extractMotif(array $formData): string
+    {
+        $entretien = $formData['entretien'] ?? null;
+        if (!is_array($entretien)) {
+            return '';
+        }
+
+        $motif = $entretien['motifConsultation'] ?? $entretien['motif'] ?? '';
+
+        return is_string($motif) ? $motif : '';
+    }
+
+    private function normalizeTopLevelSections(array $formData): array
+    {
+        return [
+            'entretien' => is_array($formData['entretien'] ?? null) ? $formData['entretien'] : null,
+            'examens' => is_array($formData['examens'] ?? null) ? $formData['examens'] : null,
+            'bilans' => is_array($formData['bilans'] ?? null) ? $formData['bilans'] : null,
+            'planTraitement' => is_array($formData['planTraitement'] ?? null) ? $formData['planTraitement'] : [],
+            'documents' => $this->extractDocumentsFromFormData($formData),
+            'devis' => $formData['devis'] ?? [],
+            'motif' => $this->extractMotif($formData),
+        ];
+    }
+
+    public function updateFromTemplate(int $ficheId, ?string $templateKey, array $formData, array $files = []): array
     {
         $fiche = $this->getFiche($ficheId);
 
-        $type = $data['type'] ?? 0;
-        $devis = $this->devisRepo->findOneBy(['ficheMedicale' => $fiche, 'type' => $type]);
-        if (!$devis) {
-            $devis = new Devis();
-        }
+        $resolvedTemplateKey = $templateKey ?: $fiche->getFormTemplateKey() ?: $this->resolveDefaultFormTemplate();
+        $template = $this->getTemplateByKey($resolvedTemplateKey);
+        $this->validateFormDataWithTemplate($template, $formData);
 
-        $devis->setFicheMedicale($fiche);
-        if (!empty($data['date'])) {
-            $devis->setDate(new \DateTime($data['date']));
-        } elseif (!$devis->getDate()) {
-            $devis->setDate(new \DateTime('now'));
-        }
-        $devis->setType((int) $type);
-        if (array_key_exists('statut', $data)) {
-            $devis->setStatut((int) $data['statut']);
-        }
+        $preparedFormData = $this->appendUploadedFilesToFormData($formData, $resolvedTemplateKey, $files);
 
-        $devis->setMontant((float) ($data['montant'] ?? 0));
-        if (array_key_exists('reste', $data)) {
-            $devis->setReste((float) $data['reste']);
-        }
-
-        foreach ($devis->getContenus() as $contenu) {
-            $devis->removeContenu($contenu);
-            $this->em->remove($contenu);
-        }
-
-        $amount = 0;
-        if (isset($data['contenus']) && is_array($data['contenus'])) {
-            foreach ($data['contenus'] as $c) {
-                $cd = new ContenuDevis();
-                $cd->setDevis($devis)
-                    ->setDesignation($c['designation'] ?? '')
-                    ->setQte($c['qte'] ?? 1)
-                    ->setMontant($c['montant'] ?? 0);
-                $amount += $cd->getMontant() * $cd->getQte();
-                $cd->setMontantTotal($amount);
-                $this->em->persist($cd);
-            }
-        }
-
-        $devis->setMontant($amount ?: $devis->getMontant());
-        $this->em->persist($devis);
+        $fiche->setFormTemplateKey($resolvedTemplateKey);
+        $fiche->setFormData($preparedFormData);
+        $this->em->persist($fiche);
         $this->em->flush();
-    }
 
-    private function resolveLegacyFiche(FicheMedicale $fiche): ?FicheObservation
-    {
-        foreach ($fiche->getConsultations() as $consultation) {
-            $legacy = $consultation->getFiche();
-            if ($legacy instanceof FicheObservation) {
-                return $legacy;
-            }
-        }
-
-        $consultation = $this->em->getRepository(\App\CareDelivery\Entity\Consultation::class)->findOneBy([
-            'ficheMedicale' => $fiche,
-        ], [
-            'id' => 'ASC',
-        ]);
-
-        if ($consultation && $consultation->getFiche() instanceof FicheObservation) {
-            return $consultation->getFiche();
-        }
-
-        $devis = $this->devisRepo->findOneBy([
-            'ficheMedicale' => $fiche,
-        ], [
-            'id' => 'ASC',
-        ]);
-
-        if ($devis && $devis->getFiche() instanceof FicheObservation) {
-            return $devis->getFiche();
-        }
-
-        return null;
-    }
-
-    private function buildLegacyEntretienData(FicheObservation $legacy): array
-    {
-        return [
-            'motifConsultation' => $legacy->getMotif(),
-            'anamnese' => trim((string) implode("\n\n", array_filter([
-                $legacy->getHistoireMaladie(),
-                $legacy->getSoinsAnterieurs() ? ('Soins antérieurs: ' . $legacy->getSoinsAnterieurs()) : null,
-            ]))) ?: null,
-            'etatGynecologique' => [
-                'allaitement' => null,
-                'grossesseEnCours' => null,
-                'menstrues' => null,
-            ],
-            'medicaments' => [],
-            'affections' => [],
-            'questions' => [],
-            'habitudes' => [],
-        ];
-    }
-
-    private function buildLegacyExamenData(FicheObservation $legacy): array
-    {
-        $examenCanaux = array_filter([
-            $legacy->getExoInspection() ? ('Exo inspection: ' . $legacy->getExoInspection()) : null,
-            $legacy->getExoPalpation() ? ('Exo palpation: ' . $legacy->getExoPalpation()) : null,
-            $legacy->getEndoInspection() ? ('Endo inspection: ' . $legacy->getEndoInspection()) : null,
-            $legacy->getEndoPalpation() ? ('Endo palpation: ' . $legacy->getEndoPalpation()) : null,
-            $legacy->getExamenParodontal() ? ('Examen parodontal: ' . $legacy->getExamenParodontal()) : null,
-        ]);
-
-        return [
-            'exobuccalInspection' => [],
-            'exobuccalPalpation' => [],
-            'chainesGanglionnaires' => [],
-            'endobuccalBoucheFermee' => [
-                'occlusion' => $legacy->getOcclusion(),
-                'mediane' => null,
-                'classesAngle' => null,
-                'vestibules' => null,
-            ],
-            'endobuccalBoucheOuverte' => [
-                'hbd' => null,
-                'brossage' => null,
-                'soccu' => null,
-                'cinematiqueMandibulaire' => null,
-                'ouvertureBuccale' => null,
-                'temperatureBuccale' => null,
-                'amplitudeOuverture' => null,
-                'bruitsArticulaires' => null,
-            ],
-            'tissusMousTable' => [],
-            'tissusDursTable' => [],
-            'examenCanauxExcreteurs' => $examenCanaux ? implode("\n", $examenCanaux) : null,
-            'examensBacteriologiques' => ['observation' => null, 'resultat' => null],
-            'examensSerologiques' => ['observation' => null, 'resultat' => null],
-            'examensHistologiques' => ['observation' => null, 'resultat' => null],
-        ];
-    }
-
-    private function buildLegacyBilanData(FicheObservation $legacy): array
-    {
-        return [
-            'bilanDentaire' => [
-                'formuleDentaire' => $legacy->getToothsCheck() ?: [],
-            ],
-            'bilanRadiographique' => [
-                'radiographieExtraBuccaleHypothese' => null,
-                'radiographieIntraBuccaleHypothese' => null,
-            ],
-            'bilanSanguin' => [
-                'nfsDetaillee' => null,
-                'tpTcaInr' => null,
-                'uree' => null,
-                'creatininemie' => null,
-                'glycemie' => null,
-            ],
-            'diagnosticPositif' => $legacy->getDiagnostic(),
-        ];
-    }
-
-    private function buildLegacyPlans(FicheObservation $legacy): array
-    {
-        $entries = [
-            ['type' => 'urgence', 'description' => $legacy->getTraitementUrgence()],
-            ['type' => 'dentaire', 'description' => $legacy->getTraitementDentaire()],
-            ['type' => 'parodontal', 'description' => $legacy->getTraitementParodontal()],
-            ['type' => 'orthodontique', 'description' => $legacy->getTraitementOrthodontique()],
-            ['type' => 'autres', 'description' => $legacy->getAutres()],
-        ];
-
-        $plans = [];
-        $index = 1;
-        foreach ($entries as $entry) {
-            $description = is_string($entry['description']) ? trim($entry['description']) : '';
-            if ($description === '') {
-                continue;
-            }
-            $plans[] = [
-                'id' => null,
-                'planIndex' => $index,
-                'type' => $entry['type'],
-                'dateSupposed' => null,
-                'description' => $description,
-            ];
-            $index++;
-        }
-
-        return $plans;
-    }
-
-    private function buildLegacyDocuments(FicheObservation $legacy): array
-    {
-        $documents = [];
-        foreach ($legacy->getDocumentsMedicaux() as $doc) {
-            $url = $doc->getFichier();
-            if (!$url) {
-                continue;
-            }
-
-            $groupKey = 'legacy-doc-' . ($doc->getId() ?? uniqid());
-            $documents[] = [
-                'groupKey' => $groupKey,
-                'type' => 'legacy_document',
-                'libelle' => $doc->getLibelle() ?: 'Document migré',
-                'urls' => [$url],
-            ];
-        }
-
-        return $documents;
-    }
-
-    private function buildLegacyDevis(FicheObservation $legacy): array
-    {
-        return array_map(static fn(Devis $d) => [
-            'id' => $d->getId(),
-            'date' => $d->getDate()?->format('Y-m-d'),
-            'type' => $d->getType(),
-            'statut' => $d->getStatut() ?? 0,
-            'montant' => $d->getMontant() ?? 0.0,
-            'reste' => $d->getReste() ?? 0.0,
-            'contenus' => array_map(static fn(ContenuDevis $c) => [
-                'id' => $c->getId(),
-                'designation' => $c->getDesignation(),
-                'qte' => $c->getQte(),
-                'montant' => $c->getMontant(),
-                'montantTotal' => $c->getMontantTotal(),
-            ], $d->getContenus()->toArray()),
-        ], $legacy->getDevis()->toArray());
+        return $this->getFicheJson($ficheId);
     }
 
     public function getFicheJson(int $ficheId): array
     {
         $fiche = $this->getFiche($ficheId);
         $patient = $fiche->getPatient();
+        $resolvedTemplateKey = $fiche->getFormTemplateKey() ?: $this->resolveDefaultFormTemplate();
+        $template = $this->formTemplateRepository->findLatestByKey($resolvedTemplateKey);
 
-        $entretien = $fiche->getEntretien();
-        $examen = $fiche->getExamen();
-        $bilan = $fiche->getBilan();
-
-        $entretienData = null;
-        if ($entretien) {
-            $entretienData = [
-                'motifConsultation' => $entretien->getMotifConsultation(),
-                'anamnese' => $entretien->getAnamnese(),
-                'etatGynecologique' => [
-                    'allaitement' => $entretien->getAllaitement(),
-                    'grossesseEnCours' => $entretien->getGrossesseEnCours(),
-                    'menstrues' => $entretien->getMenstrues(),
-                ],
-                'medicaments' => array_map(static fn(FicheEntretienMedicament $m) => [
-                    'id' => $m->getId(),
-                    'nom' => $m->getNom(),
-                    'estUtilise' => $m->getEstUtilise(),
-                    'details' => $m->getDetails(),
-                ], $entretien->getMedicaments()->toArray()),
-                'affections' => array_map(static fn(FicheEntretienAffection $a) => [
-                    'id' => $a->getId(),
-                    'nom' => $a->getNom(),
-                    'estPresente' => $a->getEstPresente(),
-                    'details' => $a->getDetails(),
-                ], $entretien->getAffections()->toArray()),
-                'questions' => array_map(static fn(FicheEntretienQuestion $q) => [
-                    'id' => $q->getId(),
-                    'question' => $q->getQuestion(),
-                    'reponse' => $q->getReponse(),
-                    'precision' => $q->getPrecision(),
-                ], $entretien->getQuestions()->toArray()),
-                'habitudes' => array_map(static fn(FicheEntretienHabitude $h) => [
-                    'id' => $h->getId(),
-                    'type' => $h->getType(),
-                    'estPresente' => $h->getEstPresente(),
-                    'quantite' => $h->getQuantite(),
-                ], $entretien->getHabitudes()->toArray()),
-            ];
-        }
-
-        $examenData = null;
-        if ($examen) {
-            $items = $examen->getItems()->toArray();
-            $exobuccalInspection = [];
-            $exobuccalPalpation = [];
-            $chainesGanglionnaires = [];
-            foreach ($items as $item) {
-                $categorie = $item->getCategorie();
-                if ($categorie === 'exobuccal_inspection') {
-                    $exobuccalInspection[$item->getLibelle()] = $item->getDetails();
-                }
-                if ($categorie === 'exobuccal_palpation') {
-                    $exobuccalPalpation[$item->getLibelle()] = $item->getDetails();
-                }
-                if ($categorie === 'chaines_ganglionnaires') {
-                    $chainesGanglionnaires[$item->getLibelle()] = $item->getEstPresent();
-                }
-            }
-
-            $examensLabo = $examen->getExamensLabo()->toArray();
-            $laboMap = [
-                'Examens bacteriologiques' => null,
-                'Examens serologiques' => null,
-                'Examens histologiques' => null,
-            ];
-            foreach ($examensLabo as $labo) {
-                $type = $labo->getType();
-                if (array_key_exists($type, $laboMap)) {
-                    $laboMap[$type] = [
-                        'observation' => $labo->getObservation(),
-                        'resultat' => $labo->getResultat(),
-                    ];
-                }
-            }
-
-            $examenData = [
-                'exobuccalInspection' => $exobuccalInspection,
-                'exobuccalPalpation' => $exobuccalPalpation,
-                'chainesGanglionnaires' => $chainesGanglionnaires,
-                'endobuccalBoucheFermee' => [
-                    'occlusion' => $examen->getOcclusion(),
-                    'mediane' => $examen->getMediane(),
-                    'classesAngle' => $examen->getClassesAngle(),
-                    'vestibules' => $examen->getVestibules(),
-                ],
-                'endobuccalBoucheOuverte' => [
-                    'hbd' => $examen->getHbd(),
-                    'brossage' => $examen->getBrossage(),
-                    'soccu' => $examen->getSoccu(),
-                    'cinematiqueMandibulaire' => $examen->getCinematiqueMandibulaire(),
-                    'ouvertureBuccale' => $examen->getOuvertureBuccale(),
-                    'temperatureBuccale' => $examen->getTemperatureBuccale(),
-                    'amplitudeOuverture' => $examen->getAmplitudeOuverture(),
-                    'bruitsArticulaires' => $examen->getBruitsArticulaires(),
-                ],
-                'tissusMousTable' => $examen->getTissusMousTable(),
-                'tissusDursTable' => $examen->getTissusDursTable(),
-                'examenCanauxExcreteurs' => $examen->getExamenCanauxExcreteurs(),
-                'examensBacteriologiques' => $laboMap['Examens bacteriologiques'] ?? ['observation' => null, 'resultat' => null],
-                'examensSerologiques' => $laboMap['Examens serologiques'] ?? ['observation' => null, 'resultat' => null],
-                'examensHistologiques' => $laboMap['Examens histologiques'] ?? ['observation' => null, 'resultat' => null],
-            ];
-        }
-
-        $bilanData = null;
-        if ($bilan) {
-            $bilanData = [
-                'bilanDentaire' => [
-                    'formuleDentaire' => $bilan->getFormuleDentaire(),
-                ],
-                'bilanRadiographique' => [
-                    'radiographieExtraBuccaleHypothese' => $bilan->getRadiographieExtraBuccaleHypothese(),
-                    'radiographieIntraBuccaleHypothese' => $bilan->getRadiographieIntraBuccaleHypothese(),
-                ],
-                'bilanSanguin' => [
-                    'nfsDetaillee' => $bilan->getNfsDetaillee(),
-                    'tpTcaInr' => $bilan->getTpTcaInr(),
-                    'uree' => $bilan->getUree(),
-                    'creatininemie' => $bilan->getCreatininemie(),
-                    'glycemie' => $bilan->getGlycemie(),
-                ],
-                'diagnosticPositif' => $bilan->getDiagnosticPositif(),
-            ];
-        }
-
-        $plans = array_map(static fn(FichePlanTraitement $p) => [
-            'id' => $p->getId(),
-            'planIndex' => $p->getPlanIndex(),
-            'type' => $p->getType(),
-            'dateSupposed' => $p->getDateSupposed()?->format('Y-m-d'),
-            'description' => $p->getDescription(),
-        ], $fiche->getPlansTraitement()->toArray());
-
-        $documentsMap = [];
-        foreach ($fiche->getDocuments()->toArray() as $doc) {
-            if (!$doc instanceof FicheDocument) {
-                continue;
-            }
-            $groupKey = $doc->getGroupKey() ?: ('legacy-' . $doc->getId());
-            if (!isset($documentsMap[$groupKey])) {
-                $documentsMap[$groupKey] = [
-                    'groupKey' => $groupKey,
-                    'type' => $doc->getType(),
-                    'libelle' => $doc->getLibelle(),
-                    'urls' => []
-                ];
-            }
-            $documentsMap[$groupKey]['urls'][] = $doc->getUrl();
-        }
-        $documents = array_values($documentsMap);
-
-        $devis = array_map(static fn(Devis $d) => [
-            'id' => $d->getId(),
-            'date' => $d->getDate()?->format('Y-m-d'),
-            'type' => $d->getType(),
-            'statut' => $d->getStatut() ?? 0,
-            'montant' => $d->getMontant() ?? 0.0,
-            'reste' => $d->getReste() ?? 0.0,
-            'contenus' => array_map(static fn(ContenuDevis $c) => [
-                'id' => $c->getId(),
-                'designation' => $c->getDesignation(),
-                'qte' => $c->getQte(),
-                'montant' => $c->getMontant(),
-                'montantTotal' => $c->getMontantTotal(),
-            ], $d->getContenus()->toArray()),
-        ], $fiche->getDevis()->toArray());
+        $formData = $fiche->getFormData() ?? [];
+        $sections = $this->normalizeTopLevelSections($formData);
 
         $consultations = array_values(array_map(static fn($c) => [
             'id' => $c->getId(),
@@ -1030,35 +326,17 @@ class FicheMedicaleService
             static fn($c) => $c->getStatut() === 1
         )));
 
-        $legacyFiche = null;
-        if ($entretienData === null || $examenData === null || $bilanData === null || empty($plans) || empty($documents) || empty($devis)) {
-            $legacyFiche = $this->resolveLegacyFiche($fiche);
-        }
-
-        if ($legacyFiche instanceof FicheObservation) {
-            if ($entretienData === null) {
-                $entretienData = $this->buildLegacyEntretienData($legacyFiche);
-            }
-            if ($examenData === null) {
-                $examenData = $this->buildLegacyExamenData($legacyFiche);
-            }
-            if ($bilanData === null) {
-                $bilanData = $this->buildLegacyBilanData($legacyFiche);
-            }
-            if (empty($plans)) {
-                $plans = $this->buildLegacyPlans($legacyFiche);
-            }
-            if (empty($documents)) {
-                $documents = $this->buildLegacyDocuments($legacyFiche);
-            }
-            if (empty($devis)) {
-                $devis = $this->buildLegacyDevis($legacyFiche);
-            }
-        }
-
         return [
             'id' => $fiche->getId(),
             'createdAt' => $fiche->getCreatedAt()?->format('Y-m-d H:i:s'),
+            'formTemplateKey' => $resolvedTemplateKey,
+            'formTemplate' => $template ? [
+                'id' => $template->getId(),
+                'key' => $template->getKey(),
+                'version' => $template->getVersion(),
+                'structure' => $template->getStructure(),
+            ] : null,
+            'formData' => $formData,
             'patient' => [
                 'id' => $patient?->getId(),
                 'nom' => $patient?->getNom(),
@@ -1071,12 +349,13 @@ class FicheMedicaleService
                 'lieuNaissance' => $patient?->getLieuNaissance(),
                 'adresse' => $patient?->getAdresse(),
             ],
-            'entretien' => $entretienData,
-            'examens' => $examenData,
-            'bilans' => $bilanData,
-            'planTraitement' => $plans,
-            'documents' => $documents,
-            'devis' => $devis,
+            'motif' => $sections['motif'],
+            'entretien' => $sections['entretien'],
+            'examens' => $sections['examens'],
+            'bilans' => $sections['bilans'],
+            'planTraitement' => $sections['planTraitement'],
+            'documents' => $sections['documents'],
+            'devis' => $sections['devis'],
             'consultations' => $consultations,
         ];
     }
