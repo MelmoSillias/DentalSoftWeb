@@ -20,12 +20,13 @@ const toIsoString = (value) => {
 };
 
 const normalizeRdv = (raw = {}) => {
+    const patientData = raw.patientData ?? (raw.patient && typeof raw.patient === 'object' ? raw.patient : null);
     const patientName =
         raw.patientName ||
         raw.patient ||
-        raw.patient?.fullname ||
-        raw.patient?.name ||
-        `${raw.patient?.prenom ?? ''} ${raw.patient?.nom ?? ''}`.trim();
+        patientData?.fullname ||
+        patientData?.name ||
+        `${patientData?.prenom ?? ''} ${patientData?.nom ?? ''}`.trim();
     const medecinName =
         raw.medecinName ||
         raw.medecin ||
@@ -35,8 +36,10 @@ const normalizeRdv = (raw = {}) => {
 
     return {
         id: raw.id,
-        patientId: raw.patient_id ?? raw.patientId ?? raw.patient?.id ?? null,
+        patientId: raw.patient_id ?? raw.patientId ?? patientData?.id ?? null,
         patientName: patientName || 'Patient',
+        patientPhoto: raw.patientPhoto ?? raw.patient_photo ?? patientData?.photo ?? null,
+        patientData,
         medecinId: raw.medecin_id ?? raw.medecinId ?? raw.medecin?.id ?? null,
         medecinName: medecinName || 'Médecin',
         start: toIsoString(raw.start ?? raw.dateRdv ?? raw.date_rdv),

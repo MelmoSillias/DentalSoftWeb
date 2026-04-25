@@ -48,12 +48,15 @@ export function usePatients() {
         return headers;
     }
 
+    const extractPatientPhoto = (raw = {}) => raw.photo ?? raw.photoUrl ?? raw.photo_url ?? raw.patientPhoto ?? raw.patient_photo ?? null;
+
 
     const normalizePatient = (raw = {}) => ({
         id: raw.id,
         nom: raw.nom ?? '',
         prenom: raw.prenom ?? '',
         fullname: raw.fullname ?? '',
+        photo: extractPatientPhoto(raw),
         age: raw.age ?? null,
         dateNaissance: raw.dateNaissance ?? raw.date_naissance ?? '',
         sexe: raw.sexe ?? '',
@@ -106,6 +109,7 @@ export function usePatients() {
             nom,
             prenom,
             initials,
+            photo: extractPatientPhoto(patient) ?? extractPatientPhoto(dossier),
             numeroDossier: patient.numeroDossier ?? dossier.numeroDossier ?? dossier.code ?? '--',
             dateNaissance: patient.dateNaissance ?? patient.date_naissance ?? dossier.dateNaissance ?? '--',
             age: patient.age ?? dossier.age ?? '--',
@@ -159,7 +163,7 @@ export function usePatients() {
             return { ...data, items: list };
         } catch (err) {
             error.value = err;
-            return { items: [], total: 0, page, limit };
+            throw err;
         } finally {
             loading.value = false;
         }
@@ -178,7 +182,7 @@ export function usePatients() {
             return { ...data, ...normalized };
         } catch (err) {
             error.value = err;
-            return null;
+            throw err;
         } finally {
             loading.value = false;
         }
@@ -218,7 +222,7 @@ export function usePatients() {
             return { ...data, items: list };
         } catch (err) {
             error.value = err;
-            return { items: [], total: 0, page, limit };
+            throw err;
         } finally {
             loading.value = false;
         }
@@ -228,12 +232,13 @@ export function usePatients() {
         loading.value = true;
         error.value = null;
         try {
+            const isFormData = payload instanceof FormData;
             const data = isPatientsTourMockEnabled()
                 ? updatePatientTourMock(patientId, payload)
                 : (await http.post(`${apiPrefix}/patient/${patientId}/update`, payload, {
-                    headers: buildAuthHeaders(true)
+                    headers: isFormData ? buildAuthHeaders(false) : buildAuthHeaders(true)
                 })).data;
-            return normalizePatient(data);
+            return normalizePatient(data.patient ?? data);
         } catch (err) {
             error.value = err;
             return null;
@@ -262,7 +267,7 @@ export function usePatients() {
             return list;
         } catch (err) {
             error.value = err;
-            return [];
+            throw err;
         } finally {
             loading.value = false;
         }
@@ -282,7 +287,7 @@ export function usePatients() {
             return patientDossier.value;
         } catch (err) {
             error.value = err;
-            return null;
+            throw err;
         } finally {
             loading.value = false;
         }
@@ -301,7 +306,7 @@ export function usePatients() {
             return Array.isArray(data) ? data : [];
         } catch (err) {
             error.value = err;
-            return [];
+            throw err;
         } finally {
             loading.value = false;
         }

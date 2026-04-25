@@ -35,6 +35,7 @@ use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use App\Billing\Service\CashdeskService;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Contracts\Cache\CacheInterface;
 use Symfony\Contracts\Cache\ItemInterface;
@@ -77,12 +78,14 @@ class PatientService
     {
         $contact = $patient->getContactUrgence();
         $consultation = $this->resolveLatestConsultation($patient);
+        $photo = $this->resolvePatientPhoto($patient);
 
         return [
             'id' => $patient->getId(),
             'nom' => $patient->getNom(),
             'prenom' => $patient->getPrenom(),
             'fullname' => $patient->getFullName(),
+            'photo' => $photo,
             'age' => $patient->getAge(),
             'dateNaissance' => $patient->getDateNaissance() ? $patient->getDateNaissance()->format('Y-m-d') : null,
             'sexe' => $patient->getSexe(),
@@ -107,6 +110,44 @@ class PatientService
             ] : null,
             'impayees' => $this->getPatientImpayees($patient->getId()),
         ];
+    }
+
+    private function resolvePatientPhoto(Patient $patient): ?string
+    {
+        $photo = $patient->getPhoto();
+
+        return is_string($photo) && $photo !== '' ? $photo : null;
+    }
+
+    private function resolvePatientPhotoFilePath(string $uploadDir, string $photoPath): ?string
+    {
+        if ($photoPath === '' || !str_starts_with($photoPath, '/uploads/')) {
+            return null;
+        }
+
+        return rtrim(dirname($uploadDir), '/\\') . DIRECTORY_SEPARATOR . ltrim(str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $photoPath), '/\\');
+    }
+
+    private function uploadPatientPhoto(UploadedFile $file, string $uploadDir, ?string $currentPhoto = null): string
+    {
+        $targetDir = rtrim($uploadDir, '/\\') . DIRECTORY_SEPARATOR . 'patients';
+        if (!is_dir($targetDir) && !mkdir($targetDir, 0777, true) && !is_dir($targetDir)) {
+            throw new \RuntimeException('Impossible de creer le dossier des photos patients.');
+        }
+
+        $extension = strtolower((string) ($file->guessExtension() ?: $file->getClientOriginalExtension() ?: 'bin'));
+        $extension = preg_replace('/[^a-z0-9]+/', '', $extension) ?: 'bin';
+        $filename = sprintf('patient_%s.%s', bin2hex(random_bytes(8)), $extension);
+        $file->move($targetDir, $filename);
+
+        if ($currentPhoto) {
+            $previousFile = $this->resolvePatientPhotoFilePath($uploadDir, $currentPhoto);
+            if ($previousFile && is_file($previousFile)) {
+                @unlink($previousFile);
+            }
+        }
+
+        return '/uploads/patients/' . $filename;
     }
 
     public function getPatientImpayees(int $id): int
@@ -274,7 +315,7 @@ class PatientService
         }
     }
 
-    public function updatePatient(int $id, array $data): array
+    public function updatePatient(int $id, array $data, ?UploadedFile $photo = null, ?string $uploadDir = null): array
     {
         try {
             $patient = $this->patientRepo->find($id);
@@ -317,11 +358,23 @@ class PatientService
                 }
             }
 
+            if ($photo instanceof UploadedFile) {
+                if ($uploadDir === null || $uploadDir === '') {
+                    throw new \InvalidArgumentException('Dossier upload manquant pour la photo patient.');
+                }
+                $patient->setPhoto($this->uploadPatientPhoto($photo, $uploadDir, $patient->getPhoto()));
+            }
+
             $this->em->persist($patient);
             $this->em->flush();
             $this->focusRealtimePublisher->publishPatientRefresh($patient, 'updated');
 
-            return ['success' => true, 'status' => 200];
+            return [
+                'success' => true,
+                'status' => 200,
+                'patient' => $this->formatPatientSummary($patient),
+                ...$this->formatPatientSummary($patient),
+            ];
         } catch (\Exception $e) {
             return ['error' => 'Erreur : ' . $e->getMessage(), 'status' => 500];
         }
@@ -448,6 +501,7 @@ class PatientService
             'id' => $patient->getId(),
             'nom' => $patient->getNom(),
             'prenom' => $patient->getPrenom(),
+            'photo' => $this->resolvePatientPhoto($patient),
             'dateNaissance' => $patient->getDateNaissance() ? $patient->getDateNaissance()->format('Y-m-d') : null,
             'age' => $age,
             'sexe' => $patient->getSexe(),
@@ -929,6 +983,7 @@ class PatientService
             'id' => $patient->getId(),
             'nom' => $patient->getNom(),
             'prenom' => $patient->getPrenom(),
+            'photo' => $this->resolvePatientPhoto($patient),
             'dateNaissance' => $patient->getDateNaissance() ? $patient->getDateNaissance()->format('Y-m-d') : null,
             'age' => $age,
             'sexe' => $patient->getSexe(),

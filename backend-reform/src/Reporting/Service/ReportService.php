@@ -857,7 +857,7 @@ class ReportService
 
             $paiementsConsultations = $this->em->createQueryBuilder()
                 ->select('pd')
-                ->from('App\\Entity\\PaiementDevis', 'pd')
+                ->from('App\\Billing\\Entity\\PaiementDevis', 'pd')
                 ->join('pd.consultation', 'c')
                 ->where('c.medecin = :doctor')
                 ->andWhere('pd.date BETWEEN :from AND :to')
@@ -885,7 +885,7 @@ class ReportService
 
             $paiementsFactures = $this->em->createQueryBuilder()
                 ->select('pd', 'f', 'c')
-                ->from('App\\Entity\\PaiementDevis', 'pd')
+                ->from('App\\Billing\\Entity\\PaiementDevis', 'pd')
                 ->join('pd.devis', 'f')
                 ->join('f.consultation', 'c')
                 ->where('c.medecin = :doctor')
@@ -1032,7 +1032,7 @@ class ReportService
         $paiementsPeriode = [];
         $paiementsConsultations = $this->em->createQueryBuilder()
             ->select('pd')
-            ->from('App\\Entity\\PaiementDevis', 'pd')
+            ->from('App\\Billing\\Entity\\PaiementDevis', 'pd')
             ->join('pd.consultation', 'c')
             ->where('c.medecin = :doctor')
             ->andWhere('pd.date BETWEEN :from AND :to')
@@ -1060,7 +1060,7 @@ class ReportService
 
         $paiementsFactures = $this->em->createQueryBuilder()
             ->select('pd', 'f', 'c')
-            ->from('App\\Entity\\PaiementDevis', 'pd')
+            ->from('App\\Billing\\Entity\\PaiementDevis', 'pd')
             ->join('pd.devis', 'f')
             ->join('f.consultation', 'c')
             ->where('c.medecin = :doctor')
@@ -1176,31 +1176,31 @@ class ReportService
     {
         $cacheKey = sprintf('report.receptionDashboard.%s.%s', $dateStart->format('Ymd'), $dateEnd->format('Ymd'));
         return $this->remember($cacheKey, 180, function () use ($dateStart, $dateEnd) {
-        $newPatients = $this->em->createQuery("\n        SELECT COUNT(p.id) FROM App\\Entity\\Patient p \n        WHERE p.dateInscription BETWEEN :start AND :end\n    ")
+        $newPatients = $this->em->createQuery("\n        SELECT COUNT(p.id) FROM App\\Patient\\Entity\\Patient p \n        WHERE p.dateInscription BETWEEN :start AND :end\n    ")
             ->setParameters(['start' => $dateStart, 'end' => $dateEnd])
             ->getSingleScalarResult();
 
-        $totalConsultations = $this->em->createQuery("\n        SELECT COUNT(c.id) FROM App\\Entity\\Consultation c \n        WHERE c.CreatedAt BETWEEN :start AND :end\n    ")
+        $totalConsultations = $this->em->createQuery("\n        SELECT COUNT(c.id) FROM App\\Billing\\Entity\\Consultation c \n        WHERE c.CreatedAt BETWEEN :start AND :end\n    ")
             ->setParameters(['start' => $dateStart, 'end' => $dateEnd])
             ->getSingleScalarResult();
 
-        $pendingConsultations = $this->em->createQuery("\n        SELECT COUNT(c.id) FROM App\\Entity\\Consultation c \n        WHERE c.CreatedAt BETWEEN :start AND :end AND c.statut = 0\n    ")
+        $pendingConsultations = $this->em->createQuery("\n        SELECT COUNT(c.id) FROM App\\Billing\\Entity\\Consultation c \n        WHERE c.CreatedAt BETWEEN :start AND :end AND c.statut = 0\n    ")
             ->setParameters(['start' => $dateStart, 'end' => $dateEnd])
             ->getSingleScalarResult();
 
-        $rdvStats = $this->em->createQuery("\n        SELECT \n            COUNT(r.id) AS total,\n            SUM(CASE WHEN r.statut = 0 THEN 1 ELSE 0 END) AS pending,\n            SUM(CASE WHEN r.statut = 1 THEN 1 ELSE 0 END) AS confirmed,\n            SUM(CASE WHEN r.statut = 2 THEN 1 ELSE 0 END) AS cancelled,\n            SUM(CASE WHEN r.statut = 3 THEN 1 ELSE 0 END) AS postponed\n        FROM App\\Entity\\Rdv r\n        WHERE r.dateRdv BETWEEN :start AND :end\n    ")
+        $rdvStats = $this->em->createQuery("\n        SELECT \n            COUNT(r.id) AS total,\n            SUM(CASE WHEN r.statut = 0 THEN 1 ELSE 0 END) AS pending,\n            SUM(CASE WHEN r.statut = 1 THEN 1 ELSE 0 END) AS confirmed,\n            SUM(CASE WHEN r.statut = 2 THEN 1 ELSE 0 END) AS cancelled,\n            SUM(CASE WHEN r.statut = 3 THEN 1 ELSE 0 END) AS postponed\n        FROM App\\Scheduling\\Entity\\Rdv r\n        WHERE r.dateRdv BETWEEN :start AND :end\n    ")
             ->setParameters(['start' => $dateStart, 'end' => $dateEnd])
             ->getSingleResult();
 
         $modeEspeces = $this->em->getRepository(ModeDePaiement::class)->find(0);
 
-        $revenusEspeces = $this->em->createQuery("\n        SELECT SUM(t.montant)\n        FROM App\\Entity\\Transaction t\n        WHERE t.dateTransaction BETWEEN :start AND :end\n        AND t.modeDePaiement = :mode\n        AND t.type = 'Entrée'\n    ")
+        $revenusEspeces = $this->em->createQuery("\n        SELECT SUM(t.montant)\n        FROM App\\Scheduling\\Entity\\Transaction t\n        WHERE t.dateTransaction BETWEEN :start AND :end\n        AND t.modeDePaiement = :mode\n        AND t.type = 'Entrée'\n    ")
             ->setParameter('start', $dateStart)
             ->setParameter('end', $dateEnd)
             ->setParameter('mode', $modeEspeces)
             ->getSingleScalarResult();
 
-        $revenusTotaux = $this->em->createQuery("\n    SELECT SUM(t.montant)\n    FROM App\\Entity\\Transaction t\n    WHERE t.dateTransaction BETWEEN :start AND :end\n    AND t.type = 'Entrée'\n")
+        $revenusTotaux = $this->em->createQuery("\n    SELECT SUM(t.montant)\n    FROM App\\Scheduling\\Entity\\Transaction t\n    WHERE t.dateTransaction BETWEEN :start AND :end\n    AND t.type = 'Entrée'\n")
             ->setParameter('start', $dateStart)
             ->setParameter('end', $dateEnd)
             ->getSingleScalarResult();

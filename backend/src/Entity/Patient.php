@@ -122,6 +122,9 @@ class Patient
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL', unique: true)]
     private ?User $portalUser = null;
 
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $photo = null;
+
     public function __construct()
     {
         $this->antecedents = new ArrayCollection();
@@ -629,6 +632,18 @@ class Patient
         if ($portalUser !== null && $portalUser->getPortalPatient() !== $this) {
             $portalUser->setPortalPatient($this);
         }
+
+        return $this;
+    }
+
+    public function getPhoto(): ?string
+    {
+        return $this->photo;
+    }
+
+    public function setPhoto(?string $photo): static
+    {
+        $this->photo = $photo;
 
         return $this;
     }

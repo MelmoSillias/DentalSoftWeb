@@ -44,6 +44,7 @@
                         @print-dossier="handlePrintDossier"
                         @edit="() => (showEditDialog = true)"
                         @new-rdv="() => (showRdvDialog = true)"
+                        @photo-selected="handlePhotoSelected"
                         @add-antecedent="() => (showAntecedentDialog = true)"
                         @add-allergy="() => (showAllergyDialog = true)"
                         @delete-antecedent="handleDeleteAntecedent"
@@ -380,7 +381,7 @@ const handleSaveAntecedent = async (payload) => {
         showAntecedentDialog.value = false;
     } catch (error) {
         console.error('Erreur ajout antécédent', error);
-        toast.add({ severity: 'error', summary: 'Erreur', detail: "Impossible d'ajouter l'antécédent.", life: 3000 });
+        toast.add({ severity: 'error', summary: 'Erreur', detail: "Impossible d'ajouter l'antécédent. si le problème persiste, contactez le support.", life: 3000 });
     } finally {
         savingAntecedent.value = false;
     }
@@ -399,7 +400,7 @@ const handleSaveAllergy = async (payload) => {
         showAllergyDialog.value = false;
     } catch (error) {
         console.error('Erreur ajout allergie', error);
-        toast.add({ severity: 'error', summary: 'Erreur', detail: "Impossible d'ajouter l'allergie.", life: 3000 });
+        toast.add({ severity: 'error', summary: 'Erreur', detail: "Impossible d'ajouter l'allergie. si le problème persiste, contactez le support.", life: 3000 });
     } finally {
         savingAllergy.value = false;
     }
@@ -414,7 +415,7 @@ const handleDeleteAntecedent = async (item) => {
         toast.add({ severity: 'success', summary: 'Antécédent supprimé', life: 2000 });
     } catch (error) {
         console.error('Erreur suppression antécédent', error);
-        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Suppression impossible.', life: 3000 });
+        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Suppression impossible. si le problème persiste, contactez le support.', life: 3000 });
     }
 };
 
@@ -427,7 +428,7 @@ const handleDeleteAllergy = async (item) => {
         toast.add({ severity: 'success', summary: 'Allergie supprimée', life: 2000 });
     } catch (error) {
         console.error('Erreur suppression allergie', error);
-        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Suppression impossible.', life: 3000 });
+        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Suppression impossible. si le problème persiste, contactez le support.', life: 3000 });
     }
 };
 
@@ -480,6 +481,39 @@ const handleTogglePortalActive = async (active) => {
     });
 };
 
+const handlePhotoSelected = async (file) => {
+    if (!patient.value?.id || !file) return;
+
+    const formData = new FormData();
+    formData.append('photo', file);
+    const loadingToast = {
+        severity: 'info',
+        summary: 'Photo patient',
+        detail: 'Upload en cours...',
+        life: 0
+    };
+
+    try {
+        toast.add(loadingToast);
+        const updated = await patientStore.updatePatient(patient.value.id, formData, token);
+        if (!updated) {
+            throw new Error('patient_photo_update_failed');
+        }
+
+        patient.value = {
+            ...patient.value,
+            photo: updated.photo ?? patient.value.photo
+        };
+
+        toast.remove(loadingToast);
+        toast.add({ severity: 'success', summary: 'Photo patient', detail: 'Photo mise à jour.', life: 2500 });
+    } catch (error) {
+        toast.remove(loadingToast);
+        console.error('Erreur mise à jour photo patient', error);
+        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de mettre à jour la photo du patient.', life: 3000 });
+    }
+};
+
 const loadPatientOptions = async (query = '') => {
     patientOptionsLoading.value = true;
     try {
@@ -493,7 +527,8 @@ const loadPatientOptions = async (query = '') => {
             value: p.id
         }));
     } catch (error) {
-        console.error(error);
+        console.error('Erreur lors du chargement des patients', error);
+        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de charger la liste des patients. si le problème persiste, contactez le support.', life: 3000 });
     } finally {
         patientOptionsLoading.value = false;
     }
@@ -503,15 +538,20 @@ const ensureSelectedPatientOption = async (patientId) => {
     if (!patientId) return;
     const exists = patientOptions.value.some((opt) => opt.value === patientId);
     if (exists) return;
-    const data = await patientStore.fetchPatientById(patientId);
-    if (!data?.id) return;
-    patientOptions.value = [
-        {
-            label: data.fullname || `${data.prenom ?? ''} ${data.nom ?? ''}`.trim() || data.nom,
-            value: data.id
-        },
-        ...patientOptions.value
-    ];
+    try {
+        const data = await patientStore.fetchPatientById(patientId);
+        if (!data?.id) return;
+        patientOptions.value = [
+            {
+                label: data.fullname || `${data.prenom ?? ''} ${data.nom ?? ''}`.trim() || data.nom,
+                value: data.id
+            },
+            ...patientOptions.value
+        ];
+    } catch (error) {
+        console.error('Erreur lors du chargement du patient sélectionné', error);
+        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de charger le patient sélectionné. si le problème persiste, contactez le support.', life: 3000 });
+    }
 };
 
 const handlePatientFilter = (event) => {
@@ -524,9 +564,14 @@ const handlePatientFilter = (event) => {
 
 const loadDossier = async (patientId) => {
     if (!patientId) return;
-    const data = await patientStore.fetchPatientDossier(patientId);
-    if (data) {
-        patient.value = patientStore.normalizePatientDossier(data);
+    try {
+        const data = await patientStore.fetchPatientDossier(patientId);
+        if (data) {
+            patient.value = patientStore.normalizePatientDossier(data);
+        }
+    } catch (error) {
+        console.error('Erreur lors du chargement du dossier patient', error);
+        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de charger le dossier du patient. si le problème persiste, contactez le support.', life: 3000 });
     }
 };
 
@@ -536,8 +581,9 @@ const loadConsultations = async (patientId) => {
     try {
         consultations.value = await patientStore.fetchPatientConsultations(patientId);
     } catch (error) {
-        console.error(error);
+        console.error('Erreur lors du chargement des consultations', error);
         consultations.value = [];
+        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de charger les consultations du patient. si le problème persiste, contactez le support.', life: 3000 });
     } finally {
         consultationsLoading.value = false;
     }

@@ -36,9 +36,21 @@ class RdvService
 
     private function mapRdv(Rdv $rdv): array
     {
+        $patient = $rdv->getPatient();
+
         return [
             'id' => $rdv->getId(),
-            'patient' => $rdv->getPatient()->getNom() . ' ' . $rdv->getPatient()->getPrenom(),
+            'patient' => $patient->getNom() . ' ' . $patient->getPrenom(),
+            'patientName' => $patient->getFullName(),
+            'patientPhoto' => $patient->getPhoto(),
+            'patientData' => [
+                'id' => $patient->getId(),
+                'nom' => $patient->getNom(),
+                'prenom' => $patient->getPrenom(),
+                'fullname' => $patient->getFullName(),
+                'photo' => $patient->getPhoto(),
+                'telephone' => $patient->getTelephone(),
+            ],
             'medecin' => $rdv->getMedecin()->getNom() . ' ' . $rdv->getMedecin()->getPrenom(),
             'medecin_id' => $rdv->getMedecin()->getId(),
             'description' => $rdv->getDescription(),

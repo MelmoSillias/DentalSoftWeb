@@ -1,4 +1,5 @@
 <script setup>
+import PatientAvatar from '@/components/patients/PatientAvatar.vue';
 import Drawer from 'primevue/drawer';
 import { computed } from 'vue';
 
@@ -19,17 +20,6 @@ const close = () => {
 };
 
 const title = computed(() => props.rdv?.patientName || 'Détails rendez-vous');
-
-const initials = computed(() => {
-  const name = props.rdv?.patientName || '';
-  return name
-    .split(' ')
-    .map((n) => n[0] || '')
-    .filter(Boolean)
-    .slice(0, 2)
-    .join('')
-    .toUpperCase();
-});
 
 const statusClass = computed(() => {
   const s = (props.rdv?.statut || '').toString().toLowerCase();
@@ -61,9 +51,15 @@ const formattedEnd = computed(() => props.rdv?.end ? new Date(props.rdv.end).toL
       <div class="rounded-2xl border border-slate-200/80 bg-white/90 p-4 shadow-sm dark:border-slate-700/80 dark:bg-slate-900/60">
         <div class="flex items-start justify-between gap-4">
           <div class="flex items-center gap-3">
-            <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-sky-100 text-sky-700 dark:bg-sky-900 dark:text-sky-200 font-semibold shadow-sm">
-            {{ initials || 'RD' }}
-            </div>
+            <PatientAvatar
+              :patient="rdv?.patientData ?? rdv"
+              :photo="rdv?.patientPhoto || rdv?.patientData?.photo || ''"
+              :initials="rdv?.patientName || 'RD'"
+              size-class="h-12 w-12"
+              rounded-class="rounded-xl"
+              fallback-class="bg-sky-100 text-sky-700 dark:bg-sky-900 dark:text-sky-200"
+              text-class="font-semibold"
+            />
             <div>
               <h3 class="text-xl font-semibold text-slate-800 dark:text-slate-100 leading-tight">{{ title }}</h3>
               <p class="mt-0.5 text-sm text-slate-500 dark:text-slate-300">{{ rdv?.medecinName || 'Médecin inconnu' }}</p>

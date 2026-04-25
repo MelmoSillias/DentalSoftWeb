@@ -1,5 +1,7 @@
 <script setup>
 import Button from 'primevue/button';
+import { ref } from 'vue';
+import PatientAvatar from '@/components/patients/PatientAvatar.vue';
 
 const props = defineProps({
     patient: {
@@ -16,6 +18,7 @@ const emit = defineEmits([
     'print-dossier',
     'edit',
     'new-rdv',
+    'photo-selected',
     'add-antecedent',
     'add-allergy',
     'delete-antecedent',
@@ -24,6 +27,20 @@ const emit = defineEmits([
     'reset-portal-password',
     'toggle-portal-active'
 ]);
+
+const photoInput = ref(null);
+
+const openPhotoPicker = () => {
+    photoInput.value?.click();
+};
+
+const handlePhotoChange = (event) => {
+    const [file] = event.target?.files || [];
+    if (file) {
+        emit('photo-selected', file);
+    }
+    event.target.value = '';
+};
 </script>
 
 <template>
@@ -36,8 +53,24 @@ const emit = defineEmits([
         </div>
         <div class="p-5">
             <div class="flex flex-col items-center mb-6" data-tour="patients-dossier.identity">
-                <div class="w-24 h-24 rounded-full bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center text-white text-3xl font-bold mb-4 shadow-lg">
-                    {{ patient.initials }}
+                <input ref="photoInput" type="file" accept="image/*" class="hidden" @change="handlePhotoChange" />
+                <div class="relative mb-4">
+                    <PatientAvatar
+                        :patient="patient"
+                        :initials="patient.initials"
+                        size-class="w-24 h-24"
+                        text-class="text-3xl font-bold"
+                        alt="Photo du patient"
+                        class="shadow-lg"
+                    />
+                    <Button
+                        v-if="!hideActions"
+                        icon="pi pi-pencil"
+                        rounded
+                        severity="secondary"
+                        class="!absolute -bottom-1 -right-1 !w-9 !h-9 shadow-md"
+                        @click="openPhotoPicker"
+                    />
                 </div>
                 <h2 class="text-xl font-bold text-surface-900 dark:text-surface-100">{{ patient.nom }} {{ patient.prenom }}</h2>
                 <p class="text-surface-600 dark:text-surface-400">{{ patient.numeroDossier }}</p>

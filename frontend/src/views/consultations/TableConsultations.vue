@@ -1,4 +1,5 @@
 <script setup>
+import PatientAvatar from '@/components/patients/PatientAvatar.vue';
 import ConsultationDetailsDialog from '@/components/consultations/ConsultationDetailsDialog.vue';
 import FactureModal from '@/components/consultations/FactureModal.vue';
 import { defaultSoinList, normalizeSoinList } from '@/services/consultations';
@@ -595,16 +596,6 @@ const currentFactureLoading = computed(() => {
             });
         }
         
-        function getPatientInitials(data) {
-            const name = patientLabel(data) || '';
-            return name
-                .split(' ')
-                .map(word => word.charAt(0))
-                .join('')
-                .toUpperCase()
-                .slice(0, 2);
-        }
-        
         function getMedecinInitials(data) {
             const medecin = data.medecin || '';
             return medecin
@@ -815,9 +806,12 @@ const currentFactureLoading = computed(() => {
                     </template>
                     <template #body="{ data }">
                         <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center text-white font-semibold">
-                                {{ getPatientInitials(data) }}
-                            </div>
+                            <PatientAvatar
+                                :patient="data.patient ?? data"
+                                :initials="patientLabel(data)"
+                                size-class="w-10 h-10"
+                                text-class="font-semibold"
+                            />
                             <div>
                                 <span class="font-semibold text-surface-900 dark:text-surface-100">
                                     {{ patientLabel(data) || '—' }}

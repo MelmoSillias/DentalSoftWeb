@@ -21,6 +21,7 @@ const normalizeFocusPatient = (raw = {}) => ({
     nom: raw.nom ?? '',
     prenom: raw.prenom ?? '',
     fullname: raw.fullname ?? `${raw.prenom ?? ''} ${raw.nom ?? ''}`.trim(),
+    photo: raw.photo ?? raw.photoUrl ?? raw.photo_url ?? null,
     telephone: raw.telephone ?? '',
     createdAt: raw.createdAt ?? raw.created_at ?? raw.dateInscription ?? raw.date_inscription ?? null,
 });
@@ -49,7 +50,8 @@ const normalizeFocusBilling = (raw = {}) => ({
 });
 
 export const normalizeConsultation = (raw = {}) => {
-    const patient = raw.patient ?? null;
+    const patient = raw.patient 
+    const patient_photo = patient?.photo ?? patient?.photoUrl ?? patient?.patientPhoto ?? patient?.patient_photo ?? null;
     const patientName = (raw.patientName ?? raw.patient_name ?? `${patient?.prenom ?? ''} ${patient?.nom ?? ''}`.trim()) || patient?.nom || '';
 
     const createdAt = raw.createdAt ?? raw.created_at ?? raw.date ?? raw.created_at_consultation ?? null;
@@ -69,6 +71,7 @@ export const normalizeConsultation = (raw = {}) => {
         id: raw.id,
         patient,
         patientName,
+        patientPhoto: raw.patientPhoto ?? raw.patient_photo ?? patient?.photo ?? null,
         patientPhone: patient?.telephone || patient?.phone || '',
         medecin: raw.medecin,
         createdAt,

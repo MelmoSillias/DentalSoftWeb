@@ -2,6 +2,7 @@
 import ActionsPatient from '@/components/patients/ActionsPatient.vue';
 import FormCreateConsultation from '@/components/patients/FormCreateConsultation.vue';
 import FormPatient from '@/components/patients/FormPatient.vue';
+import PatientAvatar from '@/components/patients/PatientAvatar.vue';
 import FormRendezVous from '@/components/patients/FormRendezVous.vue';
 import PrintDataTablePage from '@/components/print/PrintDataTablePage.vue';
 import { usePrinter } from '@/composables/usePrinter';
@@ -595,10 +596,7 @@ onMounted(() => {
                     <Column field="fullname" header="Nom & Prénom" sortable>
                         <template #body="{ data }">
                             <div class="flex items-center gap-3">
-                                <div
-                                    class="w-10 h-10 rounded-full bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center text-white font-semibold">
-                                    {{ (data.prenom?.charAt(0) || '') + (data.nom?.charAt(0) || '') }}
-                                </div>
+                                <PatientAvatar :patient="data" size-class="w-10 h-10" text-class="font-semibold" />
                                 <div>
                                     <span class="font-semibold text-surface-900 dark:text-surface-100">
                                         {{ data.fullname || `${data.prenom ?? ''} ${data.nom ?? ''}`.trim() || data.nom }}

@@ -81,13 +81,24 @@ final class PatientController extends AbstractController
     #[Route('/api/patient/{id}/update', name: 'api_patient_update', methods: ['POST'])]
     public function updatePatient(int $id, Request $request): JsonResponse
     {
-        $result = $this->patientService->updatePatient($id, json_decode($request->getContent(), true) ?? []);
+        $contentType = $request->headers->get('Content-Type', '');
+        $data = str_starts_with($contentType, 'application/json')
+            ? (json_decode($request->getContent(), true) ?: [])
+            : $request->request->all();
+        $file = $request->files->get('photo');
+
+        $result = $this->patientService->updatePatient(
+            $id,
+            $data,
+            $file,
+            dirname(__DIR__, 3) . '/public/uploads',
+        );
 
         if (isset($result['error'])) {
             return $this->json(['message' => $result['error']], $result['status'] ?? 400);
         }
 
-        return $this->json(['message' => 'Patient mis à jour avec succès'], $result['status'] ?? 200);
+        return $this->json($result, $result['status'] ?? 200);
     }
 
     #[Route('/api/patient/{id}/consultation-en-cours', name: 'api_consultation_check_active', methods: ['GET'])]

@@ -129,15 +129,13 @@ const openCreate = (payload = {}) => {
 };
 
 const submitCreate = async () => {
-	try {
-		notify('Rendez-vous créé');
+	try { 
 		dialogState.create = false;
 		refreshKey.value += 1;
 		nextTick(() => {
 			weeklyViewRef.value?.reloadOnAction?.();
 		});
-	} catch (err) {
-		notify("Création impossible", 'error');
+	} catch (err) { 
 		console.error(err);
 	}
 };
