@@ -29,7 +29,7 @@
         </table>
 
         <template v-if="shouldPrint('entretien')">
-            <h2>Entretien verbal</h2>
+            <h2>Questionnaire médical</h2>
             <table v-if="entretienHasRows || printEmpty">
                 <thead>
                     <tr>
@@ -50,44 +50,29 @@
                 </tbody>
             </table>
 
-            <table v-if="showArray(entretien?.medicaments)">
+            <table v-if="showArray(entretienAntecedents)">
                 <thead>
                     <tr>
-                        <th>Medicaments</th>
-                        <th>Utilise</th>
+                        <th>Type</th>
+                        <th>Element</th>
+                        <th>Etat</th>
                         <th>Details</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <tr v-for="item in entretien.medicaments" :key="item.id || item.nom">
+                    <tr v-for="item in entretienAntecedents" :key="item.key">
+                        <td>{{ item.type || '—' }}</td>
                         <td>{{ item.nom || '—' }}</td>
-                        <td>{{ formatBool(item.estUtilise) }}</td>
+                        <td>{{ formatBool(item.etat) }}</td>
                         <td>{{ item.details || '—' }}</td>
                     </tr>
                 </tbody>
             </table>
 
-            <table v-if="showArray(entretien?.affections)">
+            <table v-if="printEmpty || entretienQuestionsRows">
                 <thead>
                     <tr>
-                        <th>Affections</th>
-                        <th>Presente</th>
-                        <th>Details</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr v-for="item in entretien.affections" :key="item.id || item.nom">
-                        <td>{{ item.nom || '—' }}</td>
-                        <td>{{ formatBool(item.estPresente) }}</td>
-                        <td>{{ item.details || '—' }}</td>
-                    </tr>
-                </tbody>
-            </table>
-
-            <table v-if="showArray(entretien?.questions)">
-                <thead>
-                    <tr>
-                        <th>Questions</th>
+                        <th>Questionnaire medical</th>
                         <th>Reponse</th>
                         <th>Precision</th>
                     </tr>
@@ -98,20 +83,8 @@
                         <td>{{ formatBool(item.reponse) }}</td>
                         <td>{{ item.precision || '—' }}</td>
                     </tr>
-                </tbody>
-            </table>
-
-            <table v-if="showArray(entretien?.habitudes)">
-                <thead>
-                    <tr>
-                        <th>Habitudes</th>
-                        <th>Presente</th>
-                        <th>Quantite</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr v-for="item in entretien.habitudes" :key="item.id || item.type">
-                        <td>{{ item.type || '—' }}</td>
+                    <tr v-for="item in entretien?.habitudes || []" :key="item.id || item.type">
+                        <td>Habitude: {{ item.type || '—' }}</td>
                         <td>{{ formatBool(item.estPresente) }}</td>
                         <td>{{ item.quantite || '—' }}</td>
                     </tr>
@@ -358,6 +331,15 @@ const examens = computed(() => props.fiche?.examens || {});
 const bilans = computed(() => props.fiche?.bilans || {});
 const documents = computed(() => props.fiche?.documents || []);
 const plans = computed(() => props.fiche?.planTraitement || []);
+const patientSex = computed(() => props.patient?.sexe || props.fiche?.patient?.sexe || props.fiche?.sexe || '');
+const isFemalePatient = computed(() => {
+    const normalized = String(patientSex.value || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim();
+    return ['f', 'femme', 'feminin', 'female', 'woman'].includes(normalized);
+});
 
 const dentalRows = [
     { left: [55, 54, 53, 52, 51], right: [61, 62, 63, 64, 65] },
@@ -397,6 +379,27 @@ const hasValue = (value) => {
 
 const showArray = (value) => (props.printEmpty ? true : Array.isArray(value) && value.length > 0);
 
+const entretienAntecedents = computed(() => {
+    const medicaments = Array.isArray(entretien.value?.medicaments) ? entretien.value.medicaments : [];
+    const affections = Array.isArray(entretien.value?.affections) ? entretien.value.affections : [];
+    return [
+        ...medicaments.map((item, idx) => ({
+            key: `medicament-${item.id ?? item.nom ?? idx}`,
+            type: 'Medicament en cours',
+            nom: item.nom || '—',
+            etat: item.estUtilise,
+            details: item.details || ''
+        })),
+        ...affections.map((item, idx) => ({
+            key: `affection-${item.id ?? item.nom ?? idx}`,
+            type: 'Affection',
+            nom: item.nom || '—',
+            etat: item.estPresente,
+            details: item.details || ''
+        }))
+    ];
+});
+
 const shouldPrint = (key) => {
     if (!props.sections || props.sections.length === 0) return true;
     return props.sections.includes(key);
@@ -415,21 +418,24 @@ const entretienGroups = computed(() => {
     const groups = [
         {
             key: 'entretien',
-            title: 'Entretien',
+            title: 'Anamnese',
             rows: [
-                { key: 'motif', label: 'Motif de consultation', value: entretien.value?.motifConsultation || '—' },
-                { key: 'anamnese', label: 'Anamnese', value: entretien.value?.anamnese || '—' }
+                { key: 'anamnese', label: 'Anamnese', value: entretien.value?.motifConsultation || '—' }
             ]
         },
-        {
-            key: 'etat-gynecologique',
-            title: 'Etat gynecologique',
-            rows: [
-                { key: 'allaitement', label: 'Allaitement', value: formatBool(entretien.value?.etatGynecologique?.allaitement) },
-                { key: 'grossesse', label: 'Grossesse en cours', value: formatBool(entretien.value?.etatGynecologique?.grossesseEnCours) },
-                { key: 'menstrues', label: 'Menstrues', value: formatBool(entretien.value?.etatGynecologique?.menstrues) }
-            ]
-        }
+        ...(isFemalePatient.value
+            ? [
+                  {
+                      key: 'etat-gynecologique',
+                      title: 'Etat gynecologique',
+                      rows: [
+                          { key: 'allaitement', label: 'Allaitement', value: formatBool(entretien.value?.etatGynecologique?.allaitement) },
+                          { key: 'grossesse', label: 'Grossesse en cours', value: formatBool(entretien.value?.etatGynecologique?.grossesseEnCours) },
+                          { key: 'menstrues', label: 'Menstrues', value: formatBool(entretien.value?.etatGynecologique?.menstrues) }
+                      ]
+                  }
+              ]
+            : [])
     ];
 
     return groups
@@ -441,6 +447,11 @@ const entretienGroups = computed(() => {
 });
 
 const entretienHasRows = computed(() => entretienGroups.value.length > 0);
+const entretienQuestionsRows = computed(() => {
+    const questions = Array.isArray(entretien.value?.questions) ? entretien.value.questions : [];
+    const habitudes = Array.isArray(entretien.value?.habitudes) ? entretien.value.habitudes : [];
+    return questions.length + habitudes.length;
+});
 
 const examensGroups = computed(() => {
     const groups = [

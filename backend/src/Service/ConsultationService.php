@@ -520,6 +520,8 @@ class ConsultationService
             'occlusion'              => $fiche->getOcclusion(),
             'examenParodontal'       => $fiche->getExamenParodontal(),
             'diagnostic'             => $fiche->getDiagnostic(),
+            'examensComplementaires' => $fiche->getExamensComplementaires(),
+            'diagnosticSupposeExamens' => $fiche->getDiagnosticSupposeExamens(),
             'traitementUrgence'      => $fiche->getTraitementUrgence(),
             'traitementDentaire'     => $fiche->getTraitementDentaire(),
             'traitementParodontal'   => $fiche->getTraitementParodontal(),
@@ -632,6 +634,34 @@ class ConsultationService
                 $toothsCheck[$tooth] = $result;
             }
         }
+
+        if (array_key_exists('examensComplementaires', $data)) {
+            $normalized = [];
+            if (is_array($data['examensComplementaires'])) {
+                foreach ($data['examensComplementaires'] as $item) {
+                    if (!is_array($item)) {
+                        continue;
+                    }
+
+                    $entry = [
+                        'type' => trim((string) ($item['type'] ?? '')),
+                        'description' => trim((string) ($item['description'] ?? '')),
+                        'date' => isset($item['date']) && $item['date'] !== '' ? (string) $item['date'] : null,
+                        'resultat' => trim((string) ($item['resultat'] ?? '')),
+                    ];
+
+                    if ($entry['type'] !== '' || $entry['description'] !== '' || $entry['date'] !== null || $entry['resultat'] !== '') {
+                        $normalized[] = $entry;
+                    }
+                }
+            }
+            $fiche->setExamensComplementaires($normalized);
+        }
+
+        if (array_key_exists('diagnosticSupposeExamens', $data)) {
+            $fiche->setDiagnosticSupposeExamens(trim((string) ($data['diagnosticSupposeExamens'] ?? '')));
+        }
+
         $fiche->setToothsCheck($toothsCheck);
         $this->em->persist($fiche);
         $this->em->flush();

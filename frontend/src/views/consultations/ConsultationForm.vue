@@ -67,7 +67,18 @@ const mode = computed(() => (route.query.mode === 'new-fiche' ? 'new-fiche' : 'c
 const data = reactive({
     patient: { allergies: [], antecedents: [] },
     motif: { motif: '', histoireMaladie: '', soinsAnterieurs: '' },
-    examens: { exoInspection: '', exoPalpation: '', endoInspection: '', endoPalpation: '', occlusion: '', examenParodontal: '', diagnostic: '', toothsCheck: {} },
+    examens: {
+        exoInspection: '',
+        exoPalpation: '',
+        endoInspection: '',
+        endoPalpation: '',
+        occlusion: '',
+        examenParodontal: '',
+        diagnostic: '',
+        diagnosticSupposeExamens: '',
+        examensComplementaires: [],
+        toothsCheck: {}
+    },
     traitements: { traitementUrgence: '', traitementDentaire: '', traitementParodontal: '', traitementOrthodontique: '', autres: '', documents: [] },
     devis: { date: null, services: [] },
     consultation: { type: '', medecinId: null, infirmierIds: [], salleId: null, noteSeance: '', actes: [] },
@@ -89,7 +100,9 @@ const allowRouteLeaveAfterCloture = ref(false);
 let autosaveTimer = null;
 let ignoreNextDirty = false;
 const isMedecinOptionalOnCreation = ref(false);
+const hidePatientPhoneForMedecins = ref(false);
 const soinsList = ref([...defaultSoinList]);
+const shouldHidePatientPhoneForMedecin = computed(() => Boolean(auth.user?.roles?.includes('ROLE_MEDECIN')) && !Boolean(auth.user?.roles?.includes('ROLE_ADMIN')) && hidePatientPhoneForMedecins.value);
 
 const displayModeOptions = [
     { label: 'Onglets', value: 'tabs' },
@@ -101,6 +114,17 @@ const hasValue = (value) => {
     if (value && typeof value === 'object') return Object.values(value).some(hasValue);
     if (typeof value === 'number') return value > 0;
     return typeof value === 'string' ? value.trim().length > 0 : Boolean(value);
+};
+
+const normalizeExamensComplementaires = (value) => {
+    if (!Array.isArray(value)) return [];
+
+    return value.map((item) => ({
+        type: item?.type ?? '',
+        description: item?.description ?? '',
+        date: item?.date ? new Date(item.date) : null,
+        resultat: item?.resultat ?? ''
+    }));
 };
 
 const isSectionFilled = (id) => {
@@ -331,10 +355,12 @@ const loadConsultationPolicy = async () => {
     try {
         const settings = await fetchPublicGeneralSettings(token);
         isMedecinOptionalOnCreation.value = settings?.requireMedecinOnConsultationCreation === false;
+        hidePatientPhoneForMedecins.value = settings?.hidePatientPhoneForMedecins === true;
         soinsList.value = normalizeSoinList(settings?.soinsList);
     } catch (error) {
         console.error('Erreur chargement politique consultation', error);
         isMedecinOptionalOnCreation.value = false;
+        hidePatientPhoneForMedecins.value = false;
         soinsList.value = [...defaultSoinList];
     }
 };
@@ -757,6 +783,8 @@ function hydrateFromResponse(res) {
         occlusion: fiche.occlusion ?? '',
         examenParodontal: fiche.examenParodontal ?? '',
         diagnostic: fiche.diagnostic ?? '',
+        diagnosticSupposeExamens: fiche.diagnosticSupposeExamens ?? '',
+        examensComplementaires: normalizeExamensComplementaires(fiche.examensComplementaires),
         toothsCheck: fiche.examens ?? fiche.toothsCheck ?? {}
     };
 
@@ -898,7 +926,9 @@ const handlePrintOrdonnance = async (ordo) => {
                 <template #infos>
                     <div class="p-6">
                         <PatientInfoCard
-                            :patient="{ ...data.patient, dateNaissance: formatDate(data.patient.dateNaissance) }" />
+                            :patient="{ ...data.patient, dateNaissance: formatDate(data.patient.dateNaissance) }"
+                            :hide-phone="shouldHidePatientPhoneForMedecin"
+                        />
 
                         <div class="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
                             <div class="rounded-2xl border border-surface-200/50 dark:border-surface-700/50 bg-surface-0 dark:bg-surface-800/80 p-5">

@@ -52,6 +52,12 @@ class FicheObservation
     #[ORM\Column(type: 'text', nullable: true)]
     private ?string $diagnostic = null;
 
+    #[ORM\Column(type: 'json')]
+    private array $examensComplementaires = [];
+
+    #[ORM\Column(type: 'text', nullable: true)]
+    private ?string $diagnosticSupposeExamens = null;
+
     #[ORM\Column(type: 'text', nullable: true)]
     private ?string $traitementUrgence = null;
 
@@ -180,6 +186,28 @@ class FicheObservation
     public function getDiagnostic(): ?string
     {
         return $this->diagnostic;
+    }
+
+    public function getExamensComplementaires(): array
+    {
+        return $this->examensComplementaires;
+    }
+
+    public function setExamensComplementaires(array $examensComplementaires): self
+    {
+        $this->examensComplementaires = $examensComplementaires;
+        return $this;
+    }
+
+    public function getDiagnosticSupposeExamens(): ?string
+    {
+        return $this->diagnosticSupposeExamens;
+    }
+
+    public function setDiagnosticSupposeExamens(?string $diagnosticSupposeExamens): self
+    {
+        $this->diagnosticSupposeExamens = $diagnosticSupposeExamens;
+        return $this;
     }
 
     public function setTraitementUrgence(?string $traitementUrgence): self

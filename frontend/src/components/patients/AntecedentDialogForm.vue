@@ -1,9 +1,9 @@
 <script setup>
 import Button from 'primevue/button';
+import AutoComplete from 'primevue/autocomplete';
 import Dialog from 'primevue/dialog';
-import Select from 'primevue/select';
 import Textarea from 'primevue/textarea';
-import { computed, reactive, watch } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
 
 const props = defineProps({
     modelValue: { type: Boolean, default: false },
@@ -12,11 +12,8 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue', 'save']);
 
-const typeOptions = [
-    { label: 'Personnel', value: 'Personnel' },
-    { label: 'Familial', value: 'Familial' },
-    { label: 'Médical', value: 'Médical' }
-];
+const typeOptions = ['Personnel', 'Familial', 'Médical'];
+const typeSuggestions = ref([]);
 
 const form = reactive({
     type: '',
@@ -40,6 +37,13 @@ watch(
     }
 );
 
+const searchTypeOptions = (event) => {
+    const query = String(event?.query || '').toLowerCase().trim();
+    typeSuggestions.value = query
+        ? typeOptions.filter((item) => item.toLowerCase().includes(query))
+        : typeOptions;
+};
+
 const submit = () => {
     emit('save', {
         type: form.type,
@@ -57,8 +61,13 @@ const submit = () => {
         <div class="flex flex-col gap-4">
             <div class="flex flex-col gap-2">
                 <label class="font-semibold">Type</label>
-                <Select v-model="form.type" :options="typeOptions" optionLabel="label" optionValue="value"
-                    placeholder="Sélectionner" />
+                <AutoComplete
+                    v-model="form.type"
+                    :suggestions="typeSuggestions"
+                    dropdown
+                    placeholder="Saisir ou sélectionner"
+                    @complete="searchTypeOptions"
+                />
             </div>
             <div class="flex flex-col gap-2">
                 <label class="font-semibold">Description</label>

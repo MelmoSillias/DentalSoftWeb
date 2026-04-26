@@ -6,6 +6,7 @@ import SaveIndicator from '@/components/consultations/SaveIndicator.vue';
 import SectionSwitcher from '@/components/consultations/SectionSwitcher.vue';
 import AllergyDialogForm from '@/components/patients/AllergyDialogForm.vue';
 import AntecedentDialogForm from '@/components/patients/AntecedentDialogForm.vue';
+import PrintFicheV2Body from '@/components/print/PrintFicheV2Body.vue';
 import PrintOrdonnanceBody from '@/components/print/PrintOrdonnanceBody.vue';
 import EntretienVerbalForm from '@/components/fiche-medicale/EntretienVerbalForm.vue';
 import ExamensFicheForm from '@/components/fiche-medicale/ExamensFicheForm.vue';
@@ -19,7 +20,7 @@ import { usePrinter } from '@/composables/usePrinter';
 import { defaultSoinList, normalizeSoinList } from '@/services/consultations';
 import { fetchPublicGeneralSettings } from '@/services/globalSettingsService';
 import { addPatientAllergy, addPatientAntecedent, deletePatientAllergy, deletePatientAntecedent } from '@/services/patients';
-import { fetchOrdonnancePrintData } from '@/services/printService';
+import { fetchOrdonnancePrintData, fetchPatientFichePrintData } from '@/services/printService';
 import { useAuthStore } from '@/stores/auth';
 import { GUIDED_TOUR_START_EVENT } from '@/tours';
 import { createConsultationsFormTour } from '@/tours/consultationsFormTour';
@@ -82,7 +83,9 @@ const isIndicatorFloating = ref(false);
 const allowRouteLeaveAfterCloture = ref(false);
 const isGuidedTourStarting = ref(false);
 const isMedecinOptionalOnCreation = ref(false);
+const hidePatientPhoneForMedecins = ref(false);
 const soinsList = ref([...defaultSoinList]);
+const shouldHidePatientPhoneForMedecin = computed(() => Boolean(auth.user?.roles?.includes('ROLE_MEDECIN')) && !Boolean(auth.user?.roles?.includes('ROLE_ADMIN')) && hidePatientPhoneForMedecins.value);
 
 const displayModeOptions = [
     { label: 'Onglets', value: 'tabs' },
@@ -164,10 +167,12 @@ const loadConsultationPolicy = async () => {
     try {
         const settings = await fetchPublicGeneralSettings(token);
         isMedecinOptionalOnCreation.value = settings?.requireMedecinOnConsultationCreation === false;
+        hidePatientPhoneForMedecins.value = settings?.hidePatientPhoneForMedecins === true;
         soinsList.value = normalizeSoinList(settings?.soinsList);
     } catch (error) {
         console.error('Erreur chargement politique consultation', error);
         isMedecinOptionalOnCreation.value = false;
+        hidePatientPhoneForMedecins.value = false;
         soinsList.value = [...defaultSoinList];
     }
 };
@@ -240,7 +245,7 @@ const sections = computed(() => {
         },
         {
             id: 'entretien',
-            label: 'Entretien verbale',
+            label: 'Questionnaire médical',
             filled: isSectionFilled('entretien'),
             status: entretienStatus.status,
             statusLabel: entretienStatus.label,
@@ -323,7 +328,7 @@ const saveEntretienSection = async ({ silent = false } = {}) => {
     if (!dirty.entretien) return;
     try {
         await saveEntretien();
-        if (!silent) toast.add({ severity: 'success', summary: 'Entretien enregistre', life: 2000 });
+        if (!silent) toast.add({ severity: 'success', summary: 'Interrogatoire enregistre', life: 2000 });
     } catch (error) {
         if (isClosedConsultationError(error)) {
             redirectClosedConsultation();
@@ -559,6 +564,27 @@ const handlePrintOrdonnance = async (ordo) => {
     }
 };
 
+const handlePrintFiche = async () => {
+    const patientId = Number(data.patient?.id ?? Number.NaN);
+    if (!Number.isFinite(patientId) || !ficheId.value) {
+        toast.add({ severity: 'warn', summary: 'Impression', detail: 'Fiche non disponible pour impression.' });
+        return;
+    }
+
+    try {
+        const res = await fetchPatientFichePrintData(patientId, ficheId.value, token);
+        await printComponent(PrintFicheV2Body, {
+            patient: res.patient,
+            fiche: res.fiche,
+            sections: ['entretien', 'examens', 'images', 'plan', 'bilan', 'seances'],
+            printEmpty: false
+        });
+    } catch (error) {
+        console.error('Erreur impression fiche', error);
+        toast.add({ severity: 'error', summary: 'Erreur', detail: "Impossible d'imprimer la fiche." });
+    }
+};
+
 const openOrdonnanceModal = () => {
     ordonnanceDraft.value = {
         date: new Date().toISOString().slice(0, 10),
@@ -719,6 +745,7 @@ onBeforeUnmount(() => {
                 <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
                     <div data-tour="consultations-form.navigation" class="flex items-center gap-2">
                         <Button icon="pi pi-arrow-left" label="Retour" severity="danger" @click="() => router.back()" />
+                        <Button icon="pi pi-print" label="Imprimer fiche" severity="secondary" outlined @click="handlePrintFiche" />
                     </div>
                     <div data-tour="consultations-form.display-mode" class="flex items-center gap-2">
                         <SelectButton v-model="switcherMode" :options="displayModeOptions" optionLabel="label" optionValue="value" />
@@ -745,6 +772,7 @@ onBeforeUnmount(() => {
                         <div data-tour="consultations-form.section.infos">
                             <FichePatientInfoSection
                                 :patient="data.patient"
+                                :hide-phone="shouldHidePatientPhoneForMedecin"
                                 @add-antecedent="() => (showAntecedentDialog = true)"
                                 @add-allergy="() => (showAllergyDialog = true)"
                                 @delete-antecedent="handleDeleteAntecedent"
@@ -755,7 +783,12 @@ onBeforeUnmount(() => {
 
                     <template #entretien>
                         <div data-tour="consultations-form.section.entretien">
-                            <EntretienVerbalForm v-model="data.entretien" :saving="saving.entretien" @save="saveEntretienSection" />
+                            <EntretienVerbalForm
+                                v-model="data.entretien"
+                                :saving="saving.entretien"
+                                :patient-sex="data.patient?.sexe"
+                                @save="saveEntretienSection"
+                            />
                         </div>
                     </template>
 

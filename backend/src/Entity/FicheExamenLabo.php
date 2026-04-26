@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use DateTimeInterface;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity]
@@ -24,6 +25,9 @@ class FicheExamenLabo
 
     #[ORM\Column(type: 'text', nullable: true)]
     private ?string $resultat = null;
+
+    #[ORM\Column(type: 'date', nullable: true)]
+    private ?DateTimeInterface $dateExamen = null;
 
     public function getId(): ?int
     {
@@ -71,6 +75,17 @@ class FicheExamenLabo
     public function setResultat(?string $resultat): static
     {
         $this->resultat = $resultat;
+        return $this;
+    }
+
+    public function getDateExamen(): ?DateTimeInterface
+    {
+        return $this->dateExamen;
+    }
+
+    public function setDateExamen(?DateTimeInterface $dateExamen): static
+    {
+        $this->dateExamen = $dateExamen;
         return $this;
     }
 }

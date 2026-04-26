@@ -38,6 +38,8 @@ const { printComponent } = usePrinter();
 const loading = ref(false);
 const consultations = ref([]);
 const allowReceptionQuickClose = ref(true);
+const hidePatientDossierForMedecins = ref(false);
+const hidePatientPhoneForMedecins = ref(false);
 const soinsList = ref([...defaultSoinList]);
 const selectedMode = ref('reception');
 const showCompletedSecretary = ref(true);
@@ -98,6 +100,9 @@ const roles = computed(() => auth.user?.roles || []);
 const isAdmin = computed(() => roles.value.includes('ROLE_ADMIN'));
 const isMedecin = computed(() => roles.value.includes('ROLE_MEDECIN'));
 const isReception = computed(() => roles.value.includes('ROLE_RECEPTION') || roles.value.includes('ROLE_RECEPTIONNISTE') || roles.value.includes('ROLE_SECRETAIRE'));
+const isRestrictedMedecin = computed(() => isMedecin.value && !isAdmin.value);
+const shouldHidePatientDossierForMedecin = computed(() => isRestrictedMedecin.value && hidePatientDossierForMedecins.value);
+const shouldHidePatientPhoneForMedecin = computed(() => isRestrictedMedecin.value && hidePatientPhoneForMedecins.value);
 const availableModes = computed(() => {
     if (isAdmin.value) {
         return [
@@ -302,6 +307,7 @@ const factureTotal = computed(() => factureLines.value.reduce((sum, line) => sum
 const normalizePatientForCard = (payload = {}) => {
     const normalized = normalizePatient(payload || {});
     const fullName = `${normalized.nom || ''} ${normalized.prenom || ''}`.trim();
+    const maskedPhone = shouldHidePatientPhoneForMedecin.value ? 'Masqué par l\'administrateur' : (normalized.telephone || '--');
     return {
         ...payload,
         ...normalized,
@@ -309,7 +315,7 @@ const normalizePatientForCard = (payload = {}) => {
         numeroDossier: payload.numeroDossier || payload.numero_dossier || payload.code || `PAT-${normalized.id || '--'}`,
         age: normalized.age ?? (normalized.dateNaissance ? Math.max(0, Math.floor((Date.now() - new Date(normalized.dateNaissance).getTime()) / (1000 * 60 * 60 * 24 * 365.25))) : 0),
         groupeSanguin: normalized.groupeSanguin || '--',
-        telephone: normalized.telephone || '--',
+        telephone: maskedPhone,
         email: normalized.email || '--',
         adresse: normalized.adresse || '--',
         antecedents: Array.isArray(payload.antecedents) ? payload.antecedents : [],
@@ -320,10 +326,15 @@ const normalizePatientForCard = (payload = {}) => {
 const loadSettings = async () => {
     try {
         const settings = await fetchPublicGeneralSettings(token);
-        allowReceptionQuickClose.value = settings?.allowReceptionQuickCloseConsultation !== false;
+        allowReceptionQuickClose.value = settings?.allowReceptionConsultationQuickActions !== false
+            && settings?.allowReceptionQuickCloseConsultation !== false;
+        hidePatientDossierForMedecins.value = settings?.hidePatientDossierForMedecins === true;
+        hidePatientPhoneForMedecins.value = settings?.hidePatientPhoneForMedecins === true;
         soinsList.value = normalizeSoinList(settings?.soinsList);
     } catch (_) {
         allowReceptionQuickClose.value = true;
+        hidePatientDossierForMedecins.value = false;
+        hidePatientPhoneForMedecins.value = false;
         soinsList.value = [...defaultSoinList];
     }
 };
@@ -834,6 +845,8 @@ onBeforeUnmount(() => {
                 }))"
                 :selected-consultation-id="selectedConsultationId"
                 :selected-patient="selectedPatient"
+                :hide-patient-dossier="shouldHidePatientDossierForMedecin"
+                :hide-patient-phone="shouldHidePatientPhoneForMedecin"
                 @clear-selection="clearSelection"
                 @select-consultation="(consultationId) => { selectedConsultationId = consultationId; }"
                 @select-action-choice="openMedicalWorkspace"

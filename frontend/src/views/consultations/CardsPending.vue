@@ -41,6 +41,7 @@ const quickDialogConsultation = ref(null);
 const quickDialogActionMode = ref('continue');
 const isGuidedTourStarting = ref(false);
 const allowReceptionQuickClose = ref(true);
+const hidePatientPhoneForMedecins = ref(false);
 let guidedTourPageState = null;
 let guidedTourDemoActive = false;
 let guidedTourCleanupPromise = null;
@@ -60,10 +61,13 @@ const loadPending = async () => {
 const loadQuickClosePolicy = async () => {
     try {
         const settings = await fetchPublicGeneralSettings(token);
-        allowReceptionQuickClose.value = settings?.allowReceptionQuickCloseConsultation !== false;
+        allowReceptionQuickClose.value = settings?.allowReceptionConsultationQuickActions !== false
+            && settings?.allowReceptionQuickCloseConsultation !== false;
+        hidePatientPhoneForMedecins.value = settings?.hidePatientPhoneForMedecins === true;
     } catch (error) {
         console.error('Erreur chargement politique de clôturation rapide', error);
         allowReceptionQuickClose.value = true;
+        hidePatientPhoneForMedecins.value = false;
     }
 };
 
@@ -141,6 +145,8 @@ const isClosed = (consultation) => Number(consultation?.state) === 1;
 const isAdmin = computed(() => Boolean(auth.user?.roles?.includes('ROLE_ADMIN')));
 const isMedecin = computed(() => Boolean(auth.user?.roles?.includes('ROLE_MEDECIN')));
 const isReception = computed(() => Boolean(auth.user?.roles?.includes('ROLE_RECEPTION') || auth.user?.roles?.includes('ROLE_RECEPTIONNISTE')));
+const isRestrictedMedecin = computed(() => isMedecin.value && !isAdmin.value);
+const shouldHidePatientPhoneForMedecin = computed(() => isRestrictedMedecin.value && hidePatientPhoneForMedecins.value);
 const canUseQuickActions = computed(() => !isReception.value || allowReceptionQuickClose.value);
 
 const medecinLabel = (consultation) => {
@@ -584,7 +590,7 @@ function getBorderColor(index) {
                                         </div>
                                         <div class="flex items-center gap-2 text-sm text-surface-500 dark:text-surface-400">
                                             <i class="pi pi-phone"></i>
-                                            <span>{{ consultation.patientPhone || 'Téléphone non renseigné' }}</span>
+                                            <span>{{ shouldHidePatientPhoneForMedecin ? 'Masqué par l\'administrateur' : (consultation.patientPhone || 'Téléphone non renseigné') }}</span>
                                         </div>
                                         <div class="flex items-center gap-2 text-sm text-surface-500 dark:text-surface-400 mt-1">
                                             <i class="fas fa-user-md"></i>

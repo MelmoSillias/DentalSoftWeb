@@ -6,6 +6,10 @@ const props = defineProps({
     patient: {
         type: Object,
         default: () => ({})
+    },
+    hidePhone: {
+        type: Boolean,
+        default: false
     }
 });
 
@@ -66,7 +70,7 @@ const handleDeleteAllergy = (item) => emit('delete-allergy', item);
                     <div>
                         <p class="text-sm text-surface-500 dark:text-surface-400">Telephone</p>
                         <p class="text-lg font-semibold text-surface-900 dark:text-surface-100">
-                            {{ patient.telephone || '—' }}
+                            {{ hidePhone ? 'Masqué par l\'administrateur' : (patient.telephone || '—') }}
                         </p>
                     </div>
                 </div>

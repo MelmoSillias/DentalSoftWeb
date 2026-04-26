@@ -3,6 +3,10 @@ const props = defineProps({
     patient: {
         type: Object,
         default: () => ({})
+    },
+    hidePhone: {
+        type: Boolean,
+        default: false
     }
 });
 
@@ -79,10 +83,13 @@ function getSexeSeverity(sexe) {
                     </div>
                     <div>
                         <p class="text-sm text-surface-500 dark:text-surface-400">Téléphone</p>
-                        <a :href="`tel:${patient.telephone}`" 
+                        <a v-if="!hidePhone && patient.telephone" :href="`tel:${patient.telephone}`" 
                            class="text-lg font-semibold text-surface-900 dark:text-surface-100 hover:text-primary-600 dark:hover:text-primary-400 transition-colors">
-                            {{ patient.telephone || '—' }}
+                            {{ patient.telephone }}
                         </a>
+                        <p v-else class="text-lg font-semibold text-surface-900 dark:text-surface-100">
+                            {{ hidePhone ? 'Masqué par l\'administrateur' : '—' }}
+                        </p>
                     </div>
                 </div>
 

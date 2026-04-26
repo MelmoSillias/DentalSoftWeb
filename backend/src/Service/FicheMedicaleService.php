@@ -18,6 +18,7 @@ use App\Entity\FicheMedicale;
 use App\Entity\FicheObservation;
 use App\Entity\FichePlanTraitement;
 use App\Repository\DevisRepository;
+use DateTimeImmutable;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
@@ -285,6 +286,23 @@ class FicheMedicaleService
         return array_keys($array) !== range(0, count($array) - 1);
     }
 
+    private function parseDateValue(mixed $value): ?DateTimeImmutable
+    {
+        if (!$value) {
+            return null;
+        }
+
+        if ($value instanceof DateTimeImmutable) {
+            return $value;
+        }
+
+        try {
+            return new DateTimeImmutable((string) $value);
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
     private function addExamenItemsFromMap(FicheExamen $examen, array $map, string $categorie, bool $booleanValues): void
     {
         foreach ($map as $label => $value) {
@@ -342,6 +360,7 @@ class FicheMedicaleService
             'amplitudeOuverture' => 'amplitudeOuverture',
             'bruitsArticulaires' => 'bruitsArticulaires',
             'examenCanauxExcreteurs' => 'examenCanauxExcreteurs',
+            'diagnosticSupposeExamens' => 'diagnosticSupposeExamens',
         ] as $inputKey => $setterKey) {
             if (array_key_exists($inputKey, $data)) {
                 $method = 'set' . ucfirst($setterKey);
@@ -398,8 +417,9 @@ class FicheMedicaleService
                 $labo = new FicheExamenLabo();
                 $labo->setExamen($examen);
                 $labo->setType($item['type'] ?? $item['name'] ?? '');
-                $labo->setObservation($item['observation'] ?? null);
+                $labo->setObservation($item['observation'] ?? $item['description'] ?? null);
                 $labo->setResultat($item['resultat'] ?? null);
+                $labo->setDateExamen($this->parseDateValue($item['date'] ?? null));
                 $this->em->persist($labo);
             }
         } else {
@@ -914,8 +934,15 @@ class FicheMedicaleService
                 'Examens serologiques' => null,
                 'Examens histologiques' => null,
             ];
+            $examensLaboList = [];
             foreach ($examensLabo as $labo) {
                 $type = $labo->getType();
+                $examensLaboList[] = [
+                    'type' => $labo->getType(),
+                    'description' => $labo->getObservation(),
+                    'date' => $labo->getDateExamen()?->format('Y-m-d'),
+                    'resultat' => $labo->getResultat(),
+                ];
                 if (array_key_exists($type, $laboMap)) {
                     $laboMap[$type] = [
                         'observation' => $labo->getObservation(),
@@ -947,6 +974,8 @@ class FicheMedicaleService
                 'tissusMousTable' => $examen->getTissusMousTable(),
                 'tissusDursTable' => $examen->getTissusDursTable(),
                 'examenCanauxExcreteurs' => $examen->getExamenCanauxExcreteurs(),
+                'diagnosticSupposeExamens' => $examen->getDiagnosticSupposeExamens(),
+                'examensLabo' => $examensLaboList,
                 'examensBacteriologiques' => $laboMap['Examens bacteriologiques'] ?? ['observation' => null, 'resultat' => null],
                 'examensSerologiques' => $laboMap['Examens serologiques'] ?? ['observation' => null, 'resultat' => null],
                 'examensHistologiques' => $laboMap['Examens histologiques'] ?? ['observation' => null, 'resultat' => null],

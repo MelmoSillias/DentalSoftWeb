@@ -35,12 +35,19 @@
             </div>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div v-if="dossierHiddenForMedecin" class="rounded-2xl border border-surface-200/50 dark:border-surface-700/50 bg-surface-0 dark:bg-surface-800/80 p-8 text-center">
+            <i class="pi pi-lock text-3xl text-surface-400"></i>
+            <h3 class="mt-3 text-lg font-semibold text-surface-900 dark:text-surface-100">Dossier patient masqué</h3>
+            <p class="mt-2 text-sm text-surface-600 dark:text-surface-400">L'accès au dossier patient est restreint pour votre profil.</p>
+        </div>
+
+        <div v-else class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <!-- Colonne de gauche : Infos patient -->
             <div class="lg:col-span-1 space-y-6">
                 <div data-tour="patients-dossier.info-card">
                     <DossierPatientInfoCard
                         :patient="patient"
+                        :hide-phone="shouldHidePatientPhoneForMedecin"
                         @print-dossier="handlePrintDossier"
                         @edit="() => (showEditDialog = true)"
                         @new-rdv="() => (showRdvDialog = true)"
@@ -256,6 +263,7 @@ import PrintDossierBody from '@/components/print/PrintDossierBody.vue';
 import PrintFicheV2Body from '@/components/print/PrintFicheV2Body.vue';
 import { usePrinter } from '@/composables/usePrinter';
 import { usePatients } from '@/composables/usePatients';  
+import { fetchPublicGeneralSettings } from '@/services/globalSettingsService';
 import {
     activatePatientsTourMock,
     deactivatePatientsTourMock,
@@ -325,7 +333,7 @@ let guidedTourDemoActive = false;
 let guidedTourCleanupPromise = null;
 
 const printSectionOptions = [
-    { key: 'entretien', label: 'Entretien verbal' },
+    { key: 'entretien', label: 'Questionnaire médical' },
     { key: 'examens', label: 'Examen' },
     { key: 'images', label: 'Images et documents' },
     { key: 'plan', label: 'Plan de traitement' },
@@ -342,6 +350,11 @@ const isMedecin = computed(() => Boolean(auth.user?.roles?.includes('ROLE_MEDECI
 const isAdmin = computed(() => Boolean(auth.user?.roles?.includes('ROLE_ADMIN')));
 const showConsultationsTab = computed(() => isAdmin.value || isMedecin.value);
 const currentPatientId = computed(() => props.patientId ?? patient.value?.id ?? null);
+const hidePatientDossierForMedecins = ref(false);
+const hidePatientPhoneForMedecins = ref(false);
+const isRestrictedMedecin = computed(() => isMedecin.value && !isAdmin.value);
+const dossierHiddenForMedecin = computed(() => isRestrictedMedecin.value && hidePatientDossierForMedecins.value);
+const shouldHidePatientPhoneForMedecin = computed(() => isRestrictedMedecin.value && hidePatientPhoneForMedecins.value);
 const hasOpenDialogs = computed(() => (
     showRdvDialog.value
     || showConsultationDialog.value
@@ -589,8 +602,21 @@ const loadConsultations = async (patientId) => {
     }
 };
 
+const loadVisibilityPolicy = async () => {
+    try {
+        const settings = await fetchPublicGeneralSettings(token);
+        hidePatientDossierForMedecins.value = settings?.hidePatientDossierForMedecins === true;
+        hidePatientPhoneForMedecins.value = settings?.hidePatientPhoneForMedecins === true;
+    } catch (error) {
+        console.error('Erreur chargement politique visibilité dossier', error);
+        hidePatientDossierForMedecins.value = false;
+        hidePatientPhoneForMedecins.value = false;
+    }
+};
+
 onMounted(async () => {
     window.addEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
+    await loadVisibilityPolicy();
     if (props.patientId != null) {
         await loadDossier(props.patientId);
         await loadConsultations(props.patientId);

@@ -74,6 +74,8 @@ const quickDialogConsultation = ref(null);
 const quickDialogActionMode = ref('continue');
 const isGuidedTourStarting = ref(false);
 const allowReceptionQuickClose = ref(true);
+const hidePatientDossierForMedecins = ref(false);
+const hidePatientPhoneForMedecins = ref(false);
 const soinsList = ref([...defaultSoinList]);
 let guidedTourPageState = null;
 let guidedTourDemoActive = false;
@@ -83,6 +85,9 @@ const headerTitle = computed(() => `Consultations du ${formatDisplayDate(selecte
 const isAdmin = computed(() => Boolean(auth.user?.roles?.includes('ROLE_ADMIN')));
 const isMedecin = computed(() => Boolean(auth.user?.roles?.includes('ROLE_MEDECIN')));
 const isReception = computed(() => Boolean(auth.user?.roles?.includes('ROLE_RECEPTION') || auth.user?.roles?.includes('ROLE_RECEPTIONNISTE')));
+const isRestrictedMedecin = computed(() => isMedecin.value && !isAdmin.value);
+const shouldHidePatientDossierForMedecin = computed(() => isRestrictedMedecin.value && hidePatientDossierForMedecins.value);
+const shouldHidePatientPhoneForMedecin = computed(() => isRestrictedMedecin.value && hidePatientPhoneForMedecins.value);
 const canUseQuickActions = computed(() => !isReception.value || allowReceptionQuickClose.value);
 const totalCountLabel = computed(() => (consultations.value?.length ? `${consultations.value.length} consultation(s)` : ''));
 
@@ -169,11 +174,16 @@ const loadConsultations = async () => {
 const loadQuickClosePolicy = async () => {
     try {
         const settings = await fetchPublicGeneralSettings(token);
-        allowReceptionQuickClose.value = settings?.allowReceptionQuickCloseConsultation !== false;
+        allowReceptionQuickClose.value = settings?.allowReceptionConsultationQuickActions !== false
+            && settings?.allowReceptionQuickCloseConsultation !== false;
+        hidePatientDossierForMedecins.value = settings?.hidePatientDossierForMedecins === true;
+        hidePatientPhoneForMedecins.value = settings?.hidePatientPhoneForMedecins === true;
         soinsList.value = normalizeSoinList(settings?.soinsList);
     } catch (error) {
         console.error('Erreur chargement politique de clôturation rapide', error);
         allowReceptionQuickClose.value = true;
+        hidePatientDossierForMedecins.value = false;
+        hidePatientPhoneForMedecins.value = false;
         soinsList.value = [...defaultSoinList];
     }
 };
@@ -286,6 +296,7 @@ const handleCancel = async (consultation) => {
 };
 
 const openDossier = (consultation) => {
+    if (shouldHidePatientDossierForMedecin.value) return;
     if (!consultation?.patientId) return;
     router.push({ name: 'patients-dossier', params: { patientId: consultation.patientId } });
 };
@@ -816,9 +827,13 @@ const currentFactureLoading = computed(() => {
                                 <span class="font-semibold text-surface-900 dark:text-surface-100">
                                     {{ patientLabel(data) || '—' }}
                                 </span>
-                                <div v-if="data.patientPhone" class="flex items-center gap-1 mt-1">
+                                <div v-if="data.patientPhone && !shouldHidePatientPhoneForMedecin" class="flex items-center gap-1 mt-1">
                                     <i class="pi pi-phone text-xs text-surface-400"></i>
                                     <span class="text-xs text-surface-500">{{ data.patientPhone }}</span>
+                                </div>
+                                <div v-else-if="shouldHidePatientPhoneForMedecin" class="flex items-center gap-1 mt-1">
+                                    <i class="pi pi-phone text-xs text-surface-400"></i>
+                                    <span class="text-xs text-surface-500">Masqué par l'administrateur</span>
                                 </div>
                             </div>
                         </div>
@@ -907,7 +922,8 @@ const currentFactureLoading = computed(() => {
                                 :loading="detailsLoadingId === data.id"
                                 @click="openDetails(data)" 
                             />
-                            <Button 
+                            <Button
+                                v-if="!shouldHidePatientDossierForMedecin"
                                 icon="pi pi-folder-open" 
                                 severity="secondary" 
                                 text 

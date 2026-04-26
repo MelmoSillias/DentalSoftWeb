@@ -213,18 +213,18 @@ const toothClasses = (tooth) => {
     const active = selectedTooth.value === tooth;
     if (entry?.estCausale) {
         return [
-            'bg-red-100 text-red-700 border-red-200',
+            'bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-700',
             active ? 'ring-2 ring-red-400 ring-offset-2' : ''
         ];
     }
     if (hasData(entry)) {
         return [
-            'bg-emerald-100 text-emerald-700 border-emerald-200',
+            'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-700',
             active ? 'ring-2 ring-emerald-400 ring-offset-2' : ''
         ];
     }
     return [
-        'bg-white text-surface-600 border-surface-200',
+        'bg-white text-surface-600 border-surface-200 dark:bg-surface-800/30 dark:text-surface-400 dark:border-surface-700',
         active ? 'ring-2 ring-primary-400 ring-offset-2' : ''
     ];
 };

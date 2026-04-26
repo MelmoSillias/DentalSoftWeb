@@ -24,7 +24,7 @@ const emit = defineEmits(['print']);
 const activeSection = ref(0);
 
 const sections = [
-    { title: 'Entretien verbal', icon: 'pi pi-file-edit' },
+    { title: 'Questionnaire médical', icon: 'pi pi-file-edit' },
     { title: 'Examen', icon: 'pi pi-stethoscope' },
     { title: 'Images et Docs', icon: 'pi pi-images' },
     { title: 'Plan de traitement', icon: 'pi pi-sitemap' },
@@ -40,6 +40,35 @@ const documents = computed(() => props.fiche?.documents || []);
 const devis = computed(() => (Array.isArray(props.fiche?.devis) ? props.fiche.devis : props.fiche?.devis ? [props.fiche.devis] : []));
 const plansTraitement = computed(() => props.fiche?.planTraitement || []);
 const consultations = computed(() => props.fiche?.consultations || []);
+const patientSex = computed(() => props.fiche?.patient?.sexe || props.fiche?.sexe || '');
+const isFemalePatient = computed(() => {
+    const normalized = String(patientSex.value || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim();
+    return ['f', 'femme', 'feminin', 'female', 'woman'].includes(normalized);
+});
+const antecedentsRows = computed(() => {
+    const medicaments = Array.isArray(entretien.value?.medicaments) ? entretien.value.medicaments : [];
+    const affections = Array.isArray(entretien.value?.affections) ? entretien.value.affections : [];
+    return [
+        ...medicaments.map((item, idx) => ({
+            key: `medicament-${item.id ?? item.nom ?? idx}`,
+            type: 'Medicament en cours',
+            nom: item.nom || '—',
+            etat: item.estUtilise,
+            details: item.details || ''
+        })),
+        ...affections.map((item, idx) => ({
+            key: `affection-${item.id ?? item.nom ?? idx}`,
+            type: 'Affection',
+            nom: item.nom || '—',
+            etat: item.estPresente,
+            details: item.details || ''
+        }))
+    ];
+});
 
 const formatDate = (date) => {
     if (!date) return '--';
@@ -294,23 +323,18 @@ const sessions = computed(() =>
                                 <i class="pi pi-file-edit text-primary-600 dark:text-primary-400 text-xl"></i>
                             </div>
                             <div>
-                                <h3 class="text-xl font-bold text-surface-900 dark:text-surface-50">Entretien verbal</h3>
-                                <p class="text-sm text-surface-500 dark:text-surface-400 mt-1">Motif, anamnese et habitudes</p>
+                                <h3 class="text-xl font-bold text-surface-900 dark:text-surface-50">Questionnaire médical</h3>
+                                <p class="text-sm text-surface-500 dark:text-surface-400 mt-1">Anamnese, antecedents et habitudes declarees</p>
                             </div>
                         </div>
 
                         <div class="space-y-6">
                             <div class="p-4 rounded-xl bg-surface-50 dark:bg-surface-700/30 border border-surface-200 dark:border-surface-700">
-                                <h4 class="font-semibold text-surface-900 dark:text-surface-100 mb-3">Motif de consultation</h4>
+                                <h4 class="font-semibold text-surface-900 dark:text-surface-100 mb-3">Anamnese</h4>
                                 <p class="text-surface-700 dark:text-surface-300 whitespace-pre-wrap">{{ entretien.motifConsultation || '—' }}</p>
                             </div>
 
-                            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                <div class="p-4 rounded-xl bg-surface-50 dark:bg-surface-700/30 border border-surface-200 dark:border-surface-700">
-                                    <h4 class="font-semibold text-surface-900 dark:text-surface-100 mb-3">Anamnese</h4>
-                                    <p class="text-surface-700 dark:text-surface-300 whitespace-pre-wrap">{{ entretien.anamnese || '—' }}</p>
-                                </div>
-                                <div class="p-4 rounded-xl bg-surface-50 dark:bg-surface-700/30 border border-surface-200 dark:border-surface-700">
+                            <div v-if="isFemalePatient" class="p-4 rounded-xl bg-surface-50 dark:bg-surface-700/30 border border-surface-200 dark:border-surface-700">
                                     <h4 class="font-semibold text-surface-900 dark:text-surface-100 mb-3">Etat gynecologique</h4>
                                     <div class="space-y-3 text-sm">
                                         <div class="flex items-center justify-between">
@@ -326,45 +350,39 @@ const sessions = computed(() =>
                                             <span class="font-medium text-surface-900 dark:text-surface-100">{{ formatBool(entretien.etatGynecologique?.menstrues) }}</span>
                                         </div>
                                     </div>
+                            </div>
+
+                            <div class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/30 p-4">
+                                <h4 class="font-semibold text-surface-900 dark:text-surface-100 mb-3">Antecedents medicaux (medicaments et affections)</h4>
+                                <div class="overflow-x-auto rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900/40">
+                                    <table class="w-full text-sm">
+                                        <thead>
+                                            <tr class="border-b border-surface-200 dark:border-surface-700 bg-surface-100/80 dark:bg-surface-800/80">
+                                                <th class="p-3 text-left font-semibold text-surface-700 dark:text-surface-300">Type</th>
+                                                <th class="p-3 text-left font-semibold text-surface-700 dark:text-surface-300">Element</th>
+                                                <th class="p-3 text-left font-semibold text-surface-700 dark:text-surface-300">Etat</th>
+                                                <th class="p-3 text-left font-semibold text-surface-700 dark:text-surface-300">Details</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr v-if="!antecedentsRows.length">
+                                                <td colspan="4" class="p-4 text-center text-surface-500 dark:text-surface-400">Aucun antecedent enregistre.</td>
+                                            </tr>
+                                            <tr v-for="row in antecedentsRows" :key="row.key" class="border-b border-surface-200/70 dark:border-surface-700/70 last:border-b-0">
+                                                <td class="p-3 text-surface-700 dark:text-surface-300">{{ row.type }}</td>
+                                                <td class="p-3 text-surface-700 dark:text-surface-300">{{ row.nom }}</td>
+                                                <td class="p-3">
+                                                    <span class="text-xs font-semibold" :class="row.etat ? 'text-emerald-600' : 'text-surface-400'">{{ row.etat ? 'Oui' : 'Non' }}</span>
+                                                </td>
+                                                <td class="p-3 text-surface-600 dark:text-surface-400">{{ row.details || '—' }}</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
                                 </div>
                             </div>
 
-                            <div v-if="(entretien.medicaments || []).length" class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/30 p-4">
-                                <h4 class="font-semibold text-surface-900 dark:text-surface-100 mb-3">Medicaments en cours</h4>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                    <div v-for="med in entretien.medicaments" :key="med.id || med.nom" class="p-3 rounded-lg bg-surface-0 dark:bg-surface-800">
-                                        <div class="flex items-center justify-between">
-                                            <span class="text-sm font-medium text-surface-700 dark:text-surface-300">{{ med.nom }}</span>
-                                            <span class="text-xs font-semibold" :class="med.estUtilise ? 'text-emerald-600' : 'text-surface-400'">
-                                                {{ med.estUtilise ? 'Oui' : 'Non' }}
-                                            </span>
-                                        </div>
-                                        <div class="text-sm text-surface-600 dark:text-surface-400 mt-2">
-                                            {{ med.details || '—' }}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div v-if="(entretien.affections || []).length" class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/30 p-4">
-                                <h4 class="font-semibold text-surface-900 dark:text-surface-100 mb-3">Affections</h4>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                    <div v-for="aff in entretien.affections" :key="aff.id || aff.nom" class="p-3 rounded-lg bg-surface-0 dark:bg-surface-800">
-                                        <div class="flex items-center justify-between">
-                                            <span class="text-sm font-medium text-surface-700 dark:text-surface-300">{{ aff.nom }}</span>
-                                            <span class="text-xs font-semibold" :class="aff.estPresente ? 'text-emerald-600' : 'text-surface-400'">
-                                                {{ aff.estPresente ? 'Oui' : 'Non' }}
-                                            </span>
-                                        </div>
-                                        <div class="text-sm text-surface-600 dark:text-surface-400 mt-2">
-                                            {{ aff.details || '—' }}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div v-if="(entretien.questions || []).length" class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/30 p-4">
-                                <h4 class="font-semibold text-surface-900 dark:text-surface-100 mb-3">Questions</h4>
+                            <div v-if="(entretien.questions || []).length || (entretien.habitudes || []).length" class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/30 p-4">
+                                <h4 class="font-semibold text-surface-900 dark:text-surface-100 mb-3">Questionnaire medical et habitudes de vie</h4>
                                 <div class="space-y-3">
                                     <div v-for="q in entretien.questions" :key="q.id || q.question" class="p-3 rounded-lg bg-surface-0 dark:bg-surface-800">
                                         <div class="flex items-center justify-between">
@@ -377,15 +395,10 @@ const sessions = computed(() =>
                                             {{ q.precision || '—' }}
                                         </div>
                                     </div>
-                                </div>
-                            </div>
 
-                            <div v-if="(entretien.habitudes || []).length" class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/30 p-4">
-                                <h4 class="font-semibold text-surface-900 dark:text-surface-100 mb-3">Habitudes</h4>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                    <div v-for="h in entretien.habitudes" :key="h.id || h.type" class="p-3 rounded-lg bg-surface-0 dark:bg-surface-800">
+                                    <div v-for="h in entretien.habitudes || []" :key="h.id || h.type" class="p-3 rounded-lg bg-surface-0 dark:bg-surface-800">
                                         <div class="flex items-center justify-between">
-                                            <span class="text-sm font-medium text-surface-700 dark:text-surface-300">{{ h.type }}</span>
+                                            <span class="text-sm font-medium text-surface-700 dark:text-surface-300">Habitude: {{ h.type || '—' }}</span>
                                             <span class="text-xs font-semibold" :class="h.estPresente ? 'text-emerald-600' : 'text-surface-400'">
                                                 {{ h.estPresente ? 'Oui' : 'Non' }}
                                             </span>

@@ -47,16 +47,20 @@ class GlobalSettingsService
     ) {
     }
 
-    /** @return array{autoApproveDevices: bool, requireMedecinOnConsultationCreation: bool, allowReceptionQuickCloseConsultation: bool, paiementDirectAssurance: bool, transactionMotifs: array{revenue: string[], expense: string[]}, soinsList: string[]} */
+    /** @return array{autoApproveDevices: bool, requireMedecinOnConsultationCreation: bool, allowReceptionQuickCloseConsultation: bool, allowReceptionConsultationQuickActions: bool, hidePatientDossierForMedecins: bool, hidePatientPhoneForMedecins: bool, paiementDirectAssurance: bool, transactionMotifs: array{revenue: string[], expense: string[]}, soinsList: string[]} */
     public function getGeneralSettings(): array
     {
         $entry = $this->appSettingRepo->findOneByKey(self::KEY_GENERAL);
         $value = $entry?->getValue() ?? [];
+        $allowReceptionConsultationQuickActions = (bool) ($value['allowReceptionConsultationQuickActions'] ?? ($value['allowReceptionQuickCloseConsultation'] ?? true));
 
         return [
             'autoApproveDevices' => (bool) ($value['autoApproveDevices'] ?? true),
             'requireMedecinOnConsultationCreation' => (bool) ($value['requireMedecinOnConsultationCreation'] ?? true),
-            'allowReceptionQuickCloseConsultation' => (bool) ($value['allowReceptionQuickCloseConsultation'] ?? true),
+            'allowReceptionQuickCloseConsultation' => $allowReceptionConsultationQuickActions,
+            'allowReceptionConsultationQuickActions' => $allowReceptionConsultationQuickActions,
+            'hidePatientDossierForMedecins' => (bool) ($value['hidePatientDossierForMedecins'] ?? false),
+            'hidePatientPhoneForMedecins' => (bool) ($value['hidePatientPhoneForMedecins'] ?? false),
             'paiementDirectAssurance' => (bool) ($value['paiementDirectAssurance'] ?? false),
             'transactionMotifs' => $this->sanitizeTransactionMotifs($value['transactionMotifs'] ?? null),
             'soinsList' => $this->sanitizeStringList($value['soinsList'] ?? null, self::DEFAULT_SOINS_LIST),
@@ -73,11 +77,15 @@ class GlobalSettingsService
         }
 
         $current = $entry->getValue();
+        $allowReceptionConsultationQuickActions = (bool) ($payload['allowReceptionConsultationQuickActions'] ?? ($payload['allowReceptionQuickCloseConsultation'] ?? ($current['allowReceptionConsultationQuickActions'] ?? ($current['allowReceptionQuickCloseConsultation'] ?? true))));
         $entry->setValue([
             ...$current,
             'autoApproveDevices' => (bool) ($payload['autoApproveDevices'] ?? ($current['autoApproveDevices'] ?? true)),
             'requireMedecinOnConsultationCreation' => (bool) ($payload['requireMedecinOnConsultationCreation'] ?? ($current['requireMedecinOnConsultationCreation'] ?? false)),
-            'allowReceptionQuickCloseConsultation' => (bool) ($payload['allowReceptionQuickCloseConsultation'] ?? ($current['allowReceptionQuickCloseConsultation'] ?? true)),
+            'allowReceptionQuickCloseConsultation' => $allowReceptionConsultationQuickActions,
+            'allowReceptionConsultationQuickActions' => $allowReceptionConsultationQuickActions,
+            'hidePatientDossierForMedecins' => (bool) ($payload['hidePatientDossierForMedecins'] ?? ($current['hidePatientDossierForMedecins'] ?? false)),
+            'hidePatientPhoneForMedecins' => (bool) ($payload['hidePatientPhoneForMedecins'] ?? ($current['hidePatientPhoneForMedecins'] ?? false)),
             'paiementDirectAssurance' => (bool) ($payload['paiementDirectAssurance'] ?? $payload['paymentDirectInsurance'] ?? ($current['paiementDirectAssurance'] ?? false)),
             'transactionMotifs' => $this->sanitizeTransactionMotifs($payload['transactionMotifs'] ?? ($current['transactionMotifs'] ?? null)),
             'soinsList' => $this->sanitizeStringList($payload['soinsList'] ?? ($current['soinsList'] ?? null), self::DEFAULT_SOINS_LIST),
@@ -100,7 +108,17 @@ class GlobalSettingsService
 
     public function isReceptionQuickCloseConsultationAllowed(): bool
     {
-        return $this->getGeneralSettings()['allowReceptionQuickCloseConsultation'];
+        return $this->getGeneralSettings()['allowReceptionConsultationQuickActions'];
+    }
+
+    public function isPatientDossierHiddenForMedecins(): bool
+    {
+        return $this->getGeneralSettings()['hidePatientDossierForMedecins'];
+    }
+
+    public function isPatientPhoneHiddenForMedecins(): bool
+    {
+        return $this->getGeneralSettings()['hidePatientPhoneForMedecins'];
     }
 
     public function isDirectInsurancePaymentEnabled(): bool
@@ -120,7 +138,7 @@ class GlobalSettingsService
         return $this->getGeneralSettings()['soinsList'];
     }
 
-    /** @return array{requireMedecinOnConsultationCreation: bool, allowReceptionQuickCloseConsultation: bool, paiementDirectAssurance: bool, soinsList: string[]} */
+    /** @return array{requireMedecinOnConsultationCreation: bool, allowReceptionQuickCloseConsultation: bool, allowReceptionConsultationQuickActions: bool, hidePatientDossierForMedecins: bool, hidePatientPhoneForMedecins: bool, paiementDirectAssurance: bool, soinsList: string[]} */
     public function getPublicGeneralSettings(): array
     {
         $settings = $this->getGeneralSettings();
@@ -128,6 +146,9 @@ class GlobalSettingsService
         return [
             'requireMedecinOnConsultationCreation' => $settings['requireMedecinOnConsultationCreation'],
             'allowReceptionQuickCloseConsultation' => $settings['allowReceptionQuickCloseConsultation'],
+            'allowReceptionConsultationQuickActions' => $settings['allowReceptionConsultationQuickActions'],
+            'hidePatientDossierForMedecins' => $settings['hidePatientDossierForMedecins'],
+            'hidePatientPhoneForMedecins' => $settings['hidePatientPhoneForMedecins'],
             'paiementDirectAssurance' => $settings['paiementDirectAssurance'],
             'soinsList' => $settings['soinsList'],
         ];

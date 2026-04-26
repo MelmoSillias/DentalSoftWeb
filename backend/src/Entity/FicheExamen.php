@@ -64,6 +64,9 @@ class FicheExamen
     #[ORM\Column(type: 'text', nullable: true)]
     private ?string $examenCanauxExcreteurs = null;
 
+    #[ORM\Column(type: 'text', nullable: true)]
+    private ?string $diagnosticSupposeExamens = null;
+
     #[ORM\OneToMany(mappedBy: 'examen', targetEntity: FicheExamenItem::class, cascade: ['persist', 'remove'], orphanRemoval: true)]
     private Collection $items;
 
@@ -254,6 +257,17 @@ class FicheExamen
     public function setExamenCanauxExcreteurs(?string $examenCanauxExcreteurs): static
     {
         $this->examenCanauxExcreteurs = $examenCanauxExcreteurs;
+        return $this;
+    }
+
+    public function getDiagnosticSupposeExamens(): ?string
+    {
+        return $this->diagnosticSupposeExamens;
+    }
+
+    public function setDiagnosticSupposeExamens(?string $diagnosticSupposeExamens): static
+    {
+        $this->diagnosticSupposeExamens = $diagnosticSupposeExamens;
         return $this;
     }
 

@@ -75,7 +75,7 @@ export function createConsultationsFormTour({ setSection, openOrdonnanceDialog, 
             group: 'consultations-form',
             order: 70,
             target: '[data-tour="consultations-form.section.entretien"]',
-            title: 'Entretien verbale',
+            title: 'Questionnaire médical',
             content: 'Saisissez le motif, l histoire de la plainte et les informations contextuelles qui orientent les examens.',
             beforeEnter: async () => {
                 setSection('entretien');

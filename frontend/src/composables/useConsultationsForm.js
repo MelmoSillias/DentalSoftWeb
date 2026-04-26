@@ -51,7 +51,9 @@ const defaultExamens = () => ({
     examenCanauxExcreteurs: '',
     examensBacteriologiques: { observation: '', resultat: '' },
     examensSerologiques: { observation: '', resultat: '' },
-    examensHistologiques: { observation: '', resultat: '' }
+    examensHistologiques: { observation: '', resultat: '' },
+    examensLabo: [],
+    diagnosticSupposeExamens: ''
 });
 
 const defaultBilans = () => ({
@@ -249,7 +251,16 @@ export const useConsultationsForm = ({ ficheId, consultId, token, mode }) => {
             examenCanauxExcreteurs: examens.examenCanauxExcreteurs ?? '',
             examensBacteriologiques: examens.examensBacteriologiques ?? { observation: '', resultat: '' },
             examensSerologiques: examens.examensSerologiques ?? { observation: '', resultat: '' },
-            examensHistologiques: examens.examensHistologiques ?? { observation: '', resultat: '' }
+            examensHistologiques: examens.examensHistologiques ?? { observation: '', resultat: '' },
+            examensLabo: Array.isArray(examens.examensLabo)
+                ? examens.examensLabo.map((item) => ({
+                    type: item?.type ?? '',
+                    description: item?.description ?? item?.observation ?? '',
+                    date: item?.date ?? null,
+                    resultat: item?.resultat ?? ''
+                }))
+                : [],
+            diagnosticSupposeExamens: examens.diagnosticSupposeExamens ?? ''
         };
 
         const bilans = fiche.bilans || {};

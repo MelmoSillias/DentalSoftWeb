@@ -11,6 +11,10 @@ const props = defineProps({
     hideActions: {
         type: Boolean,
         default: false
+    },
+    hidePhone: {
+        type: Boolean,
+        default: false
     }
 });
 
@@ -108,7 +112,7 @@ const handlePhotoChange = (event) => {
                 <div class="space-y-2">
                     <div class="flex items-center gap-2 text-surface-700 dark:text-surface-300">
                         <i class="pi pi-phone text-surface-400"></i>
-                        {{ patient.telephone }}
+                        {{ hidePhone ? 'Masqué par l\'administrateur' : (patient.telephone || '--') }}
                     </div>
                     <div class="flex items-center gap-2 text-surface-700 dark:text-surface-300">
                         <i class="pi pi-envelope text-surface-400"></i>

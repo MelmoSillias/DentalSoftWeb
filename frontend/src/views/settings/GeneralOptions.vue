@@ -54,7 +54,9 @@ const {
 const generalLoading = ref(false);
 const generalSettingsLoaded = ref(false);
 const savingStates = reactive({
+    consultationAccess: false,
     devicePolicy: false,
+    billingPolicy: false,
     transactionMotifs: false,
     soinsCatalog: false
 });
@@ -63,8 +65,13 @@ const savingStates = reactive({
 const devicePolicy = reactive({
     autoApproveDevices: true,
     requireMedecinOnConsultationCreation: true,
-    allowReceptionQuickCloseConsultation: true,
     paiementDirectAssurance: false
+});
+
+const consultationAccess = reactive({
+    allowReceptionConsultationQuickActions: true,
+    hidePatientDossierForMedecins: false,
+    hidePatientPhoneForMedecins: false
 });
 
 const transactionMotifs = reactive({
@@ -93,7 +100,9 @@ const navigation = {
         label: 'Flux métier',
         icon: 'pi pi-briefcase',
         sections: [
+            { id: 'consultation-access', label: 'Consultation & Focus', icon: 'pi pi-lock' },
             { id: 'device-security', label: 'Sécurité appareils', icon: 'pi pi-shield' },
+            { id: 'billing-rules', label: 'Règles facturation', icon: 'pi pi-wallet' },
             { id: 'transaction-motifs', label: 'Motifs transaction', icon: 'pi pi-dollar' },
             { id: 'soins-list', label: 'Liste des soins', icon: 'pi pi-heart' }
         ]
@@ -145,7 +154,8 @@ const setupObserver = () => {
             const visibleSections = entries.filter(e => e.isIntersecting);
             if (visibleSections.length > 0) {
                 const firstVisible = visibleSections[0];
-                const [category, sectionId] = firstVisible.target.id.split('-');
+                const [category, ...sectionParts] = firstVisible.target.id.split('-');
+                const sectionId = sectionParts.join('-');
                 activeCategory.value = category;
                 activeSubSection.value = sectionId;
             }
@@ -177,8 +187,11 @@ const loadGeneralSettings = async (force = false) => {
         const settings = await fetchGeneralSettings(token);
         devicePolicy.autoApproveDevices = settings.autoApproveDevices !== false;
         devicePolicy.requireMedecinOnConsultationCreation = settings.requireMedecinOnConsultationCreation !== false;
-        devicePolicy.allowReceptionQuickCloseConsultation = settings.allowReceptionQuickCloseConsultation !== false;
         devicePolicy.paiementDirectAssurance = settings.paiementDirectAssurance === true;
+        consultationAccess.allowReceptionConsultationQuickActions = settings.allowReceptionConsultationQuickActions !== false
+            && settings.allowReceptionQuickCloseConsultation !== false;
+        consultationAccess.hidePatientDossierForMedecins = settings.hidePatientDossierForMedecins === true;
+        consultationAccess.hidePatientPhoneForMedecins = settings.hidePatientPhoneForMedecins === true;
         transactionMotifs.revenueText = (settings.transactionMotifs?.revenue || []).join('\n');
         transactionMotifs.expenseText = (settings.transactionMotifs?.expense || []).join('\n');
         soinsCatalog.text = (settings.soinsList || []).join('\n');
@@ -197,15 +210,44 @@ const saveDevicePolicyAction = async () => {
     try {
         await saveGeneralSettings({
             autoApproveDevices: devicePolicy.autoApproveDevices,
-            requireMedecinOnConsultationCreation: devicePolicy.requireMedecinOnConsultationCreation,
-            allowReceptionQuickCloseConsultation: devicePolicy.allowReceptionQuickCloseConsultation,
-            paiementDirectAssurance: devicePolicy.paiementDirectAssurance
+            requireMedecinOnConsultationCreation: devicePolicy.requireMedecinOnConsultationCreation
         }, token);
         toast.add({ severity: 'success', summary: 'Sécurité appareils', detail: 'Paramètres enregistrés', life: 2500 });
     } catch (error) {
         toast.add({ severity: 'error', summary: 'Erreur', detail: extractApiError(error, 'Sauvegarde impossible'), life: 3500 });
     } finally {
         savingStates.devicePolicy = false;
+    }
+};
+
+const saveConsultationAccessAction = async () => {
+    if (!canAccessWorkflowSettings.value) return;
+    savingStates.consultationAccess = true;
+    try {
+        await saveGeneralSettings({
+            allowReceptionConsultationQuickActions: consultationAccess.allowReceptionConsultationQuickActions,
+            allowReceptionQuickCloseConsultation: consultationAccess.allowReceptionConsultationQuickActions,
+            hidePatientDossierForMedecins: consultationAccess.hidePatientDossierForMedecins,
+            hidePatientPhoneForMedecins: consultationAccess.hidePatientPhoneForMedecins
+        }, token);
+        toast.add({ severity: 'success', summary: 'Consultation & Focus', detail: 'Paramètres enregistrés', life: 2500 });
+    } catch (error) {
+        toast.add({ severity: 'error', summary: 'Erreur', detail: extractApiError(error, 'Sauvegarde impossible'), life: 3500 });
+    } finally {
+        savingStates.consultationAccess = false;
+    }
+};
+
+const saveBillingPolicyAction = async () => {
+    if (!canAccessWorkflowSettings.value) return;
+    savingStates.billingPolicy = true;
+    try {
+        await saveGeneralSettings({ paiementDirectAssurance: devicePolicy.paiementDirectAssurance }, token);
+        toast.add({ severity: 'success', summary: 'Règles facturation', detail: 'Paramètres enregistrés', life: 2500 });
+    } catch (error) {
+        toast.add({ severity: 'error', summary: 'Erreur', detail: extractApiError(error, 'Sauvegarde impossible'), life: 3500 });
+    } finally {
+        savingStates.billingPolicy = false;
     }
 };
 
@@ -515,6 +557,49 @@ onBeforeUnmount(() => {
                             </div>
                         </div>
 
+                        <!-- Consultation Access -->
+                        <div id="workflow-consultation-access" class="settings-section">
+                            <div class="settings-section-header">
+                                <div>
+                                    <h3>Consultation & Focus</h3>
+                                    <p class="settings-section-description">Gestion de la visibilité des actions et informations pour les médecins/réception</p>
+                                </div>
+                                <Button
+                                    label="Enregistrer"
+                                    icon="pi pi-save"
+                                    :loading="savingStates.consultationAccess"
+                                    @click="saveConsultationAccessAction"
+                                />
+                            </div>
+                            <div class="settings-card">
+                                <div class="toggle-group">
+                                    <div class="toggle-item">
+                                        <div class="toggle-info">
+                                            <label>Actions rapides pour réceptionniste</label>
+                                            <span class="toggle-description">Active ou masque les boutons d'actions rapides de consultation côté réception</span>
+                                        </div>
+                                        <ToggleSwitch v-model="consultationAccess.allowReceptionConsultationQuickActions" />
+                                    </div>
+                                    <Divider />
+                                    <div class="toggle-item">
+                                        <div class="toggle-info">
+                                            <label>Masquer le dossier patient aux médecins</label>
+                                            <span class="toggle-description">Le dossier patient et les redirections associées sont masqués aux médecins non-admin</span>
+                                        </div>
+                                        <ToggleSwitch v-model="consultationAccess.hidePatientDossierForMedecins" />
+                                    </div>
+                                    <Divider />
+                                    <div class="toggle-item">
+                                        <div class="toggle-info">
+                                            <label>Masquer les numéros des patients aux médecins</label>
+                                            <span class="toggle-description">Les numéros de téléphone patients sont masqués dans l'interface médecin</span>
+                                        </div>
+                                        <ToggleSwitch v-model="consultationAccess.hidePatientPhoneForMedecins" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Device Security -->
                         <div id="workflow-device-security" class="settings-section">
                             <div class="settings-section-header">
@@ -546,15 +631,26 @@ onBeforeUnmount(() => {
                                         </div>
                                         <ToggleSwitch v-model="devicePolicy.requireMedecinOnConsultationCreation" />
                                     </div>
-                                    <Divider />
-                                    <div class="toggle-item">
-                                        <div class="toggle-info">
-                                            <label>Clôture rapide par réceptionniste</label>
-                                            <span class="toggle-description">Autorise l'option de clôture rapide côté réception</span>
-                                        </div>
-                                        <ToggleSwitch v-model="devicePolicy.allowReceptionQuickCloseConsultation" />
-                                    </div>
-                                    <Divider />
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Billing Rules -->
+                        <div id="workflow-billing-rules" class="settings-section">
+                            <div class="settings-section-header">
+                                <div>
+                                    <h3>Règles facturation</h3>
+                                    <p class="settings-section-description">Comportement de la prise en charge assurance côté caisse</p>
+                                </div>
+                                <Button
+                                    label="Enregistrer"
+                                    icon="pi pi-save"
+                                    :loading="savingStates.billingPolicy"
+                                    @click="saveBillingPolicyAction"
+                                />
+                            </div>
+                            <div class="settings-card">
+                                <div class="toggle-group">
                                     <div class="toggle-item">
                                         <div class="toggle-info">
                                             <label>Paiement direct assurance</label>

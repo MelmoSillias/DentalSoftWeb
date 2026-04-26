@@ -6,6 +6,7 @@ import SaveIndicator from '@/components/consultations/SaveIndicator.vue';
 import SectionSwitcher from '@/components/consultations/SectionSwitcher.vue';
 import AllergyDialogForm from '@/components/patients/AllergyDialogForm.vue';
 import AntecedentDialogForm from '@/components/patients/AntecedentDialogForm.vue';
+import PrintFicheV2Body from '@/components/print/PrintFicheV2Body.vue';
 import PrintOrdonnanceBody from '@/components/print/PrintOrdonnanceBody.vue';
 import EntretienVerbalForm from '@/components/fiche-medicale/EntretienVerbalForm.vue';
 import ExamensFicheForm from '@/components/fiche-medicale/ExamensFicheForm.vue';
@@ -18,7 +19,7 @@ import { usePrinter } from '@/composables/usePrinter';
 import { defaultSoinList, normalizeSoinList } from '@/services/consultations';
 import { fetchPublicGeneralSettings } from '@/services/globalSettingsService';
 import { addPatientAllergy, addPatientAntecedent, deletePatientAllergy, deletePatientAntecedent } from '@/services/patients';
-import { fetchOrdonnancePrintData } from '@/services/printService';
+import { fetchOrdonnancePrintData, fetchPatientFichePrintData } from '@/services/printService';
 import { useAuthStore } from '@/stores/auth';
 import ConfirmDialog from 'primevue/confirmdialog';
 import Tag from 'primevue/tag';
@@ -212,7 +213,7 @@ const sections = computed(() => {
         },
         {
             id: 'entretien',
-            label: 'Entretien verbale',
+            label: 'Questionnaire médical',
             filled: isSectionFilled('entretien'),
             status: entretienStatus.status,
             statusLabel: entretienStatus.label,
@@ -305,7 +306,7 @@ const saveEntretienSection = async ({ silent = false } = {}) => {
     if (!dirty.entretien) return;
     try {
         await saveEntretien();
-        if (!silent) toast.add({ severity: 'success', summary: 'Entretien enregistre', life: 2000 });
+        if (!silent) toast.add({ severity: 'success', summary: 'Interrogatoire enregistre', life: 2000 });
     } catch (error) {
         if (isClosedConsultationError(error)) {
             emit('closed');
@@ -522,6 +523,26 @@ const handlePrintOrdonnance = async (ordonnance) => {
     }
 };
 
+const handlePrintFiche = async () => {
+    const patientId = Number(data.patient?.id ?? Number.NaN);
+    if (!Number.isFinite(patientId) || !ficheIdRef.value) {
+        toast.add({ severity: 'warn', summary: 'Impression', detail: 'Fiche non disponible pour impression.' });
+        return;
+    }
+
+    try {
+        const res = await fetchPatientFichePrintData(patientId, ficheIdRef.value, token);
+        await printComponent(PrintFicheV2Body, {
+            patient: res.patient,
+            fiche: res.fiche,
+            sections: ['entretien', 'examens', 'images', 'plan', 'bilan', 'seances'],
+            printEmpty: false
+        });
+    } catch (_) {
+        toast.add({ severity: 'error', summary: 'Erreur', detail: "Impossible d'imprimer la fiche." });
+    }
+};
+
 const openOrdonnanceModal = () => {
     ordonnanceDraft.value = {
         date: new Date().toISOString().slice(0, 10),
@@ -603,6 +624,7 @@ watch(
                             <Tag :value="isReadonly ? 'Consultation terminee' : 'Consultation en cours'" :severity="isReadonly ? 'success' : 'info'" />
                             <Tag v-if="choiceLabel" :value="choiceLabel" severity="contrast" />
                             <Tag v-if="isReadonly" value="Lecture seule" severity="warn" />
+                            <Button icon="pi pi-print" label="Imprimer fiche" severity="secondary" outlined size="small" @click="handlePrintFiche" />
                         </div>
                     </div>
 
@@ -653,7 +675,12 @@ watch(
 
                     <template #entretien>
                         <div :class="isReadonly ? 'pointer-events-none select-none' : ''">
-                            <EntretienVerbalForm v-model="data.entretien" :saving="saving.entretien" @save="saveEntretienSection" />
+                            <EntretienVerbalForm
+                                v-model="data.entretien"
+                                :saving="saving.entretien"
+                                :patient-sex="data.patient?.sexe"
+                                @save="saveEntretienSection"
+                            />
                         </div>
                     </template>
 

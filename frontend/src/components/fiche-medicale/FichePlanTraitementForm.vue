@@ -1,9 +1,10 @@
 <script setup>
 import Button from 'primevue/button';
 import Card from 'primevue/card';
+import Column from 'primevue/column';
+import DataTable from 'primevue/datatable';
 import Dialog from 'primevue/dialog';
-import InputText from 'primevue/inputtext';
-import Select from 'primevue/select';
+import AutoComplete from 'primevue/autocomplete';
 import Textarea from 'primevue/textarea';
 import Timeline from 'primevue/timeline';
 import { computed, reactive, ref } from 'vue';
@@ -26,13 +27,8 @@ const plans = computed({
     set: (val) => emit('update:modelValue', val)
 });
 
-const typeOptions = [
-    { label: 'Urgence', value: 'Urgence' },
-    { label: 'Dentaires', value: 'Dentaires' },
-    { label: 'Parodontaux', value: 'Parodontaux' },
-    { label: 'Orthodontiques', value: 'Orthodontiques' },
-    { label: 'Autres', value: 'Autres' }
-];
+const typeSuggestions = ref([]);
+const viewMode = ref('timeline');
 
 const showDialog = ref(false);
 const dialogMode = ref('add');
@@ -88,7 +84,7 @@ const saveDraft = () => {
     const list = plans.value || [];
     const payload = {
         planIndex: draftPlan.planIndex ?? list.length + 1,
-        type: draftPlan.type,
+        type: String(draftPlan.type || '').trim(),
         dateSupposed: draftPlan.dateSupposed,
         description: draftPlan.description
     };
@@ -123,6 +119,19 @@ const iconMap = {
     Autres: { icon: 'pi pi-briefcase', color: '#64748b' }
 };
 
+const availableTypeOptions = computed(() => {
+    const list = plans.value || [];
+    const existing = list.map((plan) => String(plan?.type || '').trim()).filter(Boolean);
+    const current = String(draftPlan.type || '').trim();
+    return Array.from(new Set([current, ...existing].filter(Boolean)));
+});
+
+const searchTypeOptions = (event) => {
+    const query = String(event?.query || '').toLowerCase().trim();
+    const options = availableTypeOptions.value;
+    typeSuggestions.value = query ? options.filter((item) => item.toLowerCase().includes(query)) : options;
+};
+
 const sortedPlans = computed(() => {
     const list = plans.value || [];
     return [...list].sort((a, b) => {
@@ -149,6 +158,16 @@ const timelineEvents = computed(() =>
             originalIndex: (plans.value || []).indexOf(plan)
         };
     })
+);
+
+const tablePlans = computed(() =>
+    sortedPlans.value.map((plan, idx) => ({
+        ...plan,
+        status: plan.type || `Plan ${idx + 1}`,
+        formattedDate: formatDate(plan.dateSupposed),
+        descriptionDisplay: plan.description || 'Aucune description.',
+        originalIndex: (plans.value || []).indexOf(plan)
+    }))
 );
 </script>
 
@@ -181,51 +200,92 @@ const timelineEvents = computed(() =>
                 Aucun plan de traitement ajoute.
             </div>
 
-            <Timeline v-else :value="timelineEvents" align="alternate" class="customized-timeline">
-                <template #marker="slotProps">
-                    <span
-                        class="flex w-8 h-8 items-center justify-center text-white rounded-full z-10 shadow-sm"
-                        :style="{ backgroundColor: slotProps.item.color }"
-                    >
-                        <i :class="slotProps.item.icon"></i>
-                    </span>
-                </template>
-                <template #content="slotProps">
-                    <Card class="mt-4">
-                        <template #title>
-                            {{ slotProps.item.status }}
-                        </template>
-                        <template #subtitle>
-                            {{ slotProps.item.date }}
-                        </template>
-                        <template #content>
-                            <p class="text-sm text-surface-600 dark:text-surface-300">
-                                {{ slotProps.item.description }}
-                            </p>
-                            <div class="mt-4 flex items-center gap-2">
-                                <Button label="Modifier" text @click="openEditDialog(sortedPlans[slotProps.index], slotProps.item.originalIndex)" />
-                                <Button
-                                    label="Supprimer"
-                                    text
-                                    severity="danger"
-                                    @click="removePlan(slotProps.item.originalIndex)"
-                                />
-                            </div>
-                        </template>
-                    </Card>
-                </template>
-            </Timeline>
+            <div v-else class="space-y-6">
+                <div class="flex items-center justify-end">
+                    <div class="inline-flex rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/40 p-1">
+                        <Button
+                            label="Timeline"
+                            size="small"
+                            :severity="viewMode === 'timeline' ? 'primary' : 'secondary'"
+                            :outlined="viewMode !== 'timeline'"
+                            @click="viewMode = 'timeline'"
+                        />
+                        <Button
+                            label="Table"
+                            size="small"
+                            :severity="viewMode === 'table' ? 'primary' : 'secondary'"
+                            :outlined="viewMode !== 'table'"
+                            @click="viewMode = 'table'"
+                        />
+                    </div>
+                </div>
+
+                <Timeline v-if="viewMode === 'timeline'" :value="timelineEvents" align="alternate" class="customized-timeline">
+                    <template #marker="slotProps">
+                        <span
+                            class="flex w-8 h-8 items-center justify-center text-white rounded-full z-10 shadow-sm"
+                            :style="{ backgroundColor: slotProps.item.color }"
+                        >
+                            <i :class="slotProps.item.icon"></i>
+                        </span>
+                    </template>
+                    <template #content="slotProps">
+                        <Card class="mt-4">
+                            <template #title>
+                                {{ slotProps.item.status }}
+                            </template>
+                            <template #subtitle>
+                                {{ slotProps.item.date }}
+                            </template>
+                            <template #content>
+                                <p class="text-sm text-surface-600 dark:text-surface-300">
+                                    {{ slotProps.item.description }}
+                                </p>
+                                <div class="mt-4 flex items-center gap-2">
+                                    <Button label="Modifier" text @click="openEditDialog(sortedPlans[slotProps.index], slotProps.item.originalIndex)" />
+                                    <Button
+                                        label="Supprimer"
+                                        text
+                                        severity="danger"
+                                        @click="removePlan(slotProps.item.originalIndex)"
+                                    />
+                                </div>
+                            </template>
+                        </Card>
+                    </template>
+                </Timeline>
+
+                <div v-else class="rounded-xl border border-surface-200 dark:border-surface-700 overflow-hidden">
+                    <div class="px-4 py-3 bg-surface-50 dark:bg-surface-800/40 border-b border-surface-200 dark:border-surface-700">
+                        <h4 class="text-sm font-semibold text-surface-700 dark:text-surface-200">Vue table</h4>
+                    </div>
+                    <DataTable :value="tablePlans" dataKey="planIndex" class="rounded-none" size="small">
+                        <Column field="status" header="Type" />
+                        <Column field="formattedDate" header="Date prévue" />
+                        <Column field="descriptionDisplay" header="Description" />
+                        <Column header="Actions" style="width: 12rem">
+                            <template #body="{ data }">
+                                <div class="flex items-center gap-2">
+                                    <Button label="Modifier" text size="small" @click="openEditDialog(data, data.originalIndex)" />
+                                    <Button label="Supprimer" text severity="danger" size="small" @click="removePlan(data.originalIndex)" />
+                                </div>
+                            </template>
+                        </Column>
+                    </DataTable>
+                </div>
+            </div>
         </div>
 
         <Dialog v-model:visible="showDialog" modal :header="dialogTitle" class="w-full max-w-2xl">
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <div class="space-y-2">
                     <label class="text-sm font-medium text-surface-700 dark:text-surface-300">Type</label>
-                    <Select
-                        :options="typeOptions"
-                        optionLabel="label"
-                        optionValue="value"
+                    <AutoComplete
                         :modelValue="draftPlan.type"
+                        :suggestions="typeSuggestions"
+                        dropdown
+                        placeholder="Saisir ou choisir un type"
+                        @complete="searchTypeOptions"
                         @update:modelValue="(v) => (draftPlan.type = v)"
                         class="w-full"
                     />

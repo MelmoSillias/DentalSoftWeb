@@ -18,6 +18,14 @@ const props = defineProps({
     selectedPatient: {
         type: Object,
         default: null
+    },
+    hidePatientDossier: {
+        type: Boolean,
+        default: false
+    },
+    hidePatientPhone: {
+        type: Boolean,
+        default: false
     }
 });
 
@@ -29,7 +37,7 @@ const emit = defineEmits([
     'consultation-closed'
 ]);
 
-const { consultations, selectedConsultationId, selectedPatient } = toRefs(props);
+const { consultations, selectedConsultationId, selectedPatient, hidePatientDossier, hidePatientPhone } = toRefs(props);
 
 const showCompletedMedecin = defineModel('showCompletedMedecin', {
     type: Boolean,
@@ -140,6 +148,11 @@ const selectedChoiceLabel = computed(() => {
 });
 
 const currentConsultationClosed = computed(() => Number(currentConsultation.value?.state) === 1);
+const canShowEmbeddedWorkspace = computed(() => {
+    if (!currentConsultation.value || !selectedPatient.value) return false;
+    if (!hidePatientDossier.value) return true;
+    return !currentConsultationClosed.value;
+});
 </script>
  
 <template>
@@ -152,7 +165,16 @@ const currentConsultationClosed = computed(() => Number(currentConsultation.valu
                         <i class="pi pi-times"></i>
                     </button>
                 </div>
-                <DossierPatientInfoCard v-if="selectedPatient" :patient="selectedPatient" :hide-actions="true" />
+                <DossierPatientInfoCard
+                    v-if="selectedPatient && !hidePatientDossier"
+                    :patient="selectedPatient"
+                    :hide-actions="true"
+                    :hide-phone="hidePatientPhone"
+                />
+                <div v-else-if="selectedPatient && hidePatientDossier" class="py-10 text-center text-sm text-surface-400">
+                    <i class="pi pi-lock text-2xl mb-2 opacity-50"></i>
+                    <p>Dossier patient masqué</p>
+                </div>
                 <div v-else class="py-10 text-center text-sm text-surface-400">
                     <i class="pi pi-user text-2xl mb-2 opacity-50"></i>
                     <p>Aucun patient sélectionné</p>
@@ -186,7 +208,7 @@ const currentConsultationClosed = computed(() => Number(currentConsultation.valu
             </div>
 
             <!-- Fiche intégrée -->
-            <div v-if="currentConsultation && selectedPatient" class="rounded-xl border-2 border-surface-200 bg-white dark:border-surface-700 dark:bg-surface-900">
+            <div v-if="canShowEmbeddedWorkspace" class="rounded-xl border-2 border-surface-200 bg-white dark:border-surface-700 dark:bg-surface-900">
                 <EmbeddedConsultationFiche 
                     :consultation-id="currentConsultation.id"
                     :fiche-id="selectedEmbeddedFicheId"
@@ -196,6 +218,11 @@ const currentConsultationClosed = computed(() => Number(currentConsultation.valu
                     @patient-loaded="(payload) => emit('patient-loaded', payload)"
                     @closed="async () => { emit('consultation-closed'); }"
                 />
+            </div>
+
+            <div v-else-if="currentConsultationClosed && hidePatientDossier" class="flex flex-col items-center justify-center py-16 rounded-xl border-2 border-dashed border-surface-300 bg-white dark:border-surface-700 dark:bg-surface-900">
+                <i class="pi pi-lock text-3xl text-surface-300 mb-3"></i>
+                <p class="text-sm text-surface-500">Consultation clôturée</p>
             </div>
 
             <div v-else class="flex flex-col items-center justify-center py-16 rounded-xl border-2 border-dashed border-surface-300 bg-white dark:border-surface-700 dark:bg-surface-900">

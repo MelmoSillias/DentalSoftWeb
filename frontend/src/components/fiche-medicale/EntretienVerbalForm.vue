@@ -1,10 +1,11 @@
 <script setup>
 import Button from 'primevue/button';
-import Checkbox from 'primevue/checkbox';
+import Dialog from 'primevue/dialog';
 import InputText from 'primevue/inputtext';
+import Select from 'primevue/select';
 import SelectButton from 'primevue/selectbutton';
 import Textarea from 'primevue/textarea';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 
 const props = defineProps({
     modelValue: {
@@ -14,6 +15,10 @@ const props = defineProps({
     saving: {
         type: Boolean,
         default: false
+    },
+    patientSex: {
+        type: String,
+        default: ''
     }
 });
 
@@ -29,6 +34,11 @@ const yesNoOptions = [
     { label: 'Non', value: false }
 ];
 
+const antecedentTypeOptions = [
+    { label: 'Medicament en cours', value: 'medicament' },
+    { label: 'Affection', value: 'affection' }
+];
+
 const medicamentList = [
     'Hypotenseurs',
     'Anti-Inflammatoire',
@@ -42,7 +52,8 @@ const medicamentList = [
     'Salicyles',
     'Antidepresseurs',
     'Neuroleptiques',
-    'Psychotropes'
+    'Psychotropes',
+    'Autres'
 ];
 
 const affectionList = [
@@ -64,7 +75,8 @@ const affectionList = [
     'Hypothyroidie',
     'Insuffisance renale',
     'Anemie',
-    'Cardiopathies'
+    'Cardiopathies',
+    'Autres'
 ];
 
 const questionsList = [
@@ -75,7 +87,54 @@ const questionsList = [
     'Etes-vous sujet aux hemorragies'
 ];
 
-const habitudesList = ['Tabac', 'Alcool'];
+const habitudesList = ['Tabac', 'Alcool', 'Autres'];
+
+const showAntecedentDialog = ref(false);
+const antecedentDraft = ref({
+    type: 'medicament',
+    option: null,
+    customName: '',
+    isPresent: true,
+    details: ''
+});
+
+const isFemalePatient = computed(() => {
+    const normalized = String(props.patientSex || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim();
+    return ['f', 'femme', 'feminin', 'female', 'woman'].includes(normalized);
+});
+
+const antecedentOptionList = computed(() => {
+    return antecedentDraft.value.type === 'affection' ? affectionList : medicamentList;
+});
+
+const antecedentsRows = computed(() => {
+    const medicaments = Array.isArray(form.value.medicaments) ? form.value.medicaments : [];
+    const affections = Array.isArray(form.value.affections) ? form.value.affections : [];
+
+    const mappedMedicaments = medicaments.map((item, idx) => ({
+        key: `medicament-${item.id ?? item.nom ?? idx}`,
+        type: 'Medicament en cours',
+        rawType: 'medicament',
+        nom: item.nom || 'Autres',
+        estPresent: item.estUtilise,
+        details: item.details || ''
+    }));
+
+    const mappedAffections = affections.map((item, idx) => ({
+        key: `affection-${item.id ?? item.nom ?? idx}`,
+        type: 'Affection',
+        rawType: 'affection',
+        nom: item.nom || 'Autres',
+        estPresent: item.estPresente,
+        details: item.details || ''
+    }));
+
+    return [...mappedMedicaments, ...mappedAffections];
+});
 
 const updateField = (key, value) => {
     form.value = { ...form.value, [key]: value };
@@ -97,6 +156,75 @@ const getArrayItem = (key, nom) => {
     const list = Array.isArray(form.value[key]) ? form.value[key] : [];
     return list.find((item) => item.nom === nom || item.question === nom || item.type === nom) || {};
 };
+
+const openAddAntecedent = () => {
+    antecedentDraft.value = {
+        type: 'medicament',
+        option: null,
+        customName: '',
+        isPresent: true,
+        details: ''
+    };
+    showAntecedentDialog.value = true;
+};
+
+const saveAntecedentDraft = () => {
+    const option = antecedentDraft.value.option;
+    const customName = antecedentDraft.value.customName.trim();
+    const name = option === 'Autres' ? customName : option;
+    if (!name) return;
+
+    if (antecedentDraft.value.type === 'affection') {
+        const list = Array.isArray(form.value.affections) ? [...form.value.affections] : [];
+        const index = list.findIndex((item) => item.nom === name);
+        const nextItem = {
+            ...(index >= 0 ? list[index] : {}),
+            nom: name,
+            estPresente: antecedentDraft.value.isPresent,
+            details: antecedentDraft.value.details
+        };
+        if (index >= 0) {
+            list[index] = nextItem;
+        } else {
+            list.push(nextItem);
+        }
+        updateField('affections', list);
+    } else {
+        const list = Array.isArray(form.value.medicaments) ? [...form.value.medicaments] : [];
+        const index = list.findIndex((item) => item.nom === name);
+        const nextItem = {
+            ...(index >= 0 ? list[index] : {}),
+            nom: name,
+            estUtilise: antecedentDraft.value.isPresent,
+            details: antecedentDraft.value.details
+        };
+        if (index >= 0) {
+            list[index] = nextItem;
+        } else {
+            list.push(nextItem);
+        }
+        updateField('medicaments', list);
+    }
+
+    showAntecedentDialog.value = false;
+};
+
+const deleteAntecedent = (row) => {
+    if (row.rawType === 'affection') {
+        const list = Array.isArray(form.value.affections) ? form.value.affections : [];
+        updateField(
+            'affections',
+            list.filter((item) => item.nom !== row.nom)
+        );
+        return;
+    }
+
+    const list = Array.isArray(form.value.medicaments) ? form.value.medicaments : [];
+    updateField(
+        'medicaments',
+        list.filter((item) => item.nom !== row.nom)
+    );
+};
 </script>
 
 <template>
@@ -107,8 +235,8 @@ const getArrayItem = (key, nom) => {
                     <i class="pi pi-file-edit text-primary-600 dark:text-primary-400 text-xl"></i>
                 </div>
                 <div>
-                    <h3 class="text-xl font-bold text-surface-900 dark:text-surface-50">Entretien verbal</h3>
-                    <p class="text-sm text-surface-500 dark:text-surface-400 mt-1">Motif, anamnese et habitudes</p>
+                    <h3 class="text-xl font-bold text-surface-900 dark:text-surface-50">Questionnaire médical</h3>
+                    <p class="text-sm text-surface-500 dark:text-surface-400 mt-1">Anamnese, antecedents et habitudes declarees</p>
                 </div>
             </div>
             <Button
@@ -121,39 +249,24 @@ const getArrayItem = (key, nom) => {
         </div>
 
         <div class="space-y-6">
-            <div class="p-4 rounded-xl bg-surface-50 dark:bg-surface-700/30 border border-surface-200 dark:border-surface-700">
-                <div class="flex items-center gap-2 mb-3">
-                    <div class="flex items-center justify-center w-6 h-6 rounded-md bg-primary-500/10">
-                        <i class="pi pi-question-circle text-primary-500 text-sm"></i>
-                    </div>
-                    <h4 class="font-semibold text-surface-900 dark:text-surface-100">Motif de consultation</h4>
-                </div>
-                <Textarea
-                    v-model="form.motifConsultation"
-                    rows="4"
-                    placeholder="Motif principal..."
-                    class="w-full rounded-xl border-surface-200 dark:border-surface-700 /50"
-                    @update:modelValue="(v) => updateField('motifConsultation', v)"
-                />
-            </div>
-
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div class="p-4 rounded-xl bg-surface-50 dark:bg-surface-700/30 border border-surface-200 dark:border-surface-700">
-                    <div class="flex items-center gap-2 mb-3">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <div class="p-2 rounded-xl bg-surface-50 dark:bg-surface-700/30 border border-surface-200 dark:border-surface-700 lg:col-span-12">
+                    <div class="flex items-center gap-2 mb-2">
                         <div class="flex items-center justify-center w-6 h-6 rounded-md bg-amber-500/10">
                             <i class="pi pi-history text-amber-500 text-sm"></i>
                         </div>
-                        <h4 class="font-semibold text-surface-900 dark:text-surface-100">Anamnese</h4>
+                        <h5 class="font-semibold text-surface-900 dark:text-surface-100">Anamnese</h5>
                     </div>
                     <Textarea
-                        v-model="form.anamnese"
+                        v-model="form.motifConsultation"
                         rows="6"
                         placeholder="Evolution de la maladie..."
                         class="w-full rounded-xl border-surface-200 dark:border-surface-700 "
-                        @update:modelValue="(v) => updateField('anamnese', v)"
+                        @update:modelValue="(v) => updateField('motifConsultation', v)"
                     />
                 </div>
-                <div class="p-4 rounded-xl bg-surface-50 dark:bg-surface-700/30 border border-surface-200 dark:border-surface-700">
+
+                <div v-if="isFemalePatient" class="p-4 rounded-xl bg-surface-50 dark:bg-surface-700/30 border border-surface-200 dark:border-surface-700 lg:col-span-4">
                     <div class="flex items-center gap-2 mb-3">
                         <div class="flex items-center justify-center w-6 h-6 rounded-md bg-emerald-500/10">
                             <i class="pi pi-heart text-emerald-500 text-sm"></i>
@@ -195,61 +308,21 @@ const getArrayItem = (key, nom) => {
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/30 p-4">
-                    <h4 class="font-semibold text-surface-900 dark:text-surface-100 mb-3">Medicaments en cours</h4>
+            <!-- <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <div class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/30 p-4 lg:col-span-4">
+                    <h4 class="font-semibold text-surface-900 dark:text-surface-100 mb-3">Questionnaire medical et habitudes de vie</h4>
                     <div class="space-y-3">
-                        <div v-for="name in medicamentList" :key="name" class="flex flex-col gap-2 p-3 rounded-lg ">
+                        <div v-for="q in questionsList" :key="q" class="flex flex-col gap-2 p-3 rounded-lg bg-surface-0 dark:bg-surface-900/40 border border-surface-200/70 dark:border-surface-700/70">
                             <div class="flex items-center justify-between">
-                                <div class="flex items-center gap-2">
-                                    <Checkbox :modelValue="getArrayItem('medicaments', name).estUtilise" binary @update:modelValue="(v) => updateArrayItem('medicaments', name, { estUtilise: v })" />
-                                    <span class="text-sm font-medium text-surface-700 dark:text-surface-300">{{ name }}</span>
-                                </div>
+                                <span class="text-sm font-medium text-surface-700 dark:text-surface-300">{{ q }}</span>
+                                <SelectButton
+                                    :options="yesNoOptions"
+                                    optionLabel="label"
+                                    optionValue="value"
+                                    :modelValue="getArrayItem('questions', q).reponse"
+                                    @update:modelValue="(v) => updateArrayItem('questions', q, { reponse: v, question: q })"
+                                />
                             </div>
-                            <InputText
-                                v-if="getArrayItem('medicaments', name).estUtilise"
-                                :value="getArrayItem('medicaments', name).details"
-                                placeholder="Details"
-                                class="w-full"
-                                @update:modelValue="(v) => updateArrayItem('medicaments', name, { details: v })"
-                            />
-                        </div>
-                    </div>
-                </div>
-                <div class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/30 p-4">
-                    <h4 class="font-semibold text-surface-900 dark:text-surface-100 mb-3">Affections</h4>
-                    <div class="space-y-3">
-                        <div v-for="name in affectionList" :key="name" class="flex flex-col gap-2 p-3 rounded-lg ">
-                            <div class="flex items-center gap-2">
-                                <Checkbox :modelValue="getArrayItem('affections', name).estPresente" binary @update:modelValue="(v) => updateArrayItem('affections', name, { estPresente: v })" />
-                                <span class="text-sm font-medium text-surface-700 dark:text-surface-300">{{ name }}</span>
-                            </div>
-                            <InputText
-                                v-if="getArrayItem('affections', name).estPresente"
-                                :value="getArrayItem('affections', name).details"
-                                placeholder="Details"
-                                class="w-full"
-                                @update:modelValue="(v) => updateArrayItem('affections', name, { details: v })"
-                            />
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/30 p-4">
-                <h4 class="font-semibold text-surface-900 dark:text-surface-100 mb-3">Questions</h4>
-                <div class="space-y-3">
-                    <div v-for="q in questionsList" :key="q" class="flex flex-col gap-2 p-3 rounded-lg ">
-                        <div class="flex items-center justify-between">
-                            <span class="text-sm font-medium text-surface-700 dark:text-surface-300">{{ q }}</span>
-                            <SelectButton
-                                :options="yesNoOptions"
-                                optionLabel="label"
-                                optionValue="value" 
-                                :modelValue="getArrayItem('questions', q).reponse"
-                                @update:modelValue="(v) => updateArrayItem('questions', q, { reponse: v, question: q })"
-                            />
-                        </div>
                             <InputText
                                 v-if="getArrayItem('questions', q).reponse"
                                 :value="getArrayItem('questions', q).precision"
@@ -257,33 +330,127 @@ const getArrayItem = (key, nom) => {
                                 class="w-full"
                                 @update:modelValue="(v) => updateArrayItem('questions', q, { precision: v, question: q })"
                             />
+                        </div>
+
+                        <div class="pt-2 border-t border-surface-200/70 dark:border-surface-700/70">
+                            <p class="text-xs uppercase tracking-wide text-surface-500 dark:text-surface-400 mb-2">Habitudes de vie</p>
+                            <div class="space-y-3">
+                                <div v-for="h in habitudesList" :key="h" class="flex flex-col gap-2 p-3 rounded-lg bg-surface-0 dark:bg-surface-900/40 border border-surface-200/70 dark:border-surface-700/70">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-sm font-medium text-surface-700 dark:text-surface-300">{{ h }}</span>
+                                        <SelectButton
+                                            :options="yesNoOptions"
+                                            optionLabel="label"
+                                            optionValue="value"
+                                            :modelValue="getArrayItem('habitudes', h).estPresente"
+                                            @update:modelValue="(v) => updateArrayItem('habitudes', h, { estPresente: v, type: h })"
+                                        />
+                                    </div>
+                                    <InputText
+                                        v-if="getArrayItem('habitudes', h).estPresente"
+                                        :value="getArrayItem('habitudes', h).quantite"
+                                        placeholder="Quantite / details"
+                                        class="w-full"
+                                        @update:modelValue="(v) => updateArrayItem('habitudes', h, { quantite: v, type: h })"
+                                    />
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <div class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/30 p-4">
-                <h4 class="font-semibold text-surface-900 dark:text-surface-100 mb-3">Habitudes de vie</h4>
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    <div v-for="h in habitudesList" :key="h" class="flex flex-col gap-2 p-3 rounded-lg ">
-                        <div class="flex items-center justify-between">
-                            <span class="text-sm font-medium text-surface-700 dark:text-surface-300">{{ h }}</span>
-                            <SelectButton
-                                :options="yesNoOptions"
-                                optionLabel="label"
-                                optionValue="value"
-                                :modelValue="getArrayItem('habitudes', h).estPresente"
-                                @update:modelValue="(v) => updateArrayItem('habitudes', h, { estPresente: v, type: h })"
-                            />
-                        </div>
-                        <InputText
-                            :value="getArrayItem('habitudes', h).quantite"
-                            placeholder="Quantite / details"
+                <div class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/30 p-4 lg:col-span-8">
+                    <div class="flex items-center justify-between gap-3 mb-3">
+                        <h4 class="font-semibold text-surface-900 dark:text-surface-100">Antecedents medicaux (medicaments et affections)</h4>
+                        <Button icon="pi pi-plus" label="Ajouter" size="small" @click="openAddAntecedent" />
+                    </div>
+
+                    <div class="overflow-x-auto rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900/40">
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="border-b border-surface-200 dark:border-surface-700 bg-surface-100/80 dark:bg-surface-800/80">
+                                    <th class="p-3 text-left font-semibold text-surface-700 dark:text-surface-300">Type</th>
+                                    <th class="p-3 text-left font-semibold text-surface-700 dark:text-surface-300">Element</th>
+                                    <th class="p-3 text-left font-semibold text-surface-700 dark:text-surface-300">Etat</th>
+                                    <th class="p-3 text-left font-semibold text-surface-700 dark:text-surface-300">Details</th>
+                                    <th class="p-3 text-right font-semibold text-surface-700 dark:text-surface-300">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-if="!antecedentsRows.length">
+                                    <td colspan="5" class="p-4 text-center text-surface-500 dark:text-surface-400">Aucun antecedent saisi.</td>
+                                </tr>
+                                <tr v-for="row in antecedentsRows" :key="row.key" class="border-b border-surface-200/70 dark:border-surface-700/70 last:border-b-0">
+                                    <td class="p-3 text-surface-700 dark:text-surface-300">{{ row.type }}</td>
+                                    <td class="p-3 text-surface-700 dark:text-surface-300">{{ row.nom }}</td>
+                                    <td class="p-3">
+                                        <span class="text-xs font-semibold" :class="row.estPresent ? 'text-emerald-600' : 'text-surface-500 dark:text-surface-400'">
+                                            {{ row.estPresent ? 'Oui' : 'Non' }}
+                                        </span>
+                                    </td>
+                                    <td class="p-3 text-surface-600 dark:text-surface-400">{{ row.details || '—' }}</td>
+                                    <td class="p-3 text-right">
+                                        <Button icon="pi pi-trash" severity="danger" text rounded size="small" @click="deleteAntecedent(row)" />
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div> -->
+
+            <Dialog v-model:visible="showAntecedentDialog" modal header="Ajouter un antecedent" class="w-full max-w-xl">
+                <div class="space-y-4">
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium text-surface-700 dark:text-surface-300">Type</label>
+                        <Select
+                            v-model="antecedentDraft.type"
+                            :options="antecedentTypeOptions"
+                            optionLabel="label"
+                            optionValue="value"
                             class="w-full"
-                            @update:modelValue="(v) => updateArrayItem('habitudes', h, { quantite: v, type: h })"
+                            @update:modelValue="() => { antecedentDraft.option = null; antecedentDraft.customName = ''; }"
                         />
                     </div>
+
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium text-surface-700 dark:text-surface-300">Element</label>
+                        <Select
+                            v-model="antecedentDraft.option"
+                            :options="antecedentOptionList"
+                            placeholder="Selectionnez une option"
+                            class="w-full"
+                        />
+                    </div>
+
+                    <div v-if="antecedentDraft.option === 'Autres'" class="space-y-2">
+                        <label class="text-sm font-medium text-surface-700 dark:text-surface-300">Nom personnalise</label>
+                        <InputText v-model="antecedentDraft.customName" class="w-full" placeholder="Precisez l'element" />
+                    </div>
+
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium text-surface-700 dark:text-surface-300">Etat</label>
+                        <SelectButton v-model="antecedentDraft.isPresent" :options="yesNoOptions" optionLabel="label" optionValue="value" />
+                    </div>
+
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium text-surface-700 dark:text-surface-300">Details</label>
+                        <Textarea v-model="antecedentDraft.details" rows="3" class="w-full" placeholder="Details complementaires" />
+                    </div>
                 </div>
-            </div>
+
+                <template #footer>
+                    <div class="flex items-center justify-end gap-2">
+                        <Button label="Annuler" severity="secondary" outlined @click="showAntecedentDialog = false" />
+                        <Button
+                            label="Ajouter"
+                            icon="pi pi-check"
+                            :disabled="!antecedentDraft.option || (antecedentDraft.option === 'Autres' && !antecedentDraft.customName.trim())"
+                            @click="saveAntecedentDraft"
+                        />
+                    </div>
+                </template>
+            </Dialog>
         </div>
     </div>
 </template>
