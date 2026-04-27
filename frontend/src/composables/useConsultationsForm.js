@@ -69,7 +69,8 @@ const defaultBilans = () => ({
         creatininemie: '',
         glycemie: ''
     },
-    diagnosticPositif: ''
+    diagnosticPositif: '',
+    avisMedicales: ''
 });
 
 const defaultPlanTraitement = () => ([]);
@@ -278,7 +279,8 @@ export const useConsultationsForm = ({ ficheId, consultId, token, mode }) => {
                 creatininemie: bilans.creatininemie ?? '',
                 glycemie: bilans.glycemie ?? ''
             },
-            diagnosticPositif: bilans.diagnosticPositif ?? ''
+            diagnosticPositif: bilans.diagnosticPositif ?? '',
+            avisMedicales: bilans.avisMedicales ?? ''
         };
 
         data.documents = {

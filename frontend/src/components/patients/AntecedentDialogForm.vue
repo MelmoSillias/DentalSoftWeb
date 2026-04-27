@@ -7,12 +7,15 @@ import { computed, reactive, ref, watch } from 'vue';
 
 const props = defineProps({
     modelValue: { type: Boolean, default: false },
-    loading: { type: Boolean, default: false }
+    loading: { type: Boolean, default: false },
+    typeOptions: {
+        type: Array,
+        default: () => ['Personnel', 'Familial', 'Médical']
+    }
 });
 
 const emit = defineEmits(['update:modelValue', 'save']);
 
-const typeOptions = ['Personnel', 'Familial', 'Médical'];
 const typeSuggestions = ref([]);
 
 const form = reactive({
@@ -40,8 +43,8 @@ watch(
 const searchTypeOptions = (event) => {
     const query = String(event?.query || '').toLowerCase().trim();
     typeSuggestions.value = query
-        ? typeOptions.filter((item) => item.toLowerCase().includes(query))
-        : typeOptions;
+        ? props.typeOptions.filter((item) => String(item).toLowerCase().includes(query))
+        : props.typeOptions;
 };
 
 const submit = () => {

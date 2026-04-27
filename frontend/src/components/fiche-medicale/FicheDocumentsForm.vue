@@ -16,6 +16,10 @@ const props = defineProps({
     saving: {
         type: Boolean,
         default: false
+    },
+    compact: {
+        type: Boolean,
+        default: false
     }
 });
 
@@ -357,15 +361,15 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-    <div class="rounded-2xl border border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-br from-surface-0 to-surface-50/80 dark:from-surface-800 dark:to-surface-900/80 p-6 shadow-sm">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-surface-100 dark:border-surface-700">
+    <div class="rounded-2xl border border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-br from-surface-0 to-surface-50/80 dark:from-surface-800 dark:to-surface-900/80 shadow-sm" :class="props.compact ? 'p-3' : 'p-6'">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-surface-100 dark:border-surface-700" :class="props.compact ? 'mb-3 pb-2' : 'mb-6 pb-4'">
             <div class="flex items-center gap-3">
-                <div class="p-2.5 rounded-xl bg-primary-500/10 dark:bg-primary-500/20">
-                    <i class="pi pi-images text-primary-600 dark:text-primary-400 text-xl"></i>
+                <div class="rounded-xl bg-primary-500/10 dark:bg-primary-500/20" :class="props.compact ? 'p-2' : 'p-2.5'">
+                    <i class="pi pi-images text-primary-600 dark:text-primary-400" :class="props.compact ? 'text-base' : 'text-xl'"></i>
                 </div>
                 <div>
-                    <h3 class="text-xl font-bold text-surface-900 dark:text-surface-50">Images & Documents</h3>
-                    <p class="text-sm text-surface-500 dark:text-surface-400 mt-1">Pieces jointes du dossier</p>
+                    <h3 class="font-bold text-surface-900 dark:text-surface-50" :class="props.compact ? 'text-base' : 'text-xl'">Images & Documents</h3>
+                    <p class="text-surface-500 dark:text-surface-400 mt-1" :class="props.compact ? 'text-xs' : 'text-sm'">Pieces jointes du dossier</p>
                 </div>
             </div>
             <div class="flex items-center gap-2">
@@ -375,7 +379,8 @@ onBeforeUnmount(() => {
                     icon="pi pi-save"
                     :loading="saving"
                     @click="emit('save')"
-                    class="rounded-xl px-5 py-3 font-medium shadow-sm hover:shadow-md transition-all bg-gradient-to-r from-primary-500 to-primary-600 border-0 text-white"
+                    class="rounded-xl font-medium shadow-sm hover:shadow-md transition-all bg-gradient-to-r from-primary-500 to-primary-600 border-0 text-white"
+                    :class="props.compact ? 'px-3 py-2 text-xs' : 'px-5 py-3'"
                 />
             </div>
         </div>
@@ -385,10 +390,10 @@ onBeforeUnmount(() => {
                 Aucun document ajoute.
             </div>
 
-            <div v-for="(item, idx) in documentsView" :key="idx" class="rounded-2xl border border-surface-200/70 dark:border-surface-700/70 bg-surface-50 dark:bg-surface-800/30 p-5">
+            <div v-for="(item, idx) in documentsView" :key="idx" class="rounded-2xl border border-surface-200/70 dark:border-surface-700/70 bg-surface-50 dark:bg-surface-800/30" :class="props.compact ? 'p-3' : 'p-5'">
                 <div class="flex flex-wrap items-start justify-between gap-4">
                     <div class="min-w-0">
-                        <h4 class="text-base font-semibold text-surface-900 dark:text-surface-100">{{ item.title }}</h4>
+                        <h4 class="font-semibold text-surface-900 dark:text-surface-100" :class="props.compact ? 'text-sm' : 'text-base'">{{ item.title }}</h4>
                         <p class="text-xs text-surface-500 dark:text-surface-400 mt-1 break-words">{{ item.description }}</p>
                     </div>
                     <div class="flex items-center gap-1">
@@ -397,12 +402,13 @@ onBeforeUnmount(() => {
                     </div>
                 </div>
 
-                <div v-if="item.entries.length" class="mt-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                <div v-if="item.entries.length" class="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-2" :class="props.compact ? 'lg:grid-cols-3' : 'lg:grid-cols-4'">
                     <button
                         v-for="entry in item.entries"
                         :key="entry.entryKey"
                         type="button"
-                        class="group relative flex h-20 sm:h-24 md:h-28 lg:h-32 items-center justify-center overflow-hidden rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900/40 transition-shadow hover:shadow-md"
+                        class="group relative flex items-center justify-center overflow-hidden rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900/40 transition-shadow hover:shadow-md"
+                        :class="props.compact ? 'h-16 sm:h-20 lg:h-24' : 'h-20 sm:h-24 md:h-28 lg:h-32'"
                         @click="openPreviewByKey(entry.entryKey)"
                     >
                         <img

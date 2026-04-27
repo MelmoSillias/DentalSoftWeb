@@ -512,6 +512,9 @@ class FicheMedicaleService
         if (array_key_exists('diagnosticPositif', $data)) {
             $bilan->setDiagnosticPositif($data['diagnosticPositif']);
         }
+        if (array_key_exists('avisMedicales', $data)) {
+            $bilan->setAvisMedicales($data['avisMedicales']);
+        }
 
         $this->em->flush();
     }
@@ -790,6 +793,7 @@ class FicheMedicaleService
                 'glycemie' => null,
             ],
             'diagnosticPositif' => $legacy->getDiagnostic(),
+            'avisMedicales' => null,
         ];
     }
 
@@ -1000,6 +1004,7 @@ class FicheMedicaleService
                     'glycemie' => $bilan->getGlycemie(),
                 ],
                 'diagnosticPositif' => $bilan->getDiagnosticPositif(),
+                'avisMedicales' => $bilan->getAvisMedicales(),
             ];
         }
 

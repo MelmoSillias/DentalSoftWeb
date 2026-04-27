@@ -71,7 +71,8 @@ const devicePolicy = reactive({
 const consultationAccess = reactive({
     allowReceptionConsultationQuickActions: true,
     hidePatientDossierForMedecins: false,
-    hidePatientPhoneForMedecins: false
+    hidePatientPhoneForMedecins: false,
+    ficheFormSimplifie: false
 });
 
 const transactionMotifs = reactive({
@@ -81,6 +82,13 @@ const transactionMotifs = reactive({
 
 const soinsCatalog = reactive({
     text: 'Consultation\nDétartrage\nExtraction\nRemplissage\nComposite\nAmalgame\nTraitement de canal\nTraumatisme\nCouronne\nBlanchiment\nRadio\nProthèse\nOrthodontie\nChirurgie'
+});
+
+const ficheSimplifieCatalog = reactive({
+    examensTypesText: 'Bacteriologique\nSerologique\nHistologique\nRadiologique\nAutre',
+    traitementTypesText: 'Urgence\nDentaires\nParodontaux\nOrthodontiques\nAutres',
+    allergyTypesText: 'Médicamenteuses\nAlimentaires\nEnvironnementales\nAutres',
+    antecedentTypesText: 'Personnel\nFamilial\nMédical'
 });
 
 // Navigation structure
@@ -192,9 +200,14 @@ const loadGeneralSettings = async (force = false) => {
             && settings.allowReceptionQuickCloseConsultation !== false;
         consultationAccess.hidePatientDossierForMedecins = settings.hidePatientDossierForMedecins === true;
         consultationAccess.hidePatientPhoneForMedecins = settings.hidePatientPhoneForMedecins === true;
+        consultationAccess.ficheFormSimplifie = settings.ficheFormSimplifie === true;
         transactionMotifs.revenueText = (settings.transactionMotifs?.revenue || []).join('\n');
         transactionMotifs.expenseText = (settings.transactionMotifs?.expense || []).join('\n');
         soinsCatalog.text = (settings.soinsList || []).join('\n');
+        ficheSimplifieCatalog.examensTypesText = (settings.examensTypes || []).join('\n');
+        ficheSimplifieCatalog.traitementTypesText = (settings.traitementTypes || []).join('\n');
+        ficheSimplifieCatalog.allergyTypesText = (settings.allergyTypes || []).join('\n');
+        ficheSimplifieCatalog.antecedentTypesText = (settings.antecedentTypes || []).join('\n');
         generalSettingsLoaded.value = true;
     } catch (error) {
         console.error(error);
@@ -228,7 +241,12 @@ const saveConsultationAccessAction = async () => {
             allowReceptionConsultationQuickActions: consultationAccess.allowReceptionConsultationQuickActions,
             allowReceptionQuickCloseConsultation: consultationAccess.allowReceptionConsultationQuickActions,
             hidePatientDossierForMedecins: consultationAccess.hidePatientDossierForMedecins,
-            hidePatientPhoneForMedecins: consultationAccess.hidePatientPhoneForMedecins
+            hidePatientPhoneForMedecins: consultationAccess.hidePatientPhoneForMedecins,
+            ficheFormSimplifie: consultationAccess.ficheFormSimplifie,
+            examensTypes: normalizeLines(ficheSimplifieCatalog.examensTypesText),
+            traitementTypes: normalizeLines(ficheSimplifieCatalog.traitementTypesText),
+            allergyTypes: normalizeLines(ficheSimplifieCatalog.allergyTypesText),
+            antecedentTypes: normalizeLines(ficheSimplifieCatalog.antecedentTypesText)
         }, token);
         toast.add({ severity: 'success', summary: 'Consultation & Focus', detail: 'Paramètres enregistrés', life: 2500 });
     } catch (error) {
@@ -595,6 +613,53 @@ onBeforeUnmount(() => {
                                             <span class="toggle-description">Les numéros de téléphone patients sont masqués dans l'interface médecin</span>
                                         </div>
                                         <ToggleSwitch v-model="consultationAccess.hidePatientPhoneForMedecins" />
+                                    </div>
+                                    <Divider />
+                                    <div class="toggle-item">
+                                        <div class="toggle-info">
+                                            <label>Formulaire simplifié de fiche consultation</label>
+                                            <span class="toggle-description">Active une vue condensée "Synthèse clinique" pour la fiche consultation</span>
+                                        </div>
+                                        <ToggleSwitch v-model="consultationAccess.ficheFormSimplifie" />
+                                    </div>
+                                </div>
+                                <Divider />
+                                <div class="two-columns">
+                                    <div class="field-group">
+                                        <label>Types d'examens (synthèse)</label>
+                                        <Textarea
+                                            v-model="ficheSimplifieCatalog.examensTypesText"
+                                            rows="5"
+                                            autoResize
+                                            placeholder="Un type d'examen par ligne"
+                                        />
+                                    </div>
+                                    <div class="field-group">
+                                        <label>Types de traitements (synthèse)</label>
+                                        <Textarea
+                                            v-model="ficheSimplifieCatalog.traitementTypesText"
+                                            rows="5"
+                                            autoResize
+                                            placeholder="Un type de traitement par ligne"
+                                        />
+                                    </div>
+                                    <div class="field-group">
+                                        <label>Types d'allergies</label>
+                                        <Textarea
+                                            v-model="ficheSimplifieCatalog.allergyTypesText"
+                                            rows="4"
+                                            autoResize
+                                            placeholder="Un type d'allergie par ligne"
+                                        />
+                                    </div>
+                                    <div class="field-group">
+                                        <label>Types d'antécédents</label>
+                                        <Textarea
+                                            v-model="ficheSimplifieCatalog.antecedentTypesText"
+                                            rows="4"
+                                            autoResize
+                                            placeholder="Un type d'antécédent par ligne"
+                                        />
                                     </div>
                                 </div>
                             </div>

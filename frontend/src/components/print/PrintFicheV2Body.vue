@@ -92,6 +92,129 @@
             </table>
         </template>
 
+        <template v-if="shouldPrint('synthese')">
+            <h2>Synthèse clinique</h2>
+
+            <h3>Anamnèse</h3>
+            <table v-if="hasValue(entretien?.anamnese) || printEmpty">
+                <tbody>
+                    <tr>
+                        <th>Résumé clinique</th>
+                        <td>{{ entretien?.anamnese || '—' }}</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Antécédents & allergies</h3>
+            <table v-if="showArray(patientAntecedents) || showArray(patientAllergies) || printEmpty">
+                <thead>
+                    <tr>
+                        <th>Catégorie</th>
+                        <th>Type</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="item in patientAntecedents" :key="`ant-${item.id || item.type || item.description}`">
+                        <td>Antécédent</td>
+                        <td>{{ item.type || '—' }}</td>
+                        <td>{{ item.description || '—' }}</td>
+                    </tr>
+                    <tr v-for="item in patientAllergies" :key="`all-${item.id || item.libelle || item.description}`">
+                        <td>Allergie</td>
+                        <td>{{ item.libelle || '—' }}</td>
+                        <td>{{ item.description || '—' }}</td>
+                    </tr>
+                    <tr v-if="!patientAntecedents.length && !patientAllergies.length && printEmpty">
+                        <td colspan="3">—</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Examens complémentaires</h3>
+            <table v-if="showArray(examens?.examensLabo) || printEmpty">
+                <thead>
+                    <tr>
+                        <th>Type</th>
+                        <th>Description</th>
+                        <th>Date</th>
+                        <th>Résultat</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="(item, idx) in examens?.examensLabo || []" :key="`labo-${idx}`">
+                        <td>{{ item?.type || '—' }}</td>
+                        <td>{{ item?.description || item?.observation || '—' }}</td>
+                        <td>{{ formatDate(item?.date) }}</td>
+                        <td>{{ item?.resultat || '—' }}</td>
+                    </tr>
+                    <tr v-if="!(examens?.examensLabo || []).length && printEmpty">
+                        <td colspan="4">—</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Bilan</h3>
+            <table v-if="hasValue(bilans?.diagnosticPositif) || hasValue(bilans?.avisMedicales) || printEmpty">
+                <tbody>
+                    <tr>
+                        <th>Bilan</th>
+                        <td>{{ bilans?.diagnosticPositif || '—' }}</td>
+                    </tr>
+                    <tr>
+                        <th>Avis médicales</th>
+                        <td>{{ bilans?.avisMedicales || '—' }}</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Plan de traitement</h3>
+            <table v-if="sortedPlans.length || printEmpty">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Type</th>
+                        <th>Date prevue</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="plan in sortedPlans" :key="`synth-plan-${plan.planIndex || plan.id}`">
+                        <td>{{ plan.planIndex || '—' }}</td>
+                        <td>{{ plan.type || '—' }}</td>
+                        <td>{{ formatDate(plan.dateSupposed) }}</td>
+                        <td>{{ plan.description || '—' }}</td>
+                    </tr>
+                    <tr v-if="!sortedPlans.length && printEmpty">
+                        <td colspan="4">—</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Images & documents</h3>
+            <div v-if="documentsView.length">
+                <div v-for="(doc, idx) in documentsView" :key="`synth-doc-${idx}`" class="doc-block">
+                    <div class="doc-header">
+                        <div>
+                            <strong>{{ doc.type }}</strong>
+                            <div class="muted">{{ doc.title }}</div>
+                        </div>
+                    </div>
+                    <div class="image-grid">
+                        <div v-for="entry in doc.entries" :key="entry.entryKey" class="image-card">
+                            <div class="image-box" v-if="entry.isImage && entry.previewSrc">
+                                <img :src="entry.previewSrc" :alt="doc.title" />
+                            </div>
+                            <div class="image-box placeholder" v-else>
+                                <span>{{ entry.fileName || entry.extension || 'Document' }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <p v-else class="muted">Aucun document disponible.</p>
+        </template>
+
         <template v-if="shouldPrint('examens')">
             <h2>Examens cliniques</h2>
             <table v-if="examensHasRows || printEmpty">
@@ -331,6 +454,8 @@ const examens = computed(() => props.fiche?.examens || {});
 const bilans = computed(() => props.fiche?.bilans || {});
 const documents = computed(() => props.fiche?.documents || []);
 const plans = computed(() => props.fiche?.planTraitement || []);
+const patientAntecedents = computed(() => Array.isArray(props.patient?.antecedents) ? props.patient.antecedents : []);
+const patientAllergies = computed(() => Array.isArray(props.patient?.allergies) ? props.patient.allergies : []);
 const patientSex = computed(() => props.patient?.sexe || props.fiche?.patient?.sexe || props.fiche?.sexe || '');
 const isFemalePatient = computed(() => {
     const normalized = String(patientSex.value || '')

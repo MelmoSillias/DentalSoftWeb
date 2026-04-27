@@ -6,6 +6,7 @@ import SaveIndicator from '@/components/consultations/SaveIndicator.vue';
 import SectionSwitcher from '@/components/consultations/SectionSwitcher.vue';
 import AllergyDialogForm from '@/components/patients/AllergyDialogForm.vue';
 import AntecedentDialogForm from '@/components/patients/AntecedentDialogForm.vue';
+import FormRendezVous from '@/components/patients/FormRendezVous.vue';
 import PrintFicheV2Body from '@/components/print/PrintFicheV2Body.vue';
 import PrintOrdonnanceBody from '@/components/print/PrintOrdonnanceBody.vue';
 import EntretienVerbalForm from '@/components/fiche-medicale/EntretienVerbalForm.vue';
@@ -26,7 +27,9 @@ import { GUIDED_TOUR_START_EVENT } from '@/tours';
 import { createConsultationsFormTour } from '@/tours/consultationsFormTour';
 import { startTourGuide } from '@/tours/tourGuideClient';
 import Button from 'primevue/button';
+import AutoComplete from 'primevue/autocomplete';
 import ConfirmDialog from 'primevue/confirmdialog';
+import Dialog from 'primevue/dialog';
 import SelectButton from 'primevue/selectbutton';
 import Toast from 'primevue/toast';
 import { useConfirm } from 'primevue/useconfirm';
@@ -84,8 +87,17 @@ const allowRouteLeaveAfterCloture = ref(false);
 const isGuidedTourStarting = ref(false);
 const isMedecinOptionalOnCreation = ref(false);
 const hidePatientPhoneForMedecins = ref(false);
+const ficheFormSimplifie = ref(false);
+const showRdvDialog = ref(false);
 const soinsList = ref([...defaultSoinList]);
+const examensTypeOptions = ref(['Bacteriologique', 'Serologique', 'Histologique', 'Radiologique', 'Autre']);
+const traitementTypeOptions = ref(['Urgence', 'Dentaires', 'Parodontaux', 'Orthodontiques', 'Autres']);
+const allergyTypeOptions = ref(['Médicamenteuses', 'Alimentaires', 'Environnementales', 'Autres']);
+const antecedentTypeOptions = ref(['Personnel', 'Familial', 'Médical']);
+const examensTypeSuggestions = ref([]);
+const traitementTypeSuggestions = ref([]);
 const shouldHidePatientPhoneForMedecin = computed(() => Boolean(auth.user?.roles?.includes('ROLE_MEDECIN')) && !Boolean(auth.user?.roles?.includes('ROLE_ADMIN')) && hidePatientPhoneForMedecins.value);
+const isSimplifiedFicheFormEnabled = computed(() => ficheFormSimplifie.value === true);
 
 const displayModeOptions = [
     { label: 'Onglets', value: 'tabs' },
@@ -168,13 +180,33 @@ const loadConsultationPolicy = async () => {
         const settings = await fetchPublicGeneralSettings(token);
         isMedecinOptionalOnCreation.value = settings?.requireMedecinOnConsultationCreation === false;
         hidePatientPhoneForMedecins.value = settings?.hidePatientPhoneForMedecins === true;
+        ficheFormSimplifie.value = settings?.ficheFormSimplifie === true;
         soinsList.value = normalizeSoinList(settings?.soinsList);
+        examensTypeOptions.value = Array.isArray(settings?.examensTypes) && settings.examensTypes.length ? settings.examensTypes : examensTypeOptions.value;
+        traitementTypeOptions.value = Array.isArray(settings?.traitementTypes) && settings.traitementTypes.length ? settings.traitementTypes : traitementTypeOptions.value;
+        allergyTypeOptions.value = Array.isArray(settings?.allergyTypes) && settings.allergyTypes.length ? settings.allergyTypes : allergyTypeOptions.value;
+        antecedentTypeOptions.value = Array.isArray(settings?.antecedentTypes) && settings.antecedentTypes.length ? settings.antecedentTypes : antecedentTypeOptions.value;
     } catch (error) {
         console.error('Erreur chargement politique consultation', error);
         isMedecinOptionalOnCreation.value = false;
         hidePatientPhoneForMedecins.value = false;
+        ficheFormSimplifie.value = false;
         soinsList.value = [...defaultSoinList];
     }
+};
+
+const searchExamensTypes = (event) => {
+    const query = String(event?.query || '').toLowerCase().trim();
+    examensTypeSuggestions.value = query
+        ? examensTypeOptions.value.filter((item) => String(item).toLowerCase().includes(query))
+        : examensTypeOptions.value;
+};
+
+const searchTraitementTypes = (event) => {
+    const query = String(event?.query || '').toLowerCase().trim();
+    traitementTypeSuggestions.value = query
+        ? traitementTypeOptions.value.filter((item) => String(item).toLowerCase().includes(query))
+        : traitementTypeOptions.value;
 };
 
 const redirectClosedConsultation = () => {
@@ -209,6 +241,8 @@ const isSectionFilled = (id) => {
             return hasValue(data.planTraitement);
         case 'devis':
             return hasValue([data.devis?.date, data.devis?.services]);
+        case 'synthese':
+            return hasValue([data.entretien, data.examens?.examensLabo, data.bilans, data.planTraitement, data.documents]);
         case 'seances':
             return hasValue(data.sessions);
         case 'consult':
@@ -234,7 +268,12 @@ const sections = computed(() => {
     const devisStatus = getSectionStatus('devis');
     const consultStatus = getSectionStatus('consult');
 
-    return [
+    const syntheseSaving = Boolean(saving.entretien || saving.examens || saving.documents || saving.bilans || saving.planTraitement);
+    const syntheseDirty = Boolean(dirty.entretien || dirty.examens || dirty.documents || dirty.bilans || dirty.planTraitement);
+    const syntheseStatus = syntheseSaving ? 'saving' : syntheseDirty ? 'dirty' : 'saved';
+    const syntheseStatusLabel = syntheseSaving ? 'Sauvegarde...' : syntheseDirty ? 'Modifie' : 'Sauvegarde';
+
+    const baseSections = [
         {
             id: 'infos',
             label: 'Informations patient',
@@ -243,6 +282,38 @@ const sections = computed(() => {
             statusLabel: 'Lecture seule',
             saveDisabled: true
         },
+
+        {
+            id: 'devis',
+            label: 'Devis',
+            filled: isSectionFilled('devis'),
+            status: devisStatus.status,
+            statusLabel: devisStatus.label,
+            saveDisabled: devisStatus.saveDisabled,
+            saving: saving.devis,
+            onSave: () => saveDevisSection()
+        },
+        {
+            id: 'seances',
+            label: 'Seances',
+            filled: isSectionFilled('seances'),
+            status: 'readonly',
+            statusLabel: 'Lecture seule',
+            saveDisabled: true
+        },
+        {
+            id: 'consult',
+            label: 'Consultation en cours',
+            filled: isSectionFilled('consult'),
+            status: consultStatus.status,
+            statusLabel: consultStatus.label,
+            saveDisabled: consultStatus.saveDisabled,
+            saving: saving.consult,
+            onSave: () => saveConsultSection()
+        }
+    ];
+
+    const detailedSections = [
         {
             id: 'entretien',
             label: 'Questionnaire médical',
@@ -292,37 +363,87 @@ const sections = computed(() => {
             saveDisabled: planTraitementStatus.saveDisabled,
             saving: saving.planTraitement,
             onSave: () => savePlanTraitementSection()
-        },
-        {
-            id: 'devis',
-            label: 'Devis',
-            filled: isSectionFilled('devis'),
-            status: devisStatus.status,
-            statusLabel: devisStatus.label,
-            saveDisabled: devisStatus.saveDisabled,
-            saving: saving.devis,
-            onSave: () => saveDevisSection()
-        },
-        {
-            id: 'seances',
-            label: 'Seances',
-            filled: isSectionFilled('seances'),
-            status: 'readonly',
-            statusLabel: 'Lecture seule',
-            saveDisabled: true
-        },
-        {
-            id: 'consult',
-            label: 'Consultation en cours',
-            filled: isSectionFilled('consult'),
-            status: consultStatus.status,
-            statusLabel: consultStatus.label,
-            saveDisabled: consultStatus.saveDisabled,
-            saving: saving.consult,
-            onSave: () => saveConsultSection()
         }
     ];
+
+    if (isSimplifiedFicheFormEnabled.value) {
+        return [
+            baseSections[0],
+            {
+                id: 'synthese',
+                label: 'Synthèse clinique',
+                filled: isSectionFilled('synthese'),
+                status: syntheseStatus,
+                statusLabel: syntheseStatusLabel,
+                saveDisabled: !syntheseDirty,
+                saving: syntheseSaving,
+                onSave: () => saveSyntheseSection()
+            },
+            ...baseSections.slice(1)
+        ];
+    }
+
+    return [baseSections[0], ...detailedSections, ...baseSections.slice(1)];
 });
+
+const saveSyntheseSection = async ({ silent = false } = {}) => {
+    await Promise.all([
+        saveEntretienSection({ silent }),
+        saveExamensSection({ silent }),
+        saveDocumentsSection({ silent }),
+        saveBilansSection({ silent }),
+        savePlanTraitementSection({ silent })
+    ]);
+};
+
+const createGroupKey = () => {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+        return crypto.randomUUID();
+    }
+    return `doc_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+};
+
+const addExamComplementaireRow = () => {
+    const current = Array.isArray(data.examens?.examensLabo) ? data.examens.examensLabo : [];
+    data.examens = {
+        ...data.examens,
+        examensLabo: [...current, { type: '', description: '', date: null, resultat: '' }]
+    };
+};
+
+const removeExamComplementaireRow = (index) => {
+    const current = Array.isArray(data.examens?.examensLabo) ? data.examens.examensLabo : [];
+    data.examens = {
+        ...data.examens,
+        examensLabo: current.filter((_, idx) => idx !== index)
+    };
+};
+
+const addPlanRow = () => {
+    const plans = Array.isArray(data.planTraitement) ? data.planTraitement : [];
+    data.planTraitement = [
+        ...plans,
+        {
+            planIndex: plans.length + 1,
+            type: '',
+            dateSupposed: null,
+            description: ''
+        }
+    ];
+};
+
+const removePlanRow = (index) => {
+    const plans = Array.isArray(data.planTraitement) ? data.planTraitement : [];
+    data.planTraitement = plans.filter((_, idx) => idx !== index).map((item, idx) => ({
+        ...item,
+        planIndex: idx + 1
+    }));
+};
+
+const handleRdvSaved = () => {
+    showRdvDialog.value = false;
+    toast.add({ severity: 'success', summary: 'Rendez-vous créé', life: 2200 });
+};
 
 const saveEntretienSection = async ({ silent = false } = {}) => {
     if (!dirty.entretien) return;
@@ -573,10 +694,13 @@ const handlePrintFiche = async () => {
 
     try {
         const res = await fetchPatientFichePrintData(patientId, ficheId.value, token);
+        const sectionsToPrint = isSimplifiedFicheFormEnabled.value
+            ? ['synthese']
+            : ['entretien', 'examens', 'images', 'plan', 'bilan', 'seances'];
         await printComponent(PrintFicheV2Body, {
             patient: res.patient,
             fiche: res.fiche,
-            sections: ['entretien', 'examens', 'images', 'plan', 'bilan', 'seances'],
+            sections: sectionsToPrint,
             printEmpty: false
         });
     } catch (error) {
@@ -605,7 +729,7 @@ const handleBeforeUnload = (event) => {
     event.returnValue = '';
 };
 
-const hasOpenDialogs = computed(() => showAntecedentDialog.value || showAllergyDialog.value || ordonnanceModalVisible.value);
+const hasOpenDialogs = computed(() => showAntecedentDialog.value || showAllergyDialog.value || ordonnanceModalVisible.value || showRdvDialog.value);
 
 const setTourSection = (sectionId) => {
     activeSection.value = sectionId;
@@ -615,6 +739,7 @@ const resetTourDialogs = () => {
     showAntecedentDialog.value = false;
     showAllergyDialog.value = false;
     ordonnanceModalVisible.value = false;
+    showRdvDialog.value = false;
 };
 
 const handleGuidedTourRequest = async (event) => {
@@ -715,6 +840,16 @@ watch(
     { immediate: true }
 );
 
+watch(
+    () => isSimplifiedFicheFormEnabled.value,
+    (enabled) => {
+        if (!enabled) return;
+        if (['entretien', 'examens', 'documents', 'bilans', 'plan-traitement'].includes(activeSection.value)) {
+            activeSection.value = 'synthese';
+        }
+    }
+);
+
 onBeforeUnmount(() => {
     window.removeEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
     window.removeEventListener('scroll', handleScroll);
@@ -778,6 +913,139 @@ onBeforeUnmount(() => {
                                 @delete-antecedent="handleDeleteAntecedent"
                                 @delete-allergy="handleDeleteAllergy"
                             />
+                        </div>
+                    </template>
+
+                    <template #synthese>
+                        <div class="rounded-2xl border border-surface-200/60 dark:border-surface-700/60 bg-surface-0 dark:bg-surface-900/40 p-4 md:p-5">
+                            <div class="flex items-center justify-between gap-3 mb-4">
+                                <div>
+                                    <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-50">Synthèse clinique</h3>
+                                    <p class="text-xs text-surface-500 dark:text-surface-400">Vue condensée du questionnaire, examens, bilan, plan de traitement et documents.</p>
+                                </div>
+                                <Button icon="pi pi-save" label="Enregistrer" size="small" :loading="saving.entretien || saving.examens || saving.documents || saving.bilans || saving.planTraitement" @click="saveSyntheseSection" />
+                            </div>
+
+                            <div class="grid grid-cols-1 xl:grid-cols-[0.88fr_1.12fr] gap-4">
+                                <div class="space-y-4">
+                                    <div class="rounded-xl border border-surface-200 dark:border-surface-700 p-3">
+                                        <label class="text-sm font-semibold text-surface-700 dark:text-surface-200 uppercase tracking-wide">Anamnèse</label>
+                                        <textarea
+                                            v-model="data.entretien.anamnese"
+                                            rows="4"
+                                            class="mt-2 w-full rounded-lg border border-surface-300 dark:border-surface-600 bg-surface-0 dark:bg-surface-900 px-3 py-2 text-[0.95rem]"
+                                            placeholder="Résumé clinique du patient"
+                                        ></textarea>
+                                    </div>
+
+                                    <div class="rounded-xl border border-surface-200 dark:border-surface-700 p-3">
+                                        <div class="flex items-center justify-between mb-2">
+                                            <label class="text-sm font-semibold text-surface-700 dark:text-surface-200 uppercase tracking-wide">Antécédents & allergies</label>
+                                            <div class="flex items-center gap-1">
+                                                <Button icon="pi pi-plus" label="Allergie" text size="small" @click="showAllergyDialog = true" />
+                                                <Button icon="pi pi-plus" label="Antécédent" text size="small" @click="showAntecedentDialog = true" />
+                                            </div>
+                                        </div>
+                                        <div class="space-y-2 max-h-56 overflow-auto pr-1">
+                                            <div v-for="item in data.patient.antecedents" :key="`a-${item.id}`" class="flex items-start justify-between gap-2 rounded-md border border-surface-200 dark:border-surface-700 px-2 py-1.5">
+                                                <div class="text-sm text-surface-700 dark:text-surface-300">
+                                                    <strong>{{ item.type || 'Antécédent' }}:</strong> {{ item.description || '—' }}
+                                                </div>
+                                                <Button icon="pi pi-trash" text severity="danger" size="small" @click="handleDeleteAntecedent(item)" />
+                                            </div>
+                                            <div v-for="item in data.patient.allergies" :key="`al-${item.id}`" class="flex items-start justify-between gap-2 rounded-md border border-surface-200 dark:border-surface-700 px-2 py-1.5">
+                                                <div class="text-sm text-surface-700 dark:text-surface-300">
+                                                    <strong>{{ item.libelle || 'Allergie' }}:</strong> {{ item.description || '—' }}
+                                                </div>
+                                                <Button icon="pi pi-trash" text severity="danger" size="small" @click="handleDeleteAllergy(item)" />
+                                            </div>
+                                            <div v-if="!data.patient.antecedents?.length && !data.patient.allergies?.length" class="text-sm text-surface-500 dark:text-surface-400">Aucun antécédent/allergie enregistré.</div>
+                                        </div>
+                                    </div>
+
+                                    <div class="rounded-xl border border-surface-200 dark:border-surface-700 p-3">
+                                        <div class="flex items-center justify-between gap-2">
+                                            <div>
+                                                <p class="text-sm font-semibold text-surface-700 dark:text-surface-200 uppercase tracking-wide">Prochain rendez-vous</p>
+                                                <p class="text-sm text-surface-500 dark:text-surface-400">Créer rapidement un nouveau rendez-vous pour ce patient.</p>
+                                            </div>
+                                            <Button icon="pi pi-calendar-plus" label="Créer" size="small" @click="showRdvDialog = true" />
+                                        </div>
+                                    </div>
+
+                                    <div class="rounded-xl border border-surface-200 dark:border-surface-700 p-3">
+                                        <FicheDocumentsForm v-model="data.documents" :saving="saving.documents" :compact="true" @save="saveDocumentsSection" />
+                                    </div>
+                                </div>
+
+                                <div class="space-y-4">
+                                    <div class="rounded-xl border border-surface-200 dark:border-surface-700 p-3">
+                                        <div class="flex items-center justify-between mb-2">
+                                            <label class="text-sm font-semibold text-surface-700 dark:text-surface-200 uppercase tracking-wide">Examens complémentaires</label>
+                                            <Button icon="pi pi-plus" label="Ligne" text size="small" @click="addExamComplementaireRow" />
+                                        </div>
+                                        <div class="space-y-2 max-h-72 overflow-auto pr-1">
+                                            <div v-for="(item, examIndex) in data.examens.examensLabo" :key="examIndex" class="grid grid-cols-12 gap-2 items-center rounded-md border border-surface-200 dark:border-surface-700 p-2">
+                                                <AutoComplete
+                                                    v-model="item.type"
+                                                    :suggestions="examensTypeSuggestions"
+                                                    dropdown
+                                                    class="col-span-3"
+                                                    inputClass="w-full rounded border border-surface-300 dark:border-surface-600 bg-transparent px-2 py-1 text-sm"
+                                                    placeholder="Type"
+                                                    @complete="searchExamensTypes"
+                                                />
+                                                <input v-model="item.description" class="col-span-4 rounded border border-surface-300 dark:border-surface-600 bg-transparent px-2 py-1 text-sm" placeholder="Description" />
+                                                <input v-model="item.date" type="date" class="col-span-2 rounded border border-surface-300 dark:border-surface-600 bg-transparent px-2 py-1 text-sm" />
+                                                <input v-model="item.resultat" class="col-span-2 rounded border border-surface-300 dark:border-surface-600 bg-transparent px-2 py-1 text-sm" placeholder="Résultat" />
+                                                <Button icon="pi pi-trash" text severity="danger" size="small" class="col-span-1 justify-self-end" @click="removeExamComplementaireRow(examIndex)" />
+                                            </div>
+                                            <div v-if="!data.examens.examensLabo?.length" class="text-sm text-surface-500 dark:text-surface-400">Aucun examen complémentaire.</div>
+                                        </div>
+                                    </div>
+
+                                    <div class="rounded-xl border border-surface-200 dark:border-surface-700 p-3">
+                                        <label class="text-sm font-semibold text-surface-700 dark:text-surface-200 uppercase tracking-wide">Bilan</label>
+                                        <textarea
+                                            v-model="data.bilans.diagnosticPositif"
+                                            rows="3"
+                                            class="mt-2 w-full rounded-lg border border-surface-300 dark:border-surface-600 bg-surface-0 dark:bg-surface-900 px-3 py-2 text-[0.95rem]"
+                                            placeholder="Bilan"
+                                        ></textarea>
+                                        <label class="mt-3 block text-sm font-semibold text-surface-700 dark:text-surface-200 uppercase tracking-wide">Avis médicaux</label>
+                                        <textarea
+                                            v-model="data.bilans.avisMedicales"
+                                            rows="3"
+                                            class="mt-2 w-full rounded-lg border border-surface-300 dark:border-surface-600 bg-surface-0 dark:bg-surface-900 px-3 py-2 text-[0.95rem]"
+                                            placeholder="Avis médicaux"
+                                        ></textarea>
+                                    </div>
+
+                                    <div class="rounded-xl border border-surface-200 dark:border-surface-700 p-3">
+                                        <div class="flex items-center justify-between mb-2">
+                                            <label class="text-sm font-semibold text-surface-700 dark:text-surface-200 uppercase tracking-wide">Plan de traitement</label>
+                                            <Button icon="pi pi-plus" label="Ajout rapide" text size="small" @click="addPlanRow" />
+                                        </div>
+                                        <div class="space-y-2 max-h-72 overflow-auto pr-1">
+                                            <div v-for="(plan, planIndex) in data.planTraitement" :key="plan.id || planIndex" class="grid grid-cols-12 gap-2 items-center rounded-md border border-surface-200 dark:border-surface-700 p-2">
+                                                <AutoComplete
+                                                    v-model="plan.type"
+                                                    :suggestions="traitementTypeSuggestions"
+                                                    dropdown
+                                                    class="col-span-3"
+                                                    inputClass="w-full rounded border border-surface-300 dark:border-surface-600 bg-transparent px-2 py-1 text-sm"
+                                                    placeholder="Type"
+                                                    @complete="searchTraitementTypes"
+                                                />
+                                                <input v-model="plan.dateSupposed" type="date" class="col-span-3 rounded border border-surface-300 dark:border-surface-600 bg-transparent px-2 py-1 text-sm" />
+                                                <input v-model="plan.description" class="col-span-5 rounded border border-surface-300 dark:border-surface-600 bg-transparent px-2 py-1 text-sm" placeholder="Description" />
+                                                <Button icon="pi pi-trash" text severity="danger" size="small" class="col-span-1 justify-self-end" @click="removePlanRow(planIndex)" />
+                                            </div>
+                                            <div v-if="!data.planTraitement?.length" class="text-sm text-surface-500 dark:text-surface-400">Aucun plan ajouté.</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </template>
 
@@ -857,8 +1125,38 @@ onBeforeUnmount(() => {
             </div>
 
             <div data-tour="consultations-form.dialogs">
-                <AntecedentDialogForm v-model="showAntecedentDialog" :loading="savingAntecedent" @save="handleSaveAntecedent" />
-                <AllergyDialogForm v-model="showAllergyDialog" :loading="savingAllergy" @save="handleSaveAllergy" />
+                <AntecedentDialogForm v-model="showAntecedentDialog" :loading="savingAntecedent" :type-options="antecedentTypeOptions" @save="handleSaveAntecedent" />
+                <AllergyDialogForm v-model="showAllergyDialog" :loading="savingAllergy" :type-options="allergyTypeOptions" @save="handleSaveAllergy" />
+                <Dialog
+                    v-model:visible="showRdvDialog"
+                    modal
+                    :style="{ width: '45rem' }"
+                    :pt="{
+                        root: 'rounded-2xl',
+                        header: 'bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900 dark:to-surface-800 px-6 py-4 border-b',
+                        content: 'p-0 mt-4'
+                    }"
+                >
+                    <template #header>
+                        <div class="flex items-center gap-3">
+                            <div class="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+                                <i class="fas fa-calendar-plus text-blue-600 dark:text-blue-400"></i>
+                            </div>
+                            <div>
+                                <h4 class="m-0 text-surface-900 dark:text-surface-100">Nouveau rendez-vous</h4>
+                                <p class="text-sm text-surface-500 dark:text-surface-400 mt-1">
+                                    {{ `${data.patient?.prenom || ''} ${data.patient?.nom || ''}`.trim() || 'Patient' }}
+                                </p>
+                            </div>
+                        </div>
+                    </template>
+                    <FormRendezVous
+                        :patient="data.patient"
+                        :patient-id="data.patient?.id"
+                        @saved="handleRdvSaved"
+                        @cancel="showRdvDialog = false"
+                    />
+                </Dialog>
                 <OrdonnanceModal
                     v-model="ordonnanceDraft"
                     v-model:visible="ordonnanceModalVisible"
