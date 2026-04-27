@@ -56,7 +56,7 @@
 
             <div class="small center">
                 Merci de votre confiance !<br />
-                Tél: +223 77 27 28 61 / +223 44 51 61 85
+                Tél: {{ cabinetPhone }}
             </div>
         </div>
     </div>
@@ -66,6 +66,7 @@
 import { computed } from 'vue';
 import PrintTicketHeader from './PrintTicketHeader.vue';
 import logoImg from '@/assets/logo.png';
+import cabinetConfig from '@/cabinetConfig';
 
 const props = defineProps({
     paiement: { type: Object, default: () => ({}) },
@@ -79,6 +80,7 @@ const dateLabel = computed(() => {
 });
 
 const formatMoney = (value) => `${Number(value || 0).toLocaleString('fr-FR')} FCFA`;
+const cabinetPhone = computed(() => cabinetConfig.cabinetPhone || '—');
 </script>
 
 <style scoped>

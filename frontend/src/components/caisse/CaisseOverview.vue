@@ -15,7 +15,8 @@ const props = defineProps({
     paymentsLoading: { type: Boolean, default: false },
     devisType: { type: String, default: 'all' },
     devisRange: { type: Array, default: () => [] },
-    paymentRange: { type: Array, default: () => [] }
+    paymentRange: { type: Array, default: () => [] },
+    hidePatientPhone: { type: Boolean, default: false }
 });
 
 const emit = defineEmits([
@@ -213,6 +214,8 @@ const formatDate = (value, withTime = false) => {
     return `${datePart} ${timePart}`;
 };
 
+const displayPhone = (value) => (props.hidePatientPhone ? 'Masqué par l\'administrateur' : (value || '—'));
+
 const computeStatus = (row) => {
     const montant = Number(row.montant) || 0;
     const reste = Number(row.reste) || 0;
@@ -311,7 +314,9 @@ const handlePreview = (row) => emit('preview', row);
                             data.patient || '—' }}
                     </template>
                 </Column>
-                <Column field="telephone" header="Téléphone" sortable></Column>
+                <Column field="telephone" header="Téléphone" sortable>
+                    <template #body="{ data }">{{ displayPhone(data.telephone) }}</template>
+                </Column>
                 <Column field="montant" header="Montant" sortable>
                     <template #body="{ data }">{{ formatFcfa(data.montant) }}</template>
                 </Column>
@@ -377,7 +382,9 @@ const handlePreview = (row) => emit('preview', row);
                     <template #body="{ data }">{{ formatDate(data.date, true) }}</template>
                 </Column>
                 <Column field="patient" header="Patient" sortable></Column>
-                <Column field="telephone" header="Téléphone" sortable></Column>
+                <Column field="telephone" header="Téléphone" sortable>
+                    <template #body="{ data }">{{ displayPhone(data.telephone) }}</template>
+                </Column>
                 <Column field="montant" header="Montant" sortable>
                     <template #body="{ data }">{{ formatFcfa(data.montant) }}</template>
                 </Column>

@@ -12,7 +12,8 @@ import { computed, ref } from 'vue';
 const props = defineProps({
     payments: { type: Array, default: () => [] },
     paymentsLoading: { type: Boolean, default: false },
-    paymentRange: { type: Array, default: () => [] }
+    paymentRange: { type: Array, default: () => [] },
+    hidePatientPhone: { type: Boolean, default: false }
 });
 
 const emit = defineEmits([
@@ -145,6 +146,8 @@ const formatDate = (value, withTime = false) => {
     return `${datePart} ${timePart}`;
 };
 
+const displayPhone = (value) => (props.hidePatientPhone ? 'Masqué par l\'administrateur' : (value || ''));
+
 const paymentsByMode = computed(() => {
     const bucket = {};
     filteredPayments.value.forEach((p) => {
@@ -247,7 +250,7 @@ const handlePaymentFamilyChange = (value) => {
                             <div>
                                 <div class="text-sm text-gray-500">{{ formatDate(row.date, true) }}</div>
                                 <div class="font-semibold">{{ row.patient || '—' }}</div>
-                                <div class="text-sm text-gray-600">{{ row.telephone || '' }}</div>
+                                <div class="text-sm text-gray-600">{{ displayPhone(row.telephone) }}</div>
                                 <div class="mt-2 flex flex-wrap gap-2">
                                     <Tag :value="computeModeTag(row).label" :severity="computeModeTag(row).severity" />
                                     <Tag :value="computeRoleTag(row).label" :severity="computeRoleTag(row).severity" />

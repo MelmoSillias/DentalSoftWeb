@@ -7,6 +7,7 @@ import FormRendezVous from '@/components/patients/FormRendezVous.vue';
 import PrintDataTablePage from '@/components/print/PrintDataTablePage.vue';
 import { usePrinter } from '@/composables/usePrinter';
 import { usePatients } from '@/composables/usePatients';
+import { fetchPublicGeneralSettings } from '@/services/globalSettingsService';
 import {
     activatePatientsTourMock,
     deactivatePatientsTourMock,
@@ -36,6 +37,9 @@ const { printComponent } = usePrinter();
 const { patients, totalRecords, loading, fetchPatients, fetchPatientsByMedecin, normalizePatient, checkConsultationActive, deleteConsultation } = usePatients();
 const auth = useAuthStore();
 const isMedecin = computed(() => Boolean(auth.user?.roles?.includes('ROLE_MEDECIN')));
+const isAdmin = computed(() => Boolean(auth.user?.roles?.includes('ROLE_ADMIN')));
+const hidePatientPhoneForMedecins = ref(false);
+const shouldHidePatientPhoneForMedecin = computed(() => isMedecin.value && !isAdmin.value && hidePatientPhoneForMedecins.value);
 const searchQuery = ref('');
 const first = ref(0);
 const rowsPerPage = ref(10);
@@ -93,7 +97,18 @@ const loadPatients = async ({ page = 1, limit = rowsPerPage.value, q = searchQue
     }
 };
 
+const loadVisibilityPolicy = async () => {
+    try {
+        const settings = await fetchPublicGeneralSettings(token);
+        hidePatientPhoneForMedecins.value = settings?.hidePatientPhoneForMedecins === true;
+    } catch (error) {
+        console.error('Erreur chargement politique visibilité patients', error);
+        hidePatientPhoneForMedecins.value = false;
+    }
+};
+
 onMounted(() => {
+    loadVisibilityPolicy();
     loadPatients({ page: 1, limit: rowsPerPage.value });
 });
 
@@ -627,7 +642,7 @@ onMounted(() => {
                         <template #body="{ data }">
                             <div class="flex items-center gap-2">
                                 <i class="pi pi-phone text-surface-400"></i>
-                                <span class="font-mono text-surface-900 dark:text-surface-100">{{ data.telephone }}</span>
+                                <span class="font-mono text-surface-900 dark:text-surface-100">{{ shouldHidePatientPhoneForMedecin ? 'Masqué par l\'administrateur' : data.telephone }}</span>
                             </div>
                         </template>
                     </Column>

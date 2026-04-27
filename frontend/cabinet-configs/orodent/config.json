@@ -9,6 +9,7 @@
   "smsCabinetName": "CABINET DENTAIRE ORODENT",
   "smsTestMessage": "Message de test CABINET DENTAIRE ORODENT.",
   "reportCabinetName": "CABINET DENTAIRE ORODENT",
+  "cabinetPhone": "+223 77 27 28 61 / +223 44 51 61 85",
   "viteApiPrefix": "http://localhost:8000/api",
   "viteFilePrefix": "http://localhost:8000",
   "brandingAssets": {

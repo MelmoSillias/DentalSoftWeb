@@ -69,7 +69,8 @@ function validateConfig(cabinetId, config) {
         'settingsDescription',
         'smsCabinetName',
         'smsTestMessage',
-        'reportCabinetName'
+        'reportCabinetName',
+        'cabinetPhone'
     ];
 
     for (const field of requiredStringFields) {
@@ -194,6 +195,7 @@ function syncCabinetAssets(config, cabinetPublicDir) {
 
     const brandingFiles = collectBrandingFiles(config);
     const pwaInclude = Array.isArray(config?.pwa?.includeAssets) ? config.pwa.includeAssets : [];
+    const defaultPublicPatterns = ['header*'];
     const pwaIconFiles = Array.isArray(config?.pwa?.icons)
         ? config.pwa.icons
             .map((icon) => (icon && typeof icon.src === 'string' ? normalizeRelativePath(icon.src) : ''))
@@ -203,7 +205,7 @@ function syncCabinetAssets(config, cabinetPublicDir) {
     const publicTargets = new Set([
         ...brandingFiles,
         ...pwaIconFiles,
-        ...Array.from(expandPatternEntries(cabinetPublicDir, pwaInclude)),
+        ...Array.from(expandPatternEntries(cabinetPublicDir, [...pwaInclude, ...defaultPublicPatterns])),
         'manifest.webmanifest'
     ]);
 

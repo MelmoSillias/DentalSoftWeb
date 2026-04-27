@@ -8,6 +8,7 @@ final class NotificationTopicGenerator
 {
     public function __construct(
         private readonly string $publicHubUrl,
+        private readonly string $topicNamespace,
     ) {
     }
 
@@ -18,6 +19,16 @@ final class NotificationTopicGenerator
             return null;
         }
 
-        return sprintf('%s/users/%d', rtrim($this->publicHubUrl, '/'), $id);
+        $namespace = trim($this->topicNamespace, "/ \t\n\r\0\x0B");
+        if ($namespace === '') {
+            $namespace = 'default';
+        }
+
+        return sprintf(
+            '%s/instances/%s/users/%d',
+            rtrim($this->publicHubUrl, '/'),
+            rawurlencode($namespace),
+            $id
+        );
     }
 }

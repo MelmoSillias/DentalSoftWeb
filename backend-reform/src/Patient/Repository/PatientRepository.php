@@ -2,8 +2,10 @@
 
 namespace App\Patient\Repository;
 
+use App\CareDelivery\Entity\Consultation;
 use App\IdentityAccess\Entity\Employe;
 use App\Patient\Entity\Patient;
+use App\Scheduling\Entity\Rdv;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
@@ -198,6 +200,76 @@ class PatientRepository extends ServiceEntityRepository
             'page' => $page,
             'limit' => $limit,
             'pages' => (int) ceil($total / max(1, $limit)),
+        ];
+    }
+
+    public function paginatePatientsByMedecin(
+        Employe $medecin,
+        int $page,
+        int $limit,
+        ?string $term = null,
+        ?string $sortField = null,
+        ?string $sortOrder = null
+    ): array {
+        $qb = $this->createQueryBuilder('p')
+            ->andWhere('EXISTS (SELECT 1 FROM ' . Consultation::class . ' c WHERE c.patient = p AND c.medecin = :medecin) OR EXISTS (SELECT 1 FROM ' . Rdv::class . ' r WHERE r.patient = p AND r.medecin = :medecin)')
+            ->setParameter('medecin', $medecin);
+
+        if ($term !== null && $term !== '') {
+            $normalizedTerm = mb_strtolower(trim($term));
+            $termLike = '%' . $normalizedTerm . '%';
+            $digitsOnly = preg_replace('/\D+/', '', $normalizedTerm);
+
+            $orX = $qb->expr()->orX(
+                'LOWER(p.nom) LIKE :term',
+                'LOWER(p.prenom) LIKE :term',
+                "LOWER(CONCAT(COALESCE(p.nom, ''), ' ', COALESCE(p.prenom, ''))) LIKE :term",
+                "LOWER(CONCAT(COALESCE(p.prenom, ''), ' ', COALESCE(p.nom, ''))) LIKE :term",
+                'LOWER(p.adresse) LIKE :term',
+                'LOWER(p.telephone) LIKE :term'
+            );
+
+            if (!empty($digitsOnly)) {
+                $pairs = str_split($digitsOnly, 2);
+                $spacedDigits = trim(implode(' ', $pairs));
+
+                $orX->add('p.telephone LIKE :termPhoneDigits');
+                $orX->add('p.telephone LIKE :termPhoneSpaced');
+                $qb->setParameter('termPhoneDigits', '%' . $digitsOnly . '%');
+                $qb->setParameter('termPhoneSpaced', '%' . $spacedDigits . '%');
+            }
+
+            $qb->andWhere($orX)
+                ->setParameter('term', $termLike);
+        }
+
+        $countQb = clone $qb;
+        $total = (int) $countQb->select('COUNT(p.id)')->getQuery()->getSingleScalarResult();
+
+        $direction = strtolower($sortOrder ?? 'asc') === 'desc' ? 'DESC' : 'ASC';
+        $sortMap = [
+            'fullname' => 'p.nom',
+            'nom' => 'p.nom',
+            'prenom' => 'p.prenom',
+            'telephone' => 'p.telephone',
+            'adresse' => 'p.adresse',
+            'sexe' => 'p.sexe',
+            'dateNaissance' => 'p.dateNaissance',
+        ];
+        $sortColumn = $sortMap[$sortField ?? ''] ?? 'p.nom';
+
+        $items = $qb
+            ->orderBy($sortColumn, $direction)
+            ->addOrderBy('p.prenom', 'ASC')
+            ->addOrderBy('p.id', 'ASC')
+            ->setFirstResult(($page - 1) * $limit)
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getResult();
+
+        return [
+            'items' => $items,
+            'total' => $total,
         ];
     }
 }

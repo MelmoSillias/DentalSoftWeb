@@ -11,7 +11,8 @@ const props = defineProps({
     devis: { type: Array, default: () => [] },
     devisLoading: { type: Boolean, default: false },
     devisType: { type: String, default: 'all' },
-    devisRange: { type: Array, default: () => [] }
+    devisRange: { type: Array, default: () => [] },
+    hidePatientPhone: { type: Boolean, default: false }
 });
 
 const emit = defineEmits([
@@ -128,6 +129,8 @@ const formatPatient = (row) => {
     }
     return row.patient || '—';
 };
+
+const displayPhone = (value) => (props.hidePatientPhone ? 'Masqué par l\'administrateur' : (value || '—'));
 </script>
 
 <template>
@@ -200,7 +203,7 @@ const formatPatient = (row) => {
                             <div class="dataview-body">
                                 <div class="dv-patient">
                                     <p class="dv-name"> <i class="pi pi-user me-2"></i> {{ formatPatient(row) }}</p>
-                                    <p class="dv-phone"> <i class="pi pi-phone me-2"></i> {{ row.telephone || '—' }}</p>
+                                    <p class="dv-phone"> <i class="pi pi-phone me-2"></i> {{ displayPhone(row.telephone) }}</p>
                                     <p class="dv-date"> <i class="pi pi-calendar me-2"></i> {{ row.date || '—' }}</p>
                                 </div>
 

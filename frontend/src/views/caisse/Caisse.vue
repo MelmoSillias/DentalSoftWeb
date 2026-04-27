@@ -101,6 +101,9 @@ const payDialogVisible = ref(false);
 const selectedDevis = ref(null);
 const paymentDialogTab = ref('client');
 const publicGeneralSettings = ref({ paiementDirectAssurance: false, soinsList: [...defaultSoinList] });
+const isAdmin = computed(() => Array.isArray(authStore.user?.roles) && authStore.user.roles.includes('ROLE_ADMIN'));
+const isMedecin = computed(() => Array.isArray(authStore.user?.roles) && authStore.user.roles.includes('ROLE_MEDECIN'));
+const shouldHidePatientPhoneForMedecin = computed(() => isMedecin.value && !isAdmin.value && publicGeneralSettings.value?.hidePatientPhoneForMedecins === true);
 const payForm = ref({
 	montant: 0,
 	modeId: null,
@@ -427,10 +430,16 @@ const loadPublicGeneralSettings = async () => {
 		const settings = await fetchPublicGeneralSettings(token);
 		publicGeneralSettings.value = {
 			paiementDirectAssurance: settings?.paiementDirectAssurance === true,
+			hidePatientPhoneForMedecins: settings?.hidePatientPhoneForMedecins === true,
 			soinsList: normalizeSoinList(settings?.soinsList)
 		};
 	} catch (error) {
 		console.error(error);
+		publicGeneralSettings.value = {
+			paiementDirectAssurance: false,
+			hidePatientPhoneForMedecins: false,
+			soinsList: [...defaultSoinList]
+		};
 	}
 };
 
@@ -1031,6 +1040,7 @@ onBeforeUnmount(() => {
 			<TabPanels class="mt-4">
 				<TabPanel value="overview">
 					<CaisseOverview :devis="devis" :devis-loading="devisLoading" :payments="payments"
+						:hide-patient-phone="shouldHidePatientPhoneForMedecin"
 						:payments-loading="paymentsLoading" :devis-type="devisType" :devis-range="devisRange"
 						:payment-range="paymentRange" @update:devisType="setDevisType"
 						@update:devisRange="setDevisRange" @update:paymentRange="setPaymentRange"
@@ -1041,12 +1051,14 @@ onBeforeUnmount(() => {
 				</TabPanel>
 				<TabPanel value="factures">
 					<CaisseFactures :devis="devis" :devis-loading="devisLoading" :devis-type="devisType"
+						:hide-patient-phone="shouldHidePatientPhoneForMedecin"
 						:devis-range="devisRange" @update:devisType="setDevisType" @update:devisRange="setDevisRange"
 						@refresh-devis="loadDevis" @pay="openPayDialog" @validate-free="openValidateDialog"
 						@modify="openModifyDialog" @preview="openPreviewDialog" @send-invoice-sms="sendInvoiceBySms" />
 				</TabPanel>
 				<TabPanel value="paiements">
 					<CaissePaiements :payments="payments" :payments-loading="paymentsLoading"
+						:hide-patient-phone="shouldHidePatientPhoneForMedecin"
 						:payment-range="paymentRange" @update:paymentRange="setPaymentRange"
 						@refresh-payments="loadPayments" @print-payments="printPayments" @print-payment="printPayment"
 						@print-receipt="printReceipt" @send-receipt-sms="sendReceiptBySms" />

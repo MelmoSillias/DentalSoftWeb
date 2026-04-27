@@ -9,6 +9,7 @@
   "smsCabinetName": "CENTRE DENTAIRE MASSAMAN",
   "smsTestMessage": "Message de test CENTRE DENTAIRE MASSAMAN.",
   "reportCabinetName": "CENTRE DENTAIRE MASSAMAN",
+  "cabinetPhone": "+223 77 27 28 61 / +223 44 51 61 85",
   "viteApiPrefix": "http://localhost:8000/api",
   "viteFilePrefix": "http://localhost:8000",
   "brandingAssets": {
