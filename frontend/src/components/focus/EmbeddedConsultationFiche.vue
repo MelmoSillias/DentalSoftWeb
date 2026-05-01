@@ -19,7 +19,7 @@ import { useConsultationsForm } from '@/composables/useConsultationsForm';
 import { usePrinter } from '@/composables/usePrinter';
 import { defaultSoinList, normalizeSoinList } from '@/services/consultations';
 import { fetchPublicGeneralSettings } from '@/services/globalSettingsService';
-import { addPatientAllergy, addPatientAntecedent, deletePatientAllergy, deletePatientAntecedent } from '@/services/patients';
+import { addPatientAllergy, addPatientAntecedent, deletePatientAllergy, deletePatientAntecedent, updatePatient } from '@/services/patients';
 import { fetchOrdonnancePrintData, fetchPatientFichePrintData } from '@/services/printService';
 import { useAuthStore } from '@/stores/auth';
 import ConfirmDialog from 'primevue/confirmdialog';
@@ -63,6 +63,7 @@ const ficheIdRef = ref(null);
 const consultIdRef = ref(null);
 const modeRef = ref('continue');
 const pageLoading = ref(false);
+const loadErrorMessage = ref('');
 const savingAntecedent = ref(false);
 const savingAllergy = ref(false);
 const ordonnanceModalVisible = ref(false);
@@ -587,6 +588,30 @@ const handleDeleteAllergy = async (item) => {
     }
 };
 
+const handlePhotoSelected = async (file) => {
+    if (!data.patient?.id || !file) return;
+
+    const formData = new FormData();
+    formData.append('photo', file);
+
+    try {
+        const updated = await updatePatient(data.patient.id, formData, token);
+        if (!updated?.id) {
+            throw new Error('patient_photo_update_failed');
+        }
+
+        data.patient = {
+            ...data.patient,
+            photo: updated.photo ?? data.patient.photo
+        };
+
+        emit('patient-loaded', { ...data.patient });
+        toast.add({ severity: 'success', summary: 'Photo patient', detail: 'Photo mise à jour.', life: 2500 });
+    } catch (_) {
+        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de mettre à jour la photo du patient.', life: 3000 });
+    }
+};
+
 const handleCloture = () => {
     if (!ensureMedecinSelected()) return;
 
@@ -660,7 +685,9 @@ const openOrdonnanceModal = () => {
 };
 
 const initialize = async () => {
+    loadErrorMessage.value = '';
     if (!props.consultationId) {
+        loadErrorMessage.value = 'Aucune consultation sélectionnée.';
         return;
     }
 
@@ -678,10 +705,40 @@ const initialize = async () => {
             emit('closed');
             return;
         }
+        loadErrorMessage.value = 'Impossible de charger la fiche de consultation.';
         toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de charger la fiche de consultation.', life: 3000 });
     } finally {
         pageLoading.value = false;
     }
+};
+
+const retryInitialize = async () => {
+    await initialize();
+};
+
+const openAntecedentDialog = () => {
+    if (isReadonly.value) return;
+    showAntecedentDialog.value = true;
+};
+
+const openAllergyDialog = () => {
+    if (isReadonly.value) return;
+    showAllergyDialog.value = true;
+};
+
+const deleteAntecedent = async (item) => {
+    if (isReadonly.value) return;
+    await handleDeleteAntecedent(item);
+};
+
+const deleteAllergy = async (item) => {
+    if (isReadonly.value) return;
+    await handleDeleteAllergy(item);
+};
+
+const updatePatientPhoto = async (file) => {
+    if (isReadonly.value) return;
+    await handlePhotoSelected(file);
 };
 
 watch(
@@ -716,6 +773,15 @@ watch(
         }
     }
 );
+
+defineExpose({
+    openAntecedentDialog,
+    openAllergyDialog,
+    deleteAntecedent,
+    deleteAllergy,
+    updatePatientPhoto,
+    retryLoad: retryInitialize
+});
 </script>
 
 <template>
@@ -723,35 +789,49 @@ watch(
         <ConfirmDialog />
         <AppToast />
 
-        <div v-if="!pageLoading" class="space-y-5">
-            <div class="rounded-2xl border border-surface-200/60 dark:border-surface-700/60 bg-surface-0 dark:bg-surface-800/70 p-5 shadow-sm">
-                <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                    <div class="space-y-2">
-                        <div class="flex items-center gap-3">
-                            <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary-500/10 text-primary-600 dark:bg-primary-500/20 dark:text-primary-300">
-                                <i class="pi pi-file-edit text-lg"></i>
-                            </div>
-                            <div>
-                                <h3 class="text-xl font-semibold text-surface-900 dark:text-surface-50">Fiche medicale focus</h3>
-                                <p class="text-sm text-surface-600 dark:text-surface-300">Saisie embarquee sans quitter le Mode Focus.</p>
-                            </div>
-                        </div>
-                        <div class="flex flex-wrap items-center gap-2">
-                            <Tag :value="isReadonly ? 'Consultation terminee' : 'Consultation en cours'" :severity="isReadonly ? 'success' : 'info'" />
-                            <Tag v-if="choiceLabel" :value="choiceLabel" severity="contrast" />
-                            <Tag v-if="isReadonly" value="Lecture seule" severity="warn" />
-                            <Button icon="pi pi-print" label="Imprimer fiche" severity="secondary" outlined size="small" @click="handlePrintFiche" />
-                        </div>
+        <div v-if="!pageLoading && !loadErrorMessage" class="space-y-5">
+            <div class="flex items-center justify-between rounded-xl border border-surface-200/60 dark:border-surface-700/60 bg-surface-0 dark:bg-surface-800/70 px-4 py-3 shadow-sm">
+                <div class="flex items-center gap-3">
+                    <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-primary-500/10 text-primary-600 dark:bg-primary-500/20 dark:text-primary-300">
+                        <i class="pi pi-file-edit text-sm"></i>
                     </div>
 
-                    <div v-if="!isReadonly" class="min-w-[18rem]">
+                    <div class="leading-tight">
+                        <h3 class="text-base font-semibold text-surface-900 dark:text-surface-50">
+                            Fiche médicale
+                        </h3>
+                        <span class="text-xs text-surface-500 dark:text-surface-400">
+                            Mode focus
+                        </span>
+                    </div>
+
+                    <!-- Status -->
+                    <Tag 
+                        :value="isReadonly ? 'Terminée' : 'En cours'" 
+                        :severity="isReadonly ? 'success' : 'info'" 
+                        class="ml-2"
+                    />
+                </div>
+
+                <!-- Right -->
+                <div class="flex items-center gap-2">
+                    <Button 
+                        icon="pi pi-print" 
+                        severity="secondary" 
+                        text 
+                        rounded 
+                        size="small" 
+                        @click="handlePrintFiche"
+                    />
+
+                    <div v-if="!isReadonly">
                         <SaveIndicator
+                            minimalDesign
                             v-model:auto-save-enabled="autoSaveEnabled"
                             :loading="loading"
                             :saving-count="savingCount"
                             :last-saved-at="lastSavedAt"
                             :dirty-sections="dirtySectionsList"
-                            :floating="isIndicatorFloating"
                             @save-all="() => saveAll({ silent: false })"
                         />
                     </div>
@@ -870,20 +950,20 @@ watch(
                                             <Button icon="pi pi-plus" label="Ligne" text size="small" @click="addExamComplementaireRow" />
                                         </div>
                                         <div class="space-y-2 max-h-72 overflow-auto pr-1">
-                                            <div v-for="(item, examIndex) in data.examens.examensLabo" :key="examIndex" class="grid grid-cols-12 gap-2 items-center rounded-md border border-surface-200 dark:border-surface-700 p-2">
+                                            <div v-for="(item, examIndex) in data.examens.examensLabo" :key="examIndex" class="grid grid-cols-12 gap-2 items-center rounded-md border border-surface-300 dark:border-surface-700 p-2">
                                                 <AutoComplete
                                                     v-model="item.type"
                                                     :suggestions="examensTypeSuggestions"
                                                     dropdown
-                                                    class="col-span-3"
+                                                    class="col-span-4"
                                                     inputClass="w-full rounded border border-surface-300 dark:border-surface-600 bg-transparent px-2 py-1 text-sm"
                                                     placeholder="Type"
                                                     @complete="searchExamensTypes"
                                                 />
-                                                <input v-model="item.description" class="col-span-4 rounded border border-surface-300 dark:border-surface-600 bg-transparent px-2 py-1 text-sm" placeholder="Description" />
-                                                <input v-model="item.date" type="date" class="col-span-2 rounded border border-surface-300 dark:border-surface-600 bg-transparent px-2 py-1 text-sm" />
-                                                <input v-model="item.resultat" class="col-span-2 rounded border border-surface-300 dark:border-surface-600 bg-transparent px-2 py-1 text-sm" placeholder="Résultat" />
-                                                <Button icon="pi pi-trash" text severity="danger" size="small" class="col-span-1 justify-self-end" @click="removeExamComplementaireRow(examIndex)" />
+                                                <InputText v-model="item.description" class="col-span-8 rounded border border-surface-300 dark:border-surface-600 bg-transparent px-2 py-1 text-sm min-h-full" placeholder="Description" />
+                                                <Textarea v-model="item.resultat" class="col-span-8 rounded border border-surface-300 dark:border-surface-600 bg-transparent px-2 py-1 text-sm" placeholder="Résultat" />
+                                                <DatePicker v-model="item.date" showIcon fluid iconDisplay="input" class="col-span-3 rounded bg-transparent text-sm self-start" placeholder="Date" /> 
+                                                <Button icon="pi pi-trash" text severity="danger" size="small" class="col-span-1 justify-self-end self-start" @click="removeExamComplementaireRow(examIndex)" />
                                             </div>
                                             <div v-if="!data.examens.examensLabo?.length" class="text-sm text-surface-500 dark:text-surface-400">Aucun examen complémentaire.</div>
                                         </div>
@@ -912,19 +992,21 @@ watch(
                                             <Button icon="pi pi-plus" label="Ajout rapide" text size="small" @click="addPlanRow" />
                                         </div>
                                         <div class="space-y-2 max-h-72 overflow-auto pr-1">
-                                            <div v-for="(plan, planIndex) in data.planTraitement" :key="plan.id || planIndex" class="grid grid-cols-12 gap-2 items-center rounded-md border border-surface-200 dark:border-surface-700 bg-white/80 dark:bg-surface-900/60 p-2">
+                                            <div v-for="(plan, planIndex) in data.planTraitement" :key="plan.id || planIndex" class="grid grid-cols-12 gap-2 items-center rounded-md border border-surface-200 dark:border-surface-700 p-2">
                                                 <AutoComplete
                                                     v-model="plan.type"
                                                     :suggestions="traitementTypeSuggestions"
                                                     dropdown
-                                                    class="col-span-3"
+                                                    class="col-span-7"
                                                     inputClass="w-full rounded border border-surface-300 dark:border-surface-600 bg-transparent px-2 py-1 text-sm"
                                                     placeholder="Type"
                                                     @complete="searchTraitementTypes"
                                                 />
-                                                <input v-model="plan.dateSupposed" type="date" class="col-span-3 rounded border border-surface-300 dark:border-surface-600 bg-transparent px-2 py-1 text-sm" />
-                                                <input v-model="plan.description" class="col-span-5 rounded border border-surface-300 dark:border-surface-600 bg-transparent px-2 py-1 text-sm" placeholder="Description" />
-                                                <Button icon="pi pi-trash" text severity="danger" size="small" class="col-span-1 justify-self-end" @click="removePlanRow(planIndex)" />
+
+                                                <DatePicker v-model="plan.dateSupposed" showIcon fluid class="col-span-4 rounded  bg-transparent px-2 py-1 text-sm" />
+                                                <Button icon="pi pi-trash" text severity="danger" size="small" class="col-span-1 justify-self-center" @click="removePlanRow(planIndex)" />
+                                                <Textarea v-model="plan.description" class="col-span-11 rounded border border-surface-300 dark:border-surface-600 bg-transparent px-2 py-1 text-sm" placeholder="Description" />
+                                                
                                             </div>
                                             <div v-if="!data.planTraitement?.length" class="text-sm text-surface-500 dark:text-surface-400">Aucun plan ajouté.</div>
                                         </div>
@@ -993,6 +1075,17 @@ watch(
                 :saving="saving.consult"
                 @save="saveOrdonnanceSection"
             />
+        </div>
+
+        <div v-else-if="loadErrorMessage" class="flex min-h-[28rem] flex-col items-center justify-center gap-4 rounded-2xl border border-amber-200/70 bg-amber-50/70 p-8 dark:border-amber-800/70 dark:bg-amber-950/20">
+            <div class="flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
+                <i class="pi pi-exclamation-triangle text-2xl"></i>
+            </div>
+            <div class="text-center">
+                <p class="text-lg font-semibold text-amber-800 dark:text-amber-200">Chargement interrompu</p>
+                <p class="text-sm text-amber-700/90 dark:text-amber-300/90">{{ loadErrorMessage }}</p>
+            </div>
+            <Button icon="pi pi-refresh" label="Réessayer" severity="warning" @click="retryInitialize" />
         </div>
 
         <div v-else class="flex min-h-[28rem] flex-col items-center justify-center gap-4 rounded-2xl border border-surface-200/60 bg-surface-0/80 p-8 dark:border-surface-700/60 dark:bg-surface-800/70">

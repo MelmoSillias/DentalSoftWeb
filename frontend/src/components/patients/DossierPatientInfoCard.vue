@@ -15,6 +15,10 @@ const props = defineProps({
     hidePhone: {
         type: Boolean,
         default: false
+    },
+    hidePhotoAction: {
+        type: Boolean,
+        default: false
     }
 });
 
@@ -68,7 +72,7 @@ const handlePhotoChange = (event) => {
                         class="shadow-lg"
                     />
                     <Button
-                        v-if="!hideActions"
+                        v-if="!hidePhotoAction"
                         icon="pi pi-pencil"
                         rounded
                         severity="secondary"

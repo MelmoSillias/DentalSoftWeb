@@ -600,7 +600,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-    <section class="min-h-screen  p-3 sm:p-4 md:p-6 lg:p-8 transition-colors duration-300">
+    <section class="min-h-screen  p-3 sm:p-4 md:p-6 lg:p-8 transition-colors duration-300 ">
         <div class="mb-6 md:mb-8" data-tour="dashboard.header">
             <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
                 <div class="space-y-2 flex-1">
@@ -662,8 +662,8 @@ onBeforeUnmount(() => {
             <DashboardQuickStats :cards="quickCards" :loading="loading" />
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 md:mb-8">
-            <div class="lg:col-span-2" data-tour="dashboard.main-report">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 md:mb-8 items-start">
+            <div class="lg:col-span-2 self-start" data-tour="dashboard.main-report">
                 <div v-if="showReceptionReports">
                     <DoctorReportsTable
                         title="Rapports periodiques par medecin"

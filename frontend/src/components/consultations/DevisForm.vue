@@ -134,13 +134,13 @@ function subtotal(service) {
                 </div>
             </div>
             <div class="flex flex-wrap gap-2">
-                <Button 
+                <!-- <Button 
                     label="Imprimer" 
                     icon="pi pi-print" 
                     outlined
                     class="rounded-xl px-4 py-2.5 border-surface-300 dark:border-surface-600 hover:bg-surface-100 dark:hover:bg-surface-700 transition-colors"
                     @click="emit('print')" 
-                />
+                /> -->
                 <Button 
                     label="Sauvegarder" 
                     icon="pi pi-save" 
@@ -206,7 +206,7 @@ function subtotal(service) {
             </div>
 
             <!-- Services List -->
-            <div class="space-y-4">
+            <div class="space-y-4 grid grid-cols-2 gap-4 items-stretch">
                 <div v-if="!(devis.services && devis.services.length)" class="text-center py-8">
                     <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-surface-100 dark:bg-surface-800 mb-3">
                         <i class="pi pi-inbox text-2xl text-surface-400"></i>
@@ -219,9 +219,9 @@ function subtotal(service) {
                     <!-- Service Header -->
                     <div class="flex items-center justify-between mb-4">
                         <div class="flex items-center gap-2">
-                            <span class="flex items-center justify-center w-6 h-6 rounded-md bg-surface-200 dark:bg-surface-700 text-surface-700 dark:text-surface-300 text-sm font-bold">
+                            <Tag severity="primary" class="flex items-center justify-center w-6 h-6 rounded-md bg-surface-200 dark:bg-surface-700 text-surface-700 dark:text-surface-300 text-sm font-bold">
                                 {{ idx + 1 }}
-                            </span>
+                            </Tag>
                             <span class="font-medium text-surface-900 dark:text-surface-100">Service {{ idx + 1 }}</span>
                         </div>
                         <Button 
@@ -253,23 +253,21 @@ function subtotal(service) {
                         <div class="space-y-2 flex flex-col">
                             <label class="text-xs font-medium text-surface-600 dark:text-surface-400 uppercase tracking-wider">Quantité</label>
                             <InputNumber 
-                                :value="service.qte" 
+                                v-model="service.qte" 
                                 :min="1" 
                                 mode="decimal" 
                                 :useGrouping="false"
                                 inputClass="w-full rounded-lg border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-800 p-2.5"
-                                @update:modelValue="(v) => updateService(idx, { qte: v ?? 1 })" 
                             />
                         </div>
                         <div class="space-y-2 flex flex-col">
                             <label class="text-xs font-medium text-surface-600 dark:text-surface-400 uppercase tracking-wider">Prix unitaire</label>
                             <InputNumber 
-                                :value="service.montant" 
+                                v-model="service.montant" 
                                 mode="decimal" 
                                 :minFractionDigits="0" 
                                 :maxFractionDigits="2"
                                 inputClass="w-full rounded-lg border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-800 p-2.5"
-                                @update:modelValue="(v) => updateService(idx, { montant: v ?? 0 })" 
                             />
                         </div>
                     </div>

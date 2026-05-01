@@ -51,6 +51,7 @@ const consultId = ref(route.query.id ? Number(route.query.id) : null);
 const mode = computed(() => (route.query.mode === 'new-fiche' ? 'new-fiche' : 'continue'));
  
 const pageLoading = ref(false);
+const loadErrorMessage = ref('');
 
 const {
     loading,
@@ -808,6 +809,7 @@ onBeforeRouteLeave(async () => {
 
 onMounted(async () => {
     try {
+        loadErrorMessage.value = '';
         pageLoading.value = true;
         await Promise.all([loadData(), loadConsultationPolicy()]);
         if (!useLayout().isSidebarActive) useLayout().toggleMenu();
@@ -817,7 +819,8 @@ onMounted(async () => {
     
             return;
         }
-        throw error;
+        loadErrorMessage.value = 'Impossible de charger la fiche médicale.';
+        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de charger la fiche médicale.', life: 3000 });
     } finally {
         pageLoading.value = false;
     }
@@ -858,6 +861,23 @@ onBeforeUnmount(() => {
     if (!useLayout().isSidebarActive) useLayout().toggleMenu();
 });
 
+const retryLoad = async () => {
+    loadErrorMessage.value = '';
+    pageLoading.value = true;
+    try {
+        await Promise.all([loadData(), loadConsultationPolicy()]);
+    } catch (error) {
+        if (isClosedConsultationError(error)) {
+            redirectClosedConsultation();
+            return;
+        }
+        loadErrorMessage.value = 'Impossible de charger la fiche médicale.';
+        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de charger la fiche médicale.', life: 3000 });
+    } finally {
+        pageLoading.value = false;
+    }
+};
+
 </script>
 
 <template>
@@ -866,7 +886,7 @@ onBeforeUnmount(() => {
         <ConfirmDialog />
         <AppToast />
         
-        <div v-if ="!pageLoading">
+        <div v-if="!pageLoading && !loadErrorMessage">
             <div data-tour="consultations-form.header" class="mb-6 md:mb-8 gap-4 flex flex-row justify-items-strech rounded-2xl bg-surface-0/80 dark:bg-surface-800/80 backdrop-blur-sm border border-surface-200/50 dark:border-surface-700/50">
                 <div class="inline-flex items-center gap-3 mb-4 p-3 ">
                     <div class="p-2.5 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600">
@@ -938,28 +958,45 @@ onBeforeUnmount(() => {
                                         ></textarea>
                                     </div>
 
-                                    <div class="rounded-xl border border-surface-200 dark:border-surface-700 p-3">
-                                        <div class="flex items-center justify-between mb-2">
+                                    <div class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-0/80 dark:bg-surface-900/30 p-3.5">
+                                        <div class="mb-3">
                                             <label class="text-sm font-semibold text-surface-700 dark:text-surface-200 uppercase tracking-wide">Antécédents & allergies</label>
-                                            <div class="flex items-center gap-1">
-                                                <Button icon="pi pi-plus" label="Allergie" text size="small" @click="showAllergyDialog = true" />
-                                                <Button icon="pi pi-plus" label="Antécédent" text size="small" @click="showAntecedentDialog = true" />
-                                            </div>
                                         </div>
-                                        <div class="space-y-2 max-h-56 overflow-auto pr-1">
-                                            <div v-for="item in data.patient.antecedents" :key="`a-${item.id}`" class="flex items-start justify-between gap-2 rounded-md border border-surface-200 dark:border-surface-700 px-2 py-1.5">
-                                                <div class="text-sm text-surface-700 dark:text-surface-300">
-                                                    <strong>{{ item.type || 'Antécédent' }}:</strong> {{ item.description || '—' }}
+
+                                        <div class="grid grid-cols-1 gap-3">
+                                            <div class="rounded-lg border border-surface-200/80 dark:border-surface-700/80 bg-surface-50/80 dark:bg-surface-800/40 p-2.5">
+                                                <div class="flex items-center justify-between mb-2">
+                                                    <p class="text-sm font-semibold text-surface-700 dark:text-surface-200">Antécédents</p>
+                                                    <Button icon="pi pi-plus" label="Ajouter" text size="small" @click="showAntecedentDialog = true" />
                                                 </div>
-                                                <Button icon="pi pi-trash" text severity="danger" size="small" @click="handleDeleteAntecedent(item)" />
-                                            </div>
-                                            <div v-for="item in data.patient.allergies" :key="`al-${item.id}`" class="flex items-start justify-between gap-2 rounded-md border border-surface-200 dark:border-surface-700 px-2 py-1.5">
-                                                <div class="text-sm text-surface-700 dark:text-surface-300">
-                                                    <strong>{{ item.libelle || 'Allergie' }}:</strong> {{ item.description || '—' }}
+                                                <div class="space-y-2 max-h-28 overflow-auto pr-1">
+                                                    <div v-for="item in data.patient.antecedents" :key="`a-${item.id}`" class="flex items-start justify-between gap-2 rounded-md border border-surface-200 dark:border-surface-700 bg-white/80 dark:bg-surface-900/60 px-2 py-1.5">
+                                                        <div class="text-sm text-surface-700 dark:text-surface-300 leading-5">
+                                                            <span class="inline-flex items-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 px-2 py-0.5 text-xs font-medium mr-1.5">{{ item.type || 'Antécédent' }}</span>
+                                                            <span>{{ item.description || '—' }}</span>
+                                                        </div>
+                                                        <Button icon="pi pi-trash" text severity="danger" size="small" @click="handleDeleteAntecedent(item)" />
+                                                    </div>
+                                                    <div v-if="!data.patient.antecedents?.length" class="text-sm text-surface-500 dark:text-surface-400">Aucun antécédent enregistré.</div>
                                                 </div>
-                                                <Button icon="pi pi-trash" text severity="danger" size="small" @click="handleDeleteAllergy(item)" />
                                             </div>
-                                            <div v-if="!data.patient.antecedents?.length && !data.patient.allergies?.length" class="text-sm text-surface-500 dark:text-surface-400">Aucun antécédent/allergie enregistré.</div>
+
+                                            <div class="rounded-lg border border-surface-200/80 dark:border-surface-700/80 bg-surface-50/80 dark:bg-surface-800/40 p-2.5">
+                                                <div class="flex items-center justify-between mb-2">
+                                                    <p class="text-sm font-semibold text-surface-700 dark:text-surface-200">Allergies</p>
+                                                    <Button icon="pi pi-plus" label="Ajouter" text size="small" @click="showAllergyDialog = true" />
+                                                </div>
+                                                <div class="space-y-2 max-h-28 overflow-auto pr-1">
+                                                    <div v-for="item in data.patient.allergies" :key="`al-${item.id}`" class="flex items-start justify-between gap-2 rounded-md border border-surface-200 dark:border-surface-700 bg-white/80 dark:bg-surface-900/60 px-2 py-1.5">
+                                                        <div class="text-sm text-surface-700 dark:text-surface-300 leading-5">
+                                                            <span class="inline-flex items-center rounded-full bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300 px-2 py-0.5 text-xs font-medium mr-1.5">{{ item.libelle || 'Allergie' }}</span>
+                                                            <span>{{ item.description || '—' }}</span>
+                                                        </div>
+                                                        <Button icon="pi pi-trash" text severity="danger" size="small" @click="handleDeleteAllergy(item)" />
+                                                    </div>
+                                                    <div v-if="!data.patient.allergies?.length" class="text-sm text-surface-500 dark:text-surface-400">Aucune allergie enregistrée.</div>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
 
@@ -981,24 +1018,24 @@ onBeforeUnmount(() => {
                                 <div class="space-y-4">
                                     <div class="rounded-xl border border-surface-200 dark:border-surface-700 p-3">
                                         <div class="flex items-center justify-between mb-2">
-                                            <label class="text-sm font-semibold text-surface-700 dark:text-surface-200 uppercase tracking-wide">Examens complémentaires</label>
+                                            <label class="text-sm font-semibold text-surface-700 dark:text-surface-200 uppercase tracking-wide">Examens</label>
                                             <Button icon="pi pi-plus" label="Ligne" text size="small" @click="addExamComplementaireRow" />
                                         </div>
                                         <div class="space-y-2 max-h-72 overflow-auto pr-1">
-                                            <div v-for="(item, examIndex) in data.examens.examensLabo" :key="examIndex" class="grid grid-cols-12 gap-2 items-center rounded-md border border-surface-200 dark:border-surface-700 p-2">
+                                            <div v-for="(item, examIndex) in data.examens.examensLabo" :key="examIndex" class="grid grid-cols-12 gap-2 items-center rounded-md border border-surface-300 dark:border-surface-700 p-2">
                                                 <AutoComplete
                                                     v-model="item.type"
                                                     :suggestions="examensTypeSuggestions"
                                                     dropdown
-                                                    class="col-span-3"
+                                                    class="col-span-4"
                                                     inputClass="w-full rounded border border-surface-300 dark:border-surface-600 bg-transparent px-2 py-1 text-sm"
                                                     placeholder="Type"
                                                     @complete="searchExamensTypes"
                                                 />
-                                                <input v-model="item.description" class="col-span-4 rounded border border-surface-300 dark:border-surface-600 bg-transparent px-2 py-1 text-sm" placeholder="Description" />
-                                                <input v-model="item.date" type="date" class="col-span-2 rounded border border-surface-300 dark:border-surface-600 bg-transparent px-2 py-1 text-sm" />
-                                                <input v-model="item.resultat" class="col-span-2 rounded border border-surface-300 dark:border-surface-600 bg-transparent px-2 py-1 text-sm" placeholder="Résultat" />
-                                                <Button icon="pi pi-trash" text severity="danger" size="small" class="col-span-1 justify-self-end" @click="removeExamComplementaireRow(examIndex)" />
+                                                <InputText v-model="item.description" class="col-span-8 rounded border border-surface-300 dark:border-surface-600 bg-transparent px-2 py-1 text-sm min-h-full" placeholder="Description" />
+                                                <Textarea v-model="item.resultat" class="col-span-8 rounded border border-surface-300 dark:border-surface-600 bg-transparent px-2 py-1 text-sm" placeholder="Résultat" />
+                                                <DatePicker v-model="item.date" showIcon fluid iconDisplay="input" class="col-span-3 rounded bg-transparent text-sm self-start" placeholder="Date" /> 
+                                                <Button icon="pi pi-trash" text severity="danger" size="small" class="col-span-1 justify-self-end self-start" @click="removeExamComplementaireRow(examIndex)" />
                                             </div>
                                             <div v-if="!data.examens.examensLabo?.length" class="text-sm text-surface-500 dark:text-surface-400">Aucun examen complémentaire.</div>
                                         </div>
@@ -1026,20 +1063,22 @@ onBeforeUnmount(() => {
                                             <label class="text-sm font-semibold text-surface-700 dark:text-surface-200 uppercase tracking-wide">Plan de traitement</label>
                                             <Button icon="pi pi-plus" label="Ajout rapide" text size="small" @click="addPlanRow" />
                                         </div>
-                                        <div class="space-y-2 max-h-72 overflow-auto pr-1">
+                                        <div class="space-y-2  overflow-auto pr-1">
                                             <div v-for="(plan, planIndex) in data.planTraitement" :key="plan.id || planIndex" class="grid grid-cols-12 gap-2 items-center rounded-md border border-surface-200 dark:border-surface-700 p-2">
                                                 <AutoComplete
                                                     v-model="plan.type"
                                                     :suggestions="traitementTypeSuggestions"
                                                     dropdown
-                                                    class="col-span-3"
+                                                    class="col-span-7"
                                                     inputClass="w-full rounded border border-surface-300 dark:border-surface-600 bg-transparent px-2 py-1 text-sm"
                                                     placeholder="Type"
                                                     @complete="searchTraitementTypes"
                                                 />
-                                                <input v-model="plan.dateSupposed" type="date" class="col-span-3 rounded border border-surface-300 dark:border-surface-600 bg-transparent px-2 py-1 text-sm" />
-                                                <input v-model="plan.description" class="col-span-5 rounded border border-surface-300 dark:border-surface-600 bg-transparent px-2 py-1 text-sm" placeholder="Description" />
-                                                <Button icon="pi pi-trash" text severity="danger" size="small" class="col-span-1 justify-self-end" @click="removePlanRow(planIndex)" />
+
+                                                <DatePicker v-model="plan.dateSupposed" showIcon fluid class="col-span-4 rounded  bg-transparent px-2 py-1 text-sm" />
+                                                <Button icon="pi pi-trash" text severity="danger" size="small" class="col-span-1 justify-self-center" @click="removePlanRow(planIndex)" />
+                                                <Textarea v-model="plan.description" class="col-span-11 rounded border border-surface-300 dark:border-surface-600 bg-transparent px-2 py-1 text-sm" placeholder="Description" />
+                                                
                                             </div>
                                             <div v-if="!data.planTraitement?.length" class="text-sm text-surface-500 dark:text-surface-400">Aucun plan ajouté.</div>
                                         </div>
@@ -1166,6 +1205,17 @@ onBeforeUnmount(() => {
                 />
             </div>
         </div>
+        <div v-else-if="loadErrorMessage" class="flex min-h-[320px] flex-col items-center justify-center gap-4 rounded-2xl border border-amber-200/70 bg-amber-50/70 p-8 dark:border-amber-800/70 dark:bg-amber-950/20">
+            <div class="flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
+                <i class="pi pi-exclamation-triangle text-2xl"></i>
+            </div>
+            <div class="text-center">
+                <p class="text-lg font-semibold text-amber-800 dark:text-amber-200">Chargement interrompu</p>
+                <p class="text-sm text-amber-700/90 dark:text-amber-300/90">{{ loadErrorMessage }}</p>
+            </div>
+            <Button icon="pi pi-refresh" label="Réessayer" severity="warning" @click="retryLoad" />
+        </div>
+
         <div v-else class="flex flex-col items-center justify-center min-h-[300px]">
             <div class="relative mb-4">
             <span class="block w-16 h-16 rounded-full border-4 border-primary-500 border-t-transparent pi-spin"></span>

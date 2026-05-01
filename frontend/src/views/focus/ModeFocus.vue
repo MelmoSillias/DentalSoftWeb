@@ -739,7 +739,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-     <section class="min-h-screen bg-surface-50 dark:bg-surface-950 transition-colors duration-300">
+     <section class="max-h-[80vh] bg-surface-50 dark:bg-surface-950 transition-colors duration-300">
         <AppToast />
         <ConfirmPopup group="focus-cancel-consultation" />
 

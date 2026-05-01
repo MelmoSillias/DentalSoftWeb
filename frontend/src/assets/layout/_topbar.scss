@@ -8,7 +8,7 @@
     width: 100%;
     grid-column: 1 / span 2;
     padding: 0 2rem; 
-    background-color: color-mix(in srgb, var(--primary-color) 80%, transparent);
+    background-color: var(--primary-color);
     transition: left var(--layout-section-transition-duration);
     display: flex;
     align-items: center;
@@ -22,10 +22,10 @@
     .layout-topbar-logo {
         display: inline-flex;
         align-items: center;
-        font-size: 1.5rem;
+        font-size: 1.2rem;
         border-radius: var(--content-border-radius);
         color: #fff;
-        font-weight: 500;
+        font-weight: bold;
         gap: 0.5rem;
 
         svg {

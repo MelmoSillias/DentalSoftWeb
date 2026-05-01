@@ -76,26 +76,67 @@ const markAll = (event) => {
 
             <div v-else-if="loading" class="text-sm text-surface-500">Chargement...</div>
 
-            <div v-else class="space-y-3">
-                <div v-for="item in filteredItems" :key="item.id" class="p-3 sm:p-4 rounded-xl border border-surface-200/50 dark:border-surface-700/50 hover:border-primary-300/50 transition">
-                    <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-                        <div>
-                            <div class="font-medium text-surface-900 dark:text-surface-100 text-sm sm:text-base">{{ item.message }}</div>
-                            <div class="text-[11px] sm:text-xs text-surface-500 mt-1">{{ item.createdAt || '--' }}</div>
-                        </div>
-                        <div class="flex items-center gap-2 sm:mt-0">
-                            <span class="text-[11px] sm:text-xs px-2 py-1 rounded-full" :class="item.status === 'non_vu' ? 'bg-amber-100 text-amber-700' : 'bg-surface-100 text-surface-600'">
-                                {{ item.status === 'non_vu' ? 'Non lu' : 'Lu' }}
-                            </span>
-                            <Button v-if="item.status === 'non_vu'" icon="pi pi-check" size="small" text @click="emit('mark-read', [item.id])" />
-                        </div>
-                    </div>
-                    <div v-if="item.link" class="text-[11px] sm:text-xs text-primary-600 mt-2 break-all">
-                        {{ item.link }}
-                    </div>
-                </div>
+            <div v-else>
+                <DataTable
+                    :value="filteredItems"
+                    dataKey="id"
+                    paginator
+                    :rows="5"
+                    :rowsPerPageOptions="[5, 10, 20]"
+                    
+                    responsiveLayout="scroll"
+                    class="p-datatable-sm"
+                >
+                    <template #empty>
+                        <div class="text-center text-surface-500 py-4">Aucune notification.</div>
+                    </template>
 
-                <div v-if="!filteredItems.length" class="text-center text-surface-500">Aucune notification.</div>
+                    <Column field="message" header="Message">
+                        <template #body="{ data }">
+                            <div class="font-medium text-surface-900 dark:text-surface-100 text-sm sm:text-base">
+                                {{ data.message }}
+                            </div>
+                        </template>
+                    </Column>
+
+                    <Column field="createdAt" header="Date" style="min-width: 140px">
+                        <template #body="{ data }">
+                            <span class="text-[11px] sm:text-xs text-surface-500">{{ data.createdAt || '--' }}</span>
+                        </template>
+                    </Column>
+
+                    <Column header="Statut" style="width: 120px">
+                        <template #body="{ data }">
+                            <span
+                                class="text-[11px] sm:text-xs px-2 py-1 rounded-full"
+                                :class="data.status === 'non_vu' ? 'bg-amber-100 text-amber-700' : 'bg-surface-100 text-surface-600'"
+                            >
+                                {{ data.status === 'non_vu' ? 'Non lu' : 'Lu' }}
+                            </span>
+                        </template>
+                    </Column>
+
+                    <Column header="Action" style="width: 90px">
+                        <template #body="{ data }">
+                            <Button
+                                v-if="data.status === 'non_vu'"
+                                icon="pi pi-check"
+                                size="small"
+                                text
+                                @click="emit('mark-read', [data.id])"
+                            />
+                        </template>
+                    </Column>
+
+                    <Column field="link" header="Lien">
+                        <template #body="{ data }">
+                            <span v-if="data.link" class="text-[11px] sm:text-xs text-primary-600 break-all">
+                                {{ data.link }}
+                            </span>
+                            <span v-else class="text-surface-400">--</span>
+                        </template>
+                    </Column>
+                </DataTable>
             </div>
         </div>
     </div>
