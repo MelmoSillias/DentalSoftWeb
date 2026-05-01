@@ -39,6 +39,15 @@ const groups = [
     { label: 'O-', value: 'O-' }
 ];
 
+const referralSources = [
+    { label: 'Réseaux sociaux', value: 'Reseaux sociaux' },
+    { label: 'Bouche à bouche', value: 'Bouche a bouche' },
+    { label: 'Recommandation', value: 'Recommandation' },
+    { label: 'Par un médecin', value: 'Par un medecin' },
+    { label: 'Publicité', value: 'Publicite' },
+    { label: 'Autres', value: 'Autres' }
+];
+
 const form = reactive({
     nom: '',
     prenom: '',
@@ -49,6 +58,7 @@ const form = reactive({
     lieuNaissance: '',
     sexe: '',
     dateNaissance: '',
+    referencement: '',
     groupeSanguin: '',
     notes: '',
     contactUrgence: {
@@ -68,12 +78,58 @@ const form = reactive({
 });
 
 const isEdit = computed(() => Boolean(props.patient?.id));
+const ageInput = ref('');
 
 const formatDateInput = (value) => {
     if (!value) return '';
     const parsed = new Date(value);
     if (Number.isNaN(parsed.getTime())) return value;
     return parsed.toISOString().slice(0, 10);
+};
+
+const calculateAgeFromDate = (value) => {
+    if (!value) return '';
+    const birthDate = new Date(value);
+    if (Number.isNaN(birthDate.getTime())) return '';
+
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    const dayDiff = today.getDate() - birthDate.getDate();
+
+    if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) {
+        age -= 1;
+    }
+
+    return age >= 0 ? String(age) : '';
+};
+
+const syncAgeFromDate = () => {
+    ageInput.value = calculateAgeFromDate(form.dateNaissance);
+};
+
+const onDateNaissanceInput = (value) => {
+    form.dateNaissance = value || '';
+    syncAgeFromDate();
+};
+
+const onAgeInput = (value) => {
+    const normalized = String(value ?? '').replace(/\D/g, '').slice(0, 3);
+    ageInput.value = normalized;
+
+    if (!normalized) {
+        form.dateNaissance = '';
+        return;
+    }
+
+    const age = Number(normalized);
+    if (!Number.isFinite(age)) {
+        return;
+    }
+
+    const currentYear = new Date().getFullYear();
+    const year = Math.max(1900, currentYear - age);
+    form.dateNaissance = `${year}-01-01`;
 };
 
 const resetForm = () => {
@@ -86,6 +142,8 @@ const resetForm = () => {
     form.lieuNaissance = '';
     form.sexe = '';
     form.dateNaissance = '';
+    form.referencement = '';
+    ageInput.value = '';
     form.groupeSanguin = '';
     form.notes = '';
     form.contactUrgence.nom = '';
@@ -113,6 +171,8 @@ watch(
             form.lieuNaissance = val.lieuNaissance ?? val.lieu_naissance ?? '';
             form.sexe = val.sexe ?? '';
             form.dateNaissance = formatDateInput(val.dateNaissance ?? val.date_naissance ?? '');
+            form.referencement = val.referencement ?? '';
+            syncAgeFromDate();
             form.groupeSanguin = val.groupeSanguin ?? val.groupe_sanguin ?? '';
             form.notes = val.notes ?? '';
             const contactUrgence = val.contactUrgence ?? val.contact_urgence ?? {};
@@ -153,6 +213,7 @@ const savePatient = async () => {
             lieuNaissance: form.lieuNaissance,
             sexe: form.sexe,
             dateNaissance: form.dateNaissance || null,
+            referencement: form.referencement || '',
             groupeSanguin: form.groupeSanguin,
             notes: form.notes,
             contactUrgence: hasContactUrgence ? contactUrgence : null,
@@ -229,8 +290,36 @@ const handleSubmit = (event) => {
             </div>
             <div class="flex flex-col gap-2">
                 <label for="date-naissance" class="font-semibold">Date de naissance</label>
-                <InputText id="date-naissance" v-model="form.dateNaissance" type="date"
-                    placeholder="Date de naissance" />
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <InputText
+                        id="date-naissance"
+                        :modelValue="form.dateNaissance"
+                        type="date"
+                        placeholder="Date de naissance"
+                        @update:modelValue="onDateNaissanceInput"
+                    />
+                    <InputText
+                        id="age-patient"
+                        :modelValue="ageInput"
+                        type="number"
+                        min="0"
+                        max="130"
+                        placeholder="Âge"
+                        @update:modelValue="onAgeInput"
+                    />
+                </div>
+            </div>
+            <div class="flex flex-col gap-2">
+                <label for="referencement" class="font-semibold">Comment a-t-il connu le cabinet ?</label>
+                <Select
+                    id="referencement"
+                    v-model="form.referencement"
+                    :options="referralSources"
+                    optionLabel="label"
+                    optionValue="value"
+                    placeholder="Choisir"
+                    class="w-full"
+                />
             </div>
             <!-- <div class="flex flex-col gap-2">
                 <label for="groupe" class="font-semibold">Groupe sanguin</label>

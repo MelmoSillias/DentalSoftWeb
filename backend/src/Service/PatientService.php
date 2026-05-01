@@ -86,6 +86,7 @@ class PatientService
             'adresse' => $patient->getAdresse(),
             'profession' => $patient->getProfession(),
             'lieuNaissance' => $patient->getLieuNaissance(),
+            'referencement' => $patient->getReferencement(),
             'groupeSanguin' => $patient->getGroupeSanguin(),
             'contactUrgence' => $contact ? [
                 'nom' => $contact->getNom(),
@@ -235,7 +236,7 @@ class PatientService
             $patient->setDateInscription(new DateTime());
             $patient->setNumCarnet(uniqid('PAT-', true));
             $patient->setGroupeSanguin($data['groupeSanguin'] ?? null);
-            $patient->setReferencement('');
+            $patient->setReferencement(trim((string) ($data['referencement'] ?? '')));
             $this->applySmsPreferences($patient, $data);
 
             if (isset($data['contactUrgence']) && is_array($data['contactUrgence'])) {
@@ -283,6 +284,7 @@ class PatientService
             $patient->setAdresse($data['adresse'] ?? $patient->getAdresse());
             $patient->setProfession($data['profession'] ?? $patient->getProfession());
             $patient->setLieuNaissance($data['lieuNaissance'] ?? $patient->getLieuNaissance());
+            $patient->setReferencement(trim((string) ($data['referencement'] ?? $patient->getReferencement() ?? '')));
             $patient->setGroupeSanguin($data['groupeSanguin'] ?? $patient->getGroupeSanguin());
             $patient->setSexe($data['sexe'] ?? $patient->getSexe());
             $this->applySmsPreferences($patient, $data);
@@ -450,6 +452,7 @@ class PatientService
             'adresse' => $patient->getAdresse(),
             'profession' => $patient->getProfession(),
             'lieuNaissance' => $patient->getLieuNaissance(),
+            'referencement' => $patient->getReferencement(),
             'numCarnet' => $patient->getNumCarnet(),
             'groupeSanguin' => $patient->getGroupeSanguin(),
             'dateInscription' => $patient->getDateInscription()->format('Y-m-d H:i'),
