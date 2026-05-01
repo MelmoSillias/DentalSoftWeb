@@ -31,6 +31,7 @@ const logsDateRange = ref(null);
 const logsSearch = ref('');
 const manualTemplateCode = ref(null);
 const newApprovedSenderName = ref('');
+const loadErrorMessage = ref('');
 
 const tabItems = [
     { value: 'overview', label: 'Aperçu', icon: 'pi pi-chart-bar' },
@@ -207,12 +208,34 @@ watch(manualTemplateCode, () => {
 });
 
 onMounted(async () => {
-    await loadSmsData(true);
+    try {
+        await loadSmsData(true);
+        loadErrorMessage.value = '';
+    } catch (error) {
+        loadErrorMessage.value = extractApiError(error, 'Impossible de charger les paramètres SMS.');
+    }
 });
+
+const retryLoadSmsSettings = async () => {
+    loadErrorMessage.value = '';
+    await loadSmsData(true);
+};
 </script>
 
 <template>
     <div class="space-y-6 pb-6 ml-8">
+        <div v-if="loadErrorMessage" class="flex min-h-[320px] flex-col items-center justify-center gap-4 rounded-2xl border border-amber-200/70 bg-amber-50/70 p-8 dark:border-amber-800/70 dark:bg-amber-950/20">
+            <div class="flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
+                <i class="pi pi-exclamation-triangle text-2xl"></i>
+            </div>
+            <div class="text-center">
+                <p class="text-lg font-semibold text-amber-800 dark:text-amber-200">Chargement interrompu</p>
+                <p class="text-sm text-amber-700/90 dark:text-amber-300/90">{{ loadErrorMessage }}</p>
+            </div>
+            <Button icon="pi pi-refresh" label="Réessayer" severity="warning" @click="retryLoadSmsSettings" />
+        </div>
+
+        <template v-else>
         <!-- Header Section -->
         <div class="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900/50">
             <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -775,6 +798,7 @@ onMounted(async () => {
                 </TabPanel>
             </TabPanels>
         </Tabs>
+        </template>
     </div>
 </template>
 

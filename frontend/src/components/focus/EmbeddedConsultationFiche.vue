@@ -8,6 +8,7 @@ import AllergyDialogForm from '@/components/patients/AllergyDialogForm.vue';
 import AntecedentDialogForm from '@/components/patients/AntecedentDialogForm.vue';
 import AutoComplete from 'primevue/autocomplete';
 import PrintFicheV2Body from '@/components/print/PrintFicheV2Body.vue';
+import PrintDevisBody from '@/components/print/PrintDevisBody.vue';
 import PrintOrdonnanceBody from '@/components/print/PrintOrdonnanceBody.vue';
 import EntretienVerbalForm from '@/components/fiche-medicale/EntretienVerbalForm.vue';
 import ExamensFicheForm from '@/components/fiche-medicale/ExamensFicheForm.vue';
@@ -20,7 +21,7 @@ import { usePrinter } from '@/composables/usePrinter';
 import { defaultSoinList, normalizeSoinList } from '@/services/consultations';
 import { fetchPublicGeneralSettings } from '@/services/globalSettingsService';
 import { addPatientAllergy, addPatientAntecedent, deletePatientAllergy, deletePatientAntecedent, updatePatient } from '@/services/patients';
-import { fetchOrdonnancePrintData, fetchPatientFichePrintData } from '@/services/printService';
+import { fetchDevisPrintData, fetchOrdonnancePrintData, fetchPatientFichePrintData } from '@/services/printService';
 import { useAuthStore } from '@/stores/auth';
 import ConfirmDialog from 'primevue/confirmdialog';
 import Tag from 'primevue/tag';
@@ -674,6 +675,21 @@ const handlePrintFiche = async () => {
     }
 };
 
+const handlePrintDevis = async (devisEntry) => {
+    const devisId = Number(devisEntry?.id ?? Number.NaN);
+    if (!Number.isFinite(devisId)) {
+        toast.add({ severity: 'warn', summary: 'Impression', detail: 'Ce devis doit etre sauvegarde avant impression.' });
+        return;
+    }
+
+    try {
+        const response = await fetchDevisPrintData(devisId, token);
+        await printComponent(PrintDevisBody, { doc: response.doc, title: response.title || 'Devis' });
+    } catch (_) {
+        toast.add({ severity: 'error', summary: 'Erreur', detail: "Impossible d'imprimer le devis." });
+    }
+};
+
 const openOrdonnanceModal = () => {
     ordonnanceDraft.value = {
         date: new Date().toISOString().slice(0, 10),
@@ -790,7 +806,7 @@ defineExpose({
         <AppToast />
 
         <div v-if="!pageLoading && !loadErrorMessage" class="space-y-5">
-            <div class="flex items-center justify-between rounded-xl border border-surface-200/60 dark:border-surface-700/60 bg-surface-0 dark:bg-surface-800/70 px-4 py-3 shadow-sm">
+            <div class="flex items-center justify-between border border-surface-200/60 dark:border-surface-700/60 bg-surface-0 dark:bg-surface-800/70 px-4 py-3 shadow-sm">
                 <div class="flex items-center gap-3">
                     <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-primary-500/10 text-primary-600 dark:bg-primary-500/20 dark:text-primary-300">
                         <i class="pi pi-file-edit text-sm"></i>
@@ -838,7 +854,7 @@ defineExpose({
                 </div>
             </div>
 
-            <div class="rounded-2xl border border-surface-200/60 dark:border-surface-700/60 bg-surface-0 dark:bg-surface-800/70 shadow-sm">
+            <div class="border border-surface-200/60 dark:border-surface-700/60 bg-surface-0 dark:bg-surface-800/70 shadow-sm">
                 <div v-if="isReadonly" class="border-b border-amber-200/80 bg-amber-50/90 px-5 py-4 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">
                     Cette consultation est terminee. La fiche reste visible ici en lecture seule.
                 </div>
@@ -1053,7 +1069,13 @@ defineExpose({
 
                     <template #devis>
                         <div :class="isReadonly ? 'pointer-events-none select-none' : ''">
-                            <DevisForm v-model="data.devis" :saving="saving.devis" :soins="soinsList" @save="saveDevisSection" />
+                            <DevisForm
+                                v-model="data.devis"
+                                :saving="saving.devis"
+                                :soins="soinsList"
+                                @save="saveDevisSection"
+                                @print-devis="handlePrintDevis"
+                            />
                         </div>
                     </template>
 

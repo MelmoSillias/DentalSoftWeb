@@ -261,10 +261,7 @@ onMounted(() => {
             </SplitterPanel>
 
             <SplitterPanel :size="20" class="flex flex-col">
-                <div
-                    class="h-full flex flex-col bg-white dark:bg-surface-900 border-l border-surface-200 dark:border-surface-700">
-
-                    <!-- Header -->
+                <div class="h-full flex flex-col bg-white dark:bg-surface-900 border-l border-surface-200 dark:border-surface-700"> 
                     <div
                         class="flex items-center justify-between px-5 py-4 border-b border-surface-200 dark:border-surface-700">
                         <div>
@@ -290,19 +287,15 @@ onMounted(() => {
                         </div>
                     </div>
 
-                    <!-- Queue -->
                     <div class="flex-1 overflow-auto px-4 py-4 custom-scrollbar">
                         <div class="relative">
-
-                            <!-- Vertical line -->
                             <div class="absolute left-4 top-0 bottom-0 w-px bg-surface-200 dark:bg-surface-700"></div>
 
                             <div class="space-y-4">
                                 <button v-for="(consultation, index) in medecinQueue" :key="consultation.id"
                                     @click="emit('select-consultation', consultation.id)"
                                     class="relative w-full text-left flex gap-4 group">
-
-                                    <!-- Position -->
+                                    
                                     <div class="relative z-10 flex flex-col items-center">
                                         <div :class="[
                                             'w-8 h-8 flex items-center justify-center rounded-full text-xs font-bold border transition-all',

@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import Breadcrumb from 'primevue/breadcrumb';
 import DatePicker from 'primevue/datepicker';
 import SelectButton from 'primevue/selectbutton';
+import Button from 'primevue/button';
 import { useAuthStore } from '@/stores/auth';
 import { GUIDED_TOUR_START_EVENT } from '@/tours';
 import { createDashboardTour } from '@/tours/dashboardTour';
@@ -37,6 +38,7 @@ const selectedRange = ref([startOfMonth, new Date()]);
 
 const selectedPeriod = ref('month');
 const isGuidedTourStarting = ref(false);
+const loadErrorMessage = ref('');
 
 const breadcrumbHome = { icon: 'pi pi-home', to: '/' };
 const breadcrumbItems = [{ label: 'Dashboard' }, { label: 'Tableau de bord' }];
@@ -581,17 +583,32 @@ watch(
 
         try {
             await fetchDashboard(role.value, params);
+            loadErrorMessage.value = '';
         } catch (_) {
-            // Ignore transient errors during logout/unmount transitions
+            loadErrorMessage.value = 'Impossible de charger les données du dashboard.';
         }
     },
     { deep: true, immediate: true }
 );
 
-onMounted(async () => {
-    window.addEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
+const retryLoadDashboard = async () => {
+    loadErrorMessage.value = '';
+    const params = filterParams.value;
+    if (params?.date || (params?.from && params?.to)) {
+        await fetchDashboard(role.value, params);
+    }
     await fetchProfile();
     await fetchNotifications(notificationsFilter.value);
+};
+
+onMounted(async () => {
+    window.addEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
+    try {
+        await fetchProfile();
+        await fetchNotifications(notificationsFilter.value);
+    } catch (_) {
+        loadErrorMessage.value = 'Impossible de charger les données utilisateur du dashboard.';
+    }
 });
 
 onBeforeUnmount(() => {
@@ -658,6 +675,19 @@ onBeforeUnmount(() => {
             </div>
         </div>
 
+        <div v-if="loadErrorMessage" class="mb-6 flex min-h-[320px] flex-col items-center justify-center gap-4 rounded-2xl border border-amber-200/70 bg-amber-50/70 p-8 dark:border-amber-800/70 dark:bg-amber-950/20">
+            <div class="flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
+                <i class="pi pi-exclamation-triangle text-2xl"></i>
+            </div>
+            <div class="text-center">
+                <p class="text-lg font-semibold text-amber-800 dark:text-amber-200">Chargement interrompu</p>
+                <p class="text-sm text-amber-700/90 dark:text-amber-300/90">{{ loadErrorMessage }}</p>
+            </div>
+            <Button icon="pi pi-refresh" label="Réessayer" severity="warning" @click="retryLoadDashboard" />
+        </div>
+
+        <template v-else>
+
         <div data-tour="dashboard.quick-stats">
             <DashboardQuickStats :cards="quickCards" :loading="loading" />
         </div>
@@ -700,5 +730,6 @@ onBeforeUnmount(() => {
                 @mark-all="handleMarkAll"
             />
         </div>
+        </template>
     </section>
 </template>

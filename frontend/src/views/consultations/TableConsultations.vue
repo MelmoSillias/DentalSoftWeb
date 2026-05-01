@@ -73,6 +73,7 @@ const quickDialogVisible = ref(false);
 const quickDialogConsultation = ref(null);
 const quickDialogActionMode = ref('continue');
 const isGuidedTourStarting = ref(false);
+const loadErrorMessage = ref('');
 const allowReceptionQuickClose = ref(true);
 const hidePatientDossierForMedecins = ref(false);
 const hidePatientPhoneForMedecins = ref(false);
@@ -158,20 +159,28 @@ const stateLabel = (row) => {
     return { label: 'En cours', severity: 'warning' };
 };
 
-const loadConsultations = async () => {
+const loadConsultations = async ({ asPageLoad = false } = {}) => {
     loading.value = true;
     try {
         const dateParam = formatDateToApi(selectedDate.value);
         consultations.value = await fetchConsultationsByDate(dateParam, token);
+        if (asPageLoad) {
+            loadErrorMessage.value = '';
+        }
+        return true;
     } catch (error) {
         console.error('Erreur lors du chargement des consultations du jour', error);
+        if (asPageLoad) {
+            loadErrorMessage.value = 'Impossible de charger les consultations.';
+        }
         toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de charger les consultations.', life: 3000 });
+        return false;
     } finally {
         loading.value = false;
     }
 };
 
-const loadQuickClosePolicy = async () => {
+const loadQuickClosePolicy = async ({ asPageLoad = false } = {}) => {
     try {
         const settings = await fetchPublicGeneralSettings(token);
         allowReceptionQuickClose.value = settings?.allowReceptionConsultationQuickActions !== false
@@ -179,18 +188,35 @@ const loadQuickClosePolicy = async () => {
         hidePatientDossierForMedecins.value = settings?.hidePatientDossierForMedecins === true;
         hidePatientPhoneForMedecins.value = settings?.hidePatientPhoneForMedecins === true;
         soinsList.value = normalizeSoinList(settings?.soinsList);
+        return true;
     } catch (error) {
         console.error('Erreur chargement politique de clôturation rapide', error);
         allowReceptionQuickClose.value = true;
         hidePatientDossierForMedecins.value = false;
         hidePatientPhoneForMedecins.value = false;
         soinsList.value = [...defaultSoinList];
+        if (asPageLoad) {
+            loadErrorMessage.value = 'Impossible de charger les paramètres des consultations.';
+        }
+        return false;
     }
 };
 
-onMounted(() => {
-    loadQuickClosePolicy();
-    loadConsultations();
+const initializePage = async () => {
+    loadErrorMessage.value = '';
+    const policyOk = await loadQuickClosePolicy({ asPageLoad: true });
+    const consultationsOk = await loadConsultations({ asPageLoad: true });
+    if (!policyOk && !consultationsOk && !loadErrorMessage.value) {
+        loadErrorMessage.value = 'Impossible de charger les données de consultation.';
+    }
+};
+
+const retryLoadPage = async () => {
+    await initializePage();
+};
+
+onMounted(async () => {
+    await initializePage();
     window.addEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
 });
 
@@ -673,6 +699,18 @@ const currentFactureLoading = computed(() => {
             </div>
         </div>
 
+        <div v-if="loadErrorMessage" class="mb-6 flex min-h-[320px] flex-col items-center justify-center gap-4 rounded-2xl border border-amber-200/70 bg-amber-50/70 p-8 dark:border-amber-800/70 dark:bg-amber-950/20">
+            <div class="flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
+                <i class="pi pi-exclamation-triangle text-2xl"></i>
+            </div>
+            <div class="text-center">
+                <p class="text-lg font-semibold text-amber-800 dark:text-amber-200">Chargement interrompu</p>
+                <p class="text-sm text-amber-700/90 dark:text-amber-300/90">{{ loadErrorMessage }}</p>
+            </div>
+            <Button icon="pi pi-refresh" label="Réessayer" severity="warning" @click="retryLoadPage" />
+        </div>
+
+        <template v-else>
         <!-- Main Card -->
         <div class="bg-surface-0 dark:bg-surface-800/80 rounded-2xl shadow-xl overflow-hidden border border-surface-200/50 dark:border-surface-700/50 backdrop-blur-sm mb-6 md:mb-8">
             <!-- Card Header -->
@@ -1020,6 +1058,7 @@ const currentFactureLoading = computed(() => {
                 </template>
             </DataTable>
         </div>
+        </template>
 
         <Dialog v-model:visible="showCreateDialog" modal :style="{ width: '50rem' }" :pt="{
             root: 'rounded-2xl',

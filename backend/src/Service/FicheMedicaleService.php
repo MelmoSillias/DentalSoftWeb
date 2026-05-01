@@ -648,6 +648,10 @@ class FicheMedicaleService
             $devis->setDate(new \DateTime('now'));
         }
         $devis->setType((int) $type);
+        if (array_key_exists('description', $data)) {
+            $description = trim((string) $data['description']);
+            $devis->setDescription($description !== '' ? $description : null);
+        }
         if (array_key_exists('statut', $data)) {
             $devis->setStatut((int) $data['statut']);
         }
@@ -850,6 +854,7 @@ class FicheMedicaleService
             'id' => $d->getId(),
             'date' => $d->getDate()?->format('Y-m-d'),
             'type' => $d->getType(),
+            'description' => $d->getDescription(),
             'statut' => $d->getStatut() ?? 0,
             'montant' => $d->getMontant() ?? 0.0,
             'reste' => $d->getReste() ?? 0.0,
@@ -1033,6 +1038,7 @@ class FicheMedicaleService
             'id' => $d->getId(),
             'date' => $d->getDate()?->format('Y-m-d'),
             'type' => $d->getType(),
+            'description' => $d->getDescription(),
             'statut' => $d->getStatut() ?? 0,
             'montant' => $d->getMontant() ?? 0.0,
             'reste' => $d->getReste() ?? 0.0,

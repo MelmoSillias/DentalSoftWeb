@@ -53,6 +53,7 @@ const {
 // Loading states
 const generalLoading = ref(false);
 const generalSettingsLoaded = ref(false);
+const loadErrorMessage = ref('');
 const savingStates = reactive({
     consultationAccess: false,
     devicePolicy: false,
@@ -209,12 +210,18 @@ const loadGeneralSettings = async (force = false) => {
         ficheSimplifieCatalog.allergyTypesText = (settings.allergyTypes || []).join('\n');
         ficheSimplifieCatalog.antecedentTypesText = (settings.antecedentTypes || []).join('\n');
         generalSettingsLoaded.value = true;
+        loadErrorMessage.value = '';
     } catch (error) {
         console.error(error);
+        loadErrorMessage.value = extractApiError(error, 'Chargement impossible');
         toast.add({ severity: 'error', summary: 'Erreur', detail: extractApiError(error, 'Chargement impossible'), life: 3500 });
     } finally {
         generalLoading.value = false;
     }
+};
+
+const retryLoadSettings = async () => {
+    await loadGeneralSettings(true);
 };
 
 const saveDevicePolicyAction = async () => {
@@ -402,6 +409,17 @@ onBeforeUnmount(() => {
             <main class="settings-main">
                 <div v-if="generalLoading && !generalSettingsLoaded" class="settings-loading">
                     <div v-for="i in 3" :key="i" class="settings-loading-card"></div>
+                </div>
+
+                <div v-else-if="loadErrorMessage" class="flex min-h-[320px] flex-col items-center justify-center gap-4 rounded-2xl border border-amber-200/70 bg-amber-50/70 p-8 dark:border-amber-800/70 dark:bg-amber-950/20">
+                    <div class="flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
+                        <i class="pi pi-exclamation-triangle text-2xl"></i>
+                    </div>
+                    <div class="text-center">
+                        <p class="text-lg font-semibold text-amber-800 dark:text-amber-200">Chargement interrompu</p>
+                        <p class="text-sm text-amber-700/90 dark:text-amber-300/90">{{ loadErrorMessage }}</p>
+                    </div>
+                    <Button icon="pi pi-refresh" label="Réessayer" severity="warning" @click="retryLoadSettings" />
                 </div>
 
                 <div v-else class="settings-content">

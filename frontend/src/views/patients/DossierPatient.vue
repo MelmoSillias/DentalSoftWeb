@@ -35,7 +35,16 @@
             </div>
         </div>
 
-        <div v-if="dossierHiddenForMedecin" class="rounded-2xl border border-surface-200/50 dark:border-surface-700/50 bg-surface-0 dark:bg-surface-800/80 p-8 text-center">
+        <div v-if="loadErrorMessage" class="rounded-2xl border border-amber-200/70 bg-amber-50/70 p-8 text-center dark:border-amber-800/70 dark:bg-amber-950/20">
+            <div class="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
+                <i class="pi pi-exclamation-triangle text-2xl"></i>
+            </div>
+            <h3 class="mt-3 text-lg font-semibold text-amber-800 dark:text-amber-200">Chargement interrompu</h3>
+            <p class="mt-2 text-sm text-amber-700/90 dark:text-amber-300/90">{{ loadErrorMessage }}</p>
+            <Button class="mt-4" icon="pi pi-refresh" label="Réessayer" severity="warning" @click="retryLoadPage" />
+        </div>
+
+        <div v-else-if="dossierHiddenForMedecin" class="rounded-2xl border border-surface-200/50 dark:border-surface-700/50 bg-surface-0 dark:bg-surface-800/80 p-8 text-center">
             <i class="pi pi-lock text-3xl text-surface-400"></i>
             <h3 class="mt-3 text-lg font-semibold text-surface-900 dark:text-surface-100">Dossier patient masqué</h3>
             <p class="mt-2 text-sm text-surface-600 dark:text-surface-400">L'accès au dossier patient est restreint pour votre profil.</p>
@@ -327,6 +336,7 @@ const selectedFicheForPrint = ref(null);
 const printIncludeEmpty = ref(false);
 const printSections = ref([]);
 const isGuidedTourStarting = ref(false);
+const loadErrorMessage = ref('');
 let patientSearchTimeout = null;
 let guidedTourPageState = null;
 let guidedTourDemoActive = false;
@@ -575,31 +585,55 @@ const handlePatientFilter = (event) => {
     }, 250);
 };
 
-const loadDossier = async (patientId) => {
+const loadDossier = async (patientId, { asPageLoad = false } = {}) => {
     if (!patientId) return;
     try {
         const data = await patientStore.fetchPatientDossier(patientId);
         if (data) {
             patient.value = patientStore.normalizePatientDossier(data);
         }
+        if (asPageLoad) {
+            loadErrorMessage.value = '';
+        }
+        return true;
     } catch (error) {
         console.error('Erreur lors du chargement du dossier patient', error);
+        if (asPageLoad) {
+            loadErrorMessage.value = 'Impossible de charger le dossier du patient.';
+        }
         toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de charger le dossier du patient. si le problème persiste, contactez le support.', life: 3000 });
+        return false;
     }
 };
 
-const loadConsultations = async (patientId) => {
+const loadConsultations = async (patientId, { asPageLoad = false } = {}) => {
     if (!patientId) return;
     consultationsLoading.value = true;
     try {
         consultations.value = await patientStore.fetchPatientConsultations(patientId);
+        if (asPageLoad) {
+            loadErrorMessage.value = '';
+        }
+        return true;
     } catch (error) {
         console.error('Erreur lors du chargement des consultations', error);
         consultations.value = [];
+        if (asPageLoad) {
+            loadErrorMessage.value = 'Impossible de charger les consultations du patient.';
+        }
         toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de charger les consultations du patient. si le problème persiste, contactez le support.', life: 3000 });
+        return false;
     } finally {
         consultationsLoading.value = false;
     }
+};
+
+const retryLoadPage = async () => {
+    loadErrorMessage.value = '';
+    const patientId = getDisplayedPatientId();
+    if (!patientId) return;
+    await loadDossier(patientId, { asPageLoad: true });
+    await loadConsultations(patientId, { asPageLoad: true });
 };
 
 const loadVisibilityPolicy = async () => {
@@ -618,8 +652,8 @@ onMounted(async () => {
     window.addEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
     await loadVisibilityPolicy();
     if (props.patientId != null) {
-        await loadDossier(props.patientId);
-        await loadConsultations(props.patientId);
+        await loadDossier(props.patientId, { asPageLoad: true });
+        await loadConsultations(props.patientId, { asPageLoad: true });
         selectedPatientId.value = props.patientId;
     }
     await loadPatientOptions();

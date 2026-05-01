@@ -130,6 +130,8 @@ const previewData = ref(null);
 const previewDialogTab = ref('services');
 const payLoading = ref(false);
 const isGuidedTourStarting = ref(false);
+const loadErrorMessage = ref('');
+const isInitialLoadPhase = ref(true);
 let guidedTourPageState = null;
 let guidedTourDemoActive = false;
 let guidedTourCleanupPromise = null;
@@ -393,8 +395,14 @@ const loadDevis = async () => {
 		const [start, end] = devisRange.value;
 		const res = await fetchDevis({ start: toApiDate(start), end: toApiDate(end), unpaidOnly: devisType.value === 'impaye' }, token);
 		devis.value = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
+		if (isInitialLoadPhase.value) {
+			loadErrorMessage.value = '';
+		}
 	} catch (error) {
 		console.error(error);
+		if (isInitialLoadPhase.value) {
+			loadErrorMessage.value = 'Impossible de charger les factures de caisse.';
+		}
 		toast.add({ severity: 'error', summary: 'Factures', detail: 'Chargement des factures impossible', life: 3500 });
 	} finally {
 		devisLoading.value = false;
@@ -408,8 +416,14 @@ const loadPayments = async () => {
 		const [start, end] = paymentRange.value;
 		const res = await fetchPayments({ start: toApiDate(start), end: toApiDate(end) }, token);
 		payments.value = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
+		if (isInitialLoadPhase.value) {
+			loadErrorMessage.value = '';
+		}
 	} catch (error) {
 		console.error(error);
+		if (isInitialLoadPhase.value) {
+			loadErrorMessage.value = 'Impossible de charger les paiements de caisse.';
+		}
 		toast.add({ severity: 'error', summary: 'Paiements', detail: 'Chargement des paiements impossible', life: 3500 });
 	} finally {
 		paymentsLoading.value = false;
@@ -433,6 +447,9 @@ const loadPublicGeneralSettings = async () => {
 			hidePatientPhoneForMedecins: settings?.hidePatientPhoneForMedecins === true,
 			soinsList: normalizeSoinList(settings?.soinsList)
 		};
+		if (isInitialLoadPhase.value) {
+			loadErrorMessage.value = '';
+		}
 	} catch (error) {
 		console.error(error);
 		publicGeneralSettings.value = {
@@ -440,7 +457,19 @@ const loadPublicGeneralSettings = async () => {
 			hidePatientPhoneForMedecins: false,
 			soinsList: [...defaultSoinList]
 		};
+		if (isInitialLoadPhase.value) {
+			loadErrorMessage.value = 'Impossible de charger la configuration de caisse.';
+		}
 	}
+};
+
+const retryLoadPage = async () => {
+	loadErrorMessage.value = '';
+	isInitialLoadPhase.value = true;
+	await loadPublicGeneralSettings();
+	await loadDevis();
+	await loadPayments();
+	isInitialLoadPhase.value = false;
 };
 
 const openPayDialog = async (row) => {
@@ -1010,6 +1039,7 @@ watch(paymentRange, loadPayments, { immediate: true });
 onMounted(async () => {
 	await loadPublicGeneralSettings();
 	setActiveView(activeView.value);
+	isInitialLoadPhase.value = false;
 	window.addEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
 });
 
@@ -1023,6 +1053,18 @@ onBeforeUnmount(() => {
 
 <template>
 	<div class="page-shell">
+		<div v-if="loadErrorMessage" class="mb-4 flex min-h-[320px] flex-col items-center justify-center gap-4 rounded-2xl border border-amber-200/70 bg-amber-50/70 p-8 dark:border-amber-800/70 dark:bg-amber-950/20">
+			<div class="flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
+				<i class="pi pi-exclamation-triangle text-2xl"></i>
+			</div>
+			<div class="text-center">
+				<p class="text-lg font-semibold text-amber-800 dark:text-amber-200">Chargement interrompu</p>
+				<p class="text-sm text-amber-700/90 dark:text-amber-300/90">{{ loadErrorMessage }}</p>
+			</div>
+			<Button icon="pi pi-refresh" label="Réessayer" severity="warning" @click="retryLoadPage" />
+		</div>
+
+		<template v-else>
 		<div class="flex flex-wrap items-center justify-between gap-3 mb-4">
 			<div> 
 				<h1 class="text-2xl font-semibold mb-1">Gestion de la caisse</h1>
@@ -1119,6 +1161,7 @@ onBeforeUnmount(() => {
 			@save-facture="saveFacture"
 			@print-invoice="printInvoice"
 		/>
+		</template>
 	</div>
 </template>
 

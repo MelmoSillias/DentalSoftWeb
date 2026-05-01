@@ -44,6 +44,9 @@ class Devis
     #[ORM\Column]
     private ?int $type = null;
 
+    #[ORM\Column(type: 'string', length: 255, nullable: true)]
+    private ?string $description = null;
+
     #[ORM\OneToOne(mappedBy: 'facture', cascade: ['persist', 'remove'])]
     private ?Consultation $consultation = null;
 
@@ -124,6 +127,18 @@ class Devis
     public function setType(int $type): static
     {
         $this->type = $type;
+
+        return $this;
+    }
+
+    public function getDescription(): ?string
+    {
+        return $this->description;
+    }
+
+    public function setDescription(?string $description): static
+    {
+        $this->description = $description;
 
         return $this;
     }

@@ -75,7 +75,53 @@ const defaultBilans = () => ({
 
 const defaultPlanTraitement = () => ([]);
 
-const defaultDevis = () => ({ date: null, services: [] });
+const defaultDevisEntry = () => ({
+    id: null,
+    type: null,
+    date: null,
+    description: '',
+    services: []
+});
+
+const defaultDevis = () => ({
+    ...defaultDevisEntry(),
+    devisList: [defaultDevisEntry()],
+    activeDevisIndex: 0
+});
+
+const normalizeDevisEntry = (entry = {}) => ({
+    id: Number(entry?.id) || null,
+    type: Number.isFinite(Number(entry?.type)) ? Number(entry.type) : null,
+    date: entry?.date ?? null,
+    description: entry?.description || '',
+    services: Array.isArray(entry?.services)
+        ? entry.services.map((service) => ({
+            designation: service?.designation ?? '',
+            qte: Number(service?.qte) || 1,
+            montant: Number(service?.montant) || 0
+        }))
+        : Array.isArray(entry?.contenus)
+            ? entry.contenus.map((service) => ({
+                designation: service?.designation ?? '',
+                qte: Number(service?.qte) || 1,
+                montant: Number(service?.montant) || 0
+            }))
+            : []
+});
+
+const toDevisModel = (entries = [], requestedActiveIndex = 0) => {
+    const list = (Array.isArray(entries) ? entries : [])
+        .map((entry) => normalizeDevisEntry(entry));
+    const safeList = list.length ? list : [defaultDevisEntry()];
+    const activeDevisIndex = Math.min(Math.max(Number(requestedActiveIndex) || 0, 0), safeList.length - 1);
+    const active = safeList[activeDevisIndex] || defaultDevisEntry();
+
+    return {
+        ...active,
+        devisList: safeList,
+        activeDevisIndex
+    };
+};
 
 const normalizeDateForApi = (value) => {
     if (!value) return null;
@@ -294,19 +340,13 @@ export const useConsultationsForm = ({ ficheId, consultId, token, mode }) => {
             })) : []
         };
 
-        const devis = Array.isArray(fiche.devis) ? fiche.devis[0] : fiche.devis || null;
-        data.devis = devis
-            ? {
-                  date: devis.date ?? null,
-                  services: Array.isArray(devis.contenus)
-                      ? devis.contenus.map((c) => ({
-                            designation: c.designation ?? '',
-                            qte: c.qte ?? 1,
-                            montant: c.montant ?? 0
-                        }))
-                      : []
-              }
-            : defaultDevis();
+        const devisEntries = Array.isArray(fiche.devis)
+            ? [...fiche.devis].sort((left, right) => Number(left?.type ?? 0) - Number(right?.type ?? 0))
+            : fiche.devis
+                ? [fiche.devis]
+                : [];
+        const requestedActiveIndex = Number(data.devis?.activeDevisIndex) || 0;
+        data.devis = toDevisModel(devisEntries, requestedActiveIndex);
 
         const plans = fiche.planTraitement ?? fiche.plansTraitement ?? [];
         data.planTraitement = Array.isArray(plans) ? plans.map((p, idx) => ({
@@ -448,16 +488,33 @@ export const useConsultationsForm = ({ ficheId, consultId, token, mode }) => {
         if (!dirty.devis) return;
         setSaving('devis', true);
         try {
-            const payload = {
-                date: normalizeDateForApi(data.devis.date),
-                type: 0,
-                contenus: (data.devis.services || []).map((s) => ({
-                    designation: s.designation ?? '',
-                    qte: s.qte ?? 1,
-                    montant: s.montant ?? 0
-                }))
-            };
-            await saveDevis(ficheId.value, payload, token);
+            const devisList = Array.isArray(data.devis?.devisList) && data.devis.devisList.length
+                ? data.devis.devisList
+                : [
+                    {
+                        id: data.devis?.id ?? null,
+                        type: data.devis?.type ?? 0,
+                        date: data.devis?.date ?? null,
+                        description: data.devis?.description || '',
+                        services: data.devis?.services || []
+                    }
+                ];
+
+            for (let index = 0; index < devisList.length; index += 1) {
+                const entry = normalizeDevisEntry(devisList[index]);
+                const payload = {
+                    date: normalizeDateForApi(entry.date),
+                    type: Number.isFinite(entry.type) ? entry.type : index,
+                    description: entry.description || '',
+                    contenus: (entry.services || []).map((service) => ({
+                        designation: service.designation ?? '',
+                        qte: service.qte ?? 1,
+                        montant: service.montant ?? 0
+                    }))
+                };
+                await saveDevis(ficheId.value, payload, token);
+            }
+
             clearDirty(['devis']);
         } finally {
             setSaving('devis', false);

@@ -7,6 +7,7 @@ import SectionSwitcher from '@/components/consultations/SectionSwitcher.vue';
 import AllergyDialogForm from '@/components/patients/AllergyDialogForm.vue';
 import AntecedentDialogForm from '@/components/patients/AntecedentDialogForm.vue';
 import FormRendezVous from '@/components/patients/FormRendezVous.vue';
+import PrintDevisBody from '@/components/print/PrintDevisBody.vue';
 import PrintFicheV2Body from '@/components/print/PrintFicheV2Body.vue';
 import PrintOrdonnanceBody from '@/components/print/PrintOrdonnanceBody.vue';
 import EntretienVerbalForm from '@/components/fiche-medicale/EntretienVerbalForm.vue';
@@ -21,7 +22,7 @@ import { usePrinter } from '@/composables/usePrinter';
 import { defaultSoinList, normalizeSoinList } from '@/services/consultations';
 import { fetchPublicGeneralSettings } from '@/services/globalSettingsService';
 import { addPatientAllergy, addPatientAntecedent, deletePatientAllergy, deletePatientAntecedent } from '@/services/patients';
-import { fetchOrdonnancePrintData, fetchPatientFichePrintData } from '@/services/printService';
+import { fetchDevisPrintData, fetchOrdonnancePrintData, fetchPatientFichePrintData } from '@/services/printService';
 import { useAuthStore } from '@/stores/auth';
 import { GUIDED_TOUR_START_EVENT } from '@/tours';
 import { createConsultationsFormTour } from '@/tours/consultationsFormTour';
@@ -710,6 +711,22 @@ const handlePrintFiche = async () => {
     }
 };
 
+const handlePrintDevis = async (devisEntry) => {
+    const devisId = Number(devisEntry?.id ?? Number.NaN);
+    if (!Number.isFinite(devisId)) {
+        toast.add({ severity: 'warn', summary: 'Impression', detail: 'Ce devis doit etre sauvegarde avant impression.', life: 3000 });
+        return;
+    }
+
+    try {
+        const result = await fetchDevisPrintData(devisId, token);
+        await printComponent(PrintDevisBody, { doc: result.doc, title: result.title || 'Devis' });
+    } catch (error) {
+        console.error('Erreur impression devis', error);
+        toast.add({ severity: 'error', summary: 'Erreur', detail: "Impossible d'imprimer le devis.", life: 3000 });
+    }
+};
+
 const openOrdonnanceModal = () => {
     ordonnanceDraft.value = {
         date: new Date().toISOString().slice(0, 10),
@@ -1125,7 +1142,13 @@ const retryLoad = async () => {
 
                     <template #devis>
                         <div data-tour="consultations-form.section.devis">
-                            <DevisForm v-model="data.devis" :saving="saving.devis" :soins="soinsList" @save="saveDevisSection" />
+                            <DevisForm
+                                v-model="data.devis"
+                                :saving="saving.devis"
+                                :soins="soinsList"
+                                @save="saveDevisSection"
+                                @print-devis="handlePrintDevis"
+                            />
                         </div>
                     </template>
 

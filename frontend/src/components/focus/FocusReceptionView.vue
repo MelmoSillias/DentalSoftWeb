@@ -600,12 +600,10 @@ function formatPaymentMode(mode) {
                 </button>
 
             </div>
-
-            <!-- FACTURE (MASQUÉE SI ABSENTE) -->
+ 
             <div v-if="hasInvoiceContext"
                 class="rounded-xl border p-3 bg-surface-50 dark:bg-surface-800 border-surface-200 dark:border-surface-700">
-
-                <!-- Header -->
+ 
                 <div class="flex items-center justify-between mb-2">
                     <span class="text-xs font-semibold text-surface-700 dark:text-surface-300">
                         Facture
@@ -620,8 +618,7 @@ function formatPaymentMode(mode) {
                         {{ isPaidInvoice ? 'Réglée' : isFreeInvoice ? 'Gratuite' : 'En attente' }}
                     </span>
                 </div>
-
-                <!-- Montants -->
+ 
                 <div class="space-y-1 text-xs">
                     <div class="flex justify-between">
                         <span class="text-surface-500">Total</span>
@@ -634,12 +631,8 @@ function formatPaymentMode(mode) {
                             {{ selectedInvoiceRemaining === null ? '--' : formatFcfa(selectedInvoiceRemaining) }}
                         </span>
                     </div>
-                </div>
-
-                <!-- ACTIONS FACTURE -->
-                <div class="flex gap-2 mt-3">
-
-                    <!-- ❌ Masqué si déjà réglée -->
+                </div> 
+                <div class="flex gap-2 mt-3"> 
                     <button v-if="!isPaidInvoice && !isFreeInvoice"
                         @click="emit('open-caisse-pay')"
                         class="flex-1 rounded-md bg-green-500 px-3 py-1.5 text-xs text-white hover:bg-green-600">
@@ -658,8 +651,7 @@ function formatPaymentMode(mode) {
                     </button>
                 </div>
             </div>
-
-            <!-- PAIEMENTS -->
+ 
             <div v-if="selectedInvoicePayments.length" class="space-y-2">
                 <p class="text-xs font-semibold text-surface-700 dark:text-surface-300">
                     Paiements
@@ -670,18 +662,14 @@ function formatPaymentMode(mode) {
                     :key="payment.id"
                     class="flex items-center justify-between rounded-lg border px-3 py-2 text-xs
                         bg-surface-50 dark:bg-surface-800 border-surface-200 dark:border-surface-700"
-                >
-
-                    <!-- LEFT -->
+                > 
                     <div class="flex items-center gap-3 min-w-0">
-
-                        <!-- Icône -->
+ 
                         <div class="w-8 h-8 flex items-center justify-center rounded-full text-white text-xs font-bold"
                             :class="payment.status === 'validated' ? 'bg-green-500' : 'bg-amber-500'">
                             <i class="pi pi-wallet text-xs"></i>
                         </div>
-
-                        <!-- Infos -->
+                        
                         <div class="min-w-0">
                             <p class="font-semibold text-surface-900 dark:text-white truncate">
                                 {{ formatFcfa(payment.montant) }}
