@@ -78,20 +78,24 @@ class RdvController extends AbstractController
         $endStr = $request->query->get('end');
         $medecinId = $isMedecin ? $actorMedecin?->getId() : $request->query->get('medecin');
 
-        if ($dateStr) {
-            $date = new DateTime($dateStr);
-            if ($medecinId) {
-                $medecin = $this->employeRepo->find((int) $medecinId);
-                $data = $medecin ? $this->rdvService->getStatsForMedecinDate($date, $medecin) : ['error' => 'Médecin introuvable', 'status' => 404];
+        try {
+            if ($dateStr) {
+                $date = new DateTime($dateStr);
+                if ($medecinId) {
+                    $medecin = $this->employeRepo->find((int) $medecinId);
+                    $data = $medecin ? $this->rdvService->getStatsForMedecinDate($date, $medecin) : ['error' => 'Médecin introuvable', 'status' => 404];
+                } else {
+                    $data = $this->rdvService->getStatsForDate($date);
+                }
+            } elseif ($startStr && $endStr) {
+                $start = new DateTime($startStr);
+                $end = new DateTime($endStr);
+                $data = $this->rdvService->getStatsForRange($start, $end);
             } else {
-                $data = $this->rdvService->getStatsForDate($date);
+                $data = $this->rdvService->getStatsForDate(new DateTime());
             }
-        } elseif ($startStr && $endStr) {
-            $start = new DateTime($startStr);
-            $end = new DateTime($endStr);
-            $data = $this->rdvService->getStatsForRange($start, $end);
-        } else {
-            $data = $this->rdvService->getStatsForDate(new DateTime());
+        } catch (\Throwable) {
+            return new JsonResponse(['error' => 'Format de date invalide'], 400);
         }
 
         $status = $data['status'] ?? 200;
@@ -145,6 +149,9 @@ class RdvController extends AbstractController
 
         $medecinId = $isMedecin ? $actorMedecin?->getId() : $request->query->get('medecin');
         $medecin = $medecinId ? $this->employeRepo->find((int) $medecinId) : null;
+        if ($medecinId && !$medecin) {
+            return new JsonResponse(['error' => 'Médecin introuvable'], 404);
+        }
         $excludeCancelled = in_array('ROLE_RECEPTIONNISTE', $this->getUser()?->getRoles() ?? [], true);
 
         $data = $this->rdvService->listByDate($dateObj, $medecin, $excludeCancelled);

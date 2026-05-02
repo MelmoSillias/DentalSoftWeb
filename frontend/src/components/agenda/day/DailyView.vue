@@ -2,7 +2,7 @@
 import Button from 'primevue/button';
 import Divider from 'primevue/divider';
 import ProgressSpinner from 'primevue/progressspinner';
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import DateChooser from './DateChooser.vue';
 import ScheduleTable from './ScheduleTable.vue';
 import StatsCards from './StatsCards.vue';
@@ -71,8 +71,15 @@ const refreshStats = async () => {
     }
 };
 
+const toDayKey = (value) => {
+    if (!(value instanceof Date) || Number.isNaN(value.getTime())) return '';
+    return value.toISOString().slice(0, 10);
+};
+
 const onDateChange = (val) => {
-    selectedDate.value = val;
+    const next = val instanceof Date ? val : new Date(val);
+    if (toDayKey(next) === toDayKey(selectedDate.value)) return;
+    selectedDate.value = next;
 };
 
 const onCreate = ({ medecin, slot }) => {
@@ -104,11 +111,6 @@ watch(
     },
     { immediate: true }
 );
-
-onMounted(() => {
-    refreshDay();
-    refreshStats();
-});
 </script>
 
 <template>

@@ -52,7 +52,7 @@ const formatAmount = (value) => `${new Intl.NumberFormat('fr-FR').format(Number(
 
                         <template v-else-if="appointments.length">
                             <div v-for="rdv in appointments" :key="rdv.id" class="item">
-                                <div class="icon bg-blue-100 text-blue-600"><i class="pi pi-clock" /></div>
+                                <div class="icon bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300"><i class="pi pi-clock" /></div>
                                 <div class="content">
                                     <div class="title">{{ rdv.patient }}</div>
                                     <div class="meta">{{ rdv.date }} • {{ rdv.medecin || '—' }}</div>
@@ -75,7 +75,7 @@ const formatAmount = (value) => `${new Intl.NumberFormat('fr-FR').format(Number(
 
                         <template v-else-if="pendingConsultations.length">
                             <div v-for="c in pendingConsultations" :key="c.id" class="item">
-                                <div class="icon bg-amber-100 text-amber-600"><i class="pi pi-heartbeat" /></div>
+                                <div class="icon bg-amber-100 text-amber-600 dark:bg-amber-900 dark:text-amber-300"><i class="pi pi-heartbeat" /></div>
                                 <div class="content">
                                     <div class="title">{{ c.patient }}</div>
                                     <div class="meta">{{ c.date }} • {{ c.waitingTime || '--' }}</div>
@@ -254,6 +254,31 @@ const formatAmount = (value) => `${new Intl.NumberFormat('fr-FR').format(Number(
     color: #0f172a;
     margin-top: 0.125rem;
   }
+}
+
+.app-dark .item {
+  background: #1e293b;
+  color: #f1f5f9;
+
+    &:hover {
+        background: #2c3e50;
+    }
+
+    .title {
+        color: #f1f5f9;
+    }
+
+    .meta {
+        color: #94a3b8;
+    }
+
+    .desc {
+        color: #cbd5e1;
+    }
+
+    .amount {
+        color: #f1f5f9;
+    }
 }
  
 .p-button-text {

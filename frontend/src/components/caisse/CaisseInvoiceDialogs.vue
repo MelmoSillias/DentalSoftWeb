@@ -256,13 +256,13 @@ const hasPreviewData = computed(() => Boolean(props.previewData));
 
     <Dialog :visible="previewDialogVisible" header="Détail de la facture" :modal="true" :style="{ width: '820px' }" @update:visible="emit('update:previewDialogVisible', $event)">
         <div>
-            <div v-if="previewLoading" class="p-4 text-center text-gray-600">Chargement...</div>
-            <div v-else-if="hasPreviewData" class="preview-dialog-content flex flex-col gap-3">
-                <div class="preview-header-card flex items-center justify-between rounded-2xl border border-surface-200 bg-surface-50/80 p-4">
+            <div v-if="previewLoading" class="p-4 text-center text-gray-600 dark:text-gray-400">Chargement...</div>
+            <div v-else-if="hasPreviewData" class="preview-dialog-content flex flex-col gap-3 ">
+                <div class="preview-header-card flex items-center justify-between rounded-2xl border border-surface-200 bg-surface-50/80 p-4 dark:bg-surface-800 dark:border-surface-700">
                     <div>
                         <p class="text-lg font-semibold">Facture n° {{ String(previewData.id).padStart(4, '0') }}</p>
-                        <p class="preview-subtext text-sm text-gray-600">Date : {{ previewData.date }}</p>
-                        <p class="preview-subtext text-sm text-gray-600">Patient : {{ previewData.patient?.nom }} {{ previewData.patient?.prenom }}</p>
+                        <p class="preview-subtext text-sm text-gray-600 dark:text-gray-400">Date : {{ previewData.date }}</p>
+                        <p class="preview-subtext text-sm text-gray-600 dark:text-gray-400">Patient : {{ previewData.patient?.nom }} {{ previewData.patient?.prenom }}</p>
                     </div>
                     <div class="flex flex-col items-end gap-2">
                         <Tag :value="'Reste ' + formatFcfa(previewData.reste)" severity="warning" />
@@ -278,22 +278,22 @@ const hasPreviewData = computed(() => Boolean(props.previewData));
                         <TabPanel value="services">
                             <div class="flex flex-col gap-4">
                                 <div class="grid gap-3 md:grid-cols-3">
-                                    <div class="preview-summary-card rounded-xl border border-surface-200 bg-surface-50/70 p-3">
-                                        <p class="preview-summary-label text-xs uppercase tracking-wide text-gray-500">Actes enregistrés</p>
+                                    <div class="preview-summary-card rounded-xl border border-surface-200 bg-surface-50/70 dark:bg-surface-800 dark:border-surface-700 p-3">
+                                        <p class="preview-summary-label text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Actes enregistrés</p>
                                         <p class="mt-1 text-base font-semibold">{{ (previewData.contenus || []).length }}</p>
                                     </div>
-                                    <div class="preview-summary-card rounded-xl border border-surface-200 bg-surface-50/70 p-3">
-                                        <p class="preview-summary-label text-xs uppercase tracking-wide text-gray-500">Total des services</p>
+                                    <div class="preview-summary-card rounded-xl border border-surface-200 bg-surface-50/70 dark:bg-surface-800 dark:border-surface-700 p-3">
+                                        <p class="preview-summary-label text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Total des services</p>
                                         <p class="mt-1 text-base font-semibold">{{ formatFcfa(previewServicesTotal) }}</p>
                                     </div>
-                                    <div class="preview-summary-card rounded-xl border border-surface-200 bg-surface-50/70 p-3">
-                                        <p class="preview-summary-label text-xs uppercase tracking-wide text-gray-500">Montant facturé</p>
+                                    <div class="preview-summary-card rounded-xl border border-surface-200 bg-surface-50/70 dark:bg-surface-800 dark:border-surface-700 p-3">
+                                        <p class="preview-summary-label text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Montant facturé</p>
                                         <p class="mt-1 text-base font-semibold">{{ formatFcfa(previewData.montant) }}</p>
                                     </div>
                                 </div>
-                                <div class="preview-table-card overflow-hidden rounded-2xl border border-surface-200 bg-white/90 shadow-sm">
+                                <div class="preview-table-card overflow-hidden rounded-2xl border border-surface-200 bg-white/90 dark:bg-surface-800 dark:border-surface-700 shadow-sm">
                                     <table class="w-full text-sm">
-                                        <thead class="preview-table-head bg-slate-50 text-slate-700">
+                                        <thead class="preview-table-head bg-slate-50 text-slate-700 dark:bg-surface-800 dark:text-slate-400">
                                             <tr class="preview-table-head-row text-left border-b border-slate-200">
                                                 <th class="px-4 py-3 font-medium">Désignation</th>
                                                 <th class="px-4 py-3 font-medium">Qté</th>
@@ -303,20 +303,20 @@ const hasPreviewData = computed(() => Boolean(props.previewData));
                                         </thead>
                                         <tbody>
                                             <tr v-for="(c, idx) in previewData.contenus || []" :key="idx" class="preview-table-row border-b border-slate-100 last:border-b-0">
-                                                <td class="preview-table-strong px-4 py-3 font-medium text-slate-700">{{ c.designation }}</td>
-                                                <td class="preview-table-muted px-4 py-3 text-slate-600">{{ c.qte }}</td>
-                                                <td class="preview-table-muted px-4 py-3 text-right text-slate-600">{{ formatFcfa(c.montant) }}</td>
-                                                <td class="preview-table-strong px-4 py-3 text-right font-semibold text-slate-800">{{ formatFcfa(c.total) }}</td>
+                                                <td class="preview-table-strong px-4 py-3 font-medium text-slate-700 dark:text-slate-200">{{ c.designation }}</td>
+                                                <td class="preview-table-muted px-4 py-3 text-slate-600 dark:text-slate-400">{{ c.qte }}</td>
+                                                <td class="preview-table-muted px-4 py-3 text-right text-slate-600 dark:text-slate-400">{{ formatFcfa(c.montant) }}</td>
+                                                <td class="preview-table-strong px-4 py-3 text-right font-semibold text-slate-800 dark:text-slate-200">{{ formatFcfa(c.total) }}</td>
                                             </tr>
                                         </tbody>
-                                        <tfoot class="preview-table-foot bg-slate-50/80">
+                                        <tfoot class="preview-table-foot bg-slate-50/80 dark:bg-surface-800/80">
                                             <tr>
-                                                <th colspan="3" class="preview-table-muted px-4 py-3 text-right font-medium text-slate-600">Total TTC</th>
-                                                <th class="preview-table-emphasis px-4 py-3 text-right font-semibold text-slate-900">{{ formatFcfa(previewData.montant) }}</th>
+                                                <th colspan="3" class="preview-table-muted px-4 py-3 text-right font-medium text-slate-600 dark:text-slate-400">Total TTC</th>
+                                                <th class="preview-table-emphasis px-4 py-3 text-right font-semibold text-slate-900 dark:text-slate-200">{{ formatFcfa(previewData.montant) }}</th>
                                             </tr>
                                             <tr>
-                                                <th colspan="3" class="preview-table-muted px-4 py-3 text-right font-medium text-slate-600">Reste à payer</th>
-                                                <th class="preview-table-warning px-4 py-3 text-right font-semibold text-amber-700">{{ formatFcfa(previewData.reste) }}</th>
+                                                <th colspan="3" class="preview-table-muted px-4 py-3 text-right font-medium text-slate-600 dark:text-slate-400">Reste à payer</th>
+                                                <th class="preview-table-warning px-4 py-3 text-right font-semibold text-amber-700 dark:text-amber-400">{{ formatFcfa(previewData.reste) }}</th>
                                             </tr>
                                         </tfoot>
                                     </table>
@@ -340,12 +340,12 @@ const hasPreviewData = computed(() => Boolean(props.previewData));
                                     </div>
                                 </div>
                                 <div v-if="previewPayments.length" class="flex flex-col gap-3">
-                                    <div v-for="payment in previewPayments" :key="`${payment.sourceType}-${payment.id}`" class="preview-payment-card rounded-2xl border border-surface-200 bg-white/90 p-4 shadow-sm">
+                                    <div v-for="payment in previewPayments" :key="`${payment.sourceType}-${payment.id}`" class="preview-payment-card rounded-2xl border border-surface-200 bg-white/90 dark:bg-surface-800/80 p-4 shadow-sm">
                                         <div class="flex flex-wrap items-start justify-between gap-3">
                                             <div>
-                                                <p class="preview-payment-amount font-semibold text-slate-800">{{ formatFcfa(payment.montant) }}</p>
-                                                <p class="preview-payment-date text-sm text-slate-500">{{ payment.date || 'Date inconnue' }}</p>
-                                                <p v-if="payment.description" class="preview-payment-description mt-1 text-sm text-slate-600">{{ payment.description }}</p>
+                                                <p class="preview-payment-amount font-semibold text-slate-800 dark:text-slate-200">{{ formatFcfa(payment.montant) }}</p>
+                                                <p class="preview-payment-date text-sm text-slate-500 dark:text-slate-400">{{ payment.date || 'Date inconnue' }}</p>
+                                                <p v-if="payment.description" class="preview-payment-description mt-1 text-sm text-slate-600 dark:text-slate-400">{{ payment.description }}</p>
                                             </div>
                                             <div class="flex flex-wrap justify-end gap-2">
                                                 <Tag :value="previewPaymentModeTag(payment).label" :severity="previewPaymentModeTag(payment).severity" />
@@ -354,23 +354,23 @@ const hasPreviewData = computed(() => Boolean(props.previewData));
                                                 <Tag v-else value="Paiement" severity="contrast" />
                                             </div>
                                         </div>
-                                        <div class="preview-payment-meta mt-3 grid gap-3 text-sm text-slate-600 md:grid-cols-3">
+                                        <div class="preview-payment-meta mt-3 grid gap-3 text-sm text-slate-600 dark:text-slate-400 md:grid-cols-3">
                                             <div>
-                                                <p class="preview-payment-meta-label text-xs uppercase tracking-wide text-slate-400">Statut</p>
+                                                <p class="preview-payment-meta-label text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">Statut</p>
                                                 <p class="mt-1 font-medium">{{ payment.status === 'pending' ? 'En attente' : 'Validé' }}</p>
                                             </div>
                                             <div>
-                                                <p class="preview-payment-meta-label text-xs uppercase tracking-wide text-slate-400">Mode</p>
+                                                <p class="preview-payment-meta-label text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">Mode</p>
                                                 <p class="mt-1 font-medium">{{ payment.mode || '—' }}</p>
                                             </div>
                                             <div>
-                                                <p class="preview-payment-meta-label text-xs uppercase tracking-wide text-slate-400">Prise en charge</p>
+                                                <p class="preview-payment-meta-label text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">Prise en charge</p>
                                                 <p class="mt-1 font-medium">{{ Number(payment.insuranceRate || 0) > 0 ? `${Number(payment.insuranceRate).toLocaleString('fr-FR')} %` : '—' }}</p>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                                <div v-else class="preview-empty-state rounded-2xl border border-dashed border-surface-200 bg-surface-50/60 p-6 text-center text-sm text-gray-500">
+                                <div v-else class="preview-empty-state rounded-2xl border border-dashed border-surface-200 bg-surface-50/60 p-6 text-center text-sm text-gray-500 dark:text-slate-400">
                                     Aucun paiement enregistré pour cette facture.
                                 </div>
                             </div>
