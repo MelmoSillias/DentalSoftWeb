@@ -250,11 +250,18 @@ const devisTabLabel = (entry, idx) => {
     return description || `Devis ${idx + 1}`;
 };
 
-const emitPrintActiveDevis = () => {
+const emitPrintDevisAtIndex = (idx) => {
+    const { list } = getDevisState(devis.value);
+    const entry = normalizeDevisEntry(list[idx] || createEmptyDevis());
+
     emit('print-devis', {
-        ...activeDevis.value,
-        index: activeDevisIndex.value
+        ...entry,
+        index: idx
     });
+};
+
+const emitPrintActiveDevis = () => {
+    emitPrintDevisAtIndex(activeDevisIndex.value);
 };
 
 const total = computed(() =>
@@ -300,13 +307,6 @@ function subtotal(service) {
             </div>
             <div class="flex flex-wrap gap-2">
                 <Button 
-                    label="Imprimer devis" 
-                    icon="pi pi-print" 
-                    outlined
-                    class="rounded-xl px-4 py-2.5 border-surface-300 dark:border-surface-600 hover:bg-surface-100 dark:hover:bg-surface-700 transition-colors"
-                    @click="emitPrintActiveDevis" 
-                />
-                <Button 
                     label="Sauvegarder" 
                     icon="pi pi-save" 
                     :loading="saving"
@@ -334,6 +334,11 @@ function subtotal(service) {
                         ]"
                     >
                         <span class="truncate max-w-[12rem]">{{ devisTabLabel(entry, idx) }}</span>
+                        <i
+                            class="pi pi-print text-xs cursor-pointer"
+                            v-tooltip="'Imprimer ce devis'"
+                            @click.stop="emitPrintDevisAtIndex(idx)"
+                        ></i>
                         <i
                             v-if="devisTabs.length > 1"
                             class="pi pi-times text-xs cursor-pointer"
@@ -461,21 +466,23 @@ function subtotal(service) {
                         <div class="space-y-2 flex flex-col">
                             <label class="text-xs font-medium text-surface-600 dark:text-surface-400 uppercase tracking-wider">Quantité</label>
                             <InputNumber 
-                                v-model="service.qte" 
+                                :modelValue="service.qte" 
                                 :min="1" 
                                 mode="decimal" 
                                 :useGrouping="false"
                                 inputClass="w-full rounded-lg border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-800 p-2.5"
+                                @update:modelValue="(v) => updateService(idx, { qte: Number(v) || 1 })"
                             />
                         </div>
                         <div class="space-y-2 flex flex-col">
                             <label class="text-xs font-medium text-surface-600 dark:text-surface-400 uppercase tracking-wider">Prix unitaire</label>
                             <InputNumber 
-                                v-model="service.montant" 
+                                :modelValue="service.montant" 
                                 mode="decimal" 
                                 :minFractionDigits="0" 
                                 :maxFractionDigits="2"
                                 inputClass="w-full rounded-lg border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-800 p-2.5"
+                                @update:modelValue="(v) => updateService(idx, { montant: Number(v) || 0 })"
                             />
                         </div>
                     </div>

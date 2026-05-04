@@ -132,6 +132,11 @@ class FicheConsultationController extends AbstractController
     #[Route('/consultations/{consultationId}/cloture', methods: ['POST'], name: 'cloture')]
     public function close(Request $request, int $ficheId, int $consultationId): JsonResponse
     {
+        $payload = json_decode($request->getContent(), true);
+        if (!is_array($payload)) {
+            $payload = [];
+        }
+
         try {
             // clotureConsultation will handle both fiche types
             $this->consultationService->clotureConsultation(
@@ -139,6 +144,7 @@ class FicheConsultationController extends AbstractController
                 $consultationId,
                 $this->getUser(),
                 $this->restrictToConnectedMedecin(),
+                $payload,
             );
         } catch (ConflictHttpException $e) {
             return new JsonResponse(['error' => $e->getMessage()], 409);

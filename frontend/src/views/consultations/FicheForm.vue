@@ -16,6 +16,7 @@ import FicheBilansForm from '@/components/fiche-medicale/FicheBilansForm.vue';
 import FicheDocumentsForm from '@/components/fiche-medicale/FicheDocumentsForm.vue';
 import FichePatientInfoSection from '@/components/fiche-medicale/FichePatientInfoSection.vue';
 import FichePlanTraitementForm from '@/components/fiche-medicale/FichePlanTraitementForm.vue';
+import PastSessions from '@/components/consultations/PastSessions.vue';
 import SeancesSection from '@/components/fiche-medicale/SeancesSection.vue';
 import { useConsultationsForm } from '@/composables/useConsultationsForm';
 import { usePrinter } from '@/composables/usePrinter';
@@ -649,6 +650,11 @@ const handleDeleteAllergy = async (item) => {
 const handleCloture = () => {
     if (!ensureMedecinSelected()) return;
 
+    if (savingCount.value > 0) {
+        toast.add({ severity: 'warn', summary: 'Sauvegarde en cours', detail: 'Veuillez patienter avant de clôturer.', life: 3000 });
+        return;
+    }
+
     confirm.require({
         message: 'Cloturer definitivement cette consultation ?',
         header: 'Confirmation',
@@ -658,7 +664,22 @@ const handleCloture = () => {
         acceptClass: 'p-button-danger',
         accept: async () => {
             try {
-                await closeConsult();
+                await saveAll({ silent: true });
+
+                if (dirtySectionsList.value.length > 0) {
+                    toast.add({
+                        severity: 'warn',
+                        summary: 'Sauvegarde incomplète',
+                        detail: 'Toutes les sections doivent être sauvegardées avant la clôture.',
+                        life: 3500
+                    });
+                    return;
+                }
+
+                await closeConsult({
+                    forcePersistConsult: true,
+                    ordonnancePayload: dirty.ordonnances ? ordonnanceDraft.value : null
+                });
                 Object.keys(dirty).forEach((key) => {
                     dirty[key] = false;
                 });
@@ -1154,7 +1175,7 @@ const retryLoad = async () => {
 
                     <template #seances>
                         <div data-tour="consultations-form.section.seances">
-                            <SeancesSection :sessions="data.sessions" />
+                            <PastSessions :sessions="data.sessions" />
                         </div>
                     </template>
 

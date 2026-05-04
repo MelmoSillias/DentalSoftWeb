@@ -56,6 +56,9 @@ class CongeService
             'message' => 'Congé ajouté avec succès.',
             'conge' => [
                 'id' => $conge->getId(),
+                'employeId' => $employe->getId(),
+                'employeNom' => $employe->getNom(),
+                'employePrenom' => $employe->getPrenom(),
                 'type' => $conge->getType(),
                 'start' => $start->format('Y-m-d'),
                 'end' => $end->format('Y-m-d'),
@@ -65,19 +68,125 @@ class CongeService
         ];
     }
 
-    public function listConges(): array
+    public function listConges(array $filters = []): array
     {
-        $conges = $this->congeRepo->findAll();
+        $qb = $this->congeRepo->createQueryBuilder('c')
+            ->leftJoin('c.employe', 'e')->addSelect('e')
+            ->orderBy('c.startDate', 'DESC')
+            ->addOrderBy('c.id', 'DESC');
+
+        if (!empty($filters['employeId'])) {
+            $qb->andWhere('e.id = :employeId')
+                ->setParameter('employeId', (int) $filters['employeId']);
+        }
+
+        if (!empty($filters['type'])) {
+            $qb->andWhere('LOWER(c.type) = :type')
+                ->setParameter('type', mb_strtolower((string) $filters['type']));
+        }
+
+        if (!empty($filters['start'])) {
+            $start = $this->createDateFromInput($filters['start']);
+            if ($start) {
+                $qb->andWhere('c.endDate >= :startDate')
+                    ->setParameter('startDate', $start->setTime(0, 0, 0));
+            }
+        }
+
+        if (!empty($filters['end'])) {
+            $end = $this->createDateFromInput($filters['end']);
+            if ($end) {
+                $qb->andWhere('c.startDate <= :endDate')
+                    ->setParameter('endDate', $end->setTime(23, 59, 59));
+            }
+        }
+
+        $conges = $qb->getQuery()->getResult();
 
         return array_map(function (Conge $conge) {
+            $start = $conge->getStartDate();
+            $end = $conge->getEndDate();
+            $durationDays = 0;
+            if ($start && $end) {
+                $durationDays = ((int) $end->diff($start)->format('%a')) + 1;
+            }
+
             return [
                 'id' => $conge->getId(),
                 'employeId' => $conge->getEmploye()->getId(),
+                'employeNom' => $conge->getEmploye()->getNom(),
+                'employePrenom' => $conge->getEmploye()->getPrenom(),
+                'employe' => trim(($conge->getEmploye()->getPrenom() ?? '') . ' ' . ($conge->getEmploye()->getNom() ?? '')),
                 'type' => $conge->getType(),
-                'start' => $conge->getStartDate()->format('Y-m-d'),
-                'end' => $conge->getEndDate()->format('Y-m-d'),
+                'start' => $start?->format('Y-m-d'),
+                'end' => $end?->format('Y-m-d'),
+                'durationDays' => $durationDays,
             ];
         }, $conges);
+    }
+
+    public function updateConge(int $id, array $data, ?User $actor = null): array
+    {
+        $conge = $this->congeRepo->find($id);
+        if (!$conge) {
+            return ['error' => 'Congé introuvable.', 'status' => 404];
+        }
+
+        if (!isset($data['employeId'], $data['type'], $data['startDate'], $data['endDate'])) {
+            return ['error' => 'Champs manquants.', 'status' => 400];
+        }
+
+        $employe = $this->employeRepo->find((int) $data['employeId']);
+        if (!$employe) {
+            return ['error' => 'Employé introuvable.', 'status' => 404];
+        }
+
+        $start = $this->createDateFromInput($data['startDate']);
+        $end = $this->createDateFromInput($data['endDate']);
+
+        if (!$start || !$end || $end < $start) {
+            return ['error' => 'Dates invalides.', 'status' => 400];
+        }
+
+        $conge
+            ->setEmploye($employe)
+            ->setType(trim((string) $data['type']))
+            ->setStartDate($start)
+            ->setEndDate($end);
+
+        $this->em->flush();
+        $this->notifyCongeChange($conge, 'updated', $actor);
+
+        return [
+            'message' => 'Congé mis à jour avec succès.',
+            'conge' => [
+                'id' => $conge->getId(),
+                'employeId' => $employe->getId(),
+                'employeNom' => $employe->getNom(),
+                'employePrenom' => $employe->getPrenom(),
+                'type' => $conge->getType(),
+                'start' => $start->format('Y-m-d'),
+                'end' => $end->format('Y-m-d'),
+            ],
+            'status' => 200,
+        ];
+    }
+
+    public function deleteConge(int $id, ?User $actor = null): array
+    {
+        $conge = $this->congeRepo->find($id);
+        if (!$conge) {
+            return ['error' => 'Congé introuvable.', 'status' => 404];
+        }
+
+        $this->notifyCongeChange($conge, 'deleted', $actor);
+        $this->em->remove($conge);
+        $this->em->flush();
+
+        return [
+            'message' => 'Congé supprimé avec succès.',
+            'status' => 200,
+        ];
     }
 
     public function listEmployesWithConges(): array
@@ -125,6 +234,8 @@ class CongeService
 
         $message = match ($event) {
             'created' => sprintf('%s sera en congé (%s) du %s au %s.', $employeeName, strtolower($type), $start, $end),
+            'updated' => sprintf('Le congé (%s) de %s a été mis à jour: du %s au %s.', strtolower($type), $employeeName, $start, $end),
+            'deleted' => sprintf('Le congé (%s) de %s prévu du %s au %s a été supprimé.', strtolower($type), $employeeName, $start, $end),
             default => sprintf('Mise à jour de congé pour %s.', $employeeName),
         };
 
@@ -142,5 +253,14 @@ class CongeService
                 ],
             )
         );
+    }
+
+    private function createDateFromInput(mixed $value): ?DateTimeImmutable
+    {
+        if (!is_string($value) || trim($value) === '') {
+            return null;
+        }
+
+        return DateTimeImmutable::createFromFormat('Y-m-d', trim($value)) ?: null;
     }
 }

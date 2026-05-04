@@ -227,15 +227,16 @@ const closeDialog = () => {
             <Divider />
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div class="space-y-1 md:col-span-2">
-                    <label class="text-sm font-medium">Fonction</label>
-                    <InputText v-model="form.fonction" placeholder="Fonction" class="w-full" />
-                </div>
                 <div class="space-y-1">
-                    <label class="text-sm font-medium">Type</label>
+                    <label class="text-sm font-medium">Fonction</label>
                     <Select v-model="form.type" :options="typeOptions" optionLabel="label" optionValue="value"
                         class="w-full" />
                 </div>
+                <div class="space-y-1 md:col-span-2">
+                    <label class="text-sm font-medium">Description</label>
+                    <InputText v-model="form.fonction" placeholder="Description" class="w-full" />
+                </div>
+                
                 <div class="space-y-1">
                     <label class="text-sm font-medium">Date d'embauche</label>
                     <Calendar v-model="form.dateEmbauche" class="w-full" dateFormat="yy-mm-dd" showIcon

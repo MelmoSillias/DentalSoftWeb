@@ -2,6 +2,7 @@
 import Accordion from 'primevue/accordion';
 import Tag from 'primevue/tag';
 import { computed } from 'vue';
+import Fieldset from 'primevue/fieldset';
 
 const props = defineProps({
     sessions: {
@@ -145,23 +146,18 @@ const getSessionOrdonnances = (session) => {
 
                         <!-- Notes -->
                         <div>
-                            <div class="flex items-center gap-2 mb-3">
-                                <i class="pi pi-file-edit text-primary-500"></i>
-                                <h4 class="font-semibold text-surface-900 dark:text-surface-100">Notes de séance</h4>
-                            </div>
-                            <div class="p-4 rounded-xl bg-surface-50 dark:bg-surface-700/30 border border-surface-200 dark:border-surface-700">
-                                <p class="text-surface-700 dark:text-surface-300 whitespace-pre-wrap">
+                            <Fieldset v-if="session.noteSeance" legend="Notes de la séance" class="mb-4">
+                                <p class="text-sm text-surface-700 dark:text-surface-300 whitespace-pre-wrap">
                                     {{ session.noteSeance || 'Aucune note pour cette séance.' }}
                                 </p>
-                            </div>
+                            </Fieldset>
                         </div>
 
                         <!-- Actes Table -->
                         <div v-if="session.actes && session.actes.length">
-                            <div class="flex items-center justify-between mb-3">
-                                <div class="flex items-center gap-2">
-                                    <i class="pi pi-list-check text-primary-500"></i>
-                                    <h4 class="font-semibold text-surface-900 dark:text-surface-100">Actes réalisés</h4>
+                            <div class="flex items-center justify-between mb-1">
+                                <div class="flex items-center gap-2"> 
+                                    <h6 class="font-semibold text-surface-900 dark:text-surface-100"><i class="pi pi-list-check text-primary-500"></i> Actes réalisés</h6>
                                 </div>
                                 <Badge :value="session.actes.length" severity="info" class="px-3 py-1 rounded-full" />
                             </div>
@@ -183,7 +179,7 @@ const getSessionOrdonnances = (session) => {
                                             class="hover:bg-surface-50/50 dark:hover:bg-surface-700/30 transition-colors">
                                             <td class="p-3">
                                                 <Tag :value="acte.type" severity="secondary" 
-                                                    class="px-2 py-1 text-xs rounded-full" />
+                                                    class="px-2 py-1 text-xs rounded-full" /> 
                                             </td>
                                             <td class="p-3 font-medium text-surface-900 dark:text-surface-100">
                                                 {{ acte.dent || '—' }}
@@ -198,8 +194,8 @@ const getSessionOrdonnances = (session) => {
                                                 {{ formatCurrency(acte.prix || 0) }}
                                             </td>
                                             <td class="p-3 text-right font-bold text-primary-600 dark:text-primary-400">
-                                                {{ formatCurrency(acte.montantTotal || acte.total || 0) }}
-                                            </td>
+                                                {{ formatCurrency((acte.quantite || 0) * (acte.prix || 0)) }}
+                                            </td> 
                                         </tr>
                                     </tbody>
                                     <tfoot v-if="session.total" class="bg-surface-50 dark:bg-surface-800">

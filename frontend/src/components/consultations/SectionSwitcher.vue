@@ -220,11 +220,11 @@ onBeforeUnmount(() => {
                 </div>
 
                 <!-- ===== SIDEBAR NAVIGATION ===== -->
-                <aside class="hidden lg:block sticky top-24 h-fit max-h-[calc(100vh-6rem)] overflow-y-auto">
+                <aside class="hidden lg:block sticky top-16 h-fit max-h-[calc(100vh-6rem)] overflow-y-auto">
                     <div class="rounded-2xl border border-surface-200/50 dark:border-surface-700/50 bg-surface-0 dark:bg-surface-800/60 p-4 shadow-sm">
                         <div class="flex items-center gap-3 mb-4 pb-3 border-b border-surface-100 dark:border-surface-700">
-                            <i class="pi pi-list text-primary-500"></i>
-                            <h3 class="font-semibold text-surface-900 dark:text-surface-100">Navigation rapide</h3>
+                            
+                            <h5 class="font-semibold text-surface-900 dark:text-surface-100"><i class="pi pi-list text-primary-500"></i> Navigation rapide</h5>
                         </div>
                         
                         <nav class="flex flex-col gap-1">

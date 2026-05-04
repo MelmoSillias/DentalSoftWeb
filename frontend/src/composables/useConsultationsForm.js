@@ -136,6 +136,32 @@ const normalizeDateForApi = (value) => {
     return `${year}-${month}-${day}`;
 };
 
+const normalizeDentArray = (value) => {
+    if (Array.isArray(value)) {
+        return [...new Set(value.map((item) => String(item || '').trim()).filter(Boolean))];
+    }
+
+    if (typeof value === 'string') {
+        return [...new Set(value.split(',').map((item) => item.trim()).filter(Boolean))];
+    }
+
+    if (typeof value === 'number') {
+        return [String(value)];
+    }
+
+    return [];
+};
+
+const dentArrayToStorage = (value) => normalizeDentArray(value).join(',');
+
+const normalizeActeEntry = (acte = {}) => ({
+    dent: normalizeDentArray(acte?.dent ?? acte?.dents),
+    type: acte?.type ?? acte?.designation ?? '',
+    description: acte?.description ?? acte?.designation ?? '',
+    prix: Number(acte?.prix ?? acte?.montant ?? 0) || 0,
+    quantite: Number(acte?.quantite ?? acte?.qte ?? 1) || 1
+});
+
 const defaultConsultation = () => ({
     type: '',
     medecinId: null,
@@ -404,7 +430,7 @@ export const useConsultationsForm = ({ ficheId, consultId, token, mode }) => {
                         type: consult.type ?? '',
                         medecinId: consult.medecinId ?? null,
                         noteSeance: consult.noteSeance ?? '',
-                        actes: consult.actes ?? []
+                        actes: Array.isArray(consult.actes) ? consult.actes.map((acte) => normalizeActeEntry(acte)) : []
                     };
                 } catch (error) {
                     console.error('Erreur chargement consultation', error);
@@ -521,25 +547,40 @@ export const useConsultationsForm = ({ ficheId, consultId, token, mode }) => {
         }
     };
 
-    const saveConsultSection = async ({ ordonnancePayload = null } = {}) => {
+    const buildConsultationPayload = ({ ordonnancePayload = null } = {}) => {
+        const payload = {
+            ...data.consultation,
+            infirmierId: Array.isArray(data.consultation.infirmierIds)
+                ? data.consultation.infirmierIds[0] ?? null
+                : data.consultation.infirmierIds,
+            actes: Array.isArray(data.consultation?.actes)
+                ? data.consultation.actes.map((acte) => {
+                    const normalized = normalizeActeEntry(acte);
+                    return {
+                        ...normalized,
+                        dent: dentArrayToStorage(normalized.dent)
+                    };
+                })
+                : []
+        };
+
+        if (ordonnancePayload && Array.isArray(ordonnancePayload.lignes) && ordonnancePayload.lignes.length > 0) {
+            payload.ordonnance = ordonnancePayload;
+        }
+
+        return payload;
+    };
+
+    const saveConsultSection = async ({ ordonnancePayload = null, force = false } = {}) => {
         if (!consultId.value) return;
 
-        const shouldSaveConsult = dirty.consult;
+        const shouldSaveConsult = force || dirty.consult;
         const shouldSaveOrdonnance = dirty.ordonnances && ordonnancePayload && Array.isArray(ordonnancePayload.lignes) && ordonnancePayload.lignes.length > 0;
         if (!shouldSaveConsult && !shouldSaveOrdonnance) return;
 
         setSaving('consult', true);
         try {
-            const payload = {
-                ...data.consultation,
-                infirmierId: Array.isArray(data.consultation.infirmierIds)
-                    ? data.consultation.infirmierIds[0] ?? null
-                    : data.consultation.infirmierIds,
-            };
-
-            if (shouldSaveOrdonnance) {
-                payload.ordonnance = ordonnancePayload;
-            }
+            const payload = buildConsultationPayload({ ordonnancePayload: shouldSaveOrdonnance ? ordonnancePayload : null });
 
             await saveConsultation(ficheId.value, consultId.value, payload, token);
 
@@ -561,9 +602,14 @@ export const useConsultationsForm = ({ ficheId, consultId, token, mode }) => {
         await saveConsultSection({ ordonnancePayload: payload });
     };
 
-    const closeConsult = async () => {
+    const closeConsult = async ({ forcePersistConsult = true, ordonnancePayload = null } = {}) => {
         if (!consultId.value) return;
-        await closeConsultation(ficheId.value, consultId.value, token);
+
+        const payload = forcePersistConsult
+            ? buildConsultationPayload({ ordonnancePayload })
+            : null;
+
+        await closeConsultation(ficheId.value, consultId.value, token, payload);
     };
 
     return {

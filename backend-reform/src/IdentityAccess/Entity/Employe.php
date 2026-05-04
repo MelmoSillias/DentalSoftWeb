@@ -5,6 +5,7 @@ namespace App\IdentityAccess\Entity;
 use App\CareDelivery\Entity\Consultation;
 use App\CareDelivery\Entity\Traitement;
 use App\Inventory\Entity\Stock;
+use App\IdentityAccess\Entity\SalaryPayment;
 use App\Scheduling\Entity\Conge;
 use App\Scheduling\Entity\Rdv;
 use App\IdentityAccess\Repository\EmployeRepository;
@@ -89,6 +90,9 @@ class Employe
     #[ORM\OneToMany(mappedBy: 'employe', targetEntity: Conge::class, cascade: ['persist', 'remove'])]
     private Collection $conges;
 
+    #[ORM\OneToMany(mappedBy: 'employe', targetEntity: SalaryPayment::class, cascade: ['persist', 'remove'])]
+    private Collection $salaryPayments;
+
 
     public function __construct()
     {
@@ -98,6 +102,7 @@ class Employe
         $this->rdvs = new ArrayCollection();
         $this->traitements = new ArrayCollection(); 
         $this->conges = new ArrayCollection();
+        $this->salaryPayments = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -462,6 +467,32 @@ class Employe
                 $conge->setEmploye(null);
             }
         }
+        return $this;
+    }
+
+    public function getSalaryPayments(): Collection
+    {
+        return $this->salaryPayments;
+    }
+
+    public function addSalaryPayment(SalaryPayment $salaryPayment): self
+    {
+        if (!$this->salaryPayments->contains($salaryPayment)) {
+            $this->salaryPayments->add($salaryPayment);
+            $salaryPayment->setEmploye($this);
+        }
+
+        return $this;
+    }
+
+    public function removeSalaryPayment(SalaryPayment $salaryPayment): self
+    {
+        if ($this->salaryPayments->removeElement($salaryPayment)) {
+            if ($salaryPayment->getEmploye() === $this) {
+                $salaryPayment->setEmploye(null);
+            }
+        }
+
         return $this;
     }
 

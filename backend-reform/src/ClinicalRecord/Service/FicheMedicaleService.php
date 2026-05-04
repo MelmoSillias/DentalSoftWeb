@@ -1065,6 +1065,13 @@ class FicheMedicaleService
                 'id' => $c->getMedecin()->getId(),
                 'name' => $c->getMedecin()->getFullName(),
             ] : null,
+            'actes' => array_map(static fn($a) => [
+                'id' => $a->getId(),
+                'dent' => $a->getDent(),
+                'description' => $a->getDescription(),
+                'quantite' => $a->getQuantite(),
+                'prix' => $a->getPrix(),
+            ], $c->getActes()->toArray()),
         ], array_filter(
             $fiche->getConsultations()->toArray(),
             static fn($c) => $c->getStatut() === 1
