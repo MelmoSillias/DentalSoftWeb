@@ -63,6 +63,9 @@ const role = computed(() => {
     return 'admin';
 });
 
+const isReceptionRole = computed(() => role.value === 'reception');
+const showRangeFilters = computed(() => !isReceptionRole.value);
+
 const userLabel = computed(() => {
     if (employee.value?.prenom || employee.value?.nom) {
         return `${employee.value.prenom || ''} ${employee.value.nom || ''}`.trim();
@@ -591,6 +594,15 @@ watch(
     { deep: true, immediate: true }
 );
 
+watch(
+    () => role.value,
+    (value) => {
+        if (value !== 'reception') return;
+        filterMode.value = 'date';
+    },
+    { immediate: true }
+);
+
 const retryLoadDashboard = async () => {
     loadErrorMessage.value = '';
     const params = filterParams.value;
@@ -638,6 +650,7 @@ onBeforeUnmount(() => {
 
                 <div class="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-2 sm:gap-3 w-full lg:w-auto" data-tour="dashboard.filters">
                     <SelectButton
+                        v-if="showRangeFilters"
                         v-model="filterMode"
                         :options="filterOptions"
                         optionLabel="label"
@@ -655,7 +668,7 @@ onBeforeUnmount(() => {
                             :pt="{ input: 'pl-10 py-2.5 sm:py-3', icon: 'left-3 top-3 text-surface-400' }"
                         /> 
                     </div>
-                    <div class="relative w-full sm:w-auto" v-else>
+                    <div class="relative w-full sm:w-auto" v-else-if="showRangeFilters">
                         <DatePicker
                             v-model="selectedRange"
                             selectionMode="range"

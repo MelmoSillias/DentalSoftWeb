@@ -71,6 +71,7 @@ const devicePolicy = reactive({
 
 const consultationAccess = reactive({
     allowReceptionConsultationQuickActions: true,
+    allowReceptionBypassMedecinPasswordOnQuickClose: false,
     hidePatientDossierForMedecins: false,
     hidePatientPhoneForMedecins: false,
     ficheFormSimplifie: false
@@ -199,6 +200,7 @@ const loadGeneralSettings = async (force = false) => {
         devicePolicy.paiementDirectAssurance = settings.paiementDirectAssurance === true;
         consultationAccess.allowReceptionConsultationQuickActions = settings.allowReceptionConsultationQuickActions !== false
             && settings.allowReceptionQuickCloseConsultation !== false;
+        consultationAccess.allowReceptionBypassMedecinPasswordOnQuickClose = settings.allowReceptionBypassMedecinPasswordOnQuickClose === true;
         consultationAccess.hidePatientDossierForMedecins = settings.hidePatientDossierForMedecins === true;
         consultationAccess.hidePatientPhoneForMedecins = settings.hidePatientPhoneForMedecins === true;
         consultationAccess.ficheFormSimplifie = settings.ficheFormSimplifie === true;
@@ -247,6 +249,7 @@ const saveConsultationAccessAction = async () => {
         await saveGeneralSettings({
             allowReceptionConsultationQuickActions: consultationAccess.allowReceptionConsultationQuickActions,
             allowReceptionQuickCloseConsultation: consultationAccess.allowReceptionConsultationQuickActions,
+            allowReceptionBypassMedecinPasswordOnQuickClose: consultationAccess.allowReceptionBypassMedecinPasswordOnQuickClose,
             hidePatientDossierForMedecins: consultationAccess.hidePatientDossierForMedecins,
             hidePatientPhoneForMedecins: consultationAccess.hidePatientPhoneForMedecins,
             ficheFormSimplifie: consultationAccess.ficheFormSimplifie,
@@ -615,6 +618,14 @@ onBeforeUnmount(() => {
                                             <span class="toggle-description">Active ou masque les boutons d'actions rapides de consultation côté réception</span>
                                         </div>
                                         <ToggleSwitch v-model="consultationAccess.allowReceptionConsultationQuickActions" />
+                                    </div>
+                                    <Divider />
+                                    <div class="toggle-item">
+                                        <div class="toggle-info">
+                                            <label>Bypass code médecin en clôture rapide</label>
+                                            <span class="toggle-description">Si activé, la réception peut clôturer rapidement sans validation du code médecin</span>
+                                        </div>
+                                        <ToggleSwitch v-model="consultationAccess.allowReceptionBypassMedecinPasswordOnQuickClose" />
                                     </div>
                                     <Divider />
                                     <div class="toggle-item">

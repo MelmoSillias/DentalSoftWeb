@@ -216,6 +216,7 @@ const consultationDetailsLines = computed(() => currentBilling.value?.lines || [
 const hasInvoiceContext = computed(() => Boolean(currentBilling.value?.invoiceId));
 const isPaidInvoice = computed(() => hasInvoiceContext.value && selectedInvoiceRemaining.value === 0 && selectedInvoiceTotal.value > 0);
 const isFreeInvoice = computed(() => hasInvoiceContext.value && selectedInvoiceRemaining.value === 0 && selectedInvoiceTotal.value === 0);
+const isValidatedFreeInvoice = computed(() => isFreeInvoice.value && selectedInvoiceState.value?.severity === 'success');
 const canModifyInvoice = computed(() => hasInvoiceContext.value && selectedInvoiceTotal.value > 0 && selectedInvoiceRemaining.value === selectedInvoiceTotal.value);
 const canPreviewInvoice = computed(() => hasInvoiceContext.value && !(selectedInvoiceTotal.value === 0 && selectedInvoiceRemaining.value === 0));
 
@@ -612,10 +613,11 @@ function formatPaymentMode(mode) {
                     <span :class="[
                         'text-xs px-2 py-0.5 rounded-full font-medium',
                         isPaidInvoice ? 'bg-green-100 text-green-700' :
+                        isValidatedFreeInvoice ? 'bg-green-100 text-green-700' :
                         isFreeInvoice ? 'bg-blue-100 text-blue-700' :
                         'bg-amber-100 text-amber-700'
                     ]">
-                        {{ isPaidInvoice ? 'Réglée' : isFreeInvoice ? 'Gratuite' : 'En attente' }}
+                        {{ isPaidInvoice ? 'Réglée' : isValidatedFreeInvoice ? 'Validée' : isFreeInvoice ? 'Gratuite' : 'En attente' }}
                     </span>
                 </div>
  
@@ -639,7 +641,7 @@ function formatPaymentMode(mode) {
                         Régler
                     </button>
 
-                    <button v-if="isFreeInvoice"
+                    <button v-if="isFreeInvoice && !isValidatedFreeInvoice"
                         @click="emit('open-caisse-validate')"
                         class="flex-1 rounded-md bg-blue-500 px-3 py-1.5 text-xs text-white hover:bg-blue-600">
                         Valider

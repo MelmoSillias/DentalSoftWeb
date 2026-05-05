@@ -21,7 +21,7 @@
                     </tr>
                     <tr>
                         <th>Valeur salaire</th>
-                        <td>{{ formatAmount(salaryValue) }}</td>
+                        <td>{{ formatSalaryValue(salaryValue, salaryType) }}</td>
                     </tr>
                     <tr>
                         <th>Base mensuelle</th>
@@ -71,6 +71,15 @@ const props = defineProps({
 const formatAmount = (value) => {
     if (value === null || value === undefined) return '-';
     return `${Number(value).toLocaleString('fr-FR')} F CFA`;
+};
+
+const formatSalaryValue = (value, type) => {
+    if (value === null || value === undefined) return '-';
+    const normalizedType = String(type || '').trim().toLowerCase();
+    if (normalizedType === 'pourcentage' || normalizedType === '%') {
+        return `${Number(value).toLocaleString('fr-FR')} %`;
+    }
+    return formatAmount(value);
 };
 </script>
 

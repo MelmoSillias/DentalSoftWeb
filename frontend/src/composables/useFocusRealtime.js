@@ -4,7 +4,7 @@ import { useAuthStore } from '@/stores/auth';
 
 export function useFocusRealtime(onEvent) {
     const auth = useAuthStore();
-    const realtimeEnabled = ref(false);
+    const realtimeEnabled = ref(true);
 
     let controller = null;
     let reconnectTimer = null;

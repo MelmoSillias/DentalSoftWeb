@@ -212,6 +212,10 @@ final class ConsultationController extends AbstractController{
             return $this->json(['error' => 'Accès refusé'], 403);
         }
 
+        if ($this->globalSettingsService->canReceptionBypassMedecinPasswordOnQuickClose()) {
+            return $this->json(['valid' => true, 'bypass' => true]);
+        }
+
         $data = json_decode($request->getContent(), true) ?? [];
         $password = (string) ($data['password'] ?? '');
 

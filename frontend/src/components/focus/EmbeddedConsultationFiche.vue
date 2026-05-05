@@ -74,6 +74,7 @@ const showAllergyDialog = ref(false);
 const isIndicatorFloating = ref(false);
 const isMedecinOptionalOnCreation = ref(false);
 const ficheFormSimplifie = ref(false);
+const isClotureProcessing = ref(false);
 const soinsList = ref([...defaultSoinList]);
 const examensTypeOptions = ref(['Bacteriologique', 'Serologique', 'Histologique', 'Radiologique', 'Autre']);
 const traitementTypeOptions = ref(['Urgence', 'Dentaires', 'Parodontaux', 'Orthodontiques', 'Autres']);
@@ -614,6 +615,7 @@ const handlePhotoSelected = async (file) => {
 };
 
 const handleCloture = () => {
+    if (isClotureProcessing.value) return;
     if (!ensureMedecinSelected()) return;
 
     if (savingCount.value > 0) {
@@ -629,6 +631,7 @@ const handleCloture = () => {
         rejectLabel: 'Annuler',
         acceptClass: 'p-button-danger',
         accept: async () => {
+            isClotureProcessing.value = true;
             try {
                 await saveAll({ silent: true });
 
@@ -657,6 +660,8 @@ const handleCloture = () => {
                     return;
                 }
                 toast.add({ severity: 'error', summary: 'Erreur', detail: 'Cloture impossible.', life: 2500 });
+            } finally {
+                isClotureProcessing.value = false;
             }
         }
     });
@@ -825,7 +830,13 @@ defineExpose({
         <ConfirmDialog />
         <AppToast />
 
-        <div v-if="!pageLoading && !loadErrorMessage" class="space-y-5">
+        <div v-if="!pageLoading && !loadErrorMessage" class="relative space-y-5">
+            <div v-if="isClotureProcessing" class="absolute inset-0 z-30 flex items-center justify-center bg-surface-0/60 dark:bg-surface-900/60 backdrop-blur-[1px]">
+                <div class="flex items-center gap-2 rounded-xl border border-surface-300 dark:border-surface-700 bg-surface-0 dark:bg-surface-900 px-4 py-2 text-sm font-medium text-surface-700 dark:text-surface-100 shadow">
+                    <i class="pi pi-spin pi-spinner"></i>
+                    Clôture en cours...
+                </div>
+            </div>
             <div class="flex items-center justify-between border border-surface-200/60 dark:border-surface-700/60 bg-surface-0 dark:bg-surface-800/70 px-4 py-3 shadow-sm">
                 <div class="flex items-center gap-3">
                     <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-primary-500/10 text-primary-600 dark:bg-primary-500/20 dark:text-primary-300">
@@ -857,6 +868,7 @@ defineExpose({
                         text 
                         rounded 
                         size="small" 
+                        :disabled="isClotureProcessing"
                         @click="handlePrintFiche"
                     />
 
@@ -864,7 +876,7 @@ defineExpose({
                         <SaveIndicator
                             minimalDesign
                             v-model:auto-save-enabled="autoSaveEnabled"
-                            :loading="loading"
+                            :loading="loading || isClotureProcessing"
                             :saving-count="savingCount"
                             :last-saved-at="lastSavedAt"
                             :dirty-sections="dirtySectionsList"
@@ -874,7 +886,7 @@ defineExpose({
                 </div>
             </div>
 
-            <div class="border border-surface-200/60 dark:border-surface-700/60 bg-surface-0 dark:bg-surface-800/70 shadow-sm">
+            <div class="border border-surface-200/60 dark:border-surface-700/60 bg-surface-0 dark:bg-surface-800/70 shadow-sm" :class="isClotureProcessing ? 'pointer-events-none opacity-80' : ''">
                 <div v-if="isReadonly" class="border-b border-amber-200/80 bg-amber-50/90 px-5 py-4 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">
                     Cette consultation est terminee. La fiche reste visible ici en lecture seule.
                 </div>
@@ -894,9 +906,9 @@ defineExpose({
                                 :salles-options="sallesOptions"
                                 :ordonnances="data.ordonnances"
                                 :medecin-readonly="isMedecinUser || isReadonly"
-                                :loading="loading"
+                                :loading="loading || isClotureProcessing"
                                 :saving="saving.consult"
-                                :cloture-loading="false"
+                                :cloture-loading="isClotureProcessing"
                                 @save="saveConsultSection"
                                 @cloture="handleCloture"
                                 @open-ordonnance="openOrdonnanceModal"

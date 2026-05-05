@@ -170,18 +170,19 @@ class ConsultationService
         $consultation->setNoteSeance($data['noteSeance'] ?? $consultation->getNoteSeance() ?? '');
 
         if (isset($data['actes']) && is_array($data['actes'])) {
-            foreach ($consultation->getActes() as $a) {
+            foreach ($consultation->getActes()->toArray() as $a) {
+                $consultation->removeActe($a);
                 $this->em->remove($a);
             }
 
             foreach ($data['actes'] as $a) {
                 $act = new ActeMedical();
-                $act->setConsultation($consultation)
-                    ->setDent($this->normalizeDentValue($a['dent'] ?? ($a['dents'] ?? '')))
+                $act->setDent($this->normalizeDentValue($a['dent'] ?? ($a['dents'] ?? '')))
                     ->setType($a['type'] ?? ($a['designation'] ?? ''))
                     ->setDescription($a['description'] ?? ($a['designation'] ?? ''))
                     ->setPrix((float) ($a['prix'] ?? $a['montant'] ?? 0))
                     ->setQuantite((int) ($a['quantite'] ?? $a['qte'] ?? 1));
+                $consultation->addActe($act);
                 $this->em->persist($act);
             }
         }
@@ -392,8 +393,16 @@ class ConsultationService
             (float) $facture->getMontant(),
             (float) $facture->getReste(),
             [
-                'label' => $facture->getReste() <= 0 && $facture->getMontant() > 0 ? 'Facture reglee' : ((float) $facture->getMontant() <= 0 ? 'Facture vide' : 'Facture ouverte'),
-                'severity' => $facture->getReste() <= 0 && $facture->getMontant() > 0 ? 'success' : ((float) $facture->getMontant() <= 0 ? 'contrast' : 'warn'),
+                'label' => $facture->getReste() <= 0 && $facture->getMontant() > 0
+                    ? 'Facture reglee'
+                    : ((float) $facture->getMontant() <= 0
+                        ? ((int) $facture->getStatut() === 1 ? 'Facture vide validee' : 'Facture vide')
+                        : 'Facture ouverte'),
+                'severity' => $facture->getReste() <= 0 && $facture->getMontant() > 0
+                    ? 'success'
+                    : ((float) $facture->getMontant() <= 0
+                        ? ((int) $facture->getStatut() === 1 ? 'success' : 'contrast')
+                        : 'warn'),
             ],
             $lines,
             $paymentDtos,
@@ -898,7 +907,11 @@ class ConsultationService
 
         if (!$consultation->getMedecin()) {
             throw new \InvalidArgumentException('Le médecin est obligatoire pour clôturer la consultation.');
-        } 
+        }
+
+        if ($consultation->getActes()->isEmpty()) {
+            throw new \InvalidArgumentException('Ajoutez au moins un acte médical avant de clôturer la consultation.');
+        }
         
         $facture = new Devis();
         if ($fiche instanceof FicheMedicale) {
@@ -919,11 +932,13 @@ class ConsultationService
 
         $amount = 0;
         foreach ($consultation->getActes() as $a) {
+            $qty = max(1, (int) ($a->getQuantite() ?? 1));
+            $price = (float) ($a->getPrix() ?? 0);
             $cd = new ContenuDevis();
             $cd->setDevis($facture)
                 ->setDesignation($a->getType() ?? '')
-                ->setQte($a->getQuantite() ?? 1)
-                ->setMontant($a->getPrix() ?? 0);
+                ->setQte($qty)
+                ->setMontant($price);
             $amount += $cd->getMontant() * $cd->getQte();
             $cd->setMontantTotal($amount);
             $this->em->persist($cd);

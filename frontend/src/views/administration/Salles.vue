@@ -323,22 +323,14 @@ const handleGuidedTourRequest = async (event) => {
               label="Exporter"
               class="text-surface-600 dark:text-surface-400 hover:text-primary-600 dark:hover:text-primary-400"
               @click="printSalles"
-            />
-            <Button 
-              icon="pi pi-filter" 
-              severity="secondary" 
-              text 
-              size="small"
-              label="Filtrer"
-              class="text-surface-600 dark:text-surface-400"
-            />
+            /> 
           </div>
         </div>
       </div>
 
       <!-- Table Content -->
       <div class="p-0" data-tour="admin-salles.actions">
-        <SallesTable :salles="salles" :loading="loading" @edit="openEdit" @delete="handleDelete" />
+        <SallesTable :salles="salles" :loading="loading" @edit="openEdit" @delete="handleDelete" @add="openAdd" />
       </div>
     </div>
 

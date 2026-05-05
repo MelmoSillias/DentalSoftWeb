@@ -92,6 +92,7 @@ const isMedecinOptionalOnCreation = ref(false);
 const hidePatientPhoneForMedecins = ref(false);
 const ficheFormSimplifie = ref(false);
 const showRdvDialog = ref(false);
+const isClotureProcessing = ref(false);
 const soinsList = ref([...defaultSoinList]);
 const examensTypeOptions = ref(['Bacteriologique', 'Serologique', 'Histologique', 'Radiologique', 'Autre']);
 const traitementTypeOptions = ref(['Urgence', 'Dentaires', 'Parodontaux', 'Orthodontiques', 'Autres']);
@@ -648,6 +649,7 @@ const handleDeleteAllergy = async (item) => {
 };
 
 const handleCloture = () => {
+    if (isClotureProcessing.value) return;
     if (!ensureMedecinSelected()) return;
 
     if (savingCount.value > 0) {
@@ -663,6 +665,7 @@ const handleCloture = () => {
         rejectLabel: 'Annuler',
         acceptClass: 'p-button-danger',
         accept: async () => {
+            isClotureProcessing.value = true;
             try {
                 await saveAll({ silent: true });
 
@@ -692,6 +695,8 @@ const handleCloture = () => {
                 }
                 console.error('Erreur clôture consultation', error);
                 toast.add({ severity: 'error', summary: 'Erreur', detail: 'Clôture impossible.', life: 2500 });
+            } finally {
+                isClotureProcessing.value = false;
             }
         }
     });
@@ -924,7 +929,13 @@ const retryLoad = async () => {
         <ConfirmDialog />
         <AppToast />
         
-        <div v-if="!pageLoading && !loadErrorMessage">
+        <div v-if="!pageLoading && !loadErrorMessage" class="relative">
+            <div v-if="isClotureProcessing" class="absolute inset-0 z-30 flex items-center justify-center bg-surface-0/60 dark:bg-surface-900/60 backdrop-blur-[1px]">
+                <div class="flex items-center gap-2 rounded-xl border border-surface-300 dark:border-surface-700 bg-surface-0 dark:bg-surface-900 px-4 py-2 text-sm font-medium text-surface-700 dark:text-surface-100 shadow">
+                    <i class="pi pi-spin pi-spinner"></i>
+                    Clôture en cours...
+                </div>
+            </div>
             <div data-tour="consultations-form.header" class="mb-6 md:mb-8 gap-4 flex flex-row justify-items-strech rounded-2xl bg-surface-0/80 dark:bg-surface-800/80 backdrop-blur-sm border border-surface-200/50 dark:border-surface-700/50">
                 <div class="inline-flex items-center gap-3 mb-4 p-3 ">
                     <div class="p-2.5 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600">
@@ -937,20 +948,20 @@ const retryLoad = async () => {
                 </div>
                 <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
                     <div data-tour="consultations-form.navigation" class="flex items-center gap-2">
-                        <Button icon="pi pi-arrow-left" label="Retour" severity="danger" @click="() => router.back()" />
-                        <Button icon="pi pi-print" label="Imprimer fiche" severity="secondary" outlined @click="handlePrintFiche" />
+                        <Button icon="pi pi-arrow-left" label="Retour" severity="danger" :disabled="isClotureProcessing" @click="() => router.back()" />
+                        <Button icon="pi pi-print" label="Imprimer fiche" severity="secondary" outlined :disabled="isClotureProcessing" @click="handlePrintFiche" />
                     </div>
                     <div data-tour="consultations-form.display-mode" class="flex items-center gap-2">
-                        <SelectButton v-model="switcherMode" :options="displayModeOptions" optionLabel="label" optionValue="value" />
+                        <SelectButton v-model="switcherMode" :options="displayModeOptions" optionLabel="label" optionValue="value" :disabled="isClotureProcessing" />
                     </div>
                 </div>
             </div>
 
-            <div class="p-6 bg-surface-0 dark:bg-surface-800/80 rounded-2xl shadow-xl border border-surface-200/50 dark:border-surface-700/50 backdrop-blur-sm">
+            <div class="p-6 bg-surface-0 dark:bg-surface-800/80 rounded-2xl shadow-xl border border-surface-200/50 dark:border-surface-700/50 backdrop-blur-sm" :class="isClotureProcessing ? 'pointer-events-none opacity-80' : ''">
                 <div data-tour="consultations-form.save-indicator">
                     <SaveIndicator
                         v-model:auto-save-enabled="autoSaveEnabled"
-                        :loading="loading"
+                        :loading="loading || isClotureProcessing"
                         :saving-count="savingCount"
                         :last-saved-at="lastSavedAt"
                         :dirty-sections="dirtySectionsList"
@@ -981,7 +992,7 @@ const retryLoad = async () => {
                                     <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-50">Synthèse clinique</h3>
                                     <p class="text-xs text-surface-500 dark:text-surface-400">Vue condensée du questionnaire, examens, bilan, plan de traitement et documents.</p>
                                 </div>
-                                <Button icon="pi pi-save" label="Enregistrer" size="small" :loading="saving.entretien || saving.examens || saving.documents || saving.bilans || saving.planTraitement" @click="saveSyntheseSection" />
+                                <Button icon="pi pi-save" label="Enregistrer" size="small" :loading="isClotureProcessing || saving.entretien || saving.examens || saving.documents || saving.bilans || saving.planTraitement" :disabled="isClotureProcessing" @click="saveSyntheseSection" />
                             </div>
 
                             <div class="grid grid-cols-1 xl:grid-cols-[0.88fr_1.12fr] gap-4">
@@ -1193,9 +1204,9 @@ const retryLoad = async () => {
                                 :salles-options="sallesOptions"
                                 :ordonnances="data.ordonnances"
                                 :medecin-readonly="isMedecinUser"
-                                :loading="loading"
+                                :loading="loading || isClotureProcessing"
                                 :saving="saving.consult"
-                                :cloture-loading="false"
+                                :cloture-loading="isClotureProcessing"
                                 @save="saveConsultSection"
                                 @cloture="handleCloture"
                                 @open-ordonnance="openOrdonnanceModal"

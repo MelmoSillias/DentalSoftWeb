@@ -447,6 +447,33 @@ class ReportService
         });
     }
 
+    public function globalPatientReferrals(): array
+    {
+        return $this->remember('report.globalPatientReferrals', 180, function () {
+            $rows = $this->patientRepo->createQueryBuilder('p')
+                ->select('p.referencement AS source, COUNT(p.id) AS total')
+                ->groupBy('p.referencement')
+                ->orderBy('total', 'DESC')
+                ->getQuery()
+                ->getArrayResult();
+
+            $result = [];
+            foreach ($rows as $row) {
+                $source = trim((string) ($row['source'] ?? ''));
+                if ($source === '') {
+                    $source = 'Non renseigné';
+                }
+
+                $result[] = [
+                    'source' => $source,
+                    'count' => (int) ($row['total'] ?? 0),
+                ];
+            }
+
+            return $result;
+        });
+    }
+
     public function periodicPatients(?\DateTime $fromDate, ?\DateTime $toDate): array
     {
         $cacheKey = sprintf('report.periodicPatients.%s.%s', $fromDate?->format('Ymd') ?? 'none', $toDate?->format('Ymd') ?? 'none');
@@ -1180,11 +1207,11 @@ class ReportService
             ->setParameters(['start' => $dateStart, 'end' => $dateEnd])
             ->getSingleScalarResult();
 
-        $totalConsultations = $this->em->createQuery("\n        SELECT COUNT(c.id) FROM App\\Billing\\Entity\\Consultation c \n        WHERE c.CreatedAt BETWEEN :start AND :end\n    ")
+        $totalConsultations = $this->em->createQuery("\n        SELECT COUNT(c.id) FROM App\\CareDelivery\\Entity\\Consultation c \n        WHERE c.CreatedAt BETWEEN :start AND :end\n    ")
             ->setParameters(['start' => $dateStart, 'end' => $dateEnd])
             ->getSingleScalarResult();
 
-        $pendingConsultations = $this->em->createQuery("\n        SELECT COUNT(c.id) FROM App\\Billing\\Entity\\Consultation c \n        WHERE c.CreatedAt BETWEEN :start AND :end AND c.statut = 0\n    ")
+        $pendingConsultations = $this->em->createQuery("\n        SELECT COUNT(c.id) FROM App\\CareDelivery\\Entity\\Consultation c \n        WHERE c.CreatedAt BETWEEN :start AND :end AND c.statut = 0\n    ")
             ->setParameters(['start' => $dateStart, 'end' => $dateEnd])
             ->getSingleScalarResult();
 
@@ -1194,13 +1221,13 @@ class ReportService
 
         $modeEspeces = $this->em->getRepository(ModeDePaiement::class)->find(0);
 
-        $revenusEspeces = $this->em->createQuery("\n        SELECT SUM(t.montant)\n        FROM App\\Scheduling\\Entity\\Transaction t\n        WHERE t.dateTransaction BETWEEN :start AND :end\n        AND t.modeDePaiement = :mode\n        AND t.type = 'Entrée'\n    ")
+        $revenusEspeces = $this->em->createQuery("\n        SELECT SUM(t.montant)\n        FROM App\\Billing\\Entity\\Transaction t\n        WHERE t.dateTransaction BETWEEN :start AND :end\n        AND t.modeDePaiement = :mode\n        AND t.type = 'Entrée'\n    ")
             ->setParameter('start', $dateStart)
             ->setParameter('end', $dateEnd)
             ->setParameter('mode', $modeEspeces)
             ->getSingleScalarResult();
 
-        $revenusTotaux = $this->em->createQuery("\n    SELECT SUM(t.montant)\n    FROM App\\Scheduling\\Entity\\Transaction t\n    WHERE t.dateTransaction BETWEEN :start AND :end\n    AND t.type = 'Entrée'\n")
+        $revenusTotaux = $this->em->createQuery("\n    SELECT SUM(t.montant)\n    FROM App\\Billing\\Entity\\Transaction t\n    WHERE t.dateTransaction BETWEEN :start AND :end\n    AND t.type = 'Entrée'\n")
             ->setParameter('start', $dateStart)
             ->setParameter('end', $dateEnd)
             ->getSingleScalarResult();

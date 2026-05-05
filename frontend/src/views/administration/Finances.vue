@@ -45,75 +45,75 @@
         <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5" data-tour="admin-finances.kpi">
             <article class="rounded-2xl border border-primary-200/70 bg-gradient-to-br from-primary-50/80 to-primary-100/50 p-5 shadow-md backdrop-blur-sm dark:border-primary-800/40 dark:from-primary-900/30 dark:to-primary-800/20">
                 <div class="flex items-center justify-between gap-4">
-                    <div>
-                        <p class="text-sm font-medium text-primary-700 dark:text-primary-300">Capital total</p>
-                        <p class="mt-2 text-2xl font-bold tracking-tight text-primary-900 dark:text-primary-100 lg:text-3xl">
+                    <div class="min-w-0 flex-1">
+                        <p class="text-xs font-medium text-primary-700 dark:text-primary-300 sm:text-sm">Capital total</p>
+                        <p class="mt-2 truncate text-lg font-bold tracking-tight text-primary-900 dark:text-primary-100 sm:text-xl lg:text-2xl">
                             {{ formatFcfa(capitalTotal) }}
                         </p>
-                        <p class="mt-1 text-xs text-primary-600/70 dark:text-primary-400/70">Tous comptes confondus</p>
+                        <p class="mt-1 truncate text-xs text-primary-600/70 dark:text-primary-400/70">Tous comptes confondus</p>
                     </div>
-                    <div class="rounded-lg bg-primary-500/10 p-2 dark:bg-primary-500/20">
-                        <i class="pi pi-database text-xl text-primary-500"></i>
+                    <div class="flex-shrink-0 rounded-lg bg-primary-500/10 p-2 dark:bg-primary-500/20">
+                        <i class="pi pi-database text-lg text-primary-500 sm:text-xl"></i>
                     </div>
                 </div>
             </article>
 
             <article class="rounded-2xl border border-emerald-200/70 bg-gradient-to-br from-emerald-50/80 to-emerald-100/50 p-5 shadow-md backdrop-blur-sm dark:border-emerald-800/40 dark:from-emerald-900/20 dark:to-emerald-800/20">
                 <div class="flex items-center justify-between gap-4">
-                    <div>
-                        <p class="text-sm font-medium text-emerald-700 dark:text-emerald-300">Transactions validées</p>
-                        <p class="mt-2 text-2xl font-bold tracking-tight text-emerald-900 dark:text-emerald-100 xl:text-3xl lg:text-xl">
+                    <div class="min-w-0 flex-1">
+                        <p class="text-xs font-medium text-emerald-700 dark:text-emerald-300 sm:text-sm">Transactions validées</p>
+                        <p class="mt-2 truncate text-lg font-bold tracking-tight text-emerald-900 dark:text-emerald-100 sm:text-xl lg:text-2xl">
                             {{ validatedTransactionsCount }}
                         </p>
-                        <p class="mt-1 text-xs text-emerald-600/70 dark:text-emerald-400/70">{{ formatFcfa(validatedTransactionsAmount) }} sur la période</p>
+                        <p class="mt-1 truncate text-xs text-emerald-600/70 dark:text-emerald-400/70">{{ formatFcfa(validatedTransactionsAmount) }} sur la période</p>
                     </div>
-                    <div class="rounded-lg bg-emerald-500/10 p-2 dark:bg-emerald-500/20">
-                        <i class="pi pi-check-circle text-xl text-emerald-500"></i>
+                    <div class="flex-shrink-0 rounded-lg bg-emerald-500/10 p-2 dark:bg-emerald-500/20">
+                        <i class="pi pi-check-circle text-lg text-emerald-500 sm:text-xl"></i>
                     </div>
                 </div>
             </article>
 
             <article class="rounded-2xl border border-amber-200/70 bg-gradient-to-br from-amber-50/80 to-amber-100/50 p-5 shadow-md backdrop-blur-sm dark:border-amber-800/40 dark:from-amber-900/20 dark:to-amber-800/20">
                 <div class="flex items-center justify-between gap-4">
-                    <div>
-                        <p class="text-sm font-medium text-amber-700 dark:text-amber-300">En attente</p>
-                        <p class="mt-2 text-2xl font-bold tracking-tight text-amber-900 dark:text-amber-100 xl:text-3xl lg:text-xl">
+                    <div class="min-w-0 flex-1">
+                        <p class="text-xs font-medium text-amber-700 dark:text-amber-300 sm:text-sm">En attente</p>
+                        <p class="mt-2 truncate text-lg font-bold tracking-tight text-amber-900 dark:text-amber-100 sm:text-xl lg:text-2xl">
                             {{ pendingTransactionsCount }}
                         </p>
-                        <p class="mt-1 text-xs text-amber-600/70 dark:text-amber-400/70">{{ formatFcfa(pendingTransactionsAmount) }} à valider</p>
+                        <p class="mt-1 truncate text-xs text-amber-600/70 dark:text-amber-400/70">{{ formatFcfa(pendingTransactionsAmount) }} à valider</p>
                     </div>
-                    <div class="rounded-lg bg-amber-500/10 p-2 dark:bg-amber-500/20">
-                        <i class="pi pi-hourglass text-xl text-amber-500"></i>
+                    <div class="flex-shrink-0 rounded-lg bg-amber-500/10 p-2 dark:bg-amber-500/20">
+                        <i class="pi pi-hourglass text-lg text-amber-500 sm:text-xl"></i>
                     </div>
                 </div>
             </article>
 
             <article class="rounded-2xl border border-slate-200/70 bg-gradient-to-br from-slate-50/80 to-slate-100/50 p-5 shadow-md backdrop-blur-sm dark:border-slate-800/40 dark:from-slate-900/20 dark:to-slate-800/20">
                 <div class="flex items-center justify-between gap-4">
-                    <div>
-                        <p class="text-sm font-medium text-slate-600 dark:text-slate-300">Modes actifs</p>
-                        <p class="mt-2 text-2xl font-bold tracking-tight text-slate-900 dark:text-surface-100 xl:text-3xl lg:text-xl">
+                    <div class="min-w-0 flex-1">
+                        <p class="text-xs font-medium text-slate-600 dark:text-slate-300 sm:text-sm">Modes actifs</p>
+                        <p class="mt-2 truncate text-lg font-bold tracking-tight text-slate-900 dark:text-surface-100 sm:text-xl lg:text-2xl">
                             {{ comptesActifsCount }}
                         </p>
-                        <p class="mt-1 text-xs text-slate-500/70 dark:text-slate-400/70">{{ insuranceMethodsCount }} assurance(s) configurée(s)</p>
+                        <p class="mt-1 truncate text-xs text-slate-500/70 dark:text-slate-400/70">{{ insuranceMethodsCount }} assurance(s) configurée(s)</p>
                     </div>
-                    <div class="rounded-lg bg-slate-500/10 p-2 dark:bg-slate-500/20">
-                        <i class="pi pi-credit-card text-xl text-slate-500"></i>
+                    <div class="flex-shrink-0 rounded-lg bg-slate-500/10 p-2 dark:bg-slate-500/20">
+                        <i class="pi pi-credit-card text-lg text-slate-500 sm:text-xl"></i>
                     </div>
                 </div>
             </article>
 
             <article class="rounded-2xl border border-rose-200/70 bg-gradient-to-br from-rose-50/80 to-rose-100/50 p-5 shadow-md backdrop-blur-sm dark:border-rose-800/40 dark:from-rose-900/20 dark:to-rose-800/20">
                 <div class="flex items-center justify-between gap-4">
-                    <div>
-                        <p class="text-sm font-medium text-rose-700 dark:text-rose-300">Charges fixes</p>
-                        <p class="mt-2 text-2xl font-bold tracking-tight text-rose-900 dark:text-rose-100 xl:text-3xl lg:text-xl">
+                    <div class="min-w-0 flex-1">
+                        <p class="text-xs font-medium text-rose-700 dark:text-rose-300 sm:text-sm">Charges fixes</p>
+                        <p class="mt-2 truncate text-lg font-bold tracking-tight text-rose-900 dark:text-rose-100 sm:text-xl lg:text-2xl">
                             {{ formatFcfa(fixedChargesTotal) }}
                         </p>
-                        <p class="mt-1 text-xs text-rose-600/70 dark:text-rose-400/70">{{ fixedCharges.length }} charge(s) configurée(s)</p>
+                        <p class="mt-1 truncate text-xs text-rose-600/70 dark:text-rose-400/70">{{ fixedCharges.length }} charge(s) configurée(s)</p>
                     </div>
-                    <div class="rounded-lg bg-rose-500/10 p-2 dark:bg-rose-500/20">
-                        <i class="pi pi-building-columns text-xl text-rose-500"></i>
+                    <div class="flex-shrink-0 rounded-lg bg-rose-500/10 p-2 dark:bg-rose-500/20">
+                        <i class="pi pi-building-columns text-lg text-rose-500 sm:text-xl"></i>
                     </div>
                 </div>
             </article>

@@ -173,7 +173,7 @@ const currentReceptionInvoiceRow = computed(() => {
         montant: total,
         reste: remaining,
         statut: remaining === 0 ? 1 : 0,
-        isRegle: remaining === 0 && total > 0,
+        isRegle: remaining === 0,
         patient: currentConsultation.value.patient,
         telephone: currentConsultation.value.patient?.telephone || currentConsultation.value.patientPhone || '',
         insurance: {

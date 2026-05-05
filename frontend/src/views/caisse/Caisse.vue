@@ -485,8 +485,7 @@ const openPayDialog = async (row) => {
 		insuranceEnabled: false,
 		insuranceModeId: existingInsurance?.insuranceModeId ?? null,
 		insuranceRate: Number(existingInsurance?.insuranceRate) || 0
-	};
-	paymentDialogTab.value = existingInsurance?.hasInsurance ? 'client' : 'assurance';
+	}; 
 	payDialogVisible.value = true;
 };
 
