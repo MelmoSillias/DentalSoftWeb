@@ -96,6 +96,9 @@ const quickDialogActionMode = ref('continue');
 const actionChoiceByConsultation = ref({});
 const createPatientDialogVisible = ref(false);
 const createConsultationDialogVisible = ref(false);
+const createConsultationPreSelectedPatient = ref(null);
+const editPatientDialogVisible = ref(false);
+const patientToEdit = ref(null);
 const initialized = ref(false);
 
 const roles = computed(() => auth.user?.roles || []);
@@ -676,6 +679,7 @@ const handleQuickDialogDone = async () => {
 
 const handlePatientSaved = async (patient) => {
     createPatientDialogVisible.value = false;
+    editPatientDialogVisible.value = false;
     if (patient?.id) {
         selectedPatient.value = mergePatientForCard(patient);
     }
@@ -684,6 +688,7 @@ const handlePatientSaved = async (patient) => {
 
 const handleConsultationCreated = async () => {
     createConsultationDialogVisible.value = false;
+    createConsultationPreSelectedPatient.value = null;
     await loadConsultations();
 };
 
@@ -872,6 +877,8 @@ onBeforeUnmount(() => {
                 @select-consultation="(consultationId) => { selectedConsultationId = consultationId; }"
                 @open-create-patient="createPatientDialogVisible = true"
                 @open-create-consultation="createConsultationDialogVisible = true"
+                @open-create-consultation-for-patient="(patient) => { createConsultationPreSelectedPatient = patient; createConsultationDialogVisible = true; }"
+                @open-edit-patient="(patient) => { patientToEdit = patient; editPatientDialogVisible = true; }"
                 @open-caisse-pay="openPayDialog"
                 @open-caisse-validate="openValidateDialog"
                 @open-caisse-modify="openModifyDialog"
@@ -991,7 +998,21 @@ onBeforeUnmount(() => {
                         </div>
                     </div>
                 </template>
-                <FormCreateConsultation @saved="handleConsultationCreated" @cancel="createConsultationDialogVisible = false" />
+                <FormCreateConsultation :patient="createConsultationPreSelectedPatient" @saved="handleConsultationCreated" @cancel="createConsultationDialogVisible = false; createConsultationPreSelectedPatient = null" />
+            </Dialog>
+            <Dialog v-model:visible="editPatientDialogVisible" modal :style="{ width: '45rem' }">
+                <template #header>
+                    <div class="flex items-center gap-3">
+                        <div class="rounded-lg bg-blue-100 p-2 dark:bg-blue-900/30">
+                            <i class="pi pi-user-edit text-blue-600 dark:text-blue-300"></i>
+                        </div>
+                        <div>
+                            <h4 class="m-0 text-surface-900 dark:text-surface-100">Modifier le patient</h4>
+                            <p class="mt-1 text-sm text-surface-500 dark:text-surface-400">Mettre à jour les informations du patient</p>
+                        </div>
+                    </div>
+                </template>
+                <FormPatient :patient="patientToEdit" @saved="handlePatientSaved" @cancel="editPatientDialogVisible = false; patientToEdit = null" />
             </Dialog>
         </div>
     </section>

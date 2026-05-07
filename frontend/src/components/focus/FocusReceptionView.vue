@@ -4,8 +4,10 @@ import PrintReceiptBody from '@/components/print/PrintReceiptBody.vue';
 import PrintTicketBody from '@/components/print/PrintTicketBody.vue';
 import { usePrinter } from '@/composables/usePrinter';
 import { fetchInvoicePrintData, fetchReceiptPrintData, fetchTicketPrintData } from '@/services/printService';
+import { searchPatients } from '@/services/patients';
 import Button from 'primevue/button';
 import Checkbox from 'primevue/checkbox';
+import InputText from 'primevue/inputtext';
 import Skeleton from 'primevue/skeleton';
 import Tag from 'primevue/tag';
 import { computed, defineEmits, defineProps, ref, toRefs } from 'vue';
@@ -46,6 +48,8 @@ const emit = defineEmits([
     'select-consultation',
     'open-create-patient',
     'open-create-consultation',
+    'open-create-consultation-for-patient',
+    'open-edit-patient',
     'open-caisse-pay',
     'open-caisse-validate',
     'open-caisse-modify',
@@ -57,6 +61,42 @@ const emit = defineEmits([
     'open-quick-dialog',
     'cancel-consultation'
 ]);
+
+// === Recherche patient ===
+const searchMode = ref(false);
+const patientSearchQuery = ref('');
+const patientSearchResults = ref([]);
+const patientSearchLoading = ref(false);
+let searchDebounceTimer = null;
+
+const toggleSearchMode = () => {
+    searchMode.value = !searchMode.value;
+    if (!searchMode.value) {
+        patientSearchQuery.value = '';
+        patientSearchResults.value = [];
+    }
+};
+
+const performPatientSearch = async () => {
+    const q = patientSearchQuery.value.trim();
+    if (!q || q.length < 2) {
+        patientSearchResults.value = [];
+        return;
+    }
+    patientSearchLoading.value = true;
+    try {
+        patientSearchResults.value = await searchPatients(q, token, 15);
+    } catch (_) {
+        patientSearchResults.value = [];
+    } finally {
+        patientSearchLoading.value = false;
+    }
+};
+
+const onPatientSearchInput = () => {
+    clearTimeout(searchDebounceTimer);
+    searchDebounceTimer = setTimeout(performPatientSearch, 350);
+};
 
 const { consultations, selectedConsultationId } = toRefs(props);
 const token = localStorage.getItem('token');
@@ -303,15 +343,112 @@ function formatPaymentMode(mode) {
                             <p class="text-xs text-surface-500">{{ newPatients.length }} aujourd’hui</p>
                         </div>
                     </div>
-                    <button @click="emit('open-create-patient')"
-                        class="flex items-center gap-1 rounded-lg bg-primary-500 px-3 py-1.5 text-xs font-medium text-white transition-all hover:bg-primary-600 active:scale-95 shadow-sm">
-                        <i class="pi pi-plus text-xs"></i>
-                        <span class="hidden sm:inline">Ajouter</span>
-                    </button>
+                    <div class="flex items-center gap-1.5">
+                        <button
+                            @click="toggleSearchMode"
+                            :class="[
+                                'flex h-7 w-7 items-center justify-center rounded-md text-xs transition-all',
+                                searchMode
+                                    ? 'bg-primary-500 text-white shadow-sm'
+                                    : 'border border-surface-300 dark:border-surface-600 text-surface-500 hover:bg-surface-100 dark:hover:bg-surface-800'
+                            ]"
+                            :title="searchMode ? 'Fermer la recherche' : 'Rechercher un patient'"
+                        >
+                            <i :class="searchMode ? 'pi pi-times' : 'pi pi-search'" class="text-xs"></i>
+                        </button>
+                        <button @click="emit('open-create-patient')"
+                            class="flex items-center gap-1 rounded-lg bg-primary-500 px-3 py-1.5 text-xs font-medium text-white transition-all hover:bg-primary-600 active:scale-95 shadow-sm">
+                            <i class="pi pi-plus text-xs"></i>
+                            <span class="hidden sm:inline">Ajouter</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Recherche patient (colonne nouveaux patients) -->
+                <div v-if="searchMode" class="mb-3 space-y-3">
+                    <div class="relative">
+                        <IconField> 
+                            <InputIcon classoi="pi pi-search" /> 
+                            <InputText
+                            v-model="patientSearchQuery"
+                            placeholder="Nom, prénom ou téléphone..."
+                            class="w-full pl-8 text-sm"
+                            @input="onPatientSearchInput"
+                            autofocus 
+                        />
+                        
+                        <button
+                            v-if="patientSearchQuery"
+                            class="absolute right-3 top-1/2 -translate-y-1/2 text-surface-400 hover:text-surface-600"
+                            @click="patientSearchQuery = ''; patientSearchResults = []"
+                        >
+                            <i class="pi pi-times text-xs"></i>
+                        </button>
+                        </IconField> 
+                        
+                    </div>
+
+                    <div v-if="patientSearchLoading" class="space-y-2">
+                        <div v-for="i in 3" :key="`search-skeleton-${i}`"
+                            class="flex items-center gap-3 rounded-xl bg-surface-50 p-3 dark:bg-surface-800/40 animate-pulse">
+                            <Skeleton shape="circle" size="2rem" class="flex-shrink-0" />
+                            <div class="flex-1 space-y-2">
+                                <Skeleton width="60%" height="0.75rem" />
+                                <Skeleton width="80%" height="0.625rem" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div v-else-if="patientSearchResults.length" class="space-y-2 max-h-[50vh] overflow-y-auto">
+                        <div v-for="patient in patientSearchResults" :key="`search-${patient.id}`"
+                            class="group flex items-center gap-3 rounded-xl border border-surface-100 bg-surface-50/80 p-3 transition-all hover:border-primary-200 hover:bg-primary-50/40 hover:shadow-sm dark:border-surface-700 dark:bg-surface-800/60 dark:hover:border-primary-700 dark:hover:bg-primary-900/20">
+                            <div
+                                class="flex h-8 w-8 text-xs flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary-500 to-primary-600 font-bold text-white shadow-sm">
+                                {{ ((patient.prenom?.[0] ?? '') + (patient.nom?.[0] ?? 'P')).toUpperCase() }}
+                            </div>
+
+                            <div class="min-w-0 flex-1">
+                                <p class="truncate text-sm font-semibold text-surface-900 dark:text-surface-50">
+                                    {{ patientDisplayName(patient) }}
+                                </p>
+                                <div class="mt-0.5 flex items-center gap-1 truncate text-xs text-surface-500 dark:text-surface-400">
+                                    <i class="pi pi-phone text-[10px]"></i>
+                                    {{ patient.telephone || 'Non renseigné' }}
+                                </div>
+                            </div>
+
+                            <div class="flex items-center gap-1.5">
+                                <button
+                                    class="flex h-7 w-7 items-center justify-center rounded-md bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 transition-colors"
+                                    title="Nouvelle consultation"
+                                    @click="emit('open-create-consultation-for-patient', patient)"
+                                >
+                                    <i class="fas fa-stethoscope text-xs"></i>
+                                </button>
+                                <button
+                                    class="flex h-7 w-7 items-center justify-center rounded-md bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400 transition-colors"
+                                    title="Modifier le patient"
+                                    @click="emit('open-edit-patient', patient)"
+                                >
+                                    <i class="pi pi-user-edit text-xs"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div v-else-if="patientSearchQuery.length >= 2" class="flex flex-col items-center justify-center py-6 text-center text-surface-400">
+                        <i class="pi pi-search text-2xl mb-2 opacity-30"></i>
+                        <p class="text-sm">Aucun patient trouvé</p>
+                        <p class="text-xs mt-0.5">Vérifiez l'orthographe ou essayez le téléphone</p>
+                    </div>
+
+                    <div v-else class="text-center py-2">
+                        <p class="text-xs text-surface-400">Tapez au moins 2 caractères pour chercher</p>
+                    </div>
                 </div>
 
                 <!-- Squelettes de chargement -->
-                <div v-if="loading" class="space-y-2">
+                <div v-else-if="loading" class="space-y-2">
                     <div v-for="i in 3" :key="i"
                         class="flex items-center gap-3 rounded-xl bg-surface-50 p-3 dark:bg-surface-800/40">
                         <Skeleton shape="circle" size="2.5rem" class="flex-shrink-0" />
@@ -330,6 +467,7 @@ function formatPaymentMode(mode) {
                         <div
                             class="flex h-5 w-5 text-xs flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-fuchsia-500 font-bold text-white shadow-sm">
                             {{ (patient.prenom?.[0] ?? '') + (patient.nom?.[0] ?? 'P') }}
+                            
                         </div>
 
                         <!-- Infos -->
@@ -351,10 +489,23 @@ function formatPaymentMode(mode) {
                         </div>
 
                         <!-- Badge "Nouveau" -->
-                        <span
-                            class="inline-flex items-center gap-1 rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700 dark:bg-purple-900/40 dark:text-purple-400">
-                            <i class="pi pi-sparkles text-[10px]"></i>
-                        </span>
+                        
+                        <div class="flex items-center gap-1.5">
+                                <button
+                                    class="flex h-7 w-7 items-center justify-center rounded-md bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 transition-colors"
+                                    title="Nouvelle consultation"
+                                    @click="emit('open-create-consultation-for-patient', patient)"
+                                >
+                                    <i class="fas fa-stethoscope text-xs"></i>
+                                </button>
+                                <button
+                                    class="flex h-7 w-7 items-center justify-center rounded-md bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400 transition-colors"
+                                    title="Modifier le patient"
+                                    @click="emit('open-edit-patient', patient)"
+                                >
+                                    <i class="pi pi-user-edit text-xs"></i>
+                                </button>
+                            </div>
                     </div>
                 </div>
 
@@ -396,7 +547,6 @@ function formatPaymentMode(mode) {
                             :aria-label="newestFirstSecretary ? 'Plus récentes en haut' : 'Plus anciennes en haut'"
                             @click="newestFirstSecretary = !newestFirstSecretary"
                         />
-
                         <button @click="emit('open-create-consultation')"
                             class="flex items-center gap-1 rounded-md bg-primary-500 px-2.5 py-1 text-xs text-white shadow-sm">
                             <i class="pi pi-plus text-xs"></i>
@@ -404,7 +554,7 @@ function formatPaymentMode(mode) {
                     </div>
                 </div>
 
-                <!-- CONTENT -->
+                <!-- CONTENT (consultations) -->
                 <div class="p-3">
 
                     <!-- Loading -->
@@ -490,15 +640,16 @@ function formatPaymentMode(mode) {
                                             }}
                                         </span>
 
-                                        <!-- Facture -->
-                                        <div class="flex items-center gap-2">
-                                            <span :class="[
-                                                consultation?.factState === 1
-                                                    ? 'text-emerald-600'
-                                                    : consultation?.factState === 0
-                                                        ? 'text-sky-600'
-                                                        : 'text-gray-400'
-                                            ]">
+                                        <!-- Facture / ticket -->
+                                        <div class="flex items-center gap-1.5">
+                                            <span
+                                                :class="[
+                                                    consultation?.factState === 1
+                                                        ? 'text-emerald-600'
+                                                        : consultation?.factState === 0
+                                                            ? 'text-sky-600'
+                                                            : 'text-gray-400'
+                                                ]">
                                                 {{ formatFactureState(consultation).label }}
                                             </span>
 
@@ -525,6 +676,7 @@ function formatPaymentMode(mode) {
                         <i class="pi pi-calendar-times text-3xl mb-2 opacity-50"></i>
                         <p class="text-sm">Aucune consultation aujourd’hui</p>
                     </div>
+
                 </div>
             </div>
         </section>
