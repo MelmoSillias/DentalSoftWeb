@@ -26,8 +26,10 @@ import Tag from 'primevue/tag';
 import Toast from 'primevue/toast';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
-import { computed, onMounted,  onBeforeUnmount, ref, watch } from 'vue';
+import { computed, defineAsyncComponent, onMounted,  onBeforeUnmount, ref, watch } from 'vue';
 import { useLayout } from '@/layout/composables/layout';
+
+const FocusRendezVousView = defineAsyncComponent(() => import('@/views/agenda/RendezVous.vue'));
 
 const auth = useAuthStore();
 const toast = useToast();
@@ -94,6 +96,9 @@ const quickDialogActionMode = ref('continue');
 const actionChoiceByConsultation = ref({});
 const createPatientDialogVisible = ref(false);
 const createConsultationDialogVisible = ref(false);
+const createConsultationPreSelectedPatient = ref(null);
+const editPatientDialogVisible = ref(false);
+const patientToEdit = ref(null);
 const initialized = ref(false);
 
 const roles = computed(() => auth.user?.roles || []);
@@ -104,16 +109,25 @@ const isRestrictedMedecin = computed(() => isMedecin.value && !isAdmin.value);
 const shouldHidePatientDossierForMedecin = computed(() => isRestrictedMedecin.value && hidePatientDossierForMedecins.value);
 const shouldHidePatientPhoneForMedecin = computed(() => isRestrictedMedecin.value && hidePatientPhoneForMedecins.value);
 const availableModes = computed(() => {
+    const rdvMode = { label: 'Rendez-vous', value: 'rdv' };
+
     if (isAdmin.value) {
         return [
-            { label: 'Secretaire', value: 'reception' },
-            { label: 'Dentiste', value: 'medecin' }
+            { label: 'Reception', value: 'reception' },
+            { label: 'Dentiste', value: 'medecin' },
+            rdvMode
         ];
     }
     if (isMedecin.value) {
-        return [{ label: 'Dentiste', value: 'medecin' }];
+        return [{ label: 'Dentiste', value: 'medecin' }, rdvMode];
     }
-    return [{ label: 'Secretaire', value: 'reception' }];
+    return [{ label: 'Reception', value: 'reception' }, rdvMode];
+});
+
+const selectedModeBorderClass = computed(() => {
+    if (selectedMode.value === 'reception') return 'border-primary-500';
+    if (selectedMode.value === 'medecin') return 'border-cyan-500';
+    return 'border-amber-500';
 });
 
 if (isMedecin.value && !isAdmin.value) {
@@ -128,6 +142,15 @@ const initialsFromName = (value) => String(value || '')
     .join('')
     .slice(0, 2)
     .toUpperCase();
+
+const resolvePatientPhoto = (value = {}) => (
+    value.photo
+    || value.photoUrl
+    || value.photo_url
+    || value.patientPhoto
+    || value.patient_photo
+    || null
+);
 
 const currentConsultation = computed(() => consultations.value.find((item) => item.id === selectedConsultationId.value) || null);
 const currentReceptionBilling = computed(() => {
@@ -153,7 +176,7 @@ const currentReceptionInvoiceRow = computed(() => {
         montant: total,
         reste: remaining,
         statut: remaining === 0 ? 1 : 0,
-        isRegle: remaining === 0 && total > 0,
+        isRegle: remaining === 0,
         patient: currentConsultation.value.patient,
         telephone: currentConsultation.value.patient?.telephone || currentConsultation.value.patientPhone || '',
         insurance: {
@@ -308,9 +331,11 @@ const normalizePatientForCard = (payload = {}) => {
     const normalized = normalizePatient(payload || {});
     const fullName = `${normalized.nom || ''} ${normalized.prenom || ''}`.trim();
     const maskedPhone = shouldHidePatientPhoneForMedecin.value ? 'Masqué par l\'administrateur' : (normalized.telephone || '--');
+    const resolvedPhoto = resolvePatientPhoto(payload) || resolvePatientPhoto(normalized);
     return {
         ...payload,
         ...normalized,
+        photo: resolvedPhoto,
         initials: initialsFromName(fullName || payload.fullname || payload.nom),
         numeroDossier: payload.numeroDossier || payload.numero_dossier || payload.code || `PAT-${normalized.id || '--'}`,
         age: normalized.age ?? (normalized.dateNaissance ? Math.max(0, Math.floor((Date.now() - new Date(normalized.dateNaissance).getTime()) / (1000 * 60 * 60 * 24 * 365.25))) : 0),
@@ -321,6 +346,22 @@ const normalizePatientForCard = (payload = {}) => {
         antecedents: Array.isArray(payload.antecedents) ? payload.antecedents : [],
         allergies: Array.isArray(payload.allergies) ? payload.allergies : []
     };
+};
+
+const mergePatientForCard = (payload = {}) => {
+    const incoming = normalizePatientForCard(payload);
+    const current = selectedPatient.value || {};
+
+    return {
+        ...current,
+        ...incoming,
+        photo: incoming.photo || current.photo || null,
+        numeroDossier: incoming.numeroDossier || current.numeroDossier || '--'
+    };
+};
+
+const handlePatientLoaded = (payload) => {
+    selectedPatient.value = mergePatientForCard(payload);
 };
 
 const loadSettings = async () => {
@@ -359,6 +400,11 @@ const resetReceptionFocusData = () => {
 };
 
 const loadConsultations = async () => {
+    if (selectedMode.value === 'rdv') {
+        loading.value = false;
+        return;
+    }
+
     loading.value = true;
     try {
         if (selectedMode.value === 'reception') {
@@ -388,7 +434,7 @@ const loadSelectedPatient = async () => {
 
     try {
         const patient = await fetchPatientById(consultation.patientId, token);
-        selectedPatient.value = normalizePatientForCard(patient);
+        selectedPatient.value = mergePatientForCard(patient);
     } catch (_) {
         selectedPatient.value = null;
     }
@@ -633,14 +679,16 @@ const handleQuickDialogDone = async () => {
 
 const handlePatientSaved = async (patient) => {
     createPatientDialogVisible.value = false;
+    editPatientDialogVisible.value = false;
     if (patient?.id) {
-        selectedPatient.value = normalizePatientForCard(patient);
+        selectedPatient.value = mergePatientForCard(patient);
     }
     await loadConsultations();
 };
 
 const handleConsultationCreated = async () => {
     createConsultationDialogVisible.value = false;
+    createConsultationPreSelectedPatient.value = null;
     await loadConsultations();
 };
 
@@ -681,6 +729,10 @@ const askCancel = (event, consultation) => {
 };
 
 const onFocusRealtimeEvent = async () => {
+    if (selectedMode.value === 'rdv') {
+        return;
+    }
+
     await loadConsultations();
     await loadSelectedPatient();
 };
@@ -739,13 +791,13 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-     <section class="min-h-screen bg-surface-50 dark:bg-surface-950 transition-colors duration-300">
+     <section class="max-h-[80vh] bg-surface-50 dark:bg-surface-950 transition-colors duration-300">
         <AppToast />
         <ConfirmPopup group="focus-cancel-consultation" />
 
         <!-- Header ultra-mince (h-12 = 48px) avec bordure inférieure colorée selon le mode -->
         <header class="sticky top-0 z-30 h-12 border-b-2 bg-white/90 backdrop-blur-xl dark:bg-surface-900/90"
-                :class="selectedMode === 'reception' ? 'border-primary-500' : 'border-cyan-500'">
+            :class="selectedModeBorderClass">
             <div class="mx-auto flex h-full max-w-[1920px] items-center justify-between px-6">
                 <div class="flex items-center gap-3">
                     <div class="flex h-7 w-7 items-center justify-center rounded-md bg-primary-500 text-white">
@@ -825,6 +877,8 @@ onBeforeUnmount(() => {
                 @select-consultation="(consultationId) => { selectedConsultationId = consultationId; }"
                 @open-create-patient="createPatientDialogVisible = true"
                 @open-create-consultation="createConsultationDialogVisible = true"
+                @open-create-consultation-for-patient="(patient) => { createConsultationPreSelectedPatient = patient; createConsultationDialogVisible = true; }"
+                @open-edit-patient="(patient) => { patientToEdit = patient; editPatientDialogVisible = true; }"
                 @open-caisse-pay="openPayDialog"
                 @open-caisse-validate="openValidateDialog"
                 @open-caisse-modify="openModifyDialog"
@@ -837,7 +891,7 @@ onBeforeUnmount(() => {
             />
 
             <FocusMedecinView
-                v-else
+                v-else-if="selectedMode === 'medecin'"
                 v-model:showCompletedMedecin="showCompletedMedecin"
                 :consultations="consultations.map((consultation) => ({
                     ...consultation,
@@ -850,9 +904,11 @@ onBeforeUnmount(() => {
                 @clear-selection="clearSelection"
                 @select-consultation="(consultationId) => { selectedConsultationId = consultationId; }"
                 @select-action-choice="openMedicalWorkspace"
-                @patient-loaded="(payload) => { selectedPatient = normalizePatientForCard(payload); }"
+                @patient-loaded="handlePatientLoaded"
                 @consultation-closed="loadConsultations"
             />
+
+            <FocusRendezVousView v-else-if="selectedMode === 'rdv'" />
 
             <!-- Dialogs restent inchangés -->
             <ConsultationDetailsDialog v-model:visible="detailsDialogVisible" :details="detailData" :loading="detailsLoading" />
@@ -942,7 +998,21 @@ onBeforeUnmount(() => {
                         </div>
                     </div>
                 </template>
-                <FormCreateConsultation @saved="handleConsultationCreated" @cancel="createConsultationDialogVisible = false" />
+                <FormCreateConsultation :patient="createConsultationPreSelectedPatient" @saved="handleConsultationCreated" @cancel="createConsultationDialogVisible = false; createConsultationPreSelectedPatient = null" />
+            </Dialog>
+            <Dialog v-model:visible="editPatientDialogVisible" modal :style="{ width: '45rem' }">
+                <template #header>
+                    <div class="flex items-center gap-3">
+                        <div class="rounded-lg bg-blue-100 p-2 dark:bg-blue-900/30">
+                            <i class="pi pi-user-edit text-blue-600 dark:text-blue-300"></i>
+                        </div>
+                        <div>
+                            <h4 class="m-0 text-surface-900 dark:text-surface-100">Modifier le patient</h4>
+                            <p class="mt-1 text-sm text-surface-500 dark:text-surface-400">Mettre à jour les informations du patient</p>
+                        </div>
+                    </div>
+                </template>
+                <FormPatient :patient="patientToEdit" @saved="handlePatientSaved" @cancel="editPatientDialogVisible = false; patientToEdit = null" />
             </Dialog>
         </div>
     </section>

@@ -15,7 +15,7 @@ class CalendarSubscriber implements EventSubscriberInterface
         private readonly UrlGeneratorInterface $router
     ) {}
 
-    public static function getSubscribedEvents()
+    public static function getSubscribedEvents(): array
     {
         return [
             SetDataEvent::class => 'onCalendarSetData',

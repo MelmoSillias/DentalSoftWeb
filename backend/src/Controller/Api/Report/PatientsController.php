@@ -21,6 +21,12 @@ class PatientsController extends AbstractController
         return $this->json($this->reportService->globalPatients());
     }
 
+    #[Route('/global/patient-referrals', name: 'global_patient_referrals', methods: ['GET'])]
+    public function globalPatientReferrals(): JsonResponse
+    {
+        return $this->json($this->reportService->globalPatientReferrals());
+    }
+
     #[Route('/periodic/patients', name: 'periodic_patients', methods: ['GET'])]
     public function periodicPatients(Request $request): JsonResponse
     {

@@ -3,6 +3,7 @@ import ConsultationEnCoursForm from '@/components/consultations/ConsultationEnCo
 import { fetchConsultationDetails, setConsultationFiche, verifyConsultationMedecinPassword } from '@/services/consultations';
 import { isConsultationsTourMockEnabled } from '@/services/consultationsTourMock';
 import { closeConsultation, saveConsultation } from '@/services/consultationsforms';
+import { fetchPublicGeneralSettings } from '@/services/globalSettingsService';
 import { fetchMedecins, fetchInfirmiers } from '@/services/corpsmedical';
 import { fetchSalles } from '@/services/salles';
 import { useAuthStore } from '@/stores/auth';
@@ -55,6 +56,7 @@ const salles = ref([]);
 
 const doctorPassword = ref('');
 const passwordValidated = ref(false);
+const allowReceptionBypassMedecinPasswordOnQuickClose = ref(false);
 
 const form = ref({
     type: '',
@@ -69,7 +71,13 @@ const isAdmin = computed(() => Boolean(auth.user?.roles?.includes('ROLE_ADMIN'))
 const isMedecin = computed(() => Boolean(auth.user?.roles?.includes('ROLE_MEDECIN')));
 const isReception = computed(() => Boolean(auth.user?.roles?.includes('ROLE_RECEPTION') || auth.user?.roles?.includes('ROLE_RECEPTIONNISTE')));
 
-const requiresDoctorPassword = computed(() => !isConsultationsTourMockEnabled() && isReception.value && !isAdmin.value && !isMedecin.value);
+const requiresDoctorPassword = computed(() => (
+    !isConsultationsTourMockEnabled()
+    && isReception.value
+    && !isAdmin.value
+    && !isMedecin.value
+    && !allowReceptionBypassMedecinPasswordOnQuickClose.value
+));
 const canAccessForm = computed(() => !requiresDoctorPassword.value || passwordValidated.value);
 const hasSelectedMedecin = computed(() => Number.isFinite(Number(form.value?.medecinId)) && Number(form.value?.medecinId) > 0);
 
@@ -140,13 +148,17 @@ const loadQuickData = async () => {
     loading.value = true;
     doctorPassword.value = '';
     passwordValidated.value = !requiresDoctorPassword.value;
+    allowReceptionBypassMedecinPasswordOnQuickClose.value = false;
 
     try {
-        const [meds, infs, salleItems] = await Promise.all([
+        const [meds, infs, salleItems, settings] = await Promise.all([
             fetchMedecins(token),
             fetchInfirmiers(token),
-            fetchSalles(token)
+            fetchSalles(token),
+            fetchPublicGeneralSettings(token)
         ]);
+
+        allowReceptionBypassMedecinPasswordOnQuickClose.value = settings?.allowReceptionBypassMedecinPasswordOnQuickClose === true;
 
         medecins.value = meds || [];
         infirmiers.value = infs || [];

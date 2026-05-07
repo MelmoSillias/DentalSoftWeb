@@ -9,6 +9,7 @@ const props = defineProps({
     employeeDistribution: { type: Array, default: () => [] },
     lowStock: { type: Array, default: () => [] },
     patients: { type: Object, default: () => ({}) },
+    patientReferrals: { type: Array, default: () => [] },
     loading: { type: Boolean, default: false }
 });
 
@@ -16,6 +17,7 @@ const emit = defineEmits(['print']);
 const showEmployeesChart = ref(false);
 const showLowStockChart = ref(false);
 const showPatientsChart = ref(false);
+const showPatientReferralsChart = ref(false);
 
 const patientItems = (patients) => [
     { label: 'Total', value: patients.total ?? 0, severity: 'info' },
@@ -81,6 +83,27 @@ const patientsChartData = computed(() => {
                     documentStyle.getPropertyValue('--p-emerald-500'),
                     documentStyle.getPropertyValue('--p-purple-500')
                 ]
+            }
+        ]
+    };
+});
+
+const patientReferralsChartData = computed(() => {
+    const documentStyle = getComputedStyle(document.documentElement);
+    return {
+        labels: props.patientReferrals.map((row) => row.label),
+        datasets: [
+            {
+                label: 'Patients',
+                backgroundColor: [
+                    documentStyle.getPropertyValue('--p-cyan-500'),
+                    documentStyle.getPropertyValue('--p-blue-500'),
+                    documentStyle.getPropertyValue('--p-emerald-500'),
+                    documentStyle.getPropertyValue('--p-orange-500'),
+                    documentStyle.getPropertyValue('--p-pink-500'),
+                    documentStyle.getPropertyValue('--p-purple-500')
+                ],
+                data: props.patientReferrals.map((row) => row.value || 0)
             }
         ]
     };
@@ -191,6 +214,25 @@ const barOptions = computed(() => {
             <template #chart>
                 <div class="aspect-square w-full">
                     <Chart type="doughnut" :data="patientsChartData" :options="pieOptions" class="h-full w-full" />
+                </div>
+            </template>
+        </ValueListCard>
+
+        <ValueListCard
+            id="admin-patient-referrals"
+            title="Comment les patients ont connu le cabinet"
+            :items="patientReferrals"
+            :loading="loading"
+            :show-chart="showPatientReferralsChart"
+            empty-label="Aucune provenance disponible."
+        >
+            <template #actions>
+                <ToggleButton v-model="showPatientReferralsChart" onLabel="Graphique" offLabel="Données" onIcon="pi pi-chart-bar" offIcon="pi pi-list" />
+                <Button icon="pi pi-print" text rounded @click="emit('print', 'admin-patient-referrals')" />
+            </template>
+            <template #chart>
+                <div class="aspect-[16/9] w-full">
+                    <Chart type="bar" :data="patientReferralsChartData" :options="barOptions" class="h-full w-full" />
                 </div>
             </template>
         </ValueListCard>

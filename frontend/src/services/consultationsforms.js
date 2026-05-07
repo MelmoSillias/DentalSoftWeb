@@ -52,14 +52,14 @@ export const saveConsultation = async (ficheId, consultId, payload, token) => {
     return res.data;
 };
 
-export const closeConsultation = async (ficheId, consultId, token) => { 
+export const closeConsultation = async (ficheId, consultId, token, payload = null) => { 
     if (isConsultationsTourMockEnabled()) {
         return closeConsultationTourMock(ficheId, consultId);
     }
 
     const res = await axios.post(
         `${apiPrefix}/fiches/${ficheId}/consultations/${consultId}/cloture`,
-        {},
+        payload && typeof payload === 'object' ? payload : {},
         {
             headers: authHeaders(token)
         }

@@ -24,6 +24,9 @@ const props = defineProps({
     floating: {
         type: Boolean,
         default: false
+    },minimalDesign: {
+        type: Boolean,
+        default: false
     }
 });
 
@@ -54,7 +57,40 @@ const wrapperClass = computed(() => {
 
 <!-- SaveIndicator.vue -->
 <template>
-    <div class="rounded-2xl border border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-r from-surface-0 to-surface-50/80 dark:from-surface-800 dark:to-surface-900/80 p-5 shadow-sm" :class="wrapperClass">
+    <div v-if="minimalDesign" class="flex items-center gap-3">
+
+        <!-- Status dot -->
+        <div class="flex items-center gap-2 text-sm">
+            <span 
+                class="w-2.5 h-2.5 rounded-full"
+                :style="{ backgroundColor: status.tone }"
+            ></span>
+
+            <span class="text-surface-700 dark:text-surface-300 font-medium">
+                {{ status.text }}
+            </span>
+        </div>
+
+        <!-- Saving spinner -->
+        <i v-if="savingCount > 0" class="pi pi-spin pi-spinner text-primary-500 text-sm"></i>
+
+        <!-- Last saved -->
+        <span class="text-xs text-surface-500 dark:text-surface-400">
+            {{ lastSavedText }}
+        </span>
+
+        <!-- Save button (icon only) -->
+        <Button 
+            icon="pi pi-save"
+            text
+            rounded
+            size="small"
+            :disabled="savingCount > 0 || !dirtySections.length"
+            @click="emit('save-all')"
+        />
+    </div>
+
+    <div v-else class="rounded-2xl border border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-r from-surface-0 to-surface-50/80 dark:from-surface-800 dark:to-surface-900/80 p-5 shadow-sm" :class="wrapperClass">
         <div class="flex items-center justify-between gap-4">
             <!-- Left: Status -->
             <div class="flex items-center gap-4">

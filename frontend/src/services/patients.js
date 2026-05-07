@@ -38,6 +38,7 @@ export const normalizePatient = (raw = {}) => ({
     adresse: raw.adresse ?? '',
     profession: raw.profession ?? '',
     lieuNaissance: raw.lieuNaissance ?? raw.lieu_naissance ?? '',
+    referencement: raw.referencement ?? '',
     groupeSanguin: raw.groupeSanguin ?? raw.groupe_sanguin ?? '',
     notes: raw.notes ?? '',
     dateInscription: raw.dateInscription ?? raw.date_inscription ?? raw.createdAt ?? raw.created_at ?? '',

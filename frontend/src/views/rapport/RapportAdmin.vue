@@ -16,6 +16,7 @@ const {
     adminEmployeeDistribution,
     adminLowStockConsumables,
     adminGlobalPatients,
+    adminPatientReferrals,
     adminPeriodicPatients,
     adminPeriodicConsultations,
     adminPeriodicAppointments,
@@ -123,6 +124,7 @@ function printSection(id) {
                 :employee-distribution="adminEmployeeDistribution"
                 :low-stock="adminLowStockConsumables"
                 :patients="adminGlobalPatients"
+                :patient-referrals="adminPatientReferrals"
                 :loading="adminLoading"
                 @print="printSection"
             />

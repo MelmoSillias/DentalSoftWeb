@@ -53,6 +53,7 @@ const {
 // Loading states
 const generalLoading = ref(false);
 const generalSettingsLoaded = ref(false);
+const loadErrorMessage = ref('');
 const savingStates = reactive({
     consultationAccess: false,
     devicePolicy: false,
@@ -70,8 +71,10 @@ const devicePolicy = reactive({
 
 const consultationAccess = reactive({
     allowReceptionConsultationQuickActions: true,
+    allowReceptionBypassMedecinPasswordOnQuickClose: false,
     hidePatientDossierForMedecins: false,
-    hidePatientPhoneForMedecins: false
+    hidePatientPhoneForMedecins: false,
+    ficheFormSimplifie: false
 });
 
 const transactionMotifs = reactive({
@@ -81,6 +84,13 @@ const transactionMotifs = reactive({
 
 const soinsCatalog = reactive({
     text: 'Consultation\nDétartrage\nExtraction\nRemplissage\nComposite\nAmalgame\nTraitement de canal\nTraumatisme\nCouronne\nBlanchiment\nRadio\nProthèse\nOrthodontie\nChirurgie'
+});
+
+const ficheSimplifieCatalog = reactive({
+    examensTypesText: 'Bacteriologique\nSerologique\nHistologique\nRadiologique\nAutre',
+    traitementTypesText: 'Urgence\nDentaires\nParodontaux\nOrthodontiques\nAutres',
+    allergyTypesText: 'Médicamenteuses\nAlimentaires\nEnvironnementales\nAutres',
+    antecedentTypesText: 'Personnel\nFamilial\nMédical'
 });
 
 // Navigation structure
@@ -190,18 +200,30 @@ const loadGeneralSettings = async (force = false) => {
         devicePolicy.paiementDirectAssurance = settings.paiementDirectAssurance === true;
         consultationAccess.allowReceptionConsultationQuickActions = settings.allowReceptionConsultationQuickActions !== false
             && settings.allowReceptionQuickCloseConsultation !== false;
+        consultationAccess.allowReceptionBypassMedecinPasswordOnQuickClose = settings.allowReceptionBypassMedecinPasswordOnQuickClose === true;
         consultationAccess.hidePatientDossierForMedecins = settings.hidePatientDossierForMedecins === true;
         consultationAccess.hidePatientPhoneForMedecins = settings.hidePatientPhoneForMedecins === true;
+        consultationAccess.ficheFormSimplifie = settings.ficheFormSimplifie === true;
         transactionMotifs.revenueText = (settings.transactionMotifs?.revenue || []).join('\n');
         transactionMotifs.expenseText = (settings.transactionMotifs?.expense || []).join('\n');
         soinsCatalog.text = (settings.soinsList || []).join('\n');
+        ficheSimplifieCatalog.examensTypesText = (settings.examensTypes || []).join('\n');
+        ficheSimplifieCatalog.traitementTypesText = (settings.traitementTypes || []).join('\n');
+        ficheSimplifieCatalog.allergyTypesText = (settings.allergyTypes || []).join('\n');
+        ficheSimplifieCatalog.antecedentTypesText = (settings.antecedentTypes || []).join('\n');
         generalSettingsLoaded.value = true;
+        loadErrorMessage.value = '';
     } catch (error) {
         console.error(error);
+        loadErrorMessage.value = extractApiError(error, 'Chargement impossible');
         toast.add({ severity: 'error', summary: 'Erreur', detail: extractApiError(error, 'Chargement impossible'), life: 3500 });
     } finally {
         generalLoading.value = false;
     }
+};
+
+const retryLoadSettings = async () => {
+    await loadGeneralSettings(true);
 };
 
 const saveDevicePolicyAction = async () => {
@@ -227,8 +249,14 @@ const saveConsultationAccessAction = async () => {
         await saveGeneralSettings({
             allowReceptionConsultationQuickActions: consultationAccess.allowReceptionConsultationQuickActions,
             allowReceptionQuickCloseConsultation: consultationAccess.allowReceptionConsultationQuickActions,
+            allowReceptionBypassMedecinPasswordOnQuickClose: consultationAccess.allowReceptionBypassMedecinPasswordOnQuickClose,
             hidePatientDossierForMedecins: consultationAccess.hidePatientDossierForMedecins,
-            hidePatientPhoneForMedecins: consultationAccess.hidePatientPhoneForMedecins
+            hidePatientPhoneForMedecins: consultationAccess.hidePatientPhoneForMedecins,
+            ficheFormSimplifie: consultationAccess.ficheFormSimplifie,
+            examensTypes: normalizeLines(ficheSimplifieCatalog.examensTypesText),
+            traitementTypes: normalizeLines(ficheSimplifieCatalog.traitementTypesText),
+            allergyTypes: normalizeLines(ficheSimplifieCatalog.allergyTypesText),
+            antecedentTypes: normalizeLines(ficheSimplifieCatalog.antecedentTypesText)
         }, token);
         toast.add({ severity: 'success', summary: 'Consultation & Focus', detail: 'Paramètres enregistrés', life: 2500 });
     } catch (error) {
@@ -384,6 +412,17 @@ onBeforeUnmount(() => {
             <main class="settings-main">
                 <div v-if="generalLoading && !generalSettingsLoaded" class="settings-loading">
                     <div v-for="i in 3" :key="i" class="settings-loading-card"></div>
+                </div>
+
+                <div v-else-if="loadErrorMessage" class="flex min-h-[320px] flex-col items-center justify-center gap-4 rounded-2xl border border-amber-200/70 bg-amber-50/70 p-8 dark:border-amber-800/70 dark:bg-amber-950/20">
+                    <div class="flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
+                        <i class="pi pi-exclamation-triangle text-2xl"></i>
+                    </div>
+                    <div class="text-center">
+                        <p class="text-lg font-semibold text-amber-800 dark:text-amber-200">Chargement interrompu</p>
+                        <p class="text-sm text-amber-700/90 dark:text-amber-300/90">{{ loadErrorMessage }}</p>
+                    </div>
+                    <Button icon="pi pi-refresh" label="Réessayer" severity="warning" @click="retryLoadSettings" />
                 </div>
 
                 <div v-else class="settings-content">
@@ -583,6 +622,14 @@ onBeforeUnmount(() => {
                                     <Divider />
                                     <div class="toggle-item">
                                         <div class="toggle-info">
+                                            <label>Bypass code médecin en clôture rapide</label>
+                                            <span class="toggle-description">Si activé, la réception peut clôturer rapidement sans validation du code médecin</span>
+                                        </div>
+                                        <ToggleSwitch v-model="consultationAccess.allowReceptionBypassMedecinPasswordOnQuickClose" />
+                                    </div>
+                                    <Divider />
+                                    <div class="toggle-item">
+                                        <div class="toggle-info">
                                             <label>Masquer le dossier patient aux médecins</label>
                                             <span class="toggle-description">Le dossier patient et les redirections associées sont masqués aux médecins non-admin</span>
                                         </div>
@@ -595,6 +642,53 @@ onBeforeUnmount(() => {
                                             <span class="toggle-description">Les numéros de téléphone patients sont masqués dans l'interface médecin</span>
                                         </div>
                                         <ToggleSwitch v-model="consultationAccess.hidePatientPhoneForMedecins" />
+                                    </div>
+                                    <Divider />
+                                    <div class="toggle-item">
+                                        <div class="toggle-info">
+                                            <label>Formulaire simplifié de fiche consultation</label>
+                                            <span class="toggle-description">Active une vue condensée "Synthèse clinique" pour la fiche consultation</span>
+                                        </div>
+                                        <ToggleSwitch v-model="consultationAccess.ficheFormSimplifie" />
+                                    </div>
+                                </div>
+                                <Divider />
+                                <div class="two-columns">
+                                    <div class="field-group">
+                                        <label>Types d'examens (synthèse)</label>
+                                        <Textarea
+                                            v-model="ficheSimplifieCatalog.examensTypesText"
+                                            rows="5"
+                                            autoResize
+                                            placeholder="Un type d'examen par ligne"
+                                        />
+                                    </div>
+                                    <div class="field-group">
+                                        <label>Types de traitements (synthèse)</label>
+                                        <Textarea
+                                            v-model="ficheSimplifieCatalog.traitementTypesText"
+                                            rows="5"
+                                            autoResize
+                                            placeholder="Un type de traitement par ligne"
+                                        />
+                                    </div>
+                                    <div class="field-group">
+                                        <label>Types d'allergies</label>
+                                        <Textarea
+                                            v-model="ficheSimplifieCatalog.allergyTypesText"
+                                            rows="4"
+                                            autoResize
+                                            placeholder="Un type d'allergie par ligne"
+                                        />
+                                    </div>
+                                    <div class="field-group">
+                                        <label>Types d'antécédents</label>
+                                        <Textarea
+                                            v-model="ficheSimplifieCatalog.antecedentTypesText"
+                                            rows="4"
+                                            autoResize
+                                            placeholder="Un type d'antécédent par ligne"
+                                        />
                                     </div>
                                 </div>
                             </div>

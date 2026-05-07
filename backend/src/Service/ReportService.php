@@ -305,6 +305,33 @@ class ReportService
         });
     }
 
+    public function globalPatientReferrals(): array
+    {
+        return $this->remember('report.globalPatientReferrals', 180, function () {
+            $rows = $this->patientRepo->createQueryBuilder('p')
+                ->select('p.referencement AS source, COUNT(p.id) AS total')
+                ->groupBy('p.referencement')
+                ->orderBy('total', 'DESC')
+                ->getQuery()
+                ->getArrayResult();
+
+            $result = [];
+            foreach ($rows as $row) {
+                $source = trim((string) ($row['source'] ?? ''));
+                if ($source === '') {
+                    $source = 'Non renseigné';
+                }
+
+                $result[] = [
+                    'source' => $source,
+                    'count' => (int) ($row['total'] ?? 0),
+                ];
+            }
+
+            return $result;
+        });
+    }
+
     public function periodicPatients(?\DateTime $fromDate, ?\DateTime $toDate): array
     {
         $cacheKey = sprintf('report.periodicPatients.%s.%s', $fromDate?->format('Ymd') ?? 'none', $toDate?->format('Ymd') ?? 'none');

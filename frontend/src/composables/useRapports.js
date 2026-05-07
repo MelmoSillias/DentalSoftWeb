@@ -63,6 +63,7 @@ export function useRapports() {
         seniors: 0,
         averageAge: 0
     });
+    const adminPatientReferrals = ref([]);
     const adminPeriodicPatients = ref({ newPatients: 0, returningPatients: 0 });
     const adminPeriodicConsultations = ref({
         total: 0,
@@ -239,6 +240,14 @@ export function useRapports() {
         };
     }
 
+    async function fetchAdminPatientReferrals() {
+        const rows = await fetchJson('/report/global/patient-referrals');
+        adminPatientReferrals.value = safeArray(rows).map((row) => ({
+            label: row.source || 'Non renseigné',
+            value: Number(row.count || 0)
+        }));
+    }
+
     async function fetchAdminPeriodicPatients(from, to) {
         const data = await fetchJson('/report/periodic/patients', { from, to });
         adminPeriodicPatients.value = {
@@ -332,6 +341,7 @@ export function useRapports() {
                 fetchAdminEmployeeDistribution(),
                 fetchAdminLowStockConsumables(),
                 fetchAdminGlobalPatients(),
+                fetchAdminPatientReferrals(),
                 fetchAdminPeriodicPatients(from, to),
                 fetchAdminPeriodicConsultations(from, to),
                 fetchAdminPeriodicAppointments(from, to),
@@ -455,6 +465,7 @@ export function useRapports() {
         adminEmployeeDistribution,
         adminLowStockConsumables,
         adminGlobalPatients,
+        adminPatientReferrals,
         adminPeriodicPatients,
         adminPeriodicConsultations,
         adminPeriodicAppointments,

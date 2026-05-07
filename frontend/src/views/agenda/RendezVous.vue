@@ -89,6 +89,10 @@ const smsScheduleOptions = ref([
 const smsLoading = ref(false);
 const token = localStorage.getItem('token');
 const isGuidedTourStarting = ref(false);
+const rdvLoadErrorMessage = computed(() => {
+	const errorValue = api.error?.value ?? api.error;
+	return typeof errorValue === 'string' && errorValue.trim() ? errorValue : '';
+});
 
 
 
@@ -328,6 +332,10 @@ const handleGuidedTourRequest = async (event) => {
 	}
 };
 
+const retryLoadAgenda = async () => {
+	refreshKey.value += 1;
+};
+
 onMounted(() => {
 	useLayout().layoutState.overlayMenuActive = false; // Ferme le menu si on arrive sur cette page depuis un lien direct
 	window.addEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
@@ -351,6 +359,19 @@ onBeforeUnmount(() => {
 				<StatusLegend />
 			</div>
 		</div>
+
+		<div v-if="rdvLoadErrorMessage" class="flex min-h-[320px] flex-col items-center justify-center gap-4 rounded-2xl border border-amber-200/70 bg-amber-50/70 p-8 dark:border-amber-800/70 dark:bg-amber-950/20">
+			<div class="flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
+				<i class="pi pi-exclamation-triangle text-2xl"></i>
+			</div>
+			<div class="text-center">
+				<p class="text-lg font-semibold text-amber-800 dark:text-amber-200">Chargement interrompu</p>
+				<p class="text-sm text-amber-700/90 dark:text-amber-300/90">{{ rdvLoadErrorMessage }}</p>
+			</div>
+			<Button icon="pi pi-refresh" label="Réessayer" severity="warning" @click="retryLoadAgenda" />
+		</div>
+
+		<template v-else>
 
 		<Tabs v-model:value="activeIndex">
 			<TabList data-tour="agenda-rdv.tabs">
@@ -473,6 +494,7 @@ onBeforeUnmount(() => {
 				<Button label="Programmer" icon="pi pi-clock" :loading="smsLoading" @click="scheduleSmsReminder" />
 			</template>
 		</Dialog>
+		</template>
 	</section>
 </template>
 

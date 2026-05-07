@@ -50,6 +50,7 @@ let highlightTimeout = null;
 const toolbarConsultLoading = ref(false);
 const consultationLoading = ref({});
 const isGuidedTourStarting = ref(false);
+const loadErrorMessage = ref('');
 let guidedTourTableState = null;
 let guidedTourDemoActive = false;
 let guidedTourCleanupPromise = null;
@@ -83,7 +84,7 @@ const cloneValue = (value) => {
     return JSON.parse(JSON.stringify(value));
 };
 
-const loadPatients = async ({ page = 1, limit = rowsPerPage.value, q = searchQuery.value, sort = sortField.value, order = sortOrder.value } = {}) => {
+const loadPatients = async ({ page = 1, limit = rowsPerPage.value, q = searchQuery.value, sort = sortField.value, order = sortOrder.value, asPageLoad = false } = {}) => {
     const orderValue = order === 1 ? 'asc' : order === -1 ? 'desc' : null;
     try {
         if (isMedecin.value) {
@@ -91,25 +92,50 @@ const loadPatients = async ({ page = 1, limit = rowsPerPage.value, q = searchQue
         } else {
             await fetchPatients(token, { page, limit, q, sortField: sort, sortOrder: orderValue });
         }
+        if (asPageLoad) {
+            loadErrorMessage.value = '';
+        }
+        return true;
     } catch (error) {
         console.error('Erreur lors de la récupération des patients:', error);
+        if (asPageLoad) {
+            loadErrorMessage.value = 'Impossible de charger la liste des patients.';
+        }
         toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de récupérer les patients.', life: 3000 });
+        return false;
     }
 };
 
-const loadVisibilityPolicy = async () => {
+const loadVisibilityPolicy = async ({ asPageLoad = false } = {}) => {
     try {
         const settings = await fetchPublicGeneralSettings(token);
         hidePatientPhoneForMedecins.value = settings?.hidePatientPhoneForMedecins === true;
+        return true;
     } catch (error) {
         console.error('Erreur chargement politique visibilité patients', error);
         hidePatientPhoneForMedecins.value = false;
+        if (asPageLoad) {
+            loadErrorMessage.value = 'Impossible de charger les paramètres de visibilité des patients.';
+        }
+        return false;
     }
 };
 
-onMounted(() => {
-    loadVisibilityPolicy();
-    loadPatients({ page: 1, limit: rowsPerPage.value });
+const initializePage = async () => {
+    loadErrorMessage.value = '';
+    const visibilityOk = await loadVisibilityPolicy({ asPageLoad: true });
+    const patientsOk = await loadPatients({ page: 1, limit: rowsPerPage.value, asPageLoad: true });
+    if (!visibilityOk && !patientsOk && !loadErrorMessage.value) {
+        loadErrorMessage.value = 'Impossible de charger les données de la page patients.';
+    }
+};
+
+const retryLoadPage = async () => {
+    await initializePage();
+};
+
+onMounted(async () => {
+    await initializePage();
 });
 
 function formatAge(dateNaissance) {
@@ -549,6 +575,18 @@ onMounted(() => {
             </div> 
         </div>
  
+        <div v-if="loadErrorMessage" class="flex min-h-[320px] flex-col items-center justify-center gap-4 rounded-2xl border border-amber-200/70 bg-amber-50/70 p-8 dark:border-amber-800/70 dark:bg-amber-950/20">
+            <div class="flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
+                <i class="pi pi-exclamation-triangle text-2xl"></i>
+            </div>
+            <div class="text-center">
+                <p class="text-lg font-semibold text-amber-800 dark:text-amber-200">Chargement interrompu</p>
+                <p class="text-sm text-amber-700/90 dark:text-amber-300/90">{{ loadErrorMessage }}</p>
+            </div>
+            <Button icon="pi pi-refresh" label="Réessayer" severity="warning" @click="retryLoadPage" />
+        </div>
+
+        <template v-else>
         <!-- Patients Table Card -->
         <div
             class="bg-surface-0 dark:bg-surface-800/80 rounded-2xl shadow-xl overflow-hidden border border-surface-200/50 dark:border-surface-700/50 backdrop-blur-sm">
@@ -797,6 +835,7 @@ onMounted(() => {
                 </div>
             </div>
         </div>
+        </template>
 
         <!-- Dialogs -->
         <Dialog v-model:visible="showPatientDialog" modal :style="{ width: '45rem' }" :pt="{

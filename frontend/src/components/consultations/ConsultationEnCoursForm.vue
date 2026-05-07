@@ -111,23 +111,27 @@ const updateField = (key, value) => {
     form.value = { ...form.value, [key]: value };
 };
 
-const normalizeActeDent = (value) => {
+const normalizeDentSelection = (value) => {
+    if (Array.isArray(value)) {
+        return [...new Set(value.map((item) => String(item || '').trim()).filter(Boolean))];
+    }
+
     if (typeof value === 'string') {
-        return value;
+        return [...new Set(value.split(',').map((item) => item.trim()).filter(Boolean))];
     }
 
     if (typeof value === 'number') {
-        return String(value);
+        return [String(value)];
     }
 
-    return '';
+    return [];
 };
 
 const addActe = (dent = '') => {
     const actes = form.value.actes || [];
     form.value = {
         ...form.value,
-        actes: [...actes, { dent: normalizeActeDent(dent), type: '', description: '', quantite: 1, prix: 0 }]
+        actes: [...actes, { dent: normalizeDentSelection(dent), type: '', description: '', quantite: 1, prix: 0 }]
     };
 };
 
@@ -185,12 +189,12 @@ const hasToothData = (entry) => {
 const toothStateClass = (tooth) => {
     const entry = getToothEntry(tooth);
     if (entry?.estCausale) {
-        return 'bg-red-100 text-red-700 border-red-200';
+        return '  text-red-700 border-red-200 dark:text-red-400 dark:border-red-700';
     }
     if (hasToothData(entry)) {
-        return 'bg-emerald-100 text-emerald-700 border-emerald-200';
+        return '  text-emerald-700 border-emerald-200  dark:text-emerald-400 dark:border-emerald-700';
     }
-    return 'bg-white text-surface-600 border-surface-200';
+    return 'text-surface-600 border-surface-200 dark:text-surface-300 dark:border-surface-700';
 };
 
 const isToothSelected = (tooth) => {
@@ -221,7 +225,7 @@ const confirmAddActes = () => {
     }
     const actes = form.value.actes || [];
     const newActes = cleanDents.map((dent) => ({
-        dent,
+        dent: [dent],
         type: '',
         description: '',
         quantite: 1,
@@ -233,7 +237,15 @@ const confirmAddActes = () => {
 };
 
 const updateActe = (idx, patch) => {
-    const actes = (form.value.actes || []).map((a, i) => (i === idx ? { ...a, ...patch } : a));
+    const actes = (form.value.actes || []).map((a, i) => {
+        if (i !== idx) return a;
+
+        const next = { ...a, ...patch };
+        if (Object.prototype.hasOwnProperty.call(patch || {}, 'dent')) {
+            next.dent = normalizeDentSelection(patch.dent);
+        }
+        return next;
+    });
     form.value = { ...form.value, actes };
 };
 
@@ -250,6 +262,23 @@ const totalActesValue = ref(0);
 watch(
     () => form.value.actes,
     (actes) => {
+        const normalizedActes = (actes || []).map((acte) => ({
+            ...acte,
+            dent: normalizeDentSelection(acte?.dent)
+        }));
+
+        const hasDentShapeChange = (actes || []).some((acte, index) => {
+            const currentDent = Array.isArray(acte?.dent) ? acte.dent : normalizeDentSelection(acte?.dent);
+            const normalizedDent = normalizedActes[index].dent;
+            if (currentDent.length !== normalizedDent.length) return true;
+            return currentDent.some((item, dentIndex) => item !== normalizedDent[dentIndex]);
+        });
+
+        if (hasDentShapeChange) {
+            form.value = { ...form.value, actes: normalizedActes };
+            return;
+        }
+
         const list = (actes || []).map((acte) => acteTotal(acte));
         acteSubtotals.value = list;
         totalActesValue.value = list.reduce((sum, val) => sum + (Number(val) || 0), 0);
@@ -503,48 +532,58 @@ const isValidTooth = (value) => {
                         </div>
 
                         <!-- Acte Content -->
-                        <div class="grid grid-cols-1 lg:grid-cols-5 gap-3">
-                            <div>
-                                <FloatLabel variant="in">
-                                    <Select
+                        <div class="grid grid-cols-1 lg:grid-cols-12 gap-3">
+                            <div class="lg:col-span-4 h-full">
+                                <FloatLabel variant="in" class="h-full">
+                                    <MultiSelect
                                         :options="teethOptions"
-                                        :modelValue="acte.dent"
+                                        :modelValue="normalizeDentSelection(acte.dent)" 
                                         optionLabel="label"
                                         optionValue="value" 
                                         :filter="true"
                                         showClear
-                                        class="w-full rounded-lg border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800 text-sm"
+                                        class="w-full h-full rounded-lg border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800 text-sm"
                                         @update:modelValue="(v) => updateActe(idx, { dent: v })"
                                     >
                                         <template #value="slotProps">
-                                            <div v-if="isValidTooth(slotProps.value)">
-                                                <span
-                                                    class="inline-flex h-2.5 w-2.5 rounded-full border"
-                                                    :class="toothStateClass(slotProps.value)"
-                                                ></span>
-                                                <span class="font-medium">{{ slotProps.value }}</span>
-                                                <span class="text-xs text-surface-500">
-                                                    {{ toothSummary(slotProps.value) || '---' }}
-                                                </span>
-                                            </div> 
-                                        </template>
-                                        <template #option="slotProps">
-                                            <div class="flex items-center gap-2">
-                                                <span
-                                                    class="inline-flex h-2.5 w-2.5 rounded-full border"
-                                                    :class="toothStateClass(slotProps.option.value)"
-                                                ></span>
-                                                <span class="font-medium">{{ slotProps.option.label }}</span>
-                                                <span class="text-xs text-surface-500">
-                                                    {{ toothSummary(slotProps.option.value) || '---' }}
-                                                </span>
+                                            <div class="flex flex-wrap gap-2">
+                                                <div
+                                                    v-for="val in (slotProps.value || [])"
+                                                    :key="val"
+                                                    class="flex items-center gap-1 px-2 py-1 rounded-full text-xs border h-full"
+                                                    :class="toothStateClass(val)"
+                                                >
+                                                    🦷 {{ val }}
+                                                </div>
                                             </div>
                                         </template>
-                                    </Select>
+                                        <template #option="slotProps">
+                                            <div class="flex items-center gap-3 p-2">
+                                                
+                                                <!-- Icône dent -->
+                                                <div class="relative">
+                                                    <i class="fa fa-tooth text-lg"
+                                                    :class="toothStateClass(slotProps.option.value)">
+                                                    </i>
+                                                    
+                                                </div>
+
+                                                <!-- Infos -->
+                                                <div class="flex flex-col">
+                                                    <span class="font-semibold">
+                                                        Dent {{ slotProps.option.label }}
+                                                    </span>
+                                                    <span class="text-xs text-gray-500">
+                                                        {{ toothSummary(slotProps.option.value) || 'Aucun acte' }}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </template>
+                                    </MultiSelect>
                                     <label class="text-xs font-medium text-surface-600 dark:text-surface-400">Dent</label>
                                 </FloatLabel>
                             </div>
-                            <div class="w-full">
+                            <div class="w-full lg:col-span-4">
                                 <FloatLabel variant="in">
                                     <AutoComplete
                                         :modelValue="acte.type"
@@ -560,16 +599,6 @@ const isValidTooth = (value) => {
                             </div>
                             <div class="w-full">
                                 <FloatLabel variant="in">
-                                    <InputText 
-                                        :value="acte.description"  
-                                        class="w-full rounded-lg border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800 p-2 text-sm"
-                                        @update:modelValue="(v) => updateActe(idx, { description: v })" 
-                                    />
-                                    <label class="text-xs font-medium text-surface-600 dark:text-surface-400">Description</label>
-                                </FloatLabel>
-                            </div>
-                            <div class="w-full">
-                                <FloatLabel variant="in">
                                     <InputNumber 
                                         :modelValue="acte.quantite" 
                                         :min="1" 
@@ -581,7 +610,7 @@ const isValidTooth = (value) => {
                                     <label class="text-xs font-medium text-surface-600 dark:text-surface-400">Qté</label>
                                 </FloatLabel>
                             </div>
-                            <div>
+                            <div class="w-full lg:col-span-3">
                                 <FloatLabel variant="in">
                                     <InputNumber 
                                         :modelValue="acte.prix" 
@@ -594,6 +623,17 @@ const isValidTooth = (value) => {
                                     <label class="text-xs font-medium text-surface-600 dark:text-surface-400">Prix</label>
                                 </FloatLabel>
                             </div>
+                            <div class="w-full lg:col-span-12">
+                                <FloatLabel variant="in">
+                                    <InputText 
+                                        :value="acte.description"  
+                                        class="w-full rounded-lg border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800 p-2 text-sm"
+                                        @update:modelValue="(v) => updateActe(idx, { description: v })" 
+                                    />
+                                    <label class="text-xs font-medium text-surface-600 dark:text-surface-400">Description</label>
+                                </FloatLabel>
+                            </div>
+                            
                         </div>
 
                         <!-- Acte Subtotal -->

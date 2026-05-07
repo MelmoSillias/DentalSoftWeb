@@ -22,11 +22,109 @@ const props = defineProps({
     }
 });
  
-const emit = defineEmits(['update:modelValue', 'save', 'cloture', 'open-ordonnance', 'print-ordonnance']);
+const emit = defineEmits(['update:modelValue', 'save', 'cloture', 'open-ordonnance', 'print-ordonnance', 'print-devis']);
 
 const devis = computed({
     get: () => props.modelValue,
     set: (val) => emit('update:modelValue', val)
+});
+
+const createEmptyDevis = () => ({
+    id: null,
+    date: null,
+    description: '',
+    services: []
+});
+
+const normalizeService = (service = {}) => ({
+    designation: service?.designation || '',
+    qte: Number(service?.qte) || 1,
+    montant: Number(service?.montant) || 0
+});
+
+const normalizeDevisEntry = (entry = {}) => ({
+    id: Number(entry?.id) || null,
+    type: Number.isFinite(Number(entry?.type)) ? Number(entry.type) : null,
+    date: entry?.date ?? null,
+    description: entry?.description || '',
+    services: Array.isArray(entry?.services)
+        ? entry.services.map((service) => normalizeService(service))
+        : Array.isArray(entry?.contenus)
+            ? entry.contenus.map((service) => normalizeService(service))
+            : []
+});
+
+const getDevisState = (value) => {
+    const source = value || {};
+    const fallbackEntry = normalizeDevisEntry({
+        id: source?.id,
+        type: source?.type,
+        date: source?.date ?? null,
+        description: source?.description || '',
+        services: source?.services || []
+    });
+
+    const parsedList = Array.isArray(source?.devisList)
+        ? source.devisList.map((entry) => normalizeDevisEntry(entry))
+        : [fallbackEntry];
+
+    const list = parsedList.length
+        ? parsedList
+        : [createEmptyDevis()];
+
+    const parsedIndex = Number(source?.activeDevisIndex);
+    const activeIndex = Number.isInteger(parsedIndex)
+        ? Math.min(Math.max(parsedIndex, 0), list.length - 1)
+        : 0;
+
+    return { list, activeIndex };
+};
+
+const updateDevisState = (updater) => {
+    const { list: currentList, activeIndex: currentIndex } = getDevisState(devis.value);
+    const list = currentList.map((entry) => ({ ...entry, services: (entry.services || []).map((service) => ({ ...service })) }));
+    const context = {
+        list,
+        activeIndex: currentIndex
+    };
+
+    updater(context);
+
+    if (!context.list.length) {
+        context.list.push(createEmptyDevis());
+        context.activeIndex = 0;
+    }
+
+    const clampedIndex = Math.min(Math.max(Number(context.activeIndex) || 0, 0), context.list.length - 1);
+    const activeEntry = normalizeDevisEntry(context.list[clampedIndex]);
+    const normalizedList = context.list.map((entry) => normalizeDevisEntry(entry));
+
+    devis.value = {
+        ...(devis.value || {}),
+        id: activeEntry.id,
+        type: activeEntry.type,
+        date: activeEntry.date,
+        description: activeEntry.description,
+        services: activeEntry.services,
+        devisList: normalizedList,
+        activeDevisIndex: clampedIndex
+    };
+};
+
+const devisTabs = computed(() => getDevisState(devis.value).list);
+
+const activeDevisIndex = computed({
+    get: () => getDevisState(devis.value).activeIndex,
+    set: (value) => {
+        updateDevisState((state) => {
+            state.activeIndex = value;
+        });
+    }
+});
+
+const activeDevis = computed(() => {
+    const { list, activeIndex } = getDevisState(devis.value);
+    return list[activeIndex] || createEmptyDevis();
 });
 
 const soinsSuggestions = ref([]);
@@ -40,7 +138,7 @@ const searchSoins = (event) => {
 
 const dateModel = computed({
     get: () => {
-        const value = devis.value?.date;
+        const value = activeDevis.value?.date;
         if (!value) return null;
         if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
         if (typeof value === 'string') {
@@ -75,32 +173,106 @@ const dateModel = computed({
 });
 
 const updateField = (key, value) => {
-    devis.value = { ...devis.value, [key]: value };
+    updateDevisState((state) => {
+        const target = state.list[state.activeIndex] || createEmptyDevis();
+        state.list[state.activeIndex] = {
+            ...target,
+            [key]: value
+        };
+    });
 };
 
 const updateService = (idx, patch) => {
-    const list = (devis.value.services || []).map((s, i) => (i === idx ? { ...s, ...patch } : s));
-    devis.value = { ...devis.value, services: list };
+    updateDevisState((state) => {
+        const target = state.list[state.activeIndex] || createEmptyDevis();
+        const services = Array.isArray(target.services) ? target.services : [];
+        const list = services.map((service, index) => (index === idx ? { ...service, ...patch } : service));
+        state.list[state.activeIndex] = {
+            ...target,
+            services: list
+        };
+    });
 };
 
 const addService = () => {
-    const list = devis.value.services || [];
-    devis.value = { ...devis.value, services: [...list, { designation: '', qte: 1, montant: 0 }] };
+    updateDevisState((state) => {
+        const target = state.list[state.activeIndex] || createEmptyDevis();
+        const services = Array.isArray(target.services) ? target.services : [];
+        state.list[state.activeIndex] = {
+            ...target,
+            services: [...services, { designation: '', qte: 1, montant: 0 }]
+        };
+    });
 };
 
 const removeService = (idx) => {
-    devis.value = { ...devis.value, services: (devis.value.services || []).filter((_, i) => i !== idx) };
+    updateDevisState((state) => {
+        const target = state.list[state.activeIndex] || createEmptyDevis();
+        const services = Array.isArray(target.services) ? target.services : [];
+        state.list[state.activeIndex] = {
+            ...target,
+            services: services.filter((_, index) => index !== idx)
+        };
+    });
+};
+
+const addDevisTab = () => {
+    updateDevisState((state) => {
+        const nextIndex = state.list.length;
+        state.list.push({
+            ...createEmptyDevis(),
+            type: nextIndex,
+            description: `Devis ${nextIndex + 1}`
+        });
+        state.activeIndex = nextIndex;
+    });
+};
+
+const removeDevisTab = (idx) => {
+    updateDevisState((state) => {
+        if (state.list.length <= 1) {
+            state.list[0] = createEmptyDevis();
+            state.activeIndex = 0;
+            return;
+        }
+
+        state.list = state.list.filter((_, index) => index !== idx);
+        if (state.activeIndex > idx) {
+            state.activeIndex -= 1;
+        } else if (state.activeIndex >= state.list.length) {
+            state.activeIndex = state.list.length - 1;
+        }
+    });
+};
+
+const devisTabLabel = (entry, idx) => {
+    const description = String(entry?.description || '').trim();
+    return description || `Devis ${idx + 1}`;
+};
+
+const emitPrintDevisAtIndex = (idx) => {
+    const { list } = getDevisState(devis.value);
+    const entry = normalizeDevisEntry(list[idx] || createEmptyDevis());
+
+    emit('print-devis', {
+        ...entry,
+        index: idx
+    });
+};
+
+const emitPrintActiveDevis = () => {
+    emitPrintDevisAtIndex(activeDevisIndex.value);
 };
 
 const total = computed(() =>
-    (devis.value.services || []).reduce(
+    (activeDevis.value.services || []).reduce(
         (sum, s) => sum + (Number(s.qte) || 0) * (Number(s.montant) || 0),
         0
     )
 );
     
 const totalQuantity = computed(() => {
-    return (props.modelValue.services || []).reduce((sum, service) => sum + (service.qte || 0), 0);
+    return (activeDevis.value.services || []).reduce((sum, service) => sum + (service.qte || 0), 0);
 });
 
 function formatCurrency(value) {
@@ -135,13 +307,6 @@ function subtotal(service) {
             </div>
             <div class="flex flex-wrap gap-2">
                 <Button 
-                    label="Imprimer" 
-                    icon="pi pi-print" 
-                    outlined
-                    class="rounded-xl px-4 py-2.5 border-surface-300 dark:border-surface-600 hover:bg-surface-100 dark:hover:bg-surface-700 transition-colors"
-                    @click="emit('print')" 
-                />
-                <Button 
                     label="Sauvegarder" 
                     icon="pi pi-save" 
                     :loading="saving"
@@ -153,6 +318,54 @@ function subtotal(service) {
 
         <!-- Content -->
         <div class="space-y-6">
+            <!-- Devis Tabs -->
+            <div class="rounded-xl border border-surface-200/70 dark:border-surface-700/70 p-3 bg-surface-50/60 dark:bg-surface-800/40">
+                <div class="flex flex-wrap items-center gap-2">
+                    <button
+                        v-for="(entry, idx) in devisTabs"
+                        :key="`devis-tab-${idx}`"
+                        type="button"
+                        @click="activeDevisIndex = idx"
+                        :class="[
+                            'inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition-all',
+                            activeDevisIndex === idx
+                                ? 'border-primary-300 bg-primary-50 text-primary-700 dark:border-primary-700 dark:bg-primary-900/30 dark:text-primary-200'
+                                : 'border-surface-200 bg-surface-0 text-surface-600 hover:border-surface-300 dark:border-surface-700 dark:bg-surface-900/40 dark:text-surface-300'
+                        ]"
+                    >
+                        <span class="truncate max-w-[12rem]">{{ devisTabLabel(entry, idx) }}</span>
+                        <i
+                            class="pi pi-print text-xs cursor-pointer"
+                            v-tooltip="'Imprimer ce devis'"
+                            @click.stop="emitPrintDevisAtIndex(idx)"
+                        ></i>
+                        <i
+                            v-if="devisTabs.length > 1"
+                            class="pi pi-times text-xs cursor-pointer"
+                            @click.stop="removeDevisTab(idx)"
+                        ></i>
+                    </button>
+                    <Button
+                        icon="pi pi-plus"
+                        label="Nouveau devis"
+                        size="small"
+                        outlined
+                        class="rounded-lg"
+                        @click="addDevisTab"
+                    />
+                </div>
+            </div>
+
+            <div class="space-y-2">
+                <label class="text-sm font-medium text-surface-700 dark:text-surface-300">Description du devis</label>
+                <InputText
+                    :modelValue="activeDevis.description"
+                    placeholder="Ex: Devis implanto-prothétique"
+                    class="w-full"
+                    @update:modelValue="(value) => updateField('description', value || '')"
+                />
+            </div>
+
             <!-- Date & Total -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div class="space-y-2">
@@ -180,7 +393,7 @@ function subtotal(service) {
                         </div>
                     </div>
                     <div class="mt-3 text-sm text-emerald-600 dark:text-emerald-400">
-                        {{ devis.services?.length || 0 }} service(s) | {{ totalQuantity }} unité(s)
+                        {{ activeDevis.services?.length || 0 }} service(s) | {{ totalQuantity }} unité(s)
                     </div>
                 </div>
             </div>
@@ -206,22 +419,22 @@ function subtotal(service) {
             </div>
 
             <!-- Services List -->
-            <div class="space-y-4">
-                <div v-if="!(devis.services && devis.services.length)" class="text-center py-8">
+            <div class="space-y-4 grid grid-cols-2 gap-4 items-stretch">
+                <div v-if="!(activeDevis.services && activeDevis.services.length)" class="text-center py-8">
                     <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-surface-100 dark:bg-surface-800 mb-3">
                         <i class="pi pi-inbox text-2xl text-surface-400"></i>
                     </div>
                     <p class="text-surface-600 dark:text-surface-400">Aucun service ajouté. Commencez par ajouter votre premier service.</p>
                 </div>
                 
-                <div v-for="(service, idx) in devis.services" :key="idx" 
+                <div v-for="(service, idx) in activeDevis.services" :key="idx" 
                      class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/30 p-5 shadow-sm hover:shadow-md transition-all">
                     <!-- Service Header -->
                     <div class="flex items-center justify-between mb-4">
                         <div class="flex items-center gap-2">
-                            <span class="flex items-center justify-center w-6 h-6 rounded-md bg-surface-200 dark:bg-surface-700 text-surface-700 dark:text-surface-300 text-sm font-bold">
+                            <Tag severity="primary" class="flex items-center justify-center w-6 h-6 rounded-md bg-surface-200 dark:bg-surface-700 text-surface-700 dark:text-surface-300 text-sm font-bold">
                                 {{ idx + 1 }}
-                            </span>
+                            </Tag>
                             <span class="font-medium text-surface-900 dark:text-surface-100">Service {{ idx + 1 }}</span>
                         </div>
                         <Button 
@@ -253,23 +466,23 @@ function subtotal(service) {
                         <div class="space-y-2 flex flex-col">
                             <label class="text-xs font-medium text-surface-600 dark:text-surface-400 uppercase tracking-wider">Quantité</label>
                             <InputNumber 
-                                :value="service.qte" 
+                                :modelValue="service.qte" 
                                 :min="1" 
                                 mode="decimal" 
                                 :useGrouping="false"
                                 inputClass="w-full rounded-lg border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-800 p-2.5"
-                                @update:modelValue="(v) => updateService(idx, { qte: v ?? 1 })" 
+                                @update:modelValue="(v) => updateService(idx, { qte: Number(v) || 1 })"
                             />
                         </div>
                         <div class="space-y-2 flex flex-col">
                             <label class="text-xs font-medium text-surface-600 dark:text-surface-400 uppercase tracking-wider">Prix unitaire</label>
                             <InputNumber 
-                                :value="service.montant" 
+                                :modelValue="service.montant" 
                                 mode="decimal" 
                                 :minFractionDigits="0" 
                                 :maxFractionDigits="2"
                                 inputClass="w-full rounded-lg border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-800 p-2.5"
-                                @update:modelValue="(v) => updateService(idx, { montant: v ?? 0 })" 
+                                @update:modelValue="(v) => updateService(idx, { montant: Number(v) || 0 })"
                             />
                         </div>
                     </div>
@@ -290,11 +503,11 @@ function subtotal(service) {
             </div>
 
             <!-- Summary -->
-            <div v-if="devis.services?.length" class="rounded-xl bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-800 dark:to-surface-900 border border-surface-200 dark:border-surface-700 p-5">
+            <div v-if="activeDevis.services?.length" class="rounded-xl bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-800 dark:to-surface-900 border border-surface-200 dark:border-surface-700 p-5">
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div class="space-y-1">
                         <div class="text-sm text-surface-600 dark:text-surface-400">Services</div>
-                        <div class="text-lg font-semibold text-surface-900 dark:text-surface-100">{{ devis.services.length }}</div>
+                        <div class="text-lg font-semibold text-surface-900 dark:text-surface-100">{{ activeDevis.services.length }}</div>
                     </div>
                     <div class="space-y-1">
                         <div class="text-sm text-surface-600 dark:text-surface-400">Quantité totale</div>

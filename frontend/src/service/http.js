@@ -9,7 +9,7 @@ import { getDeviceMetadata } from '@/utils/deviceFingerprint';
 const REQUEST_TIMEOUT_MS = 20000;
 
 const userFacingMessages = {
-    slow: 'Le chargement prend plus de temps que prevu. Veuillez reessayer dans un instant.',
+    slow: 'Connexion au serveur impossible ou bloquee (reseau/CORS). Veuillez reessayer dans un instant.',
     unauthorized: 'Votre session a expire. Veuillez vous reconnecter.',
     forbidden: 'Vous n avez pas l autorisation necessaire pour cette action.',
     unavailable: 'Le service est temporairement indisponible. Veuillez reessayer dans un instant.',

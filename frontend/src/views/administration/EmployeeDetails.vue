@@ -252,6 +252,27 @@ const congesByYear = computed(() => {
         });
 });
 
+const salaryPayments = computed(() => {
+    const rows = Array.isArray(employee.value?.salaryPayments) ? [...employee.value.salaryPayments] : [];
+
+    return rows.sort((left, right) => {
+        const leftDate = String(left?.paidAt || '');
+        const rightDate = String(right?.paidAt || '');
+        if (leftDate === rightDate) {
+            return Number(right?.id || 0) - Number(left?.id || 0);
+        }
+        return rightDate.localeCompare(leftDate);
+    });
+});
+
+const monthYearLabel = (month, year) => {
+    if (!month || !year) return '-';
+    const date = new Date(Number(year), Number(month) - 1, 1);
+    return Number.isNaN(date.getTime())
+        ? `${month}/${year}`
+        : date.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+};
+
 const congeSeverity = (type) => {
     const map = {
         vacances: 'success',
@@ -551,7 +572,96 @@ onBeforeUnmount(() => {
                 </div>
             </div>
 
-            <div class="space-y-6">
+            <div class="space-y-6"> 
+                <div data-tour="admin-employee-details.summary">
+                    <div class="bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-900/20 dark:to-blue-800/20 rounded-2xl p-5 border border-blue-200/50 dark:border-blue-800/50">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm text-blue-700 dark:text-blue-300 font-medium">Employe</p>
+                                <p class="text-2xl font-bold text-blue-900 dark:text-blue-100 mt-2">
+                                    {{ employee?.fullname || employee?.nom || '-' }}
+                                </p>
+                            </div>
+                            <i class="pi pi-user text-2xl text-blue-500"></i>
+                        </div>
+                    </div>
+
+                    <div class="bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-emerald-900/20 dark:to-emerald-800/20 rounded-2xl p-5 border border-emerald-200/50 dark:border-emerald-800/50 mt-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm text-emerald-700 dark:text-emerald-300 font-medium">Type</p>
+                                <p class="text-2xl font-bold text-emerald-900 dark:text-emerald-100 mt-2">
+                                    {{ employee?.type || '-' }}
+                                </p>
+                            </div>
+                            <i class="pi pi-briefcase text-2xl text-emerald-500"></i>
+                        </div>
+                    </div>
+
+                    <div class="bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-900/20 dark:to-amber-800/20 rounded-2xl p-5 border border-amber-200/50 dark:border-amber-800/50 mt-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm text-amber-700 dark:text-amber-300 font-medium">{{ salaireCard.title }}</p>
+                                <p class="text-2xl font-bold text-amber-900 dark:text-amber-100 mt-2">
+                                    {{ salaireCard.value }}
+                                </p>
+                                <p v-if="salaireCard.sub" class="text-xs text-amber-600 dark:text-amber-300 mt-1">
+                                    {{ salaireCard.sub }}
+                                </p>
+                            </div>
+                            <i class="pi pi-wallet text-2xl text-amber-500"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-surface-0 dark:bg-surface-800/80 rounded-2xl shadow-lg border border-surface-200/50 dark:border-surface-700/50 overflow-hidden">
+                    <div class="px-6 py-4 border-b border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900/50 dark:to-surface-800">
+                        <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-100 flex items-center gap-2">
+                            <i class="pi pi-calendar text-primary-500"></i>
+                            Historique des paiements
+                        </h3>
+                    </div>
+                    <div class="p-4 md:p-5">
+                        <div v-if="salaryPayments.length" class="overflow-x-auto">
+                            <table class="min-w-full text-sm border-separate border-spacing-0">
+                                <thead>
+                                    <tr class="text-left bg-surface-50 dark:bg-surface-900/50">
+                                        <th class="px-3 py-2 border-b border-surface-200 dark:border-surface-700">Période</th>
+                                        <th class="px-3 py-2 border-b border-surface-200 dark:border-surface-700">Montant calculé</th>
+                                        <th class="px-3 py-2 border-b border-surface-200 dark:border-surface-700">Montant versé</th>
+                                        <th class="px-3 py-2 border-b border-surface-200 dark:border-surface-700">Date</th>
+                                        <th class="px-3 py-2 border-b border-surface-200 dark:border-surface-700">Note</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr
+                                        v-for="payment in salaryPayments"
+                                        :key="payment.id"
+                                        class="odd:bg-surface-0 even:bg-surface-50/50 dark:odd:bg-surface-800 dark:even:bg-surface-900/40"
+                                    >
+                                        <td class="px-3 py-2 border-b border-surface-100 dark:border-surface-800">
+                                            {{ monthYearLabel(payment.month, payment.year) }}
+                                        </td>
+                                        <td class="px-3 py-2 border-b border-surface-100 dark:border-surface-800">
+                                            {{ formatCurrency(payment.calculatedAmount) }}
+                                        </td>
+                                        <td class="px-3 py-2 border-b border-surface-100 dark:border-surface-800 font-semibold text-primary-700 dark:text-primary-300">
+                                            {{ formatCurrency(payment.paidAmount) }}
+                                        </td>
+                                        <td class="px-3 py-2 border-b border-surface-100 dark:border-surface-800">
+                                            {{ formatDate(payment.paidAt) }}
+                                        </td>
+                                        <td class="px-3 py-2 border-b border-surface-100 dark:border-surface-800">
+                                            {{ payment.note || '-' }}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div v-else class="text-sm text-surface-500 dark:text-surface-400">Aucun paiement enregistré pour cet employé.</div>
+                    </div>
+                </div>
+
                 <div data-tour="admin-employee-details.conges" class="bg-surface-0 dark:bg-surface-800/80 rounded-2xl shadow-lg border border-surface-200/50 dark:border-surface-700/50 overflow-hidden">
                     <div class="px-6 py-4 border-b border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900/50 dark:to-surface-800">
                         <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-100 flex items-center gap-2">
@@ -599,46 +709,7 @@ onBeforeUnmount(() => {
                     </div>
                 </div>
 
-                <div data-tour="admin-employee-details.summary">
-                    <div class="bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-900/20 dark:to-blue-800/20 rounded-2xl p-5 border border-blue-200/50 dark:border-blue-800/50">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-sm text-blue-700 dark:text-blue-300 font-medium">Employe</p>
-                                <p class="text-2xl font-bold text-blue-900 dark:text-blue-100 mt-2">
-                                    {{ employee?.fullname || employee?.nom || '-' }}
-                                </p>
-                            </div>
-                            <i class="pi pi-user text-2xl text-blue-500"></i>
-                        </div>
-                    </div>
-
-                    <div class="bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-emerald-900/20 dark:to-emerald-800/20 rounded-2xl p-5 border border-emerald-200/50 dark:border-emerald-800/50 mt-6">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-sm text-emerald-700 dark:text-emerald-300 font-medium">Type</p>
-                                <p class="text-2xl font-bold text-emerald-900 dark:text-emerald-100 mt-2">
-                                    {{ employee?.type || '-' }}
-                                </p>
-                            </div>
-                            <i class="pi pi-briefcase text-2xl text-emerald-500"></i>
-                        </div>
-                    </div>
-
-                    <div class="bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-900/20 dark:to-amber-800/20 rounded-2xl p-5 border border-amber-200/50 dark:border-amber-800/50 mt-6">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-sm text-amber-700 dark:text-amber-300 font-medium">{{ salaireCard.title }}</p>
-                                <p class="text-2xl font-bold text-amber-900 dark:text-amber-100 mt-2">
-                                    {{ salaireCard.value }}
-                                </p>
-                                <p v-if="salaireCard.sub" class="text-xs text-amber-600 dark:text-amber-300 mt-1">
-                                    {{ salaireCard.sub }}
-                                </p>
-                            </div>
-                            <i class="pi pi-wallet text-2xl text-amber-500"></i>
-                        </div>
-                    </div>
-                </div>
+                
             </div>
         </div>
     </section>

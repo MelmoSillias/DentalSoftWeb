@@ -10,7 +10,7 @@ const props = defineProps({
   salles: { type: Array, default: () => [] },
   loading: Boolean
 });
-const emit = defineEmits(['edit', 'delete']);
+const emit = defineEmits(['edit', 'delete', 'add']);
 
 const getTypeSeverity = (type) => {
   const severities = {
@@ -63,6 +63,10 @@ const totalLabel = computed(() => (props.salles?.length ? `${props.salles.length
 
 const emitDelete = (event, salle) => {
   emit('delete', { event, salle });
+};
+
+const emitAdd = (event) => {
+  emit('add', { event });
 };
 </script>
 
@@ -218,6 +222,7 @@ const emitDelete = (event, salle) => {
         <Button 
           label="Ajouter une salle" 
           icon="pi pi-plus"
+          @click="emitAdd" 
           class="bg-gradient-to-r from-primary-500 to-primary-600 border-0 rounded-xl px-5 py-2.5"
         />
       </div>

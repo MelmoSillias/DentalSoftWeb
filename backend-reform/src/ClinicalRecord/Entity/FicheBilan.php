@@ -44,6 +44,9 @@ class FicheBilan
     #[ORM\Column(type: 'text', nullable: true)]
     private ?string $diagnosticPositif = null;
 
+    #[ORM\Column(type: 'text', nullable: true)]
+    private ?string $avisMedicales = null;
+
     public function getId(): ?int
     {
         return $this->id;
@@ -156,6 +159,17 @@ class FicheBilan
     public function setDiagnosticPositif(?string $diagnosticPositif): static
     {
         $this->diagnosticPositif = $diagnosticPositif;
+        return $this;
+    }
+
+    public function getAvisMedicales(): ?string
+    {
+        return $this->avisMedicales;
+    }
+
+    public function setAvisMedicales(?string $avisMedicales): static
+    {
+        $this->avisMedicales = $avisMedicales;
         return $this;
     }
 }

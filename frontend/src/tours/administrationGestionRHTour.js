@@ -39,16 +39,16 @@ export function createAdministrationGestionRHTour({ hasEmployees, openCreateDial
         {
             group: 'administration-gestionrh',
             order: 20,
-            target: '[data-tour="admin-rh.filters"]',
-            title: 'Filtres de recherche',
-            content: 'La zone de filtres combine une recherche texte et un filtre par type. Elle sert a retrouver rapidement un medecin, un receptionniste, un administrateur ou tout autre profil RH sans parcourir toute la table.'
+            target: '[data-tour="admin-rh.table"]',
+            title: 'Onglet employes',
+            content: 'Le premier onglet centralise la liste des employes, les filtres de recherche et les actions de consultation, modification ou suppression de fiche RH.'
         },
         {
             group: 'administration-gestionrh',
             order: 30,
             target: '[data-tour="admin-rh.table"]',
             title: 'Table employes',
-            content: 'La table affiche les informations RH utiles pour chaque employe: identite, fonction, telephone et date d embauche. Pendant ce tour, les groupes par type sont volontairement deroules pour rendre la lecture plus claire.',
+            content: 'La table affiche les informations RH utiles pour chaque employe: identite, fonction, type, telephone et date d embauche.',
             beforeEnter: async () => {
                 await expandGroups();
             }
@@ -68,7 +68,7 @@ export function createAdministrationGestionRHTour({ hasEmployees, openCreateDial
             order: 50,
             target: '[data-tour="admin-rh.stats"]',
             title: 'Indicateurs rapides',
-            content: 'Les cartes de synthese fournissent une lecture rapide de la volumetrie RH. Elles servent surtout de repere global avant d entrer dans le detail d une fiche employe.'
+            content: 'Les cartes de synthese fournissent une lecture rapide des employes, des paiements de salaire et des conges enregistres.'
         },
         {
             group: 'administration-gestionrh',

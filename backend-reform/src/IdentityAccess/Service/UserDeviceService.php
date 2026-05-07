@@ -11,11 +11,14 @@ use App\IdentityAccess\Repository\UserDeviceAccessLogRepository;
 use App\IdentityAccess\Repository\UserDeviceRepository;
 use App\IdentityAccess\Repository\UserRepository;
 use App\Settings\Service\GlobalSettingsService;
+use Doctrine\DBAL\Exception\RetryableException;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\Request;
 
 class UserDeviceService
 {
+    private const HEARTBEAT_INTERVAL_SECONDS = 30;
+
     public function __construct(
         private UserDeviceRepository $userDeviceRepo,
         private UserDeviceAccessLogRepository $accessLogRepo,
@@ -91,7 +94,7 @@ class UserDeviceService
 
             $this->em->persist($device);
             $this->logAccess($user, $device, $request, $shouldAutoApprove ? 'allowed' : UserDevice::STATUS_PENDING);
-            $this->em->flush();
+            $this->flushWithRetry();
 
             if (!$shouldAutoApprove) {
                 $this->notifyNewDeviceRequest($user, $device);
@@ -114,16 +117,25 @@ class UserDeviceService
             ];
         }
 
-        $device
-            ->setDeviceName($context['name'])
-            ->setDeviceType($context['type'])
-            ->setUserAgent($context['userAgent'])
-            ->setIpAddress($context['ip'])
-            ->setLastSeenAt($now);
-
         if ($device->getStatus() === UserDevice::STATUS_APPROVED) {
+            if (!$this->shouldPersistHeartbeat($request, $device, $context, $now)) {
+                return [
+                    'allowed' => true,
+                    'code' => 200,
+                    'message' => null,
+                    'device' => $device,
+                ];
+            }
+
+            $device
+                ->setDeviceName($context['name'])
+                ->setDeviceType($context['type'])
+                ->setUserAgent($context['userAgent'])
+                ->setIpAddress($context['ip'])
+                ->setLastSeenAt($now);
+
             $this->logAccess($user, $device, $request, 'allowed');
-            $this->em->flush();
+            $this->flushWithRetry();
 
             return [
                 'allowed' => true,
@@ -133,8 +145,15 @@ class UserDeviceService
             ];
         }
 
+        $device
+            ->setDeviceName($context['name'])
+            ->setDeviceType($context['type'])
+            ->setUserAgent($context['userAgent'])
+            ->setIpAddress($context['ip'])
+            ->setLastSeenAt($now);
+
         $this->logAccess($user, $device, $request, $device->getStatus());
-        $this->em->flush();
+        $this->flushWithRetry();
 
         $message = $device->getStatus() === UserDevice::STATUS_REJECTED
             ? 'Cet appareil a ete refuse. Contactez un administrateur.'
@@ -310,6 +329,54 @@ class UserDeviceService
             ->setCreatedAt(new \DateTimeImmutable());
 
         $this->em->persist($log);
+    }
+
+    /** @param array{id:string,name:string,type:string,userAgent:?string,ip:?string} $context */
+    private function shouldPersistHeartbeat(Request $request, UserDevice $device, array $context, \DateTimeImmutable $now): bool
+    {
+        if (!$request->isMethodCacheable()) {
+            return true;
+        }
+
+        if (($device->getIpAddress() ?? '') !== ($context['ip'] ?? '')) {
+            return true;
+        }
+
+        if (($device->getUserAgent() ?? '') !== ($context['userAgent'] ?? '')) {
+            return true;
+        }
+
+        if (($device->getDeviceName() ?? '') !== ($context['name'] ?? '')) {
+            return true;
+        }
+
+        if (($device->getDeviceType() ?? '') !== ($context['type'] ?? '')) {
+            return true;
+        }
+
+        $lastSeen = $device->getLastSeenAt();
+        if (!$lastSeen instanceof \DateTimeInterface) {
+            return true;
+        }
+
+        return ($now->getTimestamp() - $lastSeen->getTimestamp()) >= self::HEARTBEAT_INTERVAL_SECONDS;
+    }
+
+    private function flushWithRetry(): void
+    {
+        for ($attempt = 1; $attempt <= 2; ++$attempt) {
+            try {
+                $this->em->flush();
+
+                return;
+            } catch (RetryableException $exception) {
+                if ($attempt === 2) {
+                    throw $exception;
+                }
+
+                usleep(50000);
+            }
+        }
     }
 
     /** @return array<string,mixed> */

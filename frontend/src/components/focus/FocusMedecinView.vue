@@ -1,10 +1,14 @@
 <script setup>
 import EmbeddedConsultationFiche from '@/components/focus/EmbeddedConsultationFiche.vue';
 import DossierPatientInfoCard from '@/components/patients/DossierPatientInfoCard.vue';
+
+import Splitter from 'primevue/splitter';
+import SplitterPanel from 'primevue/splitterpanel';
 import Button from 'primevue/button';
 import Checkbox from 'primevue/checkbox';
 import Tag from 'primevue/tag';
-import { computed, defineEmits, defineProps, toRefs } from 'vue';
+
+import { computed, defineEmits, defineProps, onMounted, ref, toRefs } from 'vue';
 
 const props = defineProps({
     consultations: {
@@ -44,6 +48,9 @@ const showCompletedMedecin = defineModel('showCompletedMedecin', {
     default: false
 });
 
+const newestFirstMedecin = ref(false);
+const embeddedFicheRef = ref(null);
+
 const parseDateTime = (value) => {
     if (!value) return null;
     if (value instanceof Date) return value;
@@ -72,55 +79,22 @@ const patientLabel = (consultation) => {
 
 const medecinLabel = (consultation) => {
     const medecin = consultation?.medecin;
-    if (!medecin) return 'Non assigne';
+    if (!medecin) return 'Non assigné';
     if (typeof medecin === 'string') return medecin;
-    return medecin.label || medecin.fullName || medecin.name || `${medecin.prenom ?? ''} ${medecin.nom ?? ''}`.trim() || 'Non assigne';
+    return medecin.label || medecin.fullName || medecin.name || `${medecin.prenom ?? ''} ${medecin.nom ?? ''}`.trim() || 'Non assigné';
 };
-
-const patientHistoryState = (consultation) => {
-    if (consultation?.hasFiche || consultation?.lastFicheId || consultation?.ficheId) {
-        return { label: 'Ancien patient', severity: 'info' };
-    }
-    return { label: 'Nouveau patient', severity: 'contrast' };
-};
-
-const queueItemClass = (consultation) => {
-    if (Number(consultation.state) === 1) {
-        return 'border-green-400/70 bg-green-50/70 dark:bg-green-950/20';
-    }
-    if (consultation.id === selectedConsultationId.value) {
-        return 'border-primary-500 ring-2 ring-primary-400/60 ring-offset-2 ring-offset-surface-0 shadow-xl shadow-primary-500/20 bg-primary-50 dark:bg-primary-950/20 dark:ring-offset-surface-900';
-    }
-    return 'border-surface-200/70 bg-surface-0/90 dark:border-surface-700/70 dark:bg-surface-800/80';
-};
-
-const medecinQueue = computed(() => {
-    const source = [...consultations.value].sort((left, right) => {
-        const leftTime = parseDateTime(left.createdAt)?.getTime() || 0;
-        const rightTime = parseDateTime(right.createdAt)?.getTime() || 0;
-        return leftTime - rightTime;
-    });
-
-    if (showCompletedMedecin.value) {
-        return source;
-    }
-
-    return source.filter((item) => Number(item.state) !== 1);
-});
-
-const currentConsultation = computed(() => consultations.value.find((item) => item.id === selectedConsultationId.value) || null);
-
-const selectedActionChoice = computed(() => {
-    const consultation = currentConsultation.value;
-    if (!consultation) return null;
-    return consultation.ficheId ? 'continue-last' : consultation.focusActionChoice || null;
-});
 
 const requiresChoice = computed(() => {
     const consultation = currentConsultation.value;
     if (!consultation) return false;
     if (consultation.ficheId) return false;
     return Boolean(consultation.hasFiche || consultation.lastFicheId);
+});
+
+const selectedActionChoice = computed(() => {
+    const consultation = currentConsultation.value;
+    if (!consultation) return null;
+    return consultation.ficheId ? 'continue-last' : consultation.focusActionChoice || null;
 });
 
 const selectedEmbeddedMode = computed(() => {
@@ -140,155 +114,263 @@ const selectedEmbeddedFicheId = computed(() => {
 });
 
 const selectedChoiceLabel = computed(() => {
-    if (selectedActionChoice.value === 'continue-last') return 'Reprise de la derniere fiche';
+    if (selectedActionChoice.value === 'continue-last') return 'Reprise de la dernière fiche';
     if (selectedActionChoice.value === 'new-fiche') return 'Nouvelle fiche choisie';
-    if (currentConsultation.value?.ficheId) return 'Fiche liee en cours';
+    if (currentConsultation.value?.ficheId) return 'Fiche liée en cours';
     if (!requiresChoice.value) return 'Nouvelle fiche automatique';
     return '';
 });
 
-const currentConsultationClosed = computed(() => Number(currentConsultation.value?.state) === 1);
+const currentConsultation = computed(() =>
+    consultations.value.find((item) => item.id === selectedConsultationId.value) || null
+);
+
+const currentConsultationClosed = computed(() =>
+    Number(currentConsultation.value?.state) === 1
+);
+
 const canShowEmbeddedWorkspace = computed(() => {
     if (!currentConsultation.value || !selectedPatient.value) return false;
     if (!hidePatientDossier.value) return true;
     return !currentConsultationClosed.value;
 });
+
+const medecinQueue = computed(() => {
+    const source = [...consultations.value].sort((left, right) => {
+        const leftTime = parseDateTime(left.createdAt)?.getTime() || 0;
+        const rightTime = parseDateTime(right.createdAt)?.getTime() || 0;
+        return newestFirstMedecin.value ? rightTime - leftTime : leftTime - rightTime;
+    });
+
+    if (showCompletedMedecin.value) {
+        return source;
+    }
+
+    return source.filter((item) => Number(item.state) !== 1);
+});
+
+const queueItemClass = (consultation) => {
+    if (Number(consultation.state) === 1) {
+        return 'border-green-400/70 bg-green-50/70 dark:bg-green-950/20';
+    }
+    if (consultation.id === selectedConsultationId.value) {
+        return 'border-primary-500 ring-2 ring-primary-400/60 bg-primary-50 dark:bg-primary-950/20 dark:ring-offset-surface-900';
+    }
+    return 'border-surface-200/70 bg-surface-0/90 dark:border-surface-700/70 dark:bg-surface-800/80';
+};
+
+const openAntecedentDialog = () => {
+    embeddedFicheRef.value?.openAntecedentDialog?.();
+};
+
+const openAllergyDialog = () => {
+    embeddedFicheRef.value?.openAllergyDialog?.();
+};
+
+const deleteAntecedent = (item) => {
+    embeddedFicheRef.value?.deleteAntecedent?.(item);
+};
+
+const deleteAllergy = (item) => {
+    embeddedFicheRef.value?.deleteAllergy?.(item);
+};
+
+const updatePatientPhoto = (file) => {
+    embeddedFicheRef.value?.updatePatientPhoto?.(file);
+};
+
+onMounted(() => {
+    emit('clear-selection');
+});
 </script>
- 
+
 <template>
-    <div class="grid gap-4 xl:grid-cols-[400px_minmax(0,1fr)_300px]">
-        <!-- Colonne gauche : Patient sélectionné -->
-        <aside>
-            <div class="rounded-xl border-2 border-surface-200 bg-white p-4 dark:border-surface-700 dark:bg-surface-900">
-                <div class="mb-2 flex items-center justify-between absolute float-right z-50"> 
-                    <button v-if="selectedPatient" @click="emit('clear-selection')" class="text-xs text-surface-400 hover:text-red-500 border radius-50 border-red-500" >
-                        <i class="pi pi-times"></i>
-                    </button>
-                </div>
-                <DossierPatientInfoCard
-                    v-if="selectedPatient && !hidePatientDossier"
-                    :patient="selectedPatient"
-                    :hide-actions="true"
-                    :hide-phone="hidePatientPhone"
-                />
-                <div v-else-if="selectedPatient && hidePatientDossier" class="py-10 text-center text-sm text-surface-400">
-                    <i class="pi pi-lock text-2xl mb-2 opacity-50"></i>
-                    <p>Dossier patient masqué</p>
-                </div>
-                <div v-else class="py-10 text-center text-sm text-surface-400">
-                    <i class="pi pi-user text-2xl mb-2 opacity-50"></i>
-                    <p>Aucun patient sélectionné</p>
-                </div>
-            </div>
-        </aside>
-
-        <!-- Zone centrale : Fiche ou placeholder -->
-        <section>
-            <!-- Choix de fiche -->
-            <div v-if="currentConsultation && !currentConsultationClosed && requiresChoice && !selectedActionChoice"
-                 class="mb-3 rounded-lg border-l-4 border-amber-500 bg-amber-50 p-3 dark:border-amber-600 dark:bg-amber-950/20">
-                <div class="flex items-start justify-between gap-3">
-                    <div>
-                        <p class="text-sm font-medium text-amber-900 dark:text-amber-100">Fiche existante détectée</p>
-                        <p class="text-xs text-amber-700 mt-0.5 dark:text-amber-300">Choisissez une action pour ce patient</p>
+    <div class="max-h-[80vh] h-[80vh] bg-surface-50 dark:bg-surface-950 shadow-sm overflow-hidden">
+        <Splitter class="h-full border border-surface-200 dark:border-surface-700 rounded-2xl overflow-hidden shadow-sm"
+            :min-size="[220, 400, 240]">
+            <!-- ==================== PANNEAU GAUCHE : DOSSIER PATIENT ==================== -->
+            <SplitterPanel :size="20" class="flex flex-col">
+                <div
+                    class="p-2 bg-white dark:bg-surface-900 flex flex-col border-r border-surface-200 dark:border-surface-700 relative h-full overflow-y-auto">
+                    <div class="absolute top-4 right-4 z-10">
+                        <Button v-if="selectedPatient" icon="pi pi-times" severity="danger" text size="small"
+                            @click="emit('clear-selection')" />
                     </div>
-                    <div class="flex gap-1.5">
-                        <button
-                            @click="emit('select-action-choice', currentConsultation, 'continue-last')"
-                            class="rounded-lg bg-white px-3 py-1.5 text-xs font-medium text-amber-700 border border-amber-200 hover:bg-amber-100 dark:bg-amber-900/40 dark:text-amber-300 dark:border-amber-700">
-                            Reprendre
-                        </button>
-                        <button
-                            @click="emit('select-action-choice', currentConsultation, 'new-fiche')"
-                            class="rounded-lg px-3 py-1.5 text-xs font-medium text-amber-600 hover:bg-white dark:text-amber-300 dark:hover:bg-amber-900/40">
-                            Nouvelle
-                        </button>
+
+                    <DossierPatientInfoCard v-if="selectedPatient && !hidePatientDossier" :patient="selectedPatient"
+                        :hide-actions="true"
+                        :hide-phone="hidePatientPhone"
+                        class="flex-1 overflow-y-auto"
+                        @add-antecedent="openAntecedentDialog"
+                        @add-allergy="openAllergyDialog"
+                        @delete-antecedent="deleteAntecedent"
+                        @delete-allergy="deleteAllergy"
+                        @photo-selected="updatePatientPhoto"
+                    />
+
+                    <div v-else-if="selectedPatient && hidePatientDossier"
+                        class="flex-1 flex flex-col items-center justify-center text-center text-surface-400 my-10">
+                        <i class="pi pi-lock text-5xl mb-4 opacity-75"></i>
+                        <p class="text-base">Dossier patient masqué</p>
+                    </div>
+
+                    <div v-else
+                        class="flex-1 flex flex-col items-center justify-center text-center text-surface-400 my-10">
+                        <i class="pi pi-user text-5xl mb-4 opacity-75"></i>
+                        <p class="text-base">Aucun patient sélectionné</p>
                     </div>
                 </div>
-            </div>
+            </SplitterPanel>
 
-            <!-- Fiche intégrée -->
-            <div v-if="canShowEmbeddedWorkspace" class="rounded-xl border-2 border-surface-200 bg-white dark:border-surface-700 dark:bg-surface-900">
-                <EmbeddedConsultationFiche 
-                    :consultation-id="currentConsultation.id"
-                    :fiche-id="selectedEmbeddedFicheId"
-                    :mode="selectedEmbeddedMode"
-                    :readonly="currentConsultationClosed"
-                    :choice-label="selectedChoiceLabel"
-                    @patient-loaded="(payload) => emit('patient-loaded', payload)"
-                    @closed="async () => { emit('consultation-closed'); }"
-                />
-            </div>
-
-            <div v-else-if="currentConsultationClosed && hidePatientDossier" class="flex flex-col items-center justify-center py-16 rounded-xl border-2 border-dashed border-surface-300 bg-white dark:border-surface-700 dark:bg-surface-900">
-                <i class="pi pi-lock text-3xl text-surface-300 mb-3"></i>
-                <p class="text-sm text-surface-500">Consultation clôturée</p>
-            </div>
-
-            <div v-else class="flex flex-col items-center justify-center py-16 rounded-xl border-2 border-dashed border-surface-300 bg-white dark:border-surface-700 dark:bg-surface-900">
-                <i class="pi pi-file-edit text-3xl text-surface-300 mb-3"></i>
-                <p class="text-sm text-surface-500">Espace de consultation</p>
-            </div>
-        </section>
-
-        <!-- Colonne droite : File d'attente médecin -->
-        <aside>
-            <div class="rounded-xl border-2 border-surface-200 bg-white p-4 dark:border-surface-700 dark:bg-surface-900">
-                <div class="mb-3 flex items-center justify-between">
-                    <div>
-                        <h3 class="text-sm font-semibold text-surface-900 dark:text-surface-50">File d'attente</h3>
-                        <p class="text-xs text-surface-500">{{ medecinQueue.length }} patients</p>
-                    </div>
-                    <label class="flex cursor-pointer items-center gap-1.5 text-xs text-surface-600 dark:text-surface-400">
-                        <input type="checkbox" v-model="showCompletedMedecin" class="h-3.5 w-3.5 rounded border-surface-300 text-primary-600 dark:border-surface-600" />
-                        Terminées
-                    </label>
-                </div>
-
-                <div class="space-y-2">
-                    <button
-                        v-for="consultation in medecinQueue"
-                        :key="consultation.id"
-                        @click="emit('select-consultation', consultation.id)"
-                        class="group w-full rounded-lg border-l-4 p-3 text-left transition-all duration-200 hover:scale-[1.02] hover:shadow-md"
-                        :class="[
-                            consultation.id === selectedConsultationId
-                                ? 'bg-primary-50/90 border-l-primary-500 shadow-md ring-1 ring-primary-200 dark:bg-primary-950/30 dark:border-l-primary-400'
-                                : Number(consultation.state) === 1
-                                    ? 'bg-green-50/40 border-l-green-400 opacity-75 dark:bg-green-950/10 dark:border-l-green-600'
-                                    : 'bg-white border-l-amber-400 hover:bg-amber-50/30 dark:bg-surface-900 dark:border-l-amber-500 dark:hover:bg-amber-950/20'
-                        ]"
-                    >
-                        <div class="flex items-start justify-between gap-2">
-                            <div class="min-w-0 flex-1">
-                                <div class="flex items-center gap-2 mb-1">
-                                    <span class="text-xs font-mono font-bold text-surface-600 dark:text-surface-300">{{ formatTime(consultation.createdAt) }}</span>
-                                    <span :class="[
-                                        'inline-flex items-center rounded-full px-1.5 py-0.5 text-xs font-medium',
-                                        consultation.hasFiche || consultation.lastFicheId
-                                            ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-400'
-                                            : 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-400'
-                                    ]">
-                                        {{ consultation.hasFiche || consultation.lastFicheId ? 'Ancien' : 'Nouveau' }}
-                                    </span>
-                                </div>
-                                <p class="text-sm font-semibold truncate text-surface-900 dark:text-surface-50">{{ patientLabel(consultation) }}</p>
-                                <p class="text-xs text-surface-500 truncate">{{ medecinLabel(consultation) }}</p>
-                            </div>
-                            <span :class="[
-                                'mt-0.5 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium flex-shrink-0',
-                                Number(consultation.state) === 1
-                                    ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-400'
-                                    : consultation.id === selectedConsultationId
-                                        ? 'bg-primary-100 text-primary-800 dark:bg-primary-900/40 dark:text-primary-400'
-                                        : 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-400'
-                            ]">
-                                {{ Number(consultation.state) === 1 ? '✓' : consultation.id === selectedConsultationId ? 'Actif' : '●' }}
-                            </span>
+            <SplitterPanel :size="56" :minSize="40"
+                class="flex flex-col overflow-y-auto bg-surface-50 dark:bg-surface-950">
+                <div v-if="currentConsultation && !currentConsultationClosed && requiresChoice && !selectedActionChoice"
+                    class="m-4 rounded-xl border-l-4 border-amber-500 bg-amber-50 p-4 dark:bg-amber-950/30 dark:border-amber-600">
+                    <div class="flex items-start justify-between gap-4">
+                        <div>
+                            <p class="font-medium text-amber-900 dark:text-amber-100">Fiche existante détectée</p>
+                            <p class="text-sm text-amber-700 dark:text-amber-300 mt-1">
+                                Choisissez une action pour ce patient
+                            </p>
                         </div>
-                    </button>
+                        <div class="flex gap-3">
+                            <Button label="Reprendre la dernière" severity="warning" outlined
+                                @click="emit('select-action-choice', currentConsultation, 'continue-last')" />
+                            <Button label="Nouvelle fiche" severity="warning"
+                                @click="emit('select-action-choice', currentConsultation, 'new-fiche')" />
+                        </div>
+                    </div>
                 </div>
-            </div>
-        </aside>
+
+                <div v-if="canShowEmbeddedWorkspace"
+                    class="flex-1 border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-900 overflow-y-auto">
+                    <EmbeddedConsultationFiche ref="embeddedFicheRef" :consultation-id="currentConsultation.id"
+                        :fiche-id="selectedEmbeddedFicheId" :mode="selectedEmbeddedMode"
+                        :readonly="currentConsultationClosed" :choice-label="selectedChoiceLabel"
+                        @patient-loaded="(payload) => emit('patient-loaded', payload)"
+                        @closed="() => emit('consultation-closed')" />
+                </div>
+
+                <div v-else class="flex-1 flex flex-col items-center pt-5 text-surface-400">
+                    <i class="pi pi-file-edit text-6xl mb-6 opacity-40"></i>
+                    <p class="text-xl font-medium">Espace de consultation</p>
+                    <p class="text-sm mt-2 max-w-xs text-center">
+                        Sélectionnez une consultation dans la file d'attente pour commencer
+                    </p>
+                </div>
+            </SplitterPanel>
+
+            <SplitterPanel :size="20" class="flex flex-col">
+                <div class="h-full flex flex-col bg-white dark:bg-surface-900 border-l border-surface-200 dark:border-surface-700"> 
+                    <div
+                        class="flex items-center justify-between px-5 py-4 border-b border-surface-200 dark:border-surface-700">
+                        <div>
+                            <h3 class="font-semibold text-lg text-surface-900 dark:text-white">
+                                File d'attente
+                            </h3>
+                            <p class="text-xs text-surface-500">
+                                {{ medecinQueue.length }} patients en attente
+                            </p>
+                        </div>
+
+                        <div class="flex items-center gap-2 text-xs text-surface-500">
+                            <ToggleSwitch v-model="showCompletedMedecin" />
+                            <span>Terminées</span>
+                            <Button
+                                :icon="newestFirstMedecin ? 'pi pi-sort-amount-down' : 'pi pi-sort-amount-up'"
+                                text
+                                rounded
+                                size="small"
+                                :aria-label="newestFirstMedecin ? 'Plus récentes en haut' : 'Plus anciennes en haut'"
+                                @click="newestFirstMedecin = !newestFirstMedecin"
+                            />
+                        </div>
+                    </div>
+
+                    <div class="flex-1 overflow-auto px-4 py-4 custom-scrollbar">
+                        <div class="relative">
+                            <div class="absolute left-4 top-0 bottom-0 w-px bg-surface-200 dark:bg-surface-700"></div>
+
+                            <div class="space-y-4">
+                                <button v-for="(consultation, index) in medecinQueue" :key="consultation.id"
+                                    @click="emit('select-consultation', consultation.id)"
+                                    class="relative w-full text-left flex gap-4 group">
+                                    
+                                    <div class="relative z-10 flex flex-col items-center">
+                                        <div :class="[
+                                            'w-8 h-8 flex items-center justify-center rounded-full text-xs font-bold border transition-all',
+
+                                            consultation.id === selectedConsultationId
+                                                ? 'bg-primary-500 text-white border-primary-500 scale-110 shadow-md'
+                                                : Number(consultation.state) === 1
+                                                    ? 'bg-green-100 text-green-700 border-green-300'
+                                                    : 'bg-white dark:bg-surface-800 text-surface-500 border-surface-300'
+                                        ]">
+                                            {{ index + 1 }}
+                                        </div>
+ 
+                                        <div class="flex-1 w-px"></div>
+                                    </div>
+ 
+                                    <div :class="[
+                                        'flex-1 rounded-xl border p-3 transition-all',
+
+                                        consultation.id === selectedConsultationId
+                                            ? 'bg-primary-50 dark:bg-primary-900/20 border-primary-300 shadow-md'
+                                            : 'bg-surface-50 dark:bg-surface-800 border-surface-200 dark:border-surface-700 hover:shadow-sm'
+                                    ]">
+
+                                        <!-- Top -->
+                                        <div class="flex items-center justify-between mb-1">
+                                            <span class="font-mono text-[11px] text-surface-500">
+                                                {{ formatTime(consultation.createdAt) }}
+                                            </span>
+
+                                            <span :class="[
+                                                'text-[11px] px-2 py-0.5 rounded-full font-medium',
+                                                Number(consultation.state) === 1
+                                                    ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-400'
+                                                    : 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-400'
+                                            ]">
+                                                {{ Number(consultation.state) === 1 ? 'Terminé' : 'En attente' }}
+                                            </span>
+                                        </div>
+ 
+                                        <p class="font-semibold text-sm text-surface-900 dark:text-white truncate">
+                                            {{ patientLabel(consultation) }}
+                                        </p>
+ 
+                                        <p class="text-xs text-surface-500 truncate">
+                                            {{ medecinLabel(consultation) }}
+                                        </p>
+ 
+                                        <div class="mt-2">
+                                            <Tag :value="(consultation.hasFiche || consultation.lastFicheId) ? 'Ancien patient' : 'Nouveau patient'"
+                                                size="small" severity="contrast" />
+                                        </div>
+
+                                    </div>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </SplitterPanel>
+        </Splitter>
     </div>
 </template>
+
+<style scoped>
+.custom-scrollbar::-webkit-scrollbar {
+    width: 5px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: #9ca3af;
+    border-radius: 20px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background-color: #6b7280;
+}
+</style>

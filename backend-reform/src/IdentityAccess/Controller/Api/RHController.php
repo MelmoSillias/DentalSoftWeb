@@ -4,6 +4,7 @@ namespace App\IdentityAccess\Controller\Api;
 
 use App\Scheduling\Entity\Conge;
 use App\IdentityAccess\Entity\Employe;
+use App\IdentityAccess\Entity\SalaryPayment;
 use App\IdentityAccess\Service\EmployeeService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -98,6 +99,27 @@ class RHController extends AbstractController
             $employee->getConges()->toArray()
         );
 
+        $salaryPayments = array_map(
+            static fn(SalaryPayment $payment) => [
+                'id' => $payment->getId(),
+                'month' => $payment->getMonth(),
+                'year' => $payment->getYear(),
+                'salaryType' => $payment->getSalaryTypeSnapshot(),
+                'salaryValue' => $payment->getSalaryValueSnapshot(),
+                'baseAmount' => $payment->getBaseAmount(),
+                'calculatedAmount' => $payment->getCalculatedAmount(),
+                'paidAmount' => $payment->getPaidAmount(),
+                'paidAt' => $payment->getPaidAt()?->format('Y-m-d'),
+                'note' => $payment->getNote(),
+            ],
+            $employee->getSalaryPayments()->toArray()
+        );
+
+        usort(
+            $salaryPayments,
+            static fn(array $left, array $right) => strcmp((string) ($right['paidAt'] ?? ''), (string) ($left['paidAt'] ?? ''))
+        );
+
         return $this->json([
             'id' => $employee->getId(),
             'nom' => $employee->getNom(),
@@ -118,6 +140,7 @@ class RHController extends AbstractController
             'comingDays' => $employee->getComingDaysInWeek(),
             'administrativeFiles' => $employee->getAdministrativeFiles(),
             'conges' => $conges,
+            'salaryPayments' => $salaryPayments,
         ]);
     }
 }

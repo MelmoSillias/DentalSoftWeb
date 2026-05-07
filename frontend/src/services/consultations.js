@@ -16,6 +16,22 @@ const axios = http;
 
 const authHeaders = (token) => (token ? { Authorization: `Bearer ${token}` } : {});
 
+const normalizeDentList = (value) => {
+    if (Array.isArray(value)) {
+        return [...new Set(value.map((item) => String(item || '').trim()).filter(Boolean))];
+    }
+
+    if (typeof value === 'string') {
+        return [...new Set(value.split(',').map((item) => item.trim()).filter(Boolean))];
+    }
+
+    if (typeof value === 'number') {
+        return [String(value)];
+    }
+
+    return [];
+};
+
 const normalizeFocusPatient = (raw = {}) => ({
     id: raw.id,
     nom: raw.nom ?? '',
@@ -176,7 +192,7 @@ export const fetchConsultationDetails = async (consultationId, token) => {
             const actesSource = payload.actes ?? data.actes ?? [];
             const actes = Array.isArray(actesSource)
                 ? actesSource.map((a) => ({
-                      dent: a.dent ?? '',
+                      dent: normalizeDentList(a.dent ?? a.dents),
                       type: a.type ?? a.designation ?? '',
                       description: a.description ?? a.designation ?? '',
                       quantite: Number(a.quantite ?? a.qty ?? a.qte ?? 0),

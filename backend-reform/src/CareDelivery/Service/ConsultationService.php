@@ -125,6 +125,81 @@ class ConsultationService
         }
     }
 
+    private function normalizeDentValue(mixed $value): string
+    {
+        if (is_array($value)) {
+            $values = array_values(array_unique(array_filter(array_map(static fn($item) => trim((string) $item), $value))));
+            return implode(',', $values);
+        }
+
+        if (is_string($value)) {
+            $values = array_values(array_unique(array_filter(array_map('trim', explode(',', $value)))));
+            return implode(',', $values);
+        }
+
+        if (is_numeric($value)) {
+            return (string) $value;
+        }
+
+        return '';
+    }
+
+    private function normalizeDentList(string $value): array
+    {
+        if (trim($value) === '') {
+            return [];
+        }
+
+        return array_values(array_unique(array_filter(array_map('trim', explode(',', $value)))));
+    }
+
+    private function applyConsultationPayload(Consultation $consultation, array $data, ?Employe $actorMedecin = null): void
+    {
+        $medecinId = $actorMedecin?->getId() ?? ($data['medecinId'] ?? $consultation->getMedecin()?->getId());
+        if (!$medecinId) {
+            throw new \InvalidArgumentException('Le médecin est obligatoire pour enregistrer la consultation.');
+        }
+
+        $infirmierId = $data['infirmierId'] ?? ($data['infirmierIds'][0] ?? null);
+        $salleId = $data['salleId'] ?? null;
+
+        $consultation->setMedecin($this->em->getReference(Employe::class, (int) $medecinId));
+        $consultation->setInfirmier($infirmierId ? $this->em->getReference(Employe::class, (int) $infirmierId) : null);
+        $consultation->setSalle($salleId ? $this->em->getReference(Salle::class, (int) $salleId) : null);
+        $consultation->setType($data['type'] ?? $consultation->getType());
+        $consultation->setNoteSeance($data['noteSeance'] ?? $consultation->getNoteSeance() ?? '');
+
+        if (isset($data['actes']) && is_array($data['actes'])) {
+            foreach ($consultation->getActes()->toArray() as $a) {
+                $consultation->removeActe($a);
+                $this->em->remove($a);
+            }
+
+            foreach ($data['actes'] as $a) {
+                $act = new ActeMedical();
+                $act->setDent($this->normalizeDentValue($a['dent'] ?? ($a['dents'] ?? '')))
+                    ->setType($a['type'] ?? ($a['designation'] ?? ''))
+                    ->setDescription($a['description'] ?? ($a['designation'] ?? ''))
+                    ->setPrix((float) ($a['prix'] ?? $a['montant'] ?? 0))
+                    ->setQuantite((int) ($a['quantite'] ?? $a['qte'] ?? 1));
+                $consultation->addActe($act);
+                $this->em->persist($act);
+            }
+        }
+
+        $ordonnancePayload = null;
+        if (isset($data['ordonnance']) && is_array($data['ordonnance'])) {
+            $ordonnancePayload = $data['ordonnance'];
+        } elseif (!empty($data['ordonnances']) && is_array($data['ordonnances'])) {
+            $first = $data['ordonnances'][0] ?? null;
+            $ordonnancePayload = is_array($first) ? $first : null;
+        }
+
+        if (is_array($ordonnancePayload)) {
+            $this->createOrdonnanceEntityFromPayload($consultation, $ordonnancePayload);
+        }
+    }
+
     private function resolvePendingFicheData(Consultation $consultation): array
     {
         $patient = $consultation->getPatient();
@@ -318,8 +393,16 @@ class ConsultationService
             (float) $facture->getMontant(),
             (float) $facture->getReste(),
             [
-                'label' => $facture->getReste() <= 0 && $facture->getMontant() > 0 ? 'Facture reglee' : ((float) $facture->getMontant() <= 0 ? 'Facture vide' : 'Facture ouverte'),
-                'severity' => $facture->getReste() <= 0 && $facture->getMontant() > 0 ? 'success' : ((float) $facture->getMontant() <= 0 ? 'contrast' : 'warn'),
+                'label' => $facture->getReste() <= 0 && $facture->getMontant() > 0
+                    ? 'Facture reglee'
+                    : ((float) $facture->getMontant() <= 0
+                        ? ((int) $facture->getStatut() === 1 ? 'Facture vide validee' : 'Facture vide')
+                        : 'Facture ouverte'),
+                'severity' => $facture->getReste() <= 0 && $facture->getMontant() > 0
+                    ? 'success'
+                    : ((float) $facture->getMontant() <= 0
+                        ? ((int) $facture->getStatut() === 1 ? 'success' : 'contrast')
+                        : 'warn'),
             ],
             $lines,
             $paymentDtos,
@@ -383,8 +466,10 @@ class ConsultationService
 
         $actesData = [];
         foreach ($c->getActes() as $a) {
+            $dentValue = (string) ($a->getDent() ?? '');
             $actesData[] = [
-                'dent' => $a->getDent(),
+                'dent' => $dentValue,
+                'dents' => $this->normalizeDentList($dentValue),
                 'type' => $a->getType(),
                 'description' => $a->getDescription(),
                 'prix' => $a->getPrix(),
@@ -801,64 +886,33 @@ class ConsultationService
         $this->ensureConsultationOpen($consultation);
 
         $actorMedecin = $this->enforceMedecinOwnership($consultation, $user, $restrictToMedecin);
-
-        $medecinId = $actorMedecin?->getId() ?? ($data['medecinId'] ?? $consultation->getMedecin()?->getId());
-        if (!$medecinId) {
-            throw new \InvalidArgumentException('Le médecin est obligatoire pour enregistrer la consultation.');
-        }
-        $infirmierId = $data['infirmierId'] ?? ($data['infirmierIds'][0] ?? null);
-        $salleId = $data['salleId'] ?? null;
-
-        $consultation->setMedecin($this->em->getReference(Employe::class, (int) $medecinId));
-        $consultation->setInfirmier($infirmierId ? $this->em->getReference(Employe::class, $infirmierId) : null);
-        $consultation->setSalle($salleId ? $this->em->getReference(Salle::class, $salleId) : null);
-        $consultation->setType($data['type'] ?? null);
-        $consultation->setNoteSeance($data['noteSeance'] ?? '');
-
-        foreach ($consultation->getActes() as $a) {
-            $this->em->remove($a);
-        }
-        if (isset($data['actes']) && is_array($data['actes'])) {
-            foreach ($data['actes'] as $a) {
-                $act = new ActeMedical();
-                $act->setConsultation($consultation)
-                    ->setDent($a['dent'] ?? '')
-                    ->setType($a['type'] ?? '')
-                    ->setDescription($a['description'] ?? '')
-                    ->setPrix($a['prix'] ?? 0)
-                    ->setQuantite($a['quantite'] ?? 1);
-                $this->em->persist($act);
-            }
-        }
-
-        $ordonnancePayload = null;
-        if (isset($data['ordonnance']) && is_array($data['ordonnance'])) {
-            $ordonnancePayload = $data['ordonnance'];
-        } elseif (!empty($data['ordonnances']) && is_array($data['ordonnances'])) {
-            $first = $data['ordonnances'][0] ?? null;
-            $ordonnancePayload = is_array($first) ? $first : null;
-        }
-
-        if (is_array($ordonnancePayload)) {
-            $this->createOrdonnanceEntityFromPayload($consultation, $ordonnancePayload);
-        }
+        $this->applyConsultationPayload($consultation, $data, $actorMedecin);
 
         $this->em->flush();
 
         $this->focusRealtimePublisher->publishConsultationRefresh($consultation, 'updated');
     }
 
-    public function clotureConsultation(int $ficheId, int $consultationId, ?object $user = null, bool $restrictToMedecin = false): void
+    public function clotureConsultation(int $ficheId, int $consultationId, ?object $user = null, bool $restrictToMedecin = false, array $payload = []): void
     {
         [$fiche, $consultation] = $this->getFicheAndConsultation($ficheId, $consultationId, $user, $restrictToMedecin);
         $this->ensureConsultationOpen($consultation);
 
-        $this->enforceMedecinOwnership($consultation, $user, $restrictToMedecin);
+        $actorMedecin = $this->enforceMedecinOwnership($consultation, $user, $restrictToMedecin);
+
+        if (!empty($payload)) {
+            $this->applyConsultationPayload($consultation, $payload, $actorMedecin);
+            $this->em->flush();
+        }
 
         if (!$consultation->getMedecin()) {
             throw new \InvalidArgumentException('Le médecin est obligatoire pour clôturer la consultation.');
         }
 
+        if ($consultation->getActes()->isEmpty()) {
+            throw new \InvalidArgumentException('Ajoutez au moins un acte médical avant de clôturer la consultation.');
+        }
+        
         $facture = new Devis();
         if ($fiche instanceof FicheMedicale) {
             $facture->setFicheMedicale($fiche);
@@ -878,11 +932,13 @@ class ConsultationService
 
         $amount = 0;
         foreach ($consultation->getActes() as $a) {
+            $qty = max(1, (int) ($a->getQuantite() ?? 1));
+            $price = (float) ($a->getPrix() ?? 0);
             $cd = new ContenuDevis();
             $cd->setDevis($facture)
                 ->setDesignation($a->getType() ?? '')
-                ->setQte($a->getQuantite() ?? 1)
-                ->setMontant($a->getPrix() ?? 0);
+                ->setQte($qty)
+                ->setMontant($price);
             $amount += $cd->getMontant() * $cd->getQte();
             $cd->setMontantTotal($amount);
             $this->em->persist($cd);
@@ -1335,12 +1391,14 @@ class ConsultationService
         $lignes = [];
 
         foreach ($consultation->getActes() as $acte) {
+            $dentValue = (string) ($acte->getDent() ?? '');
             $lignes[] = [
                 'type' => $acte->getType(),
                 'description' => $acte->getDescription(),
                 'quantite' => $acte->getQuantite(),
                 'prix' => $acte->getPrix(),
-                'dent' => $acte->getDent(),
+                'dent' => $dentValue,
+                'dents' => $this->normalizeDentList($dentValue),
             ];
         }
 
@@ -1378,7 +1436,7 @@ class ConsultationService
                 ?? '';
             $prix = (float) ($ligneData['prix'] ?? $ligneData['montant'] ?? 0);
             $quantite = (int) ($ligneData['quantite'] ?? $ligneData['qte'] ?? 1);
-            $dent = $ligneData['dent'] ?? '';
+            $dent = $this->normalizeDentValue($ligneData['dent'] ?? ($ligneData['dents'] ?? ''));
             $description = $ligneData['description'] ?? $designation;
 
             $cd = new ContenuDevis();

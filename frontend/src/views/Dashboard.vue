@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import Breadcrumb from 'primevue/breadcrumb';
 import DatePicker from 'primevue/datepicker';
 import SelectButton from 'primevue/selectbutton';
+import Button from 'primevue/button';
 import { useAuthStore } from '@/stores/auth';
 import { GUIDED_TOUR_START_EVENT } from '@/tours';
 import { createDashboardTour } from '@/tours/dashboardTour';
@@ -37,6 +38,7 @@ const selectedRange = ref([startOfMonth, new Date()]);
 
 const selectedPeriod = ref('month');
 const isGuidedTourStarting = ref(false);
+const loadErrorMessage = ref('');
 
 const breadcrumbHome = { icon: 'pi pi-home', to: '/' };
 const breadcrumbItems = [{ label: 'Dashboard' }, { label: 'Tableau de bord' }];
@@ -60,6 +62,9 @@ const role = computed(() => {
     if (roles.includes('ROLE_RECEPTION') || roles.includes('ROLE_RECEPTIONNISTE')) return 'reception';
     return 'admin';
 });
+
+const isReceptionRole = computed(() => role.value === 'reception');
+const showRangeFilters = computed(() => !isReceptionRole.value);
 
 const userLabel = computed(() => {
     if (employee.value?.prenom || employee.value?.nom) {
@@ -581,17 +586,41 @@ watch(
 
         try {
             await fetchDashboard(role.value, params);
+            loadErrorMessage.value = '';
         } catch (_) {
-            // Ignore transient errors during logout/unmount transitions
+            loadErrorMessage.value = 'Impossible de charger les données du dashboard.';
         }
     },
     { deep: true, immediate: true }
 );
 
-onMounted(async () => {
-    window.addEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
+watch(
+    () => role.value,
+    (value) => {
+        if (value !== 'reception') return;
+        filterMode.value = 'date';
+    },
+    { immediate: true }
+);
+
+const retryLoadDashboard = async () => {
+    loadErrorMessage.value = '';
+    const params = filterParams.value;
+    if (params?.date || (params?.from && params?.to)) {
+        await fetchDashboard(role.value, params);
+    }
     await fetchProfile();
     await fetchNotifications(notificationsFilter.value);
+};
+
+onMounted(async () => {
+    window.addEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
+    try {
+        await fetchProfile();
+        await fetchNotifications(notificationsFilter.value);
+    } catch (_) {
+        loadErrorMessage.value = 'Impossible de charger les données utilisateur du dashboard.';
+    }
 });
 
 onBeforeUnmount(() => {
@@ -600,7 +629,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-    <section class="min-h-screen  p-3 sm:p-4 md:p-6 lg:p-8 transition-colors duration-300">
+    <section class="min-h-screen  p-3 sm:p-4 md:p-6 lg:p-8 transition-colors duration-300 ">
         <div class="mb-6 md:mb-8" data-tour="dashboard.header">
             <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
                 <div class="space-y-2 flex-1">
@@ -621,6 +650,7 @@ onBeforeUnmount(() => {
 
                 <div class="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-2 sm:gap-3 w-full lg:w-auto" data-tour="dashboard.filters">
                     <SelectButton
+                        v-if="showRangeFilters"
                         v-model="filterMode"
                         :options="filterOptions"
                         optionLabel="label"
@@ -638,7 +668,7 @@ onBeforeUnmount(() => {
                             :pt="{ input: 'pl-10 py-2.5 sm:py-3', icon: 'left-3 top-3 text-surface-400' }"
                         /> 
                     </div>
-                    <div class="relative w-full sm:w-auto" v-else>
+                    <div class="relative w-full sm:w-auto" v-else-if="showRangeFilters">
                         <DatePicker
                             v-model="selectedRange"
                             selectionMode="range"
@@ -658,12 +688,25 @@ onBeforeUnmount(() => {
             </div>
         </div>
 
+        <div v-if="loadErrorMessage" class="mb-6 flex min-h-[320px] flex-col items-center justify-center gap-4 rounded-2xl border border-amber-200/70 bg-amber-50/70 p-8 dark:border-amber-800/70 dark:bg-amber-950/20">
+            <div class="flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
+                <i class="pi pi-exclamation-triangle text-2xl"></i>
+            </div>
+            <div class="text-center">
+                <p class="text-lg font-semibold text-amber-800 dark:text-amber-200">Chargement interrompu</p>
+                <p class="text-sm text-amber-700/90 dark:text-amber-300/90">{{ loadErrorMessage }}</p>
+            </div>
+            <Button icon="pi pi-refresh" label="Réessayer" severity="warning" @click="retryLoadDashboard" />
+        </div>
+
+        <template v-else>
+
         <div data-tour="dashboard.quick-stats">
             <DashboardQuickStats :cards="quickCards" :loading="loading" />
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 md:mb-8">
-            <div class="lg:col-span-2" data-tour="dashboard.main-report">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 md:mb-8 items-start">
+            <div class="lg:col-span-2 self-start" data-tour="dashboard.main-report">
                 <div v-if="showReceptionReports">
                     <DoctorReportsTable
                         title="Rapports periodiques par medecin"
@@ -700,5 +743,6 @@ onBeforeUnmount(() => {
                 @mark-all="handleMarkAll"
             />
         </div>
+        </template>
     </section>
 </template>

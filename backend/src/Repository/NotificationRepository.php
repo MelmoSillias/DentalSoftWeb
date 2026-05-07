@@ -91,6 +91,53 @@ class NotificationRepository extends ServiceEntityRepository
             ->getResult();
     }
 
+    public function markUnreadMatchingPathAsRead(User $user, string $path, int $limit = 50): int
+    {
+        $rows = $this->createQueryBuilder('n')
+            ->select('n.id, n.link')
+            ->andWhere('n.user = :user')
+            ->andWhere('n.etatVu = :unread')
+            ->andWhere('n.link IS NOT NULL')
+            ->setParameter('user', $user)
+            ->setParameter('unread', 'non_vu')
+            ->orderBy('n.dateEnvoi', 'DESC')
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getArrayResult();
+
+        $ids = [];
+        foreach ($rows as $row) {
+            $link = isset($row['link']) ? (string) $row['link'] : '';
+            if ($link === '') {
+                continue;
+            }
+
+            $linkPath = parse_url($link, PHP_URL_PATH);
+            if (!is_string($linkPath) || $linkPath === '') {
+                $linkPath = $link;
+            }
+
+            if ($linkPath !== '' && str_starts_with($path, $linkPath)) {
+                $ids[] = (int) $row['id'];
+            }
+        }
+
+        if ($ids === []) {
+            return 0;
+        }
+
+        return $this->createQueryBuilder('n')
+            ->update()
+            ->set('n.etatVu', ':read')
+            ->andWhere('n.id IN (:ids)')
+            ->andWhere('n.etatVu = :unread')
+            ->setParameter('read', 'vu')
+            ->setParameter('unread', 'non_vu')
+            ->setParameter('ids', array_values(array_unique($ids)))
+            ->getQuery()
+            ->execute();
+    }
+
     public function purgeOlderThan(\DateTimeInterface $threshold): int
     {
         return $this->createQueryBuilder('n')
