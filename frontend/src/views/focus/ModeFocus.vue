@@ -10,14 +10,15 @@ import { usePrinter } from '@/composables/usePrinter';
 import { useFocusRealtime } from '@/composables/useFocusRealtime';
 import { defaultSoinList, fetchConsultationDetails, fetchConsultationInvoice, fetchConsultationsByDate, fetchFocusReceptionData, normalizeSoinList, updateConsultationInvoice, cancelConsultation } from '@/services/consultations';
 import { buildPaymentMethodGroups, getDefaultClassicMethod, getPaymentCoverageRate } from '@/utils/paymentMethodUtils';
-import { fetchDevisDetail, fetchPaymentMethods, payDevis, resetDevisPayments, validateEmptyDevis } from '@/services/caisseService';
+import { fetchDevisDetail, payDevis, resetDevisPayments, validateEmptyDevis } from '@/services/caisseService';
 import { fetchPublicGeneralSettings } from '@/services/globalSettingsService';
-import { fetchInvoicePrintData, fetchTicketPrintData } from '@/services/printService';
+import { fetchInvoicePrintData, fetchReceiptPrintData } from '@/services/printService';
 import { fetchPatientById, normalizePatient } from '@/services/patients';
 import PrintDevisBody from '@/components/print/PrintDevisBody.vue';
-import PrintTicketBody from '@/components/print/PrintTicketBody.vue';
+import PrintReceiptBody from '@/components/print/PrintReceiptBody.vue';
 import { sendInvoiceSms } from '@/services/smsService';
 import { useAuthStore } from '@/stores/auth';
+import { usePaymentMethodsStore } from '@/stores/paymentMethods';
 import Button from 'primevue/button';
 import Checkbox from 'primevue/checkbox';
 import ConfirmPopup from 'primevue/confirmpopup';
@@ -36,6 +37,7 @@ const toast = useToast();
 const confirm = useConfirm();
 const token = localStorage.getItem('token');
 const { printComponent } = usePrinter();
+const paymentMethodsStore = usePaymentMethodsStore();
 
 const loading = ref(false);
 const consultations = ref([]);
@@ -456,7 +458,7 @@ const openDetails = async (consultation) => {
 };
 
 const loadPaymentMethods = async () => {
-    paymentMethods.value = await fetchPaymentMethods(token);
+    paymentMethods.value = await paymentMethodsStore.load(token);
 };
 
 const openPayDialog = async () => {
@@ -616,9 +618,9 @@ const printInvoice = async () => {
 const printReceiptById = async (paymentId) => {
     if (!paymentId) return;
     try {
-        const res = await fetchTicketPrintData(paymentId, token);
+        const res = await fetchReceiptPrintData(paymentId, token);
         await printComponent(
-            PrintTicketBody,
+            PrintReceiptBody,
             { paiement: res.paiement },
             { format: [226.77, 255.12], width: '80mm' }
         );
@@ -715,10 +717,21 @@ const handleCancel = async (consultation) => {
     }
 };
 
-const askCancel = (event, consultation) => {
+const askCancel = (eventOrTarget, consultation) => {
+    const fallbackTarget = typeof document !== 'undefined' && consultation?.id
+        ? document.querySelector(`[data-cancel-consultation-id="${consultation.id}"]`)
+        : null;
+    const activeElement = typeof document !== 'undefined' ? document.activeElement : null;
+    const target = eventOrTarget?.currentTarget
+        || eventOrTarget?.target?.closest?.('button')
+        || eventOrTarget?.target
+        || eventOrTarget
+        || fallbackTarget
+        || (activeElement instanceof HTMLElement ? activeElement : null);
+
     confirm.require({
         group: 'focus-cancel-consultation',
-        target: event?.currentTarget || event?.target,
+        target,
         message: 'Annuler cette consultation ? Cette action est irréversible.',
         icon: 'pi pi-exclamation-triangle',
         acceptLabel: 'Oui, annuler',
@@ -865,7 +878,8 @@ onBeforeUnmount(() => {
         <div class="mx-auto max-w-[1920px] p-6">
             <FocusReceptionView
                 v-if="selectedMode === 'reception'"
-                v-model:showCompletedSecretary="showCompletedSecretary"
+                :show-completed-secretary="showCompletedSecretary"
+                @update:show-completed-secretary="showCompletedSecretary = $event"
                 :consultations="consultations"
                 :recent-patients="receptionRecentPatients"
                 :billing-by-consultation="receptionBillingByConsultation"
@@ -892,7 +906,7 @@ onBeforeUnmount(() => {
 
             <FocusMedecinView
                 v-else-if="selectedMode === 'medecin'"
-                v-model:showCompletedMedecin="showCompletedMedecin"
+                v-model="showCompletedMedecin"
                 :consultations="consultations.map((consultation) => ({
                     ...consultation,
                     focusActionChoice: actionChoiceByConsultation[consultation.id] || null
@@ -911,9 +925,9 @@ onBeforeUnmount(() => {
             <FocusRendezVousView v-else-if="selectedMode === 'rdv'" />
 
             <!-- Dialogs restent inchangés -->
-            <ConsultationDetailsDialog v-model:visible="detailsDialogVisible" :details="detailData" :loading="detailsLoading" />
+            <ConsultationDetailsDialog v-model="detailsDialogVisible" :details="detailData" :loading="detailsLoading" />
             <QuickClotureConsultationDialog
-                v-model:visible="quickDialogVisible"
+                v-model="quickDialogVisible"
                 :consultation="quickDialogConsultation"
                 :action-mode="quickDialogActionMode"
                 @saved="handleQuickDialogDone"
@@ -972,7 +986,7 @@ onBeforeUnmount(() => {
                 @save-facture="handleSaveFacture(factureLines)"
                 @print-invoice="printInvoice"
             />
-            <Dialog v-model:visible="createPatientDialogVisible" modal :style="{ width: '45rem' }">
+            <Dialog v-model="createPatientDialogVisible" modal :style="{ width: '45rem' }">
                 <template #header>
                     <div class="flex items-center gap-3">
                         <div class="rounded-lg bg-primary-100 p-2 dark:bg-primary-900/30">
@@ -986,7 +1000,7 @@ onBeforeUnmount(() => {
                 </template>
                 <FormPatient @saved="handlePatientSaved" @cancel="createPatientDialogVisible = false" />
             </Dialog>
-            <Dialog v-model:visible="createConsultationDialogVisible" modal :style="{ width: '50rem' }">
+            <Dialog v-model="createConsultationDialogVisible" modal :style="{ width: '50rem' }">
                 <template #header>
                     <div class="flex items-center gap-3">
                         <div class="rounded-lg bg-green-100 p-2 dark:bg-green-900/30">
@@ -1000,7 +1014,7 @@ onBeforeUnmount(() => {
                 </template>
                 <FormCreateConsultation :patient="createConsultationPreSelectedPatient" @saved="handleConsultationCreated" @cancel="createConsultationDialogVisible = false; createConsultationPreSelectedPatient = null" />
             </Dialog>
-            <Dialog v-model:visible="editPatientDialogVisible" modal :style="{ width: '45rem' }">
+            <Dialog v-model="editPatientDialogVisible" modal :style="{ width: '45rem' }">
                 <template #header>
                     <div class="flex items-center gap-3">
                         <div class="rounded-lg bg-blue-100 p-2 dark:bg-blue-900/30">
@@ -1016,4 +1030,6 @@ onBeforeUnmount(() => {
             </Dialog>
         </div>
     </section>
+
+
 </template>

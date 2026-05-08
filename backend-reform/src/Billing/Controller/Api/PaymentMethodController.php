@@ -4,6 +4,7 @@ namespace App\Billing\Controller\Api;
 
 use App\Billing\Entity\ModeDePaiement;
 use App\Billing\Repository\ModeDePaiementRepository;
+use App\Focus\Service\FocusRealtimePublisher;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -15,7 +16,8 @@ class PaymentMethodController extends AbstractController
     public function __construct(
         private ModeDePaiementRepository $paymentMethodRepo,
         private EntityManagerInterface $em,
-        private \App\Billing\Service\FinanceService $financeService
+        private \App\Billing\Service\FinanceService $financeService,
+        private FocusRealtimePublisher $focusRealtimePublisher,
     ) {}
 
     #[Route('/api/payment-methods', name: 'api_modes_paiement_list', methods: ['GET'])]
@@ -47,6 +49,7 @@ class PaymentMethodController extends AbstractController
 
         $this->em->persist($method);
         $this->em->flush();
+        $this->focusRealtimePublisher->publishPaymentMethodRefresh($method, 'created');
 
         return $this->json($this->mapMethod($method), 201);
     }
@@ -76,6 +79,7 @@ class PaymentMethodController extends AbstractController
         }
 
         $this->em->flush();
+        $this->focusRealtimePublisher->publishPaymentMethodRefresh($method, 'updated');
 
         return $this->json($this->mapMethod($method));
     }
@@ -88,6 +92,7 @@ class PaymentMethodController extends AbstractController
             return $this->json(['error' => 'Mode de paiement non trouvé'], 404);
         }
 
+        $this->focusRealtimePublisher->publishPaymentMethodRefresh($method, 'deleted');
         $this->em->remove($method);
         $this->em->flush();
 
@@ -104,6 +109,7 @@ class PaymentMethodController extends AbstractController
 
         $method->setActif(!$method->isActif());
         $this->em->flush();
+        $this->focusRealtimePublisher->publishPaymentMethodRefresh($method, 'toggled');
 
         return $this->json($this->mapMethod($method));
     }

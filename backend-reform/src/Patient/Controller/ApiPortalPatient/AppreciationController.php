@@ -1,0 +1,144 @@
+<?php
+
+namespace App\Patient\Controller\ApiPortalPatient;
+
+use App\CareDelivery\Entity\Consultation;
+use App\CareDelivery\Repository\ConsultationRepository;
+use App\IdentityAccess\Entity\User;
+use App\Patient\Entity\Appreciation;
+use App\Patient\Entity\Patient;
+use App\Patient\Repository\PatientRepository;
+use App\Patient\Service\AppreciationService;
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
+
+#[Route('/api', name: 'api_appreciation_')]
+final class AppreciationController extends AbstractController
+{
+    public function __construct(
+        private readonly AppreciationService $appreciationService,
+        private readonly PatientRepository $patientRepository,
+        private readonly ConsultationRepository $consultationRepository,
+    ) {
+    }
+
+    #[Route('/appreciations/anonymous', name: 'anonymous_create', methods: ['POST'])]
+    public function createAnonymous(Request $request): JsonResponse
+    {
+        $payload = json_decode($request->getContent(), true) ?? [];
+
+        try {
+            $appreciation = $this->appreciationService->createAnonymous($payload);
+        } catch (\InvalidArgumentException $exception) {
+            return $this->json(['error' => $exception->getMessage()], 400);
+        }
+
+        return $this->json(['item' => $this->mapAppreciation($appreciation)], 201);
+    }
+
+    #[Route('/portal-patient/me/appreciations', name: 'patient_create', methods: ['POST'])]
+    #[IsGranted('ROLE_PATIENT')]
+    public function createPatientAppreciation(Request $request): JsonResponse
+    {
+        $patient = $this->resolveAuthenticatedPatient();
+        if (!$patient instanceof Patient) {
+            return $this->json(['error' => 'Patient introuvable pour ce compte'], 404);
+        }
+
+        $payload = json_decode($request->getContent(), true) ?? [];
+
+        try {
+            $appreciation = $this->appreciationService->createForPatient($patient, $payload);
+        } catch (\InvalidArgumentException $exception) {
+            return $this->json(['error' => $exception->getMessage()], 400);
+        }
+
+        return $this->json([
+            'patient' => ['id' => $patient->getId(), 'nom' => $patient->getFullName()],
+            'item' => $this->mapAppreciation($appreciation),
+        ], 201);
+    }
+
+    #[Route('/portal-patient/me/consultations/{consultationId}/appreciation', name: 'consultation_create', methods: ['POST'])]
+    #[IsGranted('ROLE_PATIENT')]
+    public function createConsultationAppreciation(int $consultationId, Request $request): JsonResponse
+    {
+        $patient = $this->resolveAuthenticatedPatient();
+        if (!$patient instanceof Patient) {
+            return $this->json(['error' => 'Patient introuvable pour ce compte'], 404);
+        }
+
+        $consultation = $this->consultationRepository->find($consultationId);
+        if (!$consultation instanceof Consultation) {
+            return $this->json(['error' => 'Consultation introuvable'], 404);
+        }
+
+        $payload = json_decode($request->getContent(), true) ?? [];
+
+        try {
+            $appreciation = $this->appreciationService->createForConsultation($patient, $consultation, $payload);
+        } catch (\InvalidArgumentException $exception) {
+            return $this->json(['error' => $exception->getMessage()], 400);
+        }
+
+        return $this->json([
+            'patient' => ['id' => $patient->getId(), 'nom' => $patient->getFullName()],
+            'item' => $this->mapAppreciation($appreciation),
+        ], 201);
+    }
+
+    #[Route('/portal-patient/me/appreciations', name: 'patient_list', methods: ['GET'])]
+    #[IsGranted('ROLE_PATIENT')]
+    public function listPatientAppreciations(): JsonResponse
+    {
+        $patient = $this->resolveAuthenticatedPatient();
+        if (!$patient instanceof Patient) {
+            return $this->json(['error' => 'Patient introuvable pour ce compte'], 404);
+        }
+
+        $items = array_map(
+            fn(Appreciation $appreciation): array => $this->mapAppreciation($appreciation),
+            $this->appreciationService->listByPatient($patient)
+        );
+
+        return $this->json([
+            'patient' => ['id' => $patient->getId(), 'nom' => $patient->getFullName()],
+            'total' => count($items),
+            'items' => $items,
+        ]);
+    }
+
+    private function mapAppreciation(Appreciation $appreciation): array
+    {
+        return [
+            'id' => $appreciation->getId(),
+            'rating' => $appreciation->getRating(),
+            'comment' => $appreciation->getComment(),
+            'isAnonymous' => $appreciation->isAnonymous(),
+            'isPublished' => $appreciation->isPublished(),
+            'authorName' => $appreciation->isAnonymous() ? null : $appreciation->getAuthorName(),
+            'authorEmail' => $appreciation->isAnonymous() ? null : $appreciation->getAuthorEmail(),
+            'patientId' => $appreciation->getPatient()?->getId(),
+            'consultationId' => $appreciation->getConsultation()?->getId(),
+            'createdAt' => $appreciation->getCreatedAt()->format(DATE_ATOM),
+        ];
+    }
+
+    private function resolveAuthenticatedPatient(): ?Patient
+    {
+        $user = $this->getUser();
+        if (!$user instanceof User) {
+            return null;
+        }
+
+        $patient = $user->getPortalPatient();
+        if ($patient instanceof Patient) {
+            return $patient;
+        }
+
+        return $this->patientRepository->findOneBy(['portalUser' => $user]);
+    }
+}

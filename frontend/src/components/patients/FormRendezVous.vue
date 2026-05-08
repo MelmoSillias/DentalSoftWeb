@@ -1,6 +1,7 @@
 <script setup>
-import { createRdvForPatient, fetchMedecins, normalizePatient, searchPatients } from '@/services/patients';
+import { createRdvForPatient, normalizePatient, searchPatients } from '@/services/patients';
 import { useAuthStore } from '@/stores/auth';
+import { useMedecinsStore } from '@/stores/medecins';
 import Button from 'primevue/button';
 import ConfirmPopup from 'primevue/confirmpopup';
 import DatePicker from 'primevue/datepicker';
@@ -44,6 +45,7 @@ const confirmPopup = useConfirm();
 const toast = useToast();
 const token = localStorage.getItem('token');
 const auth = useAuthStore();
+const medecinsStore = useMedecinsStore();
 const loading = ref(false);
 
 const patients = ref([]);
@@ -83,7 +85,7 @@ const loadPatients = async (query = '') => {
 
 const loadMedecins = async () => {
     try {
-        const data = await fetchMedecins(token);
+        const data = await medecinsStore.load(token);
         medecins.value = Array.isArray(data) ? data : [];
     } catch (error) {
         console.error('Erreur lors du chargement des médecins', error);

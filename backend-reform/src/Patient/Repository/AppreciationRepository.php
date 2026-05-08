@@ -1,0 +1,56 @@
+<?php
+
+namespace App\Patient\Repository;
+
+use App\CareDelivery\Entity\Consultation;
+use App\Patient\Entity\Appreciation;
+use App\Patient\Entity\Patient;
+use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\Persistence\ManagerRegistry;
+
+/**
+ * @extends ServiceEntityRepository<Appreciation>
+ */
+class AppreciationRepository extends ServiceEntityRepository
+{
+    public function __construct(ManagerRegistry $registry)
+    {
+        parent::__construct($registry, Appreciation::class);
+    }
+
+    /** @return Appreciation[] */
+    public function findByPatient(Patient $patient): array
+    {
+        return $this->createQueryBuilder('a')
+            ->where('a.patient = :patient')
+            ->setParameter('patient', $patient)
+            ->orderBy('a.createdAt', 'DESC')
+            ->addOrderBy('a.id', 'DESC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /** @return Appreciation[] */
+    public function findPublishedByPatient(Patient $patient): array
+    {
+        return $this->createQueryBuilder('a')
+            ->where('a.patient = :patient')
+            ->andWhere('a.isPublished = :published')
+            ->setParameter('patient', $patient)
+            ->setParameter('published', true)
+            ->orderBy('a.createdAt', 'DESC')
+            ->addOrderBy('a.id', 'DESC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    public function findOneByConsultation(Consultation $consultation): ?Appreciation
+    {
+        return $this->createQueryBuilder('a')
+            ->where('a.consultation = :consultation')
+            ->setParameter('consultation', $consultation)
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
+}

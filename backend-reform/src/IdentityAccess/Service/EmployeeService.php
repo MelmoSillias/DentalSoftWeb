@@ -2,6 +2,8 @@
 
 namespace App\IdentityAccess\Service;
  
+use App\CareDelivery\Service\ConsultationService;
+use App\Focus\Service\FocusRealtimePublisher;
 use App\IdentityAccess\Entity\Employe;
 use App\IdentityAccess\Entity\User as EntityUser;
 use App\IdentityAccess\Repository\EmployeRepository;
@@ -17,6 +19,8 @@ class EmployeeService
         private EmployeRepository $employeRepo,
         private EntityManagerInterface $em,
         private ParameterBagInterface $params,
+        private ConsultationService $consultationService,
+        private FocusRealtimePublisher $focusRealtimePublisher,
     ) {
     }
 
@@ -111,6 +115,7 @@ class EmployeeService
         try {
             $this->em->persist($employe);
             $this->em->flush();
+            $this->publishMedecinReferenceUpdate($employe, 'created');
         } catch (UniqueConstraintViolationException $exception) {
             throw new InvalidArgumentException($this->buildUniqueConstraintMessage($exception));
         }
@@ -175,11 +180,24 @@ class EmployeeService
 
         try {
             $this->em->flush();
+            $this->publishMedecinReferenceUpdate($employee, 'updated');
         } catch (UniqueConstraintViolationException $exception) {
             throw new InvalidArgumentException($this->buildUniqueConstraintMessage($exception));
         }
 
         return ['message' => 'Employé mis à jour avec succès'];
+    }
+
+    private function publishMedecinReferenceUpdate(Employe $employee, string $action): void
+    {
+        $type = strtolower((string) $employee->getType());
+        $isMedecin = str_contains($type, 'medecin') || str_contains($type, 'médecin');
+        if (!$isMedecin) {
+            return;
+        }
+
+        $this->consultationService->invalidateStaffReferenceCache();
+        $this->focusRealtimePublisher->publishMedecinRefresh($employee, $action);
     }
 
     private function normalizeNullableString(?string $value): ?string

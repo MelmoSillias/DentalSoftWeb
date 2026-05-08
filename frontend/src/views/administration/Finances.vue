@@ -27,13 +27,6 @@
                         icon="pi pi-plus"
                         class="rounded-xl border-0 bg-gradient-to-r from-primary-500 to-primary-600 px-5 py-3 font-medium text-white shadow-lg transition-all duration-300 hover:from-primary-600 hover:to-primary-700 hover:shadow-xl"
                         @click="openTransactionDialog" />
-                    <Button
-                        label="Nouveau mode"
-                        icon="pi pi-credit-card"
-                        severity="secondary"
-                        outlined
-                        class="rounded-xl px-5 py-3 transition-colors hover:bg-surface-100 dark:hover:bg-surface-700"
-                        @click="openAddMode" />
                 </div>
             </div>
 
@@ -42,7 +35,7 @@
             </div>
         </div>
 
-        <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5" data-tour="admin-finances.kpi">
+        <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4" data-tour="admin-finances.kpi">
             <article class="rounded-2xl border border-primary-200/70 bg-gradient-to-br from-primary-50/80 to-primary-100/50 p-5 shadow-md backdrop-blur-sm dark:border-primary-800/40 dark:from-primary-900/30 dark:to-primary-800/20">
                 <div class="flex items-center justify-between gap-4">
                     <div class="min-w-0 flex-1">
@@ -58,20 +51,6 @@
                 </div>
             </article>
 
-            <article class="rounded-2xl border border-emerald-200/70 bg-gradient-to-br from-emerald-50/80 to-emerald-100/50 p-5 shadow-md backdrop-blur-sm dark:border-emerald-800/40 dark:from-emerald-900/20 dark:to-emerald-800/20">
-                <div class="flex items-center justify-between gap-4">
-                    <div class="min-w-0 flex-1">
-                        <p class="text-xs font-medium text-emerald-700 dark:text-emerald-300 sm:text-sm">Transactions validées</p>
-                        <p class="mt-2 truncate text-lg font-bold tracking-tight text-emerald-900 dark:text-emerald-100 sm:text-xl lg:text-2xl">
-                            {{ validatedTransactionsCount }}
-                        </p>
-                        <p class="mt-1 truncate text-xs text-emerald-600/70 dark:text-emerald-400/70">{{ formatFcfa(validatedTransactionsAmount) }} sur la période</p>
-                    </div>
-                    <div class="flex-shrink-0 rounded-lg bg-emerald-500/10 p-2 dark:bg-emerald-500/20">
-                        <i class="pi pi-check-circle text-lg text-emerald-500 sm:text-xl"></i>
-                    </div>
-                </div>
-            </article>
 
             <article class="rounded-2xl border border-amber-200/70 bg-gradient-to-br from-amber-50/80 to-amber-100/50 p-5 shadow-md backdrop-blur-sm dark:border-amber-800/40 dark:from-amber-900/20 dark:to-amber-800/20">
                 <div class="flex items-center justify-between gap-4">
@@ -121,13 +100,14 @@
 
         <Tabs :value="activeTab" @update:value="setActiveTab">
             <TabList data-tour="admin-finances.tabs">
-                <Tab value="tables">Tableaux</Tab>
+                <Tab value="transactions">Transactions</Tab>
+                <Tab value="payment-methods">Mode de paiement</Tab>
                 <Tab value="fixed-charges">Charges fixes</Tab>
                 <Tab value="charts">Graphiques</Tab>
             </TabList>
 
             <TabPanels class="mt-4">
-                <TabPanel value="tables">
+                <TabPanel value="transactions">
                     <div class="space-y-6">
                         <FinanceCrossTable
                             title="Tableau croisé Revenus / Dépenses"
@@ -233,81 +213,83 @@
                                 </Column>
                             </DataTable>
                         </section>
+                    </div>
+                </TabPanel>
 
-                        <section data-tour="admin-finances.methods" class="overflow-hidden rounded-2xl border border-surface-200/70 bg-surface-0/80 shadow-xl backdrop-blur-sm dark:border-surface-700/50 dark:bg-surface-800/80">
-                            <div class="border-b border-surface-200/50 bg-gradient-to-r from-surface-50/50 to-surface-0/30 px-5 py-4 dark:border-surface-700/50 dark:from-surface-900/50 dark:to-surface-800/30 md:px-6">
-                                <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                                    <div>
-                                        <h2 class="text-lg font-semibold text-surface-900 dark:text-surface-100 md:text-xl">Modes de paiement</h2>
-                                        <p class="text-sm text-surface-500 dark:text-surface-400">Modes classiques regroupés séparément des assurances avec taux par défaut.</p>
-                                    </div>
+                <TabPanel value="payment-methods">
+                    <section data-tour="admin-finances.methods" class="overflow-hidden rounded-2xl border border-surface-200/70 bg-surface-0/80 shadow-xl backdrop-blur-sm dark:border-surface-700/50 dark:bg-surface-800/80">
+                        <div class="border-b border-surface-200/50 bg-gradient-to-r from-surface-50/50 to-surface-0/30 px-5 py-4 dark:border-surface-700/50 dark:from-surface-900/50 dark:to-surface-800/30 md:px-6">
+                            <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                                <div>
+                                    <h2 class="text-lg font-semibold text-surface-900 dark:text-surface-100 md:text-xl">Modes de paiement</h2>
+                                    <p class="text-sm text-surface-500 dark:text-surface-400">Modes classiques regroupés séparément des assurances avec taux par défaut.</p>
+                                </div>
 
-                                    <div class="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
-                                        <InputText v-model="modeSearch" placeholder="Rechercher un mode" class="w-full sm:w-72" />
-                                        <Button icon="pi pi-plus" label="Ajouter" @click="openAddMode" />
-                                    </div>
+                                <div class="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
+                                    <InputText v-model="modeSearch" placeholder="Rechercher un mode" class="w-full sm:w-72" />
+                                    <Button icon="pi pi-plus" label="Ajouter" @click="openAddMode" />
                                 </div>
                             </div>
+                        </div>
 
-                            <DataTable
-                                :value="filteredPaymentMethodsView"
-                                dataKey="id"
-                                :loading="loading.methods"
-                                paginator
-                                :rows="8"
-                                :rowsPerPageOptions="[8, 16, 24]"
-                                responsiveLayout="scroll"
-                                rowGroupMode="subheader"
-                                groupRowsBy="groupLabel"
-                                sortField="groupLabel"
-                                :sortOrder="1">
-                                <template #groupheader="{ data }">
-                                    <div class="flex items-center gap-2 border-l-4 border-primary-500 bg-surface-50 px-4 py-3 dark:bg-surface-900/60">
-                                        <i :class="data.familyKey === 'insurance' ? 'pi pi-shield' : 'pi pi-wallet'" class="text-primary-500"></i>
-                                        <span class="font-semibold text-surface-900 dark:text-surface-100">{{ data.groupLabel }}</span>
+                        <DataTable
+                            :value="filteredPaymentMethodsView"
+                            dataKey="id"
+                            :loading="loading.methods"
+                            paginator
+                            :rows="8"
+                            :rowsPerPageOptions="[8, 16, 24]"
+                            responsiveLayout="scroll"
+                            rowGroupMode="subheader"
+                            groupRowsBy="groupLabel"
+                            sortField="groupLabel"
+                            :sortOrder="1">
+                            <template #groupheader="{ data }">
+                                <div class="flex items-center gap-2 border-l-4 border-primary-500 bg-surface-50 px-4 py-3 dark:bg-surface-900/60">
+                                    <i :class="data.familyKey === 'insurance' ? 'pi pi-shield' : 'pi pi-wallet'" class="text-primary-500"></i>
+                                    <span class="font-semibold text-surface-900 dark:text-surface-100">{{ data.groupLabel }}</span>
+                                </div>
+                            </template>
+
+                            <Column field="libelle" header="Libellé" sortable>
+                                <template #body="{ data }">
+                                    <span class="font-medium text-surface-900 dark:text-surface-100">{{ data.libelle }}</span>
+                                </template>
+                            </Column>
+                            <Column field="typeLabel" header="Type" sortable>
+                                <template #body="{ data }">
+                                    <Tag :value="data.typeLabel" :severity="data.familyKey === 'insurance' ? 'info' : 'secondary'" />
+                                </template>
+                            </Column>
+                            <Column field="coverageRate" header="Prise en charge">
+                                <template #body="{ data }">
+                                    <span v-if="data.familyKey === 'insurance'" class="font-medium text-surface-700 dark:text-surface-300">
+                                        {{ formatCoverageRate(data.coverageRate) }}
+                                    </span>
+                                    <span v-else class="text-sm text-surface-400">Non applicable</span>
+                                </template>
+                            </Column>
+                            <Column field="statusLabel" header="Statut" sortable>
+                                <template #body="{ data }">
+                                    <Tag :value="data.statusLabel" :severity="data.actif ? 'success' : 'secondary'" />
+                                </template>
+                            </Column>
+                            <Column header="Actions" style="width: 140px">
+                                <template #body="{ data }">
+                                    <div class="flex gap-1" data-tour="admin-finances.method-actions">
+                                        <Button icon="pi pi-pencil" text severity="info" title="Modifier" @click="openEditMode(data)" />
+                                        <Button
+                                            :icon="data.actif ? 'pi pi-power-off' : 'pi pi-check'"
+                                            text
+                                            :severity="data.actif ? 'warning' : 'success'"
+                                            :title="data.actif ? 'Désactiver' : 'Activer'"
+                                            @click="handleToggleMode({ mode: data })" />
+                                        <Button icon="pi pi-trash" text severity="danger" title="Supprimer" @click="handleDeleteMode({ mode: data })" />
                                     </div>
                                 </template>
-
-                                <Column field="libelle" header="Libellé" sortable>
-                                    <template #body="{ data }">
-                                        <span class="font-medium text-surface-900 dark:text-surface-100">{{ data.libelle }}</span>
-                                    </template>
-                                </Column>
-                                <Column field="typeLabel" header="Type" sortable>
-                                    <template #body="{ data }">
-                                        <Tag :value="data.typeLabel" :severity="data.familyKey === 'insurance' ? 'info' : 'secondary'" />
-                                    </template>
-                                </Column>
-                                <Column field="coverageRate" header="Prise en charge">
-                                    <template #body="{ data }">
-                                        <span v-if="data.familyKey === 'insurance'" class="font-medium text-surface-700 dark:text-surface-300">
-                                            {{ formatCoverageRate(data.coverageRate) }}
-                                        </span>
-                                        <span v-else class="text-sm text-surface-400">Non applicable</span>
-                                    </template>
-                                </Column>
-                                <Column field="statusLabel" header="Statut" sortable>
-                                    <template #body="{ data }">
-                                        <Tag :value="data.statusLabel" :severity="data.actif ? 'success' : 'secondary'" />
-                                    </template>
-                                </Column>
-                                <Column header="Actions" style="width: 140px">
-                                    <template #body="{ data }">
-                                        <div class="flex gap-1" data-tour="admin-finances.method-actions">
-                                            <Button icon="pi pi-pencil" text severity="info" title="Modifier" @click="openEditMode(data)" />
-                                            <Button
-                                                :icon="data.actif ? 'pi pi-power-off' : 'pi pi-check'"
-                                                text
-                                                :severity="data.actif ? 'warning' : 'success'"
-                                                :title="data.actif ? 'Désactiver' : 'Activer'"
-                                                @click="handleToggleMode({ mode: data })" />
-                                            <Button icon="pi pi-trash" text severity="danger" title="Supprimer" @click="handleDeleteMode({ mode: data })" />
-                                        </div>
-                                    </template>
-                                </Column>
-                            </DataTable>
-                        </section>
-                    </div>
+                            </Column>
+                        </DataTable>
+                    </section>
                 </TabPanel>
 
                 <TabPanel value="fixed-charges">
@@ -406,7 +388,7 @@
         </Tabs>
 
         <TransactionFormDialog
-            v-model:visible="transactionDialogVisible"
+            v-model="transactionDialogVisible"
             :payment-methods="paymentMethodsView"
             :transaction-motifs="transactionMotifs"
             :transaction="draftTransaction"
@@ -415,7 +397,7 @@
             @submit="handleTransactionSubmit" />
 
         <Dialog
-            v-model:visible="validationDialogVisible"
+            v-model="validationDialogVisible"
             modal
             header="Confirmer la validation"
             :style="{ width: '420px' }">
@@ -436,7 +418,7 @@
         </Dialog>
 
         <PaymentModeFormDialog
-            v-model:visible="modeDialogVisible"
+            v-model="modeDialogVisible"
             :mode="editingMode"
             :loading="loading.action"
             tourTarget="admin-finances.dialog.mode"
@@ -511,7 +493,7 @@ const {
 const breadcrumbHome = { icon: 'pi pi-home', to: '/' };
 const breadcrumbItems = [{ label: 'Administration' }, { label: 'Finances' }];
 
-const activeTab = ref('tables');
+const activeTab = ref('transactions');
 const transactionDialogVisible = ref(false);
 const draftTransaction = ref(null);
 const modeDialogVisible = ref(false);
@@ -539,7 +521,7 @@ const transactionMotifs = ref({
 });
 
 const setActiveTab = (value) => {
-    activeTab.value = value || 'tables';
+    activeTab.value = value || 'transactions';
 };
 
 const cloneValue = (value) => {
@@ -1303,7 +1285,7 @@ const capturePageState = () => ({
 
 const restorePageState = async (state) => {
     if (!state) return;
-    setActiveTab(state.activeTab || 'tables');
+    setActiveTab(state.activeTab || 'transactions');
     selectedYear.value = state.selectedYear || today.getFullYear();
     transactionRange.value = cloneValue(state.transactionRange) || [startOfMonth, today];
     transactionSearch.value = state.transactionSearch || '';
@@ -1321,7 +1303,7 @@ const prepareGuidedTourDemo = async () => {
     activateFinancesTourMock();
     resetFinancesTourMockData();
     guidedTourDemoActive = true;
-    setActiveTab('tables');
+    setActiveTab('transactions');
     selectedYear.value = 2026;
     transactionRange.value = [new Date('2026-04-01'), new Date('2026-04-03')];
     transactionSearch.value = '';
@@ -1365,7 +1347,7 @@ const switchTourTab = async (value) => {
 
 const openTourTransactionDialog = async () => {
     resetTourDialogs();
-    setActiveTab('tables');
+    setActiveTab('transactions');
     await nextTick();
     await waitForTourUi();
     transactionDialogVisible.value = true;
@@ -1375,7 +1357,7 @@ const openTourTransactionDialog = async () => {
 const openTourModeDialog = async () => {
     const firstMode = paymentMethodsView.value[0] || null;
     resetTourDialogs();
-    setActiveTab('tables');
+    setActiveTab('payment-methods');
     editingMode.value = firstMode;
     await nextTick();
     await waitForTourUi();

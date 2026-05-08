@@ -3,6 +3,7 @@
 namespace App\Billing\Repository;
 
 use App\Billing\Entity\Transaction;
+use App\Patient\Entity\Patient;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
@@ -47,5 +48,37 @@ class TransactionRepository extends ServiceEntityRepository
         }
 
         return $qb->getQuery()->getResult();
+    }
+
+    /** @return Transaction[] */
+    public function findByPortalPatient(Patient $patient): array
+    {
+        return $this->createQueryBuilder('t')
+            ->leftJoin('t.consultation', 'c')->addSelect('c')
+            ->leftJoin('c.patient', 'p')->addSelect('p')
+            ->leftJoin('t.devis', 'd')->addSelect('d')
+            ->leftJoin('t.modeDePaiement', 'm')->addSelect('m')
+            ->where('p = :patient')
+            ->setParameter('patient', $patient)
+            ->orderBy('t.dateTransaction', 'DESC')
+            ->addOrderBy('t.id', 'DESC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    public function findPortalReceiptById(Patient $patient, int $transactionId): ?Transaction
+    {
+        return $this->createQueryBuilder('t')
+            ->leftJoin('t.consultation', 'c')->addSelect('c')
+            ->leftJoin('c.patient', 'p')->addSelect('p')
+            ->leftJoin('t.devis', 'd')->addSelect('d')
+            ->leftJoin('t.modeDePaiement', 'm')->addSelect('m')
+            ->where('t.id = :id')
+            ->andWhere('p = :patient')
+            ->setParameter('id', $transactionId)
+            ->setParameter('patient', $patient)
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
     }
 }

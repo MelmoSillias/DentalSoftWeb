@@ -51,7 +51,7 @@ const { printComponent } = usePrinter();
 const ficheId = ref(route.query.ficheId ? Number(route.query.ficheId) : null);
 const consultId = ref(route.query.id ? Number(route.query.id) : null);
 const mode = computed(() => (route.query.mode === 'new-fiche' ? 'new-fiche' : 'continue'));
- 
+
 const pageLoading = ref(false);
 const loadErrorMessage = ref('');
 
@@ -722,9 +722,7 @@ const handlePrintFiche = async () => {
 
     try {
         const res = await fetchPatientFichePrintData(patientId, ficheId.value, token);
-        const sectionsToPrint = isSimplifiedFicheFormEnabled.value
-            ? ['synthese']
-            : ['entretien', 'examens', 'images', 'plan', 'bilan', 'seances'];
+        const sectionsToPrint = ['entretien', 'examens', 'images', 'plan', 'bilan', 'seances'];
         await printComponent(PrintFicheV2Body, {
             patient: res.patient,
             fiche: res.fiche,
@@ -859,7 +857,7 @@ onMounted(async () => {
     } catch (error) {
         if (isClosedConsultationError(error)) {
             redirectClosedConsultation();
-    
+
             return;
         }
         loadErrorMessage.value = 'Impossible de charger la fiche médicale.';
@@ -924,11 +922,11 @@ const retryLoad = async () => {
 </script>
 
 <template>
-    
+
     <div class="min-h-screen p-4 md:p-6 lg:p-8 transition-colors duration-300">
         <ConfirmDialog />
         <AppToast />
-        
+
         <div v-if="!pageLoading && !loadErrorMessage" class="relative">
             <div v-if="isClotureProcessing" class="absolute inset-0 z-30 flex items-center justify-center bg-surface-0/60 dark:bg-surface-900/60 backdrop-blur-[1px]">
                 <div class="flex items-center gap-2 rounded-xl border border-surface-300 dark:border-surface-700 bg-surface-0 dark:bg-surface-900 px-4 py-2 text-sm font-medium text-surface-700 dark:text-surface-100 shadow">
@@ -1083,7 +1081,7 @@ const retryLoad = async () => {
                                                 />
                                                 <InputText v-model="item.description" class="col-span-8 rounded border border-surface-300 dark:border-surface-600 bg-transparent px-2 py-1 text-sm min-h-full" placeholder="Description" />
                                                 <Textarea v-model="item.resultat" class="col-span-8 rounded border border-surface-300 dark:border-surface-600 bg-transparent px-2 py-1 text-sm" placeholder="Résultat" />
-                                                <DatePicker v-model="item.date" showIcon fluid iconDisplay="input" class="col-span-3 rounded bg-transparent text-sm self-start" placeholder="Date" /> 
+                                                <DatePicker v-model="item.date" showIcon fluid iconDisplay="input" class="col-span-3 rounded bg-transparent text-sm self-start" placeholder="Date" />
                                                 <Button icon="pi pi-trash" text severity="danger" size="small" class="col-span-1 justify-self-end self-start" @click="removeExamComplementaireRow(examIndex)" />
                                             </div>
                                             <div v-if="!data.examens.examensLabo?.length" class="text-sm text-surface-500 dark:text-surface-400">Aucun examen complémentaire.</div>
@@ -1127,7 +1125,7 @@ const retryLoad = async () => {
                                                 <DatePicker v-model="plan.dateSupposed" showIcon fluid class="col-span-4 rounded  bg-transparent px-2 py-1 text-sm" />
                                                 <Button icon="pi pi-trash" text severity="danger" size="small" class="col-span-1 justify-self-center" @click="removePlanRow(planIndex)" />
                                                 <Textarea v-model="plan.description" class="col-span-11 rounded border border-surface-300 dark:border-surface-600 bg-transparent px-2 py-1 text-sm" placeholder="Description" />
-                                                
+
                                             </div>
                                             <div v-if="!data.planTraitement?.length" class="text-sm text-surface-500 dark:text-surface-400">Aucun plan ajouté.</div>
                                         </div>
@@ -1144,6 +1142,7 @@ const retryLoad = async () => {
                                 :saving="saving.entretien"
                                 :patient-sex="data.patient?.sexe"
                                 @save="saveEntretienSection"
+                                @open-rdv="showRdvDialog = true"
                             />
                         </div>
                     </template>

@@ -117,14 +117,16 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setPortalPatient(?Patient $portalPatient): static
     {
         if ($portalPatient === null && $this->portalPatient !== null) {
-            $this->portalPatient->setPortalUser(null);
+            $old = $this->portalPatient;
+            $this->portalPatient = null;
+            $old->setPortalUser(null);
+        } else {
+            $this->portalPatient = $portalPatient;
         }
 
         if ($portalPatient !== null && $portalPatient->getPortalUser() !== $this) {
             $portalPatient->setPortalUser($this);
         }
-
-        $this->portalPatient = $portalPatient;
 
         return $this;
     }

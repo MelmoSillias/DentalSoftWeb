@@ -881,6 +881,7 @@ class ReportService
             }
 
             $paiementsPeriode = [];
+            $consultationsRevenue = 0.0;
 
             $paiementsConsultations = $this->em->createQueryBuilder()
                 ->select('pd')
@@ -908,6 +909,7 @@ class ReportService
                     'reste' => 0,
                 ];
                 $revenue += $pay->getMontant();
+                $consultationsRevenue += $pay->getMontant();
             }
 
             $paiementsFactures = $this->em->createQueryBuilder()
@@ -969,7 +971,7 @@ class ReportService
                 'id' => $doctor->getId(),
                 'name' => $doctor->getFullName(),
                 'consultations' => count($consultations),
-                'consultations_amount' => $paid * 5000,
+                'consultations_amount' => $consultationsRevenue,
                 'total_amount' => $totalAmount,
                 'avg_amount' => $avgAmount,
                 'acts' => $totalActs,

@@ -1,10 +1,11 @@
 import { computed, reactive, ref, watch } from 'vue';
-import { fetchMedecins, fetchInfirmiers } from '@/services/corpsmedical';
+import { fetchInfirmiers } from '@/services/corpsmedical';
 import { fetchSalles } from '@/services/salles';
 import { fetchConsultationDetails, setConsultationFiche } from '@/services/consultations';
 import { loadOrdonnances, saveConsultation, closeConsultation } from '@/services/consultationsforms';
 import { loadFicheMedicale, saveBilans, saveDevis, saveDocuments, saveEntretien, saveExamens, savePlanTraitement } from '@/services/ficheMedicale';
 import { filePrefix } from '@/config';
+import { useMedecinsStore } from '@/stores/medecins';
 
 const stripFilePrefix = (url) => {
     if (!url || typeof url !== 'string') return '';
@@ -172,6 +173,7 @@ const defaultConsultation = () => ({
 });
 
 export const useConsultationsForm = ({ ficheId, consultId, token, mode }) => {
+    const medecinsStore = useMedecinsStore();
     const loading = ref(false);
     const activeSection = ref('infos');
     const switcherMode = ref('tabs');
@@ -257,7 +259,7 @@ export const useConsultationsForm = ({ ficheId, consultId, token, mode }) => {
 
     const loadReferenceData = async () => {
         const [meds, infs, salles] = await Promise.all([
-            fetchMedecins(token),
+            medecinsStore.load(token),
             fetchInfirmiers(token),
             fetchSalles(token)
         ]);

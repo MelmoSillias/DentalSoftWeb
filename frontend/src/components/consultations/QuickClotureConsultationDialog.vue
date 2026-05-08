@@ -4,9 +4,10 @@ import { fetchConsultationDetails, setConsultationFiche, verifyConsultationMedec
 import { isConsultationsTourMockEnabled } from '@/services/consultationsTourMock';
 import { closeConsultation, saveConsultation } from '@/services/consultationsforms';
 import { fetchPublicGeneralSettings } from '@/services/globalSettingsService';
-import { fetchMedecins, fetchInfirmiers } from '@/services/corpsmedical';
+import { fetchInfirmiers } from '@/services/corpsmedical';
 import { fetchSalles } from '@/services/salles';
 import { useAuthStore } from '@/stores/auth';
+import { useMedecinsStore } from '@/stores/medecins';
 import Button from 'primevue/button';
 import Dialog from 'primevue/dialog';
 import Password from 'primevue/password';
@@ -37,6 +38,7 @@ const emit = defineEmits(['update:visible', 'saved', 'closed']);
 
 const toast = useToast();
 const auth = useAuthStore();
+const medecinsStore = useMedecinsStore();
 const token = localStorage.getItem('token');
 
 const visibleProxy = computed({
@@ -57,6 +59,7 @@ const salles = ref([]);
 const doctorPassword = ref('');
 const passwordValidated = ref(false);
 const allowReceptionBypassMedecinPasswordOnQuickClose = ref(false);
+const requireMedecinOnCreation = ref(true);
 
 const form = ref({
     type: '',
@@ -80,6 +83,11 @@ const requiresDoctorPassword = computed(() => (
 ));
 const canAccessForm = computed(() => !requiresDoctorPassword.value || passwordValidated.value);
 const hasSelectedMedecin = computed(() => Number.isFinite(Number(form.value?.medecinId)) && Number(form.value?.medecinId) > 0);
+const shouldUnlockMedecinSelection = computed(() => (
+    requireMedecinOnCreation.value === false
+    && !hasSelectedMedecin.value
+    && (isAdmin.value || isReception.value)
+));
 
 const patientLabel = computed(() => {
     const p = props.consultation?.patient;
@@ -102,17 +110,10 @@ const normalizeText = (value) =>
         .toLowerCase()
         .trim();
 
-const resolveMedecinFallbackId = () => {
-    const fullName = props.consultation?.medecin;
-    if (typeof fullName === 'string' && fullName.trim()) {
-        const target = normalizeText(fullName);
-        const found = (medecins.value || []).find((m) => normalizeText(m.label) === target);
-        if (found?.id) return found.id;
-    }
-
+const resolveConnectedMedecinId = () => {
     const user = auth.user || {};
     const directId = Number(user.medecinId ?? user.medecin_id ?? user.medecin?.id ?? Number.NaN);
-    if (Number.isFinite(directId)) return directId;
+    if (Number.isFinite(directId) && directId > 0) return directId;
 
     const userName = [user.prenom, user.nom].filter(Boolean).join(' ').trim();
     const candidates = [userName, user.name, user.fullName, user.username]
@@ -125,6 +126,20 @@ const resolveMedecinFallbackId = () => {
     });
 
     return foundByName?.id ?? null;
+};
+
+const resolveMedecinFallbackId = () => {
+    const fullName = props.consultation?.medecin;
+    if (typeof fullName === 'string' && fullName.trim()) {
+        const target = normalizeText(fullName);
+        const found = (medecins.value || []).find((m) => normalizeText(m.label) === target);
+        if (found?.id) return found.id;
+    }
+
+    const connectedMedecinId = resolveConnectedMedecinId();
+    if (connectedMedecinId) return connectedMedecinId;
+
+    return null;
 };
 
 const isLinked = (consultation) => Boolean(consultation?.ficheId);
@@ -152,13 +167,14 @@ const loadQuickData = async () => {
 
     try {
         const [meds, infs, salleItems, settings] = await Promise.all([
-            fetchMedecins(token),
+            medecinsStore.load(token),
             fetchInfirmiers(token),
             fetchSalles(token),
             fetchPublicGeneralSettings(token)
         ]);
 
         allowReceptionBypassMedecinPasswordOnQuickClose.value = settings?.allowReceptionBypassMedecinPasswordOnQuickClose === true;
+        requireMedecinOnCreation.value = settings?.requireMedecinOnConsultationCreation !== false;
 
         medecins.value = meds || [];
         infirmiers.value = infs || [];
@@ -170,10 +186,12 @@ const loadQuickData = async () => {
 
         const details = await fetchConsultationDetails(consultation.id, token);
         const fallbackMedecinId = resolveMedecinFallbackId();
+        const connectedMedecinId = resolveConnectedMedecinId();
+        const medecinId = isMedecin.value ? (connectedMedecinId ?? details?.medecinId ?? fallbackMedecinId) : (details?.medecinId ?? fallbackMedecinId);
 
         form.value = {
             type: details?.type ?? '',
-            medecinId: details?.medecinId ?? fallbackMedecinId,
+            medecinId,
             infirmierIds: details?.infirmierId ? [details.infirmierId] : [],
             salleId: details?.salleId ?? null,
             noteSeance: details?.noteSeance ?? '',
@@ -278,7 +296,7 @@ watch(
 
 <template>
     <Dialog
-        v-model:visible="visibleProxy"
+        v-model="visibleProxy"
         modal
         :dismissable-mask="false"
         :closable="!saving && !clotureLoading"
@@ -348,7 +366,7 @@ watch(
                     :ordonnances="[]"
                     :saving="saving"
                     :cloture-loading="clotureLoading"
-                    :medecin-readonly="true"
+                    :medecin-readonly="!shouldUnlockMedecinSelection"
                     :hide-ordonnances="true"
                     @save="handleSave"
                     @cloture="handleCloture"

@@ -144,9 +144,7 @@ class DashboardStatsService
                     $endDate = (clone $now)->setTime(23, 59, 59);
                     break;
             }
-        }
-
-        // TODO: Replace placeholder data with real aggregation when available
+        } 
         $employees = [
             [
                 'name' => 'Dr. Jean Dupont',
@@ -666,6 +664,7 @@ class DashboardStatsService
             }
 
             $paiementsPeriode = [];
+            $consultationsRevenue = 0.0;
 
             $paiementsConsultations = $this->em->createQueryBuilder()
                 ->select('pd')
@@ -693,6 +692,7 @@ class DashboardStatsService
                     'reste' => 0,
                 ];
                 $revenue += $pay->getMontant();
+                $consultationsRevenue += $pay->getMontant();
             }
 
             $paiementsFactures = $this->em->createQueryBuilder()
@@ -749,7 +749,7 @@ class DashboardStatsService
                 'id' => $doctor->getId(),
                 'name' => $doctor->getFullName(),
                 'consultations' => count($consultations),
-                'consultations_amount' => $paid * 5000,
+                'consultations_amount' => $consultationsRevenue,
                 'total_amount' => $totalAmount,
                 'avg_amount' => $avgAmount,
                 'acts' => $totalActs,

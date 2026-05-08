@@ -1,9 +1,9 @@
 
-{
-    "servers": {
-        "primevue": {
-            "command": "npx",
-            "args": ["-y", "@primevue/mcp"]
-        }
-    }
-}
+// {
+//     "servers": {
+//         "primevue": {
+//             "command": "npx",
+//             "args": ["-y", "@primevue/mcp"]
+//         }
+//     }
+// }

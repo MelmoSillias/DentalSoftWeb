@@ -19,7 +19,7 @@ const form = reactive({
 });
 
 const canSubmit = computed(() =>
-    form.oldPassword.length >= 3 && form.newPassword.length >= 8 && form.newPassword === form.confirmPassword
+    form.oldPassword.length >= 3 && form.newPassword.length >= 4 && form.newPassword === form.confirmPassword
 );
 
 const submit = (event) => {
@@ -88,5 +88,4 @@ const submit = (event) => {
             <Button type="button" label="Mettre à jour" icon="pi pi-lock" :loading="loading" :disabled="!canSubmit" @click="submit" />
         </div>
     </form>
-    <ConfirmPopup />
 </template>

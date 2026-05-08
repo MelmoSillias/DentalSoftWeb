@@ -1,9 +1,13 @@
 import { fetchEventSource } from '@microsoft/fetch-event-source';
 import { computed, onUnmounted, ref, watch } from 'vue';
 import { useAuthStore } from '@/stores/auth';
+import { useMedecinsStore } from '@/stores/medecins';
+import { usePaymentMethodsStore } from '@/stores/paymentMethods';
 
 export function useFocusRealtime(onEvent) {
     const auth = useAuthStore();
+    const medecinsStore = useMedecinsStore();
+    const paymentMethodsStore = usePaymentMethodsStore();
     const realtimeEnabled = ref(true);
 
     let controller = null;
@@ -23,7 +27,24 @@ export function useFocusRealtime(onEvent) {
             return true;
         }
 
-        return ['consultation', 'patient', 'devis', 'payment'].includes(payload?.entity) && typeof payload?.action === 'string';
+        return ['consultation', 'patient', 'devis', 'payment', 'medecin', 'payment_method'].includes(payload?.entity) && typeof payload?.action === 'string';
+    };
+
+    const refreshReferenceStores = async (payload) => {
+        if (!payload?.entity || !auth.token) {
+            return;
+        }
+
+        if (payload.entity === 'medecin') {
+            medecinsStore.invalidate();
+            await medecinsStore.load(auth.token, { force: true });
+            return;
+        }
+
+        if (payload.entity === 'payment_method') {
+            paymentMethodsStore.invalidate();
+            await paymentMethodsStore.load(auth.token, { force: true });
+        }
     };
 
     const markEventAsSeen = (event) => {
@@ -139,6 +160,10 @@ export function useFocusRealtime(onEvent) {
                     if (markEventAsSeen(event)) {
                         return;
                     }
+
+                    refreshReferenceStores(payload).catch(() => {
+                        // ignore reference refresh errors from realtime events
+                    });
 
                     runRefresh(payload);
                 } catch (_) {

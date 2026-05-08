@@ -17,6 +17,7 @@ import { GUIDED_TOUR_START_EVENT } from '@/tours';
 import { createCaisseTour, resolveCaisseTourGroup } from '@/tours/caisseTour';
 import { startTourGuide } from '@/tours/tourGuideClient';
 import { useAuthStore } from '@/stores/auth';
+import { usePaymentMethodsStore } from '@/stores/paymentMethods';
 import {
 	buildPaymentMethodGroups,
 	getDefaultClassicMethod,
@@ -27,7 +28,6 @@ import {
 	fetchDevis,
 	fetchDevisDetail,
 	fetchFactureLines,
-	fetchPaymentMethods,
 	fetchPayments,
 	payDevis,
 	resetDevisPayments,
@@ -56,6 +56,7 @@ const toast = useToast();
 const token = localStorage.getItem('token');
 const { printComponent } = usePrinter();
 const authStore = useAuthStore();
+const paymentMethodsStore = usePaymentMethodsStore();
 
 const viewStorageKey = 'caisse.view';
 const activeView = ref(localStorage.getItem(viewStorageKey) || 'overview');
@@ -72,7 +73,7 @@ const paymentRange = ref([]);
 if(authStore.user.roles.includes('ROLE_RECEPTION')) {
 	devisRange.value = [today, today];
 	paymentRange.value = [today, today];
-} else { 
+} else {
 	devisRange.value = [startOfMonth, endOfMonth];
 	paymentRange.value = [startOfMonth, endOfMonth];
 }
@@ -85,7 +86,7 @@ const validateLoading = ref(false);
 
 const toApiDate = (value) => {
 	if (!value) return '';
-	const date = value instanceof Date ? value : new Date(value); 
+	const date = value instanceof Date ? value : new Date(value);
 	return date.toISOString().slice(0, 10);
 };
 
@@ -432,7 +433,7 @@ const loadPayments = async () => {
 
 const loadPaymentMethods = async () => {
 	try {
-		paymentMethods.value = await fetchPaymentMethods(token);
+		paymentMethods.value = await paymentMethodsStore.load(token);
 	} catch (error) {
 		console.error(error);
 		toast.add({ severity: 'warn', summary: 'Modes de paiement', detail: 'Chargement impossible', life: 3000 });
@@ -485,7 +486,7 @@ const openPayDialog = async (row) => {
 		insuranceEnabled: false,
 		insuranceModeId: existingInsurance?.insuranceModeId ?? null,
 		insuranceRate: Number(existingInsurance?.insuranceRate) || 0
-	}; 
+	};
 	payDialogVisible.value = true;
 };
 
@@ -553,7 +554,7 @@ watch(
 );
 
 const submitPayment = async () => {
-	
+
 	if (!selectedDevis.value) return;
 	const isNewInsurancePayment = payForm.value.insuranceEnabled && invoiceAllowsInsurance.value;
 	const montant = Number(payForm.value.montant) || 0;
@@ -680,7 +681,7 @@ const confirmValidate = async () => {
 	if (!pendingDevis.value) return;
 	validateLoading.value = true;
 	try {
-		
+
 		await validateEmptyDevis(pendingDevis.value.id, token);
 		toast.add({ severity: 'success', summary: 'Validation', detail: 'Facture vide validée', life: 2500 });
 		validateDialogVisible.value = false;
@@ -988,9 +989,9 @@ const printReceipt = async (row) => {
 const printReceiptById = async (paymentId) => {
 	if (!paymentId) return;
 	try {
-		const res = await fetchTicketPrintData(paymentId, token);
+		const res = await fetchReceiptPrintData(paymentId, token);
 		await printComponent(
-			PrintTicketBody,
+			PrintReceiptBody,
 			{ paiement: res.paiement },
 			{ format: [226.77, 255.12], width: '80mm' }
 		);
@@ -1065,7 +1066,7 @@ onBeforeUnmount(() => {
 
 		<template v-else>
 		<div class="flex flex-wrap items-center justify-between gap-3 mb-4">
-			<div> 
+			<div>
 				<h1 class="text-2xl font-semibold mb-1">Gestion de la caisse</h1>
 				<p class="muted">Suivi des factures et paiements avec PrimeVue.</p>
 			</div>

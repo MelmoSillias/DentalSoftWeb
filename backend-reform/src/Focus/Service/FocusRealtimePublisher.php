@@ -3,8 +3,10 @@
 namespace App\Focus\Service;
 
 use App\Billing\Entity\Devis;
+use App\Billing\Entity\ModeDePaiement;
 use App\CareDelivery\Entity\Consultation;
 use App\Communication\Mercure\NotificationTopicGenerator;
+use App\IdentityAccess\Entity\Employe;
 use App\Patient\Entity\Patient;
 use App\IdentityAccess\Repository\UserRepository;
 use Psr\Log\LoggerInterface;
@@ -107,6 +109,56 @@ final class FocusRealtimePublisher
             'focus-devis',
             [
                 'devisId' => $devisId,
+                'action' => $action,
+            ]
+        );
+    }
+
+    public function publishMedecinRefresh(Employe $medecin, string $action = 'updated'): void
+    {
+        $medecinId = $medecin->getId();
+        if ($medecinId === null) {
+            return;
+        }
+
+        $payload = [
+            'entity' => 'medecin',
+            'action' => $action,
+            'medecinId' => $medecinId,
+            'updatedAt' => (new \DateTimeImmutable())->format(DATE_ATOM),
+        ];
+
+        $this->publishPayload(
+            $payload,
+            sprintf('focus-medecin-%s-%d', $action, $medecinId),
+            'focus-medecin',
+            [
+                'medecinId' => $medecinId,
+                'action' => $action,
+            ]
+        );
+    }
+
+    public function publishPaymentMethodRefresh(ModeDePaiement $method, string $action = 'updated'): void
+    {
+        $methodId = $method->getId();
+        if ($methodId === null) {
+            return;
+        }
+
+        $payload = [
+            'entity' => 'payment_method',
+            'action' => $action,
+            'paymentMethodId' => $methodId,
+            'updatedAt' => (new \DateTimeImmutable())->format(DATE_ATOM),
+        ];
+
+        $this->publishPayload(
+            $payload,
+            sprintf('focus-payment-method-%s-%d', $action, $methodId),
+            'focus-payment-method',
+            [
+                'paymentMethodId' => $methodId,
                 'action' => $action,
             ]
         );

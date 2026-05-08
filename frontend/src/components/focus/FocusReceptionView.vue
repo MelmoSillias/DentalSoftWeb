@@ -316,13 +316,32 @@ const printPaymentTicket = async (paymentId) => {
 
 function formatPaymentMode(mode) {
     if (!mode) return '—'
-    
+
     if (mode.toLowerCase().includes('esp')) return 'Espèces'
     if (mode.toLowerCase().includes('mobile')) return 'Mobile'
     if (mode.toLowerCase().includes('carte')) return 'Carte'
-    
+
     return mode
 }
+
+const isInteractiveTarget = (target) => target instanceof Element
+    && Boolean(target.closest('button, a, input, select, textarea, [role="button"], .p-button'));
+
+const onQueueItemClick = (event, consultationId) => {
+    if (isInteractiveTarget(event?.target)) return;
+    selectConsultation(consultationId);
+};
+
+const handleCancelWithConfirm = (event, consultation) => {
+    if (!consultation?.id) return;
+    const sourceEvent = event?.originalEvent || event;
+    const target = sourceEvent?.currentTarget
+        || sourceEvent?.target?.closest?.('[data-cancel-consultation-id], .p-button, button')
+        || sourceEvent?.target
+        || null;
+    emit('cancel-consultation', target, consultation);
+};
+
 </script>
 
 <template>
@@ -367,16 +386,16 @@ function formatPaymentMode(mode) {
                 <!-- Recherche patient (colonne nouveaux patients) -->
                 <div v-if="searchMode" class="mb-3 space-y-3">
                     <div class="relative">
-                        <IconField> 
-                            <InputIcon classoi="pi pi-search" /> 
+                        <IconField>
+                            <InputIcon classoi="pi pi-search" />
                             <InputText
                             v-model="patientSearchQuery"
                             placeholder="Nom, prénom ou téléphone..."
                             class="w-full pl-8 text-sm"
                             @input="onPatientSearchInput"
-                            autofocus 
+                            autofocus
                         />
-                        
+
                         <button
                             v-if="patientSearchQuery"
                             class="absolute right-3 top-1/2 -translate-y-1/2 text-surface-400 hover:text-surface-600"
@@ -384,8 +403,8 @@ function formatPaymentMode(mode) {
                         >
                             <i class="pi pi-times text-xs"></i>
                         </button>
-                        </IconField> 
-                        
+                        </IconField>
+
                     </div>
 
                     <div v-if="patientSearchLoading" class="space-y-2">
@@ -467,7 +486,7 @@ function formatPaymentMode(mode) {
                         <div
                             class="flex h-5 w-5 text-xs flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-fuchsia-500 font-bold text-white shadow-sm">
                             {{ (patient.prenom?.[0] ?? '') + (patient.nom?.[0] ?? 'P') }}
-                            
+
                         </div>
 
                         <!-- Infos -->
@@ -489,7 +508,7 @@ function formatPaymentMode(mode) {
                         </div>
 
                         <!-- Badge "Nouveau" -->
-                        
+
                         <div class="flex items-center gap-1.5">
                                 <button
                                     class="flex h-7 w-7 items-center justify-center rounded-md bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 transition-colors"
@@ -569,9 +588,13 @@ function formatPaymentMode(mode) {
                         <div class="absolute left-4 top-0 bottom-0 w-px bg-surface-200 dark:bg-surface-700"></div>
 
                         <div class="space-y-3">
-                            <button v-for="(consultation, index) in secretaryRows" :key="consultation.id"
-                                @click="selectConsultation(consultation.id)"
-                                class="relative flex gap-3 w-full text-left group">
+                            <div v-for="(consultation, index) in secretaryRows" :key="consultation.id"
+                                role="button"
+                                tabindex="0"
+                                @click="onQueueItemClick($event, consultation.id)"
+                                @keydown.enter.prevent="selectConsultation(consultation.id)"
+                                @keydown.space.prevent="selectConsultation(consultation.id)"
+                                class="relative flex gap-3 w-full text-left group cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-0 dark:focus-visible:ring-offset-surface-900">
 
                                 <!-- Index / Position -->
                                 <div class="relative z-10 flex flex-col items-center">
@@ -631,13 +654,12 @@ function formatPaymentMode(mode) {
                                     <div class="flex items-center justify-between mt-1 text-xs">
 
                                         <!-- Type patient -->
-                                        <span :class="[
-                                            consultation.hasFiche || consultation.lastFicheId
-                                                ? 'text-blue-600 dark:text-blue-400'
-                                                : 'text-purple-600 dark:text-purple-400'
-                                        ]">
-                                            {{ consultation.hasFiche || consultation.lastFicheId ? 'Ancien' : 'Nouveau'
-                                            }}
+                                        <span>
+                                            <Button v-if="Number(consultation.state) === 0"
+                                                icon="pi pi-times" severity="danger" size="small"
+                                                :data-cancel-consultation-id="consultation.id"
+                                                class="rounded-xl px-4 py-2 text-sm font-medium transition-all hover:scale-[1.02]"
+                                                @click="(e) => handleCancelWithConfirm(e, consultation)" />
                                         </span>
 
                                         <!-- Facture / ticket -->
@@ -669,7 +691,7 @@ function formatPaymentMode(mode) {
                                     </div>
 
                                 </div>
-                            </button>
+                            </div>
                         </div>
                     </div>
                     <div v-else class="flex flex-col items-center py-10 text-center text-surface-500">
@@ -700,8 +722,8 @@ function formatPaymentMode(mode) {
 
             <!-- PATIENT CARD -->
             <div class="rounded-xl border p-3 flex items-start gap-3"
-                :class="Number(currentConsultation.state) === 1 
-                    ? 'bg-green-50/50 border-green-200 dark:bg-green-950/10' 
+                :class="Number(currentConsultation.state) === 1
+                    ? 'bg-green-50/50 border-green-200 dark:bg-green-950/10'
                     : 'bg-primary-50/50 border-primary-200 dark:bg-primary-950/10'">
 
                 <div class="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold"
@@ -753,10 +775,10 @@ function formatPaymentMode(mode) {
                 </button>
 
             </div>
- 
+
             <div v-if="hasInvoiceContext"
                 class="rounded-xl border p-3 bg-surface-50 dark:bg-surface-800 border-surface-200 dark:border-surface-700">
- 
+
                 <div class="flex items-center justify-between mb-2">
                     <span class="text-xs font-semibold text-surface-700 dark:text-surface-300">
                         Facture
@@ -772,7 +794,7 @@ function formatPaymentMode(mode) {
                         {{ isPaidInvoice ? 'Réglée' : isValidatedFreeInvoice ? 'Validée' : isFreeInvoice ? 'Gratuite' : 'En attente' }}
                     </span>
                 </div>
- 
+
                 <div class="space-y-1 text-xs">
                     <div class="flex justify-between">
                         <span class="text-surface-500">Total</span>
@@ -785,8 +807,8 @@ function formatPaymentMode(mode) {
                             {{ selectedInvoiceRemaining === null ? '--' : formatFcfa(selectedInvoiceRemaining) }}
                         </span>
                     </div>
-                </div> 
-                <div class="flex gap-2 mt-3"> 
+                </div>
+                <div class="flex gap-2 mt-3">
                     <button v-if="!isPaidInvoice && !isFreeInvoice"
                         @click="emit('open-caisse-pay')"
                         class="flex-1 rounded-md bg-green-500 px-3 py-1.5 text-xs text-white hover:bg-green-600">
@@ -805,25 +827,25 @@ function formatPaymentMode(mode) {
                     </button>
                 </div>
             </div>
- 
+
             <div v-if="selectedInvoicePayments.length" class="space-y-2">
                 <p class="text-xs font-semibold text-surface-700 dark:text-surface-300">
                     Paiements
                 </p>
 
-                <div 
-                    v-for="payment in selectedInvoicePayments" 
+                <div
+                    v-for="payment in selectedInvoicePayments"
                     :key="payment.id"
                     class="flex items-center justify-between rounded-lg border px-3 py-2 text-xs
                         bg-surface-50 dark:bg-surface-800 border-surface-200 dark:border-surface-700"
-                > 
+                >
                     <div class="flex items-center gap-3 min-w-0">
- 
+
                         <div class="w-8 h-8 flex items-center justify-center rounded-full text-white text-xs font-bold"
                             :class="payment.status === 'validated' ? 'bg-green-500' : 'bg-amber-500'">
                             <i class="pi pi-wallet text-xs"></i>
                         </div>
-                        
+
                         <div class="min-w-0">
                             <p class="font-semibold text-surface-900 dark:text-white truncate">
                                 {{ formatFcfa(payment.montant) }}
@@ -853,11 +875,11 @@ function formatPaymentMode(mode) {
                             {{ formatTime(payment.date) }}
                         </span>
 
-                        <Button 
+                        <Button
                             v-if="payment.status === 'validated'"
                             @click="printPaymentReceipt(payment.id)"
                             icon="pi pi-receipt" size="small" class="mt-2"
-                        /> 
+                        />
                     </div>
                 </div>
             </div>

@@ -2,15 +2,15 @@
 import {
     checkConsultationActive,
     createConsultationForPatient,
-    fetchMedecins,
     searchPatients,
-    fetchPaymentMethods,
     normalizePatient
 } from '@/services/patients';
 import { fetchPublicGeneralSettings } from '@/services/globalSettingsService';
 import { fetchTicketPrintData } from '@/services/printService';
 import PrintTicketBody from '@/components/print/PrintTicketBody.vue';
 import { usePrinter } from '@/composables/usePrinter';
+import { useMedecinsStore } from '@/stores/medecins';
+import { usePaymentMethodsStore } from '@/stores/paymentMethods';
 import {
     buildPaymentMethodGroups,
     getPaymentCoverageRate,
@@ -45,7 +45,9 @@ const toast = useToast();
 const token = localStorage.getItem('token');
 const loading = ref(false);
 const { printComponent } = usePrinter();
-const CONSULTATION_AMOUNT = 5000;
+const medecinsStore = useMedecinsStore();
+const paymentMethodsStore = usePaymentMethodsStore();
+const consultationAmount = ref(5000);
 
 const patients = ref([]);
 const patientsLoading = ref(false);
@@ -82,7 +84,7 @@ const loadPatients = async (query = '') => {
     try {
         const data = await searchPatients(query, token, 20);
         patients.value = data.map((p) => normalizePatient(p));
-    } catch (error) { 
+    } catch (error) {
         toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de charger les patients.', life: 3000 });
     } finally {
         patientsLoading.value = false;
@@ -91,7 +93,7 @@ const loadPatients = async (query = '') => {
 
 const loadMedecins = async () => {
     try {
-        medecins.value = await fetchMedecins(token);
+        medecins.value = await medecinsStore.load(token);
         if (!form.medecinId && medecins.value.length === 1) {
             form.medecinId = medecins.value[0]?.id ?? null;
         }
@@ -103,7 +105,7 @@ const loadMedecins = async () => {
 
 const loadPaymentMethods = async () => {
     try {
-        paymentMethods.value = await fetchPaymentMethods(token);
+        paymentMethods.value = await paymentMethodsStore.load(token);
     } catch (error) {
         console.error('Erreur lors du chargement des modes de paiement', error);
         toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de charger les modes de paiement.', life: 3000 });
@@ -123,9 +125,11 @@ const loadConsultationCreationPolicy = async () => {
     try {
         const settings = await fetchPublicGeneralSettings(token);
         requireMedecinOnCreation.value = settings?.requireMedecinOnConsultationCreation !== false;
+        consultationAmount.value = Math.max(1, Number(settings?.consultationPrice || 5000));
     } catch (error) {
         console.error('Erreur lors du chargement de la politique consultation', error);
         requireMedecinOnCreation.value = true;
+        consultationAmount.value = 5000;
     }
 };
 
@@ -186,16 +190,16 @@ const insuranceCoveredAmount = computed(() => {
         return 0;
     }
 
-    return Math.max(0, (CONSULTATION_AMOUNT * Number(form.insuranceRate || 0)) / 100);
+    return Math.max(0, (consultationAmount.value * Number(form.insuranceRate || 0)) / 100);
 });
 
-const patientRemainingAmount = computed(() => Math.max(0, CONSULTATION_AMOUNT - insuranceCoveredAmount.value));
+const patientRemainingAmount = computed(() => Math.max(0, consultationAmount.value - insuranceCoveredAmount.value));
 const requiresClassicPayment = computed(() => form.payant && patientRemainingAmount.value > 0);
 
 const resetForm = () => {
     form.notes = '';
     form.dateConsultation = new Date();
-    form.medecinId = null; 
+    form.medecinId = null;
     form.modePaiementId = null;
     form.insuranceEnabled = false;
     form.insuranceModeId = null;
@@ -353,7 +357,7 @@ const saveConsultation = async () => {
             insurance_rate: form.payant && form.insuranceEnabled ? Number(form.insuranceRate || 0) : null,
             patient_amount: form.payant ? patientRemainingAmount.value : 0,
             insurance_amount: form.payant && form.insuranceEnabled ? insuranceCoveredAmount.value : 0,
-            consultation_amount: form.payant ? CONSULTATION_AMOUNT : 0,
+            consultation_amount: form.payant ? consultationAmount.value : 0,
             notes: form.notes || null
         };
         const saved = await createConsultationForPatient(selectedPatientId.value, payload, token);
@@ -432,7 +436,7 @@ const handleSubmit = (event) => {
                 <label class="font-semibold">Consultation payante</label>
                 <div class="flex items-center gap-2">
                     <ToggleSwitch v-model="form.payant" />
-                    <span class="text-sm text-gray-600 dark:text-gray-400">{{ form.payant ? `Payante (${CONSULTATION_AMOUNT})` : 'Gratuite' }}</span>
+                    <span class="text-sm text-gray-600 dark:text-gray-400">{{ form.payant ? `Payante (${consultationAmount.toLocaleString('fr-FR')})` : 'Gratuite' }}</span>
                 </div>
             </div>
             <div class="flex flex-col gap-2" v-if="form.payant">
@@ -467,7 +471,7 @@ const handleSubmit = (event) => {
                         inputClass="w-full" class="w-full" disabled />
                 </div>
                 <div class="md:col-span-3 text-sm text-gray-600 dark:text-gray-400">
-                    Couverture calculée : {{ insuranceCoveredAmount.toLocaleString('fr-FR') }} sur {{ CONSULTATION_AMOUNT.toLocaleString('fr-FR') }}.
+                    Couverture calculée : {{ insuranceCoveredAmount.toLocaleString('fr-FR') }} sur {{ consultationAmount.toLocaleString('fr-FR') }}.
                     <span v-if="selectedInsuranceMethod">Assureur sélectionné : {{ selectedInsuranceMethod.libelle }}.</span>
                 </div>
             </div>

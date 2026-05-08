@@ -10,6 +10,7 @@ import ToggleSwitch from 'primevue/toggleswitch';
 import Divider from 'primevue/divider';
 import Card from 'primevue/card';
 import Badge from 'primevue/badge';
+import InputNumber from 'primevue/inputnumber';
 import { useAuthStore } from '@/stores/auth';
 import { useUiSettingsStore } from '@/stores/uiSettings';
 import { useAppearanceSettings } from '@/composables/useAppearanceSettings';
@@ -67,6 +68,10 @@ const devicePolicy = reactive({
     autoApproveDevices: true,
     requireMedecinOnConsultationCreation: true,
     paiementDirectAssurance: false
+});
+
+const billingPolicy = reactive({
+    consultationPrice: 5000
 });
 
 const consultationAccess = reactive({
@@ -204,6 +209,7 @@ const loadGeneralSettings = async (force = false) => {
         consultationAccess.hidePatientDossierForMedecins = settings.hidePatientDossierForMedecins === true;
         consultationAccess.hidePatientPhoneForMedecins = settings.hidePatientPhoneForMedecins === true;
         consultationAccess.ficheFormSimplifie = settings.ficheFormSimplifie === true;
+        billingPolicy.consultationPrice = Number(settings.consultationPrice || 5000);
         transactionMotifs.revenueText = (settings.transactionMotifs?.revenue || []).join('\n');
         transactionMotifs.expenseText = (settings.transactionMotifs?.expense || []).join('\n');
         soinsCatalog.text = (settings.soinsList || []).join('\n');
@@ -270,7 +276,10 @@ const saveBillingPolicyAction = async () => {
     if (!canAccessWorkflowSettings.value) return;
     savingStates.billingPolicy = true;
     try {
-        await saveGeneralSettings({ paiementDirectAssurance: devicePolicy.paiementDirectAssurance }, token);
+        await saveGeneralSettings({
+            paiementDirectAssurance: devicePolicy.paiementDirectAssurance,
+            consultationPrice: Number(billingPolicy.consultationPrice || 5000)
+        }, token);
         toast.add({ severity: 'success', summary: 'Règles facturation', detail: 'Paramètres enregistrés', life: 2500 });
     } catch (error) {
         toast.add({ severity: 'error', summary: 'Erreur', detail: extractApiError(error, 'Sauvegarde impossible'), life: 3500 });
@@ -369,13 +378,13 @@ onBeforeUnmount(() => {
                     </p>
                 </div>
                 <div class="settings-header-actions">
-                    <Button 
-                        v-if="canAccessSmsSettings" 
-                        label="API SMS" 
-                        icon="pi pi-send" 
-                        severity="secondary" 
-                        outlined 
-                        @click="goToSmsPage" 
+                    <Button
+                        v-if="canAccessSmsSettings"
+                        label="API SMS"
+                        icon="pi pi-send"
+                        severity="secondary"
+                        outlined
+                        @click="goToSmsPage"
                     />
                 </div>
             </div>
@@ -481,12 +490,12 @@ onBeforeUnmount(() => {
                                 <p class="settings-section-description">Choisissez entre mode clair, sombre ou automatique</p>
                             </div>
                             <div class="settings-card">
-                                <SelectButton 
-                                    v-model="themeMode" 
-                                    :options="themeOptions" 
-                                    optionLabel="label" 
-                                    optionValue="value" 
-                                    :allowEmpty="false" 
+                                <SelectButton
+                                    v-model="themeMode"
+                                    :options="themeOptions"
+                                    optionLabel="label"
+                                    optionValue="value"
+                                    :allowEmpty="false"
                                 />
                             </div>
                         </div>
@@ -500,11 +509,11 @@ onBeforeUnmount(() => {
                             <div class="settings-card">
                                 <div class="color-section">
                                     <label class="color-label">Preset</label>
-                                    <SelectButton 
-                                        v-model="preset" 
-                                        :options="presetOptions" 
-                                        :allowEmpty="false" 
-                                        @change="onPresetChange" 
+                                    <SelectButton
+                                        v-model="preset"
+                                        :options="presetOptions"
+                                        :allowEmpty="false"
+                                        @change="onPresetChange"
                                     />
                                 </div>
                                 <Divider />
@@ -575,13 +584,13 @@ onBeforeUnmount(() => {
                                 <p class="settings-section-description">Comportement du menu de navigation</p>
                             </div>
                             <div class="settings-card">
-                                <SelectButton 
-                                    v-model="menuMode" 
-                                    :options="menuModeOptions" 
-                                    optionLabel="label" 
-                                    optionValue="value" 
-                                    :allowEmpty="false" 
-                                    @change="onMenuModeChange" 
+                                <SelectButton
+                                    v-model="menuMode"
+                                    :options="menuModeOptions"
+                                    optionLabel="label"
+                                    optionValue="value"
+                                    :allowEmpty="false"
+                                    @change="onMenuModeChange"
                                 />
                             </div>
                         </div>
@@ -701,11 +710,11 @@ onBeforeUnmount(() => {
                                     <h3>Sécurité des appareils</h3>
                                     <p class="settings-section-description">Gestion des règles de sécurité et des appareils</p>
                                 </div>
-                                <Button 
-                                    label="Enregistrer" 
-                                    icon="pi pi-save" 
-                                    :loading="savingStates.devicePolicy" 
-                                    @click="saveDevicePolicyAction" 
+                                <Button
+                                    label="Enregistrer"
+                                    icon="pi pi-save"
+                                    :loading="savingStates.devicePolicy"
+                                    @click="saveDevicePolicyAction"
                                 />
                             </div>
                             <div class="settings-card">
@@ -752,6 +761,21 @@ onBeforeUnmount(() => {
                                         </div>
                                         <ToggleSwitch v-model="devicePolicy.paiementDirectAssurance" />
                                     </div>
+                                    <Divider />
+                                    <div class="toggle-item">
+                                        <div class="toggle-info">
+                                            <label>Prix consultation</label>
+                                            <span class="toggle-description">Montant par défaut appliqué aux nouvelles consultations payantes</span>
+                                        </div>
+                                        <InputNumber
+                                            v-model="billingPolicy.consultationPrice"
+                                            mode="decimal"
+                                            locale="fr-FR"
+                                            :min="1"
+                                            :minFractionDigits="0"
+                                            :maxFractionDigits="2"
+                                            inputClass="w-40" />
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -763,31 +787,31 @@ onBeforeUnmount(() => {
                                     <h3>Motifs de transaction</h3>
                                     <p class="settings-section-description">Personnalisez les motifs disponibles pour les transactions</p>
                                 </div>
-                                <Button 
-                                    label="Enregistrer" 
-                                    icon="pi pi-save" 
-                                    :loading="savingStates.transactionMotifs" 
-                                    @click="saveTransactionMotifsAction" 
+                                <Button
+                                    label="Enregistrer"
+                                    icon="pi pi-save"
+                                    :loading="savingStates.transactionMotifs"
+                                    @click="saveTransactionMotifsAction"
                                 />
                             </div>
                             <div class="settings-card">
                                 <div class="two-columns">
                                     <div class="field-group">
                                         <label>Motifs de revenus</label>
-                                        <Textarea 
-                                            v-model="transactionMotifs.revenueText" 
-                                            rows="8" 
-                                            autoResize 
+                                        <Textarea
+                                            v-model="transactionMotifs.revenueText"
+                                            rows="8"
+                                            autoResize
                                             placeholder="Saisissez un motif par ligne"
                                         />
                                         <span class="field-helper">Un motif par ligne</span>
                                     </div>
                                     <div class="field-group">
                                         <label>Motifs de dépenses</label>
-                                        <Textarea 
-                                            v-model="transactionMotifs.expenseText" 
-                                            rows="8" 
-                                            autoResize 
+                                        <Textarea
+                                            v-model="transactionMotifs.expenseText"
+                                            rows="8"
+                                            autoResize
                                             placeholder="Saisissez un motif par ligne"
                                         />
                                         <span class="field-helper">Un motif par ligne</span>
@@ -803,20 +827,20 @@ onBeforeUnmount(() => {
                                     <h3>Liste des soins</h3>
                                     <p class="settings-section-description">Catalogue des soins disponibles dans l'application</p>
                                 </div>
-                                <Button 
-                                    label="Enregistrer" 
-                                    icon="pi pi-save" 
-                                    :loading="savingStates.soinsCatalog" 
-                                    @click="saveSoinsCatalogAction" 
+                                <Button
+                                    label="Enregistrer"
+                                    icon="pi pi-save"
+                                    :loading="savingStates.soinsCatalog"
+                                    @click="saveSoinsCatalogAction"
                                 />
                             </div>
                             <div class="settings-card">
                                 <div class="field-group">
                                     <label>Soins proposés</label>
-                                    <Textarea 
-                                        v-model="soinsCatalog.text" 
-                                        rows="12" 
-                                        autoResize 
+                                    <Textarea
+                                        v-model="soinsCatalog.text"
+                                        rows="12"
+                                        autoResize
                                         placeholder="Saisissez un soin par ligne"
                                     />
                                     <span class="field-helper">Un soin par ligne. Utilisé dans les actes posés et la modification de facture.</span>

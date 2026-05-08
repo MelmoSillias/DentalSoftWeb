@@ -28,8 +28,8 @@ export function createAdministrationFinancesTour({ switchTab, openTransactionDia
             group: 'administration-finances',
             order: 30,
             target: '[data-tour="admin-finances.tabs"]',
-            title: 'Deux angles de lecture',
-            content: 'L onglet Tableaux sert au controle quotidien et aux actions immediates. L onglet Graphiques sert a l analyse et au pilotage global sur la periode.'
+            title: 'Organisation par onglets',
+            content: 'L onglet Transactions centralise le suivi quotidien. L onglet Mode de paiement regroupe la gestion des comptes. L onglet Graphiques sert a l analyse globale sur la periode.'
         },
         {
             group: 'administration-finances',
@@ -39,7 +39,7 @@ export function createAdministrationFinancesTour({ switchTab, openTransactionDia
             content: 'Le premier bloc permet d isoler les transactions a verifier en combinant periode, statut de validation et recherche libre. C est la zone de travail la plus utile pour les controles administratifs quotidiens.',
             beforeEnter: async () => {
                 await closeAllDialogs();
-                await switchTab('tables');
+                await switchTab('transactions');
                 await wait();
             }
         },
@@ -51,7 +51,7 @@ export function createAdministrationFinancesTour({ switchTab, openTransactionDia
             content: 'Quand une transaction est en attente, ces actions permettent soit de la valider pour l intégrer au flux confirme, soit de la rejeter si elle doit etre corrigee ou justifiee.',
             beforeEnter: async () => {
                 await closeAllDialogs();
-                await switchTab('tables');
+                await switchTab('transactions');
                 await wait();
             }
         },
@@ -63,7 +63,7 @@ export function createAdministrationFinancesTour({ switchTab, openTransactionDia
             content: 'Ce tableau regroupe les comptes de paiement par famille. Les modes classiques sont dissocies des assurances afin de distinguer les reglements directs des prises en charge assureur.',
             beforeEnter: async () => {
                 await closeAllDialogs();
-                await switchTab('tables');
+                await switchTab('payment-methods');
                 await wait();
             }
         },
@@ -75,7 +75,7 @@ export function createAdministrationFinancesTour({ switchTab, openTransactionDia
             content: 'Chaque mode peut etre modifie, active ou desactive. Cette zone sert a faire evoluer le referentiel financier sans toucher aux comptes proteges.',
             beforeEnter: async () => {
                 await closeAllDialogs();
-                await switchTab('tables');
+                await switchTab('payment-methods');
                 await wait();
             }
         },
@@ -87,7 +87,7 @@ export function createAdministrationFinancesTour({ switchTab, openTransactionDia
             content: 'Le formulaire de transaction enregistre une entree ou une sortie avec le compte, le montant, la date et le motif. Il évite de quitter la page pendant le controle.',
             beforeEnter: async () => {
                 await closeAllDialogs();
-                await switchTab('tables');
+                await switchTab('transactions');
                 await openTransactionDialog();
                 await wait();
             }
@@ -100,7 +100,7 @@ export function createAdministrationFinancesTour({ switchTab, openTransactionDia
             content: 'Le formulaire de mode de paiement permet d ajouter ou modifier un compte, y compris une assurance avec son taux de couverture par défaut.',
             beforeEnter: async () => {
                 await closeAllDialogs();
-                await switchTab('tables');
+                await switchTab('payment-methods');
                 await openModeDialog();
                 await wait();
             }

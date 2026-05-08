@@ -1059,6 +1059,12 @@ class ConsultationService
         });
     }
 
+    public function invalidateStaffReferenceCache(): void
+    {
+        $this->cache->delete('medecins.list');
+        $this->cache->delete('infirmiers.list');
+    }
+
     public function getPendingConsultationsContext(): array
     {
         $consultations = $this->consultationRepo->findPendingConsultations();

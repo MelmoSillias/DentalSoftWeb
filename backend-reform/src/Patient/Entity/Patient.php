@@ -627,14 +627,16 @@ class Patient
     public function setPortalUser(?User $portalUser): static
     {
         if ($portalUser === null && $this->portalUser !== null) {
-            $this->portalUser->setPortalPatient(null);
+            $old = $this->portalUser;
+            $this->portalUser = null;
+            $old->setPortalPatient(null);
+        } else {
+            $this->portalUser = $portalUser;
         }
 
         if ($portalUser !== null && $portalUser->getPortalPatient() !== $this) {
             $portalUser->setPortalPatient($this);
         }
-
-        $this->portalUser = $portalUser;
 
         return $this;
     }

@@ -1,5 +1,6 @@
 /backend/migrations*
 /prompts/
+/mercure
 
 /backend-reform/migrations*
 

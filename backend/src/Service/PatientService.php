@@ -480,9 +480,10 @@ class PatientService
 
             if (($data['payant'] ?? 0) == 1) {
                 $insuranceEnabled = (bool) (($data['insurance_enabled'] ?? $data['insuranceEnabled'] ?? 0) == 1);
-                $consultationAmount = (float) ($data['consultation_amount'] ?? 5000);
+                $defaultConsultationAmount = $this->globalSettingsService->getConsultationPrice();
+                $consultationAmount = (float) ($data['consultation_amount'] ?? $defaultConsultationAmount);
                 if ($consultationAmount <= 0) {
-                    $consultationAmount = 5000;
+                    $consultationAmount = $defaultConsultationAmount;
                 }
 
                 $insuranceRate = max(0, min(100, (float) ($data['insurance_rate'] ?? $data['insuranceRate'] ?? 0)));

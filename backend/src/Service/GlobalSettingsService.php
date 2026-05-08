@@ -9,6 +9,7 @@ use Doctrine\ORM\EntityManagerInterface;
 class GlobalSettingsService
 {
     private const KEY_GENERAL = 'general';
+    private const DEFAULT_CONSULTATION_PRICE = 5000.0;
     private const DEFAULT_TRANSACTION_MOTIFS = [
         'revenue' => [
             'Paiement patient',
@@ -72,7 +73,7 @@ class GlobalSettingsService
     ) {
     }
 
-    /** @return array{autoApproveDevices: bool, requireMedecinOnConsultationCreation: bool, allowReceptionQuickCloseConsultation: bool, allowReceptionConsultationQuickActions: bool, hidePatientDossierForMedecins: bool, hidePatientPhoneForMedecins: bool, paiementDirectAssurance: bool, ficheFormSimplifie: bool, transactionMotifs: array{revenue: string[], expense: string[]}, soinsList: string[], examensTypes: string[], traitementTypes: string[], allergyTypes: string[], antecedentTypes: string[]} */
+    /** @return array{autoApproveDevices: bool, requireMedecinOnConsultationCreation: bool, allowReceptionQuickCloseConsultation: bool, allowReceptionConsultationQuickActions: bool, hidePatientDossierForMedecins: bool, hidePatientPhoneForMedecins: bool, paiementDirectAssurance: bool, ficheFormSimplifie: bool, consultationPrice: float, transactionMotifs: array{revenue: string[], expense: string[]}, soinsList: string[], examensTypes: string[], traitementTypes: string[], allergyTypes: string[], antecedentTypes: string[]} */
     public function getGeneralSettings(): array
     {
         $entry = $this->appSettingRepo->findOneByKey(self::KEY_GENERAL);
@@ -88,6 +89,7 @@ class GlobalSettingsService
             'hidePatientPhoneForMedecins' => (bool) ($value['hidePatientPhoneForMedecins'] ?? false),
             'paiementDirectAssurance' => (bool) ($value['paiementDirectAssurance'] ?? false),
             'ficheFormSimplifie' => (bool) ($value['ficheFormSimplifie'] ?? false),
+            'consultationPrice' => $this->sanitizePositiveAmount($value['consultationPrice'] ?? null, self::DEFAULT_CONSULTATION_PRICE),
             'transactionMotifs' => $this->sanitizeTransactionMotifs($value['transactionMotifs'] ?? null),
             'soinsList' => $this->sanitizeStringList($value['soinsList'] ?? null, self::DEFAULT_SOINS_LIST),
             'examensTypes' => $this->sanitizeStringList($value['examensTypes'] ?? null, self::DEFAULT_EXAMENS_TYPES),
@@ -118,6 +120,7 @@ class GlobalSettingsService
             'hidePatientPhoneForMedecins' => (bool) ($payload['hidePatientPhoneForMedecins'] ?? ($current['hidePatientPhoneForMedecins'] ?? false)),
             'paiementDirectAssurance' => (bool) ($payload['paiementDirectAssurance'] ?? $payload['paymentDirectInsurance'] ?? ($current['paiementDirectAssurance'] ?? false)),
             'ficheFormSimplifie' => (bool) ($payload['ficheFormSimplifie'] ?? ($current['ficheFormSimplifie'] ?? false)),
+            'consultationPrice' => $this->sanitizePositiveAmount($payload['consultationPrice'] ?? ($current['consultationPrice'] ?? null), self::DEFAULT_CONSULTATION_PRICE),
             'transactionMotifs' => $this->sanitizeTransactionMotifs($payload['transactionMotifs'] ?? ($current['transactionMotifs'] ?? null)),
             'soinsList' => $this->sanitizeStringList($payload['soinsList'] ?? ($current['soinsList'] ?? null), self::DEFAULT_SOINS_LIST),
             'examensTypes' => $this->sanitizeStringList($payload['examensTypes'] ?? ($current['examensTypes'] ?? null), self::DEFAULT_EXAMENS_TYPES),
@@ -161,6 +164,11 @@ class GlobalSettingsService
         return $this->getGeneralSettings()['paiementDirectAssurance'];
     }
 
+    public function getConsultationPrice(): float
+    {
+        return $this->getGeneralSettings()['consultationPrice'];
+    }
+
     /** @return array{revenue: string[], expense: string[]} */
     public function getTransactionMotifs(): array
     {
@@ -173,7 +181,7 @@ class GlobalSettingsService
         return $this->getGeneralSettings()['soinsList'];
     }
 
-    /** @return array{requireMedecinOnConsultationCreation: bool, allowReceptionQuickCloseConsultation: bool, allowReceptionConsultationQuickActions: bool, hidePatientDossierForMedecins: bool, hidePatientPhoneForMedecins: bool, paiementDirectAssurance: bool, ficheFormSimplifie: bool, soinsList: string[], examensTypes: string[], traitementTypes: string[], allergyTypes: string[], antecedentTypes: string[]} */
+    /** @return array{requireMedecinOnConsultationCreation: bool, allowReceptionQuickCloseConsultation: bool, allowReceptionConsultationQuickActions: bool, hidePatientDossierForMedecins: bool, hidePatientPhoneForMedecins: bool, paiementDirectAssurance: bool, ficheFormSimplifie: bool, consultationPrice: float, soinsList: string[], examensTypes: string[], traitementTypes: string[], allergyTypes: string[], antecedentTypes: string[]} */
     public function getPublicGeneralSettings(): array
     {
         $settings = $this->getGeneralSettings();
@@ -186,6 +194,7 @@ class GlobalSettingsService
             'hidePatientPhoneForMedecins' => $settings['hidePatientPhoneForMedecins'],
             'paiementDirectAssurance' => $settings['paiementDirectAssurance'],
             'ficheFormSimplifie' => $settings['ficheFormSimplifie'],
+            'consultationPrice' => $settings['consultationPrice'],
             'soinsList' => $settings['soinsList'],
             'examensTypes' => $settings['examensTypes'],
             'traitementTypes' => $settings['traitementTypes'],
@@ -250,5 +259,19 @@ class GlobalSettingsService
         }
 
         return array_values($clean ?: array_combine($defaultItems, $defaultItems));
+    }
+
+    private function sanitizePositiveAmount(mixed $value, float $default): float
+    {
+        if (!is_numeric($value)) {
+            return $default;
+        }
+
+        $amount = (float) $value;
+        if ($amount <= 0) {
+            return $default;
+        }
+
+        return round($amount, 2);
     }
 }

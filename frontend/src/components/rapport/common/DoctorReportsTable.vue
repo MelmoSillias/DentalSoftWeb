@@ -98,10 +98,10 @@ function printDoctorRow(row) {
                 th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
                 th { background-color: #f2f2f2; }
                 .section-title { font-weight: bold; font-size: 13pt; margin: 25px 0 10px; border-bottom: 1px solid #ccc; padding-bottom: 3px; }
-                .signature-table { margin-top: 40px; width: 100%; }
+                .signature-table { margin-top: 20px; width: 100%; }
                 .signature-cell { width: 45%; text-align: center; }
                 .signature-line { border-top: 1px solid #000; width: 80%; margin: 15px auto 5px; }
-                .footer { font-size: 9pt; text-align: center; margin-top: 10px; }
+                .footer { position: absolute; bottom: 10px; width: 100%; font-size: 9pt; text-align: center; color: #555; }
             </style>
         </head>
         <body>
@@ -117,7 +117,7 @@ function printDoctorRow(row) {
             </div>
             <div class="section-title">Statistiques d'activité</div>
             ${formatDoctorTable(row)}
-            <div class="section-title">Détails des soins effectués</div>
+            <div class="section-title">Détails de l'activité</div>
             ${formatDoctorDetails(row)}
             <table class="signature-table">
                 <tr>
@@ -131,7 +131,7 @@ function printDoctorRow(row) {
                     </td>
                 </tr>
             </table>
-            <div class="footer">Document généré automatiquement le ${currentDate}</div>
+            <div class="footer">le ${currentDate}</div>
         </body>
         </html>
     `;
@@ -142,35 +142,20 @@ function printDoctorRow(row) {
 function formatDoctorTable(row) {
     return `
         <table>
-            <thead>
-                <tr>
-                    <th>Indicateur</th>
-                    <th>Nombre</th>
-                    <th>Montant total</th>
-                </tr>
-            </thead>
             <tbody>
                 <tr>
-                    <td>Consultations réalisées</td>
+                    <td> <strong>Consultations réalisées</strong></td>
                     <td>${row.consultations || 0}</td>
                     <td>${row.consultations_amount ? formatFcfa(row.consultations_amount) : formatFcfa(0)}</td>
                 </tr>
                 <tr>
-                    <td>Actes posés</td>
+                    <td> <strong>Actes posés</strong></td>
                     <td>${row.acts || 0}</td>
                     <td>${row.acts_amount ? formatFcfa(row.acts_amount) : formatFcfa(0)}</td>
                 </tr>
                 <tr>
-                    <td colspan="2">Apport total</td>
+                    <td colspan="2"> <strong>Apport total</strong></td>
                     <td>${row.apport ? formatFcfa(row.apport) : formatFcfa(0)}</td>
-                </tr>
-                <tr>
-                    <td colspan="2">Montant payé</td>
-                    <td>${row.revenue ? formatFcfa(row.revenue) : formatFcfa(0)}</td>
-                </tr>
-                <tr>
-                    <td colspan="2">Reliquat patients</td>
-                    <td>${row.reliquat ? formatFcfa(row.reliquat) : formatFcfa(0)}</td>
                 </tr>
             </tbody>
         </table>

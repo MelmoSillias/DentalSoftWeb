@@ -6,6 +6,7 @@ import SaveIndicator from '@/components/consultations/SaveIndicator.vue';
 import SectionSwitcher from '@/components/consultations/SectionSwitcher.vue';
 import AllergyDialogForm from '@/components/patients/AllergyDialogForm.vue';
 import AntecedentDialogForm from '@/components/patients/AntecedentDialogForm.vue';
+import FormRendezVous from '@/components/patients/FormRendezVous.vue';
 import AutoComplete from 'primevue/autocomplete';
 import PrintFicheV2Body from '@/components/print/PrintFicheV2Body.vue';
 import PrintDevisBody from '@/components/print/PrintDevisBody.vue';
@@ -24,6 +25,7 @@ import { addPatientAllergy, addPatientAntecedent, deletePatientAllergy, deletePa
 import { fetchDevisPrintData, fetchOrdonnancePrintData, fetchPatientFichePrintData } from '@/services/printService';
 import { useAuthStore } from '@/stores/auth';
 import ConfirmDialog from 'primevue/confirmdialog';
+import Dialog from 'primevue/dialog';
 import Tag from 'primevue/tag';
 import Toast from 'primevue/toast';
 import { useConfirm } from 'primevue/useconfirm';
@@ -71,6 +73,7 @@ const ordonnanceModalVisible = ref(false);
 const ordonnanceDraft = ref({ date: '', medecinNom: '', note: '', lignes: [] });
 const showAntecedentDialog = ref(false);
 const showAllergyDialog = ref(false);
+const showRdvDialog = ref(false);
 const isIndicatorFloating = ref(false);
 const isMedecinOptionalOnCreation = ref(false);
 const ficheFormSimplifie = ref(false);
@@ -380,6 +383,11 @@ const removePlanRow = (index) => {
         ...item,
         planIndex: idx + 1
     }));
+};
+
+const handleRdvSaved = () => {
+    showRdvDialog.value = false;
+    toast.add({ severity: 'success', summary: 'Rendez-vous créé', life: 2200 });
 };
 
 const loadConsultationPolicy = async () => {
@@ -853,21 +861,21 @@ defineExpose({
                     </div>
 
                     <!-- Status -->
-                    <Tag 
-                        :value="isReadonly ? 'Terminée' : 'En cours'" 
-                        :severity="isReadonly ? 'success' : 'info'" 
+                    <Tag
+                        :value="isReadonly ? 'Terminée' : 'En cours'"
+                        :severity="isReadonly ? 'success' : 'info'"
                         class="ml-2"
                     />
                 </div>
 
                 <!-- Right -->
                 <div class="flex items-center gap-2">
-                    <Button 
-                        icon="pi pi-print" 
-                        severity="secondary" 
-                        text 
-                        rounded 
-                        size="small" 
+                    <Button
+                        icon="pi pi-print"
+                        severity="secondary"
+                        text
+                        rounded
+                        size="small"
                         :disabled="isClotureProcessing"
                         @click="handlePrintFiche"
                     />
@@ -918,21 +926,16 @@ defineExpose({
                     </template>
 
                     <template #synthese>
-                        <div :class="isReadonly ? 'pointer-events-none select-none' : ''" class="rounded-2xl border border-surface-200/60 dark:border-surface-700/60 bg-gradient-to-br from-surface-0 to-surface-50/80 dark:from-surface-900/50 dark:to-surface-900/20 p-4 md:p-5 shadow-sm">
-                            <div class="flex items-center justify-between gap-3 mb-4 pb-3 border-b border-surface-200/70 dark:border-surface-700/70">
-                                <div class="flex items-start gap-3">
-                                    <div class="h-9 w-9 rounded-xl bg-primary-500/10 text-primary-600 dark:bg-primary-500/20 dark:text-primary-300 flex items-center justify-center">
-                                        <i class="pi pi-chart-line text-base"></i>
-                                    </div>
-                                    <div>
-                                        <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-50">Synthèse clinique</h3>
-                                        <p class="text-sm text-surface-600 dark:text-surface-300">Vue condensée du questionnaire, examens, bilan, plan de traitement et documents.</p>
-                                    </div>
+                        <div :class="isReadonly ? 'pointer-events-none select-none' : ''" class="rounded-2xl border border-surface-200/60 dark:border-surface-700/60 bg-surface-0 dark:bg-surface-900/40 p-4 md:p-5">
+                            <div class="flex items-center justify-between gap-3 mb-4">
+                                <div>
+                                    <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-50">Synthèse clinique</h3>
+                                    <p class="text-xs text-surface-500 dark:text-surface-400">Vue condensée du questionnaire, examens, bilan, plan de traitement et documents.</p>
                                 </div>
-                                <Button icon="pi pi-save" label="Enregistrer" size="small" class="shadow-sm" :loading="saving.entretien || saving.examens || saving.documents || saving.bilans || saving.planTraitement" @click="saveSyntheseSection" />
+                                <Button icon="pi pi-save" label="Enregistrer" size="small" :loading="isClotureProcessing || saving.entretien || saving.examens || saving.documents || saving.bilans || saving.planTraitement" :disabled="isClotureProcessing" @click="saveSyntheseSection" />
                             </div>
 
-                            <div class="grid grid-cols-1 xl:grid-cols-[0.80fr_1.20fr] gap-4">
+                            <div class="grid grid-cols-1 xl:grid-cols-[0.88fr_1.12fr] gap-4">
                                 <div class="space-y-4">
                                     <div class="rounded-xl border border-surface-200 dark:border-surface-700 p-3">
                                         <label class="text-sm font-semibold text-surface-700 dark:text-surface-200 uppercase tracking-wide">Anamnèse</label>
@@ -987,6 +990,16 @@ defineExpose({
                                     </div>
 
                                     <div class="rounded-xl border border-surface-200 dark:border-surface-700 p-3">
+                                        <div class="flex items-center justify-between gap-2">
+                                            <div>
+                                                <p class="text-sm font-semibold text-surface-700 dark:text-surface-200 uppercase tracking-wide">Prochain rendez-vous</p>
+                                                <p class="text-sm text-surface-500 dark:text-surface-400">Créer rapidement un nouveau rendez-vous pour ce patient.</p>
+                                            </div>
+                                            <Button icon="pi pi-calendar-plus" label="Créer" size="small" @click="showRdvDialog = true" />
+                                        </div>
+                                    </div>
+
+                                    <div class="rounded-xl border border-surface-200 dark:border-surface-700 p-3">
                                         <FicheDocumentsForm v-model="data.documents" :saving="saving.documents" :compact="true" @save="saveDocumentsSection" />
                                     </div>
                                 </div>
@@ -994,7 +1007,7 @@ defineExpose({
                                 <div class="space-y-4">
                                     <div class="rounded-xl border border-surface-200 dark:border-surface-700 p-3">
                                         <div class="flex items-center justify-between mb-2">
-                                            <label class="text-sm font-semibold text-surface-700 dark:text-surface-200 uppercase tracking-wide">Examens complémentaires</label>
+                                            <label class="text-sm font-semibold text-surface-700 dark:text-surface-200 uppercase tracking-wide">Examens</label>
                                             <Button icon="pi pi-plus" label="Ligne" text size="small" @click="addExamComplementaireRow" />
                                         </div>
                                         <div class="space-y-2 max-h-72 overflow-auto pr-1">
@@ -1010,14 +1023,14 @@ defineExpose({
                                                 />
                                                 <InputText v-model="item.description" class="col-span-8 rounded border border-surface-300 dark:border-surface-600 bg-transparent px-2 py-1 text-sm min-h-full" placeholder="Description" />
                                                 <Textarea v-model="item.resultat" class="col-span-8 rounded border border-surface-300 dark:border-surface-600 bg-transparent px-2 py-1 text-sm" placeholder="Résultat" />
-                                                <DatePicker v-model="item.date" showIcon fluid iconDisplay="input" class="col-span-3 rounded bg-transparent text-sm self-start" placeholder="Date" /> 
+                                                <DatePicker v-model="item.date" showIcon fluid iconDisplay="input" class="col-span-3 rounded bg-transparent text-sm self-start" placeholder="Date" />
                                                 <Button icon="pi pi-trash" text severity="danger" size="small" class="col-span-1 justify-self-end self-start" @click="removeExamComplementaireRow(examIndex)" />
                                             </div>
                                             <div v-if="!data.examens.examensLabo?.length" class="text-sm text-surface-500 dark:text-surface-400">Aucun examen complémentaire.</div>
                                         </div>
                                     </div>
 
-                                    <div class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-0/80 dark:bg-surface-900/30 p-3.5">
+                                    <div class="rounded-xl border border-surface-200 dark:border-surface-700 p-3">
                                         <label class="text-sm font-semibold text-surface-700 dark:text-surface-200 uppercase tracking-wide">Bilan</label>
                                         <textarea
                                             v-model="data.bilans.diagnosticPositif"
@@ -1025,16 +1038,16 @@ defineExpose({
                                             class="mt-2 w-full rounded-lg border border-surface-300 dark:border-surface-600 bg-surface-0 dark:bg-surface-900 px-3 py-2 text-[0.95rem]"
                                             placeholder="Bilan"
                                         ></textarea>
-                                        <label class="mt-3 block text-sm font-semibold text-surface-700 dark:text-surface-200 uppercase tracking-wide">Avis médicales</label>
+                                        <label class="mt-3 block text-sm font-semibold text-surface-700 dark:text-surface-200 uppercase tracking-wide">Avis médicaux</label>
                                         <textarea
                                             v-model="data.bilans.avisMedicales"
                                             rows="3"
                                             class="mt-2 w-full rounded-lg border border-surface-300 dark:border-surface-600 bg-surface-0 dark:bg-surface-900 px-3 py-2 text-[0.95rem]"
-                                            placeholder="Avis médicales"
+                                            placeholder="Avis médicaux"
                                         ></textarea>
                                     </div>
 
-                                    <div class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-0/80 dark:bg-surface-900/30 p-3.5">
+                                    <div class="rounded-xl border border-surface-200 dark:border-surface-700 p-3">
                                         <div class="flex items-center justify-between mb-2">
                                             <label class="text-sm font-semibold text-surface-700 dark:text-surface-200 uppercase tracking-wide">Plan de traitement</label>
                                             <Button icon="pi pi-plus" label="Ajout rapide" text size="small" @click="addPlanRow" />
@@ -1054,7 +1067,7 @@ defineExpose({
                                                 <DatePicker v-model="plan.dateSupposed" showIcon fluid class="col-span-4 rounded  bg-transparent px-2 py-1 text-sm" />
                                                 <Button icon="pi pi-trash" text severity="danger" size="small" class="col-span-1 justify-self-center" @click="removePlanRow(planIndex)" />
                                                 <Textarea v-model="plan.description" class="col-span-11 rounded border border-surface-300 dark:border-surface-600 bg-transparent px-2 py-1 text-sm" placeholder="Description" />
-                                                
+
                                             </div>
                                             <div v-if="!data.planTraitement?.length" class="text-sm text-surface-500 dark:text-surface-400">Aucun plan ajouté.</div>
                                         </div>
@@ -1071,6 +1084,7 @@ defineExpose({
                                 :saving="saving.entretien"
                                 :patient-sex="data.patient?.sexe"
                                 @save="saveEntretienSection"
+                                @open-rdv="showRdvDialog = true"
                             />
                         </div>
                     </template>
@@ -1122,6 +1136,36 @@ defineExpose({
 
             <AntecedentDialogForm v-model="showAntecedentDialog" :loading="savingAntecedent" :type-options="antecedentTypeOptions" @save="handleSaveAntecedent" />
             <AllergyDialogForm v-model="showAllergyDialog" :loading="savingAllergy" :type-options="allergyTypeOptions" @save="handleSaveAllergy" />
+            <Dialog
+                v-model:visible="showRdvDialog"
+                modal
+                :style="{ width: '45rem' }"
+                :pt="{
+                    root: 'rounded-2xl',
+                    header: 'bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900 dark:to-surface-800 px-6 py-4 border-b',
+                    content: 'p-0 mt-4'
+                }"
+            >
+                <template #header>
+                    <div class="flex items-center gap-3">
+                        <div class="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+                            <i class="fas fa-calendar-plus text-blue-600 dark:text-blue-400"></i>
+                        </div>
+                        <div>
+                            <h4 class="m-0 text-surface-900 dark:text-surface-100">Nouveau rendez-vous</h4>
+                            <p class="text-sm text-surface-500 dark:text-surface-400 mt-1">
+                                {{ `${data.patient?.prenom || ''} ${data.patient?.nom || ''}`.trim() || 'Patient' }}
+                            </p>
+                        </div>
+                    </div>
+                </template>
+                <FormRendezVous
+                    :patient="data.patient"
+                    :patient-id="data.patient?.id"
+                    @saved="handleRdvSaved"
+                    @cancel="showRdvDialog = false"
+                />
+            </Dialog>
             <OrdonnanceModal
                 v-model="ordonnanceDraft"
                 v-model:visible="ordonnanceModalVisible"

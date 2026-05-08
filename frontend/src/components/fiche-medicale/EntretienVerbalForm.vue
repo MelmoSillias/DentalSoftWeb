@@ -22,7 +22,7 @@ const props = defineProps({
     }
 });
 
-const emit = defineEmits(['update:modelValue', 'save']);
+const emit = defineEmits(['update:modelValue', 'save', 'open-rdv']);
 
 const form = computed({
     get: () => props.modelValue,
@@ -304,6 +304,21 @@ const deleteAntecedent = (row) => {
                                 @update:modelValue="(v) => updateField('etatGynecologique', { ...form.etatGynecologique, menstrues: v })"
                             />
                         </div>
+                    </div>
+                </div>
+
+                <div v-if="isFemalePatient" class="p-4 rounded-xl bg-surface-50 dark:bg-surface-700/30 border border-surface-200 dark:border-surface-700 lg:col-span-8">
+                    <div class="flex items-center justify-between gap-3">
+                        <div>
+                            <h4 class="font-semibold text-surface-900 dark:text-surface-100">Prochain rendez-vous</h4>
+                            <p class="text-sm text-surface-500 dark:text-surface-400 mt-1">Créer rapidement un nouveau rendez-vous pour ce patient.</p>
+                        </div>
+                        <Button
+                            icon="pi pi-calendar-plus"
+                            label="Créer"
+                            size="small"
+                            @click="emit('open-rdv')"
+                        />
                     </div>
                 </div>
             </div>
