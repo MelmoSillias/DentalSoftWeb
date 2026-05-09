@@ -280,7 +280,7 @@ class PayrollService
 
     private function registerSalaryExpenseTransaction(Employe $employee, SalaryPayment $payment, float $paidAmount): void
     {
-        $mode = $this->modeDePaiementRepo->findOneBy(['actif' => true, 'typeKey' => 'cash']);
+        $mode = $this->modeDePaiementRepo->findOneBy(['actif' => true, 'type' => 'cash']);
         if (!$mode) {
             $mode = $this->modeDePaiementRepo->findOneBy(['actif' => true], ['id' => 'ASC']);
         }

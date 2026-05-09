@@ -2,15 +2,11 @@
 import { computed, reactive, watch } from 'vue';
 import Button from 'primevue/button';
 import Dialog from 'primevue/dialog';
-import InputNumber from 'primevue/inputnumber';
 import InputText from 'primevue/inputtext';
 import Select from 'primevue/select';
 import Textarea from 'primevue/textarea';
 import {
-    getPaymentCoverageRate,
     getPaymentMethodDefinition,
-    isInsuranceMethod,
-    resolvePaymentMethodFamily,
     resolvePaymentMethodTypeKey
 } from '@/utils/paymentMethodUtils';
 
@@ -24,8 +20,7 @@ const emit = defineEmits(['update:visible', 'submit']);
 
 const defaultForm = () => ({
     libelle: '',
-    typeKey: 'cash',
-    coverageRate: null,
+    type: 'cash',
     notes: ''
 });
 
@@ -33,49 +28,23 @@ const form = reactive(defaultForm());
 
 const typeOptions = [
     { label: 'Espèces', value: 'cash' },
-    { label: 'Chèque', value: 'cheque' },
-    { label: 'Mobile Money', value: 'mobile_money' },
-    { label: 'Virement bancaire', value: 'bank_transfer' },
-    { label: 'Assurance', value: 'insurance' },
-    { label: 'Autre', value: 'other' }
+    { label: 'Virement bancaire', value: 'transfer' },
+    { label: 'Carte bancaire', value: 'card' },
+    { label: 'Mobile Money', value: 'mobilemoney' }
 ];
 
 const isEdit = computed(() => Boolean(props.mode?.id));
-const selectedTypeDefinition = computed(() => getPaymentMethodDefinition({ typeKey: form.typeKey }));
-const isInsuranceType = computed(() => isInsuranceMethod({ typeKey: form.typeKey }));
+const selectedTypeDefinition = computed(() => getPaymentMethodDefinition({ type: form.type }));
 const canSubmit = computed(() => {
-    if (!form.libelle.trim()) {
-        return false;
-    }
-
-    if (!isInsuranceType.value) {
-        return true;
-    }
-
-    return Number(form.coverageRate) > 0;
+    return Boolean(form.libelle.trim());
 });
 
 const syncForm = () => {
     const source = props.mode || {};
     form.libelle = source?.libelle || '';
-    form.typeKey = resolvePaymentMethodTypeKey(source);
-    form.coverageRate = isInsuranceMethod(source) ? getPaymentCoverageRate(source) : null;
+    form.type = resolvePaymentMethodTypeKey(source);
     form.notes = source?.notes || '';
 };
-
-watch(
-    () => form.typeKey,
-    (typeKey) => {
-        if (typeKey !== 'insurance') {
-            form.coverageRate = null;
-            return;
-        }
-
-        if (!(Number(form.coverageRate) > 0)) {
-            form.coverageRate = 80;
-        }
-    }
-);
 
 watch(
     () => props.visible,
@@ -100,10 +69,8 @@ const close = () => emit('update:visible', false);
 const submitForm = (event) => {
     const payload = {
         libelle: form.libelle.trim(),
-        typeKey: form.typeKey,
-        type: selectedTypeDefinition.value.label,
-        family: resolvePaymentMethodFamily({ typeKey: form.typeKey }),
-        coverageRate: isInsuranceType.value ? Number(form.coverageRate || 0) : null,
+        type: form.type,
+        typeLabel: selectedTypeDefinition.value.label,
         notes: form.notes
     };
     emit('submit', { payload, event });
@@ -124,21 +91,7 @@ const submitForm = (event) => {
             </div>
             <div class="flex flex-col gap-2">
                 <label class="text-sm font-medium text-surface-700">Type de mode</label>
-                <Select v-model="form.typeKey" :options="typeOptions" optionLabel="label" optionValue="value" />
-            </div>
-            <div v-if="isInsuranceType" class="flex flex-col gap-2">
-                <label class="text-sm font-medium text-surface-700">Pourcentage de prise en charge (%)</label>
-                <InputNumber
-                    v-model="form.coverageRate"
-                    mode="decimal"
-                    locale="fr-FR"
-                    :min="0"
-                    :max="100"
-                    :minFractionDigits="0"
-                    :maxFractionDigits="2"
-                    inputClass="w-full"
-                    class="w-full" />
-                <small class="text-surface-500">Valeur obligatoire pour les assurances. Elle servira de valeur par défaut dans les paiements.</small>
+                <Select v-model="form.type" :options="typeOptions" optionLabel="label" optionValue="value" />
             </div>
             <div class="flex flex-col gap-2">
                 <label class="text-sm font-medium text-surface-700">Notes</label>

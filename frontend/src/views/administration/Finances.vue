@@ -15,7 +15,7 @@
                                 Tableau de bord financier
                             </h1>
                             <p class="mt-1 text-sm text-surface-600 dark:text-surface-300 md:text-base">
-                                Transactions, validations manuelles et modes de paiement regroupés par famille
+                                Transactions, validations manuelles, modes de paiement et assurances séparés
                             </p>
                         </div>
                     </div>
@@ -74,7 +74,7 @@
                         <p class="mt-2 truncate text-lg font-bold tracking-tight text-slate-900 dark:text-surface-100 sm:text-xl lg:text-2xl">
                             {{ comptesActifsCount }}
                         </p>
-                        <p class="mt-1 truncate text-xs text-slate-500/70 dark:text-slate-400/70">{{ insuranceMethodsCount }} assurance(s) configurée(s)</p>
+                        <p class="mt-1 truncate text-xs text-slate-500/70 dark:text-slate-400/70">{{ assurancesCount }} assurance(s) configurée(s)</p>
                     </div>
                     <div class="flex-shrink-0 rounded-lg bg-slate-500/10 p-2 dark:bg-slate-500/20">
                         <i class="pi pi-credit-card text-lg text-slate-500 sm:text-xl"></i>
@@ -102,6 +102,7 @@
             <TabList data-tour="admin-finances.tabs">
                 <Tab value="transactions">Transactions</Tab>
                 <Tab value="payment-methods">Mode de paiement</Tab>
+                <Tab value="insurances">Assurances</Tab>
                 <Tab value="fixed-charges">Charges fixes</Tab>
                 <Tab value="charts">Graphiques</Tab>
             </TabList>
@@ -222,7 +223,7 @@
                             <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                                 <div>
                                     <h2 class="text-lg font-semibold text-surface-900 dark:text-surface-100 md:text-xl">Modes de paiement</h2>
-                                    <p class="text-sm text-surface-500 dark:text-surface-400">Modes classiques regroupés séparément des assurances avec taux par défaut.</p>
+                                    <p class="text-sm text-surface-500 dark:text-surface-400">Seuls les modes de paiement classiques sont gérés ici.</p>
                                 </div>
 
                                 <div class="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
@@ -240,16 +241,8 @@
                             :rows="8"
                             :rowsPerPageOptions="[8, 16, 24]"
                             responsiveLayout="scroll"
-                            rowGroupMode="subheader"
-                            groupRowsBy="groupLabel"
-                            sortField="groupLabel"
+                            sortField="libelle"
                             :sortOrder="1">
-                            <template #groupheader="{ data }">
-                                <div class="flex items-center gap-2 border-l-4 border-primary-500 bg-surface-50 px-4 py-3 dark:bg-surface-900/60">
-                                    <i :class="data.familyKey === 'insurance' ? 'pi pi-shield' : 'pi pi-wallet'" class="text-primary-500"></i>
-                                    <span class="font-semibold text-surface-900 dark:text-surface-100">{{ data.groupLabel }}</span>
-                                </div>
-                            </template>
 
                             <Column field="libelle" header="Libellé" sortable>
                                 <template #body="{ data }">
@@ -258,15 +251,12 @@
                             </Column>
                             <Column field="typeLabel" header="Type" sortable>
                                 <template #body="{ data }">
-                                    <Tag :value="data.typeLabel" :severity="data.familyKey === 'insurance' ? 'info' : 'secondary'" />
+                                    <Tag :value="data.typeLabel" severity="secondary" />
                                 </template>
                             </Column>
-                            <Column field="coverageRate" header="Prise en charge">
+                            <Column field="notes" header="Notes">
                                 <template #body="{ data }">
-                                    <span v-if="data.familyKey === 'insurance'" class="font-medium text-surface-700 dark:text-surface-300">
-                                        {{ formatCoverageRate(data.coverageRate) }}
-                                    </span>
-                                    <span v-else class="text-sm text-surface-400">Non applicable</span>
+                                    <span class="text-sm text-surface-600 dark:text-surface-300">{{ data.notes || '-' }}</span>
                                 </template>
                             </Column>
                             <Column field="statusLabel" header="Statut" sortable>
@@ -286,6 +276,61 @@
                                             @click="handleToggleMode({ mode: data })" />
                                         <Button icon="pi pi-trash" text severity="danger" title="Supprimer" @click="handleDeleteMode({ mode: data })" />
                                     </div>
+                                </template>
+                            </Column>
+                        </DataTable>
+                    </section>
+                </TabPanel>
+
+                <TabPanel value="insurances">
+                    <section class="overflow-hidden rounded-2xl border border-surface-200/70 bg-surface-0/80 shadow-xl backdrop-blur-sm dark:border-surface-700/50 dark:bg-surface-800/80">
+                        <div class="border-b border-surface-200/50 bg-gradient-to-r from-surface-50/50 to-surface-0/30 px-5 py-4 dark:border-surface-700/50 dark:from-surface-900/50 dark:to-surface-800/30 md:px-6">
+                            <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                                <div>
+                                    <h2 class="text-lg font-semibold text-surface-900 dark:text-surface-100 md:text-xl">Assurances</h2>
+                                    <p class="text-sm text-surface-500 dark:text-surface-400">Liste des assurances configurées indépendamment des modes de paiement.</p>
+                                </div>
+
+                                <div class="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
+                                    <InputText v-model="assuranceSearch" placeholder="Rechercher une assurance" class="w-full lg:w-72" />
+                                    <Button icon="pi pi-plus" label="Créer assurance" @click="openAddAssurance" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <DataTable
+                            :value="filteredAssurancesView"
+                            dataKey="id"
+                            :loading="loading.assurances"
+                            paginator
+                            :rows="8"
+                            :rowsPerPageOptions="[8, 16, 24]"
+                            responsiveLayout="scroll"
+                            sortField="nom"
+                            :sortOrder="1">
+                            <Column field="nom" header="Nom" sortable>
+                                <template #body="{ data }">
+                                    <span class="font-medium text-surface-900 dark:text-surface-100">{{ data.nom || '-' }}</span>
+                                </template>
+                            </Column>
+                            <Column field="code" header="Code" sortable>
+                                <template #body="{ data }">
+                                    <span class="text-sm text-surface-600 dark:text-surface-300">{{ data.code || '-' }}</span>
+                                </template>
+                            </Column>
+                            <Column field="statusLabel" header="Statut" sortable>
+                                <template #body="{ data }">
+                                    <Tag :value="data.statusLabel" :severity="data.actif ? 'success' : 'secondary'" />
+                                </template>
+                            </Column>
+                            <Column field="defaultRate" header="Taux par défaut" sortable>
+                                <template #body="{ data }">
+                                    <span class="text-sm text-surface-600 dark:text-surface-300">{{ Number(data.defaultRate || data.tauxParDefaut || 0) }} %</span>
+                                </template>
+                            </Column>
+                            <Column field="notes" header="Notes">
+                                <template #body="{ data }">
+                                    <span class="text-sm text-surface-600 dark:text-surface-300">{{ data.notes || '-' }}</span>
                                 </template>
                             </Column>
                         </DataTable>
@@ -388,7 +433,7 @@
         </Tabs>
 
         <TransactionFormDialog
-            v-model="transactionDialogVisible"
+            v-model:visible="transactionDialogVisible"
             :payment-methods="paymentMethodsView"
             :transaction-motifs="transactionMotifs"
             :transaction="draftTransaction"
@@ -397,7 +442,7 @@
             @submit="handleTransactionSubmit" />
 
         <Dialog
-            v-model="validationDialogVisible"
+            v-model:visible="validationDialogVisible"
             modal
             header="Confirmer la validation"
             :style="{ width: '420px' }">
@@ -418,11 +463,50 @@
         </Dialog>
 
         <PaymentModeFormDialog
-            v-model="modeDialogVisible"
+            v-model:visible="modeDialogVisible"
             :mode="editingMode"
             :loading="loading.action"
             tourTarget="admin-finances.dialog.mode"
             @submit="handleModeSubmit" />
+
+        <Dialog
+            v-model:visible="assuranceDialogVisible"
+            modal
+            header="Créer une assurance"
+            :style="{ width: '520px' }">
+            <div class="grid gap-4">
+                <div class="flex flex-col gap-2">
+                    <label class="text-sm font-medium text-surface-700 dark:text-surface-200">Nom</label>
+                    <InputText v-model="draftAssurance.nom" placeholder="Ex: Santex" class="w-full" />
+                </div>
+                <div class="flex flex-col gap-2">
+                    <label class="text-sm font-medium text-surface-700 dark:text-surface-200">Code (optionnel)</label>
+                    <InputText v-model="draftAssurance.code" placeholder="Ex: SX" class="w-full" />
+                </div>
+                <div class="flex flex-col gap-2">
+                    <label class="text-sm font-medium text-surface-700 dark:text-surface-200">Notes</label>
+                    <Textarea v-model="draftAssurance.notes" rows="3" autoResize class="w-full" placeholder="Informations internes" />
+                </div>
+                <div class="flex flex-col gap-2">
+                    <label class="text-sm font-medium text-surface-700 dark:text-surface-200">Taux de couverture par défaut (%)</label>
+                    <InputNumber
+                        v-model="draftAssurance.defaultRate"
+                        mode="decimal"
+                        locale="fr-FR"
+                        :min="0"
+                        :max="100"
+                        :minFractionDigits="0"
+                        :maxFractionDigits="2"
+                        inputClass="w-full"
+                        class="w-full" />
+                </div>
+            </div>
+
+            <template #footer>
+                <Button label="Annuler" text @click="assuranceDialogVisible = false" />
+                <Button label="Enregistrer" icon="pi pi-check" :loading="loading.action" @click="handleCreateAssurance" />
+            </template>
+        </Dialog>
     </section>
 </template>
 
@@ -437,9 +521,11 @@ import ConfirmPopup from 'primevue/confirmpopup';
 import DataTable from 'primevue/datatable';
 import DatePicker from 'primevue/datepicker';
 import Dialog from 'primevue/dialog';
+import InputNumber from 'primevue/inputnumber';
 import InputText from 'primevue/inputtext';
 import Select from 'primevue/select';
 import Tag from 'primevue/tag';
+import Textarea from 'primevue/textarea';
 import Toast from 'primevue/toast';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
@@ -453,12 +539,8 @@ import { createAdministrationFinancesTour, resolveAdministrationFinancesTourGrou
 import { startTourGuide } from '@/tours/tourGuideClient';
 import { useFinances } from '@/composables/useFinances';
 import {
-    formatCoverageRate,
-    getPaymentCoverageRate,
     getPaymentMethodDefinition,
-    isInsuranceMethod,
     normalizePaymentString,
-    resolvePaymentMethodFamily,
     resolvePaymentMethodTypeKey,
     sortPaymentMethods
 } from '@/utils/paymentMethodUtils';
@@ -471,11 +553,14 @@ const {
     fixedCharges,
     fixedChargesTotal,
     paymentMethods,
+    assurances,
     transactions,
     loading,
     fetchChartData,
     fetchFixedCharges,
     fetchPaymentMethods,
+    fetchAssurances,
+    createAssurance,
     fetchTransactionsRange,
     createFixedCharge,
     createTransaction,
@@ -497,6 +582,7 @@ const activeTab = ref('transactions');
 const transactionDialogVisible = ref(false);
 const draftTransaction = ref(null);
 const modeDialogVisible = ref(false);
+const assuranceDialogVisible = ref(false);
 const validationDialogVisible = ref(false);
 const editingMode = ref(null);
 const isGuidedTourStarting = ref(false);
@@ -515,9 +601,16 @@ const transactionSearch = ref('');
 const transactionStatusFilter = ref('all');
 const transactionTypeFilter = ref('all');
 const modeSearch = ref('');
+const assuranceSearch = ref('');
 const transactionMotifs = ref({
     revenue: ['Paiement patient', 'Remboursement assurance', 'Vente produit', 'Autre'],
     expense: ['Charge fixe', 'Achat matériel', 'Frais généraux', 'Paiement salaire', 'Maintenance', 'Autre']
+});
+const draftAssurance = ref({
+    nom: '',
+    code: '',
+    notes: '',
+    defaultRate: 0
 });
 
 const setActiveTab = (value) => {
@@ -661,25 +754,18 @@ const filteredTransactionsView = computed(() => {
 const paymentMethodsView = computed(() =>
     sortPaymentMethods(paymentMethods.value || []).map((mode) => {
         const definition = getPaymentMethodDefinition(mode);
-        const familyKey = resolvePaymentMethodFamily(mode);
-        const coverageRate = getPaymentCoverageRate(mode);
         const normalizedLabel = normalizeText(mode?.libelle);
         const isLocked = resolvePaymentMethodTypeKey(mode) === 'cash' || normalizedLabel.includes('par defaut');
 
         return {
             ...mode,
             typeKey: resolvePaymentMethodTypeKey(mode),
-            familyKey,
-            groupLabel: familyKey === 'insurance' ? 'Assurances' : 'Modes de paiement classiques',
             typeLabel: definition.label,
-            coverageRate,
             statusLabel: mode?.actif ? 'Actif' : 'Inactif',
             isLocked,
             searchBlob: normalizeText([
                 mode?.libelle,
                 definition.label,
-                familyKey,
-                coverageRate,
                 mode?.notes
             ].join(' '))
         };
@@ -689,6 +775,24 @@ const paymentMethodsView = computed(() =>
 const filteredPaymentMethodsView = computed(() => {
     const searchQuery = normalizeText(modeSearch.value);
     return paymentMethodsView.value.filter((row) => !searchQuery || row.searchBlob.includes(searchQuery));
+});
+
+const assurancesView = computed(() =>
+    (assurances.value || []).map((item) => ({
+        ...item,
+        statusLabel: item?.actif ? 'Actif' : 'Inactif',
+        searchBlob: normalizeText([
+            item?.nom,
+            item?.code,
+            item?.notes,
+            item?.actif ? 'actif' : 'inactif'
+        ].join(' '))
+    }))
+);
+
+const filteredAssurancesView = computed(() => {
+    const searchQuery = normalizeText(assuranceSearch.value);
+    return assurancesView.value.filter((row) => !searchQuery || row.searchBlob.includes(searchQuery));
 });
 
 const soldesParCompte = computed(() => {
@@ -705,7 +809,7 @@ const soldesParCompte = computed(() => {
 
 const capitalTotal = computed(() => soldesParCompte.value.reduce((sum, item) => sum + Number(item.solde || 0), 0));
 const comptesActifsCount = computed(() => paymentMethodsView.value.filter((mode) => mode.actif).length);
-const insuranceMethodsCount = computed(() => paymentMethodsView.value.filter((mode) => isInsuranceMethod(mode)).length);
+const assurancesCount = computed(() => assurancesView.value.length);
 const validatedTransactionsCount = computed(() => transactionsView.value.filter((row) => row.statusKey === 'validated').length);
 const validatedTransactionsAmount = computed(() => transactionsView.value.filter((row) => row.statusKey === 'validated').reduce((sum, row) => sum + row.amountValue, 0));
 const pendingTransactionsCount = computed(() => transactionsView.value.filter((row) => row.statusKey === 'pending').length);
@@ -985,7 +1089,7 @@ const loadTransactions = async () => {
 };
 
 const refreshAll = async () => {
-    await Promise.all([fetchChartData(selectedYear.value), fetchPaymentMethods(), fetchFixedCharges()]);
+    await Promise.all([fetchChartData(selectedYear.value), fetchPaymentMethods(), fetchAssurances(), fetchFixedCharges()]);
     await loadTransactions();
 };
 
@@ -1016,6 +1120,11 @@ const openTransactionDialog = () => {
 const openAddMode = () => {
     editingMode.value = null;
     modeDialogVisible.value = true;
+};
+
+const openAddAssurance = () => {
+    draftAssurance.value = { nom: '', code: '', notes: '', defaultRate: 0 };
+    assuranceDialogVisible.value = true;
 };
 
 const openEditMode = (mode) => {
@@ -1118,11 +1227,6 @@ const handleModeSubmit = ({ payload, event }) => {
         return;
     }
 
-    if (payload?.family === 'insurance' && !(Number(payload?.coverageRate) > 0)) {
-        toast.add({ severity: 'warn', summary: 'Assurance', detail: 'Le pourcentage de prise en charge est obligatoire pour une assurance.', life: 3000 });
-        return;
-    }
-
     const isEdit = Boolean(editingMode.value?.id);
     confirm.require({
         target: event?.currentTarget,
@@ -1146,6 +1250,30 @@ const handleModeSubmit = ({ payload, event }) => {
             }
         }
     });
+};
+
+const handleCreateAssurance = async () => {
+    const payload = {
+        nom: String(draftAssurance.value?.nom || '').trim(),
+        code: String(draftAssurance.value?.code || '').trim() || null,
+        notes: String(draftAssurance.value?.notes || '').trim() || null,
+        defaultRate: Math.max(0, Math.min(100, Number(draftAssurance.value?.defaultRate || 0))),
+        actif: true
+    };
+
+    if (!payload.nom) {
+        toast.add({ severity: 'warn', summary: 'Nom requis', detail: 'Veuillez saisir le nom de l\'assurance.', life: 3000 });
+        return;
+    }
+
+    try {
+        await createAssurance(payload);
+        assuranceDialogVisible.value = false;
+        toast.add({ severity: 'success', summary: 'Assurances', detail: 'Assurance créée.', life: 3000 });
+        await fetchAssurances();
+    } catch (error) {
+        toast.add({ severity: 'error', summary: 'Erreur', detail: error?.message || 'Création impossible.', life: 3500 });
+    }
 };
 
 const handleDeleteMode = ({ mode }) => {
@@ -1278,8 +1406,10 @@ const capturePageState = () => ({
     transactionStatusFilter: transactionStatusFilter.value,
     transactionTypeFilter: transactionTypeFilter.value,
     modeSearch: modeSearch.value,
+    assuranceSearch: assuranceSearch.value,
     chartData: cloneValue(chartData.value),
     paymentMethods: cloneValue(paymentMethods.value),
+    assurances: cloneValue(assurances.value),
     transactions: cloneValue(transactions.value)
 });
 
@@ -1292,8 +1422,10 @@ const restorePageState = async (state) => {
     transactionStatusFilter.value = state.transactionStatusFilter || 'all';
     transactionTypeFilter.value = state.transactionTypeFilter || 'all';
     modeSearch.value = state.modeSearch || '';
+    assuranceSearch.value = state.assuranceSearch || '';
     chartData.value = cloneValue(state.chartData) || chartData.value;
     paymentMethods.value = cloneValue(state.paymentMethods) || [];
+    assurances.value = cloneValue(state.assurances) || [];
     transactions.value = cloneValue(state.transactions) || [];
     await nextTick();
 };
@@ -1310,6 +1442,7 @@ const prepareGuidedTourDemo = async () => {
     transactionStatusFilter.value = 'all';
     transactionTypeFilter.value = 'all';
     modeSearch.value = '';
+    assuranceSearch.value = '';
     await refreshAll();
     await nextTick();
 };

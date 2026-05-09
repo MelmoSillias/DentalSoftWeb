@@ -2,10 +2,9 @@
 
 namespace App\Focus\Service;
  
-use App\Billing\Entity\Devis;
-use App\Billing\Entity\PaiementDevis;
+use App\Billing\Entity\Facture;
+use App\Billing\Entity\Paiement;
 use App\Billing\Entity\Transaction;
-use App\Billing\Repository\DevisRepository;
 use App\Billing\Repository\TransactionRepository;
 use App\CareDelivery\Entity\Consultation;
 use App\CareDelivery\Repository\ActeMedicalRepository;
@@ -25,7 +24,6 @@ class DashboardService
         private PatientRepository $patientRepo,
         private ConsultationRepository $consultRepo,
         private RdvRepository $rdvRepo,
-        private DevisRepository $devisRepo,
         private TransactionRepository $transactionRepo,
         private ActeMedicalRepository $acteRepo,
         private ReportService $reportService,
@@ -66,7 +64,7 @@ class DashboardService
 
         $paidConsultations = (int) $this->consultRepo->createQueryBuilder('c')
             ->select('COUNT(DISTINCT c.id)')
-            ->leftJoin('c.paiementDevis', 'pd')
+            ->leftJoin('c.paiement', 'pd')
             ->leftJoin('c.facture', 'f')
             ->andWhere('c.CreatedAt BETWEEN :from AND :to')
             ->andWhere('pd.id IS NOT NULL OR f.id IS NOT NULL')
@@ -99,22 +97,27 @@ class DashboardService
             ->andWhere('t.type = :entry')
             ->andWhere('m.type = :cash')
             ->andWhere('t.dateTransaction BETWEEN :from AND :to')
-            ->setParameter('entry', 'Entrée')
-            ->setParameter('cash', 'Espèces')
+            ->setParameter('entry', 'EntrÃ©e')
+            ->setParameter('cash', 'EspÃ¨ces')
             ->setParameter('from', $from)
             ->setParameter('to', $to)
             ->getQuery()
             ->getSingleScalarResult();
 
-        $unpaidAmount = (float) $this->devisRepo->createQueryBuilder('d')
-            ->select('COALESCE(SUM(d.reste), 0)')
-            ->andWhere('d.statut = 0')
-            ->andWhere('d.type = 1')
-            ->andWhere('d.date BETWEEN :from AND :to')
+        $facturesForPeriod = $this->em->createQueryBuilder()
+            ->select('f')
+            ->from(Facture::class, 'f')
+            ->andWhere('f.dateFacture BETWEEN :from AND :to')
             ->setParameter('from', $from)
             ->setParameter('to', $to)
             ->getQuery()
-            ->getSingleScalarResult();
+            ->getResult();
+
+        $unpaidAmount = array_reduce(
+            $facturesForPeriod,
+            static fn (float $sum, Facture $facture): float => $sum + max(0.0, (float) $facture->getRestePatient()),
+            0.0,
+        );
 
         $pendingConsultations = $this->consultRepo->createQueryBuilder('c')
             ->andWhere('c.statut = 0')
@@ -163,7 +166,7 @@ class DashboardService
                 'SUM(CASE WHEN pd.id IS NOT NULL OR f.id IS NOT NULL THEN 1 ELSE 0 END) AS paid'
             )
             ->join('c.medecin', 'm')
-            ->leftJoin('c.paiementDevis', 'pd')
+            ->leftJoin('c.paiement', 'pd')
             ->leftJoin('c.facture', 'f')
             ->andWhere('c.CreatedAt BETWEEN :from AND :to')
             ->setParameter('from', $from)
@@ -305,7 +308,7 @@ class DashboardService
 
         $paidConsultations = (int) $this->consultRepo->createQueryBuilder('c')
             ->select('COUNT(DISTINCT c.id)')
-            ->leftJoin('c.paiementDevis', 'pd')
+            ->leftJoin('c.paiement', 'pd')
             ->leftJoin('c.facture', 'f')
             ->andWhere('c.medecin = :medecin')
             ->andWhere('c.CreatedAt BETWEEN :from AND :to')
@@ -316,17 +319,30 @@ class DashboardService
             ->getQuery()
             ->getSingleScalarResult();
 
-        $amounts = $this->devisRepo->createQueryBuilder('d')
-            ->select('COALESCE(SUM(d.montant), 0) AS total, COALESCE(SUM(d.reste), 0) AS unpaid')
-            ->join('d.consultation', 'c')
+        $facturesByMedecin = $this->em->createQueryBuilder()
+            ->select('f')
+            ->from(Facture::class, 'f')
+            ->join('f.consultation', 'c')
             ->andWhere('c.medecin = :medecin')
-            ->andWhere('d.type = 1')
-            ->andWhere('d.date BETWEEN :from AND :to')
+            ->andWhere('f.dateFacture BETWEEN :from AND :to')
             ->setParameter('medecin', $medecin)
             ->setParameter('from', $from)
             ->setParameter('to', $to)
             ->getQuery()
-            ->getSingleResult();
+            ->getResult();
+
+        $amounts = [
+            'total' => array_reduce(
+                $facturesByMedecin,
+                static fn (float $sum, Facture $facture): float => $sum + (float) $facture->getMontantTotal(),
+                0.0,
+            ),
+            'unpaid' => array_reduce(
+                $facturesByMedecin,
+                static fn (float $sum, Facture $facture): float => $sum + max(0.0, (float) $facture->getRestePatient()),
+                0.0,
+            ),
+        ];
 
         return [
             'patients' => [
@@ -368,7 +384,7 @@ class DashboardService
         $consultationsByWeekday = $this->aggregateByWeekday($consultations, fn(Consultation $c) => $c->getCreatedAt());
 
         $paiements = $this->fetchPaiementsForMedecin($medecin, $from, $to);
-        $revenuesByWeekday = $this->aggregateByWeekday($paiements, fn(PaiementDevis $p) => $p->getDate(), fn(PaiementDevis $p) => $p->getMontant());
+        $revenuesByWeekday = $this->aggregateByWeekday($paiements, fn(Paiement $p) => $p->getDate(), fn(Paiement $p) => $p->getMontant());
 
         return [
             'consultationsByWeekday' => $consultationsByWeekday,
@@ -499,35 +515,35 @@ class DashboardService
 
     private function listUnpaidInvoices(\DateTimeImmutable $from, \DateTimeImmutable $to, ?Employe $medecin = null): array
     {
-        $qb = $this->devisRepo->createQueryBuilder('d')
-            ->leftJoin('d.fiche', 'f')->addSelect('f')
-            ->leftJoin('f.patient', 'p')->addSelect('p')
-            ->leftJoin('d.ficheMedicale', 'fm')->addSelect('fm')
-            ->leftJoin('fm.patient', 'pm')->addSelect('pm')
-            ->leftJoin('d.consultation', 'c')->addSelect('c')
+        $qb = $this->em->createQueryBuilder()
+            ->select('f', 'c', 'p', 'm')
+            ->from(Facture::class, 'f')
+            ->leftJoin('f.consultation', 'c')->addSelect('c')
+            ->leftJoin('c.patient', 'p')->addSelect('p')
             ->leftJoin('c.medecin', 'm')->addSelect('m')
-            ->andWhere('d.type = 1')
-            ->andWhere('d.statut = 0')
-            ->andWhere('d.date BETWEEN :from AND :to')
+            ->andWhere('f.dateFacture BETWEEN :from AND :to')
             ->setParameter('from', $from)
             ->setParameter('to', $to)
-            ->orderBy('d.date', 'DESC')
+            ->orderBy('f.dateFacture', 'DESC')
             ->setMaxResults(10);
 
         if ($medecin) {
             $qb->andWhere('c.medecin = :medecin')->setParameter('medecin', $medecin);
         }
 
-        $invoices = $qb->getQuery()->getResult();
+        $invoices = array_values(array_filter(
+            $qb->getQuery()->getResult(),
+            static fn (Facture $facture): bool => $facture->getRestePatient() > 0.0,
+        ));
 
-        return array_map(function (Devis $devis) {
-            $patient = $devis->getFicheMedicale()?->getPatient() ?? $devis->getFiche()?->getPatient();
+        return array_map(function (Facture $facture) {
+            $patient = $facture->getConsultation()?->getPatient();
 
             return [
-                'id' => $devis->getId(),
+                'id' => $facture->getId(),
                 'patient' => $patient?->getFullName() ?? 'Inconnu',
-                'amount' => (float) $devis->getMontant(),
-                'date' => $this->formatDate($devis->getDate()),
+                'amount' => (float) $facture->getMontantTotal(),
+                'date' => $this->formatDate($facture->getDateFacture()),
             ];
         }, $invoices);
     }
@@ -535,14 +551,10 @@ class DashboardService
     private function listPayments(\DateTimeImmutable $from, \DateTimeImmutable $to): array
     {
         $qb = $this->em->createQueryBuilder()
-            ->select('pd', 'c', 'd', 'f', 'p')
-            ->from(PaiementDevis::class, 'pd')
+            ->select('pd', 'c', 'p')
+            ->from(Paiement::class, 'pd')
             ->leftJoin('pd.consultation', 'c')
-            ->leftJoin('pd.devis', 'd')
-            ->leftJoin('d.fiche', 'f')
-            ->leftJoin('f.patient', 'p')
-            ->leftJoin('d.ficheMedicale', 'fm')
-            ->leftJoin('fm.patient', 'pm')
+            ->leftJoin('c.patient', 'p')
             ->andWhere('pd.date BETWEEN :from AND :to')
             ->setParameter('from', $from)
             ->setParameter('to', $to)
@@ -551,10 +563,8 @@ class DashboardService
 
         $paiements = $qb->getQuery()->getResult();
 
-        return array_map(function (PaiementDevis $paiement) {
-            $patient = $paiement->getConsultation()?->getPatient()
-                ?? $paiement->getDevis()?->getFicheMedicale()?->getPatient()
-                ?? $paiement->getDevis()?->getFiche()?->getPatient();
+        return array_map(function (Paiement $paiement) {
+            $patient = $paiement->getConsultation()?->getPatient();
 
             return [
                 'id' => $paiement->getId(),
@@ -641,7 +651,7 @@ class DashboardService
             ->leftJoin('t.modeDePaiement', 'm')->addSelect('m')
             ->andWhere('t.type = :entry')
             ->andWhere('t.dateTransaction BETWEEN :from AND :to')
-            ->setParameter('entry', 'Entrée')
+            ->setParameter('entry', 'EntrÃ©e')
             ->setParameter('from', $from)
             ->setParameter('to', $to)
             ->getQuery()
@@ -705,7 +715,7 @@ class DashboardService
                 $daily[$date] = ['entries' => 0.0, 'exits' => 0.0];
             }
             $amount = (float) $tx->getMontant();
-            if ($tx->getType() === 'Entrée') {
+            if ($tx->getType() === 'EntrÃ©e') {
                 $daily[$date]['entries'] += $amount;
             } else {
                 $daily[$date]['exits'] += $amount;
@@ -777,13 +787,11 @@ class DashboardService
     private function fetchPaiementsForMedecin(Employe $medecin, \DateTimeImmutable $from, \DateTimeImmutable $to): array
     {
         return $this->em->createQueryBuilder()
-            ->select('pd', 'c', 'd', 'dc')
-            ->from(PaiementDevis::class, 'pd')
+            ->select('pd', 'c')
+            ->from(Paiement::class, 'pd')
             ->leftJoin('pd.consultation', 'c')
-            ->leftJoin('pd.devis', 'd')
-            ->leftJoin('d.consultation', 'dc')
             ->andWhere('pd.date BETWEEN :from AND :to')
-            ->andWhere('(c.medecin = :medecin OR dc.medecin = :medecin)')
+            ->andWhere('c.medecin = :medecin')
             ->setParameter('from', $from)
             ->setParameter('to', $to)
             ->setParameter('medecin', $medecin)
@@ -806,3 +814,4 @@ class DashboardService
         };
     }
 }
+

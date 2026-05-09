@@ -296,7 +296,7 @@ watch(
 
 <template>
     <Dialog
-        v-model="visibleProxy"
+        v-model:visible="visibleProxy"
         modal
         :dismissable-mask="false"
         :closable="!saving && !clotureLoading"

@@ -3,9 +3,9 @@
 namespace App\Communication\Controller\Api;
 
 use App\Billing\Entity\Devis;
-use App\Billing\Entity\PaiementDevis;
+use App\Billing\Entity\Paiement;
 use App\Billing\Repository\DevisRepository;
-use App\Billing\Repository\PaiementDevisRepository;
+use App\Billing\Repository\PaiementRepository;
 use App\Communication\Message\ProcessSmsQueueMessage;
 use App\Patient\Entity\Patient;
 use App\Scheduling\Entity\Rdv;
@@ -30,7 +30,7 @@ final class SmsController extends AbstractController
         private readonly MessageBusInterface $messageBus,
         private readonly RdvRepository $rdvRepository,
         private readonly DevisRepository $devisRepository,
-        private readonly PaiementDevisRepository $paiementRepository,
+        private readonly PaiementRepository $paiementRepository,
     ) {
     }
 
@@ -65,7 +65,7 @@ final class SmsController extends AbstractController
         $message = trim((string) ($payload['message'] ?? 'Message de test DentalSoft.'));
 
         if ($phone === '') {
-            return $this->json(['success' => false, 'error' => 'Numéro requis'], 400);
+            return $this->json(['success' => false, 'error' => 'NumÃ©ro requis'], 400);
         }
 
         $result = $this->smsService->testSend($phone, $message);
@@ -126,7 +126,7 @@ final class SmsController extends AbstractController
 
         $preview = $this->smsService->previewTemplate($code, $variables);
         if ($preview === null) {
-            return $this->json(['success' => false, 'error' => 'Template introuvable ou désactivé'], 404);
+            return $this->json(['success' => false, 'error' => 'Template introuvable ou dÃ©sactivÃ©'], 404);
         }
 
         return $this->json([
@@ -272,13 +272,13 @@ final class SmsController extends AbstractController
     public function sendReceipt(int $id, Request $request): JsonResponse
     {
         $paiement = $this->paiementRepository->find($id);
-        if (!$paiement instanceof PaiementDevis) {
-            return $this->json(['success' => false, 'error' => 'Reçu introuvable'], 404);
+        if (!$paiement instanceof Paiement) {
+            return $this->json(['success' => false, 'error' => 'ReÃ§u introuvable'], 404);
         }
 
         $patient = $this->resolvePatientFromPaiement($paiement);
         if (!$patient instanceof Patient) {
-            return $this->json(['success' => false, 'error' => 'Patient introuvable pour ce reçu'], 404);
+            return $this->json(['success' => false, 'error' => 'Patient introuvable pour ce reÃ§u'], 404);
         }
 
         $payload = json_decode($request->getContent(), true) ?? [];
@@ -312,7 +312,7 @@ final class SmsController extends AbstractController
         return null;
     }
 
-    private function resolvePatientFromPaiement(PaiementDevis $paiement): ?Patient
+    private function resolvePatientFromPaiement(Paiement $paiement): ?Patient
     {
         $devis = $paiement->getDevis();
         if ($devis instanceof Devis) {
@@ -325,3 +325,4 @@ final class SmsController extends AbstractController
         return $paiement->getConsultation()?->getPatient();
     }
 }
+

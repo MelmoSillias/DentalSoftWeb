@@ -5,11 +5,6 @@ import PrintTicketBody from '@/components/print/PrintTicketBody.vue';
 import { usePrinter } from '@/composables/usePrinter';
 import { fetchInvoicePrintData, fetchReceiptPrintData, fetchTicketPrintData } from '@/services/printService';
 import { searchPatients } from '@/services/patients';
-import Button from 'primevue/button';
-import Checkbox from 'primevue/checkbox';
-import InputText from 'primevue/inputtext';
-import Skeleton from 'primevue/skeleton';
-import Tag from 'primevue/tag';
 import { computed, defineEmits, defineProps, ref, toRefs } from 'vue';
 
 const props = defineProps({
@@ -244,7 +239,14 @@ const currentBilling = computed(() => {
     return props.billingByConsultation?.[currentConsultation.value.id] || null;
 });
 
-const selectedInvoicePayments = computed(() => currentBilling.value?.payments || []);
+const selectedInvoicePayments = computed(() => {
+    const payments = currentBilling.value?.payments || [];
+    const invoiceId = currentBilling.value?.invoiceId ?? null;
+
+    if (!invoiceId) return [];
+
+    return payments.filter((payment) => Number(payment?.invoiceId) === Number(invoiceId));
+});
 
 const selectedInvoiceState = computed(() => currentBilling.value?.state || { label: 'Aucune facture', severity: 'contrast' });
 
@@ -269,23 +271,13 @@ const getConsultationBilling = (consultation) => {
     return props.billingByConsultation?.[consultation.id] || null;
 };
 
-const isConsultationPayante = (consultation) => Number(getConsultationBilling(consultation)?.total ?? 0) > 0;
-
-const getConsultationTicketPaymentId = (consultation) => {
-    const payments = getConsultationBilling(consultation)?.payments || [];
-    const validatedClient = payments.find((payment) => payment?.status === 'validated' && payment?.rolePaiement !== 'insurance');
-    if (validatedClient?.id) return validatedClient.id;
-    const validated = payments.find((payment) => payment?.status === 'validated');
-    if (validated?.id) return validated.id;
-    return payments[0]?.id || null;
+const isConsultationPayante = (consultation) => {
+    return consultation?.isPaid
 };
 
-const canPrintConsultationTicket = (consultation) => Boolean(getConsultationTicketPaymentId(consultation));
-
 const printConsultationTicket = async (consultation) => {
-    const paymentId = getConsultationTicketPaymentId(consultation);
-    if (!paymentId) return;
-    await printPaymentTicket(paymentId);
+    if (!consultation) return;
+    await printPaymentTicket(consultation.id);
 };
 
 const printInvoice = async () => {
@@ -345,57 +337,58 @@ const handleCancelWithConfirm = (event, consultation) => {
 </script>
 
 <template>
-    <div class="grid gap-4 xl:grid-cols-[350px_minmax(0,1fr)_400px]">
-        <aside class="space-y-3 max-h-[75vh] overflow-y-auto">
-            <div
-                class="rounded-xl border-2 border-surface-200 bg-white p-4 dark:border-surface-700 dark:bg-surface-900">
+    <div class="grid gap-5 xl:grid-cols-[360px_minmax(0,1fr)_420px]">
+        <!-- Colonne Gauche - Nouveaux patients -->
+        <aside class="space-y-3 max-h-[calc(100vh-180px)] overflow-y-auto scrollbar-thin">
+            <div class="rounded-2xl border border-surface-200/60 bg-white/90 backdrop-blur-sm shadow-lg dark:border-surface-700/60 dark:bg-surface-900/90">
                 <!-- En-tête -->
-                <div class="mb-4 flex items-center justify-between">
-                    <div class="flex items-center gap-2">
-                        <div
-                            class="flex h-7 w-7 items-center justify-center rounded-lg bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400">
-                            <i class="pi pi-users text-xs"></i>
+                <div class="border-b border-surface-200/60 px-4 py-3 dark:border-surface-700/60">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 shadow-md">
+                                <i class="pi pi-users text-sm text-white"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-base font-semibold text-surface-900 dark:text-surface-50">Nouveaux patients</h3>
+                                <p class="text-xs text-surface-500">{{ newPatients.length }} aujourd'hui</p>
+                            </div>
                         </div>
-                        <div>
-                            <h3 class="text-sm font-semibold text-surface-900 dark:text-surface-50">Nouveaux patients
-                            </h3>
-                            <p class="text-xs text-surface-500">{{ newPatients.length }} aujourd’hui</p>
+                        <div class="flex items-center gap-2">
+                            <button
+                                @click="toggleSearchMode"
+                                :class="[
+                                    'flex h-8 w-8 items-center justify-center rounded-xl transition-all duration-200',
+                                    searchMode
+                                        ? 'bg-purple-500 text-white shadow-md'
+                                        : 'bg-surface-100 text-surface-500 hover:bg-surface-200 dark:bg-surface-800 dark:hover:bg-surface-700'
+                                ]"
+                                :title="searchMode ? 'Fermer la recherche' : 'Rechercher un patient'"
+                            >
+                                <i :class="searchMode ? 'pi pi-times text-xs' : 'pi pi-search text-sm'"></i>
+                            </button>
+                            <button
+                                @click="emit('open-create-patient')"
+                                class="flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-500 to-purple-600 px-3.5 py-1.5 text-xs font-medium text-white shadow-md transition-all hover:shadow-lg hover:scale-105 active:scale-95"
+                            >
+                                <i class="pi pi-plus text-xs"></i>
+                                <span class="hidden sm:inline">Ajouter</span>
+                            </button>
                         </div>
-                    </div>
-                    <div class="flex items-center gap-1.5">
-                        <button
-                            @click="toggleSearchMode"
-                            :class="[
-                                'flex h-7 w-7 items-center justify-center rounded-md text-xs transition-all',
-                                searchMode
-                                    ? 'bg-primary-500 text-white shadow-sm'
-                                    : 'border border-surface-300 dark:border-surface-600 text-surface-500 hover:bg-surface-100 dark:hover:bg-surface-800'
-                            ]"
-                            :title="searchMode ? 'Fermer la recherche' : 'Rechercher un patient'"
-                        >
-                            <i :class="searchMode ? 'pi pi-times' : 'pi pi-search'" class="text-xs"></i>
-                        </button>
-                        <button @click="emit('open-create-patient')"
-                            class="flex items-center gap-1 rounded-lg bg-primary-500 px-3 py-1.5 text-xs font-medium text-white transition-all hover:bg-primary-600 active:scale-95 shadow-sm">
-                            <i class="pi pi-plus text-xs"></i>
-                            <span class="hidden sm:inline">Ajouter</span>
-                        </button>
                     </div>
                 </div>
 
-                <!-- Recherche patient (colonne nouveaux patients) -->
-                <div v-if="searchMode" class="mb-3 space-y-3">
+                <!-- Recherche -->
+                <div v-if="searchMode" class="p-4 space-y-3 border-b border-surface-200/60 dark:border-surface-700/60">
                     <div class="relative">
-                        <IconField>
-                            <InputIcon classoi="pi pi-search" />
-                            <InputText
+                        <i class="pi pi-search absolute left-3 top-1/2 -translate-y-1/2 text-surface-400 text-sm"></i>
+                        <input
                             v-model="patientSearchQuery"
+                            type="text"
                             placeholder="Nom, prénom ou téléphone..."
-                            class="w-full pl-8 text-sm"
+                            class="w-full rounded-xl border-0 bg-surface-100/60 pl-9 pr-8 py-2.5 text-sm placeholder:text-surface-400 focus:ring-2 focus:ring-purple-500 dark:bg-surface-800/60"
                             @input="onPatientSearchInput"
                             autofocus
                         />
-
                         <button
                             v-if="patientSearchQuery"
                             class="absolute right-3 top-1/2 -translate-y-1/2 text-surface-400 hover:text-surface-600"
@@ -403,49 +396,112 @@ const handleCancelWithConfirm = (event, consultation) => {
                         >
                             <i class="pi pi-times text-xs"></i>
                         </button>
-                        </IconField>
-
                     </div>
 
-                    <div v-if="patientSearchLoading" class="space-y-2">
-                        <div v-for="i in 3" :key="`search-skeleton-${i}`"
-                            class="flex items-center gap-3 rounded-xl bg-surface-50 p-3 dark:bg-surface-800/40 animate-pulse">
-                            <Skeleton shape="circle" size="2rem" class="flex-shrink-0" />
+                    <!-- Résultats recherche -->
+                    <div class="space-y-2 max-h-[400px] overflow-y-auto">
+                        <!-- Loading skeleton -->
+                        <div v-if="patientSearchLoading" class="space-y-2">
+                            <div v-for="i in 3" :key="`search-skeleton-${i}`" class="flex items-center gap-3 rounded-xl bg-surface-100/50 p-3 animate-pulse dark:bg-surface-800/30">
+                                <div class="h-9 w-9 rounded-full bg-gradient-to-br from-purple-400 to-purple-500/50"></div>
+                                <div class="flex-1 space-y-2">
+                                    <div class="h-2.5 w-24 rounded bg-surface-300 dark:bg-surface-600"></div>
+                                    <div class="h-2 w-32 rounded bg-surface-200 dark:bg-surface-700"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Résultats -->
+                        <div v-else-if="patientSearchResults.length" class="space-y-2">
+                            <div v-for="patient in patientSearchResults" :key="`search-${patient.id}`"
+                                class="group flex items-center gap-3 rounded-xl bg-surface-50/50 p-3 transition-all hover:bg-purple-50/30 hover:shadow-md dark:bg-surface-800/30 dark:hover:bg-purple-900/20">
+                                <div class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-purple-600 font-bold text-white shadow-md">
+                                    {{ ((patient.prenom?.[0] ?? '') + (patient.nom?.[0] ?? 'P')).toUpperCase() }}
+                                </div>
+                                <div class="min-w-0 flex-1">
+                                    <p class="truncate text-sm font-semibold text-surface-900 dark:text-surface-50">
+                                        {{ patientDisplayName(patient) }}
+                                    </p>
+                                    <div class="mt-0.5 flex items-center gap-1 truncate text-xs text-surface-400">
+                                        <i class="pi pi-phone text-[10px]"></i>
+                                        {{ patient.telephone || 'Non renseigné' }}
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-2 opacity-0 transition-opacity group-hover:opacity-100">
+                                    <button
+                                        class="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600 transition-colors hover:bg-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400"
+                                        title="Nouvelle consultation"
+                                        @click="emit('open-create-consultation-for-patient', patient)"
+                                    >
+                                        <i class="fas fa-stethoscope text-xs"></i>
+                                    </button>
+                                    <button
+                                        class="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100 text-blue-600 transition-colors hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400"
+                                        title="Modifier le patient"
+                                        @click="emit('open-edit-patient', patient)"
+                                    >
+                                        <i class="pi pi-user-edit text-xs"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Aucun résultat -->
+                        <div v-else-if="patientSearchQuery.length >= 2" class="flex flex-col items-center justify-center py-8 text-center">
+                            <div class="mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-surface-100 dark:bg-surface-800">
+                                <i class="pi pi-search text-2xl text-surface-400"></i>
+                            </div>
+                            <p class="text-sm font-medium text-surface-600">Aucun patient trouvé</p>
+                            <p class="mt-1 text-xs text-surface-400">Vérifiez l'orthographe ou essayez le téléphone</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Liste patients -->
+                <div v-else class="p-3 space-y-2">
+                    <!-- Skeleton loading -->
+                    <div v-if="loading" class="space-y-2">
+                        <div v-for="i in 3" :key="i" class="flex items-center gap-3 rounded-xl bg-surface-100/50 p-3 dark:bg-surface-800/30">
+                            <div class="h-9 w-9 rounded-full bg-gradient-to-br from-purple-400 to-purple-500/50 animate-pulse"></div>
                             <div class="flex-1 space-y-2">
-                                <Skeleton width="60%" height="0.75rem" />
-                                <Skeleton width="80%" height="0.625rem" />
+                                <div class="h-2.5 w-28 rounded bg-surface-300 animate-pulse dark:bg-surface-600"></div>
+                                <div class="h-2 w-36 rounded bg-surface-200 animate-pulse dark:bg-surface-700"></div>
                             </div>
                         </div>
                     </div>
 
-                    <div v-else-if="patientSearchResults.length" class="space-y-2 max-h-[50vh] overflow-y-auto">
-                        <div v-for="patient in patientSearchResults" :key="`search-${patient.id}`"
-                            class="group flex items-center gap-3 rounded-xl border border-surface-100 bg-surface-50/80 p-3 transition-all hover:border-primary-200 hover:bg-primary-50/40 hover:shadow-sm dark:border-surface-700 dark:bg-surface-800/60 dark:hover:border-primary-700 dark:hover:bg-primary-900/20">
-                            <div
-                                class="flex h-8 w-8 text-xs flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary-500 to-primary-600 font-bold text-white shadow-sm">
-                                {{ ((patient.prenom?.[0] ?? '') + (patient.nom?.[0] ?? 'P')).toUpperCase() }}
+                    <!-- Liste -->
+                    <div v-else-if="newPatients.length" class="space-y-2">
+                        <div v-for="patient in newPatients" :key="patient.id"
+                            class="group flex items-center gap-3 rounded-xl bg-gradient-to-r from-transparent to-transparent p-3 transition-all hover:bg-purple-50/30 hover:shadow-md dark:hover:bg-purple-900/10">
+                            <div class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-fuchsia-500 font-bold text-white shadow-md">
+                                {{ (patient.prenom?.[0] ?? '') + (patient.nom?.[0] ?? 'P') }}
                             </div>
-
                             <div class="min-w-0 flex-1">
                                 <p class="truncate text-sm font-semibold text-surface-900 dark:text-surface-50">
                                     {{ patientDisplayName(patient) }}
                                 </p>
-                                <div class="mt-0.5 flex items-center gap-1 truncate text-xs text-surface-500 dark:text-surface-400">
-                                    <i class="pi pi-phone text-[10px]"></i>
-                                    {{ patient.telephone || 'Non renseigné' }}
+                                <div class="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-surface-400">
+                                    <div class="flex items-center gap-1">
+                                        <i class="pi pi-clock text-[10px]"></i>
+                                        {{ formatDateTime(patientCreatedAt(patient)).split(' ')[0] }}
+                                    </div>
+                                    <div class="flex items-center gap-1 truncate">
+                                        <i class="pi pi-phone text-[10px]"></i>
+                                        {{ patient.telephone || 'Non renseigné' }}
+                                    </div>
                                 </div>
                             </div>
-
-                            <div class="flex items-center gap-1.5">
+                            <div class="flex items-center gap-2 opacity-0 transition-opacity group-hover:opacity-100">
                                 <button
-                                    class="flex h-7 w-7 items-center justify-center rounded-md bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 transition-colors"
+                                    class="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600 transition-colors hover:bg-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400"
                                     title="Nouvelle consultation"
                                     @click="emit('open-create-consultation-for-patient', patient)"
                                 >
                                     <i class="fas fa-stethoscope text-xs"></i>
                                 </button>
                                 <button
-                                    class="flex h-7 w-7 items-center justify-center rounded-md bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400 transition-colors"
+                                    class="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100 text-blue-600 transition-colors hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400"
                                     title="Modifier le patient"
                                     @click="emit('open-edit-patient', patient)"
                                 >
@@ -455,444 +511,333 @@ const handleCancelWithConfirm = (event, consultation) => {
                         </div>
                     </div>
 
-                    <div v-else-if="patientSearchQuery.length >= 2" class="flex flex-col items-center justify-center py-6 text-center text-surface-400">
-                        <i class="pi pi-search text-2xl mb-2 opacity-30"></i>
-                        <p class="text-sm">Aucun patient trouvé</p>
-                        <p class="text-xs mt-0.5">Vérifiez l'orthographe ou essayez le téléphone</p>
-                    </div>
-
-                    <div v-else class="text-center py-2">
-                        <p class="text-xs text-surface-400">Tapez au moins 2 caractères pour chercher</p>
-                    </div>
-                </div>
-
-                <!-- Squelettes de chargement -->
-                <div v-else-if="loading" class="space-y-2">
-                    <div v-for="i in 3" :key="i"
-                        class="flex items-center gap-3 rounded-xl bg-surface-50 p-3 dark:bg-surface-800/40">
-                        <Skeleton shape="circle" size="2.5rem" class="flex-shrink-0" />
-                        <div class="flex-1 space-y-2">
-                            <Skeleton width="60%" height="0.75rem" />
-                            <Skeleton width="80%" height="0.625rem" />
+                    <!-- État vide -->
+                    <div v-else class="flex flex-col items-center justify-center py-12 text-center">
+                        <div class="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-surface-100 to-surface-200 dark:from-surface-800 dark:to-surface-700">
+                            <i class="pi pi-user-plus text-3xl text-surface-400"></i>
                         </div>
+                        <p class="text-sm font-medium text-surface-600">Aucun nouveau patient</p>
+                        <p class="mt-1 text-xs text-surface-400">Les nouveaux arrivants s'afficheront ici</p>
                     </div>
-                </div>
-
-                <!-- Liste des patients -->
-                <div v-else-if="newPatients.length" class="space-y-2">
-                    <div v-for="patient in newPatients" :key="patient.id"
-                        class="group flex items-center gap-3 rounded-xl border border-surface-100 bg-surface-50/80 p-3 transition-all hover:border-purple-200 hover:bg-purple-50/50 hover:shadow-sm dark:border-surface-700 dark:bg-surface-800/60 dark:hover:border-purple-800 dark:hover:bg-purple-950/30">
-                        <!-- Avatar avec initiales -->
-                        <div
-                            class="flex h-5 w-5 text-xs flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-fuchsia-500 font-bold text-white shadow-sm">
-                            {{ (patient.prenom?.[0] ?? '') + (patient.nom?.[0] ?? 'P') }}
-
-                        </div>
-
-                        <!-- Infos -->
-                        <div class="min-w-0 flex-1">
-                            <p class="truncate text-sm font-semibold text-surface-900 dark:text-surface-50">
-                                {{ patientDisplayName(patient) }}
-                            </p>
-                            <div
-                                class="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-surface-500 dark:text-surface-400">
-                                <div class="flex items-center gap-1">
-                                    <i class="pi pi-clock text-[10px]"></i>
-                                    {{ formatDateTime(patientCreatedAt(patient)).split(' ')[0] }}
-                                </div>
-                                <div class="flex items-center gap-1 truncate">
-                                    <i class="pi pi-phone text-[10px]"></i>
-                                    {{ patient.telephone || 'Non renseigné' }}
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Badge "Nouveau" -->
-
-                        <div class="flex items-center gap-1.5">
-                                <button
-                                    class="flex h-7 w-7 items-center justify-center rounded-md bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 transition-colors"
-                                    title="Nouvelle consultation"
-                                    @click="emit('open-create-consultation-for-patient', patient)"
-                                >
-                                    <i class="fas fa-stethoscope text-xs"></i>
-                                </button>
-                                <button
-                                    class="flex h-7 w-7 items-center justify-center rounded-md bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400 transition-colors"
-                                    title="Modifier le patient"
-                                    @click="emit('open-edit-patient', patient)"
-                                >
-                                    <i class="pi pi-user-edit text-xs"></i>
-                                </button>
-                            </div>
-                    </div>
-                </div>
-
-                <!-- État vide -->
-                <div v-else class="flex flex-col items-center justify-center py-8 text-center text-surface-400">
-                    <div
-                        class="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-surface-100 dark:bg-surface-800">
-                        <i class="pi pi-user-plus text-xl opacity-50"></i>
-                    </div>
-                    <p class="text-sm font-medium">Aucun nouveau patient</p>
-                    <p class="mt-1 text-xs">Les nouveaux arrivants s’afficheront ici</p>
                 </div>
             </div>
         </aside>
 
-        <!-- Colonne Centre - Liste consultations -->
-        <section class="max-h-[75vh] overflow-y-auto">
-            <div class="rounded-xl border border-surface-200 bg-white dark:border-surface-700 dark:bg-surface-900">
-
+        <!-- Colonne Centre - File d'attente -->
+        <section class="max-h-[calc(100vh-180px)] overflow-y-auto scrollbar-thin">
+            <div class="rounded-2xl border border-surface-200/60 bg-white/90 backdrop-blur-sm shadow-lg dark:border-surface-700/60 dark:bg-surface-900/90">
                 <!-- Header -->
-                <div
-                    class="flex items-center justify-between px-4 py-3 border-b border-surface-200 dark:border-surface-700">
-                    <div>
-                        <h3 class="text-sm font-semibold text-surface-900 dark:text-surface-50">
-                            File d'attente
-                        </h3>
-                        <p class="text-xs text-surface-500">
-                            {{ secretaryRows.length }} consultations
-                        </p>
-                    </div>
-
-                    <div class="flex items-center gap-2">
-                        <ToggleSwitch v-model="showCompletedSecretary" />
-                        <Button
-                            :icon="newestFirstSecretary ? 'pi pi-sort-amount-down' : 'pi pi-sort-amount-up'"
-                            text
-                            rounded
-                            size="small"
-                            :aria-label="newestFirstSecretary ? 'Plus récentes en haut' : 'Plus anciennes en haut'"
-                            @click="newestFirstSecretary = !newestFirstSecretary"
-                        />
-                        <button @click="emit('open-create-consultation')"
-                            class="flex items-center gap-1 rounded-md bg-primary-500 px-2.5 py-1 text-xs text-white shadow-sm">
-                            <i class="pi pi-plus text-xs"></i>
-                        </button>
+                <div class="border-b border-surface-200/60 px-4 py-3 dark:border-surface-700/60">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h3 class="text-base font-semibold text-surface-900 dark:text-surface-50">File d'attente</h3>
+                            <p class="text-xs text-surface-500">{{ secretaryRows.length }} consultation(s)</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <ToggleSwitch v-model="showCompletedSecretary" />
+                            <button
+                                :class="[
+                                    'flex h-8 w-8 items-center justify-center rounded-xl transition-all',
+                                    newestFirstSecretary
+                                        ? 'bg-primary-500 text-white shadow-md'
+                                        : 'bg-surface-100 text-surface-500 hover:bg-surface-200'
+                                ]"
+                                :title="newestFirstSecretary ? 'Plus récentes en haut' : 'Plus anciennes en haut'"
+                                @click="newestFirstSecretary = !newestFirstSecretary"
+                            >
+                                <i :class="newestFirstSecretary ? 'pi pi-arrow-down' : 'pi pi-arrow-up'" class="text-xs"></i>
+                            </button>
+                            <button
+                                @click="emit('open-create-consultation')"
+                                class="rounded-xl bg-gradient-to-r from-primary-500 to-primary-600 p-1.5 text-white shadow-md transition-all hover:shadow-lg hover:scale-105"
+                            >
+                                <i class="pi pi-plus text-xs"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
-                <!-- CONTENT (consultations) -->
-                <div class="p-3">
-
-                    <!-- Loading -->
+                <!-- Contenu consultations -->
+                <div class="p-4">
                     <div v-if="loading" class="space-y-3">
-                        <Skeleton v-for="i in 4" :key="i" height="60px" class="rounded-lg" />
+                        <div v-for="i in 4" :key="i" class="rounded-xl bg-surface-100/50 p-3 animate-pulse dark:bg-surface-800/30">
+                            <div class="flex gap-3">
+                                <div class="h-8 w-8 rounded-full bg-gradient-to-br from-surface-300 to-surface-400"></div>
+                                <div class="flex-1 space-y-2">
+                                    <div class="h-3 w-20 rounded bg-surface-300"></div>
+                                    <div class="h-2.5 w-40 rounded bg-surface-200"></div>
+                                    <div class="h-2 w-32 rounded bg-surface-200"></div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
-                    <!-- Timeline -->
                     <div v-else-if="secretaryRows.length" class="relative">
-
-                        <!-- Ligne verticale -->
-                        <div class="absolute left-4 top-0 bottom-0 w-px bg-surface-200 dark:bg-surface-700"></div>
+                        <div class="absolute left-4 top-0 bottom-0 w-0.5 bg-gradient-to-b from-primary-300 via-primary-200 to-transparent dark:from-primary-600 dark:via-primary-700"></div>
 
                         <div class="space-y-3">
                             <div v-for="(consultation, index) in secretaryRows" :key="consultation.id"
-                                role="button"
-                                tabindex="0"
-                                @click="onQueueItemClick($event, consultation.id)"
-                                @keydown.enter.prevent="selectConsultation(consultation.id)"
-                                @keydown.space.prevent="selectConsultation(consultation.id)"
-                                class="relative flex gap-3 w-full text-left group cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-0 dark:focus-visible:ring-offset-surface-900">
+                                @click="selectConsultation(consultation.id)"
+                                class="group relative flex gap-3 w-full cursor-pointer rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-primary-400">
 
-                                <!-- Index / Position -->
-                                <div class="relative z-10 flex flex-col items-center">
+                                <div class="relative z-10">
                                     <div :class="[
-                                        'w-7 h-7 flex items-center justify-center text-xs font-bold rounded-full border transition-all',
-
+                                        'flex h-8 w-8 items-center justify-center rounded-full font-bold text-xs transition-all duration-200 shadow-md',
                                         consultation.id === selectedConsultationId
-                                            ? 'bg-primary-500 text-white border-primary-500 scale-110 shadow'
+                                            ? 'bg-gradient-to-br from-primary-500 to-primary-600 text-white scale-110 ring-2 ring-primary-300 ring-offset-2'
                                             : Number(consultation.state) === 1
-                                                ? 'bg-green-100 text-green-700 border-green-300'
-                                                : 'bg-white dark:bg-surface-800 text-surface-500 border-surface-300'
+                                                ? 'bg-gradient-to-br from-emerald-500 to-emerald-600 text-white'
+                                                : 'bg-gradient-to-br from-surface-400 to-surface-500 text-white dark:from-surface-600 dark:to-surface-700'
                                     ]">
                                         {{ index + 1 }}
                                     </div>
                                 </div>
 
-                                <!-- Card -->
                                 <div :class="[
-                                    'flex-1 rounded-lg border px-3 py-2.5 transition-all',
-
+                                    'flex-1 rounded-xl border p-3 transition-all duration-200',
                                     consultation.id === selectedConsultationId
-                                        ? 'bg-primary-50 border-primary-300 shadow-sm dark:bg-primary-900/20'
+                                        ? 'border-primary-200 bg-gradient-to-r from-primary-50 to-transparent shadow-md dark:border-primary-800 dark:from-primary-950/30'
                                         : Number(consultation.state) === 1
-                                            ? 'bg-green-50/40 border-green-200 opacity-70 dark:bg-green-900/10'
-                                            : 'bg-surface-50 border-surface-200 hover:shadow-sm dark:bg-surface-800'
+                                            ? 'border-emerald-200 bg-emerald-50/30 opacity-75 dark:border-emerald-800 dark:bg-emerald-950/20'
+                                            : 'border-surface-200 bg-surface-50/30 hover:shadow-md hover:border-primary-200 dark:border-surface-700 dark:bg-surface-800/30'
                                 ]">
-
-                                    <!-- Ligne 1 -->
-                                    <div class="flex items-center justify-between text-xs mb-1">
-                                        <span class="font-mono text-surface-500">
+                                    <div class="flex items-center justify-between mb-1.5">
+                                        <span class="font-mono text-[11px] text-surface-400">
                                             {{ formatTime(consultation.createdAt) }}
                                         </span>
-
-                                        <!-- Statut -->
                                         <span :class="[
-                                            'px-2 py-0.5 rounded-full font-medium',
+                                            'rounded-full px-2 py-0.5 text-[10px] font-medium',
                                             Number(consultation.state) === 1
-                                                ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-400'
-                                                : 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-400'
+                                                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400'
+                                                : 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400'
                                         ]">
                                             {{ Number(consultation.state) === 1 ? 'Terminé' : 'En attente' }}
                                         </span>
                                     </div>
-
-                                    <!-- Patient -->
                                     <p class="text-sm font-semibold text-surface-900 truncate dark:text-surface-50">
                                         {{ patientLabel(consultation) }}
                                     </p>
-
-                                    <!-- Infos secondaires -->
-                                    <p class="text-xs text-surface-500 truncate">
+                                    <p class="text-xs text-surface-400 truncate mt-0.5">
                                         {{ medecinLabel(consultation) }}
-                                        <span v-if="consultation.motif"> · {{ consultation.motif }}</span>
+                                        <span v-if="consultation.motif" class="text-surface-300">· {{ consultation.motif }}</span>
                                     </p>
-
-                                    <!-- Footer léger -->
-                                    <div class="flex items-center justify-between mt-1 text-xs">
-
-                                        <!-- Type patient -->
-                                        <span>
-                                            <Button v-if="Number(consultation.state) === 0"
-                                                icon="pi pi-times" severity="danger" size="small"
-                                                :data-cancel-consultation-id="consultation.id"
-                                                class="rounded-xl px-4 py-2 text-sm font-medium transition-all hover:scale-[1.02]"
-                                                @click="(e) => handleCancelWithConfirm(e, consultation)" />
-                                        </span>
-
-                                        <!-- Facture / ticket -->
-                                        <div class="flex items-center gap-1.5">
-                                            <span
-                                                :class="[
-                                                    consultation?.factState === 1
-                                                        ? 'text-emerald-600'
-                                                        : consultation?.factState === 0
-                                                            ? 'text-sky-600'
-                                                            : 'text-gray-400'
-                                                ]">
+                                    <div class="flex items-center justify-between mt-2">
+                                        <button v-if="Number(consultation.state) === 0"
+                                            @click="(e) => handleCancelWithConfirm(e, consultation)"
+                                            class="rounded-lg bg-red-50 px-3 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400">
+                                            Annuler
+                                        </button>
+                                        <div class="flex items-center gap-2">
+                                            <span :class="[
+                                                'text-xs font-medium',
+                                                consultation?.factState === 1 ? 'text-emerald-600' :
+                                                consultation?.factState === 0 ? 'text-sky-600' : 'text-surface-400'
+                                            ]">
                                                 {{ formatFactureState(consultation).label }}
                                             </span>
-
-                                            <span
-                                                v-if="isConsultationPayante(consultation)"
-                                                class="inline-flex items-center gap-1 rounded-md border border-primary-200 bg-primary-50 px-2 py-0.5 text-[11px] font-medium text-primary-700"
-                                                :class="!canPrintConsultationTicket(consultation) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-primary-100'"
-                                                role="button"
-                                                tabindex="0"
-                                                @click.stop="canPrintConsultationTicket(consultation) && printConsultationTicket(consultation)"
-                                                @keydown.enter.stop.prevent="canPrintConsultationTicket(consultation) && printConsultationTicket(consultation)"
-                                            >
-                                                <i class="pi pi-print"></i>
+                                            <button v-if="isConsultationPayante(consultation)"
+                                                @click.stop="printConsultationTicket(consultation)"
+                                                class="flex items-center gap-1 rounded-lg bg-primary-50 px-2 py-1 text-[10px] font-medium text-primary-600 transition-colors hover:bg-primary-100 dark:bg-primary-900/30 dark:text-primary-400">
+                                                <i class="pi pi-print text-xs"></i>
                                                 Ticket
-                                            </span>
+                                            </button>
                                         </div>
                                     </div>
-
                                 </div>
                             </div>
                         </div>
                     </div>
-                    <div v-else class="flex flex-col items-center py-10 text-center text-surface-500">
-                        <i class="pi pi-calendar-times text-3xl mb-2 opacity-50"></i>
-                        <p class="text-sm">Aucune consultation aujourd’hui</p>
-                    </div>
 
+                    <div v-else class="flex flex-col items-center justify-center py-16 text-center">
+                        <div class="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-surface-100 to-surface-200 dark:from-surface-800 dark:to-surface-700">
+                            <i class="pi pi-calendar-times text-3xl text-surface-400"></i>
+                        </div>
+                        <p class="text-sm font-medium text-surface-600">Aucune consultation</p>
+                        <p class="mt-1 text-xs text-surface-400">Aujourd'hui</p>
+                    </div>
                 </div>
             </div>
         </section>
 
         <!-- Colonne Droite - Détails -->
-        <aside class="max-h-[75vh] overflow-y-auto">
-    <div class="rounded-xl border border-surface-200 bg-white p-4 dark:border-surface-700 dark:bg-surface-900">
-
-        <!-- Header -->
-        <div class="flex items-center justify-between mb-4">
-            <h3 class="text-sm font-semibold text-surface-900 dark:text-surface-50">
-                Détails
-            </h3>
-            <span v-if="currentConsultation" class="text-xs text-primary-500 font-medium">
-                ● Actif
-            </span>
-        </div>
-
-        <!-- CONTENT -->
-        <div v-if="currentConsultation" class="space-y-4">
-
-            <!-- PATIENT CARD -->
-            <div class="rounded-xl border p-3 flex items-start gap-3"
-                :class="Number(currentConsultation.state) === 1
-                    ? 'bg-green-50/50 border-green-200 dark:bg-green-950/10'
-                    : 'bg-primary-50/50 border-primary-200 dark:bg-primary-950/10'">
-
-                <div class="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold"
-                    :class="Number(currentConsultation.state) === 1 ? 'bg-green-500' : 'bg-primary-500'">
-                    {{ patientLabel(currentConsultation).charAt(0) }}
+        <aside class="max-h-[calc(100vh-180px)] overflow-y-auto scrollbar-thin">
+            <div class="rounded-2xl border border-surface-200/60 bg-white/90 backdrop-blur-sm shadow-lg dark:border-surface-700/60 dark:bg-surface-900/90">
+                <div class="border-b border-surface-200/60 px-4 py-3 dark:border-surface-700/60">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-base font-semibold text-surface-900 dark:text-surface-50">Détails</h3>
+                        <span v-if="currentConsultation" class="relative flex h-2 w-2">
+                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-400 opacity-75"></span>
+                            <span class="relative inline-flex rounded-full h-2 w-2 bg-primary-500"></span>
+                        </span>
+                    </div>
                 </div>
 
-                <div class="flex-1 min-w-0">
-                    <p class="text-sm font-semibold text-surface-900 truncate dark:text-surface-50">
-                        {{ patientLabel(currentConsultation) }}
-                    </p>
-                    <p class="text-xs text-surface-500 truncate">
-                        {{ medecinLabel(currentConsultation) }}
-                    </p>
-                    <p class="text-[11px] text-surface-400 mt-0.5">
-                        {{ formatTime(currentConsultation.createdAt) }}
-                    </p>
-                </div>
-
-                <!-- Etat -->
-                <span :class="[
-                    'text-xs px-2 py-0.5 rounded-full font-medium',
-                    Number(currentConsultation.state) === 1
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-amber-100 text-amber-700'
-                ]">
-                    {{ Number(currentConsultation.state) === 1 ? 'Terminé' : 'En cours' }}
-                </span>
-            </div>
-
-            <!-- ACTIONS -->
-            <div class="flex gap-2 flex-wrap">
-
-                <button @click="emit('open-details', currentConsultation)"
-                    class="flex-1 rounded-md border border-surface-300 px-3 py-1.5 text-xs text-surface-600 hover:bg-surface-100 dark:border-surface-600 dark:text-surface-400">
-                    <i class="pi pi-eye mr-1"></i>Détails
-                </button>
-
-                <button v-if="allowReceptionQuickClose && Number(currentConsultation.state) !== 1"
-                    @click="emit('open-quick-dialog', currentConsultation)"
-                    class="flex-1 rounded-md bg-amber-500 px-3 py-1.5 text-xs text-white hover:bg-amber-600">
-                    <i class="pi pi-bolt mr-1"></i>Clôture
-                </button>
-
-                <button v-if="isAdmin && Number(currentConsultation.state) !== 1"
-                    @click="emit('select-medical-workspace', currentConsultation, currentConsultation.hasFiche || currentConsultation.lastFicheId ? 'continue-last' : 'new-fiche')"
-                    class="flex-1 rounded-md border border-primary-500 px-3 py-1.5 text-xs text-primary-600 hover:bg-primary-50">
-                    <i class="pi pi-arrow-right mr-1"></i>Médical
-                </button>
-
-            </div>
-
-            <div v-if="hasInvoiceContext"
-                class="rounded-xl border p-3 bg-surface-50 dark:bg-surface-800 border-surface-200 dark:border-surface-700">
-
-                <div class="flex items-center justify-between mb-2">
-                    <span class="text-xs font-semibold text-surface-700 dark:text-surface-300">
-                        Facture
-                    </span>
-
-                    <span :class="[
-                        'text-xs px-2 py-0.5 rounded-full font-medium',
-                        isPaidInvoice ? 'bg-green-100 text-green-700' :
-                        isValidatedFreeInvoice ? 'bg-green-100 text-green-700' :
-                        isFreeInvoice ? 'bg-blue-100 text-blue-700' :
-                        'bg-amber-100 text-amber-700'
+                <div v-if="currentConsultation" class="p-4 space-y-4">
+                    <!-- Carte patient -->
+                    <div :class="[
+                        'rounded-xl border p-4 transition-all',
+                        Number(currentConsultation.state) === 1
+                            ? 'border-emerald-200 bg-gradient-to-br from-emerald-50 to-transparent dark:border-emerald-800 dark:from-emerald-950/30'
+                            : 'border-primary-200 bg-gradient-to-br from-primary-50 to-transparent dark:border-primary-800 dark:from-primary-950/30'
                     ]">
-                        {{ isPaidInvoice ? 'Réglée' : isValidatedFreeInvoice ? 'Validée' : isFreeInvoice ? 'Gratuite' : 'En attente' }}
-                    </span>
-                </div>
-
-                <div class="space-y-1 text-xs">
-                    <div class="flex justify-between">
-                        <span class="text-surface-500">Total</span>
-                        <span class="font-semibold">{{ formatFcfa(selectedInvoiceTotal) }}</span>
-                    </div>
-
-                    <div class="flex justify-between">
-                        <span class="text-surface-500">Reste</span>
-                        <span :class="selectedInvoiceRemaining > 0 ? 'text-red-600 font-semibold' : 'text-green-600 font-semibold'">
-                            {{ selectedInvoiceRemaining === null ? '--' : formatFcfa(selectedInvoiceRemaining) }}
-                        </span>
-                    </div>
-                </div>
-                <div class="flex gap-2 mt-3">
-                    <button v-if="!isPaidInvoice && !isFreeInvoice"
-                        @click="emit('open-caisse-pay')"
-                        class="flex-1 rounded-md bg-green-500 px-3 py-1.5 text-xs text-white hover:bg-green-600">
-                        Régler
-                    </button>
-
-                    <button v-if="isFreeInvoice && !isValidatedFreeInvoice"
-                        @click="emit('open-caisse-validate')"
-                        class="flex-1 rounded-md bg-blue-500 px-3 py-1.5 text-xs text-white hover:bg-blue-600">
-                        Valider
-                    </button>
-
-                    <button @click="emit('open-caisse-preview')"
-                        class="rounded-md border border-surface-300 px-3 py-1.5 text-xs text-surface-600 hover:bg-surface-100">
-                        Aperçu
-                    </button>
-                </div>
-            </div>
-
-            <div v-if="selectedInvoicePayments.length" class="space-y-2">
-                <p class="text-xs font-semibold text-surface-700 dark:text-surface-300">
-                    Paiements
-                </p>
-
-                <div
-                    v-for="payment in selectedInvoicePayments"
-                    :key="payment.id"
-                    class="flex items-center justify-between rounded-lg border px-3 py-2 text-xs
-                        bg-surface-50 dark:bg-surface-800 border-surface-200 dark:border-surface-700"
-                >
-                    <div class="flex items-center gap-3 min-w-0">
-
-                        <div class="w-8 h-8 flex items-center justify-center rounded-full text-white text-xs font-bold"
-                            :class="payment.status === 'validated' ? 'bg-green-500' : 'bg-amber-500'">
-                            <i class="pi pi-wallet text-xs"></i>
-                        </div>
-
-                        <div class="min-w-0">
-                            <p class="font-semibold text-surface-900 dark:text-white truncate">
-                                {{ formatFcfa(payment.montant) }}
-                            </p>
-
-                            <p class="text-[11px] text-surface-500 truncate">
-                                {{ formatPaymentMode(payment.mode) }} · {{ payment.rolePaiement }}
-                            </p>
+                        <div class="flex items-start gap-3">
+                            <div :class="[
+                                'flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full text-white font-bold shadow-lg',
+                                Number(currentConsultation.state) === 1 ? 'bg-gradient-to-br from-emerald-500 to-emerald-600' : 'bg-gradient-to-br from-primary-500 to-primary-600'
+                            ]">
+                                {{ patientLabel(currentConsultation).charAt(0).toUpperCase() }}
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-base font-semibold text-surface-900 truncate dark:text-surface-50">
+                                    {{ patientLabel(currentConsultation) }}
+                                </p>
+                                <p class="text-xs text-surface-400 truncate mt-0.5">
+                                    {{ medecinLabel(currentConsultation) }}
+                                </p>
+                                <p class="text-[11px] text-surface-400 mt-1">
+                                    <i class="pi pi-clock mr-1"></i>{{ formatTime(currentConsultation.createdAt) }}
+                                </p>
+                            </div>
+                            <span :class="[
+                                'rounded-full px-2 py-1 text-[10px] font-medium',
+                                Number(currentConsultation.state) === 1
+                                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400'
+                                    : 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400'
+                            ]">
+                                {{ Number(currentConsultation.state) === 1 ? 'Terminé' : 'En cours' }}
+                            </span>
                         </div>
                     </div>
 
-                    <!-- RIGHT -->
-                    <div class="text-right flex flex-col items-end">
+                    <!-- Actions -->
+                    <div class="grid grid-cols-2 gap-2">
+                        <button @click="emit('open-details', currentConsultation)"
+                            class="rounded-xl border border-surface-200 bg-surface-50 px-3 py-2 text-xs font-medium text-surface-600 transition-all hover:bg-surface-100 hover:shadow-sm dark:border-surface-700 dark:bg-surface-800/50">
+                            <i class="pi pi-eye mr-1"></i>Détails
+                        </button>
+                        <button v-if="allowReceptionQuickClose && Number(currentConsultation.state) !== 1"
+                            @click="emit('open-quick-dialog', currentConsultation)"
+                            class="rounded-xl bg-amber-500 px-3 py-2 text-xs font-medium text-white shadow-md transition-all hover:bg-amber-600">
+                            <i class="pi pi-bolt mr-1"></i>Clôture rapide
+                        </button>
+                        <button v-if="isAdmin && Number(currentConsultation.state) !== 1"
+                            @click="emit('select-medical-workspace', currentConsultation, currentConsultation.hasFiche || currentConsultation.lastFicheId ? 'continue-last' : 'new-fiche')"
+                            class="rounded-xl border border-primary-500 bg-primary-50 px-3 py-2 text-xs font-medium text-primary-600 transition-all hover:bg-primary-100 dark:bg-primary-950/30">
+                            <i class="pi pi-arrow-right mr-1"></i>Espace médical
+                        </button>
+                    </div>
 
-                        <!-- Status -->
-                        <span :class="[
-                            'px-2 py-0.5 rounded-full text-[10px] font-medium',
-                            payment.status === 'validated'
-                                ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-400'
-                                : 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-400'
-                        ]">
-                            {{ payment.status === 'validated' ? 'Validé' : 'En attente' }}
-                        </span>
+                    <!-- Facture -->
+                    <div v-if="hasInvoiceContext" class="rounded-xl border border-surface-200 bg-surface-50/50 p-4 dark:border-surface-700 dark:bg-surface-800/30">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-sm font-semibold text-surface-700">Facture</span>
+                            <span :class="[
+                                'rounded-full px-2 py-1 text-[10px] font-medium',
+                                isPaidInvoice ? 'bg-emerald-100 text-emerald-700' :
+                                isValidatedFreeInvoice ? 'bg-emerald-100 text-emerald-700' :
+                                isFreeInvoice ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'
+                            ]">
+                                {{ isPaidInvoice ? 'Réglée' : isValidatedFreeInvoice ? 'Validée' : isFreeInvoice ? 'Gratuite' : 'En attente' }}
+                            </span>
+                        </div>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between">
+                                <span class="text-surface-500">Total</span>
+                                <span class="font-bold text-surface-900">{{ formatFcfa(selectedInvoiceTotal) }}</span>
+                            </div>
+                            <div class="flex justify-between pt-1 border-t border-surface-200">
+                                <span class="text-surface-500">Reste</span>
+                                <span :class="selectedInvoiceRemaining > 0 ? 'text-red-600 font-bold' : 'text-emerald-600 font-bold'">
+                                    {{ selectedInvoiceRemaining === null ? '--' : formatFcfa(selectedInvoiceRemaining) }}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 mt-4">
+                            <button v-if="!isPaidInvoice && !isFreeInvoice"
+                                @click="emit('open-caisse-pay')"
+                                class="rounded-xl bg-emerald-500 px-3 py-2 text-xs font-medium text-white shadow-md transition-all hover:bg-emerald-600 dark:bg-emerald-700 dark:hover:bg-emerald-800 dark:text-white">
+                                <i class="pi pi-credit-card mr-1"></i>Régler
+                            </button>
+                            <button v-if="isFreeInvoice && !isValidatedFreeInvoice"
+                                @click="emit('open-caisse-validate')"
+                                class="rounded-xl bg-blue-500 px-3 py-2 text-xs font-medium text-white shadow-md transition-all hover:bg-blue-600 dark:bg-blue-700 dark:hover:bg-blue-800 dark:text-white">
+                                <i class="pi pi-check mr-1"></i>Valider
+                            </button>
+                            <button @click="emit('open-caisse-preview')"
+                                class="rounded-xl border border-surface-200 bg-white px-3 py-2 text-xs font-medium text-surface-600 transition-all hover:bg-surface-50 dark:border-surface-700 dark:bg-surface-800 dark:text-surface-400">
+                                <i class="pi pi-eye mr-1"></i>Aperçu
+                            </button>
+                        </div>
+                    </div>
 
-                        <!-- Time -->
-                        <span class="text-[10px] text-surface-400 mt-1">
-                            {{ formatTime(payment.date) }}
-                        </span>
-
-                        <Button
-                            v-if="payment.status === 'validated'"
-                            @click="printPaymentReceipt(payment.id)"
-                            icon="pi pi-receipt" size="small" class="mt-2"
-                        />
+                    <!-- Paiements -->
+                    <div v-if="selectedInvoicePayments.length" class="space-y-2">
+                        <p class="text-sm font-semibold text-surface-700 dark:text-surface-400">Paiements effectués</p>
+                        <div class="space-y-2">
+                            <div v-for="payment in selectedInvoicePayments" :key="payment.id"
+                                class="flex items-center justify-between rounded-xl border border-surface-200 bg-surface-50/50 p-3 dark:border-surface-700 dark:bg-surface-800/30">
+                                <div class="flex items-center gap-3 min-w-0">
+                                    <div :class="[
+                                        'flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-white',
+                                        payment.status === 'validated' ? 'bg-gradient-to-br from-emerald-500 to-emerald-600' : 'bg-gradient-to-br from-amber-500 to-amber-600'
+                                    ]">
+                                        <i class="pi pi-wallet text-xs"></i>
+                                    </div>
+                                    <div class="min-w-0">
+                                        <p class="font-semibold text-surface-900 dark:text-surface-300">{{ formatFcfa(payment.montant) }}</p>
+                                        <p class="text-[11px] text-surface-400 truncate">{{ formatPaymentMode(payment.mode) }} · {{ payment.rolePaiement }}</p>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <span :class="[
+                                        'rounded-full px-2 py-0.5 text-[10px] font-medium',
+                                        payment.status === 'validated' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                                    ]">
+                                        {{ payment.status === 'validated' ? 'Validé' : 'En attente' }}
+                                    </span>
+                                    <div class="mt-1 flex items-center justify-end gap-1">
+                                        <span class="text-[10px] text-surface-400">{{ formatTime(payment.date) }}</span>
+                                        <button v-if="payment.status === 'validated'"
+                                            @click="printPaymentReceipt(payment.id)"
+                                            class="text-primary-500 hover:text-primary-600">
+                                            <i class="pi pi-receipt text-xs"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
+
+                <div v-else class="flex flex-col items-center justify-center py-20 text-center">
+                    <div class="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-surface-100 to-surface-200 dark:from-surface-800 dark:to-surface-700">
+                        <i class="pi pi-click text-3xl text-surface-400"></i>
+                    </div>
+                    <p class="text-sm font-medium text-surface-600">Aucune consultation sélectionnée</p>
+                    <p class="mt-1 text-xs text-surface-400">Cliquez sur une consultation pour voir les détails</p>
+                </div>
             </div>
-
-        </div>
-
-        <!-- EMPTY -->
-        <div v-else class="flex flex-col items-center py-12 text-center text-surface-400">
-            <i class="pi pi-click text-3xl mb-2"></i>
-            <p class="text-sm">Sélectionnez une consultation</p>
-        </div>
-
-    </div>
-</aside>
+        </aside>
     </div>
 </template>
+
+<style scoped>
+.scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+    border-radius: 10px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+    background: rgba(156, 163, 175, 0.3);
+    border-radius: 10px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: rgba(156, 163, 175, 0.5);
+}
+</style>

@@ -19,8 +19,8 @@ const props = defineProps({
     paymentDialogTab: { type: String, default: 'client' },
     payForm: { type: Object, required: true },
     classicPaymentOptions: { type: Array, default: () => [] },
-    insurancePaymentOptions: { type: Array, default: () => [] },
-    selectedInsuranceMethod: { type: Object, default: null },
+    assuranceOptions: { type: Array, default: () => [] },
+    selectedAssurance: { type: Object, default: null },
     insuranceCoveredAmount: { type: Number, default: 0 },
     patientAlreadyPaidAmount: { type: Number, default: 0 },
     patientOutstandingAmount: { type: Number, default: 0 },
@@ -88,6 +88,7 @@ const hasPreviewData = computed(() => Boolean(props.previewData));
 </script>
 
 <template>
+    <div>
     <Dialog :visible="payDialogVisible" header="Régler la facture" :modal="true" :style="{ width: '760px' }" @update:visible="emit('update:payDialogVisible', $event)">
         <div class="flex flex-col gap-5">
 
@@ -193,9 +194,9 @@ const hasPreviewData = computed(() => Boolean(props.previewData));
                                             <i class="pi pi-wallet text-xs"></i>
                                             Reste après paiement : <span class="font-semibold text-gray-600 dark:text-gray-300 ml-1">{{ formatFcfa(remainingAfterPay) }}</span>
                                         </p>
-                                        <p v-if="(payForm.insuranceEnabled || invoiceHasInsurance) && selectedInsuranceMethod" class="text-xs text-purple-500 dark:text-purple-400 flex items-center gap-1">
+                                        <p v-if="(payForm.insuranceEnabled || invoiceHasInsurance) && selectedAssurance" class="text-xs text-purple-500 dark:text-purple-400 flex items-center gap-1">
                                             <i class="pi pi-shield text-xs"></i>
-                                            {{ selectedInsuranceMethod.libelle }}
+                                            {{ selectedAssurance.nom || selectedAssurance.libelle }}
                                         </p>
                                     </div>
                                 </div>
@@ -239,7 +240,7 @@ const hasPreviewData = computed(() => Boolean(props.previewData));
                             <div class="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-4 shadow-sm flex flex-col gap-3">
                                 <div>
                                     <label class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Assurance</label>
-                                    <Select v-model="payForm.insuranceModeId" :options="insurancePaymentOptions" optionLabel="label" optionValue="value" placeholder="Sélectionner une assurance" class="w-full mt-1" :disabled="invoiceHasInsurance || !payForm.insuranceEnabled" />
+                                    <Select v-model="payForm.assuranceId" :options="assuranceOptions" optionLabel="label" optionValue="value" placeholder="Sélectionner une assurance" class="w-full mt-1" :disabled="invoiceHasInsurance || !payForm.insuranceEnabled" />
                                 </div>
                                 <div class="grid grid-cols-2 gap-3">
                                     <div>
@@ -251,9 +252,9 @@ const hasPreviewData = computed(() => Boolean(props.previewData));
                                         <InputNumber :modelValue="insuranceCoveredAmount" mode="decimal" locale="fr-FR" inputClass="w-full" class="w-full mt-1" disabled />
                                     </div>
                                 </div>
-                                <p v-if="invoiceHasInsurance && selectedInsuranceMethod" class="text-xs text-purple-500 dark:text-purple-400 flex items-center gap-1">
+                                <p v-if="invoiceHasInsurance && selectedAssurance" class="text-xs text-purple-500 dark:text-purple-400 flex items-center gap-1">
                                     <i class="pi pi-shield text-xs"></i>
-                                    Assurance liée : <span class="font-semibold ml-1">{{ selectedInsuranceMethod.libelle }}</span>
+                                    Assurance liée : <span class="font-semibold ml-1">{{ selectedAssurance.nom || selectedAssurance.libelle }}</span>
                                 </p>
                             </div>
                         </div>
@@ -386,21 +387,21 @@ const hasPreviewData = computed(() => Boolean(props.previewData));
                         <TabPanel value="paiements">
                             <div class="flex flex-col gap-4">
                                 <div class="grid gap-3 md:grid-cols-3">
-                                    <div class="preview-summary-card rounded-xl border border-surface-200 bg-surface-50/70 p-3">
+                                    <div class="preview-summary-card rounded-xl border border-surface-200 bg-surface-50/70 p-3 dark:bg-surface-800/70 dark:border-surface-700">
                                         <p class="preview-summary-label text-xs uppercase tracking-wide text-gray-500">Écritures</p>
                                         <p class="mt-1 text-base font-semibold">{{ previewPayments.length }}</p>
                                     </div>
-                                    <div class="preview-summary-card rounded-xl border border-surface-200 bg-surface-50/70 p-3">
+                                    <div class="preview-summary-card rounded-xl border border-surface-200 bg-surface-50/70 p-3 dark:bg-surface-800/70 dark:border-surface-700">
                                         <p class="preview-summary-label text-xs uppercase tracking-wide text-gray-500">Part assurance</p>
                                         <p class="mt-1 text-base font-semibold">{{ formatFcfa(previewData.insurance?.insuranceAmount) }}</p>
                                     </div>
-                                    <div class="preview-summary-card rounded-xl border border-surface-200 bg-surface-50/70 p-3">
+                                    <div class="preview-summary-card rounded-xl border border-surface-200 bg-surface-50/70 p-3 dark:bg-surface-800/70 dark:border-surface-700">
                                         <p class="preview-summary-label text-xs uppercase tracking-wide text-gray-500">Part client déjà réglée</p>
                                         <p class="mt-1 text-base font-semibold">{{ formatFcfa(previewData.insurance?.patientPaidAmount) }}</p>
                                     </div>
                                 </div>
                                 <div v-if="previewPayments.length" class="flex flex-col gap-3">
-                                    <div v-for="payment in previewPayments" :key="`${payment.sourceType}-${payment.id}`" class="preview-payment-card rounded-2xl border border-surface-200 bg-white/90 dark:bg-surface-800/80 p-4 shadow-sm">
+                                    <div v-for="payment in previewPayments" :key="`${payment.sourceType}-${payment.id}`" class="preview-payment-card rounded-2xl border border-surface-200 bg-white/90 dark:bg-surface-800/80 p-4 shadow-sm dark:border-surface-700">
                                         <div class="flex flex-wrap items-start justify-between gap-3">
                                             <div>
                                                 <p class="preview-payment-amount font-semibold text-slate-800 dark:text-slate-200">{{ formatFcfa(payment.montant) }}</p>
@@ -445,4 +446,5 @@ const hasPreviewData = computed(() => Boolean(props.previewData));
             <Button v-if="showPrintInPreview" label="Imprimer" icon="pi pi-print" severity="info" @click="emit('print-invoice')" />
         </template>
     </Dialog>
+    </div>
 </template>

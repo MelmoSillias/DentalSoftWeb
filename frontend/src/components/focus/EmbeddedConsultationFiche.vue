@@ -22,7 +22,7 @@ import { usePrinter } from '@/composables/usePrinter';
 import { defaultSoinList, normalizeSoinList } from '@/services/consultations';
 import { fetchPublicGeneralSettings } from '@/services/globalSettingsService';
 import { addPatientAllergy, addPatientAntecedent, deletePatientAllergy, deletePatientAntecedent, updatePatient } from '@/services/patients';
-import { fetchDevisPrintData, fetchOrdonnancePrintData, fetchPatientFichePrintData } from '@/services/printService';
+import { fetchFacturePrintData, fetchOrdonnancePrintData, fetchPatientFichePrintData } from '@/services/printService';
 import { useAuthStore } from '@/stores/auth';
 import ConfirmDialog from 'primevue/confirmdialog';
 import Dialog from 'primevue/dialog';
@@ -709,14 +709,14 @@ const handlePrintFiche = async () => {
 };
 
 const handlePrintDevis = async (devisEntry) => {
-    const devisId = Number(devisEntry?.id ?? Number.NaN);
-    if (!Number.isFinite(devisId)) {
+    const factureId = Number(devisEntry?.id ?? Number.NaN);
+    if (!Number.isFinite(factureId)) {
         toast.add({ severity: 'warn', summary: 'Impression', detail: 'Ce devis doit etre sauvegarde avant impression.' });
         return;
     }
 
     try {
-        const response = await fetchDevisPrintData(devisId, token);
+        const response = await fetchFacturePrintData(factureId, token);
         await printComponent(PrintDevisBody, { doc: response.doc, title: response.title || 'Devis' });
     } catch (_) {
         toast.add({ severity: 'error', summary: 'Erreur', detail: "Impossible d'imprimer le devis." });

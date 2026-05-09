@@ -72,7 +72,7 @@ class EmployeeService
     {
         $this->assertRequiredFields($data, [
             'nom' => 'Nom',
-            'prenom' => 'Prénom',
+            'prenom' => 'PrÃ©nom',
             'fonction' => 'Fonction',
             'type' => 'Type',
             'dateEmbauche' => "Date d'embauche",
@@ -81,7 +81,7 @@ class EmployeeService
 
         $email = $this->normalizeNullableString($data['email'] ?? null);
         if ($email && $this->employeRepo->emailExists($email)) {
-            throw new InvalidArgumentException("Cette adresse email est déjà associée à un employé.");
+            throw new InvalidArgumentException("Cette adresse email est dÃ©jÃ  associÃ©e Ã  un employÃ©.");
         }
 
         $dateEmbauche = $this->createDateFromInput($data['dateEmbauche'], "Date d'embauche");
@@ -120,14 +120,14 @@ class EmployeeService
             throw new InvalidArgumentException($this->buildUniqueConstraintMessage($exception));
         }
 
-        return ['message' => 'Employé créé avec succès', 'id' => $employe->getId()];
+        return ['message' => 'EmployÃ© crÃ©Ã© avec succÃ¨s', 'id' => $employe->getId()];
     }
 
     public function updateEmployee(Employe $employee, array $data, array $files = []): array
     {
         $this->assertRequiredFields($data, [
             'nom' => 'Nom',
-            'prenom' => 'Prénom',
+            'prenom' => 'PrÃ©nom',
             'fonction' => 'Fonction',
             'dateEmbauche' => "Date d'embauche",
             'typeContrat' => 'Type de contrat',
@@ -135,14 +135,14 @@ class EmployeeService
 
         $email = $this->normalizeNullableString($data['email'] ?? null);
         if ($email && $this->employeRepo->emailExists($email, $employee->getId())) {
-            throw new InvalidArgumentException("Cette adresse email est déjà associée à un autre employé.");
+            throw new InvalidArgumentException("Cette adresse email est dÃ©jÃ  associÃ©e Ã  un autre employÃ©.");
         }
 
         $matriculeInput = $data['matricule'] ?? null;
         if ($matriculeInput !== null && trim((string) $matriculeInput) !== '') {
             $matricule = $this->sanitizeString($matriculeInput);
             if ($this->employeRepo->matriculeExists($matricule, $employee->getId())) {
-                throw new InvalidArgumentException('Ce matricule est déjà associé à un autre employé.');
+                throw new InvalidArgumentException('Ce matricule est dÃ©jÃ  associÃ© Ã  un autre employÃ©.');
             }
         } else {
             $matricule = $employee->getMatricule() ?? '';
@@ -185,13 +185,13 @@ class EmployeeService
             throw new InvalidArgumentException($this->buildUniqueConstraintMessage($exception));
         }
 
-        return ['message' => 'Employé mis à jour avec succès'];
+        return ['message' => 'EmployÃ© mis Ã  jour avec succÃ¨s'];
     }
 
     private function publishMedecinReferenceUpdate(Employe $employee, string $action): void
     {
         $type = strtolower((string) $employee->getType());
-        $isMedecin = str_contains($type, 'medecin') || str_contains($type, 'médecin');
+        $isMedecin = str_contains($type, 'medecin') || str_contains($type, 'mÃ©decin');
         if (!$isMedecin) {
             return;
         }
@@ -238,13 +238,13 @@ class EmployeeService
         }
 
         if (!is_numeric($value)) {
-            throw new InvalidArgumentException(sprintf('Le champ "%s" doit être un nombre.', $fieldLabel));
+            throw new InvalidArgumentException(sprintf('Le champ "%s" doit Ãªtre un nombre.', $fieldLabel));
         }
 
         $intValue = (int) $value;
 
         if ($intValue < 0) {
-            throw new InvalidArgumentException(sprintf('Le champ "%s" ne peut pas être négatif.', $fieldLabel));
+            throw new InvalidArgumentException(sprintf('Le champ "%s" ne peut pas Ãªtre nÃ©gatif.', $fieldLabel));
         }
 
         return $intValue;
@@ -323,18 +323,7 @@ class EmployeeService
         $seen = [];
 
         foreach ($employee->getConsultationsAsMedecin() as $consultation) {
-            $paiement = $consultation->getPaiementDevis();
-            if ($paiement && $paiement->getId() && !isset($seen[$paiement->getId()])) {
-                $seen[$paiement->getId()] = true;
-                $total += $paiement->getMontant();
-            }
-
-            $facture = $consultation->getFacture();
-            if (!$facture) {
-                continue;
-            }
-
-            foreach ($facture->getPaiements() as $pay) {
+            foreach ($consultation->getPaiements() as $pay) {
                 $payId = $pay->getId();
                 if ($payId && isset($seen[$payId])) {
                     continue;
@@ -369,13 +358,13 @@ class EmployeeService
     private function normalizeAmount(mixed $value, string $fieldLabel): float
     {
         if (!is_numeric($value)) {
-            throw new InvalidArgumentException(sprintf('Le champ "%s" doit être un nombre.', $fieldLabel));
+            throw new InvalidArgumentException(sprintf('Le champ "%s" doit Ãªtre un nombre.', $fieldLabel));
         }
 
         $amount = (float) $value;
 
         if ($amount < 0) {
-            throw new InvalidArgumentException(sprintf('Le champ "%s" ne peut pas être négatif.', $fieldLabel));
+            throw new InvalidArgumentException(sprintf('Le champ "%s" ne peut pas Ãªtre nÃ©gatif.', $fieldLabel));
         }
 
         return $amount;
@@ -405,7 +394,7 @@ class EmployeeService
         }
 
         if (!is_array($comingDays)) {
-            throw new InvalidArgumentException('Le format des jours travaillés est invalide.');
+            throw new InvalidArgumentException('Le format des jours travaillÃ©s est invalide.');
         }
 
         $normalized = [];
@@ -423,7 +412,7 @@ class EmployeeService
     {
         $message = $exception->getMessage();
         $constraints = [
-            'UNIQ_F804D3B9E7927C74' => "Cette adresse email est déjà utilisée.",
+            'UNIQ_F804D3B9E7927C74' => "Cette adresse email est dÃ©jÃ  utilisÃ©e.",
         ];
 
         foreach ($constraints as $code => $friendlyMessage) {
@@ -432,7 +421,7 @@ class EmployeeService
             }
         }
 
-        return "Une contrainte d'unicité a été violée. Veuillez vérifier les données saisies.";
+        return "Une contrainte d'unicitÃ© a Ã©tÃ© violÃ©e. Veuillez vÃ©rifier les donnÃ©es saisies.";
     }
 
     private function handleUpload(string $matricule, array $files): array
@@ -456,3 +445,4 @@ class EmployeeService
         return $savedFilePaths;
     }
 }
+

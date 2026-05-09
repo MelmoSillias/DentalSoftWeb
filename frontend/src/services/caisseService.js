@@ -23,12 +23,12 @@ const fetchPrintBlob = async (url, token) => {
     return res.data;
 };
 
-export const fetchDevis = async ({ start, end, unpaidOnly = false }, token) => {
+export const fetchFactures = async ({ start, end, unpaidOnly = false }, token) => {
     if (isCaisseTourMockEnabled()) {
         return fetchDevisTourMock({ start, end, unpaidOnly });
     }
 
-    const url = unpaidOnly ? `${apiPrefix}/devis/unpaid` : `${apiPrefix}/devis`;
+    const url = unpaidOnly ? `${apiPrefix}/factures/unpaid` : `${apiPrefix}/factures`;
     const res = await axios.get(url, { params: { start, end }, ...withHeaders(token) });
     return res.data || [];
 };
@@ -38,7 +38,7 @@ export const fetchPayments = async ({ start, end }, token) => {
         return fetchPaymentsTourMock({ start, end: end === '' ? start : end });
     }
 
-    const res = await axios.get(`${apiPrefix}/devis/payments`, { params: { start, end: end === "" ? start : end }, ...withHeaders(token) });
+    const res = await axios.get(`${apiPrefix}/factures/payments`, { params: { start, end: end === "" ? start : end }, ...withHeaders(token) });
     return res.data || [];
 };
 
@@ -51,30 +51,49 @@ export const fetchPaymentMethods = async (token) => {
     return Array.isArray(res.data) ? res.data : [];
 };
 
-export const payDevis = async (devisId, payload = {}, token) => {
+export const fetchAssurances = async (token) => {
     if (isCaisseTourMockEnabled()) {
-        return payDevisTourMock(devisId, payload);
+        const methods = fetchPaymentMethodsTourMock();
+        return methods
+            .filter((item) => String(item?.type || '').toLowerCase().includes('assur'))
+            .map((item) => ({
+                id: item.id,
+                nom: item.libelle,
+                code: null,
+                actif: item.actif !== false,
+                notes: item.notes || null,
+                defaultRate: Number(item?.coverageRate ?? 0) || 0
+            }));
     }
 
-    const res = await axios.post(`${apiPrefix}/devis/${devisId}/pay`, payload, withHeaders(token));
+    const res = await axios.get(`${apiPrefix}/assurances`, withHeaders(token));
+    return Array.isArray(res.data) ? res.data : [];
+};
+
+export const payFacture = async (factureId, payload = {}, token) => {
+    if (isCaisseTourMockEnabled()) {
+        return payDevisTourMock(factureId, payload);
+    }
+
+    const res = await axios.post(`${apiPrefix}/factures/${factureId}/pay`, payload, withHeaders(token));
     return res.data;
 };
 
-export const resetDevisPayments = async (devisId, token) => {
+export const resetFacturePayments = async (factureId, token) => {
     if (isCaisseTourMockEnabled()) {
         return { success: true };
     }
 
-    const res = await axios.delete(`${apiPrefix}/devis/${devisId}/payments/reset`, withHeaders(token));
+    const res = await axios.delete(`${apiPrefix}/factures/${factureId}/payments/reset`, withHeaders(token));
     return res.data;
 };
 
-export const validateEmptyDevis = async (devisId, token) => {
+export const validateEmptyFacture = async (factureId, token) => {
     if (isCaisseTourMockEnabled()) {
-        return validateEmptyDevisTourMock(devisId);
+        return validateEmptyDevisTourMock(factureId);
     }
 
-    return payDevis(devisId, {}, token);
+    return payFacture(factureId, {}, token);
 };
 
 export const fetchFactureLines = async (consultationId, token) => {
@@ -95,16 +114,41 @@ export const updateFactureLines = async (consultationId, lignes, token) => {
     return res.data;
 };
 
-export const fetchDevisDetail = async (devisId, token) => {
+export const fetchFactureDetail = async (factureId, token) => {
     if (isCaisseTourMockEnabled()) {
-        return fetchDevisDetailTourMock(devisId);
+        return fetchDevisDetailTourMock(factureId);
     }
 
-    const res = await axios.get(`${apiPrefix}/devis/${devisId}`, withHeaders(token));
+    const res = await axios.get(`${apiPrefix}/factures/${factureId}`, withHeaders(token));
     return res.data;
 };
 
 export const getPaymentPrint = (id, token) => fetchPrintBlob(`${apiPrefix}/payments/${id}/print`, token);
 export const getReceiptPrint = (id, token) => fetchPrintBlob(`${apiPrefix}/receipts/${id}/print`, token);
 export const getPaymentsRangePrint = ({ start, end }, token) => fetchPrintBlob(`${apiPrefix}/payments/print?start=${start}&end=${end}`, token);
-export const getInvoicePrint = (devisId, token) => fetchPrintBlob(`${apiPrefix}/invoices/${devisId}/print`, token);
+export const getInvoicePrint = (factureId, token) => fetchPrintBlob(`${apiPrefix}/invoices/${factureId}/print`, token);
+
+export const fetchInsuranceClaims = async ({ status } = {}, token) => {
+    const params = {};
+    if (status && status !== 'all') {
+        params.status = status;
+    }
+
+    const res = await axios.get(`${apiPrefix}/assurances/claims`, { params, ...withHeaders(token) });
+    return Array.isArray(res?.data?.data) ? res.data.data : [];
+};
+
+export const validateInsuranceClaim = async (claimId, token) => {
+    const res = await axios.patch(`${apiPrefix}/assurances/claims/${claimId}/validate`, {}, withHeaders(token));
+    return res.data;
+};
+
+export const rejectInsuranceClaim = async (claimId, reason, token) => {
+    const res = await axios.patch(`${apiPrefix}/assurances/claims/${claimId}/reject`, { reason }, withHeaders(token));
+    return res.data;
+};
+
+export const recoverInsuranceClaim = async (claimId, { modeId, date } = {}, token) => {
+    const res = await axios.post(`${apiPrefix}/assurances/claims/${claimId}/recover`, { modeId, date }, withHeaders(token));
+    return res.data;
+};

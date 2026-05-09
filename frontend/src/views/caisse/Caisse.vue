@@ -3,6 +3,7 @@ import CaisseInvoiceDialogs from '@/components/caisse/CaisseInvoiceDialogs.vue';
 import CaisseFactures from '@/components/caisse/CaisseFactures.vue';
 import CaisseOverview from '@/components/caisse/CaisseOverview.vue';
 import CaissePaiements from '@/components/caisse/CaissePaiements.vue';
+import CaisseAssurances from '@/components/caisse/CaisseAssurances.vue';
 import PrintDevisBody from '@/components/print/PrintDevisBody.vue';
 import PrintPaymentsListBody from '@/components/print/PrintPaymentsListBody.vue';
 import PrintReceiptBody from '@/components/print/PrintReceiptBody.vue';
@@ -17,22 +18,25 @@ import { GUIDED_TOUR_START_EVENT } from '@/tours';
 import { createCaisseTour, resolveCaisseTourGroup } from '@/tours/caisseTour';
 import { startTourGuide } from '@/tours/tourGuideClient';
 import { useAuthStore } from '@/stores/auth';
+import { useAssurancesStore } from '@/stores/assurances';
 import { usePaymentMethodsStore } from '@/stores/paymentMethods';
 import {
-	buildPaymentMethodGroups,
 	getDefaultClassicMethod,
-	getPaymentCoverageRate,
 	getPaymentMethodDefinition
 } from '@/utils/paymentMethodUtils';
 import {
-	fetchDevis,
-	fetchDevisDetail,
+	fetchFactureDetail,
+	fetchFactures,
 	fetchFactureLines,
+	fetchInsuranceClaims,
 	fetchPayments,
-	payDevis,
-	resetDevisPayments,
+	payFacture,
+	recoverInsuranceClaim,
+	rejectInsuranceClaim,
+	resetFacturePayments,
 	updateFactureLines,
-	validateEmptyDevis
+	validateInsuranceClaim,
+	validateEmptyFacture
 } from '@/services/caisseService';
 import { fetchPublicGeneralSettings } from '@/services/globalSettingsService';
 import { defaultSoinList, normalizeSoinList } from '@/services/consultations';
@@ -56,6 +60,7 @@ const toast = useToast();
 const token = localStorage.getItem('token');
 const { printComponent } = usePrinter();
 const authStore = useAuthStore();
+const assurancesStore = useAssurancesStore();
 const paymentMethodsStore = usePaymentMethodsStore();
 
 const viewStorageKey = 'caisse.view';
@@ -80,8 +85,12 @@ if(authStore.user.roles.includes('ROLE_RECEPTION')) {
 
 const devis = ref([]);
 const payments = ref([]);
+const insuranceClaims = ref([]);
 const devisLoading = ref(false);
 const paymentsLoading = ref(false);
+const insuranceLoading = ref(false);
+const insuranceStatusFilter = ref('all');
+const insuranceActionLoadingId = ref(null);
 const validateLoading = ref(false);
 
 const toApiDate = (value) => {
@@ -98,6 +107,7 @@ const currentTime = () => {
 const formatFcfa = (value) => `${Number(value || 0).toLocaleString('fr-FR')} FCFA`;
 
 const paymentMethods = ref([]);
+const assurances = ref([]);
 const payDialogVisible = ref(false);
 const selectedDevis = ref(null);
 const paymentDialogTab = ref('client');
@@ -111,7 +121,7 @@ const payForm = ref({
 	date: toApiDate(today),
 	time: currentTime(),
 	insuranceEnabled: false,
-	insuranceModeId: null,
+	assuranceId: null,
 	insuranceRate: 0
 });
 
@@ -308,7 +318,7 @@ const remainingAfterPay = computed(() => {
 });
 
 const classicPaymentOptions = computed(() =>
-	buildPaymentMethodGroups(paymentMethods.value).classics
+	(paymentMethods.value || [])
 		.filter((method) => method.actif !== false)
 		.map((method) => ({
 			label: `${method.libelle}${getPaymentMethodDefinition(method).label !== 'Autre' ? ` (${getPaymentMethodDefinition(method).label})` : ''}`,
@@ -316,18 +326,26 @@ const classicPaymentOptions = computed(() =>
 		}))
 );
 
-const insurancePaymentOptions = computed(() =>
-	buildPaymentMethodGroups(paymentMethods.value).insurances
-		.filter((method) => method.actif !== false)
-		.map((method) => ({
-			label: `${method.libelle} (${getPaymentCoverageRate(method).toLocaleString('fr-FR')}%)`,
-			value: method.id
+const assuranceOptions = computed(() =>
+	(assurances.value || [])
+		.filter((item) => item?.actif !== false)
+		.map((item) => ({
+			label: item?.nom || item?.libelle || 'Assurance',
+			value: item?.id
 		}))
 );
 
-const selectedInsuranceMethod = computed(() =>
-	paymentMethods.value.find((method) => Number(method?.id) === Number(payForm.value.insuranceModeId)) || null
+const selectedAssurance = computed(() =>
+	(assurances.value || []).find((item) => Number(item?.id) === Number(payForm.value.assuranceId)) || null
 );
+
+const resolveAssuranceDefaultRate = (assurance) => {
+	if (!assurance) {
+		return 0;
+	}
+
+	return Math.max(0, Math.min(100, Number(assurance?.defaultRate ?? assurance?.tauxParDefaut ?? 0) || 0));
+};
 
 const insuranceCoveredAmount = computed(() => {
 	if (invoiceHasInsurance.value) {
@@ -362,7 +380,7 @@ const invoiceAllowsInsurance = computed(() => {
 const requiresClassicPayment = computed(() => (Number(payForm.value.montant) || 0) > 0);
 
 const setActiveView = (view) => {
-	const allowed = ['overview', 'factures', 'paiements'];
+	const allowed = ['overview', 'factures', 'paiements', 'assurances'];
 	const normalized = allowed.includes(view) ? view : 'overview';
 	activeView.value = normalized;
 	localStorage.setItem(viewStorageKey, normalized);
@@ -394,7 +412,7 @@ const loadDevis = async () => {
 	try {
 		devisLoading.value = true;
 		const [start, end] = devisRange.value;
-		const res = await fetchDevis({ start: toApiDate(start), end: toApiDate(end), unpaidOnly: devisType.value === 'impaye' }, token);
+		const res = await fetchFactures({ start: toApiDate(start), end: toApiDate(end), unpaidOnly: devisType.value === 'impaye' }, token);
 		devis.value = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
 		if (isInitialLoadPhase.value) {
 			loadErrorMessage.value = '';
@@ -440,6 +458,27 @@ const loadPaymentMethods = async () => {
 	}
 };
 
+const loadAssurances = async () => {
+	try {
+		assurances.value = await assurancesStore.load(token);
+	} catch (error) {
+		console.error(error);
+		toast.add({ severity: 'warn', summary: 'Assurances', detail: 'Chargement impossible', life: 3000 });
+	}
+};
+
+const loadInsuranceClaims = async () => {
+	try {
+		insuranceLoading.value = true;
+		insuranceClaims.value = await fetchInsuranceClaims({ status: insuranceStatusFilter.value }, token);
+	} catch (error) {
+		console.error(error);
+		toast.add({ severity: 'error', summary: 'Assurances', detail: 'Chargement des créances impossible', life: 3500 });
+	} finally {
+		insuranceLoading.value = false;
+	}
+};
+
 const loadPublicGeneralSettings = async () => {
 	try {
 		const settings = await fetchPublicGeneralSettings(token);
@@ -475,7 +514,7 @@ const retryLoadPage = async () => {
 
 const openPayDialog = async (row) => {
 	selectedDevis.value = row;
-	await loadPaymentMethods();
+	await Promise.all([loadPaymentMethods(), loadAssurances()]);
 	const defaultClassicMethod = getDefaultClassicMethod(paymentMethods.value);
 	const existingInsurance = row?.insurance || null;
 	payForm.value = {
@@ -484,7 +523,7 @@ const openPayDialog = async (row) => {
 		date: toApiDate(new Date()),
 		time: currentTime(),
 		insuranceEnabled: false,
-		insuranceModeId: existingInsurance?.insuranceModeId ?? null,
+		assuranceId: existingInsurance?.assuranceId ?? null,
 		insuranceRate: Number(existingInsurance?.insuranceRate) || 0
 	};
 	payDialogVisible.value = true;
@@ -508,7 +547,7 @@ watch(
 	(enabled) => {
 		if (!enabled) {
 			if (!invoiceHasInsurance.value) {
-				payForm.value.insuranceModeId = null;
+				payForm.value.assuranceId = null;
 				payForm.value.insuranceRate = 0;
 			}
 			payForm.value.montant = Number(selectedDevis.value?.reste) || 0;
@@ -520,26 +559,30 @@ watch(
 			return;
 		}
 
-		const defaultInsurance = buildPaymentMethodGroups(paymentMethods.value).insurances.find((method) => method.actif !== false) || null;
-		payForm.value.insuranceModeId = payForm.value.insuranceModeId || defaultInsurance?.id || null;
-		payForm.value.insuranceRate = getPaymentCoverageRate(defaultInsurance);
+		const defaultAssurance = (assurances.value || []).find((item) => item?.actif !== false) || null;
+		payForm.value.assuranceId = payForm.value.assuranceId || defaultAssurance?.id || null;
+		if (!invoiceHasInsurance.value && payForm.value.assuranceId) {
+			const assurance = (assurances.value || []).find((item) => Number(item?.id) === Number(payForm.value.assuranceId)) || null;
+			payForm.value.insuranceRate = resolveAssuranceDefaultRate(assurance);
+		}
 		payForm.value.montant = 0;
 	}
 );
 
 watch(
-	() => payForm.value.insuranceModeId,
-	(modeId) => {
-		if (!modeId) {
+	() => payForm.value.assuranceId,
+	(assuranceId) => {
+		if (!assuranceId) {
 			return;
 		}
 
-		const method = paymentMethods.value.find((item) => Number(item?.id) === Number(modeId));
-		if (method) {
-			payForm.value.insuranceRate = getPaymentCoverageRate(method);
-			if ((Number(payForm.value.montant) || 0) > maxClientPaymentAmount.value) {
-				payForm.value.montant = maxClientPaymentAmount.value;
-			}
+		if (!invoiceHasInsurance.value) {
+			const assurance = (assurances.value || []).find((item) => Number(item?.id) === Number(assuranceId)) || null;
+			payForm.value.insuranceRate = resolveAssuranceDefaultRate(assurance);
+		}
+
+		if ((Number(payForm.value.montant) || 0) > maxClientPaymentAmount.value) {
+			payForm.value.montant = maxClientPaymentAmount.value;
 		}
 	}
 );
@@ -560,6 +603,7 @@ const submitPayment = async () => {
 	const montant = Number(payForm.value.montant) || 0;
 	const insuranceAmount = isNewInsurancePayment ? effectiveInsuranceAmount.value : 0;
 	const max = Number(selectedDevis.value.reste) || 0;
+
 	if (montant < 0) {
 		toast.add({ severity: 'warn', summary: 'Montant', detail: 'Saisissez un montant valide', life: 2500 });
 		return;
@@ -576,7 +620,7 @@ const submitPayment = async () => {
 		toast.add({ severity: 'warn', summary: 'Assurance', detail: 'Une assurance est déjà enregistrée pour cette facture.', life: 3000 });
 		return;
 	}
-	if (isNewInsurancePayment && !payForm.value.insuranceModeId) {
+	if (isNewInsurancePayment && !payForm.value.assuranceId) {
 		toast.add({ severity: 'warn', summary: 'Assurance', detail: 'Choisissez une assurance.', life: 2500 });
 		return;
 	}
@@ -591,19 +635,19 @@ const submitPayment = async () => {
 	try {
 		payLoading.value = true;
 		const canPrintClientReceipt = montant > 0;
-		const res = await payDevis(selectedDevis.value.id, {
+		const res = await payFacture(selectedDevis.value.id, {
 			montant,
 			modeId: requiresClassicPayment.value ? payForm.value.modeId : null,
 			date: payForm.value.date,
 			time: payForm.value.time,
 			insurance_enabled: isNewInsurancePayment ? 1 : 0,
-			insurance_mode_id: isNewInsurancePayment ? payForm.value.insuranceModeId : null,
+			assurance_id: isNewInsurancePayment ? payForm.value.assuranceId : null,
 			insurance_rate: isNewInsurancePayment ? Number(payForm.value.insuranceRate || 0) : null,
 			patient_amount: montant,
 			insurance_amount: insuranceAmount,
 			facture_amount: Number(selectedDevis.value.reste || selectedDevis.value.montant || 0)
 		}, token);
-		const devisId = selectedDevis.value.id;
+		const factureId = selectedDevis.value.id;
 		const paymentId = res?.paiement_id ?? res?.paiementId ?? null;
 		const toastPayload = {
 			severity: 'success',
@@ -616,7 +660,7 @@ const submitPayment = async () => {
 					if (!paymentId) {
 						await loadPayments();
 						const match = payments.value
-							.filter((p) => Number(p.devisId) === Number(devisId))
+							.filter((p) => Number(p.factureId) === Number(factureId))
 							.reduce((maxId, p) => (p?.pId && p.pId > maxId ? p.pId : maxId), 0);
 						if (!match) {
 							toast.add({ severity: 'warn', summary: 'Paiement', detail: 'Reçu introuvable pour cette facture.', life: 3000 });
@@ -629,6 +673,7 @@ const submitPayment = async () => {
 				}
 			} : undefined
 		};
+
 		toast.add(toastPayload);
 		payDialogVisible.value = false;
 		await Promise.all([loadDevis(), loadPayments()]);
@@ -659,7 +704,7 @@ const resetSelectedDevisPayments = async () => {
 
 	try {
 		resetPaymentsLoading.value = true;
-		await resetDevisPayments(selectedDevis.value.id, token);
+		await resetFacturePayments(selectedDevis.value.id, token);
 		toast.add({ severity: 'success', summary: 'Facture', detail: 'La facture a été réinitialisée.', life: 3000 });
 		resetPaymentDialogVisible.value = false;
 		payDialogVisible.value = false;
@@ -682,7 +727,7 @@ const confirmValidate = async () => {
 	validateLoading.value = true;
 	try {
 
-		await validateEmptyDevis(pendingDevis.value.id, token);
+		await validateEmptyFacture(pendingDevis.value.id, token);
 		toast.add({ severity: 'success', summary: 'Validation', detail: 'Facture vide validée', life: 2500 });
 		validateDialogVisible.value = false;
 		await Promise.all([loadDevis(), loadPayments()]);
@@ -760,7 +805,7 @@ const openPreviewDialog = async (row) => {
 	previewDialogTab.value = 'services';
 	selectedDevis.value = row;
 	try {
-		previewData.value = await fetchDevisDetail(row.id, token);
+		previewData.value = await fetchFactureDetail(row.id, token);
 	} catch (error) {
 		console.error(error);
 		toast.add({ severity: 'error', summary: 'Facture', detail: 'Aperçu indisponible', life: 3500 });
@@ -830,7 +875,7 @@ const prepareGuidedTourDemo = async () => {
 	resetCaisseTourMockData();
 	guidedTourDemoActive = true;
 	setActiveView('overview');
-	await Promise.all([loadDevis(), loadPayments(), loadPaymentMethods()]);
+	await Promise.all([loadDevis(), loadPayments(), loadPaymentMethods(), loadAssurances()]);
 	await nextTick();
 };
 
@@ -1033,11 +1078,61 @@ const sendReceiptBySms = async (row) => {
 	}
 };
 
+const validateClaim = async (claim) => {
+	try {
+		insuranceActionLoadingId.value = Number(claim?.id) || null;
+		await validateInsuranceClaim(claim.id, token);
+		toast.add({ severity: 'success', summary: 'Assurance', detail: 'Créance validée.', life: 3000 });
+		await loadInsuranceClaims();
+	} catch (error) {
+		console.error(error);
+		toast.add({ severity: 'error', summary: 'Assurance', detail: 'Validation impossible.', life: 3500 });
+	} finally {
+		insuranceActionLoadingId.value = null;
+	}
+};
+
+const rejectClaim = async (claim) => {
+	try {
+		insuranceActionLoadingId.value = Number(claim?.id) || null;
+		await rejectInsuranceClaim(claim.id, null, token);
+		toast.add({ severity: 'success', summary: 'Assurance', detail: 'Créance rejetée.', life: 3000 });
+		await loadInsuranceClaims();
+	} catch (error) {
+		console.error(error);
+		toast.add({ severity: 'error', summary: 'Assurance', detail: 'Rejet impossible.', life: 3500 });
+	} finally {
+		insuranceActionLoadingId.value = null;
+	}
+};
+
+const recoverClaim = async (claim) => {
+	const classicMethod = getDefaultClassicMethod(paymentMethods.value);
+	if (!classicMethod?.id) {
+		toast.add({ severity: 'warn', summary: 'Assurance', detail: 'Aucun mode de paiement actif.', life: 3500 });
+		return;
+	}
+
+	try {
+		insuranceActionLoadingId.value = Number(claim?.id) || null;
+		await recoverInsuranceClaim(claim.id, { modeId: classicMethod.id, date: new Date().toISOString() }, token);
+		toast.add({ severity: 'success', summary: 'Assurance', detail: 'Recouvrement enregistré.', life: 3000 });
+		await loadInsuranceClaims();
+	} catch (error) {
+		console.error(error);
+		toast.add({ severity: 'error', summary: 'Assurance', detail: 'Recouvrement impossible.', life: 3500 });
+	} finally {
+		insuranceActionLoadingId.value = null;
+	}
+};
+
 watch([devisRange, devisType], loadDevis, { immediate: true });
 watch(paymentRange, loadPayments, { immediate: true });
+watch(insuranceStatusFilter, loadInsuranceClaims, { immediate: true });
 
 onMounted(async () => {
 	await loadPublicGeneralSettings();
+	await Promise.all([loadPaymentMethods(), loadAssurances()]);
 	setActiveView(activeView.value);
 	isInitialLoadPhase.value = false;
 	window.addEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
@@ -1078,6 +1173,7 @@ onBeforeUnmount(() => {
 				<Tab value="overview">Vue d'ensemble</Tab>
 				<Tab value="factures">Factures</Tab>
 				<Tab value="paiements">Paiements</Tab>
+				<Tab value="assurances">Assurances</Tab>
 			</TabList>
 			<TabPanels class="mt-4">
 				<TabPanel value="overview">
@@ -1105,6 +1201,19 @@ onBeforeUnmount(() => {
 						@refresh-payments="loadPayments" @print-payments="printPayments" @print-payment="printPayment"
 						@print-receipt="printReceipt" @send-receipt-sms="sendReceiptBySms" />
 				</TabPanel>
+				<TabPanel value="assurances">
+					<CaisseAssurances
+						:claims="insuranceClaims"
+						:loading="insuranceLoading"
+						:status-filter="insuranceStatusFilter"
+						:action-loading-id="insuranceActionLoadingId"
+						@update:statusFilter="insuranceStatusFilter = $event"
+						@refresh="loadInsuranceClaims"
+						@validate-claim="validateClaim"
+						@reject-claim="rejectClaim"
+						@recover-claim="recoverClaim"
+					/>
+				</TabPanel>
 			</TabPanels>
 		</Tabs>
 
@@ -1114,8 +1223,8 @@ onBeforeUnmount(() => {
 			:payment-dialog-tab="paymentDialogTab"
 			:pay-form="payForm"
 			:classic-payment-options="classicPaymentOptions"
-			:insurance-payment-options="insurancePaymentOptions"
-			:selected-insurance-method="selectedInsuranceMethod"
+			:assurance-options="assuranceOptions"
+			:selected-assurance="selectedAssurance"
 			:insurance-covered-amount="insuranceCoveredAmount"
 			:patient-already-paid-amount="patientAlreadyPaidAmount"
 			:patient-outstanding-amount="patientOutstandingAmount"

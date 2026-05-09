@@ -121,17 +121,17 @@ function buildSeedState() {
         payments: [
             {
                 pId: 8801,
-                devisId: 7002,
+                factureId: 7002,
                 patient: 'Ibrahima Ndiaye',
                 telephone: '+221775551212',
                 date: isoDateOffset(-1, 14, 15),
                 montant: 45000,
                 mode: 'Wave',
-                type: 'devis'
+                type: 'facture'
             },
             {
                 pId: 8802,
-                devisId: 7004,
+                factureId: 7004,
                 patient: 'Cheikh Ba',
                 telephone: '+221770909090',
                 date: isoDateOffset(-4, 16, 30),
@@ -206,13 +206,13 @@ export function payDevisTourMock(devisId, payload = {}) {
     const paymentId = caisseTourMockState.nextPaymentId++;
     caisseTourMockState.payments.unshift({
         pId: paymentId,
-        devisId: devis.id,
+        factureId: devis.id,
         patient: `${devis.patient?.nom || ''} ${devis.patient?.prenom || ''}`.trim(),
         telephone: devis.telephone,
         date: `${payload.date || new Date().toISOString().slice(0, 10)}T${payload.time || '09:00'}:00`,
         montant: totalPaid,
         mode: payload.insurance_enabled ? 'Paiement + Assurance' : resolvePaymentMethodLabel(payload.modeId),
-        type: 'devis'
+        type: 'facture'
     });
 
     return { success: true, paiement_id: paymentId };

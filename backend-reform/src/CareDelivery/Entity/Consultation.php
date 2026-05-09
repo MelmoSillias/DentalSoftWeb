@@ -2,8 +2,9 @@
 
 namespace App\CareDelivery\Entity;
 
-use App\Billing\Entity\Devis;
-use App\Billing\Entity\PaiementDevis;
+use App\Billing\Entity\Assurance;
+use App\Billing\Entity\Facture;
+use App\Billing\Entity\Paiement;
 use App\ClinicalRecord\Entity\FicheMedicale;
 use App\ClinicalRecord\Entity\FicheObservation;
 use App\CareDelivery\Repository\ConsultationRepository;
@@ -59,11 +60,21 @@ class Consultation
     #[ORM\Column(type: 'datetime', nullable: true)]
     private ?\DateTimeInterface $CreatedAt = null;
 
-    #[ORM\OneToMany(mappedBy: 'consultation', targetEntity: PaiementDevis::class, cascade: ['persist', 'remove'])]
-    private Collection $paiementDevis;
+    #[ORM\OneToOne(mappedBy: 'consultation', targetEntity: Paiement::class, cascade: ['persist', 'remove'])]
+    private ?Paiement $paiement = null;
 
-    #[ORM\OneToOne(inversedBy: 'consultation', cascade: ['persist', 'remove'])]
-    private ?Devis $facture = null;
+    #[ORM\OneToOne(mappedBy: 'consultation', cascade: ['persist', 'remove'])]
+    private ?Facture $facture = null;
+
+    #[ORM\ManyToOne(targetEntity: Assurance::class)]
+    #[ORM\JoinColumn(nullable: true)]
+    private ?Assurance $assurance = null;
+
+    #[ORM\Column(type: 'float', nullable: true)]
+    private ?float $tauxCouverture = null;
+
+    #[ORM\Column(type: 'boolean', options: ['default' => false])]
+    private bool $isRecouvre = false;
 
     #[ORM\OneToMany(mappedBy: 'consultation', targetEntity: Ordonnance::class, cascade: ['persist', 'remove'], orphanRemoval: true)]
     private Collection $ordonnances;
@@ -72,7 +83,7 @@ class Consultation
     public function __construct()
     {
         $this->actes = new ArrayCollection(); 
-        $this->paiementDevis = new ArrayCollection();
+        $this->paiement = null;
         $this->ordonnances = new ArrayCollection();
     }
 
@@ -119,58 +130,78 @@ class Consultation
         return $this;
     }
  
-    public function getPaiementDevis(): ?PaiementDevis
+    public function getPaiement(): ?Paiement
     {
-        return $this->paiementDevis->first() ?: null;
+        return $this->paiement;
     }
 
-    public function getPaiementsDevis(): Collection
+    public function setPaiement(?Paiement $paiement): self
     {
-        return $this->paiementDevis;
-    }
-
-    public function setPaiementDevis(?PaiementDevis $paiementDevis): self
-    {
-        foreach ($this->paiementDevis as $existingPaiement) {
-            $existingPaiement->setConsultation(null);
+        if ($this->paiement !== null) {
+            $this->paiement->setConsultation(null);
         }
 
-        $this->paiementDevis->clear();
-
-        if ($paiementDevis !== null) {
-            $this->addPaiementDevis($paiementDevis);
+        if ($paiement !== null) {
+            $paiement->setConsultation($this);
         }
+
+        $this->paiement = $paiement;
 
         return $this;
     }
-
-    public function addPaiementDevis(PaiementDevis $paiementDevis): self
-    {
-        if (!$this->paiementDevis->contains($paiementDevis)) {
-            $this->paiementDevis->add($paiementDevis);
-            $paiementDevis->setConsultation($this);
-        }
-
-        return $this;
-    }
-
-    public function removePaiementDevis(PaiementDevis $paiementDevis): self
-    {
-        if ($this->paiementDevis->removeElement($paiementDevis) && $paiementDevis->getConsultation() === $this) {
-            $paiementDevis->setConsultation(null);
-        }
-
-        return $this;
-    }
-
-    public function getFacture(): ?Devis
+    
+    public function getFacture(): ?Facture
     {
         return $this->facture;
     }
 
-    public function setFacture(?Devis $facture): static
+    public function setFacture(?Facture $facture): static
     {
+        if ($facture === null && $this->facture !== null) {
+            $this->facture->setConsultation(null);
+        }
+
+        if ($facture !== null && $facture->getConsultation() !== $this) {
+            $facture->setConsultation($this);
+        }
+
         $this->facture = $facture;
+
+        return $this;
+    }
+
+    public function getAssurance(): ?Assurance
+    {
+        return $this->assurance;
+    }
+
+    public function setAssurance(?Assurance $assurance): static
+    {
+        $this->assurance = $assurance;
+
+        return $this;
+    }
+
+    public function getTauxCouverture(): ?float
+    {
+        return $this->tauxCouverture;
+    }
+
+    public function setTauxCouverture(?float $tauxCouverture): static
+    {
+        $this->tauxCouverture = $tauxCouverture;
+
+        return $this;
+    }
+
+    public function isRecouvre(): bool
+    {
+        return $this->isRecouvre;
+    }
+
+    public function setIsRecouvre(bool $isRecouvre): static
+    {
+        $this->isRecouvre = $isRecouvre;
 
         return $this;
     }

@@ -2,11 +2,12 @@
 
 namespace App\Billing\Controller\Api;
 
-use App\Billing\Entity\Devis;
-use App\Billing\Entity\PaiementDevis;
-use App\Billing\Repository\PaiementDevisRepository;
+use App\Billing\Entity\Paiement;
+use App\Billing\Repository\PaiementRepository;
 use App\Patient\Entity\Patient;
 use App\Billing\Service\CashdeskService;
+use App\CareDelivery\Entity\Consultation;
+use App\CareDelivery\Repository\ConsultationRepository;
 use App\Communication\Service\SmsService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -19,13 +20,14 @@ class CaisseController extends AbstractController
     public function __construct(
         private CashdeskService $cashdeskService,
         private SmsService $smsService,
-        private PaiementDevisRepository $paiementRepository,
+        private PaiementRepository $paiementRepository,
+        private ConsultationRepository $consultationRepository,
     )
     {
     }
 
-    #[Route('/api/devis', name: 'api_devis_list', methods: ['GET'])]
-    public function getDevisAll(Request $request): JsonResponse
+    #[Route('/api/factures', name: 'api_factures_list', methods: ['GET'])]
+    public function getFacturesAll(Request $request): JsonResponse
     {
         $start = new \DateTime($request->query->get('start', 'today'));
         if ($request->query->has('end') && $request->query->get('end') !== '') {
@@ -35,17 +37,17 @@ class CaisseController extends AbstractController
         }
         $end->setTime(23, 59, 59);
 
-        return new JsonResponse($this->cashdeskService->listDevisByPeriod($start, $end));
+        return new JsonResponse($this->cashdeskService->listFacturesByPeriod($start, $end));
     }
 
-    #[Route('/api/devis/unpaid', name: 'api_devis_unpaid', methods: ['GET'])]
-    public function getDevisImpayes(): JsonResponse
+    #[Route('/api/factures/unpaid', name: 'api_factures_unpaid', methods: ['GET'])]
+    public function getFacturesImpayees(): JsonResponse
     {
-        return new JsonResponse($this->cashdeskService->listDevisImpayes());
+        return new JsonResponse($this->cashdeskService->listFacturesImpayees());
     }
 
-    #[Route('/api/devis/payments', name: 'api_devis_payments', methods: ['GET'])]
-    public function getPaiementsDevis(Request $request): JsonResponse
+    #[Route('/api/factures/payments', name: 'api_factures_payments', methods: ['GET'])]
+    public function getPaiementsFactures(Request $request): JsonResponse
     {
         $start = new \DateTime($request->query->get('start', 'today'));
         if ($request->query->has('end') && $request->query->get('end') !== '') {
@@ -55,27 +57,27 @@ class CaisseController extends AbstractController
         }
         $end->setTime(23, 59, 59);
 
-        return new JsonResponse(['data' => $this->cashdeskService->listPaiementsDevis($start, $end)]);
+        return new JsonResponse(['data' => $this->cashdeskService->listPaiementsFactures($start, $end)]);
     }
 
-    #[Route('/api/devis/{id}', name: 'api_devis_preview', methods: ['GET'])]
-    public function previewDevis(Devis $devis): JsonResponse
+    #[Route('/api/factures/{id}', name: 'api_factures_preview', methods: ['GET'])] 
+    public function previewFacture(int $id): JsonResponse
     {
-        $data = $this->cashdeskService->previewDevis($devis->getId());
+        $data = $this->cashdeskService->previewFactureDetail($id);
 
         if ($data === null) {
-            return new JsonResponse(['error' => 'Devis introuvable'], 404);
+            return new JsonResponse(['error' => 'Facture introuvable'], 404);
         }
 
         return new JsonResponse($data);
     }
 
-    #[Route('/api/devis/{id}/pay', name: 'api_devis_pay', methods: ['POST'])]
-    public function payerDevis(int $id, Request $request): JsonResponse
+    #[Route('/api/factures/{id}/pay', name: 'api_factures_pay', methods: ['POST'])] 
+    public function payerFacture(int $id, Request $request): JsonResponse
     {
         $payload = $request->getContentTypeFormat() === 'json' ? $request->toArray() : $request->request->all();
 
-        $result = $this->cashdeskService->payerDevis($id, $payload);
+        $result = $this->cashdeskService->payerFacture($id, $payload);
 
         if (!isset($result['error']) && isset($result['paiement_id'])) {
             $paiement = $this->paiementRepository->find((int) $result['paiement_id']);
@@ -94,25 +96,25 @@ class CaisseController extends AbstractController
         return new JsonResponse($result, isset($result['error']) ? 400 : 200);
     }
 
-    #[Route('/api/devis/{id}/payments/reset', name: 'api_devis_payments_reset', methods: ['DELETE'])]
-    public function resetDevisPayments(int $id): JsonResponse
+    #[Route('/api/factures/{id}/payments/reset', name: 'api_factures_payments_reset', methods: ['DELETE'])] 
+    public function resetFacturePayments(int $id): JsonResponse
     {
-        $result = $this->cashdeskService->resetDevisPayments($id);
+        $result = $this->cashdeskService->resetFacturePayments($id);
 
         return new JsonResponse($result, isset($result['error']) ? 404 : 200);
     }
 
-    #[Route('/api/devis/{id}/print', name: 'api_devis_print', methods: ['GET'])]
-    public function printDevis(int $id): Response
+    #[Route('/api/factures/{id}/print', name: 'api_factures_print', methods: ['GET'])] 
+    public function printFactureFromLegacyRoute(int $id): Response
     {
-        $data = $this->cashdeskService->previewDevis($id);
+        $data = $this->cashdeskService->previewFactureDetail($id);
         if ($data === null) {
-            throw $this->createNotFoundException('Devis introuvable.');
+            throw $this->createNotFoundException('Facture introuvable.');
         }
 
         return $this->render('devis/print_document.html.twig', [
             'doc' => $data,
-            'title' => 'Devis',
+            'title' => 'Facture',
         ]);
     }
 
@@ -176,17 +178,17 @@ class CaisseController extends AbstractController
         ]);
     }
 
-    #[Route('/api/prints/devis/{id}', name: 'api_print_devis_data', methods: ['GET'])]
-    public function getDevisPrintData(int $id): JsonResponse
+    #[Route('/api/prints/factures/{id}', name: 'api_print_factures_data', methods: ['GET'])] 
+    public function getFacturePrintDataLegacy(int $id): JsonResponse
     {
-        $data = $this->cashdeskService->previewDevis($id);
+        $data = $this->cashdeskService->previewFactureDetail($id);
         if ($data === null) {
-            return new JsonResponse(['error' => 'Devis introuvable'], 404);
+            return new JsonResponse(['error' => 'Facture introuvable'], 404);
         }
 
         return new JsonResponse([
             'doc' => $data,
-            'title' => 'Devis',
+            'title' => 'Facture',
         ]);
     }
 
@@ -216,7 +218,7 @@ class CaisseController extends AbstractController
         $end->setTime(23, 59, 59);
 
         $paiements = $this->cashdeskService->paiementsForPeriod($start, $end);
-        $items = array_map(fn (PaiementDevis $p) => $this->mapPaiementListItem($p), $paiements);
+        $items = array_map(fn (Paiement $p) => $this->mapPaiementListItem($p), $paiements);
         $total = array_reduce($items, fn ($sum, $p) => $sum + (float) ($p['montant'] ?? 0), 0);
 
         return new JsonResponse([
@@ -243,21 +245,21 @@ class CaisseController extends AbstractController
     #[Route('/api/prints/tickets/{id}', name: 'api_print_ticket_data', methods: ['GET'])]
     public function getTicketPrintData(int $id): JsonResponse
     {
-        $paiement = $this->cashdeskService->paiementById($id);
-        if (!$paiement) {
-            return new JsonResponse(['error' => 'Paiement introuvable'], 404);
+
+        $consultation = $this->consultationRepository->find($id);
+        if (!$consultation) {
+            return new JsonResponse(['error' => 'Consultation introuvable'], 404);
         }
 
         return new JsonResponse([
-            'paiement' => $this->mapPaiementTicket($paiement),
+            'paiement' => $this->mapPaiementTicket($consultation),
         ]);
     }
 
-    private function mapPaiementReceipt(PaiementDevis $paiement): array
+    private function mapPaiementReceipt(Paiement $paiement): array
     {
-        $devis = $paiement->getDevis();
-        $fiche = $devis?->getFicheMedicale();
-        $patient = $fiche?->getPatient();
+        $patient = $this->resolvePatientFromPaiement($paiement);
+        $factureId = $paiement->getFacture()?->getId();
 
         return [
             'id' => $paiement->getId(),
@@ -266,29 +268,28 @@ class CaisseController extends AbstractController
             'mode' => [
                 'libelle' => $paiement->getMode()?->getLibelle(),
             ],
-            'devis' => $devis ? [
-                'id' => $devis->getId(),
-                'fiche' => $fiche ? [
+            'devis' => $factureId ? [
+                'id' => $factureId,
+                'fiche' => [
                     'patient' => $patient ? [
                         'nom' => $patient->getNom(),
                         'prenom' => $patient->getPrenom(),
                     ] : null,
-                ] : null,
+                ],
             ] : null,
         ];
     }
 
-    private function mapPaiementTicket(PaiementDevis $paiement): array
+    private function mapPaiementTicket(Consultation $consultation): array
     {
-        $consultation = $paiement->getConsultation();
         $patient = $consultation?->getPatient();
 
         return [
-            'id' => $paiement->getId(),
-            'date' => $paiement->getDate()?->format('Y-m-d H:i'),
-            'montant' => $paiement->getMontant(),
+            'id' => $consultation->getId(),
+            'date' => $consultation->getCreatedAt()?->format('Y-m-d H:i'),
+            'montant' => $consultation->getPaiement()?->getMontant(),
             'mode' => [
-                'libelle' => $paiement->getMode()?->getLibelle(),
+                'libelle' => $consultation->getPaiement()?->getMode()?->getLibelle(),
             ],
             'consultation' => $consultation ? [
                 'patient' => $patient ? [
@@ -299,21 +300,20 @@ class CaisseController extends AbstractController
         ];
     }
 
-    private function mapPaiementListItem(PaiementDevis $paiement): array
+    private function mapPaiementListItem(Paiement $paiement): array
     {
-        $devis = $paiement->getDevis();
-        $fiche = $devis?->getFicheMedicale();
-        $patient = $fiche?->getPatient();
+        $patient = $this->resolvePatientFromPaiement($paiement);
+        $factureId = $paiement->getFacture()?->getId();
 
         return [
-            'devis' => $devis ? [
-                'id' => $devis->getId(),
-                'fiche' => $fiche ? [
+            'devis' => $factureId ? [
+                'id' => $factureId,
+                'fiche' => [
                     'patient' => $patient ? [
                         'nom' => $patient->getNom(),
                         'prenom' => $patient->getPrenom(),
                     ] : null,
-                ] : null,
+                ],
             ] : null,
             'montant' => $paiement->getMontant(),
             'mode' => [
@@ -323,19 +323,19 @@ class CaisseController extends AbstractController
         ];
     }
 
-    private function resolvePatientFromPaiement(?PaiementDevis $paiement): ?Patient
+    private function resolvePatientFromPaiement(?Paiement $paiement): ?Patient
     {
-        if (!$paiement instanceof PaiementDevis) {
+        if (!$paiement instanceof Paiement) {
             return null;
         }
 
-        $devis = $paiement->getDevis();
-        $fromFicheMedicale = $devis?->getFicheMedicale()?->getPatient();
+        $facture = $paiement->getFacture();
+        $fromFicheMedicale = $facture?->getConsultation()?->getFicheMedicale()?->getPatient();
         if ($fromFicheMedicale instanceof Patient) {
             return $fromFicheMedicale;
         }
 
-        $fiche = $devis?->getFiche();
+        $fiche = $facture?->getConsultation()?->getFiche();
         if ($fiche && method_exists($fiche, 'getPatient')) {
             $patient = $fiche->getPatient();
             if ($patient instanceof Patient) {
@@ -343,6 +343,7 @@ class CaisseController extends AbstractController
             }
         }
 
-        return $paiement->getConsultation()?->getPatient();
+        return $paiement->getConsultation()?->getPatient()
+            ?? $paiement->getFacture()?->getConsultation()?->getPatient();
     }
 }

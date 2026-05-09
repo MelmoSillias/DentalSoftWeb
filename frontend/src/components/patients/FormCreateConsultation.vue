@@ -9,11 +9,10 @@ import { fetchPublicGeneralSettings } from '@/services/globalSettingsService';
 import { fetchTicketPrintData } from '@/services/printService';
 import PrintTicketBody from '@/components/print/PrintTicketBody.vue';
 import { usePrinter } from '@/composables/usePrinter';
+import { useAssurancesStore } from '@/stores/assurances';
 import { useMedecinsStore } from '@/stores/medecins';
 import { usePaymentMethodsStore } from '@/stores/paymentMethods';
 import {
-    buildPaymentMethodGroups,
-    getPaymentCoverageRate,
     getPaymentMethodDefinition,
     getDefaultClassicMethod
 } from '@/utils/paymentMethodUtils';
@@ -45,6 +44,7 @@ const toast = useToast();
 const token = localStorage.getItem('token');
 const loading = ref(false);
 const { printComponent } = usePrinter();
+const assurancesStore = useAssurancesStore();
 const medecinsStore = useMedecinsStore();
 const paymentMethodsStore = usePaymentMethodsStore();
 const consultationAmount = ref(5000);
@@ -53,6 +53,7 @@ const patients = ref([]);
 const patientsLoading = ref(false);
 const medecins = ref([]);
 const paymentMethods = ref([]);
+const assurances = ref([]);
 const selectedPatientId = ref(null);
 
 const form = reactive({
@@ -63,7 +64,7 @@ const form = reactive({
     payant: false,
     modePaiementId: null,
     insuranceEnabled: false,
-    insuranceModeId: null,
+    assuranceId: null,
     insuranceRate: 0
 });
 
@@ -112,6 +113,15 @@ const loadPaymentMethods = async () => {
     }
 };
 
+const loadAssurances = async () => {
+    try {
+        assurances.value = await assurancesStore.load(token);
+    } catch (error) {
+        console.error('Erreur lors du chargement des assurances', error);
+        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de charger les assurances.', life: 3000 });
+    }
+};
+
 onMounted(() => {
     if (!isPatientPreselected.value) {
         loadPatients();
@@ -119,6 +129,7 @@ onMounted(() => {
     loadConsultationCreationPolicy();
     loadMedecins();
     loadPaymentMethods();
+    loadAssurances();
 });
 
 const loadConsultationCreationPolicy = async () => {
@@ -164,26 +175,34 @@ const medecinOptions = computed(() =>
 );
 
 const paymentMethodOptions = computed(() =>
-    buildPaymentMethodGroups(paymentMethods.value).classics
+    paymentMethods.value
         .filter((m) => m.actif !== false)
         .map((m) => ({
-            label: `${m.libelle}${getPaymentMethodDefinition(m).label !== 'Autre' ? ` (${getPaymentMethodDefinition(m).label})` : ''}`,
+            label: `${m.libelle}${getPaymentMethodDefinition(m).label ? ` (${getPaymentMethodDefinition(m).label})` : ''}`,
             value: m.id
         }))
 );
 
 const insuranceMethodOptions = computed(() =>
-    buildPaymentMethodGroups(paymentMethods.value).insurances
-        .filter((m) => m.actif !== false)
-        .map((m) => ({
-            label: `${m.libelle} (${getPaymentCoverageRate(m).toLocaleString('fr-FR')}%)`,
-            value: m.id
+    (assurances.value || [])
+        .filter((item) => item?.actif !== false)
+        .map((item) => ({
+            label: item?.nom || 'Assurance',
+            value: item?.id
         }))
 );
 
 const selectedInsuranceMethod = computed(() =>
-    paymentMethods.value.find((method) => Number(method?.id) === Number(form.insuranceModeId)) || null
+    assurances.value.find((item) => Number(item?.id) === Number(form.assuranceId)) || null
 );
+
+const resolveAssuranceDefaultRate = (assurance) => {
+    if (!assurance) {
+        return 0;
+    }
+
+    return Math.max(0, Math.min(100, Number(assurance?.defaultRate ?? assurance?.tauxParDefaut ?? 0) || 0));
+};
 
 const insuranceCoveredAmount = computed(() => {
     if (!form.payant || !form.insuranceEnabled) {
@@ -202,7 +221,7 @@ const resetForm = () => {
     form.medecinId = null;
     form.modePaiementId = null;
     form.insuranceEnabled = false;
-    form.insuranceModeId = null;
+    form.assuranceId = null;
     form.insuranceRate = 0;
 };
 
@@ -218,7 +237,7 @@ watch(
 
         form.modePaiementId = null;
         form.insuranceEnabled = false;
-        form.insuranceModeId = null;
+        form.assuranceId = null;
         form.insuranceRate = 0;
     }
 );
@@ -227,32 +246,28 @@ watch(
     () => form.insuranceEnabled,
     (enabled) => {
         if (enabled) {
-            const defaultInsurance = buildPaymentMethodGroups(paymentMethods.value).insurances.find((method) => method.actif !== false) || null;
-            if (!form.insuranceModeId && defaultInsurance) {
-                form.insuranceModeId = defaultInsurance.id;
-            }
-            if (!(Number(form.insuranceRate) > 0)) {
-                form.insuranceRate = getPaymentCoverageRate(defaultInsurance);
+            const defaultAssurance = assurances.value.find((item) => item?.actif !== false) || null;
+            if (!form.assuranceId && defaultAssurance) {
+                form.assuranceId = defaultAssurance.id;
+                form.insuranceRate = resolveAssuranceDefaultRate(defaultAssurance);
             }
             return;
         }
 
-        form.insuranceModeId = null;
+        form.assuranceId = null;
         form.insuranceRate = 0;
     }
 );
 
 watch(
-    () => form.insuranceModeId,
-    (modeId) => {
-        if (!modeId) {
+    () => form.assuranceId,
+    (assuranceId) => {
+        if (!assuranceId || !form.insuranceEnabled) {
             return;
         }
 
-        const method = paymentMethods.value.find((item) => Number(item?.id) === Number(modeId));
-        if (method) {
-            form.insuranceRate = getPaymentCoverageRate(method);
-        }
+        const assurance = assurances.value.find((item) => Number(item?.id) === Number(assuranceId)) || null;
+        form.insuranceRate = resolveAssuranceDefaultRate(assurance);
     }
 );
 
@@ -291,10 +306,10 @@ const refreshActiveConsultationFlag = async (patientId) => {
     }
 };
 
-const printConsultationTicket = async (paiementId) => {
-    if (!paiementId) return;
+const printConsultationTicket = async (consultationId) => {
+    if (!consultationId) return;
     try {
-        const res = await fetchTicketPrintData(paiementId, token);
+        const res = await fetchTicketPrintData(consultationId, token);
         await printComponent(
             PrintTicketBody,
             { paiement: res.paiement },
@@ -323,7 +338,7 @@ const saveConsultation = async () => {
         toast.add({ severity: 'warn', summary: 'Médecin requis', detail: 'Sélectionnez un médecin.', life: 2500 });
         return;
     }
-    if (form.payant && form.insuranceEnabled && !form.insuranceModeId) {
+    if (form.payant && form.insuranceEnabled && !form.assuranceId) {
         toast.add({ severity: 'warn', summary: 'Assurance requise', detail: 'Choisissez un assureur.', life: 2500 });
         return;
     }
@@ -353,7 +368,7 @@ const saveConsultation = async () => {
             consultation_date: consultationDate,
             consultation_time: consultationTime,
             insurance_enabled: form.payant && form.insuranceEnabled ? 1 : 0,
-            insurance_mode_id: form.payant && form.insuranceEnabled ? form.insuranceModeId : null,
+            assurance_id: form.payant && form.insuranceEnabled ? form.assuranceId : null,
             insurance_rate: form.payant && form.insuranceEnabled ? Number(form.insuranceRate || 0) : null,
             patient_amount: form.payant ? patientRemainingAmount.value : 0,
             insurance_amount: form.payant && form.insuranceEnabled ? insuranceCoveredAmount.value : 0,
@@ -361,17 +376,17 @@ const saveConsultation = async () => {
             notes: form.notes || null
         };
         const saved = await createConsultationForPatient(selectedPatientId.value, payload, token);
-        const paiementId = saved?.paiement_id ?? saved?.paiementId ?? null;
+        const consultationId = saved?.consultation_id ?? saved?.consultationId ?? null;
         if (form.payant) {
             toast.add({
                 severity: 'success',
                 summary: 'Succès',
                 detail: 'Consultation créée.',
                 life: 10000,
-                data: paiementId
+                data: consultationId
                     ? {
                         actionLabel: 'Imprimer le ticket',
-                        action: () => printConsultationTicket(paiementId)
+                        action: () => printConsultationTicket(consultationId)
                     }
                     : undefined
             });
@@ -457,7 +472,7 @@ const handleSubmit = (event) => {
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 md:col-span-2 p-4 rounded-xl border border-surface-200 bg-surface-50/70 dark:bg-surface-800/70 dark:border-surface-700" v-if="form.payant && form.insuranceEnabled">
                 <div class="flex flex-col gap-2">
                     <label class="font-semibold">Assureur</label>
-                    <Select v-model="form.insuranceModeId" :options="insuranceMethodOptions || []" optionLabel="label"
+                    <Select v-model="form.assuranceId" :options="insuranceMethodOptions || []" optionLabel="label"
                         optionValue="value" placeholder="Choisir une assurance" class="w-full" />
                 </div>
                 <div class="flex flex-col gap-2">
@@ -472,7 +487,7 @@ const handleSubmit = (event) => {
                 </div>
                 <div class="md:col-span-3 text-sm text-gray-600 dark:text-gray-400">
                     Couverture calculée : {{ insuranceCoveredAmount.toLocaleString('fr-FR') }} sur {{ consultationAmount.toLocaleString('fr-FR') }}.
-                    <span v-if="selectedInsuranceMethod">Assureur sélectionné : {{ selectedInsuranceMethod.libelle }}.</span>
+                    <span v-if="selectedInsuranceMethod">Assureur sélectionné : {{ selectedInsuranceMethod.nom || selectedInsuranceMethod.libelle }}.</span>
                 </div>
             </div>
             <!-- <div class="md:col-span-2 flex flex-col gap-2">

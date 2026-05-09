@@ -5,45 +5,28 @@ const TYPE_DEFINITIONS = {
         family: 'classic',
         aliases: ['cash', 'especes', 'espece', 'especes', 'espèces', 'espece', 'liquide']
     },
-    mobile_money: {
-        key: 'mobile_money',
+    mobilemoney: {
+        key: 'mobilemoney',
         label: 'Mobile Money',
-        family: 'classic',
-        aliases: ['mobile_money', 'mobile money', 'momo', 'orange money', 'wave', 'moov money']
+        aliases: ['mobilemoney', 'mobile_money', 'mobile money', 'momo', 'orange money', 'wave', 'moov money']
     },
-    cheque: {
-        key: 'cheque',
-        label: 'Chèque',
-        family: 'classic',
-        aliases: ['cheque', 'cheques', 'cheque bancaire', 'chèque', 'chèques']
-    },
-    bank_transfer: {
-        key: 'bank_transfer',
+    transfer: {
+        key: 'transfer',
         label: 'Virement bancaire',
-        family: 'classic',
-        aliases: ['bank_transfer', 'bank transfer', 'virement', 'virement bancaire', 'transfert bancaire']
+        aliases: ['transfer', 'banktransfer', 'bank transfer', 'virement', 'virement bancaire', 'transfert bancaire']
     },
-    insurance: {
-        key: 'insurance',
-        label: 'Assurance',
-        family: 'insurance',
-        aliases: ['insurance', 'assurance', 'assureur', 'prise en charge']
-    },
-    other: {
-        key: 'other',
-        label: 'Autre',
-        family: 'classic',
-        aliases: ['other', 'autre']
+    card: {
+        key: 'card',
+        label: 'Carte bancaire',
+        aliases: ['card', 'carte', 'carte bancaire', 'cb', 'visa', 'mastercard']
     }
 };
 
 const TYPE_ORDER = {
     cash: 1,
-    cheque: 2,
-    mobile_money: 3,
-    bank_transfer: 4,
-    insurance: 5,
-    other: 6
+    transfer: 2,
+    card: 3,
+    mobilemoney: 4
 };
 
 export const normalizePaymentString = (value) =>
@@ -57,8 +40,6 @@ export const normalizePaymentString = (value) =>
 
 export const resolvePaymentMethodTypeKey = (source) => {
     const candidates = [
-        source?.typeKey,
-        source?.type_key,
         source?.type,
         source?.libelle,
         source
@@ -74,39 +55,24 @@ export const resolvePaymentMethodTypeKey = (source) => {
         }
 
         if (candidate.includes('mobile') && candidate.includes('money')) {
-            return 'mobile_money';
+            return 'mobilemoney';
         }
         if (candidate.includes('virement') || candidate.includes('transfer')) {
-            return 'bank_transfer';
+            return 'transfer';
         }
-        if (candidate.includes('cheque')) {
-            return 'cheque';
-        }
-        if (candidate.includes('assur')) {
-            return 'insurance';
+        if (candidate.includes('carte') || candidate.includes('card') || candidate.includes('cb')) {
+            return 'card';
         }
         if (candidate.includes('espec') || candidate.includes('cash') || candidate.includes('liquid')) {
             return 'cash';
         }
     }
 
-    return 'other';
+    return 'cash';
 };
 
 export const getPaymentMethodDefinition = (source) =>
-    TYPE_DEFINITIONS[resolvePaymentMethodTypeKey(source)] || TYPE_DEFINITIONS.other;
-
-export const resolvePaymentMethodFamily = (source) => {
-    const explicitFamily = normalizePaymentString(source?.family || source?.familyKey || source?.family_key);
-    if (explicitFamily === 'insurance') {
-        return 'insurance';
-    }
-    if (explicitFamily === 'classic') {
-        return 'classic';
-    }
-
-    return getPaymentMethodDefinition(source).family;
-};
+    TYPE_DEFINITIONS[resolvePaymentMethodTypeKey(source)] || TYPE_DEFINITIONS.cash;
 
 export const getPaymentCoverageRate = (source) => {
     const rawValue = source?.coverageRate
@@ -125,25 +91,13 @@ export const getPaymentCoverageRate = (source) => {
     return Math.min(100, Math.max(0, parsed));
 };
 
-export const isInsuranceMethod = (source) => resolvePaymentMethodFamily(source) === 'insurance';
-
-export const isClassicMethod = (source) => resolvePaymentMethodFamily(source) === 'classic';
-
 export const isAutoValidatedMethod = (source) => {
     const typeKey = resolvePaymentMethodTypeKey(source);
-    return typeKey === 'cash' || typeKey === 'mobile_money';
-};
-
-export const buildPaymentMethodGroups = (methods = []) => {
-    const list = Array.isArray(methods) ? methods : [];
-    return {
-        classics: list.filter(isClassicMethod),
-        insurances: list.filter(isInsuranceMethod)
-    };
+    return typeKey === 'cash' || typeKey === 'mobilemoney';
 };
 
 export const getDefaultClassicMethod = (methods = []) => {
-    const classics = buildPaymentMethodGroups(methods).classics.filter((method) => method?.actif !== false);
+    const classics = (Array.isArray(methods) ? methods : []).filter((method) => method?.actif !== false);
     if (!classics.length) {
         return null;
     }
@@ -156,14 +110,8 @@ export const formatCoverageRate = (value) => `${getPaymentCoverageRate({ coverag
 export const sortPaymentMethods = (methods = []) => {
     const list = Array.isArray(methods) ? [...methods] : [];
     return list.sort((left, right) => {
-        const leftFamily = resolvePaymentMethodFamily(left) === 'insurance' ? 2 : 1;
-        const rightFamily = resolvePaymentMethodFamily(right) === 'insurance' ? 2 : 1;
-        if (leftFamily !== rightFamily) {
-            return leftFamily - rightFamily;
-        }
-
-        const leftTypeOrder = TYPE_ORDER[resolvePaymentMethodTypeKey(left)] || TYPE_ORDER.other;
-        const rightTypeOrder = TYPE_ORDER[resolvePaymentMethodTypeKey(right)] || TYPE_ORDER.other;
+        const leftTypeOrder = TYPE_ORDER[resolvePaymentMethodTypeKey(left)] || 999;
+        const rightTypeOrder = TYPE_ORDER[resolvePaymentMethodTypeKey(right)] || 999;
         if (leftTypeOrder !== rightTypeOrder) {
             return leftTypeOrder - rightTypeOrder;
         }

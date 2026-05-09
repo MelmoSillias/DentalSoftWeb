@@ -2,8 +2,9 @@
 
 namespace App\Patient\Service;
 
+use App\Billing\Entity\Assurance;
 use App\Billing\Entity\ModeDePaiement;
-use App\Billing\Entity\PaiementDevis;
+use App\Billing\Entity\Paiement;
 use App\Billing\Entity\Transaction;
 use App\CareDelivery\Entity\ActeMedical;
 use App\CareDelivery\Entity\Consultation;
@@ -152,7 +153,7 @@ class PatientService
 
     public function getPatientImpayees(int $id): int
     {
-        $factures = $this->cashdeskService->listDevisImpayesByPatient($id);
+        $factures = $this->cashdeskService->listFacturesImpayeesByPatient($id);
         $impayees = 0;
         foreach ($factures as $facture) {
             // You can add more detailed info if needed
@@ -192,12 +193,12 @@ class PatientService
     public function listPatientsByMedecin(?object $user): array
     {
         if (!$user) {
-            return ['error' => 'Utilisateur non authentifié', 'status' => 401];
+            return ['error' => 'Utilisateur non authentifiÃ©', 'status' => 401];
         }
 
         $employe = $this->employeRepo->findOneBy(['user' => $user]);
         if (!$employe) {
-            return ['error' => 'Aucun employé associé', 'status' => 404];
+            return ['error' => 'Aucun employÃ© associÃ©', 'status' => 404];
         }
 
         $consultations = $this->consultationRepo->findBy(['medecin' => $employe]);
@@ -216,12 +217,12 @@ class PatientService
     public function listPatientsByMedecinPaginated(?object $user, int $page, int $limit, ?string $query = null, ?string $sortField = null, ?string $sortOrder = null): array
     {
         if (!$user) {
-            return ['error' => 'Utilisateur non authentifié', 'status' => 401];
+            return ['error' => 'Utilisateur non authentifiÃ©', 'status' => 401];
         }
 
         $employe = $this->employeRepo->findOneBy(['user' => $user]);
         if (!$employe) {
-            return ['error' => 'Aucun employé associé', 'status' => 404];
+            return ['error' => 'Aucun employÃ© associÃ©', 'status' => 404];
         }
 
         $page = max(1, $page);
@@ -256,8 +257,8 @@ class PatientService
                 'date' => $consultation->getCreatedAt()?->format('Y-m-d H:i'),
                 'statut' => $consultation->getStatut(),
                 'medecin' => $consultation->getMedecin()?->getFullName(),
-                'factureMontant' => $facture?->getMontant(),
-                'factureStatut' => $facture?->getStatut(),
+                'factureMontant' => $facture?->getMontantTotal(),
+                'factureStatut' => $facture?->isReglee() ? 1 : 0,
             ];
         }, $consultations);
     }
@@ -265,7 +266,7 @@ class PatientService
     public function addPatient(array $data, ?User $actor = null): array
     {
         if (!isset($data['nom'], $data['prenom'], $data['sexe'], $data['telephone'])) {
-            return ['error' => 'Paramètres obligatoires manquants', 'status' => 400];
+            return ['error' => 'ParamÃ¨tres obligatoires manquants', 'status' => 400];
         }
 
         try {
@@ -320,7 +321,7 @@ class PatientService
         try {
             $patient = $this->patientRepo->find($id);
             if (!$patient) {
-                return ['error' => 'Patient non trouvé', 'status' => 404];
+                return ['error' => 'Patient non trouvÃ©', 'status' => 404];
             }
 
             $patient->setNom($data['nom'] ?? $patient->getNom());
@@ -468,14 +469,14 @@ class PatientService
             return null;
         }
 
-        $age = 'Néant';
+        $age = 'NÃ©ant';
         if ($patient->getDateNaissance()) {
             try {
                 $dateNaissance = $patient->getDateNaissance();
                 $aujourdhui = new DateTime();
                 $age = $dateNaissance->diff($aujourdhui)->y . ' ans';
             } catch (\Exception) {
-                $age = 'Néant';
+                $age = 'NÃ©ant';
             }
         }
 
@@ -530,7 +531,7 @@ class PatientService
             $isMedecinRequired = $this->globalSettingsService->isMedecinRequiredOnConsultationCreation();
             if ($isMedecinRequired && empty($data['medecin_id'])) {
                 return [
-                    'error' => 'Le médecin est requis pour créer la consultation.',
+                    'error' => 'Le medecin est requis pour creer la consultation.',
                     'status' => 400,
                 ];
             }
@@ -546,19 +547,15 @@ class PatientService
                 $insuranceRate = max(0, min(100, (float) ($data['insurance_rate'] ?? $data['insuranceRate'] ?? 0)));
                 $insuranceAmount = (float) ($data['insurance_amount'] ?? $data['insuranceAmount'] ?? 0);
 
-                $insuranceModeId = (int) ($data['insurance_mode_id'] ?? $data['insuranceModeId'] ?? 0);
-                $insuranceMode = null;
+                $assuranceId = (int) ($data['assurance_id'] ?? $data['assuranceId'] ?? 0);
+                $assurance = null;
                 if ($insuranceEnabled) {
-                    $insuranceMode = $this->em->getRepository(ModeDePaiement::class)->find($insuranceModeId);
-                    if (!$insuranceMode) {
+                    $assurance = $this->em->getRepository(Assurance::class)->find($assuranceId);
+                    if (!$assurance) {
                         return [
-                            'error' => 'Mode assurance invalide.',
+                            'error' => 'Assurance invalide.',
                             'status' => 400,
                         ];
-                    }
-
-                    if ($insuranceRate <= 0) {
-                        $insuranceRate = max(0, min(100, (float) ($insuranceMode->getCoverageRate() ?? 0)));
                     }
                 }
 
@@ -594,6 +591,11 @@ class PatientService
                 }
 
                 $consultation = $this->consultationRepo->NewConsultation($data, $this->patientRepo, $this->employeRepo);
+                if ($insuranceEnabled) {
+                    $consultation->setAssurance($assurance);
+                    $consultation->setTauxCouverture($insuranceRate > 0 ? $insuranceRate : null);
+                    $consultation->setIsRecouvre(false);
+                }
                 $createdPaiementId = null;
                 $patientPayment = null;
                 $timestamp = new DateTime();
@@ -608,62 +610,33 @@ class PatientService
                         ];
                     }
 
-                    $paiement = new PaiementDevis();
-                    $paiement->setDevis(null);
+                    $paiement = new Paiement();
+                    $paiement->setFacture(null);
                     $paiement->setMode($modePaiement);
                     $paiement->setMontant($patientAmount);
                     $paiement->setDate($timestamp);
                     $paiement->setConsultation($consultation);
-                    $paiement->setRolePaiement('patient');
                     $this->em->persist($paiement);
                     $patientPayment = $paiement;
 
                     $transaction = new Transaction();
-                    $transaction->setType('Entrée');
+                    $transaction->setType('Revenue');
                     $transaction->setMontant($patientAmount);
                     $transaction->setDateTransaction($timestamp);
                     $transaction->setDescription('Ticket de consultation #' . $consultation->getId() . ' | Part patient');
                     $transaction->setModeDePaiement($modePaiement);
                     $transaction->setConsultation($consultation);
-                    $transaction->setRolePaiement('patient');
                     $transaction->markValidated();
-                    $transaction->setPaiementDevis($paiement);
+                    $transaction->setPaiement($paiement);
                     $this->em->persist($transaction);
-                }
-
-                if ($insuranceEnabled && $insuranceAmount > 0) {
-                    $insuranceTx = new Transaction();
-                    $insuranceTx->setType('Entrée');
-                    $insuranceTx->setMontant($insuranceAmount);
-                    $insuranceTx->setDateTransaction($timestamp);
-                    $insuranceTx->setDescription('Ticket de consultation #' . $consultation->getId() . ' | Part assurance');
-                    $insuranceTx->setModeDePaiement($insuranceMode);
-                    $insuranceTx->setConsultation($consultation);
-                    $insuranceTx->setRolePaiement('insurance');
-                    $insuranceTx->setTauxPriseEnCharge($insuranceRate > 0 ? $insuranceRate : null);
-                    $insuranceTx->markPending();
-                    $this->em->persist($insuranceTx);
-
-                    if ($this->globalSettingsService->isDirectInsurancePaymentEnabled()) {
-                        $insurancePay = new PaiementDevis();
-                        $insurancePay->setDevis(null);
-                        $insurancePay->setMode($insuranceMode);
-                        $insurancePay->setMontant($insuranceAmount);
-                        $insurancePay->setDate($timestamp);
-                        $insurancePay->setConsultation($consultation);
-                        $insurancePay->setRolePaiement('insurance');
-                        $insurancePay->setTauxPriseEnCharge($insuranceRate > 0 ? $insuranceRate : null);
-                        $insuranceTx->setPaiementDevis($insurancePay);
-                        $this->em->persist($insurancePay);
-                    }
                 }
 
                 $this->em->flush();
 
-                if ($patientPayment instanceof PaiementDevis && $patientPayment->getId() !== null) {
+                if ($patientPayment instanceof Paiement && $patientPayment->getId() !== null) {
                     $createdPaiementId = $patientPayment->getId();
-                } elseif ($consultation->getPaiementDevis()) {
-                    $createdPaiementId = $consultation->getPaiementDevis()->getId();
+                } elseif ($consultation->getPaiement()) {
+                    $createdPaiementId = $consultation->getPaiement()->getId();
                 }
 
                 $this->consultationNotificationService->notifyCreation($consultation, $triggeredBy);
@@ -740,8 +713,8 @@ class PatientService
         }
 
         $patientName = trim($patient->getFullName() ?? '') ?: sprintf('patient #%d', $patient->getId());
-        $author = $actor?->getUsername() ?? 'le système';
-        $message = sprintf('Nouveau patient %s ajouté par %s.', $patientName, $author);
+        $author = $actor?->getUsername() ?? 'le systÃ¨me';
+        $message = sprintf('Nouveau patient %s ajoutÃ© par %s.', $patientName, $author);
 
         $this->eventDispatcher->dispatch(
             new EntityActionEvent(
@@ -908,12 +881,12 @@ class PatientService
             return null;
         }
 
-        $age = 'Néant';
+        $age = 'NÃ©ant';
         if ($patient->getDateNaissance()) {
             try {
                 $age = $patient->getDateNaissance()->diff(new DateTime())->y;
             } catch (\Exception) {
-                $age = 'Néant';
+                $age = 'NÃ©ant';
             }
         }
 
@@ -976,8 +949,8 @@ class PatientService
             $fiches[] = $ficheData;
         }
 
-        $factures = $this->cashdeskService->listDevisImpayesByPatient($patient->getId());
-        $paiements = $this->cashdeskService->listPaiementsDevisByPatients($patient);
+        $factures = $this->cashdeskService->listFacturesImpayeesByPatient($patient->getId());
+        $paiements = $this->cashdeskService->listPaiementsByPatients($patient);
         
 
         return [
@@ -1174,7 +1147,7 @@ class PatientService
 
         $antecedent = $this->em->getRepository(Antecedent::class)->find($antecedentId);
         if (!$antecedent || $antecedent->getPatient()?->getId() !== $patientId) {
-            return ['error' => 'Antécédent introuvable', 'status' => 404];
+            return ['error' => 'AntÃ©cÃ©dent introuvable', 'status' => 404];
         }
 
         $this->em->remove($antecedent);
@@ -1372,3 +1345,4 @@ class PatientService
         ];
     }
 }
+

@@ -11,6 +11,7 @@ import {
     verifyConsultationMedecinPasswordTourMock
 } from '@/services/consultationsTourMock';
 import http from '@/service/http';
+import { is } from 'zod/v4/locales';
 
 const axios = http;
 
@@ -46,6 +47,7 @@ const normalizeFocusBilling = (raw = {}) => ({
     invoiceId: raw.invoiceId ?? raw.id ?? null,
     total: Number(raw.total ?? raw.montant ?? 0) || 0,
     remaining: Number(raw.remaining ?? raw.reste ?? 0) || 0,
+    isPayante: Boolean(raw.isPayante ?? raw.payante ?? false),
     state: raw.state ?? { label: 'Aucune facture', severity: 'contrast' },
     lines: Array.isArray(raw.lines) ? raw.lines.map((line) => ({
         id: line.id,
@@ -56,6 +58,7 @@ const normalizeFocusBilling = (raw = {}) => ({
     })) : [],
     payments: Array.isArray(raw.payments) ? raw.payments.map((payment) => ({
         id: payment.id ?? payment.pId ?? null,
+        invoiceId: payment.invoiceId ?? payment.devisId ?? raw.invoiceId ?? raw.id ?? null,
         montant: Number(payment.montant ?? 0) || 0,
         mode: payment.mode ?? null,
         date: payment.date ?? payment.createdAt ?? null,
@@ -66,7 +69,7 @@ const normalizeFocusBilling = (raw = {}) => ({
 });
 
 export const normalizeConsultation = (raw = {}) => {
-    const patient = raw.patient 
+    const patient = raw.patient
     const patient_photo = patient?.photo ?? patient?.photoUrl ?? patient?.patientPhoto ?? patient?.patient_photo ?? null;
     const patientName = (raw.patientName ?? raw.patient_name ?? `${patient?.prenom ?? ''} ${patient?.nom ?? ''}`.trim()) || patient?.nom || '';
 
@@ -82,6 +85,7 @@ export const normalizeConsultation = (raw = {}) => {
     const lastFicheId = raw.lastFicheId ?? raw.last_fiche_id ?? null;
     const lastFicheType = raw.lastFicheType ?? raw.last_fiche_type ?? null;
     const lastFicheVersion = raw.lastFicheVersion ?? raw.last_fiche_version ?? (lastFicheType === 'medicale' ? 2 : lastFicheType === 'observation' ? 1 : null);
+    const isPaid = raw.isPaid ?? raw.paid ?? raw.payee ?? false;
 
     return {
         id: raw.id,
@@ -98,6 +102,7 @@ export const normalizeConsultation = (raw = {}) => {
         fiche: raw.fiche ?? null,
         patientHasFiche: Boolean(patient?.hasFiche || patient?.fiche || patient?.ficheId),
         type: raw.type ?? null,
+        isPaid,
         patientId,
         state,
         factState,

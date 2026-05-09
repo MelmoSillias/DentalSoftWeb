@@ -23,7 +23,7 @@ import Button from 'primevue/button';
 import Column from 'primevue/column';
 import DataTable from 'primevue/datatable';
 import Dialog from 'primevue/dialog';
-import InputText from 'primevue/inputtext'; 
+import InputText from 'primevue/inputtext';
 import { useToast } from 'primevue/usetoast';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
@@ -286,7 +286,7 @@ const cancelActiveConsultation = async () => {
     }
     try {
         await deleteConsultation(activeConsultInfo.value.consultationId, token);
-        toast.add({ severity: 'success', summary: 'Consultation annulée', detail: 'La consultation en cours a été supprimée.' });
+        toast.add({ severity: 'success', summary: 'Consultation annulée', detail: 'La consultation en cours a été supprimée.', life: 3000 });
         const patient = activeConsultWarnPatient.value;
         closeActiveConsultWarn();
         await loadPatients();
@@ -572,9 +572,9 @@ onMounted(() => {
                         class="sm:w-auto shadow-lg hover:shadow-xl transition-all duration-300 bg-gradient-to-r from-primary-500 to-primary-600 border-0 text-white px-5 py-2.5 rounded-xl font-medium"
                         @click="openCreatePatient" :pt="{ label: { class: 'hidden sm:inline' } }" />
                 </div>
-            </div> 
+            </div>
         </div>
- 
+
         <div v-if="loadErrorMessage" class="flex min-h-[320px] flex-col items-center justify-center gap-4 rounded-2xl border border-amber-200/70 bg-amber-50/70 p-8 dark:border-amber-800/70 dark:bg-amber-950/20">
             <div class="flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
                 <i class="pi pi-exclamation-triangle text-2xl"></i>
@@ -645,7 +645,7 @@ onMounted(() => {
                         paginator: {
                             class: 'px-5 py-4 border-t border-surface-200/50 dark:border-surface-700/50 bg-surface-0 dark:bg-surface-800'
                         }
-                    }"> 
+                    }">
                     <Column field="fullname" header="Nom & Prénom" sortable>
                         <template #body="{ data }">
                             <div class="flex items-center gap-3">

@@ -1,4 +1,4 @@
-# Backend Reform Modules
+﻿# Backend Reform Modules
 
 ## Modules cibles
 
@@ -19,7 +19,7 @@
   - Etat: migre
 
 - `Billing`
-  - Entites: `Devis`, `ContenuDevis`, `PaiementDevis`, `Transaction`, `ModeDePaiement`, `ChargeFixe`
+  - Entites: `Devis`, `ContenuDevis`, `Paiement`, `Transaction`, `ModeDePaiement`, `ChargeFixe`
   - Etat: migre
 
 - `IdentityAccess`
@@ -109,3 +109,4 @@
 2. `Billing`
 3. `Communication`
 4. Validation runtime Symfony/Doctrine quand les dependances de `backend-reform` seront installees
+

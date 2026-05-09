@@ -1,1 +1,0 @@
-window.onload = () => window.print();

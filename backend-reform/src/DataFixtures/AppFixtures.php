@@ -372,30 +372,24 @@ class AppFixtures extends Fixture
         $mode_definitions = [
             [
                 'libelle' => 'Espèces',
-                'type' => 'especes',
+                'type' => 'cash',
                 'actif' => true,
                 'coverageRate' => null,
-                'familyKey' => 'classic',
                 'notes' => 'Paiement en espèces',
-                'typeKey' => 'cash',
             ],
             [
                 'libelle' => "Orange Mobile Money",
-                'type' => 'mobile_money',
+                'type' => 'mobilemoney',
                 'actif' => true,
                 'coverageRate' => null,
-                'familyKey' => 'classic',
                 'notes' => 'Paiement via Mobile Money',
-                'typeKey' => 'mobile_money',
             ],
             [
-                'libelle' => 'Assurance',
-                'type' => 'assurance',
+                'libelle' => 'Virement bancaire',
+                'type' => 'transfer',
                 'actif' => true,
-                'coverageRate' => 85.00,
-                'familyKey' => 'insurance',
-                'notes' => 'Paiement via assurance (ex: Santex, Wari Santé, etc.)',
-                'typeKey' => 'other',
+                'coverageRate' => null,
+                'notes' => 'Paiement via virement bancaire',
             ],
         ];
 
@@ -405,9 +399,7 @@ class AppFixtures extends Fixture
             $mode->setType($def['type']);
             $mode->setActif($def['actif']);
             $mode->setCoverageRate($def['coverageRate']);
-            $mode->setFamilyKey($def['familyKey']);
             $mode->setNotes($def['notes']);
-            $mode->setTypeKey($def['typeKey']);
 
             $manager->persist($mode);
         }

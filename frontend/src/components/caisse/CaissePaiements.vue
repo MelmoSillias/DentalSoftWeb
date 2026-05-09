@@ -259,8 +259,8 @@ const handlePaymentFamilyChange = (value) => {
                             <div class="text-right">
                                 <div class="font-semibold">{{ formatFcfa(row.montant) }}</div>
                                 <div class="flex gap-2 justify-end mt-2" data-tour="caisse-paiements.row-actions">
-                                    <Button :icon="row.type === 'devis' ? 'pi pi-print' : 'pi pi-ticket'" text
-                                        @click="emit(row.type === 'devis' ? 'print-payment' : 'print-receipt', row)" />
+                                    <Button :icon="(row.type === 'devis' || row.type === 'facture') ? 'pi pi-print' : 'pi pi-ticket'" text
+                                        @click="emit((row.type === 'devis' || row.type === 'facture') ? 'print-payment' : 'print-receipt', row)" />
                                     <Button icon="pi pi-send" text @click="emit('send-receipt-sms', row)" />
                                 </div>
                             </div>
@@ -421,7 +421,7 @@ const handlePaymentFamilyChange = (value) => {
     color: #475569;
 }
 
-.app-dark .bar-meta { 
+.app-dark .bar-meta {
     color: #94a3b8;
 }
 
@@ -443,12 +443,12 @@ const handlePaymentFamilyChange = (value) => {
 .app-dark .section-eyebrow {
     color: #dadada;
 }
- 
- 
+
+
 .app-dark .section-title {
     color: #e2e8f0;
 }
- 
+
 
 .app-dark .filter-item label {
     font-size: 0.85rem;

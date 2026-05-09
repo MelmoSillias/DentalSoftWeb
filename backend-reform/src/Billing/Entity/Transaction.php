@@ -57,14 +57,14 @@ class Transaction
 
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: true)]
-    private ?Devis $devis = null;
+    private ?Facture $facture = null;
 
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: true)]
     private ?Consultation $consultation = null;
 
     #[ORM\OneToOne(inversedBy: 'transaction', cascade: ['persist', 'remove'])]
-    private ?PaiementDevis $paiementDevis = null;
+    private ?Paiement $paiement = null;
 
     public function getId(): ?int
     {
@@ -228,14 +228,14 @@ class Transaction
         return $this;
     }
 
-    public function getDevis(): ?Devis
+    public function getFacture(): ?Facture
     {
-        return $this->devis;
+        return $this->facture;
     }
 
-    public function setDevis(?Devis $devis): static
+    public function setFacture(?Facture $facture): static
     {
-        $this->devis = $devis;
+        $this->facture = $facture;
 
         return $this;
     }
@@ -252,14 +252,14 @@ class Transaction
         return $this;
     }
 
-    public function getPaiementDevis(): ?PaiementDevis
+    public function getPaiement(): ?Paiement
     {
-        return $this->paiementDevis;
+        return $this->paiement;
     }
 
-    public function setPaiementDevis(?PaiementDevis $paiementDevis): static
+    public function setPaiement(?Paiement $paiement): static
     {
-        $this->paiementDevis = $paiementDevis;
+        $this->paiement = $paiement;
 
         return $this;
     }

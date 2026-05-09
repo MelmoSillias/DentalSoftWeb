@@ -9,22 +9,19 @@ import FormPatient from '@/components/patients/FormPatient.vue';
 import { usePrinter } from '@/composables/usePrinter';
 import { useFocusRealtime } from '@/composables/useFocusRealtime';
 import { defaultSoinList, fetchConsultationDetails, fetchConsultationInvoice, fetchConsultationsByDate, fetchFocusReceptionData, normalizeSoinList, updateConsultationInvoice, cancelConsultation } from '@/services/consultations';
-import { buildPaymentMethodGroups, getDefaultClassicMethod, getPaymentCoverageRate } from '@/utils/paymentMethodUtils';
-import { fetchDevisDetail, payDevis, resetDevisPayments, validateEmptyDevis } from '@/services/caisseService';
+import {  getDefaultClassicMethod } from '@/utils/paymentMethodUtils';
+import { fetchAssurances, fetchFactureDetail, payFacture, resetFacturePayments, validateEmptyFacture } from '@/services/caisseService';
 import { fetchPublicGeneralSettings } from '@/services/globalSettingsService';
 import { fetchInvoicePrintData, fetchReceiptPrintData } from '@/services/printService';
 import { fetchPatientById, normalizePatient } from '@/services/patients';
 import PrintDevisBody from '@/components/print/PrintDevisBody.vue';
 import PrintReceiptBody from '@/components/print/PrintReceiptBody.vue';
 import { sendInvoiceSms } from '@/services/smsService';
+import { useAssurancesStore } from '@/stores/assurances';
 import { useAuthStore } from '@/stores/auth';
 import { usePaymentMethodsStore } from '@/stores/paymentMethods';
-import Button from 'primevue/button';
-import Checkbox from 'primevue/checkbox';
 import ConfirmPopup from 'primevue/confirmpopup';
 import Dialog from 'primevue/dialog';
-import Tag from 'primevue/tag';
-import Toast from 'primevue/toast';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
 import { computed, defineAsyncComponent, onMounted,  onBeforeUnmount, ref, watch } from 'vue';
@@ -37,6 +34,7 @@ const toast = useToast();
 const confirm = useConfirm();
 const token = localStorage.getItem('token');
 const { printComponent } = usePrinter();
+const assurancesStore = useAssurancesStore();
 const paymentMethodsStore = usePaymentMethodsStore();
 
 const loading = ref(false);
@@ -60,6 +58,7 @@ const factureSaving = ref(false);
 const factureLines = ref([]);
 const factureConsultation = ref(null);
 const paymentMethods = ref([]);
+const assurances = ref([]);
 const payDialogVisible = ref(false);
 const selectedDevis = ref(null);
 const paymentDialogTab = ref('client');
@@ -79,7 +78,7 @@ const payForm = ref({
     date: todayApiDate(),
     time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', hour12: false }),
     insuranceEnabled: false,
-    insuranceModeId: null,
+    assuranceId: null,
     insuranceRate: 0
 });
 const validateDialogVisible = ref(false);
@@ -184,7 +183,7 @@ const currentReceptionInvoiceRow = computed(() => {
         insurance: {
             hasInsurance: insurancePayments.length > 0,
             insuranceStatus: insurancePayments.some((payment) => payment?.status === 'pending') ? 'pending' : 'validated',
-            insuranceModeId: latestInsurancePayment?.modeId ?? null,
+            assuranceId: null,
             insuranceModeLabel: latestInsurancePayment?.mode ?? null,
             insuranceRate: latestInsurancePayment?.insuranceRate ?? 0,
             insuranceAmount: insurancePayments.reduce((sum, payment) => sum + (Number(payment?.montant) || 0), 0),
@@ -313,9 +312,28 @@ const remainingAfterPay = computed(() => {
     const insuranceAmount = invoiceHasInsurance.value ? 0 : effectiveInsuranceAmount.value;
     return Math.max(0, reste - montantPatient - insuranceAmount);
 });
-const classicPaymentOptions = computed(() => buildPaymentMethodGroups(paymentMethods.value).classics.map((method) => ({ label: method.libelle, value: method.id, disabled: false })));
-const insurancePaymentOptions = computed(() => buildPaymentMethodGroups(paymentMethods.value).insurances.map((method) => ({ label: method.libelle, value: method.id })));
-const selectedInsuranceMethod = computed(() => paymentMethods.value.find((method) => Number(method?.id) === Number(payForm.value.insuranceModeId)) || null);
+const classicPaymentOptions = computed(() =>
+    (paymentMethods.value || [])
+        .filter((method) => method?.actif !== false)
+        .map((method) => ({ label: method.libelle, value: method.id, disabled: false }))
+);
+const assuranceOptions = computed(() =>
+    (assurances.value || [])
+        .filter((item) => item?.actif !== false)
+        .map((item) => ({ label: item?.nom || item?.libelle || 'Assurance', value: item?.id }))
+);
+const selectedAssurance = computed(() =>
+    (assurances.value || []).find((item) => Number(item?.id) === Number(payForm.value.assuranceId))
+    || (selectedDevisInsurance.value?.insuranceModeLabel ? { nom: selectedDevisInsurance.value.insuranceModeLabel } : null)
+);
+
+const resolveAssuranceDefaultRate = (assurance) => {
+    if (!assurance) {
+        return 0;
+    }
+
+    return Math.max(0, Math.min(100, Number(assurance?.defaultRate ?? assurance?.tauxParDefaut ?? 0) || 0));
+};
 const insuranceCoveredAmount = computed(() => {
     if (invoiceHasInsurance.value) return Number(selectedDevisInsurance.value?.insuranceAmount) || 0;
     return effectiveInsuranceAmount.value;
@@ -461,10 +479,14 @@ const loadPaymentMethods = async () => {
     paymentMethods.value = await paymentMethodsStore.load(token);
 };
 
+const loadAssurances = async () => {
+    assurances.value = await assurancesStore.load(token);
+};
+
 const openPayDialog = async () => {
     if (!currentReceptionInvoiceRow.value) return;
     selectedDevis.value = currentReceptionInvoiceRow.value;
-    await loadPaymentMethods();
+    await Promise.all([loadPaymentMethods(), loadAssurances()]);
     const defaultClassicMethod = getDefaultClassicMethod(paymentMethods.value);
     const existingInsurance = currentReceptionInvoiceRow.value.insurance || null;
     payForm.value = {
@@ -473,8 +495,8 @@ const openPayDialog = async () => {
         date: todayApiDate(),
         time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', hour12: false }),
         insuranceEnabled: false,
-        insuranceModeId: existingInsurance?.insuranceModeId ?? null,
-        insuranceRate: Number(existingInsurance?.insuranceRate || getPaymentCoverageRate(existingInsurance?.insuranceModeId, paymentMethods.value) || 0)
+        assuranceId: existingInsurance?.assuranceId ?? null,
+        insuranceRate: Number(existingInsurance?.insuranceRate || 0)
     };
     paymentDialogTab.value = existingInsurance?.hasInsurance ? 'client' : 'assurance';
     payDialogVisible.value = true;
@@ -505,7 +527,7 @@ const openPreviewDialog = async () => {
     previewDialogTab.value = 'services';
     selectedDevis.value = currentReceptionInvoiceRow.value;
     try {
-        previewData.value = await fetchDevisDetail(currentReceptionInvoiceRow.value.id, token);
+        previewData.value = await fetchFactureDetail(currentReceptionInvoiceRow.value.id, token);
     } catch (_) {
         previewDialogVisible.value = false;
         toast.add({ severity: 'error', summary: 'Facture', detail: 'Aperçu indisponible', life: 3500 });
@@ -528,7 +550,7 @@ const submitPayment = async () => {
         toast.add({ severity: 'warn', summary: 'Paiement', detail: 'Assurance non disponible pour cette facture.', life: 3500 });
         return;
     }
-    if (isNewInsurancePayment && !payForm.value.insuranceModeId) {
+    if (isNewInsurancePayment && !payForm.value.assuranceId) {
         toast.add({ severity: 'warn', summary: 'Paiement', detail: 'Sélectionnez une assurance.', life: 3500 });
         return;
     }
@@ -539,13 +561,13 @@ const submitPayment = async () => {
     payLoading.value = true;
     try {
         const canPrintClientReceipt = montant > 0;
-        const res = await payDevis(selectedDevis.value.id, {
+        const res = await payFacture(selectedDevis.value.id, {
             montant,
             modeId: payForm.value.modeId,
             date: payForm.value.date,
             time: payForm.value.time,
             insurance_enabled: isNewInsurancePayment,
-            insurance_mode_id: payForm.value.insuranceModeId,
+            assurance_id: payForm.value.assuranceId,
             insurance_rate: payForm.value.insuranceRate,
             insurance_amount: insuranceAmount,
             patient_amount: montant
@@ -576,7 +598,7 @@ const resetSelectedDevisPayments = async () => {
     if (!selectedDevis.value) return;
     resetPaymentsLoading.value = true;
     try {
-        await resetDevisPayments(selectedDevis.value.id, token);
+        await resetFacturePayments(selectedDevis.value.id, token);
         resetPaymentDialogVisible.value = false;
         payDialogVisible.value = false;
         previewDialogVisible.value = false;
@@ -593,7 +615,7 @@ const confirmValidate = async () => {
     if (!pendingDevis.value) return;
     validateLoading.value = true;
     try {
-        await validateEmptyDevis(pendingDevis.value.id, token);
+        await validateEmptyFacture(pendingDevis.value.id, token);
         validateDialogVisible.value = false;
         toast.add({ severity: 'success', summary: 'Validation', detail: 'Facture vide validée.', life: 3000 });
         await loadConsultations();
@@ -753,6 +775,51 @@ const onFocusRealtimeEvent = async () => {
 const { realtimeEnabled } = useFocusRealtime(onFocusRealtimeEvent);
 
 watch(
+    () => payForm.value.insuranceEnabled,
+    (enabled) => {
+        if (!enabled) {
+            if (!invoiceHasInsurance.value) {
+                payForm.value.assuranceId = null;
+                payForm.value.insuranceRate = 0;
+            }
+            payForm.value.montant = Number(selectedDevis.value?.reste) || 0;
+            return;
+        }
+
+        if (!invoiceAllowsInsurance.value) {
+            payForm.value.insuranceEnabled = false;
+            return;
+        }
+
+        const defaultAssurance = (assurances.value || []).find((item) => item?.actif !== false) || null;
+        payForm.value.assuranceId = payForm.value.assuranceId || defaultAssurance?.id || null;
+        if (!invoiceHasInsurance.value && payForm.value.assuranceId) {
+            const assurance = (assurances.value || []).find((item) => Number(item?.id) === Number(payForm.value.assuranceId)) || null;
+            payForm.value.insuranceRate = resolveAssuranceDefaultRate(assurance);
+        }
+        payForm.value.montant = 0;
+    }
+);
+
+watch(
+    () => payForm.value.assuranceId,
+    (assuranceId) => {
+        if (!assuranceId) {
+            return;
+        }
+
+        if (!invoiceHasInsurance.value) {
+            const assurance = (assurances.value || []).find((item) => Number(item?.id) === Number(assuranceId)) || null;
+            payForm.value.insuranceRate = resolveAssuranceDefaultRate(assurance);
+        }
+
+        if ((Number(payForm.value.montant) || 0) > maxClientPaymentAmount.value) {
+            payForm.value.montant = maxClientPaymentAmount.value;
+        }
+    }
+);
+
+watch(
     () => selectedConsultationId.value,
     () => {
         loadSelectedPatient();
@@ -789,6 +856,7 @@ const initializeFocusPage = async () => {
 
     initialized.value = true;
     await loadSettings();
+    await Promise.all([loadPaymentMethods(), loadAssurances()]);
     await loadConsultations();
 };
 
@@ -856,8 +924,7 @@ onBeforeUnmount(() => {
                     >
                         <span class="relative flex h-1.5 w-1.5">
                             <span v-if="realtimeEnabled" class="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75"></span>
-                            <span class="relative inline-flex h-1.5 w-1.5 rounded-full"
-                                  :class="realtimeEnabled ? 'bg-green-500' : 'bg-surface-300 dark:bg-surface-600'"></span>
+                            <span class="relative inline-flex h-1.5 w-1.5 rounded-full" :class="realtimeEnabled ? 'bg-green-500' : 'bg-surface-300 dark:bg-surface-600'"></span>
                         </span>
                         Temps réel
                     </button>
@@ -878,8 +945,7 @@ onBeforeUnmount(() => {
         <div class="mx-auto max-w-[1920px] p-6">
             <FocusReceptionView
                 v-if="selectedMode === 'reception'"
-                :show-completed-secretary="showCompletedSecretary"
-                @update:show-completed-secretary="showCompletedSecretary = $event"
+                v-model:showCompletedSecretary="showCompletedSecretary"
                 :consultations="consultations"
                 :recent-patients="receptionRecentPatients"
                 :billing-by-consultation="receptionBillingByConsultation"
@@ -906,7 +972,7 @@ onBeforeUnmount(() => {
 
             <FocusMedecinView
                 v-else-if="selectedMode === 'medecin'"
-                v-model="showCompletedMedecin"
+                v-model:showCompletedMedecin="showCompletedMedecin"
                 :consultations="consultations.map((consultation) => ({
                     ...consultation,
                     focusActionChoice: actionChoiceByConsultation[consultation.id] || null
@@ -925,9 +991,9 @@ onBeforeUnmount(() => {
             <FocusRendezVousView v-else-if="selectedMode === 'rdv'" />
 
             <!-- Dialogs restent inchangés -->
-            <ConsultationDetailsDialog v-model="detailsDialogVisible" :details="detailData" :loading="detailsLoading" />
+            <ConsultationDetailsDialog v-model:visible="detailsDialogVisible" :details="detailData" :loading="detailsLoading" />
             <QuickClotureConsultationDialog
-                v-model="quickDialogVisible"
+                v-model:visible="quickDialogVisible"
                 :consultation="quickDialogConsultation"
                 :action-mode="quickDialogActionMode"
                 @saved="handleQuickDialogDone"
@@ -939,8 +1005,8 @@ onBeforeUnmount(() => {
                 :payment-dialog-tab="paymentDialogTab"
                 :pay-form="payForm"
                 :classic-payment-options="classicPaymentOptions"
-                :insurance-payment-options="insurancePaymentOptions"
-                :selected-insurance-method="selectedInsuranceMethod"
+                :assurance-options="assuranceOptions"
+                :selected-assurance="selectedAssurance"
                 :insurance-covered-amount="insuranceCoveredAmount"
                 :patient-already-paid-amount="patientAlreadyPaidAmount"
                 :patient-outstanding-amount="patientOutstandingAmount"
@@ -986,7 +1052,7 @@ onBeforeUnmount(() => {
                 @save-facture="handleSaveFacture(factureLines)"
                 @print-invoice="printInvoice"
             />
-            <Dialog v-model="createPatientDialogVisible" modal :style="{ width: '45rem' }">
+            <Dialog v-model:visible="createPatientDialogVisible" modal :style="{ width: '45rem' }">
                 <template #header>
                     <div class="flex items-center gap-3">
                         <div class="rounded-lg bg-primary-100 p-2 dark:bg-primary-900/30">
@@ -1000,7 +1066,7 @@ onBeforeUnmount(() => {
                 </template>
                 <FormPatient @saved="handlePatientSaved" @cancel="createPatientDialogVisible = false" />
             </Dialog>
-            <Dialog v-model="createConsultationDialogVisible" modal :style="{ width: '50rem' }">
+            <Dialog v-model:visible="createConsultationDialogVisible" modal :style="{ width: '50rem' }">
                 <template #header>
                     <div class="flex items-center gap-3">
                         <div class="rounded-lg bg-green-100 p-2 dark:bg-green-900/30">
@@ -1014,7 +1080,7 @@ onBeforeUnmount(() => {
                 </template>
                 <FormCreateConsultation :patient="createConsultationPreSelectedPatient" @saved="handleConsultationCreated" @cancel="createConsultationDialogVisible = false; createConsultationPreSelectedPatient = null" />
             </Dialog>
-            <Dialog v-model="editPatientDialogVisible" modal :style="{ width: '45rem' }">
+            <Dialog v-model:visible="editPatientDialogVisible" modal :style="{ width: '45rem' }">
                 <template #header>
                     <div class="flex items-center gap-3">
                         <div class="rounded-lg bg-blue-100 p-2 dark:bg-blue-900/30">

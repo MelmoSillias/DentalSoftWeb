@@ -41,4 +41,12 @@ class ModeDePaiementRepository extends ServiceEntityRepository
             ->getQuery()
             ->getResult();
     }
+
+    public function findClassics(): array
+    {
+        return $this->createQueryBuilder('m')
+            ->orderBy('m.libelle', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
 }

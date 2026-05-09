@@ -3,7 +3,6 @@
 namespace App\Reporting\Service;
 
 use App\Billing\Entity\ModeDePaiement;
-use App\Billing\Repository\DevisRepository;
 use App\Billing\Repository\TransactionRepository;
 use App\CareDelivery\Entity\Consultation;
 use App\CareDelivery\Repository\ActeMedicalRepository;
@@ -35,7 +34,6 @@ class ReportService
         private EntityManagerInterface $em,
         private ActeMedicalRepository $acteRepo,
         private ConsultationRepository $consultRepo,
-        private DevisRepository $devisRepo,
         private CacheInterface $cache,
     ) {
     }
@@ -162,7 +160,7 @@ class ReportService
                 continue;
             }
 
-            $signedAmount = $transaction->getType() === 'Entrée'
+            $signedAmount = $transaction->getType() === 'EntrÃ©e'
                 ? (float) $transaction->getMontant()
                 : -1 * (float) $transaction->getMontant();
 
@@ -240,7 +238,7 @@ class ReportService
         $fromDate = $from ? \DateTime::createFromFormat('Y-m-d', $from) : null;
         $toDate   = $to   ? \DateTime::createFromFormat('Y-m-d', $to)   : null;
 
-        // 2. Transactions sur la période (TODO: filtrage dates si besoin)
+        // 2. Transactions sur la pÃ©riode (TODO: filtrage dates si besoin)
         $transactions = $this->transactionRepo->findAll();
 
         $capitalBreakdown = [];
@@ -252,7 +250,7 @@ class ReportService
             $mode   = $tx->getModeDePaiement()->getType();
             $amount = $tx->getMontant();
 
-            $signed = ($tx->getType() === 'Entrée') ? $amount : -$amount;
+            $signed = ($tx->getType() === 'EntrÃ©e') ? $amount : -$amount;
             $capitalTotal += $signed;
 
             if (!isset($capitalBreakdown[$mode])) {
@@ -260,11 +258,11 @@ class ReportService
             }
             $capitalBreakdown[$mode] += $signed;
 
-            if ($mode === 'Espèces') {
+            if ($mode === 'EspÃ¨ces') {
                 $inCash += $signed;
             }
 
-            if ($tx->getPaiementDevis() !== null) {
+            if ($tx->getPaiement() !== null) {
                 $revenueTotal += $amount;
             }
         }
@@ -461,7 +459,7 @@ class ReportService
             foreach ($rows as $row) {
                 $source = trim((string) ($row['source'] ?? ''));
                 if ($source === '') {
-                    $source = 'Non renseigné';
+                    $source = 'Non renseignÃ©';
                 }
 
                 $result[] = [
@@ -522,7 +520,7 @@ class ReportService
 
         $qbPaid = $this->consultRepo->createQueryBuilder('c')
             ->select('COUNT(c.id)')
-            ->innerJoin('c.paiementDevis', 'pd');
+            ->innerJoin('c.paiement', 'pd');
         if ($fromDate) {
             $qbPaid->andWhere('c.CreatedAt >= :from')->setParameter('from', $fromDate->format('Y-m-d') . ' 00:00:00');
         }
@@ -533,8 +531,8 @@ class ReportService
         $free = $total - $paid;
 
         $qbAmount = $this->transactionRepo->createQueryBuilder('t')
-            ->select('SUM(t.montant) + SUM(CASE WHEN f.montant IS NOT NULL THEN f.montant ELSE 0 END)')
-            ->leftJoin('t.paiementDevis', 'pd')
+            ->select('COALESCE(SUM(t.montant), 0)')
+            ->leftJoin('t.paiement', 'pd')
             ->leftJoin('pd.consultation', 'c')
             ->leftJoin('c.facture', 'f');
 
@@ -545,7 +543,29 @@ class ReportService
             $qbAmount->andWhere('c.CreatedAt <= :to')->setParameter('to', $toDate->format('Y-m-d') . ' 23:59:59');
         }
 
-        $totalAmount = (int) $qbAmount->getQuery()->getSingleScalarResult();
+        $transactionsAmount = (float) $qbAmount->getQuery()->getSingleScalarResult();
+
+        $qbFactures = $this->consultRepo->createQueryBuilder('c')
+            ->select('c', 'f')
+            ->leftJoin('c.facture', 'f');
+
+        if ($fromDate) {
+            $qbFactures->andWhere('c.CreatedAt >= :from')->setParameter('from', $fromDate->format('Y-m-d') . ' 00:00:00');
+        }
+        if ($toDate) {
+            $qbFactures->andWhere('c.CreatedAt <= :to')->setParameter('to', $toDate->format('Y-m-d') . ' 23:59:59');
+        }
+
+        $consultationsForAmount = $qbFactures->getQuery()->getResult();
+        $invoiceAmount = 0.0;
+        foreach ($consultationsForAmount as $consultation) {
+            $facture = $consultation->getFacture();
+            if ($facture !== null) {
+                $invoiceAmount += (float) $facture->getMontantTotal();
+            }
+        }
+
+        $totalAmount = (int) round($transactionsAmount + $invoiceAmount);
 
         $averageAmount = $total > 0 ? round($totalAmount / $total) : 0;
 
@@ -683,7 +703,7 @@ class ReportService
                     "SUM(CASE WHEN t.type = :entry THEN t.montant ELSE -t.montant END) AS balance"
                 )
                 ->join('t.modeDePaiement', 'm')
-                ->setParameter('entry', 'Entrée');
+                ->setParameter('entry', 'EntrÃ©e');
 
             if ($fromDate) {
                 $qb->andWhere('t.dateTransaction >= :from')->setParameter('from', $fromDate);
@@ -748,8 +768,8 @@ class ReportService
         $cacheKey = sprintf('report.periodicActsStats.%s.%s', $fromDate?->format('Ymd') ?? 'none', $toDate?->format('Ymd') ?? 'none');
         return $this->remember($cacheKey, 180, function () use ($fromDate, $toDate) {
             $knownTypes = [
-                'Consultation', 'Détartrage', 'Extraction', 'Remplissage', 'Composite', 'Amalgame',
-                'Traitement de canal', 'Traumatisme', 'Couronne', 'Blanchiment', 'Radio', 'Prothèse',
+                'Consultation', 'DÃ©tartrage', 'Extraction', 'Remplissage', 'Composite', 'Amalgame',
+                'Traitement de canal', 'Traumatisme', 'Couronne', 'Blanchiment', 'Radio', 'ProthÃ¨se',
                 'Orthodontie', 'Chirurgie',
             ];
             $acts = array_fill_keys($knownTypes, 0);
@@ -810,42 +830,28 @@ class ReportService
                 $relicat_patient = 0;
 
                 foreach ($consultations as $consult) {
-                    if ($consult->getPaiementDevis()) {
-                        $paid++;
-                    } else {
+                    $facture = $consult->getFacture();
+                    $consultAmount = (float) ($facture?->getMontantTotal() ?? 0);
+
+                    if ($consultAmount <= 0) {
                         $free++;
+                    } elseif (($facture?->getRestePatient() ?? $consultAmount) <= 0) {
+                        $paid++;
                     }
 
-                $consultAmount = 0;
-                if ($consult->getFacture() && $consult->getFacture()->getMontant()) {
-                    $fact = $consult->getFacture();
-                    $consultAmount = $fact->getMontant();
                     $apport += $consultAmount;
                     $totalAmount += $consultAmount;
-                    $paiements[] = [
-                        'date' => $fact->getDate()?->format('Y-m-d H:i'),
-                        'medecin' => $doctor->getFullName(),
-                        'patient' => $consult->getPatient()?->getFullName() ?? 'Inconnu',
-                        'telephone' => $consult->getPatient()?->getTelephone() ?? '-- -- -- --',
-                        'montant' => $fact->getMontant() - $fact->getReste() ?? null,
-                        'pour' => 'Soins'
-                    ];
-                }
 
-                $paiementDevis = $consult->getPaiementDevis();
-                if ($paiementDevis && $paiementDevis->getMontant()) {
-                    $consultAmount += $paiementDevis->getMontant();
-                    $apport += $paiementDevis->getMontant();
-                    $totalAmount += $paiementDevis->getMontant();
-                    $paiements[] = [
-                        'date' => $consult->getCreatedAt()?->format('Y-m-d H:i'),
-                        'medecin' => $doctor->getFullName(),
-                        'patient' => $consult->getPatient()?->getFullName() ?? 'Inconnu',
-                        'telephone' => $consult->getPatient()?->getTelephone() ?? '-- -- -- --',
-                        'montant' => $consult->getPaiementDevis()->getMontant() ?? null,
-                        'pour' => 'Consultation'
-                    ];
-                }
+                    if ($facture !== null) {
+                        $paiements[] = [
+                            'date' => $facture->getDateFacture()?->format('Y-m-d H:i'),
+                            'medecin' => $doctor->getFullName(),
+                            'patient' => $consult->getPatient()?->getFullName() ?? 'Inconnu',
+                            'telephone' => $consult->getPatient()?->getTelephone() ?? '-- -- -- --',
+                            'montant' => $facture->getMontantPatient(),
+                            'pour' => 'Soins'
+                        ];
+                    }
 
                 $patientId = $consult->getPatient()->getId();
                 if (!in_array($patientId, $patientIds)) {
@@ -860,23 +866,23 @@ class ReportService
                     'patient' => $consult->getPatient()->getFullName(),
                     'type' => $consult->getNoteSeance(),
                     'amount' => $consultAmount,
-                    'paid' => $consult->getPaiementDevis() !== null
+                    'paid' => ($facture?->getRestePatient() ?? $consultAmount) <= 0
                 ];
 
                 if ($consult->getFacture()) {
-                    foreach ($consult->getFacture()->getContenus() as $acte) {
+                    foreach ($consult->getActes() as $acte) {
                         $totalActs++;
-                        $actAmount = $acte->getMontantTotal();
+                        $actAmount = (float) (($acte->getPrix() ?? 0) * max(1, (int) ($acte->getQuantite() ?? 1)));
                         $actsAmount += $actAmount;
 
                         $actesList[] = [
                             'date' => $consult->getCreatedAt()->format('d/m/Y'),
                             'patient' => $consult->getPatient()->getFullName(),
-                            'type' => $acte->getDesignation(),
+                            'type' => $acte->getType(),
                             'montant' => $actAmount,
                         ];
                     }
-                    $relicat_patient += $consult->getFacture()->getReste();
+                    $relicat_patient += (float) $consult->getFacture()->getRestePatient();
                 }
             }
 
@@ -885,7 +891,7 @@ class ReportService
 
             $paiementsConsultations = $this->em->createQueryBuilder()
                 ->select('pd')
-                ->from('App\\Billing\\Entity\\PaiementDevis', 'pd')
+                ->from('App\\Billing\\Entity\\Paiement', 'pd')
                 ->join('pd.consultation', 'c')
                 ->where('c.medecin = :doctor')
                 ->andWhere('pd.date BETWEEN :from AND :to')
@@ -913,25 +919,26 @@ class ReportService
             }
 
             $paiementsFactures = $this->em->createQueryBuilder()
-                ->select('pd', 'f', 'c')
-                ->from('App\\Billing\\Entity\\PaiementDevis', 'pd')
-                ->join('pd.devis', 'f')
-                ->join('f.consultation', 'c')
+                ->select('pd', 'c')
+                ->from('App\\Billing\\Entity\\Paiement', 'pd')
+                ->join('pd.consultation', 'c')
                 ->where('c.medecin = :doctor')
                 ->andWhere('pd.date BETWEEN :from AND :to')
+                ->andWhere('pd.rolePaiement IN (:roles)')
                 ->setParameter('doctor', $doctor)
                 ->setParameter('from', $fromDate)
                 ->setParameter('to', $toDate)
+                ->setParameter('roles', ['patient', 'insurance'])
                 ->getQuery()
                 ->getResult();
 
             foreach ($paiementsFactures as $pay) {
-                $facture = $pay->getDevis();
-                $consult = $facture->getConsultation();
+                $consult = $pay->getConsultation();
+                $facture = $consult?->getFacture();
                 $patient = $consult->getPatient();
                 $descriptions = [];
-                foreach ($facture->getContenus() as $acte) {
-                    $descriptions[] = $acte->getDesignation();
+                foreach ($consult->getActes() as $acte) {
+                    $descriptions[] = $acte->getType();
                 }
 
                 $paiementsPeriode[] = [
@@ -940,9 +947,9 @@ class ReportService
                     'patient' => $patient?->getFullName() ?? 'Inconnu',
                     'telephone' => $patient?->getTelephone() ?? '-- -- -- --',
                     'description' => implode(', ', $descriptions),
-                    'montant_total' => $facture->getMontant(),
+                    'montant_total' => $facture?->getMontantTotal() ?? 0,
                     'montant_paye' => $pay->getMontant(),
-                    'reste' => $facture->getReste(),
+                    'reste' => $facture?->getRestePatient() ?? 0,
                 ];
                 $revenue += $pay->getMontant();
             }
@@ -1020,21 +1027,22 @@ class ReportService
         $actes = []; $paiements = [];
 
         foreach ($consultationsPeriode as $consult) {
-            if ($consult->getFacture()) { $paidConsults++; } else { $freeConsults++; }
+            $facture = $consult->getFacture();
+            if ($facture) { $paidConsults++; } else { $freeConsults++; }
 
-            if ($facture = $consult->getFacture()) {
-                $apport += $facture->getMontant();
+            if ($facture) {
+                $apport += $facture->getMontantTotal();
                 $paiements[] = [
-                    'date' => $facture->getDate()?->format('Y-m-d H:i'),
+                    'date' => $facture->getDateFacture()?->format('Y-m-d H:i'),
                     'medecin' => $medecin->getFullName(),
                     'patient' => $consult->getPatient()?->getFullName() ?? 'Inconnu',
                     'telephone' => $consult->getPatient()?->getTelephone() ?? '-- -- -- --',
-                    'montant' => $consult->getCreatedAt()?->format('Y-m-d H:i') ?? null,
+                    'montant' => $facture->getMontantTotal(),
                     'pour' => 'Soins'
                 ];
             }
 
-            if ($p = $consult->getPaiementDevis()) {
+            if ($p = $consult->getPaiement()) {
                 $apport += $p->getMontant();
                 $paiements[] = [
                     'date' => $consult->getCreatedAt()?->format('Y-m-d H:i'),
@@ -1046,11 +1054,11 @@ class ReportService
                 ];
             }
 
-            if ($consult->getFacture() !== null) {
-                foreach ($consult->getFacture()->getContenus() as $acte) {
+            if ($facture !== null) {
+                foreach ($consult->getActes() as $acte) {
                     $actes[] = [
-                        'nom' => $acte->getDesignation(),
-                        'montant' => $acte->getMontant(),
+                        'nom' => $acte->getType(),
+                        'montant' => (float) (($acte->getPrix() ?? 0) * max(1, (int) ($acte->getQuantite() ?? 1))),
                         'patient' => $consult->getPatient()?->getFullName() ?? 'Inconnu',
                         'date' => $consult->getCreatedAt()?->format('Y-m-d H:i') ?? null
                     ];
@@ -1061,7 +1069,7 @@ class ReportService
         $paiementsPeriode = [];
         $paiementsConsultations = $this->em->createQueryBuilder()
             ->select('pd')
-            ->from('App\\Billing\\Entity\\PaiementDevis', 'pd')
+            ->from('App\\Billing\\Entity\\Paiement', 'pd')
             ->join('pd.consultation', 'c')
             ->where('c.medecin = :doctor')
             ->andWhere('pd.date BETWEEN :from AND :to')
@@ -1088,25 +1096,26 @@ class ReportService
         }
 
         $paiementsFactures = $this->em->createQueryBuilder()
-            ->select('pd', 'f', 'c')
-            ->from('App\\Billing\\Entity\\PaiementDevis', 'pd')
-            ->join('pd.devis', 'f')
-            ->join('f.consultation', 'c')
+            ->select('pd', 'c')
+            ->from('App\\Billing\\Entity\\Paiement', 'pd')
+            ->join('pd.consultation', 'c')
             ->where('c.medecin = :doctor')
             ->andWhere('pd.date BETWEEN :from AND :to')
+            ->andWhere('pd.rolePaiement IN (:roles)')
             ->setParameter('doctor', $medecin)
             ->setParameter('from', $from)
             ->setParameter('to', $to)
+            ->setParameter('roles', ['patient', 'insurance'])
             ->getQuery()
             ->getResult();
 
         foreach ($paiementsFactures as $pay) {
-            $facture = $pay->getDevis();
-            $consult = $facture->getConsultation();
+            $consult = $pay->getConsultation();
+            $facture = $consult?->getFacture();
             $patient = $consult->getPatient();
             $descriptions = [];
-            foreach ($facture->getContenus() as $acte) {
-                $descriptions[] = $acte->getDesignation();
+            foreach ($consult->getActes() as $acte) {
+                $descriptions[] = $acte->getType();
             }
 
             $paiementsPeriode[] = [
@@ -1115,9 +1124,9 @@ class ReportService
                 'patient' => $patient?->getFullName() ?? 'Inconnu',
                 'telephone' => $patient?->getTelephone() ?? '-- -- -- --',
                 'description' => implode(', ', $descriptions),
-                'montant_total' => $facture->getMontant(),
+                'montant_total' => $facture?->getMontantTotal() ?? 0,
                 'montant_paye' => $pay->getMontant(),
-                'reste' => $facture->getReste(),
+                'reste' => $facture?->getRestePatient() ?? 0,
             ];
             $revenue += $pay->getMontant();
         }
@@ -1223,13 +1232,13 @@ class ReportService
 
         $modeEspeces = $this->em->getRepository(ModeDePaiement::class)->find(0);
 
-        $revenusEspeces = $this->em->createQuery("\n        SELECT SUM(t.montant)\n        FROM App\\Billing\\Entity\\Transaction t\n        WHERE t.dateTransaction BETWEEN :start AND :end\n        AND t.modeDePaiement = :mode\n        AND t.type = 'Entrée'\n    ")
+        $revenusEspeces = $this->em->createQuery("\n        SELECT SUM(t.montant)\n        FROM App\\Billing\\Entity\\Transaction t\n        WHERE t.dateTransaction BETWEEN :start AND :end\n        AND t.modeDePaiement = :mode\n        AND t.type = 'EntrÃ©e'\n    ")
             ->setParameter('start', $dateStart)
             ->setParameter('end', $dateEnd)
             ->setParameter('mode', $modeEspeces)
             ->getSingleScalarResult();
 
-        $revenusTotaux = $this->em->createQuery("\n    SELECT SUM(t.montant)\n    FROM App\\Billing\\Entity\\Transaction t\n    WHERE t.dateTransaction BETWEEN :start AND :end\n    AND t.type = 'Entrée'\n")
+        $revenusTotaux = $this->em->createQuery("\n    SELECT SUM(t.montant)\n    FROM App\\Billing\\Entity\\Transaction t\n    WHERE t.dateTransaction BETWEEN :start AND :end\n    AND t.type = 'EntrÃ©e'\n")
             ->setParameter('start', $dateStart)
             ->setParameter('end', $dateEnd)
             ->getSingleScalarResult();
@@ -1251,3 +1260,4 @@ class ReportService
         });
     }
 }
+

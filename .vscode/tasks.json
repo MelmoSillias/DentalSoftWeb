@@ -1,0 +1,26 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+        {
+        "label": "Lancer Backend",
+        "type": "shell",
+        "command": "cd backend; symfony serve --port 8010", // Remplacez par votre commande
+        "presentation": {
+            "group": "multi-terminals", // Regroupe les terminaux
+            "panel": "new", // Ouvre un nouveau terminal
+            "showReuseMessage": false
+        },
+        "runOptions": { "runOn": "default" }
+        },
+        {
+        "label": "Lancer Frontend",
+        "type": "shell",
+        "command": "cd frontend; npm run dev", // Remplacez par votre commande
+        "presentation": {
+            "group": "multi-terminals",
+            "panel": "new"
+        },
+        "runOptions": { "runOn": "default" }
+        },
+    ]
+}

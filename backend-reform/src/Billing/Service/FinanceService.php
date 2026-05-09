@@ -3,10 +3,11 @@
 namespace App\Billing\Service;
 
 use App\Billing\Entity\ChargeFixe;
-use App\Billing\Entity\Devis;
+use App\Billing\Entity\Facture;
 use App\Billing\Entity\ModeDePaiement;
-use App\Billing\Entity\PaiementDevis;
 use App\Billing\Entity\Transaction;
+use App\Billing\Entity\Paiement;
+
 use App\Billing\Repository\ChargeFixeRepository;
 use App\Billing\Repository\ModeDePaiementRepository;
 use App\Billing\Repository\TransactionRepository;
@@ -42,7 +43,7 @@ class FinanceService
 
         foreach ($transactions as $transaction) {
             $month = (int) $transaction->getDateTransaction()->format('n') - 1;
-            if ($transaction->getType() === 'Entrée') {
+            if ($transaction->getType() === 'EntrÃ©e') {
                 $monthlyRevenues[$month] += $transaction->getMontant();
             } else {
                 $monthlyExpenses[$month] += $transaction->getMontant();
@@ -82,7 +83,7 @@ class FinanceService
     public function getBarParCompteAnnuel(?int $year = null): array
     {
         $targetYear = (string) ($year ?? (int) date('Y'));
-        $comptes = $this->modeRepo->findBy(['actif' => true]);
+        $comptes = $this->modeRepo->findActifs();
         $datasets = [
             'labels'   => [],
             'entrees'  => [],
@@ -99,7 +100,7 @@ class FinanceService
                     continue;
                 }
 
-                if ($t->getType() === 'Entrée') {
+                if ($t->getType() === 'EntrÃ©e') {
                     $entree += $t->getMontant();
                 } else {
                     $sortie += $t->getMontant();
@@ -118,7 +119,7 @@ class FinanceService
     public function getBarPointChartData(?int $year = null): array
     {
         $targetYear = (string) ($year ?? (int) date('Y'));
-        $comptes = $this->modeRepo->findBy(['actif' => true]);
+        $comptes = $this->modeRepo->findActifs();
         $labels = [];
         $entrees = [];
         $depenses = [];
@@ -137,7 +138,7 @@ class FinanceService
                     continue;
                 }
 
-                if ($t->getType() === 'Entrée') {
+                if ($t->getType() === 'EntrÃ©e') {
                     $totalIn += $t->getMontant();
                 } else {
                     $totalOut += $t->getMontant();
@@ -172,7 +173,7 @@ class FinanceService
             }
 
             $month = (int) $t->getDateTransaction()->format('n') - 1;
-            $cumul += ($t->getType() === 'Entrée') ? $t->getMontant() : -$t->getMontant();
+            $cumul += ($t->getType() === 'EntrÃ©e') ? $t->getMontant() : -$t->getMontant();
             $evolution[$month] = $cumul;
         }
 
@@ -185,7 +186,7 @@ class FinanceService
         $colorMap = ['#007bff', '#28a745', '#ffc107', '#dc3545', '#6f42c1', '#17a2b8'];
 
         $datasets = [];
-        $modes = $this->modeRepo->findBy(['actif' => true]);
+        $modes = $this->modeRepo->findActifs();
         $colorIndex = 0;
 
         foreach ($modes as $mode) {
@@ -199,7 +200,7 @@ class FinanceService
                 }
 
                 $mois = (int) $t->getDateTransaction()->format('n') - 1;
-                if ($t->getType() === 'Entrée') {
+                if ($t->getType() === 'EntrÃ©e') {
                     $entrees[$mois] += $t->getMontant();
                 } elseif ($t->getType() === 'Sortie') {
                     $sorties[$mois] += $t->getMontant();
@@ -214,14 +215,14 @@ class FinanceService
             $colorIndex++;
 
             $datasets[] = [
-                'label' => $mode->getLibelle() . ' - Entrées',
+                'label' => $mode->getLibelle() . ' - EntrÃ©es',
                 'data' => $entrees,
                 'type' => 'bar',
                 'backgroundColor' => $mainColor,
                 'stack' => $mode->getId(),
             ];
             $datasets[] = [
-                'label' => $mode->getLibelle() . ' - Dépenses',
+                'label' => $mode->getLibelle() . ' - DÃ©penses',
                 'data' => $sorties,
                 'type' => 'bar',
                 'backgroundColor' => $mainColor . '99',
@@ -246,10 +247,10 @@ class FinanceService
     {
         $soldes = [];
 
-        foreach ($this->modeRepo->findBy(['actif' => true]) as $mode) {
+        foreach ($this->modeRepo->findActifs() as $mode) {
             $solde = 0;
             foreach ($mode->getTransactions() as $transaction) {
-                if ($transaction->getType() === 'Entrée') {
+                if ($transaction->getType() === 'EntrÃ©e') {
                     $solde += $transaction->getMontant();
                 } else {
                     $solde -= $transaction->getMontant();
@@ -260,9 +261,6 @@ class FinanceService
                 'id'      => $mode->getId(),
                 'libelle' => $mode->getLibelle(),
                 'type'    => $mode->getType(),
-                'typeKey' => $mode->getTypeKey(),
-                'family'  => $mode->getFamilyKey(),
-                'coverageRate' => $mode->getCoverageRate(),
                 'solde'   => $solde,
             ];
         }
@@ -283,11 +281,11 @@ class FinanceService
         $montant = (float) ($data['montant'] ?? 0);
 
         if ($designation === '') {
-            return ['error' => 'La désignation est requise.', 'status' => 400];
+            return ['error' => 'La dÃ©signation est requise.', 'status' => 400];
         }
 
         if ($montant <= 0) {
-            return ['error' => 'Le montant doit être supérieur à 0.', 'status' => 400];
+            return ['error' => 'Le montant doit Ãªtre supÃ©rieur Ã  0.', 'status' => 400];
         }
 
         $charge = new ChargeFixe();
@@ -311,11 +309,11 @@ class FinanceService
         $montant = (float) ($data['montant'] ?? 0);
 
         if ($designation === '') {
-            return ['error' => 'La désignation est requise.', 'status' => 400];
+            return ['error' => 'La dÃ©signation est requise.', 'status' => 400];
         }
 
         if ($montant <= 0) {
-            return ['error' => 'Le montant doit être supérieur à 0.', 'status' => 400];
+            return ['error' => 'Le montant doit Ãªtre supÃ©rieur Ã  0.', 'status' => 400];
         }
 
         $charge->setDesignation($designation);
@@ -363,11 +361,7 @@ class FinanceService
         $transaction->setDateTransaction($date);
         $transaction->setModeDePaiement($mode);
 
-        if ($mode->isAutoValidated()) {
-            $transaction->markValidated();
-        } else {
-            $transaction->markPending();
-        }
+        $transaction->markValidated();
 
         $this->em->persist($transaction);
         $this->em->flush();
@@ -399,7 +393,7 @@ class FinanceService
                 'motif' => $transaction->getMotif(),
                 'type' => $transaction->getType(),
                 'typeKey' => $typeKey,
-                'typeLabel' => $typeKey === 'revenue' ? 'Revenu' : ($typeKey === 'expense' ? 'Dépense' : ($transaction->getType() ?? '')), 
+                'typeLabel' => $typeKey === 'revenue' ? 'Revenu' : ($typeKey === 'expense' ? 'DÃ©pense' : ($transaction->getType() ?? '')), 
                 'amount' => $transaction->getMontant(),
                 'validated' => $transaction->isValidated(),
                 'validationStatus' => $transaction->getValidationStatus(),
@@ -409,9 +403,6 @@ class FinanceService
                     'id' => $transaction->getModeDePaiement()->getId(),
                     'libelle' => $transaction->getModeDePaiement()->getLibelle(),
                     'type' => $transaction->getModeDePaiement()->getType(),
-                    'typeKey' => $transaction->getModeDePaiement()->getTypeKey(),
-                    'family' => $transaction->getModeDePaiement()->getFamilyKey(),
-                    'coverageRate' => $transaction->getModeDePaiement()->getCoverageRate(),
                 ],
             ];
         }, $transactions);
@@ -426,9 +417,6 @@ class FinanceService
                 'id' => $mode->getId(),
                 'libelle' => $mode->getLibelle(),
                 'type' => $mode->getType(),
-                'typeKey' => $mode->getTypeKey(),
-                'family' => $mode->getFamilyKey(),
-                'coverageRate' => $mode->getCoverageRate(),
                 'actif' => $mode->isActif(),
                 'notes' => $mode->getNotes(),
             ];
@@ -439,9 +427,7 @@ class FinanceService
     {
         $mode = new ModeDePaiement();
         $mode->setLibelle($data['libelle'] ?? '');
-        $mode->setType($data['type'] ?? '');
-        $mode->setTypeKey($data['typeKey'] ?? null);
-        $mode->setFamilyKey($data['family'] ?? 'classic');
+        $mode->setType($data['type'] ?? 'cash');
         $mode->setCoverageRate(isset($data['coverageRate']) ? (float) $data['coverageRate'] : null);
         $mode->setNotes($data['notes'] ?? null);
         $mode->setActif(true);
@@ -481,19 +467,21 @@ class FinanceService
         $tOut->setDateTransaction($date);
         $tOut->setDescription("[Transfert] vers {$to->getLibelle()} - {$motif}");
         $tOut->setModeDePaiement($from);
+        $tOut->markValidated();
         $this->em->persist($tOut);
 
         $tIn = new Transaction();
-        $tIn->setType('Entrée');
+        $tIn->setType('EntrÃ©e');
         $tIn->setMontant($montant);
         $tIn->setDateTransaction($date);
         $tIn->setDescription("[Transfert] depuis {$from->getLibelle()} - {$motif}");
         $tIn->setModeDePaiement($to);
+        $tIn->markValidated();
         $this->em->persist($tIn);
 
         $this->em->flush();
 
-        return ['message' => 'Transfert effectué avec succès'];
+        return ['message' => 'Transfert effectuÃ© avec succÃ¨s'];
     }
 
     public function updateTransactionValidationStatus(int $id, string $status, ?string $comment = null, ?DateTimeImmutable $validatedAt = null): array
@@ -507,33 +495,9 @@ class FinanceService
             $transaction->markValidated($validatedAt);
             $transaction->setValidationComment(null);
 
-            if (
-                $transaction->getPaiementDevis() === null
-                && $transaction->getType() === 'Entrée'
-                && $transaction->getRolePaiement() === 'insurance'
-            ) {
-                $paiement = new PaiementDevis();
-                $paiement->setMode($transaction->getModeDePaiement());
-                $paiement->setMontant((float) ($transaction->getMontant() ?? 0));
-                $paiement->setDate($validatedAt ? DateTime::createFromImmutable($validatedAt) : ($transaction->getDateTransaction() ?? new DateTime()));
-                $paiement->setRolePaiement($transaction->getRolePaiement());
-                $paiement->setTauxPriseEnCharge($transaction->getTauxPriseEnCharge());
-
-                if ($transaction->getDevis()) {
-                    $paiement->setDevis($transaction->getDevis());
-                }
-
-                if ($transaction->getConsultation()) {
-                    $paiement->setConsultation($transaction->getConsultation());
-                }
-
-                $transaction->setPaiementDevis($paiement);
-                $this->em->persist($paiement);
-            }
         } elseif ($status === 'rejected') {
             $devis = $this->detachTransactionPayment($transaction);
             $transaction->markRejected($comment);
-            $this->recalculateDevisBalance($devis);
         } else {
             return ['error' => 'Statut de validation invalide', 'status' => 400];
         }
@@ -552,15 +516,12 @@ class FinanceService
 
         $devis = $this->detachTransactionPayment($transaction);
         if ($devis === null) {
-            $consultation = $transaction->getConsultation();
-            $devis = $transaction->getDevis() ?: $consultation?->getFacture();
+            $devis = $transaction->getDevis();
         }
 
         $transaction->setConsultation(null);
         $transaction->setDevis(null);
         $this->em->remove($transaction);
-
-        $this->recalculateDevisBalance($devis);
         $this->em->flush();
 
         return ['success' => true];
@@ -639,7 +600,7 @@ class FinanceService
             'year' => $year,
             'month' => $month,
             'type' => $typeKey,
-            'typeLabel' => $typeKey === 'expense' ? 'Dépenses' : 'Revenus',
+            'typeLabel' => $typeKey === 'expense' ? 'DÃ©penses' : 'Revenus',
             'monthLabel' => ucfirst((new \IntlDateFormatter('fr_FR', \IntlDateFormatter::NONE, \IntlDateFormatter::NONE, null, null, 'MMMM yyyy'))->format($from)),
             'weeks' => $weeks,
             'rows' => $rows,
@@ -647,62 +608,44 @@ class FinanceService
             'grandTotal' => $grandTotal,
             'availableTypes' => [
                 ['label' => 'Revenus', 'value' => 'revenue'],
-                ['label' => 'Dépenses', 'value' => 'expense'],
+                ['label' => 'DÃ©penses', 'value' => 'expense'],
             ],
             'transactionMotifs' => $this->globalSettingsService->getTransactionMotifs(),
         ];
     }
 
-    private function detachTransactionPayment(Transaction $transaction): ?Devis
+    private function detachTransactionPayment(Transaction $transaction): ?Facture
     {
-        $paiement = $transaction->getPaiementDevis();
-        $devis = $transaction->getDevis();
+        $paiement = $transaction->getPaiement();
+        $facture = $transaction->getFacture();
 
-        if (!$paiement instanceof PaiementDevis) {
-            return $devis ?: $transaction->getConsultation()?->getFacture();
+        if (!$paiement instanceof Paiement) {
+            return $facture;
         }
 
-        $devis = $devis ?: $paiement->getDevis() ?: $transaction->getConsultation()?->getFacture();
+        $facture = $facture ?: $paiement->getFacture();
         $consultation = $transaction->getConsultation();
 
-        if ($consultation && $consultation->getPaiementDevis() === $paiement) {
-            $consultation->setPaiementDevis(null);
+        if ($consultation && $consultation->getPaiement() === $paiement) {
+            $consultation->setPaiement(null);
         }
 
-        if ($devis && $devis->getPaiements()->contains($paiement)) {
-            $devis->removePaiement($paiement);
+        if ($facture && $facture->getPaiements()->contains($paiement)) {
+            $facture->removePaiement($paiement);
         }
 
-        $transaction->setPaiementDevis(null);
+        $transaction->setPaiement(null);
         $paiement->setConsultation(null);
-        $paiement->setDevis(null);
+        $paiement->setFacture(null);
         $this->em->remove($paiement);
 
-        return $devis;
-    }
-
-    private function recalculateDevisBalance(?Devis $devis): void
-    {
-        if (!$devis instanceof Devis) {
-            return;
-        }
-
-        $paidAmount = 0.0;
-        foreach ($devis->getPaiements() as $paiement) {
-            $paidAmount += (float) ($paiement->getMontant() ?? 0);
-        }
-
-        $montant = (float) ($devis->getMontant() ?? 0);
-        $reste = max(0.0, $montant - $paidAmount);
-        $devis->setReste($reste);
-        $devis->setStatut($reste <= 0.0 ? 1 : 0);
-        $this->em->persist($devis);
+        return $facture;
     }
 
     private function resolveTransactionTypeKey(?string $type): string
     {
         $value = strtolower(trim((string) $type));
-        $value = str_replace(['é', 'è', 'ê', 'ë', 'à', 'â', 'î', 'ï', 'ô', 'ù', 'û', 'ç', ' '], ['e', 'e', 'e', 'e', 'a', 'a', 'i', 'i', 'o', 'u', 'u', 'c', '_'], $value);
+        $value = str_replace(['Ã©', 'Ã¨', 'Ãª', 'Ã«', 'Ã ', 'Ã¢', 'Ã®', 'Ã¯', 'Ã´', 'Ã¹', 'Ã»', 'Ã§', ' '], ['e', 'e', 'e', 'e', 'a', 'a', 'i', 'i', 'o', 'u', 'u', 'c', '_'], $value);
 
         return match (true) {
             in_array($value, ['entry', 'income', 'revenue', 'revenu', 'entree'], true) => 'revenue',
@@ -716,13 +659,13 @@ class FinanceService
     {
         return match ($typeKey) {
             'expense' => ['Sortie'],
-            default => ['Entrée'],
+            default => ['EntrÃ©e'],
         };
     }
 
     private function normalizePersistedTransactionType(string $type): string
     {
-        return $this->resolveTransactionTypeKey($type) === 'expense' ? 'Sortie' : 'Entrée';
+        return $this->resolveTransactionTypeKey($type) === 'expense' ? 'Sortie' : 'EntrÃ©e';
     }
 
     private function weekdayLabel(int $weekday): string
@@ -748,3 +691,4 @@ class FinanceService
         ];
     }
 }
+

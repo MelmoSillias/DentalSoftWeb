@@ -6,8 +6,8 @@ const axios = http;
 const authHeaders = (token) => (token ? { Authorization: `Bearer ${token}` } : {});
 const withHeaders = (token) => ({ headers: authHeaders(token) });
 
-export const fetchDevisPrintData = async (devisId, token) => {
-    const res = await axios.get(`${apiPrefix}/prints/devis/${devisId}`, withHeaders(token));
+export const fetchFacturePrintData = async (factureId, token) => {
+    const res = await axios.get(`${apiPrefix}/prints/factures/${factureId}`, withHeaders(token));
     return res.data;
 };
 
@@ -21,8 +21,8 @@ export const fetchReceiptPrintData = async (paiementId, token) => {
     return res.data;
 };
 
-export const fetchTicketPrintData = async (paiementId, token) => {
-    const res = await axios.get(`${apiPrefix}/prints/tickets/${paiementId}`, withHeaders(token));
+export const fetchTicketPrintData = async (consultationId, token) => {
+    const res = await axios.get(`${apiPrefix}/prints/tickets/${consultationId}`, withHeaders(token));
     return res.data;
 };
 

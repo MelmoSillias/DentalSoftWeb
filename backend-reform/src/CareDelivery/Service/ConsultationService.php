@@ -10,8 +10,10 @@ use App\Dto\Focus\FocusReceptionPayloadDto;
 use App\Dto\Focus\FocusReceptionPaymentDto;
 use App\Billing\Entity\ContenuDevis;
 use App\Billing\Entity\Devis;
-use App\Billing\Entity\PaiementDevis;
+use App\Billing\Entity\Facture;
+use App\Billing\Entity\Paiement;
 use App\Billing\Entity\Transaction;
+use App\Billing\Entity\Assurance;
 use App\Billing\Repository\DevisRepository;
 use App\CareDelivery\Entity\ActeMedical;
 use App\CareDelivery\Entity\Consultation;
@@ -85,12 +87,12 @@ class ConsultationService
 
         $actorMedecin = $this->getMedecinForUser($user);
         if (!$actorMedecin) {
-            throw new ConflictHttpException('Aucun médecin lié à ce compte.');
+            throw new ConflictHttpException('Aucun mÃ©decin liÃ© Ã  ce compte.');
         }
 
         $currentMedecin = $consultation->getMedecin();
         if ($currentMedecin && $currentMedecin->getId() !== $actorMedecin->getId()) {
-            throw new ConflictHttpException('Cette consultation est déjà prise en charge par un autre médecin.');
+            throw new ConflictHttpException('Cette consultation est dÃ©jÃ  prise en charge par un autre mÃ©decin.');
         }
 
         if (!$currentMedecin) {
@@ -121,7 +123,7 @@ class ConsultationService
     private function ensureConsultationOpen(Consultation $consultation): void
     {
         if ($consultation->getStatut() === 1) {
-            throw new ConflictHttpException('Cette consultation est déjà clôturée.');
+            throw new ConflictHttpException('Cette consultation est dÃ©jÃ  clÃ´turÃ©e.');
         }
     }
 
@@ -157,7 +159,7 @@ class ConsultationService
     {
         $medecinId = $actorMedecin?->getId() ?? ($data['medecinId'] ?? $consultation->getMedecin()?->getId());
         if (!$medecinId) {
-            throw new \InvalidArgumentException('Le médecin est obligatoire pour enregistrer la consultation.');
+            throw new \InvalidArgumentException('Le mÃ©decin est obligatoire pour enregistrer la consultation.');
         }
 
         $infirmierId = $data['infirmierId'] ?? ($data['infirmierIds'][0] ?? null);
@@ -168,6 +170,17 @@ class ConsultationService
         $consultation->setSalle($salleId ? $this->em->getReference(Salle::class, (int) $salleId) : null);
         $consultation->setType($data['type'] ?? $consultation->getType());
         $consultation->setNoteSeance($data['noteSeance'] ?? $consultation->getNoteSeance() ?? '');
+
+        if (array_key_exists('assuranceId', $data) || array_key_exists('assurance_id', $data)) {
+            $assuranceId = (int) ($data['assuranceId'] ?? $data['assurance_id'] ?? 0);
+            $consultation->setAssurance($assuranceId > 0 ? $this->em->getReference(Assurance::class, $assuranceId) : null);
+        }
+
+        if (array_key_exists('tauxCouverture', $data) || array_key_exists('taux_couverture', $data)) {
+            $tauxCouverture = (float) ($data['tauxCouverture'] ?? $data['taux_couverture'] ?? 0);
+            $consultation->setTauxCouverture(max(0.0, min(100.0, $tauxCouverture)));
+            $consultation->setIsRecouvre(false);
+        }
 
         if (isset($data['actes']) && is_array($data['actes'])) {
             foreach ($consultation->getActes()->toArray() as $a) {
@@ -292,17 +305,17 @@ class ConsultationService
         return $qb->getQuery()->getResult();
     }
 
-    private function resolveFocusFactState(?Devis $facture): ?int
+    private function resolveFocusFactState(?Facture $facture): ?int
     {
         if (!$facture) {
             return null;
         }
 
-        if ($facture->getStatut() == 0 && (int) $facture->getMontant() === (int) $facture->getReste()) {
-            return 0;
+        if ($facture->isReglee() || ($facture->getRestePatient() <= 0.0 && $facture->getMontantTotal() > 0.0)) {
+            return 1;
         }
 
-        return 1;
+        return 0;
     }
 
     private function buildFocusConsultationDto(Consultation $consultation, int $counter): FocusReceptionConsultationDto
@@ -324,6 +337,8 @@ class ConsultationService
             'patientPhoto' => $patient->getPhoto(),
             'patientId' => $patient->getId(),
             'medecin' => $consultation->getMedecin()?->getFullName(),
+            'isPaid' => $consultation->getPaiement() ? true : false,
+            'paiementId' => $consultation->getPaiement()?->getId(),
             'createdAt' => $consultation->getCreatedAt()?->format(DATE_ATOM),
             'motif' => $ficheData['motif'],
             'factstate' => $this->resolveFocusFactState($consultation->getFacture()),
@@ -350,58 +365,60 @@ class ConsultationService
         );
     }
 
-    private function buildFocusBillingDto(Devis $facture): FocusReceptionBillingDto
+    private function buildFocusBillingDto(Facture $facture): FocusReceptionBillingDto
     {
-        $lines = array_map(
-            static fn (ContenuDevis $line) => new FocusReceptionInvoiceLineDto(
-                $line->getId() ?? 0,
-                $line->getDesignation() ?? 'Soin',
-                $line->getQte(),
-                $line->getMontant(),
-                $line->getMontantTotal(),
-            ),
-            $facture->getContenus()->toArray()
-        );
+        $consultation = $facture->getConsultation();
+        $runningTotal = 0.0;
+        $lineIndex = 1;
+
+        $lines = array_map(function (ActeMedical $acte) use (&$runningTotal, &$lineIndex): FocusReceptionInvoiceLineDto {
+            $quantity = max(1, (int) ($acte->getQuantite() ?? 1));
+            $unitPrice = (float) ($acte->getPrix() ?? 0);
+            $lineTotal = $quantity * $unitPrice;
+            $runningTotal += $lineTotal;
+
+            return new FocusReceptionInvoiceLineDto(
+                $acte->getId() ?? $lineIndex++,
+                $acte->getType() ?: ($acte->getDescription() ?: 'Soin'),
+                $quantity,
+                $unitPrice,
+                $lineTotal,
+            );
+        }, $consultation?->getActes()->toArray() ?? []);
 
         $payments = $facture->getPaiements()->toArray();
-        usort($payments, static function (PaiementDevis $left, PaiementDevis $right): int {
-            $leftTime = $left->getDate()?->getTimestamp() ?? 0;
-            $rightTime = $right->getDate()?->getTimestamp() ?? 0;
-
-            if ($leftTime === $rightTime) {
-                return ($right->getId() ?? 0) <=> ($left->getId() ?? 0);
-            }
-
-            return $rightTime <=> $leftTime;
-        });
-
+       
         $paymentDtos = array_map(
-            static fn (PaiementDevis $payment) => new FocusReceptionPaymentDto(
+            static fn (Paiement $payment) => new FocusReceptionPaymentDto(
                 $payment->getId() ?? 0,
                 $payment->getMontant(),
                 $payment->getMode()?->getLibelle(),
                 $payment->getDate()?->format(DATE_ATOM),
-                $payment->getRolePaiement(),
+                method_exists($payment, 'getRolePaiement') ? ((string) ($payment->getRolePaiement() ?? 'direct')) : 'direct',
                 'paiement',
                 $payment->getTransaction()?->getValidationStatus() ?? 'validated',
             ),
             $payments
         );
 
+        $montants = $facture->computeMontantsFromConsultation();
+        $total = (float) $montants['montantTotal'];
+        $remaining = (float) $montants['restePatient'];
+
         return new FocusReceptionBillingDto(
             $facture->getId() ?? 0,
-            (float) $facture->getMontant(),
-            (float) $facture->getReste(),
+            $total,
+            $remaining,
             [
-                'label' => $facture->getReste() <= 0 && $facture->getMontant() > 0
+                'label' => $remaining <= 0 && $total > 0
                     ? 'Facture reglee'
-                    : ((float) $facture->getMontant() <= 0
-                        ? ((int) $facture->getStatut() === 1 ? 'Facture vide validee' : 'Facture vide')
+                    : ($total <= 0
+                        ? ($facture->isReglee() ? 'Facture vide validee' : 'Facture vide')
                         : 'Facture ouverte'),
-                'severity' => $facture->getReste() <= 0 && $facture->getMontant() > 0
+                'severity' => $remaining <= 0 && $total > 0
                     ? 'success'
-                    : ((float) $facture->getMontant() <= 0
-                        ? ((int) $facture->getStatut() === 1 ? 'success' : 'contrast')
+                    : ($total <= 0
+                        ? ($facture->isReglee() ? 'success' : 'contrast')
                         : 'warn'),
             ],
             $lines,
@@ -906,47 +923,38 @@ class ConsultationService
         }
 
         if (!$consultation->getMedecin()) {
-            throw new \InvalidArgumentException('Le médecin est obligatoire pour clôturer la consultation.');
+            throw new \InvalidArgumentException('Le mÃ©decin est obligatoire pour clÃ´turer la consultation.');
         }
 
         if ($consultation->getActes()->isEmpty()) {
-            throw new \InvalidArgumentException('Ajoutez au moins un acte médical avant de clôturer la consultation.');
+            throw new \InvalidArgumentException('Ajoutez au moins un acte mÃ©dical avant de clÃ´turer la consultation.');
         }
         
-        $facture = new Devis();
-        if ($fiche instanceof FicheMedicale) {
-            $facture->setFicheMedicale($fiche);
-        } else {
-            $facture->setFiche($fiche);
-        }
-        $facture->setDate(new \DateTime('now'))
-            ->setType(1)
-            ->setStatut(0)
-            ->setMontant(0);
-        $this->em->persist($facture);
-
-        foreach ($facture->getContenus() as $contenu) {
-            $facture->removeContenu($contenu);
-            $this->em->remove($contenu);
+        if (isset($payload['assuranceId']) || isset($payload['assurance_id'])) {
+            $assuranceId = (int) ($payload['assuranceId'] ?? $payload['assurance_id'] ?? 0);
+            $consultation->setAssurance($assuranceId > 0 ? $this->em->getReference(Assurance::class, $assuranceId) : null);
         }
 
-        $amount = 0;
-        foreach ($consultation->getActes() as $a) {
-            $qty = max(1, (int) ($a->getQuantite() ?? 1));
-            $price = (float) ($a->getPrix() ?? 0);
-            $cd = new ContenuDevis();
-            $cd->setDevis($facture)
-                ->setDesignation($a->getType() ?? '')
-                ->setQte($qty)
-                ->setMontant($price);
-            $amount += $cd->getMontant() * $cd->getQte();
-            $cd->setMontantTotal($amount);
-            $this->em->persist($cd);
+        if (isset($payload['tauxCouverture']) || isset($payload['taux_couverture'])) {
+            $tauxCouverture = (float) ($payload['tauxCouverture'] ?? $payload['taux_couverture']);
+            $consultation->setTauxCouverture(max(0.0, min(100.0, $tauxCouverture)));
         }
 
-        $facture->setMontant($amount);
-        $facture->setReste($amount);
+        $facture = $consultation->getFacture() ?? new Facture();
         $facture->setConsultation($consultation);
+        $facture->setDateFacture(new \DateTime('now'));
+
+        $facture->setAssurance($consultation->getAssurance());
+        $facture->setTauxCouverture($consultation->getTauxCouverture());
+
+        $montants = $facture->computeMontantsFromConsultation($consultation->getTauxCouverture());
+        $facture->setIsReglee(((float) $montants['restePatient']) <= 0.0);
+        $facture->setTauxCouverture($montants['tauxCouverture']);
+        $facture->setIsRecouvre(false);
+
+        $facture->setInsuranceStatus($facture->getAssurance() !== null ? 'pending' : 'none');
+        $consultation->setIsRecouvre(false);
+        $consultation->setFacture($facture);
         $this->em->persist($facture);
         $this->em->flush();
 
@@ -955,10 +963,10 @@ class ConsultationService
 
         $this->focusRealtimePublisher->publishConsultationRefresh($consultation, 'closed');
 
-        $this->notifyReceptionOnClosure($consultation, $facture);
+        $this->notifyReceptionOnClosure($consultation, (float) $montants['montantTotal']);
     }
 
-    private function notifyReceptionOnClosure(Consultation $consultation, Devis $facture): void
+    private function notifyReceptionOnClosure(Consultation $consultation, float $invoiceAmount): void
     {
         $recipients = $this->notificationRecipientResolver->receptionists();
 
@@ -968,9 +976,9 @@ class ConsultationService
 
         $patient = $consultation->getPatient();
         $patientName = trim($patient?->getFullName() ?? '') ?: 'un patient';
-        $amountLabel = number_format((float) ($facture->getMontant() ?? 0), 0, ',', ' ');
+        $amountLabel = number_format($invoiceAmount, 0, ',', ' ');
         $message = sprintf(
-            'Consultation de %s clôturée : facture de %s FCFA prête en caisse.',
+            'Consultation de %s clÃ´turÃ©e : facture de %s FCFA prÃªte en caisse.',
             $patientName,
             $amountLabel,
         );
@@ -1005,7 +1013,7 @@ class ConsultationService
                 'date' => $consultation->getCreatedAt()?->format('Y-m-d H:i:s'),
                 'salle' => $consultation->getSalle()?->getNom(),
                 'state' => $consultation->getStatut(),
-                'factstate' => $facture ? ($facture->getStatut() == 0 && (int) $facture->getMontant() === (int) $facture->getReste() ? 0 : 1) : null,
+                'factstate' => $this->resolveFocusFactState($facture),
                 'patientId' => $consultation->getPatient()?->getId(),
             ];
         }, $consultations);
@@ -1078,6 +1086,7 @@ class ConsultationService
                 'medecin' => $c->getMedecin() ? $c->getMedecin()->getFullName() : null,
                 'dateDebut' => $c->getCreatedAt()->format('Y-m-d H:i'),
                 'hasFiche' => $ficheData['hasFiche'],
+                'isPaid' => $c->getPaiement() ? true : false,
                 'fiche' => $ficheData['fiche'],
                 'ficheId' => $ficheData['ficheId'],
                 'motif' => $ficheData['motif'],
@@ -1256,7 +1265,7 @@ class ConsultationService
         $consultation = $this->consultationRepo->find($id);
 
         if (!$consultation) {
-            throw new NotFoundHttpException('Consultation non trouvée.');
+            throw new NotFoundHttpException('Consultation non trouvÃ©e.');
         }
 
         if ($createNewFiche) {
@@ -1307,67 +1316,49 @@ class ConsultationService
         ];
     }
 
-    
     public function deleteConsultation(int $id, ?User $actor = null): bool
     {
+        /** @var Consultation|null $consultation */
         $consultation = $this->consultationRepo->find($id);
 
         if (!$consultation) {
             return false;
         }
 
+        /** @var Facture|null $facture */
         $facture = $consultation->getFacture();
 
-        $paymentsQb = $this->em->getRepository(PaiementDevis::class)->createQueryBuilder('p')
-            ->where('p.consultation = :consultation')
-            ->setParameter('consultation', $consultation);
-
+        $paiementConsultation = $consultation->getPaiement();
+        if ($paiementConsultation) {
+            $paiementConsultation->setConsultation(null);
+            $paiementConsultation->setFacture(null);
+            $this->em->remove($paiementConsultation);
+            $this->em->flush();
+        }
         if ($facture) {
-            $paymentsQb->orWhere('p.devis = :devis')
-                ->setParameter('devis', $facture);
-        }
+            $paiementsFacture = $facture ? $facture->getPaiements() : []; 
+            
+            foreach ($paiementsFacture as $paiement) {
+                $transaction = $paiement->getTransaction();
 
-        $allPaiements = $paymentsQb->getQuery()->getResult();
-        $allPaiements = array_values(array_filter($allPaiements, fn ($p) => $p instanceof PaiementDevis));
-        $paiementIds = array_values(array_unique(array_map(fn (PaiementDevis $p) => $p->getId(), array_filter($allPaiements, fn (PaiementDevis $p) => $p->getId() !== null))));
+                if ($transaction) {
+                    $transaction->setPaiement(null);
+                    $transaction->setConsultation(null);
+                    $transaction->setFacture(null);
+                    $this->em->remove($transaction);
+                    $this->em->flush();
+                }
 
-        $txQb = $this->em->getRepository(Transaction::class)->createQueryBuilder('t')
-            ->where('t.consultation = :consultation')
-            ->setParameter('consultation', $consultation);
-
-        if ($facture) {
-            $txQb->orWhere('t.devis = :devis')
-                ->setParameter('devis', $facture);
-        }
-
-        if (!empty($paiementIds)) {
-            $txQb->orWhere('t.paiementDevis IN (:paiementIds)')
-                ->setParameter('paiementIds', $paiementIds);
-        }
-
-        $transactions = $txQb->getQuery()->getResult();
-
-        foreach ($transactions as $transaction) {
-            $paiement = $transaction->getPaiementDevis();
-            if ($paiement instanceof PaiementDevis && !in_array($paiement, $allPaiements, true)) {
-                $allPaiements[] = $paiement;
+                $paiement->setConsultation(null);
+                $paiement->setFacture(null);
+                $this->em->remove($paiement);
+                $this->em->flush();
             }
 
-            $transaction->setPaiementDevis(null);
-            $transaction->setConsultation(null);
-            $transaction->setDevis(null);
-            $this->em->remove($transaction);
-        }
-
-        foreach ($allPaiements as $paiement) {
-            $paiement->setConsultation(null);
-            $paiement->setDevis(null);
-            $this->em->remove($paiement);
-        }
-
-        if ($facture) {
             $consultation->setFacture(null);
+            $facture->setConsultation(null);
             $this->em->remove($facture);
+            $this->em->flush();
         }
 
         $this->em->remove($consultation);
@@ -1398,9 +1389,15 @@ class ConsultationService
 
         foreach ($consultation->getActes() as $acte) {
             $dentValue = (string) ($acte->getDent() ?? '');
+            $type = trim((string) ($acte->getType() ?? ''));
+            $description = trim((string) ($acte->getDescription() ?? ''));
+            if ($description === '') {
+                $description = $type;
+            }
+
             $lignes[] = [
-                'type' => $acte->getType(),
-                'description' => $acte->getDescription(),
+                'type' => $type,
+                'description' => $description,
                 'quantite' => $acte->getQuantite(),
                 'prix' => $acte->getPrix(),
                 'dent' => $dentValue,
@@ -1417,16 +1414,11 @@ class ConsultationService
             return ['error' => 'Payload invalide'];
         }
 
-        $devis = $consultation->getFacture();
+        $facture = $consultation->getFacture();
 
-        if (!$devis) {
-            return ['error' => 'Facture non trouvée'];
+        if (!$facture) {
+            return ['error' => 'Facture non trouvÃ©e'];
         }
-
-        foreach ($devis->getContenus() as $old) {
-            $this->em->remove($old);
-        }
-        $this->em->flush();
 
         // Re-synchronise les actes de la consultation avec les lignes soumises
         foreach ($consultation->getActes() as $oldActe) {
@@ -1434,7 +1426,6 @@ class ConsultationService
         }
         $this->em->flush();
 
-        $total = 0;
         foreach ($lignes as $ligneData) {
             $designation = $ligneData['type']
                 ?? $ligneData['designation']
@@ -1443,17 +1434,10 @@ class ConsultationService
             $prix = (float) ($ligneData['prix'] ?? $ligneData['montant'] ?? 0);
             $quantite = (int) ($ligneData['quantite'] ?? $ligneData['qte'] ?? 1);
             $dent = $this->normalizeDentValue($ligneData['dent'] ?? ($ligneData['dents'] ?? ''));
-            $description = $ligneData['description'] ?? $designation;
-
-            $cd = new ContenuDevis();
-            $cd->setDevis($devis)
-                ->setQte($quantite)
-                ->setMontant($prix)
-                ->setDesignation($designation)
-                ->setMontantTotal($prix * $quantite);
-
-            $total += $prix * $quantite;
-            $this->em->persist($cd);
+            $description = trim((string) ($ligneData['description'] ?? ''));
+            if ($description === '') {
+                $description = (string) $designation;
+            }
 
             $acte = new ActeMedical();
             $acte->setConsultation($consultation)
@@ -1465,10 +1449,14 @@ class ConsultationService
             $this->em->persist($acte);
         }
 
-        $devis->setMontant($total)
-            ->setReste($total);
+        $montants = $facture->computeMontantsFromConsultation();
 
-        $this->em->persist($devis);
+        $facture
+            ->setIsReglee(((float) $montants['restePatient']) <= 0.0)
+            ->setTauxCouverture($montants['tauxCouverture'])
+            ->setDateFacture(new \DateTime());
+
+        $this->em->persist($facture);
         $this->em->flush();
 
         $this->focusRealtimePublisher->publishConsultationRefresh($consultation, 'invoice-updated');
@@ -1596,3 +1584,4 @@ class ConsultationService
         ];
     }
 }
+

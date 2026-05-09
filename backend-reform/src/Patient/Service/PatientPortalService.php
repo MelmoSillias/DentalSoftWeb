@@ -116,7 +116,7 @@ final class PatientPortalService
             'validated' => $t->isValidated(),
             'modePaiement' => $t->getModeDePaiement()?->getLibelle(),
             'consultationId' => $t->getConsultation()?->getId(),
-            'devisId' => $t->getDevis()?->getId(),
+            'factureId' => $t->getDevis()?->getId(),
             'recu' => [
                 'label' => 'Recu #' . $t->getId(),
                 'printDataUrl' => '/api/portal-patient/me/paiements/' . $t->getId() . '/recu',

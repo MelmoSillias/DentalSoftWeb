@@ -108,6 +108,7 @@ export function useFinances() {
     const fixedCharges = ref([]);
     const fixedChargesTotal = ref(0);
     const paymentMethods = ref([]);
+    const assurances = ref([]);
     const transactions = ref([]);
 
     const loading = ref({
@@ -115,6 +116,7 @@ export function useFinances() {
         crossTable: false,
         fixedCharges: false,
         methods: false,
+        assurances: false,
         transactions: false,
         action: false
     });
@@ -167,7 +169,7 @@ export function useFinances() {
         error.value = null;
         try {
             if (isFinancesTourMockEnabled()) {
-                paymentMethods.value = fetchFinancesPaymentMethodsTourMock();
+                paymentMethods.value = fetchFinancesPaymentMethodsTourMock().filter((item) => String(item?.type || '').toLowerCase() !== 'insurance');
                 return paymentMethods.value;
             }
 
@@ -179,6 +181,74 @@ export function useFinances() {
             handleError(err);
         } finally {
             loading.value.methods = false;
+        }
+    };
+
+    const fetchAssurances = async () => {
+        loading.value.assurances = true;
+        error.value = null;
+        try {
+            if (isFinancesTourMockEnabled()) {
+                assurances.value = fetchFinancesPaymentMethodsTourMock()
+                    .filter((item) => String(item?.type || '').toLowerCase() === 'insurance')
+                    .map((item) => ({
+                        id: item.id,
+                        nom: item.libelle,
+                        code: null,
+                        actif: item.actif !== false,
+                        notes: item.notes || null,
+                        defaultRate: Number(item?.coverageRate ?? 0) || 0
+                    }));
+                return assurances.value;
+            }
+
+            const res = await http.get(`${apiPrefix}/assurances`, { headers: buildHeaders(false) });
+            assurances.value = Array.isArray(res.data) ? res.data : [];
+            return assurances.value;
+        } catch (err) {
+            handleError(err);
+        } finally {
+            loading.value.assurances = false;
+        }
+    };
+
+    const createAssurance = async (payload) => {
+        loading.value.action = true;
+        error.value = null;
+        try {
+            if (isFinancesTourMockEnabled()) {
+                const nextId = (assurances.value || []).reduce((maxId, item) => {
+                    const id = Number(item?.id || 0);
+                    return id > maxId ? id : maxId;
+                }, 0) + 1;
+
+                const item = {
+                    id: nextId,
+                    nom: String(payload?.nom || '').trim(),
+                    code: String(payload?.code || '').trim() || null,
+                    actif: payload?.actif !== false,
+                    notes: String(payload?.notes || '').trim() || null,
+                    defaultRate: Number(payload?.defaultRate || 0) || 0
+                };
+                assurances.value = [...(assurances.value || []), item];
+                return item;
+            }
+
+            const body = {
+                nom: payload?.nom || '',
+                code: payload?.code || null,
+                notes: payload?.notes || null,
+                defaultRate: payload?.defaultRate ?? null,
+                actif: typeof payload?.actif === 'boolean' ? payload.actif : true
+            };
+            const res = await http.post(`${apiPrefix}/assurances`, body, {
+                headers: buildHeaders(true)
+            });
+            return res.data;
+        } catch (err) {
+            handleError(err);
+        } finally {
+            loading.value.action = false;
         }
     };
 
@@ -294,10 +364,7 @@ export function useFinances() {
             const body = {
                 nom: payload?.nom || payload?.libelle || '',
                 libelle: payload?.libelle || payload?.nom || '',
-                type: payload?.type || null,
-                typeKey: payload?.typeKey || null,
-                family: payload?.family || null,
-                coverageRate: typeof payload?.coverageRate === 'number' ? payload.coverageRate : null,
+                type: payload?.type || 'cash',
                 notes: payload?.notes || null
             };
             const res = await http.post(`${apiPrefix}/payment-methods`, body, {
@@ -323,9 +390,6 @@ export function useFinances() {
                 nom: payload?.nom || payload?.libelle || '',
                 libelle: payload?.libelle || payload?.nom || '',
                 type: payload?.type || null,
-                typeKey: payload?.typeKey || null,
-                family: payload?.family || null,
-                coverageRate: typeof payload?.coverageRate === 'number' ? payload.coverageRate : null,
                 notes: payload?.notes || null,
                 actif: typeof payload?.actif === 'boolean' ? payload.actif : undefined
             };
@@ -518,6 +582,7 @@ export function useFinances() {
         fixedCharges,
         fixedChargesTotal,
         paymentMethods,
+        assurances,
         transactions,
         loading,
         error,
@@ -525,6 +590,8 @@ export function useFinances() {
         fetchCrossTable,
         fetchFixedCharges,
         fetchPaymentMethods,
+        fetchAssurances,
+        createAssurance,
         createFixedCharge,
         createPaymentMethod,
         updateFixedCharge,

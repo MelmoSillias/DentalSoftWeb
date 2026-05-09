@@ -5,7 +5,6 @@ namespace App\Billing\Entity;
 use App\Billing\Repository\DevisRepository;
 use App\ClinicalRecord\Entity\FicheMedicale;
 use App\ClinicalRecord\Entity\FicheObservation;
-use App\CareDelivery\Entity\Consultation;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
@@ -38,9 +37,6 @@ class Devis
     #[ORM\Column(type: 'integer', nullable: true)]
     private ?int $statut = null;
 
-    #[ORM\OneToMany(mappedBy: 'devis', targetEntity: PaiementDevis::class, cascade: ['persist', 'remove'])]
-    private Collection $paiements;
-
     #[ORM\OneToMany(mappedBy: 'devis', targetEntity: ContenuDevis::class, cascade: ['persist', 'remove'])]
     private Collection $contenus;
 
@@ -50,37 +46,11 @@ class Devis
     #[ORM\Column(type: 'string', length: 255, nullable: true)]
     private ?string $description = null;
 
-    #[ORM\OneToOne(mappedBy: 'facture', cascade: ['persist', 'remove'])]
-    private ?Consultation $consultation = null;
-
     public function __construct()
     {
-        $this->contenus = new ArrayCollection();
-        $this->paiements = new ArrayCollection();
+        $this->contenus = new ArrayCollection(); 
     }
-
-    public function getPaiements(): Collection
-    {
-        return $this->paiements;
-    }
-
-    public function addPaiement(PaiementDevis $paiement): self
-    {
-        if (!$this->paiements->contains($paiement)) {
-            $this->paiements[] = $paiement;
-            $paiement->setDevis($this);
-        }
-        return $this;
-    }
-
-    public function removePaiement(PaiementDevis $paiement): self
-    {
-        if ($this->paiements->removeElement($paiement) && $paiement->getDevis() === $this) {
-            $paiement->setDevis(null);
-        }
-        return $this;
-    }
-
+ 
     public function getId(): ?int { return $this->id; }
     public function getFiche(): ?FicheObservation { return $this->fiche; }
     public function setFiche(?FicheObservation $fiche): self { $this->fiche = $fiche; return $this; }
@@ -141,23 +111,4 @@ class Devis
         return $this;
     }
 
-    public function getConsultation(): ?Consultation
-    {
-        return $this->consultation;
-    }
-
-    public function setConsultation(?Consultation $consultation): static
-    {
-        if ($consultation === null && $this->consultation !== null) {
-            $this->consultation->setFacture(null);
-        }
-
-        if ($consultation !== null && $consultation->getFacture() !== $this) {
-            $consultation->setFacture($this);
-        }
-
-        $this->consultation = $consultation;
-
-        return $this;
-    }
 }
