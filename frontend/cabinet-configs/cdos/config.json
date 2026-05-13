@@ -9,9 +9,9 @@
   "smsCabinetName": "CABINET DENTAIRE OUSMANE SOW",
   "smsTestMessage": "Message de test CABINET DENTAIRE OUSMANE SOW.",
   "reportCabinetName": "CABINET DENTAIRE OUSMANE SOW",
-  "cabinetPhone": "+223 77 27 28 61 / +223 44 51 61 85",
+  "cabinetPhone": "+223 93 28 87 23 / +223 84 07 55 18",
   "viteApiPrefix": "https://api.cabinetdentaireousmanesow.cloud/api",
-  "viteFilePrefix": "https://api.cabinetdentaireousmanesow.cloud", 
+  "viteFilePrefix": "https://api.cabinetdentaireousmanesow.cloud",
   "brandingAssets": {
     "logo": "logo.png",
     "logoAlt": "logo.jpeg",

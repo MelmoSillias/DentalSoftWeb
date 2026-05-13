@@ -4,6 +4,7 @@ namespace App\Billing\Controller\Api;
 
 use App\Billing\Entity\Assurance;
 use App\Billing\Repository\AssuranceRepository;
+use App\Billing\Service\IntegratedInsuranceCatalog;
 use App\Billing\Service\InsuranceClaimService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -16,6 +17,7 @@ class InsuranceController extends AbstractController
     public function __construct(
         private AssuranceRepository $assuranceRepository,
         private InsuranceClaimService $insuranceClaimService,
+        private IntegratedInsuranceCatalog $catalog,
         private EntityManagerInterface $em,
     ) {
     }
@@ -23,7 +25,7 @@ class InsuranceController extends AbstractController
     #[Route('/api/assurances', name: 'api_assurances_list', methods: ['GET'])]
     public function listAssurances(): JsonResponse
     {
-        $assurances = $this->assuranceRepository->findBy([], ['nom' => 'ASC']);
+        $assurances = $this->catalog->syncCatalog($this->assuranceRepository, $this->em);
 
         return $this->json(array_map(fn (Assurance $assurance) => $this->mapAssurance($assurance), $assurances));
     }
@@ -31,28 +33,26 @@ class InsuranceController extends AbstractController
     #[Route('/api/assurances', name: 'api_assurances_create', methods: ['POST'])]
     public function createAssurance(Request $request): JsonResponse
     {
-        $data = json_decode($request->getContent(), true) ?: [];
-        $nom = trim((string) ($data['nom'] ?? ''));
-        $defaultRateRaw = $data['defaultRate'] ?? $data['default_rate'] ?? $data['taux_par_defaut'] ?? null;
-        $defaultRate = $defaultRateRaw === null || $defaultRateRaw === ''
-            ? null
-            : max(0, min(100, (float) $defaultRateRaw));
+        return $this->json([
+            'error' => 'La creation manuelle des assurances est desactivee. Utilisez les assurances integrees.'
+        ], 405);
+    }
 
-        if ($nom === '') {
-            return $this->json(['error' => 'Le nom de l\'assurance est requis.'], 400);
+    #[Route('/api/assurances/{code}/toggle', name: 'api_assurances_toggle', methods: ['PATCH'])]
+    public function toggleAssurance(string $code): JsonResponse
+    {
+        $this->catalog->syncCatalog($this->assuranceRepository, $this->em);
+        $assurance = $this->assuranceRepository->findOneByCode($code);
+
+        if (!$assurance) {
+            return $this->json(['error' => 'Assurance introuvable'], 404);
         }
 
-        $assurance = new Assurance();
-        $assurance->setNom($nom);
-        $assurance->setCode(isset($data['code']) ? trim((string) $data['code']) : null);
-        $assurance->setNotes(isset($data['notes']) ? trim((string) $data['notes']) : null);
-        $assurance->setTauxParDefaut($defaultRate);
-        $assurance->setActif(isset($data['actif']) ? (bool) $data['actif'] : true);
-
+        $assurance->setActif(!$assurance->isActif());
         $this->em->persist($assurance);
         $this->em->flush();
 
-        return $this->json($this->mapAssurance($assurance), 201);
+        return $this->json($this->mapAssurance($assurance));
     }
 
     #[Route('/api/assurances/claims', name: 'api_insurance_claims_list', methods: ['GET'])]
@@ -116,6 +116,32 @@ class InsuranceController extends AbstractController
         return $this->json($result, 201);
     }
 
+    #[Route('/api/assurances/claims/{id}/patient-pay', name: 'api_insurance_claims_patient_pay', methods: ['POST'])]
+    public function payPatientShare(int $id, Request $request): JsonResponse
+    {
+        $payload = json_decode($request->getContent(), true) ?: [];
+        $modeId = (int) ($payload['modeId'] ?? 0);
+        $amountRaw = $payload['amount'] ?? $payload['montant'] ?? null;
+        $amount = $amountRaw === null || $amountRaw === '' ? null : (float) $amountRaw;
+
+        $date = null;
+        if (!empty($payload['date'])) {
+            try {
+                $date = new \DateTimeImmutable((string) $payload['date']);
+            } catch (\Exception) {
+                return $this->json(['error' => 'Date invalide'], 400);
+            }
+        }
+
+        $result = $this->insuranceClaimService->payPatientShare($id, $modeId, $amount, $date);
+
+        if (isset($result['error'])) {
+            return $this->json(['error' => $result['error']], $result['status'] ?? 400);
+        }
+
+        return $this->json($result, 201);
+    }
+
     private function mapAssurance(Assurance $assurance): array
     {
         return [
@@ -126,6 +152,11 @@ class InsuranceController extends AbstractController
             'notes' => $assurance->getNotes(),
             'defaultRate' => $assurance->getTauxParDefaut(),
             'tauxParDefaut' => $assurance->getTauxParDefaut(),
+            'website' => $assurance->getWebsite(),
+            'email' => $assurance->getEmail(),
+            'logoPath' => $assurance->getLogoPath(),
+            'formSchema' => $assurance->getFormSchema(),
+            'integrated' => true,
         ];
     }
 }

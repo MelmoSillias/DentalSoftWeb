@@ -1,5 +1,6 @@
 <script setup>
 import { createPatient, updatePatient } from '@/services/patients';
+import { useAssurancesStore } from '@/stores/assurances';
 import Button from 'primevue/button';
 import Checkbox from 'primevue/checkbox';
 import ConfirmPopup from 'primevue/confirmpopup';
@@ -7,7 +8,7 @@ import InputText from 'primevue/inputtext';
 import Textarea from 'primevue/textarea';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
-import { computed, reactive, ref, watch } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 
 const props = defineProps({
     patient: {
@@ -22,6 +23,9 @@ const confirmPopup = useConfirm();
 const toast = useToast();
 const loading = ref(false);
 const token = localStorage.getItem('token');
+const assurancesStore = useAssurancesStore();
+const assurances = ref([]);
+const activeTab = ref('personal');
 
 const sexes = [
     { label: 'Homme', value: 'Homme' },
@@ -74,7 +78,60 @@ const form = reactive({
         appointmentReminder: false,
         unsubscribed: false,
         blacklisted: false
+    },
+    insuranceProfile: {
+        enabled: false,
+        assuranceCode: '',
+        assuranceId: null,
+        coverageRate: 0,
+        formData: {
+            societe: '',
+            assureNom: '',
+            assureNumero: '',
+            beneficiaireNom: '',
+            beneficiaireNumero: '',
+            sexe: '',
+            souscripteur: '',
+            salarieNomPrenom: '',
+            salarieMatricule: '',
+            patientNomPrenom: '',
+            patientMatricule: '',
+            patientAge: '',
+            patientSexe: ''
+        }
     }
+});
+
+const insuranceOptions = computed(() =>
+    (assurances.value || [])
+        .filter((item) => item?.actif !== false)
+        .map((item) => ({
+            label: item?.nom || item?.code || 'Assurance',
+            value: item?.code || '',
+            id: item?.id || null
+        }))
+);
+
+const hasActiveInsurances = computed(() => insuranceOptions.value.length > 0);
+
+const selectedInsurance = computed(() =>
+    (assurances.value || []).find((item) => (item?.code || '') === form.insuranceProfile.assuranceCode) || null
+);
+
+const isSbn = computed(() => form.insuranceProfile.assuranceCode === 'SBN');
+const isBleues = computed(() => form.insuranceProfile.assuranceCode === 'BLEUES');
+
+const loadAssurances = async () => {
+    try {
+        assurances.value = await assurancesStore.load(token, { force: true });
+    } catch (error) {
+        console.error('Erreur chargement assurances', error);
+        assurances.value = [];
+    }
+};
+
+onMounted(() => {
+    loadAssurances();
 });
 
 const isEdit = computed(() => Boolean(props.patient?.id));
@@ -156,6 +213,25 @@ const resetForm = () => {
     form.smsPreferences.appointmentReminder = false;
     form.smsPreferences.unsubscribed = false;
     form.smsPreferences.blacklisted = false;
+    form.insuranceProfile.enabled = false;
+    form.insuranceProfile.assuranceCode = '';
+    form.insuranceProfile.assuranceId = null;
+    form.insuranceProfile.coverageRate = 0;
+    form.insuranceProfile.formData = {
+        societe: '',
+        assureNom: '',
+        assureNumero: '',
+        beneficiaireNom: '',
+        beneficiaireNumero: '',
+        sexe: '',
+        souscripteur: '',
+        salarieNomPrenom: '',
+        salarieMatricule: '',
+        patientNomPrenom: '',
+        patientMatricule: '',
+        patientAge: '',
+        patientSexe: ''
+    };
 };
 
 watch(
@@ -187,8 +263,63 @@ watch(
             form.smsPreferences.appointmentReminder = Boolean(smsPreferences.appointmentReminder ?? false);
             form.smsPreferences.unsubscribed = Boolean(smsPreferences.unsubscribed ?? false);
             form.smsPreferences.blacklisted = Boolean(smsPreferences.blacklisted ?? false);
+
+            const insuranceProfile = val.insuranceProfile ?? null;
+            if (insuranceProfile?.assurance?.code) {
+                form.insuranceProfile.enabled = true;
+                form.insuranceProfile.assuranceCode = insuranceProfile.assurance.code;
+                form.insuranceProfile.assuranceId = insuranceProfile.assurance.id ?? null;
+                form.insuranceProfile.coverageRate = Number(insuranceProfile.coverageRate ?? 0) || 0;
+                form.insuranceProfile.formData = {
+                    ...form.insuranceProfile.formData,
+                    ...(insuranceProfile.formData || {})
+                };
+            } else {
+                form.insuranceProfile.enabled = false;
+                form.insuranceProfile.assuranceCode = '';
+                form.insuranceProfile.assuranceId = null;
+                form.insuranceProfile.coverageRate = 0;
+            }
         } else {
             resetForm();
+        }
+    },
+    { immediate: true }
+);
+
+watch(
+    () => form.insuranceProfile.assuranceCode,
+    (code) => {
+        const insurance = (assurances.value || []).find((item) => (item?.code || '') === code) || null;
+        form.insuranceProfile.assuranceId = insurance?.id ?? null;
+        if (!insurance) {
+            return;
+        }
+
+        const defaultRate = Number(insurance?.defaultRate ?? insurance?.tauxParDefaut ?? 0) || 0;
+        if (!(Number(form.insuranceProfile.coverageRate) > 0)) {
+            form.insuranceProfile.coverageRate = defaultRate;
+        }
+    }
+);
+
+watch(
+    () => [form.nom, form.prenom, form.sexe, ageInput.value, form.insuranceProfile.enabled, form.insuranceProfile.assuranceCode],
+    () => {
+        if (!form.insuranceProfile.enabled) {
+            return;
+        }
+
+        const fullName = `${form.nom || ''} ${form.prenom || ''}`.trim();
+        if (isSbn.value) {
+            form.insuranceProfile.formData.assureNom = fullName;
+            form.insuranceProfile.formData.sexe = form.sexe || '';
+        }
+
+        if (isBleues.value) {
+            form.insuranceProfile.formData.patientNomPrenom = fullName;
+            form.insuranceProfile.formData.patientAge = ageInput.value || '';
+            form.insuranceProfile.formData.patientSexe = form.sexe || '';
         }
     },
     { immediate: true }
@@ -225,7 +356,14 @@ const savePatient = async () => {
                 appointmentReminder: form.smsPreferences.appointmentReminder,
                 unsubscribed: form.smsPreferences.unsubscribed,
                 blacklisted: form.smsPreferences.blacklisted
-            }
+            },
+            insuranceProfile: hasActiveInsurances.value ? {
+                enabled: Boolean(form.insuranceProfile.enabled && form.insuranceProfile.assuranceCode),
+                assuranceCode: form.insuranceProfile.assuranceCode || null,
+                assuranceId: form.insuranceProfile.assuranceId,
+                coverageRate: Number(form.insuranceProfile.coverageRate || 0),
+                formData: { ...form.insuranceProfile.formData }
+            } : null
         };
         const saved = isEdit.value && props.patient?.id
             ? await updatePatient(props.patient.id, payload, token)
@@ -258,9 +396,14 @@ const handleSubmit = (event) => {
 <template>
     <div class="flex flex-col gap-4">
         <ConfirmPopup />
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="flex gap-2">
+            <Button :outlined="activeTab !== 'personal'" size="small" label="Informations personnelles" @click="activeTab = 'personal'" />
+            <Button v-if="hasActiveInsurances" :outlined="activeTab !== 'insurance'" size="small" label="Informations assurances" @click="activeTab = 'insurance'" />
+        </div>
+
+        <div v-if="activeTab === 'personal'" class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div class="flex flex-col gap-2">
-                <label for="nom" class="font-semibold"> <span class="text-red-500">*</span> Nom</label>
+                <label for="nom" class="font-semibold"><span class="text-red-500">*</span> Nom</label>
                 <InputText id="nom" v-model="form.nom" placeholder="Nom" />
             </div>
             <div class="flex flex-col gap-2">
@@ -268,9 +411,9 @@ const handleSubmit = (event) => {
                 <InputText id="prenom" v-model="form.prenom" placeholder="Prénom" />
             </div>
             <div class="flex flex-col gap-2">
-                <label for="telephone" class="font-semibold"> <span class="text-red-500">*</span> Téléphone</label>
+                <label for="telephone" class="font-semibold"><span class="text-red-500">*</span> Téléphone</label>
                 <InputText id="telephone" v-model="form.telephone" placeholder="Téléphone" />
-            </div> 
+            </div>
             <div class="flex flex-col gap-2">
                 <label for="adresse" class="font-semibold">Adresse</label>
                 <InputText id="adresse" v-model="form.adresse" placeholder="Adresse" />
@@ -285,95 +428,105 @@ const handleSubmit = (event) => {
             </div>
             <div class="flex flex-col gap-2">
                 <label for="sexe" class="font-semibold">Sexe</label>
-                <Select id="sexe" v-model="form.sexe" :options="sexes" optionLabel="label" optionValue="value"
-                    placeholder="Choisir" class="w-full" />
+                <Select id="sexe" v-model="form.sexe" :options="sexes" optionLabel="label" optionValue="value" placeholder="Choisir" class="w-full" />
             </div>
             <div class="flex flex-col gap-2">
                 <label for="date-naissance" class="font-semibold">Date de naissance</label>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <InputText
-                        id="date-naissance"
-                        :modelValue="form.dateNaissance"
-                        type="date"
-                        placeholder="Date de naissance"
-                        @update:modelValue="onDateNaissanceInput"
-                    />
-                    <InputText
-                        id="age-patient"
-                        :modelValue="ageInput"
-                        type="number"
-                        min="0"
-                        max="130"
-                        placeholder="Âge"
-                        @update:modelValue="onAgeInput"
-                    />
+                    <InputText id="date-naissance" :modelValue="form.dateNaissance" type="date" placeholder="Date de naissance" @update:modelValue="onDateNaissanceInput" />
+                    <InputText id="age-patient" :modelValue="ageInput" type="number" min="0" max="130" placeholder="Âge" @update:modelValue="onAgeInput" />
                 </div>
             </div>
             <div class="flex flex-col gap-2">
                 <label for="referencement" class="font-semibold">Comment a-t-il connu le cabinet ?</label>
-                <Select
-                    id="referencement"
-                    v-model="form.referencement"
-                    :options="referralSources"
-                    optionLabel="label"
-                    optionValue="value"
-                    placeholder="Choisir"
-                    class="w-full"
-                />
+                <Select id="referencement" v-model="form.referencement" :options="referralSources" optionLabel="label" optionValue="value" placeholder="Choisir" class="w-full" />
             </div>
-            <!-- <div class="flex flex-col gap-2">
-                <label for="groupe" class="font-semibold">Groupe sanguin</label>
-                <InputText id="groupe" v-model="form.groupeSanguin" placeholder="Ex: O+" />
-            </div> -->
             <div class="flex flex-col gap-2 md:col-span-2">
                 <label class="font-semibold">Contact d'urgence</label>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <InputText id="urgence-nom" v-model="form.contactUrgence.nom" placeholder="Nom" />
                     <InputText id="urgence-telephone" v-model="form.contactUrgence.telephone" placeholder="Téléphone" />
-                    <InputText id="urgence-lien" v-model="form.contactUrgence.lienParente"
-                        placeholder="Lien de parenté" />
+                    <InputText id="urgence-lien" v-model="form.contactUrgence.lienParente" placeholder="Lien de parenté" />
                 </div>
-            </div> 
-            <!-- <div class="md:col-span-2 flex flex-col gap-3 rounded-xl p-4">
-                <Accordion value="">
-                    <AccordionPanel value="0">
-                        <AccordionHeader> <i class="pi pi-send"></i> Communication SMS</AccordionHeader>
-                        <AccordionContent>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-                    <div class="flex items-center gap-2">
-                        <Checkbox inputId="sms-created" v-model="form.smsPreferences.patientCreated" binary />
-                        <label for="sms-created">Envoyer accusé lors de la création du patient</label>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <Checkbox inputId="sms-receipt" v-model="form.smsPreferences.receipt" binary />
-                        <label for="sms-receipt">Envoyer automatiquement reçu par SMS</label>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <Checkbox inputId="sms-ticket" v-model="form.smsPreferences.ticket" binary />
-                        <label for="sms-ticket">Envoyer automatiquement ticket par SMS</label>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <Checkbox inputId="sms-invoice" v-model="form.smsPreferences.invoice" binary />
-                        <label for="sms-invoice">Envoyer automatiquement facture par SMS</label>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <Checkbox inputId="sms-rdv" v-model="form.smsPreferences.appointmentReminder" binary />
-                        <label for="sms-rdv">Envoyer rappel automatique de rendez-vous</label>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <Checkbox inputId="sms-unsub" v-model="form.smsPreferences.unsubscribed" binary />
-                        <label for="sms-unsub">Ne plus recevoir SMS</label>
-                    </div>
-                    <div class="flex items-center gap-2 md:col-span-2">
-                        <Checkbox inputId="sms-black" v-model="form.smsPreferences.blacklisted" binary />
-                        <label for="sms-black">Blacklist numéro (bloquer envoi SMS)</label>
-                    </div>
+            </div>
+        </div>
+
+        <div v-if="activeTab === 'insurance' && hasActiveInsurances" class="grid grid-cols-1 md:grid-cols-2 gap-4 rounded-xl border border-surface-200 p-4">
+            <div class="md:col-span-2 flex items-center gap-3">
+                <Checkbox inputId="patient-insurance-enabled" v-model="form.insuranceProfile.enabled" binary />
+                <label for="patient-insurance-enabled" class="font-semibold">Patient assuré</label>
+            </div>
+
+            <div class="flex flex-col gap-2">
+                <label class="font-semibold">Assurance</label>
+                <Select v-model="form.insuranceProfile.assuranceCode" :options="insuranceOptions" optionLabel="label" optionValue="value" placeholder="Choisir une assurance" class="w-full" :disabled="!form.insuranceProfile.enabled" />
+            </div>
+            <div class="flex flex-col gap-2">
+                <label class="font-semibold">Taux de couverture (%)</label>
+                <InputNumber v-model="form.insuranceProfile.coverageRate" mode="decimal" :min="0" :max="100" :minFractionDigits="0" :maxFractionDigits="2" class="w-full" inputClass="w-full" :disabled="!form.insuranceProfile.enabled" />
+            </div>
+
+            <template v-if="form.insuranceProfile.enabled && isSbn">
+                <div class="flex flex-col gap-2">
+                    <label class="font-semibold">Société</label>
+                    <InputText v-model="form.insuranceProfile.formData.societe" />
                 </div>
-                        </AccordionContent>
-                    </AccordionPanel> 
-                </Accordion> 
-                
-            </div> -->
+                <div class="flex flex-col gap-2">
+                    <label class="font-semibold">Nom de l'assuré</label>
+                    <InputText v-model="form.insuranceProfile.formData.assureNom" />
+                </div>
+                <div class="flex flex-col gap-2">
+                    <label class="font-semibold">N° de l'assuré</label>
+                    <InputText v-model="form.insuranceProfile.formData.assureNumero" />
+                </div>
+                <div class="flex flex-col gap-2">
+                    <label class="font-semibold">Nom du bénéficiaire</label>
+                    <InputText v-model="form.insuranceProfile.formData.beneficiaireNom" />
+                </div>
+                <div class="flex flex-col gap-2">
+                    <label class="font-semibold">N° du bénéficiaire</label>
+                    <InputText v-model="form.insuranceProfile.formData.beneficiaireNumero" />
+                </div>
+                <div class="flex flex-col gap-2">
+                    <label class="font-semibold">Sexe</label>
+                    <InputText v-model="form.insuranceProfile.formData.sexe" />
+                </div>
+            </template>
+
+            <template v-if="form.insuranceProfile.enabled && isBleues">
+                <div class="flex flex-col gap-2">
+                    <label class="font-semibold">Souscripteur</label>
+                    <InputText v-model="form.insuranceProfile.formData.souscripteur" />
+                </div>
+                <div class="flex flex-col gap-2">
+                    <label class="font-semibold">Salarié - Nom et prénom</label>
+                    <InputText v-model="form.insuranceProfile.formData.salarieNomPrenom" />
+                </div>
+                <div class="flex flex-col gap-2">
+                    <label class="font-semibold">Salarié - Matricule</label>
+                    <InputText v-model="form.insuranceProfile.formData.salarieMatricule" />
+                </div>
+                <div class="flex flex-col gap-2">
+                    <label class="font-semibold">Patient - Nom et prénom</label>
+                    <InputText v-model="form.insuranceProfile.formData.patientNomPrenom" />
+                </div>
+                <div class="flex flex-col gap-2">
+                    <label class="font-semibold">Patient - Matricule</label>
+                    <InputText v-model="form.insuranceProfile.formData.patientMatricule" />
+                </div>
+                <div class="flex flex-col gap-2">
+                    <label class="font-semibold">Patient - Age</label>
+                    <InputText v-model="form.insuranceProfile.formData.patientAge" />
+                </div>
+                <div class="flex flex-col gap-2">
+                    <label class="font-semibold">Patient - Sexe</label>
+                    <InputText v-model="form.insuranceProfile.formData.patientSexe" />
+                </div>
+            </template>
+
+            <div v-if="form.insuranceProfile.enabled && selectedInsurance?.logoPath" class="md:col-span-2 text-sm text-gray-500">
+                Logo assurance: {{ selectedInsurance.logoPath }}
+            </div>
         </div>
         <div class="flex gap-2 justify-end">
             <Button type="button" label="Annuler" severity="secondary" @click="emit('cancel')" />

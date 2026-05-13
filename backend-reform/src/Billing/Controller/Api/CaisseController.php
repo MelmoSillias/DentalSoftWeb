@@ -4,6 +4,7 @@ namespace App\Billing\Controller\Api;
 
 use App\Billing\Entity\Paiement;
 use App\Billing\Repository\PaiementRepository;
+use App\Billing\Service\InsuranceClaimService;
 use App\Patient\Entity\Patient;
 use App\Billing\Service\CashdeskService;
 use App\CareDelivery\Entity\Consultation;
@@ -19,6 +20,7 @@ class CaisseController extends AbstractController
 {
     public function __construct(
         private CashdeskService $cashdeskService,
+        private InsuranceClaimService $insuranceClaimService,
         private SmsService $smsService,
         private PaiementRepository $paiementRepository,
         private ConsultationRepository $consultationRepository,
@@ -38,6 +40,57 @@ class CaisseController extends AbstractController
         $end->setTime(23, 59, 59);
 
         return new JsonResponse($this->cashdeskService->listFacturesByPeriod($start, $end));
+    }
+
+    #[Route('/api/factures/classiques', name: 'api_factures_classiques_list', methods: ['GET'])]
+    public function getFacturesClassiques(Request $request): JsonResponse
+    {
+        $start = new \DateTime($request->query->get('start', 'today'));
+        if ($request->query->has('end') && $request->query->get('end') !== '') {
+            $end = new \DateTime($request->query->get('end'));
+        } else {
+            $end = (clone $start);
+        }
+        $end->setTime(23, 59, 59);
+
+        return new JsonResponse($this->cashdeskService->listFacturesByPeriod($start, $end));
+    }
+
+    #[Route('/api/factures/assurances', name: 'api_factures_assurances_list', methods: ['GET'])]
+    public function getFacturesAssurances(Request $request): JsonResponse
+    {
+        $status = $request->query->get('status');
+        $patient = $request->query->get('patient');
+        $assuranceCode = $request->query->get('assuranceCode', $request->query->get('assurance'));
+
+        $start = null;
+        if ($request->query->has('start') && $request->query->get('start') !== '') {
+            try {
+                $start = new \DateTime((string) $request->query->get('start'));
+            } catch (\Exception) {
+                return new JsonResponse(['error' => 'Date de debut invalide'], 400);
+            }
+        }
+
+        $end = null;
+        if ($request->query->has('end') && $request->query->get('end') !== '') {
+            try {
+                $end = new \DateTime((string) $request->query->get('end'));
+                $end->setTime(23, 59, 59);
+            } catch (\Exception) {
+                return new JsonResponse(['error' => 'Date de fin invalide'], 400);
+            }
+        }
+
+        $data = $this->insuranceClaimService->listClaims(
+            is_string($status) ? $status : null,
+            $start,
+            $end,
+            is_string($patient) ? $patient : null,
+            is_string($assuranceCode) ? $assuranceCode : null,
+        );
+
+        return new JsonResponse(['data' => $data]);
     }
 
     #[Route('/api/factures/unpaid', name: 'api_factures_unpaid', methods: ['GET'])]
@@ -270,6 +323,7 @@ class CaisseController extends AbstractController
             ],
             'devis' => $factureId ? [
                 'id' => $factureId,
+                'reste' => $paiement->getFacture()->computeMontantsFromConsultation()['reste'] ?? 0.0,
                 'fiche' => [
                     'patient' => $patient ? [
                         'nom' => $patient->getNom(),

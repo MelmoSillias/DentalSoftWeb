@@ -15,4 +15,14 @@ class AssuranceRepository extends ServiceEntityRepository
     {
         parent::__construct($registry, Assurance::class);
     }
+
+    public function findOneByCode(string $code): ?Assurance
+    {
+        return $this->createQueryBuilder('a')
+            ->andWhere('UPPER(a.code) = :code')
+            ->setParameter('code', strtoupper($code))
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
 }

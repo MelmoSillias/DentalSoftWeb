@@ -63,7 +63,7 @@ const onPageChange = (event) => {
   rowsPerPage.value = event.rows
 }
 
-// RÃ©initialiser la pagination quand le filtre ou l'Ã©tat change
+// Réinitialiser la pagination quand le filtre ou l'état change
 watch([() => props.filter, () => props.notificationsEnabled], () => {
   currentPage.value = 1
 })

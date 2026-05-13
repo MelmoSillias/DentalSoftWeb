@@ -288,13 +288,10 @@
                             <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                                 <div>
                                     <h2 class="text-lg font-semibold text-surface-900 dark:text-surface-100 md:text-xl">Assurances</h2>
-                                    <p class="text-sm text-surface-500 dark:text-surface-400">Liste des assurances configurées indépendamment des modes de paiement.</p>
+                                    <p class="text-sm text-surface-500 dark:text-surface-400">Assurances intégrées en dur avec activation/désactivation par cabinet.</p>
                                 </div>
 
-                                <div class="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
-                                    <InputText v-model="assuranceSearch" placeholder="Rechercher une assurance" class="w-full lg:w-72" />
-                                    <Button icon="pi pi-plus" label="Créer assurance" @click="openAddAssurance" />
-                                </div>
+                                <InputText v-model="assuranceSearch" placeholder="Rechercher une assurance" class="w-full lg:w-72" />
                             </div>
                         </div>
 
@@ -331,6 +328,16 @@
                             <Column field="notes" header="Notes">
                                 <template #body="{ data }">
                                     <span class="text-sm text-surface-600 dark:text-surface-300">{{ data.notes || '-' }}</span>
+                                </template>
+                            </Column>
+                            <Column header="Actions" style="width: 140px">
+                                <template #body="{ data }">
+                                    <Button
+                                        :icon="data.actif ? 'pi pi-power-off' : 'pi pi-check'"
+                                        text
+                                        :severity="data.actif ? 'warning' : 'success'"
+                                        :title="data.actif ? 'Désactiver' : 'Activer'"
+                                        @click="handleToggleAssurance(data)" />
                                 </template>
                             </Column>
                         </DataTable>
@@ -469,44 +476,6 @@
             tourTarget="admin-finances.dialog.mode"
             @submit="handleModeSubmit" />
 
-        <Dialog
-            v-model:visible="assuranceDialogVisible"
-            modal
-            header="Créer une assurance"
-            :style="{ width: '520px' }">
-            <div class="grid gap-4">
-                <div class="flex flex-col gap-2">
-                    <label class="text-sm font-medium text-surface-700 dark:text-surface-200">Nom</label>
-                    <InputText v-model="draftAssurance.nom" placeholder="Ex: Santex" class="w-full" />
-                </div>
-                <div class="flex flex-col gap-2">
-                    <label class="text-sm font-medium text-surface-700 dark:text-surface-200">Code (optionnel)</label>
-                    <InputText v-model="draftAssurance.code" placeholder="Ex: SX" class="w-full" />
-                </div>
-                <div class="flex flex-col gap-2">
-                    <label class="text-sm font-medium text-surface-700 dark:text-surface-200">Notes</label>
-                    <Textarea v-model="draftAssurance.notes" rows="3" autoResize class="w-full" placeholder="Informations internes" />
-                </div>
-                <div class="flex flex-col gap-2">
-                    <label class="text-sm font-medium text-surface-700 dark:text-surface-200">Taux de couverture par défaut (%)</label>
-                    <InputNumber
-                        v-model="draftAssurance.defaultRate"
-                        mode="decimal"
-                        locale="fr-FR"
-                        :min="0"
-                        :max="100"
-                        :minFractionDigits="0"
-                        :maxFractionDigits="2"
-                        inputClass="w-full"
-                        class="w-full" />
-                </div>
-            </div>
-
-            <template #footer>
-                <Button label="Annuler" text @click="assuranceDialogVisible = false" />
-                <Button label="Enregistrer" icon="pi pi-check" :loading="loading.action" @click="handleCreateAssurance" />
-            </template>
-        </Dialog>
     </section>
 </template>
 
@@ -521,11 +490,9 @@ import ConfirmPopup from 'primevue/confirmpopup';
 import DataTable from 'primevue/datatable';
 import DatePicker from 'primevue/datepicker';
 import Dialog from 'primevue/dialog';
-import InputNumber from 'primevue/inputnumber';
 import InputText from 'primevue/inputtext';
 import Select from 'primevue/select';
 import Tag from 'primevue/tag';
-import Textarea from 'primevue/textarea';
 import Toast from 'primevue/toast';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
@@ -560,7 +527,7 @@ const {
     fetchFixedCharges,
     fetchPaymentMethods,
     fetchAssurances,
-    createAssurance,
+    toggleAssurance,
     fetchTransactionsRange,
     createFixedCharge,
     createTransaction,
@@ -582,7 +549,6 @@ const activeTab = ref('transactions');
 const transactionDialogVisible = ref(false);
 const draftTransaction = ref(null);
 const modeDialogVisible = ref(false);
-const assuranceDialogVisible = ref(false);
 const validationDialogVisible = ref(false);
 const editingMode = ref(null);
 const isGuidedTourStarting = ref(false);
@@ -605,12 +571,6 @@ const assuranceSearch = ref('');
 const transactionMotifs = ref({
     revenue: ['Paiement patient', 'Remboursement assurance', 'Vente produit', 'Autre'],
     expense: ['Charge fixe', 'Achat matériel', 'Frais généraux', 'Paiement salaire', 'Maintenance', 'Autre']
-});
-const draftAssurance = ref({
-    nom: '',
-    code: '',
-    notes: '',
-    defaultRate: 0
 });
 
 const setActiveTab = (value) => {
@@ -1122,11 +1082,6 @@ const openAddMode = () => {
     modeDialogVisible.value = true;
 };
 
-const openAddAssurance = () => {
-    draftAssurance.value = { nom: '', code: '', notes: '', defaultRate: 0 };
-    assuranceDialogVisible.value = true;
-};
-
 const openEditMode = (mode) => {
     editingMode.value = mode;
     modeDialogVisible.value = true;
@@ -1252,28 +1207,22 @@ const handleModeSubmit = ({ payload, event }) => {
     });
 };
 
-const handleCreateAssurance = async () => {
-    const payload = {
-        nom: String(draftAssurance.value?.nom || '').trim(),
-        code: String(draftAssurance.value?.code || '').trim() || null,
-        notes: String(draftAssurance.value?.notes || '').trim() || null,
-        defaultRate: Math.max(0, Math.min(100, Number(draftAssurance.value?.defaultRate || 0))),
-        actif: true
-    };
-
-    if (!payload.nom) {
-        toast.add({ severity: 'warn', summary: 'Nom requis', detail: 'Veuillez saisir le nom de l\'assurance.', life: 3000 });
-        return;
-    }
-
-    try {
-        await createAssurance(payload);
-        assuranceDialogVisible.value = false;
-        toast.add({ severity: 'success', summary: 'Assurances', detail: 'Assurance créée.', life: 3000 });
-        await fetchAssurances();
-    } catch (error) {
-        toast.add({ severity: 'error', summary: 'Erreur', detail: error?.message || 'Création impossible.', life: 3500 });
-    }
+const handleToggleAssurance = (assurance) => {
+    confirm.require({
+        message: assurance?.actif ? 'Désactiver cette assurance ?' : 'Activer cette assurance ?',
+        icon: 'pi pi-exclamation-triangle',
+        acceptLabel: 'Confirmer',
+        rejectLabel: 'Annuler',
+        accept: async () => {
+            try {
+                await toggleAssurance(assurance?.code || '');
+                toast.add({ severity: 'success', summary: 'Assurances', detail: 'Statut assurance mis à jour.', life: 3000 });
+                await fetchAssurances();
+            } catch (error) {
+                toast.add({ severity: 'error', summary: 'Erreur', detail: error?.message || 'Mise à jour impossible.', life: 3500 });
+            }
+        }
+    });
 };
 
 const handleDeleteMode = ({ mode }) => {

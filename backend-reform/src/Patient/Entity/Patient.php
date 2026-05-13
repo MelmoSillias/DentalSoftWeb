@@ -130,6 +130,9 @@ class Patient
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $photo = null;
 
+    #[ORM\OneToOne(mappedBy: 'patient', targetEntity: PatientAssuranceProfile::class, cascade: ['persist', 'remove'], orphanRemoval: true)]
+    private ?PatientAssuranceProfile $assuranceProfile = null;
+
     public function __construct()
     {
         $this->antecedents = new ArrayCollection();
@@ -228,6 +231,26 @@ class Patient
     public function getId(): ?int
     {
         return $this->id;
+    }
+
+    public function getAssuranceProfile(): ?PatientAssuranceProfile
+    {
+        return $this->assuranceProfile;
+    }
+
+    public function setAssuranceProfile(?PatientAssuranceProfile $assuranceProfile): static
+    {
+        if ($assuranceProfile === null && $this->assuranceProfile !== null) {
+            $this->assuranceProfile->setPatient(null);
+        }
+
+        if ($assuranceProfile !== null && $assuranceProfile->getPatient() !== $this) {
+            $assuranceProfile->setPatient($this);
+        }
+
+        $this->assuranceProfile = $assuranceProfile;
+
+        return $this;
     }
 
     public function getNom(): ?string

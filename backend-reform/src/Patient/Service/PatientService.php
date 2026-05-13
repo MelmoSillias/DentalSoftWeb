@@ -3,9 +3,11 @@
 namespace App\Patient\Service;
 
 use App\Billing\Entity\Assurance;
+use App\Billing\Entity\FactureAssurance;
 use App\Billing\Entity\ModeDePaiement;
 use App\Billing\Entity\Paiement;
 use App\Billing\Entity\Transaction;
+use App\Billing\Repository\AssuranceRepository;
 use App\CareDelivery\Entity\ActeMedical;
 use App\CareDelivery\Entity\Consultation;
 use App\CareDelivery\Entity\Ordonnance;
@@ -25,6 +27,7 @@ use App\Patient\Entity\Allergy;
 use App\Patient\Entity\Antecedent;
 use App\Patient\Entity\ContactUrgence;
 use App\Patient\Entity\Patient;
+use App\Patient\Entity\PatientAssuranceProfile;
 use App\Patient\Repository\PatientRepository;
 use App\CareDelivery\Repository\ConsultationRepository;
 use App\Scheduling\Entity\Rdv;
@@ -46,6 +49,7 @@ class PatientService
     public function __construct(
         private EntityManagerInterface $em,
         private PatientRepository $patientRepo,
+        private AssuranceRepository $assuranceRepo,
         private SalleRepository $salleRepo,
         private ConsultationRepository $consultationRepo,
         private EmployeRepository $employeRepo,
@@ -103,6 +107,7 @@ class PatientService
                 'lienParente' => $contact->getLienParente(),
             ] : null,
             'smsPreferences' => $this->extractSmsPreferences($patient),
+            'insuranceProfile' => $this->formatInsuranceProfile($patient),
             'derniereConsultation' => $consultation ? [
                 'id' => $consultation->getId(),
                 'date' => $consultation->getCreatedAt()?->format('Y-m-d H:i'),
@@ -193,12 +198,12 @@ class PatientService
     public function listPatientsByMedecin(?object $user): array
     {
         if (!$user) {
-            return ['error' => 'Utilisateur non authentifiÃ©', 'status' => 401];
+            return ['error' => 'Utilisateur non authentifié', 'status' => 401];
         }
 
         $employe = $this->employeRepo->findOneBy(['user' => $user]);
         if (!$employe) {
-            return ['error' => 'Aucun employÃ© associÃ©', 'status' => 404];
+            return ['error' => 'Aucun employé associé', 'status' => 404];
         }
 
         $consultations = $this->consultationRepo->findBy(['medecin' => $employe]);
@@ -217,12 +222,12 @@ class PatientService
     public function listPatientsByMedecinPaginated(?object $user, int $page, int $limit, ?string $query = null, ?string $sortField = null, ?string $sortOrder = null): array
     {
         if (!$user) {
-            return ['error' => 'Utilisateur non authentifiÃ©', 'status' => 401];
+            return ['error' => 'Utilisateur non authentifié', 'status' => 401];
         }
 
         $employe = $this->employeRepo->findOneBy(['user' => $user]);
         if (!$employe) {
-            return ['error' => 'Aucun employÃ© associÃ©', 'status' => 404];
+            return ['error' => 'Aucun employé associé', 'status' => 404];
         }
 
         $page = max(1, $page);
@@ -285,6 +290,7 @@ class PatientService
             $patient->setGroupeSanguin($data['groupeSanguin'] ?? null);
             $patient->setReferencement('');
             $this->applySmsPreferences($patient, $data);
+            $this->applyInsuranceProfile($patient, $data);
 
             if (isset($data['contactUrgence']) && is_array($data['contactUrgence'])) {
                 $contactData = $data['contactUrgence'];
@@ -311,6 +317,8 @@ class PatientService
             ], 'patient-created');
 
             return ['success' => true, 'status' => 201, 'patientId' => $patient->getId()];
+        } catch (\InvalidArgumentException $e) {
+            return ['error' => $e->getMessage(), 'status' => 400];
         } catch (\Exception $e) {
             return ['error' => 'Erreur : ' . $e->getMessage(), 'status' => 500];
         }
@@ -321,7 +329,7 @@ class PatientService
         try {
             $patient = $this->patientRepo->find($id);
             if (!$patient) {
-                return ['error' => 'Patient non trouvÃ©', 'status' => 404];
+                return ['error' => 'Patient non trouvé', 'status' => 404];
             }
 
             $patient->setNom($data['nom'] ?? $patient->getNom());
@@ -334,6 +342,7 @@ class PatientService
             $patient->setGroupeSanguin($data['groupeSanguin'] ?? $patient->getGroupeSanguin());
             $patient->setSexe($data['sexe'] ?? $patient->getSexe());
             $this->applySmsPreferences($patient, $data);
+            $this->applyInsuranceProfile($patient, $data);
             if (!empty($data['dateNaissance'])) {
                 $patient->setDateNaissance(new DateTime($data['dateNaissance']));
             }
@@ -376,6 +385,8 @@ class PatientService
                 'patient' => $this->formatPatientSummary($patient),
                 ...$this->formatPatientSummary($patient),
             ];
+        } catch (\InvalidArgumentException $e) {
+            return ['error' => $e->getMessage(), 'status' => 400];
         } catch (\Exception $e) {
             return ['error' => 'Erreur : ' . $e->getMessage(), 'status' => 500];
         }
@@ -469,14 +480,14 @@ class PatientService
             return null;
         }
 
-        $age = 'NÃ©ant';
+        $age = 'Néant';
         if ($patient->getDateNaissance()) {
             try {
                 $dateNaissance = $patient->getDateNaissance();
                 $aujourdhui = new DateTime();
                 $age = $dateNaissance->diff($aujourdhui)->y . ' ans';
             } catch (\Exception) {
-                $age = 'NÃ©ant';
+                $age = 'Néant';
             }
         }
 
@@ -516,6 +527,7 @@ class PatientService
             'dateInscription' => $patient->getDateInscription()->format('Y-m-d H:i'),
             'contactUrgence' => $contactUrgence,
             'smsPreferences' => $this->extractSmsPreferences($patient),
+            'insuranceProfile' => $this->formatInsuranceProfile($patient),
             'derniereConsultation' => $derniereConsultation,
         ];
     }
@@ -537,53 +549,31 @@ class PatientService
             }
 
             if (($data['payant'] ?? 0) == 1) {
-                $insuranceEnabled = (bool) (($data['insurance_enabled'] ?? $data['insuranceEnabled'] ?? 0) == 1);
                 $defaultConsultationAmount = $this->globalSettingsService->getConsultationPrice();
                 $consultationAmount = (float) ($data['consultation_amount'] ?? $defaultConsultationAmount);
                 if ($consultationAmount <= 0) {
                     $consultationAmount = $defaultConsultationAmount;
                 }
 
-                $insuranceRate = max(0, min(100, (float) ($data['insurance_rate'] ?? $data['insuranceRate'] ?? 0)));
-                $insuranceAmount = (float) ($data['insurance_amount'] ?? $data['insuranceAmount'] ?? 0);
-
-                $assuranceId = (int) ($data['assurance_id'] ?? $data['assuranceId'] ?? 0);
-                $assurance = null;
-                if ($insuranceEnabled) {
-                    $assurance = $this->em->getRepository(Assurance::class)->find($assuranceId);
-                    if (!$assurance) {
-                        return [
-                            'error' => 'Assurance invalide.',
-                            'status' => 400,
-                        ];
-                    }
-                }
-
-                if ($insuranceEnabled && $insuranceAmount <= 0 && $insuranceRate > 0) {
-                    $insuranceAmount = ($consultationAmount * $insuranceRate) / 100;
-                }
-
-                $patientAmount = (float) ($data['patient_amount'] ?? $data['patientAmount'] ?? $consultationAmount);
-
-                if ($insuranceEnabled && $insuranceAmount <= 0 && $patientAmount > 0 && $patientAmount < $consultationAmount) {
-                    $insuranceAmount = $consultationAmount - $patientAmount;
-                }
-
-                if ($insuranceEnabled) {
-                    $patientAmount = $consultationAmount - $insuranceAmount;
-                }
-
-                $insuranceAmount = max(0, min($consultationAmount, $insuranceAmount));
-                $patientAmount = max(0, min($consultationAmount - $insuranceAmount, $patientAmount));
-
-                if ($insuranceEnabled && $insuranceAmount <= 0) {
+                $patient = $this->patientRepo->find($data['patient_id'] ?? null);
+                if (!$patient) {
                     return [
-                        'error' => 'Le mode assurance et le montant assurance sont requis.',
-                        'status' => 400,
+                        'error' => 'Patient introuvable.',
+                        'status' => 404,
                     ];
                 }
 
-                if ($patientAmount > 0 && !isset($data['mode_paiement_id'])) {
+                $profile = $patient->getAssuranceProfile();
+                $assurance = $profile?->getAssurance();
+                $insuranceEnabled = $profile !== null && $assurance !== null && $assurance->isActif();
+                $insuranceRate = $insuranceEnabled
+                    ? max(0, min(100, (float) ($profile?->getCoverageRate() ?? $assurance?->getTauxParDefaut() ?? 0)))
+                    : 0.0;
+
+                $insuranceAmount = $insuranceEnabled ? ($consultationAmount * $insuranceRate) / 100 : 0.0;
+                $patientAmount = max(0.0, $consultationAmount - $insuranceAmount);
+
+                if ($patientAmount > 0 && !$insuranceEnabled && !isset($data['mode_paiement_id'])) {
                     return [
                         'error' => 'Le mode de paiement est requis pour une consultation payante.',
                         'status' => 400,
@@ -591,16 +581,11 @@ class PatientService
                 }
 
                 $consultation = $this->consultationRepo->NewConsultation($data, $this->patientRepo, $this->employeRepo);
-                if ($insuranceEnabled) {
-                    $consultation->setAssurance($assurance);
-                    $consultation->setTauxCouverture($insuranceRate > 0 ? $insuranceRate : null);
-                    $consultation->setIsRecouvre(false);
-                }
                 $createdPaiementId = null;
                 $patientPayment = null;
                 $timestamp = new DateTime();
 
-                if ($patientAmount > 0) {
+                if ($patientAmount > 0 && !$insuranceEnabled) {
                     $modePaiement = $this->em->getRepository(ModeDePaiement::class)->find($data['mode_paiement_id']);
 
                     if (!$modePaiement) {
@@ -629,6 +614,31 @@ class PatientService
                     $transaction->markValidated();
                     $transaction->setPaiement($paiement);
                     $this->em->persist($transaction);
+                }
+
+                if ($insuranceEnabled && $assurance instanceof Assurance) {
+                    $factureAssurance = new FactureAssurance();
+                    $factureAssurance
+                        ->setConsultation($consultation)
+                        ->setPatient($patient)
+                        ->setAssurance($assurance)
+                        ->setCoverageRate($insuranceRate > 0 ? $insuranceRate : null)
+                        ->setDateFacture(new DateTime())
+                        ->setConsultationAmount($consultationAmount)
+                        ->setIsConsultationPayante(true)
+                        ->setInsuranceStatus('pending')
+                        ->setIsRecouvre(false)
+                        ->setAssuranceSnapshot([
+                            'code' => $assurance->getCode(),
+                            'nom' => $assurance->getNom(),
+                            'logoPath' => $assurance->getLogoPath(),
+                            'website' => $assurance->getWebsite(),
+                            'email' => $assurance->getEmail(),
+                            'formData' => $profile?->getFormData() ?? [],
+                        ]);
+
+                    $consultation->setFactureAssurance($factureAssurance);
+                    $this->em->persist($factureAssurance);
                 }
 
                 $this->em->flush();
@@ -714,7 +724,7 @@ class PatientService
 
         $patientName = trim($patient->getFullName() ?? '') ?: sprintf('patient #%d', $patient->getId());
         $author = $actor?->getUsername() ?? 'le systÃ¨me';
-        $message = sprintf('Nouveau patient %s ajoutÃ© par %s.', $patientName, $author);
+        $message = sprintf('Nouveau patient %s ajouté par %s.', $patientName, $author);
 
         $this->eventDispatcher->dispatch(
             new EntityActionEvent(
@@ -881,12 +891,12 @@ class PatientService
             return null;
         }
 
-        $age = 'NÃ©ant';
+        $age = 'Néant';
         if ($patient->getDateNaissance()) {
             try {
                 $age = $patient->getDateNaissance()->diff(new DateTime())->y;
             } catch (\Exception) {
-                $age = 'NÃ©ant';
+                $age = 'Néant';
             }
         }
 
@@ -972,6 +982,7 @@ class PatientService
             'contactUrgence' => $contactUrgence,
             'portalAccount' => $this->formatPortalAccount($patient),
             'smsPreferences' => $this->extractSmsPreferences($patient),
+            'insuranceProfile' => $this->formatInsuranceProfile($patient),
             'allergies' => $allergies,
             'antecedents' => $antecedents,
             'derniereConsultation' => $derniereConsultation,
@@ -1008,6 +1019,11 @@ class PatientService
         }
 
         $this->applySmsPreferences($patient, $payload);
+        try {
+            $this->applyInsuranceProfile($patient, $payload);
+        } catch (\InvalidArgumentException $e) {
+            return ['error' => $e->getMessage(), 'status' => 400];
+        }
 
         $patient->getAllergies()->clear();
         if (isset($payload['allergies']) && is_array($payload['allergies'])) {
@@ -1109,6 +1125,87 @@ class PatientService
         }
     }
 
+    private function formatInsuranceProfile(Patient $patient): ?array
+    {
+        $profile = $patient->getAssuranceProfile();
+        if (!$profile) {
+            return null;
+        }
+
+        $assurance = $profile->getAssurance();
+
+        return [
+            'id' => $profile->getId(),
+            'coverageRate' => $profile->getCoverageRate(),
+            'formData' => $profile->getFormData(),
+            'assurance' => $assurance ? [
+                'id' => $assurance->getId(),
+                'code' => $assurance->getCode(),
+                'nom' => $assurance->getNom(),
+                'logoPath' => $assurance->getLogoPath(),
+                'actif' => $assurance->isActif(),
+            ] : null,
+        ];
+    }
+
+    private function applyInsuranceProfile(Patient $patient, array $data): void
+    {
+        $raw = $data['insuranceProfile'] ?? $data['assuranceProfile'] ?? null;
+        if ($raw === null) {
+            return;
+        }
+
+        if (!is_array($raw)) {
+            throw new \InvalidArgumentException('Le profil assurance patient est invalide.');
+        }
+
+        $enabled = (bool) ($raw['enabled'] ?? $raw['active'] ?? true);
+        $existing = $patient->getAssuranceProfile();
+
+        if (!$enabled) {
+            if ($existing) {
+                $patient->setAssuranceProfile(null);
+                $this->em->remove($existing);
+            }
+
+            return;
+        }
+
+        $assurance = null;
+        $assuranceCode = trim((string) ($raw['assuranceCode'] ?? $raw['code'] ?? ''));
+        if ($assuranceCode !== '') {
+            $assurance = $this->assuranceRepo->findOneByCode($assuranceCode);
+        }
+
+        if (!$assurance) {
+            $assuranceId = (int) ($raw['assuranceId'] ?? $raw['id'] ?? 0);
+            if ($assuranceId > 0) {
+                $assurance = $this->assuranceRepo->find($assuranceId);
+            }
+        }
+
+        if (!$assurance || !$assurance->isActif()) {
+            throw new \InvalidArgumentException('Assurance invalide ou inactive pour ce patient.');
+        }
+
+        $coverageRateRaw = $raw['coverageRate'] ?? $raw['tauxCouverture'] ?? $assurance->getTauxParDefaut();
+        $coverageRate = $coverageRateRaw === null || $coverageRateRaw === ''
+            ? null
+            : max(0.0, min(100.0, (float) $coverageRateRaw));
+
+        $formData = is_array($raw['formData'] ?? null) ? $raw['formData'] : [];
+
+        $profile = $existing ?? new PatientAssuranceProfile();
+        $profile
+            ->setPatient($patient)
+            ->setAssurance($assurance)
+            ->setCoverageRate($coverageRate)
+            ->setFormData($formData);
+
+        $patient->setAssuranceProfile($profile);
+        $this->em->persist($profile);
+    }
+
     public function addAntecedent(int $patientId, array $payload): array
     {
         $patient = $this->patientRepo->find($patientId);
@@ -1147,7 +1244,7 @@ class PatientService
 
         $antecedent = $this->em->getRepository(Antecedent::class)->find($antecedentId);
         if (!$antecedent || $antecedent->getPatient()?->getId() !== $patientId) {
-            return ['error' => 'AntÃ©cÃ©dent introuvable', 'status' => 404];
+            return ['error' => 'Antécédent introuvable', 'status' => 404];
         }
 
         $this->em->remove($antecedent);

@@ -2,9 +2,12 @@
 import Button from 'primevue/button';
 import Column from 'primevue/column';
 import DataTable from 'primevue/datatable';
+import DataView from 'primevue/dataview';
 import DatePicker from 'primevue/datepicker';
+import Dialog from 'primevue/dialog';
 import InputText from 'primevue/inputtext';
 import Select from 'primevue/select';
+import SelectButton from 'primevue/selectbutton';
 import Tag from 'primevue/tag';
 import { computed, ref } from 'vue';
 
@@ -60,6 +63,14 @@ const devisSearch = ref('');
 const paymentsSearch = ref('');
 const paymentFamilyFilter = ref('non-insurance');
 const paymentModeFilter = ref('all');
+const overviewDisplayMode = ref('standard');
+const expandedInvoiceCards = ref({});
+const showStatsModal = ref(false);
+
+const overviewDisplayOptions = [
+    { label: 'Affichage standard', value: 'standard' },
+    { label: 'Affichage regroupé', value: 'grouped' }
+];
 
 const normalizeText = (value) => String(value ?? '')
     .toLowerCase()
@@ -97,6 +108,44 @@ const filteredDevis = computed(() => {
             row.reste,
             status
         ], query);
+    });
+});
+
+const groupedInvoices = computed(() => {
+    const rows = filteredDevis.value;
+    const payments = Array.isArray(props.payments) ? props.payments : [];
+
+    return rows.map((invoice) => {
+        const invoiceId = Number(invoice?.id);
+        const consultationId = Number(invoice?.consultation);
+
+        const invoicePayments = payments
+            .filter((payment) => payment?.type === 'facture' && Number(payment?.factureId) === invoiceId)
+            .map((payment) => ({
+                ...payment,
+                detailType: 'facture_payment',
+                detailLabel: 'Paiement facture'
+            }));
+
+        const consultationTicket = consultationId > 0
+            ? payments.find((payment) => payment?.type === 'ticket' && Number(payment?.consultationId) === consultationId)
+            : null;
+
+        const detailRows = [
+            ...invoicePayments,
+            ...(consultationTicket ? [{
+                ...consultationTicket,
+                detailType: 'consultation_ticket',
+                detailLabel: 'Ticket consultation'
+            }] : [])
+        ];
+
+        return {
+            ...invoice,
+            detailRows,
+            hasDetails: detailRows.length > 0,
+            detailCount: detailRows.length
+        };
     });
 });
 
@@ -203,6 +252,53 @@ const paymentsTotals = computed(() => {
     };
 });
 
+// Statistiques détaillées pour le modal
+const detailedStats = computed(() => {
+    const allInvoices = props.devis || [];
+    const allPayments = props.payments || [];
+    
+    const totalInvoices = allInvoices.length;
+    const totalPaid = allInvoices.reduce((sum, inv) => sum + (Number(inv.montant) - (Number(inv.reste) || 0)), 0);
+    const totalUnpaid = allInvoices.reduce((sum, inv) => sum + (Number(inv.reste) || 0), 0);
+    
+    const statusCounts = {
+        paid: 0,
+        partial: 0,
+        unpaid: 0,
+        freeNotValidated: 0
+    };
+    allInvoices.forEach(inv => {
+        const reste = Number(inv.reste) || 0;
+        const montant = Number(inv.montant) || 0;
+        if (inv.isRegle && reste === 0) statusCounts.paid++;
+        else if (!inv.isRegle && reste === 0) statusCounts.freeNotValidated++;
+        else if (reste === montant) statusCounts.unpaid++;
+        else statusCounts.partial++;
+    });
+    
+    const paymentModeBreakdown = {};
+    allPayments.forEach(p => {
+        const mode = p.mode || 'Autre';
+        paymentModeBreakdown[mode] = (paymentModeBreakdown[mode] || 0) + (Number(p.montant) || 0);
+    });
+    
+    const insurancePayments = allPayments.filter(p => p.rolePaiement === 'insurance');
+    const totalInsurance = insurancePayments.reduce((sum, p) => sum + (Number(p.montant) || 0), 0);
+    const pendingInsurance = insurancePayments.filter(p => p.insuranceStatus === 'pending').length;
+    
+    return {
+        totalInvoices,
+        totalPaid,
+        totalUnpaid,
+        statusCounts,
+        paymentModeBreakdown,
+        totalInsurance,
+        pendingInsurance,
+        totalPaymentsCount: allPayments.length,
+        totalPaymentsAmount: allPayments.reduce((sum, p) => sum + (Number(p.montant) || 0), 0)
+    };
+});
+
 const formatFcfa = (value) => `${Number(value || 0).toLocaleString('fr-FR')} FCFA`;
 
 const formatDate = (value, withTime = false) => {
@@ -246,48 +342,111 @@ const handleValidate = (row) => emit('validate-free', row);
 const handleModify = (row) => emit('modify', row);
 const handlePreview = (row) => emit('preview', row);
 
+const detailRowClass = (row) => row?.detailType === 'consultation_ticket' ? 'ticket-row' : '';
+
+const isInvoiceExpanded = (invoice) => expandedInvoiceCards.value[String(invoice?.id)] === true;
+
+const toggleInvoiceExpansion = (invoice) => {
+    const key = String(invoice?.id);
+    if (!key) return;
+
+    expandedInvoiceCards.value = {
+        ...expandedInvoiceCards.value,
+        [key]: !expandedInvoiceCards.value[key]
+    };
+};
+
+const printDetailPayment = (row) => {
+    if (!row?.pId) return;
+
+    if (row?.detailType === 'consultation_ticket') {
+        emit('print-receipt', row);
+        return;
+    }
+
+    emit('print-payment', row);
+};
+
 </script>
 
 <template>
     <div class="flex flex-col gap-5">
-        <div class="grid md:grid-cols-3 gap-3 stat-cards" data-tour="caisse-overview.stats">
-            <div class="stat-card stat-primary">
-                <div class="icon pi pi-file" aria-hidden="true"></div>
-                <div>
-                    <p class="label">Factures visibles</p>
-                    <p class="value">{{ devisTotals.count }}</p>
-                    <p class="hint">Selon les filtres actifs</p>
-                </div>
+        <!-- Barre supérieure avec SelectButton et bouton Stats -->
+        <div class="top-bar">
+            <div class="display-mode-selector">
+                <span class="label">Mode d'affichage</span>
+                <SelectButton 
+                    v-model="overviewDisplayMode" 
+                    :options="overviewDisplayOptions" 
+                    optionLabel="label" 
+                    optionValue="value"
+                />
             </div>
-            <div class="stat-card stat-warning">
-                <div class="icon pi pi-wallet" aria-hidden="true"></div>
-                <div>
-                    <p class="label">Total impayé</p>
-                    <p class="value">{{ formatFcfa(devisTotals.restant) }}</p>
-                    <p class="hint">À recouvrer</p>
-                </div>
-            </div>
-            <div class="stat-card stat-success">
-                <div class="icon pi pi-chart-line" aria-hidden="true"></div>
-                <div>
-                    <p class="label">Recette période</p>
-                    <p class="value">{{ formatFcfa(paymentsTotals.montant) }}</p>
-                    <p class="hint">Paiements encaissés</p>
-                </div>
-            </div>
+            <Button 
+                label="Statistiques" 
+                icon="pi pi-chart-bar" 
+                severity="secondary" 
+                outlined
+                @click="showStatsModal = true" 
+            />
         </div>
 
-        <div class="section-card" data-tour="caisse-overview.factures">
-            <div class="section-header">
-                <div>
-                    <p class="section-eyebrow">Factures impayées</p>
-                    <p class="section-title">Filtrez, réglez ou modifiez une facture avant validation.</p>
+        <!-- Modal statistiques détaillées -->
+        <Dialog 
+            v-model:visible="showStatsModal" 
+            header="Statistiques détaillées" 
+            :modal="true" 
+            :style="{ width: '600px' }"
+            class="stats-dialog"
+        >
+            <div class="stats-content">
+                <div class="stats-section">
+                    <h4>Factures</h4>
+                    <div class="stats-grid">
+                        <div><strong>Total factures :</strong> {{ detailedStats.totalInvoices }}</div>
+                        <div><strong>Montant total facturé :</strong> {{ formatFcfa(detailedStats.totalPaid + detailedStats.totalUnpaid) }}</div>
+                        <div><strong>Montant encaissé :</strong> {{ formatFcfa(detailedStats.totalPaid) }}</div>
+                        <div><strong>Montant restant dû :</strong> {{ formatFcfa(detailedStats.totalUnpaid) }}</div>
+                    </div>
+                    <div class="status-breakdown">
+                        <div><Tag value="Payé" severity="success" /> : {{ detailedStats.statusCounts.paid }}</div>
+                        <div><Tag value="Partiellement payé" severity="warning" /> : {{ detailedStats.statusCounts.partial }}</div>
+                        <div><Tag value="Impayé" severity="danger" /> : {{ detailedStats.statusCounts.unpaid }}</div>
+                        <div><Tag value="Vide non validé" severity="secondary" /> : {{ detailedStats.statusCounts.freeNotValidated }}</div>
+                    </div>
                 </div>
-                <div class="filters">
+                <div class="stats-section">
+                    <h4>Paiements</h4>
+                    <div><strong>Nombre de paiements :</strong> {{ detailedStats.totalPaymentsCount }}</div>
+                    <div><strong>Montant total encaissé :</strong> {{ formatFcfa(detailedStats.totalPaymentsAmount) }}</div>
+                    <div><strong>Montant assurances :</strong> {{ formatFcfa(detailedStats.totalInsurance) }}</div>
+                    <div><strong>Assurances en attente :</strong> {{ detailedStats.pendingInsurance }}</div>
+                    <div v-if="Object.keys(detailedStats.paymentModeBreakdown).length">
+                        <strong>Répartition par mode :</strong>
+                        <ul>
+                            <li v-for="(amount, mode) in detailedStats.paymentModeBreakdown" :key="mode">
+                                {{ mode }} : {{ formatFcfa(amount) }}
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </Dialog>
+
+        <!-- Section factures -->
+        <div class="section-card" data-tour="caisse-overview.factures">
+            <!-- En-tête simplifié en mode regroupé -->
+            <div class="section-header" :class="{ 'simplified-header': overviewDisplayMode === 'grouped' }">
+                <div>
+                    <p class="section-eyebrow">Factures</p>
+                    <p class="section-title">
+                        {{ overviewDisplayMode === 'grouped' ? 'Vue détaillée avec paiements associés' : 'Filtrez, réglez ou modifiez une facture' }}
+                    </p>
+                </div>
+                <div class="filters" :class="{ 'simplified-filters': overviewDisplayMode === 'grouped' }">
                     <div class="filter-item">
                         <label>Recherche</label>
-                        <InputText v-model="devisSearch" placeholder="Tapez quelque chose..."
-                            fluid />
+                        <InputText v-model="devisSearch" placeholder="Patient, téléphone, montant..." fluid />
                     </div>
                     <div class="filter-item">
                         <label>Affichage</label>
@@ -303,7 +462,8 @@ const handlePreview = (row) => emit('preview', row);
                 </div>
             </div>
 
-            <DataTable class="rounded-xl overflow-hidden" :value="filteredDevis" dataKey="id" :loading="devisLoading"
+            <!-- Vue standard -->
+            <DataTable v-if="overviewDisplayMode === 'standard'" class="rounded-xl overflow-hidden" :value="filteredDevis" dataKey="id" :loading="devisLoading"
                 paginator :rows="10" :rowsPerPageOptions="[5, 10, 20]" responsiveLayout="scroll">
                 <Column field="date" header="Date" sortable>
                     <template #body="{ data }">{{ formatDate(data.date) }}</template>
@@ -346,13 +506,104 @@ const handlePreview = (row) => emit('preview', row);
                                 @click="emit('send-invoice-sms', data)" />
                         </div>
                     </template>
-
-
                 </Column>
             </DataTable>
+
+            <!-- Vue regroupée améliorée -->
+            <DataView
+                v-else
+                class="grouped-invoices-view"
+                :value="groupedInvoices"
+                :loading="devisLoading"
+                paginator
+                :rows="10"
+                :rowsPerPageOptions="[5, 10, 20]"
+            >
+                <template #list="slotProps">
+                    <div class="flex flex-col gap-4 p-2">
+                        <article
+                            v-for="invoice in slotProps.items"
+                            :key="invoice.id"
+                            class="invoice-card"
+                        >
+                            <div class="invoice-card-header">
+                                <div class="invoice-main">
+                                    <div class="invoice-topline">
+                                        <p class="invoice-patient">
+                                            {{ (invoice.patient && `${invoice.patient.nom || ''} ${invoice.patient.prenom || ''}`.trim()) || invoice.patient || '—' }}
+                                        </p>
+
+                                        <p class="invoice-number">Facture #{{ invoice.id }}</p>
+                                        <Tag :value="computeStatus(invoice).label" :severity="computeStatus(invoice).severity" />
+                                        <Tag v-if="computeInsuranceBadge(invoice)" :value="computeInsuranceBadge(invoice).label" :severity="computeInsuranceBadge(invoice).severity" icon="pi pi-shield" />
+                                    </div>
+                                    <p class="invoice-subline">
+                                        📞 {{ displayPhone(invoice.telephone) }} • 🗓 {{ formatDate(invoice.date) }}
+                                    </p>
+                                </div>
+                                <div class="invoice-amounts">
+                                    <p><span>Total :</span> <strong>{{ formatFcfa(invoice.montant) }}</strong></p>
+                                    <p><span>Reste :</span> <strong>{{ formatFcfa(invoice.reste) }}</strong></p>
+                                    <Tag :value="`${invoice.detailCount || 0} paiement(s) lié(s)`" :severity="invoice.hasDetails ? 'info' : 'secondary'" />
+                                </div>
+                            </div>
+
+                            <div class="invoice-actions">
+                                <Button v-if="!invoice.isRegle" :label="targetIsFree(invoice) ? 'Valider' : 'Régler'" size="small"
+                                    :severity="targetIsFree(invoice) ? 'secondary' : 'success'" icon="pi pi-wallet"
+                                    @click="targetIsFree(invoice) ? handleValidate(invoice) : handlePay(invoice)" />
+                                <Button v-if="canModify(invoice)" size="small" severity="secondary"
+                                    icon="pi pi-pencil" @click="handleModify(invoice)" />
+                                <Button v-if="canPreview(invoice)" size="small" icon="pi pi-eye" severity="info" class="p-button-outlined"
+                                    @click="handlePreview(invoice)" />
+                                <Button v-if="canPreview(invoice)" size="small" icon="pi pi-send" severity="help"
+                                    @click="emit('send-invoice-sms', invoice)" />
+                                <Button
+                                    size="small"
+                                    text
+                                    :label="isInvoiceExpanded(invoice) ? 'Masquer détails' : 'Voir détails'"
+                                    :icon="isInvoiceExpanded(invoice) ? 'pi pi-chevron-up' : 'pi pi-chevron-down'"
+                                    @click="toggleInvoiceExpansion(invoice)"
+                                />
+                            </div>
+
+                            <transition name="fade-slide">
+                                <div v-if="isInvoiceExpanded(invoice)" class="invoice-details">
+                                    <div v-if="!invoice.detailRows?.length" class="text-sm text-surface-500">
+                                        Aucun paiement lié pour cette facture.
+                                    </div>
+                                    <div v-else class="detail-list">
+                                        <div
+                                            v-for="(detail, idx) in invoice.detailRows"
+                                            :key="`${invoice.id}-${detail.pId || idx}`"
+                                            class="detail-row"
+                                            :class="detailRowClass(detail)"
+                                        >
+                                            <div class="detail-meta">
+                                                <Tag
+                                                    :value="detail.detailLabel"
+                                                    :severity="detail.detailType === 'consultation_ticket' ? 'warning' : 'success'"
+                                                    :icon="detail.detailType === 'consultation_ticket' ? 'pi pi-ticket' : 'pi pi-wallet'"
+                                                />
+                                                <span class="detail-date">{{ formatDate(detail.date, true) }}</span>
+                                                <span class="detail-mode">{{ detail.mode || '—' }}</span>
+                                            </div>
+                                            <div class="detail-right">
+                                                <strong>{{ formatFcfa(detail.montant) }}</strong>
+                                                <Button icon="pi pi-print" text @click="printDetailPayment(detail)" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </transition>
+                        </article>
+                    </div>
+                </template>
+            </DataView>
         </div>
 
-        <div class="section-card" data-tour="caisse-overview.payments">
+        <!-- Section paiements - masquée en mode regroupé -->
+        <div v-if="overviewDisplayMode !== 'grouped'" class="section-card" data-tour="caisse-overview.payments">
             <div class="section-header">
                 <div>
                     <p class="section-eyebrow text-success">Paiements enregistrés</p>
@@ -419,108 +670,36 @@ const handlePreview = (row) => emit('preview', row);
 </template>
 
 <style scoped>
-.stat-cards {
-    position: sticky;
-    top: 0rem;
-    z-index: 10;
-}
-
-.stat-card {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    gap: 0.75rem;
-    padding: 1rem;
+/* Barre supérieure */
+.top-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    background: var(--surface-card);
+    padding: 0.75rem 1rem;
     border-radius: 14px;
-    color: #0f172a;
-    background: linear-gradient(135deg, #f8fafc, #eef2ff);
-    border: 1px solid #e2e8f0;
-    backdrop-filter: blur(10px);
-}
- 
-
-.stat-card .icon {
-    font-size: 1.4rem; 
-    padding: 0.65rem;
-    border-radius: 12px;
-    color: #0f172a;
-    background: rgba(15, 23, 42, 0.08);
+    border: 1px solid var(--surface-border);
 }
 
-.stat-card .label {
-    font-size: 0.85rem;
-    color: #475569;
+.display-mode-selector {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
 }
 
-.stat-card .value {
-    font-size: 1.5rem;
-    font-weight: 700;
+.display-mode-selector .label {
+    font-weight: 500;
+    color: var(--text-color-secondary);
 }
 
-.stat-card .hint {
-    font-size: 0.8rem;
-    color: #6b7280;
-}
-
-.stat-primary {
-    background: linear-gradient(135deg, #e0f2fe71, #eef2ff73);
-    border-color: #cbd5e1;
-}
-
-.stat-warning {
-    background: linear-gradient(135deg, #fff7ed75, #fef3c771);
-    border-color: #fde68a;
-}
-
-.stat-success {
-    background: linear-gradient(135deg, #ecfdf37e, #dcfce783);
-    border-color: #bbf7d0;
-}
-
-.app-dark .stat-card {
-    background: linear-gradient(135deg, #0f172a, #111827);
-    color: #e2e8f0;
-    border-color: #1f2937;
-}
-
-.app-dark .stat-card .icon {
-    background: rgba(255, 255, 255, 0.06);
-    color: #e2e8f0;
-}
-
-.app-dark .stat-card .label {
-    color: #cbd5e1;
-}
-
-.app-dark .stat-card .hint {
-    color: #94a3b8;
-}
-
-.app-dark .stat-primary {
-    background: linear-gradient(135deg, #0ea5e9, #1e293b);
-    border-color: #1f2937;
-}
-
-.app-dark .stat-warning {
-    background: linear-gradient(135deg, #f59e0b, #1f2937);
-    border-color: #1f2937;
-}
-
-.app-dark .stat-success {
-    background: linear-gradient(135deg, #22c55e, #1f2937);
-    border-color: #1f2937;
-}
-
-.app-dark .stat-neutral {
-    background: linear-gradient(135deg, #475569, #1f2937);
-    border-color: #1f2937;
-}
-
+/* Section cards */
 .section-card {
     background: var(--surface-card);
     border-radius: 14px;
-    padding: 0 0rem 1.25rem 0rem;
     border: 1px solid var(--surface-border);
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+    overflow: hidden;
 }
 
 .section-header {
@@ -529,10 +708,13 @@ const handlePreview = (row) => emit('preview', row);
     gap: 1rem;
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: 1rem;
     padding: 1rem 1rem 0.95rem;
-    border-radius: 12px 12px 0 0;
     background: linear-gradient(135deg, rgba(226, 232, 240, 0.9), rgba(203, 213, 225, 0.72));
+    border-bottom: 1px solid var(--surface-border);
+}
+
+.simplified-header {
+    background: linear-gradient(135deg, rgba(220, 240, 220, 0.85), rgba(200, 220, 200, 0.7));
 }
 
 .section-eyebrow {
@@ -554,8 +736,12 @@ const handlePreview = (row) => emit('preview', row);
     align-items: flex-end;
 }
 
+.simplified-filters {
+    opacity: 0.9;
+}
+
 .filter-item {
-    min-width: 220px;
+    min-width: 200px;
     display: flex;
     flex-direction: column;
     gap: 0.35rem;
@@ -566,26 +752,168 @@ const handlePreview = (row) => emit('preview', row);
     color: #475569;
 }
 
- 
-.app-dark .section-eyebrow {
-    color: #dadada;
-}
- 
- 
-.app-dark .section-title {
-    color: #e2e8f0;
+/* Mode regroupé */
+.grouped-invoices-view {
+    padding: 0.5rem;
 }
 
-.app-dark .section-header {
-    background: linear-gradient(135deg, rgba(30, 41, 59, 0.96), rgba(15, 23, 42, 0.88));
-}
- 
 
-.app-dark .filter-item label {
+.invoice-card {
+    border: 1px solid var(--surface-border);
+    border-radius: 16px;
+    background: var(--surface-card);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+    padding: 1rem;
+    transition: all 0.2s;
+}
+
+.invoice-card:hover {
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+    border-color: var(--primary-color);
+}
+
+.invoice-card-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: flex-start;
+    flex-wrap: wrap;
+}
+
+.invoice-main {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.invoice-topline {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+}
+
+.invoice-number {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.invoice-subline {
+    margin: 0;
     font-size: 0.85rem;
+    color: #64748b;
+}
+
+.invoice-card {
+    border: 2px solid transparent;
+    border-left: 6px solid var(--primary-color);
+    border-radius: 18px;
+    background: var(--surface-card);
+    padding: 1.2rem;
+    transition: all 0.25s ease;
+    position: relative;
+}
+
+.invoice-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 30px rgba(0,0,0,0.12);
+    border-left-color: var(--primary-500);
+}
+
+/* NOM PATIENT = HERO */
+.invoice-patient {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--primary-color);
+}
+
+/* Facture secondaire */
+.invoice-number {
+    margin: 0;
+    font-size: 0.8rem;
+    color: #64748b;
+}
+
+/* Sub info */
+.invoice-subline {
+    font-size: 0.8rem;
     color: #94a3b8;
 }
+.invoice-amounts {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.3rem;
+    font-size: 0.85rem;
+}
 
+.invoice-amounts p {
+    margin: 0;
+}
+
+.invoice-amounts span {
+    color: #64748b;
+}
+
+.invoice-actions {
+    margin-top: 0.9rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    border-top: 1px solid var(--surface-border);
+    padding-top: 0.75rem;
+}
+
+.invoice-details {
+    margin-top: 0.8rem;
+    border-top: 1px dashed var(--surface-border);
+    padding-top: 0.7rem;
+}
+
+.detail-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--surface-card) 95%, var(--surface-border) 5%);
+    padding: 0.6rem 0.8rem;
+}
+
+.detail-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    align-items: center;
+    font-size: 0.85rem;
+}
+
+.detail-date,
+.detail-mode {
+    color: #64748b;
+}
+
+.detail-right {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.ticket-row {
+    background: rgba(245, 158, 11, 0.1);
+    border-left: 3px solid #f59e0b;
+}
+
+/* Filtres pagination paiements */
 .payment-paginator-filters {
     display: flex;
     flex-wrap: wrap;
@@ -595,8 +923,92 @@ const handlePreview = (row) => emit('preview', row);
     padding-left: 0.75rem;
 }
 
-.payment-paginator-filters :deep(.p-select) {
-    min-width: 220px;
+/* Transitions */
+.fade-slide-enter-active,
+.fade-slide-leave-active {
+    transition: all 0.2s ease;
 }
 
+.fade-slide-enter-from,
+.fade-slide-leave-to {
+    opacity: 0;
+    transform: translateY(-6px);
+}
+
+/* Modal stats */
+.stats-dialog :deep(.p-dialog-content) {
+    padding: 1rem 1.5rem;
+}
+
+.stats-content {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.stats-section h4 {
+    margin: 0 0 0.75rem 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    border-left: 4px solid var(--primary-color);
+    padding-left: 0.75rem;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem 1rem;
+    margin-bottom: 1rem;
+}
+
+.status-breakdown {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-top: 0.5rem;
+}
+
+/* Dark mode */
+.app-dark .section-header {
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.96), rgba(15, 23, 42, 0.88));
+}
+
+.app-dark .section-eyebrow {
+    color: #9ca3af;
+}
+
+.app-dark .section-title {
+    color: #e2e8f0;
+}
+
+.app-dark .filter-item label {
+    color: #94a3b8;
+}
+
+.app-dark .invoice-number {
+    color: #e2e8f0;
+}
+
+.app-dark .invoice-subline,
+.app-dark .invoice-amounts span,
+.app-dark .detail-date,
+.app-dark .detail-mode {
+    color: #94a3b8;
+}
+
+@media (max-width: 900px) {
+    .invoice-card-header {
+        flex-direction: column;
+    }
+    .invoice-amounts {
+        align-items: flex-start;
+    }
+    .top-bar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .display-mode-selector {
+        justify-content: space-between;
+    }
+}
 </style>

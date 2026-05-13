@@ -9,15 +9,23 @@ const props = defineProps({
     claims: { type: Array, default: () => [] },
     loading: { type: Boolean, default: false },
     statusFilter: { type: String, default: 'all' },
-    actionLoadingId: { type: Number, default: null }
+    actionLoadingId: { type: Number, default: null },
+    assuranceOptions: { type: Array, default: () => [] },
+    insuranceRange: { type: Array, default: () => [] },
+    insurancePatientFilter: { type: String, default: '' },
+    insuranceAssuranceFilter: { type: String, default: 'all' }
 });
 
 const emit = defineEmits([
     'update:statusFilter',
+    'update:insuranceRange',
+    'update:insurancePatientFilter',
+    'update:insuranceAssuranceFilter',
     'refresh',
     'validate-claim',
     'reject-claim',
-    'recover-claim'
+    'recover-claim',
+    'collect-patient-share'
 ]);
 
 const search = ref('');
@@ -38,6 +46,26 @@ const normalizeText = (value) => String(value ?? '')
 const statusModel = computed({
     get: () => props.statusFilter,
     set: (value) => emit('update:statusFilter', value || 'all')
+});
+
+const insuranceStart = computed({
+    get: () => props.insuranceRange?.[0] || null,
+    set: (value) => emit('update:insuranceRange', [value || null, props.insuranceRange?.[1] || null])
+});
+
+const insuranceEnd = computed({
+    get: () => props.insuranceRange?.[1] || null,
+    set: (value) => emit('update:insuranceRange', [props.insuranceRange?.[0] || null, value || null])
+});
+
+const insurancePatientModel = computed({
+    get: () => props.insurancePatientFilter || '',
+    set: (value) => emit('update:insurancePatientFilter', value || '')
+});
+
+const insuranceAssuranceModel = computed({
+    get: () => props.insuranceAssuranceFilter || 'all',
+    set: (value) => emit('update:insuranceAssuranceFilter', value || 'all')
 });
 
 const filteredClaims = computed(() => {
@@ -76,6 +104,22 @@ const canAct = (claimId) => props.actionLoadingId === null || props.actionLoadin
                     <p class="section-title">Validation, rejet et recouvrement des créances d'assurance.</p>
                 </div>
                 <div class="filters">
+                    <div class="filter-item">
+                        <label>Du</label>
+                        <InputText :modelValue="insuranceStart" type="date" @update:modelValue="insuranceStart = $event" />
+                    </div>
+                    <div class="filter-item">
+                        <label>Au</label>
+                        <InputText :modelValue="insuranceEnd" type="date" @update:modelValue="insuranceEnd = $event" />
+                    </div>
+                    <div class="filter-item">
+                        <label>Patient</label>
+                        <InputText v-model="insurancePatientModel" placeholder="Nom, prénom, téléphone" fluid />
+                    </div>
+                    <div class="filter-item">
+                        <label>Assurance</label>
+                        <Select v-model="insuranceAssuranceModel" :options="assuranceOptions || []" optionLabel="label" optionValue="value" />
+                    </div>
                     <div class="filter-item">
                         <label>Recherche</label>
                         <InputText v-model="search" placeholder="Patient, assurance, téléphone..." fluid />
@@ -116,6 +160,8 @@ const canAct = (claimId) => props.actionLoadingId === null || props.actionLoadin
                         <p>Part assurance: <strong>{{ formatFcfa(claim.montantAssurance) }}</strong></p>
                         <p>Part patient: <strong>{{ formatFcfa(claim.montantPatient) }}</strong></p>
                         <p>Taux: <strong>{{ Number(claim.tauxCouverture || 0).toLocaleString('fr-FR') }}%</strong></p>
+                        <p>Déjà encaissé patient: <strong>{{ formatFcfa(claim.patientPaidAmount) }}</strong></p>
+                        <p>Reste patient: <strong>{{ formatFcfa(claim.restePatient) }}</strong></p>
                     </div>
 
                     <div class="mt-3 flex flex-wrap gap-2">
@@ -145,6 +191,15 @@ const canAct = (claimId) => props.actionLoadingId === null || props.actionLoadin
                             severity="info"
                             :disabled="!canAct(claim.id)"
                             @click="emit('recover-claim', claim)"
+                        />
+                        <Button
+                            v-if="claim.availableActions?.canCollectPatient"
+                            size="small"
+                            label="Encaisser part patient"
+                            icon="pi pi-credit-card"
+                            severity="secondary"
+                            :disabled="!canAct(claim.id)"
+                            @click="emit('collect-patient-share', claim)"
                         />
                     </div>
                 </article>

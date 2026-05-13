@@ -5,7 +5,7 @@ import PrintTicketBody from '@/components/print/PrintTicketBody.vue';
 import { usePrinter } from '@/composables/usePrinter';
 import { fetchInvoicePrintData, fetchReceiptPrintData, fetchTicketPrintData } from '@/services/printService';
 import { searchPatients } from '@/services/patients';
-import { computed, defineEmits, defineProps, ref, toRefs } from 'vue';
+import { computed, ref, toRefs } from 'vue';
 
 const props = defineProps({
     consultations: {

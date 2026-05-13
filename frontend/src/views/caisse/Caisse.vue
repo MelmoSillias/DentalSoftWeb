@@ -31,6 +31,7 @@ import {
 	fetchInsuranceClaims,
 	fetchPayments,
 	payFacture,
+	payInsurancePatientShare,
 	recoverInsuranceClaim,
 	rejectInsuranceClaim,
 	resetFacturePayments,
@@ -48,13 +49,15 @@ import {
 } from '@/services/printService';
 import { sendInvoiceSms, sendReceiptSms } from '@/services/smsService';
 import Button from 'primevue/button';
-import Dialog from 'primevue/dialog';
-import InputNumber from 'primevue/inputnumber';
-import InputText from 'primevue/inputtext';
-import Select from 'primevue/select';
-import Tag from 'primevue/tag';
 import { useToast } from 'primevue/usetoast';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+
+const toApiDate = (value) => {
+	if (!value) return '';
+	const date = value instanceof Date ? value : new Date(value);
+	return date.toISOString().slice(0, 10);
+};
+
 
 const toast = useToast();
 const token = localStorage.getItem('token');
@@ -90,14 +93,12 @@ const devisLoading = ref(false);
 const paymentsLoading = ref(false);
 const insuranceLoading = ref(false);
 const insuranceStatusFilter = ref('all');
+const insuranceRange = ref([toApiDate(startOfMonth), toApiDate(endOfMonth)]);
+const insurancePatientFilter = ref('');
+const insuranceAssuranceFilter = ref('all');
 const insuranceActionLoadingId = ref(null);
 const validateLoading = ref(false);
 
-const toApiDate = (value) => {
-	if (!value) return '';
-	const date = value instanceof Date ? value : new Date(value);
-	return date.toISOString().slice(0, 10);
-};
 
 const currentTime = () => {
 	const date = new Date();
@@ -470,7 +471,13 @@ const loadAssurances = async () => {
 const loadInsuranceClaims = async () => {
 	try {
 		insuranceLoading.value = true;
-		insuranceClaims.value = await fetchInsuranceClaims({ status: insuranceStatusFilter.value }, token);
+		insuranceClaims.value = await fetchInsuranceClaims({
+			status: insuranceStatusFilter.value,
+			start: insuranceRange.value?.[0] || null,
+			end: insuranceRange.value?.[1] || null,
+			patient: insurancePatientFilter.value,
+			assuranceCode: insuranceAssuranceFilter.value
+		}, token);
 	} catch (error) {
 		console.error(error);
 		toast.add({ severity: 'error', summary: 'Assurances', detail: 'Chargement des créances impossible', life: 3500 });
@@ -1126,9 +1133,39 @@ const recoverClaim = async (claim) => {
 	}
 };
 
+const collectPatientShare = async (claim) => {
+	const classicMethod = getDefaultClassicMethod(paymentMethods.value);
+	if (!classicMethod?.id) {
+		toast.add({ severity: 'warn', summary: 'Assurance', detail: 'Aucun mode de paiement actif.', life: 3500 });
+		return;
+	}
+
+	const amount = Number(claim?.restePatient) || 0;
+	if (amount <= 0) {
+		toast.add({ severity: 'warn', summary: 'Assurance', detail: 'Aucune part patient restante à encaisser.', life: 3500 });
+		return;
+	}
+
+	try {
+		insuranceActionLoadingId.value = Number(claim?.id) || null;
+		await payInsurancePatientShare(claim.id, {
+			modeId: classicMethod.id,
+			amount,
+			date: new Date().toISOString()
+		}, token);
+		toast.add({ severity: 'success', summary: 'Assurance', detail: 'Part patient encaissée.', life: 3000 });
+		await Promise.all([loadInsuranceClaims(), loadPayments()]);
+	} catch (error) {
+		console.error(error);
+		toast.add({ severity: 'error', summary: 'Assurance', detail: 'Encaissement patient impossible.', life: 3500 });
+	} finally {
+		insuranceActionLoadingId.value = null;
+	}
+};
+
 watch([devisRange, devisType], loadDevis, { immediate: true });
 watch(paymentRange, loadPayments, { immediate: true });
-watch(insuranceStatusFilter, loadInsuranceClaims, { immediate: true });
+watch([insuranceStatusFilter, insuranceRange, insurancePatientFilter, insuranceAssuranceFilter], loadInsuranceClaims, { immediate: true });
 
 onMounted(async () => {
 	await loadPublicGeneralSettings();
@@ -1206,12 +1243,20 @@ onBeforeUnmount(() => {
 						:claims="insuranceClaims"
 						:loading="insuranceLoading"
 						:status-filter="insuranceStatusFilter"
+						:insurance-range="insuranceRange"
+						:insurance-patient-filter="insurancePatientFilter"
+						:insurance-assurance-filter="insuranceAssuranceFilter"
+						:assurance-options="[{ label: 'Toutes', value: 'all' }, ...(assurances || []).filter((item) => item?.actif !== false).map((item) => ({ label: item?.nom || item?.code || 'Assurance', value: item?.code || 'all' }))]"
 						:action-loading-id="insuranceActionLoadingId"
 						@update:statusFilter="insuranceStatusFilter = $event"
+						@update:insuranceRange="insuranceRange = $event"
+						@update:insurancePatientFilter="insurancePatientFilter = $event"
+						@update:insuranceAssuranceFilter="insuranceAssuranceFilter = $event"
 						@refresh="loadInsuranceClaims"
 						@validate-claim="validateClaim"
 						@reject-claim="rejectClaim"
 						@recover-claim="recoverClaim"
+						@collect-patient-share="collectPatientShare"
 					/>
 				</TabPanel>
 			</TabPanels>

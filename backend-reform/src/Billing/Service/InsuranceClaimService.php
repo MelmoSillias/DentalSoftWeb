@@ -3,28 +3,34 @@
 namespace App\Billing\Service;
 
 use App\Billing\Dto\InsuranceClaimLineDto;
-use App\Billing\Entity\Facture;
+use App\Billing\Entity\FactureAssurance;
+use App\Billing\Entity\Paiement;
 use App\Billing\Entity\Transaction;
-use App\Billing\Repository\FactureRepository;
+use App\Billing\Repository\FactureAssuranceRepository;
 use App\Billing\Repository\ModeDePaiementRepository;
 use Doctrine\ORM\EntityManagerInterface;
 
 class InsuranceClaimService
 {
     public function __construct(
-        private FactureRepository $factureRepository,
+        private FactureAssuranceRepository $factureAssuranceRepository,
         private ModeDePaiementRepository $modeRepository,
         private EntityManagerInterface $em,
     ) {
     }
 
-    public function listClaims(?string $status = null): array
+    public function listClaims(
+        ?string $status = null,
+        ?\DateTimeInterface $start = null,
+        ?\DateTimeInterface $end = null,
+        ?string $patientQuery = null,
+        ?string $assuranceCode = null,
+    ): array
     {
-        $qb = $this->factureRepository->createQueryBuilder('f')
+        $qb = $this->factureAssuranceRepository->createQueryBuilder('f')
             ->leftJoin('f.consultation', 'c')->addSelect('c')
             ->leftJoin('c.patient', 'p')->addSelect('p')
             ->leftJoin('f.assurance', 'a')->addSelect('a')
-            ->where('f.assurance IS NOT NULL')
             ->orderBy('f.dateFacture', 'DESC')
             ->addOrderBy('f.id', 'DESC');
 
@@ -33,12 +39,36 @@ class InsuranceClaimService
                 ->setParameter('status', $status);
         }
 
-        return array_map(fn (Facture $facture): array => $this->mapClaim($facture), $qb->getQuery()->getResult());
+        if ($start !== null) {
+            $qb->andWhere('f.dateFacture >= :start')
+                ->setParameter('start', $start);
+        }
+
+        if ($end !== null) {
+            $qb->andWhere('f.dateFacture <= :end')
+                ->setParameter('end', $end);
+        }
+
+        $patientQuery = trim((string) $patientQuery);
+        if ($patientQuery !== '') {
+            $normalized = '%' . mb_strtolower($patientQuery) . '%';
+            $qb
+                ->andWhere('LOWER(CONCAT(COALESCE(p.nom, \'\'), \' \', COALESCE(p.prenom, \'\'))) LIKE :patientQuery OR LOWER(COALESCE(p.telephone, \'\')) LIKE :patientQuery')
+                ->setParameter('patientQuery', $normalized);
+        }
+
+        $assuranceCode = strtoupper(trim((string) $assuranceCode));
+        if ($assuranceCode !== '' && $assuranceCode !== 'ALL') {
+            $qb->andWhere('UPPER(COALESCE(a.code, \'\')) = :assuranceCode')
+                ->setParameter('assuranceCode', $assuranceCode);
+        }
+
+        return array_map(fn (FactureAssurance $facture): array => $this->mapClaim($facture), $qb->getQuery()->getResult());
     }
 
     public function validateClaim(int $factureId): array
     {
-        $facture = $this->factureRepository->find($factureId);
+        $facture = $this->factureAssuranceRepository->find($factureId);
         if (!$facture) {
             return ['error' => 'Facture introuvable', 'status' => 404];
         }
@@ -55,7 +85,7 @@ class InsuranceClaimService
 
     public function rejectClaim(int $factureId, ?string $reason = null): array
     {
-        $facture = $this->factureRepository->find($factureId);
+        $facture = $this->factureAssuranceRepository->find($factureId);
         if (!$facture) {
             return ['error' => 'Facture introuvable', 'status' => 404];
         }
@@ -78,7 +108,7 @@ class InsuranceClaimService
 
     public function recoverClaim(int $factureId, int $modeId, ?\DateTimeInterface $date = null): array
     {
-        $facture = $this->factureRepository->find($factureId);
+        $facture = $this->factureAssuranceRepository->find($factureId);
         if (!$facture) {
             return ['error' => 'Facture introuvable', 'status' => 404];
         }
@@ -112,13 +142,12 @@ class InsuranceClaimService
         $transaction->setModeDePaiement($mode);
         $transaction->setConsultation($consultation);
         $transaction->setRolePaiement('insurance');
-        $transaction->setTauxPriseEnCharge($facture->getTauxCouverture());
+        $transaction->setTauxPriseEnCharge($facture->getCoverageRate());
         $transaction->markValidated();
 
         $facture->setIsRecouvre(true);
         $facture->setInsuranceStatus('recouvre');
         $consultation?->setIsRecouvre(true);
-        $consultation?->setTauxCouverture($facture->getTauxCouverture());
 
         $this->em->persist($transaction);
         $this->em->flush();
@@ -126,19 +155,88 @@ class InsuranceClaimService
         return ['success' => true, 'transactionId' => $transaction->getId()];
     }
 
-    private function resolveClaimAmount(Facture $facture): float
+    public function payPatientShare(int $factureId, int $modeId, ?float $amount = null, ?\DateTimeInterface $date = null): array
     {
-        $montants = $facture->computeMontantsFromConsultation();
-        return max(0.0, (float) ($montants['montantAssurance'] ?? 0.0));
+        $facture = $this->factureAssuranceRepository->find($factureId);
+        if (!$facture) {
+            return ['error' => 'Facture introuvable', 'status' => 404];
+        }
+
+        $mode = $this->modeRepository->find($modeId);
+        if (!$mode) {
+            return ['error' => 'Mode de paiement introuvable', 'status' => 400];
+        }
+
+        $consultation = $facture->getConsultation();
+        if (!$consultation) {
+            return ['error' => 'Consultation introuvable', 'status' => 400];
+        }
+
+        $patientTotal = (float) ($facture->computeTotals()['montantPatient'] ?? 0.0);
+        $alreadyPaid = $this->resolvePatientPaidAmount($facture);
+        $remaining = max(0.0, $patientTotal - $alreadyPaid);
+
+        if ($remaining <= 0.0) {
+            return ['error' => 'La part patient est deja totalement encaissee', 'status' => 400];
+        }
+
+        $amountToPay = $amount === null ? $remaining : (float) $amount;
+        if ($amountToPay <= 0) {
+            return ['error' => 'Montant patient invalide', 'status' => 400];
+        }
+
+        if ($amountToPay > $remaining) {
+            return ['error' => 'Le montant depasse le reste patient', 'status' => 400];
+        }
+
+        $dateTransaction = $date ?? new \DateTimeImmutable();
+
+        $paiement = new Paiement();
+        $paiement->setMode($mode);
+        $paiement->setMontant($amountToPay);
+        $paiement->setDate(\DateTime::createFromInterface($dateTransaction));
+        $paiement->setConsultation($consultation);
+
+        $transaction = new Transaction();
+        $transaction->setType('Revenu');
+        $transaction->setMontant((string) $amountToPay);
+        $transaction->setDateTransaction(\DateTime::createFromInterface($dateTransaction));
+        $transaction->setDescription(sprintf('Encaissement part patient | Facture assurance #%d', $facture->getId()));
+        $transaction->setModeDePaiement($mode);
+        $transaction->setConsultation($consultation);
+        $transaction->setRolePaiement('patient_insurance');
+        $transaction->markValidated();
+        $transaction->setPaiement($paiement);
+
+        $this->em->persist($paiement);
+        $this->em->persist($transaction);
+        $this->em->flush();
+
+        $remainingAfter = max(0.0, $patientTotal - $this->resolvePatientPaidAmount($facture));
+
+        return [
+            'success' => true,
+            'paiementId' => $paiement->getId(),
+            'transactionId' => $transaction->getId(),
+            'restePatient' => $remainingAfter,
+        ];
     }
 
-    private function mapClaim(Facture $facture): array
+    private function resolveClaimAmount(FactureAssurance $facture): float
+    {
+        $montants = $facture->computeTotals();
+        return max(0.0, (float) ($montants['montantAssureur'] ?? 0.0));
+    }
+
+    private function mapClaim(FactureAssurance $facture): array
     {
         $consultation = $facture->getConsultation();
         $patient = $consultation?->getPatient();
         $status = $facture->getInsuranceStatus();
         $claimAmount = $this->resolveClaimAmount($facture);
-        $montants = $facture->computeMontantsFromConsultation();
+        $montants = $facture->computeTotals();
+        $patientPaidAmount = $this->resolvePatientPaidAmount($facture);
+        $patientRemaining = max(0.0, (float) ($montants['montantPatient'] ?? 0.0) - $patientPaidAmount);
 
         return [
             'id' => $facture->getId(),
@@ -151,28 +249,49 @@ class InsuranceClaimService
                 'nom' => $facture->getAssurance()?->getNom(),
                 'code' => $facture->getAssurance()?->getCode(),
             ],
-            'tauxCouverture' => $facture->getTauxCouverture(),
+            'tauxCouverture' => $facture->getCoverageRate(),
             'montantTotal' => (float) ($montants['montantTotal'] ?? 0.0),
-            'montantAssurance' => $claimAmount,
+            'montantAssurance' => (float) ($montants['montantAssureur'] ?? $claimAmount),
             'montantPatient' => (float) ($montants['montantPatient'] ?? 0.0),
-            'restePatient' => (float) ($montants['restePatient'] ?? 0.0),
+            'patientPaidAmount' => $patientPaidAmount,
+            'restePatient' => $patientRemaining,
             'isRecouvre' => $facture->isRecouvre(),
             'insuranceStatus' => $status,
             'availableActions' => [
                 'canValidate' => $status === 'pending',
                 'canReject' => in_array($status, ['pending', 'validated'], true) && !$facture->isRecouvre(),
                 'canRecover' => $status === 'validated' && !$facture->isRecouvre(),
+                'canCollectPatient' => $patientRemaining > 0,
             ],
             'lignes' => $this->buildClaimLines($facture),
         ];
     }
 
-    private function buildClaimLines(Facture $facture): array
+    private function resolvePatientPaidAmount(FactureAssurance $facture): float
+    {
+        $consultation = $facture->getConsultation();
+        if (!$consultation) {
+            return 0.0;
+        }
+
+        return max(0.0, (float) $this->em->createQueryBuilder()
+            ->select('COALESCE(SUM(t.montant), 0)')
+            ->from(Transaction::class, 't')
+            ->where('t.consultation = :consultation')
+            ->andWhere('t.rolePaiement = :role')
+            ->andWhere('t.validationStatus = :status')
+            ->setParameter('consultation', $consultation)
+            ->setParameter('role', 'patient_insurance')
+            ->setParameter('status', 'validated')
+            ->getQuery()
+            ->getSingleScalarResult());
+    }
+
+    private function buildClaimLines(FactureAssurance $facture): array
     {
         $lines = [];
-        $consultation = $facture->getConsultation();
 
-        foreach ($facture->buildLignesFromConsultation() as $line) {
+        foreach ($facture->buildLignes() as $line) {
             $quantite = max(1, (int) ($line['quantite'] ?? $line['qte'] ?? 1));
             $montant = (float) ($line['prix'] ?? $line['montant'] ?? 0);
             $designation = trim((string) ($line['type'] ?? $line['designation'] ?? 'Soin'));

@@ -234,17 +234,35 @@ export function useFinances() {
                 return item;
             }
 
-            const body = {
-                nom: payload?.nom || '',
-                code: payload?.code || null,
-                notes: payload?.notes || null,
-                defaultRate: payload?.defaultRate ?? null,
-                actif: typeof payload?.actif === 'boolean' ? payload.actif : true
-            };
-            const res = await http.post(`${apiPrefix}/assurances`, body, {
+            throw new Error('La creation manuelle des assurances est desactivee.');
+        } catch (err) {
+            handleError(err);
+        } finally {
+            loading.value.action = false;
+        }
+    };
+
+    const toggleAssurance = async (code) => {
+        loading.value.action = true;
+        error.value = null;
+        try {
+            if (isFinancesTourMockEnabled()) {
+                assurances.value = (assurances.value || []).map((item) => {
+                    if ((item?.code || '') !== code) {
+                        return item;
+                    }
+
+                    return { ...item, actif: item?.actif === false };
+                });
+
+                return assurances.value.find((item) => (item?.code || '') === code) || null;
+            }
+
+            const res = await http.patch(`${apiPrefix}/assurances/${encodeURIComponent(code)}/toggle`, {}, {
                 headers: buildHeaders(true)
             });
-            return res.data;
+
+            return res.data ?? null;
         } catch (err) {
             handleError(err);
         } finally {
@@ -592,6 +610,7 @@ export function useFinances() {
         fetchPaymentMethods,
         fetchAssurances,
         createAssurance,
+        toggleAssurance,
         createFixedCharge,
         createPaymentMethod,
         updateFixedCharge,

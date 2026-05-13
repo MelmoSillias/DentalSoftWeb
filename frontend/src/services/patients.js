@@ -53,6 +53,7 @@ export const normalizePatient = (raw = {}) => ({
         unsubscribed: raw.smsUnsubscribed ?? false,
         blacklisted: raw.smsBlacklisted ?? false
     },
+    insuranceProfile: raw.insuranceProfile ?? raw.assuranceProfile ?? null,
     portalAccount: raw.portalAccount ?? null,
     derniereConsultation: raw.derniereConsultation ?? raw.derniere_consultation ?? null
 });

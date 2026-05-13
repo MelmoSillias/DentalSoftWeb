@@ -28,7 +28,7 @@ export const fetchFactures = async ({ start, end, unpaidOnly = false }, token) =
         return fetchDevisTourMock({ start, end, unpaidOnly });
     }
 
-    const url = unpaidOnly ? `${apiPrefix}/factures/unpaid` : `${apiPrefix}/factures`;
+    const url = unpaidOnly ? `${apiPrefix}/factures/unpaid` : `${apiPrefix}/factures/classiques`;
     const res = await axios.get(url, { params: { start, end }, ...withHeaders(token) });
     return res.data || [];
 };
@@ -128,13 +128,29 @@ export const getReceiptPrint = (id, token) => fetchPrintBlob(`${apiPrefix}/recei
 export const getPaymentsRangePrint = ({ start, end }, token) => fetchPrintBlob(`${apiPrefix}/payments/print?start=${start}&end=${end}`, token);
 export const getInvoicePrint = (factureId, token) => fetchPrintBlob(`${apiPrefix}/invoices/${factureId}/print`, token);
 
-export const fetchInsuranceClaims = async ({ status } = {}, token) => {
+export const fetchInsuranceClaims = async ({ status, start, end, patient, assuranceCode } = {}, token) => {
     const params = {};
     if (status && status !== 'all') {
         params.status = status;
     }
 
-    const res = await axios.get(`${apiPrefix}/assurances/claims`, { params, ...withHeaders(token) });
+    if (start) {
+        params.start = start;
+    }
+
+    if (end) {
+        params.end = end;
+    }
+
+    if (patient && String(patient).trim() !== '') {
+        params.patient = String(patient).trim();
+    }
+
+    if (assuranceCode && assuranceCode !== 'all') {
+        params.assuranceCode = assuranceCode;
+    }
+
+    const res = await axios.get(`${apiPrefix}/factures/assurances`, { params, ...withHeaders(token) });
     return Array.isArray(res?.data?.data) ? res.data.data : [];
 };
 
@@ -150,5 +166,14 @@ export const rejectInsuranceClaim = async (claimId, reason, token) => {
 
 export const recoverInsuranceClaim = async (claimId, { modeId, date } = {}, token) => {
     const res = await axios.post(`${apiPrefix}/assurances/claims/${claimId}/recover`, { modeId, date }, withHeaders(token));
+    return res.data;
+};
+
+export const payInsurancePatientShare = async (claimId, { modeId, date, amount } = {}, token) => {
+    const res = await axios.post(
+        `${apiPrefix}/assurances/claims/${claimId}/patient-pay`,
+        { modeId, date, amount },
+        withHeaders(token)
+    );
     return res.data;
 };

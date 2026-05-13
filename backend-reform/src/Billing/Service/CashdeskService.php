@@ -32,7 +32,8 @@ class CashdeskService
         $factures = $this->factureRepo->createQueryBuilder('f')
             ->leftJoin('f.consultation', 'c')->addSelect('c')
             ->leftJoin('c.patient', 'p')->addSelect('p')
-            ->leftJoin('f.assurance', 'a')->addSelect('a')
+            ->leftJoin('c.factureAssurance', 'fa')
+            ->andWhere('fa.id IS NULL')
             ->andWhere('f.dateFacture BETWEEN :start AND :end')
             ->setParameter('start', $start)
             ->setParameter('end', $end)
@@ -49,7 +50,8 @@ class CashdeskService
         $factures = $this->factureRepo->createQueryBuilder('f')
             ->leftJoin('f.consultation', 'c')->addSelect('c')
             ->leftJoin('c.patient', 'p')->addSelect('p')
-            ->leftJoin('f.assurance', 'a')->addSelect('a')
+            ->leftJoin('c.factureAssurance', 'fa')
+            ->andWhere('fa.id IS NULL')
             ->orderBy('f.dateFacture', 'ASC')
             ->addOrderBy('f.id', 'ASC')
             ->getQuery()
@@ -68,7 +70,8 @@ class CashdeskService
         $factures = $this->factureRepo->createQueryBuilder('f')
             ->leftJoin('f.consultation', 'c')->addSelect('c')
             ->leftJoin('c.patient', 'p')->addSelect('p')
-            ->leftJoin('f.assurance', 'a')->addSelect('a')
+            ->leftJoin('c.factureAssurance', 'fa')
+            ->andWhere('fa.id IS NULL')
             ->andWhere('p.id = :patientId')
             ->setParameter('patientId', $patientId)
             ->orderBy('f.dateFacture', 'ASC')
@@ -89,7 +92,8 @@ class CashdeskService
         $factures = $this->factureRepo->createQueryBuilder('f')
             ->leftJoin('f.consultation', 'c')->addSelect('c')
             ->leftJoin('c.patient', 'p')->addSelect('p')
-            ->leftJoin('f.assurance', 'a')->addSelect('a')
+            ->leftJoin('c.factureAssurance', 'fa')
+            ->andWhere('fa.id IS NULL')
             ->andWhere('p.id = :patientId')
             ->setParameter('patientId', $patientId)
             ->orderBy('f.dateFacture', 'ASC')
@@ -119,9 +123,11 @@ class CashdeskService
         return array_map(function (Paiement $p) {
             $patient = $p->getConsultation()?->getPatient() ?? $p->getFacture()?->getConsultation()?->getPatient();
             $factureId = $p->getFacture()?->getId();
+            $consultationId = $p->getFacture()?->getConsultation()?->getId() ?? $p->getConsultation()?->getId();
 
             return [
                 'factureId' => $factureId ?? $p->getId(),
+                'consultationId' => $consultationId,
                 'patient' => $patient ? $patient->getFullName() : 'Anonyme',
                 'telephone' => $patient?->getTelephone(),
                 'montant' => $p->getMontant(),
@@ -152,9 +158,11 @@ class CashdeskService
         return array_map(function (Paiement $p) {
             $resolvedPatient = $p->getConsultation()?->getPatient() ?? $p->getFacture()?->getConsultation()?->getPatient();
             $factureId = $p->getFacture()?->getId();
+            $consultationId = $p->getFacture()?->getConsultation()?->getId() ?? $p->getConsultation()?->getId();
 
             return [
                 'factureId' => $factureId ?? $p->getId(),
+                'consultationId' => $consultationId,
                 'patient' => $resolvedPatient ? $resolvedPatient->getFullName() : 'Anonyme',
                 'telephone' => $resolvedPatient?->getTelephone(),
                 'montant' => $p->getMontant(),
@@ -212,17 +220,14 @@ class CashdeskService
             return ['error' => 'Consultation introuvable'];
         }
 
+        if ($consultation->getFactureAssurance() !== null) {
+            return ['error' => 'Cette facture assurance doit etre reglee depuis le workflow assurances'];
+        }
+
         $modeId = (int) ($payload['modeId'] ?? 0);
         $montant = (float) ($payload['montant'] ?? 0);
         $date = $payload['date'] ?? null;
         $time = $payload['time'] ?? null;
-        $insuranceEnabled = (bool) (($payload['insurance_enabled'] ?? $payload['insuranceEnabled'] ?? 0) == 1);
-        $assuranceRaw = $payload['assurance_id'] ?? $payload['assuranceId'] ?? null;
-        $assuranceId = (int) ($assuranceRaw ?? 0);
-        $insuranceRateRaw = $payload['insurance_rate'] ?? $payload['insuranceRate'] ?? null;
-        $insuranceRate = $insuranceRateRaw === null || $insuranceRateRaw === ''
-            ? null
-            : max(0, min(100, (float) $insuranceRateRaw));
 
         $timestamp = new \DateTime();
         if (!empty($date) && !empty($time)) {
@@ -233,57 +238,7 @@ class CashdeskService
             }
         }
 
-        $existingAssurance = $facture->getAssurance() ?? $consultation->getAssurance();
-        $existingAssuranceId = $existingAssurance?->getId();
-        $existingRate = $facture->resolveCoverageRate();
-
-        $hasAssurancePayload = $insuranceEnabled
-            || (($assuranceRaw !== null && $assuranceRaw !== '') && (array_key_exists('assurance_id', $payload) || array_key_exists('assuranceId', $payload)))
-            || (($insuranceRateRaw !== null && $insuranceRateRaw !== '') && (array_key_exists('insurance_rate', $payload) || array_key_exists('insuranceRate', $payload)));
-
-        if ($hasAssurancePayload) {
-            $targetAssurance = $existingAssurance;
-            if ($assuranceId > 0) {
-                $targetAssurance = $this->assuranceRepo->find($assuranceId);
-                if (!$targetAssurance) {
-                    return ['error' => 'Assurance invalide'];
-                }
-            }
-
-            if ($insuranceEnabled && !$targetAssurance) {
-                return ['error' => 'Assurance requise'];
-            }
-
-            if (!$insuranceEnabled && $assuranceId === 0 && (array_key_exists('assurance_id', $payload) || array_key_exists('assuranceId', $payload))) {
-                $targetAssurance = null;
-            }
-
-            $targetRate = $existingRate;
-            if ($insuranceRate !== null) {
-                $targetRate = $insuranceRate;
-            } 
-
-            $isAssuranceChanged = $existingAssuranceId !== $targetAssurance?->getId();
-            $isRateChanged = abs((float) ($existingRate ?? 0.0) - (float) ($targetRate ?? 0.0)) > 0.0001;
-            if (($isAssuranceChanged || $isRateChanged)) {
-                return ['error' => 'La modification de l\'assurance ou du taux est bloquee apres un paiement patient valide'];
-            }
-
-            $facture->setAssurance($targetAssurance);
-            $facture->setTauxCouverture($targetAssurance ? $targetRate : null);
-            $consultation->setAssurance($targetAssurance);
-            $consultation->setTauxCouverture($targetAssurance ? $targetRate : null);
-            $consultation->setIsRecouvre(false);
-
-            if ($targetAssurance === null) {
-                $facture->setIsRecouvre(false);
-                $facture->setInsuranceStatus('none');
-            } elseif (!$facture->isRecouvre()) {
-                $facture->setInsuranceStatus('pending');
-            }
-        }
-
-        $updatedMontants = $facture->computeMontantsFromConsultation($facture->resolveCoverageRate());
+        $updatedMontants = $facture->computeMontantsFromConsultation();
         $remaining = max(0.0, (float) ($updatedMontants['restePatient'] ?? 0.0));
 
         if ($remaining <= 0.0) {
@@ -316,17 +271,11 @@ class CashdeskService
         $this->em->persist($transaction);
         $this->em->persist($paiement);
 
-        $updatedMontants = $facture->computeMontantsFromConsultation($facture->resolveCoverageRate());
+        $updatedMontants = $facture->computeMontantsFromConsultation();
         $remainingAfter = max(0.0, (float) ($updatedMontants['restePatient'] ?? 0.0));
 
         $facture->setIsReglee($remainingAfter <= 0.0);
-        if ($facture->getAssurance() === null) {
-            $facture->setInsuranceStatus('none');
-        } elseif ($facture->isRecouvre()) {
-            $facture->setInsuranceStatus('recouvre');
-        } else {
-            $facture->setInsuranceStatus('pending');
-        }
+        $facture->setInsuranceStatus('none');
 
         $this->em->persist($facture);
         $this->em->flush();
@@ -390,9 +339,7 @@ class CashdeskService
         }
 
         $facture->setIsReglee(false);
-        if ($facture->getAssurance() !== null) {
-            $facture->setInsuranceStatus('pending');
-        }
+        $facture->setInsuranceStatus('none');
         $facture->setIsRecouvre(false);
         $consultation->setIsRecouvre(false);
 

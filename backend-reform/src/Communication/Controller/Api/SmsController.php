@@ -65,7 +65,7 @@ final class SmsController extends AbstractController
         $message = trim((string) ($payload['message'] ?? 'Message de test DentalSoft.'));
 
         if ($phone === '') {
-            return $this->json(['success' => false, 'error' => 'NumÃ©ro requis'], 400);
+            return $this->json(['success' => false, 'error' => 'Numéro requis'], 400);
         }
 
         $result = $this->smsService->testSend($phone, $message);
@@ -126,7 +126,7 @@ final class SmsController extends AbstractController
 
         $preview = $this->smsService->previewTemplate($code, $variables);
         if ($preview === null) {
-            return $this->json(['success' => false, 'error' => 'Template introuvable ou dÃ©sactivÃ©'], 404);
+            return $this->json(['success' => false, 'error' => 'Template introuvable ou désactivé'], 404);
         }
 
         return $this->json([
@@ -314,7 +314,7 @@ final class SmsController extends AbstractController
 
     private function resolvePatientFromPaiement(Paiement $paiement): ?Patient
     {
-        $devis = $paiement->getDevis();
+        $devis = $paiement->getFacture();
         if ($devis instanceof Devis) {
             $patient = $this->resolvePatientFromDevis($devis);
             if ($patient instanceof Patient) {

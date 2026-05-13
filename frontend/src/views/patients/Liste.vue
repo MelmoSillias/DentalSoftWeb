@@ -971,6 +971,12 @@ onMounted(() => {
     background-color: #d1fae5 !important;
 }
 
+:deep(.appdark .row-highlight),
+:deep(.appdark .row-highlight > td) {
+    animation: flash-green-dark 0.6s ease-in-out 0s 4 alternate; 
+    background-color: #064e3b !important;
+}
+
 @keyframes flash-green {
     0% {
         background-color: #d1fae5;
@@ -980,4 +986,16 @@ onMounted(() => {
         background-color: #bbf7d0;
     }
 }
+
+@keyframes flash-green-dark {
+    0% {
+        background-color: #064e3b;
+    }
+
+    100% {
+        background-color: #047857;
+    }
+}
+
+
 </style>

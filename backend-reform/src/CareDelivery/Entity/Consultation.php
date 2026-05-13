@@ -2,7 +2,7 @@
 
 namespace App\CareDelivery\Entity;
 
-use App\Billing\Entity\Assurance;
+use App\Billing\Entity\FactureAssurance;
 use App\Billing\Entity\Facture;
 use App\Billing\Entity\Paiement;
 use App\ClinicalRecord\Entity\FicheMedicale;
@@ -66,12 +66,8 @@ class Consultation
     #[ORM\OneToOne(mappedBy: 'consultation', cascade: ['persist', 'remove'])]
     private ?Facture $facture = null;
 
-    #[ORM\ManyToOne(targetEntity: Assurance::class)]
-    #[ORM\JoinColumn(nullable: true)]
-    private ?Assurance $assurance = null;
-
-    #[ORM\Column(type: 'float', nullable: true)]
-    private ?float $tauxCouverture = null;
+    #[ORM\OneToOne(mappedBy: 'consultation', targetEntity: FactureAssurance::class, cascade: ['persist', 'remove'])]
+    private ?FactureAssurance $factureAssurance = null;
 
     #[ORM\Column(type: 'boolean', options: ['default' => false])]
     private bool $isRecouvre = false;
@@ -170,26 +166,22 @@ class Consultation
         return $this;
     }
 
-    public function getAssurance(): ?Assurance
+    public function getFactureAssurance(): ?FactureAssurance
     {
-        return $this->assurance;
+        return $this->factureAssurance;
     }
 
-    public function setAssurance(?Assurance $assurance): static
+    public function setFactureAssurance(?FactureAssurance $factureAssurance): static
     {
-        $this->assurance = $assurance;
+        if ($factureAssurance === null && $this->factureAssurance !== null) {
+            $this->factureAssurance->setConsultation(null);
+        }
 
-        return $this;
-    }
+        if ($factureAssurance !== null && $factureAssurance->getConsultation() !== $this) {
+            $factureAssurance->setConsultation($this);
+        }
 
-    public function getTauxCouverture(): ?float
-    {
-        return $this->tauxCouverture;
-    }
-
-    public function setTauxCouverture(?float $tauxCouverture): static
-    {
-        $this->tauxCouverture = $tauxCouverture;
+        $this->factureAssurance = $factureAssurance;
 
         return $this;
     }

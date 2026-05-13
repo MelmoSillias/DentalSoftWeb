@@ -228,7 +228,7 @@ class Facture
             return $ownRate;
         }
 
-        return $this->normalizeCoverageRate($this->consultation?->getTauxCouverture());
+        return null;
     }
 
     public function computePatientPaidAmount(): float
@@ -246,7 +246,7 @@ class Facture
         return $paid;
     }
 
-    public function computeMontantsFromConsultation(?float $overrideCoverageRate = null): array
+    public function computeMontantsFromConsultation(?float $overrideCoverageRate = null, bool $isAssurance = false): array
     {
         $total = 0.0;
         $consultation = $this->getConsultation();

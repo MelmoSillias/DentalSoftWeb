@@ -13,7 +13,6 @@ use App\Billing\Entity\Devis;
 use App\Billing\Entity\Facture;
 use App\Billing\Entity\Paiement;
 use App\Billing\Entity\Transaction;
-use App\Billing\Entity\Assurance;
 use App\Billing\Repository\DevisRepository;
 use App\CareDelivery\Entity\ActeMedical;
 use App\CareDelivery\Entity\Consultation;
@@ -87,12 +86,12 @@ class ConsultationService
 
         $actorMedecin = $this->getMedecinForUser($user);
         if (!$actorMedecin) {
-            throw new ConflictHttpException('Aucun mÃ©decin liÃ© Ã  ce compte.');
+            throw new ConflictHttpException('Aucun médecin lié Ã  ce compte.');
         }
 
         $currentMedecin = $consultation->getMedecin();
         if ($currentMedecin && $currentMedecin->getId() !== $actorMedecin->getId()) {
-            throw new ConflictHttpException('Cette consultation est dÃ©jÃ  prise en charge par un autre mÃ©decin.');
+            throw new ConflictHttpException('Cette consultation est déjÃ  prise en charge par un autre médecin.');
         }
 
         if (!$currentMedecin) {
@@ -123,7 +122,7 @@ class ConsultationService
     private function ensureConsultationOpen(Consultation $consultation): void
     {
         if ($consultation->getStatut() === 1) {
-            throw new ConflictHttpException('Cette consultation est dÃ©jÃ  clÃ´turÃ©e.');
+            throw new ConflictHttpException('Cette consultation est déjÃ  clÃ´turée.');
         }
     }
 
@@ -159,7 +158,7 @@ class ConsultationService
     {
         $medecinId = $actorMedecin?->getId() ?? ($data['medecinId'] ?? $consultation->getMedecin()?->getId());
         if (!$medecinId) {
-            throw new \InvalidArgumentException('Le mÃ©decin est obligatoire pour enregistrer la consultation.');
+            throw new \InvalidArgumentException('Le médecin est obligatoire pour enregistrer la consultation.');
         }
 
         $infirmierId = $data['infirmierId'] ?? ($data['infirmierIds'][0] ?? null);
@@ -170,17 +169,6 @@ class ConsultationService
         $consultation->setSalle($salleId ? $this->em->getReference(Salle::class, (int) $salleId) : null);
         $consultation->setType($data['type'] ?? $consultation->getType());
         $consultation->setNoteSeance($data['noteSeance'] ?? $consultation->getNoteSeance() ?? '');
-
-        if (array_key_exists('assuranceId', $data) || array_key_exists('assurance_id', $data)) {
-            $assuranceId = (int) ($data['assuranceId'] ?? $data['assurance_id'] ?? 0);
-            $consultation->setAssurance($assuranceId > 0 ? $this->em->getReference(Assurance::class, $assuranceId) : null);
-        }
-
-        if (array_key_exists('tauxCouverture', $data) || array_key_exists('taux_couverture', $data)) {
-            $tauxCouverture = (float) ($data['tauxCouverture'] ?? $data['taux_couverture'] ?? 0);
-            $consultation->setTauxCouverture(max(0.0, min(100.0, $tauxCouverture)));
-            $consultation->setIsRecouvre(false);
-        }
 
         if (isset($data['actes']) && is_array($data['actes'])) {
             foreach ($consultation->getActes()->toArray() as $a) {
@@ -923,36 +911,23 @@ class ConsultationService
         }
 
         if (!$consultation->getMedecin()) {
-            throw new \InvalidArgumentException('Le mÃ©decin est obligatoire pour clÃ´turer la consultation.');
+            throw new \InvalidArgumentException('Le médecin est obligatoire pour clÃ´turer la consultation.');
         }
 
         if ($consultation->getActes()->isEmpty()) {
-            throw new \InvalidArgumentException('Ajoutez au moins un acte mÃ©dical avant de clÃ´turer la consultation.');
+            throw new \InvalidArgumentException('Ajoutez au moins un acte médical avant de clÃ´turer la consultation.');
         }
         
-        if (isset($payload['assuranceId']) || isset($payload['assurance_id'])) {
-            $assuranceId = (int) ($payload['assuranceId'] ?? $payload['assurance_id'] ?? 0);
-            $consultation->setAssurance($assuranceId > 0 ? $this->em->getReference(Assurance::class, $assuranceId) : null);
-        }
-
-        if (isset($payload['tauxCouverture']) || isset($payload['taux_couverture'])) {
-            $tauxCouverture = (float) ($payload['tauxCouverture'] ?? $payload['taux_couverture']);
-            $consultation->setTauxCouverture(max(0.0, min(100.0, $tauxCouverture)));
-        }
-
         $facture = $consultation->getFacture() ?? new Facture();
         $facture->setConsultation($consultation);
         $facture->setDateFacture(new \DateTime('now'));
 
-        $facture->setAssurance($consultation->getAssurance());
-        $facture->setTauxCouverture($consultation->getTauxCouverture());
-
-        $montants = $facture->computeMontantsFromConsultation($consultation->getTauxCouverture());
+        $montants = $facture->computeMontantsFromConsultation();
         $facture->setIsReglee(((float) $montants['restePatient']) <= 0.0);
         $facture->setTauxCouverture($montants['tauxCouverture']);
         $facture->setIsRecouvre(false);
 
-        $facture->setInsuranceStatus($facture->getAssurance() !== null ? 'pending' : 'none');
+        $facture->setInsuranceStatus('none');
         $consultation->setIsRecouvre(false);
         $consultation->setFacture($facture);
         $this->em->persist($facture);
@@ -978,7 +953,7 @@ class ConsultationService
         $patientName = trim($patient?->getFullName() ?? '') ?: 'un patient';
         $amountLabel = number_format($invoiceAmount, 0, ',', ' ');
         $message = sprintf(
-            'Consultation de %s clÃ´turÃ©e : facture de %s FCFA prÃªte en caisse.',
+            'Consultation de %s clÃ´turée : facture de %s FCFA prÃªte en caisse.',
             $patientName,
             $amountLabel,
         );
@@ -1265,7 +1240,7 @@ class ConsultationService
         $consultation = $this->consultationRepo->find($id);
 
         if (!$consultation) {
-            throw new NotFoundHttpException('Consultation non trouvÃ©e.');
+            throw new NotFoundHttpException('Consultation non trouvée.');
         }
 
         if ($createNewFiche) {
@@ -1417,7 +1392,7 @@ class ConsultationService
         $facture = $consultation->getFacture();
 
         if (!$facture) {
-            return ['error' => 'Facture non trouvÃ©e'];
+            return ['error' => 'Facture non trouvée'];
         }
 
         // Re-synchronise les actes de la consultation avec les lignes soumises

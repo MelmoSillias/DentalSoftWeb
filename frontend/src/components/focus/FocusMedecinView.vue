@@ -8,7 +8,7 @@ import Button from 'primevue/button';
 import Checkbox from 'primevue/checkbox';
 import Tag from 'primevue/tag';
 
-import { computed, defineEmits, defineProps, onMounted, ref, toRefs } from 'vue';
+import { computed, onMounted, ref, toRefs } from 'vue';
 
 const props = defineProps({
     consultations: {

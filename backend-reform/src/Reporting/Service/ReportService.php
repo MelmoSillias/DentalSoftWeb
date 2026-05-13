@@ -160,7 +160,7 @@ class ReportService
                 continue;
             }
 
-            $signedAmount = $transaction->getType() === 'EntrÃ©e'
+            $signedAmount = $transaction->getType() === 'Entrée'
                 ? (float) $transaction->getMontant()
                 : -1 * (float) $transaction->getMontant();
 
@@ -238,7 +238,7 @@ class ReportService
         $fromDate = $from ? \DateTime::createFromFormat('Y-m-d', $from) : null;
         $toDate   = $to   ? \DateTime::createFromFormat('Y-m-d', $to)   : null;
 
-        // 2. Transactions sur la pÃ©riode (TODO: filtrage dates si besoin)
+        // 2. Transactions sur la période (TODO: filtrage dates si besoin)
         $transactions = $this->transactionRepo->findAll();
 
         $capitalBreakdown = [];
@@ -250,7 +250,7 @@ class ReportService
             $mode   = $tx->getModeDePaiement()->getType();
             $amount = $tx->getMontant();
 
-            $signed = ($tx->getType() === 'EntrÃ©e') ? $amount : -$amount;
+            $signed = ($tx->getType() === 'Entrée') ? $amount : -$amount;
             $capitalTotal += $signed;
 
             if (!isset($capitalBreakdown[$mode])) {
@@ -459,7 +459,7 @@ class ReportService
             foreach ($rows as $row) {
                 $source = trim((string) ($row['source'] ?? ''));
                 if ($source === '') {
-                    $source = 'Non renseignÃ©';
+                    $source = 'Non renseigné';
                 }
 
                 $result[] = [
@@ -703,7 +703,7 @@ class ReportService
                     "SUM(CASE WHEN t.type = :entry THEN t.montant ELSE -t.montant END) AS balance"
                 )
                 ->join('t.modeDePaiement', 'm')
-                ->setParameter('entry', 'EntrÃ©e');
+                ->setParameter('entry', 'Entrée');
 
             if ($fromDate) {
                 $qb->andWhere('t.dateTransaction >= :from')->setParameter('from', $fromDate);
@@ -768,7 +768,7 @@ class ReportService
         $cacheKey = sprintf('report.periodicActsStats.%s.%s', $fromDate?->format('Ymd') ?? 'none', $toDate?->format('Ymd') ?? 'none');
         return $this->remember($cacheKey, 180, function () use ($fromDate, $toDate) {
             $knownTypes = [
-                'Consultation', 'DÃ©tartrage', 'Extraction', 'Remplissage', 'Composite', 'Amalgame',
+                'Consultation', 'Détartrage', 'Extraction', 'Remplissage', 'Composite', 'Amalgame',
                 'Traitement de canal', 'Traumatisme', 'Couronne', 'Blanchiment', 'Radio', 'ProthÃ¨se',
                 'Orthodontie', 'Chirurgie',
             ];
@@ -1232,13 +1232,13 @@ class ReportService
 
         $modeEspeces = $this->em->getRepository(ModeDePaiement::class)->find(0);
 
-        $revenusEspeces = $this->em->createQuery("\n        SELECT SUM(t.montant)\n        FROM App\\Billing\\Entity\\Transaction t\n        WHERE t.dateTransaction BETWEEN :start AND :end\n        AND t.modeDePaiement = :mode\n        AND t.type = 'EntrÃ©e'\n    ")
+        $revenusEspeces = $this->em->createQuery("\n        SELECT SUM(t.montant)\n        FROM App\\Billing\\Entity\\Transaction t\n        WHERE t.dateTransaction BETWEEN :start AND :end\n        AND t.modeDePaiement = :mode\n        AND t.type = 'Entrée'\n    ")
             ->setParameter('start', $dateStart)
             ->setParameter('end', $dateEnd)
             ->setParameter('mode', $modeEspeces)
             ->getSingleScalarResult();
 
-        $revenusTotaux = $this->em->createQuery("\n    SELECT SUM(t.montant)\n    FROM App\\Billing\\Entity\\Transaction t\n    WHERE t.dateTransaction BETWEEN :start AND :end\n    AND t.type = 'EntrÃ©e'\n")
+        $revenusTotaux = $this->em->createQuery("\n    SELECT SUM(t.montant)\n    FROM App\\Billing\\Entity\\Transaction t\n    WHERE t.dateTransaction BETWEEN :start AND :end\n    AND t.type = 'Entrée'\n")
             ->setParameter('start', $dateStart)
             ->setParameter('end', $dateEnd)
             ->getSingleScalarResult();

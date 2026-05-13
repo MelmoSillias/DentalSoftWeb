@@ -43,7 +43,7 @@ class FinanceService
 
         foreach ($transactions as $transaction) {
             $month = (int) $transaction->getDateTransaction()->format('n') - 1;
-            if ($transaction->getType() === 'EntrÃ©e') {
+            if ($transaction->getType() === 'Entrée') {
                 $monthlyRevenues[$month] += $transaction->getMontant();
             } else {
                 $monthlyExpenses[$month] += $transaction->getMontant();
@@ -100,7 +100,7 @@ class FinanceService
                     continue;
                 }
 
-                if ($t->getType() === 'EntrÃ©e') {
+                if ($t->getType() === 'Entrée') {
                     $entree += $t->getMontant();
                 } else {
                     $sortie += $t->getMontant();
@@ -138,7 +138,7 @@ class FinanceService
                     continue;
                 }
 
-                if ($t->getType() === 'EntrÃ©e') {
+                if ($t->getType() === 'Entrée') {
                     $totalIn += $t->getMontant();
                 } else {
                     $totalOut += $t->getMontant();
@@ -173,7 +173,7 @@ class FinanceService
             }
 
             $month = (int) $t->getDateTransaction()->format('n') - 1;
-            $cumul += ($t->getType() === 'EntrÃ©e') ? $t->getMontant() : -$t->getMontant();
+            $cumul += ($t->getType() === 'Entrée') ? $t->getMontant() : -$t->getMontant();
             $evolution[$month] = $cumul;
         }
 
@@ -200,7 +200,7 @@ class FinanceService
                 }
 
                 $mois = (int) $t->getDateTransaction()->format('n') - 1;
-                if ($t->getType() === 'EntrÃ©e') {
+                if ($t->getType() === 'Entrée') {
                     $entrees[$mois] += $t->getMontant();
                 } elseif ($t->getType() === 'Sortie') {
                     $sorties[$mois] += $t->getMontant();
@@ -215,14 +215,14 @@ class FinanceService
             $colorIndex++;
 
             $datasets[] = [
-                'label' => $mode->getLibelle() . ' - EntrÃ©es',
+                'label' => $mode->getLibelle() . ' - Entrées',
                 'data' => $entrees,
                 'type' => 'bar',
                 'backgroundColor' => $mainColor,
                 'stack' => $mode->getId(),
             ];
             $datasets[] = [
-                'label' => $mode->getLibelle() . ' - DÃ©penses',
+                'label' => $mode->getLibelle() . ' - Dépenses',
                 'data' => $sorties,
                 'type' => 'bar',
                 'backgroundColor' => $mainColor . '99',
@@ -250,7 +250,7 @@ class FinanceService
         foreach ($this->modeRepo->findActifs() as $mode) {
             $solde = 0;
             foreach ($mode->getTransactions() as $transaction) {
-                if ($transaction->getType() === 'EntrÃ©e') {
+                if ($transaction->getType() === 'Entrée') {
                     $solde += $transaction->getMontant();
                 } else {
                     $solde -= $transaction->getMontant();
@@ -281,11 +281,11 @@ class FinanceService
         $montant = (float) ($data['montant'] ?? 0);
 
         if ($designation === '') {
-            return ['error' => 'La dÃ©signation est requise.', 'status' => 400];
+            return ['error' => 'La désignation est requise.', 'status' => 400];
         }
 
         if ($montant <= 0) {
-            return ['error' => 'Le montant doit Ãªtre supÃ©rieur Ã  0.', 'status' => 400];
+            return ['error' => 'Le montant doit Ãªtre supérieur Ã  0.', 'status' => 400];
         }
 
         $charge = new ChargeFixe();
@@ -309,11 +309,11 @@ class FinanceService
         $montant = (float) ($data['montant'] ?? 0);
 
         if ($designation === '') {
-            return ['error' => 'La dÃ©signation est requise.', 'status' => 400];
+            return ['error' => 'La désignation est requise.', 'status' => 400];
         }
 
         if ($montant <= 0) {
-            return ['error' => 'Le montant doit Ãªtre supÃ©rieur Ã  0.', 'status' => 400];
+            return ['error' => 'Le montant doit Ãªtre supérieur Ã  0.', 'status' => 400];
         }
 
         $charge->setDesignation($designation);
@@ -393,7 +393,7 @@ class FinanceService
                 'motif' => $transaction->getMotif(),
                 'type' => $transaction->getType(),
                 'typeKey' => $typeKey,
-                'typeLabel' => $typeKey === 'revenue' ? 'Revenu' : ($typeKey === 'expense' ? 'DÃ©pense' : ($transaction->getType() ?? '')), 
+                'typeLabel' => $typeKey === 'revenue' ? 'Revenu' : ($typeKey === 'expense' ? 'Dépense' : ($transaction->getType() ?? '')), 
                 'amount' => $transaction->getMontant(),
                 'validated' => $transaction->isValidated(),
                 'validationStatus' => $transaction->getValidationStatus(),
@@ -471,7 +471,7 @@ class FinanceService
         $this->em->persist($tOut);
 
         $tIn = new Transaction();
-        $tIn->setType('EntrÃ©e');
+        $tIn->setType('Entrée');
         $tIn->setMontant($montant);
         $tIn->setDateTransaction($date);
         $tIn->setDescription("[Transfert] depuis {$from->getLibelle()} - {$motif}");
@@ -481,7 +481,7 @@ class FinanceService
 
         $this->em->flush();
 
-        return ['message' => 'Transfert effectuÃ© avec succÃ¨s'];
+        return ['message' => 'Transfert effectué avec succÃ¨s'];
     }
 
     public function updateTransactionValidationStatus(int $id, string $status, ?string $comment = null, ?DateTimeImmutable $validatedAt = null): array
@@ -600,7 +600,7 @@ class FinanceService
             'year' => $year,
             'month' => $month,
             'type' => $typeKey,
-            'typeLabel' => $typeKey === 'expense' ? 'DÃ©penses' : 'Revenus',
+            'typeLabel' => $typeKey === 'expense' ? 'Dépenses' : 'Revenus',
             'monthLabel' => ucfirst((new \IntlDateFormatter('fr_FR', \IntlDateFormatter::NONE, \IntlDateFormatter::NONE, null, null, 'MMMM yyyy'))->format($from)),
             'weeks' => $weeks,
             'rows' => $rows,
@@ -608,7 +608,7 @@ class FinanceService
             'grandTotal' => $grandTotal,
             'availableTypes' => [
                 ['label' => 'Revenus', 'value' => 'revenue'],
-                ['label' => 'DÃ©penses', 'value' => 'expense'],
+                ['label' => 'Dépenses', 'value' => 'expense'],
             ],
             'transactionMotifs' => $this->globalSettingsService->getTransactionMotifs(),
         ];
@@ -645,7 +645,7 @@ class FinanceService
     private function resolveTransactionTypeKey(?string $type): string
     {
         $value = strtolower(trim((string) $type));
-        $value = str_replace(['Ã©', 'Ã¨', 'Ãª', 'Ã«', 'Ã ', 'Ã¢', 'Ã®', 'Ã¯', 'Ã´', 'Ã¹', 'Ã»', 'Ã§', ' '], ['e', 'e', 'e', 'e', 'a', 'a', 'i', 'i', 'o', 'u', 'u', 'c', '_'], $value);
+        $value = str_replace(['é', 'Ã¨', 'Ãª', 'Ã«', 'Ã ', 'Ã¢', 'Ã®', 'Ã¯', 'Ã´', 'Ã¹', 'Ã»', 'Ã§', ' '], ['e', 'e', 'e', 'e', 'a', 'a', 'i', 'i', 'o', 'u', 'u', 'c', '_'], $value);
 
         return match (true) {
             in_array($value, ['entry', 'income', 'revenue', 'revenu', 'entree'], true) => 'revenue',
@@ -659,13 +659,13 @@ class FinanceService
     {
         return match ($typeKey) {
             'expense' => ['Sortie'],
-            default => ['EntrÃ©e'],
+            default => ['Entrée'],
         };
     }
 
     private function normalizePersistedTransactionType(string $type): string
     {
-        return $this->resolveTransactionTypeKey($type) === 'expense' ? 'Sortie' : 'EntrÃ©e';
+        return $this->resolveTransactionTypeKey($type) === 'expense' ? 'Sortie' : 'Entrée';
     }
 
     private function weekdayLabel(int $weekday): string
