@@ -256,11 +256,11 @@ const paymentsTotals = computed(() => {
 const detailedStats = computed(() => {
     const allInvoices = props.devis || [];
     const allPayments = props.payments || [];
-    
+
     const totalInvoices = allInvoices.length;
     const totalPaid = allInvoices.reduce((sum, inv) => sum + (Number(inv.montant) - (Number(inv.reste) || 0)), 0);
     const totalUnpaid = allInvoices.reduce((sum, inv) => sum + (Number(inv.reste) || 0), 0);
-    
+
     const statusCounts = {
         paid: 0,
         partial: 0,
@@ -275,17 +275,17 @@ const detailedStats = computed(() => {
         else if (reste === montant) statusCounts.unpaid++;
         else statusCounts.partial++;
     });
-    
+
     const paymentModeBreakdown = {};
     allPayments.forEach(p => {
         const mode = p.mode || 'Autre';
         paymentModeBreakdown[mode] = (paymentModeBreakdown[mode] || 0) + (Number(p.montant) || 0);
     });
-    
+
     const insurancePayments = allPayments.filter(p => p.rolePaiement === 'insurance');
     const totalInsurance = insurancePayments.reduce((sum, p) => sum + (Number(p.montant) || 0), 0);
     const pendingInsurance = insurancePayments.filter(p => p.insuranceStatus === 'pending').length;
-    
+
     return {
         totalInvoices,
         totalPaid,
@@ -375,27 +375,27 @@ const printDetailPayment = (row) => {
         <div class="top-bar">
             <div class="display-mode-selector">
                 <span class="label">Mode d'affichage</span>
-                <SelectButton 
-                    v-model="overviewDisplayMode" 
-                    :options="overviewDisplayOptions" 
-                    optionLabel="label" 
+                <SelectButton
+                    v-model="overviewDisplayMode"
+                    :options="overviewDisplayOptions"
+                    optionLabel="label"
                     optionValue="value"
                 />
             </div>
-            <Button 
-                label="Statistiques" 
-                icon="pi pi-chart-bar" 
-                severity="secondary" 
+            <Button
+                label="Statistiques"
+                icon="pi pi-chart-bar"
+                severity="secondary"
                 outlined
-                @click="showStatsModal = true" 
+                @click="showStatsModal = true"
             />
         </div>
 
         <!-- Modal statistiques détaillées -->
-        <Dialog 
-            v-model:visible="showStatsModal" 
-            header="Statistiques détaillées" 
-            :modal="true" 
+        <Dialog
+            v-model:visible="showStatsModal"
+            header="Statistiques détaillées"
+            :modal="true"
             :style="{ width: '600px' }"
             class="stats-dialog"
         >
@@ -757,55 +757,6 @@ const printDetailPayment = (row) => {
     padding: 0.5rem;
 }
 
-
-.invoice-card {
-    border: 1px solid var(--surface-border);
-    border-radius: 16px;
-    background: var(--surface-card);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
-    padding: 1rem;
-    transition: all 0.2s;
-}
-
-.invoice-card:hover {
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
-    border-color: var(--primary-color);
-}
-
-.invoice-card-header {
-    display: flex;
-    justify-content: space-between;
-    gap: 1rem;
-    align-items: flex-start;
-    flex-wrap: wrap;
-}
-
-.invoice-main {
-    display: flex;
-    flex-direction: column;
-    gap: 0.4rem;
-}
-
-.invoice-topline {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 0.6rem;
-}
-
-.invoice-number {
-    margin: 0;
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: #0f172a;
-}
-
-.invoice-subline {
-    margin: 0;
-    font-size: 0.85rem;
-    color: #64748b;
-}
-
 .invoice-card {
     border: 2px solid transparent;
     border-left: 6px solid var(--primary-color);
@@ -842,6 +793,29 @@ const printDetailPayment = (row) => {
     font-size: 0.8rem;
     color: #94a3b8;
 }
+
+.invoice-card-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: flex-start;
+    flex-wrap: wrap;
+}
+
+.invoice-main {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.invoice-topline {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+}
+
+
 .invoice-amounts {
     display: flex;
     flex-direction: column;
