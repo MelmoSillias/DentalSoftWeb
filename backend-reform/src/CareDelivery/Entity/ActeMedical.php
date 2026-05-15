@@ -28,9 +28,6 @@ class ActeMedical
     #[ORM\Column(type: 'text', nullable: true)]
     private ?string $description = null;
 
-    #[ORM\Column(type: 'text', nullable: true)]
-    private ?string $note = null;
-
     #[ORM\Column(type: 'float')]
     private ?float $prix = null;
 

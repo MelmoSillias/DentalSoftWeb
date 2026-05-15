@@ -306,8 +306,7 @@ class PayrollService
             ->setModeDePaiement($mode)
             ->setValidationStatus('validated')
             ->setValidated(true)
-            ->setValidatedAt(new \DateTimeImmutable())
-            ->setRolePaiement('direct');
+            ->setValidatedAt(new \DateTimeImmutable());
 
         $this->em->persist($transaction);
     }

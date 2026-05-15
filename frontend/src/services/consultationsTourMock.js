@@ -58,11 +58,7 @@ function buildStaticDailyConsultations() {
             urgence: false,
             hasFiche: true,
             ficheId: null,
-            ficheType: null,
-            ficheVersion: null,
             lastFicheId: 8101,
-            lastFicheType: 'medicale',
-            lastFicheVersion: 2,
             state: 0,
             factState: 0
         },
@@ -77,11 +73,7 @@ function buildStaticDailyConsultations() {
             urgence: true,
             hasFiche: true,
             ficheId: 8201,
-            ficheType: 'medicale',
-            ficheVersion: 2,
             lastFicheId: 8201,
-            lastFicheType: 'medicale',
-            lastFicheVersion: 2,
             state: 0,
             factState: 0
         },
@@ -96,11 +88,7 @@ function buildStaticDailyConsultations() {
             urgence: false,
             hasFiche: false,
             ficheId: null,
-            ficheType: null,
-            ficheVersion: null,
             lastFicheId: null,
-            lastFicheType: null,
-            lastFicheVersion: null,
             state: 0,
             factState: 0
         },
@@ -115,11 +103,7 @@ function buildStaticDailyConsultations() {
             urgence: false,
             hasFiche: true,
             ficheId: 8301,
-            ficheType: 'medicale',
-            ficheVersion: 2,
             lastFicheId: 8301,
-            lastFicheType: 'medicale',
-            lastFicheVersion: 2,
             state: 1,
             factState: 1
         }
@@ -306,8 +290,6 @@ export function setConsultationFicheTourMock(consultationId, ficheId = null) {
     consultationsTourMockState.activeFicheLinks[consultationId] = resolvedFicheId;
     return {
         ficheId: resolvedFicheId,
-        ficheType: consultation.ficheType || consultation.lastFicheType || 'medicale',
-        ficheVersion: consultation.ficheVersion || consultation.lastFicheVersion || 2
     };
 }
 
@@ -320,8 +302,6 @@ export function saveConsultationTourMock(ficheId, consultationId, payload = {}) 
     const medecinLabel = resolveMedecinLabel(payload.medecinId);
     consultation.medecin = medecinLabel;
     consultation.ficheId = consultation.ficheId || ficheId || consultationsTourMockState.activeFicheLinks[consultationId] || null;
-    consultation.ficheType = consultation.ficheType || 'medicale';
-    consultation.ficheVersion = consultation.ficheVersion || 2;
     consultation.hasFiche = true;
 
     consultationsTourMockState.consultationDetails[consultationId] = {
@@ -406,11 +386,7 @@ export function registerCreatedPendingConsultationTourMock(patient, payload = {}
         statut: 'Nouvelle prise en charge',
         hasFiche: false,
         ficheId: null,
-        ficheType: null,
-        ficheVersion: null,
         lastFicheId: null,
-        lastFicheType: null,
-        lastFicheVersion: null,
         state: 0,
         factState: 0
     };

@@ -129,14 +129,7 @@ const goToConsultation = (consultation, mode = 'continue') => {
 
     if (targetFicheId) query.ficheId = targetFicheId;
 
-    const ficheType = mode === 'new-fiche'
-        ? 'medicale'
-        : linked
-            ? (consultation.ficheType || (consultation.ficheVersion === 1 ? 'observation' : 'medicale'))
-            : (consultation.lastFicheType || (consultation.lastFicheVersion === 1 ? 'observation' : 'medicale'));
-
-    const routeName = ficheType === 'observation' ? 'consultations-form-legacy' : 'consultations-form';
-    router.push({ name: routeName, query });
+    router.push({ name: 'consultations-form', query });
 };
 
 const isLinked = (consultation) => Boolean(consultation.ficheId);
@@ -560,7 +553,7 @@ const viewOptions = [
             <!-- Consultations Grid -->
             <div v-else>
                 <div v-if="viewMode === 'cards'" >
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 w-full" v-if="sortedConsultations.length > 0"> 
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 w-full" v-if="sortedConsultations.length > 0">
                         <div v-for="(consultation, idx) in sortedConsultations" :key="consultation.id"
                             :data-tour="idx === 0 ? 'consultations-cards.case-last-fiche' : idx === 1 ? 'consultations-cards.case-linked' : idx === 2 ? 'consultations-cards.case-new' : null"
                             class="relative overflow-hidden rounded-2xl border transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 flex flex-col h-full group"
@@ -595,7 +588,7 @@ const viewOptions = [
                                                 <div
                                                     class="flex items-center gap-2 text-sm text-surface-500 dark:text-surface-400">
                                                     <i class="pi pi-phone"></i>
-                                                    <span>{{ shouldHidePatientPhoneForMedecin ? 'Masqué par l\'administrateur' :   
+                                                    <span>{{ shouldHidePatientPhoneForMedecin ? 'Masqué par l\'administrateur' :
                                                         (consultation.patientPhone || 'Téléphone non renseigné')
                                                         }}</span>
                                                 </div>
@@ -714,8 +707,8 @@ const viewOptions = [
 
                 <!-- VIEW: QUEUE -->
                 <div v-else class="space-y-3">
-                    <div 
-                        v-for="(consultation, idx) in sortedConsultations" 
+                    <div
+                        v-for="(consultation, idx) in sortedConsultations"
                         :key="consultation.id"
                         class="flex items-center justify-between p-4 rounded-xl border bg-white dark:bg-surface-800 shadow-sm hover:shadow-md transition"
                     >

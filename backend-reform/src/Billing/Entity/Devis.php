@@ -3,8 +3,7 @@
 namespace App\Billing\Entity;
 
 use App\Billing\Repository\DevisRepository;
-use App\ClinicalRecord\Entity\FicheMedicale;
-use App\ClinicalRecord\Entity\FicheObservation;
+use App\ClinicalRecord\Entity\FicheMedicale; 
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
@@ -16,11 +15,7 @@ class Devis
     #[ORM\GeneratedValue]
     #[ORM\Column(type: 'integer')]
     private ?int $id = null;
-
-    #[ORM\ManyToOne(targetEntity: FicheObservation::class, inversedBy: 'devis', cascade: ['persist', 'remove'])]
-    #[ORM\JoinColumn(nullable: true)]
-    private ?FicheObservation $fiche = null;
-
+ 
     #[ORM\ManyToOne(targetEntity: FicheMedicale::class, inversedBy: 'devis')]
     #[ORM\JoinColumn(nullable: true)]
     private ?FicheMedicale $ficheMedicale = null;
@@ -52,8 +47,6 @@ class Devis
     }
  
     public function getId(): ?int { return $this->id; }
-    public function getFiche(): ?FicheObservation { return $this->fiche; }
-    public function setFiche(?FicheObservation $fiche): self { $this->fiche = $fiche; return $this; }
     public function getFicheMedicale(): ?FicheMedicale { return $this->ficheMedicale; }
     public function setFicheMedicale(?FicheMedicale $ficheMedicale): self { $this->ficheMedicale = $ficheMedicale; return $this; }
     public function getDate(): ?\DateTimeInterface { return $this->date; }

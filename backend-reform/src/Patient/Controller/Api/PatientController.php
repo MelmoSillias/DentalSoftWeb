@@ -4,6 +4,7 @@ namespace App\Patient\Controller\Api;
 
 use App\IdentityAccess\Entity\User;
 use App\Patient\Service\PatientService;
+use App\CareDelivery\Service\ConsultationService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -12,17 +13,15 @@ use Symfony\Component\Routing\Attribute\Route;
 
 final class PatientController extends AbstractController
 {
-    public function __construct(private PatientService $patientService)
+    public function __construct(private PatientService $patientService, private ConsultationService $consultationService)
     {
+        $this->patientService = $patientService;
+        $this->consultationService = $consultationService;
     }
 
     #[Route('/api/patients', name: 'api_patients', methods: ['GET'])]
     public function getPatients(Request $request): JsonResponse
     {
-        if (!$request->query->has('page') && !$request->query->has('limit')) {
-            return $this->json($this->patientService->listPatients());
-        }
-
         $page = (int) $request->query->get('page', 1);
         $limit = (int) $request->query->get('limit', 10);
         $query = trim((string) ($request->query->get('q') ?? $request->query->get('term') ?? ''));
@@ -30,22 +29,23 @@ final class PatientController extends AbstractController
         $sortField = $request->query->get('sortField');
         $sortOrder = $request->query->get('sortOrder');
 
-        return $this->json($this->patientService->listPatientsPaginated($page, $limit, $query, $sortField, $sortOrder));
+        $paginated = $request->query->has('page') || $request->query->has('limit');
+
+        $result = $this->patientService->listPatientsCollection(
+            paginated: $paginated,
+            page: $page,
+            limit: $limit,
+            query: $query,
+            sortField: $sortField,
+            sortOrder: $sortOrder
+        );
+
+        return $this->json($result);
     }
 
     #[Route('/api/patients/medecin', name: 'api_patients_by_medecin', methods: ['GET'])]
     public function getPatientsByMedecin(Request $request): JsonResponse
     {
-        if (!$request->query->has('page') && !$request->query->has('limit')) {
-            $result = $this->patientService->listPatientsByMedecin($this->getUser());
-
-            if (isset($result['error'])) {
-                return $this->json(['error' => $result['error']], $result['status'] ?? 400);
-            }
-
-            return $this->json($result);
-        }
-
         $page = (int) $request->query->get('page', 1);
         $limit = (int) $request->query->get('limit', 10);
         $query = trim((string) ($request->query->get('q') ?? $request->query->get('term') ?? ''));
@@ -53,7 +53,18 @@ final class PatientController extends AbstractController
         $sortField = $request->query->get('sortField');
         $sortOrder = $request->query->get('sortOrder');
 
-        $result = $this->patientService->listPatientsByMedecinPaginated($this->getUser(), $page, $limit, $query, $sortField, $sortOrder);
+        $paginated = $request->query->has('page') || $request->query->has('limit');
+
+        $result = $this->patientService->listPatientsCollection(
+            user: $this->getUser(),
+            medecinOnly: true,
+            paginated: $paginated,
+            page: $page,
+            limit: $limit,
+            query: $query,
+            sortField: $sortField,
+            sortOrder: $sortOrder
+        );
 
         if (isset($result['error'])) {
             return $this->json(['error' => $result['error']], $result['status'] ?? 400);
@@ -116,6 +127,43 @@ final class PatientController extends AbstractController
         return $this->json(['results' => $results]);
     }
 
+    #[Route('/api/patients/trash', name: 'api_patients_trash', methods: ['GET'])]
+    public function getPatientsTrash(Request $request): JsonResponse
+    {
+        $page = (int) $request->query->get('page', 1);
+        $limit = (int) $request->query->get('limit', 10);
+        $query = trim((string) ($request->query->get('q') ?? ''));
+        $query = $query !== '' ? $query : null;
+
+        $result = $this->patientService->listDeletedPatientsPaginated($page, $limit, $query);
+
+        return $this->json($result);
+    }
+
+    #[Route('/api/patient/{id}', name: 'api_patient_soft_delete', methods: ['DELETE'])]
+    public function softDeletePatient(int $id): JsonResponse
+    {
+        $result = $this->patientService->softDeletePatient($id);
+
+        if (isset($result['error'])) {
+            return $this->json(['message' => $result['error']], $result['status'] ?? 400);
+        }
+
+        return $this->json($result, 200);
+    }
+
+    #[Route('/api/patient/{id}/restore', name: 'api_patient_restore', methods: ['PATCH'])]
+    public function restorePatient(int $id): JsonResponse
+    {
+        $result = $this->patientService->restorePatient($id);
+
+        if (isset($result['error'])) {
+            return $this->json(['message' => $result['error']], $result['status'] ?? 400);
+        }
+
+        return $this->json($result, 200);
+    }
+
     #[Route('/api/patient/{id}', name: 'api_patient_details', methods: ['GET'])]
     public function getPatientDetails(int $id): JsonResponse
     {
@@ -135,7 +183,7 @@ final class PatientController extends AbstractController
         $payload['patient_id'] = $patientId; // Assurer que le patient_id est défini
 
         $user = $this->getUser();
-        $result = $this->patientService->createConsultation(
+        $result = $this->consultationService->createConsultation(
             $payload,
             $user instanceof User ? $user : null,
         );

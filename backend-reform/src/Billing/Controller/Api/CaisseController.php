@@ -323,6 +323,7 @@ class CaisseController extends AbstractController
             ],
             'devis' => $factureId ? [
                 'id' => $factureId,
+                'total' => $paiement->getFacture()->computeMontantsFromConsultation()['total'] ?? 0.0,
                 'reste' => $paiement->getFacture()->computeMontantsFromConsultation()['reste'] ?? 0.0,
                 'fiche' => [
                     'patient' => $patient ? [
@@ -360,7 +361,7 @@ class CaisseController extends AbstractController
         $factureId = $paiement->getFacture()?->getId();
 
         return [
-            'devis' => $factureId ? [
+            'facture' => $factureId ? [
                 'id' => $factureId,
                 'fiche' => [
                     'patient' => $patient ? [
@@ -389,7 +390,7 @@ class CaisseController extends AbstractController
             return $fromFicheMedicale;
         }
 
-        $fiche = $facture?->getConsultation()?->getFiche();
+        $fiche = $facture?->getConsultation()?->getFicheMedicale();
         if ($fiche && method_exists($fiche, 'getPatient')) {
             $patient = $fiche->getPatient();
             if ($patient instanceof Patient) {

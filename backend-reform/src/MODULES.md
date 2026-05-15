@@ -7,7 +7,7 @@
   - Etat: migre
 
 - `ClinicalRecord`
-  - Entites: `FicheMedicale`, `FicheEntretien`, `FicheEntretien*`, `FicheExamen`, `FicheExamen*`, `FicheBilan`, `FichePlanTraitement`, `FicheDocument`, `FicheObservation`, `ExamenDentaire`, `DocumentMedical`
+  - Entites: `FicheMedicale`, `FicheEntretien`, `FicheEntretien*`, `FicheExamen`, `FicheExamen*`, `FicheBilan`, `FichePlanTraitement`, `FicheDocument`
   - Etat: migre
 
 - `CareDelivery`

@@ -41,6 +41,7 @@ export const normalizePatient = (raw = {}) => ({
     referencement: raw.referencement ?? '',
     groupeSanguin: raw.groupeSanguin ?? raw.groupe_sanguin ?? '',
     notes: raw.notes ?? '',
+    deletedAt: raw.deletedAt ?? raw.deleted_at ?? null,
     dateInscription: raw.dateInscription ?? raw.date_inscription ?? raw.createdAt ?? raw.created_at ?? '',
     createdAt: raw.createdAt ?? raw.created_at ?? raw.dateInscription ?? raw.date_inscription ?? '',
     contactUrgence: raw.contactUrgence ?? raw.contact_urgence ?? null,
@@ -67,6 +68,7 @@ export const fetchPatients = async (token, { page = 1, limit = 10, q = '', sortF
         headers: authHeaders(token),
         params: { page, limit, q, sortField, sortOrder }
     });
+    console.log('fetchPatients response:', res.data);
     const data = res.data || {};
     const items = Array.isArray(data.items) ? data.items.map(normalizePatient) : [];
     return { ...data, items };
@@ -242,7 +244,7 @@ export const checkConsultationActive = async (patientId, token) => {
     return res.data;
 };
 
-export const deleteConsultation = async (consultationId, token) => { 
+export const deleteConsultation = async (consultationId, token) => {
     if (isPatientsTourMockEnabled()) {
         return deleteConsultationTourMock(consultationId);
     }

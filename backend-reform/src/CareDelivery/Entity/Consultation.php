@@ -5,8 +5,7 @@ namespace App\CareDelivery\Entity;
 use App\Billing\Entity\FactureAssurance;
 use App\Billing\Entity\Facture;
 use App\Billing\Entity\Paiement;
-use App\ClinicalRecord\Entity\FicheMedicale;
-use App\ClinicalRecord\Entity\FicheObservation;
+use App\ClinicalRecord\Entity\FicheMedicale; 
 use App\CareDelivery\Repository\ConsultationRepository;
 use App\IdentityAccess\Entity\Employe;
 use App\Patient\Entity\Patient;
@@ -26,10 +25,6 @@ class Consultation
     #[ORM\ManyToOne(targetEntity: Patient::class, inversedBy: 'consultations')]
     #[ORM\JoinColumn(nullable: false)]
     private ?Patient $patient = null;
-
-    #[ORM\ManyToOne(targetEntity: FicheObservation::class, inversedBy: 'consultations')]
-    #[ORM\JoinColumn(nullable: true)]
-    private ?FicheObservation $fiche = null;
 
     #[ORM\ManyToOne(targetEntity: FicheMedicale::class, inversedBy: 'consultations')]
     #[ORM\JoinColumn(nullable: true)]
@@ -86,8 +81,6 @@ class Consultation
     public function getId(): ?int { return $this->id; }
     public function getPatient(): ?Patient { return $this->patient; }
     public function setPatient(?Patient $patient): self { $this->patient = $patient; return $this; }
-    public function getFiche(): ?FicheObservation { return $this->fiche; }
-    public function setFiche(?FicheObservation $fiche): self { $this->fiche = $fiche; return $this; }
     public function getFicheMedicale(): ?FicheMedicale { return $this->ficheMedicale; }
     public function setFicheMedicale(?FicheMedicale $ficheMedicale): self { $this->ficheMedicale = $ficheMedicale; return $this; }
     public function getMedecin(): ?Employe { return $this->medecin; }

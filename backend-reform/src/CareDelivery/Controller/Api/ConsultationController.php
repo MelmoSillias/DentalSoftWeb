@@ -181,7 +181,6 @@ final class ConsultationController extends AbstractController{
         return new JsonResponse($result, isset($result['error']) ? 400 : 200);
     }
 
-    
     #[Route('/api/admin/consultation/{id}/details', name: 'api_consultation_details', methods: ['GET'])]
     public function getConsultationDetailsJson(int $id): JsonResponse
     {
@@ -222,7 +221,5 @@ final class ConsultationController extends AbstractController{
         $isValid = $this->consultationService->verifyConsultationMedecinPassword($id, $password);
 
         return $this->json(['valid' => $isValid]);
-    }
-
-    
+    } 
 }

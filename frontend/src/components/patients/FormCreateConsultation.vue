@@ -248,6 +248,8 @@ const saveConsultation = async () => {
         toast.add({ severity: 'warn', summary: 'Patient requis', detail: 'Sélectionnez un patient.', life: 2500 });
         return;
     }
+    await refreshActiveConsultationFlag(selectedPatientId.value);
+
     if (hasActiveConsultation.value) {
         toast.add({ severity: 'warn', summary: 'Consultation active', detail: 'Une consultation est déjà en cours pour ce patient.', life: 3000 });
         return;
@@ -374,7 +376,7 @@ const handleSubmit = (event) => {
         </div>
         <div class="flex gap-2 justify-end">
             <Button type="button" label="Annuler" severity="secondary" @click="emit('cancel')" />
-            <Button type="button" label="Créer" icon="pi pi-check" :loading="loading" @click="handleSubmit" />
+            <Button type="button" label="Créer" icon="pi pi-check" :loading="loading || checkingActive" :disabled="checkingActive || hasActiveConsultation" @click="handleSubmit" />
         </div>
     </div>
 </template>

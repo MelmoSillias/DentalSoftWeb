@@ -26,6 +26,18 @@
                         <td>Mode</td>
                         <td class="right">{{ paiement?.mode?.libelle || '—' }}</td>
                     </tr>
+                    <tr>
+                        <td>Facture N°</td>
+                        <td class="right">{{ paiement?.devis?.id || '—' }}</td>
+                    </tr>
+                    <tr>
+                        <td>Montant facture</td>
+                        <td class="right">{{ formatMoney(paiement?.devis?.total) }}</td>
+                    </tr>
+                    <tr>
+                        <td>Reste à payer</td>
+                        <td class="right">{{ formatMoney(paiement?.devis?.reste) }}</td>
+                    </tr>
                 </tbody>
             </table>
 

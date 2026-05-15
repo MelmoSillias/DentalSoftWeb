@@ -275,7 +275,6 @@ class CashdeskService
         $remainingAfter = max(0.0, (float) ($updatedMontants['restePatient'] ?? 0.0));
 
         $facture->setIsReglee($remainingAfter <= 0.0);
-        $facture->setInsuranceStatus('none');
 
         $this->em->persist($facture);
         $this->em->flush();
@@ -339,7 +338,6 @@ class CashdeskService
         }
 
         $facture->setIsReglee(false);
-        $facture->setInsuranceStatus('none');
         $facture->setIsRecouvre(false);
         $consultation->setIsRecouvre(false);
 
@@ -424,37 +422,56 @@ class CashdeskService
     private function buildFactureInsuranceMetadata(Facture $facture): array
     {
         $consultation = $facture->getConsultation();
-        $montants = $facture->computeMontantsFromConsultation();
-        $insuranceAmount = (float) $montants['montantAssurance'];
-
         $patientPaidAmount = (float) $facture->computePatientPaidAmount();
 
-        $insurancePaidAmount = (float) $this->transactionRepo->createQueryBuilder('t')
-            ->select('COALESCE(SUM(t.montant), 0)')
-            ->where('t.consultation = :consultation')
-            ->andWhere('t.rolePaiement = :role')
-            ->andWhere('t.validationStatus = :status')
-            ->setParameter('consultation', $consultation)
-            ->setParameter('role', 'insurance')
-            ->setParameter('status', 'validated')
-            ->getQuery()
-            ->getSingleScalarResult();
+        $factureAssurance = $consultation?->getFactureAssurance();
+        if ($factureAssurance !== null) {
+            $totals = $factureAssurance->computeTotals();
+            $insuranceAmount = (float) ($totals['montantAssureur'] ?? 0.0);
+            $insuranceRate = $factureAssurance->getCoverageRate();
 
-        $insurancePendingAmount = max(0.0, $insuranceAmount - $insurancePaidAmount);
+            $insurancePaidAmount = (float) $this->transactionRepo->createQueryBuilder('t')
+                ->select('COALESCE(SUM(t.montant), 0)')
+                ->where('t.consultation = :consultation')
+                ->andWhere('t.rolePaiement = :role')
+                ->andWhere('t.validationStatus = :status')
+                ->setParameter('consultation', $consultation)
+                ->setParameter('role', 'insurance')
+                ->setParameter('status', 'validated')
+                ->getQuery()
+                ->getSingleScalarResult();
+
+            $insurancePendingAmount = max(0.0, $insuranceAmount - $insurancePaidAmount);
+
+            return [
+                'hasInsurance' => true,
+                'insuranceStatus' => $factureAssurance->getInsuranceStatus(),
+                'assuranceId' => $factureAssurance->getAssurance()?->getId(),
+                'insuranceModeLabel' => $factureAssurance->getAssurance()?->getNom(),
+                'insuranceRate' => $insuranceRate,
+                'insuranceAmount' => $insuranceAmount,
+                'insurancePaidAmount' => $insurancePaidAmount,
+                'insurancePendingAmount' => $insurancePendingAmount,
+                'insuranceTransactionId' => null,
+                'insurancePaymentId' => null,
+                'patientPaidAmount' => $patientPaidAmount,
+                'patientRemainingAmount' => max(0.0, (float) ($facture->computeMontantsFromConsultation()['restePatient'] ?? 0.0)),
+            ];
+        }
 
         return [
-            'hasInsurance' => $facture->getAssurance() !== null || $insuranceAmount > 0,
-            'insuranceStatus' => $facture->getInsuranceStatus(),
-            'assuranceId' => $facture->getAssurance()?->getId(),
-            'insuranceModeLabel' => $facture->getAssurance()?->getNom(),
-            'insuranceRate' => $montants['tauxCouverture'],
-            'insuranceAmount' => $insuranceAmount,
-            'insurancePaidAmount' => $insurancePaidAmount,
-            'insurancePendingAmount' => $insurancePendingAmount,
+            'hasInsurance' => false,
+            'insuranceStatus' => 'none',
+            'assuranceId' => null,
+            'insuranceModeLabel' => null,
+            'insuranceRate' => null,
+            'insuranceAmount' => 0.0,
+            'insurancePaidAmount' => 0.0,
+            'insurancePendingAmount' => 0.0,
             'insuranceTransactionId' => null,
             'insurancePaymentId' => null,
             'patientPaidAmount' => $patientPaidAmount,
-            'patientRemainingAmount' => max(0.0, (float) $montants['restePatient']),
+            'patientRemainingAmount' => max(0.0, (float) ($facture->computeMontantsFromConsultation()['restePatient'] ?? 0.0)),
         ];
     }
 

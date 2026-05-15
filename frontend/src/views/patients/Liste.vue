@@ -34,7 +34,19 @@ const router = useRouter();
 const token = localStorage.getItem('token');
 const { printComponent } = usePrinter();
 
-const { patients, totalRecords, loading, fetchPatients, fetchPatientsByMedecin, normalizePatient, checkConsultationActive, deleteConsultation } = usePatients();
+const {
+    patients,
+    totalRecords,
+    loading,
+    fetchPatients,
+    fetchPatientsByMedecin,
+    normalizePatient,
+    checkConsultationActive,
+    deleteConsultation,
+    deletePatient,
+    fetchPatientsTrash,
+    restorePatient
+} = usePatients();
 const auth = useAuthStore();
 const isMedecin = computed(() => Boolean(auth.user?.roles?.includes('ROLE_MEDECIN')));
 const isAdmin = computed(() => Boolean(auth.user?.roles?.includes('ROLE_ADMIN')));
@@ -51,6 +63,7 @@ const toolbarConsultLoading = ref(false);
 const consultationLoading = ref({});
 const isGuidedTourStarting = ref(false);
 const loadErrorMessage = ref('');
+const initializingPage = ref(true);
 let guidedTourTableState = null;
 let guidedTourDemoActive = false;
 let guidedTourCleanupPromise = null;
@@ -60,12 +73,25 @@ const showPatientDialog = ref(false);
 const showConsultationDialog = ref(false);
 const showRdvDialog = ref(false);
 const showActiveConsultWarn = ref(false);
+const showTrashDialog = ref(false);
+const showDeletePatientDialog = ref(false);
 
 const editingPatient = ref(null);
 const consultationPatient = ref(null);
 const rdvPatient = ref(null);
 const activeConsultWarnPatient = ref(null);
 const activeConsultInfo = ref({ hasActive: false, consultationId: null, hasFiche: false });
+const patientToDelete = ref(null);
+const deletingPatientId = ref(null);
+const restoringPatientId = ref(null);
+
+const trashPatients = ref([]);
+const trashTotalRecords = ref(0);
+const trashLoading = ref(false);
+const trashSearch = ref('');
+const trashFirst = ref(0);
+const trashRowsPerPage = ref(10);
+let trashSearchTimeout = null;
 
 const setConsultationLoading = (key, value) => {
     if (key === undefined || key === null) return;
@@ -122,11 +148,18 @@ const loadVisibilityPolicy = async ({ asPageLoad = false } = {}) => {
 };
 
 const initializePage = async () => {
+    initializingPage.value = true;
     loadErrorMessage.value = '';
-    const visibilityOk = await loadVisibilityPolicy({ asPageLoad: true });
-    const patientsOk = await loadPatients({ page: 1, limit: rowsPerPage.value, asPageLoad: true });
-    if (!visibilityOk && !patientsOk && !loadErrorMessage.value) {
-        loadErrorMessage.value = 'Impossible de charger les données de la page patients.';
+    try {
+        const [visibilityOk, patientsOk] = await Promise.all([
+            loadVisibilityPolicy({ asPageLoad: true }),
+            loadPatients({ page: 1, limit: rowsPerPage.value, asPageLoad: true })
+        ]);
+        if (!visibilityOk && !patientsOk && !loadErrorMessage.value) {
+            loadErrorMessage.value = 'Impossible de charger les données de la page patients.';
+        }
+    } finally {
+        initializingPage.value = false;
     }
 };
 
@@ -307,6 +340,109 @@ const handleRdvSaved = () => {
     showRdvDialog.value = false;
 };
 
+const openDeletePatientDialog = (patient) => {
+    patientToDelete.value = patient;
+    showDeletePatientDialog.value = true;
+};
+
+const closeDeletePatientDialog = () => {
+    showDeletePatientDialog.value = false;
+    patientToDelete.value = null;
+};
+
+const confirmDeletePatient = async () => {
+    if (!patientToDelete.value?.id || deletingPatientId.value) return;
+
+    deletingPatientId.value = patientToDelete.value.id;
+    try {
+        const res = await deletePatient(patientToDelete.value.id, token);
+        if (!res?.success) {
+            throw new Error(res?.message || 'Suppression impossible');
+        }
+
+        toast.add({ severity: 'success', summary: 'Corbeille', detail: 'Patient déplacé dans la corbeille.', life: 3000 });
+        closeDeletePatientDialog();
+        await loadPatients({
+            page: Math.floor(first.value / rowsPerPage.value) + 1,
+            limit: rowsPerPage.value,
+            q: searchQuery.value,
+            sort: sortField.value,
+            order: sortOrder.value
+        });
+
+        if (showTrashDialog.value) {
+            await loadTrashPatients({
+                page: Math.floor(trashFirst.value / trashRowsPerPage.value) + 1,
+                limit: trashRowsPerPage.value,
+                q: trashSearch.value
+            });
+        }
+    } catch (error) {
+        console.error('Erreur suppression patient', error);
+        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de supprimer ce patient.', life: 3000 });
+    } finally {
+        deletingPatientId.value = null;
+    }
+};
+
+const loadTrashPatients = async ({ page = 1, limit = trashRowsPerPage.value, q = trashSearch.value } = {}) => {
+    trashLoading.value = true;
+    try {
+        const res = await fetchPatientsTrash(token, { page, limit, q });
+        trashPatients.value = Array.isArray(res?.items) ? res.items : [];
+        trashTotalRecords.value = res?.total ?? trashPatients.value.length;
+    } catch (error) {
+        console.error('Erreur chargement corbeille', error);
+        toast.add({ severity: 'error', summary: 'Corbeille', detail: 'Impossible de charger la corbeille.', life: 3000 });
+    } finally {
+        trashLoading.value = false;
+    }
+};
+
+const openTrashDialog = async () => {
+    showTrashDialog.value = true;
+    trashFirst.value = 0;
+    await loadTrashPatients({ page: 1, limit: trashRowsPerPage.value, q: trashSearch.value });
+};
+
+const handleTrashPage = (event) => {
+    trashFirst.value = event.first;
+    trashRowsPerPage.value = event.rows;
+    const page = Math.floor(event.first / event.rows) + 1;
+    loadTrashPatients({ page, limit: event.rows, q: trashSearch.value });
+};
+
+const restorePatientFromTrash = async (patient) => {
+    if (!patient?.id || restoringPatientId.value) return;
+
+    restoringPatientId.value = patient.id;
+    try {
+        const res = await restorePatient(patient.id, token);
+        if (!res?.success) {
+            throw new Error(res?.message || 'Restauration impossible');
+        }
+
+        toast.add({ severity: 'success', summary: 'Corbeille', detail: 'Patient restauré avec succès.', life: 3000 });
+        await loadTrashPatients({
+            page: Math.floor(trashFirst.value / trashRowsPerPage.value) + 1,
+            limit: trashRowsPerPage.value,
+            q: trashSearch.value
+        });
+        await loadPatients({
+            page: Math.floor(first.value / rowsPerPage.value) + 1,
+            limit: rowsPerPage.value,
+            q: searchQuery.value,
+            sort: sortField.value,
+            order: sortOrder.value
+        });
+    } catch (error) {
+        console.error('Erreur restauration patient', error);
+        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de restaurer ce patient.', life: 3000 });
+    } finally {
+        restoringPatientId.value = null;
+    }
+};
+
 const openDossier = (patient) => {
     if (!patient?.id) return;
     router.push({ name: 'patients-dossier', params: { patientId: parseInt(patient.id) } });
@@ -325,6 +461,15 @@ watch(searchQuery, () => {
     if (searchTimeout) clearTimeout(searchTimeout);
     searchTimeout = setTimeout(() => {
         loadPatients({ page: 1, limit: rowsPerPage.value, q: searchQuery.value });
+    }, 300);
+});
+
+watch(trashSearch, () => {
+    trashFirst.value = 0;
+    if (!showTrashDialog.value) return;
+    if (trashSearchTimeout) clearTimeout(trashSearchTimeout);
+    trashSearchTimeout = setTimeout(() => {
+        loadTrashPatients({ page: 1, limit: trashRowsPerPage.value, q: trashSearch.value });
     }, 300);
 });
 
@@ -524,6 +669,7 @@ const handleGuidedTourRequest = async (event) => {
 onBeforeUnmount(() => {
     if (highlightTimeout) clearTimeout(highlightTimeout);
     if (searchTimeout) clearTimeout(searchTimeout);
+    if (trashSearchTimeout) clearTimeout(trashSearchTimeout);
     deactivatePatientsTourMock();
     guidedTourDemoActive = false;
     window.removeEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
@@ -558,6 +704,9 @@ onMounted(() => {
                     </div>
                 </div>
                 <div class="flex flex-row gap-3 w-full md:w-auto" data-tour="patients-list.toolbar">
+                    <Button label="Corbeille" icon="pi pi-trash" severity="secondary"
+                        class="sm:w-auto shadow-lg hover:shadow-xl transition-all duration-300 px-5 py-2.5 rounded-xl font-medium"
+                        @click="openTrashDialog" :pt="{ label: { class: 'hidden sm:inline' } }" />
                     <Button label="Nouveau rendez-vous" icon="fas fa-calendar-plus" severity="warn"
                         data-tour="patients-list.rdv-button"
                         class=" sm:w-auto shadow-lg hover:shadow-xl transition-all duration-300 bg-gradient-to-r from-blue-500 to-blue-600 border-0 text-white px-5 py-2.5 rounded-xl font-medium"
@@ -618,7 +767,7 @@ onMounted(() => {
 
             <!-- Data Table -->
             <div class="m-2 p-2 border-rounded-1 overflow-x-auto" data-tour="patients-list.table">
-                <DataTable :value="patients" dataKey="id" :loading="loading" :paginator="true" lazy
+                <DataTable :value="patients" dataKey="id" :loading="loading || initializingPage" :paginator="true" lazy
                     :rows="rowsPerPage" :rowsPerPageOptions="[5, 10, 20, 50]" :first="first"
                     :totalRecords="totalRecords" @page="handlePage" @sort="handleSort"
                     :sortField="sortField" :sortOrder="sortOrder"
@@ -737,6 +886,11 @@ onMounted(() => {
                                     v-tooltip.top="'Modifier patient'"
                                     class="hover:bg-surface-100 dark:hover:bg-surface-700"
                                     @click="openEditPatient(data)" />
+                                <Button icon="pi pi-trash" severity="danger" text rounded
+                                    v-tooltip.top="'Supprimer (corbeille)'"
+                                    class="hover:bg-red-50 dark:hover:bg-red-900/20"
+                                    :loading="deletingPatientId === data.id"
+                                    @click="openDeletePatientDialog(data)" />
                             </div>
                         </template>
                     </Column>
@@ -961,6 +1115,102 @@ onMounted(() => {
                     @cancel="showRdvDialog = false" />
             </div>
         </Dialog>
+
+        <Dialog v-model:visible="showDeletePatientDialog" modal :style="{ width: '34rem' }" :pt="{
+            root: 'rounded-2xl',
+            header: 'bg-gradient-to-r from-red-50 to-surface-0 dark:from-red-900/20 dark:to-surface-800 px-6 py-4 border-b',
+            content: 'p-0 mt-2'
+        }">
+            <template #header>
+                <div class="flex items-center gap-3">
+                    <div class="p-2 rounded-lg bg-red-100 dark:bg-red-900/30">
+                        <i class="pi pi-trash text-red-600 dark:text-red-400"></i>
+                    </div>
+                    <div>
+                        <h4 class="m-0 text-surface-900 dark:text-surface-100">Supprimer le patient</h4>
+                        <p class="text-sm text-surface-500 dark:text-surface-400 mt-1">Le patient sera déplacé dans la corbeille</p>
+                    </div>
+                </div>
+            </template>
+
+            <div class="p-6">
+                <p class="text-surface-700 dark:text-surface-300 mb-5">
+                    Voulez-vous déplacer
+                    <span class="font-semibold">{{ patientToDelete?.fullname || patientToDelete?.nom }}</span>
+                    vers la corbeille ?
+                </p>
+
+                <div class="flex justify-end gap-2">
+                    <Button label="Annuler" severity="secondary" @click="closeDeletePatientDialog" />
+                    <Button label="Supprimer" icon="pi pi-trash" severity="danger"
+                        :loading="deletingPatientId === patientToDelete?.id"
+                        @click="confirmDeletePatient" />
+                </div>
+            </div>
+        </Dialog>
+
+        <Dialog v-model:visible="showTrashDialog" modal maximizable :style="{ width: '62rem' }" :pt="{
+            root: 'rounded-2xl',
+            header: 'bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900 dark:to-surface-800 px-6 py-4 border-b',
+            content: 'p-0 mt-2'
+        }">
+            <template #header>
+                <div class="flex items-center gap-3">
+                    <div class="p-2 rounded-lg bg-surface-100 dark:bg-surface-700">
+                        <i class="pi pi-trash text-surface-700 dark:text-surface-200"></i>
+                    </div>
+                    <div>
+                        <h4 class="m-0 text-surface-900 dark:text-surface-100">Corbeille des patients</h4>
+                        <p class="text-sm text-surface-500 dark:text-surface-400 mt-1">Restaurez un patient supprimé par erreur</p>
+                    </div>
+                </div>
+            </template>
+
+            <div class="p-5 space-y-4">
+                <div class="flex flex-col sm:flex-row sm:items-end gap-3">
+                    <div class="w-full sm:max-w-md">
+                        <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">Rechercher dans la corbeille</label>
+                        <IconField class="w-full relative">
+                            <InputIcon class="fas fa-search text-surface-400" />
+                            <InputText v-model="trashSearch" placeholder="Nom, prénom, téléphone..." class="w-full p-3 rounded-xl" />
+                        </IconField>
+                    </div>
+                </div>
+
+                <DataTable :value="trashPatients" dataKey="id" :loading="trashLoading" :paginator="true" lazy
+                    :rows="trashRowsPerPage" :rowsPerPageOptions="[5, 10, 20]" :first="trashFirst"
+                    :totalRecords="trashTotalRecords" @page="handleTrashPage" class="rounded-xl border border-surface-200 dark:border-surface-700">
+                    <Column field="fullname" header="Patient">
+                        <template #body="{ data }">
+                            <div class="flex flex-col">
+                                <span class="font-semibold text-surface-900 dark:text-surface-100">{{ data.fullname || `${data.prenom ?? ''} ${data.nom ?? ''}`.trim() }}</span>
+                                <span class="text-xs text-surface-500">{{ data.telephone || '—' }}</span>
+                            </div>
+                        </template>
+                    </Column>
+
+                    <Column field="deletedAt" header="Supprimé le">
+                        <template #body="{ data }">
+                            <span class="text-sm text-surface-700 dark:text-surface-300">{{ data.deletedAt || '—' }}</span>
+                        </template>
+                    </Column>
+
+                    <Column header="Actions" :style="{ width: '180px' }">
+                        <template #body="{ data }">
+                            <Button label="Restaurer" icon="pi pi-replay" severity="success" text
+                                :loading="restoringPatientId === data.id"
+                                @click="restorePatientFromTrash(data)" />
+                        </template>
+                    </Column>
+
+                    <template #empty>
+                        <div class="py-10 text-center text-surface-500">
+                            Aucun patient dans la corbeille.
+                        </div>
+                    </template>
+                </DataTable>
+            </div>
+        </Dialog>
     </section>
 </template>
 
@@ -973,7 +1223,7 @@ onMounted(() => {
 
 :deep(.appdark .row-highlight),
 :deep(.appdark .row-highlight > td) {
-    animation: flash-green-dark 0.6s ease-in-out 0s 4 alternate; 
+    animation: flash-green-dark 0.6s ease-in-out 0s 4 alternate;
     background-color: #064e3b !important;
 }
 

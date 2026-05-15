@@ -43,6 +43,7 @@ use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Contracts\Cache\CacheInterface;
 use Symfony\Contracts\Cache\ItemInterface;
+use Psr\Cache\CacheItemPoolInterface;
 
 class PatientService
 {
@@ -70,13 +71,36 @@ class PatientService
 
     private function resolveLatestConsultation(Patient $patient): ?Consultation
     {
-        $latest = $this->consultationRepo->findLatestByPatient($patient);
+        $latest = $this->consultationRepo->findLatestClosedByPatient($patient);
 
         if ($latest !== null) {
             return $latest;
         }
 
-        return $patient->getDerniereConsultation();
+        $fallback = $patient->getDerniereConsultation();
+        if ($fallback instanceof Consultation && (int) $fallback->getStatut() === 1) {
+            return $fallback;
+        }
+
+        return null;
+    }
+
+    private function clearPatientsCache(): void
+    {
+        if ($this->cache instanceof CacheItemPoolInterface) {
+            $this->cache->clear();
+        }
+    }
+
+    private function findActivePatient(int $id): ?Patient
+    {
+        $patient = $this->patientRepo->find($id);
+
+        if (!$patient instanceof Patient || $patient->isDeleted()) {
+            return null;
+        }
+
+        return $patient;
     }
 
     private function formatPatientSummary(Patient $patient): array
@@ -167,87 +191,176 @@ class PatientService
         return $impayees;
     }
 
+    private function resolveMedecinFromUser(?object $user): array
+    {
+        if (!$user) {
+            return ['error' => 'Utilisateur non authentifié', 'status' => 401];
+        }
+
+        $employe = $this->employeRepo->findOneBy(['user' => $user]);
+        if (!$employe) {
+            return ['error' => 'Aucun employé associé', 'status' => 404];
+        }
+
+        return ['employe' => $employe];
+    }
+
+    public function listPatientsCollection(
+        ?object $user = null,
+        bool $medecinOnly = false,
+        bool $paginated = false,
+        int $page = 1,
+        int $limit = 10,
+        ?string $query = null,
+        ?string $sortField = null,
+        ?string $sortOrder = null
+    ): array {
+        $resolvedPage = max(1, $page);
+        $resolvedLimit = max(1, min($limit, 100));
+        $resolvedSortOrder = strtolower($sortOrder ?? 'asc') === 'desc' ? 'desc' : 'asc';
+
+        $medecin = null;
+        if ($medecinOnly) {
+            $resolved = $this->resolveMedecinFromUser($user);
+            if (isset($resolved['error'])) {
+                return $resolved;
+            }
+            $medecin = $resolved['employe'];
+        }
+
+        if (!$paginated) {
+            $patients = $medecinOnly
+                ? $this->patientRepo->findPatientsByMedecin($medecin, $query, $sortField, $resolvedSortOrder)
+                : $this->patientRepo->findBy(['deletedAt' => null], ['nom' => 'ASC']);
+
+            return array_values(array_map(fn (Patient $patient) => $this->formatPatientSummary($patient), $patients));
+        }
+
+        $cacheScope = $medecinOnly ? sprintf('medecin.%d', $medecin->getId()) : 'global';
+        $cacheKey = sprintf(
+            'patients.collection.%s.%d.%d.%s.%s.%s',
+            $cacheScope,
+            $resolvedPage,
+            $resolvedLimit,
+            sha1((string) $query),
+            $sortField ?? 'default',
+            $resolvedSortOrder
+        );
+
+        return $this->cache->get($cacheKey, function (ItemInterface $item) use ($medecinOnly, $medecin, $resolvedPage, $resolvedLimit, $query, $sortField, $resolvedSortOrder) {
+            $item->expiresAfter(60);
+
+            $result = $medecinOnly
+                ? $this->patientRepo->paginatePatientsByMedecin($medecin, $resolvedPage, $resolvedLimit, $query, $sortField, $resolvedSortOrder)
+                : $this->patientRepo->paginatePatients($resolvedPage, $resolvedLimit, $query, $sortField, $resolvedSortOrder);
+
+            $items = array_map(fn (Patient $patient) => $this->formatPatientSummary($patient), $result['items']);
+
+            return [
+                'items' => $items,
+                'total' => $result['total'],
+                'page' => $resolvedPage,
+                'limit' => $resolvedLimit,
+                'sortField' => $sortField,
+                'sortOrder' => $resolvedSortOrder,
+            ];
+        });
+    }
+
     public function listPatients(): array
     {
-        $patients = $this->patientRepo->findBy([], ['nom' => 'ASC']);
-        return array_map(fn (Patient $patient) => $this->formatPatientSummary($patient), $patients);
+        return $this->listPatientsCollection();
     }
 
     public function listPatientsPaginated(int $page, int $limit, ?string $query = null, ?string $sortField = null, ?string $sortOrder = null): array
     {
-        $page = max(1, $page);
-        $limit = max(1, min($limit, 100));
-        $cacheKey = sprintf('patients.list.%d.%d.%s.%s.%s', $page, $limit, sha1((string) $query), $sortField ?? 'default', $sortOrder ?? 'asc');
-
-        return $this->cache->get($cacheKey, function (ItemInterface $item) use ($page, $limit, $query, $sortField, $sortOrder) {
-            $item->expiresAfter(60);
-            $result = $this->patientRepo->paginatePatients($page, $limit, $query, $sortField, $sortOrder);
-            $items = array_map(fn (Patient $patient) => $this->formatPatientSummary($patient), $result['items']);
-
-            return [
-                'items' => $items,
-                'total' => $result['total'],
-                'page' => $page,
-                'limit' => $limit,
-                'sortField' => $sortField,
-                'sortOrder' => $sortOrder,
-            ];
-        });
+        return $this->listPatientsCollection(
+            paginated: true,
+            page: $page,
+            limit: $limit,
+            query: $query,
+            sortField: $sortField,
+            sortOrder: $sortOrder
+        );
     }
 
     public function listPatientsByMedecin(?object $user): array
     {
-        if (!$user) {
-            return ['error' => 'Utilisateur non authentifié', 'status' => 401];
-        }
-
-        $employe = $this->employeRepo->findOneBy(['user' => $user]);
-        if (!$employe) {
-            return ['error' => 'Aucun employé associé', 'status' => 404];
-        }
-
-        $consultations = $this->consultationRepo->findBy(['medecin' => $employe]);
-        $patientsFromConsultations = array_map(fn (Consultation $c) => $c->getPatient(), $consultations);
-
-        $rdvs = $this->em->getRepository(Rdv::class)->findBy(['medecin' => $employe]);
-        $patientsFromRdvs = array_map(fn ($r) => $r->getPatient(), $rdvs);
-
-        $patients = array_unique(array_merge($patientsFromConsultations, $patientsFromRdvs), SORT_REGULAR);
-
-        $data = array_map(fn (Patient $patient) => $this->formatPatientSummary($patient), $patients);
-
-        return array_values($data);
+        return $this->listPatientsCollection(
+            user: $user,
+            medecinOnly: true
+        );
     }
 
     public function listPatientsByMedecinPaginated(?object $user, int $page, int $limit, ?string $query = null, ?string $sortField = null, ?string $sortOrder = null): array
     {
-        if (!$user) {
-            return ['error' => 'Utilisateur non authentifié', 'status' => 401];
+        return $this->listPatientsCollection(
+            user: $user,
+            medecinOnly: true,
+            paginated: true,
+            page: $page,
+            limit: $limit,
+            query: $query,
+            sortField: $sortField,
+            sortOrder: $sortOrder
+        );
+    }
+
+    public function listDeletedPatientsPaginated(int $page, int $limit, ?string $query = null): array
+    {
+        $resolvedPage = max(1, $page);
+        $resolvedLimit = max(1, min($limit, 100));
+
+        $result = $this->patientRepo->paginateDeletedPatients($resolvedPage, $resolvedLimit, $query);
+        $items = array_map(fn (Patient $patient) => [
+            ...$this->formatPatientSummary($patient),
+            'deletedAt' => $patient->getDeletedAt()?->format('Y-m-d H:i:s'),
+        ], $result['items']);
+
+        return [
+            'items' => $items,
+            'total' => $result['total'],
+            'page' => $resolvedPage,
+            'limit' => $resolvedLimit,
+        ];
+    }
+
+    public function softDeletePatient(int $id): array
+    {
+        $patient = $this->findActivePatient($id);
+        if (!$patient) {
+            return ['error' => 'Patient non trouvé', 'status' => 404];
         }
 
-        $employe = $this->employeRepo->findOneBy(['user' => $user]);
-        if (!$employe) {
-            return ['error' => 'Aucun employé associé', 'status' => 404];
+        $patient->setDeletedAt(new DateTimeImmutable());
+        $this->em->persist($patient);
+        $this->em->flush();
+        $this->clearPatientsCache();
+        $this->focusRealtimePublisher->publishPatientRefresh($patient, 'deleted');
+
+        return [
+            'success' => true,
+            'message' => 'Patient déplacé dans la corbeille.',
+        ];
+    }
+
+    public function restorePatient(int $id): array
+    {
+        $patient = $this->patientRepo->find($id);
+        if (!$patient instanceof Patient || !$patient->isDeleted()) {
+            return ['error' => 'Patient introuvable dans la corbeille', 'status' => 404];
         }
 
-        $page = max(1, $page);
-        $limit = max(1, min($limit, 100));
-        $cacheKey = sprintf('patients.medecin.%d.%d.%d.%s.%s.%s', $employe->getId(), $page, $limit, sha1((string) $query), $sortField ?? 'default', $sortOrder ?? 'asc');
+        $patient->setDeletedAt(null);
+        $this->em->persist($patient);
+        $this->em->flush();
+        $this->clearPatientsCache();
+        $this->focusRealtimePublisher->publishPatientRefresh($patient, 'restored');
 
-        return $this->cache->get($cacheKey, function (ItemInterface $item) use ($employe, $page, $limit, $query, $sortField, $sortOrder) {
-            $item->expiresAfter(60);
-            $result = $this->patientRepo->paginatePatientsByMedecin($employe, $page, $limit, $query, $sortField, $sortOrder);
-            $items = array_map(fn (Patient $patient) => $this->formatPatientSummary($patient), $result['items']);
-
-            return [
-                'items' => $items,
-                'total' => $result['total'],
-                'page' => $page,
-                'limit' => $limit,
-                'sortField' => $sortField,
-                'sortOrder' => $sortOrder,
-            ];
-        });
+        return [
+            'success' => true,
+            'message' => 'Patient restauré avec succès.',
+        ];
     }
 
     public function listPatientConsultations(int $patientId): array
@@ -308,6 +421,7 @@ class PatientService
 
             $this->em->persist($patient);
             $this->em->flush();
+            $this->clearPatientsCache();
 
             $this->notifyPatientCreation($patient, $actor);
             $this->focusRealtimePublisher->publishPatientRefresh($patient, 'created');
@@ -327,7 +441,7 @@ class PatientService
     public function updatePatient(int $id, array $data, ?UploadedFile $photo = null, ?string $uploadDir = null): array
     {
         try {
-            $patient = $this->patientRepo->find($id);
+            $patient = $this->findActivePatient($id);
             if (!$patient) {
                 return ['error' => 'Patient non trouvé', 'status' => 404];
             }
@@ -377,6 +491,7 @@ class PatientService
 
             $this->em->persist($patient);
             $this->em->flush();
+            $this->clearPatientsCache();
             $this->focusRealtimePublisher->publishPatientRefresh($patient, 'updated');
 
             return [
@@ -394,6 +509,14 @@ class PatientService
 
     public function checkConsultationActive(int $id): array
     {
+        if (!$this->findActivePatient($id)) {
+            return [
+                'hasActive' => false,
+                'consultationId' => null,
+                'hasFiche' => false,
+            ];
+        }
+
         $consultation = $this->consultationRepo->findOneBy([
             'patient' => $id,
             'statut' => 0,
@@ -410,7 +533,7 @@ class PatientService
         return [
             'hasActive' => true,
             'consultationId' => $consultation->getId(),
-            'hasFiche' => $consultation->getFiche() !== null || $consultation->getFicheMedicale() !== null,
+            'hasFiche' => $consultation->getFicheMedicale() !== null || $consultation->getFicheMedicale() !== null,
         ];
     }
 
@@ -430,7 +553,8 @@ class PatientService
         $item->expiresAfter(60);
 
         $qb = $this->patientRepo->createQueryBuilder('p')
-            ->select('p.id, p.nom, p.prenom, p.telephone');
+            ->select('p.id, p.nom, p.prenom, p.telephone')
+            ->andWhere('p.deletedAt IS NULL');
 
         $like = '%' . $term . '%';
 
@@ -475,7 +599,7 @@ class PatientService
 
     public function getPatientDetailsData(int $id): ?array
     {
-        $patient = $this->patientRepo->find($id);
+        $patient = $this->findActivePatient($id);
         if (!$patient) {
             return null;
         }
@@ -537,152 +661,13 @@ class PatientService
         return $this->patientRepo->findWithMedicalData($id);
     }
 
-    public function createConsultation(array $data, ?User $triggeredBy = null): array
-    {
-        try {
-            $isMedecinRequired = $this->globalSettingsService->isMedecinRequiredOnConsultationCreation();
-            if ($isMedecinRequired && empty($data['medecin_id'])) {
-                return [
-                    'error' => 'Le medecin est requis pour creer la consultation.',
-                    'status' => 400,
-                ];
-            }
-
-            if (($data['payant'] ?? 0) == 1) {
-                $defaultConsultationAmount = $this->globalSettingsService->getConsultationPrice();
-                $consultationAmount = (float) ($data['consultation_amount'] ?? $defaultConsultationAmount);
-                if ($consultationAmount <= 0) {
-                    $consultationAmount = $defaultConsultationAmount;
-                }
-
-                $patient = $this->patientRepo->find($data['patient_id'] ?? null);
-                if (!$patient) {
-                    return [
-                        'error' => 'Patient introuvable.',
-                        'status' => 404,
-                    ];
-                }
-
-                $profile = $patient->getAssuranceProfile();
-                $assurance = $profile?->getAssurance();
-                $insuranceEnabled = $profile !== null && $assurance !== null && $assurance->isActif();
-                $insuranceRate = $insuranceEnabled
-                    ? max(0, min(100, (float) ($profile?->getCoverageRate() ?? $assurance?->getTauxParDefaut() ?? 0)))
-                    : 0.0;
-
-                $insuranceAmount = $insuranceEnabled ? ($consultationAmount * $insuranceRate) / 100 : 0.0;
-                $patientAmount = max(0.0, $consultationAmount - $insuranceAmount);
-
-                if ($patientAmount > 0 && !$insuranceEnabled && !isset($data['mode_paiement_id'])) {
-                    return [
-                        'error' => 'Le mode de paiement est requis pour une consultation payante.',
-                        'status' => 400,
-                    ];
-                }
-
-                $consultation = $this->consultationRepo->NewConsultation($data, $this->patientRepo, $this->employeRepo);
-                $createdPaiementId = null;
-                $patientPayment = null;
-                $timestamp = new DateTime();
-
-                if ($patientAmount > 0 && !$insuranceEnabled) {
-                    $modePaiement = $this->em->getRepository(ModeDePaiement::class)->find($data['mode_paiement_id']);
-
-                    if (!$modePaiement) {
-                        return [
-                            'error' => 'Mode de paiement invalide.',
-                            'status' => 400,
-                        ];
-                    }
-
-                    $paiement = new Paiement();
-                    $paiement->setFacture(null);
-                    $paiement->setMode($modePaiement);
-                    $paiement->setMontant($patientAmount);
-                    $paiement->setDate($timestamp);
-                    $paiement->setConsultation($consultation);
-                    $this->em->persist($paiement);
-                    $patientPayment = $paiement;
-
-                    $transaction = new Transaction();
-                    $transaction->setType('Revenue');
-                    $transaction->setMontant($patientAmount);
-                    $transaction->setDateTransaction($timestamp);
-                    $transaction->setDescription('Ticket de consultation #' . $consultation->getId() . ' | Part patient');
-                    $transaction->setModeDePaiement($modePaiement);
-                    $transaction->setConsultation($consultation);
-                    $transaction->markValidated();
-                    $transaction->setPaiement($paiement);
-                    $this->em->persist($transaction);
-                }
-
-                if ($insuranceEnabled && $assurance instanceof Assurance) {
-                    $factureAssurance = new FactureAssurance();
-                    $factureAssurance
-                        ->setConsultation($consultation)
-                        ->setPatient($patient)
-                        ->setAssurance($assurance)
-                        ->setCoverageRate($insuranceRate > 0 ? $insuranceRate : null)
-                        ->setDateFacture(new DateTime())
-                        ->setConsultationAmount($consultationAmount)
-                        ->setIsConsultationPayante(true)
-                        ->setInsuranceStatus('pending')
-                        ->setIsRecouvre(false)
-                        ->setAssuranceSnapshot([
-                            'code' => $assurance->getCode(),
-                            'nom' => $assurance->getNom(),
-                            'logoPath' => $assurance->getLogoPath(),
-                            'website' => $assurance->getWebsite(),
-                            'email' => $assurance->getEmail(),
-                            'formData' => $profile?->getFormData() ?? [],
-                        ]);
-
-                    $consultation->setFactureAssurance($factureAssurance);
-                    $this->em->persist($factureAssurance);
-                }
-
-                $this->em->flush();
-
-                if ($patientPayment instanceof Paiement && $patientPayment->getId() !== null) {
-                    $createdPaiementId = $patientPayment->getId();
-                } elseif ($consultation->getPaiement()) {
-                    $createdPaiementId = $consultation->getPaiement()->getId();
-                }
-
-                $this->consultationNotificationService->notifyCreation($consultation, $triggeredBy);
-
-                return [
-                    'success' => true,
-                    'status' => 200,
-                    'consultation_id' => $consultation->getId(),
-                    'paiement_id' => $createdPaiementId,
-                ];
-            }
-
-            $consultation = $this->consultationRepo->NewConsultation($data, $this->patientRepo, $this->employeRepo);
-
-            $this->consultationNotificationService->notifyCreation($consultation, $triggeredBy);
-
-            return [
-                'success' => true,
-                'status' => 200,
-                'consultation_id' => $consultation->getId(),
-            ];
-        } catch (\Exception $e) {
-            return [
-                'error' => $e->getMessage(),
-                'status' => 400,
-            ];
-        }
-    }
-
     public function createRdv(array $data, ?User $actor = null): array
     {
         if (!isset($data['patient_id'], $data['medecin_id'], $data['date'], $data['time'])) {
             return ['error' => 'Missing required fields', 'status' => 400];
         }
 
-        $patient = $this->patientRepo->find($data['patient_id']);
+        $patient = $this->findActivePatient((int) $data['patient_id']);
         $medecin = $this->employeRepo->find($data['medecin_id']);
 
         if (!$patient) {
@@ -886,7 +871,7 @@ class PatientService
 
     public function getDossierData(int $id): ?array
     {
-        $patient = $this->patientRepo->find($id);
+        $patient = $this->findActivePatient($id);
         if (!$patient) {
             return null;
         }
@@ -1074,6 +1059,7 @@ class PatientService
 
         $this->em->persist($patient);
         $this->em->flush();
+        $this->clearPatientsCache();
 
         return ['success' => true];
     }

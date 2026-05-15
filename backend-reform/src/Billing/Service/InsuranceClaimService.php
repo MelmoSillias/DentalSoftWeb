@@ -140,9 +140,7 @@ class InsuranceClaimService
         $transaction->setDateTransaction(\DateTime::createFromInterface($dateTransaction));
         $transaction->setDescription(sprintf('Recouvrement assurance | Facture #%d', $facture->getId()));
         $transaction->setModeDePaiement($mode);
-        $transaction->setConsultation($consultation);
-        $transaction->setRolePaiement('insurance');
-        $transaction->setTauxPriseEnCharge($facture->getCoverageRate());
+        $transaction->setConsultation($consultation); 
         $transaction->markValidated();
 
         $facture->setIsRecouvre(true);
@@ -203,8 +201,7 @@ class InsuranceClaimService
         $transaction->setDateTransaction(\DateTime::createFromInterface($dateTransaction));
         $transaction->setDescription(sprintf('Encaissement part patient | Facture assurance #%d', $facture->getId()));
         $transaction->setModeDePaiement($mode);
-        $transaction->setConsultation($consultation);
-        $transaction->setRolePaiement('patient_insurance');
+        $transaction->setConsultation($consultation); 
         $transaction->markValidated();
         $transaction->setPaiement($paiement);
 

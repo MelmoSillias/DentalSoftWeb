@@ -9,7 +9,7 @@ const router = createRouter({
             path: '/dashbord',
             component: AppLayout,
             redirect: '/dashboard',
-            meta: { requiresAuth: true }, 
+            meta: { requiresAuth: true },
             children: [
                 {
                     path: '/dashboard',
@@ -35,7 +35,7 @@ const router = createRouter({
                     name: 'agenda-evenements',
                     component: () => import('@/views/agenda/Evenements.vue'),
                     meta: { requiresAuth: true, roles: ['ROLE_ADMIN'] , fixedWidth: true}
-                }, 
+                },
                 // patients
                 {
                     path: '/patients/liste',
@@ -56,7 +56,7 @@ const router = createRouter({
                     },
                     meta: { requiresAuth: true, roles: ['ROLE_ADMIN', 'ROLE_RECEPTION', 'ROLE_MEDECIN'] , fixedWidth: true}
                 },
-                // Consultations 
+                // Consultations
                 {
                     path: '/consultations/cards',
                     name: 'consultations-cards',
@@ -68,18 +68,12 @@ const router = createRouter({
                     name: 'consultations-table',
                     component: () => import('@/views/consultations/TableConsultations.vue'),
                     meta: { requiresAuth: true, roles: ['ROLE_ADMIN', 'ROLE_RECEPTION', 'ROLE_MEDECIN'], fixedWidth: true }
-                },  
+                },
                 {
                     path: '/consultations/form',
                     name: 'consultations-form',
                     component: () => import('@/views/consultations/FicheForm.vue'),
                     meta: { requiresAuth: true, roles: ['ROLE_ADMIN', 'ROLE_MEDECIN'], fixedWidth: true }
-                },  
-                {
-                    path: '/consultations/form-legacy',
-                    name: 'consultations-form-legacy',
-                    component: () => import('@/views/consultations/ConsultationForm.vue'),
-                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN', 'ROLE_MEDECIN'] , fixedWidth: true}
                 },
 
                 // Caisse
@@ -88,27 +82,27 @@ const router = createRouter({
                     name: 'caisse',
                     component: () => import('@/views/caisse/Caisse.vue'),
                     meta: { requiresAuth: true, roles: ['ROLE_ADMIN', 'ROLE_RECEPTION'], fixedWidth: true }
-                }, 
+                },
                 // Rapports
                 {
                     path: '/rapports',
                     name: 'rapports',
                     component: () => import('@/views/rapport/Rapports.vue'),
                     meta: { requiresAuth: true, roles: ['ROLE_ADMIN', 'ROLE_MEDECIN', 'ROLE_RECEPTION'], fixedWidth: true }
-                }, 
+                },
                 // Administration
                 {
                     path: '/administration/consommables',
                     name: 'administration-consommables',
                     component: () => import('@/views/administration/Consommables.vue'),
                     meta: { requiresAuth: true, roles: ['ROLE_ADMIN'] , fixedWidth: true}
-                }, 
+                },
                 {
                     path: '/administration/salles',
                     name: 'administration-salles',
                     component: () => import('@/views/administration/Salles.vue'),
                     meta: { requiresAuth: true, roles: ['ROLE_ADMIN'] , fixedWidth: true}
-                }, 
+                },
                 {
                     path: '/administration/finances',
                     name: 'administration-finances',
@@ -139,7 +133,7 @@ const router = createRouter({
                     component: () => import('@/views/administration/Notifications.vue'),
                     meta: { requiresAuth: true, roles: ['ROLE_ADMIN'], fixedWidth: true }
                 },
-                
+
                 {
                     path: '/profile',
                     name: 'profile',

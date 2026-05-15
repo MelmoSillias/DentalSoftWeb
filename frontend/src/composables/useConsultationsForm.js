@@ -124,6 +124,16 @@ const toDevisModel = (entries = [], requestedActiveIndex = 0) => {
     };
 };
 
+const hydrateDevisModelFromFiche = (fiche = {}, requestedActiveIndex = 0) => {
+    const devisEntries = Array.isArray(fiche.devis)
+        ? [...fiche.devis].sort((left, right) => Number(left?.type ?? 0) - Number(right?.type ?? 0))
+        : fiche.devis
+            ? [fiche.devis]
+            : [];
+
+    return toDevisModel(devisEntries, requestedActiveIndex);
+};
+
 const normalizeDateForApi = (value) => {
     if (!value) return null;
     if (typeof value === 'string') {
@@ -368,13 +378,8 @@ export const useConsultationsForm = ({ ficheId, consultId, token, mode }) => {
             })) : []
         };
 
-        const devisEntries = Array.isArray(fiche.devis)
-            ? [...fiche.devis].sort((left, right) => Number(left?.type ?? 0) - Number(right?.type ?? 0))
-            : fiche.devis
-                ? [fiche.devis]
-                : [];
         const requestedActiveIndex = Number(data.devis?.activeDevisIndex) || 0;
-        data.devis = toDevisModel(devisEntries, requestedActiveIndex);
+        data.devis = hydrateDevisModelFromFiche(fiche, requestedActiveIndex);
 
         const plans = fiche.planTraitement ?? fiche.plansTraitement ?? [];
         data.planTraitement = Array.isArray(plans) ? plans.map((p, idx) => ({
@@ -542,6 +547,11 @@ export const useConsultationsForm = ({ ficheId, consultId, token, mode }) => {
                 };
                 await saveDevis(ficheId.value, payload, token);
             }
+
+            // Refresh devis identifiers from server so newly saved entries become printable immediately.
+            const refreshed = await loadFicheMedicale(ficheId.value, token);
+            const requestedActiveIndex = Number(data.devis?.activeDevisIndex) || 0;
+            data.devis = hydrateDevisModelFromFiche(refreshed, requestedActiveIndex);
 
             clearDirty(['devis']);
         } finally {

@@ -28,18 +28,11 @@ class Facture
     #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
     private bool $isReglee = false;
 
-    #[ORM\ManyToOne(targetEntity: Assurance::class, inversedBy: 'factures')]
-    #[ORM\JoinColumn(nullable: true)]
-    private ?Assurance $assurance = null;
 
-    #[ORM\Column(type: Types::FLOAT, nullable: true)]
-    private ?float $tauxCouverture = null;
 
     #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
     private bool $isRecouvre = false;
 
-    #[ORM\Column(length: 20, options: ['default' => 'pending'])]
-    private string $insuranceStatus = 'pending';
 
     #[ORM\OneToMany(mappedBy: 'facture', targetEntity: Paiement::class)]
     private Collection $paiements;
@@ -82,35 +75,7 @@ class Facture
     {
         return (float) ($this->computeMontantsFromConsultation()['montantTotal'] ?? 0.0);
     }
-
-    public function setMontantTotal(float $montantTotal): static
-    {
-        // Totals are computed on the fly from consultation actes.
-        return $this;
-    }
-
-    public function getMontantPatient(): float
-    {
-        return (float) ($this->computeMontantsFromConsultation()['montantPatient'] ?? 0.0);
-    }
-
-    public function setMontantPatient(float $montantPatient): static
-    {
-        // Totals are computed on the fly from consultation actes.
-        return $this;
-    }
-
-    public function getMontantAssurance(): float
-    {
-        return (float) ($this->computeMontantsFromConsultation()['montantAssurance'] ?? 0.0);
-    }
-
-    public function setMontantAssurance(float $montantAssurance): static
-    {
-        // Totals are computed on the fly from consultation actes.
-        return $this;
-    }
-
+ 
     public function getRestePatient(): float
     {
         return (float) ($this->computeMontantsFromConsultation()['restePatient'] ?? 0.0);
@@ -139,54 +104,6 @@ class Facture
         return $this;
     }
 
-    public function getAssurance(): ?Assurance
-    {
-        return $this->assurance;
-    }
-
-    public function setAssurance(?Assurance $assurance): static
-    {
-        $this->assurance = $assurance;
-
-        return $this;
-    }
-
-    public function getTauxCouverture(): ?float
-    {
-        return $this->tauxCouverture;
-    }
-
-    public function setTauxCouverture(?float $tauxCouverture): static
-    {
-        $this->tauxCouverture = $tauxCouverture;
-
-        return $this;
-    }
-
-    public function isRecouvre(): bool
-    {
-        return $this->isRecouvre;
-    }
-
-    public function setIsRecouvre(bool $isRecouvre): static
-    {
-        $this->isRecouvre = $isRecouvre;
-
-        return $this;
-    }
-
-    public function getInsuranceStatus(): string
-    {
-        return $this->insuranceStatus;
-    }
-
-    public function setInsuranceStatus(string $insuranceStatus): static
-    {
-        $this->insuranceStatus = $insuranceStatus;
-
-        return $this;
-    }
-
     /** @return Collection<int, Paiement> */
     public function getPaiements(): Collection
     {
@@ -211,26 +128,7 @@ class Facture
 
         return $this;
     }
-
-    private function normalizeCoverageRate(?float $rate): ?float
-    {
-        if ($rate === null) {
-            return null;
-        }
-
-        return max(0.0, min(100.0, $rate));
-    }
-
-    public function resolveCoverageRate(): ?float
-    {
-        $ownRate = $this->normalizeCoverageRate($this->tauxCouverture);
-        if ($ownRate !== null) {
-            return $ownRate;
-        }
-
-        return null;
-    }
-
+    
     public function computePatientPaidAmount(): float
     {
         $paid = 0.0;
@@ -259,21 +157,15 @@ class Facture
             }
         }
 
-        $rate = $this->normalizeCoverageRate($overrideCoverageRate ?? $this->resolveCoverageRate());
-        $assuranceAmount = $rate !== null ? ($total * $rate) / 100 : 0.0;
-        $assuranceAmount = max(0.0, min($total, $assuranceAmount));
-
-        $patientAmount = max(0.0, $total - $assuranceAmount);
+        $patientAmount = max(0.0, $total);
         $patientPaid = max(0.0, $this->computePatientPaidAmount());
         $patientRemaining = max(0.0, $patientAmount - $patientPaid);
 
         return [
             'montantTotal' => $total,
-            'montantAssurance' => $assuranceAmount,
             'montantPatient' => $patientAmount,
             'patientPaid' => $patientPaid,
             'restePatient' => $patientRemaining,
-            'tauxCouverture' => $rate,
         ];
     }
 

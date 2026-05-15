@@ -3,6 +3,7 @@
 namespace App\Focus\Service;
 
 use App\Billing\Entity\Devis;
+use App\Billing\Entity\Facture;
 use App\Billing\Entity\ModeDePaiement;
 use App\CareDelivery\Entity\Consultation;
 use App\Communication\Mercure\NotificationTopicGenerator;
@@ -84,20 +85,20 @@ final class FocusRealtimePublisher
         );
     }
 
-    public function publishDevisRefresh(Devis $devis, string $action = 'updated'): void
+    public function publishFactureRefresh(Facture $facture, string $action = 'updated'): void
     {
-        $devisId = $devis->getId();
-        if ($devisId === null) {
+        $factureId = $facture->getId();
+        if ($factureId === null) {
             return;
         }
 
-        $consultation = $devis->getConsultation();
-        $patient = $consultation?->getPatient() ?? $devis->getFicheMedicale()?->getPatient() ?? $devis->getFiche()?->getPatient();
+        $consultation = $facture->getConsultation();
+        $patient = $consultation?->getPatient() ?? $facture->getConsultation()?->getPatient() ?? $facture->getConsultation()?->getPatient();
 
         $payload = [
-            'entity' => 'devis',
+            'entity' => 'facture',
             'action' => $action,
-            'devisId' => $devisId,
+            'factureId' => $factureId,
             'consultationId' => $consultation?->getId(),
             'patientId' => $patient?->getId(),
             'updatedAt' => (new \DateTimeImmutable())->format(DATE_ATOM),
@@ -105,10 +106,10 @@ final class FocusRealtimePublisher
 
         $this->publishPayload(
             $payload,
-            sprintf('focus-devis-%s-%d', $action, $devisId),
-            'focus-devis',
+            sprintf('focus-facture-%s-%d', $action, $factureId),
+            'focus-facture',
             [
-                'devisId' => $devisId,
+                'factureId' => $factureId,
                 'action' => $action,
             ]
         );

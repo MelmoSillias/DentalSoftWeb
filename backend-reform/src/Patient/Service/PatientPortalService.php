@@ -17,6 +17,7 @@ use App\Patient\Repository\PatientRepository;
 use App\Scheduling\Entity\Rdv;
 use App\Scheduling\Repository\RdvRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use App\Billing\Entity\Facture;
 
 final class PatientPortalService
 {
@@ -79,20 +80,20 @@ final class PatientPortalService
     }
 
     /** @return array{patient:array{id:int|null,nom:string,prenom:string,numCarnet:?string,telephone:?string,email:?string},total:int,items:array<int,array<string,mixed>>} */
-    public function buildDevisFacturesPayload(Patient $patient): array
+    public function buildFacturesPayload(Patient $patient): array
     {
-        $devisList = $this->devisRepository->findByPortalPatient($patient);
+        $factureList = $this->factureRepository->findByPortalPatient($patient);
 
-        $items = array_map(fn(Devis $devis): array => [
-            'id' => $devis->getId(),
-            'date' => $devis->getDate()?->format(DATE_ATOM),
-            'montant' => $devis->getMontant(),
-            'reste' => $devis->getReste(),
-            'statut' => $devis->getStatut(),
-            'type' => $devis->getType(),
-            'consultationId' => $devis->getConsultation()?->getId(),
-            'isFacture' => $devis->getType() === 1,
-        ], $devisList);
+        $items = array_map(fn(Facture $facture): array => [
+            'id' => $facture->getId(),
+            'date' => $facture->getDateFacture()?->format(DATE_ATOM),
+            'montant' => $facture->computeMontantsFromConsultation()["montantTotal"] ?? 0,
+            'reste' => $facture->computeMontantsFromConsultation(),
+            'statut' => $facture->getStatut(),
+            'type' => $facture->getType(),
+            'consultationId' => $facture->getConsultation()?->getId(),
+            'isFacture' => $facture->getType() === 1,
+        ], $factureList);
 
         return [
             'patient' => $this->mapPatientIdentity($patient),
@@ -116,7 +117,7 @@ final class PatientPortalService
             'validated' => $t->isValidated(),
             'modePaiement' => $t->getModeDePaiement()?->getLibelle(),
             'consultationId' => $t->getConsultation()?->getId(),
-            'factureId' => $t->getDevis()?->getId(),
+            'factureId' => $t->getFacture()?->getId(),
             'recu' => [
                 'label' => 'Recu #' . $t->getId(),
                 'printDataUrl' => '/api/portal-patient/me/paiements/' . $t->getId() . '/recu',

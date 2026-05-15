@@ -301,7 +301,7 @@ final class SmsController extends AbstractController
             return $fromFicheMedicale;
         }
 
-        $fiche = $devis->getFiche();
+        $fiche = $devis->getFicheMedicale();
         if ($fiche && method_exists($fiche, 'getPatient')) {
             $patient = $fiche->getPatient();
             if ($patient instanceof Patient) {

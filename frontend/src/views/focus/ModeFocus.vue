@@ -13,6 +13,7 @@ import {  getDefaultClassicMethod } from '@/utils/paymentMethodUtils';
 import { fetchAssurances, fetchFactureDetail, payFacture, resetFacturePayments, validateEmptyFacture } from '@/services/caisseService';
 import { fetchPublicGeneralSettings } from '@/services/globalSettingsService';
 import { fetchInvoicePrintData, fetchReceiptPrintData } from '@/services/printService';
+import { checkConsultationActive, deleteConsultation } from '@/services/patients';
 import { fetchPatientById, normalizePatient } from '@/services/patients';
 import PrintDevisBody from '@/components/print/PrintDevisBody.vue';
 import PrintReceiptBody from '@/components/print/PrintReceiptBody.vue';
@@ -98,9 +99,16 @@ const actionChoiceByConsultation = ref({});
 const createPatientDialogVisible = ref(false);
 const createConsultationDialogVisible = ref(false);
 const createConsultationPreSelectedPatient = ref(null);
+const createConsultationLoading = ref({});
+const consultationToolbarLoading = ref(false);
+const showActiveConsultWarn = ref(false);
+const activeConsultWarnPatient = ref(null);
+const activeConsultInfo = ref({ hasActive: false, consultationId: null, hasFiche: false });
 const editPatientDialogVisible = ref(false);
 const patientToEdit = ref(null);
 const initialized = ref(false);
+const isRealtimeRefreshing = ref(false);
+const hasInitialLoadCompleted = ref(false);
 
 const roles = computed(() => auth.user?.roles || []);
 const isAdmin = computed(() => roles.value.includes('ROLE_ADMIN'));
@@ -218,6 +226,8 @@ const focusStats = computed(() => {
     const pending = total - closed;
     return { total, closed, pending };
 });
+
+const showFocusSkeleton = computed(() => loading.value && !hasInitialLoadCompleted.value);
 
 const formatFcfa = (value) => `${Number(value || 0).toLocaleString('fr-FR')} FCFA`;
 
@@ -419,13 +429,31 @@ const resetReceptionFocusData = () => {
     receptionBillingByConsultation.value = {};
 };
 
-const loadConsultations = async () => {
+const setCreateConsultationLoading = (patientId, value) => {
+    if (patientId === undefined || patientId === null) return;
+    createConsultationLoading.value = {
+        ...createConsultationLoading.value,
+        [patientId]: value
+    };
+};
+
+const loadConsultations = async ({ silent = false, realtime = false } = {}) => {
     if (selectedMode.value === 'rdv') {
-        loading.value = false;
+        if (!silent) {
+            loading.value = false;
+        }
+        if (realtime) {
+            isRealtimeRefreshing.value = false;
+        }
         return;
     }
 
-    loading.value = true;
+    if (!silent) {
+        loading.value = true;
+    }
+    if (realtime) {
+        isRealtimeRefreshing.value = true;
+    }
     try {
         if (selectedMode.value === 'reception') {
             const payload = await fetchFocusReceptionData(todayApiDate(), token);
@@ -441,7 +469,15 @@ const loadConsultations = async () => {
         resetReceptionFocusData();
         toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de charger les consultations du jour.', life: 3000 });
     } finally {
-        loading.value = false;
+        if (!silent) {
+            loading.value = false;
+        }
+        if (realtime) {
+            isRealtimeRefreshing.value = false;
+        }
+        if (!hasInitialLoadCompleted.value) {
+            hasInitialLoadCompleted.value = true;
+        }
     }
 };
 
@@ -710,6 +746,98 @@ const handlePatientSaved = async (patient) => {
     await loadConsultations();
 };
 
+const openCreateConsultationDialog = () => {
+    consultationToolbarLoading.value = true;
+    try {
+        createConsultationPreSelectedPatient.value = null;
+        createConsultationDialogVisible.value = true;
+    } finally {
+        consultationToolbarLoading.value = false;
+    }
+};
+
+const openCreateConsultationDialogForPatient = async (patient) => {
+    const patientId = patient?.id ?? null;
+    if (patientId) {
+        setCreateConsultationLoading(patientId, true);
+    } else {
+        consultationToolbarLoading.value = true;
+    }
+
+    if (!patient?.id) {
+        try {
+            createConsultationPreSelectedPatient.value = patient || null;
+            createConsultationDialogVisible.value = true;
+            return;
+        } finally {
+            consultationToolbarLoading.value = false;
+        }
+    }
+
+    try {
+        const res = await checkConsultationActive(patient.id, token);
+        activeConsultInfo.value = {
+            hasActive: Boolean(res?.hasActive),
+            consultationId: res?.consultationId ?? null,
+            hasFiche: Boolean(res?.hasFiche)
+        };
+
+        if (Boolean(res?.hasActive)) {
+            activeConsultWarnPatient.value = patient;
+            showActiveConsultWarn.value = true;
+
+            if (res?.consultationId) {
+                selectedConsultationId.value = res.consultationId;
+            }
+            return;
+        }
+    } catch (_) {
+        toast.add({ severity: 'warn', summary: 'Vérification', detail: 'Impossible de vérifier les consultations en cours.', life: 2500 });
+        return;
+    } finally {
+        if (patientId) {
+            setCreateConsultationLoading(patientId, false);
+        } else {
+            consultationToolbarLoading.value = false;
+        }
+    }
+};
+
+const closeActiveConsultWarn = () => {
+    const patientId = activeConsultWarnPatient.value?.id;
+    showActiveConsultWarn.value = false;
+    activeConsultWarnPatient.value = null;
+    activeConsultInfo.value = { hasActive: false, consultationId: null, hasFiche: false };
+    consultationToolbarLoading.value = false;
+    if (patientId) {
+        setCreateConsultationLoading(patientId, false);
+    }
+};
+
+const cancelActiveConsultation = async () => {
+    if (!activeConsultInfo.value.consultationId) return;
+    const patient = activeConsultWarnPatient.value;
+    if (patient?.id) {
+        setCreateConsultationLoading(patient.id, true);
+    }
+
+    try {
+        await deleteConsultation(activeConsultInfo.value.consultationId, token);
+        toast.add({ severity: 'success', summary: 'Consultation annulée', detail: 'La consultation en cours a été supprimée.', life: 3000 });
+        closeActiveConsultWarn();
+        await loadConsultations({ silent: true, realtime: true });
+        if (patient) {
+            await openCreateConsultationDialogForPatient(patient);
+        }
+    } catch (_) {
+        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de supprimer la consultation en cours.', life: 3000 });
+    } finally {
+        if (patient?.id) {
+            setCreateConsultationLoading(patient.id, false);
+        }
+    }
+};
+
 const handleConsultationCreated = async () => {
     createConsultationDialogVisible.value = false;
     createConsultationPreSelectedPatient.value = null;
@@ -768,7 +896,7 @@ const onFocusRealtimeEvent = async () => {
         return;
     }
 
-    await loadConsultations();
+    await loadConsultations({ silent: true, realtime: true });
     await loadSelectedPatient();
 };
 
@@ -890,6 +1018,9 @@ onBeforeUnmount(() => {
                     <span class="hidden sm:inline text-xs text-surface-500">
                         {{ focusStats.pending }} en attente · {{ focusStats.closed }} terminées
                     </span>
+                    <span v-if="isRealtimeRefreshing" class="hidden lg:inline text-xs text-primary-600 dark:text-primary-300">
+                        <i class="pi pi-spin pi-spinner mr-1"></i>Sync en cours
+                    </span>
                 </div>
 
                 <div class="flex items-center gap-2">
@@ -949,15 +1080,17 @@ onBeforeUnmount(() => {
                 :consultations="consultations"
                 :recent-patients="receptionRecentPatients"
                 :billing-by-consultation="receptionBillingByConsultation"
-                :loading="loading"
+                :loading="showFocusSkeleton"
+                :consultation-toolbar-loading="consultationToolbarLoading"
+                :consultation-loading-by-patient="createConsultationLoading"
                 :allow-reception-quick-close="allowReceptionQuickClose"
                 :is-admin="isAdmin"
                 :selected-consultation-id="selectedConsultationId"
                 @refresh="loadConsultations"
                 @select-consultation="(consultationId) => { selectedConsultationId = consultationId; }"
                 @open-create-patient="createPatientDialogVisible = true"
-                @open-create-consultation="createConsultationDialogVisible = true"
-                @open-create-consultation-for-patient="(patient) => { createConsultationPreSelectedPatient = patient; createConsultationDialogVisible = true; }"
+                @open-create-consultation="openCreateConsultationDialog"
+                @open-create-consultation-for-patient="openCreateConsultationDialogForPatient"
                 @open-edit-patient="(patient) => { patientToEdit = patient; editPatientDialogVisible = true; }"
                 @open-caisse-pay="openPayDialog"
                 @open-caisse-validate="openValidateDialog"
@@ -1079,6 +1212,38 @@ onBeforeUnmount(() => {
                     </div>
                 </template>
                 <FormCreateConsultation :patient="createConsultationPreSelectedPatient" @saved="handleConsultationCreated" @cancel="createConsultationDialogVisible = false; createConsultationPreSelectedPatient = null" />
+            </Dialog>
+            <Dialog v-model:visible="showActiveConsultWarn" modal :style="{ width: '35rem' }">
+                <div class="p-6">
+                    <div class="mb-4 flex items-center gap-3">
+                        <div class="rounded-lg bg-amber-100 p-2 dark:bg-amber-900/30">
+                            <i class="fas fa-exclamation-triangle text-amber-600 dark:text-amber-400"></i>
+                        </div>
+                        <h4 class="m-0 text-surface-900 dark:text-surface-100">Consultation en cours</h4>
+                    </div>
+
+                    <p class="mb-4 text-surface-700 dark:text-surface-300">
+                        Une consultation est déjà ouverte pour ce patient. Clôturez-la ou continuez-la avant d'en créer une nouvelle.
+                    </p>
+
+                    <p v-if="!activeConsultInfo.hasFiche" class="mb-4 text-sm text-surface-600 dark:text-surface-400">
+                        Si cette consultation a été ouverte par erreur, vous pouvez l'annuler directement depuis ce dialogue.
+                    </p>
+
+                    <div v-if="activeConsultInfo.hasFiche"
+                        class="mb-4 flex items-center gap-2 rounded-lg bg-surface-50 p-3 dark:bg-surface-800/50">
+                        <i class="pi pi-info-circle text-surface-500"></i>
+                        <span class="text-sm text-surface-600 dark:text-surface-400">
+                            Cette consultation est liée à une fiche : elle ne peut pas être supprimée.
+                        </span>
+                    </div>
+
+                    <div class="flex justify-end gap-2">
+                        <Button label="Compris" severity="secondary" @click="closeActiveConsultWarn" class="rounded-xl px-5" />
+                        <Button v-if="!activeConsultInfo.hasFiche" label="Annuler la consultation" icon="pi pi-times"
+                            severity="danger" @click="cancelActiveConsultation" class="rounded-xl px-5" />
+                    </div>
+                </div>
             </Dialog>
             <Dialog v-model:visible="editPatientDialogVisible" modal :style="{ width: '45rem' }">
                 <template #header>

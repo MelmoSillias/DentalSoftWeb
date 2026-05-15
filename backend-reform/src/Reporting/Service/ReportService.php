@@ -3,6 +3,7 @@
 namespace App\Reporting\Service;
 
 use App\Billing\Entity\ModeDePaiement;
+use App\Billing\Entity\Transaction;
 use App\Billing\Repository\TransactionRepository;
 use App\CareDelivery\Entity\Consultation;
 use App\CareDelivery\Repository\ActeMedicalRepository;
@@ -75,6 +76,33 @@ class ReportService
                 (clone $now)->setTime(23, 59, 59),
             ],
         };
+    }
+
+    private function normalizeTransactionType(?string $type): string
+    {
+        $normalized = strtolower(trim((string) $type));
+
+        return str_replace(['é', 'è', 'ê', 'ë'], 'e', $normalized);
+    }
+
+    private function isRevenueTransactionType(?string $type): bool
+    {
+        return in_array($this->normalizeTransactionType($type), ['entree', 'revenu', 'revenue'], true);
+    }
+
+    private function isCashMode(?string $mode): bool
+    {
+        $normalized = strtolower(trim((string) $mode));
+        $normalized = str_replace(['é', 'è', 'ê', 'ë'], 'e', $normalized);
+
+        return in_array($normalized, ['especes', 'espece'], true);
+    }
+
+    private function signedTransactionAmount(Transaction $transaction): float
+    {
+        $amount = (float) ($transaction->getMontant() ?? 0);
+
+        return $this->isRevenueTransactionType($transaction->getType()) ? $amount : -1 * $amount;
     }
 
     private function buildPatientsReport(): array
@@ -160,9 +188,7 @@ class ReportService
                 continue;
             }
 
-            $signedAmount = $transaction->getType() === 'Entrée'
-                ? (float) $transaction->getMontant()
-                : -1 * (float) $transaction->getMontant();
+            $signedAmount = $this->signedTransactionAmount($transaction);
 
             $trend[$date] = ($trend[$date] ?? 0) + $signedAmount;
         }
@@ -235,35 +261,48 @@ class ReportService
     {
         $cacheKey = sprintf('report.globalStats.%s.%s', $from ?? 'none', $to ?? 'none');
         return $this->remember($cacheKey, 180, function () use ($from, $to) {
-        $fromDate = $from ? \DateTime::createFromFormat('Y-m-d', $from) : null;
-        $toDate   = $to   ? \DateTime::createFromFormat('Y-m-d', $to)   : null;
+        $fromDate = $from ? \DateTime::createFromFormat('Y-m-d', $from)?->setTime(0, 0, 0) : null;
+        $toDate   = $to   ? \DateTime::createFromFormat('Y-m-d', $to)?->setTime(23, 59, 59) : null;
 
-        // 2. Transactions sur la période (TODO: filtrage dates si besoin)
-        $transactions = $this->transactionRepo->findAll();
+        $txQb = $this->transactionRepo->createQueryBuilder('t')
+            ->orderBy('t.dateTransaction', 'ASC');
+
+        if ($fromDate !== null) {
+            $txQb->andWhere('t.dateTransaction >= :from')->setParameter('from', $fromDate);
+        }
+        if ($toDate !== null) {
+            $txQb->andWhere('t.dateTransaction <= :to')->setParameter('to', $toDate);
+        }
+
+        $transactions = $txQb->getQuery()->getResult();
 
         $capitalBreakdown = [];
-        $capitalTotal     = 0;
-        $inCash           = 0;
-        $revenueTotal     = 0;
+        $capitalTotal     = 0.0;
+        $inCash           = 0.0;
+        $revenueTotal     = 0.0;
 
         foreach ($transactions as $tx) {
-            $mode   = $tx->getModeDePaiement()->getType();
-            $amount = $tx->getMontant();
+            if (!$tx instanceof Transaction) {
+                continue;
+            }
 
-            $signed = ($tx->getType() === 'Entrée') ? $amount : -$amount;
+            $mode = (string) ($tx->getModeDePaiement()?->getType() ?? 'Inconnu');
+            $signed = $this->signedTransactionAmount($tx);
+            $isRevenue = $this->isRevenueTransactionType($tx->getType());
+
             $capitalTotal += $signed;
 
             if (!isset($capitalBreakdown[$mode])) {
-                $capitalBreakdown[$mode] = 0;
+                $capitalBreakdown[$mode] = 0.0;
             }
             $capitalBreakdown[$mode] += $signed;
 
-            if ($mode === 'EspÃ¨ces') {
+            if ($this->isCashMode($mode)) {
                 $inCash += $signed;
             }
 
-            if ($tx->getPaiement() !== null) {
-                $revenueTotal += $amount;
+            if ($isRevenue) {
+                $revenueTotal += (float) ($tx->getMontant() ?? 0);
             }
         }
 
@@ -545,6 +584,35 @@ class ReportService
 
         $transactionsAmount = (float) $qbAmount->getQuery()->getSingleScalarResult();
 
+        $qbInsuranceRecoveries = $this->transactionRepo->createQueryBuilder('t')
+            ->select('COALESCE(SUM(t.montant), 0)')
+            ->leftJoin('t.consultation', 'c')
+            ->where('c IS NOT NULL')
+            ->andWhere('c.factureAssurance IS NOT NULL')
+            ->andWhere('t.paiement IS NULL')
+            ->andWhere('t.validationStatus = :status')
+            ->andWhere("LOWER(COALESCE(t.description, '')) LIKE :insuranceDescription");
+
+        if ($fromDate) {
+            $qbInsuranceRecoveries->andWhere('c.CreatedAt >= :from');
+        }
+        if ($toDate) {
+            $qbInsuranceRecoveries->andWhere('c.CreatedAt <= :to');
+        }
+
+        $qbInsuranceRecoveries
+            ->setParameter('status', 'validated')
+            ->setParameter('insuranceDescription', '%recouvrement assurance%');
+
+        if ($fromDate) {
+            $qbInsuranceRecoveries->setParameter('from', $fromDate->format('Y-m-d') . ' 00:00:00');
+        }
+        if ($toDate) {
+            $qbInsuranceRecoveries->setParameter('to', $toDate->format('Y-m-d') . ' 23:59:59');
+        }
+
+        $insuranceRecoveriesAmount = (float) $qbInsuranceRecoveries->getQuery()->getSingleScalarResult();
+
         $qbFactures = $this->consultRepo->createQueryBuilder('c')
             ->select('c', 'f')
             ->leftJoin('c.facture', 'f');
@@ -565,7 +633,7 @@ class ReportService
             }
         }
 
-        $totalAmount = (int) round($transactionsAmount + $invoiceAmount);
+        $totalAmount = (int) round($transactionsAmount + $invoiceAmount + $insuranceRecoveriesAmount);
 
         $averageAmount = $total > 0 ? round($totalAmount / $total) : 0;
 
@@ -700,10 +768,10 @@ class ReportService
             $qb = $this->transactionRepo->createQueryBuilder('t')
                 ->select(
                     'm.libelle AS mode',
-                    "SUM(CASE WHEN t.type = :entry THEN t.montant ELSE -t.montant END) AS balance"
+                    "SUM(CASE WHEN t.type IN (:revenueTypes) THEN t.montant ELSE -t.montant END) AS balance"
                 )
                 ->join('t.modeDePaiement', 'm')
-                ->setParameter('entry', 'Entrée');
+                ->setParameter('revenueTypes', ['Entrée', 'Entree', 'Revenu', 'Revenue']);
 
             if ($fromDate) {
                 $qb->andWhere('t.dateTransaction >= :from')->setParameter('from', $fromDate);
@@ -831,11 +899,26 @@ class ReportService
 
                 foreach ($consultations as $consult) {
                     $facture = $consult->getFacture();
-                    $consultAmount = (float) ($facture?->getMontantTotal() ?? 0);
+                    $factureAssurance = $consult->getFactureAssurance();
+                    $factureAssuranceTotals = $factureAssurance?->computeTotals() ?? [];
+
+                    $consultAmount = $facture !== null
+                        ? (float) ($facture->getMontantTotal() ?? 0.0)
+                        : (float) ($factureAssuranceTotals['montantTotal'] ?? 0.0);
+
+                    $patientPaidAmount = (float) ($consult->getPaiement()?->getMontant() ?? 0.0);
+                    $patientRemainingAmount = $facture !== null
+                        ? (float) ($facture->computeMontantsFromConsultation()['restePatient'] ?? $consultAmount)
+                        : max(0.0, (float) ($factureAssuranceTotals['montantPatient'] ?? 0.0) - $patientPaidAmount);
+                    $insuranceAmount = (float) ($factureAssuranceTotals['montantAssureur'] ?? 0.0);
+                    $isInsuranceSettled = $factureAssurance === null
+                        || $insuranceAmount <= 0.0
+                        || $factureAssurance->getInsuranceStatus() === 'recouvre';
+                    $isPaid = $consultAmount > 0 && $patientRemainingAmount <= 0.0 && $isInsuranceSettled;
 
                     if ($consultAmount <= 0) {
                         $free++;
-                    } elseif (($facture?->getRestePatient() ?? $consultAmount) <= 0) {
+                    } elseif ($isPaid) {
                         $paid++;
                     }
 
@@ -848,8 +931,17 @@ class ReportService
                             'medecin' => $doctor->getFullName(),
                             'patient' => $consult->getPatient()?->getFullName() ?? 'Inconnu',
                             'telephone' => $consult->getPatient()?->getTelephone() ?? '-- -- -- --',
-                            'montant' => $facture->getMontantPatient(),
+                            'montant' => $facture->computeMontantsFromConsultation()["montantTotal"] ?? 0,
                             'pour' => 'Soins'
+                        ];
+                    } elseif ($factureAssurance !== null) {
+                        $paiements[] = [
+                            'date' => $factureAssurance->getDateFacture()?->format('Y-m-d H:i'),
+                            'medecin' => $doctor->getFullName(),
+                            'patient' => $consult->getPatient()?->getFullName() ?? 'Inconnu',
+                            'telephone' => $consult->getPatient()?->getTelephone() ?? '-- -- -- --',
+                            'montant' => $consultAmount,
+                            'pour' => 'Soins assures'
                         ];
                     }
 
@@ -866,10 +958,10 @@ class ReportService
                     'patient' => $consult->getPatient()->getFullName(),
                     'type' => $consult->getNoteSeance(),
                     'amount' => $consultAmount,
-                    'paid' => ($facture?->getRestePatient() ?? $consultAmount) <= 0
+                    'paid' => $isPaid
                 ];
 
-                if ($consult->getFacture()) {
+                if ($facture !== null || $factureAssurance !== null) {
                     foreach ($consult->getActes() as $acte) {
                         $totalActs++;
                         $actAmount = (float) (($acte->getPrix() ?? 0) * max(1, (int) ($acte->getQuantite() ?? 1)));
@@ -882,7 +974,8 @@ class ReportService
                             'montant' => $actAmount,
                         ];
                     }
-                    $relicat_patient += (float) $consult->getFacture()->getRestePatient();
+
+                    $relicat_patient += $patientRemainingAmount;
                 }
             }
 
@@ -924,11 +1017,9 @@ class ReportService
                 ->join('pd.consultation', 'c')
                 ->where('c.medecin = :doctor')
                 ->andWhere('pd.date BETWEEN :from AND :to')
-                ->andWhere('pd.rolePaiement IN (:roles)')
                 ->setParameter('doctor', $doctor)
                 ->setParameter('from', $fromDate)
                 ->setParameter('to', $toDate)
-                ->setParameter('roles', ['patient', 'insurance'])
                 ->getQuery()
                 ->getResult();
 
@@ -952,6 +1043,46 @@ class ReportService
                     'reste' => $facture?->getRestePatient() ?? 0,
                 ];
                 $revenue += $pay->getMontant();
+            }
+
+            $insuranceRecoveries = $this->transactionRepo->createQueryBuilder('t')
+                ->join('t.consultation', 'c')
+                ->where('c.medecin = :doctor')
+                ->andWhere('t.dateTransaction BETWEEN :from AND :to')
+                ->andWhere('c.factureAssurance IS NOT NULL')
+                ->andWhere('t.paiement IS NULL')
+                ->andWhere('t.validationStatus = :status')
+                ->andWhere("LOWER(COALESCE(t.description, '')) LIKE :insuranceDescription")
+                ->setParameter('doctor', $doctor)
+                ->setParameter('from', $fromDate)
+                ->setParameter('to', $toDate)
+                ->setParameter('status', 'validated')
+                ->setParameter('insuranceDescription', '%recouvrement assurance%')
+                ->getQuery()
+                ->getResult();
+
+            foreach ($insuranceRecoveries as $recovery) {
+                if (!$recovery instanceof Transaction) {
+                    continue;
+                }
+
+                $consult = $recovery->getConsultation();
+                $patient = $consult?->getPatient();
+                $amount = (float) ($recovery->getMontant() ?? 0);
+
+                $paiementsPeriode[] = [
+                    'date' => $recovery->getDateTransaction()?->format('Y-m-d H:i'),
+                    'medecin' => $doctor->getFullName(),
+                    'patient' => $patient?->getFullName() ?? 'Inconnu',
+                    'telephone' => $patient?->getTelephone() ?? '-- -- -- --',
+                    'description' => 'Recouvrement assurance',
+                    'montant_total' => $amount,
+                    'montant_paye' => $amount,
+                    'reste' => 0,
+                ];
+
+                $revenue += $amount;
+                $consultationsRevenue += $amount;
             }
 
             usort($paiementsPeriode, fn($a, $b) => strtotime($b['date']) <=> strtotime($a['date']));
@@ -1028,7 +1159,25 @@ class ReportService
 
         foreach ($consultationsPeriode as $consult) {
             $facture = $consult->getFacture();
-            if ($facture) { $paidConsults++; } else { $freeConsults++; }
+            $factureAssurance = $consult->getFactureAssurance();
+            $factureAssuranceTotals = $factureAssurance?->computeTotals() ?? [];
+            $consultAmount = $facture !== null
+                ? (float) ($facture->getMontantTotal() ?? 0.0)
+                : (float) ($factureAssuranceTotals['montantTotal'] ?? 0.0);
+            $patientPaidAmount = (float) ($consult->getPaiement()?->getMontant() ?? 0.0);
+            $patientRemainingAmount = $facture !== null
+                ? (float) ($facture->computeMontantsFromConsultation()['restePatient'] ?? $consultAmount)
+                : max(0.0, (float) ($factureAssuranceTotals['montantPatient'] ?? 0.0) - $patientPaidAmount);
+            $insuranceAmount = (float) ($factureAssuranceTotals['montantAssureur'] ?? 0.0);
+            $isInsuranceSettled = $factureAssurance === null
+                || $insuranceAmount <= 0.0
+                || $factureAssurance->getInsuranceStatus() === 'recouvre';
+
+            if ($consultAmount <= 0) {
+                $freeConsults++;
+            } elseif ($patientRemainingAmount <= 0.0 && $isInsuranceSettled) {
+                $paidConsults++;
+            }
 
             if ($facture) {
                 $apport += $facture->getMontantTotal();
@@ -1039,6 +1188,16 @@ class ReportService
                     'telephone' => $consult->getPatient()?->getTelephone() ?? '-- -- -- --',
                     'montant' => $facture->getMontantTotal(),
                     'pour' => 'Soins'
+                ];
+            } elseif ($factureAssurance !== null) {
+                $apport += $consultAmount;
+                $paiements[] = [
+                    'date' => $factureAssurance->getDateFacture()?->format('Y-m-d H:i'),
+                    'medecin' => $medecin->getFullName(),
+                    'patient' => $consult->getPatient()?->getFullName() ?? 'Inconnu',
+                    'telephone' => $consult->getPatient()?->getTelephone() ?? '-- -- -- --',
+                    'montant' => $consultAmount,
+                    'pour' => 'Soins assures'
                 ];
             }
 
@@ -1054,7 +1213,7 @@ class ReportService
                 ];
             }
 
-            if ($facture !== null) {
+            if ($facture !== null || $factureAssurance !== null) {
                 foreach ($consult->getActes() as $acte) {
                     $actes[] = [
                         'nom' => $acte->getType(),
@@ -1095,17 +1254,54 @@ class ReportService
             $revenue += $pay->getMontant();
         }
 
+        $insuranceRecoveries = $this->transactionRepo->createQueryBuilder('t')
+            ->join('t.consultation', 'c')
+            ->where('c.medecin = :doctor')
+            ->andWhere('t.dateTransaction BETWEEN :from AND :to')
+            ->andWhere('c.factureAssurance IS NOT NULL')
+            ->andWhere('t.paiement IS NULL')
+            ->andWhere('t.validationStatus = :status')
+            ->andWhere("LOWER(COALESCE(t.description, '')) LIKE :insuranceDescription")
+            ->setParameter('doctor', $medecin)
+            ->setParameter('from', $from)
+            ->setParameter('to', $to)
+            ->setParameter('status', 'validated')
+            ->setParameter('insuranceDescription', '%recouvrement assurance%')
+            ->getQuery()
+            ->getResult();
+
+        foreach ($insuranceRecoveries as $recovery) {
+            if (!$recovery instanceof Transaction) {
+                continue;
+            }
+
+            $consult = $recovery->getConsultation();
+            $patient = $consult?->getPatient();
+            $amount = (float) ($recovery->getMontant() ?? 0);
+
+            $paiementsPeriode[] = [
+                'date' => $recovery->getDateTransaction()?->format('Y-m-d H:i'),
+                'medecin' => $medecin->getFullName(),
+                'patient' => $patient?->getFullName() ?? 'Inconnu',
+                'telephone' => $patient?->getTelephone() ?? '-- -- -- --',
+                'description' => 'Recouvrement assurance',
+                'montant_total' => $amount,
+                'montant_paye' => $amount,
+                'reste' => 0,
+            ];
+
+            $revenue += $amount;
+        }
+
         $paiementsFactures = $this->em->createQueryBuilder()
             ->select('pd', 'c')
             ->from('App\\Billing\\Entity\\Paiement', 'pd')
             ->join('pd.consultation', 'c')
             ->where('c.medecin = :doctor')
-            ->andWhere('pd.date BETWEEN :from AND :to')
-            ->andWhere('pd.rolePaiement IN (:roles)')
+            ->andWhere('pd.date BETWEEN :from AND :to') 
             ->setParameter('doctor', $medecin)
             ->setParameter('from', $from)
             ->setParameter('to', $to)
-            ->setParameter('roles', ['patient', 'insurance'])
             ->getQuery()
             ->getResult();
 

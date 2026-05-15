@@ -5,8 +5,7 @@ namespace App\Patient\Entity;
 use App\Config\sexeEnum;
 use App\CareDelivery\Entity\Consultation;
 use App\CareDelivery\Entity\Traitement;
-use App\ClinicalRecord\Entity\FicheMedicale;
-use App\ClinicalRecord\Entity\FicheObservation;
+use App\ClinicalRecord\Entity\FicheMedicale; 
 use App\IdentityAccess\Entity\User;
 use App\Patient\Repository\PatientRepository;
 use App\Scheduling\Entity\Rdv;
@@ -93,9 +92,6 @@ class Patient
     #[ORM\JoinColumn(nullable: true)]
     private ?Consultation $derniereConsultation = null;
 
-    #[ORM\OneToMany(mappedBy: 'patient', targetEntity: FicheObservation::class)]
-    private Collection $fichesObservation;
-
     #[ORM\OneToMany(mappedBy: 'patient', targetEntity: FicheMedicale::class)]
     private Collection $fichesMedicales;
 
@@ -130,6 +126,9 @@ class Patient
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $photo = null;
 
+    #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true)]
+    private ?\DateTimeInterface $deletedAt = null;
+
     #[ORM\OneToOne(mappedBy: 'patient', targetEntity: PatientAssuranceProfile::class, cascade: ['persist', 'remove'], orphanRemoval: true)]
     private ?PatientAssuranceProfile $assuranceProfile = null;
 
@@ -140,7 +139,6 @@ class Patient
         $this->rdvs = new ArrayCollection();
         $this->traitements = new ArrayCollection();
         $this->allergies = new ArrayCollection();
-        $this->fichesObservation = new ArrayCollection();
         $this->fichesMedicales = new ArrayCollection();
     }
 
@@ -577,33 +575,6 @@ class Patient
     }
 
     /**
-     * @return Collection<int, FicheObservation>
-     */
-    public function getFichesObservation(): Collection
-    {
-        return $this->fichesObservation;
-    }
-
-    public function addFichesObservation(FicheObservation $fichesObservation): static
-    {
-        if (!$this->fichesObservation->contains($fichesObservation)) {
-            $this->fichesObservation->add($fichesObservation);
-            $fichesObservation->setPatient($this);
-        }
-
-        return $this;
-    }
-
-    public function removeFichesObservation(FicheObservation $fichesObservation): static
-    {
-        if ($this->fichesObservation->removeElement($fichesObservation) && $fichesObservation->getPatient() === $this) {
-            $fichesObservation->setPatient(null);
-        }
-
-        return $this;
-    }
-
-    /**
      * @return Collection<int, FicheMedicale>
      */
     public function getFichesMedicales(): Collection
@@ -674,5 +645,22 @@ class Patient
         $this->photo = $photo;
 
         return $this;
+    }
+
+    public function getDeletedAt(): ?\DateTimeInterface
+    {
+        return $this->deletedAt;
+    }
+
+    public function setDeletedAt(?\DateTimeInterface $deletedAt): static
+    {
+        $this->deletedAt = $deletedAt;
+
+        return $this;
+    }
+
+    public function isDeleted(): bool
+    {
+        return $this->deletedAt !== null;
     }
 }

@@ -26,7 +26,7 @@ import {
     updatePatientTourMock
 } from '@/services/patientsTourMock';
 import { ref } from 'vue';
-import { useAuthStore } from '@/stores/auth'; 
+import { useAuthStore } from '@/stores/auth';
 import http from '@/service/http';
 
 const auth = useAuthStore();
@@ -67,6 +67,7 @@ export function usePatients() {
         lieuNaissance: raw.lieuNaissance ?? raw.lieu_naissance ?? '',
         groupeSanguin: raw.groupeSanguin ?? raw.groupe_sanguin ?? '',
         notes: raw.notes ?? '',
+        deletedAt: raw.deletedAt ?? raw.deleted_at ?? null,
         contactUrgence: raw.contactUrgence ?? raw.contact_urgence ?? null,
         smsPreferences: raw.smsPreferences ?? {
             patientCreated: raw.smsPatientCreated ?? false,
@@ -157,6 +158,7 @@ export function usePatients() {
                     headers: buildAuthHeaders(true),
                     params: { page, limit, q, sortField, sortOrder }
                 })).data || {};
+
             const list = Array.isArray(data.items) ? data.items.map(normalizePatient) : [];
             patients.value = list;
             totalRecords.value = data.total ?? list.length;
@@ -468,6 +470,63 @@ export function usePatients() {
         }
     };
 
+    const deletePatient = async (patientId, token) => {
+        loading.value = true;
+        error.value = null;
+        try {
+            const res = await http.delete(`${apiPrefix}/patient/${patientId}`, {
+                headers: buildAuthHeaders(true)
+            });
+            return res.data;
+        } catch (err) {
+            error.value = err;
+            return null;
+        } finally {
+            loading.value = false;
+        }
+    };
+
+    const fetchPatientsTrash = async (token, { page = 1, limit = 10, q = '' } = {}) => {
+        loading.value = true;
+        error.value = null;
+        try {
+            const res = await http.get(`${apiPrefix}/patients/trash`, {
+                headers: buildAuthHeaders(true),
+                params: { page, limit, q }
+            });
+
+            const data = res.data || {};
+            const list = Array.isArray(data.items) ? data.items.map(normalizePatient) : [];
+
+            return {
+                ...data,
+                items: list,
+                total: data.total ?? list.length,
+            };
+        } catch (err) {
+            error.value = err;
+            throw err;
+        } finally {
+            loading.value = false;
+        }
+    };
+
+    const restorePatient = async (patientId, token) => {
+        loading.value = true;
+        error.value = null;
+        try {
+            const res = await http.patch(`${apiPrefix}/patient/${patientId}/restore`, {}, {
+                headers: buildAuthHeaders(true)
+            });
+            return res.data;
+        } catch (err) {
+            error.value = err;
+            return null;
+        } finally {
+            loading.value = false;
+        }
+    };
+
     const fetchMedecins = async (token) => {
         loading.value = true;
         error.value = null;
@@ -618,7 +677,7 @@ export function usePatients() {
         }
     };
 
-    
+
     return {
         patients,
         patientDossier,
@@ -643,6 +702,9 @@ export function usePatients() {
         createConsultationForPatient,
         checkConsultationActive,
         deleteConsultation,
+        deletePatient,
+        fetchPatientsTrash,
+        restorePatient,
         fetchMedecins,
         fetchPaymentMethods,
         createRdvForPatient,

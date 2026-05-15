@@ -24,6 +24,14 @@ const props = defineProps({
         type: Boolean,
         default: false
     },
+    consultationToolbarLoading: {
+        type: Boolean,
+        default: false
+    },
+    consultationLoadingByPatient: {
+        type: Object,
+        default: () => ({})
+    },
     allowReceptionQuickClose: {
         type: Boolean,
         default: true
@@ -275,6 +283,11 @@ const isConsultationPayante = (consultation) => {
     return consultation?.isPaid
 };
 
+const isConsultationCreateLoading = (patientId) => {
+    if (patientId === undefined || patientId === null) return false;
+    return Boolean(props.consultationLoadingByPatient?.[patientId]);
+};
+
 const printConsultationTicket = async (consultation) => {
     if (!consultation) return;
     await printPaymentTicket(consultation.id);
@@ -429,11 +442,17 @@ const handleCancelWithConfirm = (event, consultation) => {
                                 </div>
                                 <div class="flex items-center gap-2 opacity-0 transition-opacity group-hover:opacity-100">
                                     <button
-                                        class="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600 transition-colors hover:bg-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400"
+                                        :disabled="isConsultationCreateLoading(patient?.id)"
+                                        :class="[
+                                            'flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600 transition-colors dark:bg-emerald-900/30 dark:text-emerald-400',
+                                            isConsultationCreateLoading(patient?.id)
+                                                ? 'cursor-not-allowed opacity-60'
+                                                : 'hover:bg-emerald-200'
+                                        ]"
                                         title="Nouvelle consultation"
                                         @click="emit('open-create-consultation-for-patient', patient)"
                                     >
-                                        <i class="fas fa-stethoscope text-xs"></i>
+                                        <i :class="isConsultationCreateLoading(patient?.id) ? 'pi pi-spin pi-spinner text-xs' : 'fas fa-stethoscope text-xs'"></i>
                                     </button>
                                     <button
                                         class="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100 text-blue-600 transition-colors hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400"
@@ -494,11 +513,17 @@ const handleCancelWithConfirm = (event, consultation) => {
                             </div>
                             <div class="flex items-center gap-2 opacity-0 transition-opacity group-hover:opacity-100">
                                 <button
-                                    class="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600 transition-colors hover:bg-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400"
+                                    :disabled="isConsultationCreateLoading(patient?.id)"
+                                    :class="[
+                                        'flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600 transition-colors dark:bg-emerald-900/30 dark:text-emerald-400',
+                                        isConsultationCreateLoading(patient?.id)
+                                            ? 'cursor-not-allowed opacity-60'
+                                            : 'hover:bg-emerald-200'
+                                    ]"
                                     title="Nouvelle consultation"
                                     @click="emit('open-create-consultation-for-patient', patient)"
                                 >
-                                    <i class="fas fa-stethoscope text-xs"></i>
+                                    <i :class="isConsultationCreateLoading(patient?.id) ? 'pi pi-spin pi-spinner text-xs' : 'fas fa-stethoscope text-xs'"></i>
                                 </button>
                                 <button
                                     class="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100 text-blue-600 transition-colors hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400"
@@ -549,9 +574,10 @@ const handleCancelWithConfirm = (event, consultation) => {
                             </button>
                             <button
                                 @click="emit('open-create-consultation')"
-                                class="rounded-xl bg-gradient-to-r from-primary-500 to-primary-600 p-1.5 text-white shadow-md transition-all hover:shadow-lg hover:scale-105"
+                                :disabled="consultationToolbarLoading"
+                                class="rounded-xl bg-gradient-to-r from-primary-500 to-primary-600 p-1.5 text-white shadow-md transition-all hover:shadow-lg hover:scale-105 disabled:cursor-not-allowed disabled:opacity-60"
                             >
-                                <i class="pi pi-plus text-xs"></i>
+                                <i :class="consultationToolbarLoading ? 'pi pi-spin pi-spinner text-xs' : 'pi pi-plus text-xs'"></i>
                             </button>
                         </div>
                     </div>

@@ -2,15 +2,15 @@
 
 namespace App\CareDelivery\Service;
 
+use App\Billing\Entity\Assurance;
 use App\Dto\Focus\FocusReceptionBillingDto;
 use App\Dto\Focus\FocusReceptionConsultationDto;
 use App\Dto\Focus\FocusReceptionInvoiceLineDto;
 use App\Dto\Focus\FocusReceptionPatientDto;
 use App\Dto\Focus\FocusReceptionPayloadDto;
 use App\Dto\Focus\FocusReceptionPaymentDto;
-use App\Billing\Entity\ContenuDevis;
-use App\Billing\Entity\Devis;
 use App\Billing\Entity\Facture;
+use App\Billing\Entity\FactureAssurance;
 use App\Billing\Entity\Paiement;
 use App\Billing\Entity\Transaction;
 use App\Billing\Repository\DevisRepository;
@@ -18,10 +18,8 @@ use App\CareDelivery\Entity\ActeMedical;
 use App\CareDelivery\Entity\Consultation;
 use App\CareDelivery\Entity\Ordonnance;
 use App\CareDelivery\Entity\OrdonnanceLigne;
-use App\CareDelivery\Repository\ConsultationRepository;
-use App\ClinicalRecord\Entity\DocumentMedical;
-use App\ClinicalRecord\Entity\FicheMedicale;
-use App\ClinicalRecord\Entity\FicheObservation;
+use App\CareDelivery\Repository\ConsultationRepository; 
+use App\ClinicalRecord\Entity\FicheMedicale; 
 use App\Communication\Service\NotificationRecipientResolver;
 use App\Shared\Event\EntityActionEvent;
 use App\Focus\Service\FocusRealtimePublisher;
@@ -31,13 +29,17 @@ use App\IdentityAccess\Repository\EmployeRepository;
 use App\Patient\Entity\Allergy;
 use App\Patient\Entity\Antecedent;
 use App\Patient\Entity\Patient;
+use App\Settings\Service\GlobalSettingsService;
+use App\Billing\Entity\ModeDePaiement;
+use App\Patient\Repository\PatientRepository;
 use App\Scheduling\Entity\Salle;
 use App\Scheduling\Repository\SalleRepository;
+use App\CareDelivery\Service\ConsultationNotificationService;
+use DateTime;
+use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
-use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
-use Symfony\Component\Filesystem\Filesystem;
-use Symfony\Component\HttpFoundation\File\UploadedFile;
+use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface; 
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
@@ -60,8 +62,150 @@ class ConsultationService
         private UserPasswordHasherInterface $passwordHasher,
         ParameterBagInterface $params,
         private CacheInterface $cache,
+        private GlobalSettingsService $globalSettingsService,
+        private PatientRepository $patientRepo,
+        private ConsultationNotificationService $consultationNotificationService,
     ) {
         $this->projectDir = $params->get('kernel.project_dir');
+    }
+
+    public function createConsultation(array $data, ?User $triggeredBy = null): array
+    {
+        try {
+            $isMedecinRequired = $this->globalSettingsService->isMedecinRequiredOnConsultationCreation();
+            if ($isMedecinRequired && empty($data['medecin_id'])) {
+                return [
+                    'error' => 'Le medecin est requis pour creer la consultation.',
+                    'status' => 400,
+                ];
+            }
+
+            if (($data['payant'] ?? 0) == 1) {
+                $defaultConsultationAmount = $this->globalSettingsService->getConsultationPrice();
+                $consultationAmount = (float) ($data['consultation_amount'] ?? $defaultConsultationAmount);
+                if ($consultationAmount <= 0) {
+                    $consultationAmount = $defaultConsultationAmount;
+                }
+
+                $patient = $this->patientRepo->find($data['patient_id'] ?? null);
+                if (!$patient) {
+                    return [
+                        'error' => 'Patient introuvable.',
+                        'status' => 404,
+                    ];
+                }
+
+                $profile = $patient->getAssuranceProfile();
+                $assurance = $profile?->getAssurance();
+                $insuranceEnabled = $profile !== null && $assurance !== null && $assurance->isActif();
+                $insuranceRate = $insuranceEnabled
+                    ? max(0, min(100, (float) ($profile?->getCoverageRate() ?? $assurance?->getTauxParDefaut() ?? 0)))
+                    : 0.0;
+
+                $insuranceAmount = $insuranceEnabled ? ($consultationAmount * $insuranceRate) / 100 : 0.0;
+                $patientAmount = max(0.0, $consultationAmount - $insuranceAmount);
+
+                if ($patientAmount > 0 && !$insuranceEnabled && !isset($data['mode_paiement_id'])) {
+                    return [
+                        'error' => 'Le mode de paiement est requis pour une consultation payante.',
+                        'status' => 400,
+                    ];
+                }
+
+                $consultation = $this->consultationRepo->NewConsultation($data, $this->patientRepo, $this->employeRepo);
+                $createdPaiementId = null;
+                $patientPayment = null;
+                $timestamp = new DateTimeImmutable();
+
+                if ($patientAmount > 0 && !$insuranceEnabled) {
+                    $modePaiement = $this->em->getRepository(ModeDePaiement::class)->find($data['mode_paiement_id']);
+
+                    if (!$modePaiement) {
+                        return [
+                            'error' => 'Mode de paiement invalide.',
+                            'status' => 400,
+                        ];
+                    }
+
+                    $paiement = new Paiement();
+                    $paiement->setFacture(null);
+                    $paiement->setMode($modePaiement);
+                    $paiement->setMontant($patientAmount);
+                    $paiement->setDate($timestamp);
+                    $paiement->setConsultation($consultation);
+                    $this->em->persist($paiement);
+                    $patientPayment = $paiement;
+
+                    $transaction = new Transaction();
+                    $transaction->setType('Revenue');
+                    $transaction->setMontant($patientAmount);
+                    $transaction->setDateTransaction($timestamp);
+                    $transaction->setDescription('Ticket de consultation #' . $consultation->getId() . ' | Part patient');
+                    $transaction->setModeDePaiement($modePaiement);
+                    $transaction->setConsultation($consultation);
+                    $transaction->markValidated();
+                    $transaction->setPaiement($paiement);
+                    $this->em->persist($transaction);
+                }
+
+                if ($insuranceEnabled && $assurance instanceof Assurance) {
+                    $factureAssurance = new FactureAssurance();
+                    $factureAssurance
+                        ->setConsultation($consultation)
+                        ->setPatient($patient)
+                        ->setAssurance($assurance)
+                        ->setCoverageRate($insuranceRate > 0 ? $insuranceRate : null)
+                        ->setDateFacture(new DateTime())
+                        ->setConsultationAmount($consultationAmount)
+                        ->setIsConsultationPayante(true)
+                        ->setInsuranceStatus('pending')
+                        ->setIsRecouvre(false)
+                        ->setAssuranceSnapshot([
+                            'code' => $assurance->getCode(),
+                            'nom' => $assurance->getNom(),
+                            'logoPath' => $assurance->getLogoPath(),
+                            'website' => $assurance->getWebsite(),
+                            'email' => $assurance->getEmail(),
+                            'formData' => $profile?->getFormData() ?? [],
+                        ]);
+
+                    $consultation->setFactureAssurance($factureAssurance);
+                    $this->em->persist($factureAssurance);
+                }
+
+                $this->em->flush();
+
+                if ($patientPayment instanceof Paiement && $patientPayment->getId() !== null) {
+                    $createdPaiementId = $patientPayment->getId();
+                } elseif ($consultation->getPaiement()) {
+                    $createdPaiementId = $consultation->getPaiement()->getId();
+                }
+
+                $this->consultationNotificationService->notifyCreation($consultation, $triggeredBy);
+
+                return [
+                    'success' => true,
+                    'status' => 200,
+                    'consultation_id' => $consultation->getId(),
+                    'paiement_id' => $createdPaiementId,
+                ];
+            }
+
+            $consultation = $this->consultationRepo->NewConsultation($data, $this->patientRepo, $this->employeRepo);
+
+            $this->consultationNotificationService->notifyCreation($consultation, $triggeredBy);
+
+            return [
+                'success' => true,
+                'status' => 200,
+                'consultation_id' => $consultation->getId(),
+            ];
+        } catch (\Exception $e) {
+            return [
+                'error' => $e->getMessage(),
+                'status' => 400,
+            ];
+        }
     }
 
     public function getMedecinForUser(?object $user): ?Employe
@@ -204,33 +348,24 @@ class ConsultationService
     private function resolvePendingFicheData(Consultation $consultation): array
     {
         $patient = $consultation->getPatient();
-        $lastFicheMedicale = $patient->getFichesMedicales()->filter(fn($f) => $f !== null)->last() ?: null;
-        $lastFicheObservation = $patient->getFichesObservation()->filter(fn($f) => $f !== null)->last() ?: null;
+        $lastFicheMedicale = $patient->getFichesMedicales()->filter(fn($f) => $f !== null)->last() ?: null; 
 
-        $ficheMedicale = $consultation->getFicheMedicale();
-        $ficheObservation = $consultation->getFiche();
+        $ficheMedicale = $consultation->getFicheMedicale(); 
 
-        $linkedFiche = $ficheMedicale ?? $ficheObservation;
+        $linkedFiche = $ficheMedicale;
 
         $lastFicheCandidate = null;
         if (!$linkedFiche) {
-            $lastFicheCandidate = $lastFicheMedicale ?: $lastFicheObservation;
+            $lastFicheCandidate = $lastFicheMedicale;
         }
 
         return [
-            'ficheMedicale' => $ficheMedicale,
-            'ficheObservation' => $ficheObservation,
+            'ficheMedicale' => $ficheMedicale, 
             'fiche' => $linkedFiche,
             'ficheId' => $linkedFiche?->getId(),
-            'ficheType' => $ficheMedicale ? 'medicale' : ($ficheObservation ? 'observation' : null),
-            'ficheVersion' => $ficheMedicale ? 2 : ($ficheObservation ? 1 : null),
             'hasFiche' => (bool) ($linkedFiche || $lastFicheCandidate),
             'lastFicheId' => $lastFicheCandidate?->getId(),
-            'lastFicheType' => $lastFicheCandidate instanceof FicheMedicale ? 'medicale' : ($lastFicheCandidate instanceof FicheObservation ? 'observation' : null),
-            'lastFicheVersion' => $lastFicheCandidate instanceof FicheMedicale ? 2 : ($lastFicheCandidate instanceof FicheObservation ? 1 : null),
-            'motif' => $linkedFiche
-                ? ($ficheMedicale?->getEntretien()?->getMotifConsultation() ?? $ficheObservation?->getMotif() ?? '')
-                : ($lastFicheMedicale?->getEntretien()?->getMotifConsultation() ?? $lastFicheObservation?->getMotif() ?? ''),
+            'motif' =>  $lastFicheMedicale?->getEntretien()?->getMotifConsultation() ?? ''
         ];
     }
 
@@ -248,11 +383,7 @@ class ConsultationService
                 'hasFiche' => $ficheData['hasFiche'],
                 'fiche' => $ficheData['fiche'],
                 'ficheId' => $ficheData['ficheId'],
-                'ficheType' => $ficheData['ficheType'],
-                'ficheVersion' => $ficheData['ficheVersion'],
-                'lastFicheId' => $ficheData['lastFicheId'],
-                'lastFicheType' => $ficheData['lastFicheType'],
-                'lastFicheVersion' => $ficheData['lastFicheVersion'],
+                'lastFicheId' => $ficheData['lastFicheId'], 
             ];
         }, $consultations);
     }
@@ -332,12 +463,8 @@ class ConsultationService
             'factstate' => $this->resolveFocusFactState($consultation->getFacture()),
             'state' => $consultation->getStatut(),
             'hasFiche' => $ficheData['hasFiche'],
-            'ficheId' => $ficheData['ficheId'],
-            'ficheType' => $ficheData['ficheType'],
-            'ficheVersion' => $ficheData['ficheVersion'],
-            'lastFicheId' => $ficheData['lastFicheId'],
-            'lastFicheType' => $ficheData['lastFicheType'],
-            'lastFicheVersion' => $ficheData['lastFicheVersion'],
+            'ficheId' => $ficheData['ficheId'],  
+            'lastFicheId' => $ficheData['lastFicheId'], 
         ]);
     }
 
@@ -382,7 +509,7 @@ class ConsultationService
                 $payment->getMontant(),
                 $payment->getMode()?->getLibelle(),
                 $payment->getDate()?->format(DATE_ATOM),
-                method_exists($payment, 'getRolePaiement') ? ((string) ($payment->getRolePaiement() ?? 'direct')) : 'direct',
+                method_exists($payment, 'getiement') ? ((string) ($payment->getiement() ?? 'direct')) : 'direct',
                 'paiement',
                 $payment->getTransaction()?->getValidationStatus() ?? 'validated',
             ),
@@ -499,13 +626,8 @@ class ConsultationService
         ];
     }
 
-    public function getFicheById(int $ficheId): FicheObservation|FicheMedicale
+    public function getFicheById(int $ficheId):FicheMedicale
     {
-        $ficheObs = $this->em->getRepository(FicheObservation::class)->find($ficheId);
-        if ($ficheObs) {
-            return $ficheObs;
-        }
-
         $ficheMed = $this->em->getRepository(FicheMedicale::class)->find($ficheId);
         if ($ficheMed) {
             return $ficheMed;
@@ -527,19 +649,17 @@ class ConsultationService
 
         $patientId = $consultation->getPatient()?->getId();
 
-        $attachIfAllowed = function (FicheObservation|FicheMedicale $fiche) use ($consultation, $patientId): bool {
+        $attachIfAllowed = function (FicheMedicale $fiche) use ($consultation, $patientId): bool {
             if ($fiche->getPatient()?->getId() !== $patientId) {
                 return false;
             }
 
-            if ($consultation->getFiche() || $consultation->getFicheMedicale()) {
+            if ($consultation->getFicheMedicale()) {
                 return false;
             }
 
             if ($fiche instanceof FicheMedicale) {
                 $consultation->setFicheMedicale($fiche);
-            } else {
-                $consultation->setFiche($fiche);
             }
 
             $this->em->persist($consultation);
@@ -548,13 +668,6 @@ class ConsultationService
             return true;
         };
 
-        // Try fiche observation first
-        $ficheObs = $this->em->getRepository(FicheObservation::class)->find($ficheId);
-        if ($ficheObs && ($consultation->getFiche() === $ficheObs || $attachIfAllowed($ficheObs))) {
-            return [$ficheObs, $consultation];
-        }
-
-        // Try fiche medicale
         $ficheMed = $this->em->getRepository(FicheMedicale::class)->find($ficheId);
         if ($ficheMed && ($consultation->getFicheMedicale() === $ficheMed || $attachIfAllowed($ficheMed))) {
             return [$ficheMed, $consultation];
@@ -692,199 +805,6 @@ class ConsultationService
         ];
     }
 
-    public function updateMotif(int $ficheId, array $data): void
-    {
-        $fiche = $this->getFicheById($ficheId);
-        if ($fiche instanceof FicheMedicale) {
-            throw new \InvalidArgumentException('Utilisez le service FicheMedicale pour cette fiche.');
-        }
-
-        $fiche
-            ->setMotif($data['motif'] ?? $fiche->getMotif())
-            ->setHistoireMaladie($data['histoireMaladie'] ?? $fiche->getHistoireMaladie())
-            ->setSoinsAnterieurs($data['soinsAnterieurs'] ?? $fiche->getSoinsAnterieurs());
-        $this->em->flush();
-    }
-
-    public function updateExamens(int $ficheId, array $data): void
-    {
-        $fiche = $this->getFicheById($ficheId);
-        if ($fiche instanceof FicheMedicale) {
-            throw new \InvalidArgumentException('Utilisez le service FicheMedicale pour cette fiche.');
-        }
-
-        $fiche
-            ->setExoInspection($data['exoInspection'] ?? '')
-            ->setExoPalpation($data['exoPalpation'] ?? '')
-            ->setEndoInspection($data['endoInspection'] ?? '')
-            ->setEndoPalpation($data['endoPalpation'] ?? '')
-            ->setOcclusion($data['occlusion'] ?? '')
-            ->setExamenParodontal($data['examenParodontal'] ?? '')
-            ->setDiagnostic($data['diagnostic'] ?? '');
-
-        $toothsCheck = $fiche->getToothsCheck();
-        if (isset($data['toothsCheck']) && is_array($data['toothsCheck'])) {
-            foreach ($data['toothsCheck'] as $tooth => $result) {
-                $toothsCheck[$tooth] = $result;
-            }
-        }
-
-        if (array_key_exists('examensComplementaires', $data)) {
-            $normalized = [];
-            if (is_array($data['examensComplementaires'])) {
-                foreach ($data['examensComplementaires'] as $item) {
-                    if (!is_array($item)) {
-                        continue;
-                    }
-
-                    $entry = [
-                        'type' => trim((string) ($item['type'] ?? '')),
-                        'description' => trim((string) ($item['description'] ?? '')),
-                        'date' => isset($item['date']) && $item['date'] !== '' ? (string) $item['date'] : null,
-                        'resultat' => trim((string) ($item['resultat'] ?? '')),
-                    ];
-
-                    if ($entry['type'] !== '' || $entry['description'] !== '' || $entry['date'] !== null || $entry['resultat'] !== '') {
-                        $normalized[] = $entry;
-                    }
-                }
-            }
-            $fiche->setExamensComplementaires($normalized);
-        }
-
-        if (array_key_exists('diagnosticSupposeExamens', $data)) {
-            $fiche->setDiagnosticSupposeExamens(trim((string) ($data['diagnosticSupposeExamens'] ?? '')));
-        }
-
-        $fiche->setToothsCheck($toothsCheck);
-        $this->em->persist($fiche);
-        $this->em->flush();
-    }
-
-    public function updateTraitements(int $ficheId, array $data, array $files): void
-    {
-        $fiche = $this->getFicheById($ficheId);
-        if ($fiche instanceof FicheMedicale) {
-            throw new \InvalidArgumentException('Utilisez le service FicheMedicale pour cette fiche.');
-        }
-
-        $fiche
-            ->setTraitementUrgence($data['traitementUrgence'] ?? '')
-            ->setTraitementDentaire($data['traitementDentaire'] ?? '')
-            ->setTraitementParodontal($data['traitementParodontal'] ?? '')
-            ->setTraitementOrthodontique($data['traitementOrthodontique'] ?? '')
-            ->setAutres($data['autres'] ?? '');
-
-        foreach ($fiche->getDocumentsMedicaux() as $d) {
-            $this->em->remove($d);
-        }
-
-        $fs = new Filesystem();
-        $uploadDir = $this->projectDir . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'documents';
-
-        if (!$fs->exists($uploadDir)) {
-            $fs->mkdir($uploadDir, 0775);
-            $fs->chmod($uploadDir, 0775);
-        }
-
-        foreach ($files as $i => $file) {
-            if (!$file instanceof UploadedFile) {
-                continue;
-            }
-
-            $libelle = $data['documents'][$i]['libelle'] ?? 'document';
-            $dateDossier = new \DateTime($data['documents'][$i]['dateDossier'] ?? 'now');
-            $description = $data['documents'][$i]['description'] ?? '';
-
-            $patientNomComplet = preg_replace('/[^a-zA-Z0-9_-]/', '_', $fiche->getPatient()->getNom() . '_' . $fiche->getPatient()->getPrenom());
-            $libelleSanitized  = preg_replace('/[^a-zA-Z0-9_-]/', '_', $libelle);
-            $extension = $file->guessExtension() ?: $file->getClientOriginalExtension();
-            $baseName = $libelleSanitized . '_' . $patientNomComplet;
-            $filename = $baseName . '.' . $extension;
-
-            $counter = 1;
-            while (file_exists($uploadDir . '/' . $filename)) {
-                $filename = $baseName . '_' . $counter . '.' . $extension;
-                $counter++;
-            }
-
-            $movedFile = $file->move($uploadDir, $filename);
-
-            $dm = new DocumentMedical();
-            $dm->setFiche($fiche)
-                ->setLibelle($libelle)
-                ->setDateDossier($dateDossier)
-                ->setDescription($description)
-                ->setFichier('uploads/documents/' . $movedFile->getFilename());
-
-            $this->em->persist($dm);
-        }
-
-        if (isset($data['documents']) && is_array($data['documents'])) {
-            foreach ($data['documents'] as $i => $docData) {
-                if (isset($files[$i]) && $files[$i] instanceof UploadedFile) {
-                    continue;
-                }
-
-                if (!empty($docData['url'])) {
-                    $dm = new DocumentMedical();
-                    $dm->setFiche($fiche)
-                        ->setLibelle($docData['libelle'] ?? '')
-                        ->setDateDossier(new \DateTime($docData['dateDossier'] ?? 'now'))
-                        ->setDescription($docData['description'] ?? '')
-                        ->setFichier($docData['url']);
-
-                    $this->em->persist($dm);
-                }
-            }
-        }
-
-        $this->em->flush();
-    }
-
-    public function updateDevis(int $ficheId, array $data): void
-    {
-        $fiche = $this->getFicheById($ficheId);
-        if ($fiche instanceof FicheMedicale) {
-            throw new \InvalidArgumentException('Utilisez le service FicheMedicale pour cette fiche.');
-        }
-
-        $oldDevis = $this->devisRepo->findOneBy(['fiche' => $fiche, 'type' => 0]);
-        $devis = $oldDevis ?? new Devis();
-        if ($fiche instanceof FicheMedicale) {
-            $devis->setFicheMedicale($fiche);
-        } else {
-            $devis->setFiche($fiche);
-        }
-        $devis->setDate(new \DateTime($data['date'] ?? 'now'))
-            ->setType(0)
-            ->setStatut(0)
-            ->setMontant(0);
-        $this->em->persist($devis);
-
-        foreach ($devis->getContenus() as $contenu) {
-            $devis->removeContenu($contenu);
-            $this->em->remove($contenu);
-        }
-
-        $amount = 0;
-        if (isset($data['contenus']) && is_array($data['contenus'])) {
-            foreach ($data['contenus'] as $c) {
-                $cd = new ContenuDevis();
-                $cd->setDevis($devis)
-                    ->setDesignation($c['designation'] ?? '')
-                    ->setQte($c['qte'] ?? 1)
-                    ->setMontant($c['montant'] ?? 0);
-                $amount += $cd->getMontant() * $cd->getQte();
-                $cd->setMontantTotal($amount);
-                $this->em->persist($cd);
-            }
-        }
-        $devis->setMontant($amount);
-        $this->em->persist($devis);
-        $this->em->flush();
-    }
-
     public function updateConsultation(int $ficheId, int $consultationId, array $data, ?object $user = null, bool $restrictToMedecin = false): void
     {
         [, $consultation] = $this->getFicheAndConsultation($ficheId, $consultationId, $user, $restrictToMedecin);
@@ -911,23 +831,20 @@ class ConsultationService
         }
 
         if (!$consultation->getMedecin()) {
-            throw new \InvalidArgumentException('Le médecin est obligatoire pour clÃ´turer la consultation.');
+            throw new \InvalidArgumentException('Le médecin est obligatoire pour clôturer la consultation.');
         }
 
         if ($consultation->getActes()->isEmpty()) {
-            throw new \InvalidArgumentException('Ajoutez au moins un acte médical avant de clÃ´turer la consultation.');
+            throw new \InvalidArgumentException('Ajoutez au moins un acte médical avant de clôturer la consultation.');
         }
-        
+
         $facture = $consultation->getFacture() ?? new Facture();
         $facture->setConsultation($consultation);
         $facture->setDateFacture(new \DateTime('now'));
 
         $montants = $facture->computeMontantsFromConsultation();
         $facture->setIsReglee(((float) $montants['restePatient']) <= 0.0);
-        $facture->setTauxCouverture($montants['tauxCouverture']);
         $facture->setIsRecouvre(false);
-
-        $facture->setInsuranceStatus('none');
         $consultation->setIsRecouvre(false);
         $consultation->setFacture($facture);
         $this->em->persist($facture);
@@ -953,7 +870,7 @@ class ConsultationService
         $patientName = trim($patient?->getFullName() ?? '') ?: 'un patient';
         $amountLabel = number_format($invoiceAmount, 0, ',', ' ');
         $message = sprintf(
-            'Consultation de %s clÃ´turée : facture de %s FCFA prÃªte en caisse.',
+            'Consultation de %s clôturée : facture de %s FCFA prête en caisse.',
             $patientName,
             $amountLabel,
         );
@@ -1065,11 +982,7 @@ class ConsultationService
                 'fiche' => $ficheData['fiche'],
                 'ficheId' => $ficheData['ficheId'],
                 'motif' => $ficheData['motif'],
-                'ficheType' => $ficheData['ficheType'],
-                'ficheVersion' => $ficheData['ficheVersion'],
-                'lastFicheId' => $ficheData['lastFicheId'],
-                'lastFicheType' => $ficheData['lastFicheType'],
-                'lastFicheVersion' => $ficheData['lastFicheVersion'],
+                'lastFicheId' => $ficheData['lastFicheId'], 
             ];
         }, $consultations);
 
@@ -1094,12 +1007,8 @@ class ConsultationService
                 'motif' => $ficheData['motif'],
                 'createdAt' => $c->getCreatedAt()->format('Y-m-d H:i'),
                 'hasFiche' => $ficheData['hasFiche'],
-                'ficheId' => $ficheData['ficheId'],
-                'ficheType' => $ficheData['ficheType'],
-                'ficheVersion' => $ficheData['ficheVersion'],
-                'lastFicheId' => $ficheData['lastFicheId'],
-                'lastFicheType' => $ficheData['lastFicheType'],
-                'lastFicheVersion' => $ficheData['lastFicheVersion'],
+                'ficheId' => $ficheData['ficheId'], 
+                'lastFicheId' => $ficheData['lastFicheId'], 
             ];
         }, $consults);
     }
@@ -1131,11 +1040,7 @@ class ConsultationService
                 'createdAt' => $c->getCreatedAt()->format('Y-m-d H:i'),
                 'hasFiche' => $ficheData['hasFiche'],
                 'ficheId' => $ficheData['ficheId'],
-                'ficheType' => $ficheData['ficheType'],
-                'ficheVersion' => $ficheData['ficheVersion'],
                 'lastFicheId' => $ficheData['lastFicheId'],
-                'lastFicheType' => $ficheData['lastFicheType'],
-                'lastFicheVersion' => $ficheData['lastFicheVersion'],
             ];
         }, $consults);
     }
@@ -1148,19 +1053,14 @@ class ConsultationService
             throw new NotFoundHttpException('Consultation introuvable');
         }
 
-        $existingMedicalFiche = $consultation->getFicheMedicale();
-        $existingObservationFiche = $consultation->getFiche();
-        $existingLinkedFiche = $existingMedicalFiche ?? $existingObservationFiche;
-
+        $existingMedicalFiche = $consultation->getFicheMedicale();  
         if ($consultation->getStatut() === 1) {
-            $existingFicheId = $existingLinkedFiche?->getId();
+            $existingFicheId = $existingMedicalFiche?->getId();
             if ($existingFicheId !== null && ($ficheId === null || $ficheId === $existingFicheId)) {
                 return [
                     'ficheId' => $existingFicheId,
                     'consultationId' => $consultation->getId(),
                     'created' => false,
-                    'ficheType' => $existingMedicalFiche ? 'medicale' : 'observation',
-                    'ficheVersion' => $existingMedicalFiche ? 2 : 1,
                 ];
             }
 
@@ -1172,51 +1072,36 @@ class ConsultationService
         $this->ensureConsultationOpen($consultation);
 
         $fiche = $consultation->getFicheMedicale();
-        $ficheObservation = $consultation->getFiche();
         $created = false;
-        $ficheType = $fiche ? 'medicale' : ($ficheObservation ? 'observation' : null);
-        $ficheVersion = $fiche ? 2 : ($ficheObservation ? 1 : null);
 
         if ($ficheId) {
             $ficheMedicale = $this->em->getRepository(FicheMedicale::class)->find($ficheId);
-            $ficheObs = $ficheMedicale ? null : $this->em->getRepository(FicheObservation::class)->find($ficheId);
 
-            if (!$ficheMedicale && !$ficheObs) {
+            if (!$ficheMedicale) {
                 throw new NotFoundHttpException('Fiche introuvable');
             }
 
-            $fichePatientId = $ficheMedicale?->getPatient()?->getId() ?? $ficheObs?->getPatient()?->getId();
+            $fichePatientId = $ficheMedicale?->getPatient()?->getId();
             if ($fichePatientId !== $consultation->getPatient()?->getId()) {
                 throw new \InvalidArgumentException('La fiche ne correspond pas au patient de la consultation.');
             }
 
-            if ($ficheMedicale) {
-                $consultation->setFiche(null);
+            if ($ficheMedicale) { 
                 $consultation->setFicheMedicale($ficheMedicale);
                 $fiche = $ficheMedicale;
-                $ficheType = 'medicale';
-                $ficheVersion = 2;
             } else {
                 $consultation->setFicheMedicale(null);
-                $consultation->setFiche($ficheObs);
-                $ficheObservation = $ficheObs;
-                $ficheType = 'observation';
-                $ficheVersion = 1;
             }
         }
 
-        if (!$fiche && !$ficheObservation) {
+        if (!$fiche) {
             $fiche = new FicheMedicale();
             $fiche->setPatient($consultation->getPatient());
             $this->em->persist($fiche);
             $created = true;
-            $ficheType = 'medicale';
-            $ficheVersion = 2;
         }
 
-        if ($ficheType === 'medicale' && $fiche instanceof FicheMedicale) {
-            $consultation->setFicheMedicale($fiche);
-        }
+        $consultation->setFicheMedicale($fiche);
 
         $this->em->persist($consultation);
         $this->em->flush();
@@ -1227,11 +1112,9 @@ class ConsultationService
         );
 
         return [
-            'ficheId' => $ficheType === 'medicale' ? $consultation->getFicheMedicale()?->getId() : $consultation->getFiche()?->getId(),
+            'ficheId' => $consultation->getFicheMedicale()?->getId() ?? null,
             'consultationId' => $consultation->getId(),
             'created' => $created,
-            'ficheType' => $ficheType,
-            'ficheVersion' => $ficheVersion,
         ];
     }
 
@@ -1428,7 +1311,7 @@ class ConsultationService
 
         $facture
             ->setIsReglee(((float) $montants['restePatient']) <= 0.0)
-            ->setTauxCouverture($montants['tauxCouverture'])
+            
             ->setDateFacture(new \DateTime());
 
         $this->em->persist($facture);
@@ -1458,12 +1341,7 @@ class ConsultationService
                 'state' => $c->getStatut(),
                 'hasFiche' => $ficheData['hasFiche'],
                 'fiche' => $ficheData['fiche'],
-                'ficheId' => $ficheData['ficheId'],
-                'ficheType' => $ficheData['ficheType'],
-                'ficheVersion' => $ficheData['ficheVersion'],
-                'lastFicheId' => $ficheData['lastFicheId'],
-                'lastFicheType' => $ficheData['lastFicheType'],
-                'lastFicheVersion' => $ficheData['lastFicheVersion'],
+                'ficheId' => $ficheData['ficheId'],  
             ];
         }
 

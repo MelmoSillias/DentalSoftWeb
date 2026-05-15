@@ -103,7 +103,6 @@ class ConsultationRepository extends ServiceEntityRepository
     public function findLatestByPatient(Patient|int $patient): ?Consultation
     {
         return $this->createQueryBuilder('c')
-            ->leftJoin('c.fiche', 'fo')->addSelect('fo')
             ->leftJoin('c.ficheMedicale', 'fm')->addSelect('fm')
             ->andWhere('c.patient = :patient')
             ->setParameter('patient', $patient)
@@ -113,6 +112,22 @@ class ConsultationRepository extends ServiceEntityRepository
             ->getQuery()
             ->getOneOrNullResult();
     }
+
+    public function findLatestClosedByPatient(Patient|int $patient): ?Consultation
+    {
+        return $this->createQueryBuilder('c')
+            ->leftJoin('c.ficheMedicale', 'fm')->addSelect('fm')
+            ->andWhere('c.patient = :patient')
+            ->andWhere('c.statut = :closed')
+            ->setParameter('patient', $patient)
+            ->setParameter('closed', 1)
+            ->orderBy('c.CreatedAt', 'DESC')
+            ->addOrderBy('c.id', 'DESC')
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
+
     public function findConsultationsByMedecin($medecinId): array
     {
         return $this->createQueryBuilder('c')

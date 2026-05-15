@@ -2,11 +2,13 @@
 
 namespace App\Reporting\Controller\Api\Report;
 
+use App\IdentityAccess\Entity\Employe;
 use App\Reporting\Service\ReportService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
+
 
 #[Route('/api/report', name: 'api_report_')]
 class PeriodicController extends AbstractController

@@ -221,16 +221,16 @@ const filteredPayments = computed(() => {
         }
 
         return matchesQuery([
-        row.patient,
-        row.telephone,
-        row.date,
-        formatDate(row.date, true),
-        row.montant,
-        row.mode,
-        row.type,
-        row.rolePaiement,
-        computePaymentRoleTag(row).label
-    ], query);
+            row.patient,
+            row.telephone,
+            row.date,
+            formatDate(row.date, true),
+            row.montant,
+            row.mode,
+            row.type,
+            row.rolePaiement,
+            computePaymentRoleTag(row).label
+        ], query);
     });
 });
 
@@ -375,61 +375,56 @@ const printDetailPayment = (row) => {
         <div class="top-bar">
             <div class="display-mode-selector">
                 <span class="label">Mode d'affichage</span>
-                <SelectButton
-                    v-model="overviewDisplayMode"
-                    :options="overviewDisplayOptions"
-                    optionLabel="label"
-                    optionValue="value"
-                />
+                <SelectButton v-model="overviewDisplayMode" :options="overviewDisplayOptions" optionLabel="label"
+                    optionValue="value" />
             </div>
-            <Button
-                label="Statistiques"
-                icon="pi pi-chart-bar"
-                severity="secondary"
-                outlined
-                @click="showStatsModal = true"
-            />
+            <Button label="Statistiques" icon="pi pi-chart-bar" severity="secondary" outlined
+                @click="showStatsModal = true" />
         </div>
 
         <!-- Modal statistiques détaillées -->
-        <Dialog
-            v-model:visible="showStatsModal"
-            header="Statistiques détaillées"
-            :modal="true"
-            :style="{ width: '600px' }"
-            class="stats-dialog"
-        >
-            <div class="stats-content">
-                <div class="stats-section">
-                    <h4>Factures</h4>
-                    <div class="stats-grid">
-                        <div><strong>Total factures :</strong> {{ detailedStats.totalInvoices }}</div>
-                        <div><strong>Montant total facturé :</strong> {{ formatFcfa(detailedStats.totalPaid + detailedStats.totalUnpaid) }}</div>
-                        <div><strong>Montant encaissé :</strong> {{ formatFcfa(detailedStats.totalPaid) }}</div>
-                        <div><strong>Montant restant dû :</strong> {{ formatFcfa(detailedStats.totalUnpaid) }}</div>
+        <Dialog v-model:visible="showStatsModal" header="Statistiques détaillées" :modal="true"
+            :style="{ width: '600px' }" class="stats-dialog">
+            <div class="stats-dashboard">
+
+                <!-- KPI principaux -->
+                <div class="stats-kpis">
+                    <div class="kpi-card">
+                        <span>Total factures</span>
+                        <strong>{{ detailedStats.totalInvoices }}</strong>
                     </div>
-                    <div class="status-breakdown">
-                        <div><Tag value="Payé" severity="success" /> : {{ detailedStats.statusCounts.paid }}</div>
-                        <div><Tag value="Partiellement payé" severity="warning" /> : {{ detailedStats.statusCounts.partial }}</div>
-                        <div><Tag value="Impayé" severity="danger" /> : {{ detailedStats.statusCounts.unpaid }}</div>
-                        <div><Tag value="Vide non validé" severity="secondary" /> : {{ detailedStats.statusCounts.freeNotValidated }}</div>
+                    <div class="kpi-card success">
+                        <span>Encaissé</span>
+                        <strong>{{ formatFcfa(detailedStats.totalPaid) }}</strong>
+                    </div>
+                    <div class="kpi-card danger">
+                        <span>Restant</span>
+                        <strong>{{ formatFcfa(detailedStats.totalUnpaid) }}</strong>
                     </div>
                 </div>
+
+                <!-- Statuts -->
+                <div class="stats-section">
+                    <h4>Répartition des factures</h4>
+                    <div class="status-grid">
+                        <div class="status-item paid">Payé: {{ detailedStats.statusCounts.paid }}</div>
+                        <div class="status-item partial">Partiel: {{ detailedStats.statusCounts.partial }}</div>
+                        <div class="status-item unpaid">Impayé: {{ detailedStats.statusCounts.unpaid }}</div>
+                        <div class="status-item free">Gratuit: {{ detailedStats.statusCounts.freeNotValidated }}</div>
+                    </div>
+                </div>
+
+                <!-- Paiements -->
                 <div class="stats-section">
                     <h4>Paiements</h4>
-                    <div><strong>Nombre de paiements :</strong> {{ detailedStats.totalPaymentsCount }}</div>
-                    <div><strong>Montant total encaissé :</strong> {{ formatFcfa(detailedStats.totalPaymentsAmount) }}</div>
-                    <div><strong>Montant assurances :</strong> {{ formatFcfa(detailedStats.totalInsurance) }}</div>
-                    <div><strong>Assurances en attente :</strong> {{ detailedStats.pendingInsurance }}</div>
-                    <div v-if="Object.keys(detailedStats.paymentModeBreakdown).length">
-                        <strong>Répartition par mode :</strong>
-                        <ul>
-                            <li v-for="(amount, mode) in detailedStats.paymentModeBreakdown" :key="mode">
-                                {{ mode }} : {{ formatFcfa(amount) }}
-                            </li>
-                        </ul>
+                    <div class="stats-grid">
+                        <div>Total: {{ detailedStats.totalPaymentsCount }}</div>
+                        <div>Montant: {{ formatFcfa(detailedStats.totalPaymentsAmount) }}</div>
+                        <div>Assurances: {{ formatFcfa(detailedStats.totalInsurance) }}</div>
+                        <div>En attente: {{ detailedStats.pendingInsurance }}</div>
                     </div>
                 </div>
+
             </div>
         </Dialog>
 
@@ -463,8 +458,9 @@ const printDetailPayment = (row) => {
             </div>
 
             <!-- Vue standard -->
-            <DataTable v-if="overviewDisplayMode === 'standard'" class="rounded-xl overflow-hidden" :value="filteredDevis" dataKey="id" :loading="devisLoading"
-                paginator :rows="10" :rowsPerPageOptions="[5, 10, 20]" responsiveLayout="scroll">
+            <DataTable v-if="overviewDisplayMode === 'standard'" class="rounded-xl overflow-hidden"
+                :value="filteredDevis" dataKey="id" :loading="devisLoading" paginator :rows="10"
+                :rowsPerPageOptions="[5, 10, 20]" responsiveLayout="scroll">
                 <Column field="date" header="Date" sortable>
                     <template #body="{ data }">{{ formatDate(data.date) }}</template>
                 </Column>
@@ -498,10 +494,10 @@ const printDetailPayment = (row) => {
                             <Button v-if="!data.isRegle" :label="targetIsFree(data) ? 'Valider' : 'Régler'" size="small"
                                 :severity="targetIsFree(data) ? 'secondary' : 'success'" icon="pi pi-wallet"
                                 @click="targetIsFree(data) ? handleValidate(data) : handlePay(data)" />
-                            <Button v-if="canModify(data)" size="small" severity="secondary"
-                                icon="pi pi-pencil" @click="handleModify(data)" />
-                            <Button v-if="canPreview(data)" size="small" icon="pi pi-eye" severity="info" class="p-button-outlined"
-                                @click="handlePreview(data)" />
+                            <Button v-if="canModify(data)" size="small" severity="secondary" icon="pi pi-pencil"
+                                @click="handleModify(data)" />
+                            <Button v-if="canPreview(data)" size="small" icon="pi pi-eye" severity="info"
+                                class="p-button-outlined" @click="handlePreview(data)" />
                             <Button v-if="canPreview(data)" size="small" icon="pi pi-send" severity="help"
                                 @click="emit('send-invoice-sms', data)" />
                         </div>
@@ -510,61 +506,53 @@ const printDetailPayment = (row) => {
             </DataTable>
 
             <!-- Vue regroupée améliorée -->
-            <DataView
-                v-else
-                class="grouped-invoices-view"
-                :value="groupedInvoices"
-                :loading="devisLoading"
-                paginator
-                :rows="10"
-                :rowsPerPageOptions="[5, 10, 20]"
-            >
+            <DataView v-else class="grouped-invoices-view" :value="groupedInvoices" :loading="devisLoading" paginator
+                :rows="10" :rowsPerPageOptions="[5, 10, 20]">
                 <template #list="slotProps">
                     <div class="flex flex-col gap-4 p-2">
-                        <article
-                            v-for="invoice in slotProps.items"
-                            :key="invoice.id"
-                            class="invoice-card"
-                        >
+                        <article v-for="invoice in slotProps.items" :key="invoice.id" class="invoice-card">
                             <div class="invoice-card-header">
                                 <div class="invoice-main">
                                     <div class="invoice-topline">
                                         <p class="invoice-patient">
-                                            {{ (invoice.patient && `${invoice.patient.nom || ''} ${invoice.patient.prenom || ''}`.trim()) || invoice.patient || '—' }}
+                                            {{ (invoice.patient && `${invoice.patient.nom || ''}
+                                            ${invoice.patient.prenom || ''}`.trim()) || invoice.patient || '—' }}
                                         </p>
 
                                         <p class="invoice-number">Facture #{{ invoice.id }}</p>
-                                        <Tag :value="computeStatus(invoice).label" :severity="computeStatus(invoice).severity" />
-                                        <Tag v-if="computeInsuranceBadge(invoice)" :value="computeInsuranceBadge(invoice).label" :severity="computeInsuranceBadge(invoice).severity" icon="pi pi-shield" />
+                                        <Tag :value="computeStatus(invoice).label"
+                                            :severity="computeStatus(invoice).severity" />
+                                        <Tag v-if="computeInsuranceBadge(invoice)"
+                                            :value="computeInsuranceBadge(invoice).label"
+                                            :severity="computeInsuranceBadge(invoice).severity" icon="pi pi-shield" />
                                     </div>
                                     <p class="invoice-subline">
                                         📞 {{ displayPhone(invoice.telephone) }} • 🗓 {{ formatDate(invoice.date) }}
                                     </p>
                                 </div>
-                                <div class="invoice-amounts">
+                                <div class="invoice-amounts highlight">
                                     <p><span>Total :</span> <strong>{{ formatFcfa(invoice.montant) }}</strong></p>
                                     <p><span>Reste :</span> <strong>{{ formatFcfa(invoice.reste) }}</strong></p>
-                                    <Tag :value="`${invoice.detailCount || 0} paiement(s) lié(s)`" :severity="invoice.hasDetails ? 'info' : 'secondary'" />
+                                    <Tag :value="`${invoice.detailCount || 0} paiement(s) lié(s)`"
+                                        :severity="invoice.hasDetails ? 'info' : 'secondary'" />
                                 </div>
                             </div>
 
                             <div class="invoice-actions">
-                                <Button v-if="!invoice.isRegle" :label="targetIsFree(invoice) ? 'Valider' : 'Régler'" size="small"
-                                    :severity="targetIsFree(invoice) ? 'secondary' : 'success'" icon="pi pi-wallet"
+                                <Button v-if="!invoice.isRegle" :label="targetIsFree(invoice) ? 'Valider' : 'Régler'"
+                                    size="small" :severity="targetIsFree(invoice) ? 'secondary' : 'success'"
+                                    icon="pi pi-wallet"
                                     @click="targetIsFree(invoice) ? handleValidate(invoice) : handlePay(invoice)" />
-                                <Button v-if="canModify(invoice)" size="small" severity="secondary"
-                                    icon="pi pi-pencil" @click="handleModify(invoice)" />
-                                <Button v-if="canPreview(invoice)" size="small" icon="pi pi-eye" severity="info" class="p-button-outlined"
-                                    @click="handlePreview(invoice)" />
+                                <Button v-if="canModify(invoice)" size="small" severity="secondary" icon="pi pi-pencil"
+                                    @click="handleModify(invoice)" />
+                                <Button v-if="canPreview(invoice)" size="small" icon="pi pi-eye" severity="info"
+                                    class="p-button-outlined" @click="handlePreview(invoice)" />
                                 <Button v-if="canPreview(invoice)" size="small" icon="pi pi-send" severity="help"
                                     @click="emit('send-invoice-sms', invoice)" />
-                                <Button
-                                    size="small"
-                                    text
+                                <Button size="small" text
                                     :label="isInvoiceExpanded(invoice) ? 'Masquer détails' : 'Voir détails'"
                                     :icon="isInvoiceExpanded(invoice) ? 'pi pi-chevron-up' : 'pi pi-chevron-down'"
-                                    @click="toggleInvoiceExpansion(invoice)"
-                                />
+                                    @click="toggleInvoiceExpansion(invoice)" />
                             </div>
 
                             <transition name="fade-slide">
@@ -573,18 +561,13 @@ const printDetailPayment = (row) => {
                                         Aucun paiement lié pour cette facture.
                                     </div>
                                     <div v-else class="detail-list">
-                                        <div
-                                            v-for="(detail, idx) in invoice.detailRows"
-                                            :key="`${invoice.id}-${detail.pId || idx}`"
-                                            class="detail-row"
-                                            :class="detailRowClass(detail)"
-                                        >
+                                        <div v-for="(detail, idx) in invoice.detailRows"
+                                            :key="`${invoice.id}-${detail.pId || idx}`" class="detail-row"
+                                            :class="detailRowClass(detail)">
                                             <div class="detail-meta">
-                                                <Tag
-                                                    :value="detail.detailLabel"
+                                                <Tag :value="detail.detailLabel"
                                                     :severity="detail.detailType === 'consultation_ticket' ? 'warning' : 'success'"
-                                                    :icon="detail.detailType === 'consultation_ticket' ? 'pi pi-ticket' : 'pi pi-wallet'"
-                                                />
+                                                    :icon="detail.detailType === 'consultation_ticket' ? 'pi pi-ticket' : 'pi pi-wallet'" />
                                                 <span class="detail-date">{{ formatDate(detail.date, true) }}</span>
                                                 <span class="detail-mode">{{ detail.mode || '—' }}</span>
                                             </div>
@@ -612,8 +595,7 @@ const printDetailPayment = (row) => {
                 <div class="filters">
                     <div class="filter-item">
                         <label>Recherche</label>
-                        <InputText v-model="paymentsSearch" placeholder="Tapez quelque chose..."
-                            fluid />
+                        <InputText v-model="paymentsSearch" placeholder="Tapez quelque chose..." fluid />
                     </div>
                     <div class="filter-item">
                         <label>Période</label>
@@ -642,16 +624,18 @@ const printDetailPayment = (row) => {
                 <Column field="mode" header="Mode" sortable>
                     <template #body="{ data }">
                         <div class="flex flex-wrap gap-2">
-                            <Tag :value="computePaymentModeTag(data).label" :severity="computePaymentModeTag(data).severity" />
-                            <Tag :value="computePaymentRoleTag(data).label" :severity="computePaymentRoleTag(data).severity" />
+                            <Tag :value="computePaymentModeTag(data).label"
+                                :severity="computePaymentModeTag(data).severity" />
+                            <Tag :value="computePaymentRoleTag(data).label"
+                                :severity="computePaymentRoleTag(data).severity" />
                         </div>
                     </template>
                 </Column>
                 <Column header="Actions" style="width: 140px">
                     <template #body="{ data }">
                         <div class="flex gap-2">
-                            <Button :icon="data.type === 'devis' ? 'pi pi-print' : 'pi pi-ticket'" text
-                                @click="emit(data.type === 'devis' ? 'print-payment' : 'print-receipt', data)" />
+                            <Button :icon="data.type === 'facture' ? 'pi pi-print' : 'pi pi-ticket'" text
+                                @click="emit(data.type === 'facture' ? 'print-payment' : 'print-receipt', data)" />
                             <Button icon="pi pi-send" text @click="emit('send-receipt-sms', data)" />
                         </div>
                     </template>
@@ -769,7 +753,7 @@ const printDetailPayment = (row) => {
 
 .invoice-card:hover {
     transform: translateY(-3px);
-    box-shadow: 0 12px 30px rgba(0,0,0,0.12);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
     border-left-color: var(--primary-500);
 }
 
@@ -828,6 +812,26 @@ const printDetailPayment = (row) => {
     margin: 0;
 }
 
+.invoice-amounts.highlight {
+    background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+    padding: 0.6rem 0.8rem;
+    border-radius: 12px;
+    min-width: 140px;
+}
+
+.invoice-amounts strong {
+    font-size: 1rem;
+    color: #065f46;
+}
+
+.app-dark .invoice-amounts.highlight {
+    background: linear-gradient(135deg, #064e3b, #064e3b);
+}
+
+.app-dark .invoice-amounts strong {
+    color: #ecfdf5;
+}
+
 .invoice-amounts span {
     color: #64748b;
 }
@@ -861,6 +865,18 @@ const printDetailPayment = (row) => {
     border-radius: 12px;
     background: color-mix(in srgb, var(--surface-card) 95%, var(--surface-border) 5%);
     padding: 0.6rem 0.8rem;
+}
+
+.detail-row {
+    border-left: 4px solid transparent;
+}
+
+.detail-row:not(.ticket-row) {
+    border-left-color: #10b981;
+}
+
+.ticket-row {
+    border-left-color: #f59e0b;
 }
 
 .detail-meta {
@@ -942,6 +958,64 @@ const printDetailPayment = (row) => {
     margin-top: 0.5rem;
 }
 
+.stats-dashboard {
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+}
+
+/* KPI cards */
+.stats-kpis {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+}
+
+.kpi-card {
+    background: #f1f5f9;
+    border-radius: 14px;
+    padding: 0.8rem;
+    display: flex;
+    flex-direction: column;
+}
+
+.kpi-card span {
+    font-size: 0.75rem;
+    color: #64748b;
+}
+
+.kpi-card strong {
+    font-size: 1.1rem;
+}
+
+.kpi-card.success {
+    background: #ecfdf5;
+    color: #065f46;
+}
+
+.kpi-card.danger {
+    background: #fef2f2;
+    color: #7f1d1d;
+}
+
+/* Status */
+.status-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+}
+
+.status-item {
+    padding: 0.5rem;
+    border-radius: 10px;
+    font-size: 0.85rem;
+}
+
+.status-item.paid { background: #dcfce7; }
+.status-item.partial { background: #fef9c3; }
+.status-item.unpaid { background: #fee2e2; }
+.status-item.free { background: #e2e8f0; }
+
 /* Dark mode */
 .app-dark .section-header {
     background: linear-gradient(135deg, rgba(30, 41, 59, 0.96), rgba(15, 23, 42, 0.88));
@@ -974,13 +1048,16 @@ const printDetailPayment = (row) => {
     .invoice-card-header {
         flex-direction: column;
     }
+
     .invoice-amounts {
         align-items: flex-start;
     }
+
     .top-bar {
         flex-direction: column;
         align-items: stretch;
     }
+
     .display-mode-selector {
         justify-content: space-between;
     }
