@@ -96,114 +96,239 @@ const canAct = (claimId) => props.actionLoadingId === null || props.actionLoadin
 </script>
 
 <template>
-    <div class="flex flex-col gap-4">
-        <div class="section-card">
-            <div class="section-header">
-                <div>
-                    <p class="section-eyebrow">Suivi Assurances</p>
-                    <p class="section-title">Validation, rejet et recouvrement des créances d'assurance.</p>
-                </div>
-                <div class="filters">
-                    <div class="filter-item">
-                        <label>Du</label>
-                        <InputText :modelValue="insuranceStart" type="date" @update:modelValue="insuranceStart = $event" />
-                    </div>
-                    <div class="filter-item">
-                        <label>Au</label>
-                        <InputText :modelValue="insuranceEnd" type="date" @update:modelValue="insuranceEnd = $event" />
-                    </div>
-                    <div class="filter-item">
-                        <label>Patient</label>
-                        <InputText v-model="insurancePatientModel" placeholder="Nom, prénom, téléphone" fluid />
-                    </div>
-                    <div class="filter-item">
-                        <label>Assurance</label>
-                        <Select v-model="insuranceAssuranceModel" :options="assuranceOptions || []" optionLabel="label" optionValue="value" />
-                    </div>
-                    <div class="filter-item">
-                        <label>Recherche</label>
-                        <InputText v-model="search" placeholder="Patient, assurance, téléphone..." fluid />
-                    </div>
-                    <div class="filter-item">
-                        <label>Statut</label>
-                        <Select v-model="statusModel" :options="statusOptions" optionLabel="label" optionValue="value" />
-                    </div>
-                    <Button icon="pi pi-refresh" label="Rafraîchir" text @click="emit('refresh')" />
-                </div>
+  <div class="flex flex-col gap-6">
+    <!-- Header & Filtres -->
+    <div class="section-card p-5 bg-white dark:bg-surface-900 rounded-2xl shadow-sm border border-surface-200 dark:border-surface-700">
+      <div class="flex flex-col gap-5">
+        <!-- Titre + Rafraîchir -->
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div class="flex items-center gap-3">
+            <i class="pi pi-shield text-primary text-xl"></i>
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-wider text-primary">Suivi assurances</p>
+              <h2 class="text-xl font-bold text-surface-800 dark:text-surface-100">Gestion des créances</h2>
             </div>
+          </div>
+          <Button
+            icon="pi pi-refresh"
+            label="Rafraîchir"
+            outlined
+            rounded
+            @click="emit('refresh')"
+            class="!text-sm"
+          />
         </div>
 
-        <div class="section-card">
-            <div v-if="loading" class="text-sm text-surface-500">Chargement des créances assurances...</div>
+        <!-- Grille de filtres responsive -->
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+          <!-- Patient / Téléphone avec icône -->
+          <div class="relative">
+            <i class="pi pi-user absolute left-3 top-1/2 -translate-y-1/2 text-surface-400 text-sm"></i>
+            <InputText
+              v-model="insurancePatientModel"
+              placeholder="Patient ou téléphone"
+              class="w-full pl-9"
+            />
+          </div>
 
-            <div v-else-if="!filteredClaims.length" class="text-sm text-surface-500">
-                Aucune créance assurance pour le filtre courant.
-            </div>
+          <!-- Assurance -->
+          <Select
+            v-model="insuranceAssuranceModel"
+            :options="assuranceOptions || []"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Toutes assurances"
+            class="w-full"
+            showClear
+          />
 
-            <div v-else class="grid gap-3">
-                <article v-for="claim in filteredClaims" :key="claim.id" class="rounded-xl border border-surface-200 p-4 dark:border-surface-700">
-                    <div class="flex flex-wrap items-start justify-between gap-3">
-                        <div class="space-y-1">
-                            <p class="font-semibold text-surface-900 dark:text-surface-0">{{ claim.patient || 'Patient inconnu' }}</p>
-                            <p class="text-xs text-surface-500">{{ claim.telephone || 'Téléphone indisponible' }}</p>
-                            <p class="text-xs text-surface-500">
-                                Assurance: {{ claim?.assurance?.nom || '—' }}
-                                <span v-if="claim?.assurance?.code">({{ claim.assurance.code }})</span>
-                            </p>
-                            <p class="text-xs text-surface-500">Date: {{ claim.dateFacture || '—' }}</p>
-                        </div>
-                        <Tag :value="statusTag(claim.insuranceStatus).label" :severity="statusTag(claim.insuranceStatus).severity" />
-                    </div>
+          <!-- Date début -->
+          <div class="relative">
+            <i class="pi pi-calendar absolute left-3 top-1/2 -translate-y-1/2 text-surface-400 text-sm"></i>
+            <InputText
+              type="date"
+              class="w-full pl-9"
+              :modelValue="insuranceStart"
+              @update:modelValue="insuranceStart = $event"
+            />
+          </div>
 
-                    <div class="mt-3 grid gap-2 md:grid-cols-4 text-sm">
-                        <p>Total: <strong>{{ formatFcfa(claim.montantTotal) }}</strong></p>
-                        <p>Part assurance: <strong>{{ formatFcfa(claim.montantAssurance) }}</strong></p>
-                        <p>Part patient: <strong>{{ formatFcfa(claim.montantPatient) }}</strong></p>
-                        <p>Taux: <strong>{{ Number(claim.tauxCouverture || 0).toLocaleString('fr-FR') }}%</strong></p>
-                        <p>Déjà encaissé patient: <strong>{{ formatFcfa(claim.patientPaidAmount) }}</strong></p>
-                        <p>Reste patient: <strong>{{ formatFcfa(claim.restePatient) }}</strong></p>
-                    </div>
+          <!-- Date fin -->
+          <div class="relative">
+            <i class="pi pi-calendar absolute left-3 top-1/2 -translate-y-1/2 text-surface-400 text-sm"></i>
+            <InputText
+              type="date"
+              class="w-full pl-9"
+              :modelValue="insuranceEnd"
+              @update:modelValue="insuranceEnd = $event"
+            />
+          </div>
 
-                    <div class="mt-3 flex flex-wrap gap-2">
-                        <Button
-                            v-if="claim.availableActions?.canValidate"
-                            size="small"
-                            label="Valider"
-                            icon="pi pi-check"
-                            severity="success"
-                            :disabled="!canAct(claim.id)"
-                            @click="emit('validate-claim', claim)"
-                        />
-                        <Button
-                            v-if="claim.availableActions?.canReject"
-                            size="small"
-                            label="Rejeter"
-                            icon="pi pi-times"
-                            severity="danger"
-                            :disabled="!canAct(claim.id)"
-                            @click="emit('reject-claim', claim)"
-                        />
-                        <Button
-                            v-if="claim.availableActions?.canRecover"
-                            size="small"
-                            label="Recouvrer"
-                            icon="pi pi-wallet"
-                            severity="info"
-                            :disabled="!canAct(claim.id)"
-                            @click="emit('recover-claim', claim)"
-                        />
-                        <Button
-                            v-if="claim.availableActions?.canCollectPatient"
-                            size="small"
-                            label="Encaisser part patient"
-                            icon="pi pi-credit-card"
-                            severity="secondary"
-                            :disabled="!canAct(claim.id)"
-                            @click="emit('collect-patient-share', claim)"
-                        />
-                    </div>
-                </article>
-            </div>
+          <!-- Statut -->
+          <Select
+            v-model="statusModel"
+            :options="statusOptions"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Tous statuts"
+            class="w-full"
+            showClear
+          />
+
+          <!-- Recherche globale -->
+          <div class="relative">
+            <i class="pi pi-search absolute left-3 top-1/2 -translate-y-1/2 text-surface-400 text-sm"></i>
+            <InputText
+              v-model="search"
+              placeholder="Recherche globale..."
+              class="w-full pl-9"
+            />
+          </div>
         </div>
+      </div>
     </div>
+
+    <!-- Liste des créances -->
+    <div class="section-card p-5 bg-white dark:bg-surface-900 rounded-2xl shadow-sm border border-surface-200 dark:border-surface-700">
+      <!-- État chargement -->
+      <div v-if="loading" class="flex flex-col items-center justify-center py-12">
+        <i class="pi pi-spin pi-spinner text-3xl text-primary"></i>
+        <p class="mt-3 text-surface-500 text-sm">Chargement des créances assurances...</p>
+      </div>
+
+      <!-- État vide -->
+      <div v-else-if="!filteredClaims.length" class="flex flex-col items-center justify-center py-12 text-center">
+        <i class="pi pi-inbox text-5xl text-surface-300 dark:text-surface-600"></i>
+        <p class="mt-3 text-surface-500 font-medium">Aucune créance trouvée</p>
+        <p class="text-sm text-surface-400">Modifiez vos filtres ou rechargez la liste</p>
+      </div>
+
+      <!-- Grille de cartes -->
+      <div v-else class="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+        <article
+          v-for="claim in filteredClaims"
+          :key="claim.id"
+          class="group relative rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800/30 p-5 transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5"
+        >
+          <!-- Entête : patient + statut -->
+          <div class="flex items-start justify-between gap-2">
+            <div class="flex-1">
+              <p class="text-base font-bold text-surface-800 dark:text-surface-100 truncate">
+                {{ claim.patient || 'Patient inconnu' }}
+              </p>
+              <div class="flex items-center gap-1 mt-0.5">
+                <i class="pi pi-phone text-surface-400 text-xs"></i>
+                <p class="text-xs text-surface-500 truncate">
+                  {{ claim.telephone || 'Téléphone indisponible' }}
+                </p>
+              </div>
+            </div>
+            <Tag
+              :value="statusTag(claim.insuranceStatus).label"
+              :severity="statusTag(claim.insuranceStatus).severity"
+              rounded
+              class="!px-2 !py-0.5 text-xs font-semibold"
+            />
+          </div>
+
+          <!-- Infos assurance + date -->
+          <div class="mt-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-xs">
+            <div class="flex items-center gap-1.5 text-surface-600 dark:text-surface-400">
+              <i class="pi pi-building text-primary"></i>
+              <span>
+                {{ claim?.assurance?.nom || '—' }}
+                <span v-if="claim?.assurance?.code" class="font-mono">({{ claim.assurance.code }})</span>
+              </span>
+            </div>
+            <div class="flex items-center gap-1.5 text-surface-500">
+              <i class="pi pi-calendar-clock"></i>
+              <span>{{ claim.dateFacture || 'Date inconnue' }}</span>
+            </div>
+          </div>
+
+          <!-- Montants (grille 2x2) -->
+          <div class="mt-5 grid grid-cols-2 gap-3 rounded-xl bg-surface-50 dark:bg-surface-800/50 p-3 text-sm">
+            <div>
+              <p class="text-xs text-surface-500 uppercase tracking-wide">Total</p>
+              <p class="text-base font-bold text-surface-700 dark:text-surface-200">{{ formatFcfa(claim.montantTotal) }}</p>
+            </div>
+            <div>
+              <p class="text-xs text-surface-500 uppercase tracking-wide">Assurance</p>
+              <p class="text-base font-bold text-primary">{{ formatFcfa(claim.montantAssurance) }}</p>
+            </div>
+            <div>
+              <p class="text-xs text-surface-500 uppercase tracking-wide">Patient</p>
+              <p class="text-base font-bold text-orange-600 dark:text-orange-400">{{ formatFcfa(claim.montantPatient) }}</p>
+            </div>
+            <div>
+              <p class="text-xs text-surface-500 uppercase tracking-wide">Taux</p>
+              <p class="text-base font-bold text-emerald-600 dark:text-emerald-400">{{ claim.tauxCouverture }}%</p>
+            </div>
+          </div>
+
+          <!-- Détails du paiement patient -->
+          <div class="mt-4 flex items-center justify-between border-t border-surface-100 dark:border-surface-700 pt-3 text-xs">
+            <div class="flex items-center gap-1.5">
+              <i class="pi pi-wallet text-surface-400"></i>
+              <span class="text-surface-500">Payé :</span>
+              <span class="font-medium text-surface-700 dark:text-surface-300">{{ formatFcfa(claim.patientPaidAmount) }}</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <i class="pi pi-clock text-red-400"></i>
+              <span class="text-surface-500">Reste patient :</span>
+              <span class="font-bold text-red-600 dark:text-red-400">{{ formatFcfa(claim.restePatient) }}</span>
+            </div>
+          </div>
+
+          <!-- Actions (avec tooltips et état désactivé) -->
+          <div class="mt-5 flex flex-wrap justify-end gap-2 border-t border-surface-100 dark:border-surface-700 pt-3">
+            <Button
+              v-if="claim.availableActions?.canValidate"
+              size="small"
+              icon="pi pi-check-circle"
+              severity="success"
+              rounded
+              text
+              :disabled="!canAct(claim.id)"
+              @click="emit('validate-claim', claim)"
+              v-tooltip.top="'Valider la créance'"
+            />
+            <Button
+              v-if="claim.availableActions?.canReject"
+              size="small"
+              icon="pi pi-times-circle"
+              severity="danger"
+              rounded
+              text
+              :disabled="!canAct(claim.id)"
+              @click="emit('reject-claim', claim)"
+              v-tooltip.top="'Rejeter'"
+            />
+            <Button
+              v-if="claim.availableActions?.canRecover"
+              size="small"
+              icon="pi pi-wallet"
+              severity="info"
+              rounded
+              text
+              :disabled="!canAct(claim.id)"
+              @click="emit('recover-claim', claim)"
+              v-tooltip.top="'Recouvrement assurance'"
+            />
+            <Button
+              v-if="claim.availableActions?.canCollectPatient"
+              size="small"
+              icon="pi pi-credit-card"
+              severity="secondary"
+              rounded
+              text
+              :disabled="!canAct(claim.id)"
+              @click="emit('collect-patient-share', claim)"
+              v-tooltip.top="'Collecte patient'"
+            />
+          </div>
+        </article>
+      </div>
+    </div>
+  </div>
 </template>

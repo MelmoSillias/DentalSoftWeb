@@ -1,6 +1,7 @@
 /backend/migrations*
 /prompts/
 /mercure
+/orodent_prod
 
 /backend-reform/migrations*
 
