@@ -2,6 +2,7 @@
 
 namespace App\Settings\Service;
 
+use App\IdentityAccess\Entity\User;
 use App\Settings\Entity\AppSetting;
 use App\Settings\Repository\AppSettingRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -9,6 +10,10 @@ use Doctrine\ORM\EntityManagerInterface;
 class GlobalSettingsService
 {
     private const KEY_GENERAL = 'general';
+    private const TEST_MODE_ENABLED_KEY = 'testModeEnabled';
+    private const TEST_MODE_SNAPSHOT_PATH_KEY = 'testModeSnapshotPath';
+    private const TEST_MODE_SNAPSHOT_CREATED_AT_KEY = 'testModeSnapshotCreatedAt';
+    private const TEST_MODE_LAST_PURGE_AT_KEY = 'testModeLastPurgeAt';
     private const DEFAULT_CONSULTATION_PRICE = 5000.0;
     private const DEFAULT_TRANSACTION_MOTIFS = [
         'revenue' => [
@@ -70,6 +75,7 @@ class GlobalSettingsService
     public function __construct(
         private AppSettingRepository $appSettingRepo,
         private EntityManagerInterface $em,
+        private DatabaseMaintenanceService $databaseMaintenanceService,
     ) {
     }
 
@@ -97,6 +103,9 @@ class GlobalSettingsService
             'traitementTypes' => $this->sanitizeStringList($value['traitementTypes'] ?? null, self::DEFAULT_TRAITEMENT_TYPES),
             'allergyTypes' => $this->sanitizeStringList($value['allergyTypes'] ?? null, self::DEFAULT_ALLERGY_TYPES),
             'antecedentTypes' => $this->sanitizeStringList($value['antecedentTypes'] ?? null, self::DEFAULT_ANTECEDENT_TYPES),
+            'testModeEnabled' => (bool) ($value[self::TEST_MODE_ENABLED_KEY] ?? false),
+            'testModeSnapshotCreatedAt' => $value[self::TEST_MODE_SNAPSHOT_CREATED_AT_KEY] ?? null,
+            'testModeLastPurgeAt' => $value[self::TEST_MODE_LAST_PURGE_AT_KEY] ?? null,
         ];
     }
 
@@ -169,6 +178,133 @@ class GlobalSettingsService
     public function isDirectInsurancePaymentEnabled(): bool
     {
         return $this->getGeneralSettings()['paiementDirectAssurance'];
+    }
+
+    public function getTestModeStatus(): array
+    {
+        $entry = $this->appSettingRepo->findOneByKey(self::KEY_GENERAL);
+        $value = $entry?->getValue() ?? [];
+
+        return [
+            'testModeEnabled' => (bool) ($value[self::TEST_MODE_ENABLED_KEY] ?? false),
+            'testModeSnapshotCreatedAt' => $value[self::TEST_MODE_SNAPSHOT_CREATED_AT_KEY] ?? null,
+            'testModeLastPurgeAt' => $value[self::TEST_MODE_LAST_PURGE_AT_KEY] ?? null,
+        ];
+    }
+
+    public function toggleTestMode(bool $enabled, User $admin, string $password): array
+    {
+        if (!$this->databaseMaintenanceService->verifyAdminPassword($admin, $password)) {
+            throw new \InvalidArgumentException('Mot de passe admin invalide.');
+        }
+
+        $entry = $this->appSettingRepo->findOneByKey(self::KEY_GENERAL);
+        if (!$entry) {
+            $entry = (new AppSetting())->setKeyName(self::KEY_GENERAL);
+            $this->em->persist($entry);
+        }
+
+        $current = $entry->getValue();
+        $currentlyEnabled = (bool) ($current[self::TEST_MODE_ENABLED_KEY] ?? false);
+
+        if ($enabled && !$currentlyEnabled) {
+            $backup = $this->databaseMaintenanceService->createBackup(['sql', 'zip'], 'test_snapshot');
+
+            $entry->setValue([
+                ...$current,
+                self::TEST_MODE_ENABLED_KEY => true,
+                self::TEST_MODE_SNAPSHOT_PATH_KEY => $backup['relativeSqlPath'],
+                self::TEST_MODE_SNAPSHOT_CREATED_AT_KEY => $backup['createdAt'],
+            ]);
+            $this->em->flush();
+
+            return [
+                ...$this->getTestModeStatus(),
+                'message' => 'Mode test activé. Snapshot initial créé.',
+                'snapshot' => $backup,
+            ];
+        }
+
+        if (!$enabled && $currentlyEnabled) {
+            $snapshotPath = (string) ($current[self::TEST_MODE_SNAPSHOT_PATH_KEY] ?? '');
+            if ($snapshotPath === '') {
+                throw new \RuntimeException('Snapshot du mode test introuvable.');
+            }
+
+            $this->databaseMaintenanceService->restoreSqlBackup($snapshotPath);
+
+            $entryAfterRestore = $this->appSettingRepo->findOneByKey(self::KEY_GENERAL);
+            if (!$entryAfterRestore) {
+                $entryAfterRestore = (new AppSetting())->setKeyName(self::KEY_GENERAL);
+                $this->em->persist($entryAfterRestore);
+            }
+
+            $restored = $entryAfterRestore->getValue();
+            $entryAfterRestore->setValue([
+                ...$restored,
+                self::TEST_MODE_ENABLED_KEY => false,
+                self::TEST_MODE_SNAPSHOT_PATH_KEY => $snapshotPath,
+                self::TEST_MODE_SNAPSHOT_CREATED_AT_KEY => $current[self::TEST_MODE_SNAPSHOT_CREATED_AT_KEY] ?? null,
+                self::TEST_MODE_LAST_PURGE_AT_KEY => (new \DateTimeImmutable())->format(DATE_ATOM),
+            ]);
+
+            $this->em->flush();
+
+            return [
+                ...$this->getTestModeStatus(),
+                'message' => 'Mode test désactivé. Données test supprimées via restauration snapshot.',
+            ];
+        }
+
+        return [
+            ...$this->getTestModeStatus(),
+            'message' => $enabled ? 'Mode test déjà actif.' : 'Mode test déjà inactif.',
+        ];
+    }
+
+    public function cleanTestModeData(User $admin, string $password): array
+    {
+        if (!$this->databaseMaintenanceService->verifyAdminPassword($admin, $password)) {
+            throw new \InvalidArgumentException('Mot de passe admin invalide.');
+        }
+
+        $entry = $this->appSettingRepo->findOneByKey(self::KEY_GENERAL);
+        $current = $entry?->getValue() ?? [];
+        $enabled = (bool) ($current[self::TEST_MODE_ENABLED_KEY] ?? false);
+
+        if (!$enabled) {
+            throw new \InvalidArgumentException('Le mode test doit être actif pour nettoyer les tests.');
+        }
+
+        $snapshotPath = (string) ($current[self::TEST_MODE_SNAPSHOT_PATH_KEY] ?? '');
+        if ($snapshotPath === '') {
+            throw new \RuntimeException('Snapshot du mode test introuvable.');
+        }
+
+        $this->databaseMaintenanceService->restoreSqlBackup($snapshotPath);
+
+        $newSnapshot = $this->databaseMaintenanceService->createBackup(['sql', 'zip'], 'test_snapshot');
+        $entryAfterRestore = $this->appSettingRepo->findOneByKey(self::KEY_GENERAL);
+        if (!$entryAfterRestore) {
+            $entryAfterRestore = (new AppSetting())->setKeyName(self::KEY_GENERAL);
+            $this->em->persist($entryAfterRestore);
+        }
+
+        $restored = $entryAfterRestore->getValue();
+        $entryAfterRestore->setValue([
+            ...$restored,
+            self::TEST_MODE_ENABLED_KEY => true,
+            self::TEST_MODE_SNAPSHOT_PATH_KEY => $newSnapshot['relativeSqlPath'],
+            self::TEST_MODE_SNAPSHOT_CREATED_AT_KEY => $newSnapshot['createdAt'],
+            self::TEST_MODE_LAST_PURGE_AT_KEY => (new \DateTimeImmutable())->format(DATE_ATOM),
+        ]);
+        $this->em->flush();
+
+        return [
+            ...$this->getTestModeStatus(),
+            'message' => 'Nettoyage de test effectué avec succès.',
+            'snapshot' => $newSnapshot,
+        ];
     }
 
     public function getConsultationPrice(): float

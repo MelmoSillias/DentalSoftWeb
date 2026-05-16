@@ -365,6 +365,11 @@ class PatientService
 
     public function listPatientConsultations(int $patientId): array
     {
+        $patient = $this->findActivePatient($patientId);
+        if (!$patient) {
+            return [];
+        }
+
         $consultations = $this->consultationRepo->findConsultationsByPatient($patientId);
 
         return array_map(function (Consultation $consultation) {
@@ -658,7 +663,13 @@ class PatientService
 
     public function getPatientWithMedicalData(int $id): ?Patient
     {
-        return $this->patientRepo->findWithMedicalData($id);
+        $patient = $this->patientRepo->findWithMedicalData($id);
+
+        if (!$patient instanceof Patient || $patient->isDeleted()) {
+            return null;
+        }
+
+        return $patient;
     }
 
     public function createRdv(array $data, ?User $actor = null): array
@@ -736,7 +747,7 @@ class PatientService
 
     public function getPatientPortalAccountData(int $id): array
     {
-        $patient = $this->patientRepo->find($id);
+        $patient = $this->findActivePatient($id);
         if (!$patient) {
             return ['error' => 'Patient introuvable', 'status' => 404];
         }
@@ -749,7 +760,7 @@ class PatientService
 
     public function createPatientPortalAccount(int $id): array
     {
-        $patient = $this->patientRepo->find($id);
+        $patient = $this->findActivePatient($id);
         if (!$patient) {
             return ['error' => 'Patient introuvable', 'status' => 404];
         }
@@ -784,7 +795,7 @@ class PatientService
 
     public function resetPatientPortalPassword(int $id): array
     {
-        $patient = $this->patientRepo->find($id);
+        $patient = $this->findActivePatient($id);
         if (!$patient) {
             return ['error' => 'Patient introuvable', 'status' => 404];
         }
@@ -807,7 +818,7 @@ class PatientService
 
     public function togglePatientPortalAccount(int $id, bool $active): array
     {
-        $patient = $this->patientRepo->find($id);
+        $patient = $this->findActivePatient($id);
         if (!$patient) {
             return ['error' => 'Patient introuvable', 'status' => 404];
         }
@@ -984,7 +995,7 @@ class PatientService
             return ['error' => 'JSON invalide', 'status' => 400];
         }
 
-        $patient = $this->patientRepo->find($id);
+        $patient = $this->findActivePatient($id);
         if (!$patient) {
             return ['error' => 'Patient introuvable', 'status' => 404];
         }
@@ -1194,7 +1205,7 @@ class PatientService
 
     public function addAntecedent(int $patientId, array $payload): array
     {
-        $patient = $this->patientRepo->find($patientId);
+        $patient = $this->findActivePatient($patientId);
         if (!$patient) {
             return ['error' => 'Patient introuvable', 'status' => 404];
         }
@@ -1223,7 +1234,7 @@ class PatientService
 
     public function deleteAntecedent(int $patientId, int $antecedentId): array
     {
-        $patient = $this->patientRepo->find($patientId);
+        $patient = $this->findActivePatient($patientId);
         if (!$patient) {
             return ['error' => 'Patient introuvable', 'status' => 404];
         }
@@ -1241,7 +1252,7 @@ class PatientService
 
     public function addAllergy(int $patientId, array $payload): array
     {
-        $patient = $this->patientRepo->find($patientId);
+        $patient = $this->findActivePatient($patientId);
         if (!$patient) {
             return ['error' => 'Patient introuvable', 'status' => 404];
         }
@@ -1268,7 +1279,7 @@ class PatientService
 
     public function deleteAllergy(int $patientId, int $allergyId): array
     {
-        $patient = $this->patientRepo->find($patientId);
+        $patient = $this->findActivePatient($patientId);
         if (!$patient) {
             return ['error' => 'Patient introuvable', 'status' => 404];
         }
@@ -1286,12 +1297,12 @@ class PatientService
 
     public function getPrintInfosPersoContext(int $id): ?Patient
     {
-        return $this->patientRepo->find($id);
+        return $this->findActivePatient($id);
     }
 
     public function getPrintInfosPersoData(int $id): ?array
     {
-        $patient = $this->patientRepo->find($id);
+        $patient = $this->findActivePatient($id);
         if (!$patient) {
             return null;
         }
@@ -1338,7 +1349,7 @@ class PatientService
 
     public function getPrintFicheContext(int $patientId, int $ficheId): ?array
     {
-        $patient = $this->patientRepo->find($patientId);
+        $patient = $this->findActivePatient($patientId);
         if (!$patient) {
             return null;
         }

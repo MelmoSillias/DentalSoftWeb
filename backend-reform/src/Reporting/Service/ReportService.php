@@ -107,8 +107,7 @@ class ReportService
 
     private function buildPatientsReport(): array
     {
-        $patients = $this->patientRepo->findAll();
-
+        $patients = $this->patientRepo->findBy(['deletedAt' => null]);
         $male = 0;
         $female = 0;
         $ageGroups = [
@@ -306,7 +305,7 @@ class ReportService
             }
         }
 
-        $patientsTotal      = $this->patientRepo->count([]);
+        $patientsTotal      = $this->patientRepo->count(['deletedAt' => null]);
         $employeesTotal     = $this->employeRepo->count([]);
         $fixedStats         = $this->employeRepo->findBy(['typeSalaire' => 'fixe']);
         $payrollFixed       = array_sum(array_map(fn($e) => $e->getValeurSalaire(), $fixedStats));
@@ -435,7 +434,7 @@ class ReportService
     public function globalPatients(): array
     {
         return $this->remember('report.globalPatients', 180, function () {
-            $patients = $this->patientRepo->findAll();
+            $patients = $this->patientRepo->findBy(['deletedAt' => null]);
             $total    = count($patients);
 
             $female   = 0;
@@ -489,6 +488,7 @@ class ReportService
         return $this->remember('report.globalPatientReferrals', 180, function () {
             $rows = $this->patientRepo->createQueryBuilder('p')
                 ->select('p.referencement AS source, COUNT(p.id) AS total')
+                ->andWhere('p.deletedAt IS NULL')
                 ->groupBy('p.referencement')
                 ->orderBy('total', 'DESC')
                 ->getQuery()
@@ -515,7 +515,8 @@ class ReportService
     {
         $cacheKey = sprintf('report.periodicPatients.%s.%s', $fromDate?->format('Ymd') ?? 'none', $toDate?->format('Ymd') ?? 'none');
         return $this->remember($cacheKey, 180, function () use ($fromDate, $toDate) {
-        $qb = $this->patientRepo->createQueryBuilder('p');
+        $qb = $this->patientRepo->createQueryBuilder('p')
+            ->andWhere('p.deletedAt IS NULL');
         if ($fromDate) {
             $qb->andWhere('p.dateInscription >= :from')->setParameter('from', $fromDate->format('Y-m-d'));
         }
@@ -526,6 +527,7 @@ class ReportService
 
         $qbReturning = $this->patientRepo->createQueryBuilder('p')
             ->innerJoin('p.consultations', 'c')
+            ->andWhere('p.deletedAt IS NULL')
             ->andWhere('c.CreatedAt >= :from')
             ->andWhere('c.CreatedAt <= :to')
             ->andWhere('p.dateInscription < :from')
@@ -1410,7 +1412,7 @@ class ReportService
     {
         $cacheKey = sprintf('report.receptionDashboard.%s.%s', $dateStart->format('Ymd'), $dateEnd->format('Ymd'));
         return $this->remember($cacheKey, 180, function () use ($dateStart, $dateEnd) {
-        $newPatients = $this->em->createQuery("\n        SELECT COUNT(p.id) FROM App\\Patient\\Entity\\Patient p \n        WHERE p.dateInscription BETWEEN :start AND :end\n    ")
+        $newPatients = $this->em->createQuery("\n        SELECT COUNT(p.id) FROM App\\Patient\\Entity\\Patient p \n        WHERE p.dateInscription BETWEEN :start AND :end\n        AND p.deletedAt IS NULL\n    ")
             ->setParameters(['start' => $dateStart, 'end' => $dateEnd])
             ->getSingleScalarResult();
 

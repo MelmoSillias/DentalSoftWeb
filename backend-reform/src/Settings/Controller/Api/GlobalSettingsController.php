@@ -2,6 +2,8 @@
 
 namespace App\Settings\Controller\Api;
 
+use App\IdentityAccess\Entity\User;
+use App\Settings\Service\DatabaseMaintenanceService;
 use App\Settings\Service\GlobalSettingsService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -11,8 +13,27 @@ use Symfony\Component\Routing\Attribute\Route;
 #[Route('/api/settings', name: 'api_settings_')]
 class GlobalSettingsController extends AbstractController
 {
-    public function __construct(private GlobalSettingsService $globalSettingsService)
+    public function __construct(
+        private GlobalSettingsService $globalSettingsService,
+        private DatabaseMaintenanceService $databaseMaintenanceService,
+    ) {
+    }
+
+    private function safeErrorMessage(\Throwable $e): string
     {
+        $message = (string) $e->getMessage();
+        if ($message === '' || mb_check_encoding($message, 'UTF-8')) {
+            return $message;
+        }
+
+        $converted = @mb_convert_encoding($message, 'UTF-8', 'UTF-8, ISO-8859-1, Windows-1252, CP850');
+        if (is_string($converted) && $converted !== '') {
+            return $converted;
+        }
+
+        $fallback = @iconv('Windows-1252', 'UTF-8//IGNORE', $message);
+
+        return is_string($fallback) && $fallback !== '' ? $fallback : 'Erreur interne (message non UTF-8).';
     }
 
     #[Route('/general', name: 'general_get', methods: ['GET'])]
@@ -40,5 +61,122 @@ class GlobalSettingsController extends AbstractController
         $saved = $this->globalSettingsService->saveGeneralSettings($payload);
 
         return $this->json($saved);
+    }
+
+    #[Route('/test-mode/status', name: 'test_mode_status', methods: ['GET'])]
+    public function getTestModeStatus(): JsonResponse
+    {
+        $this->denyAccessUnlessGranted('ROLE_ADMIN');
+
+        return $this->json($this->globalSettingsService->getTestModeStatus());
+    }
+
+    #[Route('/test-mode/toggle', name: 'test_mode_toggle', methods: ['PUT'])]
+    public function toggleTestMode(Request $request): JsonResponse
+    {
+        $this->denyAccessUnlessGranted('ROLE_ADMIN');
+        $admin = $this->getUser();
+        if (!$admin instanceof User) {
+            return $this->json(['error' => 'Utilisateur non authentifié'], 401);
+        }
+
+        $payload = json_decode($request->getContent(), true) ?? [];
+        $enabled = (bool) ($payload['enabled'] ?? false);
+        $password = (string) ($payload['password'] ?? '');
+
+        try {
+            $result = $this->globalSettingsService->toggleTestMode($enabled, $admin, $password);
+            return $this->json($result);
+        } catch (\InvalidArgumentException $e) {
+            return $this->json(['error' => $e->getMessage()], 400);
+        } catch (\Throwable $e) {
+            return $this->json(['error' => $this->safeErrorMessage($e)], 500);
+        }
+    }
+
+    #[Route('/test-mode/clean', name: 'test_mode_clean', methods: ['POST'])]
+    public function cleanTestMode(Request $request): JsonResponse
+    {
+        $this->denyAccessUnlessGranted('ROLE_ADMIN');
+        $admin = $this->getUser();
+        if (!$admin instanceof User) {
+            return $this->json(['error' => 'Utilisateur non authentifié'], 401);
+        }
+
+        $payload = json_decode($request->getContent(), true) ?? [];
+        $password = (string) ($payload['password'] ?? '');
+
+        try {
+            $result = $this->globalSettingsService->cleanTestModeData($admin, $password);
+            return $this->json($result);
+        } catch (\InvalidArgumentException $e) {
+            return $this->json(['error' => $e->getMessage()], 400);
+        } catch (\Throwable $e) {
+            return $this->json(['error' => $this->safeErrorMessage($e)], 500);
+        }
+    }
+
+    #[Route('/database/export', name: 'database_export', methods: ['POST'])]
+    public function exportDatabase(Request $request): JsonResponse
+    {
+        $this->denyAccessUnlessGranted('ROLE_ADMIN');
+        $admin = $this->getUser();
+        if (!$admin instanceof User) {
+            return $this->json(['error' => 'Utilisateur non authentifié'], 401);
+        }
+
+        $payload = json_decode($request->getContent(), true) ?? [];
+        $password = (string) ($payload['password'] ?? '');
+        $formats = is_array($payload['formats'] ?? null) ? $payload['formats'] : ['sql'];
+
+        if (!$this->databaseMaintenanceService->verifyAdminPassword($admin, $password)) {
+            return $this->json(['error' => 'Mot de passe admin invalide.'], 400);
+        }
+
+        try {
+            $result = $this->databaseMaintenanceService->createBackup($formats, 'manual_backup');
+            return $this->json([
+                'success' => true,
+                'message' => 'Sauvegarde/export créé avec succès.',
+                'files' => $result,
+            ]);
+        } catch (\Throwable $e) {
+            return $this->json(['error' => $this->safeErrorMessage($e)], 500);
+        }
+    }
+
+    #[Route('/database/reset', name: 'database_reset', methods: ['POST'])]
+    public function resetDatabase(Request $request): JsonResponse
+    {
+        $this->denyAccessUnlessGranted('ROLE_ADMIN');
+        $admin = $this->getUser();
+        if (!$admin instanceof User) {
+            return $this->json(['error' => 'Utilisateur non authentifié'], 401);
+        }
+
+        if ((int) ($admin->getId() ?? 0) !== 1) {
+            return $this->json(['error' => 'Action réservée au super-admin (id=1).'], 403);
+        }
+
+        $payload = json_decode($request->getContent(), true) ?? [];
+        $password = (string) ($payload['password'] ?? '');
+
+        if (!$this->databaseMaintenanceService->verifyAdminPassword($admin, $password)) {
+            return $this->json(['error' => 'Mot de passe admin invalide.'], 400);
+        }
+
+        try {
+            $backup = $this->databaseMaintenanceService->createBackup(['sql', 'zip', 'json'], 'pre_reset_backup');
+            $result = $this->databaseMaintenanceService->resetDatabaseDataPreservingSuperAdmin();
+
+            return $this->json([
+                'success' => true,
+                'message' => 'Base réinitialisée. Super-admin id=1 conservé.',
+                'backup' => $backup,
+                'details' => $result,
+            ]);
+        } catch (\Throwable $e) {
+            return $this->json(['error' => $this->safeErrorMessage($e)], 500);
+        }
     }
 }

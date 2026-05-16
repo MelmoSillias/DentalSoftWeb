@@ -3,6 +3,9 @@ import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } 
 import { useRouter } from 'vue-router';
 import { useToast } from 'primevue/usetoast';
 import Button from 'primevue/button';
+import Dialog from 'primevue/dialog';
+import InputText from 'primevue/inputtext';
+import Password from 'primevue/password';
 import Select from 'primevue/select';
 import SelectButton from 'primevue/selectbutton';
 import Textarea from 'primevue/textarea';
@@ -17,7 +20,14 @@ import { useAppearanceSettings } from '@/composables/useAppearanceSettings';
 import { GUIDED_TOUR_START_EVENT } from '@/tours';
 import { createSettingsApparenceTour } from '@/tours/settingsApparenceTour';
 import { startTourGuide } from '@/tours/tourGuideClient';
-import { fetchGeneralSettings, saveGeneralSettings } from '@/services/globalSettingsService';
+import {
+    cleanTestMode,
+    exportDatabase,
+    fetchGeneralSettings,
+    resetDatabase,
+    saveGeneralSettings,
+    toggleTestMode
+} from '@/services/globalSettingsService';
 import { getHttpErrorMessage } from '@/service/http';
 import cabinetConfig from '@/cabinetConfig';
 
@@ -60,7 +70,10 @@ const savingStates = reactive({
     devicePolicy: false,
     billingPolicy: false,
     transactionMotifs: false,
-    soinsCatalog: false
+    soinsCatalog: false,
+    testMode: false,
+    databaseExport: false,
+    databaseReset: false
 });
 
 // Settings data
@@ -98,6 +111,18 @@ const ficheSimplifieCatalog = reactive({
     antecedentTypesText: 'Personnel\nFamilial\nMédical'
 });
 
+const testMode = reactive({
+    enabled: false,
+    snapshotCreatedAt: null,
+    lastPurgeAt: null
+});
+
+const backupOptions = reactive({
+    sql: true,
+    zip: true,
+    json: true
+});
+
 // Navigation structure
 const navigation = {
     appearance: {
@@ -118,6 +143,8 @@ const navigation = {
             { id: 'consultation-access', label: 'Consultation & Focus', icon: 'pi pi-lock' },
             { id: 'device-security', label: 'Sécurité appareils', icon: 'pi pi-shield' },
             { id: 'billing-rules', label: 'Règles facturation', icon: 'pi pi-wallet' },
+            { id: 'test-mode', label: 'Mode test', icon: 'pi pi-flask' },
+            { id: 'database-maintenance', label: 'Sauvegarde et reset', icon: 'pi pi-database' },
             { id: 'transaction-motifs', label: 'Motifs transaction', icon: 'pi pi-dollar' },
             { id: 'soins-list', label: 'Liste des soins', icon: 'pi pi-heart' }
         ]
@@ -125,6 +152,21 @@ const navigation = {
 };
 
 const canAccessWorkflowSettings = computed(() => (auth.user?.roles || []).includes('ROLE_ADMIN'));
+const isSuperAdmin = computed(() => Number(auth.user?.id || 0) === 1);
+const isSecurityDialogSubmitting = computed(() => savingStates.testMode || savingStates.databaseExport || savingStates.databaseReset);
+const isResetDialogMode = computed(() => securityDialog.mode === 'db-reset');
+const persistedTestModeEnabled = ref(false);
+
+const securityDialog = reactive({
+    visible: false,
+    mode: '',
+    title: '',
+    message: '',
+    password: '',
+    challenge: '',
+    challengeInput: '',
+    payload: {},
+});
 
 const visibleNavigation = computed(() => {
     if (canAccessWorkflowSettings.value) return navigation;
@@ -217,6 +259,10 @@ const loadGeneralSettings = async (force = false) => {
         ficheSimplifieCatalog.traitementTypesText = (settings.traitementTypes || []).join('\n');
         ficheSimplifieCatalog.allergyTypesText = (settings.allergyTypes || []).join('\n');
         ficheSimplifieCatalog.antecedentTypesText = (settings.antecedentTypes || []).join('\n');
+        testMode.enabled = settings.testModeEnabled === true;
+        persistedTestModeEnabled.value = testMode.enabled;
+        testMode.snapshotCreatedAt = settings.testModeSnapshotCreatedAt || null;
+        testMode.lastPurgeAt = settings.testModeLastPurgeAt || null;
         generalSettingsLoaded.value = true;
         loadErrorMessage.value = '';
     } catch (error) {
@@ -317,6 +363,198 @@ const saveSoinsCatalogAction = async () => {
     } finally {
         savingStates.soinsCatalog = false;
     }
+};
+
+const buildLongResetChallenge = () => {
+    const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+    const chunks = [];
+    for (let i = 0; i < 6; i += 1) {
+        let chunk = '';
+        for (let j = 0; j < 5; j += 1) {
+            chunk += alphabet[Math.floor(Math.random() * alphabet.length)];
+        }
+        chunks.push(chunk);
+    }
+
+    return chunks.join('-');
+};
+
+const openSecurityDialog = ({ mode, title, message, challenge = '', payload = {} }) => {
+    securityDialog.mode = mode;
+    securityDialog.title = title;
+    securityDialog.message = message;
+    securityDialog.password = '';
+    securityDialog.challenge = challenge;
+    securityDialog.challengeInput = '';
+    securityDialog.payload = payload;
+    securityDialog.visible = true;
+};
+
+const closeSecurityDialog = () => {
+    const previousMode = securityDialog.mode;
+    securityDialog.visible = false;
+    securityDialog.mode = '';
+    securityDialog.title = '';
+    securityDialog.message = '';
+    securityDialog.password = '';
+    securityDialog.challenge = '';
+    securityDialog.challengeInput = '';
+    securityDialog.payload = {};
+
+    if (previousMode === 'test-toggle') {
+        testMode.enabled = persistedTestModeEnabled.value;
+    }
+};
+
+const applyTestModeResponse = (response) => {
+    testMode.enabled = response.testModeEnabled === true;
+    persistedTestModeEnabled.value = testMode.enabled;
+    testMode.snapshotCreatedAt = response.testModeSnapshotCreatedAt || null;
+    testMode.lastPurgeAt = response.testModeLastPurgeAt || null;
+};
+
+const confirmSecurityDialog = async () => {
+    const password = securityDialog.password.trim();
+    if (!password) {
+        toast.add({ severity: 'warn', summary: 'Confirmation', detail: 'Le mot de passe admin est requis.', life: 3000 });
+        return;
+    }
+
+    if (securityDialog.mode === 'db-reset') {
+        if (securityDialog.challengeInput.trim() !== securityDialog.challenge) {
+            toast.add({ severity: 'error', summary: 'Sécurité reset', detail: 'La phrase de sécurité ne correspond pas.', life: 3500 });
+            return;
+        }
+    }
+
+    if (securityDialog.mode === 'test-toggle') {
+        savingStates.testMode = true;
+        try {
+            const response = await toggleTestMode({ enabled: testMode.enabled, password }, token);
+            applyTestModeResponse(response);
+            toast.add({ severity: 'success', summary: 'Mode test', detail: response.message || 'Paramètre mis à jour', life: 3000 });
+            closeSecurityDialog();
+        } catch (error) {
+            testMode.enabled = persistedTestModeEnabled.value;
+            toast.add({ severity: 'error', summary: 'Erreur', detail: extractApiError(error, 'Action impossible'), life: 3500 });
+        } finally {
+            savingStates.testMode = false;
+        }
+        return;
+    }
+
+    if (securityDialog.mode === 'test-clean') {
+        savingStates.testMode = true;
+        try {
+            const response = await cleanTestMode({ password }, token);
+            applyTestModeResponse(response);
+            toast.add({ severity: 'success', summary: 'Mode test', detail: response.message || 'Nettoyage effectué', life: 3000 });
+            closeSecurityDialog();
+        } catch (error) {
+            toast.add({ severity: 'error', summary: 'Erreur', detail: extractApiError(error, 'Nettoyage impossible'), life: 3500 });
+        } finally {
+            savingStates.testMode = false;
+        }
+        return;
+    }
+
+    if (securityDialog.mode === 'db-export') {
+        savingStates.databaseExport = true;
+        try {
+            const formats = securityDialog.payload?.formats || ['sql'];
+            const response = await exportDatabase({ password, formats }, token);
+            const sql = response?.files?.relativeSqlPath || 'n/a';
+            const zip = response?.files?.relativeZipPath || 'n/a';
+            const json = response?.files?.relativeJsonPath || 'n/a';
+            toast.add({
+                severity: 'success',
+                summary: 'Sauvegarde créée',
+                detail: `SQL: ${sql} | ZIP: ${zip} | JSON: ${json}`,
+                life: 6000
+            });
+            closeSecurityDialog();
+        } catch (error) {
+            toast.add({ severity: 'error', summary: 'Erreur', detail: extractApiError(error, 'Export impossible'), life: 3500 });
+        } finally {
+            savingStates.databaseExport = false;
+        }
+        return;
+    }
+
+    if (securityDialog.mode === 'db-reset') {
+        savingStates.databaseReset = true;
+        try {
+            const response = await resetDatabase({ password }, token);
+            toast.add({
+                severity: 'success',
+                summary: 'Réinitialisation terminée',
+                detail: response?.message || 'Base réinitialisée avec sauvegarde préalable.',
+                life: 5000
+            });
+            closeSecurityDialog();
+        } catch (error) {
+            toast.add({ severity: 'error', summary: 'Erreur', detail: extractApiError(error, 'Réinitialisation impossible'), life: 4000 });
+        } finally {
+            savingStates.databaseReset = false;
+        }
+    }
+};
+
+const saveTestModeAction = async () => {
+    if (!canAccessWorkflowSettings.value) return;
+
+    openSecurityDialog({
+        mode: 'test-toggle',
+        title: 'Confirmation mode test',
+        message: 'Confirmez votre mot de passe admin pour appliquer ce changement de mode test.'
+    });
+};
+
+const cleanTestModeAction = async () => {
+    if (!testMode.enabled) {
+        toast.add({ severity: 'warn', summary: 'Mode test', detail: 'Le mode test doit être actif.', life: 2500 });
+        return;
+    }
+
+    openSecurityDialog({
+        mode: 'test-clean',
+        title: 'Nettoyage des tests',
+        message: 'Cette action restaure le snapshot du mode test puis regénère un nouveau snapshot. Confirmez avec votre mot de passe admin.'
+    });
+};
+
+const exportDatabaseAction = async () => {
+    const formats = [
+        backupOptions.sql ? 'sql' : null,
+        backupOptions.zip ? 'zip' : null,
+        backupOptions.json ? 'json' : null,
+    ].filter(Boolean);
+
+    if (formats.length === 0) {
+        toast.add({ severity: 'warn', summary: 'Export', detail: 'Sélectionnez au moins un format.', life: 2500 });
+        return;
+    }
+
+    openSecurityDialog({
+        mode: 'db-export',
+        title: 'Confirmer export base de données',
+        message: 'Entrez votre mot de passe admin pour lancer la sauvegarde/export.',
+        payload: { formats }
+    });
+};
+
+const resetDatabaseAction = async () => {
+    if (!isSuperAdmin.value) {
+        toast.add({ severity: 'error', summary: 'Accès refusé', detail: 'Action réservée au super-admin id=1.', life: 3000 });
+        return;
+    }
+
+    openSecurityDialog({
+        mode: 'db-reset',
+        title: 'Réinitialisation complète - sécurité renforcée',
+        message: 'Action irréversible: sauvegarde automatique puis suppression des données en conservant uniquement le super-admin id=1.',
+        challenge: buildLongResetChallenge()
+    });
 };
 
 const goToSmsPage = () => {
@@ -780,6 +1018,109 @@ onBeforeUnmount(() => {
                             </div>
                         </div>
 
+                        <!-- Test Mode -->
+                        <div id="workflow-test-mode" class="settings-section">
+                            <div class="settings-section-header">
+                                <div>
+                                    <h3>Mode test</h3>
+                                    <p class="settings-section-description">Mode volatil global: snapshot à l'activation, restauration automatique à la désactivation</p>
+                                </div>
+                                <Button
+                                    label="Appliquer"
+                                    icon="pi pi-save"
+                                    :loading="savingStates.testMode"
+                                    @click="saveTestModeAction"
+                                />
+                            </div>
+                            <div class="settings-card">
+                                <div class="toggle-group">
+                                    <div class="toggle-item">
+                                        <div class="toggle-info">
+                                            <label>Activer le mode test global</label>
+                                            <span class="toggle-description">Toutes les écritures BD deviennent temporaires jusqu'à restauration snapshot</span>
+                                        </div>
+                                        <ToggleSwitch v-model="testMode.enabled" />
+                                    </div>
+                                </div>
+                                <Divider />
+                                <div class="two-columns">
+                                    <div class="field-group">
+                                        <label>Snapshot initial</label>
+                                        <p class="field-helper">{{ testMode.snapshotCreatedAt || 'Aucun snapshot enregistré' }}</p>
+                                    </div>
+                                    <div class="field-group">
+                                        <label>Dernier nettoyage</label>
+                                        <p class="field-helper">{{ testMode.lastPurgeAt || 'Jamais' }}</p>
+                                    </div>
+                                </div>
+                                <Divider />
+                                <Button
+                                    label="Nettoyer les tests"
+                                    icon="pi pi-refresh"
+                                    severity="warn"
+                                    outlined
+                                    :loading="savingStates.testMode"
+                                    :disabled="!testMode.enabled"
+                                    @click="cleanTestModeAction"
+                                />
+                            </div>
+                        </div>
+
+                        <!-- Database Maintenance -->
+                        <div id="workflow-database-maintenance" class="settings-section">
+                            <div class="settings-section-header">
+                                <div>
+                                    <h3>Sauvegarde et reset base</h3>
+                                    <p class="settings-section-description">Export SQL/ZIP/JSON avec confirmation admin, et reset complet réservé au super-admin id=1</p>
+                                </div>
+                            </div>
+                            <div class="settings-card">
+                                <div class="two-columns">
+                                    <div class="field-group">
+                                        <label>Formats d'export</label>
+                                        <div class="toggle-group">
+                                            <div class="toggle-item">
+                                                <div class="toggle-info">
+                                                    <label>SQL dump</label>
+                                                </div>
+                                                <ToggleSwitch v-model="backupOptions.sql" />
+                                            </div>
+                                            <div class="toggle-item">
+                                                <div class="toggle-info">
+                                                    <label>ZIP + métadonnées</label>
+                                                </div>
+                                                <ToggleSwitch v-model="backupOptions.zip" />
+                                            </div>
+                                            <div class="toggle-item">
+                                                <div class="toggle-info">
+                                                    <label>JSON applicatif</label>
+                                                </div>
+                                                <ToggleSwitch v-model="backupOptions.json" />
+                                            </div>
+                                        </div>
+                                        <Button
+                                            label="Créer sauvegarde/export"
+                                            icon="pi pi-download"
+                                            :loading="savingStates.databaseExport"
+                                            @click="exportDatabaseAction"
+                                        />
+                                    </div>
+                                    <div class="field-group">
+                                        <label>Zone critique</label>
+                                        <p class="field-helper">Réinitialise toutes les données applicatives, conserve uniquement l'utilisateur id=1.</p>
+                                        <Button
+                                            label="Reset complet base"
+                                            icon="pi pi-exclamation-triangle"
+                                            severity="danger"
+                                            :loading="savingStates.databaseReset"
+                                            :disabled="!isSuperAdmin"
+                                            @click="resetDatabaseAction"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Transaction Motifs -->
                         <div id="workflow-transaction-motifs" class="settings-section">
                             <div class="settings-section-header">
@@ -851,6 +1192,64 @@ onBeforeUnmount(() => {
                 </div>
             </main>
         </div>
+
+        <Dialog
+            :visible="securityDialog.visible"
+            :header="securityDialog.title"
+            :modal="true"
+            :closable="!isSecurityDialogSubmitting"
+            :dismissableMask="!isSecurityDialogSubmitting"
+            :style="{ width: '38rem', maxWidth: '96vw' }"
+            @update:visible="(value) => { securityDialog.visible = value; if (!value) closeSecurityDialog(); }"
+            @hide="closeSecurityDialog"
+        >
+            <div class="space-y-4">
+                <p class="text-sm text-color-secondary m-0">{{ securityDialog.message }}</p>
+
+                <div v-if="isResetDialogMode" class="space-y-2 rounded-lg border border-red-200 bg-red-50 p-3 dark:border-red-800 dark:bg-red-950/20">
+                    <p class="m-0 text-sm font-semibold text-red-700 dark:text-red-300">Check de sécurité renforcé requis</p>
+                    <p class="m-0 text-xs text-red-700/90 dark:text-red-300/90">Recopiez exactement la phrase suivante pour autoriser la réinitialisation :</p>
+                    <div class="rounded-md bg-surface-0 dark:bg-surface-900 border border-surface-200 dark:border-surface-700 px-3 py-2">
+                        <span class="font-mono text-sm tracking-wide select-all">{{ securityDialog.challenge }}</span>
+                    </div>
+                    <InputText
+                        v-model="securityDialog.challengeInput"
+                        class="w-full"
+                        placeholder="Répétez la phrase de sécurité"
+                        :disabled="isSecurityDialogSubmitting"
+                    />
+                </div>
+
+                <div class="space-y-2">
+                    <label for="settings-admin-password" class="text-sm font-medium">Mot de passe admin</label>
+                    <Password
+                        id="settings-admin-password"
+                        v-model="securityDialog.password"
+                        :feedback="false"
+                        toggleMask
+                        fluid
+                        :disabled="isSecurityDialogSubmitting"
+                        inputClass="w-full"
+                    />
+                </div>
+            </div>
+
+            <template #footer>
+                <Button
+                    label="Annuler"
+                    severity="secondary"
+                    outlined
+                    :disabled="isSecurityDialogSubmitting"
+                    @click="closeSecurityDialog"
+                />
+                <Button
+                    label="Confirmer"
+                    icon="pi pi-check"
+                    :loading="isSecurityDialogSubmitting"
+                    @click="confirmSecurityDialog"
+                />
+            </template>
+        </Dialog>
     </div>
 </template>
 
