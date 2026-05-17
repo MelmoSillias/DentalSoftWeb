@@ -158,8 +158,7 @@ class ConsultationService
                         ->setDateFacture(new DateTime())
                         ->setConsultationAmount($consultationAmount)
                         ->setIsConsultationPayante(true)
-                        ->setInsuranceStatus('pending')
-                        ->setIsRecouvre(false)
+                        ->setInsuranceStatus('pending') 
                         ->setAssuranceSnapshot([
                             'code' => $assurance->getCode(),
                             'nom' => $assurance->getNom(),
@@ -834,18 +833,12 @@ class ConsultationService
             throw new \InvalidArgumentException('Le médecin est obligatoire pour clôturer la consultation.');
         }
 
-        if ($consultation->getActes()->isEmpty()) {
-            throw new \InvalidArgumentException('Ajoutez au moins un acte médical avant de clôturer la consultation.');
-        }
-
         $facture = $consultation->getFacture() ?? new Facture();
         $facture->setConsultation($consultation);
         $facture->setDateFacture(new \DateTime('now'));
 
         $montants = $facture->computeMontantsFromConsultation();
-        $facture->setIsReglee(((float) $montants['restePatient']) <= 0.0);
-        $facture->setIsRecouvre(false);
-        $consultation->setIsRecouvre(false);
+        $facture->setIsReglee(((float) $montants['restePatient']) <= 0.0); 
         $consultation->setFacture($facture);
         $this->em->persist($facture);
         $this->em->flush();

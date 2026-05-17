@@ -9,7 +9,7 @@ import { computed } from 'vue';
 
 const props = defineProps({
     payDialogVisible: { type: Boolean, default: false },
-    selectedDevis: { type: Object, default: null },
+    selectedFacture: { type: Object, default: null },
     paymentDialogTab: { type: String, default: 'client' },
     payForm: { type: Object, required: true },
     classicPaymentOptions: { type: Array, default: () => [] },
@@ -92,7 +92,7 @@ const hasPreviewData = computed(() => Boolean(props.previewData));
                         <i class="pi pi-file-edit text-blue-500 text-xs"></i>
                         <p class="text-xs font-medium uppercase tracking-wider text-blue-600 dark:text-blue-400">Total facture</p>
                     </div>
-                    <p class="text-lg font-bold text-blue-800 dark:text-blue-200">{{ formatFcfa(selectedDevis?.montant) }}</p>
+                    <p class="text-lg font-bold text-blue-800 dark:text-blue-200">{{ formatFcfa(selectedFacture?.montant) }}</p>
                 </div>
                 <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-900/30 dark:to-emerald-800/20 border border-emerald-200 dark:border-emerald-700/50 p-4 shadow-sm">
                     <div class="flex items-center gap-2 mb-1">

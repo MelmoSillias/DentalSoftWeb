@@ -23,7 +23,7 @@ function buildSeedState() {
             { id: 4, libelle: 'Assurance Premium', type: 'Assurance', typeKey: 'insurance', family: 'insurance', coverageRate: 80, actif: true },
             { id: 5, libelle: 'IPM Standard', type: 'Assurance', typeKey: 'insurance', family: 'insurance', coverageRate: 50, actif: true }
         ],
-        devis: [
+        factures: [
             {
                 id: 7001,
                 date: isoDateOffset(-1, 10, 30),
@@ -65,7 +65,7 @@ function buildSeedState() {
                 consultation: 9204
             }
         ],
-        devisDetails: {
+        factureDetails: {
             7001: {
                 id: 7001,
                 date: '03/04/2026',
@@ -151,8 +151,8 @@ function matchesRange(value, start, end) {
     return true;
 }
 
-function findDevis(devisId) {
-    return caisseTourMockState.devis.find((item) => Number(item.id) === Number(devisId)) || null;
+function findFacture(factureId) {
+    return caisseTourMockState.factures.find((item) => Number(item.id) === Number(factureId)) || null;
 }
 
 export function isCaisseTourMockEnabled() {
@@ -175,8 +175,8 @@ export function deactivateCaisseTourMock() {
     caisseTourMockState = buildSeedState();
 }
 
-export function fetchDevisTourMock({ start, end, unpaidOnly = false } = {}) {
-    let list = caisseTourMockState.devis.filter((item) => matchesRange(item.date, start, end));
+export function fetchFacturesTourMock({ start, end, unpaidOnly = false } = {}) {
+    let list = caisseTourMockState.factures.filter((item) => matchesRange(item.date, start, end));
     if (unpaidOnly) {
         list = list.filter((item) => Number(item.reste) > 0);
     }
@@ -192,23 +192,23 @@ export function fetchPaymentMethodsTourMock() {
     return cloneValue(caisseTourMockState.paymentMethods);
 }
 
-export function payDevisTourMock(devisId, payload = {}) {
-    const devis = findDevis(devisId);
-    if (!devis) throw new Error('Facture introuvable');
+export function payFactureTourMock(factureId, payload = {}) {
+    const facture = findFacture(factureId);
+    if (!facture) throw new Error('Facture introuvable');
 
     const patientAmount = Number(payload.patient_amount ?? payload.montant ?? 0);
     const insuranceAmount = Number(payload.insurance_amount ?? 0);
     const totalPaid = patientAmount + insuranceAmount;
 
-    devis.reste = Math.max(0, Number(devis.reste || 0) - totalPaid);
-    devis.isRegle = devis.reste === 0;
+    facture.reste = Math.max(0, Number(facture.reste || 0) - totalPaid);
+    facture.isRegle = facture.reste === 0;
 
     const paymentId = caisseTourMockState.nextPaymentId++;
     caisseTourMockState.payments.unshift({
         pId: paymentId,
-        factureId: devis.id,
-        patient: `${devis.patient?.nom || ''} ${devis.patient?.prenom || ''}`.trim(),
-        telephone: devis.telephone,
+        factureId: facture.id,
+        patient: `${facture.patient?.nom || ''} ${facture.patient?.prenom || ''}`.trim(),
+        telephone: facture.telephone,
         date: `${payload.date || new Date().toISOString().slice(0, 10)}T${payload.time || '09:00'}:00`,
         montant: totalPaid,
         mode: payload.insurance_enabled ? 'Paiement + Assurance' : resolvePaymentMethodLabel(payload.modeId),
@@ -222,11 +222,11 @@ function resolvePaymentMethodLabel(modeId) {
     return caisseTourMockState.paymentMethods.find((item) => Number(item.id) === Number(modeId))?.libelle || 'Paiement';
 }
 
-export function validateEmptyDevisTourMock(devisId) {
-    const devis = findDevis(devisId);
-    if (!devis) throw new Error('Facture introuvable');
-    devis.isRegle = true;
-    devis.reste = 0;
+export function validateEmptyFactureTourMock(factureId) {
+    const facture = findFacture(factureId);
+    if (!facture) throw new Error('Facture introuvable');
+    facture.isRegle = true;
+    facture.reste = 0;
     return { success: true };
 }
 
@@ -239,6 +239,6 @@ export function updateFactureLinesTourMock(consultationId, lignes = []) {
     return { success: true };
 }
 
-export function fetchDevisDetailTourMock(devisId) {
-    return cloneValue(caisseTourMockState.devisDetails[devisId] || null);
+export function fetchFactureDetailTourMock(factureId) {
+    return cloneValue(caisseTourMockState.factureDetails[factureId] || null);
 }

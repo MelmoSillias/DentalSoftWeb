@@ -337,9 +337,7 @@ class CashdeskService
             $this->em->remove($paiement);
         }
 
-        $facture->setIsReglee(false);
-        $facture->setIsRecouvre(false);
-        $consultation->setIsRecouvre(false);
+        $facture->setIsReglee(false); 
 
         $this->em->persist($facture);
         $this->em->flush();

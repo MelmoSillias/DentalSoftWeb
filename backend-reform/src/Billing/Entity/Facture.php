@@ -26,14 +26,8 @@ class Facture
     private ?\DateTimeInterface $dateFacture = null;
 
     #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
-    private bool $isReglee = false;
-
-
-
-    #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
-    private bool $isRecouvre = false;
-
-
+    private bool $isReglee = false; 
+    
     #[ORM\OneToMany(mappedBy: 'facture', targetEntity: Paiement::class)]
     private Collection $paiements;
 

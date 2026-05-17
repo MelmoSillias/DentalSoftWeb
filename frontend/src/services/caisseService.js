@@ -1,14 +1,14 @@
 import { apiPrefix } from '@/config';
 import {
-    fetchDevisDetailTourMock,
-    fetchDevisTourMock,
+    fetchFactureDetailTourMock,
+    fetchFacturesTourMock,
     fetchFactureLinesTourMock,
     fetchPaymentMethodsTourMock,
     fetchPaymentsTourMock,
     isCaisseTourMockEnabled,
-    payDevisTourMock,
+    payFactureTourMock,
     updateFactureLinesTourMock,
-    validateEmptyDevisTourMock
+    validateEmptyFactureTourMock
 } from '@/services/caisseTourMock';
 import http from '@/service/http';
 
@@ -25,7 +25,7 @@ const fetchPrintBlob = async (url, token) => {
 
 export const fetchFactures = async ({ start, end, unpaidOnly = false }, token) => {
     if (isCaisseTourMockEnabled()) {
-        return fetchDevisTourMock({ start, end, unpaidOnly });
+        return fetchFacturesTourMock({ start, end, unpaidOnly });
     }
 
     const url = unpaidOnly ? `${apiPrefix}/factures/unpaid` : `${apiPrefix}/factures/classiques`;
@@ -72,7 +72,7 @@ export const fetchAssurances = async (token) => {
 
 export const payFacture = async (factureId, payload = {}, token) => {
     if (isCaisseTourMockEnabled()) {
-        return payDevisTourMock(factureId, payload);
+        return payFactureTourMock(factureId, payload);
     }
 
     const res = await axios.post(`${apiPrefix}/factures/${factureId}/pay`, payload, withHeaders(token));
@@ -90,7 +90,7 @@ export const resetFacturePayments = async (factureId, token) => {
 
 export const validateEmptyFacture = async (factureId, token) => {
     if (isCaisseTourMockEnabled()) {
-        return validateEmptyDevisTourMock(factureId);
+        return validateEmptyFactureTourMock(factureId);
     }
 
     return payFacture(factureId, {}, token);
@@ -116,7 +116,7 @@ export const updateFactureLines = async (consultationId, lignes, token) => {
 
 export const fetchFactureDetail = async (factureId, token) => {
     if (isCaisseTourMockEnabled()) {
-        return fetchDevisDetailTourMock(factureId);
+        return fetchFactureDetailTourMock(factureId);
     }
 
     const res = await axios.get(`${apiPrefix}/factures/${factureId}`, withHeaders(token));

@@ -12,21 +12,21 @@ import Tag from 'primevue/tag';
 import { computed, ref } from 'vue';
 
 const props = defineProps({
-    devis: { type: Array, default: () => [] },
-    devisLoading: { type: Boolean, default: false },
+    factures: { type: Array, default: () => [] },
+    facturesLoading: { type: Boolean, default: false },
     payments: { type: Array, default: () => [] },
     paymentsLoading: { type: Boolean, default: false },
-    devisType: { type: String, default: 'all' },
-    devisRange: { type: Array, default: () => [] },
+    factureType: { type: String, default: 'all' },
+    factureRange: { type: Array, default: () => [] },
     paymentRange: { type: Array, default: () => [] },
     hidePatientPhone: { type: Boolean, default: false }
 });
 
 const emit = defineEmits([
-    'update:devisType',
-    'update:devisRange',
+    'update:factureType',
+    'update:factureRange',
     'update:paymentRange',
-    'refresh-devis',
+    'refresh-factures',
     'refresh-payments',
     'pay',
     'validate-free',
@@ -39,19 +39,19 @@ const emit = defineEmits([
     'send-receipt-sms'
 ]);
 
-const devisTypeOptions = [
+const factureTypeOptions = [
     { label: 'Toutes', value: 'all' },
     { label: 'Factures impayées', value: 'impaye' }
 ];
 
-const devisTypeModel = computed({
-    get: () => props.devisType,
-    set: (val) => emit('update:devisType', val || 'all')
+const factureTypeModel = computed({
+    get: () => props.factureType,
+    set: (val) => emit('update:factureType', val || 'all')
 });
 
-const devisRangeModel = computed({
-    get: () => props.devisRange,
-    set: (val) => emit('update:devisRange', val || [])
+const factureRangeModel = computed({
+    get: () => props.factureRange,
+    set: (val) => emit('update:factureRange', val || [])
 });
 
 const paymentRangeModel = computed({
@@ -59,7 +59,7 @@ const paymentRangeModel = computed({
     set: (val) => emit('update:paymentRange', val || [])
 });
 
-const devisSearch = ref('');
+const factureSearch = ref('');
 const paymentsSearch = ref('');
 const paymentFamilyFilter = ref('non-insurance');
 const paymentModeFilter = ref('all');
@@ -82,7 +82,7 @@ const matchesQuery = (parts, query) => {
     return parts.some((part) => normalizeText(part).includes(query));
 };
 
-const devisSearchQuery = computed(() => normalizeText(devisSearch.value.trim()));
+const factureSearchQuery = computed(() => normalizeText(factureSearch.value.trim()));
 const paymentsSearchQuery = computed(() => normalizeText(paymentsSearch.value.trim()));
 
 const paymentFamilyOptions = [
@@ -91,9 +91,9 @@ const paymentFamilyOptions = [
     { label: 'Tous les modes', value: 'all' }
 ];
 
-const filteredDevis = computed(() => {
-    const list = Array.isArray(props.devis) ? props.devis : [];
-    const query = devisSearchQuery.value;
+const filteredFactures = computed(() => {
+    const list = Array.isArray(props.factures) ? props.factures : [];
+    const query = factureSearchQuery.value;
     return list.filter((row) => {
         const patient = (row.patient && typeof row.patient === 'object')
             ? `${row.patient.nom || ''} ${row.patient.prenom || ''}`.trim()
@@ -111,8 +111,8 @@ const filteredDevis = computed(() => {
     });
 });
 
-const groupedInvoices = computed(() => {
-    const rows = filteredDevis.value;
+const filteredFacturesR = computed(() => {
+    const rows = filteredFactures.value;
     const payments = Array.isArray(props.payments) ? props.payments : [];
 
     return rows.map((invoice) => {
@@ -234,8 +234,8 @@ const filteredPayments = computed(() => {
     });
 });
 
-const devisTotals = computed(() => {
-    const list = filteredDevis.value;
+const factureTotals = computed(() => {
+    const list = filteredFactures.value;
     const totalRestant = list.reduce((sum, r) => sum + (Number(r.reste) || 0), 0);
     return {
         count: list.length,
@@ -254,7 +254,7 @@ const paymentsTotals = computed(() => {
 
 // Statistiques détaillées pour le modal
 const detailedStats = computed(() => {
-    const allInvoices = props.devis || [];
+    const allInvoices = props.factures || [];
     const allPayments = props.payments || [];
 
     const totalInvoices = allInvoices.length;
@@ -441,25 +441,25 @@ const printDetailPayment = (row) => {
                 <div class="filters" :class="{ 'simplified-filters': overviewDisplayMode === 'grouped' }">
                     <div class="filter-item">
                         <label>Recherche</label>
-                        <InputText v-model="devisSearch" placeholder="Patient, téléphone, montant..." fluid />
+                        <InputText v-model="factureSearch" placeholder="Patient, téléphone, montant..." fluid />
                     </div>
                     <div class="filter-item">
                         <label>Affichage</label>
-                        <Select v-model="devisTypeModel" :options="devisTypeOptions" optionLabel="label"
+                        <Select v-model="factureTypeModel" :options="factureTypeOptions" optionLabel="label"
                             optionValue="value" />
                     </div>
                     <div class="filter-item">
                         <label>Période</label>
-                        <DatePicker v-model="devisRangeModel" selectionMode="range" dateFormat="yy-mm-dd" showIcon
+                        <DatePicker v-model="factureRangeModel" selectionMode="range" dateFormat="yy-mm-dd" showIcon
                             fluid />
                     </div>
-                    <Button label="Rafraîchir" icon="pi pi-refresh" text @click="emit('refresh-devis')" />
+                    <Button label="Rafraîchir" icon="pi pi-refresh" text @click="emit('refresh-factures')" />
                 </div>
             </div>
 
             <!-- Vue standard -->
             <DataTable v-if="overviewDisplayMode === 'standard'" class="rounded-xl overflow-hidden"
-                :value="filteredDevis" dataKey="id" :loading="devisLoading" paginator :rows="10"
+                :value="filteredFactures" dataKey="id" :loading="facturesLoading" paginator :rows="10"
                 :rowsPerPageOptions="[5, 10, 20]" responsiveLayout="scroll">
                 <Column field="date" header="Date" sortable>
                     <template #body="{ data }">{{ formatDate(data.date) }}</template>
@@ -506,7 +506,7 @@ const printDetailPayment = (row) => {
             </DataTable>
 
             <!-- Vue regroupée améliorée -->
-            <DataView v-else class="grouped-invoices-view" :value="groupedInvoices" :loading="devisLoading" paginator
+            <DataView v-else class="grouped-invoices-view" :value="filteredFactures" :loading="facturesLoading" paginator
                 :rows="10" :rowsPerPageOptions="[5, 10, 20]">
                 <template #list="slotProps">
                     <div class="flex flex-col gap-4 p-2">

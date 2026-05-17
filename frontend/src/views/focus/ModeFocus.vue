@@ -61,7 +61,7 @@ const factureConsultation = ref(null);
 const paymentMethods = ref([]);
 const assurances = ref([]);
 const payDialogVisible = ref(false);
-const selectedDevis = ref(null);
+const selectedFacture = ref(null);
 const paymentDialogTab = ref('client');
 
 const todayApiDate = () => {
@@ -84,7 +84,7 @@ const payForm = ref({
 });
 const validateDialogVisible = ref(false);
 const validateLoading = ref(false);
-const pendingDevis = ref(null);
+const pendingFacture = ref(null);
 const resetPaymentDialogVisible = ref(false);
 const resetPaymentsLoading = ref(false);
 const previewDialogVisible = ref(false);
@@ -232,8 +232,8 @@ const showFocusSkeleton = computed(() => loading.value && !hasInitialLoadComplet
 const formatFcfa = (value) => `${Number(value || 0).toLocaleString('fr-FR')} FCFA`;
 
 const activeInvoiceContext = computed(() => {
-    if (selectedDevis.value?.id) {
-        return selectedDevis.value;
+    if (selectedFacture.value?.id) {
+        return selectedFacture.value;
     }
 
     if (previewData.value?.id) {
@@ -243,11 +243,11 @@ const activeInvoiceContext = computed(() => {
     return null;
 });
 
-const selectedDevisInsurance = computed(() => activeInvoiceContext.value?.insurance || null);
-const invoiceHasInsurance = computed(() => selectedDevisInsurance.value?.hasInsurance === true);
+const selectedFactureInsurance = computed(() => activeInvoiceContext.value?.insurance || null);
+const invoiceHasInsurance = computed(() => selectedFactureInsurance.value?.hasInsurance === true);
 const effectiveInsuranceRate = computed(() => {
     if (invoiceHasInsurance.value) {
-        return Number(selectedDevisInsurance.value?.insuranceRate) || 0;
+        return Number(selectedFactureInsurance.value?.insuranceRate) || 0;
     }
     if (payForm.value.insuranceEnabled) {
         return Number(payForm.value.insuranceRate) || 0;
@@ -256,28 +256,28 @@ const effectiveInsuranceRate = computed(() => {
 });
 const effectiveInsuranceAmount = computed(() => {
     if (invoiceHasInsurance.value) {
-        return Number(selectedDevisInsurance.value?.insuranceAmount) || 0;
+        return Number(selectedFactureInsurance.value?.insuranceAmount) || 0;
     }
-    if (!selectedDevis.value || !payForm.value.insuranceEnabled) {
+    if (!selectedFacture.value || !payForm.value.insuranceEnabled) {
         return 0;
     }
-    const baseAmount = Number(selectedDevis.value.reste) || 0;
+    const baseAmount = Number(selectedFacture.value.reste) || 0;
     return Math.max(0, (baseAmount * effectiveInsuranceRate.value) / 100);
 });
-const patientAlreadyPaidAmount = computed(() => Number(selectedDevisInsurance.value?.patientPaidAmount) || 0);
+const patientAlreadyPaidAmount = computed(() => Number(selectedFactureInsurance.value?.patientPaidAmount) || 0);
 const insuranceSectionDisabledReason = computed(() => {
     if (invoiceHasInsurance.value) return 'Une assurance est déjà liée à cette facture.';
     if (patientAlreadyPaidAmount.value > 0) return 'Le paiement assurance n’est plus modifiable car un règlement client existe déjà.';
-    if (!selectedDevis.value || (Number(selectedDevis.value.montant) || 0) <= 0 || (Number(selectedDevis.value.reste) || 0) <= 0) return 'Le paiement assurance n’est disponible que pour une facture avec un montant restant dû.';
+    if (!selectedFacture.value || (Number(selectedFacture.value.montant) || 0) <= 0 || (Number(selectedFacture.value.reste) || 0) <= 0) return 'Le paiement assurance n’est disponible que pour une facture avec un montant restant dû.';
     return null;
 });
 const insuranceStatusLabel = computed(() => {
     if (!invoiceHasInsurance.value) return 'Aucune assurance';
-    return selectedDevisInsurance.value?.insuranceStatus === 'pending' ? 'Assurance en attente' : 'Assurance enregistrée';
+    return selectedFactureInsurance.value?.insuranceStatus === 'pending' ? 'Assurance en attente' : 'Assurance enregistrée';
 });
 const insuranceStatusSeverity = computed(() => {
     if (!invoiceHasInsurance.value) return 'contrast';
-    return selectedDevisInsurance.value?.insuranceStatus === 'pending' ? 'warning' : 'success';
+    return selectedFactureInsurance.value?.insuranceStatus === 'pending' ? 'warning' : 'success';
 });
 const previewPayments = computed(() => Array.isArray(previewData.value?.paiements) ? previewData.value.paiements : []);
 const previewPaymentRoleTag = (payment) => {
@@ -299,15 +299,15 @@ const previewPaymentModeTag = (payment) => {
 };
 const previewServicesTotal = computed(() => (previewData.value?.contenus || []).reduce((sum, line) => sum + (Number(line?.total) || 0), 0));
 const patientOutstandingAmount = computed(() => {
-    if (!selectedDevis.value) return 0;
-    if (invoiceHasInsurance.value) return Math.max(0, Number(selectedDevis.value.reste) || 0);
-    const total = Number(selectedDevis.value.montant) || 0;
+    if (!selectedFacture.value) return 0;
+    if (invoiceHasInsurance.value) return Math.max(0, Number(selectedFacture.value.reste) || 0);
+    const total = Number(selectedFacture.value.montant) || 0;
     return Math.max(0, total - patientAlreadyPaidAmount.value - effectiveInsuranceAmount.value);
 });
 const insuranceHelperMessage = computed(() => 'Le paiement assurance sera créé automatiquement avec une transaction en attente.');
 const maxClientPaymentAmount = computed(() => {
-    if (!selectedDevis.value) return 0;
-    const base = Number(selectedDevis.value.reste) || 0;
+    if (!selectedFacture.value) return 0;
+    const base = Number(selectedFacture.value.reste) || 0;
     const reservedInsurance = invoiceHasInsurance.value ? 0 : effectiveInsuranceAmount.value;
     return Math.max(0, base - reservedInsurance);
 });
@@ -316,8 +316,8 @@ const canResetInvoicePayments = computed(() => {
     return patientAlreadyPaidAmount.value > 0 || invoiceHasInsurance.value || (Number(activeInvoiceContext.value.reste) || 0) !== (Number(activeInvoiceContext.value.montant) || 0);
 });
 const remainingAfterPay = computed(() => {
-    if (!selectedDevis.value) return 0;
-    const reste = Number(selectedDevis.value.reste) || 0;
+    if (!selectedFacture.value) return 0;
+    const reste = Number(selectedFacture.value.reste) || 0;
     const montantPatient = Number(payForm.value.montant) || 0;
     const insuranceAmount = invoiceHasInsurance.value ? 0 : effectiveInsuranceAmount.value;
     return Math.max(0, reste - montantPatient - insuranceAmount);
@@ -334,7 +334,7 @@ const assuranceOptions = computed(() =>
 );
 const selectedAssurance = computed(() =>
     (assurances.value || []).find((item) => Number(item?.id) === Number(payForm.value.assuranceId))
-    || (selectedDevisInsurance.value?.insuranceModeLabel ? { nom: selectedDevisInsurance.value.insuranceModeLabel } : null)
+    || (selectedFactureInsurance.value?.insuranceModeLabel ? { nom: selectedFactureInsurance.value.insuranceModeLabel } : null)
 );
 
 const resolveAssuranceDefaultRate = (assurance) => {
@@ -345,13 +345,13 @@ const resolveAssuranceDefaultRate = (assurance) => {
     return Math.max(0, Math.min(100, Number(assurance?.defaultRate ?? assurance?.tauxParDefaut ?? 0) || 0));
 };
 const insuranceCoveredAmount = computed(() => {
-    if (invoiceHasInsurance.value) return Number(selectedDevisInsurance.value?.insuranceAmount) || 0;
+    if (invoiceHasInsurance.value) return Number(selectedFactureInsurance.value?.insuranceAmount) || 0;
     return effectiveInsuranceAmount.value;
 });
 const invoiceAllowsInsurance = computed(() => {
-    if (!selectedDevis.value) return false;
-    const total = Number(selectedDevis.value.montant) || 0;
-    const reste = Number(selectedDevis.value.reste) || 0;
+    if (!selectedFacture.value) return false;
+    const total = Number(selectedFacture.value.montant) || 0;
+    const reste = Number(selectedFacture.value.reste) || 0;
     return total > 0 && reste > 0 && !invoiceHasInsurance.value && patientAlreadyPaidAmount.value <= 0;
 });
 const requiresClassicPayment = computed(() => (Number(payForm.value.montant) || 0) > 0);
@@ -521,7 +521,7 @@ const loadAssurances = async () => {
 
 const openPayDialog = async () => {
     if (!currentReceptionInvoiceRow.value) return;
-    selectedDevis.value = currentReceptionInvoiceRow.value;
+    selectedFacture.value = currentReceptionInvoiceRow.value;
     await Promise.all([loadPaymentMethods(), loadAssurances()]);
     const defaultClassicMethod = getDefaultClassicMethod(paymentMethods.value);
     const existingInsurance = currentReceptionInvoiceRow.value.insurance || null;
@@ -540,7 +540,7 @@ const openPayDialog = async () => {
 
 const openValidateDialog = () => {
     if (!currentReceptionInvoiceRow.value) return;
-    pendingDevis.value = currentReceptionInvoiceRow.value;
+    pendingFacture.value = currentReceptionInvoiceRow.value;
     validateDialogVisible.value = true;
 };
 
@@ -561,7 +561,7 @@ const openPreviewDialog = async () => {
     previewDialogVisible.value = true;
     previewLoading.value = true;
     previewDialogTab.value = 'services';
-    selectedDevis.value = currentReceptionInvoiceRow.value;
+    selectedFacture.value = currentReceptionInvoiceRow.value;
     try {
         previewData.value = await fetchFactureDetail(currentReceptionInvoiceRow.value.id, token);
     } catch (_) {
@@ -573,11 +573,11 @@ const openPreviewDialog = async () => {
 };
 
 const submitPayment = async () => {
-    if (!selectedDevis.value) return;
+    if (!selectedFacture.value) return;
     const isNewInsurancePayment = payForm.value.insuranceEnabled && invoiceAllowsInsurance.value;
     const montant = Number(payForm.value.montant) || 0;
     const insuranceAmount = isNewInsurancePayment ? effectiveInsuranceAmount.value : 0;
-    const max = Number(selectedDevis.value.reste) || 0;
+    const max = Number(selectedFacture.value.reste) || 0;
     if (montant < 0 || (montant + insuranceAmount) <= 0 || (montant + insuranceAmount) > max) {
         toast.add({ severity: 'warn', summary: 'Paiement', detail: 'Montant invalide', life: 3500 });
         return;
@@ -597,7 +597,7 @@ const submitPayment = async () => {
     payLoading.value = true;
     try {
         const canPrintClientReceipt = montant > 0;
-        const res = await payFacture(selectedDevis.value.id, {
+        const res = await payFacture(selectedFacture.value.id, {
             montant,
             modeId: payForm.value.modeId,
             date: payForm.value.date,
@@ -631,10 +631,10 @@ const submitPayment = async () => {
 };
 
 const resetSelectedDevisPayments = async () => {
-    if (!selectedDevis.value) return;
+    if (!selectedFacture.value) return;
     resetPaymentsLoading.value = true;
     try {
-        await resetFacturePayments(selectedDevis.value.id, token);
+        await resetFacturePayments(selectedFacture.value.id, token);
         resetPaymentDialogVisible.value = false;
         payDialogVisible.value = false;
         previewDialogVisible.value = false;
@@ -648,10 +648,10 @@ const resetSelectedDevisPayments = async () => {
 };
 
 const confirmValidate = async () => {
-    if (!pendingDevis.value) return;
+    if (!pendingFacture.value) return;
     validateLoading.value = true;
     try {
-        await validateEmptyFacture(pendingDevis.value.id, token);
+        await validateEmptyFacture(pendingFacture.value.id, token);
         validateDialogVisible.value = false;
         toast.add({ severity: 'success', summary: 'Validation', detail: 'Facture vide validée.', life: 3000 });
         await loadConsultations();
@@ -910,7 +910,7 @@ watch(
                 payForm.value.assuranceId = null;
                 payForm.value.insuranceRate = 0;
             }
-            payForm.value.montant = Number(selectedDevis.value?.reste) || 0;
+            payForm.value.montant = Number(selectedFacture.value?.reste) || 0;
             return;
         }
 
@@ -1134,7 +1134,7 @@ onBeforeUnmount(() => {
             />
             <CaisseInvoiceDialogs
                 :pay-dialog-visible="payDialogVisible"
-                :selected-devis="selectedDevis"
+                :selected-facture="selectedFacture"
                 :payment-dialog-tab="paymentDialogTab"
                 :pay-form="payForm"
                 :classic-payment-options="classicPaymentOptions"

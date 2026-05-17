@@ -63,10 +63,7 @@ class Consultation
 
     #[ORM\OneToOne(mappedBy: 'consultation', targetEntity: FactureAssurance::class, cascade: ['persist', 'remove'])]
     private ?FactureAssurance $factureAssurance = null;
-
-    #[ORM\Column(type: 'boolean', options: ['default' => false])]
-    private bool $isRecouvre = false;
-
+ 
     #[ORM\OneToMany(mappedBy: 'consultation', targetEntity: Ordonnance::class, cascade: ['persist', 'remove'], orphanRemoval: true)]
     private Collection $ordonnances;
 
@@ -175,18 +172,6 @@ class Consultation
         }
 
         $this->factureAssurance = $factureAssurance;
-
-        return $this;
-    }
-
-    public function isRecouvre(): bool
-    {
-        return $this->isRecouvre;
-    }
-
-    public function setIsRecouvre(bool $isRecouvre): static
-    {
-        $this->isRecouvre = $isRecouvre;
 
         return $this;
     }

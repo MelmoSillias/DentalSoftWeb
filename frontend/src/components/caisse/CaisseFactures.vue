@@ -8,17 +8,17 @@ import Tag from 'primevue/tag';
 import { computed, ref } from 'vue';
 
 const props = defineProps({
-    devis: { type: Array, default: () => [] },
-    devisLoading: { type: Boolean, default: false },
-    devisType: { type: String, default: 'all' },
-    devisRange: { type: Array, default: () => [] },
+    factures: { type: Array, default: () => [] },
+    facturesLoading: { type: Boolean, default: false },
+    factureType: { type: String, default: 'all' },
+    factureRange: { type: Array, default: () => [] },
     hidePatientPhone: { type: Boolean, default: false }
 });
 
 const emit = defineEmits([
-    'update:devisType',
-    'update:devisRange',
-    'refresh-devis',
+    'update:factureType',
+    'update:factureRange',
+    'refresh-factures',
     'pay',
     'validate-free',
     'modify',
@@ -26,14 +26,14 @@ const emit = defineEmits([
     'send-invoice-sms'
 ]);
 
-const devisTypeOptions = [
+const factureTypeOptions = [
     { label: 'Toutes', value: 'all' },
     { label: 'Factures impayées', value: 'impaye' }
 ];
 
-const safeDevis = computed(() => (Array.isArray(props.devis) ? props.devis : []));
+const safeFactures = computed(() => (Array.isArray(props.factures) ? props.factures : []));
 
-const devisSearch = ref('');
+const factureSearch = ref('');
 
 const normalizeText = (value) => String(value ?? '')
     .toLowerCase()
@@ -45,16 +45,16 @@ const matchesQuery = (parts, query) => {
     return parts.some((part) => normalizeText(part).includes(query));
 };
 
-const devisSearchQuery = computed(() => normalizeText(devisSearch.value.trim()));
+const factureSearchQuery = computed(() => normalizeText(factureSearch.value.trim()));
 
-const devisTypeModel = computed({
-    get: () => props.devisType,
-    set: (val) => emit('update:devisType', val || 'all')
+const factureTypeModel = computed({
+    get: () => props.factureType,
+    set: (val) => emit('update:factureType', val || 'all')
 });
 
-const devisRangeModel = computed({
-    get: () => props.devisRange,
-    set: (val) => emit('update:devisRange', val || [])
+const factureRangeModel = computed({
+    get: () => props.factureRange,
+    set: (val) => emit('update:factureRange', val || [])
 });
 
 const formatFcfa = (value) => `${Number(value || 0).toLocaleString('fr-FR')} FCFA`;
@@ -84,9 +84,9 @@ const canModify = (row) => (Number(row.montant) === Number(row.reste)) && !row.i
 const canPreview = (row) => !(Number(row.montant) === 0 && Number(row.reste) === 0);
 const targetIsFree = (row) => !row.isRegle && Number(row.reste) === 0;
 
-const filteredDevis = computed(() => {
-    const query = devisSearchQuery.value;
-    return safeDevis.value.filter((row) => {
+const filteredFactures = computed(() => {
+    const query = factureSearchQuery.value;
+    return safeFactures.value.filter((row) => {
         const patient = formatPatient(row);
         const status = computeStatus(row).label;
         const insuranceLabel = computeInsuranceBadge(row)?.label || '';
@@ -105,7 +105,7 @@ const filteredDevis = computed(() => {
 
 const groups = computed(() => {
     const buckets = { impaye: [], partiel: [], paye: [] };
-    filteredDevis.value.forEach((row) => {
+    filteredFactures.value.forEach((row) => {
         const status = computeStatus(row);
         if (status.label === 'Impayé') buckets.impaye.push(row);
         else if (status.label === 'Partiellement payé') buckets.partiel.push(row);
@@ -115,9 +115,9 @@ const groups = computed(() => {
 });
 
 const stats = computed(() => {
-    const totalRestant = filteredDevis.value.reduce((sum, r) => sum + (Number(r.reste) || 0), 0);
+    const totalRestant = filteredFactures.value.reduce((sum, r) => sum + (Number(r.reste) || 0), 0);
     return {
-        count: filteredDevis.value.length,
+        count: filteredFactures.value.length,
         restant: totalRestant,
         breakdown: `${groups.value.impaye.length}/${groups.value.partiel.length}/${groups.value.paye.length}`
     };
@@ -144,20 +144,20 @@ const displayPhone = (value) => (props.hidePatientPhone ? 'Masqué par l\'admini
                 <div class="filters" data-tour="caisse-factures.filters">
                     <div class="filter-item">
                         <label>Recherche</label>
-                        <InputText v-model="devisSearch" placeholder="Tapez quelque chose..."
+                        <InputText v-model="factureSearch" placeholder="Tapez quelque chose..."
                             fluid />
                     </div>
                     <div class="filter-item">
                         <label>Affichage</label>
-                        <Select v-model="devisTypeModel" :options="devisTypeOptions" optionLabel="label"
+                        <Select v-model="factureTypeModel" :options="factureTypeOptions" optionLabel="label"
                             optionValue="value" />
                     </div>
                     <div class="filter-item">
                         <label>Période</label>
-                        <DatePicker v-model="devisRangeModel" selectionMode="range" dateFormat="yy-mm-dd" showIcon
+                        <DatePicker v-model="factureRangeModel" selectionMode="range" dateFormat="yy-mm-dd" showIcon
                             fluid />
                     </div>
-                    <Button label="Rafraîchir" icon="pi pi-refresh" text @click="emit('refresh-devis')" />
+                    <Button label="Rafraîchir" icon="pi pi-refresh" text @click="emit('refresh-factures')" />
                 </div>
             </div>
             <div class="grid md:grid-cols-3 gap-3 mb-4">
@@ -185,10 +185,10 @@ const displayPhone = (value) => (props.hidePatientPhone ? 'Masqué par l\'admini
                 </div>
             </div>
 
-            <div v-if="!filteredDevis.length" class="empty">Aucune facture à afficher pour ces filtres.</div>
+            <div v-if="!filteredFactures.length" class="empty">Aucune facture à afficher pour ces filtres.</div>
 
-            <DataView v-else data-tour="caisse-factures.cards" :value="filteredDevis" paginator :rows="6" :rowsPerPageOptions="[6, 12, 24]"
-                :loading="devisLoading">
+            <DataView v-else data-tour="caisse-factures.cards" :value="filteredFactures" paginator :rows="6" :rowsPerPageOptions="[6, 12, 24]"
+                :loading="facturesLoading">
                 <template #list="slotProps">
                     <div class="flex flex-col gap-3">
                         <div v-for="(row, index) in slotProps.items" :key="row.id || index" class="dataview-item">

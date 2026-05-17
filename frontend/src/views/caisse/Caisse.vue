@@ -73,23 +73,23 @@ const today = new Date();
 const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
 const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
 
-const devisType = ref('all');
+const factureType = ref('all');
 
-const devisRange = ref([]);
+const factureRange = ref([]);
 const paymentRange = ref([]);
 
 if(authStore.user.roles.includes('ROLE_RECEPTION')) {
-	devisRange.value = [today, today];
+	factureRange.value = [today, today];
 	paymentRange.value = [today, today];
 } else {
-	devisRange.value = [startOfMonth, endOfMonth];
+	factureRange.value = [startOfMonth, endOfMonth];
 	paymentRange.value = [startOfMonth, endOfMonth];
 }
 
-const devis = ref([]);
+const factures = ref([]);
 const payments = ref([]);
 const insuranceClaims = ref([]);
-const devisLoading = ref(false);
+const facturesLoading = ref(false);
 const paymentsLoading = ref(false);
 const insuranceLoading = ref(false);
 const insuranceStatusFilter = ref('all');
@@ -110,7 +110,7 @@ const formatFcfa = (value) => `${Number(value || 0).toLocaleString('fr-FR')} FCF
 const paymentMethods = ref([]);
 const assurances = ref([]);
 const payDialogVisible = ref(false);
-const selectedDevis = ref(null);
+const selectedFacture = ref(null);
 const paymentDialogTab = ref('client');
 const publicGeneralSettings = ref({ paiementDirectAssurance: false, soinsList: [...defaultSoinList] });
 const isAdmin = computed(() => Array.isArray(authStore.user?.roles) && authStore.user.roles.includes('ROLE_ADMIN'));
@@ -127,7 +127,7 @@ const payForm = ref({
 });
 
 const validateDialogVisible = ref(false);
-const pendingDevis = ref(null);
+const pendingFacture = ref(null);
 const resetPaymentDialogVisible = ref(false);
 const resetPaymentsLoading = ref(false);
 
@@ -149,12 +149,12 @@ let guidedTourDemoActive = false;
 let guidedTourCleanupPromise = null;
 
 // Explicit setters avoid template auto-unwrapping issues on refs
-const setDevisType = (val) => {
-	devisType.value = val || 'all';
+const setFactureType = (val) => {
+	factureType.value = val || 'all';
 };
 
-const setDevisRange = (val) => {
-	devisRange.value = Array.isArray(val) ? val : [];
+const setFactureRange = (val) => {
+	factureRange.value = Array.isArray(val) ? val : [];
 };
 
 const setPaymentRange = (val) => {
@@ -168,8 +168,8 @@ const factureTotal = computed(() => factureLines.value.reduce((sum, line) => sum
 const isAdminUser = computed(() => Array.isArray(authStore.user?.roles) && authStore.user.roles.includes('ROLE_ADMIN'));
 
 const activeInvoiceContext = computed(() => {
-	if (selectedDevis.value?.id) {
-		return selectedDevis.value;
+	if (selectedFacture.value?.id) {
+		return selectedFacture.value;
 	}
 
 	if (previewData.value?.id) {
@@ -200,11 +200,11 @@ const effectiveInsuranceAmount = computed(() => {
 		return Number(selectedDevisInsurance.value?.insuranceAmount) || 0;
 	}
 
-	if (!selectedDevis.value || !payForm.value.insuranceEnabled) {
+	if (!selectedFacture.value || !payForm.value.insuranceEnabled) {
 		return 0;
 	}
 
-	const baseAmount = Number(selectedDevis.value.reste) || 0;
+	const baseAmount = Number(selectedFacture.value.reste) || 0;
 	return Math.max(0, (baseAmount * effectiveInsuranceRate.value) / 100);
 });
 
@@ -221,7 +221,7 @@ const insuranceSectionDisabledReason = computed(() => {
 		return 'Des paiements sont déjà enregistrés sur cette facture. L’assurance ne peut plus être activée.';
 	}
 
-	if (!selectedDevis.value || (Number(selectedDevis.value.montant) || 0) <= 0 || (Number(selectedDevis.value.reste) || 0) <= 0) {
+	if (!selectedFacture.value || (Number(selectedFacture.value.montant) || 0) <= 0 || (Number(selectedFacture.value.reste) || 0) <= 0) {
 		return 'La prise en charge assurance n’est pas disponible pour cette facture.';
 	}
 
@@ -275,15 +275,15 @@ const previewPaymentModeTag = (payment) => {
 const previewServicesTotal = computed(() => (previewData.value?.contenus || []).reduce((sum, line) => sum + (Number(line?.total) || 0), 0));
 
 const patientOutstandingAmount = computed(() => {
-	if (!selectedDevis.value) {
+	if (!selectedFacture.value) {
 		return 0;
 	}
 
 	if (invoiceHasInsurance.value) {
-		return Number(selectedDevis.value.reste) || 0;
+		return Number(selectedFacture.value.reste) || 0;
 	}
 
-	const total = Number(selectedDevis.value.montant) || 0;
+	const total = Number(selectedFacture.value.montant) || 0;
 	return Math.max(0, total - patientAlreadyPaidAmount.value - effectiveInsuranceAmount.value);
 });
 
@@ -293,11 +293,11 @@ const insuranceHelperMessage = computed(() => publicGeneralSettings.value?.paiem
 );
 
 const maxClientPaymentAmount = computed(() => {
-	if (!selectedDevis.value) {
+	if (!selectedFacture.value) {
 		return 0;
 	}
 
-	const base = Number(selectedDevis.value.reste) || 0;
+	const base = Number(selectedFacture.value.reste) || 0;
 	const reservedInsurance = invoiceHasInsurance.value ? 0 : effectiveInsuranceAmount.value;
 	return Math.max(0, base - reservedInsurance);
 });
@@ -311,8 +311,8 @@ const canResetInvoicePayments = computed(() => {
 });
 
 const remainingAfterPay = computed(() => {
-	if (!selectedDevis.value) return 0;
-	const reste = Number(selectedDevis.value.reste) || 0;
+	if (!selectedFacture.value) return 0;
+	const reste = Number(selectedFacture.value.reste) || 0;
 	const montantPatient = Number(payForm.value.montant) || 0;
 	const insuranceAmount = invoiceHasInsurance.value ? 0 : effectiveInsuranceAmount.value;
 	return Math.max(0, reste - montantPatient - insuranceAmount);
@@ -357,24 +357,24 @@ const insuranceCoveredAmount = computed(() => {
 });
 
 const patientPortionAmount = computed(() => {
-	if (!selectedDevis.value) {
+	if (!selectedFacture.value) {
 		return 0;
 	}
 
 	if (invoiceHasInsurance.value) {
-		return Number(selectedDevis.value.reste) || 0;
+		return Number(selectedFacture.value.reste) || 0;
 	}
 
 	return patientOutstandingAmount.value;
 });
 
 const invoiceAllowsInsurance = computed(() => {
-	if (!selectedDevis.value) {
+	if (!selectedFacture.value) {
 		return false;
 	}
 
-	const total = Number(selectedDevis.value.montant) || 0;
-	const reste = Number(selectedDevis.value.reste) || 0;
+	const total = Number(selectedFacture.value.montant) || 0;
+	const reste = Number(selectedFacture.value.reste) || 0;
 	return total > 0 && reste > 0 && !invoiceHasInsurance.value && patientAlreadyPaidAmount.value <= 0;
 });
 
@@ -404,17 +404,17 @@ const hasOpenDialogs = computed(() => (
 	|| previewDialogVisible.value
 ));
 
-const firstPayableDevis = computed(() => devis.value.find((row) => !row?.isRegle) || null);
-const firstPreviewableDevis = computed(() => devis.value.find((row) => !(Number(row?.montant) === 0 && Number(row?.reste) === 0)) || null);
-const firstModifiableDevis = computed(() => devis.value.find((row) => (Number(row?.montant) === Number(row?.reste)) && !row?.isRegle) || null);
+const firstPayableFacture = computed(() => factures.value.find((row) => !row?.isRegle) || null);
+const firstPreviewableFacture = computed(() => factures.value.find((row) => !(Number(row?.montant) === 0 && Number(row?.reste) === 0)) || null);
+const firstModifiableFacture = computed(() => factures.value.find((row) => (Number(row?.montant) === Number(row?.reste)) && !row?.isRegle) || null);
 
-const loadDevis = async () => {
-	if (!devisRange.value || devisRange.value.length < 2) return;
+const loadFactures = async () => {
+	if (!factureRange.value || factureRange.value.length < 2) return;
 	try {
-		devisLoading.value = true;
-		const [start, end] = devisRange.value;
-		const res = await fetchFactures({ start: toApiDate(start), end: toApiDate(end), unpaidOnly: devisType.value === 'impaye' }, token);
-		devis.value = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
+		facturesLoading.value = true;
+		const [start, end] = factureRange.value;
+		const res = await fetchFactures({ start: toApiDate(start), end: toApiDate(end), unpaidOnly: factureType.value === 'impaye' }, token);
+		factures.value = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
 		if (isInitialLoadPhase.value) {
 			loadErrorMessage.value = '';
 		}
@@ -425,7 +425,7 @@ const loadDevis = async () => {
 		}
 		toast.add({ severity: 'error', summary: 'Factures', detail: 'Chargement des factures impossible', life: 3500 });
 	} finally {
-		devisLoading.value = false;
+		facturesLoading.value = false;
 	}
 };
 
@@ -514,13 +514,13 @@ const retryLoadPage = async () => {
 	loadErrorMessage.value = '';
 	isInitialLoadPhase.value = true;
 	await loadPublicGeneralSettings();
-	await loadDevis();
+	await loadFactures();
 	await loadPayments();
 	isInitialLoadPhase.value = false;
 };
 
 const openPayDialog = async (row) => {
-	selectedDevis.value = row;
+	selectedFacture.value = row;
 	await Promise.all([loadPaymentMethods(), loadAssurances()]);
 	const defaultClassicMethod = getDefaultClassicMethod(paymentMethods.value);
 	const existingInsurance = row?.insurance || null;
@@ -537,8 +537,8 @@ const openPayDialog = async (row) => {
 };
 
 const openTourPaymentDialog = async () => {
-	if (!firstPayableDevis.value) return;
-	await openPayDialog(firstPayableDevis.value);
+	if (!firstPayableFacture.value) return;
+	await openPayDialog(firstPayableFacture.value);
 };
 
 const openTourPaymentDialogStable = async () => {
@@ -557,7 +557,7 @@ watch(
 				payForm.value.assuranceId = null;
 				payForm.value.insuranceRate = 0;
 			}
-			payForm.value.montant = Number(selectedDevis.value?.reste) || 0;
+			payForm.value.montant = Number(selectedFacture.value?.reste) || 0;
 			return;
 		}
 
@@ -605,11 +605,11 @@ watch(
 
 const submitPayment = async () => {
 
-	if (!selectedDevis.value) return;
+	if (!selectedFacture.value) return;
 	const isNewInsurancePayment = payForm.value.insuranceEnabled && invoiceAllowsInsurance.value;
 	const montant = Number(payForm.value.montant) || 0;
 	const insuranceAmount = isNewInsurancePayment ? effectiveInsuranceAmount.value : 0;
-	const max = Number(selectedDevis.value.reste) || 0;
+	const max = Number(selectedFacture.value.reste) || 0;
 
 	if (montant < 0) {
 		toast.add({ severity: 'warn', summary: 'Montant', detail: 'Saisissez un montant valide', life: 2500 });
@@ -642,7 +642,7 @@ const submitPayment = async () => {
 	try {
 		payLoading.value = true;
 		const canPrintClientReceipt = montant > 0;
-		const res = await payFacture(selectedDevis.value.id, {
+		const res = await payFacture(selectedFacture.value.id, {
 			montant,
 			modeId: requiresClassicPayment.value ? payForm.value.modeId : null,
 			date: payForm.value.date,
@@ -652,9 +652,9 @@ const submitPayment = async () => {
 			insurance_rate: isNewInsurancePayment ? Number(payForm.value.insuranceRate || 0) : null,
 			patient_amount: montant,
 			insurance_amount: insuranceAmount,
-			facture_amount: Number(selectedDevis.value.reste || selectedDevis.value.montant || 0)
+			facture_amount: Number(selectedFacture.value.reste || selectedFacture.value.montant || 0)
 		}, token);
-		const factureId = selectedDevis.value.id;
+		const factureId = selectedFacture.value.id;
 		const paymentId = res?.paiement_id ?? res?.paiementId ?? null;
 		const toastPayload = {
 			severity: 'success',
@@ -683,7 +683,7 @@ const submitPayment = async () => {
 
 		toast.add(toastPayload);
 		payDialogVisible.value = false;
-		await Promise.all([loadDevis(), loadPayments()]);
+		await Promise.all([loadFactures(), loadPayments()]);
 	} catch (error) {
 		console.error(error);
 		toast.add({ severity: 'error', summary: 'Paiement', detail: 'Enregistrement impossible', life: 3500 });
@@ -697,25 +697,25 @@ const confirmResetPaymentDialog = () => {
 		return;
 	}
 
-	if (!selectedDevis.value?.id && activeInvoiceContext.value?.id) {
-		selectedDevis.value = activeInvoiceContext.value;
+	if (!selectedFacture.value?.id && activeInvoiceContext.value?.id) {
+		selectedFacture.value = activeInvoiceContext.value;
 	}
 
 	resetPaymentDialogVisible.value = true;
 };
 
 const resetSelectedDevisPayments = async () => {
-	if (!selectedDevis.value) {
+	if (!selectedFacture.value) {
 		return;
 	}
 
 	try {
 		resetPaymentsLoading.value = true;
-		await resetFacturePayments(selectedDevis.value.id, token);
+		await resetFacturePayments(selectedFacture.value.id, token);
 		toast.add({ severity: 'success', summary: 'Facture', detail: 'La facture a été réinitialisée.', life: 3000 });
 		resetPaymentDialogVisible.value = false;
 		payDialogVisible.value = false;
-		await Promise.all([loadDevis(), loadPayments()]);
+		await Promise.all([loadFactures(), loadPayments()]);
 	} catch (error) {
 		console.error(error);
 		toast.add({ severity: 'error', summary: 'Facture', detail: 'Réinitialisation impossible.', life: 3500 });
@@ -725,19 +725,19 @@ const resetSelectedDevisPayments = async () => {
 };
 
 const openValidateDialog = (row) => {
-	pendingDevis.value = row;
+	pendingFacture.value = row;
 	validateDialogVisible.value = true;
 };
 
 const confirmValidate = async () => {
-	if (!pendingDevis.value) return;
+	if (!pendingFacture.value) return;
 	validateLoading.value = true;
 	try {
 
-		await validateEmptyFacture(pendingDevis.value.id, token);
+		await validateEmptyFacture(pendingFacture.value.id, token);
 		toast.add({ severity: 'success', summary: 'Validation', detail: 'Facture vide validée', life: 2500 });
 		validateDialogVisible.value = false;
-		await Promise.all([loadDevis(), loadPayments()]);
+		await Promise.all([loadFactures(), loadPayments()]);
 	} catch (error) {
 		console.error(error);
 		toast.add({ severity: 'error', summary: 'Validation', detail: 'Échec de la validation', life: 3500 });
@@ -767,8 +767,8 @@ const openModifyDialog = async (row) => {
 };
 
 const openTourModifyDialog = async () => {
-	if (!firstModifiableDevis.value) return;
-	await openModifyDialog(firstModifiableDevis.value);
+	if (!firstModifiableFacture.value) return;
+	await openModifyDialog(firstModifiableFacture.value);
 };
 
 const openTourModifyDialogStable = async () => {
@@ -797,7 +797,7 @@ const saveFacture = async () => {
 		await updateFactureLines(factureConsultId.value, factureLines.value, token);
 		toast.add({ severity: 'success', summary: 'Facture', detail: 'Facture enregistrée', life: 2500 });
 		factureDialogVisible.value = false;
-		await loadDevis();
+		await loadFactures();
 	} catch (error) {
 		console.error(error);
 		toast.add({ severity: 'error', summary: 'Facture', detail: 'Enregistrement impossible', life: 3500 });
@@ -810,7 +810,7 @@ const openPreviewDialog = async (row) => {
 	previewDialogVisible.value = true;
 	previewLoading.value = true;
 	previewDialogTab.value = 'services';
-	selectedDevis.value = row;
+	selectedFacture.value = row;
 	try {
 		previewData.value = await fetchFactureDetail(row.id, token);
 	} catch (error) {
@@ -822,8 +822,8 @@ const openPreviewDialog = async (row) => {
 };
 
 const openTourPreviewDialog = async () => {
-	if (!firstPreviewableDevis.value) return;
-	await openPreviewDialog(firstPreviewableDevis.value);
+	if (!firstPreviewableFacture.value) return;
+	await openPreviewDialog(firstPreviewableFacture.value);
 };
 
 const openTourPreviewDialogStable = async () => {
@@ -839,40 +839,40 @@ const resetTourDialogs = () => {
 	validateDialogVisible.value = false;
 	factureDialogVisible.value = false;
 	previewDialogVisible.value = false;
-	pendingDevis.value = null;
-	selectedDevis.value = null;
+	pendingFacture.value = null;
+	selectedFacture.value = null;
 	factureConsultId.value = null;
 };
 
 const capturePageState = () => ({
 	activeView: activeView.value,
-	devisType: devisType.value,
-	devisRange: cloneValue(devisRange.value),
+	factureType: factureType.value,
+	factureRange: cloneValue(factureRange.value),
 	paymentRange: cloneValue(paymentRange.value),
-	devis: cloneValue(devis.value),
+	factures: cloneValue(factures.value),
 	payments: cloneValue(payments.value),
 	paymentMethods: cloneValue(paymentMethods.value),
 	payForm: cloneValue(payForm.value),
 	factureLines: cloneValue(factureLines.value),
 	previewData: cloneValue(previewData.value),
-	selectedDevis: cloneValue(selectedDevis.value),
-	pendingDevis: cloneValue(pendingDevis.value)
+	selectedFacture: cloneValue(selectedFacture.value),
+	pendingFacture: cloneValue(pendingFacture.value)
 });
 
 const restorePageState = async (state) => {
 	if (!state) return;
 	setActiveView(state.activeView || 'overview');
-	devisType.value = state.devisType || 'all';
-	devisRange.value = cloneValue(state.devisRange) || [];
+	factureType.value = state.factureType || 'all';
+	factureRange.value = cloneValue(state.factureRange) || [];
 	paymentRange.value = cloneValue(state.paymentRange) || [];
-	devis.value = cloneValue(state.devis) || [];
+	factures.value = cloneValue(state.factures) || [];
 	payments.value = cloneValue(state.payments) || [];
 	paymentMethods.value = cloneValue(state.paymentMethods) || [];
 	payForm.value = cloneValue(state.payForm) || payForm.value;
 	factureLines.value = cloneValue(state.factureLines) || [];
 	previewData.value = cloneValue(state.previewData) || null;
-	selectedDevis.value = cloneValue(state.selectedDevis) || null;
-	pendingDevis.value = cloneValue(state.pendingDevis) || null;
+	selectedFacture.value = cloneValue(state.selectedFacture) || null;
+	pendingFacture.value = cloneValue(state.pendingFacture) || null;
 	await nextTick();
 };
 
@@ -882,7 +882,7 @@ const prepareGuidedTourDemo = async () => {
 	resetCaisseTourMockData();
 	guidedTourDemoActive = true;
 	setActiveView('overview');
-	await Promise.all([loadDevis(), loadPayments(), loadPaymentMethods(), loadAssurances()]);
+	await Promise.all([loadFactures(), loadPayments(), loadPaymentMethods(), loadAssurances()]);
 	await nextTick();
 };
 
@@ -915,7 +915,7 @@ const handleGuidedTourRequest = async (event) => {
 		return;
 	}
 
-	if (devisLoading.value || paymentsLoading.value) {
+	if (facturesLoading.value || paymentsLoading.value) {
 		toast.add({
 			severity: 'warn',
 			summary: 'Aide guidee',
@@ -945,9 +945,9 @@ const handleGuidedTourRequest = async (event) => {
 
 		const steps = createCaisseTour({
 			activeView: activeView.value,
-			canOpenPaymentDialog: Boolean(firstPayableDevis.value),
-			canOpenPreviewDialog: Boolean(firstPreviewableDevis.value),
-			canOpenModifyDialog: Boolean(firstModifiableDevis.value),
+			canOpenPaymentDialog: Boolean(firstPayableFacture.value),
+			canOpenPreviewDialog: Boolean(firstPreviewableFacture.value),
+			canOpenModifyDialog: Boolean(firstModifiableFacture.value),
 			openPaymentDialog: openTourPaymentDialogStable,
 			openPreviewDialog: openTourPreviewDialogStable,
 			openModifyDialog: openTourModifyDialogStable,
@@ -1163,7 +1163,7 @@ const collectPatientShare = async (claim) => {
 	}
 };
 
-watch([devisRange, devisType], loadDevis, { immediate: true });
+watch([factureRange, factureType], loadFactures, { immediate: true });
 watch(paymentRange, loadPayments, { immediate: true });
 watch([insuranceStatusFilter, insuranceRange, insurancePatientFilter, insuranceAssuranceFilter], loadInsuranceClaims, { immediate: true });
 
@@ -1214,21 +1214,21 @@ onBeforeUnmount(() => {
 			</TabList>
 			<TabPanels class="mt-4">
 				<TabPanel value="overview">
-					<CaisseOverview :devis="devis" :devis-loading="devisLoading" :payments="payments"
+					<CaisseOverview :factures="factures" :factures-loading="facturesLoading" :payments="payments"
 						:hide-patient-phone="shouldHidePatientPhoneForMedecin"
-						:payments-loading="paymentsLoading" :devis-type="devisType" :devis-range="devisRange"
-						:payment-range="paymentRange" @update:devisType="setDevisType"
-						@update:devisRange="setDevisRange" @update:paymentRange="setPaymentRange"
-						@refresh-devis="loadDevis" @refresh-payments="loadPayments" @pay="openPayDialog"
+						:payments-loading="paymentsLoading" :facture-type="factureType" :facture-range="factureRange"
+						:payment-range="paymentRange" @update:factureType="setFactureType"
+						@update:factureRange="setFactureRange" @update:paymentRange="setPaymentRange"
+						@refresh-factures="loadFactures" @refresh-payments="loadPayments" @pay="openPayDialog"
 						@validate-free="openValidateDialog" @modify="openModifyDialog" @preview="openPreviewDialog"
 						@print-payments="printPayments" @print-payment="printPayment" @print-receipt="printReceipt"
 						@send-invoice-sms="sendInvoiceBySms" @send-receipt-sms="sendReceiptBySms" />
 				</TabPanel>
 				<TabPanel value="factures">
-					<CaisseFactures :devis="devis" :devis-loading="devisLoading" :devis-type="devisType"
+					<CaisseFactures :factures="factures" :factures-loading="facturesLoading" :facture-type="factureType"
 						:hide-patient-phone="shouldHidePatientPhoneForMedecin"
-						:devis-range="devisRange" @update:devisType="setDevisType" @update:devisRange="setDevisRange"
-						@refresh-devis="loadDevis" @pay="openPayDialog" @validate-free="openValidateDialog"
+						:facture-range="factureRange" @update:factureType="setFactureType" @update:factureRange="setFactureRange"
+						@refresh-factures="loadFactures" @pay="openPayDialog" @validate-free="openValidateDialog"
 						@modify="openModifyDialog" @preview="openPreviewDialog" @send-invoice-sms="sendInvoiceBySms" />
 				</TabPanel>
 				<TabPanel value="paiements">
@@ -1264,7 +1264,7 @@ onBeforeUnmount(() => {
 
 		<CaisseInvoiceDialogs
 			:pay-dialog-visible="payDialogVisible"
-			:selected-devis="selectedDevis"
+			:selected-facture="selectedFacture"
 			:payment-dialog-tab="paymentDialogTab"
 			:pay-form="payForm"
 			:classic-payment-options="classicPaymentOptions"
