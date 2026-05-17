@@ -1,0 +1,7 @@
+{
+  "id": "default",
+  "displayName": "Cabinet Demo",
+  "brandName": "DentalSoft",
+  "logo": "logo.png",
+  "apiBaseUrl": "http://localhost:8010"
+}

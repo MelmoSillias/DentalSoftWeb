@@ -873,7 +873,10 @@ class ReportService
         $cacheKey = sprintf('report.periodicDoctorReports.%s.%s', $fromDate->format('Ymd'), $toDate->format('Ymd'));
         return $this->remember($cacheKey, 180, function () use ($fromDate, $toDate) {
             $doctors = $this->em->getRepository(Employe::class)->findBy(['type' => 'medecin']);
-            $allConsultations = $this->em->getRepository(Consultation::class)->findByDateRange($fromDate, $toDate);
+            $allConsultations = array_values(array_filter(
+                $this->em->getRepository(Consultation::class)->findByDateRange($fromDate, $toDate),
+                static fn (Consultation $consultation): bool => $consultation->getPatient() !== null && !$consultation->getPatient()->isDeleted()
+            ));
 
             $doctorStats = [];
             $totalRevenue = 0.0;
@@ -1148,9 +1151,15 @@ class ReportService
     {
         $cacheKey = sprintf('report.medecinDashboard.%d.%s.%s', $medecin->getId(), $from->format('Ymd'), $to->format('Ymd'));
         return $this->remember($cacheKey, 180, function () use ($medecin, $from, $to) {
-        $consultations = $this->em->getRepository(Consultation::class)->findBy(['medecin' => $medecin]);
+        $consultations = array_values(array_filter(
+            $this->em->getRepository(Consultation::class)->findBy(['medecin' => $medecin]),
+            static fn (Consultation $consultation): bool => $consultation->getPatient() !== null && !$consultation->getPatient()->isDeleted()
+        ));
         $patientsFromConsultations = array_map(fn($c) => $c->getPatient(), $consultations);
-        $rdvs = $this->em->getRepository(Rdv::class)->findBy(['medecin' => $medecin]);
+        $rdvs = array_values(array_filter(
+            $this->em->getRepository(Rdv::class)->findBy(['medecin' => $medecin]),
+            static fn (Rdv $rdv): bool => $rdv->getPatient() !== null && !$rdv->getPatient()->isDeleted()
+        ));
         $patientsFromRdvs = array_map(fn($r) => $r->getPatient(), $rdvs);
         $patients = array_unique(array_merge($patientsFromConsultations, $patientsFromRdvs), SORT_REGULAR);
 
@@ -1232,8 +1241,10 @@ class ReportService
             ->select('pd')
             ->from('App\\Billing\\Entity\\Paiement', 'pd')
             ->join('pd.consultation', 'c')
+            ->join('c.patient', 'p')
             ->where('c.medecin = :doctor')
             ->andWhere('pd.date BETWEEN :from AND :to')
+            ->andWhere('p.deletedAt IS NULL')
             ->setParameter('doctor', $medecin)
             ->setParameter('from', $from)
             ->setParameter('to', $to)
@@ -1258,8 +1269,10 @@ class ReportService
 
         $insuranceRecoveries = $this->transactionRepo->createQueryBuilder('t')
             ->join('t.consultation', 'c')
+            ->join('c.patient', 'p')
             ->where('c.medecin = :doctor')
             ->andWhere('t.dateTransaction BETWEEN :from AND :to')
+            ->andWhere('p.deletedAt IS NULL')
             ->andWhere('c.factureAssurance IS NOT NULL')
             ->andWhere('t.paiement IS NULL')
             ->andWhere('t.validationStatus = :status')
@@ -1299,8 +1312,10 @@ class ReportService
             ->select('pd', 'c')
             ->from('App\\Billing\\Entity\\Paiement', 'pd')
             ->join('pd.consultation', 'c')
+            ->join('c.patient', 'p')
             ->where('c.medecin = :doctor')
             ->andWhere('pd.date BETWEEN :from AND :to') 
+            ->andWhere('p.deletedAt IS NULL')
             ->setParameter('doctor', $medecin)
             ->setParameter('from', $from)
             ->setParameter('to', $to)
@@ -1337,8 +1352,10 @@ class ReportService
 
         $rdvToday = $this->em->getRepository(Rdv::class)->createQueryBuilder('r')
             ->select('COUNT(r.id)')
+            ->join('r.patient', 'p')
             ->where('r.medecin = :medecin')
             ->andWhere('r.dateRdv BETWEEN :start AND :end')
+            ->andWhere('p.deletedAt IS NULL')
             ->setParameter('medecin', $medecin)
             ->setParameter('start', $startToday)
             ->setParameter('end', $endToday)
@@ -1346,8 +1363,10 @@ class ReportService
             ->getSingleScalarResult();
 
         $rdvQb = $this->em->getRepository(Rdv::class)->createQueryBuilder('r')
+            ->join('r.patient', 'p')
             ->where('r.medecin = :medecin')
             ->andWhere('r.dateRdv BETWEEN :from AND :to')
+            ->andWhere('p.deletedAt IS NULL')
             ->setParameter('medecin', $medecin)
             ->setParameter('from', $from)
             ->setParameter('to', $to);

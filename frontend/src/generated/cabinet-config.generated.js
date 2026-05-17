@@ -9,9 +9,9 @@ const cabinetConfig = {
     "smsCabinetName": "CABINET DEMO",
     "smsTestMessage": "Message de test CABINET DEMO.",
     "reportCabinetName": "CABINET DENTAIRE DEMO",
-    "cabinetPhone": "+223 77 27 28 61 / +223 44 51 61 85",
-    "viteApiPrefix": "http://localhost:8010/api",
-    "viteFilePrefix": "http://localhost:8010",
+    "cabinetPhone": "+223 XX XX XX XX / +223 XX XX XX XX",
+    "viteApiPrefix": "https://api.cabinet-orodent.org/api",
+    "viteFilePrefix": "https://api.cabinet-orodent.org",
     "brandingAssets": {
         "logo": "logo.png",
         "logoAlt": "logo.jpeg",

@@ -15,14 +15,14 @@ const isMedecin = computed(() => hasRole('ROLE_MEDECIN'));
 const isReception = computed(() => hasAnyRole(['ROLE_RECEPTION', 'ROLE_RECEPTIONNISTE', 'ROLE_SECRETAIRE']));
 
 /*
-    Nouvelle Structure Items de Menu 
+    Nouvelle Structure Items de Menu
 
     sections : {
-        label: 'Section',   
+        label: 'Section',
         items: [
             { label: 'Item 1', icon: 'pi pi-fw pi-icon', to: '/route1' },
             { label: 'Item 2', icon: 'pi pi-fw pi-icon', to: '/route2' },
-        ] 
+        ]
     }
 
 */
@@ -58,7 +58,7 @@ const model = computed(() => {
         const agendaItems = [];
         agendaItems.push({ label: 'Rendez-Vous', icon: 'pi pi-fw pi-calendar', to: router.resolve({ name: 'agenda-rendezvous' }).href });
         if (isAdmin.value) {
-            agendaItems.push({ label: 'Evenements', icon: 'pi pi-fw pi-star', to: router.resolve({ name: 'agenda-evenements' }).href }); 
+            agendaItems.push({ label: 'Evenements', icon: 'pi pi-fw pi-star', to: router.resolve({ name: 'agenda-evenements' }).href });
         }
         menu.push({ label: 'Agenda', items: agendaItems });
     }
@@ -83,7 +83,7 @@ const model = computed(() => {
         consultationItems.push({ label: 'Historique', icon: 'pi pi-fw pi-list', to: router.resolve({ name: 'consultations-table' }).href });
         menu.push({
             label: 'Consultations',
-            items: consultationItems 
+            items: consultationItems
         });
     }
 
@@ -117,6 +117,7 @@ const model = computed(() => {
             { label: 'Finances', icon: 'pi pi-fw pi-wallet', to: router.resolve({ name: 'administration-finances' }).href },
             { label: 'Utilisateurs', icon: 'pi pi-fw pi-id-card', to: router.resolve({ name: 'administration-utilisateurs' }).href },
             { label: 'Notifications', icon: 'pi pi-fw pi-bell', to: router.resolve({ name: 'administration-notifications' }).href },
+            { label: 'Avis & retours patients', icon: 'pi pi-fw pi-comments', to: router.resolve({ name: 'administration-avis-retours-patients' }).href },
 
         );
     }

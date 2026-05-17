@@ -9,6 +9,7 @@ use App\Patient\Entity\Appreciation;
 use App\Patient\Entity\Patient;
 use App\Patient\Repository\PatientRepository;
 use App\Patient\Service\AppreciationService;
+use App\Settings\Service\GlobalSettingsService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -22,7 +23,20 @@ final class AppreciationController extends AbstractController
         private readonly AppreciationService $appreciationService,
         private readonly PatientRepository $patientRepository,
         private readonly ConsultationRepository $consultationRepository,
+        private readonly GlobalSettingsService $globalSettingsService,
     ) {
+    }
+
+    private function ensurePortalEnabled(): ?JsonResponse
+    {
+        if ($this->globalSettingsService->isPatientPortalEnabled()) {
+            return null;
+        }
+
+        return $this->json([
+            'error' => $this->globalSettingsService->getPatientPortalClosedMessage(),
+            'patientPortalEnabled' => false,
+        ], 403);
     }
 
     #[Route('/appreciations/anonymous', name: 'anonymous_create', methods: ['POST'])]
@@ -43,6 +57,10 @@ final class AppreciationController extends AbstractController
     #[IsGranted('ROLE_PATIENT')]
     public function createPatientAppreciation(Request $request): JsonResponse
     {
+        if ($blocked = $this->ensurePortalEnabled()) {
+            return $blocked;
+        }
+
         $patient = $this->resolveAuthenticatedPatient();
         if (!$patient instanceof Patient) {
             return $this->json(['error' => 'Patient introuvable pour ce compte'], 404);
@@ -66,6 +84,10 @@ final class AppreciationController extends AbstractController
     #[IsGranted('ROLE_PATIENT')]
     public function createConsultationAppreciation(int $consultationId, Request $request): JsonResponse
     {
+        if ($blocked = $this->ensurePortalEnabled()) {
+            return $blocked;
+        }
+
         $patient = $this->resolveAuthenticatedPatient();
         if (!$patient instanceof Patient) {
             return $this->json(['error' => 'Patient introuvable pour ce compte'], 404);
@@ -94,6 +116,10 @@ final class AppreciationController extends AbstractController
     #[IsGranted('ROLE_PATIENT')]
     public function listPatientAppreciations(): JsonResponse
     {
+        if ($blocked = $this->ensurePortalEnabled()) {
+            return $blocked;
+        }
+
         $patient = $this->resolveAuthenticatedPatient();
         if (!$patient instanceof Patient) {
             return $this->json(['error' => 'Patient introuvable pour ce compte'], 404);
@@ -111,6 +137,23 @@ final class AppreciationController extends AbstractController
         ]);
     }
 
+    #[Route('/administration/appreciations', name: 'admin_list', methods: ['GET'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function listAdminAppreciations(Request $request): JsonResponse
+    {
+        $limit = (int) $request->query->get('limit', 200);
+        $items = array_map(
+            fn(Appreciation $appreciation): array => $this->mapAppreciation($appreciation),
+            $this->appreciationService->listForAdmin($limit)
+        );
+
+        return $this->json([
+            'stats' => $this->appreciationService->getAdminStats(),
+            'total' => count($items),
+            'items' => $items,
+        ]);
+    }
+
     private function mapAppreciation(Appreciation $appreciation): array
     {
         return [
@@ -122,6 +165,7 @@ final class AppreciationController extends AbstractController
             'authorName' => $appreciation->isAnonymous() ? null : $appreciation->getAuthorName(),
             'authorEmail' => $appreciation->isAnonymous() ? null : $appreciation->getAuthorEmail(),
             'patientId' => $appreciation->getPatient()?->getId(),
+            'patientName' => $appreciation->getPatient()?->getFullName(),
             'consultationId' => $appreciation->getConsultation()?->getId(),
             'createdAt' => $appreciation->getCreatedAt()->format(DATE_ATOM),
         ];

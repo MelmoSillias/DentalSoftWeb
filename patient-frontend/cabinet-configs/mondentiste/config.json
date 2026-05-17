@@ -1,0 +1,7 @@
+{
+  "id": "mondentiste",
+  "displayName": "Mon Dentiste",
+  "brandName": "Mon Dentiste",
+  "logo": "logo.png",
+  "apiBaseUrl": "https://api.mondentiste-mali.com"
+}

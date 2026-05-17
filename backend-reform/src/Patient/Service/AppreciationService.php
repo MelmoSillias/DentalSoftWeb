@@ -89,6 +89,18 @@ class AppreciationService
         return $this->appreciationRepository->findByPatient($patient);
     }
 
+    /** @return Appreciation[] */
+    public function listForAdmin(int $limit = 200): array
+    {
+        return $this->appreciationRepository->findLatestForAdmin($limit);
+    }
+
+    /** @return array{total:int,anonymous:int,published:int,averageRating:float} */
+    public function getAdminStats(): array
+    {
+        return $this->appreciationRepository->getAdminStats();
+    }
+
     private function hydrateBaseFields(Appreciation $appreciation, array $payload): Appreciation
     {
         $rating = (int) ($payload['rating'] ?? $payload['note'] ?? 0);

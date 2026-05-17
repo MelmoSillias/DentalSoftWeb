@@ -5,7 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:cabinet": "node scripts/dev-cabinet.mjs",
     "build": "vite build",
+    "build:cabinet": "node scripts/build-cabinet.mjs",
+    "select-cabinet": "node scripts/select-cabinet.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

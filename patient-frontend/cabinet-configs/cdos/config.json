@@ -1,0 +1,7 @@
+{
+  "id": "cdos",
+  "displayName": "Cabinet Dentaire Ousmane SOW",
+  "brandName": "CDOS",
+  "logo": "logo.png",
+  "apiBaseUrl": "https://api.cabinetdentaireousmanesow.cloud"
+}

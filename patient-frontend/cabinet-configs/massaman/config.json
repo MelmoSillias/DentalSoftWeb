@@ -1,0 +1,7 @@
+{
+  "id": "massaman",
+  "displayName": "Centre Dentaire Massaman",
+  "brandName": "Massaman",
+  "logo": "logo.png",
+  "apiBaseUrl": "https://api.cabinet-orodent.org"
+}

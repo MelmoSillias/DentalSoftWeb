@@ -5,7 +5,12 @@ import LoginView from '../views/auth/LoginView.vue';
 import DashboardView from '../views/dashboard/DashboardView.vue';
 import ConsultationsView from '../views/consultations/ConsultationsView.vue';
 import AppointmentsView from '../views/appointments/AppointmentsView.vue';
+import PaymentsView from '../views/payments/PaymentsView.vue';
+import DocumentsView from '../views/documents/DocumentsView.vue';
 import ProfileView from '../views/profile/ProfileView.vue';
+import AnonymousReviewView from '../views/public/AnonymousReviewView.vue';
+import PortalClosedView from '../views/public/PortalClosedView.vue';
+import { usePortalSettingsStore } from '../stores/portalSettings';
 
 const routes = [
     {
@@ -41,6 +46,30 @@ const routes = [
         name: 'profile',
         component: ProfileView,
         meta: { requiresAuth: true, title: 'Profil', breadcrumb: ['Espace patient', 'Profil'] }
+    },
+    {
+        path: '/paiements',
+        name: 'payments',
+        component: PaymentsView,
+        meta: { requiresAuth: true, title: 'Paiements', breadcrumb: ['Espace patient', 'Paiements'] }
+    },
+    {
+        path: '/documents',
+        name: 'documents',
+        component: DocumentsView,
+        meta: { requiresAuth: true, title: 'Documents', breadcrumb: ['Espace patient', 'Documents'] }
+    },
+    {
+        path: '/avis-anonyme',
+        name: 'anonymous-review',
+        component: AnonymousReviewView,
+        meta: { public: true, title: 'Avis anonyme', breadcrumb: ['Public', 'Avis anonyme'] }
+    },
+    {
+        path: '/portail-ferme',
+        name: 'portal-closed',
+        component: PortalClosedView,
+        meta: { public: true, title: 'Portail fermé', breadcrumb: ['Public', 'Portail fermé'] }
     }
 ];
 
@@ -51,17 +80,37 @@ const router = createRouter({
 
 router.beforeEach((to) => {
     const auth = useAuthStore();
+    const portal = usePortalSettingsStore();
     auth.hydrate();
 
-    if (to.meta.requiresAuth && !auth.isAuthenticated) {
-        return { name: 'login', query: { redirect: to.fullPath } };
-    }
+    return portal.load().then(() => {
+        const isPublicRoute = to.meta.public === true;
+        const isAnonymousReviewRoute = to.name === 'anonymous-review';
+        const isPortalClosedRoute = to.name === 'portal-closed';
 
-    if (to.name === 'login' && auth.isAuthenticated) {
-        return { name: 'dashboard' };
-    }
+        if (
+            portal.isPortalClosed
+            && to.meta.requiresAuth
+            && !isAnonymousReviewRoute
+            && !isPortalClosedRoute
+        ) {
+            return { name: 'portal-closed' };
+        }
 
-    return true;
+        if (to.meta.requiresAuth && !auth.isAuthenticated) {
+            return { name: 'login', query: { redirect: to.fullPath } };
+        }
+
+        if (to.name === 'login' && auth.isAuthenticated) {
+            return portal.isPortalClosed ? { name: 'portal-closed' } : { name: 'dashboard' };
+        }
+
+        if (portal.isPortalClosed && isPortalClosedRoute && isPublicRoute) {
+            return true;
+        }
+
+        return true;
+    });
 });
 
 export default router;

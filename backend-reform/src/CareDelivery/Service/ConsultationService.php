@@ -558,6 +558,7 @@ class ConsultationService
 
         $recentPatients = $this->em->getRepository(Patient::class)->createQueryBuilder('p')
             ->where('p.dateInscription BETWEEN :start AND :end')
+            ->andWhere('p.deletedAt IS NULL')
             ->orderBy('p.dateInscription', 'DESC')
             ->setParameter('start', $start)
             ->setParameter('end', $end)

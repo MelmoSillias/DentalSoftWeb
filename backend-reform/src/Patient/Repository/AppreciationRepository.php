@@ -53,4 +53,36 @@ class AppreciationRepository extends ServiceEntityRepository
             ->getQuery()
             ->getOneOrNullResult();
     }
+
+    /** @return Appreciation[] */
+    public function findLatestForAdmin(int $limit = 200): array
+    {
+        return $this->createQueryBuilder('a')
+            ->leftJoin('a.patient', 'p')->addSelect('p')
+            ->leftJoin('a.consultation', 'c')->addSelect('c')
+            ->orderBy('a.createdAt', 'DESC')
+            ->addOrderBy('a.id', 'DESC')
+            ->setMaxResults(max(1, $limit))
+            ->getQuery()
+            ->getResult();
+    }
+
+    /** @return array{total:int,anonymous:int,published:int,averageRating:float} */
+    public function getAdminStats(): array
+    {
+        $qb = $this->createQueryBuilder('a')
+            ->select('COUNT(a.id) AS total')
+            ->addSelect('SUM(CASE WHEN a.isAnonymous = true THEN 1 ELSE 0 END) AS anonymous')
+            ->addSelect('SUM(CASE WHEN a.isPublished = true THEN 1 ELSE 0 END) AS published')
+            ->addSelect('AVG(a.rating) AS averageRating');
+
+        $row = $qb->getQuery()->getOneOrNullResult() ?? [];
+
+        return [
+            'total' => (int) ($row['total'] ?? 0),
+            'anonymous' => (int) ($row['anonymous'] ?? 0),
+            'published' => (int) ($row['published'] ?? 0),
+            'averageRating' => round((float) ($row['averageRating'] ?? 0.0), 2),
+        ];
+    }
 }

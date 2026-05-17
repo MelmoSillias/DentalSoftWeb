@@ -17,6 +17,7 @@ import Divider from 'primevue/divider';
 import Tag from 'primevue/tag';
 import Toast from 'primevue/toast';
 import Skeleton from 'primevue/skeleton';
+import Message from 'primevue/message';
 
 import 'primeicons/primeicons.css';
 import './style.css';
@@ -46,5 +47,6 @@ app.component('Divider', Divider);
 app.component('Tag', Tag);
 app.component('Toast', Toast);
 app.component('Skeleton', Skeleton);
+app.component('Message', Message);
 
 app.mount('#app');

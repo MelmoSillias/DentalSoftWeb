@@ -133,6 +133,12 @@ const router = createRouter({
                     component: () => import('@/views/administration/Notifications.vue'),
                     meta: { requiresAuth: true, roles: ['ROLE_ADMIN'], fixedWidth: true }
                 },
+                {
+                    path: '/administration/avis-retours-patients',
+                    name: 'administration-avis-retours-patients',
+                    component: () => import('@/views/administration/AvisRetoursPatients.vue'),
+                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN'], fixedWidth: true }
+                },
 
                 {
                     path: '/profile',

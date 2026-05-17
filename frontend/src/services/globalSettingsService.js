@@ -53,6 +53,23 @@ export const exportDatabase = async ({ password, formats }, token) => {
     return res.data;
 };
 
+export const downloadDatabaseExport = async ({ file }, token) => {
+    const res = await http.get(`${apiPrefix}/settings/database/export/download`, {
+        params: { file },
+        headers: authHeaders(token),
+        responseType: 'blob',
+    });
+
+    const disposition = res.headers['content-disposition'] || '';
+    const filenameMatch = disposition.match(/filename\*?=(?:UTF-8''|\")?([^\";]+)/i);
+    const filename = filenameMatch ? decodeURIComponent(filenameMatch[1].replace(/\"/g, '').trim()) : null;
+
+    return {
+        blob: res.data,
+        filename,
+    };
+};
+
 export const resetDatabase = async ({ password }, token) => {
     const res = await http.post(
         `${apiPrefix}/settings/database/reset`,

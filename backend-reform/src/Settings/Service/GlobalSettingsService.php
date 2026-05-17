@@ -71,6 +71,7 @@ class GlobalSettingsService
         'Familial',
         'Médical',
     ];
+    private const DEFAULT_PATIENT_PORTAL_CLOSED_MESSAGE = 'Le portail patient est temporairement indisponible. Merci de contacter le cabinet pour toute assistance.';
 
     public function __construct(
         private AppSettingRepository $appSettingRepo,
@@ -79,7 +80,7 @@ class GlobalSettingsService
     ) {
     }
 
-    /** @return array{autoApproveDevices: bool, requireMedecinOnConsultationCreation: bool, allowReceptionQuickCloseConsultation: bool, allowReceptionConsultationQuickActions: bool, allowReceptionBypassMedecinPasswordOnQuickClose: bool, hidePatientDossierForMedecins: bool, hidePatientPhoneForMedecins: bool, paiementDirectAssurance: bool, ficheFormSimplifie: bool, consultationPrice: float, transactionMotifs: array{revenue: string[], expense: string[]}, soinsList: string[], examensTypes: string[], traitementTypes: string[], allergyTypes: string[], antecedentTypes: string[]} */
+    /** @return array{autoApproveDevices: bool, requireMedecinOnConsultationCreation: bool, allowReceptionQuickCloseConsultation: bool, allowReceptionConsultationQuickActions: bool, allowReceptionBypassMedecinPasswordOnQuickClose: bool, hidePatientDossierForMedecins: bool, hidePatientPhoneForMedecins: bool, paiementDirectAssurance: bool, ficheFormSimplifie: bool, consultationPrice: float, transactionMotifs: array{revenue: string[], expense: string[]}, soinsList: string[], examensTypes: string[], traitementTypes: string[], allergyTypes: string[], antecedentTypes: string[], patientPortalEnabled: bool, patientPortalClosedMessage: string, patientPortalBaseUrl: ?string, cabinetShowcaseWebsiteUrl: ?string} */
     public function getGeneralSettings(): array
     {
         $entry = $this->appSettingRepo->findOneByKey(self::KEY_GENERAL);
@@ -103,6 +104,14 @@ class GlobalSettingsService
             'traitementTypes' => $this->sanitizeStringList($value['traitementTypes'] ?? null, self::DEFAULT_TRAITEMENT_TYPES),
             'allergyTypes' => $this->sanitizeStringList($value['allergyTypes'] ?? null, self::DEFAULT_ALLERGY_TYPES),
             'antecedentTypes' => $this->sanitizeStringList($value['antecedentTypes'] ?? null, self::DEFAULT_ANTECEDENT_TYPES),
+            'patientPortalEnabled' => (bool) ($value['patientPortalEnabled'] ?? true),
+            'patientPortalClosedMessage' => $this->sanitizeFreeText(
+                $value['patientPortalClosedMessage'] ?? null,
+                self::DEFAULT_PATIENT_PORTAL_CLOSED_MESSAGE,
+                500
+            ),
+            'patientPortalBaseUrl' => $this->sanitizeUrl($value['patientPortalBaseUrl'] ?? null),
+            'cabinetShowcaseWebsiteUrl' => $this->sanitizeUrl($value['cabinetShowcaseWebsiteUrl'] ?? null),
             'testModeEnabled' => (bool) ($value[self::TEST_MODE_ENABLED_KEY] ?? false),
             'testModeSnapshotCreatedAt' => $value[self::TEST_MODE_SNAPSHOT_CREATED_AT_KEY] ?? null,
             'testModeLastPurgeAt' => $value[self::TEST_MODE_LAST_PURGE_AT_KEY] ?? null,
@@ -138,6 +147,14 @@ class GlobalSettingsService
             'traitementTypes' => $this->sanitizeStringList($payload['traitementTypes'] ?? ($current['traitementTypes'] ?? null), self::DEFAULT_TRAITEMENT_TYPES),
             'allergyTypes' => $this->sanitizeStringList($payload['allergyTypes'] ?? ($current['allergyTypes'] ?? null), self::DEFAULT_ALLERGY_TYPES),
             'antecedentTypes' => $this->sanitizeStringList($payload['antecedentTypes'] ?? ($current['antecedentTypes'] ?? null), self::DEFAULT_ANTECEDENT_TYPES),
+            'patientPortalEnabled' => (bool) ($payload['patientPortalEnabled'] ?? ($current['patientPortalEnabled'] ?? true)),
+            'patientPortalClosedMessage' => $this->sanitizeFreeText(
+                $payload['patientPortalClosedMessage'] ?? ($current['patientPortalClosedMessage'] ?? null),
+                self::DEFAULT_PATIENT_PORTAL_CLOSED_MESSAGE,
+                500
+            ),
+            'patientPortalBaseUrl' => $this->sanitizeUrl($payload['patientPortalBaseUrl'] ?? ($current['patientPortalBaseUrl'] ?? null)),
+            'cabinetShowcaseWebsiteUrl' => $this->sanitizeUrl($payload['cabinetShowcaseWebsiteUrl'] ?? ($current['cabinetShowcaseWebsiteUrl'] ?? null)),
         ]);
 
         $this->em->flush();
@@ -324,7 +341,17 @@ class GlobalSettingsService
         return $this->getGeneralSettings()['soinsList'];
     }
 
-    /** @return array{requireMedecinOnConsultationCreation: bool, allowReceptionQuickCloseConsultation: bool, allowReceptionConsultationQuickActions: bool, allowReceptionBypassMedecinPasswordOnQuickClose: bool, hidePatientDossierForMedecins: bool, hidePatientPhoneForMedecins: bool, paiementDirectAssurance: bool, ficheFormSimplifie: bool, consultationPrice: float, soinsList: string[], examensTypes: string[], traitementTypes: string[], allergyTypes: string[], antecedentTypes: string[]} */
+    public function isPatientPortalEnabled(): bool
+    {
+        return $this->getGeneralSettings()['patientPortalEnabled'];
+    }
+
+    public function getPatientPortalClosedMessage(): string
+    {
+        return $this->getGeneralSettings()['patientPortalClosedMessage'];
+    }
+
+    /** @return array{requireMedecinOnConsultationCreation: bool, allowReceptionQuickCloseConsultation: bool, allowReceptionConsultationQuickActions: bool, allowReceptionBypassMedecinPasswordOnQuickClose: bool, hidePatientDossierForMedecins: bool, hidePatientPhoneForMedecins: bool, paiementDirectAssurance: bool, ficheFormSimplifie: bool, consultationPrice: float, soinsList: string[], examensTypes: string[], traitementTypes: string[], allergyTypes: string[], antecedentTypes: string[], patientPortalEnabled: bool, patientPortalClosedMessage: string, patientPortalBaseUrl: ?string, cabinetShowcaseWebsiteUrl: ?string} */
     public function getPublicGeneralSettings(): array
     {
         $settings = $this->getGeneralSettings();
@@ -344,6 +371,10 @@ class GlobalSettingsService
             'traitementTypes' => $settings['traitementTypes'],
             'allergyTypes' => $settings['allergyTypes'],
             'antecedentTypes' => $settings['antecedentTypes'],
+            'patientPortalEnabled' => $settings['patientPortalEnabled'],
+            'patientPortalClosedMessage' => $settings['patientPortalClosedMessage'],
+            'patientPortalBaseUrl' => $settings['patientPortalBaseUrl'],
+            'cabinetShowcaseWebsiteUrl' => $settings['cabinetShowcaseWebsiteUrl'],
         ];
     }
 
@@ -417,5 +448,34 @@ class GlobalSettingsService
         }
 
         return round($amount, 2);
+    }
+
+    private function sanitizeUrl(mixed $value): ?string
+    {
+        $raw = trim((string) ($value ?? ''));
+        if ($raw === '') {
+            return null;
+        }
+
+        $normalized = rtrim($raw, '/');
+        if (!preg_match('/^https?:\/\//i', $normalized)) {
+            return null;
+        }
+
+        return filter_var($normalized, FILTER_VALIDATE_URL) ? $normalized : null;
+    }
+
+    private function sanitizeFreeText(mixed $value, string $fallback, int $maxLength): string
+    {
+        $text = trim((string) ($value ?? ''));
+        if ($text === '') {
+            return $fallback;
+        }
+
+        if (mb_strlen($text) > $maxLength) {
+            $text = mb_substr($text, 0, $maxLength);
+        }
+
+        return $text;
     }
 }

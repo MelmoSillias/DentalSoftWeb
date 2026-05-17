@@ -5,9 +5,11 @@ namespace App\Settings\Controller\Api;
 use App\IdentityAccess\Entity\User;
 use App\Settings\Service\DatabaseMaintenanceService;
 use App\Settings\Service\GlobalSettingsService;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 use Symfony\Component\Routing\Attribute\Route;
 
 #[Route('/api/settings', name: 'api_settings_')]
@@ -47,8 +49,6 @@ class GlobalSettingsController extends AbstractController
     #[Route('/general/public', name: 'general_public_get', methods: ['GET'])]
     public function getPublicGeneralSettings(): JsonResponse
     {
-        $this->denyAccessUnlessGranted('IS_AUTHENTICATED_FULLY');
-
         return $this->json($this->globalSettingsService->getPublicGeneralSettings());
     }
 
@@ -135,14 +135,53 @@ class GlobalSettingsController extends AbstractController
 
         try {
             $result = $this->databaseMaintenanceService->createBackup($formats, 'manual_backup');
+
+            $downloadUrls = [];
+            foreach (['relativeSqlPath', 'relativeZipPath', 'relativeJsonPath'] as $field) {
+                $path = $result[$field] ?? null;
+                if (is_string($path) && $path !== '') {
+                    $downloadUrls[$field] = '/api/settings/database/export/download?file=' . rawurlencode($path);
+                }
+            }
+
             return $this->json([
                 'success' => true,
                 'message' => 'Sauvegarde/export créé avec succès.',
                 'files' => $result,
+                'downloadUrls' => $downloadUrls,
             ]);
         } catch (\Throwable $e) {
             return $this->json(['error' => $this->safeErrorMessage($e)], 500);
         }
+    }
+
+    #[Route('/database/export/download', name: 'database_export_download', methods: ['GET'])]
+    public function downloadDatabaseExport(Request $request): BinaryFileResponse|JsonResponse
+    {
+        $this->denyAccessUnlessGranted('ROLE_ADMIN');
+
+        $file = trim((string) $request->query->get('file', ''));
+        if ($file === '') {
+            return $this->json(['error' => 'Paramètre file manquant.'], 400);
+        }
+
+        $projectDir = $this->getParameter('kernel.project_dir');
+        $absolute = rtrim((string) $projectDir, '/\\') . DIRECTORY_SEPARATOR . ltrim(str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $file), '/\\');
+        $realPath = realpath($absolute);
+
+        if (!$realPath || !is_file($realPath)) {
+            return $this->json(['error' => 'Fichier export introuvable.'], 404);
+        }
+
+        $backupsRoot = realpath(rtrim((string) $projectDir, '/\\') . DIRECTORY_SEPARATOR . 'var' . DIRECTORY_SEPARATOR . 'backups');
+        if (!$backupsRoot || !str_starts_with(str_replace('\\', '/', $realPath), str_replace('\\', '/', $backupsRoot) . '/')) {
+            return $this->json(['error' => 'Accès au fichier refusé.'], 403);
+        }
+
+        $response = new BinaryFileResponse($realPath);
+        $response->setContentDisposition(ResponseHeaderBag::DISPOSITION_ATTACHMENT, basename($realPath));
+
+        return $response;
     }
 
     #[Route('/database/reset', name: 'database_reset', methods: ['POST'])]

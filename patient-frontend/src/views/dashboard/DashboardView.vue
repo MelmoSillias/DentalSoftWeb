@@ -130,27 +130,24 @@ onMounted(async () => {
 <template>
     <AppLayout>
         <section class="dashboard-stack">
-            <Card v-if="loadError">
-                <template #content>
-                    <p class="muted">{{ loadError }}</p>
-                </template>
-            </Card>
+            <Message v-if="loadError" severity="warn" :closable="false" class="mb-0">{{ loadError }}</Message>
+
             <StatsGrid :stats="stats" :loading="isLoading" :empty="!isLoading && statsEmpty" />
 
-            <Divider align="center">
-                <b>Prochain rendez-vous</b>
-            </Divider>
-
+            <div class="section-label">
+                <i class="pi pi-calendar section-icon" />
+                <span>Prochain rendez-vous</span>
+            </div>
             <NextAppointmentCard
                 :appointment="nextAppointment"
                 :loading="isLoading"
                 :empty="!isLoading && appointmentsEmpty"
             />
 
-                <Divider align="center">
-                    <b>Dernière consultation</b>
-                </Divider>
-
+            <div class="section-label">
+                <i class="pi pi-file-edit section-icon" />
+                <span>Dernière consultation</span>
+            </div>
             <LastConsultationCard
                 :consultation="lastConsultation"
                 :loading="isLoading"
@@ -164,5 +161,26 @@ onMounted(async () => {
 .dashboard-stack {
     display: grid;
     gap: 0.9rem;
+}
+
+.section-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--p-text-muted-color);
+    padding: 0 0.25rem;
+    margin-top: 0.2rem;
+}
+
+.section-icon {
+    font-size: 0.85rem;
+}
+
+.mb-0 {
+    margin-bottom: 0;
 }
 </style>

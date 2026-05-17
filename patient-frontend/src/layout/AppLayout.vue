@@ -22,23 +22,30 @@ function logout() {
 </script>
 
 <template>
-    <div class="app-shell bg-blue-500 min-h-screen flex flex-row">
+    <div class="app-shell">
         <AppHeader :dark="isDark" @toggle-theme="toggleTheme" />
 
         <main class="app-content">
             <slot />
-            <Divider />
-            <Button
-                v-if="route.path !== '/login'"
-                severity="secondary"
-                label="Se déconnecter"
-                icon="pi pi-sign-out"
-                fluid
-                outlined
-                @click="logout"
-            />
+            <div class="logout-area">
+                <Button
+                    v-if="route.path !== '/login'"
+                    severity="secondary"
+                    label="Se déconnecter"
+                    icon="pi pi-sign-out"
+                    fluid
+                    outlined
+                    @click="logout"
+                />
+            </div>
         </main>
 
         <AppBottomNav v-if="route.path !== '/login'" />
     </div>
 </template>
+
+<style scoped>
+.logout-area {
+    margin-top: 1.5rem;
+}
+</style>

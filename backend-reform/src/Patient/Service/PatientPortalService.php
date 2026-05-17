@@ -2,9 +2,9 @@
 
 namespace App\Patient\Service;
 
-use App\Billing\Entity\Devis;
+use App\Billing\Entity\Facture;
 use App\Billing\Entity\Transaction;
-use App\Billing\Repository\DevisRepository;
+use App\Billing\Repository\FactureRepository;
 use App\Billing\Repository\TransactionRepository;
 use App\CareDelivery\Entity\Consultation;
 use App\CareDelivery\Repository\ConsultationRepository;
@@ -17,14 +17,13 @@ use App\Patient\Repository\PatientRepository;
 use App\Scheduling\Entity\Rdv;
 use App\Scheduling\Repository\RdvRepository;
 use Doctrine\ORM\EntityManagerInterface;
-use App\Billing\Entity\Facture;
 
 final class PatientPortalService
 {
     public function __construct(
         private readonly PatientRepository $patientRepository,
         private readonly ConsultationRepository $consultationRepository,
-        private readonly DevisRepository $devisRepository,
+        private readonly FactureRepository $factureRepository,
         private readonly TransactionRepository $transactionRepository,
         private readonly RdvRepository $rdvRepository,
         private readonly NotificationRepository $notificationRepository,
@@ -80,19 +79,19 @@ final class PatientPortalService
     }
 
     /** @return array{patient:array{id:int|null,nom:string,prenom:string,numCarnet:?string,telephone:?string,email:?string},total:int,items:array<int,array<string,mixed>>} */
-    public function buildFacturesPayload(Patient $patient): array
+    public function buildDevisFacturesPayload(Patient $patient): array
     {
         $factureList = $this->factureRepository->findByPortalPatient($patient);
 
         $items = array_map(fn(Facture $facture): array => [
             'id' => $facture->getId(),
             'date' => $facture->getDateFacture()?->format(DATE_ATOM),
-            'montant' => $facture->computeMontantsFromConsultation()["montantTotal"] ?? 0,
-            'reste' => $facture->computeMontantsFromConsultation(),
-            'statut' => $facture->getStatut(),
-            'type' => $facture->getType(),
+            'montant' => $facture->computeMontantsFromConsultation()['montantTotal'] ?? 0,
+            'reste' => $facture->computeMontantsFromConsultation()['restePatient'] ?? 0,
+            'statut' => $facture->isReglee() ? 'reglee' : 'ouverte',
+            'type' => 'facture',
             'consultationId' => $facture->getConsultation()?->getId(),
-            'isFacture' => $facture->getType() === 1,
+            'isFacture' => true,
         ], $factureList);
 
         return [
@@ -225,9 +224,9 @@ final class PatientPortalService
             ->getSingleScalarResult();
 
         $devisCount = (int) $this->entityManager->createQueryBuilder()
-            ->select('COUNT(d.id)')
-            ->from(Devis::class, 'd')
-            ->leftJoin('d.consultation', 'c')
+            ->select('COUNT(f.id)')
+            ->from(Facture::class, 'f')
+            ->leftJoin('f.consultation', 'c')
             ->where('c.patient = :patient')
             ->setParameter('patient', $patient)
             ->getQuery()
@@ -237,7 +236,9 @@ final class PatientPortalService
             ->select('COUNT(t.id)')
             ->from(Transaction::class, 't')
             ->leftJoin('t.consultation', 'c')
-            ->where('c.patient = :patient')
+            ->leftJoin('t.facture', 'f')
+            ->leftJoin('f.consultation', 'fc')
+            ->where('c.patient = :patient OR fc.patient = :patient')
             ->setParameter('patient', $patient)
             ->getQuery()
             ->getSingleScalarResult();
@@ -263,6 +264,104 @@ final class PatientPortalService
             'numCarnet' => $patient->getNumCarnet(),
             'telephone' => $patient->getTelephone(),
             'email' => $patient->getEmail(),
+        ];
+    }
+
+    /** @return array{patient:array<string,mixed>,assurance:array<string,mixed>|null} */
+    public function buildProfilePayload(Patient $patient): array
+    {
+        $profile = $patient->getAssuranceProfile();
+        $assurance = null;
+        if ($profile !== null) {
+            $assuranceEntity = $profile->getAssurance();
+            $assurance = [
+                'nom'          => $assuranceEntity?->getNom(),
+                'code'         => $assuranceEntity?->getCode(),
+                'coverageRate' => $profile->getCoverageRate(),
+                'formData'     => $profile->getFormData(),
+            ];
+        }
+
+        return [
+            'patient' => [
+                'id'            => $patient->getId(),
+                'nom'           => (string) $patient->getNom(),
+                'prenom'        => (string) $patient->getPrenom(),
+                'numCarnet'     => $patient->getNumCarnet(),
+                'telephone'     => $patient->getTelephone(),
+                'email'         => $patient->getEmail(),
+                'sexe'          => $patient->getSexe(),
+                'adresse'       => $patient->getAdresse(),
+                'dateNaissance' => $patient->getDateNaissance()?->format('Y-m-d'),
+            ],
+            'assurance' => $assurance,
+        ];
+    }
+
+    /** @return array<string,mixed>|null */
+    public function buildConsultationDetailPayload(Patient $patient, int $consultationId): ?array
+    {
+        $consultation = $this->consultationRepository->find($consultationId);
+        if ($consultation === null || $consultation->getPatient()?->getId() !== $patient->getId()) {
+            return null;
+        }
+
+        $actes = [];
+        $totalActes = 0.0;
+        foreach ($consultation->getActes() as $a) {
+            $qty   = max(1, (int) ($a->getQuantite() ?? 1));
+            $prix  = (float) ($a->getPrix() ?? 0);
+            $total = $qty * $prix;
+            $totalActes += $total;
+            $actes[] = [
+                'dent'        => (string) ($a->getDent() ?? ''),
+                'type'        => $a->getType(),
+                'description' => $a->getDescription(),
+                'prix'        => $prix,
+                'quantite'    => $qty,
+                'total'       => $total,
+            ];
+        }
+
+        return [
+            'id'          => $consultation->getId(),
+            'date'        => $consultation->getCreatedAt()?->format(DATE_ATOM),
+            'type'        => $consultation->getType(),
+            'statut'      => $consultation->getStatut(),
+            'noteSeance'  => $consultation->getNoteSeance(),
+            'medecin'     => $consultation->getMedecin() ? [
+                'id'  => $consultation->getMedecin()?->getId(),
+                'nom' => trim((string) (
+                    ($consultation->getMedecin()?->getNom() ?? '') . ' ' .
+                    ($consultation->getMedecin()?->getPrenom() ?? '')
+                )),
+            ] : null,
+            'actes'      => $actes,
+            'totalActes' => $totalActes,
+        ];
+    }
+
+    /** @return array<string,mixed>|null */
+    public function buildDocumentDetailPayload(Patient $patient, int $factureId): ?array
+    {
+        $facture = $this->factureRepository->find($factureId);
+        if ($facture === null || $facture->getConsultation()?->getPatient()?->getId() !== $patient->getId()) {
+            return null;
+        }
+
+        $montants = $facture->computeMontantsFromConsultation();
+        $lignes   = $facture->buildLignesFromConsultation();
+
+        return [
+            'id'             => $facture->getId(),
+            'date'           => $facture->getDateFacture()?->format(DATE_ATOM),
+            'statut'         => $facture->isReglee() ? 'reglee' : 'ouverte',
+            'montantTotal'   => $montants['montantTotal'] ?? 0,
+            'montantPatient' => $montants['montantPatient'] ?? 0,
+            'patientPaid'    => $montants['patientPaid'] ?? 0,
+            'restePatient'   => $montants['restePatient'] ?? 0,
+            'consultationId' => $facture->getConsultation()?->getId(),
+            'lignes'         => $lignes,
         ];
     }
 }

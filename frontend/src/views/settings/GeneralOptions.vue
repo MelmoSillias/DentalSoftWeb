@@ -22,6 +22,7 @@ import { createSettingsApparenceTour } from '@/tours/settingsApparenceTour';
 import { startTourGuide } from '@/tours/tourGuideClient';
 import {
     cleanTestMode,
+    downloadDatabaseExport,
     exportDatabase,
     fetchGeneralSettings,
     resetDatabase,
@@ -69,6 +70,7 @@ const savingStates = reactive({
     consultationAccess: false,
     devicePolicy: false,
     billingPolicy: false,
+    portalSettings: false,
     transactionMotifs: false,
     soinsCatalog: false,
     testMode: false,
@@ -111,6 +113,13 @@ const ficheSimplifieCatalog = reactive({
     antecedentTypesText: 'Personnel\nFamilial\nMédical'
 });
 
+const portalPatientConfig = reactive({
+    patientPortalEnabled: true,
+    patientPortalClosedMessage: 'Le portail patient est temporairement indisponible. Merci de contacter le cabinet pour toute assistance.',
+    patientPortalBaseUrl: '',
+    cabinetShowcaseWebsiteUrl: ''
+});
+
 const testMode = reactive({
     enabled: false,
     snapshotCreatedAt: null,
@@ -122,6 +131,12 @@ const backupOptions = reactive({
     zip: true,
     json: true
 });
+
+const backupDownloadMode = ref('primary');
+const backupDownloadModeOptions = [
+    { label: 'Principal uniquement', value: 'primary' },
+    { label: 'Tous les formats', value: 'all' }
+];
 
 // Navigation structure
 const navigation = {
@@ -143,6 +158,7 @@ const navigation = {
             { id: 'consultation-access', label: 'Consultation & Focus', icon: 'pi pi-lock' },
             { id: 'device-security', label: 'Sécurité appareils', icon: 'pi pi-shield' },
             { id: 'billing-rules', label: 'Règles facturation', icon: 'pi pi-wallet' },
+            { id: 'patient-portal', label: 'Portail patient', icon: 'pi pi-mobile' },
             { id: 'test-mode', label: 'Mode test', icon: 'pi pi-flask' },
             { id: 'database-maintenance', label: 'Sauvegarde et reset', icon: 'pi pi-database' },
             { id: 'transaction-motifs', label: 'Motifs transaction', icon: 'pi pi-dollar' },
@@ -259,6 +275,10 @@ const loadGeneralSettings = async (force = false) => {
         ficheSimplifieCatalog.traitementTypesText = (settings.traitementTypes || []).join('\n');
         ficheSimplifieCatalog.allergyTypesText = (settings.allergyTypes || []).join('\n');
         ficheSimplifieCatalog.antecedentTypesText = (settings.antecedentTypes || []).join('\n');
+        portalPatientConfig.patientPortalEnabled = settings.patientPortalEnabled !== false;
+        portalPatientConfig.patientPortalClosedMessage = settings.patientPortalClosedMessage || portalPatientConfig.patientPortalClosedMessage;
+        portalPatientConfig.patientPortalBaseUrl = settings.patientPortalBaseUrl || '';
+        portalPatientConfig.cabinetShowcaseWebsiteUrl = settings.cabinetShowcaseWebsiteUrl || '';
         testMode.enabled = settings.testModeEnabled === true;
         persistedTestModeEnabled.value = testMode.enabled;
         testMode.snapshotCreatedAt = settings.testModeSnapshotCreatedAt || null;
@@ -331,6 +351,44 @@ const saveBillingPolicyAction = async () => {
         toast.add({ severity: 'error', summary: 'Erreur', detail: extractApiError(error, 'Sauvegarde impossible'), life: 3500 });
     } finally {
         savingStates.billingPolicy = false;
+    }
+};
+
+const savePortalPatientSettingsAction = async () => {
+    if (!canAccessWorkflowSettings.value) return;
+    savingStates.portalSettings = true;
+    try {
+        await saveGeneralSettings({
+            patientPortalEnabled: portalPatientConfig.patientPortalEnabled,
+            patientPortalClosedMessage: String(portalPatientConfig.patientPortalClosedMessage || '').trim(),
+            patientPortalBaseUrl: String(portalPatientConfig.patientPortalBaseUrl || '').trim(),
+            cabinetShowcaseWebsiteUrl: String(portalPatientConfig.cabinetShowcaseWebsiteUrl || '').trim()
+        }, token);
+        toast.add({ severity: 'success', summary: 'Portail patient', detail: 'Paramètres enregistrés', life: 2500 });
+        await loadGeneralSettings(true);
+    } catch (error) {
+        toast.add({ severity: 'error', summary: 'Erreur', detail: extractApiError(error, 'Sauvegarde impossible'), life: 3500 });
+    } finally {
+        savingStates.portalSettings = false;
+    }
+};
+
+const openExternalUrl = (url) => {
+    if (!url) return;
+    window.open(url, '_blank', 'noopener,noreferrer');
+};
+
+const copyToClipboard = async (label, value) => {
+    if (!value) {
+        toast.add({ severity: 'warn', summary: 'Copie', detail: `${label} indisponible`, life: 2200 });
+        return;
+    }
+
+    try {
+        await navigator.clipboard.writeText(value);
+        toast.add({ severity: 'success', summary: 'Copie', detail: `${label} copié`, life: 2200 });
+    } catch (error) {
+        toast.add({ severity: 'error', summary: 'Copie', detail: 'Impossible de copier automatiquement', life: 2500 });
     }
 };
 
@@ -466,10 +524,41 @@ const confirmSecurityDialog = async () => {
             const sql = response?.files?.relativeSqlPath || 'n/a';
             const zip = response?.files?.relativeZipPath || 'n/a';
             const json = response?.files?.relativeJsonPath || 'n/a';
+
+            const generatedFiles = [
+                response?.files?.relativeSqlPath,
+                response?.files?.relativeZipPath,
+                response?.files?.relativeJsonPath,
+            ].filter(Boolean);
+
+            let filesToDownload = generatedFiles;
+            if (backupDownloadMode.value === 'primary') {
+                const preferredOrder = [
+                    response?.files?.relativeZipPath,
+                    response?.files?.relativeSqlPath,
+                    response?.files?.relativeJsonPath,
+                ].filter(Boolean);
+
+                const primary = preferredOrder.find((path) => generatedFiles.includes(path));
+                filesToDownload = primary ? [primary] : generatedFiles.slice(0, 1);
+            }
+
+            for (const file of filesToDownload) {
+                const download = await downloadDatabaseExport({ file }, token);
+                const blobUrl = window.URL.createObjectURL(download.blob);
+                const link = document.createElement('a');
+                link.href = blobUrl;
+                link.download = download.filename || file.split('/').pop() || 'export.dat';
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                window.URL.revokeObjectURL(blobUrl);
+            }
+
             toast.add({
                 severity: 'success',
                 summary: 'Sauvegarde créée',
-                detail: `SQL: ${sql} | ZIP: ${zip} | JSON: ${json}`,
+                detail: `Fichiers téléchargés. SQL: ${sql} | ZIP: ${zip} | JSON: ${json}`,
                 life: 6000
             });
             closeSecurityDialog();
@@ -577,6 +666,17 @@ const currentThemeLabel = computed(() => themeOptions.value.find((option) => opt
 const currentFontSizeLabel = computed(() => fontSizeOptions.value.find((option) => option.value === fontSize.value)?.label || 'Normal');
 const currentSurfaceName = computed(() => layoutConfig.surface || (isDarkTheme.value ? 'zinc' : 'slate'));
 const canAccessSmsSettings = computed(() => (auth.user?.roles || []).includes('ROLE_ADMIN'));
+const normalizedPortalBaseUrl = computed(() => String(portalPatientConfig.patientPortalBaseUrl || '').replace(/\/$/, ''));
+const portalLoginUrl = computed(() => normalizedPortalBaseUrl.value ? `${normalizedPortalBaseUrl.value}/login` : '');
+const anonymousReviewUrl = computed(() => normalizedPortalBaseUrl.value ? `${normalizedPortalBaseUrl.value}/avis-anonyme` : '');
+const qrPortalLoginSrc = computed(() => {
+    if (!portalLoginUrl.value) return '';
+    return `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(portalLoginUrl.value)}`;
+});
+const qrAnonymousReviewSrc = computed(() => {
+    if (!anonymousReviewUrl.value) return '';
+    return `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(anonymousReviewUrl.value)}`;
+});
 
 watch(canAccessWorkflowSettings, async (allowed) => {
     if (!allowed && activeCategory.value === 'workflow') {
@@ -1018,6 +1118,118 @@ onBeforeUnmount(() => {
                             </div>
                         </div>
 
+                        <div id="workflow-patient-portal" class="settings-section">
+                            <div class="settings-section-header">
+                                <div>
+                                    <h3>Portail patient</h3>
+                                    <p class="settings-section-description">Activation globale, message de fermeture, domaine frontend patient, URL vitrine et QR codes</p>
+                                </div>
+                                <Button
+                                    label="Enregistrer"
+                                    icon="pi pi-save"
+                                    :loading="savingStates.portalSettings"
+                                    @click="savePortalPatientSettingsAction"
+                                />
+                            </div>
+                            <div class="settings-card">
+                                <div class="toggle-group">
+                                    <div class="toggle-item">
+                                        <div class="toggle-info">
+                                            <label>Portail patient actif</label>
+                                            <span class="toggle-description">Si désactivé, la connexion patient est bloquée et le message ci-dessous s'affiche</span>
+                                        </div>
+                                        <ToggleSwitch v-model="portalPatientConfig.patientPortalEnabled" />
+                                    </div>
+                                </div>
+                                <Divider />
+                                <div class="two-columns">
+                                    <div class="field-group">
+                                        <label>Message de fermeture du portail</label>
+                                        <Textarea
+                                            v-model="portalPatientConfig.patientPortalClosedMessage"
+                                            rows="4"
+                                            autoResize
+                                            placeholder="Message affiché au patient quand le portail est fermé"
+                                        />
+                                    </div>
+                                    <div class="field-group">
+                                        <label>Domaine du frontend patient</label>
+                                        <InputText
+                                            v-model="portalPatientConfig.patientPortalBaseUrl"
+                                            placeholder="https://patient.votrecabinet.com"
+                                        />
+                                        <span class="field-helper">Utilisé pour générer les QR de connexion et d'avis anonymes.</span>
+                                    </div>
+                                    <div class="field-group">
+                                        <label>URL site vitrine du cabinet</label>
+                                        <InputText
+                                            v-model="portalPatientConfig.cabinetShowcaseWebsiteUrl"
+                                            placeholder="https://www.votrecabinet.com"
+                                        />
+                                        <div class="settings-inline-actions">
+                                            <Button
+                                                label="Ouvrir"
+                                                icon="pi pi-external-link"
+                                                text
+                                                @click="openExternalUrl(portalPatientConfig.cabinetShowcaseWebsiteUrl)"
+                                            />
+                                            <Button
+                                                label="Copier"
+                                                icon="pi pi-copy"
+                                                text
+                                                @click="copyToClipboard('URL vitrine', portalPatientConfig.cabinetShowcaseWebsiteUrl)"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                                <Divider />
+                                <div class="two-columns">
+                                    <div class="field-group">
+                                        <label>QR connexion patient</label>
+                                        <div class="settings-inline-actions">
+                                            <Button
+                                                label="Copier URL"
+                                                icon="pi pi-copy"
+                                                size="small"
+                                                text
+                                                @click="copyToClipboard('URL connexion', portalLoginUrl)"
+                                            />
+                                            <Button
+                                                label="Ouvrir"
+                                                icon="pi pi-external-link"
+                                                size="small"
+                                                text
+                                                @click="openExternalUrl(portalLoginUrl)"
+                                            />
+                                        </div>
+                                        <p class="field-helper">{{ portalLoginUrl || 'Renseignez le domaine patient pour générer le QR.' }}</p>
+                                        <img v-if="qrPortalLoginSrc" :src="qrPortalLoginSrc" alt="QR connexion patient" class="settings-qr" />
+                                    </div>
+                                    <div class="field-group">
+                                        <label>QR avis anonyme</label>
+                                        <div class="settings-inline-actions">
+                                            <Button
+                                                label="Copier URL"
+                                                icon="pi pi-copy"
+                                                size="small"
+                                                text
+                                                @click="copyToClipboard('URL avis anonyme', anonymousReviewUrl)"
+                                            />
+                                            <Button
+                                                label="Ouvrir"
+                                                icon="pi pi-external-link"
+                                                size="small"
+                                                text
+                                                @click="openExternalUrl(anonymousReviewUrl)"
+                                            />
+                                        </div>
+                                        <p class="field-helper">{{ anonymousReviewUrl || 'Renseignez le domaine patient pour générer le QR.' }}</p>
+                                        <img v-if="qrAnonymousReviewSrc" :src="qrAnonymousReviewSrc" alt="QR avis anonyme" class="settings-qr" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Test Mode -->
                         <div id="workflow-test-mode" class="settings-section">
                             <div class="settings-section-header">
@@ -1098,6 +1310,15 @@ onBeforeUnmount(() => {
                                                 <ToggleSwitch v-model="backupOptions.json" />
                                             </div>
                                         </div>
+                                        <label class="mt-3">Téléchargement</label>
+                                        <SelectButton
+                                            v-model="backupDownloadMode"
+                                            :options="backupDownloadModeOptions"
+                                            optionLabel="label"
+                                            optionValue="value"
+                                            :allowEmpty="false"
+                                            class="mb-3"
+                                        />
                                         <Button
                                             label="Créer sauvegarde/export"
                                             icon="pi pi-download"
@@ -1686,6 +1907,22 @@ onBeforeUnmount(() => {
 .field-helper {
     font-size: 0.75rem;
     color: var(--text-color-secondary);
+}
+
+.settings-inline-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.settings-qr {
+    width: min(260px, 100%);
+    aspect-ratio: 1;
+    object-fit: cover;
+    border: 1px solid var(--surface-border);
+    border-radius: 12px;
+    background: var(--surface-0);
+    padding: 0.5rem;
 }
 
 /* Responsive */
