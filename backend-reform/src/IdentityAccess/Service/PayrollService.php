@@ -299,7 +299,7 @@ class PayrollService
 
         $transaction = (new Transaction())
             ->setMontant((string) round($paidAmount))
-            ->setType('Sortie')
+            ->setType('Depense')
             ->setMotif('Paiement salaire')
             ->setDescription(trim($description))
             ->setDateTransaction($payment->getPaidAt() ?? new \DateTimeImmutable())

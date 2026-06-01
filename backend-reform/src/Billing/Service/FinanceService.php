@@ -43,7 +43,7 @@ class FinanceService
 
         foreach ($transactions as $transaction) {
             $month = (int) $transaction->getDateTransaction()->format('n') - 1;
-            if ($transaction->getType() === 'Entrée') {
+            if ($transaction->getType() === 'Revenue') {
                 $monthlyRevenues[$month] += $transaction->getMontant();
             } else {
                 $monthlyExpenses[$month] += $transaction->getMontant();
@@ -100,7 +100,7 @@ class FinanceService
                     continue;
                 }
 
-                if ($t->getType() === 'Entrée') {
+                if ($t->getType() === 'Revenue') {
                     $entree += $t->getMontant();
                 } else {
                     $sortie += $t->getMontant();
@@ -138,7 +138,7 @@ class FinanceService
                     continue;
                 }
 
-                if ($t->getType() === 'Entrée') {
+                if ($t->getType() === 'Revenue') {
                     $totalIn += $t->getMontant();
                 } else {
                     $totalOut += $t->getMontant();
@@ -173,7 +173,7 @@ class FinanceService
             }
 
             $month = (int) $t->getDateTransaction()->format('n') - 1;
-            $cumul += ($t->getType() === 'Entrée') ? $t->getMontant() : -$t->getMontant();
+            $cumul += ($t->getType() === 'Revenue') ? $t->getMontant() : -$t->getMontant();
             $evolution[$month] = $cumul;
         }
 
@@ -200,9 +200,9 @@ class FinanceService
                 }
 
                 $mois = (int) $t->getDateTransaction()->format('n') - 1;
-                if ($t->getType() === 'Entrée') {
+                if ($t->getType() === 'Revenue') {
                     $entrees[$mois] += $t->getMontant();
-                } elseif ($t->getType() === 'Sortie') {
+                } elseif ($t->getType() === 'Depense') {
                     $sorties[$mois] += $t->getMontant();
                 }
             }
@@ -250,7 +250,7 @@ class FinanceService
         foreach ($this->modeRepo->findActifs() as $mode) {
             $solde = 0;
             foreach ($mode->getTransactions() as $transaction) {
-                if ($transaction->getType() === 'Entrée') {
+                if ($transaction->getType() === 'Revenue') {
                     $solde += $transaction->getMontant();
                 } else {
                     $solde -= $transaction->getMontant();
@@ -462,7 +462,7 @@ class FinanceService
         }
 
         $tOut = new Transaction();
-        $tOut->setType('Sortie');
+        $tOut->setType('Depense');
         $tOut->setMontant($montant);
         $tOut->setDateTransaction($date);
         $tOut->setDescription("[Transfert] vers {$to->getLibelle()} - {$motif}");
@@ -471,7 +471,7 @@ class FinanceService
         $this->em->persist($tOut);
 
         $tIn = new Transaction();
-        $tIn->setType('Entrée');
+        $tIn->setType('Revenue');
         $tIn->setMontant($montant);
         $tIn->setDateTransaction($date);
         $tIn->setDescription("[Transfert] depuis {$from->getLibelle()} - {$motif}");
@@ -648,8 +648,8 @@ class FinanceService
         $value = str_replace(['é', 'Ã¨', 'Ãª', 'Ã«', 'Ã ', 'Ã¢', 'Ã®', 'Ã¯', 'Ã´', 'Ã¹', 'Ã»', 'Ã§', ' '], ['e', 'e', 'e', 'e', 'a', 'a', 'i', 'i', 'o', 'u', 'u', 'c', '_'], $value);
 
         return match (true) {
-            in_array($value, ['entry', 'income', 'revenue', 'revenu', 'entree'], true) => 'revenue',
-            in_array($value, ['exit', 'expense', 'depense', 'sortie'], true) => 'expense',
+            in_array($value, ['entry', 'income', 'revenue', 'revenu', 'entree', "Revenue"], true) => 'revenue',
+            in_array($value, ['exit', 'expense', 'depense', 'sortie', "Depense"], true) => 'expense',
             default => 'other',
         };
     }
@@ -658,14 +658,14 @@ class FinanceService
     private function resolveTransactionTypeAliases(string $typeKey): array
     {
         return match ($typeKey) {
-            'expense' => ['Sortie'],
-            default => ['Entrée'],
+            'expense' => ['Depense'],
+            default => ['Revenue'],
         };
     }
 
     private function normalizePersistedTransactionType(string $type): string
     {
-        return $this->resolveTransactionTypeKey($type) === 'expense' ? 'Sortie' : 'Entrée';
+        return $this->resolveTransactionTypeKey($type) === 'expense' ? 'Depense' : 'Revenue';
     }
 
     private function weekdayLabel(int $weekday): string

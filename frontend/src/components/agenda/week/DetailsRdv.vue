@@ -20,6 +20,7 @@ const close = () => {
 };
 
 const title = computed(() => props.rdv?.patientName || 'Détails rendez-vous');
+const smsReminder = computed(() => props.rdv?.smsReminder || null);
 
 const statusClass = computed(() => {
   const s = (props.rdv?.statut || '').toString().toLowerCase();
@@ -30,9 +31,20 @@ const statusClass = computed(() => {
   return 'bg-sky-100 text-sky-800 dark:bg-sky-900 dark:text-sky-200';
 });
 
+const smsStatusClass = computed(() => {
+  const status = String(smsReminder.value?.status || '').toLowerCase();
+  if (status === 'sent') return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200';
+  if (status === 'failed') return 'bg-rose-100 text-rose-800 dark:bg-rose-900 dark:text-rose-200';
+  if (status === 'sending') return 'bg-sky-100 text-sky-800 dark:bg-sky-900 dark:text-sky-200';
+  if (smsReminder.value?.isAutomatic) return 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200';
+  return 'bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-100';
+});
+
 const formattedStart = computed(() => props.rdv?.start ? new Date(props.rdv.start).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }) : '—');
 const formattedEnd = computed(() => props.rdv?.end ? new Date(props.rdv.end).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }) : '—');
-</script> 
+const formattedSmsSendAt = computed(() => smsReminder.value?.sendAt ? new Date(smsReminder.value.sendAt).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }) : '—');
+const formattedSmsSentAt = computed(() => smsReminder.value?.sentAt ? new Date(smsReminder.value.sentAt).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }) : '—');
+</script>
 
 <template>
   <Drawer
@@ -105,6 +117,40 @@ const formattedEnd = computed(() => props.rdv?.end ? new Date(props.rdv.end).toL
           Notes
         </div>
         <div class="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700 dark:text-slate-200">{{ rdv?.description || 'Aucune note' }}</div>
+      </div>
+
+      <div class="mt-3 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900/50">
+        <div class="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+          <i class="pi pi-send text-[0.75rem]"></i>
+          Rappel SMS
+        </div>
+        <div v-if="smsReminder" class="mt-3 space-y-3">
+          <div class="flex flex-wrap items-center gap-2">
+            <div :class="['px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap shadow-sm', smsStatusClass]">
+              {{ smsReminder.label || 'SMS' }}
+            </div>
+            <span class="text-xs text-slate-500 dark:text-slate-400">
+              {{ smsReminder.isAutomatic ? 'Programmation automatique' : 'Envoi manuel' }}
+            </span>
+          </div>
+          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div class="rounded-xl border border-slate-200 bg-slate-50/70 p-3 dark:border-slate-700 dark:bg-slate-800/70">
+              <div class="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Programmé pour</div>
+              <div class="mt-1 text-sm font-semibold text-slate-800 dark:text-slate-100">{{ formattedSmsSendAt }}</div>
+            </div>
+            <div class="rounded-xl border border-slate-200 bg-slate-50/70 p-3 dark:border-slate-700 dark:bg-slate-800/70">
+              <div class="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Envoyé le</div>
+              <div class="mt-1 text-sm font-semibold text-slate-800 dark:text-slate-100">{{ formattedSmsSentAt }}</div>
+            </div>
+          </div>
+          <div v-if="smsReminder.message" class="rounded-xl border border-slate-200 bg-slate-50/70 p-3 text-sm leading-6 text-slate-700 dark:border-slate-700 dark:bg-slate-800/70 dark:text-slate-200">
+            {{ smsReminder.message }}
+          </div>
+          <div v-if="smsReminder.lastError" class="rounded-xl border border-rose-200 bg-rose-50/70 p-3 text-sm leading-6 text-rose-700 dark:border-rose-800 dark:bg-rose-950/30 dark:text-rose-200">
+            {{ smsReminder.lastError }}
+          </div>
+        </div>
+        <div v-else class="mt-2 text-sm text-slate-500 dark:text-slate-400">Aucun rappel SMS associé à ce rendez-vous.</div>
       </div>
 
       <div class="mt-6 flex flex-wrap gap-2 border-t border-slate-200 pt-4 dark:border-slate-700">

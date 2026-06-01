@@ -20,6 +20,7 @@ import TabPanel from 'primevue/tabpanel';
 import TabPanels from 'primevue/tabpanels';
 import Tabs from 'primevue/tabs';
 import Tag from 'primevue/tag';
+import ToggleSwitch from 'primevue/toggleswitch';
 import { useSmsAdminSettings } from '@/composables/useSmsAdminSettings';
 import { getHttpErrorMessage } from '@/service/http';
 
@@ -36,6 +37,7 @@ const loadErrorMessage = ref('');
 const tabItems = [
     { value: 'overview', label: 'Aperçu', icon: 'pi pi-chart-bar' },
     { value: 'config', label: 'Configuration & Test', icon: 'pi pi-cog' },
+    { value: 'queue', label: 'File SMS', icon: 'pi pi-clock' },
     { value: 'logs', label: 'Logs', icon: 'pi pi-list' },
     { value: 'templates', label: 'Templates', icon: 'pi pi-file-edit' },
     { value: 'manual', label: 'Envoi Manuel', icon: 'pi pi-send' }
@@ -56,12 +58,14 @@ const {
     providerOverview,
     smsConfig,
     smsStats,
+    smsQueue,
     smsLogs,
     smsTemplates,
     selectedTemplateCode,
     previewVariables,
     previewResult,
     manualSms,
+    queuedSms,
     testSms,
     selectedTemplate,
     previewCharacters,
@@ -78,14 +82,48 @@ const {
     saveTemplatesAction,
     previewTemplateAction,
     sendManualSmsAction,
+    scheduleQueuedSmsAction,
     processQueueAction
 } = useSmsAdminSettings(token, toast, extractApiError);
+
+const queueRecurrenceOptions = [
+    { label: 'Sans répétition', value: 'none' },
+    { label: 'Tous les jours x3', value: 'daily_3' },
+    { label: 'Toutes les semaines x4', value: 'weekly_4' }
+];
+
+const queueStatusLabel = (status) => {
+    switch (status) {
+    case 'sent': return 'Envoyé';
+    case 'failed': return 'Échec';
+    case 'sending': return 'Envoi';
+    default: return 'En attente';
+    }
+};
+
+const queueStatusSeverity = (status) => {
+    switch (status) {
+    case 'sent': return 'success';
+    case 'failed': return 'danger';
+    case 'sending': return 'info';
+    default: return 'warning';
+    }
+};
 
 const totalCharacters = computed(() =>
     smsTemplates.value.reduce((sum, template) => sum + String(template?.content || '').length, 0)
 );
 const recommendedContract = computed(() => providerOverview.value.contracts.find((item) => item.isRecommended) || providerOverview.value.contracts[0] || null);
 const approvedSenderNameOptions = computed(() => smsConfig.approvedSenderNames.map((item) => ({ label: item, value: item })));
+const patientPreferenceBypassOptions = [
+    { key: 'patientCreated', label: 'Création patient', description: 'Ignore la préférence patient de SMS après création.' },
+    { key: 'receipt', label: 'Reçu', description: 'Force l’envoi des SMS de reçu même si le patient les a désactivés.' },
+    { key: 'ticket', label: 'Ticket', description: 'Force l’envoi des tickets SMS malgré la préférence patient.' },
+    { key: 'invoice', label: 'Facture', description: 'Force l’envoi des factures SMS malgré la préférence patient.' },
+    { key: 'appointmentReminder', label: 'Rappel de rendez-vous', description: 'Ignore l’option patient de rappel SMS.' },
+    { key: 'unsubscribed', label: 'Patient désabonné', description: 'Autorise les envois template même si le patient est marqué désabonné.' },
+    { key: 'blacklisted', label: 'Numéro blacklisté', description: 'Autorise les envois template même si le numéro est blacklisté.' }
+];
 
 const formatDateTime = (value) => {
     if (!value) return 'Jamais';
@@ -253,19 +291,19 @@ const retryLoadSmsSettings = async () => {
                     </div>
                 </div>
                 <div class="flex flex-wrap gap-3">
-                    <Button 
-                        label="Rafraîchir" 
-                        icon="pi pi-refresh" 
-                        severity="secondary" 
-                        outlined 
-                        :loading="smsLoading" 
-                        @click="refreshSmsData" 
+                    <Button
+                        label="Rafraîchir"
+                        icon="pi pi-refresh"
+                        severity="secondary"
+                        outlined
+                        :loading="smsLoading"
+                        @click="refreshSmsData"
                     />
-                    <Button 
-                        label="Traiter file" 
-                        icon="pi pi-play" 
-                        :loading="smsQueueing" 
-                        @click="processQueueAction" 
+                    <Button
+                        label="Traiter file"
+                        icon="pi pi-play"
+                        :loading="smsQueueing"
+                        @click="processQueueAction"
                     />
                 </div>
             </div>
@@ -274,10 +312,10 @@ const retryLoadSmsSettings = async () => {
         <!-- Tabs Navigation -->
         <Tabs :value="activeTab" @update:value="activeTab = $event">
             <TabList class="flex flex-wrap gap-2 border-b border-gray-200 dark:border-gray-800">
-                <Tab 
-                    v-for="item in tabItems" 
-                    :key="item.value" 
-                    :value="item.value" 
+                <Tab
+                    v-for="item in tabItems"
+                    :key="item.value"
+                    :value="item.value"
                     class="rounded-t-xl px-4 py-2.5 font-medium transition-all data-[selected]:bg-white data-[selected]:text-blue-600 dark:data-[selected]:bg-gray-900 dark:data-[selected]:text-blue-400"
                 >
                     <span class="flex items-center gap-2">
@@ -371,13 +409,13 @@ const retryLoadSmsSettings = async () => {
                                         </div>
                                         <Tag severity="success" :value="`${smsStats.balance.totalSent} total`" />
                                     </div>
-                                    
+
                                     <div v-if="dailySeries.length" class="space-y-3">
                                         <div v-for="([day, count]) in dailySeries" :key="day" class="flex items-center gap-3 text-sm">
                                             <span class="w-20 text-gray-600 dark:text-gray-400">{{ day }}</span>
                                             <div class="flex-1 h-2 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
-                                                <div 
-                                                    class="h-2 rounded-full bg-gradient-to-r from-blue-500 to-blue-600" 
+                                                <div
+                                                    class="h-2 rounded-full bg-gradient-to-r from-blue-500 to-blue-600"
                                                     :style="{ width: `${Math.round((Number(count) / maxDaily) * 100)}%` }"
                                                 />
                                             </div>
@@ -395,7 +433,7 @@ const retryLoadSmsSettings = async () => {
                                         <p class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">État</p>
                                         <h3 class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">Dernier test</h3>
                                     </div>
-                                    
+
                                     <div class="rounded-xl bg-gray-50 p-4 dark:bg-gray-800/50">
                                         <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Dernière vérification</p>
                                         <p class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">{{ formatDateTime(lastTestAt) }}</p>
@@ -403,17 +441,17 @@ const retryLoadSmsSettings = async () => {
                                             {{ lastTestResult?.message || 'Aucun test effectué pour le moment.' }}
                                         </p>
                                     </div>
-                                    
+
                                     <div class="mt-4">
-                                        <Tag 
+                                        <Tag
                                             v-if="lastTestResult"
                                             :severity="lastTestResult.success ? 'success' : 'danger'"
-                                            :value="lastTestResult.kind === 'send' ? 'Envoi de test' : 'Connexion API'" 
+                                            :value="lastTestResult.kind === 'send' ? 'Envoi de test' : 'Connexion API'"
                                         />
                                     </div>
-                                    
+
                                     <p class="mt-4 text-xs leading-relaxed text-gray-500 dark:text-gray-400">
-                                        Les détails de forfait et de crédits restants ne sont pas exposés par votre backend actuel. 
+                                        Les détails de forfait et de crédits restants ne sont pas exposés par votre backend actuel.
                                         La page affiche donc le trafic réellement historisé dans DentalSoft.
                                     </p>
                                 </div>
@@ -426,9 +464,9 @@ const retryLoadSmsSettings = async () => {
                                         <p class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Contrat Orange</p>
                                         <h3 class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">Forfait et disponibilité</h3>
                                     </div>
-                                    <Tag 
-                                        :severity="providerOverview.success ? 'success' : 'warn'" 
-                                        :value="providerOverview.success ? 'Synchronisé' : 'Indisponible'" 
+                                    <Tag
+                                        :severity="providerOverview.success ? 'success' : 'warn'"
+                                        :value="providerOverview.success ? 'Synchronisé' : 'Indisponible'"
                                     />
                                 </div>
 
@@ -438,19 +476,19 @@ const retryLoadSmsSettings = async () => {
                                         <p class="mt-1 text-xl font-bold text-gray-900 dark:text-white">{{ recommendedContract.offerName || '—' }}</p>
                                         <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ recommendedContract.country || '—' }}</p>
                                     </div>
-                                    
+
                                     <div class="rounded-xl border border-gray-100 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/30">
                                         <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Unités restantes</p>
                                         <p class="mt-1 text-xl font-bold text-gray-900 dark:text-white">{{ recommendedContract.availableUnits ?? '—' }}</p>
                                         <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Contrat recommandé</p>
                                     </div>
-                                    
+
                                     <div class="rounded-xl border border-gray-100 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/30">
                                         <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Statut</p>
                                         <p class="mt-1 text-xl font-bold text-gray-900 dark:text-white">{{ recommendedContract.status || '—' }}</p>
                                         <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Type {{ recommendedContract.type || '—' }}</p>
                                     </div>
-                                    
+
                                     <div class="rounded-xl border border-gray-100 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/30">
                                         <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Expiration</p>
                                         <p class="mt-1 text-xl font-bold text-gray-900 dark:text-white">{{ formatDateTime(recommendedContract.expirationDate) }}</p>
@@ -488,32 +526,32 @@ const retryLoadSmsSettings = async () => {
                                     <label for="sms-provider">Provider</label>
                                 </FloatLabel>
                             </div>
-                            
+
                             <div class="space-y-2">
                                 <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Activation</label>
-                                <SelectButton 
-                                    v-model="smsConfig.enabled" 
-                                    :options="[{ label: 'Activé', value: true }, { label: 'Désactivé', value: false }]" 
-                                    optionLabel="label" 
-                                    optionValue="value" 
-                                    :allowEmpty="false" 
+                                <SelectButton
+                                    v-model="smsConfig.enabled"
+                                    :options="[{ label: 'Activé', value: true }, { label: 'Désactivé', value: false }]"
+                                    optionLabel="label"
+                                    optionValue="value"
+                                    :allowEmpty="false"
                                 />
                             </div>
-                            
+
                             <div>
                                 <FloatLabel variant="on">
                                     <InputText id="sms-client-id" v-model="smsConfig.clientId" class="w-full" />
                                     <label for="sms-client-id">Client ID</label>
                                 </FloatLabel>
                             </div>
-                            
+
                             <div>
                                 <FloatLabel variant="on">
                                     <InputText id="sms-client-secret" v-model="smsConfig.clientSecret" type="password" class="w-full" />
                                     <label for="sms-client-secret">Client Secret</label>
                                 </FloatLabel>
                             </div>
-                            
+
                             <div class="space-y-2">
                                 <FloatLabel variant="on">
                                     <InputText id="sms-sender-address" v-model="smsConfig.senderAddress" class="w-full" />
@@ -521,7 +559,7 @@ const retryLoadSmsSettings = async () => {
                                 </FloatLabel>
                                 <p class="text-xs text-gray-500 dark:text-gray-400">Pour Orange Mali, utilisez d'abord le sender technique standard tel:+2230000.</p>
                             </div>
-                            
+
                             <div class="space-y-3">
                                 <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Sender Name</label>
                                 <Select
@@ -532,7 +570,7 @@ const retryLoadSmsSettings = async () => {
                                     optionValue="value"
                                     placeholder="Choisir un Sender Name approuvé"
                                     class="w-full"
-                                    @update:modelValue="applyApprovedSenderName" 
+                                    @update:modelValue="applyApprovedSenderName"
                                 />
                                 <FloatLabel variant="on">
                                     <InputText id="sms-sender-name" v-model="smsConfig.senderName" class="w-full" />
@@ -540,19 +578,42 @@ const retryLoadSmsSettings = async () => {
                                 </FloatLabel>
                                 <p class="text-xs text-gray-500 dark:text-gray-400">Optionnel. Doit être whitelisté par Orange et limité à 11 caractères alphanumériques ou espaces.</p>
                             </div>
-                            
+
                             <div>
                                 <FloatLabel variant="on">
                                     <InputText id="sms-base-url" v-model="smsConfig.baseUrl" class="w-full" />
                                     <label for="sms-base-url">Base URL</label>
                                 </FloatLabel>
                             </div>
-                            
+
                             <div>
                                 <FloatLabel variant="on">
                                     <InputText id="sms-oauth-url" v-model="smsConfig.oauthUrl" class="w-full" />
                                     <label for="sms-oauth-url">OAuth URL</label>
                                 </FloatLabel>
+                            </div>
+                        </div>
+
+                        <Divider class="my-6" />
+
+                        <div class="rounded-xl border border-gray-200 bg-gray-50 p-5 dark:border-gray-700 dark:bg-gray-800/30">
+                            <div class="mb-4">
+                                <h4 class="text-base font-semibold text-gray-900 dark:text-white">Bypass des préférences SMS patient</h4>
+                                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                                    Activez les cas où l'API SMS doit ignorer les préférences portées sur la fiche patient.
+                                </p>
+                            </div>
+
+                            <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+                                <div v-for="item in patientPreferenceBypassOptions" :key="item.key" class="rounded-xl border border-gray-200 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-900/70">
+                                    <div class="flex items-start justify-between gap-4">
+                                        <div>
+                                            <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ item.label }}</p>
+                                            <p class="mt-1 text-xs leading-5 text-gray-500 dark:text-gray-400">{{ item.description }}</p>
+                                        </div>
+                                        <ToggleSwitch v-model="smsConfig.patientPreferenceBypass[item.key]" />
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -565,7 +626,7 @@ const retryLoadSmsSettings = async () => {
                                     <h4 class="text-base font-semibold text-gray-900 dark:text-white">Sender Names approuvés</h4>
                                     <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Ajoutez ici les Sender Names déjà whitelistés dans votre portail Orange Developer.</p>
                                 </div>
-                                
+
                                 <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end">
                                     <FloatLabel variant="on" class="flex-1">
                                         <InputText id="approved-sender-name" v-model="newApprovedSenderName" class="w-full" />
@@ -573,7 +634,7 @@ const retryLoadSmsSettings = async () => {
                                     </FloatLabel>
                                     <Button label="Ajouter" icon="pi pi-plus" severity="secondary" @click="addApprovedSenderName" />
                                 </div>
-                                
+
                                 <div v-if="smsConfig.approvedSenderNames.length" class="flex flex-wrap gap-2">
                                     <div v-for="item in smsConfig.approvedSenderNames" :key="item" class="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-2 py-1 dark:border-gray-700 dark:bg-gray-900">
                                         <button type="button" class="flex items-center" @click="applyApprovedSenderName(item)">
@@ -595,7 +656,7 @@ const retryLoadSmsSettings = async () => {
                                         Saisissez ici un Sender Name déjà validé dans votre portail Orange Developer.
                                     </p>
                                 </div>
-                                
+
                                 <div class="grid grid-cols-1 gap-4">
                                     <FloatLabel variant="on">
                                         <InputText id="sms-test-phone" v-model="testSms.phone" class="w-full" />
@@ -607,6 +668,80 @@ const retryLoadSmsSettings = async () => {
                                     </FloatLabel>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+                </TabPanel>
+
+                <TabPanel value="queue">
+                    <div class="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,1.6fr)]">
+                        <div class="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900/50">
+                            <div class="mb-6 flex items-start justify-between gap-3">
+                                <div>
+                                    <p class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Programmation</p>
+                                    <h3 class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">Planifier un SMS</h3>
+                                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Ajoute un message directement dans la file avec une date d’envoi et une répétition bornée.</p>
+                                </div>
+                                <Button label="Programmer" icon="pi pi-clock" @click="scheduleQueuedSmsAction" />
+                            </div>
+
+                            <div class="space-y-4">
+                                <FloatLabel variant="on">
+                                    <InputText id="queue-phone" v-model="queuedSms.phone" class="w-full" />
+                                    <label for="queue-phone">Numéro destinataire</label>
+                                </FloatLabel>
+
+                                <FloatLabel variant="on">
+                                    <DatePicker id="queue-send-at" v-model="queuedSms.sendAt" showTime hourFormat="24" dateFormat="dd/mm/yy" class="w-full" />
+                                    <label for="queue-send-at">Date et heure d’envoi</label>
+                                </FloatLabel>
+
+                                <div class="space-y-2">
+                                    <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Répétition</label>
+                                    <Select v-model="queuedSms.recurrence" :options="queueRecurrenceOptions" optionLabel="label" optionValue="value" class="w-full" />
+                                </div>
+
+                                <FloatLabel variant="on">
+                                    <Textarea id="queue-message" v-model="queuedSms.message" rows="6" autoResize class="w-full" />
+                                    <label for="queue-message">Message à programmer</label>
+                                </FloatLabel>
+                            </div>
+                        </div>
+
+                        <div class="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900/50">
+                            <div class="mb-6 flex items-start justify-between gap-3">
+                                <div>
+                                    <p class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Suivi</p>
+                                    <h3 class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">File d’attente SMS</h3>
+                                </div>
+                                <Tag severity="contrast" :value="`${smsQueue.length} élément(s)`" />
+                            </div>
+
+                            <DataTable :value="smsQueue" paginator :rows="10" :rowsPerPageOptions="[10, 20, 50]" dataKey="id" responsiveLayout="scroll" stripedRows showGridlines class="text-sm">
+                                <template #empty>
+                                    <div class="py-10 text-center text-sm text-gray-500 dark:text-gray-400">
+                                        Aucun SMS en file pour le moment.
+                                    </div>
+                                </template>
+                                <Column field="createdAt" header="Créé le" class="whitespace-nowrap" />
+                                <Column field="sendAt" header="Prévu le" class="whitespace-nowrap">
+                                    <template #body="{ data }">{{ formatDateTime(data.sendAt) }}</template>
+                                </Column>
+                                <Column field="patient" header="Patient">
+                                    <template #body="{ data }">{{ data.patient || '—' }}</template>
+                                </Column>
+                                <Column field="phone" header="Numéro" class="whitespace-nowrap" />
+                                <Column field="message" header="Message">
+                                    <template #body="{ data }">
+                                        <span class="block max-w-md whitespace-normal break-words">{{ data.message }}</span>
+                                    </template>
+                                </Column>
+                                <Column field="status" header="Statut" class="whitespace-nowrap">
+                                    <template #body="{ data }">
+                                        <Tag :severity="queueStatusSeverity(data.status)" :value="queueStatusLabel(data.status)" />
+                                    </template>
+                                </Column>
+                                <Column field="source" header="Source" class="whitespace-nowrap" />
+                            </DataTable>
                         </div>
                     </div>
                 </TabPanel>
@@ -627,12 +762,12 @@ const retryLoadSmsSettings = async () => {
                                 <InputText id="logs-search" v-model="logsSearch" class="w-full" />
                                 <label for="logs-search">Recherche libre</label>
                             </FloatLabel>
-                            
+
                             <div class="space-y-2">
                                 <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Statut</label>
                                 <Select v-model="logsStatusFilter" :options="statusOptions" optionLabel="label" optionValue="value" class="w-full" />
                             </div>
-                            
+
                             <div class="space-y-2">
                                 <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Période</label>
                                 <DatePicker v-model="logsDateRange" selectionMode="range" showIcon dateFormat="dd/mm/yy" class="w-full" />
@@ -718,7 +853,7 @@ const retryLoadSmsSettings = async () => {
                                     <h4 class="text-base font-semibold text-gray-900 dark:text-white">Variables dynamiques</h4>
                                     <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Ajustez les variables puis générez un aperçu.</p>
                                 </div>
-                                
+
                                 <div class="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
                                     <FloatLabel variant="on">
                                         <InputText id="prev-patient" v-model="previewVariables.patient_name" class="w-full" />
@@ -745,17 +880,17 @@ const retryLoadSmsSettings = async () => {
                                         <label for="prev-cabinet">{cabinet_name}</label>
                                     </FloatLabel>
                                 </div>
-                                
+
                                 <Button label="Prévisualiser" icon="pi pi-eye" severity="secondary" class="mb-4" @click="previewTemplateAction" />
-                                
+
                                 <Textarea v-model="previewResult" rows="6" autoResize class="w-full" readonly />
-                                
+
                                 <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
                                     {{ previewCharacters }} caractères · estimation {{ previewEstimatedSms }} SMS
                                 </p>
                             </div>
                         </div>
-                        
+
                         <div v-else class="rounded-xl border border-dashed border-gray-300 px-4 py-10 text-center text-sm text-gray-500 dark:border-gray-600 dark:text-gray-400">
                             Aucun template SMS configuré.
                         </div>
@@ -778,12 +913,12 @@ const retryLoadSmsSettings = async () => {
                                 <InputText id="manual-phone" v-model="manualSms.phone" class="w-full" />
                                 <label for="manual-phone">Numéro</label>
                             </FloatLabel>
-                            
+
                             <div class="space-y-2">
                                 <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Pré-remplir depuis un template</label>
                                 <Select v-model="manualTemplateCode" :options="smsTemplates" optionLabel="name" optionValue="code" placeholder="Choisir un template" class="w-full" />
                             </div>
-                            
+
                             <div class="md:col-span-2 space-y-2">
                                 <FloatLabel variant="on">
                                     <Textarea id="manual-message" v-model="manualSms.message" rows="5" autoResize class="w-full" />

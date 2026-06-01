@@ -162,6 +162,13 @@ const resolvePatientPhoto = (value = {}) => (
 );
 
 const currentConsultation = computed(() => consultations.value.find((item) => item.id === selectedConsultationId.value) || null);
+    const isInsurancePayment = (payment) => {
+        const role = String(payment?.rolePaiement || '').toLowerCase();
+        const mode = String(payment?.mode || '').toLowerCase();
+
+        return role === 'insurance' || mode.includes('assur');
+    };
+
 const currentReceptionBilling = computed(() => {
     if (!currentConsultation.value?.id) return null;
     return receptionBillingByConsultation.value?.[currentConsultation.value.id] || null;
@@ -172,8 +179,8 @@ const currentReceptionInvoiceRow = computed(() => {
     }
 
     const payments = Array.isArray(currentReceptionBilling.value.payments) ? currentReceptionBilling.value.payments : [];
-    const insurancePayments = payments.filter((payment) => payment?.rolePaiement === 'insurance');
-    const directPayments = payments.filter((payment) => payment?.rolePaiement !== 'insurance');
+    const insurancePayments = payments.filter((payment) => isInsurancePayment(payment));
+    const directPayments = payments.filter((payment) => !isInsurancePayment(payment));
     const latestInsurancePayment = insurancePayments[0] || null;
     const total = Number(currentReceptionBilling.value.total ?? 0) || 0;
     const remaining = Number(currentReceptionBilling.value.remaining ?? 0) || 0;
@@ -281,20 +288,33 @@ const insuranceStatusSeverity = computed(() => {
 });
 const previewPayments = computed(() => Array.isArray(previewData.value?.paiements) ? previewData.value.paiements : []);
 const previewPaymentRoleTag = (payment) => {
-    if (payment?.rolePaiement === 'insurance') {
+        if (payment?.status === 'pending' && isInsurancePayment(payment)) {
         return payment?.status === 'pending'
             ? { label: 'Assurance en attente', severity: 'warning' }
             : { label: 'Assurance', severity: 'info' };
     }
+
+        if (isInsurancePayment(payment)) {
+            return { label: 'Assurance', severity: 'info' };
+        }
+
     return { label: 'Client', severity: 'success' };
 };
 const previewPaymentModeTag = (payment) => {
-    if (payment?.rolePaiement === 'insurance') {
+        if (payment?.status === 'pending' && isInsurancePayment(payment)) {
         return {
             label: payment?.mode || 'Assurance',
             severity: payment?.status === 'pending' ? 'warning' : 'info'
         };
     }
+
+        if (isInsurancePayment(payment)) {
+            return {
+                label: payment?.mode || 'Assurance',
+                severity: 'info'
+            };
+        }
+
     return { label: payment?.mode || '—', severity: 'success' };
 };
 const previewServicesTotal = computed(() => (previewData.value?.contenus || []).reduce((sum, line) => sum + (Number(line?.total) || 0), 0));
@@ -791,6 +811,11 @@ const openCreateConsultationDialogForPatient = async (patient) => {
             }
             return;
         }
+
+        activeConsultWarnPatient.value = null;
+        showActiveConsultWarn.value = false;
+        createConsultationPreSelectedPatient.value = patient;
+        createConsultationDialogVisible.value = true;
     } catch (_) {
         toast.add({ severity: 'warn', summary: 'Vérification', detail: 'Impossible de vérifier les consultations en cours.', life: 2500 });
         return;

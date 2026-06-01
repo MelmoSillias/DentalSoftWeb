@@ -38,8 +38,51 @@ class MedecinController extends AbstractController
         $from = $fromStr ? new \DateTimeImmutable($fromStr . ' 00:00:00') : (new \DateTimeImmutable('first day of this month'))->setTime(0, 0);
         $to   = $toStr   ? new \DateTimeImmutable($toStr   . ' 23:59:59') : (new \DateTimeImmutable())->setTime(23, 59, 59);
 
-        $stats = $this->reportService->medecinDashboard($medecin, $from, $to);
+        $allStats  = $this->reportService->periodicDoctorReports($from, $to);
+        $doctorData = null;
+        foreach ($allStats['doctors'] as $doc) {
+            if ((string) $doc['id'] === (string) $medecin->getId()) {
+                $doctorData = $doc;
+                break;
+            }
+        }
 
-        return $this->json($stats);
+        $totalConsultations = $doctorData['consultations'] ?? 0;
+        $paidConsultations  = $doctorData['consultations_paid'] ?? 0;
+
+        return $this->json([
+            'fullName'      => $medecin->getFullName(),
+            'nom'           => $medecin->getNom(),
+            'prenom'        => $medecin->getPrenom(),
+            'matricule'     => $medecin->getMatricule(),
+            'fonction'      => $medecin->getFonction(),
+            'telephone'     => $medecin->getTelephone(),
+            'email'         => $medecin->getEmail(),
+            'type'          => $medecin->getType(),
+            'typeSalaire'   => $medecin->getTypeSalaire(),
+            'valeurSalaire' => $medecin->getValeurSalaire(),
+            'typeContrat'   => $medecin->getTypeContrat(),
+            'dureeContrat'  => $medecin->getDureeContrat(),
+            'joursTravailles' => $medecin->getComingDaysInWeek(),
+            'dateEmbauche'  => $medecin->getDateEmbauche()?->format('Y-m-d'),
+            'stats' => [
+                'patientsTotal'           => ($doctorData['new_patients'] ?? 0) + ($doctorData['returning_patients'] ?? 0),
+                'totalConsultations'      => $totalConsultations,
+                'consultationsEnAttente'  => 0,
+                'rdvJour'                 => 0,
+            ],
+            'period' => [
+                'freeConsultations' => max(0, $totalConsultations - $paidConsultations),
+                'paidConsultations' => $paidConsultations,
+                'rdvPlanifies'      => 0,
+                'rdvEnAttente'      => 0,
+                'rdvValides'        => 0,
+                'rdvReportes'       => 0,
+                'rdvAnnules'        => 0,
+                'apportTotal'       => $doctorData['apport'] ?? 0,
+                'paiements_period'  => [],
+                'actesMedicaux'     => $doctorData['actes'] ?? [],
+            ],
+        ]);
     }
 }

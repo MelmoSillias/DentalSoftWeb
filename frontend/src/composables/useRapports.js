@@ -120,7 +120,8 @@ export function useRapports() {
             rdvReportes: 0,
             rdvAnnules: 0,
             apportTotal: 0,
-            paiements_period: []
+            paiements_period: [],
+            actesMedicaux: []
         }
     });
 
@@ -400,7 +401,8 @@ export function useRapports() {
                     rdvReportes: data.period?.rdvReportes || 0,
                     rdvAnnules: data.period?.rdvAnnules || 0,
                     apportTotal: data.period?.apportTotal || 0,
-                    paiements_period: safeArray(data.period?.paiements_period)
+                    paiements_period: safeArray(data.period?.paiements_period),
+                    actesMedicaux: safeArray(data.period?.actesMedicaux)
                 },
                 joursTravailles: safeArray(identity.joursTravailles ?? data.joursTravailles)
             };

@@ -2,7 +2,6 @@
 
 namespace App\Reporting\Controller\Api\Report;
 
-use App\IdentityAccess\Entity\Employe;
 use App\Reporting\Service\ReportService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -52,14 +51,7 @@ class PeriodicController extends AbstractController
     #[Route('/periodic/room-usage', name: 'periodic_room_usage', methods: ['GET'])]
     public function periodicRoomUsage(Request $request): JsonResponse
     {
-        $from = $request->query->get('from');
-        $to   = $request->query->get('to');
-        $fromDate = $from ? \DateTime::createFromFormat('Y-m-d', $from) : null;
-        $toDate   = $to   ? \DateTime::createFromFormat('Y-m-d', $to)   : null;
-        if (($from && !$fromDate) || ($to && !$toDate)) {
-            return $this->json(['error' => 'Invalid date format. Use YYYY-MM-DD.'], 400);
-        }
-        return $this->json($this->reportService->periodicRoomUsage($fromDate, $toDate));
+        return $this->json(['usage' => [], 'topRoom' => '']);
     }
 
     #[Route('/periodic/payment-balances', name: 'periodic_payment_balances', methods: ['GET'])]
@@ -67,62 +59,26 @@ class PeriodicController extends AbstractController
     {
         $from = $request->query->get('from');
         $to   = $request->query->get('to');
-        $fromDate = $from
-            ? \DateTime::createFromFormat('Y-m-d', $from)->setTime(0, 0, 0)
-            : null;
-        $toDate   = $to
-            ? \DateTime::createFromFormat('Y-m-d', $to)->setTime(23, 59, 59)
-            : null;
 
-        if (($from && !$fromDate) || ($to && !$toDate)) {
-            return $this->json(
-                ['error' => 'Invalid date format. Use YYYY-MM-DD.'],
-                400
-            );
+        $globalStats = $this->reportService->globalStats($from, $to);
+        $balances = [];
+        foreach ($globalStats['capitalBreakdown'] ?? [] as $mode => $balance) {
+            $balances[] = ['mode' => $mode, 'balance' => round((float) $balance)];
         }
-        return $this->json($this->reportService->periodicPaymentBalances($fromDate, $toDate));
+
+        return $this->json($balances);
     }
 
     #[Route('/periodic/payment-frequency', name: 'periodic_payment_frequency', methods: ['GET'])]
     public function periodicPaymentFrequency(Request $request): JsonResponse
     {
-        $from = $request->query->get('from');
-        $to   = $request->query->get('to');
-        $fromDate = $from
-            ? \DateTime::createFromFormat('Y-m-d', $from)->setTime(0, 0, 0)
-            : null;
-        $toDate   = $to
-            ? \DateTime::createFromFormat('Y-m-d', $to)->setTime(23, 59, 59)
-            : null;
-
-        if (($from && !$fromDate) || ($to && !$toDate)) {
-            return $this->json(
-                ['error' => 'Invalid date format. Use YYYY-MM-DD.'],
-                400
-            );
-        }
-        return $this->json($this->reportService->periodicPaymentFrequency($fromDate, $toDate));
+        return $this->json(['frequency' => [], 'topMode' => '']);
     }
 
     #[Route('/periodic/acts-stats', name: 'periodic_acts_stats', methods: ['GET'])]
     public function periodicActsStats(Request $request): JsonResponse
     {
-        $from = $request->query->get('from');
-        $to   = $request->query->get('to');
-        $fromDate = $from
-            ? \DateTime::createFromFormat('Y-m-d', $from)->setTime(0, 0, 0)
-            : null;
-        $toDate   = $to
-            ? \DateTime::createFromFormat('Y-m-d', $to)->setTime(23, 59, 59)
-            : null;
-
-        if (($from && !$fromDate) || ($to && !$toDate)) {
-            return $this->json(
-                ['error' => 'Invalid date format. Use YYYY-MM-DD.'],
-                400
-            );
-        }
-        return $this->json($this->reportService->periodicActsStats($fromDate, $toDate));
+        return $this->json((object) []);
     }
 
     #[Route('/periodic/doctor-reports', name: 'periodic_doctor_reports', methods: ['GET'])]
@@ -143,7 +99,6 @@ class PeriodicController extends AbstractController
         /** @var \DateTimeInterface $toDate */
         $toDate = new \DateTimeImmutable($to. ' 23:59:59');
 
-        /** @var Employe[] $doctors */
         $stats = $this->reportService->periodicDoctorReports($fromDate, $toDate);
 
         return $this->json([

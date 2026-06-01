@@ -35,6 +35,9 @@ class SmsProviderConfig
     #[ORM\Column(type: Types::JSON)]
     private array $approvedSenderNames = [];
 
+    #[ORM\Column(type: Types::JSON)]
+    private array $patientPreferenceBypass = [];
+
     #[ORM\Column(length: 255)]
     private string $baseUrl = 'https://api.orange.com';
 
@@ -69,6 +72,8 @@ class SmsProviderConfig
     public function setSenderName(?string $senderName): static { $this->senderName = $senderName; return $this; }
     public function getApprovedSenderNames(): array { return array_values(array_filter($this->approvedSenderNames, static fn ($value) => is_string($value) && trim($value) !== '')); }
     public function setApprovedSenderNames(array $approvedSenderNames): static { $this->approvedSenderNames = array_values($approvedSenderNames); return $this; }
+    public function getPatientPreferenceBypass(): array { return $this->patientPreferenceBypass; }
+    public function setPatientPreferenceBypass(array $patientPreferenceBypass): static { $this->patientPreferenceBypass = $patientPreferenceBypass; return $this; }
     public function getBaseUrl(): string { return $this->baseUrl; }
     public function setBaseUrl(string $baseUrl): static { $this->baseUrl = rtrim($baseUrl, '/'); return $this; }
     public function getOauthUrl(): string { return $this->oauthUrl; }

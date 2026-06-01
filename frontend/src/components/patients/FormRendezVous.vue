@@ -62,6 +62,27 @@ const form = reactive({
     duration: 30
 });
 
+const smsReminder = reactive({
+    timing: '1d',
+    repeatInterval: 'none'
+});
+
+const smsReminderTimingOptions = [
+    { label: 'Désactivé', value: 'disabled' },
+    { label: '1 semaine avant', value: '7d' },
+    { label: '5 jours avant', value: '5d' },
+    { label: '3 jours avant', value: '3d' },
+    { label: '2 jours avant', value: '2d' },
+    { label: '1 jour avant', value: '1d' }
+];
+
+const smsReminderRepeatOptions = [
+    { label: 'Sans répétition', value: 'none' },
+    { label: 'Tous les jours', value: 'daily' },
+    { label: 'Tous les 2 jours', value: 'every_2_days' },
+    { label: 'Chaque semaine', value: 'weekly' }
+];
+
 const isPatientPreselected = computed(() => Boolean(props.patient?.id || props.patientId));
 const patientDisplayName = computed(() => {
     const p = props.patient;
@@ -218,6 +239,43 @@ watch(
 
 const isMedecinLocked = computed(() => isMedecinUser.value || props.medecinReadonly);
 
+const smsReminderFirstAt = computed(() => {
+    if (smsReminder.timing === 'disabled') {
+        return null;
+    }
+
+    const dateObj = form.dateRdv ? new Date(form.dateRdv) : null;
+    if (!dateObj || Number.isNaN(dateObj.getTime())) {
+        return null;
+    }
+
+    const daysBefore = {
+        '7d': 7,
+        '5d': 5,
+        '3d': 3,
+        '2d': 2,
+        '1d': 1
+    }[smsReminder.timing] ?? 1;
+
+    const sendAt = new Date(dateObj);
+    sendAt.setDate(sendAt.getDate() - daysBefore);
+    return sendAt;
+});
+
+const canRepeatSmsReminder = computed(() => {
+    if (smsReminder.timing === 'disabled') {
+        return false;
+    }
+
+    return smsReminderFirstAt.value instanceof Date && smsReminderFirstAt.value.getTime() > Date.now();
+});
+
+watch(canRepeatSmsReminder, (allowed) => {
+    if (!allowed) {
+        smsReminder.repeatInterval = 'none';
+    }
+}, { immediate: true });
+
 const saveRendezVous = async () => {
     if (!selectedPatientId.value) {
         toast.add({ severity: 'warn', summary: 'Patient requis', detail: 'Sélectionnez un patient.', life: 2500 });
@@ -252,15 +310,28 @@ const saveRendezVous = async () => {
             time: timeStr,
             duration,
             description: form.motif,
-            notes: form.notes
+            notes: form.notes,
+            smsReminder: {
+                timing: smsReminder.timing,
+                repeatInterval: canRepeatSmsReminder.value ? smsReminder.repeatInterval : 'none'
+            }
         };
         const saved = await createRdvForPatient(selectedPatientId.value, payload, token);
-        toast.add({ severity: 'success', summary: 'Succès', detail: 'Rendez-vous créé.', life: 2500 });
+        toast.add({
+            severity: 'success',
+            summary: 'Succès',
+            detail: saved?.sms_queued_count > 0
+                ? `Rendez-vous créé. ${saved.sms_queued_count} SMS programmé(s).`
+                : 'Rendez-vous créé.',
+            life: 3000
+        });
         emit('saved', saved);
         form.motif = '';
         form.notes = '';
         form.dateRdv = props.initialDate ? new Date(props.initialDate) : new Date();
         form.duration = 30;
+        smsReminder.timing = '1d';
+        smsReminder.repeatInterval = 'none';
         if (!isPatientPreselected.value) {
             selectedPatientId.value = null;
         }
@@ -319,6 +390,31 @@ const handleSubmit = (event) => {
             <div class="md:col-span-2 flex flex-col gap-2">
                 <label class="font-semibold">Notes</label>
                 <Textarea v-model="form.notes" rows="3" auto-resize placeholder="Notes supplémentaires" />
+            </div>
+            <div class="md:col-span-2 rounded-xl border border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-800/40">
+                <div class="mb-4 flex items-start justify-between gap-3">
+                    <div>
+                        <label class="font-semibold">Programmation SMS rapide</label>
+                        <p class="text-sm text-surface-500 dark:text-surface-400">Rappel de rendez-vous par défaut à 1 jour avant. La répétition se coupe automatiquement si la première échéance est déjà passée.</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div class="flex flex-col gap-2">
+                        <label class="font-medium">Quand envoyer</label>
+                        <Select v-model="smsReminder.timing" :options="smsReminderTimingOptions" optionLabel="label" optionValue="value" class="w-full" />
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <label class="font-medium">Répétition</label>
+                        <Select v-model="smsReminder.repeatInterval" :options="smsReminderRepeatOptions" optionLabel="label" optionValue="value" class="w-full" :disabled="!canRepeatSmsReminder" />
+                    </div>
+                </div>
+
+                <p class="mt-3 text-sm text-surface-500 dark:text-surface-400">
+                    <span v-if="smsReminder.timing === 'disabled'">Aucun rappel SMS ne sera programmé.</span>
+                    <span v-else-if="smsReminderFirstAt">Première échéance prévue: {{ smsReminderFirstAt.toLocaleString('fr-FR') }}</span>
+                    <span v-else>Aucune échéance calculable.</span>
+                </p>
             </div>
         </div>
         <div class="flex gap-2 justify-end">

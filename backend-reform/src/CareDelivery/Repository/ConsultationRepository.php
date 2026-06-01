@@ -16,7 +16,7 @@ class ConsultationRepository extends ServiceEntityRepository
         parent::__construct($registry, Consultation::class);
     }
 
-    public function NewConsultation(array $data, PatientRepository $patientRepo, EmployeRepository $empRepo): Consultation
+    public function NewConsultation(array $data, PatientRepository $patientRepo, EmployeRepository $empRepo, bool $flush = true): Consultation
     {
         $entityManager = $this->getEntityManager();
         
@@ -51,7 +51,9 @@ class ConsultationRepository extends ServiceEntityRepository
 
         // Enregistrement de la consultation
         $entityManager->persist($consultation);
-        $entityManager->flush();
+        if ($flush) {
+            $entityManager->flush();
+        }
 
         return $consultation;
     }

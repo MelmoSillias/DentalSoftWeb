@@ -15,6 +15,8 @@ use App\CareDelivery\Entity\OrdonnanceLigne;
 use App\CareDelivery\Service\ConsultationNotificationService;
 use App\ClinicalRecord\Entity\FicheMedicale;
 use App\ClinicalRecord\Service\FicheMedicaleService;
+use App\Communication\Entity\SmsQueue;
+use App\Communication\Repository\SmsQueueRepository;
 use App\Communication\Service\NotificationRecipientResolver;
 use App\Communication\Service\SmsService;
 use App\Shared\Event\EntityActionEvent;
@@ -47,6 +49,98 @@ use Psr\Cache\CacheItemPoolInterface;
 
 class PatientService
 {
+    /**
+     * @return list<\DateTimeImmutable>
+     */
+    private function buildAppointmentReminderDates(\DateTimeImmutable $rdvAt, int $daysBefore, string $recurrence): array
+    {
+        $daysBefore = max(0, $daysBefore);
+        $firstSendAt = $rdvAt->modify(sprintf('-%d days', $daysBefore));
+        if (!$firstSendAt instanceof \DateTimeImmutable) {
+            return [];
+        }
+
+        if ($recurrence === 'none') {
+            return [$firstSendAt];
+        }
+
+        $step = match ($recurrence) {
+            'daily' => '+1 day',
+            'every_2_days' => '+2 days',
+            'weekly' => '+1 week',
+            default => null,
+        };
+
+        if ($step === null) {
+            return [$firstSendAt];
+        }
+
+        $dates = [];
+        $cursor = $firstSendAt;
+        $maxOccurrences = 14;
+
+        while ($cursor < $rdvAt && count($dates) < $maxOccurrences) {
+            $dates[] = $cursor;
+            $cursor = $cursor->modify($step);
+        }
+
+        return $dates;
+    }
+
+    private function queueAppointmentRemindersForRdv(Rdv $rdv, array $smsReminder, string $cabinetName = 'ORODENT'): int
+    {
+        $enabled = ($smsReminder['enabled'] ?? true) !== false;
+        if (!$enabled) {
+            return 0;
+        }
+
+        $patient = $rdv->getPatient();
+        $rdvAt = $rdv->getDateRdv();
+        if (!$patient instanceof Patient || !$rdvAt instanceof DateTime) {
+            return 0;
+        }
+
+        $daysBefore = max(0, (int) ($smsReminder['daysBefore'] ?? 1));
+        $recurrence = (string) ($smsReminder['recurrence'] ?? 'none');
+        $dates = $this->buildAppointmentReminderDates(DateTimeImmutable::createFromMutable($rdvAt), $daysBefore, $recurrence);
+        $now = new DateTimeImmutable();
+
+        $variables = [
+            'patient_name' => trim(($patient->getPrenom() ?? '') . ' ' . ($patient->getNom() ?? '')),
+            'date' => $rdvAt->format('d/m/Y'),
+            'time' => $rdvAt->format('H:i'),
+            'cabinet_name' => $cabinetName,
+        ];
+
+        $queued = 0;
+        foreach ($dates as $index => $sendAt) {
+            if ($sendAt <= $now) {
+                continue;
+            }
+
+            $result = $this->smsService->queueTemplateForPatient(
+                $patient,
+                'appointment_reminder',
+                $variables,
+                'appointment-auto',
+                $sendAt,
+                [
+                    'rdvId' => $rdv->getId(),
+                    'recurrence' => $recurrence,
+                    'daysBefore' => $daysBefore,
+                    'occurrenceIndex' => $index + 1,
+                    'occurrenceCount' => count($dates),
+                ]
+            );
+
+            if (($result['success'] ?? false) === true) {
+                ++$queued;
+            }
+        }
+
+        return $queued;
+    }
+
     public function __construct(
         private EntityManagerInterface $em,
         private PatientRepository $patientRepo,
@@ -62,6 +156,7 @@ class PatientService
         private CashdeskService $cashdeskService,
         private FicheMedicaleService $ficheMedicaleService,
         private SmsService $smsService,
+        private SmsQueueRepository $smsQueueRepository,
         private GlobalSettingsService $globalSettingsService,
         private CacheInterface $cache,
         private EventDispatcherInterface $eventDispatcher,
@@ -704,7 +799,16 @@ class PatientService
 
             $this->rdvNotificationService->notifyCreation($rdv, $actor);
 
-            return ['success' => true, 'status' => 201, 'rdv_id' => $rdv->getId()];
+            $smsQueuedCount = 0;
+            if (isset($data['smsReminder']) && is_array($data['smsReminder'])) {
+                $smsQueuedCount = $this->queueAppointmentRemindersForRdv(
+                    $rdv,
+                    $data['smsReminder'],
+                    (string) ($data['cabinet_name'] ?? 'ORODENT')
+                );
+            }
+
+            return ['success' => true, 'status' => 201, 'rdv_id' => $rdv->getId(), 'smsQueuedCount' => $smsQueuedCount];
         } catch (\Exception $e) {
             return ['error' => $e->getMessage(), 'status' => 500];
         }
@@ -935,6 +1039,7 @@ class PatientService
 
         $rdvRepo = $this->em->getRepository(Rdv::class);
         $rdvs = [];
+        $rdvSmsSummaries = $this->buildAppointmentSmsSummaryMap($patient);
         foreach ($rdvRepo->findBy(['patient' => $patient]) as $r) {
             $rdvs[] = [
                 'id' => $r->getId(),
@@ -943,6 +1048,7 @@ class PatientService
                 'salle' => $r->getSalle()?->getNom(),
                 'medecinNom' => $r->getMedecin()->getFullName(),
                 'statut' => $r->getStatut(),
+                'smsReminder' => $rdvSmsSummaries[$r->getId()] ?? null,
             ];
         }
 
@@ -1143,6 +1249,56 @@ class PatientService
                 'actif' => $assurance->isActif(),
             ] : null,
         ];
+    }
+
+    private function buildAppointmentSmsSummaryMap(Patient $patient): array
+    {
+        $patientId = $patient->getId();
+        if (!$patientId) {
+            return [];
+        }
+
+        $items = $this->smsQueueRepository->findAppointmentRemindersForPatients([$patientId]);
+        $summaries = [];
+
+        foreach ($items as $item) {
+            if (!$item instanceof SmsQueue) {
+                continue;
+            }
+
+            $metadata = $item->getMetadata() ?? [];
+            $rdvId = (int) ($metadata['rdvId'] ?? 0);
+            if ($rdvId <= 0 || isset($summaries[$rdvId])) {
+                continue;
+            }
+
+            $status = $item->getStatus();
+            $sendAt = $item->getSendAt();
+            $sentAt = $item->getSentAt();
+            $isScheduled = $status === SmsQueue::STATUS_PENDING && $sendAt instanceof DateTimeImmutable && $sendAt > new DateTimeImmutable();
+
+            $label = match (true) {
+                $isScheduled => 'Programmé',
+                $status === SmsQueue::STATUS_SENT => 'Envoyé',
+                $status === SmsQueue::STATUS_SENDING => 'Envoi en cours',
+                $status === SmsQueue::STATUS_FAILED => 'Non envoyé',
+                default => 'En attente',
+            };
+
+            $summaries[$rdvId] = [
+                'queueId' => $item->getId(),
+                'status' => $status,
+                'label' => $label,
+                'source' => $item->getSource(),
+                'isAutomatic' => $item->getSource() === 'appointment-auto',
+                'sendAt' => $sendAt?->format('Y-m-d H:i:s'),
+                'sentAt' => $sentAt?->format('Y-m-d H:i:s'),
+                'lastError' => $item->getLastError(),
+                'message' => $item->getMessage(),
+            ];
+        }
+
+        return $summaries;
     }
 
     private function applyInsuranceProfile(Patient $patient, array $data): void

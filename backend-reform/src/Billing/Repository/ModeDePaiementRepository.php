@@ -45,7 +45,7 @@ class ModeDePaiementRepository extends ServiceEntityRepository
     public function findClassics(): array
     {
         return $this->createQueryBuilder('m')
-            ->orderBy('m.libelle', 'ASC')
+            ->orderBy('m.id', 'ASC')
             ->getQuery()
             ->getResult();
     }

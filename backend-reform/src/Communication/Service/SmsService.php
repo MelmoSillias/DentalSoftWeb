@@ -28,11 +28,16 @@ final class SmsService
 
     /**
      * @param array<string, mixed> $variables
+     * @param array<string, mixed>|null $metadata
      * @return array{success: bool, queueId?: int, error?: string}
      */
-    public function queueTemplateForPatient(Patient $patient, string $templateCode, array $variables, string $source = 'automation', ?DateTimeImmutable $sendAt = null): array
+    public function queueTemplateForPatient(Patient $patient, string $templateCode, array $variables, string $source = 'automation', ?DateTimeImmutable $sendAt = null, ?array $metadata = null): array
     {
-        if ($patient->isSmsUnsubscribed() || $patient->isSmsBlacklisted()) {
+        if ($patient->isSmsUnsubscribed() && !$this->configService->shouldBypassPatientPreference('unsubscribed')) {
+            return ['success' => false, 'error' => 'Patient désinscrit ou blacklisté pour les SMS.'];
+        }
+
+        if ($patient->isSmsBlacklisted() && !$this->configService->shouldBypassPatientPreference('blacklisted')) {
             return ['success' => false, 'error' => 'Patient désinscrit ou blacklisté pour les SMS.'];
         }
 
@@ -42,6 +47,13 @@ final class SmsService
         }
 
         $allowed = $this->isPatientTemplateAllowed($patient, $templateCode);
+        if (!$allowed) {
+            $preferenceKey = $this->mapTemplateCodeToPreferenceKey($templateCode);
+            if ($preferenceKey !== null && $this->configService->shouldBypassPatientPreference($preferenceKey)) {
+                $allowed = true;
+            }
+        }
+
         if (!$allowed) {
             return ['success' => false, 'error' => 'Préférence patient SMS désactivée pour ce type.'];
         }
@@ -53,7 +65,7 @@ final class SmsService
             $this->mapTemplateCodeToType($templateCode),
             $source,
             $sendAt,
-            ['templateCode' => $templateCode, 'variables' => $variables]
+            array_merge(['templateCode' => $templateCode, 'variables' => $variables], $metadata ?? [])
         );
     }
 
@@ -244,6 +256,40 @@ final class SmsService
     /**
      * @return array<int, array<string, mixed>>
      */
+    public function listQueue(int $limit = 100, int $offset = 0, ?string $status = null): array
+    {
+        $items = $this->queueRepository->findRecentQueue($limit, $offset, $status);
+        $now = new DateTimeImmutable();
+
+        return array_map(static function (SmsQueue $item) use ($now): array {
+            $patient = $item->getPatient();
+            $metadata = $item->getMetadata() ?? [];
+            $sendAt = $item->getSendAt();
+            $isScheduled = $item->getStatus() === SmsQueue::STATUS_PENDING && $sendAt instanceof DateTimeImmutable && $sendAt > $now;
+
+            return [
+                'id' => $item->getId(),
+                'createdAt' => $item->getCreatedAt()->format('Y-m-d H:i:s'),
+                'sendAt' => $sendAt?->format('Y-m-d H:i:s'),
+                'sentAt' => $item->getSentAt()?->format('Y-m-d H:i:s'),
+                'patientId' => $patient?->getId(),
+                'patient' => $patient ? trim(($patient->getPrenom() ?? '') . ' ' . ($patient->getNom() ?? '')) : null,
+                'phone' => $item->getPhone(),
+                'message' => $item->getMessage(),
+                'status' => $item->getStatus(),
+                'type' => $item->getType(),
+                'source' => $item->getSource(),
+                'retryCount' => $item->getRetryCount(),
+                'lastError' => $item->getLastError(),
+                'isScheduled' => $isScheduled,
+                'metadata' => $metadata,
+            ];
+        }, $items);
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
     public function listTemplates(): array
     {
         return $this->templateService->listTemplates();
@@ -290,6 +336,18 @@ final class SmsService
         return match ($templateCode) {
             'appointment_reminder' => 'appointment reminder',
             default => str_replace('_', ' ', $templateCode),
+        };
+    }
+
+    private function mapTemplateCodeToPreferenceKey(string $templateCode): ?string
+    {
+        return match ($templateCode) {
+            'patient_created' => 'patientCreated',
+            'receipt' => 'receipt',
+            'invoice' => 'invoice',
+            'ticket' => 'ticket',
+            'appointment_reminder' => 'appointmentReminder',
+            default => null,
         };
     }
 

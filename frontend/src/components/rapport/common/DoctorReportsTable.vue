@@ -30,7 +30,7 @@ function formatFcfa(amount) {
 }
 
 function formatDoctorDetails(row) {
-    const items = Array.isArray(row?.paiements_period) ? row.paiements_period : [];
+    const items = Array.isArray(row?.actes) ? row.actes : [];
     if (!items.length) {
         return '<div class="p-3"><em>Aucune entrée enregistrée sur cette période.</em></div>';
     }
@@ -38,13 +38,13 @@ function formatDoctorDetails(row) {
     let total = 0;
     const rows = items
         .map((item) => {
-            total += Number(item.montant_paye || 0);
+            total += Number(item.montant || 0);
             return `
                 <tr>
                     <td>${item.date || '--'}</td>
                     <td>${item.patient || '--'}</td>
                     <td>${item.description || '--'}</td>
-                    <td>${formatFcfa(item.montant_paye)}</td>
+                    <td>${formatFcfa(item.montant)}</td>
                 </tr>
             `;
         })
@@ -226,14 +226,14 @@ function printSummary() {
 function printAllActs() {
     const acts = [];
     doctors.value.forEach((doctor) => {
-        if (Array.isArray(doctor.paiements_period)) {
-            doctor.paiements_period.forEach((item) => {
+        if (Array.isArray(doctor.actes)) {
+            doctor.actes.forEach((item) => {
                 acts.push({
                     date: item.date || '--',
                     medecin: doctor.name || '--',
                     patient: item.patient || '--',
                     description: item.description || '--',
-                    montant: item.montant_paye || 0
+                    montant: item.montant || 0
                 });
             });
         }
@@ -370,8 +370,8 @@ function printAllActs() {
                     </Column>
                     <template #expansion="{ data }">
                         <div class="rounded-2xl border border-surface-200/60 bg-surface-50/80 p-3 text-xs sm:text-sm shadow-sm dark:border-surface-700/60 dark:bg-surface-800/70">
-                            <div v-if="!data?.paiements_period || !data.paiements_period.length" class="text-surface-500">
-                                Aucune entrée enregistrée sur cette période.
+                            <div v-if="!data?.actes || !data.actes.length" class="text-surface-500">
+                                Aucun acte enregistré sur cette période.
                             </div>
                             <div v-else>
                                 <table class="w-full border-collapse text-xs sm:text-sm">
@@ -380,15 +380,15 @@ function printAllActs() {
                                             <th class="border-b p-2">Date</th>
                                             <th class="border-b p-2">Patient</th>
                                             <th class="border-b p-2">Description</th>
-                                            <th class="border-b p-2">Montant</th>
+                                            <th class="border-b p-2">Montant des actes</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <tr v-for="(row, idx) in data.paiements_period" :key="idx">
+                                        <tr v-for="(row, idx) in data.actes" :key="idx">
                                             <td class="border-b p-2">{{ row.date }}</td>
                                             <td class="border-b p-2">{{ row.patient }}</td>
                                             <td class="border-b p-2">{{ row.description }}</td>
-                                            <td class="border-b p-2">{{ formatFcfa(row.montant_paye) }}</td>
+                                            <td class="border-b p-2">{{ formatFcfa(row.montant) }}</td>
                                         </tr>
                                     </tbody>
                                 </table>

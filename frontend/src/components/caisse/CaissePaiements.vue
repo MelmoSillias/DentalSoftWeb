@@ -4,7 +4,6 @@ import AccordionPanel from 'primevue/accordionpanel';
 import Button from 'primevue/button';
 import DatePicker from 'primevue/datepicker';
 import InputText from 'primevue/inputtext';
-import ProgressBar from 'primevue/progressbar';
 import Select from 'primevue/select';
 import Tag from 'primevue/tag';
 import { computed, ref } from 'vue';
@@ -31,7 +30,6 @@ const paymentRangeModel = computed({
 });
 
 const paymentsSearch = ref('');
-const paymentFamilyFilter = ref('non-insurance');
 const paymentModeFilter = ref('all');
 
 const normalizeText = (value) => String(value ?? '')
@@ -46,27 +44,25 @@ const matchesQuery = (parts, query) => {
 
 const paymentsSearchQuery = computed(() => normalizeText(paymentsSearch.value.trim()));
 
-const paymentFamilyOptions = [
-    { label: 'Modes non assurances', value: 'non-insurance' },
-    { label: 'Modes assurances', value: 'insurance' },
-    { label: 'Tous les modes', value: 'all' }
-];
+const isInsurancePayment = (payment) => {
+    const role = String(payment?.rolePaiement || '').toLowerCase();
+    const mode = normalizeText(payment?.mode);
 
-const computeRoleTag = (payment) => {
-    if (payment?.rolePaiement === 'insurance') {
-        return payment?.insuranceStatus === 'pending'
-            ? { label: 'Assurance en attente', severity: 'warning' }
-            : { label: 'Assurance', severity: 'info' };
-    }
-
-    return { label: 'Client', severity: 'success' };
+    return role === 'insurance' || mode.includes('assur');
 };
 
 const computeModeTag = (payment) => {
-    if (payment?.rolePaiement === 'insurance') {
+    if (payment?.insuranceStatus === 'pending') {
         return {
             label: payment?.mode || 'Assurance',
-            severity: payment?.insuranceStatus === 'pending' ? 'warning' : 'info'
+            severity: 'warning'
+        };
+    }
+
+    if (isInsurancePayment(payment)) {
+        return {
+            label: payment?.mode || 'Assurance',
+            severity: 'info'
         };
     }
 
@@ -76,18 +72,8 @@ const computeModeTag = (payment) => {
     };
 };
 
-const familyFilteredPayments = computed(() => {
-    const list = Array.isArray(props.payments) ? props.payments : [];
-    if (paymentFamilyFilter.value === 'all') {
-        return list;
-    }
-
-    const wantsInsurance = paymentFamilyFilter.value === 'insurance';
-    return list.filter((payment) => (payment?.rolePaiement === 'insurance') === wantsInsurance);
-});
-
 const paymentModeOptions = computed(() => {
-    const options = familyFilteredPayments.value.reduce((acc, payment) => {
+    const options = (Array.isArray(props.payments) ? props.payments : []).reduce((acc, payment) => {
         const modeId = Number(payment?.modeId);
         if (!Number.isFinite(modeId) || modeId <= 0) {
             return acc;
@@ -108,7 +94,7 @@ const paymentModeOptions = computed(() => {
 });
 
 const filteredPayments = computed(() => {
-    const list = familyFilteredPayments.value;
+    const list = Array.isArray(props.payments) ? props.payments : [];
     const query = paymentsSearchQuery.value;
     return list.filter((p) => {
         if (paymentModeFilter.value !== 'all' && Number(p?.modeId) !== Number(paymentModeFilter.value)) {
@@ -116,16 +102,16 @@ const filteredPayments = computed(() => {
         }
 
         return matchesQuery([
-        p.patient,
-        p.telephone,
-        p.date,
-        formatDate(p.date, true),
-        p.montant,
-        p.mode,
-        p.type,
-        p.rolePaiement,
-        computeRoleTag(p).label
-    ], query);
+            p.patient,
+            p.telephone,
+            p.date,
+            formatDate(p.date, true),
+            p.montant,
+            p.mode,
+            p.type,
+            p.insuranceStatus,
+            computeModeTag(p).label
+        ], query);
     });
 });
 
@@ -168,14 +154,6 @@ const miniChart = computed(() => {
     const max = Math.max(...keys.map((k) => byDay[k]), 1);
     return keys.map((key) => ({ day: key, value: byDay[key], pct: Math.round((byDay[key] / max) * 100) }));
 });
-
-const handlePaymentFamilyChange = (value) => {
-    paymentFamilyFilter.value = value;
-    const optionStillExists = paymentModeOptions.value.some((option) => option.value === paymentModeFilter.value);
-    if (!optionStillExists) {
-        paymentModeFilter.value = 'all';
-    }
-};
 </script>
 
 <template>
@@ -196,11 +174,6 @@ const handlePaymentFamilyChange = (value) => {
                         <label>Période</label>
                         <DatePicker v-model="paymentRangeModel" selectionMode="range" dateFormat="yy-mm-dd" showIcon
                             fluid />
-                    </div>
-                    <div class="filter-item">
-                        <label>Famille de modes</label>
-                        <Select :modelValue="paymentFamilyFilter" :options="paymentFamilyOptions" optionLabel="label"
-                            optionValue="value" @update:modelValue="handlePaymentFamilyChange" />
                     </div>
                     <div class="filter-item">
                         <label>Mode de paiement</label>
@@ -244,24 +217,55 @@ const handlePaymentFamilyChange = (value) => {
             </div>
 
             <Accordion v-if="Object.keys(paymentsByMode).length" data-tour="caisse-paiements.accordion">
-                <AccordionPanel v-for="(list, mode) in paymentsByMode" :key="mode" :header="`${mode} (${list.length})`">
-                    <div class="flex flex-col gap-2">
-                        <div v-for="row in list" :key="row.pId" class="payment-row">
-                            <div>
-                                <div class="text-sm text-gray-500">{{ formatDate(row.date, true) }}</div>
-                                <div class="font-semibold">{{ row.patient || '—' }}</div>
-                                <div class="text-sm text-gray-600">{{ displayPhone(row.telephone) }}</div>
-                                <div class="mt-2 flex flex-wrap gap-2">
-                                    <Tag :value="computeModeTag(row).label" :severity="computeModeTag(row).severity" />
-                                    <Tag :value="computeRoleTag(row).label" :severity="computeRoleTag(row).severity" />
-                                </div>
+                <AccordionPanel v-for="(list, mode) in paymentsByMode" :key="mode">
+                    <template #header>
+                        <div class="pay-accordion-header">
+                            <div class="pay-mode-badge">
+                                <i :class="mode.toLowerCase().includes('assur') ? 'pi pi-shield' : 'pi pi-receipt'"></i>
+                                <span>{{ mode }}</span>
                             </div>
-                            <div class="text-right">
-                                <div class="font-semibold">{{ formatFcfa(row.montant) }}</div>
-                                <div class="flex gap-2 justify-end mt-2" data-tour="caisse-paiements.row-actions">
-                                    <Button :icon="(row.type === 'devis' || row.type === 'facture') ? 'pi pi-print' : 'pi pi-ticket'" text
+                            <span class="pay-accordion-count">{{ list.length }} transaction(s)</span>
+                            <span class="pay-accordion-total">
+                                {{ formatFcfa(list.reduce((s, p) => s + (Number(p.montant) || 0), 0)) }}
+                            </span>
+                        </div>
+                    </template>
+                    <div class="pay-list">
+                        <div v-for="row in list" :key="row.pId" class="pay-row"
+                            :class="isInsurancePayment(row) ? 'pay-row--insurance' : 'pay-row--client'">
+                            <div class="pay-role-icon">
+                                <i :class="isInsurancePayment(row) ? 'pi pi-shield' : 'pi pi-wallet'"></i>
+                            </div>
+
+                            <div class="pay-info">
+                                <span class="pay-patient">{{ row.patient || '—' }}</span>
+                                <span class="pay-meta">
+                                    <i class="pi pi-clock"></i> {{ formatDate(row.date, true) }}
+                                    <span v-if="!props.hidePatientPhone && row.telephone">
+                                        · <i class="pi pi-phone"></i> {{ row.telephone }}
+                                    </span>
+                                </span>
+                            </div>
+
+                            <div class="pay-tags">
+                                <Tag :value="computeModeTag(row).label" :severity="computeModeTag(row).severity" />
+                                <Tag v-if="row.insuranceStatus === 'pending'"
+                                    value="En attente" severity="warning" icon="pi pi-clock" />
+                            </div>
+
+                            <div class="pay-right">
+                                <strong class="pay-amount"
+                                    :class="isInsurancePayment(row) ? 'pay-amount--insurance' : 'pay-amount--client'">
+                                    {{ formatFcfa(row.montant) }}
+                                </strong>
+                                <div class="pay-actions" data-tour="caisse-paiements.row-actions">
+                                    <Button
+                                        :icon="(row.type === 'devis' || row.type === 'facture') ? 'pi pi-print' : 'pi pi-ticket'"
+                                        size="small" text rounded
+                                        :title="(row.type === 'devis' || row.type === 'facture') ? 'Imprimer reçu' : 'Imprimer ticket'"
                                         @click="emit((row.type === 'devis' || row.type === 'facture') ? 'print-payment' : 'print-receipt', row)" />
-                                    <Button icon="pi pi-send" text @click="emit('send-receipt-sms', row)" />
+                                    <Button icon="pi pi-send" size="small" text rounded title="Envoyer par SMS"
+                                        @click="emit('send-receipt-sms', row)" />
                                 </div>
                             </div>
                         </div>
@@ -425,33 +429,192 @@ const handlePaymentFamilyChange = (value) => {
     color: #94a3b8;
 }
 
-.payment-row {
-    padding: 0.9rem;
-    border: 1px solid var(--surface-border);
-    border-radius: 12px;
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-}
-
 .hint {
     color: #6b7280;
     font-size: 0.9rem;
 }
 
-
 .app-dark .section-eyebrow {
     color: #dadada;
 }
-
 
 .app-dark .section-title {
     color: #e2e8f0;
 }
 
-
 .app-dark .filter-item label {
     font-size: 0.85rem;
     color: #94a3b8;
 }
+
+/* ─── ACCORDION PAIEMENTS ─── */
+
+/* En-tête accordion */
+.pay-accordion-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    width: 100%;
+}
+
+.pay-mode-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.pay-mode-badge .pi { color: #6366f1; }
+
+.pay-accordion-count {
+    font-size: 0.78rem;
+    color: #64748b;
+    background: #e2e8f0;
+    border-radius: 20px;
+    padding: 0.1rem 0.55rem;
+}
+
+.pay-accordion-total {
+    margin-left: auto;
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: #059669;
+}
+
+/* Liste de transactions */
+.pay-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.25rem 0;
+}
+
+/* Ligne de transaction */
+.pay-row {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    padding: 0.7rem 0.85rem;
+    border-radius: 12px;
+    border: 1px solid var(--surface-border);
+    border-left: 4px solid transparent;
+    background: var(--surface-card);
+    flex-wrap: wrap;
+    transition: background 0.15s ease;
+}
+
+.pay-row:hover {
+    background: rgba(241, 245, 249, 0.7);
+}
+
+.pay-row--client   { border-left-color: #22c55e; }
+.pay-row--insurance { border-left-color: #6366f1; background: rgba(99, 102, 241, 0.04); }
+
+/* Icône rôle */
+.pay-role-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.pay-row--client .pay-role-icon {
+    background: #dcfce7;
+    color: #16a34a;
+}
+
+.pay-row--insurance .pay-role-icon {
+    background: #e0e7ff;
+    color: #4f46e5;
+}
+
+.pay-role-icon .pi { font-size: 0.95rem; }
+
+/* Info patient */
+.pay-info {
+    flex: 1 1 160px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
+}
+
+.pay-patient {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.pay-meta {
+    font-size: 0.78rem;
+    color: #64748b;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    align-items: center;
+}
+
+.pay-meta .pi { font-size: 0.72rem; }
+
+/* Tags */
+.pay-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    align-items: center;
+}
+
+/* Montant + actions */
+.pay-right {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-left: auto;
+}
+
+.pay-amount {
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.pay-amount--client   { color: #059669; }
+.pay-amount--insurance { color: #4f46e5; }
+
+.pay-actions {
+    display: flex;
+    gap: 0.1rem;
+}
+
+/* Dark mode */
+.app-dark .pay-mode-badge { color: #e2e8f0; }
+.app-dark .pay-accordion-count { background: #334155; color: #94a3b8; }
+.app-dark .pay-accordion-total { color: #4ade80; }
+
+.app-dark .pay-row { background: rgba(30, 41, 59, 0.4); }
+.app-dark .pay-row:hover { background: rgba(30, 41, 59, 0.7); }
+.app-dark .pay-row--insurance { background: rgba(99, 102, 241, 0.08); }
+
+.app-dark .pay-row--client .pay-role-icon {
+    background: #14532d;
+    color: #4ade80;
+}
+
+.app-dark .pay-row--insurance .pay-role-icon {
+    background: #312e81;
+    color: #a5b4fc;
+}
+
+.app-dark .pay-patient { color: #e2e8f0; }
+.app-dark .pay-meta { color: #94a3b8; }
+.app-dark .pay-amount--client { color: #4ade80; }
+.app-dark .pay-amount--insurance { color: #a5b4fc; }
 </style>

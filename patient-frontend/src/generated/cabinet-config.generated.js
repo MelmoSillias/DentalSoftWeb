@@ -3,7 +3,7 @@ const cabinetConfig = {
     "displayName": "Cabinet Dentaire Orodent",
     "brandName": "Orodent",
     "logo": "logo.png",
-    "apiBaseUrl": "http://localhost:8010"
+    "apiBaseUrl": "https://api.dentalsoft.cabinet-orodent.org"
 };
 
 export default cabinetConfig;

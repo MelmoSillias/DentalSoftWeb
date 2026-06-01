@@ -59,6 +59,11 @@ class ConsommableService
         $stock->setDescription("Ajout d'un nouveau consommable");
         $stock->setDatePrise(new DateTime());
 
+        if (!$actor) {
+            return ['error' => 'Utilisateur non authentifié', 'status' => 401];
+        }
+
+        $stock->setUser($actor);
         $employee = $this->employeeFromUser($actor);
         if ($employee) {
             $stock->setEmployee($employee);
@@ -106,6 +111,10 @@ class ConsommableService
             return ['error' => 'Quantité invalide.', 'status' => 400];
         }
 
+        if (!$actor) {
+            return ['error' => 'Utilisateur non authentifié', 'status' => 401];
+        }
+
         $consommable->setQuantity($consommable->getQuantity() - $quantite);
         $variation = new Stock();
         $variation->setConsommable($consommable);
@@ -113,6 +122,7 @@ class ConsommableService
         $variation->setType('Retrait');
         $variation->setDescription($description);
         $variation->setDatePrise(new DateTime());
+        $variation->setUser($actor);
         $variation->setEmployee($employe);
         $this->em->persist($variation);
         $this->em->flush();
@@ -143,6 +153,10 @@ class ConsommableService
             return ['error' => 'Quantité invalide.', 'status' => 400];
         }
 
+        if (!$actor) {
+            return ['error' => 'Utilisateur non authentifié', 'status' => 401];
+        }
+
         $consommable->setQuantity($consommable->getQuantity() + $quantite);
         
         $stock = new Stock();
@@ -151,6 +165,7 @@ class ConsommableService
         $stock->setType('Ajout');
         $stock->setDescription($description);
         $stock->setDatePrise(new DateTime());
+        $stock->setUser($actor);
         $employee = $this->employeeFromUser($actor);
 
         if ($employee) {
@@ -202,11 +217,18 @@ class ConsommableService
 
         $data = [];
         foreach ($stocks as $stock) {
+            $employeeName = 'N/A';
+            if ($stock->getEmployee()) {
+                $employeeName = $stock->getEmployee()->getNom();
+            } elseif ($stock->getUser()) {
+                $employeeName = $stock->getUser()->getUsername();
+            }
+
             $data[] = [
                 'consommable' => $stock->getConsommable()->getNom(),
                 'quantiteUtilisee' => $stock->getQuantiteUtilisee(),
                 'date' => $stock->getDatePrise()->format('Y-m-d'),
-                'employe' => $stock->getEmployee() ? $stock->getEmployee()->getNom() : 'N/A',
+                'employe' => $employeeName,
                 'type' => $stock->getType(),
                 'description' => $stock->getDescription(),
             ];

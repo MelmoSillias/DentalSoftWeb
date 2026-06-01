@@ -224,10 +224,10 @@ const refreshActiveConsultationFlag = async (patientId) => {
     }
 };
 
-const printConsultationTicket = async (consultationId) => {
-    if (!consultationId) return;
+const printConsultationTicket = async (paiementId) => {
+    if (!paiementId) return;
     try {
-        const res = await fetchTicketPrintData(consultationId, token);
+        const res = await fetchTicketPrintData(paiementId, token);
         await printComponent(
             PrintTicketBody,
             { paiement: res.paiement },
@@ -284,16 +284,17 @@ const saveConsultation = async () => {
         };
         const saved = await createConsultationForPatient(selectedPatientId.value, payload, token);
         const consultationId = saved?.consultation_id ?? saved?.consultationId ?? null;
+        const paiementId = saved?.paiement_id ?? saved?.paiementId ?? null;
         if (form.payant) {
             toast.add({
                 severity: 'success',
                 summary: 'Succès',
                 detail: 'Consultation créée.',
                 life: 10000,
-                data: consultationId
+                data: paiementId
                     ? {
                         actionLabel: 'Imprimer le ticket',
-                        action: () => printConsultationTicket(consultationId)
+                        action: () => printConsultationTicket(paiementId)
                     }
                     : undefined
             });

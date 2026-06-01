@@ -91,6 +91,7 @@ const billingPolicy = reactive({
 
 const consultationAccess = reactive({
     allowReceptionConsultationQuickActions: true,
+    showReceptionQuickCloseButton: true,
     allowReceptionBypassMedecinPasswordOnQuickClose: false,
     hidePatientDossierForMedecins: false,
     hidePatientPhoneForMedecins: false,
@@ -263,7 +264,9 @@ const loadGeneralSettings = async (force = false) => {
         devicePolicy.paiementDirectAssurance = settings.paiementDirectAssurance === true;
         consultationAccess.allowReceptionConsultationQuickActions = settings.allowReceptionConsultationQuickActions !== false
             && settings.allowReceptionQuickCloseConsultation !== false;
-        consultationAccess.allowReceptionBypassMedecinPasswordOnQuickClose = settings.allowReceptionBypassMedecinPasswordOnQuickClose === true;
+        consultationAccess.showReceptionQuickCloseButton = settings.showReceptionQuickCloseButton !== false;
+        consultationAccess.allowReceptionBypassMedecinPasswordOnQuickClose = consultationAccess.showReceptionQuickCloseButton
+            && settings.allowReceptionBypassMedecinPasswordOnQuickClose === true;
         consultationAccess.hidePatientDossierForMedecins = settings.hidePatientDossierForMedecins === true;
         consultationAccess.hidePatientPhoneForMedecins = settings.hidePatientPhoneForMedecins === true;
         consultationAccess.ficheFormSimplifie = settings.ficheFormSimplifie === true;
@@ -321,7 +324,8 @@ const saveConsultationAccessAction = async () => {
         await saveGeneralSettings({
             allowReceptionConsultationQuickActions: consultationAccess.allowReceptionConsultationQuickActions,
             allowReceptionQuickCloseConsultation: consultationAccess.allowReceptionConsultationQuickActions,
-            allowReceptionBypassMedecinPasswordOnQuickClose: consultationAccess.allowReceptionBypassMedecinPasswordOnQuickClose,
+            showReceptionQuickCloseButton: consultationAccess.showReceptionQuickCloseButton,
+            allowReceptionBypassMedecinPasswordOnQuickClose: consultationAccess.showReceptionQuickCloseButton && consultationAccess.allowReceptionBypassMedecinPasswordOnQuickClose,
             hidePatientDossierForMedecins: consultationAccess.hidePatientDossierForMedecins,
             hidePatientPhoneForMedecins: consultationAccess.hidePatientPhoneForMedecins,
             ficheFormSimplifie: consultationAccess.ficheFormSimplifie,
@@ -687,6 +691,15 @@ watch(canAccessWorkflowSettings, async (allowed) => {
     setupObserver();
 }, { immediate: true });
 
+watch(
+    () => consultationAccess.showReceptionQuickCloseButton,
+    (enabled) => {
+        if (!enabled) {
+            consultationAccess.allowReceptionBypassMedecinPasswordOnQuickClose = false;
+        }
+    }
+);
+
 onMounted(async () => {
     if (canAccessWorkflowSettings.value) {
         await loadGeneralSettings(true);
@@ -969,10 +982,18 @@ onBeforeUnmount(() => {
                                     <Divider />
                                     <div class="toggle-item">
                                         <div class="toggle-info">
+                                            <label>Afficher la clôturation rapide pour la réception</label>
+                                            <span class="toggle-description">Affiche ou masque le bouton de clôture rapide pour les secrétaires dans focus et l'historique</span>
+                                        </div>
+                                        <ToggleSwitch v-model="consultationAccess.showReceptionQuickCloseButton" />
+                                    </div>
+                                    <Divider />
+                                    <div class="toggle-item">
+                                        <div class="toggle-info">
                                             <label>Bypass code médecin en clôture rapide</label>
                                             <span class="toggle-description">Si activé, la réception peut clôturer rapidement sans validation du code médecin</span>
                                         </div>
-                                        <ToggleSwitch v-model="consultationAccess.allowReceptionBypassMedecinPasswordOnQuickClose" />
+                                        <ToggleSwitch v-model="consultationAccess.allowReceptionBypassMedecinPasswordOnQuickClose" :disabled="!consultationAccess.showReceptionQuickCloseButton" />
                                     </div>
                                     <Divider />
                                     <div class="toggle-item">

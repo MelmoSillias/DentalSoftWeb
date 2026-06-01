@@ -811,7 +811,7 @@ const handleCancelWithConfirm = (event, consultation) => {
                                     </div>
                                     <div class="min-w-0">
                                         <p class="font-semibold text-surface-900 dark:text-surface-300">{{ formatFcfa(payment.montant) }}</p>
-                                        <p class="text-[11px] text-surface-400 truncate">{{ formatPaymentMode(payment.mode) }} · {{ payment.rolePaiement }}</p>
+                                        <p class="text-[11px] text-surface-400 truncate">{{ formatPaymentMode(payment.mode) }}</p>
                                     </div>
                                 </div>
                                 <div class="text-right">

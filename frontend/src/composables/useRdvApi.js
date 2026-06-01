@@ -45,7 +45,8 @@ const normalizeRdv = (raw = {}) => {
         start: toIsoString(raw.start ?? raw.dateRdv ?? raw.date_rdv),
         end: toIsoString(raw.end ?? raw.endDate ?? raw.end_date),
         statut: raw.statut ?? raw.status ?? raw.etat ?? 0,
-        description: raw.description ?? raw.motif ?? raw.note ?? ''
+        description: raw.description ?? raw.motif ?? raw.note ?? '',
+        smsReminder: raw.smsReminder ?? raw.sms_reminder ?? null
     };
 };
 
@@ -225,7 +226,7 @@ export function useRdvApi() {
 
             const res = await http.get('rdvs', { params });
             const data = Array.isArray(res.data) ? res.data : [];
-            let matches = data.map(normalizeRdv); 
+            let matches = data.map(normalizeRdv);
 
             if (patientQuery) {
                 const query = patientQuery.toLowerCase();
@@ -251,8 +252,8 @@ export function useRdvApi() {
             const params = {};
             if (medecinId) params.medecin = medecinId;
             const res = await http.get(`rdvs/${dateStr}`, { params });
-            const data = Array.isArray(res.data) ? res.data : []; 
-            const normalized = data.map(normalizeRdv); 
+            const data = Array.isArray(res.data) ? res.data : [];
+            const normalized = data.map(normalizeRdv);
             rdvs.value = normalized;
             return normalized;
         } catch (err) {

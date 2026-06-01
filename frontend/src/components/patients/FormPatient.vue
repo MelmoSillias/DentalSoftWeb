@@ -4,7 +4,14 @@ import { useAssurancesStore } from '@/stores/assurances';
 import Button from 'primevue/button';
 import Checkbox from 'primevue/checkbox';
 import ConfirmPopup from 'primevue/confirmpopup';
+import InputNumber from 'primevue/inputnumber';
 import InputText from 'primevue/inputtext';
+import Select from 'primevue/select';
+import Tab from 'primevue/tab';
+import TabList from 'primevue/tablist';
+import TabPanel from 'primevue/tabpanel';
+import TabPanels from 'primevue/tabpanels';
+import Tabs from 'primevue/tabs';
 import Textarea from 'primevue/textarea';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
@@ -121,6 +128,51 @@ const selectedInsurance = computed(() =>
 const isSbn = computed(() => form.insuranceProfile.assuranceCode === 'SBN');
 const isBleues = computed(() => form.insuranceProfile.assuranceCode === 'BLEUES');
 
+const defaultInsuranceFormData = () => ({
+    societe: '',
+    assureNom: '',
+    assureNumero: '',
+    beneficiaireNom: '',
+    beneficiaireNumero: '',
+    sexe: '',
+    souscripteur: '',
+    salarieNomPrenom: '',
+    salarieMatricule: '',
+    patientNomPrenom: '',
+    patientMatricule: '',
+    patientAge: '',
+    patientSexe: ''
+});
+
+const resolveInsuranceProfile = (value) => {
+    const insuranceProfile = value?.insuranceProfile ?? value?.assuranceProfile ?? null;
+    if (!insuranceProfile) {
+        return null;
+    }
+
+    const assurance = insuranceProfile.assurance ?? value?.assurance ?? null;
+    const assuranceCode = insuranceProfile.assuranceCode
+        ?? insuranceProfile.assurance_code
+        ?? assurance?.code
+        ?? '';
+    const assuranceId = insuranceProfile.assuranceId
+        ?? insuranceProfile.assurance_id
+        ?? assurance?.id
+        ?? null;
+    const rawFormData = insuranceProfile.formData ?? insuranceProfile.form_data ?? {};
+
+    return {
+        enabled: Boolean(insuranceProfile.enabled ?? assuranceCode ?? assuranceId),
+        assuranceCode,
+        assuranceId,
+        coverageRate: Number(insuranceProfile.coverageRate ?? insuranceProfile.coverage_rate ?? 0) || 0,
+        formData: {
+            ...defaultInsuranceFormData(),
+            ...(rawFormData || {})
+        }
+    };
+};
+
 const loadAssurances = async () => {
     try {
         assurances.value = await assurancesStore.load(token, { force: true });
@@ -210,28 +262,14 @@ const resetForm = () => {
     form.smsPreferences.receipt = false;
     form.smsPreferences.ticket = false;
     form.smsPreferences.invoice = false;
-    form.smsPreferences.appointmentReminder = false;
+    form.smsPreferences.appointmentReminder = true;
     form.smsPreferences.unsubscribed = false;
     form.smsPreferences.blacklisted = false;
     form.insuranceProfile.enabled = false;
     form.insuranceProfile.assuranceCode = '';
     form.insuranceProfile.assuranceId = null;
     form.insuranceProfile.coverageRate = 0;
-    form.insuranceProfile.formData = {
-        societe: '',
-        assureNom: '',
-        assureNumero: '',
-        beneficiaireNom: '',
-        beneficiaireNumero: '',
-        sexe: '',
-        souscripteur: '',
-        salarieNomPrenom: '',
-        salarieMatricule: '',
-        patientNomPrenom: '',
-        patientMatricule: '',
-        patientAge: '',
-        patientSexe: ''
-    };
+    form.insuranceProfile.formData = defaultInsuranceFormData();
 };
 
 watch(
@@ -264,21 +302,19 @@ watch(
             form.smsPreferences.unsubscribed = Boolean(smsPreferences.unsubscribed ?? false);
             form.smsPreferences.blacklisted = Boolean(smsPreferences.blacklisted ?? false);
 
-            const insuranceProfile = val.insuranceProfile ?? null;
-            if (insuranceProfile?.assurance?.code) {
-                form.insuranceProfile.enabled = true;
-                form.insuranceProfile.assuranceCode = insuranceProfile.assurance.code;
-                form.insuranceProfile.assuranceId = insuranceProfile.assurance.id ?? null;
-                form.insuranceProfile.coverageRate = Number(insuranceProfile.coverageRate ?? 0) || 0;
-                form.insuranceProfile.formData = {
-                    ...form.insuranceProfile.formData,
-                    ...(insuranceProfile.formData || {})
-                };
+            const insuranceProfile = resolveInsuranceProfile(val);
+            if (insuranceProfile) {
+                form.insuranceProfile.enabled = insuranceProfile.enabled;
+                form.insuranceProfile.assuranceCode = insuranceProfile.assuranceCode;
+                form.insuranceProfile.assuranceId = insuranceProfile.assuranceId;
+                form.insuranceProfile.coverageRate = insuranceProfile.coverageRate;
+                form.insuranceProfile.formData = insuranceProfile.formData;
             } else {
                 form.insuranceProfile.enabled = false;
                 form.insuranceProfile.assuranceCode = '';
                 form.insuranceProfile.assuranceId = null;
                 form.insuranceProfile.coverageRate = 0;
+                form.insuranceProfile.formData = defaultInsuranceFormData();
             }
         } else {
             resetForm();
@@ -396,138 +432,184 @@ const handleSubmit = (event) => {
 <template>
     <div class="flex flex-col gap-4">
         <ConfirmPopup />
-        <div class="flex gap-2">
-            <Button :outlined="activeTab !== 'personal'" size="small" label="Informations personnelles" @click="activeTab = 'personal'" />
-            <Button v-if="hasActiveInsurances" :outlined="activeTab !== 'insurance'" size="small" label="Informations assurances" @click="activeTab = 'insurance'" />
-        </div>
+        <Tabs :value="activeTab" @update:value="activeTab = $event">
+            <TabList class="flex flex-wrap gap-2 border-b border-surface-200 dark:border-surface-700">
+                <Tab value="personal">Informations personnelles</Tab>
+                <Tab value="sms">Paramètres SMS</Tab>
+                <Tab v-if="hasActiveInsurances" value="insurance">Informations assurances</Tab>
+            </TabList>
+            <TabPanels class="mt-4">
+                <TabPanel value="personal">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="flex flex-col gap-2">
+                            <label for="nom" class="font-semibold"><span class="text-red-500">*</span> Nom</label>
+                            <InputText id="nom" v-model="form.nom" placeholder="Nom" />
+                        </div>
+                        <div class="flex flex-col gap-2">
+                            <label for="prenom" class="font-semibold">Prénom</label>
+                            <InputText id="prenom" v-model="form.prenom" placeholder="Prénom" />
+                        </div>
+                        <div class="flex flex-col gap-2">
+                            <label for="telephone" class="font-semibold"><span class="text-red-500">*</span> Téléphone</label>
+                            <InputText id="telephone" v-model="form.telephone" placeholder="Téléphone" />
+                        </div>
+                        <div class="flex flex-col gap-2">
+                            <label for="adresse" class="font-semibold">Adresse</label>
+                            <InputText id="adresse" v-model="form.adresse" placeholder="Adresse" />
+                        </div>
+                        <div class="flex flex-col gap-2">
+                            <label for="lieu-naissance" class="font-semibold">Lieu de naissance</label>
+                            <InputText id="lieu-naissance" v-model="form.lieuNaissance" placeholder="Lieu de naissance" />
+                        </div>
+                        <div class="flex flex-col gap-2">
+                            <label for="profession" class="font-semibold">Profession</label>
+                            <InputText id="profession" v-model="form.profession" placeholder="Profession" />
+                        </div>
+                        <div class="flex flex-col gap-2">
+                            <label for="sexe" class="font-semibold">Sexe</label>
+                            <Select id="sexe" v-model="form.sexe" :options="sexes" optionLabel="label" optionValue="value" placeholder="Choisir" class="w-full" />
+                        </div>
+                        <div class="flex flex-col gap-2">
+                            <label for="date-naissance" class="font-semibold">Date de naissance</label>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <InputText id="date-naissance" :modelValue="form.dateNaissance" type="date" placeholder="Date de naissance" @update:modelValue="onDateNaissanceInput" />
+                                <InputText id="age-patient" :modelValue="ageInput" type="number" min="0" max="130" placeholder="Âge" @update:modelValue="onAgeInput" />
+                            </div>
+                        </div>
+                        <div class="flex flex-col gap-2">
+                            <label for="referencement" class="font-semibold">Comment a-t-il connu le cabinet ?</label>
+                            <Select id="referencement" v-model="form.referencement" :options="referralSources" optionLabel="label" optionValue="value" placeholder="Choisir" class="w-full" />
+                        </div>
+                        <div class="flex flex-col gap-2 md:col-span-2">
+                            <label class="font-semibold">Contact d'urgence</label>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                <InputText id="urgence-nom" v-model="form.contactUrgence.nom" placeholder="Nom" />
+                                <InputText id="urgence-telephone" v-model="form.contactUrgence.telephone" placeholder="Téléphone" />
+                                <InputText id="urgence-lien" v-model="form.contactUrgence.lienParente" placeholder="Lien de parenté" />
+                            </div>
+                        </div>
+                    </div>
+                </TabPanel>
 
-        <div v-if="activeTab === 'personal'" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div class="flex flex-col gap-2">
-                <label for="nom" class="font-semibold"><span class="text-red-500">*</span> Nom</label>
-                <InputText id="nom" v-model="form.nom" placeholder="Nom" />
-            </div>
-            <div class="flex flex-col gap-2">
-                <label for="prenom" class="font-semibold">Prénom</label>
-                <InputText id="prenom" v-model="form.prenom" placeholder="Prénom" />
-            </div>
-            <div class="flex flex-col gap-2">
-                <label for="telephone" class="font-semibold"><span class="text-red-500">*</span> Téléphone</label>
-                <InputText id="telephone" v-model="form.telephone" placeholder="Téléphone" />
-            </div>
-            <div class="flex flex-col gap-2">
-                <label for="adresse" class="font-semibold">Adresse</label>
-                <InputText id="adresse" v-model="form.adresse" placeholder="Adresse" />
-            </div>
-            <div class="flex flex-col gap-2">
-                <label for="lieu-naissance" class="font-semibold">Lieu de naissance</label>
-                <InputText id="lieu-naissance" v-model="form.lieuNaissance" placeholder="Lieu de naissance" />
-            </div>
-            <div class="flex flex-col gap-2">
-                <label for="profession" class="font-semibold">Profession</label>
-                <InputText id="profession" v-model="form.profession" placeholder="Profession" />
-            </div>
-            <div class="flex flex-col gap-2">
-                <label for="sexe" class="font-semibold">Sexe</label>
-                <Select id="sexe" v-model="form.sexe" :options="sexes" optionLabel="label" optionValue="value" placeholder="Choisir" class="w-full" />
-            </div>
-            <div class="flex flex-col gap-2">
-                <label for="date-naissance" class="font-semibold">Date de naissance</label>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <InputText id="date-naissance" :modelValue="form.dateNaissance" type="date" placeholder="Date de naissance" @update:modelValue="onDateNaissanceInput" />
-                    <InputText id="age-patient" :modelValue="ageInput" type="number" min="0" max="130" placeholder="Âge" @update:modelValue="onAgeInput" />
-                </div>
-            </div>
-            <div class="flex flex-col gap-2">
-                <label for="referencement" class="font-semibold">Comment a-t-il connu le cabinet ?</label>
-                <Select id="referencement" v-model="form.referencement" :options="referralSources" optionLabel="label" optionValue="value" placeholder="Choisir" class="w-full" />
-            </div>
-            <div class="flex flex-col gap-2 md:col-span-2">
-                <label class="font-semibold">Contact d'urgence</label>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <InputText id="urgence-nom" v-model="form.contactUrgence.nom" placeholder="Nom" />
-                    <InputText id="urgence-telephone" v-model="form.contactUrgence.telephone" placeholder="Téléphone" />
-                    <InputText id="urgence-lien" v-model="form.contactUrgence.lienParente" placeholder="Lien de parenté" />
-                </div>
-            </div>
-        </div>
+                <TabPanel value="sms">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 rounded-xl border border-surface-200 p-4 dark:border-surface-700">
+                        <div class="md:col-span-2">
+                            <p class="text-sm text-surface-600 dark:text-surface-400">
+                                Définissez les SMS autorisés pour ce patient et les exclusions d'envoi.
+                            </p>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <Checkbox inputId="sms-patient-created" v-model="form.smsPreferences.patientCreated" binary />
+                            <label for="sms-patient-created">Créer un SMS après création</label>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <Checkbox inputId="sms-receipt" v-model="form.smsPreferences.receipt" binary />
+                            <label for="sms-receipt">Envoyer les reçus</label>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <Checkbox inputId="sms-ticket" v-model="form.smsPreferences.ticket" binary />
+                            <label for="sms-ticket">Envoyer les tickets</label>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <Checkbox inputId="sms-invoice" v-model="form.smsPreferences.invoice" binary />
+                            <label for="sms-invoice">Envoyer les factures</label>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <Checkbox inputId="sms-appointment-reminder" v-model="form.smsPreferences.appointmentReminder" binary />
+                            <label for="sms-appointment-reminder">Autoriser les rappels de rendez-vous</label>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <Checkbox inputId="sms-unsubscribed" v-model="form.smsPreferences.unsubscribed" binary />
+                            <label for="sms-unsubscribed">Patient désabonné</label>
+                        </div>
+                        <div class="flex items-center gap-3 md:col-span-2">
+                            <Checkbox inputId="sms-blacklisted" v-model="form.smsPreferences.blacklisted" binary />
+                            <label for="sms-blacklisted">Numéro blacklisté</label>
+                        </div>
+                    </div>
+                </TabPanel>
 
-        <div v-if="activeTab === 'insurance' && hasActiveInsurances" class="grid grid-cols-1 md:grid-cols-2 gap-4 rounded-xl border border-surface-200 p-4">
-            <div class="md:col-span-2 flex items-center gap-3">
-                <Checkbox inputId="patient-insurance-enabled" v-model="form.insuranceProfile.enabled" binary />
-                <label for="patient-insurance-enabled" class="font-semibold">Patient assuré</label>
-            </div>
+                <TabPanel v-if="hasActiveInsurances" value="insurance">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 rounded-xl border border-surface-200 p-4 dark:border-surface-700">
+                        <div class="md:col-span-2 flex items-center gap-3">
+                            <Checkbox inputId="patient-insurance-enabled" v-model="form.insuranceProfile.enabled" binary />
+                            <label for="patient-insurance-enabled" class="font-semibold">Patient assuré</label>
+                        </div>
 
-            <div class="flex flex-col gap-2">
-                <label class="font-semibold">Assurance</label>
-                <Select v-model="form.insuranceProfile.assuranceCode" :options="insuranceOptions" optionLabel="label" optionValue="value" placeholder="Choisir une assurance" class="w-full" :disabled="!form.insuranceProfile.enabled" />
-            </div>
-            <div class="flex flex-col gap-2">
-                <label class="font-semibold">Taux de couverture (%)</label>
-                <InputNumber v-model="form.insuranceProfile.coverageRate" mode="decimal" :min="0" :max="100" :minFractionDigits="0" :maxFractionDigits="2" class="w-full" inputClass="w-full" :disabled="!form.insuranceProfile.enabled" />
-            </div>
+                        <div class="flex flex-col gap-2">
+                            <label class="font-semibold">Assurance</label>
+                            <Select v-model="form.insuranceProfile.assuranceCode" :options="insuranceOptions" optionLabel="label" optionValue="value" placeholder="Choisir une assurance" class="w-full" :disabled="!form.insuranceProfile.enabled" />
+                        </div>
+                        <div class="flex flex-col gap-2">
+                            <label class="font-semibold">Taux de couverture (%)</label>
+                            <InputNumber v-model="form.insuranceProfile.coverageRate" mode="decimal" :min="0" :max="100" :minFractionDigits="0" :maxFractionDigits="2" class="w-full" inputClass="w-full" :disabled="!form.insuranceProfile.enabled" />
+                        </div>
 
-            <template v-if="form.insuranceProfile.enabled && isSbn">
-                <div class="flex flex-col gap-2">
-                    <label class="font-semibold">Société</label>
-                    <InputText v-model="form.insuranceProfile.formData.societe" />
-                </div>
-                <div class="flex flex-col gap-2">
-                    <label class="font-semibold">Nom de l'assuré</label>
-                    <InputText v-model="form.insuranceProfile.formData.assureNom" />
-                </div>
-                <div class="flex flex-col gap-2">
-                    <label class="font-semibold">N° de l'assuré</label>
-                    <InputText v-model="form.insuranceProfile.formData.assureNumero" />
-                </div>
-                <div class="flex flex-col gap-2">
-                    <label class="font-semibold">Nom du bénéficiaire</label>
-                    <InputText v-model="form.insuranceProfile.formData.beneficiaireNom" />
-                </div>
-                <div class="flex flex-col gap-2">
-                    <label class="font-semibold">N° du bénéficiaire</label>
-                    <InputText v-model="form.insuranceProfile.formData.beneficiaireNumero" />
-                </div>
-                <div class="flex flex-col gap-2">
-                    <label class="font-semibold">Sexe</label>
-                    <InputText v-model="form.insuranceProfile.formData.sexe" />
-                </div>
-            </template>
+                        <template v-if="form.insuranceProfile.enabled && isSbn">
+                            <div class="flex flex-col gap-2">
+                                <label class="font-semibold">Société</label>
+                                <InputText v-model="form.insuranceProfile.formData.societe" />
+                            </div>
+                            <div class="flex flex-col gap-2">
+                                <label class="font-semibold">Nom de l'assuré</label>
+                                <InputText v-model="form.insuranceProfile.formData.assureNom" />
+                            </div>
+                            <div class="flex flex-col gap-2">
+                                <label class="font-semibold">N° de l'assuré</label>
+                                <InputText v-model="form.insuranceProfile.formData.assureNumero" />
+                            </div>
+                            <div class="flex flex-col gap-2">
+                                <label class="font-semibold">Nom du bénéficiaire</label>
+                                <InputText v-model="form.insuranceProfile.formData.beneficiaireNom" />
+                            </div>
+                            <div class="flex flex-col gap-2">
+                                <label class="font-semibold">N° du bénéficiaire</label>
+                                <InputText v-model="form.insuranceProfile.formData.beneficiaireNumero" />
+                            </div>
+                            <div class="flex flex-col gap-2">
+                                <label class="font-semibold">Sexe</label>
+                                <InputText v-model="form.insuranceProfile.formData.sexe" />
+                            </div>
+                        </template>
 
-            <template v-if="form.insuranceProfile.enabled && isBleues">
-                <div class="flex flex-col gap-2">
-                    <label class="font-semibold">Souscripteur</label>
-                    <InputText v-model="form.insuranceProfile.formData.souscripteur" />
-                </div>
-                <div class="flex flex-col gap-2">
-                    <label class="font-semibold">Salarié - Nom et prénom</label>
-                    <InputText v-model="form.insuranceProfile.formData.salarieNomPrenom" />
-                </div>
-                <div class="flex flex-col gap-2">
-                    <label class="font-semibold">Salarié - Matricule</label>
-                    <InputText v-model="form.insuranceProfile.formData.salarieMatricule" />
-                </div>
-                <div class="flex flex-col gap-2">
-                    <label class="font-semibold">Patient - Nom et prénom</label>
-                    <InputText v-model="form.insuranceProfile.formData.patientNomPrenom" />
-                </div>
-                <div class="flex flex-col gap-2">
-                    <label class="font-semibold">Patient - Matricule</label>
-                    <InputText v-model="form.insuranceProfile.formData.patientMatricule" />
-                </div>
-                <div class="flex flex-col gap-2">
-                    <label class="font-semibold">Patient - Age</label>
-                    <InputText v-model="form.insuranceProfile.formData.patientAge" />
-                </div>
-                <div class="flex flex-col gap-2">
-                    <label class="font-semibold">Patient - Sexe</label>
-                    <InputText v-model="form.insuranceProfile.formData.patientSexe" />
-                </div>
-            </template>
+                        <template v-if="form.insuranceProfile.enabled && isBleues">
+                            <div class="flex flex-col gap-2">
+                                <label class="font-semibold">Souscripteur</label>
+                                <InputText v-model="form.insuranceProfile.formData.souscripteur" />
+                            </div>
+                            <div class="flex flex-col gap-2">
+                                <label class="font-semibold">Salarié - Nom et prénom</label>
+                                <InputText v-model="form.insuranceProfile.formData.salarieNomPrenom" />
+                            </div>
+                            <div class="flex flex-col gap-2">
+                                <label class="font-semibold">Salarié - Matricule</label>
+                                <InputText v-model="form.insuranceProfile.formData.salarieMatricule" />
+                            </div>
+                            <div class="flex flex-col gap-2">
+                                <label class="font-semibold">Patient - Nom et prénom</label>
+                                <InputText v-model="form.insuranceProfile.formData.patientNomPrenom" />
+                            </div>
+                            <div class="flex flex-col gap-2">
+                                <label class="font-semibold">Patient - Matricule</label>
+                                <InputText v-model="form.insuranceProfile.formData.patientMatricule" />
+                            </div>
+                            <div class="flex flex-col gap-2">
+                                <label class="font-semibold">Patient - Age</label>
+                                <InputText v-model="form.insuranceProfile.formData.patientAge" />
+                            </div>
+                            <div class="flex flex-col gap-2">
+                                <label class="font-semibold">Patient - Sexe</label>
+                                <InputText v-model="form.insuranceProfile.formData.patientSexe" />
+                            </div>
+                        </template>
 
-            <div v-if="form.insuranceProfile.enabled && selectedInsurance?.logoPath" class="md:col-span-2 text-sm text-gray-500">
-                Logo assurance: {{ selectedInsurance.logoPath }}
-            </div>
-        </div>
+                        <div v-if="form.insuranceProfile.enabled && selectedInsurance?.logoPath" class="md:col-span-2 text-sm text-gray-500">
+                            Logo assurance: {{ selectedInsurance.logoPath }}
+                        </div>
+                    </div>
+                </TabPanel>
+            </TabPanels>
+        </Tabs>
         <div class="flex gap-2 justify-end">
             <Button type="button" label="Annuler" severity="secondary" @click="emit('cancel')" />
             <Button type="button" :label="isEdit ? 'Mettre à jour' : 'Créer'" icon="pi pi-check" :loading="loading"

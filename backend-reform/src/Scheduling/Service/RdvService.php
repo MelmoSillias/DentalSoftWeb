@@ -2,6 +2,8 @@
 
 namespace App\Scheduling\Service;
 
+use App\Communication\Entity\SmsQueue;
+use App\Communication\Repository\SmsQueueRepository;
 use App\CareDelivery\Entity\Consultation;
 use App\CareDelivery\Service\ConsultationNotificationService;
 use App\IdentityAccess\Entity\Employe;
@@ -33,10 +35,64 @@ class RdvService
         private PatientService $patientService,
         private ConsultationNotificationService $consultationNotificationService,
         private RdvNotificationService $rdvNotificationService,
+        private SmsQueueRepository $smsQueueRepository,
     ) {
     }
 
-    private function mapRdv(Rdv $rdv): array
+    private function buildAppointmentSmsSummaries(array $rdvs): array
+    {
+        $patientIds = [];
+        foreach ($rdvs as $rdv) {
+            if (!$rdv instanceof Rdv || !$rdv->getPatient()?->getId()) {
+                continue;
+            }
+            $patientIds[] = (int) $rdv->getPatient()->getId();
+        }
+
+        $items = $this->smsQueueRepository->findAppointmentRemindersForPatients($patientIds);
+        $summaries = [];
+
+        foreach ($items as $item) {
+            if (!$item instanceof SmsQueue) {
+                continue;
+            }
+
+            $metadata = $item->getMetadata() ?? [];
+            $rdvId = (int) ($metadata['rdvId'] ?? 0);
+            if ($rdvId <= 0 || isset($summaries[$rdvId])) {
+                continue;
+            }
+
+            $status = $item->getStatus();
+            $sendAt = $item->getSendAt();
+            $sentAt = $item->getSentAt();
+            $isScheduled = $status === SmsQueue::STATUS_PENDING && $sendAt instanceof \DateTimeImmutable && $sendAt > new \DateTimeImmutable();
+
+            $label = match (true) {
+                $isScheduled => 'Programmé',
+                $status === SmsQueue::STATUS_SENT => 'Envoyé',
+                $status === SmsQueue::STATUS_SENDING => 'Envoi en cours',
+                $status === SmsQueue::STATUS_FAILED => 'Non envoyé',
+                default => 'En attente',
+            };
+
+            $summaries[$rdvId] = [
+                'queueId' => $item->getId(),
+                'status' => $status,
+                'label' => $label,
+                'source' => $item->getSource(),
+                'isAutomatic' => $item->getSource() === 'appointment-auto',
+                'sendAt' => $sendAt?->format('Y-m-d H:i:s'),
+                'sentAt' => $sentAt?->format('Y-m-d H:i:s'),
+                'lastError' => $item->getLastError(),
+                'message' => $item->getMessage(),
+            ];
+        }
+
+        return $summaries;
+    }
+
+    private function mapRdv(Rdv $rdv, ?array $smsReminder = null): array
     {
         $patient = $rdv->getPatient();
 
@@ -61,6 +117,7 @@ class RdvService
             'endDate' => $rdv->getEndDate()?->format('Y-m-d H:i:s'),
             'dateCreation' => $rdv->getDateCreation()->format('d-m-Y H:i:s'),
             'reportedAt' => $rdv->getReportedAt() ? 'Reporté au ' . $rdv->getReportedAt()->format('d-m-Y H:i:s') : null,
+            'smsReminder' => $smsReminder,
         ];
     }
 
@@ -186,8 +243,12 @@ class RdvService
         }
 
         $rdvs = $qb->getQuery()->getResult();
+        $smsSummaries = $this->buildAppointmentSmsSummaries($rdvs);
 
-        return array_map(fn(Rdv $rdv) => $this->mapRdv($rdv), $rdvs);
+        return array_map(
+            fn(Rdv $rdv) => $this->mapRdv($rdv, $smsSummaries[$rdv->getId()] ?? null),
+            $rdvs
+        );
     }
 
     public function listPendingByRange(\DateTimeInterface $start, \DateTimeInterface $end, ?int $medecinId = null): array

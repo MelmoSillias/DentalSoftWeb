@@ -8,6 +8,16 @@ use Doctrine\ORM\EntityManagerInterface;
 
 final class SmsConfigService
 {
+    private const DEFAULT_PATIENT_PREFERENCE_BYPASS = [
+        'patientCreated' => false,
+        'receipt' => false,
+        'ticket' => false,
+        'invoice' => false,
+        'appointmentReminder' => false,
+        'unsubscribed' => false,
+        'blacklisted' => false,
+    ];
+
     public function __construct(
         private readonly SmsProviderConfigRepository $configRepository,
         private readonly EntityManagerInterface $entityManager,
@@ -44,6 +54,7 @@ final class SmsConfigService
             'senderAddress' => $senderAddress,
             'senderName' => $senderName,
             'approvedSenderNames' => $config->getApprovedSenderNames(),
+            'patientPreferenceBypass' => $this->sanitizePatientPreferenceBypass($config->getPatientPreferenceBypass()),
             'baseUrl' => $config->getBaseUrl(),
             'oauthUrl' => $config->getOauthUrl(),
             'updatedAt' => $config->getUpdatedAt()->format('Y-m-d H:i:s'),
@@ -62,6 +73,7 @@ final class SmsConfigService
         $config->setSenderAddress($this->sanitizeString($payload['senderAddress'] ?? $payload['senderName'] ?? $config->getSenderAddress()));
         $config->setSenderName($this->sanitizeString($payload['senderName'] ?? $config->getSenderName()));
         $config->setApprovedSenderNames($this->sanitizeSenderNameList($payload['approvedSenderNames'] ?? $config->getApprovedSenderNames()));
+        $config->setPatientPreferenceBypass($this->sanitizePatientPreferenceBypass($payload['patientPreferenceBypass'] ?? $config->getPatientPreferenceBypass()));
 
         $baseUrl = $this->sanitizeString($payload['baseUrl'] ?? $config->getBaseUrl()) ?: $config->getBaseUrl();
         $oauthUrl = $this->sanitizeString($payload['oauthUrl'] ?? $config->getOauthUrl()) ?: $config->getOauthUrl();
@@ -85,6 +97,23 @@ final class SmsConfigService
     public function getClientSecret(SmsProviderConfig $config): ?string
     {
         return $this->cryptoService->decrypt($config->getClientSecretEncrypted());
+    }
+
+    /**
+     * @return array<string, bool>
+     */
+    public function getPatientPreferenceBypass(?SmsProviderConfig $config = null): array
+    {
+        $config ??= $this->getConfig();
+
+        return $this->sanitizePatientPreferenceBypass($config->getPatientPreferenceBypass());
+    }
+
+    public function shouldBypassPatientPreference(string $key, ?SmsProviderConfig $config = null): bool
+    {
+        $bypass = $this->getPatientPreferenceBypass($config);
+
+        return $bypass[$key] ?? false;
     }
 
     /**
@@ -153,6 +182,22 @@ final class SmsConfigService
             if (!in_array($item, $normalized, true)) {
                 $normalized[] = $item;
             }
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * @param mixed $value
+     * @return array<string, bool>
+     */
+    private function sanitizePatientPreferenceBypass(mixed $value): array
+    {
+        $source = is_array($value) ? $value : [];
+        $normalized = [];
+
+        foreach (self::DEFAULT_PATIENT_PREFERENCE_BYPASS as $key => $default) {
+            $normalized[$key] = (bool) ($source[$key] ?? $default);
         }
 
         return $normalized;

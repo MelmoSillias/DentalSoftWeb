@@ -632,7 +632,7 @@ const currentFactureLoading = computed(() => {
                 day: 'numeric'
             });
         }
-        
+
         function getMedecinInitials(data) {
             const medecin = data.medecin || '';
             return medecin
@@ -641,8 +641,8 @@ const currentFactureLoading = computed(() => {
                 .join('')
                 .toUpperCase()
                 .slice(0, 2);
-        }   
-        
+        }
+
         function getTimeAgo(date) {
             const now = new Date();
             const then = new Date(date);
@@ -650,14 +650,14 @@ const currentFactureLoading = computed(() => {
             const diffMins = Math.floor(diffMs / (1000 * 60));
             const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
             const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-            
+
             if (diffMins < 60) return `Il y a ${diffMins} min`;
             if (diffHours < 24) return `Il y a ${diffHours} h`;
             if (diffDays === 1) return 'Hier';
             if (diffDays < 7) return `Il y a ${diffDays} jours`;
             return `Il y a ${Math.floor(diffDays / 7)} semaines`;
-        }   
-        
+        }
+
         function resetFilters() {
             filterGlobalValue.value = '';
             selectedDate.value = null;
@@ -687,11 +687,11 @@ const currentFactureLoading = computed(() => {
                     </div>
                 </div>
                 <div class="flex flex-wrap gap-3">
-                    <Button 
+                    <Button
                         v-if="!isMedecin"
                         data-tour="consultations-table.create-button"
-                        icon="pi pi-calendar-plus" 
-                        label="Nouvelle consultation" 
+                        icon="pi pi-calendar-plus"
+                        label="Nouvelle consultation"
                         class="shadow-lg hover:shadow-xl transition-all duration-300 bg-gradient-to-r from-primary-500 to-primary-600 border-0 text-white px-5 py-2.5 rounded-xl font-medium"
                         @click="showCreateDialog = true"
                     />
@@ -729,19 +729,19 @@ const currentFactureLoading = computed(() => {
                         </div>
                     </div>
                     <div class="flex items-center gap-2">
-                        <Button 
-                            icon="pi pi-download" 
-                            severity="secondary" 
-                            text 
+                        <Button
+                            icon="pi pi-download"
+                            severity="secondary"
+                            text
                             size="small"
                             label="Exporter"
                             class="text-surface-600 dark:text-surface-400 hover:text-primary-600 dark:hover:text-primary-400"
                             @click="printConsultations"
                         />
-                        <Button 
-                            icon="pi pi-cog" 
-                            severity="secondary" 
-                            text 
+                        <Button
+                            icon="pi pi-cog"
+                            severity="secondary"
+                            text
                             size="small"
                             class="text-surface-600 dark:text-surface-400"
                         />
@@ -759,14 +759,14 @@ const currentFactureLoading = computed(() => {
                         </label>
                         <IconField class="p-input-icon-left w-full">
                             <InputIcon class="pi pi-search text-surface-400"></InputIcon>
-                            <InputText 
-                                v-model="filterGlobalValue" 
-                                placeholder="Patient, médecin, statut..." 
+                            <InputText
+                                v-model="filterGlobalValue"
+                                placeholder="Patient, médecin, statut..."
                                 class="w-full p-3.5 rounded-xl border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-700/50 focus:ring-2 focus:ring-primary-500/20 transition-all"
                             />
                         </IconField>
                     </div>
-                    
+
                     <!-- Date & Actions -->
                     <div class="flex flex-col sm:flex-row lg:flex-col gap-3 col-6 w-full">
                         <div>
@@ -774,47 +774,47 @@ const currentFactureLoading = computed(() => {
                                 Date de consultation
                             </label>
                             <div class="flex gap-2">
-                                <DatePicker 
-                                    v-model="selectedDate" 
-                                    dateFormat="dd/mm/yy" 
+                                <DatePicker
+                                    v-model="selectedDate"
+                                    dateFormat="dd/mm/yy"
                                     showIcon
                                     class="flex-1 rounded-xl border-surface-200 dark:border-surface-700 [&_.p-datepicker]:p-3.5 "
-                                    @update:modelValue="onDateChange" 
+                                    @update:modelValue="onDateChange"
                                 />
-                                <Button 
-                                    icon="pi pi-calendar-times" 
-                                    severity="secondary" 
+                                <Button
+                                    icon="pi pi-calendar-times"
+                                    severity="secondary"
                                     outlined
                                     class="px-3 rounded-xl"
                                     @click="selectedDate = null"
                                 />
-                                <Button 
-                                icon="pi pi-refresh"  
-                                :loading="loading" 
+                                <Button
+                                icon="pi pi-refresh"
+                                :loading="loading"
                                 outlined
                                 class="w-full rounded-xl px-5 py-3.5 border-surface-300 dark:border-surface-600 hover:bg-surface-100 dark:hover:bg-surface-700 transition-colors"
-                                @click="loadConsultations" 
+                                @click="loadConsultations"
                             />
                             </div>
-                            
-                        </div> 
+
+                        </div>
                     </div>
                 </div>
             </div>
 
             <!-- Data Table -->
-            <DataTable 
+            <DataTable
                 data-tour="consultations-table.table"
-                :value="consultations" 
-                dataKey="id" 
-                :loading="loading" 
-                :paginator="true" 
+                :value="consultations"
+                dataKey="id"
+                :loading="loading"
+                :paginator="true"
                 :rows="10"
-                :rowsPerPageOptions="[5, 10, 20, 50]" 
-                :filters="filters" 
-                v-model:filters="filters" 
+                :rowsPerPageOptions="[5, 10, 20, 50]"
+                :filters="filters"
+                v-model:filters="filters"
                 filterDisplay="menu"
-                :globalFilterFields="['patientName', 'patient', 'medecin', 'statut']" 
+                :globalFilterFields="['patientName', 'patient', 'medecin', 'statut']"
                 :rowClass="rowClass"
                 class="rounded-none border-0 mx-4"
                 :pt="{
@@ -850,7 +850,7 @@ const currentFactureLoading = computed(() => {
                 <Column field="patientName" header="Patient" sortable>
                     <template #header>
                         <div class="flex items-center gap-2">
-                            <i class="pi pi-user text-surface-500"></i> 
+                            <i class="pi pi-user text-surface-500"></i>
                         </div>
                     </template>
                     <template #body="{ data }">
@@ -877,12 +877,12 @@ const currentFactureLoading = computed(() => {
                         </div>
                     </template>
                 </Column>
-                
+
                 <!-- Médecin Column -->
                 <Column field="medecin" header="Médecin" sortable>
                     <template #header>
                         <div class="flex items-center gap-2">
-                            <i class="fas fa-user-md text-surface-500"></i> 
+                            <i class="fas fa-user-md text-surface-500"></i>
                         </div>
                     </template>
                     <template #body="{ data }">
@@ -896,12 +896,12 @@ const currentFactureLoading = computed(() => {
                         </div>
                     </template>
                 </Column>
-                
+
                 <!-- Date Column -->
                 <Column field="createdAt" header="Date création" sortable>
                     <template #header>
                         <div class="flex items-center gap-2">
-                            <i class="pi pi-calendar text-surface-500"></i> 
+                            <i class="pi pi-calendar text-surface-500"></i>
                         </div>
                     </template>
                     <template #body="{ data }">
@@ -918,18 +918,18 @@ const currentFactureLoading = computed(() => {
                         </div>
                     </template>
                 </Column>
-                
+
                 <!-- Statut Column -->
                 <Column header="Statut">
                     <template #header>
                         <div class="flex items-center gap-2">
-                            <i class="pi pi-info-circle text-surface-500"></i> 
+                            <i class="pi pi-info-circle text-surface-500"></i>
                         </div>
                     </template>
                     <template #body="{ data }">
                         <div class="flex flex-col gap-1" :data-tour="data.id === 9202 ? 'consultations-table.status' : null">
-                            <Tag 
-                                :value="stateLabel(data).label" 
+                            <Tag
+                                :value="stateLabel(data).label"
                                 :severity="stateLabel(data).severity"
                                 class="px-3 py-1.5 rounded-full font-medium shadow-sm"
                             />
@@ -940,68 +940,67 @@ const currentFactureLoading = computed(() => {
                         </div>
                     </template>
                 </Column>
-                
+
                 <!-- Actions Column -->
                 <Column header="Actions" :style="{ minWidth: '220px' }">
                     <template #header>
                         <div class="flex items-center gap-2">
-                            <i class="pi pi-cog text-surface-500"></i> 
+                            <i class="pi pi-cog text-surface-500"></i>
                         </div>
                     </template>
                     <template #body="{ data }">
                         <div class="flex items-center gap-2" :data-tour="data.id === 9201 ? 'consultations-table.actions' : null">
-                            <Button 
-                                icon="pi pi-eye" 
-                                severity="info" 
-                                text 
+                            <Button
+                                icon="pi pi-eye"
+                                severity="info"
+                                text
                                 rounded
                                 v-tooltip.top="'Voir détails'"
                                 class="hover:bg-blue-50 dark:hover:bg-blue-900/20"
                                 :loading="detailsLoadingId === data.id"
-                                @click="openDetails(data)" 
+                                @click="openDetails(data)"
                             />
                             <Button
                                 v-if="!shouldHidePatientDossierForMedecin"
-                                icon="pi pi-folder-open" 
-                                severity="secondary" 
-                                text 
+                                icon="pi pi-folder-open"
+                                severity="secondary"
+                                text
                                 rounded
                                 v-tooltip.top="'Ouvrir dossier'"
                                 class="hover:bg-surface-100 dark:hover:bg-surface-700"
-                                @click="openDossier(data)" 
+                                @click="openDossier(data)"
                             />
-                            <Button 
-                                icon="pi pi-file-edit" 
-                                severity="success" 
-                                text 
+                            <Button
+                                icon="pi pi-file-edit"
+                                severity="success"
+                                text
                                 rounded
                                 v-tooltip.top="'Éditer facture'"
                                 class="hover:bg-green-50 dark:hover:bg-green-900/20"
                                 :loading="factureLoading[data.id] === true"
-                                @click="openFacture(data)" 
+                                @click="openFacture(data)"
                                 v-if="isAdmin && data.state === 1"
                             />
-                            <Button 
-                                icon="pi pi-times" 
-                                severity="danger" 
-                                text 
+                            <Button
+                                icon="pi pi-times"
+                                severity="danger"
+                                text
                                 rounded
                                 v-tooltip.top="'Annuler'"
                                 class="hover:bg-red-50 dark:hover:bg-red-900/20"
                                 :loading="canceling[data.id] === true"
-                                @click="askCancel($event, data)" 
+                                @click="askCancel($event, data)"
                                 v-if="data.state !== 1"
                             />
 
                             <Button
-                                v-if="canUseQuickActions"
+                                v-if="canUseQuickActions && !isClosed(data)"
                                 icon="pi pi-bolt"
                                 label="Actions rapides"
                                 severity="contrast"
                                 size="small"
                                 outlined
                                 class="rounded-xl"
-                                :disabled="isClosed(data)"
                                 @click="toggleQuickActions($event, data)"
                             />
                             <Menu v-if="canUseQuickActions" :ref="(el) => setQuickMenuRef(data.id, el)" :model="quickActionItems(data)" popup>
@@ -1028,20 +1027,20 @@ const currentFactureLoading = computed(() => {
                             {{ filterGlobalValue ? 'Aucun résultat ne correspond à votre recherche.' : 'Aucune consultation n\'a été enregistrée pour cette période.' }}
                         </p>
                         <div class="flex gap-3 justify-center">
-                            <Button 
+                            <Button
                                 v-if="!isMedecin"
-                                icon="pi pi-plus" 
-                                label="Créer une consultation" 
+                                icon="pi pi-plus"
+                                label="Créer une consultation"
                                 class="bg-gradient-to-r from-primary-500 to-primary-600 border-0"
                                 @click="showCreateDialog = true"
                             />
-                            <Button 
+                            <Button
                                 v-if="filterGlobalValue"
-                                icon="pi pi-filter-slash" 
-                                label="Réinitialiser les filtres" 
-                                severity="secondary" 
+                                icon="pi pi-filter-slash"
+                                label="Réinitialiser les filtres"
+                                severity="secondary"
                                 outlined
-                                @click="resetFilters" 
+                                @click="resetFilters"
                             />
                         </div>
                     </div>
@@ -1092,7 +1091,7 @@ const currentFactureLoading = computed(() => {
                     <i class="fas fa-clipboard-list text-2xl text-blue-500"></i>
                 </div>
             </div>
-            
+
             <div class="bg-gradient-to-br from-green-50 to-green-100/50 dark:from-green-900/20 dark:to-green-800/20 rounded-2xl p-5 border border-green-200/50 dark:border-green-800/50">
                 <div class="flex items-center justify-between">
                     <div>
@@ -1104,7 +1103,7 @@ const currentFactureLoading = computed(() => {
                     <i class="fas fa-check-circle text-2xl text-green-500"></i>
                 </div>
             </div>
-            
+
             <div class="bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-900/20 dark:to-amber-800/20 rounded-2xl p-5 border border-amber-200/50 dark:border-amber-800/50">
                 <div class="flex items-center justify-between">
                     <div>
@@ -1115,27 +1114,27 @@ const currentFactureLoading = computed(() => {
                     </div>
                     <i class="fas fa-clock text-2xl text-amber-500"></i>
                 </div>
-            </div> 
+            </div>
         </div>
 
         <!-- Dialogs -->
-        <ConsultationDetailsDialog 
-            :visible="detailsDialogVisible" 
-            :details="detailData" 
+        <ConsultationDetailsDialog
+            :visible="detailsDialogVisible"
+            :details="detailData"
             :loading="detailsLoading"
             tourTarget="consultations-table.dialog.details"
-            @update:visible="(val) => (detailsDialogVisible = val)" 
+            @update:visible="(val) => (detailsDialogVisible = val)"
         />
 
-        <FactureModal 
-            :visible="factureDialogVisible" 
-            :lines="factureLines" 
+        <FactureModal
+            :visible="factureDialogVisible"
+            :lines="factureLines"
             :soins="soinsList"
             :loading="currentFactureLoading"
-            :saving="factureSaving" 
+            :saving="factureSaving"
             tourTarget="consultations-table.dialog.facture"
-            @update:visible="closeFactureModal" 
-            @save="handleSaveFacture" 
+            @update:visible="closeFactureModal"
+            @save="handleSaveFacture"
         />
 
         <QuickClotureConsultationDialog
@@ -1150,7 +1149,7 @@ const currentFactureLoading = computed(() => {
     </section>
 </template>
 
- 
+
 
 <style scoped>
 .row-success :deep(td) {

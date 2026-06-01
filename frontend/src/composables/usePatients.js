@@ -32,6 +32,22 @@ import http from '@/service/http';
 const auth = useAuthStore();
 const authHeaders = (token) => (token ? { Authorization: `Bearer ${token}` } : {});
 
+const defaultInsuranceFormData = () => ({
+    societe: '',
+    assureNom: '',
+    assureNumero: '',
+    beneficiaireNom: '',
+    beneficiaireNumero: '',
+    sexe: '',
+    souscripteur: '',
+    salarieNomPrenom: '',
+    salarieMatricule: '',
+    patientNomPrenom: '',
+    patientMatricule: '',
+    patientAge: '',
+    patientSexe: ''
+});
+
 const patients = ref([]);
 const totalRecords = ref(0);
 const loading = ref(false);
@@ -49,6 +65,47 @@ export function usePatients() {
     }
 
     const extractPatientPhoto = (raw = {}) => raw.photo ?? raw.photoUrl ?? raw.photo_url ?? raw.patientPhoto ?? raw.patient_photo ?? null;
+
+    const resolveInsuranceProfile = (value = {}) => {
+        const insuranceProfile = value?.insuranceProfile ?? value?.assuranceProfile ?? null;
+        if (!insuranceProfile) {
+            return null;
+        }
+
+        const assurance = insuranceProfile.assurance ?? value?.assurance ?? null;
+        const assuranceCode = insuranceProfile.assuranceCode
+            ?? insuranceProfile.assurance_code
+            ?? insuranceProfile.code
+            ?? assurance?.code
+            ?? '';
+        const assuranceId = insuranceProfile.assuranceId
+            ?? insuranceProfile.assurance_id
+            ?? assurance?.id
+            ?? null;
+        const assuranceName = insuranceProfile.assuranceName
+            ?? insuranceProfile.assurance_name
+            ?? assurance?.nom
+            ?? assurance?.libelle
+            ?? assuranceCode
+            ?? 'Assurance';
+        const rawFormData = insuranceProfile.formData ?? insuranceProfile.form_data ?? {};
+
+        return {
+            enabled: Boolean(insuranceProfile.enabled ?? assuranceCode ?? assuranceId),
+            assuranceCode,
+            assuranceId,
+            coverageRate: Number(insuranceProfile.coverageRate ?? insuranceProfile.coverage_rate ?? 0) || 0,
+            assurance: assurance || (assuranceCode || assuranceId ? {
+                id: assuranceId,
+                code: assuranceCode,
+                nom: assuranceName
+            } : null),
+            formData: {
+                ...defaultInsuranceFormData(),
+                ...(rawFormData || {})
+            }
+        };
+    };
 
 
     const normalizePatient = (raw = {}) => ({
@@ -69,6 +126,7 @@ export function usePatients() {
         notes: raw.notes ?? '',
         deletedAt: raw.deletedAt ?? raw.deleted_at ?? null,
         contactUrgence: raw.contactUrgence ?? raw.contact_urgence ?? null,
+        insuranceProfile: resolveInsuranceProfile(raw),
         smsPreferences: raw.smsPreferences ?? {
             patientCreated: raw.smsPatientCreated ?? false,
             receipt: raw.smsReceipt ?? false,
@@ -89,6 +147,7 @@ export function usePatients() {
         const initials = `${prenom?.[0] ?? ''}${nom?.[0] ?? ''}`.toUpperCase() || '--';
         const stats = dossier.stats || dossier.statistiques || {};
         const contactUrgence = dossier.contactUrgence || patient.contactUrgence || patient.contact_urgence || null;
+        const insuranceProfile = resolveInsuranceProfile(patient) ?? resolveInsuranceProfile(dossier);
         const allergies = Array.isArray(dossier.allergies) ? dossier.allergies : [];
         const antecedents = Array.isArray(dossier.antecedents) ? dossier.antecedents : [];
         const rdvs = Array.isArray(dossier.rdvs) ? dossier.rdvs : [];
@@ -122,6 +181,7 @@ export function usePatients() {
             lieuNaissance: patient.lieuNaissance ?? dossier.lieuNaissance ?? dossier.lieu_naissance ?? '--',
             adresse: patient.adresse ?? dossier.adresse ?? '--',
             contactUrgence,
+            insuranceProfile,
             smsPreferences: patient.smsPreferences ?? dossier.smsPreferences ?? {
                 patientCreated: false,
                 receipt: false,

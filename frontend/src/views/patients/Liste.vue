@@ -806,6 +806,12 @@ onMounted(() => {
                                     <div class="flex items-center gap-2 mt-1">
                                         <Tag :value="data.sexe" :severity="data.sexe === 'M' ? 'info' : 'secondary'"
                                             class="px-2 py-0.5 text-xs rounded-full" />
+                                        <Tag
+                                            v-if="data.insuranceProfile?.assurance?.nom || data.insuranceProfile?.assurance?.code"
+                                            :value="`Assuré${data.insuranceProfile?.assurance?.nom ? ` • ${data.insuranceProfile.assurance.nom}` : ''}`"
+                                            severity="success"
+                                            class="px-2 py-0.5 text-xs rounded-full"
+                                        />
                                         <span class="text-xs text-surface-500">
                                             {{ formatAge(data.dateNaissance) }}
                                         </span>

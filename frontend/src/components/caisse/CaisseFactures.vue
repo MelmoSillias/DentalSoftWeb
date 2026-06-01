@@ -190,44 +190,75 @@ const displayPhone = (value) => (props.hidePatientPhone ? 'Masqué par l\'admini
             <DataView v-else data-tour="caisse-factures.cards" :value="filteredFactures" paginator :rows="6" :rowsPerPageOptions="[6, 12, 24]"
                 :loading="facturesLoading">
                 <template #list="slotProps">
-                    <div class="flex flex-col gap-3">
-                        <div v-for="(row, index) in slotProps.items" :key="row.id || index" class="dataview-item">
-                            <div class="status-chip">
-                                <div class="flex flex-wrap gap-2 justify-end">
+                    <div class="flex flex-col gap-3 p-1">
+                        <div v-for="(row, index) in slotProps.items" :key="row.id || index"
+                            class="fct-card"
+                            :class="`fct-card--${computeStatus(row).severity}`">
+
+                            <!-- En-tête document -->
+                            <div class="fct-header">
+                                <div class="fct-doc-badge">
+                                    <i class="pi pi-file-invoice"></i>
+                                    <span>FACTURE #{{ row.id }}</span>
+                                </div>
+                                <div class="fct-status-badges">
                                     <Tag :value="computeStatus(row).label" :severity="computeStatus(row).severity" />
-                                    <Tag v-if="computeInsuranceBadge(row)" :value="computeInsuranceBadge(row).label"
-                                        :severity="computeInsuranceBadge(row).severity" icon="pi pi-shield" />
+                                    <Tag v-if="computeInsuranceBadge(row)"
+                                        :value="computeInsuranceBadge(row).label"
+                                        :severity="computeInsuranceBadge(row).severity"
+                                        icon="pi pi-shield" />
                                 </div>
                             </div>
 
-                            <div class="dataview-body">
-                                <div class="dv-patient">
-                                    <p class="dv-name"> <i class="pi pi-user me-2"></i> {{ formatPatient(row) }}</p>
-                                    <p class="dv-phone"> <i class="pi pi-phone me-2"></i> {{ displayPhone(row.telephone) }}</p>
-                                    <p class="dv-date"> <i class="pi pi-calendar me-2"></i> {{ row.date || '—' }}</p>
+                            <!-- Corps -->
+                            <div class="fct-body">
+                                <!-- Patient -->
+                                <div class="fct-patient">
+                                    <p class="fct-patient-name">
+                                        <i class="pi pi-user"></i>
+                                        {{ formatPatient(row) }}
+                                    </p>
+                                    <p class="fct-patient-detail">
+                                        <i class="pi pi-phone"></i>
+                                        {{ displayPhone(row.telephone) }}
+                                    </p>
+                                    <p class="fct-patient-detail">
+                                        <i class="pi pi-calendar"></i>
+                                        {{ row.date || '—' }}
+                                    </p>
                                 </div>
 
-                                <div class="dv-money dark:bg-surface-800">
-                                    <div class="kv"><span>Montant</span><span class="font-semibold">{{
-                                        formatFcfa(row.montant) }}</span></div>
-                                    <div class="kv"><span>Reste</span><span :class="[
-                                        'font-semibold',
-                                        computeStatus(row).severity === 'danger' ? 'text-red-600' : '',
-                                        computeStatus(row).severity === 'warning' ? 'text-orange-600' : ''
-                                    ]">{{ formatFcfa(row.reste) }}</span></div>
+                                <!-- Montants -->
+                                <div class="fct-amounts">
+                                    <div class="fct-amount-line">
+                                        <span class="fct-amount-label">Montant total</span>
+                                        <span class="fct-amount-value">{{ formatFcfa(row.montant) }}</span>
+                                    </div>
+                                    <div class="fct-amount-line fct-amount-line--reste">
+                                        <span class="fct-amount-label">Reste à payer</span>
+                                        <span class="fct-amount-value fct-amount-reste"
+                                            :class="`fct-amount-reste--${computeStatus(row).severity}`">
+                                            {{ formatFcfa(row.reste) }}
+                                        </span>
+                                    </div>
                                 </div>
+                            </div>
 
-                                <div class="dv-actions" data-tour="caisse-factures.actions">
-                                    <Button v-if="!row.isRegle" :label="targetIsFree(row) ? 'Valider' : 'Régler'" size="small"
-                                :severity="targetIsFree(row) ? 'secondary' : 'success'" icon="pi pi-wallet"
-                                @click="targetIsFree(row) ? emit('validate-free', row) : emit('pay', row)" />
-                            <Button v-if="canModify(row)" label="Modifier" size="small" severity="secondary"
-                                icon="pi pi-pencil" @click="emit('modify', row)" />
-                            <Button v-if="canPreview(row)" label="Voir" size="small" icon="pi pi-eye" severity="info"
-                                @click="emit('preview', row)" />
-                            <Button v-if="canPreview(row)" label="Envoyer facture par SMS" size="small" icon="pi pi-send" severity="help"
-                                @click="emit('send-invoice-sms', row)" />
-                                </div>
+                            <!-- Actions -->
+                            <div class="fct-actions" data-tour="caisse-factures.actions">
+                                <Button v-if="!row.isRegle"
+                                    :label="targetIsFree(row) ? 'Valider' : 'Régler'"
+                                    size="small"
+                                    :severity="targetIsFree(row) ? 'secondary' : 'success'"
+                                    icon="pi pi-wallet"
+                                    @click="targetIsFree(row) ? emit('validate-free', row) : emit('pay', row)" />
+                                <Button v-if="canModify(row)" label="Modifier" size="small" severity="secondary"
+                                    icon="pi pi-pencil" @click="emit('modify', row)" />
+                                <Button v-if="canPreview(row)" label="Aperçu" size="small" icon="pi pi-eye"
+                                    severity="info" outlined @click="emit('preview', row)" />
+                                <Button v-if="canPreview(row)" icon="pi pi-send" size="small" severity="help"
+                                    text title="Envoyer facture par SMS"
+                                    @click="emit('send-invoice-sms', row)" />
                             </div>
                         </div>
                     </div>
@@ -270,7 +301,7 @@ const displayPhone = (value) => (props.hidePatientPhone ? 'Masqué par l\'admini
     color: #0f172a;
     font-weight: 600;
 }
- 
+
 .app-dark .section-title {
     color: #e2e8f0;
 }
@@ -399,7 +430,7 @@ const displayPhone = (value) => (props.hidePatientPhone ? 'Masqué par l\'admini
     background: #f8fafc;
     border: 1px solid #e2e8f0;
     border-radius: 10px;
-    padding: 0.75rem; 
+    padding: 0.75rem;
 }
 
 .dv-actions {
@@ -410,15 +441,15 @@ const displayPhone = (value) => (props.hidePatientPhone ? 'Masqué par l\'admini
 }
 
 
-.app-dark .dv-name { 
-    color: #fafcff; 
+.app-dark .dv-name {
+    color: #fafcff;
 }
 
   .app-dark .dv-phone,
     .app-dark .dv-date {
         color: #94a3b8;
         font-size: 1.1rem;
-    } 
+    }
 
 .app-dark .dv-money {
     background: #1e293b;
@@ -463,5 +494,182 @@ const displayPhone = (value) => (props.hidePatientPhone ? 'Masqué par l\'admini
 .app-dark .stat-neutral {
     background: linear-gradient(135deg, #475569, #1f2937);
     border-color: #1f2937;
+}
+
+/* ─── CARTES FACTURE ─── */
+
+.fct-card {
+    border-radius: 14px;
+    border: 1px solid var(--surface-border);
+    border-left: 5px solid #94a3b8;
+    background: var(--surface-card);
+    overflow: hidden;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05);
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.fct-card:hover {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+}
+
+.fct-card--success   { border-left-color: #22c55e; }
+.fct-card--danger    { border-left-color: #ef4444; }
+.fct-card--warning   { border-left-color: #f59e0b; }
+.fct-card--secondary { border-left-color: #94a3b8; }
+
+/* En-tête document */
+.fct-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.5rem 1rem;
+    background: linear-gradient(90deg, rgba(241,245,249,0.95), rgba(248,250,252,0.8));
+    border-bottom: 1px solid var(--surface-border);
+    flex-wrap: wrap;
+}
+
+.fct-doc-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: #475569;
+    background: #e2e8f0;
+    border-radius: 6px;
+    padding: 0.22rem 0.6rem;
+}
+
+.fct-doc-badge .pi { font-size: 0.85rem; color: #64748b; }
+
+.fct-status-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    align-items: center;
+}
+
+/* Corps */
+.fct-body {
+    display: flex;
+    gap: 1rem;
+    padding: 0.85rem 1rem;
+    flex-wrap: wrap;
+    align-items: flex-start;
+}
+
+/* Bloc patient */
+.fct-patient {
+    flex: 1 1 200px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.fct-patient-name {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-color);
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.fct-patient-name .pi { color: #6366f1; font-size: 0.9rem; }
+
+.fct-patient-detail {
+    margin: 0;
+    font-size: 0.83rem;
+    color: #64748b;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.fct-patient-detail .pi { font-size: 0.78rem; }
+
+/* Montants */
+.fct-amounts {
+    min-width: 165px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    background: rgba(241, 245, 249, 0.7);
+    border-radius: 10px;
+    padding: 0.6rem 0.85rem;
+    align-self: flex-start;
+}
+
+.fct-amount-line {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0.75rem;
+}
+
+.fct-amount-line--reste {
+    padding-top: 0.28rem;
+    margin-top: 0.1rem;
+    border-top: 1px dashed #cbd5e1;
+}
+
+.fct-amount-label {
+    font-size: 0.78rem;
+    color: #64748b;
+    white-space: nowrap;
+}
+
+.fct-amount-value {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.fct-amount-reste--success   { color: #16a34a; }
+.fct-amount-reste--danger    { color: #dc2626; }
+.fct-amount-reste--warning   { color: #d97706; }
+.fct-amount-reste--secondary { color: #64748b; }
+
+/* Actions */
+.fct-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    padding: 0.6rem 1rem;
+    border-top: 1px solid var(--surface-border);
+    background: rgba(248, 250, 252, 0.6);
+}
+
+/* Dark mode */
+.app-dark .fct-header {
+    background: linear-gradient(90deg, rgba(30,41,59,0.9), rgba(15,23,42,0.7));
+}
+
+.app-dark .fct-doc-badge {
+    background: #334155;
+    color: #94a3b8;
+}
+
+.app-dark .fct-doc-badge .pi { color: #94a3b8; }
+
+.app-dark .fct-patient-name { color: #e2e8f0; }
+
+.app-dark .fct-patient-detail { color: #94a3b8; }
+
+.app-dark .fct-amounts {
+    background: rgba(30, 41, 59, 0.6);
+}
+
+.app-dark .fct-amount-value { color: #e2e8f0; }
+
+.app-dark .fct-amount-label { color: #94a3b8; }
+
+.app-dark .fct-actions {
+    background: rgba(15, 23, 42, 0.4);
 }
 </style>

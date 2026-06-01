@@ -25,7 +25,7 @@ const chartData = computed(() => {
             {
                 label: 'Montant',
                 backgroundColor: documentStyle.getPropertyValue('--p-primary-500'),
-                data: props.acts.map((row) => Number(row.montant_paye || 0))
+                data: props.acts.map((row) => Number(row.montant || 0))
             }
         ]
     };
@@ -72,7 +72,7 @@ const chartOptions = computed(() => {
                     >
                         <div class="flex items-center justify-between gap-2">
                             <strong class="text-surface-900 dark:text-surface-0">{{ act.description }}</strong>
-                            <Tag :value="formatFcfa(act.montant_paye)" severity="secondary" />
+                            <Tag :value="formatFcfa(act.montant)" severity="secondary" />
                         </div>
                         <p class="text-surface-500">{{ act.patient }} • {{ act.date }}</p>
                     </li>

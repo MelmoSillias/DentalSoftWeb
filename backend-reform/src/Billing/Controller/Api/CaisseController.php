@@ -134,7 +134,7 @@ class CaisseController extends AbstractController
 
         if (!isset($result['error']) && isset($result['paiement_id'])) {
             $paiement = $this->paiementRepository->find((int) $result['paiement_id']);
-            $patient = $this->resolvePatientFromPaiement($paiement);
+            $patient = $this->cashdeskService->resolvePatientFromPaiement($paiement);
 
             if ($patient instanceof Patient) {
                 $this->smsService->queueTemplateForPatient($patient, 'receipt', [
@@ -271,7 +271,7 @@ class CaisseController extends AbstractController
         $end->setTime(23, 59, 59);
 
         $paiements = $this->cashdeskService->paiementsForPeriod($start, $end);
-        $items = array_map(fn (Paiement $p) => $this->mapPaiementListItem($p), $paiements);
+        $items = array_map(fn (Paiement $p) => $this->cashdeskService->mapPaiementListItem($p), $paiements);
         $total = array_reduce($items, fn ($sum, $p) => $sum + (float) ($p['montant'] ?? 0), 0);
 
         return new JsonResponse([
@@ -291,114 +291,21 @@ class CaisseController extends AbstractController
         }
 
         return new JsonResponse([
-            'paiement' => $this->mapPaiementReceipt($paiement),
+            'paiement' => $this->cashdeskService->mapPaiementReceipt($paiement),
         ]);
     }
 
     #[Route('/api/prints/tickets/{id}', name: 'api_print_ticket_data', methods: ['GET'])]
     public function getTicketPrintData(int $id): JsonResponse
     {
-
-        $consultation = $this->consultationRepository->find($id);
-        if (!$consultation) {
-            return new JsonResponse(['error' => 'Consultation introuvable'], 404);
+        $paiement = $this->cashdeskService->paiementById($id);
+        if (!$paiement) {
+            return new JsonResponse(['error' => 'Paiement introuvable'], 404);
         }
 
         return new JsonResponse([
-            'paiement' => $this->mapPaiementTicket($consultation),
+            'paiement' => $this->cashdeskService->mapPaiementTicket($paiement),
         ]);
     }
 
-    private function mapPaiementReceipt(Paiement $paiement): array
-    {
-        $patient = $this->resolvePatientFromPaiement($paiement);
-        $factureId = $paiement->getFacture()?->getId();
-
-        return [
-            'id' => $paiement->getId(),
-            'date' => $paiement->getDate()?->format('Y-m-d H:i'),
-            'montant' => $paiement->getMontant(),
-            'mode' => [
-                'libelle' => $paiement->getMode()?->getLibelle(),
-            ],
-            'devis' => $factureId ? [
-                'id' => $factureId,
-                'total' => $paiement->getFacture()->computeMontantsFromConsultation()['total'] ?? 0.0,
-                'reste' => $paiement->getFacture()->computeMontantsFromConsultation()['reste'] ?? 0.0,
-                'fiche' => [
-                    'patient' => $patient ? [
-                        'nom' => $patient->getNom(),
-                        'prenom' => $patient->getPrenom(),
-                    ] : null,
-                ],
-            ] : null,
-        ];
-    }
-
-    private function mapPaiementTicket(Consultation $consultation): array
-    {
-        $patient = $consultation?->getPatient();
-
-        return [
-            'id' => $consultation->getId(),
-            'date' => $consultation->getCreatedAt()?->format('Y-m-d H:i'),
-            'montant' => $consultation->getPaiement()?->getMontant(),
-            'mode' => [
-                'libelle' => $consultation->getPaiement()?->getMode()?->getLibelle(),
-            ],
-            'consultation' => $consultation ? [
-                'patient' => $patient ? [
-                    'nom' => $patient->getNom(),
-                    'prenom' => $patient->getPrenom(),
-                ] : null,
-            ] : null,
-        ];
-    }
-
-    private function mapPaiementListItem(Paiement $paiement): array
-    {
-        $patient = $this->resolvePatientFromPaiement($paiement);
-        $factureId = $paiement->getFacture()?->getId();
-
-        return [
-            'facture' => $factureId ? [
-                'id' => $factureId,
-                'fiche' => [
-                    'patient' => $patient ? [
-                        'nom' => $patient->getNom(),
-                        'prenom' => $patient->getPrenom(),
-                    ] : null,
-                ],
-            ] : null,
-            'montant' => $paiement->getMontant(),
-            'mode' => [
-                'libelle' => $paiement->getMode()?->getLibelle(),
-            ],
-            'date' => $paiement->getDate()?->format('Y-m-d H:i'),
-        ];
-    }
-
-    private function resolvePatientFromPaiement(?Paiement $paiement): ?Patient
-    {
-        if (!$paiement instanceof Paiement) {
-            return null;
-        }
-
-        $facture = $paiement->getFacture();
-        $fromFicheMedicale = $facture?->getConsultation()?->getFicheMedicale()?->getPatient();
-        if ($fromFicheMedicale instanceof Patient) {
-            return $fromFicheMedicale;
-        }
-
-        $fiche = $facture?->getConsultation()?->getFicheMedicale();
-        if ($fiche && method_exists($fiche, 'getPatient')) {
-            $patient = $fiche->getPatient();
-            if ($patient instanceof Patient) {
-                return $patient;
-            }
-        }
-
-        return $paiement->getConsultation()?->getPatient()
-            ?? $paiement->getFacture()?->getConsultation()?->getPatient();
-    }
 }

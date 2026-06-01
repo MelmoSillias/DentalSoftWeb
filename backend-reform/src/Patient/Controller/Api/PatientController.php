@@ -212,7 +212,11 @@ final class PatientController extends AbstractController
             return $this->json(['success' => false, 'error' => $result['error']], $result['status'] ?? 400);
         }
 
-        return $this->json(['success' => true, 'rdv_id' => $result['rdv_id']], $result['status'] ?? 201);
+        return $this->json([
+            'success' => true,
+            'rdv_id' => $result['rdv_id'],
+            'sms_queued_count' => $result['smsQueuedCount'] ?? 0,
+        ], $result['status'] ?? 201);
     }
 
     #[Route('/api/patient/{id}/dossier', name: 'api_patient_dossier_get', methods: ['GET'])]

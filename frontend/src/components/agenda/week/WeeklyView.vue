@@ -186,7 +186,7 @@ const calendarOptions = reactive({
   eventDidMount: handleEventMount,
   dateClick: handleDateClick,
   datesSet: handleDatesSet,
-  height: 'auto', 
+  height: 'auto',
   headerToolbar: {
     left: 'prev,next today',
     center: 'title',
@@ -248,7 +248,7 @@ defineExpose({ reloadOnAction });
         :filter="!medecinReadonly"
         :disabled="medecinReadonly"
       />
-      <span class="p-input-icon-left w-full xs:w-72 min-w-[160px] xs:min-w-[180px]"> 
+      <span class="p-input-icon-left w-full xs:w-72 min-w-[160px] xs:min-w-[180px]">
         <InputText
         icon   ="pi pi-search"
           v-model.trim="filters.patient"
@@ -290,11 +290,16 @@ defineExpose({ reloadOnAction });
 
       <FullCalendar ref="calendarRef" :options="calendarOptions">
         <template v-slot:eventContent="arg">
-          <!-- Simplified: only show patient name in the event. Full details are available on hover (native tooltip) -->
           <div class="event-inner">
             <div class="event-main">
               <div class="event-header">
                 <strong>{{ arg.event.extendedProps.patientName || 'Patient' }}</strong>
+              </div>
+              <div
+                v-if="arg.event.extendedProps.smsReminder?.label"
+                class="mt-1 truncate text-[10px] font-medium text-slate-500 dark:text-slate-300"
+              >
+                SMS: {{ arg.event.extendedProps.smsReminder.label }}
               </div>
             </div>
           </div>
@@ -338,7 +343,7 @@ defineExpose({ reloadOnAction });
   @apply rounded-md shadow-sm border border-opacity-60 overflow-hidden transition-all duration-150 hover:shadow-md hover:scale-[1.02] hover:z-10;
   padding: 2px 6px !important;
   font-weight: 500;
-  line-height: 1.3; 
+  line-height: 1.3;
   background-color: #ffffff !important;
   color: #1e293b !important;
 }
@@ -358,7 +363,7 @@ defineExpose({ reloadOnAction });
 .weekly-view-page :deep(.fc-event .event-header strong) {
   color: inherit !important;
 }
- 
+
 
 /* Status-specific colors (matched with useRdvStatus composable) */
 .weekly-view-page :deep(.fc-event.rdv-pending) {
@@ -401,7 +406,7 @@ defineExpose({ reloadOnAction });
 .weekly-view-page :deep(.fc-event.rdv-cancelled .fc-event-main) {
   color: #b91c1c !important;
 }
- 
+
 .app-dark .weekly-view-page :deep(.fc-event) {
   background-color: #030d20 !important;
   color: #cbd5e1 !important;

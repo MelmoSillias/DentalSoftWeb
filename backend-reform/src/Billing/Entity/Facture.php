@@ -138,7 +138,7 @@ class Facture
         return $paid;
     }
 
-    public function computeMontantsFromConsultation(?float $overrideCoverageRate = null, bool $isAssurance = false): array
+    public function computeMontantsFromConsultation(): array
     {
         $total = 0.0;
         $consultation = $this->getConsultation();

@@ -2,6 +2,7 @@ import { computed, reactive, ref } from 'vue';
 import {
     fetchSmsLogs,
     fetchSmsProviderOverview,
+    fetchSmsQueue,
     fetchSmsSettings,
     fetchSmsStats,
     fetchSmsTemplates,
@@ -35,6 +36,15 @@ export function useSmsAdminSettings(token, toast, extractApiError) {
         senderAddress: '',
         senderName: '',
         approvedSenderNames: [],
+        patientPreferenceBypass: {
+            patientCreated: false,
+            receipt: false,
+            ticket: false,
+            invoice: false,
+            appointmentReminder: false,
+            unsubscribed: false,
+            blacklisted: false
+        },
         baseUrl: 'https://api.orange.com',
         oauthUrl: 'https://api.orange.com/oauth/v3/token'
     });
@@ -50,6 +60,7 @@ export function useSmsAdminSettings(token, toast, extractApiError) {
     });
 
     const smsLogs = ref([]);
+    const smsQueue = ref([]);
     const smsTemplates = ref([]);
     const selectedTemplateCode = ref('');
     const previewVariables = reactive({
@@ -62,6 +73,12 @@ export function useSmsAdminSettings(token, toast, extractApiError) {
     });
     const previewResult = ref('');
     const manualSms = reactive({ phone: '', message: '' });
+    const queuedSms = reactive({
+        phone: '',
+        message: '',
+        sendAt: null,
+        recurrence: 'none'
+    });
     const testSms = reactive({ phone: '', message: cabinetConfig.smsTestMessage });
 
     const selectedTemplate = computed(() => smsTemplates.value.find((tpl) => tpl.code === selectedTemplateCode.value) || null);
@@ -85,12 +102,22 @@ export function useSmsAdminSettings(token, toast, extractApiError) {
             smsConfig.senderAddress = smsSettings.senderAddress || smsSettings.senderName || '';
             smsConfig.senderName = smsSettings.senderName || '';
             smsConfig.approvedSenderNames = Array.isArray(smsSettings.approvedSenderNames) ? smsSettings.approvedSenderNames : [];
+            smsConfig.patientPreferenceBypass = {
+                patientCreated: Boolean(smsSettings.patientPreferenceBypass?.patientCreated),
+                receipt: Boolean(smsSettings.patientPreferenceBypass?.receipt),
+                ticket: Boolean(smsSettings.patientPreferenceBypass?.ticket),
+                invoice: Boolean(smsSettings.patientPreferenceBypass?.invoice),
+                appointmentReminder: Boolean(smsSettings.patientPreferenceBypass?.appointmentReminder),
+                unsubscribed: Boolean(smsSettings.patientPreferenceBypass?.unsubscribed),
+                blacklisted: Boolean(smsSettings.patientPreferenceBypass?.blacklisted)
+            };
             smsConfig.baseUrl = smsSettings.baseUrl || 'https://api.orange.com';
             smsConfig.oauthUrl = smsSettings.oauthUrl || 'https://api.orange.com/oauth/v3/token';
 
-            const [stats, logs, templates, overview] = await Promise.all([
+            const [stats, logs, queue, templates, overview] = await Promise.all([
                 fetchSmsStats(token),
                 fetchSmsLogs({ limit: 50 }, token),
+                fetchSmsQueue({ limit: 100 }, token),
                 fetchSmsTemplates(token),
                 fetchSmsProviderOverview(token)
             ]);
@@ -99,6 +126,7 @@ export function useSmsAdminSettings(token, toast, extractApiError) {
             smsStats.dailyConsumption = stats.dailyConsumption || {};
             smsStats.monthlyConsumption = stats.monthlyConsumption || {};
             smsLogs.value = logs;
+            smsQueue.value = queue;
             smsTemplates.value = templates;
             providerOverview.value = overview && typeof overview === 'object'
                 ? { success: Boolean(overview.success), message: overview.message || '', contracts: Array.isArray(overview.contracts) ? overview.contracts : [] }
@@ -132,6 +160,7 @@ export function useSmsAdminSettings(token, toast, extractApiError) {
                 senderAddress: smsConfig.senderAddress,
                 senderName: smsConfig.senderName,
                 approvedSenderNames: smsConfig.approvedSenderNames,
+                patientPreferenceBypass: smsConfig.patientPreferenceBypass,
                 baseUrl: smsConfig.baseUrl,
                 oauthUrl: smsConfig.oauthUrl
             }, token);
@@ -235,6 +264,41 @@ export function useSmsAdminSettings(token, toast, extractApiError) {
         }
     };
 
+    const scheduleQueuedSmsAction = async () => {
+        if (!queuedSms.phone || !queuedSms.message) {
+            toast.add({ severity: 'warn', summary: 'Programmation SMS', detail: 'Numéro et message requis.', life: 2500 });
+            return;
+        }
+
+        try {
+            const payload = {
+                phone: queuedSms.phone,
+                message: queuedSms.message,
+                sendAt: queuedSms.sendAt instanceof Date ? queuedSms.sendAt.toISOString() : null,
+                recurrence: queuedSms.recurrence,
+            };
+            const res = await sendManualSms(payload, token);
+            toast.add({
+                severity: res.success ? 'success' : 'warn',
+                summary: 'Programmation SMS',
+                detail: res.success
+                    ? `${res.queuedCount || 1} SMS programmé(s).`
+                    : (res.error || 'Programmation impossible.'),
+                life: 3500
+            });
+            if (res.success) {
+                queuedSms.phone = '';
+                queuedSms.message = '';
+                queuedSms.sendAt = null;
+                queuedSms.recurrence = 'none';
+                await refreshSmsData();
+            }
+        } catch (error) {
+            console.error(error);
+            toast.add({ severity: 'error', summary: 'Programmation SMS', detail: extractApiError(error, 'Programmation impossible.'), life: 5500 });
+        }
+    };
+
     const processQueueAction = async () => {
         smsQueueing.value = true;
         try {
@@ -262,11 +326,13 @@ export function useSmsAdminSettings(token, toast, extractApiError) {
         smsConfig,
         smsStats,
         smsLogs,
+        smsQueue,
         smsTemplates,
         selectedTemplateCode,
         previewVariables,
         previewResult,
         manualSms,
+        queuedSms,
         testSms,
         selectedTemplate,
         previewCharacters,
@@ -283,6 +349,7 @@ export function useSmsAdminSettings(token, toast, extractApiError) {
         saveTemplatesAction,
         previewTemplateAction,
         sendManualSmsAction,
+        scheduleQueuedSmsAction,
         processQueueAction
     };
 }

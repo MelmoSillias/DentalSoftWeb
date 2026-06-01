@@ -106,8 +106,8 @@ class DashboardService
             ->andWhere('t.type = :entry')
             ->andWhere('m.type = :cash')
             ->andWhere('t.dateTransaction BETWEEN :from AND :to')
-            ->setParameter('entry', 'Entrée')
-            ->setParameter('cash', 'EspÃ¨ces')
+            ->setParameter('entry', 'Revenue')
+            ->setParameter('cash', 'Espèces')
             ->setParameter('from', $from)
             ->setParameter('to', $to)
             ->getQuery()
@@ -688,7 +688,7 @@ class DashboardService
             ->leftJoin('t.modeDePaiement', 'm')->addSelect('m')
             ->andWhere('t.type = :entry')
             ->andWhere('t.dateTransaction BETWEEN :from AND :to')
-            ->setParameter('entry', 'Entrée')
+            ->setParameter('entry', 'Revenue')
             ->setParameter('from', $from)
             ->setParameter('to', $to)
             ->getQuery()
@@ -752,7 +752,7 @@ class DashboardService
                 $daily[$date] = ['entries' => 0.0, 'exits' => 0.0];
             }
             $amount = (float) $tx->getMontant();
-            if ($tx->getType() === 'Entrée') {
+            if ($tx->getType() === 'Revenue') {
                 $daily[$date]['entries'] += $amount;
             } else {
                 $daily[$date]['exits'] += $amount;

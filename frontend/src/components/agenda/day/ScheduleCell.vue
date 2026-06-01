@@ -49,6 +49,15 @@ const descriptionLabel = computed(() => {
 });
 
 const statutValue = computed(() => props.rdv?.statut ?? props.rdv?.status ?? props.rdv?.etat ?? 0);
+const smsReminder = computed(() => props.rdv?.smsReminder || null);
+const smsSeverity = computed(() => {
+  const status = String(smsReminder.value?.status || '').toLowerCase();
+  if (status === 'sent') return 'success';
+  if (status === 'failed') return 'danger';
+  if (status === 'sending') return 'info';
+  return smsReminder.value?.isAutomatic ? 'warning' : 'secondary';
+});
+const smsLabel = computed(() => smsReminder.value?.label ? `SMS: ${smsReminder.value.label}` : '');
 
 const trigger = (eventName) => {
   emit(eventName, { rdv: props.rdv });
@@ -98,6 +107,13 @@ const trigger = (eventName) => {
           <p class="mb-3 xs:mb-4 line-clamp-2 text-xs xs:text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
             {{ descriptionLabel }}
           </p>
+
+          <Tag
+            v-if="smsReminder"
+            :severity="smsSeverity"
+            :value="smsLabel"
+            class="mb-3 w-fit text-[10px] xs:text-xs font-medium whitespace-nowrap"
+          />
 
           <div v-if="statutValue === 0" class="mt-auto flex flex-wrap gap-1 xs:gap-2">
             <Button

@@ -62,7 +62,7 @@ const normalizeFocusBilling = (raw = {}) => ({
         montant: Number(payment.montant ?? 0) || 0,
         mode: payment.mode ?? null,
         date: payment.date ?? payment.createdAt ?? null,
-        rolePaiement: payment.rolePaiement ?? 'direct',
+        rolePaiement: payment.rolePaiement ?? null,
         type: payment.type ?? 'paiement',
         status: payment.status ?? 'validated',
     })) : [],

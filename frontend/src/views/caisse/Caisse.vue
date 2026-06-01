@@ -248,23 +248,41 @@ const insuranceStatusSeverity = computed(() => {
 
 const previewPayments = computed(() => Array.isArray(previewData.value?.paiements) ? previewData.value.paiements : []);
 
+	const isInsurancePayment = (payment) => {
+		const role = String(payment?.rolePaiement || '').toLowerCase();
+		const mode = String(payment?.mode || '').toLowerCase();
+
+		return role === 'insurance' || mode.includes('assur');
+	};
+
 const previewPaymentRoleTag = (payment) => {
-	if (payment?.rolePaiement === 'insurance') {
+		if (payment?.status === 'pending' && isInsurancePayment(payment)) {
 		return payment?.status === 'pending'
 			? { label: 'Assurance en attente', severity: 'warning' }
 			: { label: 'Assurance', severity: 'info' };
 	}
 
+		if (isInsurancePayment(payment)) {
+			return { label: 'Assurance', severity: 'info' };
+		}
+
 	return { label: 'Client', severity: 'success' };
 };
 
 const previewPaymentModeTag = (payment) => {
-	if (payment?.rolePaiement === 'insurance') {
+		if (payment?.status === 'pending' && isInsurancePayment(payment)) {
 		return {
 			label: payment?.mode || 'Assurance',
 			severity: payment?.status === 'pending' ? 'warning' : 'info'
 		};
 	}
+
+		if (isInsurancePayment(payment)) {
+			return {
+				label: payment?.mode || 'Assurance',
+				severity: 'info'
+			};
+		}
 
 	return {
 		label: payment?.mode || '—',

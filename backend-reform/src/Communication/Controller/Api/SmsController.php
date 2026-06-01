@@ -23,6 +23,31 @@ use Symfony\Component\Routing\Attribute\Route;
 #[Route('/api/sms', name: 'api_sms_')]
 final class SmsController extends AbstractController
 {
+    /**
+     * @return list<DateTimeImmutable|null>
+     */
+    private function buildManualSendDates(?DateTimeImmutable $sendAt, string $recurrence): array
+    {
+        if (!$sendAt instanceof DateTimeImmutable) {
+            return [null];
+        }
+
+        return match ($recurrence) {
+            'daily_3' => [
+                $sendAt,
+                $sendAt->modify('+1 day'),
+                $sendAt->modify('+2 days'),
+            ],
+            'weekly_4' => [
+                $sendAt,
+                $sendAt->modify('+1 week'),
+                $sendAt->modify('+2 weeks'),
+                $sendAt->modify('+3 weeks'),
+            ],
+            default => [$sendAt],
+        };
+    }
+
     public function __construct(
         private readonly SmsConfigService $smsConfigService,
         private readonly SmsService $smsService,
@@ -96,6 +121,16 @@ final class SmsController extends AbstractController
         return $this->json($this->smsService->listLogs($limit, $offset));
     }
 
+    #[Route('/queue', name: 'queue_list', methods: ['GET'])]
+    public function queue(Request $request): JsonResponse
+    {
+        $limit = (int) $request->query->get('limit', 100);
+        $offset = (int) $request->query->get('offset', 0);
+        $status = $request->query->get('status');
+
+        return $this->json($this->smsService->listQueue($limit, $offset, is_string($status) ? $status : null));
+    }
+
     #[Route('/templates', name: 'templates_list', methods: ['GET'])]
     public function listTemplates(): JsonResponse
     {
@@ -145,10 +180,61 @@ final class SmsController extends AbstractController
         $message = trim((string) ($payload['message'] ?? ''));
         $patientId = isset($payload['patientId']) ? (int) $payload['patientId'] : null;
         $patient = $this->smsService->findPatient($patientId);
+        $recurrence = (string) ($payload['recurrence'] ?? 'none');
+        $sendAtRaw = $payload['sendAt'] ?? null;
+        $sendAt = null;
 
-        $result = $this->smsService->queueManual($phone, $message, $patient, 'manual', 'manual');
+        if (is_string($sendAtRaw) && trim($sendAtRaw) !== '') {
+            try {
+                $sendAt = new DateTimeImmutable($sendAtRaw);
+            } catch (\Throwable) {
+                return $this->json(['success' => false, 'error' => 'Date de programmation invalide'], 400);
+            }
+        }
 
-        return $this->json($result, ($result['success'] ?? false) ? 201 : 400);
+        $dates = $this->buildManualSendDates($sendAt, $recurrence);
+        $queuedIds = [];
+        $skippedCount = 0;
+        $now = new DateTimeImmutable();
+
+        foreach ($dates as $index => $itemSendAt) {
+            if ($itemSendAt instanceof DateTimeImmutable && $itemSendAt <= $now) {
+                ++$skippedCount;
+                continue;
+            }
+
+            $result = $this->smsService->queueManual(
+                $phone,
+                $message,
+                $patient,
+                'manual',
+                'manual',
+                $itemSendAt,
+                [
+                    'recurrence' => $recurrence,
+                    'occurrenceIndex' => $index + 1,
+                    'occurrenceCount' => count($dates),
+                ]
+            );
+
+            if (($result['success'] ?? false) !== true) {
+                return $this->json($result, 400);
+            }
+
+            $queuedIds[] = (int) ($result['queueId'] ?? 0);
+        }
+
+        if ($queuedIds === []) {
+            return $this->json(['success' => false, 'error' => 'Aucune occurrence future à programmer.'], 400);
+        }
+
+        return $this->json([
+            'success' => true,
+            'queueId' => $queuedIds[0],
+            'queueIds' => $queuedIds,
+            'queuedCount' => count($queuedIds),
+            'skippedCount' => $skippedCount,
+        ], 201);
     }
 
     #[Route('/queue/process', name: 'queue_process', methods: ['POST'])]
@@ -199,10 +285,12 @@ final class SmsController extends AbstractController
                 $payload['message'],
                 $patient,
                 'appointment reminder',
-                'appointment'
+                'appointment',
+                null,
+                ['rdvId' => $rdv->getId()]
             );
         } else {
-            $result = $this->smsService->queueTemplateForPatient($patient, 'appointment_reminder', $variables, 'appointment');
+            $result = $this->smsService->queueTemplateForPatient($patient, 'appointment_reminder', $variables, 'appointment', null, ['rdvId' => $rdv->getId()]);
         }
 
         return $this->json($result, ($result['success'] ?? false) ? 201 : 400);
@@ -237,7 +325,7 @@ final class SmsController extends AbstractController
             'cabinet_name' => (string) ($payload['cabinet_name'] ?? 'ORODENT'),
         ];
 
-        $result = $this->smsService->queueTemplateForPatient($patient, 'appointment_reminder', $variables, 'appointment-auto', $sendAt);
+        $result = $this->smsService->queueTemplateForPatient($patient, 'appointment_reminder', $variables, 'appointment-auto', $sendAt, ['rdvId' => $rdv->getId()]);
 
         return $this->json($result, ($result['success'] ?? false) ? 201 : 400);
     }

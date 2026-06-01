@@ -231,7 +231,14 @@ final class OrangeSmsClient
         }
 
         if (!str_starts_with($normalized, '+')) {
-            $normalized = '+' . ltrim($normalized, '0');
+            if (str_starts_with($normalized, '00')) {
+                $normalized = '+' . ltrim(substr($normalized, 2), '0');
+            } else {
+                $digits = ltrim($normalized, '0');
+                $normalized = str_starts_with($digits, '223')
+                    ? '+' . $digits
+                    : '+223' . $digits;
+            }
         }
 
         return 'tel:' . $normalized;

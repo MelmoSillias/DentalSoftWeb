@@ -31,4 +31,37 @@ class SmsQueueRepository extends ServiceEntityRepository
             ->getQuery()
             ->getResult();
     }
+
+    public function findAppointmentRemindersForPatients(array $patientIds): array
+    {
+        $patientIds = array_values(array_filter(array_map('intval', $patientIds)));
+        if ($patientIds === []) {
+            return [];
+        }
+
+        return $this->createQueryBuilder('q')
+            ->andWhere('q.patient IN (:patientIds)')
+            ->andWhere('q.type = :type')
+            ->setParameter('patientIds', $patientIds)
+            ->setParameter('type', 'appointment reminder')
+            ->orderBy('q.createdAt', 'DESC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    public function findRecentQueue(int $limit = 100, int $offset = 0, ?string $status = null): array
+    {
+        $qb = $this->createQueryBuilder('q')
+            ->orderBy('q.createdAt', 'DESC')
+            ->setFirstResult(max(0, $offset))
+            ->setMaxResults(max(1, min($limit, 200)));
+
+        if (is_string($status) && $status !== '') {
+            $qb
+                ->andWhere('q.status = :status')
+                ->setParameter('status', $status);
+        }
+
+        return $qb->getQuery()->getResult();
+    }
 }

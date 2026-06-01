@@ -75,7 +75,6 @@ const router = createRouter({
                     component: () => import('@/views/consultations/FicheForm.vue'),
                     meta: { requiresAuth: true, roles: ['ROLE_ADMIN', 'ROLE_MEDECIN'], fixedWidth: true }
                 },
-
                 // Caisse
                 {
                     path: '/caisse',
@@ -107,7 +106,7 @@ const router = createRouter({
                     path: '/administration/finances',
                     name: 'administration-finances',
                     component: () => import('@/views/administration/Finances.vue'),
-                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN'], fixedWidth: true } // Réservé aux admins
+                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN'], fixedWidth: true }
                 },
                 {
                     path: '/administration/utilisateurs',
@@ -139,7 +138,6 @@ const router = createRouter({
                     component: () => import('@/views/administration/AvisRetoursPatients.vue'),
                     meta: { requiresAuth: true, roles: ['ROLE_ADMIN'], fixedWidth: true }
                 },
-
                 {
                     path: '/profile',
                     name: 'profile',

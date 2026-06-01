@@ -80,105 +80,119 @@ class ConsultationService
                 ];
             }
 
-            if (($data['payant'] ?? 0) == 1) {
-                $defaultConsultationAmount = $this->globalSettingsService->getConsultationPrice();
-                $consultationAmount = (float) ($data['consultation_amount'] ?? $defaultConsultationAmount);
-                if ($consultationAmount <= 0) {
-                    $consultationAmount = $defaultConsultationAmount;
-                }
+            $result = $this->em->wrapInTransaction(function () use ($data, $triggeredBy): array {
+                if (($data['payant'] ?? 0) == 1) {
+                    $defaultConsultationAmount = $this->globalSettingsService->getConsultationPrice();
+                    $consultationAmount = (float) ($data['consultation_amount'] ?? $defaultConsultationAmount);
+                    if ($consultationAmount <= 0) {
+                        $consultationAmount = $defaultConsultationAmount;
+                    }
 
-                $patient = $this->patientRepo->find($data['patient_id'] ?? null);
-                if (!$patient) {
-                    return [
-                        'error' => 'Patient introuvable.',
-                        'status' => 404,
-                    ];
-                }
-
-                $profile = $patient->getAssuranceProfile();
-                $assurance = $profile?->getAssurance();
-                $insuranceEnabled = $profile !== null && $assurance !== null && $assurance->isActif();
-                $insuranceRate = $insuranceEnabled
-                    ? max(0, min(100, (float) ($profile?->getCoverageRate() ?? $assurance?->getTauxParDefaut() ?? 0)))
-                    : 0.0;
-
-                $insuranceAmount = $insuranceEnabled ? ($consultationAmount * $insuranceRate) / 100 : 0.0;
-                $patientAmount = max(0.0, $consultationAmount - $insuranceAmount);
-
-                if ($patientAmount > 0 && !$insuranceEnabled && !isset($data['mode_paiement_id'])) {
-                    return [
-                        'error' => 'Le mode de paiement est requis pour une consultation payante.',
-                        'status' => 400,
-                    ];
-                }
-
-                $consultation = $this->consultationRepo->NewConsultation($data, $this->patientRepo, $this->employeRepo);
-                $createdPaiementId = null;
-                $patientPayment = null;
-                $timestamp = new DateTimeImmutable();
-
-                if ($patientAmount > 0 && !$insuranceEnabled) {
-                    $modePaiement = $this->em->getRepository(ModeDePaiement::class)->find($data['mode_paiement_id']);
-
-                    if (!$modePaiement) {
+                    $patient = $this->patientRepo->find($data['patient_id'] ?? null);
+                    if (!$patient) {
                         return [
-                            'error' => 'Mode de paiement invalide.',
+                            'error' => 'Patient introuvable.',
+                            'status' => 404,
+                        ];
+                    }
+
+                    $profile = $patient->getAssuranceProfile();
+                    $assurance = $profile?->getAssurance();
+                    $insuranceEnabled = $profile !== null && $assurance !== null && $assurance->isActif();
+                    $insuranceRate = $insuranceEnabled
+                        ? max(0, min(100, (float) ($profile?->getCoverageRate() ?? $assurance?->getTauxParDefaut() ?? 0)))
+                        : 0.0;
+
+                    $insuranceAmount = $insuranceEnabled ? ($consultationAmount * $insuranceRate) / 100 : 0.0;
+                    $patientAmount = max(0.0, $consultationAmount - $insuranceAmount);
+
+                    if ($patientAmount > 0 && !$insuranceEnabled && !isset($data['mode_paiement_id'])) {
+                        return [
+                            'error' => 'Le mode de paiement est requis pour une consultation payante.',
                             'status' => 400,
                         ];
                     }
 
-                    $paiement = new Paiement();
-                    $paiement->setFacture(null);
-                    $paiement->setMode($modePaiement);
-                    $paiement->setMontant($patientAmount);
-                    $paiement->setDate($timestamp);
-                    $paiement->setConsultation($consultation);
-                    $this->em->persist($paiement);
-                    $patientPayment = $paiement;
+                    $consultation = $this->consultationRepo->NewConsultation($data, $this->patientRepo, $this->employeRepo, false);
+                    $createdPaiementId = null;
+                    $patientPayment = null;
+                    $timestamp = new DateTimeImmutable();
 
-                    $transaction = new Transaction();
-                    $transaction->setType('Revenue');
-                    $transaction->setMontant($patientAmount);
-                    $transaction->setDateTransaction($timestamp);
-                    $transaction->setDescription('Ticket de consultation #' . $consultation->getId() . ' | Part patient');
-                    $transaction->setModeDePaiement($modePaiement);
-                    $transaction->setConsultation($consultation);
-                    $transaction->markValidated();
-                    $transaction->setPaiement($paiement);
-                    $this->em->persist($transaction);
+                    if ($patientAmount > 0 && !$insuranceEnabled) {
+                        $modePaiement = $this->em->getRepository(ModeDePaiement::class)->find($data['mode_paiement_id']);
+
+                        if (!$modePaiement) {
+                            return [
+                                'error' => 'Mode de paiement invalide.',
+                                'status' => 400,
+                            ];
+                        }
+
+                        $paiement = new Paiement();
+                        $paiement->setFacture(null);
+                        $paiement->setMode($modePaiement);
+                        $paiement->setMontant($patientAmount);
+                        $paiement->setDate($timestamp);
+                        $paiement->setConsultation($consultation);
+                        $this->em->persist($paiement);
+                        $patientPayment = $paiement;
+
+                        $transaction = new Transaction();
+                        $transaction->setType('Revenue');
+                        $transaction->setMontant((string) $patientAmount);
+                        $transaction->setDateTransaction($timestamp);
+                        $transaction->setDescription('Ticket de consultation #' . $consultation->getId() . ' | Part patient');
+                        $transaction->setModeDePaiement($modePaiement);
+                        $transaction->setConsultation($consultation);
+                        $transaction->markValidated();
+                        $transaction->setPaiement($paiement);
+                        $this->em->persist($transaction);
+                    }
+
+                    if ($insuranceEnabled && $assurance instanceof Assurance) {
+                        $factureAssurance = new FactureAssurance();
+                        $factureAssurance
+                            ->setConsultation($consultation)
+                            ->setPatient($patient)
+                            ->setAssurance($assurance)
+                            ->setCoverageRate($insuranceRate > 0 ? $insuranceRate : null)
+                            ->setDateFacture(new DateTime())
+                            ->setConsultationAmount($consultationAmount)
+                            ->setIsConsultationPayante(true)
+                            ->setInsuranceStatus('pending')
+                            ->setAssuranceSnapshot([
+                                'code' => $assurance->getCode(),
+                                'nom' => $assurance->getNom(),
+                                'logoPath' => $assurance->getLogoPath(),
+                                'website' => $assurance->getWebsite(),
+                                'email' => $assurance->getEmail(),
+                                'formData' => $profile?->getFormData() ?? [],
+                            ]);
+
+                        $consultation->setFactureAssurance($factureAssurance);
+                        $this->em->persist($factureAssurance);
+                    }
+
+                    $this->em->flush();
+
+                    if ($patientPayment instanceof Paiement && $patientPayment->getId() !== null) {
+                        $createdPaiementId = $patientPayment->getId();
+                    } elseif ($consultation->getPaiement()) {
+                        $createdPaiementId = $consultation->getPaiement()->getId();
+                    }
+
+                    $this->consultationNotificationService->notifyCreation($consultation, $triggeredBy);
+
+                    return [
+                        'success' => true,
+                        'status' => 200,
+                        'consultation_id' => $consultation->getId(),
+                        'paiement_id' => $createdPaiementId,
+                    ];
                 }
 
-                if ($insuranceEnabled && $assurance instanceof Assurance) {
-                    $factureAssurance = new FactureAssurance();
-                    $factureAssurance
-                        ->setConsultation($consultation)
-                        ->setPatient($patient)
-                        ->setAssurance($assurance)
-                        ->setCoverageRate($insuranceRate > 0 ? $insuranceRate : null)
-                        ->setDateFacture(new DateTime())
-                        ->setConsultationAmount($consultationAmount)
-                        ->setIsConsultationPayante(true)
-                        ->setInsuranceStatus('pending') 
-                        ->setAssuranceSnapshot([
-                            'code' => $assurance->getCode(),
-                            'nom' => $assurance->getNom(),
-                            'logoPath' => $assurance->getLogoPath(),
-                            'website' => $assurance->getWebsite(),
-                            'email' => $assurance->getEmail(),
-                            'formData' => $profile?->getFormData() ?? [],
-                        ]);
-
-                    $consultation->setFactureAssurance($factureAssurance);
-                    $this->em->persist($factureAssurance);
-                }
-
+                $consultation = $this->consultationRepo->NewConsultation($data, $this->patientRepo, $this->employeRepo, false);
                 $this->em->flush();
-
-                if ($patientPayment instanceof Paiement && $patientPayment->getId() !== null) {
-                    $createdPaiementId = $patientPayment->getId();
-                } elseif ($consultation->getPaiement()) {
-                    $createdPaiementId = $consultation->getPaiement()->getId();
-                }
 
                 $this->consultationNotificationService->notifyCreation($consultation, $triggeredBy);
 
@@ -186,19 +200,10 @@ class ConsultationService
                     'success' => true,
                     'status' => 200,
                     'consultation_id' => $consultation->getId(),
-                    'paiement_id' => $createdPaiementId,
                 ];
-            }
+            });
 
-            $consultation = $this->consultationRepo->NewConsultation($data, $this->patientRepo, $this->employeRepo);
-
-            $this->consultationNotificationService->notifyCreation($consultation, $triggeredBy);
-
-            return [
-                'success' => true,
-                'status' => 200,
-                'consultation_id' => $consultation->getId(),
-            ];
+            return $result;
         } catch (\Exception $e) {
             return [
                 'error' => $e->getMessage(),
@@ -838,8 +843,7 @@ class ConsultationService
         $facture->setConsultation($consultation);
         $facture->setDateFacture(new \DateTime('now'));
 
-        $montants = $facture->computeMontantsFromConsultation();
-        $facture->setIsReglee(((float) $montants['restePatient']) <= 0.0); 
+        $montants = $facture->computeMontantsFromConsultation(); 
         $consultation->setFacture($facture);
         $this->em->persist($facture);
         $this->em->flush();

@@ -80,19 +80,21 @@ class GlobalSettingsService
     ) {
     }
 
-    /** @return array{autoApproveDevices: bool, requireMedecinOnConsultationCreation: bool, allowReceptionQuickCloseConsultation: bool, allowReceptionConsultationQuickActions: bool, allowReceptionBypassMedecinPasswordOnQuickClose: bool, hidePatientDossierForMedecins: bool, hidePatientPhoneForMedecins: bool, paiementDirectAssurance: bool, ficheFormSimplifie: bool, consultationPrice: float, transactionMotifs: array{revenue: string[], expense: string[]}, soinsList: string[], examensTypes: string[], traitementTypes: string[], allergyTypes: string[], antecedentTypes: string[], patientPortalEnabled: bool, patientPortalClosedMessage: string, patientPortalBaseUrl: ?string, cabinetShowcaseWebsiteUrl: ?string} */
+    /** @return array{autoApproveDevices: bool, requireMedecinOnConsultationCreation: bool, allowReceptionQuickCloseConsultation: bool, allowReceptionConsultationQuickActions: bool, showReceptionQuickCloseButton: bool, allowReceptionBypassMedecinPasswordOnQuickClose: bool, hidePatientDossierForMedecins: bool, hidePatientPhoneForMedecins: bool, paiementDirectAssurance: bool, ficheFormSimplifie: bool, consultationPrice: float, transactionMotifs: array{revenue: string[], expense: string[]}, soinsList: string[], examensTypes: string[], traitementTypes: string[], allergyTypes: string[], antecedentTypes: string[], patientPortalEnabled: bool, patientPortalClosedMessage: string, patientPortalBaseUrl: ?string, cabinetShowcaseWebsiteUrl: ?string} */
     public function getGeneralSettings(): array
     {
         $entry = $this->appSettingRepo->findOneByKey(self::KEY_GENERAL);
         $value = $entry?->getValue() ?? [];
         $allowReceptionConsultationQuickActions = (bool) ($value['allowReceptionConsultationQuickActions'] ?? ($value['allowReceptionQuickCloseConsultation'] ?? true));
+        $showReceptionQuickCloseButton = (bool) ($value['showReceptionQuickCloseButton'] ?? true);
 
         return [
             'autoApproveDevices' => (bool) ($value['autoApproveDevices'] ?? true),
             'requireMedecinOnConsultationCreation' => (bool) ($value['requireMedecinOnConsultationCreation'] ?? true),
             'allowReceptionQuickCloseConsultation' => $allowReceptionConsultationQuickActions,
             'allowReceptionConsultationQuickActions' => $allowReceptionConsultationQuickActions,
-            'allowReceptionBypassMedecinPasswordOnQuickClose' => (bool) ($value['allowReceptionBypassMedecinPasswordOnQuickClose'] ?? false),
+            'showReceptionQuickCloseButton' => $showReceptionQuickCloseButton,
+            'allowReceptionBypassMedecinPasswordOnQuickClose' => $showReceptionQuickCloseButton && (bool) ($value['allowReceptionBypassMedecinPasswordOnQuickClose'] ?? false),
             'hidePatientDossierForMedecins' => (bool) ($value['hidePatientDossierForMedecins'] ?? false),
             'hidePatientPhoneForMedecins' => (bool) ($value['hidePatientPhoneForMedecins'] ?? false),
             'paiementDirectAssurance' => (bool) ($value['paiementDirectAssurance'] ?? false),
@@ -129,13 +131,15 @@ class GlobalSettingsService
 
         $current = $entry->getValue();
         $allowReceptionConsultationQuickActions = (bool) ($payload['allowReceptionConsultationQuickActions'] ?? ($payload['allowReceptionQuickCloseConsultation'] ?? ($current['allowReceptionConsultationQuickActions'] ?? ($current['allowReceptionQuickCloseConsultation'] ?? true))));
+        $showReceptionQuickCloseButton = (bool) ($payload['showReceptionQuickCloseButton'] ?? ($current['showReceptionQuickCloseButton'] ?? true));
         $entry->setValue([
             ...$current,
             'autoApproveDevices' => (bool) ($payload['autoApproveDevices'] ?? ($current['autoApproveDevices'] ?? true)),
             'requireMedecinOnConsultationCreation' => (bool) ($payload['requireMedecinOnConsultationCreation'] ?? ($current['requireMedecinOnConsultationCreation'] ?? false)),
             'allowReceptionQuickCloseConsultation' => $allowReceptionConsultationQuickActions,
             'allowReceptionConsultationQuickActions' => $allowReceptionConsultationQuickActions,
-            'allowReceptionBypassMedecinPasswordOnQuickClose' => (bool) ($payload['allowReceptionBypassMedecinPasswordOnQuickClose'] ?? ($current['allowReceptionBypassMedecinPasswordOnQuickClose'] ?? false)),
+            'showReceptionQuickCloseButton' => $showReceptionQuickCloseButton,
+            'allowReceptionBypassMedecinPasswordOnQuickClose' => $showReceptionQuickCloseButton && (bool) ($payload['allowReceptionBypassMedecinPasswordOnQuickClose'] ?? ($current['allowReceptionBypassMedecinPasswordOnQuickClose'] ?? false)),
             'hidePatientDossierForMedecins' => (bool) ($payload['hidePatientDossierForMedecins'] ?? ($current['hidePatientDossierForMedecins'] ?? false)),
             'hidePatientPhoneForMedecins' => (bool) ($payload['hidePatientPhoneForMedecins'] ?? ($current['hidePatientPhoneForMedecins'] ?? false)),
             'paiementDirectAssurance' => (bool) ($payload['paiementDirectAssurance'] ?? $payload['paymentDirectInsurance'] ?? ($current['paiementDirectAssurance'] ?? false)),
@@ -174,7 +178,9 @@ class GlobalSettingsService
 
     public function isReceptionQuickCloseConsultationAllowed(): bool
     {
-        return $this->getGeneralSettings()['allowReceptionConsultationQuickActions'];
+        $settings = $this->getGeneralSettings();
+
+        return $settings['allowReceptionConsultationQuickActions'] && $settings['showReceptionQuickCloseButton'];
     }
 
     public function canReceptionBypassMedecinPasswordOnQuickClose(): bool
@@ -351,15 +357,16 @@ class GlobalSettingsService
         return $this->getGeneralSettings()['patientPortalClosedMessage'];
     }
 
-    /** @return array{requireMedecinOnConsultationCreation: bool, allowReceptionQuickCloseConsultation: bool, allowReceptionConsultationQuickActions: bool, allowReceptionBypassMedecinPasswordOnQuickClose: bool, hidePatientDossierForMedecins: bool, hidePatientPhoneForMedecins: bool, paiementDirectAssurance: bool, ficheFormSimplifie: bool, consultationPrice: float, soinsList: string[], examensTypes: string[], traitementTypes: string[], allergyTypes: string[], antecedentTypes: string[], patientPortalEnabled: bool, patientPortalClosedMessage: string, patientPortalBaseUrl: ?string, cabinetShowcaseWebsiteUrl: ?string} */
+    /** @return array{requireMedecinOnConsultationCreation: bool, allowReceptionQuickCloseConsultation: bool, allowReceptionConsultationQuickActions: bool, showReceptionQuickCloseButton: bool, allowReceptionBypassMedecinPasswordOnQuickClose: bool, hidePatientDossierForMedecins: bool, hidePatientPhoneForMedecins: bool, paiementDirectAssurance: bool, ficheFormSimplifie: bool, consultationPrice: float, soinsList: string[], examensTypes: string[], traitementTypes: string[], allergyTypes: string[], antecedentTypes: string[], patientPortalEnabled: bool, patientPortalClosedMessage: string, patientPortalBaseUrl: ?string, cabinetShowcaseWebsiteUrl: ?string} */
     public function getPublicGeneralSettings(): array
     {
         $settings = $this->getGeneralSettings();
 
         return [
             'requireMedecinOnConsultationCreation' => $settings['requireMedecinOnConsultationCreation'],
-            'allowReceptionQuickCloseConsultation' => $settings['allowReceptionQuickCloseConsultation'],
+            'allowReceptionQuickCloseConsultation' => $settings['allowReceptionQuickCloseConsultation'] && $settings['showReceptionQuickCloseButton'],
             'allowReceptionConsultationQuickActions' => $settings['allowReceptionConsultationQuickActions'],
+            'showReceptionQuickCloseButton' => $settings['showReceptionQuickCloseButton'],
             'allowReceptionBypassMedecinPasswordOnQuickClose' => $settings['allowReceptionBypassMedecinPasswordOnQuickClose'],
             'hidePatientDossierForMedecins' => $settings['hidePatientDossierForMedecins'],
             'hidePatientPhoneForMedecins' => $settings['hidePatientPhoneForMedecins'],

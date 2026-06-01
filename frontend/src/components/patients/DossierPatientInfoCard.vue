@@ -1,6 +1,6 @@
 <script setup>
 import Button from 'primevue/button';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import PatientAvatar from '@/components/patients/PatientAvatar.vue';
 
 const props = defineProps({
@@ -37,6 +37,36 @@ const emit = defineEmits([
 ]);
 
 const photoInput = ref(null);
+
+const insuranceProfile = computed(() => props.patient?.insuranceProfile || null);
+const insuranceName = computed(() => insuranceProfile.value?.assurance?.nom || insuranceProfile.value?.assurance?.code || 'Assurance');
+const insuranceCoverageRate = computed(() => Number(insuranceProfile.value?.coverageRate ?? 0) || 0);
+const insuranceFormDataEntries = computed(() => {
+    const formData = insuranceProfile.value?.formData;
+    if (!formData || typeof formData !== 'object') {
+        return [];
+    }
+
+    const labels = {
+        societe: 'Société',
+        assureNom: 'Nom assuré',
+        assureNumero: 'N° assuré',
+        beneficiaireNom: 'Bénéficiaire',
+        beneficiaireNumero: 'N° bénéficiaire',
+        sexe: 'Sexe assuré',
+        souscripteur: 'Souscripteur',
+        salarieNomPrenom: 'Salarié',
+        salarieMatricule: 'Matricule salarié',
+        patientNomPrenom: 'Patient',
+        patientMatricule: 'Matricule patient',
+        patientAge: 'Âge patient',
+        patientSexe: 'Sexe patient'
+    };
+
+    return Object.entries(formData)
+        .filter(([, value]) => String(value || '').trim() !== '')
+        .map(([key, value]) => ({ key, label: labels[key] || key, value: String(value) }));
+});
 
 const openPhotoPicker = () => {
     photoInput.value?.click();
@@ -127,6 +157,25 @@ const handlePhotoChange = (event) => {
                         {{ patient.adresse }}
                     </div>
                 </div>
+            </div>
+
+            <div class="mt-6 pt-6 border-t border-surface-200/50 dark:border-surface-700/50" data-tour="patients-dossier.insurance">
+                <h4 class="text-sm font-medium text-surface-700 dark:text-surface-300 mb-3">Assurance</h4>
+                <div v-if="insuranceProfile?.assurance" class="space-y-2">
+                    <div class="flex items-center justify-between p-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/20">
+                        <span class="text-surface-600 dark:text-surface-400">Organisme</span>
+                        <span class="font-medium text-emerald-700 dark:text-emerald-300">{{ insuranceName }}</span>
+                    </div>
+                    <div class="flex items-center justify-between p-3 rounded-xl bg-surface-50 dark:bg-surface-700/50">
+                        <span class="text-surface-600 dark:text-surface-400">Taux de couverture</span>
+                        <span class="font-medium text-surface-900 dark:text-surface-100">{{ insuranceCoverageRate }} %</span>
+                    </div>
+                    <div v-for="entry in insuranceFormDataEntries" :key="entry.key" class="flex items-center justify-between gap-4 p-3 rounded-xl bg-surface-50 dark:bg-surface-700/50">
+                        <span class="text-surface-600 dark:text-surface-400">{{ entry.label }}</span>
+                        <span class="font-medium text-surface-900 dark:text-surface-100 text-right">{{ entry.value }}</span>
+                    </div>
+                </div>
+                <p v-else class="text-sm text-surface-500 dark:text-surface-400">Patient non assuré.</p>
             </div>
 
             <div class="mt-6 pt-6 border-t border-surface-200/50 dark:border-surface-700/50" data-tour="patients-dossier.antecedents">
@@ -233,11 +282,11 @@ const handlePhotoChange = (event) => {
                     Aucun compte lié. Cliquez sur Créer pour générer un identifiant (mot de passe par défaut: 123).
                 </p>
             </div>
-        </div> 
-    
+        </div>
+
         <!-- MOBILE (Visible de 0px à 640px, caché après) -->
         <div v-if="!hideActions" data-tour="patients-dossier.actions" class="px-5 py-4 border-t border-surface-200/50 dark:border-surface-700/50 bg-surface-50/50 dark:bg-surface-900/50">
-        
+
             <!-- DESKTOP (Caché sur mobile, visible à partir de sm: 640px) -->
             <div class="hidden sm:flex flex-wrap gap-2">
                 <Button icon="pi pi-print" label="Imprimer dossier" severity="secondary" outlined class="flex-1" @click="emit('print-dossier')" />
@@ -251,8 +300,8 @@ const handlePhotoChange = (event) => {
                 <Button icon="pi pi-pencil"  severity="secondary" outlined class="flex-1" @click="emit('edit')" />
                 <Button icon="pi pi-plus" label="RDV" severity="primary" class="flex-1 bg-gradient-to-r from-primary-500 to-primary-600 border-0" @click="emit('new-rdv')" />
             </div>
-            
-        </div> 
+
+        </div>
 
     </div>
 </template>

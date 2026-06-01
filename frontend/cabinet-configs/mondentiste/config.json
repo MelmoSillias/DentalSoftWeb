@@ -10,8 +10,8 @@
   "smsTestMessage": "Message de test Mon dentiste.",
   "reportCabinetName": "Mon dentiste",
   "cabinetPhone": "+223 71 26 30 71",
-  "viteApiPrefix": "https://api.mondentiste-mali.com/api",
-  "viteFilePrefix": "https://api.mondentiste-mali.com", 
+  "viteApiPrefix": "https://api.mondentiste.local/api",
+  "viteFilePrefix": "https://api.mondentiste.local",
   "brandingAssets": {
     "logo": "logo.png",
     "logoAlt": "logo.jpeg",

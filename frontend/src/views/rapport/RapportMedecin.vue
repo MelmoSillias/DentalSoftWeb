@@ -96,7 +96,7 @@ onMounted(() => {
             <MedecinPeriodicDetailsSection :period="medecinData.period" :loading="medecinLoading" />
         </div>
         <div data-tour="rapports-medecin.acts">
-            <MedecinMedicalActsSection :acts="medecinData.period?.paiements_period || []" :loading="medecinLoading" />
+            <MedecinMedicalActsSection :acts="medecinData.period?.actesMedicaux || []" :loading="medecinLoading" />
         </div>
         <div data-tour="rapports-medecin.profile">
             <MedecinProfileSection :data="medecinData" :loading="medecinLoading" />

@@ -78,18 +78,54 @@ const photoSource = computed(() => {
 
     return `${filePrefix}${rawPhoto.startsWith('/') ? rawPhoto : `/${rawPhoto}`}`;
 });
+
+const insuranceProfile = computed(() => props.patient?.insuranceProfile || null);
+const insuranceAssurance = computed(() => insuranceProfile.value?.assurance || null);
+const hasInsurance = computed(() => Boolean(
+    insuranceProfile.value?.enabled
+    && (insuranceAssurance.value?.nom || insuranceAssurance.value?.code || insuranceProfile.value?.assuranceCode)
+));
+const insuranceLabel = computed(() => insuranceAssurance.value?.nom || insuranceAssurance.value?.code || insuranceProfile.value?.assuranceCode || 'Assurance');
+const insuranceTooltip = computed(() => {
+    if (!hasInsurance.value) {
+        return '';
+    }
+
+    const lines = [
+        `Assurance: ${insuranceLabel.value}`,
+        `Couverture: ${Number(insuranceProfile.value?.coverageRate ?? 0) || 0} %`
+    ];
+
+    const formData = insuranceProfile.value?.formData || {};
+    const cardNumber = formData.beneficiaireNumero || formData.assureNumero || formData.patientMatricule || formData.salarieMatricule;
+    if (cardNumber) {
+        lines.push(`Référence: ${cardNumber}`);
+    }
+
+    return lines.join('\n');
+});
 </script>
 
 <template>
-    <div
-        :class="[
-            sizeClass,
-            roundedClass,
-            'overflow-hidden shrink-0 flex items-center justify-center',
-            photoSource ? 'bg-surface-100 dark:bg-surface-700' : fallbackClass
-        ]"
-    >
-        <img v-if="photoSource" :src="photoSource" :alt="alt" class="h-full w-full object-cover" />
-        <span v-else :class="textClass">{{ resolvedInitials }}</span>
+    <div class="relative inline-flex shrink-0">
+        <div
+            :class="[
+                sizeClass,
+                roundedClass,
+                'overflow-hidden flex items-center justify-center',
+                photoSource ? 'bg-surface-100 dark:bg-surface-700' : fallbackClass
+            ]"
+        >
+            <img v-if="photoSource" :src="photoSource" :alt="alt" class="h-full w-full object-cover" />
+            <span v-else :class="textClass">{{ resolvedInitials }}</span>
+        </div>
+        <span
+            v-if="hasInsurance"
+            v-tooltip.top="insuranceTooltip"
+            class="absolute -right-1 -bottom-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-surface-0 bg-emerald-500 text-[10px] text-white shadow-sm dark:border-surface-900"
+            aria-label="Patient assuré"
+        >
+            <i class="pi pi-shield"></i>
+        </span>
     </div>
 </template>
