@@ -863,10 +863,29 @@ const cancelActiveConsultation = async () => {
     }
 };
 
-const handleConsultationCreated = async () => {
+const handleConsultationCreated = async (saved) => {
     createConsultationDialogVisible.value = false;
     createConsultationPreSelectedPatient.value = null;
-    await loadConsultations();
+
+    const consultationId = saved?.consultation_id ?? saved?.consultationId ?? null;
+    const paymentId = saved?.paiement_id ?? saved?.paiementId ?? null;
+
+    if (consultationId) {
+        selectedConsultationId.value = consultationId;
+        consultations.value = consultations.value.map((consultation) => (
+            consultation.id === consultationId
+                ? {
+                    ...consultation,
+                    paymentId: paymentId ?? consultation.paymentId ?? null,
+                    isPaid: Boolean(paymentId ?? consultation.paymentId ?? consultation.isPaid)
+                }
+                : consultation
+        ));
+    }
+
+    if (!realtimeEnabled.value) {
+        await loadConsultations();
+    }
 };
 
 const openMedicalWorkspace = (consultation, choice = null) => {

@@ -231,6 +231,20 @@ class CaisseController extends AbstractController
         ]);
     }
 
+    #[Route('/api/prints/devis/{id}', name: 'api_print_devis_data', methods: ['GET'])]
+    public function getDevisPrintData(int $id): JsonResponse
+    {
+        $data = $this->cashdeskService->previewDevis($id);
+        if ($data === null) {
+            return new JsonResponse(['error' => 'Devis introuvable'], 404);
+        }
+
+        return new JsonResponse([
+            'doc' => $data,
+            'title' => 'Devis',
+        ]);
+    }
+
     #[Route('/api/prints/factures/{id}', name: 'api_print_factures_data', methods: ['GET'])] 
     public function getFacturePrintDataLegacy(int $id): JsonResponse
     {

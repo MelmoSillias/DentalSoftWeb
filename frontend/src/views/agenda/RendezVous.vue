@@ -82,6 +82,8 @@ const smsDraft = ref('');
 const smsRdv = ref(null);
 const smsScheduleHours = ref(24);
 const smsScheduleOptions = ref([
+    { label: '72h avant', value: 72 },
+    { label: '48h avant', value: 48 },
 	{ label: '24h avant', value: 24 },
 	{ label: '12h avant', value: 12 },
 	{ label: '2h avant', value: 2 }
@@ -93,7 +95,6 @@ const rdvLoadErrorMessage = computed(() => {
 	const errorValue = api.error?.value ?? api.error;
 	return typeof errorValue === 'string' && errorValue.trim() ? errorValue : '';
 });
-
 
 
 const dialogState = reactive({
@@ -133,13 +134,13 @@ const openCreate = (payload = {}) => {
 };
 
 const submitCreate = async () => {
-	try { 
+	try {
 		dialogState.create = false;
 		refreshKey.value += 1;
 		nextTick(() => {
 			weeklyViewRef.value?.reloadOnAction?.();
 		});
-	} catch (err) { 
+	} catch (err) {
 		console.error(err);
 	}
 };

@@ -234,6 +234,10 @@ class PatientService
                 'statut' => $consultation->getStatut(),
             ] : null,
             'impayees' => $this->getPatientImpayees($patient->getId()),
+            'archiveFiles' => $patient->getArchiveFiles() ? array_map(fn (array $file) => [
+                'nom' => $file['nom'] ?? 'Fichier',
+                'url' => $file['url'] ?? null,
+            ], $patient->getArchiveFiles()) : [],
         ];
     }
 
@@ -253,9 +257,9 @@ class PatientService
         return rtrim(dirname($uploadDir), '/\\') . DIRECTORY_SEPARATOR . ltrim(str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $photoPath), '/\\');
     }
 
-    private function uploadPatientPhoto(UploadedFile $file, string $uploadDir, ?string $currentPhoto = null): string
+    private function uploadPatientPhoto(UploadedFile $file, string $uploadDir, ?string $currentPhoto = null, ?int $patientId = null): string
     {
-        $targetDir = rtrim($uploadDir, '/\\') . DIRECTORY_SEPARATOR . 'patients';
+        $targetDir = rtrim($uploadDir, '/\\') . DIRECTORY_SEPARATOR . 'patients' . DIRECTORY_SEPARATOR  . ($patientId ?? 'unknown') . DIRECTORY_SEPARATOR . 'photos';
         if (!is_dir($targetDir) && !mkdir($targetDir, 0777, true) && !is_dir($targetDir)) {
             throw new \RuntimeException('Impossible de creer le dossier des photos patients.');
         }
@@ -272,7 +276,7 @@ class PatientService
             }
         }
 
-        return '/uploads/patients/' . $filename;
+        return '/uploads/patients/' . ($patientId ?? 'unknown') . '/photos/' . $filename;
     }
 
     public function getPatientImpayees(int $id): int
@@ -519,6 +523,10 @@ class PatientService
                 }
             }
 
+            if ($this->globalSettingsService->shouldAutoCreatePortalAccountOnPatientCreation()) {
+                $this->ensurePatientPortalAccount($patient);
+            }
+
             $this->em->persist($patient);
             $this->em->flush();
             $this->clearPatientsCache();
@@ -530,7 +538,12 @@ class PatientService
                 'cabinet_name' => 'ORODENT',
             ], 'patient-created');
 
-            return ['success' => true, 'status' => 201, 'patientId' => $patient->getId()];
+            return [
+                'success' => true,
+                'status' => 201,
+                'patientId' => $patient->getId(),
+                'portalAccount' => $this->formatPortalAccount($patient),
+            ];
         } catch (\InvalidArgumentException $e) {
             return ['error' => $e->getMessage(), 'status' => 400];
         } catch (\Exception $e) {
@@ -538,8 +551,14 @@ class PatientService
         }
     }
 
-    public function updatePatient(int $id, array $data, ?UploadedFile $photo = null, ?string $uploadDir = null): array
-    {
+    public function updatePatient(
+                int $id,
+                array $data,
+                ?UploadedFile $photo = null,
+                ?string $uploadDir = null,
+                array $uploadedArchiveFiles = [],
+                array $existingArchiveFiles = []
+            ): array {
         try {
             $patient = $this->findActivePatient($id);
             if (!$patient) {
@@ -586,8 +605,42 @@ class PatientService
                 if ($uploadDir === null || $uploadDir === '') {
                     throw new \InvalidArgumentException('Dossier upload manquant pour la photo patient.');
                 }
-                $patient->setPhoto($this->uploadPatientPhoto($photo, $uploadDir, $patient->getPhoto()));
+                $patient->setPhoto($this->uploadPatientPhoto($photo, $uploadDir, $patient->getPhoto(), $patient->getId()));
             }
+
+            // ========== GESTION DES FICHIERS ARCHIVES ==========
+            $finalArchiveFiles = $existingArchiveFiles; // on garde les anciens par défaut
+
+            if (!empty($uploadedArchiveFiles)) {
+                $archiveBaseDir = rtrim($uploadDir, '/\\') . DIRECTORY_SEPARATOR . 'patients' . DIRECTORY_SEPARATOR . 'archive';
+                $patientDir = $archiveBaseDir . DIRECTORY_SEPARATOR . $patient->getId();
+                
+                if (!is_dir($patientDir) && !mkdir($patientDir, 0777, true) && !is_dir($patientDir)) {
+                    throw new \RuntimeException("Impossible de créer le dossier d'archives pour le patient.");
+                }
+
+                foreach ($uploadedArchiveFiles as $uploadedFile) {
+                    if (!$uploadedFile instanceof UploadedFile) {
+                        continue;
+                    } 
+                    $allowedMime = ['application/pdf', 'image/jpeg', 'image/png', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+                    if (!in_array($uploadedFile->getMimeType(), $allowedMime, true)) { 
+                        continue;
+                    } 
+
+                    $originalName = pathinfo($uploadedFile->getClientOriginalName(), PATHINFO_FILENAME);
+                    $safeName = preg_replace('/[^a-zA-Z0-9-_]/', '_', $originalName);
+                    $uniqueName = time() . '_' . bin2hex(random_bytes(4)) . '_' . $safeName . '.' . $uploadedFile->guessExtension();
+                    $relativePath = '/uploads/patients/' . $patient->getId() . '/archive/' . $uniqueName;
+                    $fullPath = $patientDir . DIRECTORY_SEPARATOR . $uniqueName;
+                    
+                    $uploadedFile->move($patientDir, $uniqueName);
+                    $finalArchiveFiles[] = $relativePath;
+                }
+            } 
+            
+            $patient->setArchiveFiles($finalArchiveFiles);
+
 
             $this->em->persist($patient);
             $this->em->flush();
@@ -606,6 +659,72 @@ class PatientService
             return ['error' => 'Erreur : ' . $e->getMessage(), 'status' => 500];
         }
     }
+ 
+public function addArchiveFile(int $patientId, string $name, UploadedFile $file, string $uploadDir): array
+{
+    $patient = $this->findActivePatient($patientId);
+    if (!$patient) {
+        return ['error' => 'Patient non trouvé', 'status' => 404];
+    }
+
+    $targetDir = rtrim($uploadDir, '/\\') . DIRECTORY_SEPARATOR . 'patients' . DIRECTORY_SEPARATOR . 'archive';
+    $patientDir = $targetDir . DIRECTORY_SEPARATOR . $patient->getId();
+
+    if (!is_dir($patientDir) && !mkdir($patientDir, 0777, true) && !is_dir($patientDir)) {
+        throw new \RuntimeException("Impossible de créer le dossier d'archives.");
+    }
+
+    $originalName = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+    $safeName = preg_replace('/[^a-zA-Z0-9-_]/', '_', $originalName);
+    $uniqueName = time() . '_' . bin2hex(random_bytes(4)) . '_' . $safeName . '.' . $file->guessExtension();
+    $relativePath = '/uploads/patients/' . $patient->getId() . '/archive/' . $uniqueName;
+    $fullPath = $patientDir . DIRECTORY_SEPARATOR . $uniqueName;
+
+    $file->move($patientDir, $uniqueName);
+    
+    $patient->addArchiveFile($name, $relativePath);
+    $this->em->flush();
+    $this->clearPatientsCache();
+
+    return [
+        'success' => true,
+        'file' => ['nom' => $name, 'url' => $relativePath]
+    ];
+}
+
+public function removeArchiveFile(int $patientId, string $fileUrl): array
+{
+    $patient = $this->findActivePatient($patientId);
+    if (!$patient) {
+        return ['error' => 'Patient non trouvé', 'status' => 404];
+    }
+
+    $archiveFiles = $patient->getArchiveFiles();
+    $found = false;
+    foreach ($archiveFiles as $file) {
+        if ($file['url'] === $fileUrl) {
+            $found = true;
+            break;
+        }
+    }
+
+    if (!$found) {
+        return ['error' => 'Fichier non trouvé dans la liste', 'status' => 404];
+    }
+
+    // Suppression physique
+    $basePath = dirname(__DIR__, 4) . '/public';
+    $fullPath = $basePath . $fileUrl;
+    if (file_exists($fullPath) && is_file($fullPath)) {
+        unlink($fullPath);
+    }
+
+    $patient->removeArchiveFile($fileUrl);
+    $this->em->flush();
+    $this->clearPatientsCache();
+
+    return ['success' => true, 'message' => 'Fichier supprimé'];
+}
 
     public function checkConsultationActive(int $id): array
     {
@@ -665,8 +784,7 @@ class PatientService
             "LOWER(CONCAT(p.nom, ' ', p.prenom)) LIKE :term",
             "LOWER(CONCAT(p.prenom, ' ', p.nom)) LIKE :term"
         );
-
-        // Recherche numerique telephone (sans fonctions SQL custom en DQL)
+ 
         $digits = preg_replace('/\D+/', '', $term);
         if (!empty($digits)) {
             $orX->add('p.telephone LIKE :digitsRaw');
@@ -877,23 +995,46 @@ class PatientService
             ];
         }
 
-        $username = $this->buildUniquePatientUsername($patient);
-        $user = new User();
-        $user->setUsername($username);
-        $user->setRoles(['ROLE_PATIENT']);
-        $user->setActive(true);
-        $user->setPassword($this->passwordHasher->hashPassword($user, '123'));
-
-        $patient->setPortalUser($user);
-
-        $this->em->persist($user);
-        $this->em->persist($patient);
+        $this->ensurePatientPortalAccount($patient);
         $this->em->flush();
 
         return [
             'success' => true,
             'message' => 'Compte patient cree avec succes.',
             'account' => $this->formatPortalAccount($patient),
+        ];
+    }
+
+    public function createMissingPatientPortalAccounts(): array
+    {
+        $patients = $this->patientRepo->createQueryBuilder('p')
+            ->leftJoin('p.portalUser', 'portalUser')
+            ->andWhere('portalUser.id IS NULL')
+            ->andWhere('p.deletedAt IS NULL')
+            ->orderBy('p.id', 'ASC')
+            ->getQuery()
+            ->getResult();
+
+        $created = 0;
+
+        foreach ($patients as $patient) {
+            if (!$patient instanceof Patient) {
+                continue;
+            }
+
+            $this->ensurePatientPortalAccount($patient);
+            ++$created;
+        }
+
+        if ($created > 0) {
+            $this->em->flush();
+            $this->clearPatientsCache();
+        }
+
+        return [
+            'success' => true,
+            'createdCount' => $created,
+            'message' => sprintf('%d compte(s) patient créé(s).', $created),
         ];
     }
 
@@ -957,6 +1098,27 @@ class PatientService
             'roles' => $user->getRoles(),
             'defaultPassword' => '123',
         ];
+    }
+
+    private function ensurePatientPortalAccount(Patient $patient): User
+    {
+        $user = $patient->getPortalUser();
+        if ($user instanceof User) {
+            return $user;
+        }
+
+        $username = $this->buildUniquePatientUsername($patient);
+        $user = new User();
+        $user->setUsername($username);
+        $user->setRoles(['ROLE_PATIENT']);
+        $user->setActive(true);
+        $user->setPassword($this->passwordHasher->hashPassword($user, '123'));
+
+        $patient->setPortalUser($user);
+        $this->em->persist($user);
+        $this->em->persist($patient);
+
+        return $user;
     }
 
     private function buildUniquePatientUsername(Patient $patient): string
@@ -1092,6 +1254,7 @@ class PatientService
             'fiches' => $fiches,
             'factures' => $factures,
             'paiements' => $paiements,
+            'archiveFiles' => $patient->getArchiveFiles(),
         ];
     }
 

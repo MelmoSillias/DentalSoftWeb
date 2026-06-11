@@ -7,6 +7,7 @@ import Column from 'primevue/column';
 import Card from 'primevue/card';
 import DataTable from 'primevue/datatable';
 import DatePicker from 'primevue/datepicker';
+import Dialog from 'primevue/dialog';
 import Divider from 'primevue/divider';
 import FloatLabel from 'primevue/floatlabel';
 import InputText from 'primevue/inputtext';
@@ -22,6 +23,7 @@ import Tabs from 'primevue/tabs';
 import Tag from 'primevue/tag';
 import ToggleSwitch from 'primevue/toggleswitch';
 import { useSmsAdminSettings } from '@/composables/useSmsAdminSettings';
+import { fetchSmsQueueDetails } from '@/services/smsService';
 import { getHttpErrorMessage } from '@/service/http';
 
 const toast = useToast();
@@ -33,6 +35,31 @@ const logsSearch = ref('');
 const manualTemplateCode = ref(null);
 const newApprovedSenderName = ref('');
 const loadErrorMessage = ref('');
+const queueDialogVisible = ref(false);
+const queueActionDialogVisible = ref(false);
+const queueActionMode = ref(null);
+const queueActionItem = ref(null);
+const queueActionSendAt = ref(null);
+
+const queueDetailsDialogVisible = ref(false);
+const queueDetailsLoading = ref(false);
+const queueDetailsItem = ref(null);
+const queueDetailsLogs = ref([]);
+
+const smsAutomationOperational = computed(() => smsConfig.enabled && providerOverview.value.success);
+const smsAutomationStatusLabel = computed(() => (smsAutomationOperational.value ? 'Service automatique opérationnel' : 'Service automatique à vérifier'));
+const smsAutomationStatusSeverity = computed(() => (smsAutomationOperational.value ? 'success' : 'warn'));
+const smsAutomationStatusDetail = computed(() => {
+    if (smsAutomationOperational.value) {
+        return 'Configuration active et fournisseur joignable. Le déclenchement automatique dépend ensuite du worker Messenger côté serveur.';
+    }
+
+    if (!smsConfig.enabled) {
+        return 'Le module SMS est désactivé dans la configuration actuelle.';
+    }
+
+    return providerOverview.value.message || 'Le fournisseur ne confirme pas encore un état exploitable pour l’automatisation.';
+});
 
 const tabItems = [
     { value: 'overview', label: 'Aperçu', icon: 'pi pi-chart-bar' },
@@ -52,6 +79,7 @@ const {
     smsSendingTest,
     smsSaving,
     smsQueueing,
+    smsQueueItemUpdating,
     smsTemplateSaving,
     lastTestResult,
     lastTestAt,
@@ -83,7 +111,8 @@ const {
     previewTemplateAction,
     sendManualSmsAction,
     scheduleQueuedSmsAction,
-    processQueueAction
+    processQueueAction,
+    updateQueueItemAction
 } = useSmsAdminSettings(token, toast, extractApiError);
 
 const queueRecurrenceOptions = [
@@ -97,6 +126,7 @@ const queueStatusLabel = (status) => {
     case 'sent': return 'Envoyé';
     case 'failed': return 'Échec';
     case 'sending': return 'Envoi';
+    case 'cancelled': return 'Annulé';
     default: return 'En attente';
     }
 };
@@ -106,7 +136,89 @@ const queueStatusSeverity = (status) => {
     case 'sent': return 'success';
     case 'failed': return 'danger';
     case 'sending': return 'info';
+    case 'cancelled': return 'secondary';
     default: return 'warning';
+    }
+};
+
+const queueActionTitle = computed(() => {
+    if (queueActionMode.value === 'reschedule') return 'Reprogrammer le SMS';
+    if (queueActionMode.value === 'cancel') return 'Annuler le SMS';
+    if (queueActionMode.value === 'retry') return 'Renvoyer le SMS';
+    return 'Action sur la file SMS';
+});
+
+const queueActionDescription = computed(() => {
+    if (queueActionMode.value === 'reschedule') return 'Choisissez une nouvelle date et heure d’envoi pour ce SMS en attente.';
+    if (queueActionMode.value === 'cancel') return 'Ce SMS en attente sera retiré du traitement automatique.';
+    if (queueActionMode.value === 'retry') return 'Ce SMS échoué sera remis immédiatement dans la file d’envoi.';
+    return '';
+});
+
+const openQueueActionDialog = (mode, item) => {
+    queueActionMode.value = mode;
+    queueActionItem.value = item;
+    queueActionSendAt.value = mode === 'reschedule'
+        ? (item?.sendAt ? new Date(item.sendAt) : new Date())
+        : null;
+    queueActionDialogVisible.value = true;
+};
+
+const openQueueDetails = async (item) => {
+    queueDetailsItem.value = null;
+    queueDetailsLogs.value = [];
+    queueDetailsLoading.value = true;
+    queueDetailsDialogVisible.value = true;
+    try {
+        const token = localStorage.getItem('token');
+        const res = await fetchSmsQueueDetails(item.id, token);
+        if (res && res.success) {
+            queueDetailsItem.value = res.queueItem || null;
+            queueDetailsLogs.value = Array.isArray(res.logs) ? res.logs : [];
+        } else {
+            queueDetailsItem.value = { id: item.id, phone: item.phone, message: item.message, status: item.status, lastError: item.lastError };
+        }
+    } catch (e) {
+        queueDetailsItem.value = { id: item.id, phone: item.phone, message: item.message, status: item.status, lastError: item.lastError };
+    } finally {
+        queueDetailsLoading.value = false;
+    }
+};
+
+const closeQueueActionDialog = () => {
+    queueActionDialogVisible.value = false;
+    queueActionMode.value = null;
+    queueActionItem.value = null;
+    queueActionSendAt.value = null;
+};
+
+const submitQueueAction = async () => {
+    if (!queueActionItem.value?.id || !queueActionMode.value) return;
+
+    if (queueActionMode.value === 'reschedule') {
+        if (!(queueActionSendAt.value instanceof Date) || Number.isNaN(queueActionSendAt.value.getTime())) {
+            toast.add({ severity: 'warn', summary: 'File SMS', detail: 'Sélectionnez une date valide.', life: 2500 });
+            return;
+        }
+
+        await updateQueueItemAction(
+            queueActionItem.value.id,
+            { action: 'reschedule', sendAt: queueActionSendAt.value.toISOString() },
+            'SMS reprogrammé.'
+        );
+        closeQueueActionDialog();
+        return;
+    }
+
+    if (queueActionMode.value === 'cancel') {
+        await updateQueueItemAction(queueActionItem.value.id, { action: 'cancel' }, 'SMS annulé.');
+        closeQueueActionDialog();
+        return;
+    }
+
+    if (queueActionMode.value === 'retry') {
+        await updateQueueItemAction(queueActionItem.value.id, { action: 'retry' }, 'SMS remis en file.');
+        closeQueueActionDialog();
     }
 };
 
@@ -288,6 +400,21 @@ const retryLoadSmsSettings = async () => {
                         <p class="max-w-3xl text-sm leading-relaxed text-gray-600 dark:text-gray-400">
                             Configuration du fournisseur, supervision du trafic, templates et file d'envoi.
                         </p>
+                        <div
+                            class="mt-3 inline-flex max-w-3xl items-start gap-3 rounded-2xl border px-4 py-3"
+                            :class="smsAutomationOperational
+                                ? 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-800/60 dark:bg-emerald-950/20 dark:text-emerald-200'
+                                : 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-800/60 dark:bg-amber-950/20 dark:text-amber-200'"
+                        >
+                            <i :class="smsAutomationOperational ? 'pi pi-check-circle' : 'pi pi-exclamation-triangle'" class="mt-0.5 text-base"></i>
+                            <div>
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <span class="text-sm font-semibold">{{ smsAutomationStatusLabel }}</span>
+                                    <Tag :severity="smsAutomationStatusSeverity" :value="smsConfig.enabled ? 'Activé' : 'Désactivé'" />
+                                </div>
+                                <p class="mt-1 text-xs leading-relaxed opacity-90">{{ smsAutomationStatusDetail }}</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="flex flex-wrap gap-3">
@@ -713,7 +840,10 @@ const retryLoadSmsSettings = async () => {
                                     <p class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Suivi</p>
                                     <h3 class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">File d’attente SMS</h3>
                                 </div>
-                                <Tag severity="contrast" :value="`${smsQueue.length} élément(s)`" />
+                                <div class="flex items-center gap-2">
+                                    <Tag severity="contrast" :value="`${smsQueue.length} élément(s)`" />
+                                    <Button label="Agrandir" icon="pi pi-external-link" severity="secondary" outlined @click="queueDialogVisible = true" />
+                                </div>
                             </div>
 
                             <DataTable :value="smsQueue" paginator :rows="10" :rowsPerPageOptions="[10, 20, 50]" dataKey="id" responsiveLayout="scroll" stripedRows showGridlines class="text-sm">
@@ -741,9 +871,148 @@ const retryLoadSmsSettings = async () => {
                                     </template>
                                 </Column>
                                 <Column field="source" header="Source" class="whitespace-nowrap" />
+                                <Column header="Actions" class="whitespace-nowrap">
+                                    <template #body="{ data }">
+                                        <div class="flex flex-wrap gap-2">
+                                            <Button
+                                                v-if="data.status === 'pending'"
+                                                icon="pi pi-calendar"
+                                                label="Reprogrammer"
+                                                size="small"
+                                                severity="secondary"
+                                                outlined
+                                                :loading="smsQueueItemUpdating === data.id && queueActionMode === 'reschedule'"
+                                                @click="openQueueActionDialog('reschedule', data)"
+                                            />
+                                            <Button
+                                                v-if="data.status === 'pending'"
+                                                icon="pi pi-times"
+                                                label="Annuler"
+                                                size="small"
+                                                severity="danger"
+                                                outlined
+                                                :loading="smsQueueItemUpdating === data.id && queueActionMode === 'cancel'"
+                                                @click="openQueueActionDialog('cancel', data)"
+                                            />
+                                            <Button
+                                                v-if="data.status === 'failed'"
+                                                icon="pi pi-refresh"
+                                                label="Renvoyer"
+                                                size="small"
+                                                severity="warning"
+                                                outlined
+                                                :loading="smsQueueItemUpdating === data.id && queueActionMode === 'retry'"
+                                                @click="openQueueActionDialog('retry', data)"
+                                            />
+                                        </div>
+                                    </template>
+                                </Column>
                             </DataTable>
                         </div>
                     </div>
+
+                    <Dialog v-model:visible="queueDialogVisible" modal header="File SMS étendue" :style="{ width: 'min(1400px, 98vw)' }">
+                        <DataTable :value="smsQueue" paginator :rows="20" :rowsPerPageOptions="[20, 50, 100]" dataKey="id" responsiveLayout="scroll" stripedRows showGridlines class="text-sm">
+                            <template #empty>
+                                <div class="py-10 text-center text-sm text-gray-500 dark:text-gray-400">
+                                    Aucun SMS en file pour le moment.
+                                </div>
+                            </template>
+                            <Column field="createdAt" header="Créé le" class="whitespace-nowrap" />
+                            <Column field="sendAt" header="Prévu le" class="whitespace-nowrap">
+                                <template #body="{ data }">{{ formatDateTime(data.sendAt) }}</template>
+                            </Column>
+                            <Column field="patient" header="Patient">
+                                <template #body="{ data }">{{ data.patient || '—' }}</template>
+                            </Column>
+                            <Column field="phone" header="Numéro" class="whitespace-nowrap" />
+                            <Column field="message" header="Message">
+                                <template #body="{ data }">
+                                    <span class="block max-w-xl whitespace-normal break-words">{{ data.message }}</span>
+                                </template>
+                            </Column>
+                            <Column field="status" header="Statut" class="whitespace-nowrap">
+                                <template #body="{ data }">
+                                    <Tag :severity="queueStatusSeverity(data.status)" :value="queueStatusLabel(data.status)" />
+                                </template>
+                            </Column>
+                            <Column field="source" header="Source" class="whitespace-nowrap" />
+                            <Column field="lastError" header="Dernière erreur">
+                                <template #body="{ data }">
+                                    <span class="block max-w-md whitespace-normal break-words text-xs text-red-600 dark:text-red-300">{{ data.lastError || '—' }}</span>
+                                </template>
+                            </Column>
+                            <Column header="Actions" class="whitespace-nowrap">
+                                <template #body="{ data }">
+                                    <div class="flex flex-wrap gap-2">
+                                        <Button icon="pi pi-eye" label="Détails" size="small" severity="secondary" outlined @click="openQueueDetails(data)" />
+                                        <Button v-if="data.status === 'pending'" icon="pi pi-calendar" label="Reprogrammer" size="small" severity="secondary" outlined @click="openQueueActionDialog('reschedule', data)" />
+                                        <Button v-if="data.status === 'pending'" icon="pi pi-times" label="Annuler" size="small" severity="danger" outlined @click="openQueueActionDialog('cancel', data)" />
+                                        <Button v-if="data.status === 'failed'" icon="pi pi-refresh" label="Renvoyer" size="small" severity="warning" outlined @click="openQueueActionDialog('retry', data)" />
+                                    </div>
+                                </template>
+                            </Column>
+                        </DataTable>
+                    </Dialog>
+
+                    <Dialog v-model:visible="queueDetailsDialogVisible" modal header="Détails SMS" :style="{ width: 'min(900px, 96vw)' }">
+                        <div v-if="queueDetailsLoading" class="py-8 text-center">Chargement…</div>
+                        <div v-else class="space-y-4">
+                            <div class="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/30">
+                                <p><strong>ID:</strong> {{ queueDetailsItem?.id || '—' }}</p>
+                                <p><strong>Patient:</strong> {{ queueDetailsItem?.patient || '—' }}</p>
+                                <p><strong>Numéro:</strong> {{ queueDetailsItem?.phone || '—' }}</p>
+                                <p><strong>Envoyé le:</strong> {{ formatDateTime(queueDetailsItem?.sentAt) }}</p>
+                                <p><strong>Planifié le:</strong> {{ formatDateTime(queueDetailsItem?.sendAt) }}</p>
+                                <p><strong>Statut:</strong> {{ queueStatusLabel(queueDetailsItem?.status) }}</p>
+                                <p><strong>Message:</strong></p>
+                                <div class="p-3 rounded bg-white dark:bg-gray-900/50"><pre class="whitespace-pre-wrap">{{ queueDetailsItem?.message }}</pre></div>
+                                <p v-if="queueDetailsItem?.lastError"><strong>Dernière erreur:</strong> <span class="text-red-600 dark:text-red-300">{{ queueDetailsItem.lastError }}</span></p>
+                            </div>
+
+                            <div>
+                                <h4 class="text-sm font-semibold mb-2">Logs associés</h4>
+                                <div v-if="(queueDetailsLogs || []).length === 0" class="text-sm text-gray-500">Aucun log récent trouvé pour ce numéro.</div>
+                                <div v-else>
+                                    <DataTable :value="queueDetailsLogs" dataKey="id" class="text-sm">
+                                        <Column field="date" header="Date" />
+                                        <Column field="status" header="Statut" />
+                                        <Column field="providerMessageId" header="ID fournisseur" />
+                                        <Column field="error" header="Erreur">
+                                            <template #body="{ data }"><span class="text-xs text-red-600 dark:text-red-300">{{ data.error || '—' }}</span></template>
+                                        </Column>
+                                        <Column field="message" header="Message" />
+                                    </DataTable>
+                                </div>
+                            </div>
+                        </div>
+                    </Dialog>
+
+                    <Dialog v-model:visible="queueActionDialogVisible" modal :header="queueActionTitle" :style="{ width: 'min(32rem, 96vw)' }">
+                        <div class="space-y-4">
+                            <p class="text-sm text-gray-600 dark:text-gray-300">{{ queueActionDescription }}</p>
+                            <div class="rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm dark:border-gray-700 dark:bg-gray-800/40">
+                                <p><strong>Destinataire:</strong> {{ queueActionItem?.phone || '—' }}</p>
+                                <p><strong>Statut:</strong> {{ queueStatusLabel(queueActionItem?.status) }}</p>
+                            </div>
+                            <div v-if="queueActionMode === 'reschedule'" class="space-y-2">
+                                <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Nouvelle date d'envoi</label>
+                                <DatePicker v-model="queueActionSendAt" showTime hourFormat="24" dateFormat="dd/mm/yy" class="w-full" />
+                            </div>
+                        </div>
+                        <template #footer>
+                            <div class="flex justify-end gap-2">
+                                <Button label="Fermer" severity="secondary" outlined @click="closeQueueActionDialog" />
+                                <Button
+                                    :label="queueActionMode === 'reschedule' ? 'Reprogrammer' : (queueActionMode === 'cancel' ? 'Annuler le SMS' : 'Renvoyer')"
+                                    :icon="queueActionMode === 'reschedule' ? 'pi pi-calendar' : (queueActionMode === 'cancel' ? 'pi pi-times' : 'pi pi-refresh')"
+                                    :severity="queueActionMode === 'cancel' ? 'danger' : (queueActionMode === 'retry' ? 'warning' : 'primary')"
+                                    :loading="smsQueueItemUpdating === queueActionItem?.id"
+                                    @click="submitQueueAction"
+                                />
+                            </div>
+                        </template>
+                    </Dialog>
                 </TabPanel>
 
                 <!-- Logs Tab -->

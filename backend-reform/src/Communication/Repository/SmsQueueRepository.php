@@ -64,4 +64,60 @@ class SmsQueueRepository extends ServiceEntityRepository
 
         return $qb->getQuery()->getResult();
     }
+
+    /**
+     * @return array{pendingDue: int, pendingScheduled: int, failedDue: int, failedScheduled: int, failedExhausted: int, sending: int, sent: int, cancelled: int, nextScheduledAt: ?DateTimeImmutable}
+     */
+    public function getProcessingSnapshot(): array
+    {
+        $now = new DateTimeImmutable();
+
+        $countStatus = function (string $status, ?bool $due = null, ?bool $retryEligible = null) use ($now): int {
+            $qb = $this->createQueryBuilder('q')
+                ->select('COUNT(q.id)')
+                ->andWhere('q.status = :status')
+                ->setParameter('status', $status);
+
+            if ($due === true) {
+                $qb
+                    ->andWhere('q.sendAt IS NULL OR q.sendAt <= :now')
+                    ->setParameter('now', $now);
+            } elseif ($due === false) {
+                $qb
+                    ->andWhere('q.sendAt IS NOT NULL AND q.sendAt > :now')
+                    ->setParameter('now', $now);
+            }
+
+            if ($retryEligible === true) {
+                $qb->andWhere('q.retryCount < :maxRetries')
+                    ->setParameter('maxRetries', 3);
+            } elseif ($retryEligible === false) {
+                $qb->andWhere('q.retryCount >= :maxRetries')
+                    ->setParameter('maxRetries', 3);
+            }
+
+            return (int) $qb->getQuery()->getSingleScalarResult();
+        };
+
+        $nextScheduledAt = $this->createQueryBuilder('q')
+            ->select('MIN(q.sendAt)')
+            ->andWhere('q.status IN (:statuses)')
+            ->andWhere('q.sendAt IS NOT NULL AND q.sendAt > :now')
+            ->setParameter('statuses', [SmsQueue::STATUS_PENDING, SmsQueue::STATUS_FAILED])
+            ->setParameter('now', $now)
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        return [
+            'pendingDue' => $countStatus(SmsQueue::STATUS_PENDING, true),
+            'pendingScheduled' => $countStatus(SmsQueue::STATUS_PENDING, false),
+            'failedDue' => $countStatus(SmsQueue::STATUS_FAILED, true, true),
+            'failedScheduled' => $countStatus(SmsQueue::STATUS_FAILED, false, true),
+            'failedExhausted' => $countStatus(SmsQueue::STATUS_FAILED, null, false),
+            'sending' => $countStatus(SmsQueue::STATUS_SENDING),
+            'sent' => $countStatus(SmsQueue::STATUS_SENT),
+            'cancelled' => $countStatus(SmsQueue::STATUS_CANCELLED),
+            'nextScheduledAt' => $nextScheduledAt instanceof DateTimeImmutable ? $nextScheduledAt : (is_string($nextScheduledAt) && $nextScheduledAt !== '' ? new DateTimeImmutable($nextScheduledAt) : null),
+        ];
+    }
 }

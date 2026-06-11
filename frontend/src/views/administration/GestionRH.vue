@@ -38,6 +38,7 @@ const activeTab = ref('employees');
 const typeOptions = [
     { label: 'Tous les types', value: null },
     { label: 'Médecin', value: 'Medecin' },
+    { label: 'Infirmier', value: 'Infirmier' },
     { label: 'Réceptionniste', value: 'Receptionniste' },
     { label: 'Admin', value: 'Admin' },
     { label: 'Autre', value: 'Autre' }

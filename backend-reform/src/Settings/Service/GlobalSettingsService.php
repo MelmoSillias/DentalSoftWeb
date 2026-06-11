@@ -80,7 +80,7 @@ class GlobalSettingsService
     ) {
     }
 
-    /** @return array{autoApproveDevices: bool, requireMedecinOnConsultationCreation: bool, allowReceptionQuickCloseConsultation: bool, allowReceptionConsultationQuickActions: bool, showReceptionQuickCloseButton: bool, allowReceptionBypassMedecinPasswordOnQuickClose: bool, hidePatientDossierForMedecins: bool, hidePatientPhoneForMedecins: bool, paiementDirectAssurance: bool, ficheFormSimplifie: bool, consultationPrice: float, transactionMotifs: array{revenue: string[], expense: string[]}, soinsList: string[], examensTypes: string[], traitementTypes: string[], allergyTypes: string[], antecedentTypes: string[], patientPortalEnabled: bool, patientPortalClosedMessage: string, patientPortalBaseUrl: ?string, cabinetShowcaseWebsiteUrl: ?string} */
+    /** @return array{autoApproveDevices: bool, requireMedecinOnConsultationCreation: bool, allowReceptionQuickCloseConsultation: bool, allowReceptionConsultationQuickActions: bool, showReceptionQuickCloseButton: bool, allowReceptionBypassMedecinPasswordOnQuickClose: bool, hidePatientDossierForMedecins: bool, hidePatientPhoneForMedecins: bool, paiementDirectAssurance: bool, ficheFormSimplifie: bool, consultationPrice: float, transactionMotifs: array{revenue: string[], expense: string[]}, soinsList: string[], examensTypes: string[], traitementTypes: string[], allergyTypes: string[], antecedentTypes: string[], patientPortalEnabled: bool, patientPortalClosedMessage: string, patientPortalBaseUrl: ?string, cabinetShowcaseWebsiteUrl: ?string, autoCreatePortalAccountOnPatientCreation: bool} */
     public function getGeneralSettings(): array
     {
         $entry = $this->appSettingRepo->findOneByKey(self::KEY_GENERAL);
@@ -114,6 +114,7 @@ class GlobalSettingsService
             ),
             'patientPortalBaseUrl' => $this->sanitizeUrl($value['patientPortalBaseUrl'] ?? null),
             'cabinetShowcaseWebsiteUrl' => $this->sanitizeUrl($value['cabinetShowcaseWebsiteUrl'] ?? null),
+            'autoCreatePortalAccountOnPatientCreation' => (bool) ($value['autoCreatePortalAccountOnPatientCreation'] ?? false),
             'testModeEnabled' => (bool) ($value[self::TEST_MODE_ENABLED_KEY] ?? false),
             'testModeSnapshotCreatedAt' => $value[self::TEST_MODE_SNAPSHOT_CREATED_AT_KEY] ?? null,
             'testModeLastPurgeAt' => $value[self::TEST_MODE_LAST_PURGE_AT_KEY] ?? null,
@@ -159,6 +160,7 @@ class GlobalSettingsService
             ),
             'patientPortalBaseUrl' => $this->sanitizeUrl($payload['patientPortalBaseUrl'] ?? ($current['patientPortalBaseUrl'] ?? null)),
             'cabinetShowcaseWebsiteUrl' => $this->sanitizeUrl($payload['cabinetShowcaseWebsiteUrl'] ?? ($current['cabinetShowcaseWebsiteUrl'] ?? null)),
+            'autoCreatePortalAccountOnPatientCreation' => (bool) ($payload['autoCreatePortalAccountOnPatientCreation'] ?? ($current['autoCreatePortalAccountOnPatientCreation'] ?? false)),
         ]);
 
         $this->em->flush();
@@ -357,8 +359,38 @@ class GlobalSettingsService
         return $this->getGeneralSettings()['patientPortalClosedMessage'];
     }
 
+    public function shouldAutoCreatePortalAccountOnPatientCreation(): bool
+    {
+        return $this->getGeneralSettings()['autoCreatePortalAccountOnPatientCreation'];
+    }
+
+    private const STAFF_ROLES = ['ROLE_ADMIN', 'ROLE_MEDECIN', 'ROLE_RECEPTION', 'ROLE_RECEPTIONNISTE'];
+
+    /** @param string[] $roles */
+    public function getPublicGeneralSettingsForRoles(array $roles): array
+    {
+        if ($this->hasStaffRole($roles)) {
+            return $this->getStaffOperationalSettings();
+        }
+
+        return $this->getPortalPublicSettings();
+    }
+
+    /** @return array{patientPortalEnabled: bool, patientPortalClosedMessage: string, patientPortalBaseUrl: ?string, cabinetShowcaseWebsiteUrl: ?string} */
+    public function getPortalPublicSettings(): array
+    {
+        $settings = $this->getGeneralSettings();
+
+        return [
+            'patientPortalEnabled' => $settings['patientPortalEnabled'],
+            'patientPortalClosedMessage' => $settings['patientPortalClosedMessage'],
+            'patientPortalBaseUrl' => $settings['patientPortalBaseUrl'],
+            'cabinetShowcaseWebsiteUrl' => $settings['cabinetShowcaseWebsiteUrl'],
+        ];
+    }
+
     /** @return array{requireMedecinOnConsultationCreation: bool, allowReceptionQuickCloseConsultation: bool, allowReceptionConsultationQuickActions: bool, showReceptionQuickCloseButton: bool, allowReceptionBypassMedecinPasswordOnQuickClose: bool, hidePatientDossierForMedecins: bool, hidePatientPhoneForMedecins: bool, paiementDirectAssurance: bool, ficheFormSimplifie: bool, consultationPrice: float, soinsList: string[], examensTypes: string[], traitementTypes: string[], allergyTypes: string[], antecedentTypes: string[], patientPortalEnabled: bool, patientPortalClosedMessage: string, patientPortalBaseUrl: ?string, cabinetShowcaseWebsiteUrl: ?string} */
-    public function getPublicGeneralSettings(): array
+    public function getStaffOperationalSettings(): array
     {
         $settings = $this->getGeneralSettings();
 
@@ -383,6 +415,12 @@ class GlobalSettingsService
             'patientPortalBaseUrl' => $settings['patientPortalBaseUrl'],
             'cabinetShowcaseWebsiteUrl' => $settings['cabinetShowcaseWebsiteUrl'],
         ];
+    }
+
+    /** @param string[] $roles */
+    private function hasStaffRole(array $roles): bool
+    {
+        return (bool) array_intersect(self::STAFF_ROLES, $roles);
     }
 
     /** @return array{revenue: string[], expense: string[]} */

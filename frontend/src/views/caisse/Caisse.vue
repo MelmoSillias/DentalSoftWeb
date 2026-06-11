@@ -58,6 +58,36 @@ const toApiDate = (value) => {
 	return date.toISOString().slice(0, 10);
 };
 
+const normalizeRange = (val) => {
+	if (!Array.isArray(val)) return [];
+	return val
+		.map((item) => {
+			if (!item) return null;
+			const date = item instanceof Date ? new Date(item.getTime()) : new Date(item);
+			return Number.isNaN(date.getTime()) ? null : date;
+		})
+		.filter(Boolean);
+};
+
+const rangeKey = (range) => {
+	const normalized = normalizeRange(range);
+	if (normalized.length < 2) return '';
+	return `${toApiDate(normalized[0])}|${toApiDate(normalized[1])}`;
+};
+
+const rangesEqual = (left, right) => rangeKey(left) === rangeKey(right);
+
+let syncingOverviewRange = false;
+
+const applyOverviewRangeSync = (normalized, targetRef) => {
+	if (activeView.value !== 'overview' || syncingOverviewRange) return;
+	if (normalized.length < 2) return;
+	if (rangesEqual(normalized, targetRef.value)) return;
+	syncingOverviewRange = true;
+	targetRef.value = normalized.map((date) => new Date(date.getTime()));
+	syncingOverviewRange = false;
+};
+
 
 const toast = useToast();
 const token = localStorage.getItem('token');
@@ -154,12 +184,19 @@ const setFactureType = (val) => {
 };
 
 const setFactureRange = (val) => {
-	factureRange.value = Array.isArray(val) ? val : [];
+	const normalized = normalizeRange(val);
+	factureRange.value = normalized;
+	applyOverviewRangeSync(normalized, paymentRange);
 };
 
 const setPaymentRange = (val) => {
-	paymentRange.value = Array.isArray(val) ? val : [];
+	const normalized = normalizeRange(val);
+	paymentRange.value = normalized;
+	applyOverviewRangeSync(normalized, factureRange);
 };
+
+const factureRangeKey = computed(() => rangeKey(factureRange.value));
+const paymentRangeKey = computed(() => rangeKey(paymentRange.value));
 
 const soinsList = computed(() => publicGeneralSettings.value?.soinsList || defaultSoinList);
 
@@ -1181,8 +1218,15 @@ const collectPatientShare = async (claim) => {
 	}
 };
 
-watch([factureRange, factureType], loadFactures, { immediate: true });
-watch(paymentRange, loadPayments, { immediate: true });
+watch([factureRangeKey, factureType], () => {
+	if (!factureRangeKey.value) return;
+	loadFactures();
+}, { immediate: true });
+
+watch(paymentRangeKey, () => {
+	if (!paymentRangeKey.value) return;
+	loadPayments();
+}, { immediate: true });
 watch([insuranceStatusFilter, insuranceRange, insurancePatientFilter, insuranceAssuranceFilter], loadInsuranceClaims, { immediate: true });
 
 onMounted(async () => {

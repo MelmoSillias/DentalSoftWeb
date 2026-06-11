@@ -39,6 +39,22 @@ final class AppreciationController extends AbstractController
         ], 403);
     }
 
+    #[Route('/appreciations/public', name: 'public_list', methods: ['GET'])]
+    public function listPublicAppreciations(Request $request): JsonResponse
+    {
+        $limit = (int) $request->query->get('limit', 50);
+        $items = array_map(
+            fn(Appreciation $appreciation): array => $this->mapPublicAppreciation($appreciation),
+            $this->appreciationService->listPublishedForPublic($limit)
+        );
+
+        return $this->json([
+            'stats' => $this->appreciationService->getPublicStats(),
+            'total' => count($items),
+            'items' => $items,
+        ]);
+    }
+
     #[Route('/appreciations/anonymous', name: 'anonymous_create', methods: ['POST'])]
     public function createAnonymous(Request $request): JsonResponse
     {
@@ -152,6 +168,57 @@ final class AppreciationController extends AbstractController
             'total' => count($items),
             'items' => $items,
         ]);
+    }
+
+    #[Route('/administration/appreciations/{id}/publish', name: 'admin_publish', methods: ['PATCH'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function setAdminAppreciationPublished(int $id, Request $request): JsonResponse
+    {
+        $payload = json_decode($request->getContent(), true) ?? [];
+        if (!array_key_exists('isPublished', $payload)) {
+            return $this->json(['error' => 'Le champ isPublished est requis.'], 400);
+        }
+
+        try {
+            $appreciation = $this->appreciationService->setPublished($id, (bool) $payload['isPublished']);
+        } catch (\InvalidArgumentException $exception) {
+            return $this->json(['error' => $exception->getMessage()], 404);
+        }
+
+        return $this->json(['item' => $this->mapAppreciation($appreciation)]);
+    }
+
+    #[Route('/administration/appreciations/{id}', name: 'admin_delete', methods: ['DELETE'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function deleteAdminAppreciation(int $id): JsonResponse
+    {
+        try {
+            $this->appreciationService->delete($id);
+        } catch (\InvalidArgumentException $exception) {
+            return $this->json(['error' => $exception->getMessage()], 404);
+        }
+
+        return $this->json(['success' => true]);
+    }
+
+    private function mapPublicAppreciation(Appreciation $appreciation): array
+    {
+        $displayName = null;
+        if (!$appreciation->isAnonymous()) {
+            $displayName = $appreciation->getAuthorName()
+                ?: $appreciation->getPatient()?->getFullName();
+        } elseif ($appreciation->getAuthorName()) {
+            $displayName = $appreciation->getAuthorName();
+        }
+
+        return [
+            'id' => $appreciation->getId(),
+            'rating' => $appreciation->getRating(),
+            'comment' => $appreciation->getComment(),
+            'isAnonymous' => $appreciation->isAnonymous(),
+            'authorName' => $displayName,
+            'createdAt' => $appreciation->getCreatedAt()->format(DATE_ATOM),
+        ];
     }
 
     private function mapAppreciation(Appreciation $appreciation): array

@@ -32,6 +32,43 @@ export const usePrinter = () => {
     const isPrinting = ref(false);
     const lastError = ref(null);
 
+    const waitForStylesReady = async (targetWindow) => {
+        const doc = targetWindow.document;
+        const links = Array.from(doc.querySelectorAll('link[rel="stylesheet"]'));
+        if (!links.length) return;
+
+        await Promise.all(
+            links.map(
+                (link) =>
+                    new Promise((resolve) => {
+                        // stylesheet already loaded
+                        if (link.sheet) {
+                            resolve();
+                            return;
+                        }
+                        const done = () => {
+                            link.removeEventListener('load', done);
+                            link.removeEventListener('error', done);
+                            resolve();
+                        };
+                        link.addEventListener('load', done, { once: true });
+                        link.addEventListener('error', done, { once: true });
+                    })
+            )
+        );
+    };
+
+    const waitForFontsReady = async (targetWindow) => {
+        try {
+            const fonts = targetWindow.document?.fonts;
+            if (fonts?.ready) {
+                await fonts.ready;
+            }
+        } catch (error) {
+            // non bloquant: certains navigateurs ne supportent pas l'API Font Loading
+        }
+    };
+
     const waitForPrintReady = async (targetWindow) => {
         const doc = targetWindow.document;
 
@@ -44,6 +81,9 @@ export const usePrinter = () => {
                 targetWindow.addEventListener('load', onLoad, { once: true });
             });
         }
+
+        await waitForStylesReady(targetWindow);
+        await waitForFontsReady(targetWindow);
 
         const images = Array.from(doc.images || []);
         if (!images.length) {

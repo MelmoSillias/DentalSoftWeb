@@ -5,6 +5,7 @@ import PrintTicketBody from '@/components/print/PrintTicketBody.vue';
 import { usePrinter } from '@/composables/usePrinter';
 import { fetchInvoicePrintData, fetchReceiptPrintData, fetchTicketPrintData } from '@/services/printService';
 import { searchPatients } from '@/services/patients';
+import Dialog from 'primevue/dialog';
 import { computed, ref, toRefs } from 'vue';
 
 const props = defineProps({
@@ -65,7 +66,6 @@ const emit = defineEmits([
     'cancel-consultation'
 ]);
 
-// === Recherche patient ===
 const searchMode = ref(false);
 const patientSearchQuery = ref('');
 const patientSearchResults = ref([]);
@@ -111,6 +111,7 @@ const showCompletedSecretary = defineModel('showCompletedSecretary', {
 });
 
 const newestFirstSecretary = ref(false);
+const showRevenueStatsModal = ref(false);
 
 const parseDateTime = (value) => {
     if (!value) return null;
@@ -136,6 +137,12 @@ const formatDateTime = (value) => {
 };
 
 const formatFcfa = (value) => `${Number(value || 0).toLocaleString('fr-FR')} FCFA`;
+const isInsurancePayment = (payment) => {
+    const role = String(payment?.rolePaiement || '').toLowerCase();
+    const mode = String(payment?.mode || '').toLowerCase();
+
+    return role === 'insurance' || mode.includes('assur');
+};
 
 const isSameCalendarDay = (left, right) => {
     const leftDate = parseDateTime(left);
@@ -247,6 +254,106 @@ const currentBilling = computed(() => {
     return props.billingByConsultation?.[currentConsultation.value.id] || null;
 });
 
+const todayConsultations = computed(() => {
+    const now = new Date();
+    console.log(consultations.value);
+    return (consultations.value || []).filter((consultation) => isSameCalendarDay(consultation?.createdAt, now));
+});
+
+const dailyRevenueStats = computed(() => {
+    const invoiceMap = new Map();
+    const paymentMap = new Map();
+    let totalRevenue = 0;
+
+    for (const consultation of todayConsultations.value) {
+        totalRevenue += Number(consultation.paiementAmount ?? 0) || 0;
+        const billing = props.billingByConsultation?.[consultation.id] || null;
+        if (!billing) {
+            continue;
+        }
+
+        const invoiceId = Number(billing.invoiceId ?? 0);
+        if (invoiceId > 0 && !invoiceMap.has(invoiceId)) {
+            invoiceMap.set(invoiceId, {
+                id: invoiceId,
+                total: Number(billing.total ?? 0) || 0,
+                remaining: Number(billing.remaining ?? 0) || 0,
+                state: billing.state || null
+            });
+        }
+
+        const payments = Array.isArray(billing.payments) ? billing.payments : [];
+        for (const payment of payments) {
+            const paymentKey = payment?.id ?? `${consultation.id}-${payment?.invoiceId ?? 'x'}-${payment?.date ?? 'n/a'}-${payment?.montant ?? 0}-${payment?.mode ?? '—'}`;
+            if (paymentMap.has(paymentKey)) {
+                continue;
+            }
+
+            paymentMap.set(paymentKey, payment);
+        }
+    }
+
+    const invoices = Array.from(invoiceMap.values());
+    const payments = Array.from(paymentMap.values());
+    totalRevenue = totalRevenue + payments.reduce((sum, payment) => sum + (Number(payment?.montant) || 0), 0);
+    const totalUnpaid = invoices.reduce((sum, invoice) => sum + (Number(invoice?.remaining) || 0), 0);
+    const paymentModeRows = Object.entries(
+        payments.reduce((acc, payment) => {
+            const mode = payment?.mode || 'Autre';
+            acc[mode] = (acc[mode] || 0) + (Number(payment?.montant) || 0);
+            return acc;
+        }, {})
+    )
+        .map(([mode, amount]) => ({ mode, amount: Number(amount) || 0 }))
+        .sort((left, right) => right.amount - left.amount);
+
+    const statusCounts = {
+        paid: 0,
+        partial: 0,
+        unpaid: 0,
+        freeNotValidated: 0
+    };
+
+    invoices.forEach((invoice) => {
+        const total = Number(invoice.total) || 0;
+        const remaining = Number(invoice.remaining) || 0;
+        const severity = invoice.state?.severity || null;
+
+        if (remaining === 0 && total > 0) {
+            statusCounts.paid += 1;
+            return;
+        }
+
+        if (remaining === 0 && total === 0 && severity !== 'success') {
+            statusCounts.freeNotValidated += 1;
+            return;
+        }
+
+        if (remaining === total) {
+            statusCounts.unpaid += 1;
+            return;
+        }
+
+        statusCounts.partial += 1;
+    });
+
+    const insurancePayments = payments.filter((payment) => isInsurancePayment(payment));
+
+    return {
+        totalConsultations: todayConsultations.value.length,
+        totalInvoices: invoices.length,
+        totalRevenue: totalRevenue,
+        totalUnpaid,
+        totalPaymentsCount: payments.length,
+        totalInsurance: insurancePayments.reduce((sum, payment) => sum + (Number(payment?.montant) || 0), 0),
+        pendingInsurance: insurancePayments.filter((payment) => payment?.status === 'pending').length,
+        paymentModeRows,
+        statusCounts
+    };
+});
+
+const revenueButtonLabel = computed(() => `Recette · ${formatFcfa(dailyRevenueStats.value.totalRevenue)}`);
+
 const selectedInvoicePayments = computed(() => {
     const payments = currentBilling.value?.payments || [];
     const invoiceId = currentBilling.value?.invoiceId ?? null;
@@ -288,9 +395,21 @@ const isConsultationCreateLoading = (patientId) => {
     return Boolean(props.consultationLoadingByPatient?.[patientId]);
 };
 
+const getConsultationPaymentId = (consultation) => {
+    if (!consultation) return null;
+
+    if (consultation.paymentId ?? consultation.paiementId) {
+        return consultation.paymentId ?? consultation.paiementId;
+    }
+
+    const billing = getConsultationBilling(consultation);
+    const payments = Array.isArray(billing?.payments) ? billing.payments : [];
+    return payments[0]?.id ?? null;
+};
+
 const printConsultationTicket = async (consultation) => {
     if (!consultation) return;
-    await printPaymentTicket(consultation.id);
+    await printPaymentTicket(getConsultationPaymentId(consultation));
 };
 
 const printInvoice = async () => {
@@ -573,6 +692,13 @@ const handleCancelWithConfirm = (event, consultation) => {
                                 <i :class="newestFirstSecretary ? 'pi pi-arrow-down' : 'pi pi-arrow-up'" class="text-xs"></i>
                             </button>
                             <button
+                                type="button"
+                                class="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 shadow-sm transition-colors hover:bg-emerald-100 dark:border-emerald-800/60 dark:bg-emerald-950/30 dark:text-emerald-300 dark:hover:bg-emerald-900/30"
+                                @click="showRevenueStatsModal = true"
+                            >
+                                {{ revenueButtonLabel }}
+                            </button>
+                            <button
                                 @click="emit('open-create-consultation')"
                                 :disabled="consultationToolbarLoading"
                                 class="rounded-xl bg-gradient-to-r from-primary-500 to-primary-600 p-1.5 text-white shadow-md transition-all hover:shadow-lg hover:scale-105 disabled:cursor-not-allowed disabled:opacity-60"
@@ -582,6 +708,62 @@ const handleCancelWithConfirm = (event, consultation) => {
                         </div>
                     </div>
                 </div>
+
+                <Dialog v-model:visible="showRevenueStatsModal" modal header="Statistiques de recette du jour" :style="{ width: 'min(960px, 96vw)' }">
+                    <div class="space-y-6">
+                        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                            <div class="rounded-2xl border border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-800/40">
+                                <span class="text-xs uppercase tracking-wide text-surface-500">Consultations</span>
+                                <strong class="mt-2 block text-2xl text-surface-900 dark:text-surface-50">{{ dailyRevenueStats.totalConsultations }}</strong>
+                            </div>
+                            <div class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-800/60 dark:bg-emerald-950/20">
+                                <span class="text-xs uppercase tracking-wide text-emerald-600 dark:text-emerald-300">Recette totale</span>
+                                <strong class="mt-2 block text-2xl text-emerald-700 dark:text-emerald-200">{{ formatFcfa(dailyRevenueStats.totalRevenue) }}</strong>
+                            </div>
+                            <div class="rounded-2xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-800/60 dark:bg-amber-950/20">
+                                <span class="text-xs uppercase tracking-wide text-amber-600 dark:text-amber-300">Reste à payer</span>
+                                <strong class="mt-2 block text-2xl text-amber-700 dark:text-amber-200">{{ formatFcfa(dailyRevenueStats.totalUnpaid) }}</strong>
+                            </div>
+                            <div class="rounded-2xl border border-sky-200 bg-sky-50 p-4 dark:border-sky-800/60 dark:bg-sky-950/20">
+                                <span class="text-xs uppercase tracking-wide text-sky-600 dark:text-sky-300">Paiements</span>
+                                <strong class="mt-2 block text-2xl text-sky-700 dark:text-sky-200">{{ dailyRevenueStats.totalPaymentsCount }}</strong>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                            <div class="rounded-2xl border border-surface-200 bg-white p-4 dark:border-surface-700 dark:bg-surface-900/50">
+                                <h4 class="text-sm font-semibold text-surface-900 dark:text-surface-50">État des factures</h4>
+                                <div class="mt-4 grid grid-cols-2 gap-3 text-sm">
+                                    <div class="rounded-xl bg-emerald-50 px-3 py-3 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-300">Payées: <strong>{{ dailyRevenueStats.statusCounts.paid }}</strong></div>
+                                    <div class="rounded-xl bg-amber-50 px-3 py-3 text-amber-700 dark:bg-amber-950/20 dark:text-amber-300">Partielles: <strong>{{ dailyRevenueStats.statusCounts.partial }}</strong></div>
+                                    <div class="rounded-xl bg-rose-50 px-3 py-3 text-rose-700 dark:bg-rose-950/20 dark:text-rose-300">Impayées: <strong>{{ dailyRevenueStats.statusCounts.unpaid }}</strong></div>
+                                    <div class="rounded-xl bg-surface-100 px-3 py-3 text-surface-700 dark:bg-surface-800 dark:text-surface-300">Vides non validées: <strong>{{ dailyRevenueStats.statusCounts.freeNotValidated }}</strong></div>
+                                </div>
+                            </div>
+
+                            <div class="rounded-2xl border border-surface-200 bg-white p-4 dark:border-surface-700 dark:bg-surface-900/50">
+                                <h4 class="text-sm font-semibold text-surface-900 dark:text-surface-50">Assurances</h4>
+                                <div class="mt-4 grid grid-cols-2 gap-3 text-sm">
+                                    <div class="rounded-xl bg-sky-50 px-3 py-3 text-sky-700 dark:bg-sky-950/20 dark:text-sky-300">Montant: <strong>{{ formatFcfa(dailyRevenueStats.totalInsurance) }}</strong></div>
+                                    <div class="rounded-xl bg-amber-50 px-3 py-3 text-amber-700 dark:bg-amber-950/20 dark:text-amber-300">En attente: <strong>{{ dailyRevenueStats.pendingInsurance }}</strong></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="rounded-2xl border border-surface-200 bg-white p-4 dark:border-surface-700 dark:bg-surface-900/50">
+                            <h4 class="text-sm font-semibold text-surface-900 dark:text-surface-50">Recette par mode de paiement</h4>
+                            <div v-if="dailyRevenueStats.paymentModeRows.length" class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                                <div v-for="item in dailyRevenueStats.paymentModeRows" :key="item.mode" class="rounded-xl border border-surface-200 bg-surface-50 px-4 py-3 dark:border-surface-700 dark:bg-surface-800/40">
+                                    <span class="text-xs uppercase tracking-wide text-surface-500">{{ item.mode }}</span>
+                                    <strong class="mt-2 block text-lg text-surface-900 dark:text-surface-50">{{ formatFcfa(item.amount) }}</strong>
+                                </div>
+                            </div>
+                            <div v-else class="mt-4 rounded-xl border border-dashed border-surface-300 px-4 py-5 text-sm text-surface-500 dark:border-surface-700 dark:text-surface-400">
+                                Aucun paiement enregistré aujourd'hui.
+                            </div>
+                        </div>
+                    </div>
+                </Dialog>
 
                 <!-- Contenu consultations -->
                 <div class="p-4">

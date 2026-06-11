@@ -11,12 +11,23 @@ import IconField from 'primevue/iconfield';
 import InputIcon from 'primevue/inputicon';
 import Card from 'primevue/card';
 import Badge from 'primevue/badge';
-import { fetchAdminAppreciations } from '@/services/appreciationAdminService';
+import Toast from 'primevue/toast';
+import ConfirmPopup from 'primevue/confirmpopup';
+import { useConfirm } from 'primevue/useconfirm';
+import { useToast } from 'primevue/usetoast';
+import {
+    deleteAdminAppreciation,
+    fetchAdminAppreciations,
+    setAdminAppreciationPublished
+} from '@/services/appreciationAdminService';
 import { getHttpErrorMessage } from '@/service/http';
 
 const token = localStorage.getItem('token');
+const confirm = useConfirm();
+const toast = useToast();
 
 const loading = ref(true);
+const actionLoadingId = ref(null);
 const errorMessage = ref('');
 const stats = ref({
     total: 0,
@@ -93,23 +104,27 @@ function stars(rating) {
     return '★'.repeat(n) + '☆'.repeat(5 - n);
 }
 
+function applyResponse(res) {
+    stats.value = {
+        total: Number(res?.stats?.total || 0),
+        anonymous: Number(res?.stats?.anonymous || 0),
+        published: Number(res?.stats?.published || 0),
+        averageRating: Number(res?.stats?.averageRating || 0)
+    };
+
+    items.value = (Array.isArray(res?.items) ? res.items : []).map((item) => ({
+        ...item,
+        patientName: item.patientName || (item.patientId ? `Patient #${item.patientId}` : 'Patient non lié')
+    }));
+}
+
 async function load() {
     loading.value = true;
     errorMessage.value = '';
 
     try {
         const res = await fetchAdminAppreciations(token, { limit: 300 });
-        stats.value = {
-            total: Number(res?.stats?.total || 0),
-            anonymous: Number(res?.stats?.anonymous || 0),
-            published: Number(res?.stats?.published || 0),
-            averageRating: Number(res?.stats?.averageRating || 0)
-        };
-
-        items.value = (Array.isArray(res?.items) ? res.items : []).map((item) => ({
-            ...item,
-            patientName: item.patientId ? `Patient #${item.patientId}` : 'Patient non lié'
-        }));
+        applyResponse(res);
     } catch (error) {
         errorMessage.value = getHttpErrorMessage(error, 'Impossible de charger les avis patients.');
     } finally {
@@ -117,10 +132,107 @@ async function load() {
     }
 }
 
+function updateLocalItem(updatedItem) {
+    if (!updatedItem?.id) return;
+    items.value = items.value.map((item) => (item.id === updatedItem.id ? { ...item, ...updatedItem } : item));
+    stats.value = {
+        ...stats.value,
+        published: items.value.filter((item) => item.isPublished === true).length
+    };
+}
+
+function removeLocalItem(id) {
+    items.value = items.value.filter((item) => item.id !== id);
+    stats.value = {
+        total: Math.max(0, stats.value.total - 1),
+        anonymous: items.value.filter((item) => item.isAnonymous === true).length,
+        published: items.value.filter((item) => item.isPublished === true).length,
+        averageRating: items.value.length
+            ? items.value.reduce((sum, item) => sum + Number(item.rating || 0), 0) / items.value.length
+            : 0
+    };
+}
+
+function handleTogglePublish(event, item) {
+    if (!item?.id) return;
+
+    const willPublish = item.isPublished !== true;
+    confirm.require({
+        target: event?.currentTarget,
+        message: willPublish
+            ? 'Publier cet avis sur l\'API publique ?'
+            : 'Masquer cet avis de l\'API publique ?',
+        icon: willPublish ? 'pi pi-globe' : 'pi pi-eye-slash',
+        acceptLabel: willPublish ? 'Publier' : 'Masquer',
+        rejectLabel: 'Annuler',
+        accept: async () => {
+            actionLoadingId.value = item.id;
+            try {
+                const res = await setAdminAppreciationPublished(token, item.id, willPublish);
+                updateLocalItem(res?.item);
+                toast.add({
+                    severity: 'success',
+                    summary: willPublish ? 'Avis publié' : 'Avis masqué',
+                    detail: willPublish
+                        ? 'L\'avis est visible via l\'API publique.'
+                        : 'L\'avis n\'est plus visible via l\'API publique.',
+                    life: 3000
+                });
+            } catch (error) {
+                toast.add({
+                    severity: 'error',
+                    summary: 'Erreur',
+                    detail: getHttpErrorMessage(error, 'Impossible de modifier la visibilité de l\'avis.'),
+                    life: 4000
+                });
+            } finally {
+                actionLoadingId.value = null;
+            }
+        }
+    });
+}
+
+function handleDelete(event, item) {
+    if (!item?.id) return;
+
+    confirm.require({
+        target: event?.currentTarget,
+        message: 'Supprimer définitivement cet avis ? Cette action est irréversible.',
+        icon: 'pi pi-exclamation-triangle',
+        acceptLabel: 'Oui, supprimer',
+        rejectLabel: 'Annuler',
+        acceptClass: 'p-button-danger',
+        accept: async () => {
+            actionLoadingId.value = item.id;
+            try {
+                await deleteAdminAppreciation(token, item.id);
+                removeLocalItem(item.id);
+                toast.add({
+                    severity: 'success',
+                    summary: 'Avis supprimé',
+                    detail: 'L\'avis a été supprimé.',
+                    life: 3000
+                });
+            } catch (error) {
+                toast.add({
+                    severity: 'error',
+                    summary: 'Erreur',
+                    detail: getHttpErrorMessage(error, 'Impossible de supprimer l\'avis.'),
+                    life: 4000
+                });
+            } finally {
+                actionLoadingId.value = null;
+            }
+        }
+    });
+}
+
 onMounted(load);
 </script>
 
 <template>
+    <Toast />
+    <ConfirmPopup />
     <div class="space-y-6 p-4 md:p-6">
         <!-- En-tête avec fil d'Ariane -->
         <Card class="shadow-sm">
@@ -255,7 +367,29 @@ onMounted(load);
                                      :severity="item.isPublished ? 'success' : 'warning'"
                                      rounded />
                             </div>
-                            <Badge :value="formatDate(item.createdAt)" severity="secondary" class="whitespace-nowrap" />
+                            <div class="flex flex-wrap items-center gap-2">
+                                <Badge :value="formatDate(item.createdAt)" severity="secondary" class="whitespace-nowrap" />
+                                <Button
+                                    :icon="item.isPublished ? 'pi pi-eye-slash' : 'pi pi-globe'"
+                                    :label="item.isPublished ? 'Masquer' : 'Publier'"
+                                    :severity="item.isPublished ? 'warning' : 'success'"
+                                    size="small"
+                                    outlined
+                                    rounded
+                                    :loading="actionLoadingId === item.id"
+                                    @click="handleTogglePublish($event, item)"
+                                />
+                                <Button
+                                    icon="pi pi-trash"
+                                    label="Supprimer"
+                                    severity="danger"
+                                    size="small"
+                                    outlined
+                                    rounded
+                                    :loading="actionLoadingId === item.id"
+                                    @click="handleDelete($event, item)"
+                                />
+                            </div>
                         </header>
 
                         <p class="m-0 text-surface-700 dark:text-surface-300 leading-relaxed mb-4">

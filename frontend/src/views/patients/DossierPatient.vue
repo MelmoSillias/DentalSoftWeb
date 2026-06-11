@@ -26,11 +26,19 @@
                         optionValue="value"
                         placeholder="Sélectionner un patient"
                         filter
+                        :filterFields="['label', 'phone', 'searchText']"
                         class="w-72"
                         :loading="patientOptionsLoading"
                         @filter="handlePatientFilter"
                         @update:modelValue="handlePatientSelect"
-                    />
+                    >
+                        <template #option="{ option }">
+                            <div class="flex flex-col">
+                                <span class="font-medium">{{ option.label }}</span>
+                                <small class="text-surface-500 dark:text-surface-400">{{ option.phone || 'Téléphone non renseigné' }}</small>
+                            </div>
+                        </template>
+                    </Select>
                 </div>
             </div>
         </div>
@@ -125,6 +133,14 @@
                         :show-consultations="showConsultationsTab"
                     />
                 </div>
+                    <!-- Colonne de gauche, après DossierPatientInfoCard -->
+                    <div class="mt-6" data-tour="patients-dossier.archive-files">
+                        <ArchiveFilesSection
+                            :patient-id="props.patientId"
+                            :files="archiveFiles"
+                            @refresh="loadDossier(props.patientId)"
+                        />
+                    </div>
             </div>
         </div>
 
@@ -271,7 +287,7 @@ import RdvPaiementsSection from '@/components/patients/RdvPaiementsSection.vue';
 import PrintDossierBody from '@/components/print/PrintDossierBody.vue';
 import PrintFicheV2Body from '@/components/print/PrintFicheV2Body.vue';
 import { usePrinter } from '@/composables/usePrinter';
-import { usePatients } from '@/composables/usePatients';  
+import { usePatients } from '@/composables/usePatients';
 import { fetchPublicGeneralSettings } from '@/services/globalSettingsService';
 import {
     activatePatientsTourMock,
@@ -293,6 +309,7 @@ import Select from 'primevue/select';
 import { useToast } from 'primevue/usetoast';
 import { computed, ref, onBeforeUnmount, onMounted, nextTick, watch } from 'vue';
 import { useRouter } from 'vue-router';
+import ArchiveFilesSection from '@/components/patients/ArchiveFilesSection.vue';
 
 const props = defineProps({
     patientId: {
@@ -353,6 +370,8 @@ const printSectionOptions = [
 
 const fiches = computed(() => patient.value.fiches || []);
 const rdvs = computed(() => patient.value.rdvs || []);
+const archiveFiles = computed(() => patient.value.archiveFiles || []);
+console.log('archiveFiles', archiveFiles.value);
 const paiements = computed(() => patient.value.paiements || []);
 const factures = computed(() => patient.value.factures || []);
 const isReception = computed(() => Boolean(auth.user?.roles?.includes('ROLE_RECEPTION')));
@@ -389,6 +408,7 @@ const getDisplayedPatientId = () => (guidedTourDemoActive ? patient.value?.id ??
 const ensurePatientLists = () => {
     if (!Array.isArray(patient.value.antecedents)) patient.value.antecedents = [];
     if (!Array.isArray(patient.value.allergies)) patient.value.allergies = [];
+    if (!Array.isArray(patient.value.archiveFiles)) patient.value.archiveFiles = [];
 };
 
 const handleSaveAntecedent = async (payload) => {
@@ -547,7 +567,9 @@ const loadPatientOptions = async (query = '') => {
         const items = response?.items ?? [];
         patientOptions.value = items.map((p) => ({
             label: p.fullname || `${p.prenom ?? ''} ${p.nom ?? ''}`.trim() || p.nom,
-            value: p.id
+            value: p.id,
+            phone: p.telephone || p.phone || '',
+            searchText: [p.fullname, `${p.prenom ?? ''} ${p.nom ?? ''}`.trim(), p.nom, p.telephone, p.phone].filter(Boolean).join(' ')
         }));
     } catch (error) {
         console.error('Erreur lors du chargement des patients', error);
@@ -567,7 +589,9 @@ const ensureSelectedPatientOption = async (patientId) => {
         patientOptions.value = [
             {
                 label: data.fullname || `${data.prenom ?? ''} ${data.nom ?? ''}`.trim() || data.nom,
-                value: data.id
+                value: data.id,
+                phone: data.telephone || data.phone || '',
+                searchText: [data.fullname, `${data.prenom ?? ''} ${data.nom ?? ''}`.trim(), data.nom, data.telephone, data.phone].filter(Boolean).join(' ')
             },
             ...patientOptions.value
         ];

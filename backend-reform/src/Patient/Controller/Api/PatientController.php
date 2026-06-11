@@ -92,17 +92,31 @@ final class PatientController extends AbstractController
     #[Route('/api/patient/{id}/update', name: 'api_patient_update', methods: ['POST'])]
     public function updatePatient(int $id, Request $request): JsonResponse
     {
-        $contentType = $request->headers->get('Content-Type', '');
-        $data = str_starts_with($contentType, 'application/json')
-            ? (json_decode($request->getContent(), true) ?: [])
-            : $request->request->all();
+        $data = json_decode($request->getContent(), true) ?? [];
         $file = $request->files->get('photo');
+        
+        // Récupération des nouveaux fichiers archivés
+        $uploadedArchiveFiles = $request->files->get('archiveFiles', []);
+        if (!is_array($uploadedArchiveFiles)) {
+            $uploadedArchiveFiles = [];
+        }
+        
+        // Récupération de la liste des fichiers déjà existants (envoyée en JSON)
+        $existingArchiveFiles = [];
+        if ($request->request->has('archiveFiles')) {
+            $existingArchiveFiles = json_decode($request->request->get('archiveFiles', '[]'), true);
+            if (!is_array($existingArchiveFiles)) {
+                return $this->json(['message' => 'Le champ archiveFiles doit être un tableau JSON'], 400);
+            }
+        }
 
         $result = $this->patientService->updatePatient(
             $id,
             $data,
             $file,
             dirname(__DIR__, 4) . '/public/uploads',
+            $uploadedArchiveFiles,
+            $existingArchiveFiles
         );
 
         if (isset($result['error'])) {
@@ -111,6 +125,52 @@ final class PatientController extends AbstractController
 
         return $this->json($result, $result['status'] ?? 200);
     }
+
+    // src/Patient/Controller/Api/PatientController.php
+
+#[Route('/api/patient/{id}/archive-file', name: 'api_patient_archive_file_add', methods: ['POST'])]
+public function addArchiveFile(int $id, Request $request): JsonResponse
+{
+    $name = $request->request->get('name');
+    $file = $request->files->get('file');
+
+    if (!$name || !$file) {
+        return $this->json(['message' => 'Nom et fichier requis'], 400);
+    }
+
+    $result = $this->patientService->addArchiveFile(
+        $id,
+        $name,
+        $file,
+        dirname(__DIR__, 4) . '/public/uploads'
+    );
+
+    if (isset($result['error'])) {
+        return $this->json(['message' => $result['error']], $result['status'] ?? 400);
+    }
+
+    return $this->json($result, 201);
+}
+
+#[Route('/api/patient/{id}/archive-file', name: 'api_patient_archive_file_remove', methods: ['DELETE'])]
+public function removeArchiveFile(int $id, Request $request): JsonResponse
+{
+    $data = json_decode($request->getContent(), true);
+    $fileUrl = $data['url'] ?? null;
+
+    if (!$fileUrl) {
+        return $this->json(['message' => 'URL du fichier manquante'], 400);
+    }
+
+    $result = $this->patientService->removeArchiveFile($id, $fileUrl);
+
+    if (isset($result['error'])) {
+        return $this->json(['message' => $result['error']], $result['status'] ?? 400);
+    }
+
+    return $this->json($result);
+}
+ 
 
     #[Route('/api/patient/{id}/consultation-en-cours', name: 'api_consultation_check_active', methods: ['GET'])]
     public function checkConsultationEnCours(int $id): JsonResponse

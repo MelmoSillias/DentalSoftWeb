@@ -135,7 +135,7 @@ class InsuranceClaimService
         $dateTransaction = $date ?? new \DateTimeImmutable();
 
         $transaction = new Transaction();
-        $transaction->setType('Revenu');
+        $transaction->setType('Revenue');
         $transaction->setMontant((string) $montant);
         $transaction->setDateTransaction(\DateTime::createFromInterface($dateTransaction));
         $transaction->setDescription(sprintf('Recouvrement assurance | Facture #%d', $facture->getId()));
@@ -196,7 +196,7 @@ class InsuranceClaimService
         $paiement->setConsultation($consultation);
 
         $transaction = new Transaction();
-        $transaction->setType('Revenu');
+        $transaction->setType('Revenue');
         $transaction->setMontant((string) $amountToPay);
         $transaction->setDateTransaction(\DateTime::createFromInterface($dateTransaction));
         $transaction->setDescription(sprintf('Encaissement part patient | Facture assurance #%d', $facture->getId()));

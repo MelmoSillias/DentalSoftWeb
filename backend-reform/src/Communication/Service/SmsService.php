@@ -116,6 +116,7 @@ final class SmsService
      */
     public function processQueue(int $limit = 20): array
     {
+        $snapshotBefore = $this->queueRepository->getProcessingSnapshot();
         $items = $this->queueRepository->findProcessable($limit);
         $sent = 0;
         $failed = 0;
@@ -125,7 +126,18 @@ final class SmsService
             $this->entityManager->persist($queueItem);
             $this->entityManager->flush();
 
-            $result = $this->orangeSmsClient->sendSms($queueItem->getPhone(), $queueItem->getMessage());
+            // Valider la configuration avant envoi pour produire une erreur descriptive
+            $config = $this->configService->getConfig();
+            $check = $this->configService->validateReadyConfig($config);
+            if (!($check['valid'] ?? false)) {
+                $hasClientId = $config->getClientId() ? 'oui' : 'non';
+                $hasClientSecret = $this->configService->getClientSecret($config) ? 'oui' : 'non';
+                $sender = $config->getSenderAddress() ?: 'absent';
+                $detailed = sprintf("%s (clientId:%s, secret:%s, sender:%s)", $check['message'] ?? 'Configuration SMS invalide', $hasClientId, $hasClientSecret, $sender);
+                $result = ['success' => false, 'error' => $detailed];
+            } else {
+                $result = $this->orangeSmsClient->sendSms($queueItem->getPhone(), $queueItem->getMessage());
+            }
 
             if (($result['success'] ?? false) === true) {
                 $queueItem
@@ -182,6 +194,21 @@ final class SmsService
             'processed' => count($items),
             'sent' => $sent,
             'failed' => $failed,
+            'snapshot' => [
+                'before' => [
+                    'pendingDue' => (int) ($snapshotBefore['pendingDue'] ?? 0),
+                    'pendingScheduled' => (int) ($snapshotBefore['pendingScheduled'] ?? 0),
+                    'failedDue' => (int) ($snapshotBefore['failedDue'] ?? 0),
+                    'failedScheduled' => (int) ($snapshotBefore['failedScheduled'] ?? 0),
+                    'failedExhausted' => (int) ($snapshotBefore['failedExhausted'] ?? 0),
+                    'sending' => (int) ($snapshotBefore['sending'] ?? 0),
+                    'sent' => (int) ($snapshotBefore['sent'] ?? 0),
+                    'cancelled' => (int) ($snapshotBefore['cancelled'] ?? 0),
+                    'nextScheduledAt' => ($snapshotBefore['nextScheduledAt'] ?? null) instanceof DateTimeImmutable
+                        ? $snapshotBefore['nextScheduledAt']->format('Y-m-d H:i:s')
+                        : null,
+                ],
+            ],
         ];
     }
 
@@ -285,6 +312,116 @@ final class SmsService
                 'metadata' => $metadata,
             ];
         }, $items);
+    }
+
+    /**
+     * Retourne les détails d'un élément de file et les logs associés.
+     *
+     * @return array<string, mixed>
+     */
+    public function getQueueDetails(int $queueId, int $logsLimit = 50): array
+    {
+        $item = $this->queueRepository->find($queueId);
+        if (!$item instanceof SmsQueue) {
+            return ['success' => false, 'error' => 'Élément introuvable.', 'statusCode' => 404];
+        }
+
+        $logs = [];
+        try {
+            $since = $item->getCreatedAt();
+            $found = $this->logRepository->findByPhoneSince($item->getPhone(), $since, $logsLimit);
+            foreach ($found as $log) {
+                $logs[] = [
+                    'id' => $log->getId(),
+                    'date' => $log->getCreatedAt()->format('Y-m-d H:i:s'),
+                    'status' => $log->getStatus(),
+                    'provider' => $log->getProvider(),
+                    'providerMessageId' => $log->getProviderMessageId(),
+                    'error' => $log->getErrorMessage(),
+                    'message' => $log->getMessage(),
+                ];
+            }
+        } catch (\Throwable $e) {
+            // ignore and return minimal details
+        }
+
+        return [
+            'success' => true,
+            'queueItem' => [
+                'id' => $item->getId(),
+                'createdAt' => $item->getCreatedAt()->format('Y-m-d H:i:s'),
+                'sendAt' => $item->getSendAt()?->format('Y-m-d H:i:s'),
+                'sentAt' => $item->getSentAt()?->format('Y-m-d H:i:s'),
+                'patient' => $item->getPatient() ? trim(($item->getPatient()->getPrenom() ?? '') . ' ' . ($item->getPatient()->getNom() ?? '')) : null,
+                'phone' => $item->getPhone(),
+                'message' => $item->getMessage(),
+                'status' => $item->getStatus(),
+                'retryCount' => $item->getRetryCount(),
+                'lastError' => $item->getLastError(),
+                'metadata' => $item->getMetadata(),
+            ],
+            'logs' => $logs,
+        ];
+    }
+
+    /**
+     * @return array{success: bool, queueId?: int, status?: string, sendAt?: string|null, error?: string, statusCode?: int}
+     */
+    public function updateQueueItem(int $queueId, string $action, ?DateTimeImmutable $sendAt = null): array
+    {
+        $item = $this->queueRepository->find($queueId);
+        if (!$item instanceof SmsQueue) {
+            return ['success' => false, 'error' => 'Élément de file introuvable.', 'statusCode' => 404];
+        }
+
+        switch ($action) {
+            case 'cancel':
+                if ($item->getStatus() !== SmsQueue::STATUS_PENDING) {
+                    return ['success' => false, 'error' => 'Seuls les SMS en attente peuvent être annulés.', 'statusCode' => 400];
+                }
+                $item
+                    ->setStatus(SmsQueue::STATUS_CANCELLED)
+                    ->setLastError(null);
+                break;
+
+            case 'reschedule':
+                if ($item->getStatus() !== SmsQueue::STATUS_PENDING) {
+                    return ['success' => false, 'error' => 'Seuls les SMS en attente peuvent être reprogrammés.', 'statusCode' => 400];
+                }
+                if (!$sendAt instanceof DateTimeImmutable) {
+                    return ['success' => false, 'error' => 'Date de reprogrammation requise.', 'statusCode' => 400];
+                }
+                $item
+                    ->setStatus(SmsQueue::STATUS_PENDING)
+                    ->setSendAt($sendAt)
+                    ->setLastError(null);
+                break;
+
+            case 'retry':
+                if ($item->getStatus() !== SmsQueue::STATUS_FAILED) {
+                    return ['success' => false, 'error' => 'Seuls les SMS échoués peuvent être renvoyés.', 'statusCode' => 400];
+                }
+                $item
+                    ->setStatus(SmsQueue::STATUS_PENDING)
+                    ->setRetryCount(0)
+                    ->setLastError(null)
+                    ->setSentAt(null)
+                    ->setSendAt($sendAt ?? new DateTimeImmutable());
+                break;
+
+            default:
+                return ['success' => false, 'error' => 'Action de file SMS invalide.', 'statusCode' => 400];
+        }
+
+        $this->entityManager->persist($item);
+        $this->entityManager->flush();
+
+        return [
+            'success' => true,
+            'queueId' => (int) $item->getId(),
+            'status' => $item->getStatus(),
+            'sendAt' => $item->getSendAt()?->format('Y-m-d H:i:s'),
+        ];
     }
 
     /**

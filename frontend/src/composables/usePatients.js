@@ -163,6 +163,7 @@ export function usePatients() {
             });
         const paiements = Array.isArray(dossier.paiements) ? dossier.paiements : [];
         const factures = Array.isArray(dossier.factures) ? dossier.factures : [];
+        const archiveFiles = Array.isArray(dossier.archiveFiles) ? dossier.archiveFiles : [];
 
         return {
             id: patient.id ?? dossier.patientId ?? dossier.id ?? null,
@@ -204,6 +205,7 @@ export function usePatients() {
             fiches,
             paiements,
             factures,
+            archiveFiles,
             raw: dossier
         };
     };

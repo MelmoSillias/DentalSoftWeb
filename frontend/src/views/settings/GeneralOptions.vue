@@ -8,6 +8,9 @@ import InputText from 'primevue/inputtext';
 import Password from 'primevue/password';
 import Select from 'primevue/select';
 import SelectButton from 'primevue/selectbutton';
+import Tab from 'primevue/tab';
+import TabList from 'primevue/tablist';
+import Tabs from 'primevue/tabs';
 import Textarea from 'primevue/textarea';
 import ToggleSwitch from 'primevue/toggleswitch';
 import Divider from 'primevue/divider';
@@ -15,13 +18,17 @@ import Card from 'primevue/card';
 import Badge from 'primevue/badge';
 import InputNumber from 'primevue/inputnumber';
 import { useAuthStore } from '@/stores/auth';
+import { usePrinter } from '@/composables/usePrinter';
 import { useUiSettingsStore } from '@/stores/uiSettings';
 import { useAppearanceSettings } from '@/composables/useAppearanceSettings';
+import PrintPatientPortalQrPoster from '@/components/print/PrintPatientPortalQrPoster.vue';
+import PrintPatientPortalQrSingle from '@/components/print/PrintPatientPortalQrSingle.vue';
 import { GUIDED_TOUR_START_EVENT } from '@/tours';
 import { createSettingsApparenceTour } from '@/tours/settingsApparenceTour';
 import { startTourGuide } from '@/tours/tourGuideClient';
 import {
     cleanTestMode,
+    createMissingPatientPortalAccounts,
     downloadDatabaseExport,
     exportDatabase,
     fetchGeneralSettings,
@@ -29,17 +36,25 @@ import {
     saveGeneralSettings,
     toggleTestMode
 } from '@/services/globalSettingsService';
+import { buildPatientPortalQrPrintModel, getPatientPortalQrPrintEntry } from '@/services/printService';
 import { getHttpErrorMessage } from '@/service/http';
 import cabinetConfig from '@/cabinetConfig';
 
 const router = useRouter();
 const toast = useToast();
+const { printComponent } = usePrinter();
 const token = localStorage.getItem('token');
 const auth = useAuthStore();
 const uiSettings = useUiSettingsStore();
 const isGuidedTourStarting = ref(false);
 const activeCategory = ref('appearance');
 const activeSubSection = ref('overview');
+const settingsDisplayMode = ref('page');
+const settingsDisplayModeOptions = [
+    { label: 'Page', value: 'page', icon: 'pi pi-align-justify' },
+    { label: 'Onglets', value: 'tabs', icon: 'pi pi-objects-column' }
+];
+const activeSettingsTab = ref('appearance');
 let observer = null;
 
 const {
@@ -71,6 +86,7 @@ const savingStates = reactive({
     devicePolicy: false,
     billingPolicy: false,
     portalSettings: false,
+    portalBulkCreate: false,
     transactionMotifs: false,
     soinsCatalog: false,
     testMode: false,
@@ -118,7 +134,8 @@ const portalPatientConfig = reactive({
     patientPortalEnabled: true,
     patientPortalClosedMessage: 'Le portail patient est temporairement indisponible. Merci de contacter le cabinet pour toute assistance.',
     patientPortalBaseUrl: '',
-    cabinetShowcaseWebsiteUrl: ''
+    cabinetShowcaseWebsiteUrl: '',
+    autoCreatePortalAccountOnPatientCreation: false
 });
 
 const testMode = reactive({
@@ -160,7 +177,7 @@ const navigation = {
             { id: 'device-security', label: 'Sécurité appareils', icon: 'pi pi-shield' },
             { id: 'billing-rules', label: 'Règles facturation', icon: 'pi pi-wallet' },
             { id: 'patient-portal', label: 'Portail patient', icon: 'pi pi-mobile' },
-            { id: 'test-mode', label: 'Mode test', icon: 'pi pi-flask' },
+            { id: 'test-mode', label: 'Mode test', icon: 'pi pi-gauge' },
             { id: 'database-maintenance', label: 'Sauvegarde et reset', icon: 'pi pi-database' },
             { id: 'transaction-motifs', label: 'Motifs transaction', icon: 'pi pi-dollar' },
             { id: 'soins-list', label: 'Liste des soins', icon: 'pi pi-heart' }
@@ -191,6 +208,30 @@ const visibleNavigation = computed(() => {
         appearance: navigation.appearance
     };
 });
+const tabModeSections = computed(() => {
+    const sections = [
+        {
+            id: 'appearance',
+            label: navigation.appearance.label,
+            icon: navigation.appearance.icon
+        }
+    ];
+
+    if (!canAccessWorkflowSettings.value) {
+        return sections;
+    }
+
+    return [
+        ...sections,
+        ...navigation.workflow.sections.map((section) => ({
+            id: `workflow:${section.id}`,
+            label: section.label,
+            icon: section.icon
+        }))
+    ];
+});
+const isAppearanceVisible = computed(() => settingsDisplayMode.value === 'page' || activeSettingsTab.value === 'appearance');
+const isWorkflowVisible = computed(() => settingsDisplayMode.value === 'page' || activeSettingsTab.value.startsWith('workflow:'));
 
 const extractApiError = (error, fallback) => getHttpErrorMessage(error, fallback);
 
@@ -202,8 +243,33 @@ const normalizeLines = (value) => {
         .filter((item) => item && !unique.has(item) && unique.add(item));
 };
 
+const selectSettingsTab = (tabId) => {
+    const selected = tabModeSections.value.find((item) => item.id === tabId);
+    if (!selected) return;
+
+    activeSettingsTab.value = tabId;
+    if (tabId === 'appearance') {
+        activeCategory.value = 'appearance';
+        activeSubSection.value = 'overview';
+        return;
+    }
+
+    const sectionId = tabId.replace('workflow:', '');
+    activeCategory.value = 'workflow';
+    activeSubSection.value = sectionId;
+};
+
+const isWorkflowSectionVisible = (sectionId) => {
+    if (settingsDisplayMode.value === 'page') return true;
+    return activeSettingsTab.value === `workflow:${sectionId}`;
+};
+
 const scrollToSection = async (category, sectionId) => {
-    if (!visibleNavigation.value?.[category]) return;
+    if (settingsDisplayMode.value === 'tabs') {
+        selectSettingsTab(category === 'appearance' ? 'appearance' : `workflow:${sectionId}`);
+        return;
+    }
+
     activeCategory.value = category;
     activeSubSection.value = sectionId;
     await nextTick();
@@ -215,6 +281,11 @@ const scrollToSection = async (category, sectionId) => {
 
 // Setup intersection observer for scroll spy
 const setupObserver = () => {
+    if (settingsDisplayMode.value === 'tabs') {
+        observer?.disconnect();
+        return;
+    }
+
     const sections = [];
     observer?.disconnect();
     for (const [category, data] of Object.entries(visibleNavigation.value)) {
@@ -282,6 +353,7 @@ const loadGeneralSettings = async (force = false) => {
         portalPatientConfig.patientPortalClosedMessage = settings.patientPortalClosedMessage || portalPatientConfig.patientPortalClosedMessage;
         portalPatientConfig.patientPortalBaseUrl = settings.patientPortalBaseUrl || '';
         portalPatientConfig.cabinetShowcaseWebsiteUrl = settings.cabinetShowcaseWebsiteUrl || '';
+        portalPatientConfig.autoCreatePortalAccountOnPatientCreation = settings.autoCreatePortalAccountOnPatientCreation === true;
         testMode.enabled = settings.testModeEnabled === true;
         persistedTestModeEnabled.value = testMode.enabled;
         testMode.snapshotCreatedAt = settings.testModeSnapshotCreatedAt || null;
@@ -366,7 +438,8 @@ const savePortalPatientSettingsAction = async () => {
             patientPortalEnabled: portalPatientConfig.patientPortalEnabled,
             patientPortalClosedMessage: String(portalPatientConfig.patientPortalClosedMessage || '').trim(),
             patientPortalBaseUrl: String(portalPatientConfig.patientPortalBaseUrl || '').trim(),
-            cabinetShowcaseWebsiteUrl: String(portalPatientConfig.cabinetShowcaseWebsiteUrl || '').trim()
+            cabinetShowcaseWebsiteUrl: String(portalPatientConfig.cabinetShowcaseWebsiteUrl || '').trim(),
+            autoCreatePortalAccountOnPatientCreation: portalPatientConfig.autoCreatePortalAccountOnPatientCreation === true
         }, token);
         toast.add({ severity: 'success', summary: 'Portail patient', detail: 'Paramètres enregistrés', life: 2500 });
         await loadGeneralSettings(true);
@@ -374,6 +447,24 @@ const savePortalPatientSettingsAction = async () => {
         toast.add({ severity: 'error', summary: 'Erreur', detail: extractApiError(error, 'Sauvegarde impossible'), life: 3500 });
     } finally {
         savingStates.portalSettings = false;
+    }
+};
+
+const createMissingPortalAccountsAction = async () => {
+    if (!canAccessWorkflowSettings.value) return;
+    savingStates.portalBulkCreate = true;
+    try {
+        const result = await createMissingPatientPortalAccounts(token);
+        toast.add({
+            severity: 'success',
+            summary: 'Portail patient',
+            detail: result?.message || `${result?.createdCount || 0} compte(s) créé(s).`,
+            life: 3500
+        });
+    } catch (error) {
+        toast.add({ severity: 'error', summary: 'Erreur', detail: extractApiError(error, 'Création de masse impossible'), life: 3500 });
+    } finally {
+        savingStates.portalBulkCreate = false;
     }
 };
 
@@ -673,6 +764,7 @@ const canAccessSmsSettings = computed(() => (auth.user?.roles || []).includes('R
 const normalizedPortalBaseUrl = computed(() => String(portalPatientConfig.patientPortalBaseUrl || '').replace(/\/$/, ''));
 const portalLoginUrl = computed(() => normalizedPortalBaseUrl.value ? `${normalizedPortalBaseUrl.value}/login` : '');
 const anonymousReviewUrl = computed(() => normalizedPortalBaseUrl.value ? `${normalizedPortalBaseUrl.value}/avis-anonyme` : '');
+const normalizedShowcaseWebsiteUrl = computed(() => String(portalPatientConfig.cabinetShowcaseWebsiteUrl || '').trim());
 const qrPortalLoginSrc = computed(() => {
     if (!portalLoginUrl.value) return '';
     return `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(portalLoginUrl.value)}`;
@@ -681,15 +773,71 @@ const qrAnonymousReviewSrc = computed(() => {
     if (!anonymousReviewUrl.value) return '';
     return `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(anonymousReviewUrl.value)}`;
 });
+const qrShowcaseWebsiteSrc = computed(() => {
+    if (!normalizedShowcaseWebsiteUrl.value) return '';
+    return `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(normalizedShowcaseWebsiteUrl.value)}`;
+});
+const patientPortalQrPrintModel = computed(() => buildPatientPortalQrPrintModel({
+    cabinetName: cabinetConfig.displayName,
+    subtitle: 'Portail patient, avis anonymes et site vitrine',
+    phone: cabinetConfig.cabinetPhone,
+    portalLoginUrl: portalLoginUrl.value,
+    anonymousReviewUrl: anonymousReviewUrl.value,
+    showcaseWebsiteUrl: normalizedShowcaseWebsiteUrl.value
+}));
+const hasPrintablePortalQr = computed(() => {
+    const entries = patientPortalQrPrintModel.value?.entries || {};
+    return Object.values(entries).some((entry) => Boolean(entry?.url));
+});
+
+const printPatientPortalPoster = async () => {
+    if (!hasPrintablePortalQr.value) {
+        toast.add({ severity: 'warn', summary: 'Impression QR', detail: 'Aucune URL valide a imprimer.', life: 2600 });
+        return;
+    }
+    await printComponent(
+        PrintPatientPortalQrPoster,
+        { data: patientPortalQrPrintModel.value },
+        { title: 'Affiche QR portail patient', printDelay: 900 }
+    );
+};
+
+const printPatientPortalSingleQr = async (entryKey) => {
+    const entry = getPatientPortalQrPrintEntry(patientPortalQrPrintModel.value, entryKey);
+    if (!entry || !entry.url) {
+        toast.add({ severity: 'warn', summary: 'Impression QR', detail: 'URL indisponible pour ce QR code.', life: 2600 });
+        return;
+    }
+    await printComponent(
+        PrintPatientPortalQrSingle,
+        { entry },
+        { title: `QR ${entry.title}`, printDelay: 700 }
+    );
+};
 
 watch(canAccessWorkflowSettings, async (allowed) => {
     if (!allowed && activeCategory.value === 'workflow') {
         activeCategory.value = 'appearance';
         activeSubSection.value = 'overview';
     }
+    if (!allowed) {
+        activeSettingsTab.value = 'appearance';
+    }
     await nextTick();
     setupObserver();
 }, { immediate: true });
+
+watch(settingsDisplayMode, async () => {
+    if (settingsDisplayMode.value === 'tabs') {
+        if (activeCategory.value === 'workflow' && canAccessWorkflowSettings.value) {
+            selectSettingsTab(`workflow:${activeSubSection.value}`);
+        } else {
+            selectSettingsTab('appearance');
+        }
+    }
+    await nextTick();
+    setupObserver();
+});
 
 watch(
     () => consultationAccess.showReceptionQuickCloseButton,
@@ -743,7 +891,7 @@ onBeforeUnmount(() => {
 
         <div class="settings-body">
             <!-- Sidebar Navigation -->
-            <aside class="settings-sidebar">
+            <aside v-if="settingsDisplayMode === 'page'" class="settings-sidebar">
                 <div class="settings-nav-card">
                     <nav class="settings-nav">
 						<div v-for="(category, key) in visibleNavigation" :key="key" class="settings-nav-group">
@@ -786,8 +934,21 @@ onBeforeUnmount(() => {
                 </div>
 
                 <div v-else class="settings-content">
+                    <div v-if="settingsDisplayMode === 'tabs'" class="settings-tabs-nav settings-tabs-global">
+                        <Tabs :value="activeSettingsTab" @update:value="selectSettingsTab">
+                            <TabList class="settings-tab-list">
+                                <Tab v-for="tabItem in tabModeSections" :key="tabItem.id" :value="tabItem.id">
+                                    <span class="settings-tab-label">
+                                        <i :class="tabItem.icon"></i>
+                                        <span>{{ tabItem.label }}</span>
+                                    </span>
+                                </Tab>
+                            </TabList>
+                        </Tabs>
+                    </div>
+
                     <!-- Appearance Section -->
-                    <div class="settings-category">
+                    <div v-show="isAppearanceVisible" class="settings-category">
                         <div class="settings-category-header">
                             <div class="settings-category-title">
                                 <i class="pi pi-palette"></i>
@@ -948,7 +1109,7 @@ onBeforeUnmount(() => {
                     </div>
 
                     <!-- Workflow Section -->
-                    <div v-if="canAccessWorkflowSettings" class="settings-category">
+                    <div v-if="canAccessWorkflowSettings" v-show="isWorkflowVisible" class="settings-category">
                         <div class="settings-category-header">
                             <div class="settings-category-title">
                                 <i class="pi pi-briefcase"></i>
@@ -957,7 +1118,7 @@ onBeforeUnmount(() => {
                         </div>
 
                         <!-- Consultation Access -->
-                        <div id="workflow-consultation-access" class="settings-section">
+                        <div v-show="isWorkflowSectionVisible('consultation-access')" id="workflow-consultation-access" class="settings-section">
                             <div class="settings-section-header">
                                 <div>
                                     <h3>Consultation & Focus</h3>
@@ -1063,7 +1224,7 @@ onBeforeUnmount(() => {
                         </div>
 
                         <!-- Device Security -->
-                        <div id="workflow-device-security" class="settings-section">
+                        <div v-show="isWorkflowSectionVisible('device-security')" id="workflow-device-security" class="settings-section">
                             <div class="settings-section-header">
                                 <div>
                                     <h3>Sécurité des appareils</h3>
@@ -1098,7 +1259,7 @@ onBeforeUnmount(() => {
                         </div>
 
                         <!-- Billing Rules -->
-                        <div id="workflow-billing-rules" class="settings-section">
+                        <div v-show="isWorkflowSectionVisible('billing-rules')" id="workflow-billing-rules" class="settings-section">
                             <div class="settings-section-header">
                                 <div>
                                     <h3>Règles facturation</h3>
@@ -1139,18 +1300,28 @@ onBeforeUnmount(() => {
                             </div>
                         </div>
 
-                        <div id="workflow-patient-portal" class="settings-section">
+                        <div v-show="isWorkflowSectionVisible('patient-portal')" id="workflow-patient-portal" class="settings-section">
                             <div class="settings-section-header">
                                 <div>
                                     <h3>Portail patient</h3>
                                     <p class="settings-section-description">Activation globale, message de fermeture, domaine frontend patient, URL vitrine et QR codes</p>
                                 </div>
-                                <Button
-                                    label="Enregistrer"
-                                    icon="pi pi-save"
-                                    :loading="savingStates.portalSettings"
-                                    @click="savePortalPatientSettingsAction"
-                                />
+                                <div class="settings-inline-actions">
+                                    <Button
+                                        label="Imprimer affiche QR"
+                                        icon="pi pi-print"
+                                        severity="secondary"
+                                        outlined
+                                        :disabled="!hasPrintablePortalQr"
+                                        @click="printPatientPortalPoster"
+                                    />
+                                    <Button
+                                        label="Enregistrer"
+                                        icon="pi pi-save"
+                                        :loading="savingStates.portalSettings"
+                                        @click="savePortalPatientSettingsAction"
+                                    />
+                                </div>
                             </div>
                             <div class="settings-card">
                                 <div class="toggle-group">
@@ -1160,6 +1331,13 @@ onBeforeUnmount(() => {
                                             <span class="toggle-description">Si désactivé, la connexion patient est bloquée et le message ci-dessous s'affiche</span>
                                         </div>
                                         <ToggleSwitch v-model="portalPatientConfig.patientPortalEnabled" />
+                                    </div>
+                                    <div class="toggle-item">
+                                        <div class="toggle-info">
+                                            <label>Créer un compte automatiquement à la création client</label>
+                                            <span class="toggle-description">Crée immédiatement un compte portail patient avec le mot de passe par défaut lors de l'ajout d'un nouveau patient.</span>
+                                        </div>
+                                        <ToggleSwitch v-model="portalPatientConfig.autoCreatePortalAccountOnPatientCreation" />
                                     </div>
                                 </div>
                                 <Divider />
@@ -1204,6 +1382,22 @@ onBeforeUnmount(() => {
                                     </div>
                                 </div>
                                 <Divider />
+                                <div class="rounded-xl border border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-900/40">
+                                    <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                                        <div>
+                                            <label class="font-semibold text-surface-900 dark:text-surface-50">Créer les comptes patients manquants</label>
+                                            <p class="mt-1 text-sm text-surface-600 dark:text-surface-300">Lance une création automatique pour tous les patients actifs qui n'ont pas encore de compte portail.</p>
+                                        </div>
+                                        <Button
+                                            label="Créer les comptes manquants"
+                                            icon="pi pi-users"
+                                            severity="secondary"
+                                            :loading="savingStates.portalBulkCreate"
+                                            @click="createMissingPortalAccountsAction"
+                                        />
+                                    </div>
+                                </div>
+                                <Divider />
                                 <div class="two-columns">
                                     <div class="field-group">
                                         <label>QR connexion patient</label>
@@ -1221,6 +1415,14 @@ onBeforeUnmount(() => {
                                                 size="small"
                                                 text
                                                 @click="openExternalUrl(portalLoginUrl)"
+                                            />
+                                            <Button
+                                                label="Imprimer"
+                                                icon="pi pi-print"
+                                                size="small"
+                                                text
+                                                :disabled="!portalLoginUrl"
+                                                @click="printPatientPortalSingleQr('portal')"
                                             />
                                         </div>
                                         <p class="field-helper">{{ portalLoginUrl || 'Renseignez le domaine patient pour générer le QR.' }}</p>
@@ -1243,16 +1445,53 @@ onBeforeUnmount(() => {
                                                 text
                                                 @click="openExternalUrl(anonymousReviewUrl)"
                                             />
+                                            <Button
+                                                label="Imprimer"
+                                                icon="pi pi-print"
+                                                size="small"
+                                                text
+                                                :disabled="!anonymousReviewUrl"
+                                                @click="printPatientPortalSingleQr('review')"
+                                            />
                                         </div>
                                         <p class="field-helper">{{ anonymousReviewUrl || 'Renseignez le domaine patient pour générer le QR.' }}</p>
                                         <img v-if="qrAnonymousReviewSrc" :src="qrAnonymousReviewSrc" alt="QR avis anonyme" class="settings-qr" />
+                                    </div>
+                                    <div class="field-group">
+                                        <label>QR site vitrine</label>
+                                        <div class="settings-inline-actions">
+                                            <Button
+                                                label="Copier URL"
+                                                icon="pi pi-copy"
+                                                size="small"
+                                                text
+                                                @click="copyToClipboard('URL vitrine', normalizedShowcaseWebsiteUrl)"
+                                            />
+                                            <Button
+                                                label="Ouvrir"
+                                                icon="pi pi-external-link"
+                                                size="small"
+                                                text
+                                                @click="openExternalUrl(normalizedShowcaseWebsiteUrl)"
+                                            />
+                                            <Button
+                                                label="Imprimer"
+                                                icon="pi pi-print"
+                                                size="small"
+                                                text
+                                                :disabled="!normalizedShowcaseWebsiteUrl"
+                                                @click="printPatientPortalSingleQr('showcase')"
+                                            />
+                                        </div>
+                                        <p class="field-helper">{{ normalizedShowcaseWebsiteUrl || "Renseignez l'URL du site vitrine pour générer le QR." }}</p>
+                                        <img v-if="qrShowcaseWebsiteSrc" :src="qrShowcaseWebsiteSrc" alt="QR site vitrine" class="settings-qr" />
                                     </div>
                                 </div>
                             </div>
                         </div>
 
                         <!-- Test Mode -->
-                        <div id="workflow-test-mode" class="settings-section">
+                        <div v-show="isWorkflowSectionVisible('test-mode')" id="workflow-test-mode" class="settings-section">
                             <div class="settings-section-header">
                                 <div>
                                     <h3>Mode test</h3>
@@ -1300,7 +1539,7 @@ onBeforeUnmount(() => {
                         </div>
 
                         <!-- Database Maintenance -->
-                        <div id="workflow-database-maintenance" class="settings-section">
+                        <div v-show="isWorkflowSectionVisible('database-maintenance')" id="workflow-database-maintenance" class="settings-section">
                             <div class="settings-section-header">
                                 <div>
                                     <h3>Sauvegarde et reset base</h3>
@@ -1364,7 +1603,7 @@ onBeforeUnmount(() => {
                         </div>
 
                         <!-- Transaction Motifs -->
-                        <div id="workflow-transaction-motifs" class="settings-section">
+                        <div v-show="isWorkflowSectionVisible('transaction-motifs')" id="workflow-transaction-motifs" class="settings-section">
                             <div class="settings-section-header">
                                 <div>
                                     <h3>Motifs de transaction</h3>
@@ -1404,7 +1643,7 @@ onBeforeUnmount(() => {
                         </div>
 
                         <!-- Soins List -->
-                        <div id="workflow-soins-list" class="settings-section">
+                        <div v-show="isWorkflowSectionVisible('soins-list')" id="workflow-soins-list" class="settings-section">
                             <div class="settings-section-header">
                                 <div>
                                     <h3>Liste des soins</h3>
@@ -1433,6 +1672,25 @@ onBeforeUnmount(() => {
                     </div>
                 </div>
             </main>
+        </div>
+
+        <div class="settings-display-mode-fab">
+            <div class="settings-display-mode-label">Affichage sections</div>
+            <SelectButton
+                v-model="settingsDisplayMode"
+                :options="settingsDisplayModeOptions"
+                optionLabel="label"
+                optionValue="value"
+                :allowEmpty="false"
+                aria-label="Mode visuel des sections"
+            >
+                <template #option="{ option }">
+                    <span class="settings-display-mode-option">
+                        <i :class="option.icon"></i>
+                        <span>{{ option.label }}</span>
+                    </span>
+                </template>
+            </SelectButton>
         </div>
 
         <Dialog
@@ -1667,6 +1925,27 @@ onBeforeUnmount(() => {
 
 .settings-category {
     margin-bottom: 2.5rem;
+}
+
+.settings-tabs-nav {
+    margin-bottom: 1.25rem;
+}
+
+.settings-tabs-global {
+    margin-bottom: 1.5rem;
+}
+
+.settings-tab-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.settings-tab-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    white-space: nowrap;
 }
 
 .settings-category-header {
@@ -1946,6 +2225,34 @@ onBeforeUnmount(() => {
     padding: 0.5rem;
 }
 
+.settings-display-mode-fab {
+    position: fixed;
+    right: 1.5rem;
+    bottom: 1.5rem;
+    z-index: 30;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    background: color-mix(in srgb, var(--surface-card), transparent 6%);
+    border: 1px solid var(--surface-border);
+    border-radius: 14px;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.14);
+    padding: 0.75rem;
+    backdrop-filter: blur(8px);
+}
+
+.settings-display-mode-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-color-secondary);
+}
+
+.settings-display-mode-option {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
 /* Responsive */
 @media (max-width: 1024px) {
     .settings-body {
@@ -1998,6 +2305,12 @@ onBeforeUnmount(() => {
     .toggle-item {
         flex-direction: column;
         align-items: flex-start;
+    }
+
+    .settings-display-mode-fab {
+        left: 1rem;
+        right: 1rem;
+        bottom: 1rem;
     }
 }
 </style>

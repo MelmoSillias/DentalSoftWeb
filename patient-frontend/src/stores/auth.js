@@ -40,10 +40,15 @@ export const useAuthStore = defineStore('auth', () => {
         const meUser = me?.user || {};
         const employee = me?.employee || null;
 
+        const roles = Array.isArray(meUser?.roles) ? meUser.roles : [];
+        if (!roles.includes('ROLE_PATIENT')) {
+            throw new Error('Accès refusé : ce portail est réservé aux patients.');
+        }
+
         const connectedUser = {
             id: meUser?.id || null,
             username: meUser?.username || identifier,
-            roles: Array.isArray(meUser?.roles) ? meUser.roles : [],
+            roles,
             name: employee ? `${employee?.nom || ''} ${employee?.prenom || ''}`.trim() : meUser?.username || identifier,
             email: employee?.email || null
         };

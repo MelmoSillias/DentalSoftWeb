@@ -3,6 +3,7 @@
 namespace App\Settings\Controller\Api;
 
 use App\IdentityAccess\Entity\User;
+use App\Patient\Service\PatientService;
 use App\Settings\Service\DatabaseMaintenanceService;
 use App\Settings\Service\GlobalSettingsService;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -18,6 +19,7 @@ class GlobalSettingsController extends AbstractController
     public function __construct(
         private GlobalSettingsService $globalSettingsService,
         private DatabaseMaintenanceService $databaseMaintenanceService,
+        private PatientService $patientService,
     ) {
     }
 
@@ -49,7 +51,10 @@ class GlobalSettingsController extends AbstractController
     #[Route('/general/public', name: 'general_public_get', methods: ['GET'])]
     public function getPublicGeneralSettings(): JsonResponse
     {
-        return $this->json($this->globalSettingsService->getPublicGeneralSettings());
+        $user = $this->getUser();
+        $roles = $user instanceof User ? $user->getRoles() : [];
+
+        return $this->json($this->globalSettingsService->getPublicGeneralSettingsForRoles($roles));
     }
 
     #[Route('/general', name: 'general_save', methods: ['PUT'])]
@@ -61,6 +66,16 @@ class GlobalSettingsController extends AbstractController
         $saved = $this->globalSettingsService->saveGeneralSettings($payload);
 
         return $this->json($saved);
+    }
+
+    #[Route('/general/patient-portal/create-missing', name: 'general_patient_portal_create_missing', methods: ['POST'])]
+    public function createMissingPatientPortalAccounts(): JsonResponse
+    {
+        $this->denyAccessUnlessGranted('ROLE_ADMIN');
+
+        $result = $this->patientService->createMissingPatientPortalAccounts();
+
+        return $this->json($result, $result['status'] ?? 200);
     }
 
     #[Route('/test-mode/status', name: 'test_mode_status', methods: ['GET'])]

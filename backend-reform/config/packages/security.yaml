@@ -75,6 +75,9 @@ security:
         - { path: ^/api/login, roles: PUBLIC_ACCESS }
         - { path: ^/api/health, roles: PUBLIC_ACCESS }
         - { path: ^/api/token/validate, roles: PUBLIC_ACCESS }
+        - { path: ^/api/appreciations/public, roles: PUBLIC_ACCESS }
+        - { path: ^/api/appreciations/anonymous, roles: PUBLIC_ACCESS }
+        - { path: ^/api/settings/general/public, roles: PUBLIC_ACCESS }
         - { path: ^/api, roles: PUBLIC_ACCESS, methods: [OPTIONS] }
         - { path: ^/api/portal-patient/me(?:/|$), roles: ROLE_PATIENT }
         - { path: ^/api/me, roles: IS_AUTHENTICATED_FULLY }

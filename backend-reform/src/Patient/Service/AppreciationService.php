@@ -19,7 +19,7 @@ class AppreciationService
     /** @param array<string,mixed> $payload */
     public function createAnonymous(array $payload): Appreciation
     {
-        $appreciation = $this->hydrateBaseFields(new Appreciation(), $payload);
+        $appreciation = $this->hydrateBaseFields(new Appreciation(), $payload, false);
         $appreciation
             ->setIsAnonymous(true)
             ->setPatient(null)
@@ -101,7 +101,48 @@ class AppreciationService
         return $this->appreciationRepository->getAdminStats();
     }
 
-    private function hydrateBaseFields(Appreciation $appreciation, array $payload): Appreciation
+    /** @return Appreciation[] */
+    public function listPublishedForPublic(int $limit = 50): array
+    {
+        return $this->appreciationRepository->findPublishedForPublic($limit);
+    }
+
+    /** @return array{total:int,averageRating:float} */
+    public function getPublicStats(): array
+    {
+        return $this->appreciationRepository->getPublicStats();
+    }
+
+    public function findById(int $id): ?Appreciation
+    {
+        return $this->appreciationRepository->find($id);
+    }
+
+    public function setPublished(int $id, bool $isPublished): Appreciation
+    {
+        $appreciation = $this->findById($id);
+        if (!$appreciation instanceof Appreciation) {
+            throw new \InvalidArgumentException('Avis introuvable.');
+        }
+
+        $appreciation->setIsPublished($isPublished);
+        $this->entityManager->flush();
+
+        return $appreciation;
+    }
+
+    public function delete(int $id): void
+    {
+        $appreciation = $this->findById($id);
+        if (!$appreciation instanceof Appreciation) {
+            throw new \InvalidArgumentException('Avis introuvable.');
+        }
+
+        $this->entityManager->remove($appreciation);
+        $this->entityManager->flush();
+    }
+
+    private function hydrateBaseFields(Appreciation $appreciation, array $payload, ?bool $defaultPublished = true): Appreciation
     {
         $rating = (int) ($payload['rating'] ?? $payload['note'] ?? 0);
         if ($rating < 1 || $rating > 5) {
@@ -118,7 +159,7 @@ class AppreciationService
 
         $published = array_key_exists('isPublished', $payload)
             ? (bool) $payload['isPublished']
-            : true;
+            : ($defaultPublished ?? true);
 
         return $appreciation
             ->setRating($rating)

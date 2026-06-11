@@ -12,7 +12,8 @@ import {
     saveSmsTemplates,
     sendManualSms,
     sendSmsTest,
-    testSmsConnection
+    testSmsConnection,
+    updateSmsQueueItem
 } from '@/services/smsService';
 import cabinetConfig from '@/cabinetConfig';
 
@@ -23,6 +24,7 @@ export function useSmsAdminSettings(token, toast, extractApiError) {
     const smsSendingTest = ref(false);
     const smsSaving = ref(false);
     const smsQueueing = ref(false);
+    const smsQueueItemUpdating = ref(null);
     const smsTemplateSaving = ref(false);
     const lastTestResult = ref(null);
     const lastTestAt = ref(null);
@@ -312,6 +314,22 @@ export function useSmsAdminSettings(token, toast, extractApiError) {
         }
     };
 
+    const updateQueueItemAction = async (queueId, payload, successMessage) => {
+        smsQueueItemUpdating.value = queueId;
+        try {
+            const res = await updateSmsQueueItem(queueId, payload, token);
+            toast.add({ severity: 'success', summary: 'File SMS', detail: successMessage || 'Action appliquée.', life: 2500 });
+            await refreshSmsData();
+            return res;
+        } catch (error) {
+            console.error(error);
+            toast.add({ severity: 'error', summary: 'File SMS', detail: extractApiError(error, 'Action impossible.'), life: 4000 });
+            throw error;
+        } finally {
+            smsQueueItemUpdating.value = null;
+        }
+    };
+
     return {
         smsLoading,
         smsLoaded,
@@ -319,6 +337,7 @@ export function useSmsAdminSettings(token, toast, extractApiError) {
         smsSendingTest,
         smsSaving,
         smsQueueing,
+        smsQueueItemUpdating,
         smsTemplateSaving,
         lastTestResult,
         lastTestAt,
@@ -350,6 +369,7 @@ export function useSmsAdminSettings(token, toast, extractApiError) {
         previewTemplateAction,
         sendManualSmsAction,
         scheduleQueuedSmsAction,
-        processQueueAction
+        processQueueAction,
+        updateQueueItemAction
     };
 }

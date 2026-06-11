@@ -18,6 +18,11 @@ export const saveGeneralSettings = async (payload, token) => {
     return res.data;
 };
 
+export const createMissingPatientPortalAccounts = async (token) => {
+    const res = await http.post(`${apiPrefix}/settings/general/patient-portal/create-missing`, {}, { headers: authHeaders(token) });
+    return res.data;
+};
+
 export const fetchTestModeStatus = async (token) => {
     const res = await http.get(`${apiPrefix}/settings/test-mode/status`, { headers: authHeaders(token) });
     return res.data;

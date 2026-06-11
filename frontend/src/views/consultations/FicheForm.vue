@@ -23,7 +23,7 @@ import { usePrinter } from '@/composables/usePrinter';
 import { defaultSoinList, normalizeSoinList } from '@/services/consultations';
 import { fetchPublicGeneralSettings } from '@/services/globalSettingsService';
 import { addPatientAllergy, addPatientAntecedent, deletePatientAllergy, deletePatientAntecedent } from '@/services/patients';
-import { fetchFacturePrintData, fetchOrdonnancePrintData, fetchPatientFichePrintData } from '@/services/printService';
+import { fetchDevisPrintData, fetchOrdonnancePrintData, fetchPatientFichePrintData } from '@/services/printService';
 import { useAuthStore } from '@/stores/auth';
 import { GUIDED_TOUR_START_EVENT } from '@/tours';
 import { createConsultationsFormTour } from '@/tours/consultationsFormTour';
@@ -736,14 +736,14 @@ const handlePrintFiche = async () => {
 };
 
 const handlePrintDevis = async (devisEntry) => {
-    const factureId = Number(devisEntry?.id ?? Number.NaN);
-    if (!Number.isFinite(factureId)) {
+    const devisId = Number(devisEntry?.id ?? Number.NaN);
+    if (!Number.isFinite(devisId)) {
         toast.add({ severity: 'warn', summary: 'Impression', detail: 'Ce devis doit etre sauvegarde avant impression.', life: 3000 });
         return;
     }
 
     try {
-        const result = await fetchFacturePrintData(factureId, token);
+        const result = await fetchDevisPrintData(devisId, token);
         await printComponent(PrintDevisBody, { doc: result.doc, title: result.title || 'Devis' });
     } catch (error) {
         console.error('Erreur impression devis', error);

@@ -16,7 +16,9 @@ const toast = useToast();
 const roles = computed(() => auth.user?.roles || []);
 const isAdmin = computed(() => roles.value.includes('ROLE_ADMIN'));
 const isMedecin = computed(() => roles.value.includes('ROLE_MEDECIN'));
-const isReception = computed(() => roles.value.includes('ROLE_RECEPTION'));
+const isReception = computed(() =>
+    roles.value.includes('ROLE_RECEPTION') || roles.value.includes('ROLE_RECEPTIONNISTE')
+);
 const isGuidedTourStarting = ref(false);
 
 const reportRole = computed(() => {

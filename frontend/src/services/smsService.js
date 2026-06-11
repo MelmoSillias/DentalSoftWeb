@@ -59,6 +59,16 @@ export const fetchSmsQueue = async ({ limit = 100, offset = 0, status = null } =
     return Array.isArray(res.data) ? res.data : [];
 };
 
+export const fetchSmsQueueDetails = async (queueId, token) => {
+    const res = await axios.get(`${apiPrefix}/sms/queue/${queueId}/details`, { headers: authHeaders(token) });
+    return res.data;
+};
+
+export const updateSmsQueueItem = async (queueId, payload, token) => {
+    const res = await axios.patch(`${apiPrefix}/sms/queue/${queueId}`, payload, { headers: authHeaders(token) });
+    return res.data;
+};
+
 export const fetchSmsTemplates = async (token) => {
     const res = await axios.get(`${apiPrefix}/sms/templates`, { headers: authHeaders(token) });
     return Array.isArray(res.data) ? res.data : [];

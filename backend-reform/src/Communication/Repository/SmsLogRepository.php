@@ -120,4 +120,22 @@ class SmsLogRepository extends ServiceEntityRepository
 
         return $series;
     }
+
+    /**
+     * @return SmsLog[]
+     */
+    public function findByPhoneSince(string $phone, \DateTimeImmutable $since, int $limit = 50): array
+    {
+        return $this->createQueryBuilder('l')
+            ->leftJoin('l.patient', 'p')
+            ->addSelect('p')
+            ->andWhere('l.phone = :phone')
+            ->andWhere('l.createdAt >= :since')
+            ->setParameter('phone', $phone)
+            ->setParameter('since', $since)
+            ->orderBy('l.createdAt', 'DESC')
+            ->setMaxResults(max(1, min($limit, 200)))
+            ->getQuery()
+            ->getResult();
+    }
 }

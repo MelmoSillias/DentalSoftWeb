@@ -82,6 +82,8 @@ export const normalizeConsultation = (raw = {}) => {
     const ficheId = raw.ficheId ?? raw.fiche_id ?? raw.fiche?.id ?? null;
     const lastFicheId = raw.lastFicheId ?? raw.last_fiche_id ?? null;
     const isPaid = raw.isPaid ?? raw.paid ?? raw.payee ?? false;
+    const paymentId = raw.paymentId ?? raw.paiementId ?? raw.payment_id ?? raw.paiement_id ?? null;
+    const paiementAmount = Number(raw.paiementAmount ?? raw.paymentAmount ?? raw.montantPaiement ?? raw.montant_paiement ?? 0) || 0;
 
     return {
         id: raw.id,
@@ -99,6 +101,8 @@ export const normalizeConsultation = (raw = {}) => {
         patientHasFiche: Boolean(patient?.hasFiche || patient?.fiche || patient?.ficheId),
         type: raw.type ?? null,
         isPaid,
+        paymentId,
+        paiementAmount,
         patientId,
         state,
         factState,

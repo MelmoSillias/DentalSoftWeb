@@ -13,6 +13,7 @@
 /backend-reform/var/
 /backend-reform/vendor/
 /backend-reform/migrations/
+/backend-reform/public/uploads/
 ###< symfony/framework-bundle ###
 
 ###> phpunit/phpunit ###
@@ -32,3 +33,5 @@
 mondentite.rar 
 backend-reform/backend-reform-utils.rar
 mercure.rar
+deploy.bat
+deploy.ps1

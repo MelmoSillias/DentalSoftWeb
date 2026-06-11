@@ -100,18 +100,7 @@ class DashboardService
             ->getQuery()
             ->getSingleScalarResult();
 
-        $cashTotal = (float) $this->transactionRepo->createQueryBuilder('t')
-            ->select('COALESCE(SUM(t.montant), 0)')
-            ->join('t.modeDePaiement', 'm')
-            ->andWhere('t.type = :entry')
-            ->andWhere('m.type = :cash')
-            ->andWhere('t.dateTransaction BETWEEN :from AND :to')
-            ->setParameter('entry', 'Revenue')
-            ->setParameter('cash', 'Espèces')
-            ->setParameter('from', $from)
-            ->setParameter('to', $to)
-            ->getQuery()
-            ->getSingleScalarResult();
+        $cashTotal = $this->reportService->computeCashRevenueForPeriod($from, $to);
 
         $facturesForPeriod = $this->em->createQueryBuilder()
             ->select('f')
@@ -448,6 +437,7 @@ class DashboardService
                 'consultations' => $cards['consultations'],
                 'appointments' => $cards['appointments'],
                 'cash' => $cards['cash'],
+                'pendingConsultations' => $cards['pendingConsultations'],
             ];
         });
     }

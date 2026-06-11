@@ -1,11 +1,11 @@
 <script setup>
-import AutoComplete from 'primevue/autocomplete';
-import Button from 'primevue/button'; 
+import Button from 'primevue/button';
 import Dialog from 'primevue/dialog';
 import InputNumber from 'primevue/inputnumber';
 import InputText from 'primevue/inputtext';
 import MultiSelect from 'primevue/multiselect';
 import ProgressSpinner from 'primevue/progressspinner';
+import Select from 'primevue/select';
 import Textarea from 'primevue/textarea';
 import { computed, ref, watch } from 'vue';
 import { defaultSoinList, normalizeSoinList } from '@/services/consultations';
@@ -83,29 +83,6 @@ const form = computed({
 const medecinsList = computed(() => (props.medecinsOptions.length ? props.medecinsOptions : props.medecins));
 const infirmiersList = computed(() => (props.infirmiersOptions.length ? props.infirmiersOptions : props.infirmiers));
 const sallesList = computed(() => (props.sallesOptions.length ? props.sallesOptions : props.salles));
-
-const medecinSuggestions = ref([]);
-
-watch(
-    medecinsList,
-    (list) => {
-        medecinSuggestions.value = list || [];
-    },
-    { immediate: true }
-);
-
-const medecinSelection = computed({
-    get: () => medecinsList.value.find((m) => m.id === form.value.medecinId) || null,
-    set: (val) => updateField('medecinId', val?.id ?? null)
-});
-
-const searchMedecin = (event) => {
-    const query = (event.query || '').toLowerCase();
-    const list = medecinsList.value || [];
-    medecinSuggestions.value = query
-        ? list.filter((m) => (m.label || '').toLowerCase().includes(query))
-        : list;
-};
 
 const updateField = (key, value) => {
     form.value = { ...form.value, [key]: value };
@@ -285,7 +262,7 @@ watch(
     },
     { deep: true, immediate: true }
 );
-  
+
 function formatCurrency(value) {
     return new Intl.NumberFormat('fr-FR', {
         style: 'currency',
@@ -296,13 +273,7 @@ function formatCurrency(value) {
 }
 
 const soinsList = computed(() => normalizeSoinList(props.soins));
-const soinSuggestions = ref([]);
-
-const searchSoins = (event) => {
-    const query = String(event?.query || '').toLowerCase();
-    const list = soinsList.value;
-    soinSuggestions.value = query ? list.filter((item) => item.toLowerCase().includes(query)) : list;
-};
+const soinOptions = computed(() => soinsList.value.map((item) => ({ label: item, value: item })));
 
 const consultationTypes = [
     { label: 'Première Consultation', value: 'initiale' },
@@ -363,20 +334,20 @@ const isValidTooth = (value) => {
                 </div>
             </div>
             <div class="flex flex-wrap gap-2">
-                <Button 
-                    label="Sauvegarder" 
-                    icon="pi pi-save" 
+                <Button
+                    label="Sauvegarder"
+                    icon="pi pi-save"
                     :loading="saving"
                     class="rounded-xl px-4 py-2.5 font-medium shadow-sm hover:shadow-md transition-all bg-gradient-to-r from-primary-500 to-primary-600 border-0 text-white"
-                    @click="emit('save')" 
+                    @click="emit('save')"
                 />
-                <Button 
-                    label="Clôturer" 
-                    icon="pi pi-lock" 
+                <Button
+                    label="Clôturer"
+                    icon="pi pi-lock"
                     severity="danger"
                     :loading="clotureLoading"
                     class="rounded-xl px-4 py-2.5 font-medium shadow-sm hover:shadow-md transition-all bg-gradient-to-r from-red-500 to-red-600 border-0 text-white"
-                    @click="emit('cloture')" 
+                    @click="emit('cloture')"
                 />
             </div>
         </div>
@@ -384,27 +355,25 @@ const isValidTooth = (value) => {
         <!-- Content -->
         <div class="space-y-6">
             <!-- Personnel & Salle -->
-            <div class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/30 p-5"> 
+            <div class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/30 p-5">
                 <div class="flex flex-wrap gap-4">
                     <div class="flex-1 space-y-2 col-6 md:col-4">
                         <label class="text-sm font-medium text-surface-700 dark:text-surface-300 flex items-center gap-2">
                             <i class="pi pi-user-md text-surface-400"></i>
                             Médecin
                         </label>
-                        <AutoComplete 
-                            v-model="medecinSelection" 
-                            :suggestions="medecinSuggestions"
-                            :optionLabel="'label'" 
-                            placeholder="Rechercher un médecin"
+                        <Select
+                            :modelValue="form.medecinId"
+                            :options="medecinsList"
+                            optionLabel="label"
+                            optionValue="id"
+                            placeholder="Choisir un médecin"
+                            :filter="true"
+                            filterPlaceholder="Rechercher..."
+                            showClear
                             :disabled="medecinReadonly"
-                            class="w-full"
-                            dropdown 
-                            forceSelection
-                            :completeOnFocus="false" 
-                            :delay="0"
-                            inputClass="w-full rounded-xl border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-800/50 p-3"
-                            @complete="searchMedecin"
-                            @update:modelValue="(v) => updateField('medecinId', v?.id ?? null)" 
+                            class="w-full [&_.p-select]:rounded-xl [&_.p-select]:border-surface-200 [&_.p-select]:dark:border-surface-700 [&_.p-select]:p-3"
+                            @update:modelValue="(v) => updateField('medecinId', v)"
                         />
                     </div>
                     <div class="flex-1 space-y-2 col-6 md:col-4">
@@ -412,16 +381,16 @@ const isValidTooth = (value) => {
                             <i class="pi pi-users text-surface-400"></i>
                             Infirmier(ère)s
                         </label>
-                        <MultiSelect 
-                            v-model="form.infirmierIds" 
-                            :options="infirmiersList" 
+                        <MultiSelect
+                            v-model="form.infirmierIds"
+                            :options="infirmiersList"
                             optionLabel="label"
-                            optionValue="id" 
+                            optionValue="id"
                             placeholder="Sélectionner"
-                            display="chip" 
+                            display="chip"
                             :filter="true"
                             class="w-full [&_.p-multiselect]:rounded-xl [&_.p-multiselect]:border-surface-200 [&_.p-multiselect]:dark:border-surface-700 [&_.p-multiselect]:p-3"
-                            @update:modelValue="(v) => updateField('infirmierIds', v || [])" 
+                            @update:modelValue="(v) => updateField('infirmierIds', v || [])"
                         />
                     </div>
                     <div class="flex-1 space-y-2 col-6 md:col-4">
@@ -429,14 +398,14 @@ const isValidTooth = (value) => {
                             <i class="pi pi-building text-surface-400"></i>
                             Salle
                         </label>
-                        <Select 
-                            v-model="form.salleId" 
-                            :options="sallesList" 
-                            optionLabel="label" 
+                        <Select
+                            v-model="form.salleId"
+                            :options="sallesList"
+                            optionLabel="label"
                             optionValue="id"
                             placeholder="Choisir une salle"
                             class="w-full [&_.p-dropdown]:rounded-xl [&_.p-dropdown]:border-surface-200 [&_.p-dropdown]:dark:border-surface-700 [&_.p-dropdown]:p-3"
-                            @update:modelValue="(v) => updateField('salleId', v)" 
+                            @update:modelValue="(v) => updateField('salleId', v)"
                         />
                     </div>
                     <div class="flex-1 space-y-2 col-6 md:col-4">
@@ -463,12 +432,12 @@ const isValidTooth = (value) => {
                     <i class="pi pi-file-edit text-surface-400"></i>
                     Note de séance
                 </label>
-                <Textarea 
-                    v-model="form.noteSeance" 
+                <Textarea
+                    v-model="form.noteSeance"
                     rows="4"
                     placeholder="Notes et observations de la séance..."
                     class="w-full rounded-xl border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-800/50 focus:ring-2 focus:ring-primary-500/20 transition-all"
-                    @update:modelValue="(v) => updateField('noteSeance', v)" 
+                    @update:modelValue="(v) => updateField('noteSeance', v)"
                 />
             </div>
 
@@ -484,12 +453,12 @@ const isValidTooth = (value) => {
                             <p class="text-sm text-surface-500 dark:text-surface-400">Actes médicaux effectués</p>
                         </div>
                     </div>
-                    <Button 
-                        icon="pi pi-plus" 
-                        label="Ajouter un soin" 
+                    <Button
+                        icon="pi pi-plus"
+                        label="Ajouter un soin"
                         size="small"
                         class="rounded-xl px-4 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 border-0 text-white shadow-sm hover:shadow-md transition-all"
-                        @click="addActe('')" 
+                        @click="addActe('')"
                     />
                     <Button
                         icon="pi pi-list-check"
@@ -509,8 +478,8 @@ const isValidTooth = (value) => {
                         </div>
                         <p class="text-surface-600 dark:text-surface-400">Aucun acte ajouté. Commencez par ajouter votre premier soin.</p>
                     </div>
-                    
-                    <div v-for="(acte, idx) in form.actes" :key="idx" 
+
+                    <div v-for="(acte, idx) in form.actes" :key="idx"
                          class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-800 p-4 shadow-sm hover:shadow-md transition-all">
                         <!-- Acte Header -->
                         <div class="flex items-center justify-between mb-4">
@@ -520,14 +489,14 @@ const isValidTooth = (value) => {
                                 </span>
                                 <span class="font-medium text-surface-900 dark:text-surface-100">Acte {{ idx + 1 }}</span>
                             </div>
-                            <Button 
-                                icon="pi pi-trash" 
-                                severity="danger" 
-                                text 
+                            <Button
+                                icon="pi pi-trash"
+                                severity="danger"
+                                text
                                 rounded
                                 v-tooltip="'Supprimer cet acte'"
                                 class="hover:bg-red-50 dark:hover:bg-red-900/20"
-                                @click="removeActe(idx)" 
+                                @click="removeActe(idx)"
                             />
                         </div>
 
@@ -537,9 +506,9 @@ const isValidTooth = (value) => {
                                 <FloatLabel variant="in" class="h-full">
                                     <MultiSelect
                                         :options="teethOptions"
-                                        :modelValue="normalizeDentSelection(acte.dent)" 
+                                        :modelValue="normalizeDentSelection(acte.dent)"
                                         optionLabel="label"
-                                        optionValue="value" 
+                                        optionValue="value"
                                         :filter="true"
                                         showClear
                                         class="w-full h-full rounded-lg border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800 text-sm"
@@ -559,13 +528,13 @@ const isValidTooth = (value) => {
                                         </template>
                                         <template #option="slotProps">
                                             <div class="flex items-center gap-3 p-2">
-                                                
+
                                                 <!-- Icône dent -->
                                                 <div class="relative">
                                                     <i class="fa fa-tooth text-lg"
                                                     :class="toothStateClass(slotProps.option.value)">
                                                     </i>
-                                                    
+
                                                 </div>
 
                                                 <!-- Infos -->
@@ -585,55 +554,57 @@ const isValidTooth = (value) => {
                             </div>
                             <div class="w-full lg:col-span-4">
                                 <FloatLabel variant="in">
-                                    <AutoComplete
+                                    <Select
                                         :modelValue="acte.type"
-                                        :suggestions="soinSuggestions"
-                                        dropdown
-                                        class="w-full"
-                                        inputClass="w-full rounded-lg border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800 p-2 text-sm"
-                                        @complete="searchSoins"
-                                        @update:modelValue="(v) => updateActe(idx, { type: v || '' })" 
+                                        :options="soinOptions"
+                                        optionLabel="label"
+                                        optionValue="value"
+                                        :filter="true"
+                                        filterPlaceholder="Rechercher..."
+                                        showClear
+                                        class="w-full [&_.p-select]:rounded-lg [&_.p-select]:border-surface-200 [&_.p-select]:dark:border-surface-700 [&_.p-select]:bg-surface-50 [&_.p-select]:dark:bg-surface-800 [&_.p-select]:p-2 [&_.p-select]:text-sm"
+                                        @update:modelValue="(v) => updateActe(idx, { type: v || '' })"
                                     />
                                     <label class="text-xs font-medium text-surface-600 dark:text-surface-400">Type d'acte</label>
                                 </FloatLabel>
                             </div>
                             <div class="w-full">
                                 <FloatLabel variant="in">
-                                    <InputNumber 
-                                        :modelValue="acte.quantite" 
-                                        :min="1" 
-                                        mode="decimal" 
+                                    <InputNumber
+                                        :modelValue="acte.quantite"
+                                        :min="1"
+                                        mode="decimal"
                                         :useGrouping="false"
                                         inputClass="w-full rounded-lg border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800 p-2 text-sm"
-                                        @update:modelValue="(v) => updateActe(idx, { quantite: v ?? 1 })" 
+                                        @update:modelValue="(v) => updateActe(idx, { quantite: v ?? 1 })"
                                     />
                                     <label class="text-xs font-medium text-surface-600 dark:text-surface-400">Qté</label>
                                 </FloatLabel>
                             </div>
                             <div class="w-full lg:col-span-3">
                                 <FloatLabel variant="in">
-                                    <InputNumber 
-                                        :modelValue="acte.prix" 
-                                        mode="decimal" 
+                                    <InputNumber
+                                        :modelValue="acte.prix"
+                                        mode="decimal"
                                         :minFractionDigits="0"
                                         :maxFractionDigits="2"
                                         inputClass="w-full rounded-lg border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800 p-2 text-sm"
-                                        @update:modelValue="(v) => updateActe(idx, { prix: v ?? 0 })" 
+                                        @update:modelValue="(v) => updateActe(idx, { prix: v ?? 0 })"
                                     />
                                     <label class="text-xs font-medium text-surface-600 dark:text-surface-400">Prix</label>
                                 </FloatLabel>
                             </div>
                             <div class="w-full lg:col-span-12">
                                 <FloatLabel variant="in">
-                                    <InputText 
-                                        :value="acte.description"  
+                                    <InputText
+                                        :value="acte.description"
                                         class="w-full rounded-lg border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800 p-2 text-sm"
-                                        @update:modelValue="(v) => updateActe(idx, { description: v })" 
+                                        @update:modelValue="(v) => updateActe(idx, { description: v })"
                                     />
                                     <label class="text-xs font-medium text-surface-600 dark:text-surface-400">Description</label>
                                 </FloatLabel>
                             </div>
-                            
+
                         </div>
 
                         <!-- Acte Subtotal -->
@@ -715,12 +686,12 @@ const isValidTooth = (value) => {
                             <p class="text-sm text-surface-500 dark:text-surface-400">Prescriptions médicamenteuses</p>
                         </div>
                     </div>
-                    <Button 
-                        icon="pi pi-plus" 
-                        label="Nouvelle ordonnance" 
+                    <Button
+                        icon="pi pi-plus"
+                        label="Nouvelle ordonnance"
                         size="small"
                         class="rounded-xl px-4 py-2.5 bg-gradient-to-r from-purple-500 to-purple-600 border-0 text-white shadow-sm hover:shadow-md transition-all"
-                        @click="emit('open-ordonnance')" 
+                        @click="emit('open-ordonnance')"
                     />
                 </div>
 
@@ -732,8 +703,8 @@ const isValidTooth = (value) => {
                         </div>
                         <p class="text-surface-600 dark:text-surface-400">Aucune ordonnance. Créez une nouvelle ordonnance.</p>
                     </div>
-                    
-                    <div v-for="ordo in ordonnances" :key="ordo.id" 
+
+                    <div v-for="ordo in ordonnances" :key="ordo.id"
                          class="flex items-center justify-between p-3 rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-800 hover:bg-surface-50 dark:hover:bg-surface-700 transition-colors">
                         <div class="flex items-center gap-3">
                             <div class="flex items-center justify-center w-10 h-10 rounded-lg bg-purple-500/10">
@@ -750,13 +721,13 @@ const isValidTooth = (value) => {
                         </div>
                         <div class="flex items-center gap-2">
                             <Badge :value="ordo.lignes?.length || 0" severity="info" class="px-2 py-1 text-xs" />
-                            <Button 
-                                icon="pi pi-print" 
-                                label="Imprimer" 
+                            <Button
+                                icon="pi pi-print"
+                                label="Imprimer"
                                 size="small"
                                 outlined
                                 class="rounded-lg px-3 py-1.5"
-                                @click="emit('print-ordonnance', ordo)" 
+                                @click="emit('print-ordonnance', ordo)"
                             />
                         </div>
                     </div>

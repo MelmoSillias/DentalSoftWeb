@@ -22,6 +22,7 @@ const emit = defineEmits(['update:visible', 'submit', 'cancel']);
 
 const typeOptions = [
     { label: 'Médecin', value: 'Medecin' },
+    { label: 'Infirmier', value: 'Infirmier' },
     { label: 'Réceptionniste', value: 'Receptionniste' },
     { label: 'Admin', value: 'Admin' },
     { label: 'Autre', value: 'Autre' }

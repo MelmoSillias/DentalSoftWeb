@@ -131,6 +131,39 @@ final class SmsController extends AbstractController
         return $this->json($this->smsService->listQueue($limit, $offset, is_string($status) ? $status : null));
     }
 
+    #[Route('/queue/{id}/details', name: 'queue_details', methods: ['GET'])]
+    public function queueDetails(int $id): JsonResponse
+    {
+        $result = $this->smsService->getQueueDetails($id, 50);
+        $statusCode = (int) ($result['statusCode'] ?? (($result['success'] ?? false) ? 200 : 400));
+        unset($result['statusCode']);
+
+        return $this->json($result, $statusCode);
+    }
+
+    #[Route('/queue/{id}', name: 'queue_update', methods: ['PATCH'])]
+    public function updateQueueItem(int $id, Request $request): JsonResponse
+    {
+        $payload = json_decode($request->getContent(), true) ?? [];
+        $action = (string) ($payload['action'] ?? '');
+        $sendAtRaw = $payload['sendAt'] ?? null;
+        $sendAt = null;
+
+        if (is_string($sendAtRaw) && trim($sendAtRaw) !== '') {
+            try {
+                $sendAt = new DateTimeImmutable($sendAtRaw);
+            } catch (\Throwable) {
+                return $this->json(['success' => false, 'error' => 'Date de programmation invalide'], 400);
+            }
+        }
+
+        $result = $this->smsService->updateQueueItem($id, $action, $sendAt);
+        $statusCode = (int) ($result['statusCode'] ?? (($result['success'] ?? false) ? 200 : 400));
+        unset($result['statusCode']);
+
+        return $this->json($result, $statusCode);
+    }
+
     #[Route('/templates', name: 'templates_list', methods: ['GET'])]
     public function listTemplates(): JsonResponse
     {
@@ -284,7 +317,7 @@ final class SmsController extends AbstractController
                 (string) $patient->getTelephone(),
                 $payload['message'],
                 $patient,
-                'appointment reminder',
+                'rappel de rdv',
                 'appointment',
                 null,
                 ['rdvId' => $rdv->getId()]

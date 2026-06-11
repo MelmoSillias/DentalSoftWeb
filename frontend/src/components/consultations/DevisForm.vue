@@ -21,7 +21,7 @@ const props = defineProps({
         default: () => defaultSoinList
     }
 });
- 
+
 const emit = defineEmits(['update:modelValue', 'save', 'cloture', 'open-ordonnance', 'print-ordonnance', 'print-devis']);
 
 const devis = computed({
@@ -42,9 +42,15 @@ const normalizeService = (service = {}) => ({
     montant: Number(service?.montant) || 0
 });
 
+const parseDevisType = (value) => {
+    if (value === null || value === undefined || value === '') return null;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+};
+
 const normalizeDevisEntry = (entry = {}) => ({
     id: Number(entry?.id) || null,
-    type: Number.isFinite(Number(entry?.type)) ? Number(entry.type) : null,
+    type: parseDevisType(entry?.type),
     date: entry?.date ?? null,
     description: entry?.description || '',
     services: Array.isArray(entry?.services)
@@ -56,28 +62,33 @@ const normalizeDevisEntry = (entry = {}) => ({
 
 const getDevisState = (value) => {
     const source = value || {};
+
+    // Sécurité au cas où un tableau brut est reçu
+    if (Array.isArray(source)) {
+        return {
+            list: source.length ? source.map(normalizeDevisEntry) : [createEmptyDevis()],
+            activeIndex: 0
+        };
+    }
+
     const fallbackEntry = normalizeDevisEntry({
         id: source?.id,
         type: source?.type,
         date: source?.date ?? null,
         description: source?.description || '',
-        services: source?.services || []
+        services: source?.services || source?.contenus || []
     });
 
     const parsedList = Array.isArray(source?.devisList)
         ? source.devisList.map((entry) => normalizeDevisEntry(entry))
-        : [fallbackEntry];
-
-    const list = parsedList.length
-        ? parsedList
-        : [createEmptyDevis()];
+        : (source?.id || source?.services?.length || source?.contenus?.length ? [fallbackEntry] : [createEmptyDevis()]);
 
     const parsedIndex = Number(source?.activeDevisIndex);
     const activeIndex = Number.isInteger(parsedIndex)
-        ? Math.min(Math.max(parsedIndex, 0), list.length - 1)
+        ? Math.min(Math.max(parsedIndex, 0), parsedList.length - 1)
         : 0;
 
-    return { list, activeIndex };
+    return { list: parsedList, activeIndex };
 };
 
 const updateDevisState = (updater) => {
@@ -100,12 +111,13 @@ const updateDevisState = (updater) => {
     const normalizedList = context.list.map((entry) => normalizeDevisEntry(entry));
 
     devis.value = {
-        ...(devis.value || {}),
+        ...(devis.value && !Array.isArray(devis.value) ? devis.value : {}), // Préserve la structure
         id: activeEntry.id,
         type: activeEntry.type,
         date: activeEntry.date,
         description: activeEntry.description,
         services: activeEntry.services,
+        contenus: activeEntry.services, // Ajout crucial pour le backend
         devisList: normalizedList,
         activeDevisIndex: clampedIndex
     };
@@ -218,13 +230,22 @@ const removeService = (idx) => {
 
 const addDevisTab = () => {
     updateDevisState((state) => {
-        const nextIndex = state.list.length;
+        const usedTypes = new Set(
+            state.list
+                .map((entry) => parseDevisType(entry?.type))
+                .filter((type) => type !== null)
+        );
+        let nextType = state.list.length;
+        while (usedTypes.has(nextType)) {
+            nextType += 1;
+        }
+
         state.list.push({
             ...createEmptyDevis(),
-            type: nextIndex,
-            description: `Devis ${nextIndex + 1}`
+            type: nextType,
+            description: `Devis ${state.list.length + 1}`
         });
-        state.activeIndex = nextIndex;
+        state.activeIndex = state.list.length - 1;
     });
 };
 
@@ -270,7 +291,7 @@ const total = computed(() =>
         0
     )
 );
-    
+
 const totalQuantity = computed(() => {
     return (activeDevis.value.services || []).reduce((sum, service) => sum + (service.qte || 0), 0);
 });
@@ -306,12 +327,12 @@ function subtotal(service) {
                 </div>
             </div>
             <div class="flex flex-wrap gap-2">
-                <Button 
-                    label="Sauvegarder" 
-                    icon="pi pi-save" 
+                <Button
+                    label="Sauvegarder"
+                    icon="pi pi-save"
                     :loading="saving"
                     class="rounded-xl px-5 py-2.5 font-medium shadow-sm hover:shadow-md transition-all bg-gradient-to-r from-primary-500 to-primary-600 border-0 text-white"
-                    @click="emit('save')" 
+                    @click="emit('save')"
                 />
             </div>
         </div>
@@ -373,9 +394,9 @@ function subtotal(service) {
                         <i class="pi pi-calendar text-surface-400"></i>
                         Date du devis
                     </label>
-                    <DatePicker 
-                        v-model="dateModel" 
-                        dateFormat="dd/mm/yy" 
+                    <DatePicker
+                        v-model="dateModel"
+                        dateFormat="dd/mm/yy"
                         showIcon
                         inputClass="w-full rounded-xl border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-800/50 p-3 focus:ring-2 focus:ring-primary-500/20 transition-all"
                     />
@@ -409,12 +430,12 @@ function subtotal(service) {
                         <p class="text-sm text-surface-500 dark:text-surface-400">Détail des prestations et tarifs</p>
                     </div>
                 </div>
-                <Button 
-                    icon="pi pi-plus" 
-                    label="Ajouter un service" 
+                <Button
+                    icon="pi pi-plus"
+                    label="Ajouter un service"
                     size="small"
                     class="rounded-xl px-4 py-2.5 bg-gradient-to-r from-primary-500 to-primary-600 border-0 text-white shadow-sm hover:shadow-md transition-all"
-                    @click="addService" 
+                    @click="addService"
                 />
             </div>
 
@@ -426,8 +447,8 @@ function subtotal(service) {
                     </div>
                     <p class="text-surface-600 dark:text-surface-400">Aucun service ajouté. Commencez par ajouter votre premier service.</p>
                 </div>
-                
-                <div v-for="(service, idx) in activeDevis.services" :key="idx" 
+
+                <div v-for="(service, idx) in activeDevis.services" :key="idx"
                      class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/30 p-5 shadow-sm hover:shadow-md transition-all">
                     <!-- Service Header -->
                     <div class="flex items-center justify-between mb-4">
@@ -437,14 +458,14 @@ function subtotal(service) {
                             </Tag>
                             <span class="font-medium text-surface-900 dark:text-surface-100">Service {{ idx + 1 }}</span>
                         </div>
-                        <Button 
-                            icon="pi pi-trash" 
-                            severity="danger" 
-                            text 
+                        <Button
+                            icon="pi pi-trash"
+                            severity="danger"
+                            text
                             rounded
                             v-tooltip="'Supprimer ce service'"
                             class="hover:bg-red-50 dark:hover:bg-red-900/20"
-                            @click="removeService(idx)" 
+                            @click="removeService(idx)"
                         />
                     </div>
 
@@ -452,7 +473,7 @@ function subtotal(service) {
                     <div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
                         <div class="lg:col-span-2 space-y-2 flex flex-col">
                             <label class="text-xs font-medium text-surface-600 dark:text-surface-400 uppercase tracking-wider">Désignation</label>
-                            <AutoComplete 
+                            <AutoComplete
                                 :modelValue="service.designation"
                                 :suggestions="soinsSuggestions"
                                 dropdown
@@ -460,15 +481,15 @@ function subtotal(service) {
                                 inputClass="w-full rounded-lg border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-800 p-2.5"
                                 placeholder="Description du service"
                                 @complete="searchSoins"
-                                @update:modelValue="(v) => updateService(idx, { designation: v || '' })" 
+                                @update:modelValue="(v) => updateService(idx, { designation: v || '' })"
                             />
                         </div>
                         <div class="space-y-2 flex flex-col">
                             <label class="text-xs font-medium text-surface-600 dark:text-surface-400 uppercase tracking-wider">Quantité</label>
-                            <InputNumber 
-                                :modelValue="service.qte" 
-                                :min="1" 
-                                mode="decimal" 
+                            <InputNumber
+                                :modelValue="service.qte"
+                                :min="1"
+                                mode="decimal"
                                 :useGrouping="false"
                                 inputClass="w-full rounded-lg border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-800 p-2.5"
                                 @update:modelValue="(v) => updateService(idx, { qte: Number(v) || 1 })"
@@ -476,10 +497,10 @@ function subtotal(service) {
                         </div>
                         <div class="space-y-2 flex flex-col">
                             <label class="text-xs font-medium text-surface-600 dark:text-surface-400 uppercase tracking-wider">Prix unitaire</label>
-                            <InputNumber 
-                                :modelValue="service.montant" 
-                                mode="decimal" 
-                                :minFractionDigits="0" 
+                            <InputNumber
+                                :modelValue="service.montant"
+                                mode="decimal"
+                                :minFractionDigits="0"
                                 :maxFractionDigits="2"
                                 inputClass="w-full rounded-lg border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-800 p-2.5"
                                 @update:modelValue="(v) => updateService(idx, { montant: Number(v) || 0 })"
@@ -522,4 +543,3 @@ function subtotal(service) {
         </div>
     </div>
 </template>
- 

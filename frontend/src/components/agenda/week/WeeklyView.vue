@@ -8,6 +8,7 @@ import InputText from 'primevue/inputtext';
 import ContextMenu from 'primevue/contextmenu';
 import ProgressSpinner from 'primevue/progressspinner';
 import { computed, reactive, ref, watch } from 'vue';
+import Popover from 'primevue/popover';
 import DetailsRdv from './DetailsRdv.vue';
 import { addMinutes } from '@/utils/dateUtils';
 import { useRdvStatus } from '@/composables/useRdvStatus';
@@ -23,6 +24,9 @@ const props = defineProps({
 const emit = defineEmits(['request-create', 'request-validate', 'request-cancel', 'request-report', 'request-sms-reminder', 'request-sms-schedule']);
 
 const calendarPlugins = [timeGridPlugin, interactionPlugin];
+const popoverRef = ref();
+const popoverEvent = ref(null);
+const popoverVisible = ref(false);   // ← NOUVEAU
 
 const events = ref([]);
 const loading = ref(false);
@@ -111,7 +115,8 @@ const loadEvents = async (force = false) => {
       start: rdv.start,
       end: rdv.end,
       extendedProps: rdv,
-      classNames: [getStatusCssClass(rdv)]
+      classNames: [getStatusCssClass(rdv)],
+      extendedProps: { ...rdv, __eventId: rdv.id } // si besoin
     }));
   } finally {
     loading.value = false;
@@ -131,36 +136,39 @@ const handleEventClick = (info) => {
 };
 
 const handleEventMount = (info) => {
-  // show native tooltip with more details
-  try {
-    const props = info.event.extendedProps || {};
-    const patient = props.patientName || 'Patient inconnu';
-    const medecin = props.medecinName ? `Dr. ${props.medecinName}` : '';
-    const motif = props.motif ? `Motif: ${props.motif}` : '';
-    const start = info.event.start ? info.event.start.toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }) : '';
-    const end = info.event.end ? info.event.end.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '';
-    const timeRange = start ? (end ? `${start} → ${end}` : start) : '';
-    const title = [patient, medecin, timeRange, motif].filter(Boolean).join('\n');
-    info.el.setAttribute('title', title);
-  } catch (err) {
-    // ignore formatting errors
-  }
+  const event = info.event;
+  info.el.setAttribute('data-event-id', event.id);
+  const props = event.extendedProps || {};
 
-  info.el.addEventListener('contextmenu', (e) => {
-    const css = getStatusCssClass(info.event.extendedProps || {});
-    const isPending = css === 'rdv-pending';
-    if (!isPending) return; // allow native browser menu for non-pending events
-    e.preventDefault();
-    selectedEvent.value = info.event;
-    contextMenu.value.show(e);
+  info.el.removeAttribute('title');
+
+  // === NOUVELLE LOGIQUE POPOVER ===
+  info.el.addEventListener('mouseenter', (e) => {
+    popoverEvent.value = event;
+    popoverVisible.value = true;
+    popoverRef.value?.show(e);        // Important : on passe l'événement mouse
   });
 
-  // double-click left opens the details drawer
+  info.el.addEventListener('mouseleave', () => {
+    popoverVisible.value = false;
+    popoverRef.value?.hide();
+  });
+
+  // Double clic → drawer
   info.el.addEventListener('dblclick', (e) => {
     e.preventDefault();
-    selectedEvent.value = info.event;
-    selectedRdvDetails.value = info.event.extendedProps;
+    selectedEvent.value = event;
+    selectedRdvDetails.value = props;
     drawerVisible.value = true;
+  });
+
+  // Context menu
+  info.el.addEventListener('contextmenu', (e) => {
+    const css = getStatusCssClass(props);
+    if (css !== 'rdv-pending') return;
+    e.preventDefault();
+    selectedEvent.value = event;
+    contextMenu.value.show(e);
   });
 };
 
@@ -306,7 +314,64 @@ defineExpose({ reloadOnAction });
         </template>
       </FullCalendar>
 
-      <ContextMenu ref="contextMenu" :model="menuItems" />
+            <ContextMenu ref="contextMenu" :model="menuItems" />
+
+                  <!-- Popover de détails -->
+      <Popover
+        ref="popoverRef"
+        v-model:visible="popoverVisible"
+        :show-delay="180"
+        :hide-delay="100"
+        class="max-w-[500px] w-auto bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg shadow-lg p-0.5 z-50"
+        @hide="popoverEvent = null"
+      >
+        <div v-if="popoverEvent" class="pl-4 pr-12 py-3 space-y-3">
+          <div class="font-semibold text-lg">
+            {{ popoverEvent.extendedProps.patientName || 'Patient' }}
+          </div>
+
+          <div class="text-sm text-gray-600 dark:text-gray-400">
+            {{ popoverEvent.extendedProps.medecinName ? `Dr. ${popoverEvent.extendedProps.medecinName}` : '' }}
+          </div>
+
+          <div class="flex items-center gap-2 text-sm">
+            <i class="pi pi-phone text-green-600"></i>
+            <span class="font-medium">
+              {{ popoverEvent.extendedProps.patientData?.telephone || popoverEvent.extendedProps.phone || 'Non renseigné' }}
+            </span>
+          </div>
+
+          <div class="text-sm">
+            <span class="font-medium">Motif :</span>
+            {{ popoverEvent.extendedProps.description || popoverEvent.extendedProps.motif || popoverEvent.extendedProps.note || 'Non précisé' }}
+          </div>
+
+          <div class="pt-3 border-t text-sm text-gray-700 dark:text-gray-300">
+            {{ popoverEvent.start?.toLocaleString('fr-FR') }}
+          </div>
+
+
+            <div v-if="popoverEvent.extendedProps.smsReminder">
+                <div class="text-sm">
+                    <span class="font-medium">SMS :</span>
+                    {{ popoverEvent.extendedProps.smsReminder.label }}
+                </div>
+                <div class="text-sm">
+                    <span class="font-medium">Programmé pour :</span>
+                    {{ popoverEvent.extendedProps.smsReminder.sendAt }}
+                </div>
+                <div class="text-sm">
+                    <span class="font-medium">Envoyé le :</span>
+                    {{ popoverEvent.extendedProps.smsReminder.sentAt }}
+                </div>
+                <div class="text-sm">
+                    <span class="font-medium">Message :</span>
+                    {{ popoverEvent.extendedProps.smsReminder.message }}
+                </div>
+            </div>
+        </div>
+      </Popover>
+
       <DetailsRdv v-model:visible="drawerVisible" :rdv="selectedRdvDetails" />
     </div>
   </section>

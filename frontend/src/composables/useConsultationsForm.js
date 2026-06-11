@@ -1,4 +1,4 @@
-import { computed, reactive, ref, watch } from 'vue';
+import { computed, nextTick, reactive, ref, watch } from 'vue';
 import { fetchInfirmiers } from '@/services/corpsmedical';
 import { fetchSalles } from '@/services/salles';
 import { fetchConsultationDetails, setConsultationFiche } from '@/services/consultations';
@@ -90,9 +90,15 @@ const defaultDevis = () => ({
     activeDevisIndex: 0
 });
 
+const parseDevisType = (value) => {
+    if (value === null || value === undefined || value === '') return null;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+};
+
 const normalizeDevisEntry = (entry = {}) => ({
     id: Number(entry?.id) || null,
-    type: Number.isFinite(Number(entry?.type)) ? Number(entry.type) : null,
+    type: parseDevisType(entry?.type),
     date: entry?.date ?? null,
     description: entry?.description || '',
     services: Array.isArray(entry?.services)
@@ -125,12 +131,18 @@ const toDevisModel = (entries = [], requestedActiveIndex = 0) => {
 };
 
 const hydrateDevisModelFromFiche = (fiche = {}, requestedActiveIndex = 0) => {
-    const devisEntries = Array.isArray(fiche.devis)
-        ? [...fiche.devis].sort((left, right) => Number(left?.type ?? 0) - Number(right?.type ?? 0))
-        : fiche.devis
-            ? [fiche.devis]
-            : [];
+    const rawDevis = fiche?.devis;
+    let devisEntries = [];
 
+    if (Array.isArray(rawDevis)) {
+        devisEntries = [...rawDevis];
+    } else if (rawDevis && Array.isArray(rawDevis.devisList)) {
+        devisEntries = [...rawDevis.devisList];
+    } else if (rawDevis && typeof rawDevis === 'object') {
+        devisEntries = [rawDevis];
+    }
+
+    devisEntries.sort((left, right) => Number(left?.type ?? 0) - Number(right?.type ?? 0));
     return toDevisModel(devisEntries, requestedActiveIndex);
 };
 
@@ -533,25 +545,42 @@ export const useConsultationsForm = ({ ficheId, consultId, token, mode }) => {
                     }
                 ];
 
-            for (let index = 0; index < devisList.length; index += 1) {
-                const entry = normalizeDevisEntry(devisList[index]);
-                const payload = {
-                    date: normalizeDateForApi(entry.date),
-                    type: Number.isFinite(entry.type) ? entry.type : index,
-                    description: entry.description || '',
-                    contenus: (entry.services || []).map((service) => ({
-                        designation: service.designation ?? '',
-                        qte: service.qte ?? 1,
-                        montant: service.montant ?? 0
-                    }))
-                };
-                await saveDevis(ficheId.value, payload, token);
-            }
+            const usedTypes = new Set();
+            const payload = {
+                devisList: devisList.map((rawEntry, index) => {
+                    const entry = normalizeDevisEntry(rawEntry);
+                    let type = entry.type !== null ? entry.type : index;
+                    while (usedTypes.has(type)) {
+                        type += 1;
+                    }
+                    usedTypes.add(type);
+
+                    return {
+                        id: entry.id,
+                        type,
+                        date: normalizeDateForApi(entry.date),
+                        description: entry.description || '',
+                        contenus: (entry.services || []).map((service) => ({
+                            designation: service.designation ?? '',
+                            qte: service.qte ?? 1,
+                            montant: service.montant ?? 0
+                        }))
+                    };
+                })
+            };
+            await saveDevis(ficheId.value, payload, token);
 
             // Refresh devis identifiers from server so newly saved entries become printable immediately.
             const refreshed = await loadFicheMedicale(ficheId.value, token);
             const requestedActiveIndex = Number(data.devis?.activeDevisIndex) || 0;
+
+            // La réassignation de data.devis déclenche le watcher profond de façon asynchrone.
+            // Sans ce garde-fou, markDirty() repasserait dirty.devis à true APRÈS clearDirty(),
+            // laissant la section marquée "Modifié" malgré la sauvegarde réussie.
+            ignoreNextDirty = true;
             data.devis = hydrateDevisModelFromFiche(refreshed, requestedActiveIndex);
+            await nextTick();
+            ignoreNextDirty = false;
 
             clearDirty(['devis']);
         } finally {

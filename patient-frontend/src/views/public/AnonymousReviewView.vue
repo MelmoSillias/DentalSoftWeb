@@ -103,7 +103,7 @@ function copyPublicUrl() {
                 />
 
                 <Message v-if="success" severity="success" :closable="false" class="mt-3">
-                    Merci, votre avis a bien été enregistré.
+                    Merci, votre avis a bien été enregistré. Il sera publié après validation par le cabinet.
                 </Message>
 
                 <Divider />

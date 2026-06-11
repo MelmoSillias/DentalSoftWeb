@@ -37,6 +37,25 @@ final class ProcessSmsQueueCommand extends Command
             (int) ($result['failed'] ?? 0)
         ));
 
+        $snapshot = $result['snapshot']['before'] ?? null;
+        if (is_array($snapshot)) {
+            $io->writeln(sprintf(
+                'État file avant traitement: pending dus=%d, pending programmés=%d, failed dus=%d, failed programmés=%d, failed épuisés=%d, sending=%d, sent=%d, cancelled=%d.',
+                (int) ($snapshot['pendingDue'] ?? 0),
+                (int) ($snapshot['pendingScheduled'] ?? 0),
+                (int) ($snapshot['failedDue'] ?? 0),
+                (int) ($snapshot['failedScheduled'] ?? 0),
+                (int) ($snapshot['failedExhausted'] ?? 0),
+                (int) ($snapshot['sending'] ?? 0),
+                (int) ($snapshot['sent'] ?? 0),
+                (int) ($snapshot['cancelled'] ?? 0)
+            ));
+
+            if ((int) ($result['processed'] ?? 0) === 0 && !empty($snapshot['nextScheduledAt'])) {
+                $io->note(sprintf('Prochain SMS programmable/relançable prévu à partir de %s.', (string) $snapshot['nextScheduledAt']));
+            }
+        }
+
         return Command::SUCCESS;
     }
 }

@@ -407,11 +407,12 @@ class ConsultationService
         [$start, $end] = $this->resolveDayBounds($dateStr);
 
         $qb = $this->em->createQueryBuilder()
-            ->select('c', 'p', 'm', 'f')
+            ->select('c', 'p', 'm', 'f', 'pa')
             ->from(Consultation::class, 'c')
             ->join('c.patient', 'p')
             ->leftJoin('c.medecin', 'm')
             ->leftJoin('c.facture', 'f')
+            ->leftJoin('c.paiement', 'pa')
             ->where('c.CreatedAt BETWEEN :start AND :end')
             ->orderBy('c.CreatedAt', 'ASC')
             ->setParameter('start', $start)
@@ -462,6 +463,7 @@ class ConsultationService
             'medecin' => $consultation->getMedecin()?->getFullName(),
             'isPaid' => $consultation->getPaiement() ? true : false,
             'paiementId' => $consultation->getPaiement()?->getId(),
+            'paiementAmount' => $consultation->getPaiement()?->getMontant() ?? 0,
             'createdAt' => $consultation->getCreatedAt()?->format(DATE_ATOM),
             'motif' => $ficheData['motif'],
             'factstate' => $this->resolveFocusFactState($consultation->getFacture()),
@@ -1144,7 +1146,7 @@ class ConsultationService
         $this->em->persist($consultation);
         $this->em->flush();
 
-        $medecins = $this->employeRepo->findBy(['type' => 'medecin']);
+        $medecins = $this->employeRepo->FindAllMedecin() ?? [];
         $infirmiers = $this->employeRepo->findBy(['type' => 'infirmier']);
         $salles = $this->salleRepo->findAll();
 

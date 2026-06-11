@@ -56,7 +56,8 @@ export const normalizePatient = (raw = {}) => ({
     },
     insuranceProfile: raw.insuranceProfile ?? raw.assuranceProfile ?? null,
     portalAccount: raw.portalAccount ?? null,
-    derniereConsultation: raw.derniereConsultation ?? raw.derniere_consultation ?? null
+    derniereConsultation: raw.derniereConsultation ?? raw.derniere_consultation ?? null,
+    archiveFiles: Array.isArray(raw.archiveFiles) ? raw.archiveFiles : []
 });
 
 export const fetchPatients = async (token, { page = 1, limit = 10, q = '', sortField = null, sortOrder = null } = {}) => {
@@ -333,5 +334,23 @@ export const togglePatientPortalUser = async (patientId, active, token) => {
         headers: authHeaders(token)
     });
 
+    return res.data;
+};
+
+export const addArchiveFile = async (patientId, formData, token) => {
+    const res = await http.post(`${apiPrefix}/patient/${patientId}/archive-file`, formData, {
+        headers: {
+            ...authHeaders(token),
+            'Content-Type': 'multipart/form-data'
+        }
+    });
+    return res.data;
+};
+
+export const deleteArchiveFile = async (patientId, fileUrl, token) => {
+    const res = await http.delete(`${apiPrefix}/patient/${patientId}/archive-file`, {
+        headers: authHeaders(token),
+        data: { url: fileUrl }
+    });
     return res.data;
 };

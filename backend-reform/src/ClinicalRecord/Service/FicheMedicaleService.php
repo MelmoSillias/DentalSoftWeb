@@ -551,7 +551,7 @@ class FicheMedicaleService
         $this->clearCollection($fiche->getDocuments());
 
         $fs = new Filesystem();
-        $uploadDir = $this->projectDir . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'documents' . DIRECTORY_SEPARATOR . 'fiche-medicale';
+        $uploadDir = $this->projectDir . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'patients' . DIRECTORY_SEPARATOR . $fiche->getPatient()->getId() . DIRECTORY_SEPARATOR . 'fiche-medicale';
 
         if (!$fs->exists($uploadDir)) {
             $fs->mkdir($uploadDir, 0775);
@@ -624,7 +624,7 @@ class FicheMedicaleService
                 $entity->setFicheMedicale($fiche);
                 $entity->setType($type);
                 $entity->setLibelle($libelle);
-                $entity->setUrl('uploads/documents/fiche-medicale/' . $movedFile->getFilename());
+                $entity->setUrl('uploads/patients/' . $fiche->getPatient()->getId() . '/fiche-medicale/' . $movedFile->getFilename());
                 $entity->setGroupKey($groupKey);
                 $this->em->persist($entity);
             }
@@ -637,53 +637,101 @@ class FicheMedicaleService
     {
         $fiche = $this->getFiche($ficheId);
 
-        $type = $data['type'] ?? 0;
-        $devis = $this->devisRepo->findOneBy(['ficheMedicale' => $fiche, 'type' => $type]);
-        if (!$devis) {
-            $devis = new Devis();
+        // Récupérer la liste des devis depuis la propriété devisList émise par Vue
+        $replaceAllDevis = isset($data['devisList']) && is_array($data['devisList']);
+        $devisList = $replaceAllDevis ? $data['devisList'] : [$data];
+
+        $keptDevis = [];
+
+        foreach ($devisList as $index => $devisData) {
+            $type = array_key_exists('type', $devisData) && $devisData['type'] !== null && $devisData['type'] !== ''
+                ? (int) $devisData['type']
+                : $index;
+
+            $usedTypes = array_map(static fn(Devis $item): int => (int) ($item->getType() ?? 0), $keptDevis);
+            while (in_array($type, $usedTypes, true)) {
+                $type++;
+            }
+
+            $devisId = isset($devisData['id']) ? (int) $devisData['id'] : 0;
+            $devis = null;
+
+            if ($devisId > 0) {
+                $candidate = $this->devisRepo->find($devisId);
+                if ($candidate instanceof Devis && $candidate->getFicheMedicale()?->getId() === $fiche->getId()) {
+                    $devis = $candidate;
+                }
+            }
+
+            if (!$devis) {
+                $devis = $this->devisRepo->findOneBy(['ficheMedicale' => $fiche, 'type' => $type]);
+            }
+
+            if (!$devis) {
+                $devis = new Devis();
+            }
+
+            $devis->setFicheMedicale($fiche);
+            if (!empty($devisData['date'])) {
+                $devis->setDate(new \DateTime($devisData['date']));
+            } elseif (!$devis->getDate()) {
+                $devis->setDate(new \DateTime('now'));
+            }
+            
+            $devis->setType($type);
+            
+            if (array_key_exists('description', $devisData)) {
+                $description = trim((string) $devisData['description']);
+                $devis->setDescription($description !== '' ? $description : null);
+            }
+            if (array_key_exists('statut', $devisData)) {
+                $devis->setStatut((int) $devisData['statut']);
+            }
+
+            $devis->setMontant((float) ($devisData['montant'] ?? 0));
+            if (array_key_exists('reste', $devisData)) {
+                $devis->setReste((float) $devisData['reste']);
+            }
+
+            // Nettoyage des anciennes lignes
+            foreach ($devis->getContenus() as $contenu) {
+                $devis->removeContenu($contenu);
+                $this->em->remove($contenu);
+            }
+
+            $amount = 0;
+            // Accepter 'services' (depuis Vue) ou 'contenus'
+            $items = $devisData['contenus'] ?? $devisData['services'] ?? [];
+            if (is_array($items)) {
+                foreach ($items as $c) {
+                    $lineTotal = ((float) ($c['montant'] ?? 0)) * ((int) ($c['qte'] ?? 1));
+                    $amount += $lineTotal;
+
+                    $cd = new ContenuDevis();
+                    $cd->setDesignation($c['designation'] ?? '')
+                        ->setQte((int) ($c['qte'] ?? 1))
+                        ->setMontant((float) ($c['montant'] ?? 0))
+                        ->setMontantTotal($lineTotal);
+                    $devis->addContenu($cd);
+                    $this->em->persist($cd);
+                }
+            }
+
+            $devis->setMontant($amount > 0 ? $amount : (float) ($devis->getMontant() ?? 0.0));
+            $this->em->persist($devis);
+            $keptDevis[] = $devis;
         }
 
-        $devis->setFicheMedicale($fiche);
-        if (!empty($data['date'])) {
-            $devis->setDate(new \DateTime($data['date']));
-        } elseif (!$devis->getDate()) {
-            $devis->setDate(new \DateTime('now'));
-        }
-        $devis->setType((int) $type);
-        if (array_key_exists('description', $data)) {
-            $description = trim((string) $data['description']);
-            $devis->setDescription($description !== '' ? $description : null);
-        }
-        if (array_key_exists('statut', $data)) {
-            $devis->setStatut((int) $data['statut']);
-        }
-
-        $devis->setMontant((float) ($data['montant'] ?? 0));
-        if (array_key_exists('reste', $data)) {
-            $devis->setReste((float) $data['reste']);
-        }
-
-        foreach ($devis->getContenus() as $contenu) {
-            $devis->removeContenu($contenu);
-            $this->em->remove($contenu);
-        }
-
-        $amount = 0;
-        if (isset($data['contenus']) && is_array($data['contenus'])) {
-            foreach ($data['contenus'] as $c) {
-                $cd = new ContenuDevis();
-                $cd->setDevis($devis)
-                    ->setDesignation($c['designation'] ?? '')
-                    ->setQte($c['qte'] ?? 1)
-                    ->setMontant($c['montant'] ?? 0);
-                $amount += $cd->getMontant() * $cd->getQte();
-                $cd->setMontantTotal($amount);
-                $this->em->persist($cd);
+        // Suppression uniquement lors d'une sauvegarde complète (devisList explicite)
+        if ($replaceAllDevis) {
+            $existingDevis = $this->devisRepo->findBy(['ficheMedicale' => $fiche]);
+            foreach ($existingDevis as $existing) {
+                if (!in_array($existing, $keptDevis, true)) {
+                    $this->em->remove($existing);
+                }
             }
         }
 
-        $devis->setMontant($amount ?: $devis->getMontant());
-        $this->em->persist($devis);
         $this->em->flush();
     }
 
@@ -854,7 +902,13 @@ class FicheMedicaleService
         }
         $documents = array_values($documentsMap);
 
-        $devis = array_map(static fn(Devis $d) => [
+        $devisEntities = $fiche->getDevis()->toArray();
+        usort(
+            $devisEntities,
+            static fn(Devis $left, Devis $right): int => ((int) ($left->getType() ?? 0)) <=> ((int) ($right->getType() ?? 0))
+        );
+
+        $devisArray = array_values(array_map(static fn(Devis $d) => [
             'id' => $d->getId(),
             'date' => $d->getDate()?->format('Y-m-d'),
             'type' => $d->getType(),
@@ -869,7 +923,29 @@ class FicheMedicaleService
                 'montant' => $c->getMontant(),
                 'montantTotal' => $c->getMontantTotal(),
             ], $d->getContenus()->toArray()),
-        ], $fiche->getDevis()->toArray());
+        ], $devisEntities));
+
+        // Wrapper pour correspondre EXACTEMENT au format VueJS et éviter le bug du "dirty state"
+        $devisWrapper = [
+            'devisList' => $devisArray,
+            'activeDevisIndex' => 0,
+        ];
+        
+        if (count($devisArray) > 0) {
+            $first = $devisArray[0];
+            $devisWrapper = array_merge($devisWrapper, [
+                'id' => $first['id'],
+                'type' => $first['type'],
+                'date' => $first['date'],
+                'description' => $first['description'],
+                'services' => $first['contenus'], // Mapping pour le frontend
+                'contenus' => $first['contenus']
+            ]);
+        }
+
+        // Plus bas dans le tableau return final :
+        // Changez 'devis' => $devis, par :
+        // 'devis' => $devisWrapper,
 
         $consultations = array_values(array_map(static fn($c) => [
             'id' => $c->getId(),
@@ -912,7 +988,7 @@ class FicheMedicaleService
             'bilans' => $bilanData,
             'planTraitement' => $plans,
             'documents' => $documents,
-            'devis' => $devis,
+            'devis' => $devisWrapper,
             'consultations' => $consultations,
         ];
     }

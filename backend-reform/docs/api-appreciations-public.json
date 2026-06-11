@@ -1,0 +1,163 @@
+{
+  "title": "API publique — Avis patients",
+  "version": "1.0.0",
+  "description": "Endpoints publics (sans authentification) pour consulter et soumettre des avis patients.",
+  "baseUrl": "https://votre-domaine/api",
+  "authentication": {
+    "required": false,
+    "type": null,
+    "note": "Aucun token JWT requis. Les endpoints sont accessibles en PUBLIC_ACCESS."
+  },
+  "moderation": {
+    "summary": "Seuls les avis avec isPublished=true sont visibles via GET /appreciations/public.",
+    "anonymousDefault": "Les avis soumis via POST /appreciations/anonymous sont créés avec isPublished=false et doivent être validés par un administrateur avant publication."
+  },
+  "endpoints": [
+    {
+      "name": "Lister les avis publiés",
+      "method": "GET",
+      "path": "/appreciations/public",
+      "queryParameters": [
+        {
+          "name": "limit",
+          "type": "integer",
+          "required": false,
+          "default": 50,
+          "description": "Nombre maximum d'avis retournés (min: 1)."
+        }
+      ],
+      "requestBody": null,
+      "responses": {
+        "200": {
+          "description": "Liste des avis publiés, triés du plus récent au plus ancien.",
+          "example": {
+            "stats": {
+              "total": 12,
+              "averageRating": 4.5
+            },
+            "total": 2,
+            "items": [
+              {
+                "id": 42,
+                "rating": 5,
+                "comment": "Très bon accueil, équipe professionnelle.",
+                "isAnonymous": true,
+                "authorName": "Marie D.",
+                "createdAt": "2026-06-01T10:30:00+00:00"
+              },
+              {
+                "id": 38,
+                "rating": 4,
+                "comment": "Consultation rapide et soignée.",
+                "isAnonymous": false,
+                "authorName": "Jean Dupont",
+                "createdAt": "2026-05-28T14:15:00+00:00"
+              }
+            ]
+          },
+          "schema": {
+            "stats": {
+              "total": "integer — nombre total d'avis publiés",
+              "averageRating": "number — note moyenne sur 5 (arrondie à 2 décimales)"
+            },
+            "total": "integer — nombre d'éléments dans items (≤ limit)",
+            "items": {
+              "type": "array",
+              "item": {
+                "id": "integer",
+                "rating": "integer (1 à 5)",
+                "comment": "string",
+                "isAnonymous": "boolean",
+                "authorName": "string | null — masqué si anonyme sans nom fourni",
+                "createdAt": "string (ISO 8601 / DATE_ATOM)"
+              }
+            }
+          },
+          "excludedFields": [
+            "authorEmail",
+            "patientId",
+            "patientName",
+            "consultationId",
+            "isPublished"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Soumettre un avis anonyme",
+      "method": "POST",
+      "path": "/appreciations/anonymous",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "requestBody": {
+        "required": ["comment", "rating"],
+        "optional": ["authorName", "authorEmail", "nom", "email", "note", "commentaire"],
+        "example": {
+          "rating": 5,
+          "comment": "Excellent cabinet, je recommande.",
+          "authorName": "Sophie",
+          "authorEmail": "sophie@example.com"
+        },
+        "schema": {
+          "rating": {
+            "type": "integer",
+            "min": 1,
+            "max": 5,
+            "aliases": ["note"]
+          },
+          "comment": {
+            "type": "string",
+            "maxLength": 5000,
+            "aliases": ["commentaire"]
+          },
+          "authorName": {
+            "type": "string | null",
+            "aliases": ["nom"]
+          },
+          "authorEmail": {
+            "type": "string | null",
+            "aliases": ["email"]
+          }
+        }
+      },
+      "responses": {
+        "201": {
+          "description": "Avis enregistré. Non publié par défaut (modération admin requise).",
+          "example": {
+            "item": {
+              "id": 43,
+              "rating": 5,
+              "comment": "Excellent cabinet, je recommande.",
+              "isAnonymous": true,
+              "isPublished": false,
+              "authorName": null,
+              "authorEmail": null,
+              "patientId": null,
+              "patientName": null,
+              "consultationId": null,
+              "createdAt": "2026-06-09T08:00:00+00:00"
+            }
+          }
+        },
+        "400": {
+          "description": "Données invalides.",
+          "examples": [
+            { "error": "Le commentaire est requis." },
+            { "error": "La note doit etre comprise entre 1 et 5." },
+            { "error": "Le commentaire est trop long (5000 caracteres max)." }
+          ]
+        }
+      }
+    }
+  ],
+  "examples": {
+    "fetchPublishedReviews": {
+      "curl": "curl -X GET \"https://votre-domaine/api/appreciations/public?limit=20\""
+    },
+    "submitAnonymousReview": {
+      "curl": "curl -X POST \"https://votre-domaine/api/appreciations/anonymous\" -H \"Content-Type: application/json\" -d \"{\\\"rating\\\":5,\\\"comment\\\":\\\"Très satisfait\\\"}\""
+    },
+    "javascriptFetch": "const res = await fetch('https://votre-domaine/api/appreciations/public?limit=10');\nconst data = await res.json();\nconsole.log(data.stats.averageRating, data.items);"
+  }
+}

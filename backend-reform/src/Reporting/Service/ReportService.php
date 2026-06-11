@@ -83,7 +83,80 @@ class ReportService
 
     private function isCashMode(?string $mode): bool
     {
-        return in_array($this->normalize((string) $mode), ['especes', 'espece'], true);
+        return in_array($this->normalize((string) $mode), ['especes', 'espece', 'cash'], true);
+    }
+
+    public function computeCashRevenueForPeriod(DateTimeInterface $from, DateTimeInterface $to): float
+    {
+        $transactions = $this->transactionRepo->createQueryBuilder('t')
+            ->leftJoin('t.modeDePaiement', 'm')
+            ->andWhere('t.dateTransaction BETWEEN :from AND :to')
+            ->setParameter('from', $from)
+            ->setParameter('to', $to)
+            ->getQuery()
+            ->getResult();
+
+        $total = 0.0;
+        foreach ($transactions as $tx) {
+            if (!$this->isRevenueTransactionType($tx->getType())) {
+                continue;
+            }
+
+            $modeType = (string) ($tx->getModeDePaiement()?->getType() ?? '');
+            if ($this->isCashMode($modeType)) {
+                $total += (float) ($tx->getMontant() ?? 0);
+            }
+        }
+
+        return $total;
+    }
+
+    public function getReceptionStats(DateTimeImmutable $from, DateTimeImmutable $to): array
+    {
+        $cacheKey = 'report.reception.stats.' . $from->format('Ymd') . '.' . $to->format('Ymd');
+
+        return $this->remember($cacheKey, 120, function () use ($from, $to) {
+            $fromMutable = \DateTime::createFromImmutable($from);
+            $toMutable = \DateTime::createFromImmutable($to);
+
+            $globalStats = $this->globalStats($from->format('Y-m-d'), $to->format('Y-m-d'));
+            $consultStats = $this->periodicConsultations($fromMutable, $toMutable);
+            $appointmentStats = $this->periodicAppointments($fromMutable, $toMutable);
+            $patientStats = $this->periodicPatients($fromMutable, $toMutable);
+
+            $pendingConsultations = (int) $this->consultRepo->createQueryBuilder('c')
+                ->select('COUNT(c.id)')
+                ->innerJoin('c.patient', 'cp')
+                ->andWhere('c.statut = 0')
+                ->andWhere('c.CreatedAt BETWEEN :from AND :to')
+                ->andWhere('cp.deletedAt IS NULL')
+                ->setParameter('from', $from)
+                ->setParameter('to', $to)
+                ->getQuery()
+                ->getSingleScalarResult();
+
+            $pendingAppointments = (int) $this->rdvRepo->createQueryBuilder('r')
+                ->select('COUNT(r.id)')
+                ->innerJoin('r.patient', 'rp')
+                ->andWhere('r.statut = 0')
+                ->andWhere('r.dateRdv BETWEEN :from AND :to')
+                ->andWhere('rp.deletedAt IS NULL')
+                ->setParameter('from', $from)
+                ->setParameter('to', $to)
+                ->getQuery()
+                ->getSingleScalarResult();
+
+            return [
+                'newPatients' => $patientStats['newPatients'] ?? 0,
+                'totalConsultations' => $consultStats['total'] ?? 0,
+                'pendingConsultations' => $pendingConsultations,
+                'totalAppointments' => $pendingAppointments,
+                'absentAppointments' => $appointmentStats['cancelled'] ?? 0,
+                'paidInvoices' => $consultStats['paid'] ?? 0,
+                'cashRevenue' => round((float) ($globalStats['inCash'] ?? 0), 2),
+                'totalRevenue' => round((float) ($globalStats['revenueTotal'] ?? 0), 2),
+            ];
+        });
     }
 
     private function signedAmount(Transaction $tx): float
@@ -147,7 +220,7 @@ class ReportService
     {
         $cacheKey = sprintf('report.globalStats.%s.%s', $from ?? 'none', $to ?? 'none');
 
-        return $this->remember($cacheKey, 180, function () use ($from, $to) {
+        return $this->remember($cacheKey, 120, function () use ($from, $to) {
             $fromDate = $from ? DateTimeImmutable::createFromFormat('Y-m-d', $from)?->setTime(0, 0) : null;
             $toDate   = $to   ? DateTimeImmutable::createFromFormat('Y-m-d', $to)?->setTime(23, 59, 59) : null;
 
@@ -168,8 +241,8 @@ class ReportService
                 $capitalTotal += $signed;
                 $capitalBreakdown[$mode] = ($capitalBreakdown[$mode] ?? 0) + $signed;
 
-                if ($this->isCashMode($mode)) {
-                    $inCash += $signed;
+                if ($this->isCashMode($mode) && $this->isRevenueTransactionType($tx->getType())) {
+                    $inCash += (float) $tx->getMontant();
                 }
                 if ($this->isRevenueTransactionType($tx->getType())) {
                     $revenueTotal += (float) $tx->getMontant();
@@ -343,21 +416,29 @@ class ReportService
 
     public function buildRevenueTrend(DateTimeInterface $start, DateTimeInterface $end): array
     {
-        $rows = $this->transactionRepo->createQueryBuilder('t')
-            ->select("DATE(t.dateTransaction) AS date")
-            ->addSelect("SUM(CASE WHEN t.type IN ('Revenue', 'Entree') THEN t.montant ELSE -t.montant END) AS amount")
-            ->where('t.dateTransaction BETWEEN :start AND :end')
+        $transactions = $this->transactionRepo->createQueryBuilder('t')
+            ->andWhere('t.dateTransaction BETWEEN :start AND :end')
             ->setParameter('start', $start)
             ->setParameter('end', $end)
-            ->groupBy('date')
-            ->orderBy('date')
             ->getQuery()
-            ->getArrayResult();
+            ->getResult();
 
-        return array_map(fn($r) => [
-            'date' => $r['date'],
-            'amount' => round((float)$r['amount'])
-        ], $rows);
+        $byDay = [];
+        foreach ($transactions as $tx) {
+            $date = $tx->getDateTransaction()?->format('Y-m-d');
+            if (!$date) {
+                continue;
+            }
+
+            $byDay[$date] = ($byDay[$date] ?? 0) + $this->signedAmount($tx);
+        }
+
+        ksort($byDay);
+
+        return array_map(static fn(string $date, float $amount) => [
+            'date' => $date,
+            'amount' => round($amount),
+        ], array_keys($byDay), array_values($byDay));
     }
 
     public function buildAppointmentsTrend(DateTimeInterface $start, DateTimeInterface $end): array
@@ -387,9 +468,9 @@ class ReportService
     {
         $cacheKey = 'report.doctor.reports.' . $from->format('Ymd') . '.' . $to->format('Ymd');
 
-        return $this->remember($cacheKey, 180, function () use ($from, $to) {
+        return $this->remember($cacheKey, 120, function () use ($from, $to) {
             $periodData = $this->getPeriodData($from, $to);
-            $doctors = $this->employeRepo->findBy(['type' => 'medecin']);
+            $doctors = $this->employeRepo->FindAllMedecin() ?? [];
 
             $doctorStats = [];
             $totalRevenue = $totalSalaries = 0.0;
@@ -401,7 +482,7 @@ class ReportService
 
                 $stats = $this->computeDoctorStats($doctor, $consults, $from, $to, $periodData['transactions']);
 
-                $totalRevenue += $stats['apport'];
+                $totalRevenue += $stats['revenue'];
                 $totalSalaries += $stats['salary'];
 
                 $doctorStats[] = $stats;
@@ -550,8 +631,11 @@ class ReportService
         return $this->remember($cacheKey, 180, function () use ($from, $to) {
             $qb = $this->consultRepo->createQueryBuilder('c')
                 ->select('COUNT(c.id) AS total')
-                ->addSelect('SUM(CASE WHEN pay.id IS NOT NULL THEN 1 ELSE 0 END) AS paid')
-                ->leftJoin('c.paiement', 'pay');
+                ->addSelect('SUM(CASE WHEN pay.id IS NOT NULL OR f.id IS NOT NULL THEN 1 ELSE 0 END) AS paid')
+                ->innerJoin('c.patient', 'cp')
+                ->leftJoin('c.paiement', 'pay')
+                ->leftJoin('c.facture', 'f')
+                ->andWhere('cp.deletedAt IS NULL');
 
             if ($from) $qb->andWhere('c.CreatedAt >= :from')->setParameter('from', $from);
             if ($to)   $qb->andWhere('c.CreatedAt <= :to')->setParameter('to', $to);
@@ -577,8 +661,11 @@ class ReportService
         return $this->remember($cacheKey, 180, function () use ($from, $to) {
             $qb = $this->rdvRepo->createQueryBuilder('r')
                 ->select('COUNT(r.id) AS total')
+                ->addSelect('SUM(CASE WHEN r.statut = 0 THEN 1 ELSE 0 END) AS pending')
                 ->addSelect('SUM(CASE WHEN r.statut = 1 THEN 1 ELSE 0 END) AS confirmed')
-                ->addSelect('SUM(CASE WHEN r.statut = -2 THEN 1 ELSE 0 END) AS cancelled');
+                ->addSelect('SUM(CASE WHEN r.statut = -2 THEN 1 ELSE 0 END) AS cancelled')
+                ->innerJoin('r.patient', 'rp')
+                ->andWhere('rp.deletedAt IS NULL');
 
             if ($from) $qb->andWhere('r.dateRdv >= :from')->setParameter('from', $from);
             if ($to)   $qb->andWhere('r.dateRdv <= :to')->setParameter('to', $to);
@@ -589,6 +676,7 @@ class ReportService
 
             return [
                 'scheduled' => $total,
+                'pending' => (int) ($result['pending'] ?? 0),
                 'confirmed' => (int)$result['confirmed'],
                 'cancelled' => (int)$result['cancelled'],
                 'confirmationRate' => $total > 0 ? round(((int)$result['confirmed'] / $total) * 100) : 0,
@@ -643,9 +731,9 @@ class ReportService
                 'employees' => $employees,
                 'roles' => $this->employeesDistribution(),
                 'finances' => [
-                    'revenue' => round((float)($doctorReports['kpi']['totalRevenue'] ?? 0)),
+                    'revenue' => round((float)($globalStats['revenueTotal'] ?? 0)),
                     'expenses' => round((float)($doctorReports['kpi']['totalSalaries'] ?? 0)),
-                    'net' => round((float)($doctorReports['kpi']['totalRevenue'] ?? 0) - (float)($doctorReports['kpi']['totalSalaries'] ?? 0)),
+                    'net' => round((float)($globalStats['revenueTotal'] ?? 0) - (float)($doctorReports['kpi']['totalSalaries'] ?? 0)),
                     'unpaidCount' => count(array_filter(array_column($doctorReports['doctors'], 'reliquat'), fn($v) => $v > 0)),
                     'unpaidAmount' => round(array_sum(array_column($doctorReports['doctors'], 'reliquat'))),
                     'capitalTotal' => round((float)($globalStats['capitalTotal'] ?? 0)),

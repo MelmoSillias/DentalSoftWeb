@@ -192,12 +192,16 @@ class EmployeeService
     {
         $type = strtolower((string) $employee->getType());
         $isMedecin = str_contains($type, 'medecin') || str_contains($type, 'médecin');
-        if (!$isMedecin) {
+        $isInfirmier = str_contains($type, 'infirmier');
+        if (!$isMedecin && !$isInfirmier) {
             return;
         }
 
         $this->consultationService->invalidateStaffReferenceCache();
-        $this->focusRealtimePublisher->publishMedecinRefresh($employee, $action);
+
+        if ($isMedecin) {
+            $this->focusRealtimePublisher->publishMedecinRefresh($employee, $action);
+        }
     }
 
     private function normalizeNullableString(?string $value): ?string
@@ -323,7 +327,7 @@ class EmployeeService
         $seen = [];
 
         foreach ($employee->getConsultationsAsMedecin() as $consultation) {
-            foreach ($consultation->getPaiements() as $pay) {
+            foreach ($consultation->getFacture()?->getPaiements() as $pay) {
                 $payId = $pay->getId();
                 if ($payId && isset($seen[$payId])) {
                     continue;

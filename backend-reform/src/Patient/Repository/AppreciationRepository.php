@@ -85,4 +85,34 @@ class AppreciationRepository extends ServiceEntityRepository
             'averageRating' => round((float) ($row['averageRating'] ?? 0.0), 2),
         ];
     }
+
+    /** @return Appreciation[] */
+    public function findPublishedForPublic(int $limit = 50): array
+    {
+        return $this->createQueryBuilder('a')
+            ->where('a.isPublished = :published')
+            ->setParameter('published', true)
+            ->orderBy('a.createdAt', 'DESC')
+            ->addOrderBy('a.id', 'DESC')
+            ->setMaxResults(max(1, $limit))
+            ->getQuery()
+            ->getResult();
+    }
+
+    /** @return array{total:int,averageRating:float} */
+    public function getPublicStats(): array
+    {
+        $row = $this->createQueryBuilder('a')
+            ->select('COUNT(a.id) AS total')
+            ->addSelect('AVG(a.rating) AS averageRating')
+            ->where('a.isPublished = :published')
+            ->setParameter('published', true)
+            ->getQuery()
+            ->getOneOrNullResult() ?? [];
+
+        return [
+            'total' => (int) ($row['total'] ?? 0),
+            'averageRating' => round((float) ($row['averageRating'] ?? 0.0), 2),
+        ];
+    }
 }

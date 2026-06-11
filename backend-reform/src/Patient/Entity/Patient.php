@@ -132,6 +132,9 @@ class Patient
     #[ORM\OneToOne(mappedBy: 'patient', targetEntity: PatientAssuranceProfile::class, cascade: ['persist', 'remove'], orphanRemoval: true)]
     private ?PatientAssuranceProfile $assuranceProfile = null;
 
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private array $archiveFiles = [];
+
     public function __construct()
     {
         $this->antecedents = new ArrayCollection();
@@ -140,6 +143,7 @@ class Patient
         $this->traitements = new ArrayCollection();
         $this->allergies = new ArrayCollection();
         $this->fichesMedicales = new ArrayCollection();
+        $this->archiveFiles = [];
     }
 
     public function isSmsPatientCreated(): bool
@@ -662,5 +666,43 @@ class Patient
     public function isDeleted(): bool
     {
         return $this->deletedAt !== null;
+    }
+
+    public function getArchiveFiles(): array
+{
+    $files = $this->archiveFiles ?? [];
+    
+    // Compatibilité ascendante : ancien format (tableau de strings)
+    if (!empty($files) && is_string($files[0] ?? null)) {
+        $converted = [];
+        foreach ($files as $url) {
+            $converted[] = [
+                'nom' => basename($url),
+                'url' => $url,
+            ];
+        }
+        $this->archiveFiles = $converted;
+        return $converted;
+    }
+    
+    return $files;
+}
+
+    public function setArchiveFiles(?array $archiveFiles): static
+    {
+        $this->archiveFiles = $archiveFiles ?? [];
+        return $this;
+    }
+
+    public function addArchiveFile(string $nom, string $url): static
+    {
+        $this->archiveFiles[] = ['nom' => $nom, 'url' => $url];
+        return $this;
+    }
+
+    public function removeArchiveFile(string $url): static
+    {
+        $this->archiveFiles = array_filter($this->archiveFiles, fn($file) => $file['url'] !== $url);
+        return $this;
     }
 }

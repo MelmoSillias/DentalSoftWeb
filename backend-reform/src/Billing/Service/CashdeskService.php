@@ -2,10 +2,12 @@
 
 namespace App\Billing\Service;
 
+use App\Billing\Entity\Devis;
 use App\Billing\Entity\Facture;
 use App\Billing\Entity\Paiement;
 use App\Billing\Entity\Transaction;
 use App\Billing\Repository\AssuranceRepository;
+use App\Billing\Repository\DevisRepository;
 use App\Billing\Repository\FactureRepository;
 use App\Billing\Repository\ModeDePaiementRepository;
 use App\Billing\Repository\PaiementRepository;
@@ -19,6 +21,7 @@ class CashdeskService
 {
     public function __construct(
         private FactureRepository $factureRepo,
+        private DevisRepository $devisRepo,
         private AssuranceRepository $assuranceRepo,
         private PaiementRepository $paiementRepo,
         private ModeDePaiementRepository $modeRepo,
@@ -172,6 +175,46 @@ class CashdeskService
                 'pId' => $p->getId(),
             ];
         }, $paiements);
+    }
+
+    public function previewDevis(int $id): ?array
+    {
+        $devis = $this->devisRepo->find($id);
+        if (!$devis instanceof Devis) {
+            return null;
+        }
+
+        $patient = $devis->getFicheMedicale()?->getPatient();
+        $contenus = [];
+        $montant = 0.0;
+
+        foreach ($devis->getContenus() as $contenu) {
+            $lineTotal = $contenu->getQte() * $contenu->getMontant();
+            $montant += $lineTotal;
+            $contenus[] = [
+                'designation' => $contenu->getDesignation(),
+                'qte' => $contenu->getQte(),
+                'montant' => $contenu->getMontant(),
+                'total' => $lineTotal,
+            ];
+        }
+
+        return [
+            'id' => $devis->getId(),
+            'date' => $devis->getDate()?->format('Y-m-d'),
+            'description' => $devis->getDescription(),
+            'montant' => $montant > 0 ? $montant : (float) ($devis->getMontant() ?? 0.0),
+            'reste' => (float) ($devis->getReste() ?? $montant),
+            'statut' => $devis->getStatut() ?? 0,
+            'patient' => [
+                'nom' => $patient?->getNom() ?? '',
+                'prenom' => $patient?->getPrenom() ?? '',
+                'telephone' => $patient?->getTelephone() ?? '',
+            ],
+            'telephone' => $patient?->getTelephone(),
+            'contenus' => $contenus,
+            'type' => 'Devis',
+        ];
     }
 
     public function previewFactureDetail(int $id): ?array

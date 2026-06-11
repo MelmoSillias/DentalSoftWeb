@@ -160,7 +160,9 @@ watch(
 const patientOptions = computed(() =>
     patients.value.map((p) => ({
         label: p.fullname || `${p.prenom ?? ''} ${p.nom ?? ''}`.trim() || p.nom || 'Patient',
-        value: p.id
+        value: p.id,
+        phone: p.telephone || p.phone || '',
+        searchText: [p.fullname, `${p.prenom ?? ''} ${p.nom ?? ''}`.trim(), p.nom, p.telephone, p.phone].filter(Boolean).join(' ')
     }))
 );
 
@@ -363,7 +365,16 @@ const handleSubmit = (event) => {
                 <label class="font-semibold">Patient</label>
                 <Select v-model="selectedPatientId" :options="patientOptions" optionLabel="label" optionValue="value"
                     placeholder="Choisir un patient" class="w-full" filter :loading="patientsLoading"
-                    @filter="handlePatientFilter" />
+                    :filterFields="['label', 'phone', 'searchText']"
+                    @filter="handlePatientFilter"
+                >
+                    <template #option="{ option }">
+                        <div class="flex flex-col">
+                            <span class="font-medium">{{ option.label }}</span>
+                            <small class="text-surface-500 dark:text-surface-400">{{ option.phone || 'Téléphone non renseigné' }}</small>
+                        </div>
+                    </template>
+                </Select>
             </div>
             <div v-else class="flex flex-col gap-2">
                 <label class="font-semibold">Patient</label>
