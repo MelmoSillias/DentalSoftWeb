@@ -1,5 +1,5 @@
 {
-  "id": "default",
+  "id": "orodent",
   "displayName": "Cabinet Dentaire Orodent",
   "appTitle": "DentalSoft - Cabinet Dentaire Orodent",
   "brandName": "DentalSoft",
@@ -10,6 +10,18 @@
   "smsTestMessage": "Message de test CABINET DENTAIRE ORODENT.",
   "reportCabinetName": "CABINET DENTAIRE ORODENT",
   "cabinetPhone": "+223 77 27 28 61 / +223 44 51 61 85",
+  "printProfile": {
+    "name": "CABINET DENTAIRE ORODENT",
+    "addressLines": [
+      "Rue 612 Bacodjicoroni ACI, Bamako"
+    ],
+    "phones": [
+      "77 27 28 61",
+      "44 51 61 85"
+    ],
+    "email": "cabinetdentaireorodent@gmail.com",
+    "website": "cabinet-orodent.org"
+  },
   "viteApiPrefix": "https://api.dentalsoft.cabinet-orodent.org/api",
   "viteFilePrefix": "https://api.dentalsoft.cabinet-orodent.org/",
   "brandingAssets": {

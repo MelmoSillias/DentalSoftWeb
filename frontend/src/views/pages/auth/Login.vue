@@ -3,6 +3,7 @@ import FloatingConfigurator from '@/components/FloatingConfigurator.vue';
 import { ref } from 'vue';
 import { useAuthStore } from '@/stores/auth';
 import { useRouter } from 'vue-router';
+import { isDeviceNotAllowedError } from '@/service/http';
 import InputText from 'primevue/inputtext';
 import Password from 'primevue/password';
 import Checkbox from 'primevue/checkbox';
@@ -27,6 +28,10 @@ const onSubmit = async () => {
         await authStore.login(username.value, password.value);
         router.push({ name: 'dashboard' });
     } catch (e) {
+        if (isDeviceNotAllowedError(e)) {
+            router.push({ name: 'devicePending' });
+            return;
+        }
         // Gestion des erreurs en français
         if (e.response) {
             const status = e.response.status;

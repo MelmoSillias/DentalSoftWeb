@@ -204,4 +204,28 @@ class ConsultationRepository extends ServiceEntityRepository
             ->getQuery()
             ->getOneOrNullResult();
     }
+
+    /**
+     * Legacy schema: consultation.facture_id may reference devis.id.
+     * Clear the link before deleting a devis to avoid FK violations.
+     */
+    public function clearLegacyDevisReference(int $devisId): void
+    {
+        $connection = $this->getEntityManager()->getConnection();
+        $schemaManager = $connection->createSchemaManager();
+
+        if (!$schemaManager->tablesExist(['consultation'])) {
+            return;
+        }
+
+        $columns = $schemaManager->listTableColumns('consultation');
+        if (!array_key_exists('facture_id', $columns)) {
+            return;
+        }
+
+        $connection->executeStatement(
+            'UPDATE consultation SET facture_id = NULL WHERE facture_id = :devisId',
+            ['devisId' => $devisId]
+        );
+    }
 }

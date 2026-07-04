@@ -20,6 +20,8 @@ import { useEmployeeDetails } from '@/composables/useEmployeeDetails';
 import { GUIDED_TOUR_START_EVENT } from '@/tours';
 import { createAdministrationEmployeeDetailsTour } from '@/tours/administrationEmployeeDetailsTour';
 import { startTourGuide } from '@/tours/tourGuideClient';
+import { formatEmployeeTypeLabel } from '@/utils/employeeTypeUtils';
+import EmployeeSalarySection from '@/components/administration/EmployeeSalarySection.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -31,12 +33,6 @@ const breadcrumbItems = [
     { label: 'Administration' },
     { label: 'Gestion RH', to: '/administration/gestionrh' },
     { label: 'Détails employé' }
-];
-
-const baseTypeSalaireOptions = [
-    { label: 'Non défini', value: 'non_defini' },
-    { label: 'Fixe', value: 'fixe' },
-    { label: 'Pourcentage', value: 'pourcentage' }
 ];
 
 const typeContratOptions = [
@@ -71,6 +67,9 @@ const form = ref({
     dateEmbauche: null,
     typeSalaire: 'fixe',
     valeurSalaire: 100000,
+    frequencePaiement: 'mensuel',
+    typePrime: 'aucune',
+    valeurPrime: null,
     typeContrat: 'CDI',
     dureeContrat: null,
     comingDays: []
@@ -95,6 +94,9 @@ const hydrateForm = (data) => {
         dateEmbauche: data?.dateEmbauche ? new Date(data.dateEmbauche) : null,
         typeSalaire: data?.typeSalaire || 'fixe',
         valeurSalaire: data?.valeurSalaire ?? null,
+        frequencePaiement: data?.frequencePaiement || 'mensuel',
+        typePrime: data?.typePrime || 'aucune',
+        valeurPrime: data?.valeurPrime ?? null,
         typeContrat: (data?.typeContrat === 'Freelance' ? 'Prestataire' : data?.typeContrat) || 'CDI',
         dureeContrat: data?.dureeContrat ?? null,
         comingDays: Array.isArray(data?.comingDays)
@@ -103,16 +105,6 @@ const hydrateForm = (data) => {
     };
     files.value = [];
 };
-
-const isMedecin = computed(() => form.value.type === 'Medecin');
-const typeSalaireOptions = computed(() => {
-    if (isMedecin.value) return baseTypeSalaireOptions;
-    return baseTypeSalaireOptions.filter((option) => option.value !== 'pourcentage');
-});
-
-const isSalaireDisabled = computed(() => form.value.typeSalaire === 'non_defini');
-const salaryMax = computed(() => (form.value.typeSalaire === 'pourcentage' ? 100 : null));
-const salarySuffix = computed(() => (form.value.typeSalaire === 'pourcentage' ? '%' : 'F CFA'));
 
 const loadEmployee = async () => {
     if (!employeeId.value) return;
@@ -273,6 +265,20 @@ const monthYearLabel = (month, year) => {
         : date.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
 };
 
+const paymentPeriodLabel = (payment) => {
+    if (payment?.workedDay) {
+        return new Date(payment.workedDay).toLocaleDateString('fr-FR');
+    }
+    return monthYearLabel(payment?.month, payment?.year);
+};
+
+const frequenceLabel = (value) => (value === 'journalier' ? 'Journalier' : 'Mensuel');
+
+const primeTypeLabel = (value) => {
+    const map = { aucune: 'Aucune', fixe: 'Fixe', actes: '% actes' };
+    return map[value] || value || '-';
+};
+
 const congeSeverity = (type) => {
     const map = {
         vacances: 'success',
@@ -287,12 +293,16 @@ const salaireCard = computed(() => {
     const typeSalaire = employee.value?.typeSalaire;
     const valeurSalaire = employee.value?.valeurSalaire ?? null;
     const salaireCalcule = employee.value?.salaireCalcule ?? null;
+    const frequence = employee.value?.frequencePaiement === 'journalier' ? 'Journalier' : 'Mensuel';
+    const prime = employee.value?.typePrime && employee.value.typePrime !== 'aucune'
+        ? primeTypeLabel(employee.value.typePrime)
+        : null;
 
     if (typeSalaire === 'non_defini') {
         return {
             title: 'Salaire actuel',
             value: 'Non défini',
-            sub: null
+            sub: `${frequence}${prime ? ` · Prime ${prime}` : ''}`
         };
     }
 
@@ -300,14 +310,14 @@ const salaireCard = computed(() => {
         return {
             title: 'Salaire actuel',
             value: formatCurrency(salaireCalcule),
-            sub: `${valeurSalaire ?? 0}%`
+            sub: `${valeurSalaire ?? 0}% · ${frequence}${prime ? ` · Prime ${prime}` : ''}`
         };
     }
 
     return {
         title: 'Salaire actuel',
         value: formatCurrency(valeurSalaire ?? salaireCalcule),
-        sub: null
+        sub: `${frequence}${prime ? ` · Prime ${prime}` : ''}`
     };
 });
 
@@ -316,30 +326,6 @@ watch(
     (value) => {
         if (value !== 'Medecin' && form.value.typeSalaire === 'pourcentage') {
             form.value.typeSalaire = 'fixe';
-        }
-    }
-);
-
-watch(
-    () => form.value.typeSalaire,
-    (value) => {
-        if (value === 'non_defini') {
-            form.value.valeurSalaire = null;
-            return;
-        }
-
-        if (value === 'pourcentage') {
-            if (form.value.valeurSalaire === null || form.value.valeurSalaire === '') {
-                form.value.valeurSalaire = 35;
-            }
-            if (form.value.valeurSalaire > 100) {
-                form.value.valeurSalaire = 100;
-            }
-            return;
-        }
-
-        if (form.value.valeurSalaire === null || form.value.valeurSalaire === '') {
-            form.value.valeurSalaire = 100000;
         }
     }
 );
@@ -444,7 +430,7 @@ onBeforeUnmount(() => {
                             </div>
                             <div class="space-y-1">
                                 <label class="text-sm font-medium">Type</label>
-                                <InputText v-model="form.type" class="w-full" readonly />
+                                <InputText :modelValue="formatEmployeeTypeLabel(form.type)" class="w-full" readonly />
                             </div>
                             <div class="space-y-1">
                                 <label class="text-sm font-medium">Date d'embauche</label>
@@ -470,29 +456,11 @@ onBeforeUnmount(() => {
                         </h3>
                     </div>
                     <div class="p-6 space-y-5">
+                        <EmployeeSalarySection v-model:form="form" :employee-type="form.type" />
+
+                        <Divider />
+
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div class="space-y-1">
-                                <label class="text-sm font-medium">Type de salaire</label>
-                                <Select
-                                    v-model="form.typeSalaire"
-                                    :options="typeSalaireOptions"
-                                    optionLabel="label"
-                                    optionValue="value"
-                                    class="w-full"
-                                />
-                            </div>
-                            <div class="space-y-1">
-                                <label class="text-sm font-medium">Valeur du salaire (F CFA ou %)</label>
-                                <InputNumber
-                                    v-model="form.valeurSalaire"
-                                    class="w-full"
-                                    :min="0"
-                                    :max="salaryMax"
-                                    :step="0.01"
-                                    :suffix="salarySuffix"
-                                    :disabled="isSalaireDisabled"
-                                />
-                            </div>
                             <div class="space-y-1">
                                 <label class="text-sm font-medium">Type de contrat</label>
                                 <Select
@@ -591,7 +559,7 @@ onBeforeUnmount(() => {
                             <div>
                                 <p class="text-sm text-emerald-700 dark:text-emerald-300 font-medium">Type</p>
                                 <p class="text-2xl font-bold text-emerald-900 dark:text-emerald-100 mt-2">
-                                    {{ employee?.type || '-' }}
+                                    {{ formatEmployeeTypeLabel(employee?.type) || '-' }}
                                 </p>
                             </div>
                             <i class="pi pi-briefcase text-2xl text-emerald-500"></i>
@@ -627,8 +595,11 @@ onBeforeUnmount(() => {
                                 <thead>
                                     <tr class="text-left bg-surface-50 dark:bg-surface-900/50">
                                         <th class="px-3 py-2 border-b border-surface-200 dark:border-surface-700">Période</th>
-                                        <th class="px-3 py-2 border-b border-surface-200 dark:border-surface-700">Montant calculé</th>
-                                        <th class="px-3 py-2 border-b border-surface-200 dark:border-surface-700">Montant versé</th>
+                                        <th class="px-3 py-2 border-b border-surface-200 dark:border-surface-700">Fréquence</th>
+                                        <th class="px-3 py-2 border-b border-surface-200 dark:border-surface-700">Salaire base</th>
+                                        <th class="px-3 py-2 border-b border-surface-200 dark:border-surface-700">Prime</th>
+                                        <th class="px-3 py-2 border-b border-surface-200 dark:border-surface-700">Total calculé</th>
+                                        <th class="px-3 py-2 border-b border-surface-200 dark:border-surface-700">Versé</th>
                                         <th class="px-3 py-2 border-b border-surface-200 dark:border-surface-700">Date</th>
                                         <th class="px-3 py-2 border-b border-surface-200 dark:border-surface-700">Note</th>
                                     </tr>
@@ -640,7 +611,16 @@ onBeforeUnmount(() => {
                                         class="odd:bg-surface-0 even:bg-surface-50/50 dark:odd:bg-surface-800 dark:even:bg-surface-900/40"
                                     >
                                         <td class="px-3 py-2 border-b border-surface-100 dark:border-surface-800">
-                                            {{ monthYearLabel(payment.month, payment.year) }}
+                                            {{ paymentPeriodLabel(payment) }}
+                                        </td>
+                                        <td class="px-3 py-2 border-b border-surface-100 dark:border-surface-800">
+                                            {{ frequenceLabel(payment.frequenceSnapshot) }}
+                                        </td>
+                                        <td class="px-3 py-2 border-b border-surface-100 dark:border-surface-800">
+                                            {{ formatCurrency(payment.baseSalaryAmount) }}
+                                        </td>
+                                        <td class="px-3 py-2 border-b border-surface-100 dark:border-surface-800">
+                                            {{ formatCurrency(payment.primeAmount) }}
                                         </td>
                                         <td class="px-3 py-2 border-b border-surface-100 dark:border-surface-800">
                                             {{ formatCurrency(payment.calculatedAmount) }}

@@ -6,6 +6,7 @@ import CaissePaiements from '@/components/caisse/CaissePaiements.vue';
 import CaisseAssurances from '@/components/caisse/CaisseAssurances.vue';
 import PrintDevisBody from '@/components/print/PrintDevisBody.vue';
 import PrintPaymentsListBody from '@/components/print/PrintPaymentsListBody.vue';
+import PrintFactureAssuranceBody from '@/components/print/PrintFactureAssuranceBody.vue';
 import PrintReceiptBody from '@/components/print/PrintReceiptBody.vue';
 import PrintTicketBody from '@/components/print/PrintTicketBody.vue';
 import { usePrinter } from '@/composables/usePrinter';
@@ -28,11 +29,19 @@ import {
 	fetchFactureDetail,
 	fetchFactures,
 	fetchFactureLines,
-	fetchInsuranceClaims,
+	fetchAssurancesDashboard,
+	fetchInsuranceClaimsUnpaidPatient,
+	fetchAssuranceLots,
+	openAssuranceLot,
+	fetchAssuranceLotDetail,
+	sendAssuranceLot,
+	recoverAssuranceLot,
+	cancelAssuranceLotRecovery,
+	addClaimToAssuranceLot,
+	fetchInsuranceClaimDetail,
 	fetchPayments,
 	payFacture,
 	payInsurancePatientShare,
-	recoverInsuranceClaim,
 	rejectInsuranceClaim,
 	resetFacturePayments,
 	updateFactureLines,
@@ -40,9 +49,11 @@ import {
 	validateEmptyFacture
 } from '@/services/caisseService';
 import { fetchPublicGeneralSettings } from '@/services/globalSettingsService';
+import { canUserModifyInvoice } from '@/utils/invoiceModificationAccess';
 import { defaultSoinList, normalizeSoinList } from '@/services/consultations';
 import {
 	fetchInvoicePrintData,
+	fetchFactureAssurancePrintData,
 	fetchPaymentsListPrintData,
 	fetchReceiptPrintData,
 	fetchTicketPrintData
@@ -118,14 +129,21 @@ if(authStore.user.roles.includes('ROLE_RECEPTION')) {
 
 const factures = ref([]);
 const payments = ref([]);
-const insuranceClaims = ref([]);
+const insuranceDashboard = ref([]);
+const insuranceUnpaidClaims = ref([]);
+const insuranceLotsAssurance = ref(null);
+const insuranceLots = ref([]);
+const insuranceUnassignedClaims = ref([]);
+const insuranceOpenLot = ref(null);
+const insuranceSelectedClaim = ref(null);
+const insuranceSelectedLot = ref(null);
 const facturesLoading = ref(false);
 const paymentsLoading = ref(false);
-const insuranceLoading = ref(false);
-const insuranceStatusFilter = ref('all');
-const insuranceRange = ref([toApiDate(startOfMonth), toApiDate(endOfMonth)]);
-const insurancePatientFilter = ref('');
-const insuranceAssuranceFilter = ref('all');
+const insuranceDashboardLoading = ref(false);
+const insuranceLotsLoading = ref(false);
+const insuranceClaimLoading = ref(false);
+const insuranceLotDialogLoading = ref(false);
+const insuranceLotDialogVisible = ref(false);
 const insuranceActionLoadingId = ref(null);
 const validateLoading = ref(false);
 
@@ -142,9 +160,12 @@ const assurances = ref([]);
 const payDialogVisible = ref(false);
 const selectedFacture = ref(null);
 const paymentDialogTab = ref('client');
-const publicGeneralSettings = ref({ paiementDirectAssurance: false, soinsList: [...defaultSoinList] });
+const publicGeneralSettings = ref({ paiementDirectAssurance: false, allowReceptionInvoiceModification: false, soinsList: [...defaultSoinList] });
 const isAdmin = computed(() => Array.isArray(authStore.user?.roles) && authStore.user.roles.includes('ROLE_ADMIN'));
 const isMedecin = computed(() => Array.isArray(authStore.user?.roles) && authStore.user.roles.includes('ROLE_MEDECIN'));
+const canModifyInvoiceByRole = computed(() =>
+	canUserModifyInvoice(authStore.user, publicGeneralSettings.value)
+);
 const shouldHidePatientPhoneForMedecin = computed(() => isMedecin.value && !isAdmin.value && publicGeneralSettings.value?.hidePatientPhoneForMedecins === true);
 const payForm = ref({
 	montant: 0,
@@ -164,6 +185,8 @@ const resetPaymentsLoading = ref(false);
 const factureDialogVisible = ref(false);
 const factureConsultId = ref(null);
 const factureLines = ref([]);
+const factureDate = ref('');
+const factureTime = ref('');
 const factureSaving = ref(false);
 
 const previewDialogVisible = ref(false);
@@ -395,14 +418,6 @@ const selectedAssurance = computed(() =>
 	(assurances.value || []).find((item) => Number(item?.id) === Number(payForm.value.assuranceId)) || null
 );
 
-const resolveAssuranceDefaultRate = (assurance) => {
-	if (!assurance) {
-		return 0;
-	}
-
-	return Math.max(0, Math.min(100, Number(assurance?.defaultRate ?? assurance?.tauxParDefaut ?? 0) || 0));
-};
-
 const insuranceCoveredAmount = computed(() => {
 	if (invoiceHasInsurance.value) {
 		return Number(selectedDevisInsurance.value?.insuranceAmount) || 0;
@@ -461,14 +476,24 @@ const hasOpenDialogs = computed(() => (
 
 const firstPayableFacture = computed(() => factures.value.find((row) => !row?.isRegle) || null);
 const firstPreviewableFacture = computed(() => factures.value.find((row) => !(Number(row?.montant) === 0 && Number(row?.reste) === 0)) || null);
-const firstModifiableFacture = computed(() => factures.value.find((row) => (Number(row?.montant) === Number(row?.reste)) && !row?.isRegle) || null);
+const firstModifiableFacture = computed(() => {
+	if (!canModifyInvoiceByRole.value) return null;
+	return factures.value.find((row) => !row?.hasPayments && (Number(row?.montant) === Number(row?.reste)) && !row?.isRegle) || null;
+});
 
 const loadFactures = async () => {
-	if (!factureRange.value || factureRange.value.length < 2) return;
+	const isAllUnpaid = factureType.value === 'impaye_toutes';
+	if (!isAllUnpaid && (!factureRange.value || factureRange.value.length < 2)) return;
 	try {
 		facturesLoading.value = true;
-		const [start, end] = factureRange.value;
-		const res = await fetchFactures({ start: toApiDate(start), end: toApiDate(end), unpaidOnly: factureType.value === 'impaye' }, token);
+		const fetchParams = isAllUnpaid
+			? { factureType: 'impaye_toutes' }
+			: {
+				start: toApiDate(factureRange.value[0]),
+				end: toApiDate(factureRange.value[1]),
+				factureType: factureType.value,
+			};
+		const res = await fetchFactures(fetchParams, token);
 		factures.value = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
 		if (isInitialLoadPhase.value) {
 			loadErrorMessage.value = '';
@@ -478,7 +503,12 @@ const loadFactures = async () => {
 		if (isInitialLoadPhase.value) {
 			loadErrorMessage.value = 'Impossible de charger les factures de caisse.';
 		}
-		toast.add({ severity: 'error', summary: 'Factures', detail: 'Chargement des factures impossible', life: 3500 });
+		toast.add({
+			severity: 'error',
+			summary: 'Factures',
+			detail: error?.userMessage || 'Chargement des factures impossible',
+			life: 3500
+		});
 	} finally {
 		facturesLoading.value = false;
 	}
@@ -523,22 +553,260 @@ const loadAssurances = async () => {
 	}
 };
 
-const loadInsuranceClaims = async () => {
+const buildInsuranceDashboardFallback = () => (assurances.value || [])
+	.filter((item) => item?.actif !== false && item?.code)
+	.map((item) => ({
+		id: item.id,
+		nom: item.nom,
+		code: item.code,
+		logoPath: item.logoPath ?? null,
+		actif: item.actif !== false,
+		reliquatTotal: 0,
+		pendingClaimsCount: 0,
+		dernierLotOuvert: null,
+	}));
+
+const loadInsuranceDashboard = async () => {
 	try {
-		insuranceLoading.value = true;
-		insuranceClaims.value = await fetchInsuranceClaims({
-			status: insuranceStatusFilter.value,
-			start: insuranceRange.value?.[0] || null,
-			end: insuranceRange.value?.[1] || null,
-			patient: insurancePatientFilter.value,
-			assuranceCode: insuranceAssuranceFilter.value
-		}, token);
+		insuranceDashboardLoading.value = true;
+		const [dashboardResult, unpaidResult] = await Promise.allSettled([
+			fetchAssurancesDashboard(token),
+			fetchInsuranceClaimsUnpaidPatient(token),
+		]);
+
+		if (dashboardResult.status === 'fulfilled') {
+			let cards = dashboardResult.value;
+			if (!cards.length) {
+				if (!assurances.value.length) {
+					await loadAssurances();
+				}
+				cards = buildInsuranceDashboardFallback();
+			}
+			insuranceDashboard.value = cards;
+		} else {
+			console.error(dashboardResult.reason);
+			if (!assurances.value.length) {
+				await loadAssurances();
+			}
+			const fallbackCards = buildInsuranceDashboardFallback();
+			insuranceDashboard.value = fallbackCards;
+			if (!fallbackCards.length) {
+				toast.add({ severity: 'error', summary: 'Assurances', detail: 'Chargement du tableau de bord impossible', life: 3500 });
+			}
+		}
+
+		if (unpaidResult.status === 'fulfilled') {
+			insuranceUnpaidClaims.value = unpaidResult.value;
+		} else {
+			console.error(unpaidResult.reason);
+			insuranceUnpaidClaims.value = [];
+			toast.add({
+				severity: 'error',
+				summary: 'Assurances',
+				detail: unpaidResult.reason?.userMessage || 'Chargement des parts patient impayées impossible',
+				life: 3500
+			});
+		}
+	} finally {
+		insuranceDashboardLoading.value = false;
+	}
+};
+
+const loadInsuranceLots = async () => {
+	const code = insuranceLotsAssurance.value?.code;
+	if (!code) return;
+	try {
+		insuranceLotsLoading.value = true;
+		const res = await fetchAssuranceLots(code, {}, token);
+		insuranceLots.value = Array.isArray(res?.data) ? res.data : [];
+		insuranceUnassignedClaims.value = Array.isArray(res?.unassignedClaims) ? res.unassignedClaims : [];
+		insuranceOpenLot.value = res?.openLot ?? null;
+		if (res?.assurance) {
+			insuranceLotsAssurance.value = { ...insuranceLotsAssurance.value, ...res.assurance };
+		}
 	} catch (error) {
 		console.error(error);
-		toast.add({ severity: 'error', summary: 'Assurances', detail: 'Chargement des créances impossible', life: 3500 });
+		toast.add({ severity: 'error', summary: 'Assurances', detail: 'Chargement des lots impossible', life: 3500 });
 	} finally {
-		insuranceLoading.value = false;
+		insuranceLotsLoading.value = false;
 	}
+};
+
+const loadInsuranceClaimDetail = async (claim) => {
+	const claimId = Number(claim?.id);
+	if (!claimId) return;
+	try {
+		insuranceClaimLoading.value = true;
+		insuranceSelectedClaim.value = await fetchInsuranceClaimDetail(claimId, token);
+	} catch (error) {
+		console.error(error);
+		toast.add({ severity: 'error', summary: 'Assurances', detail: 'Chargement du détail impossible', life: 3500 });
+	} finally {
+		insuranceClaimLoading.value = false;
+	}
+};
+
+const loadInsuranceLotDetail = async (lot) => {
+	const lotId = Number(lot?.id);
+	if (!lotId) return;
+	try {
+		insuranceLotDialogLoading.value = true;
+		insuranceLotDialogVisible.value = true;
+		insuranceSelectedLot.value = await fetchAssuranceLotDetail(lotId, token);
+	} catch (error) {
+		console.error(error);
+		toast.add({ severity: 'error', summary: 'Assurances', detail: 'Chargement du lot impossible', life: 3500 });
+	} finally {
+		insuranceLotDialogLoading.value = false;
+	}
+};
+
+const viewInsuranceLots = async (card) => {
+	insuranceLotsAssurance.value = card;
+	await loadInsuranceLots();
+};
+
+const backToInsuranceDashboard = () => {
+	insuranceLotsAssurance.value = null;
+	insuranceLots.value = [];
+	insuranceUnassignedClaims.value = [];
+	insuranceOpenLot.value = null;
+};
+
+const backFromInsuranceClaim = () => {
+	insuranceSelectedClaim.value = null;
+};
+
+const openInsuranceLot = async (assuranceCard) => {
+	const code = assuranceCard?.code;
+	if (!code) return;
+	try {
+		insuranceActionLoadingId.value = -1;
+		await openAssuranceLot(code, {}, token);
+		toast.add({ severity: 'success', summary: 'Assurances', detail: 'Lot ouvert.', life: 3000 });
+		await Promise.all([loadInsuranceDashboard(), assuranceCard === insuranceLotsAssurance.value ? loadInsuranceLots() : Promise.resolve()]);
+	} catch (error) {
+		console.error(error);
+		const detail = error?.response?.data?.error || 'Ouverture du lot impossible.';
+		toast.add({ severity: 'error', summary: 'Assurances', detail, life: 3500 });
+	} finally {
+		insuranceActionLoadingId.value = null;
+	}
+};
+
+const viewInsuranceLotDialog = async (lotSummary) => {
+	await loadInsuranceLotDetail(lotSummary);
+};
+
+const closeInsuranceLotDialog = (visible) => {
+	insuranceLotDialogVisible.value = visible !== false;
+	if (!insuranceLotDialogVisible.value) {
+		insuranceSelectedLot.value = null;
+	}
+};
+
+const sendInsuranceLot = async (lot) => {
+	try {
+		insuranceActionLoadingId.value = Number(lot?.id) || null;
+		await sendAssuranceLot(lot.id, token);
+		toast.add({ severity: 'success', summary: 'Assurances', detail: 'Lot envoyé.', life: 3000 });
+		await Promise.all([loadInsuranceDashboard(), loadInsuranceLots()]);
+		if (insuranceLotDialogVisible.value) {
+			await loadInsuranceLotDetail(lot);
+		}
+	} catch (error) {
+		console.error(error);
+		toast.add({ severity: 'error', summary: 'Assurances', detail: 'Envoi du lot impossible.', life: 3500 });
+	} finally {
+		insuranceActionLoadingId.value = null;
+	}
+};
+
+const addClaimToInsuranceLot = async (claim) => {
+	const lotId = Number(insuranceOpenLot.value?.id);
+	const claimId = Number(claim?.id);
+	if (!lotId || !claimId) {
+		toast.add({ severity: 'warn', summary: 'Assurances', detail: 'Aucun lot ouvert disponible.', life: 3000 });
+		return;
+	}
+
+	try {
+		insuranceActionLoadingId.value = claimId;
+		await addClaimToAssuranceLot(lotId, claimId, token);
+		toast.add({ severity: 'success', summary: 'Assurances', detail: 'Facture ajoutée au lot ouvert.', life: 3000 });
+		await Promise.all([loadInsuranceDashboard(), loadInsuranceLots()]);
+	} catch (error) {
+		console.error(error);
+		const detail = error?.response?.data?.error || error?.userMessage || 'Ajout au lot impossible.';
+		toast.add({ severity: 'error', summary: 'Assurances', detail, life: 3500 });
+	} finally {
+		insuranceActionLoadingId.value = null;
+	}
+};
+
+const recoverInsuranceLot = async (lot) => {
+	const classicMethod = getDefaultClassicMethod(paymentMethods.value);
+	if (!classicMethod?.id) {
+		toast.add({ severity: 'warn', summary: 'Assurances', detail: 'Aucun mode de paiement actif.', life: 3500 });
+		return;
+	}
+	try {
+		insuranceActionLoadingId.value = Number(lot?.id) || null;
+		await recoverAssuranceLot(lot.id, { modeId: classicMethod.id, date: new Date().toISOString() }, token);
+		toast.add({ severity: 'success', summary: 'Assurances', detail: 'Lot encaissé.', life: 3000 });
+		await Promise.all([loadInsuranceDashboard(), loadInsuranceLots(), loadPayments()]);
+		if (insuranceLotDialogVisible.value) {
+			await loadInsuranceLotDetail(lot);
+		}
+	} catch (error) {
+		console.error(error);
+		toast.add({ severity: 'error', summary: 'Assurances', detail: 'Encaissement du lot impossible.', life: 3500 });
+	} finally {
+		insuranceActionLoadingId.value = null;
+	}
+};
+
+const cancelInsuranceLotRecovery = async (lot) => {
+	try {
+		insuranceActionLoadingId.value = Number(lot?.id) || null;
+		await cancelAssuranceLotRecovery(lot.id, {}, token);
+		toast.add({ severity: 'success', summary: 'Assurances', detail: 'Encaissement annulé.', life: 3000 });
+		await Promise.all([loadInsuranceDashboard(), loadInsuranceLots()]);
+		if (insuranceLotDialogVisible.value) {
+			await loadInsuranceLotDetail(lot);
+		}
+	} catch (error) {
+		console.error(error);
+		toast.add({ severity: 'error', summary: 'Assurances', detail: 'Annulation impossible.', life: 3500 });
+	} finally {
+		insuranceActionLoadingId.value = null;
+	}
+};
+
+const viewInsuranceClaim = async (claim) => {
+	await loadInsuranceClaimDetail(claim);
+};
+
+const printInsuranceClaim = async (claim) => {
+	const claimId = Number(claim?.id);
+	if (!claimId) return;
+	try {
+		const res = await fetchFactureAssurancePrintData(claimId, token);
+		await printComponent(
+			PrintFactureAssuranceBody,
+			{ doc: res.doc, title: res.title || 'Facture assurance' },
+			{ format: [226.77, 255.12], width: '80mm' }
+		);
+	} catch (error) {
+		console.error(error);
+		toast.add({ severity: 'error', summary: 'Assurances', detail: 'Impression indisponible', life: 3500 });
+	}
+};
+
+const printInsuranceReceipt = async (paymentRow) => {
+	const paymentId = Number(paymentRow?.paiementId);
+	if (!paymentId) return;
+	await printReceiptById(paymentId);
 };
 
 const loadPublicGeneralSettings = async () => {
@@ -546,6 +814,7 @@ const loadPublicGeneralSettings = async () => {
 		const settings = await fetchPublicGeneralSettings(token);
 		publicGeneralSettings.value = {
 			paiementDirectAssurance: settings?.paiementDirectAssurance === true,
+			allowReceptionInvoiceModification: settings?.allowReceptionInvoiceModification === true,
 			hidePatientPhoneForMedecins: settings?.hidePatientPhoneForMedecins === true,
 			soinsList: normalizeSoinList(settings?.soinsList)
 		};
@@ -556,6 +825,7 @@ const loadPublicGeneralSettings = async () => {
 		console.error(error);
 		publicGeneralSettings.value = {
 			paiementDirectAssurance: false,
+			allowReceptionInvoiceModification: false,
 			hidePatientPhoneForMedecins: false,
 			soinsList: [...defaultSoinList]
 		};
@@ -623,26 +893,13 @@ watch(
 
 		const defaultAssurance = (assurances.value || []).find((item) => item?.actif !== false) || null;
 		payForm.value.assuranceId = payForm.value.assuranceId || defaultAssurance?.id || null;
-		if (!invoiceHasInsurance.value && payForm.value.assuranceId) {
-			const assurance = (assurances.value || []).find((item) => Number(item?.id) === Number(payForm.value.assuranceId)) || null;
-			payForm.value.insuranceRate = resolveAssuranceDefaultRate(assurance);
-		}
 		payForm.value.montant = 0;
 	}
 );
 
 watch(
 	() => payForm.value.assuranceId,
-	(assuranceId) => {
-		if (!assuranceId) {
-			return;
-		}
-
-		if (!invoiceHasInsurance.value) {
-			const assurance = (assurances.value || []).find((item) => Number(item?.id) === Number(assuranceId)) || null;
-			payForm.value.insuranceRate = resolveAssuranceDefaultRate(assurance);
-		}
-
+	() => {
 		if ((Number(payForm.value.montant) || 0) > maxClientPaymentAmount.value) {
 			payForm.value.montant = maxClientPaymentAmount.value;
 		}
@@ -759,18 +1016,41 @@ const confirmResetPaymentDialog = () => {
 	resetPaymentDialogVisible.value = true;
 };
 
+const reloadFacturePreview = async (factureId) => {
+	if (!previewDialogVisible.value || !factureId) {
+		return;
+	}
+
+	previewLoading.value = true;
+	try {
+		previewData.value = await fetchFactureDetail(factureId, token);
+	} catch (error) {
+		console.error(error);
+		toast.add({ severity: 'error', summary: 'Facture', detail: 'Actualisation du détail impossible', life: 3500 });
+	} finally {
+		previewLoading.value = false;
+	}
+};
+
 const resetSelectedDevisPayments = async () => {
-	if (!selectedFacture.value) {
+	const factureId = selectedFacture.value?.id ?? previewData.value?.id ?? activeInvoiceContext.value?.id;
+	if (!factureId) {
 		return;
 	}
 
 	try {
 		resetPaymentsLoading.value = true;
-		await resetFacturePayments(selectedFacture.value.id, token);
+		await resetFacturePayments(factureId, token);
 		toast.add({ severity: 'success', summary: 'Facture', detail: 'La facture a été réinitialisée.', life: 3000 });
 		resetPaymentDialogVisible.value = false;
 		payDialogVisible.value = false;
 		await Promise.all([loadFactures(), loadPayments()]);
+		await reloadFacturePreview(factureId);
+
+		const updatedRow = factures.value.find((row) => Number(row.id) === Number(factureId));
+		if (updatedRow) {
+			selectedFacture.value = updatedRow;
+		}
 	} catch (error) {
 		console.error(error);
 		toast.add({ severity: 'error', summary: 'Facture', detail: 'Réinitialisation impossible.', life: 3500 });
@@ -802,18 +1082,13 @@ const confirmValidate = async () => {
 };
 
 const openModifyDialog = async (row) => {
+	if (!canModifyInvoiceByRole.value) return;
 	factureConsultId.value = row.consultation;
 	try {
-		const lignes = await fetchFactureLines(row.consultation, token);
-		factureLines.value = lignes.length
-			? lignes.map((l) => ({
-				dent: l.dent || '',
-				type: l.type || l.designation || '',
-				description: l.description || l.designation || '',
-				prix: Number(l.prix || l.montant || 0),
-				quantite: Number(l.quantite || 1)
-			}))
-			: [createEmptyLine()];
+		const invoice = await fetchFactureLines(row.consultation, token);
+		factureLines.value = invoice.lines?.length ? invoice.lines : [createEmptyLine()];
+		factureDate.value = invoice.date || '';
+		factureTime.value = invoice.time || '';
 		factureDialogVisible.value = true;
 	} catch (error) {
 		console.error(error);
@@ -834,7 +1109,7 @@ const openTourModifyDialogStable = async () => {
 	await nextTick();
 };
 
-const createEmptyLine = () => ({ dent: '', type: '', description: '', prix: 0, quantite: 1 });
+const createEmptyLine = () => ({ dent: [], type: '', description: '', prix: 0, quantite: 1 });
 
 const addFactureLine = () => {
 	factureLines.value.push(createEmptyLine());
@@ -849,7 +1124,11 @@ const saveFacture = async () => {
 	if (!factureConsultId.value) return;
 	factureSaving.value = true;
 	try {
-		await updateFactureLines(factureConsultId.value, factureLines.value, token);
+		await updateFactureLines(factureConsultId.value, {
+			lines: factureLines.value,
+			date: factureDate.value,
+			time: factureTime.value
+		}, token);
 		toast.add({ severity: 'success', summary: 'Facture', detail: 'Facture enregistrée', life: 2500 });
 		factureDialogVisible.value = false;
 		await loadFactures();
@@ -897,6 +1176,8 @@ const resetTourDialogs = () => {
 	pendingFacture.value = null;
 	selectedFacture.value = null;
 	factureConsultId.value = null;
+	factureDate.value = '';
+	factureTime.value = '';
 };
 
 const capturePageState = () => ({
@@ -1145,7 +1426,10 @@ const validateClaim = async (claim) => {
 		insuranceActionLoadingId.value = Number(claim?.id) || null;
 		await validateInsuranceClaim(claim.id, token);
 		toast.add({ severity: 'success', summary: 'Assurance', detail: 'Créance validée.', life: 3000 });
-		await loadInsuranceClaims();
+		await loadInsuranceDashboard();
+		if (Number(insuranceSelectedClaim.value?.id) === Number(claim?.id)) {
+			await loadInsuranceClaimDetail(claim);
+		}
 	} catch (error) {
 		console.error(error);
 		toast.add({ severity: 'error', summary: 'Assurance', detail: 'Validation impossible.', life: 3500 });
@@ -1159,30 +1443,10 @@ const rejectClaim = async (claim) => {
 		insuranceActionLoadingId.value = Number(claim?.id) || null;
 		await rejectInsuranceClaim(claim.id, null, token);
 		toast.add({ severity: 'success', summary: 'Assurance', detail: 'Créance rejetée.', life: 3000 });
-		await loadInsuranceClaims();
+		await loadInsuranceDashboard();
 	} catch (error) {
 		console.error(error);
 		toast.add({ severity: 'error', summary: 'Assurance', detail: 'Rejet impossible.', life: 3500 });
-	} finally {
-		insuranceActionLoadingId.value = null;
-	}
-};
-
-const recoverClaim = async (claim) => {
-	const classicMethod = getDefaultClassicMethod(paymentMethods.value);
-	if (!classicMethod?.id) {
-		toast.add({ severity: 'warn', summary: 'Assurance', detail: 'Aucun mode de paiement actif.', life: 3500 });
-		return;
-	}
-
-	try {
-		insuranceActionLoadingId.value = Number(claim?.id) || null;
-		await recoverInsuranceClaim(claim.id, { modeId: classicMethod.id, date: new Date().toISOString() }, token);
-		toast.add({ severity: 'success', summary: 'Assurance', detail: 'Recouvrement enregistré.', life: 3000 });
-		await loadInsuranceClaims();
-	} catch (error) {
-		console.error(error);
-		toast.add({ severity: 'error', summary: 'Assurance', detail: 'Recouvrement impossible.', life: 3500 });
 	} finally {
 		insuranceActionLoadingId.value = null;
 	}
@@ -1209,7 +1473,10 @@ const collectPatientShare = async (claim) => {
 			date: new Date().toISOString()
 		}, token);
 		toast.add({ severity: 'success', summary: 'Assurance', detail: 'Part patient encaissée.', life: 3000 });
-		await Promise.all([loadInsuranceClaims(), loadPayments()]);
+		await Promise.all([loadInsuranceDashboard(), loadPayments()]);
+		if (Number(insuranceSelectedClaim.value?.id) === Number(claim?.id)) {
+			await loadInsuranceClaimDetail(claim);
+		}
 	} catch (error) {
 		console.error(error);
 		toast.add({ severity: 'error', summary: 'Assurance', detail: 'Encaissement patient impossible.', life: 3500 });
@@ -1219,6 +1486,10 @@ const collectPatientShare = async (claim) => {
 };
 
 watch([factureRangeKey, factureType], () => {
+	if (factureType.value === 'impaye_toutes') {
+		loadFactures();
+		return;
+	}
 	if (!factureRangeKey.value) return;
 	loadFactures();
 }, { immediate: true });
@@ -1227,7 +1498,11 @@ watch(paymentRangeKey, () => {
 	if (!paymentRangeKey.value) return;
 	loadPayments();
 }, { immediate: true });
-watch([insuranceStatusFilter, insuranceRange, insurancePatientFilter, insuranceAssuranceFilter], loadInsuranceClaims, { immediate: true });
+watch(activeView, (view) => {
+	if (view === 'assurances') {
+		loadInsuranceDashboard();
+	}
+}, { immediate: true });
 
 onMounted(async () => {
 	await loadPublicGeneralSettings();
@@ -1278,6 +1553,7 @@ onBeforeUnmount(() => {
 				<TabPanel value="overview">
 					<CaisseOverview :factures="factures" :factures-loading="facturesLoading" :payments="payments"
 						:hide-patient-phone="shouldHidePatientPhoneForMedecin"
+						:allow-invoice-modification="canModifyInvoiceByRole"
 						:payments-loading="paymentsLoading" :facture-type="factureType" :facture-range="factureRange"
 						:payment-range="paymentRange" @update:factureType="setFactureType"
 						@update:factureRange="setFactureRange" @update:paymentRange="setPaymentRange"
@@ -1289,6 +1565,7 @@ onBeforeUnmount(() => {
 				<TabPanel value="factures">
 					<CaisseFactures :factures="factures" :factures-loading="facturesLoading" :facture-type="factureType"
 						:hide-patient-phone="shouldHidePatientPhoneForMedecin"
+						:allow-invoice-modification="canModifyInvoiceByRole"
 						:facture-range="factureRange" @update:factureType="setFactureType" @update:factureRange="setFactureRange"
 						@refresh-factures="loadFactures" @pay="openPayDialog" @validate-free="openValidateDialog"
 						@modify="openModifyDialog" @preview="openPreviewDialog" @send-invoice-sms="sendInvoiceBySms" />
@@ -1302,23 +1579,39 @@ onBeforeUnmount(() => {
 				</TabPanel>
 				<TabPanel value="assurances">
 					<CaisseAssurances
-						:claims="insuranceClaims"
-						:loading="insuranceLoading"
-						:status-filter="insuranceStatusFilter"
-						:insurance-range="insuranceRange"
-						:insurance-patient-filter="insurancePatientFilter"
-						:insurance-assurance-filter="insuranceAssuranceFilter"
-						:assurance-options="[{ label: 'Toutes', value: 'all' }, ...(assurances || []).filter((item) => item?.actif !== false).map((item) => ({ label: item?.nom || item?.code || 'Assurance', value: item?.code || 'all' }))]"
+						:dashboard-cards="insuranceDashboard"
+						:unpaid-claims="insuranceUnpaidClaims"
+						:lots-assurance="insuranceLotsAssurance"
+						:lots="insuranceLots"
+						:unassigned-claims="insuranceUnassignedClaims"
+						:open-lot="insuranceOpenLot"
+						:selected-claim="insuranceSelectedClaim"
+						:selected-lot="insuranceSelectedLot"
+						:dashboard-loading="insuranceDashboardLoading"
+						:lots-loading="insuranceLotsLoading"
+						:claim-loading="insuranceClaimLoading"
+						:lot-dialog-loading="insuranceLotDialogLoading"
+						:lot-dialog-visible="insuranceLotDialogVisible"
 						:action-loading-id="insuranceActionLoadingId"
-						@update:statusFilter="insuranceStatusFilter = $event"
-						@update:insuranceRange="insuranceRange = $event"
-						@update:insurancePatientFilter="insurancePatientFilter = $event"
-						@update:insuranceAssuranceFilter="insuranceAssuranceFilter = $event"
-						@refresh="loadInsuranceClaims"
+						@refresh-dashboard="loadInsuranceDashboard"
+						@refresh-lots="loadInsuranceLots"
+						@view-lots="viewInsuranceLots"
+						@back-to-dashboard="backToInsuranceDashboard"
+						@open-lot="openInsuranceLot"
+						@view-lot-dialog="viewInsuranceLotDialog"
+						@close-lot-dialog="closeInsuranceLotDialog"
+						@load-lot-detail="loadInsuranceLotDetail"
+						@view-claim="viewInsuranceClaim"
+						@back-from-claim="backFromInsuranceClaim"
+						@send-lot="sendInsuranceLot"
+						@recover-lot="recoverInsuranceLot"
+						@cancel-recovery="cancelInsuranceLotRecovery"
 						@validate-claim="validateClaim"
 						@reject-claim="rejectClaim"
-						@recover-claim="recoverClaim"
 						@collect-patient-share="collectPatientShare"
+						@print-receipt="printInsuranceReceipt"
+						@print-claim="printInsuranceClaim"
+						@add-claim-to-lot="addClaimToInsuranceLot"
 					/>
 				</TabPanel>
 			</TabPanels>
@@ -1352,6 +1645,8 @@ onBeforeUnmount(() => {
 			:validate-loading="validateLoading"
 			:facture-dialog-visible="factureDialogVisible"
 			:facture-lines="factureLines"
+			:facture-date="factureDate"
+			:facture-time="factureTime"
 			:facture-saving="factureSaving"
 			:facture-total="factureTotal"
 			:soins-list="soinsList"
@@ -1369,6 +1664,8 @@ onBeforeUnmount(() => {
 			@update:resetPaymentDialogVisible="resetPaymentDialogVisible = $event"
 			@update:validateDialogVisible="validateDialogVisible = $event"
 			@update:factureDialogVisible="factureDialogVisible = $event"
+			@update:factureDate="factureDate = $event"
+			@update:factureTime="factureTime = $event"
 			@update:previewDialogVisible="previewDialogVisible = $event"
 			@update:previewDialogTab="previewDialogTab = $event"
 			@submit-payment="submitPayment"

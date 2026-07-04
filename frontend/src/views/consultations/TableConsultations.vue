@@ -24,6 +24,7 @@ import { fetchPublicGeneralSettings } from '@/services/globalSettingsService';
 import { activatePatientsTourMock, deactivatePatientsTourMock, resetPatientsTourMockData } from '@/services/patientsTourMock';
 
 import { useAuthStore } from '@/stores/auth';
+import { canUserModifyInvoice } from '@/utils/invoiceModificationAccess';
 import { GUIDED_TOUR_START_EVENT } from '@/tours';
 import { createConsultationsTableTour } from '@/tours/consultationsTableTour';
 import { startTourGuide } from '@/tours/tourGuideClient';
@@ -61,6 +62,8 @@ const factureLoading = ref({});
 const factureSaving = ref(false);
 const factureDialogVisible = ref(false);
 const factureLines = ref([]);
+const factureDate = ref('');
+const factureTime = ref('');
 const factureConsultation = ref(null);
 
 const detailsDialogVisible = ref(false);
@@ -77,6 +80,7 @@ const loadErrorMessage = ref('');
 const allowReceptionQuickClose = ref(true);
 const hidePatientDossierForMedecins = ref(false);
 const hidePatientPhoneForMedecins = ref(false);
+const allowReceptionInvoiceModification = ref(false);
 const soinsList = ref([...defaultSoinList]);
 let guidedTourPageState = null;
 let guidedTourDemoActive = false;
@@ -90,6 +94,9 @@ const isRestrictedMedecin = computed(() => isMedecin.value && !isAdmin.value);
 const shouldHidePatientDossierForMedecin = computed(() => isRestrictedMedecin.value && hidePatientDossierForMedecins.value);
 const shouldHidePatientPhoneForMedecin = computed(() => isRestrictedMedecin.value && hidePatientPhoneForMedecins.value);
 const canUseQuickActions = computed(() => !isReception.value || allowReceptionQuickClose.value);
+const canModifyInvoiceByRole = computed(() =>
+    canUserModifyInvoice(auth.user, { allowReceptionInvoiceModification: allowReceptionInvoiceModification.value })
+);
 const totalCountLabel = computed(() => (consultations.value?.length ? `${consultations.value.length} consultation(s)` : ''));
 
 const filterGlobalValue = computed({
@@ -185,6 +192,7 @@ const loadQuickClosePolicy = async ({ asPageLoad = false } = {}) => {
         const settings = await fetchPublicGeneralSettings(token);
         allowReceptionQuickClose.value = settings?.allowReceptionConsultationQuickActions !== false
             && settings?.allowReceptionQuickCloseConsultation !== false;
+        allowReceptionInvoiceModification.value = settings?.allowReceptionInvoiceModification === true;
         hidePatientDossierForMedecins.value = settings?.hidePatientDossierForMedecins === true;
         hidePatientPhoneForMedecins.value = settings?.hidePatientPhoneForMedecins === true;
         soinsList.value = normalizeSoinList(settings?.soinsList);
@@ -333,12 +341,15 @@ const setFactureLoading = (id, value) => {
 };
 
 const openFacture = async (consultation) => {
-    if (!consultation?.id) return;
+    if (!consultation?.id || !consultation?.factModifiable || !canModifyInvoiceByRole.value) return;
     factureConsultation.value = consultation;
     factureDialogVisible.value = true;
     setFactureLoading(consultation.id, true);
     try {
-        factureLines.value = await fetchConsultationInvoice(consultation.id, token);
+        const invoice = await fetchConsultationInvoice(consultation.id, token);
+        factureLines.value = invoice.lines;
+        factureDate.value = invoice.date || '';
+        factureTime.value = invoice.time || '';
     } catch (error) {
         console.error('Erreur lors du chargement de la facture', error);
         toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de charger la facture.', life: 3000 });
@@ -348,11 +359,11 @@ const openFacture = async (consultation) => {
     }
 };
 
-const handleSaveFacture = async (lines) => {
+const handleSaveFacture = async (payload) => {
     if (!factureConsultation.value?.id) return;
     factureSaving.value = true;
     try {
-        await updateConsultationInvoice(factureConsultation.value.id, lines, token);
+        await updateConsultationInvoice(factureConsultation.value.id, payload, token);
         toast.add({ severity: 'success', summary: 'Facture mise à jour', detail: 'La facture a été enregistrée.', life: 2500 });
         factureDialogVisible.value = false;
         await loadConsultations();
@@ -369,6 +380,8 @@ const closeFactureModal = (visible) => {
     if (!visible) {
         factureConsultation.value = null;
         factureLines.value = [];
+        factureDate.value = '';
+        factureTime.value = '';
     }
 };
 
@@ -437,6 +450,8 @@ const resetTourDialogs = () => {
     factureDialogVisible.value = false;
     factureConsultation.value = null;
     factureLines.value = [];
+    factureDate.value = '';
+    factureTime.value = '';
 };
 
 const capturePageState = () => ({
@@ -979,7 +994,7 @@ const currentFactureLoading = computed(() => {
                                 class="hover:bg-green-50 dark:hover:bg-green-900/20"
                                 :loading="factureLoading[data.id] === true"
                                 @click="openFacture(data)"
-                                v-if="isAdmin && data.state === 1"
+                                v-if="canModifyInvoiceByRole && data.state === 1 && data.factModifiable"
                             />
                             <Button
                                 icon="pi pi-times"
@@ -1129,6 +1144,8 @@ const currentFactureLoading = computed(() => {
         <FactureModal
             :visible="factureDialogVisible"
             :lines="factureLines"
+            :date="factureDate"
+            :time="factureTime"
             :soins="soinsList"
             :loading="currentFactureLoading"
             :saving="factureSaving"

@@ -21,6 +21,10 @@ const props = defineProps({
     medecinReadonly: {
         type: Boolean,
         default: false
+    },
+    mode: {
+        type: String,
+        default: 'create'
     }
 });
 
@@ -96,6 +100,19 @@ const totalMedicaments = computed(() => ordonnance.value?.lignes?.length || 0);
 const totalBoites = computed(() => {
     return ordonnance.value?.lignes?.reduce((sum, line) => sum + (line.quantite || 0), 0) || 0;
 });
+
+const isViewMode = computed(() => props.mode === 'view');
+const isEditMode = computed(() => props.mode === 'edit');
+const dialogTitle = computed(() => {
+    if (isViewMode.value) return 'Voir l\'ordonnance';
+    if (isEditMode.value) return 'Modifier l\'ordonnance';
+    return 'Nouvelle ordonnance';
+});
+const dialogSubtitle = computed(() => {
+    if (isViewMode.value) return 'Détail de la prescription';
+    if (isEditMode.value) return 'Mettre à jour la prescription';
+    return 'Prescrire des médicaments et traitements';
+});
  
 </script>
 <!-- OrdonnanceModal.vue -->
@@ -114,8 +131,8 @@ const totalBoites = computed(() => {
                     <i class="pi pi-file-plus text-primary-600 dark:text-primary-400 text-2xl px-4"></i>
                 </div>
                 <div>
-                    <h3 class="text-xl font-bold text-surface-900 dark:text-surface-50">Nouvelle ordonnance</h3>
-                    <p class="text-sm text-surface-500 dark:text-surface-400">Prescrire des médicaments et traitements</p>
+                    <h3 class="text-xl font-bold text-surface-900 dark:text-surface-50">{{ dialogTitle }}</h3>
+                    <p class="text-sm text-surface-500 dark:text-surface-400">{{ dialogSubtitle }}</p>
                 </div>
             </div>
         </template>
@@ -132,6 +149,7 @@ const totalBoites = computed(() => {
                     <DatePicker 
                         v-model="dateModel" 
                         placeholder="JJ/MM/AAAA"
+                        :disabled="isViewMode"
                         class="w-full rounded-xl border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-800/50 p-3 focus:ring-2 focus:ring-primary-500/20 transition-all"
                     />
                 </div>
@@ -143,7 +161,7 @@ const totalBoites = computed(() => {
                     <InputText 
                         :value="ordonnance.medecinNom" 
                         placeholder="Nom du médecin prescripteur"
-                        :disabled="medecinReadonly"
+                        :disabled="medecinReadonly || isViewMode"
                         class="w-full rounded-xl border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-800/50 p-3 focus:ring-2 focus:ring-primary-500/20 transition-all"
                         @update:modelValue="(v) => updateField('medecinNom', v)" 
                     />
@@ -156,6 +174,7 @@ const totalBoites = computed(() => {
                     <InputText 
                         :value="ordonnance.note" 
                         placeholder="Informations complémentaires"
+                        :disabled="isViewMode"
                         class="w-full rounded-xl border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-800/50 p-3 focus:ring-2 focus:ring-primary-500/20 transition-all"
                         @update:modelValue="(v) => updateField('note', v)" 
                     />
@@ -174,6 +193,7 @@ const totalBoites = computed(() => {
                     </div>
                 </div>
                 <Button 
+                    v-if="!isViewMode"
                     icon="pi pi-plus" 
                     label="Ajouter une ligne" 
                     size="small"
@@ -192,7 +212,8 @@ const totalBoites = computed(() => {
                 </div>
                 
                 <div v-for="(line, idx) in ordonnance.lignes" :key="idx" 
-                     class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/30 p-4 shadow-sm hover:shadow-md transition-all">
+                     class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/30 p-4 shadow-sm hover:shadow-md transition-all"
+                     :class="isViewMode ? 'pointer-events-none opacity-95' : ''">
                     <!-- Line Header -->
                     <div class="flex items-center justify-between mb-4">
                         <div class="flex items-center gap-2">
@@ -202,6 +223,7 @@ const totalBoites = computed(() => {
                             <span class="font-medium text-surface-900 dark:text-surface-100">Ligne {{ idx + 1 }}</span>
                         </div>
                         <Button 
+                            v-if="!isViewMode"
                             icon="pi pi-trash" 
                             severity="danger" 
                             text 
@@ -294,14 +316,15 @@ const totalBoites = computed(() => {
         <template #footer>
             <div class="flex justify-end gap-3">
                 <Button 
-                    label="Annuler" 
+                    :label="isViewMode ? 'Fermer' : 'Annuler'" 
                     severity="secondary" 
                     outlined
                     class="rounded-xl px-5 py-2.5 border-surface-300 dark:border-surface-600 hover:bg-surface-100 dark:hover:bg-surface-700 transition-colors"
                     @click="close" 
                 />
                 <Button 
-                    label="Enregistrer l'ordonnance" 
+                    v-if="!isViewMode"
+                    :label="isEditMode ? 'Enregistrer les modifications' : 'Enregistrer l\'ordonnance'" 
                     icon="pi pi-save" 
                     :loading="saving"
                     class="rounded-xl px-5 py-2.5 font-medium shadow-sm hover:shadow-md transition-all bg-gradient-to-r from-primary-500 to-primary-600 border-0 text-white"

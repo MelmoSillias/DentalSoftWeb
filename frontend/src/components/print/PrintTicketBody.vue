@@ -1,72 +1,63 @@
 <template>
-    <div class="ticket" :style="{ '--watermark': `url(${logoSrc})` }">
-        <div class="small content">
-            <PrintTicketHeader title="Ticket de Consultation" />
+    <PrintTicketPage :logo-src="logoSrc">
+        <PrintTicketHeader title="Ticket de consultation" />
 
-            <hr />
+        <hr />
 
-            <table class="small">
-                <tbody>
-                    <tr>
-                        <td>Ticket N°</td>
-                        <td class="right">{{ paiement?.id || '—' }}</td>
-                    </tr>
-                    <tr>
-                        <td>Date</td>
-                        <td class="right">{{ dateLabel }}</td>
-                    </tr>
-                    <tr>
-                        <td>Patient</td>
-                        <td class="right">
-                            {{ paiement?.consultation?.patient?.nom || '—' }}
-                            {{ paiement?.consultation?.patient?.prenom || '' }}
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>Mode</td>
-                        <td class="right">{{ paiement?.mode?.libelle || '—' }}</td>
-                    </tr>
-                </tbody>
-            </table>
+        <table class="print-ticket-table small">
+            <tbody>
+                <tr>
+                    <td>Ticket N°</td>
+                    <td class="right">{{ paiement?.id || '—' }}</td>
+                </tr>
+                <tr>
+                    <td>Date</td>
+                    <td class="right">{{ dateLabel }}</td>
+                </tr>
+                <tr>
+                    <td>Patient</td>
+                    <td class="right">
+                        {{ paiement?.consultation?.patient?.nom || '—' }}
+                        {{ paiement?.consultation?.patient?.prenom || '' }}
+                    </td>
+                </tr>
+                <tr>
+                    <td>Mode</td>
+                    <td class="right">{{ paiement?.mode?.libelle || '—' }}</td>
+                </tr>
+            </tbody>
+        </table>
 
-            <hr />
+        <hr />
 
-            <table>
-                <thead>
-                    <tr>
-                        <th>Description</th>
-                        <th class="right">Montant</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>Ticket de consultation #{{ paiement?.id || '—' }}</td>
-                        <td class="right">{{ formatMoney(paiement?.montant) }}</td>
-                    </tr>
-                </tbody>
-                <tfoot>
-                    <tr>
-                        <td class="bold">Total payé</td>
-                        <td class="right bold">{{ formatMoney(paiement?.montant) }}</td>
-                    </tr>
-                </tfoot>
-            </table>
-
-            <hr />
-
-            <div class="small center">
-                Merci de votre confiance !<br />
-                Tél: {{ cabinetPhone }}
-            </div>
-        </div>
-    </div>
+        <table class="print-ticket-table">
+            <thead>
+                <tr>
+                    <th>Description</th>
+                    <th class="right">Montant</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Ticket de consultation #{{ paiement?.id || '—' }}</td>
+                    <td class="right">{{ formatMoney(paiement?.montant) }}</td>
+                </tr>
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td class="bold">Total payé</td>
+                    <td class="right bold">{{ formatMoney(paiement?.montant) }}</td>
+                </tr>
+            </tfoot>
+        </table>
+    </PrintTicketPage>
 </template>
 
 <script setup>
 import { computed } from 'vue';
+import PrintTicketPage from './PrintTicketPage.vue';
 import PrintTicketHeader from './PrintTicketHeader.vue';
 import logoImg from '@/assets/logo.png';
-import cabinetConfig from '@/cabinetConfig';
 
 const props = defineProps({
     paiement: { type: Object, default: () => ({}) },
@@ -80,42 +71,12 @@ const dateLabel = computed(() => {
 });
 
 const formatMoney = (value) => `${Number(value || 0).toLocaleString('fr-FR')} FCFA`;
-const cabinetPhone = computed(() => cabinetConfig.cabinetPhone || '—');
 </script>
 
 <style scoped>
-.ticket {
-    position: relative;
-    width: 80mm;
-    padding: 2mm;
-    color: #000;
-    font-family: Arial, sans-serif;
-    font-size: 14px;
-    overflow: hidden;
-}
-
-.ticket::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: var(--watermark) center center no-repeat;
-    background-size: 70% auto;
-    opacity: 0.06;
-    pointer-events: none;
-    z-index: 0;
-}
-
-.content {
-    position: relative;
-    z-index: 1;
-}
-
 .small {
     font-size: 12px;
-}
-
-.center {
-    text-align: center;
+    font-weight: 600;
 }
 
 .right {
@@ -123,27 +84,6 @@ const cabinetPhone = computed(() => cabinetConfig.cabinetPhone || '—');
 }
 
 .bold {
-    font-weight: 700;
-}
-
-hr {
-    border: none;
-    border-top: 1px dashed #000;
-    margin: 3px 0;
-}
-
-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin: 3px 0;
-}
-
-th,
-td {
-    padding: 1px 0;
-}
-
-th {
-    font-weight: 700;
+    font-weight: 800;
 }
 </style>

@@ -37,6 +37,10 @@ const props = defineProps({
         type: Boolean,
         default: true
     },
+    allowReceptionInvoiceModification: {
+        type: Boolean,
+        default: false
+    },
     isAdmin: {
         type: Boolean,
         default: false
@@ -256,7 +260,6 @@ const currentBilling = computed(() => {
 
 const todayConsultations = computed(() => {
     const now = new Date();
-    console.log(consultations.value);
     return (consultations.value || []).filter((consultation) => isSameCalendarDay(consultation?.createdAt, now));
 });
 
@@ -374,7 +377,13 @@ const hasInvoiceContext = computed(() => Boolean(currentBilling.value?.invoiceId
 const isPaidInvoice = computed(() => hasInvoiceContext.value && selectedInvoiceRemaining.value === 0 && selectedInvoiceTotal.value > 0);
 const isFreeInvoice = computed(() => hasInvoiceContext.value && selectedInvoiceRemaining.value === 0 && selectedInvoiceTotal.value === 0);
 const isValidatedFreeInvoice = computed(() => isFreeInvoice.value && selectedInvoiceState.value?.severity === 'success');
-const canModifyInvoice = computed(() => hasInvoiceContext.value && selectedInvoiceTotal.value > 0 && selectedInvoiceRemaining.value === selectedInvoiceTotal.value);
+const canModifyInvoice = computed(() => {
+    if (!props.allowReceptionInvoiceModification) return false;
+    if (!hasInvoiceContext.value) return false;
+    const payments = Array.isArray(currentBilling.value?.payments) ? currentBilling.value.payments : [];
+    if (payments.length > 0) return false;
+    return selectedInvoiceTotal.value > 0 && selectedInvoiceRemaining.value === selectedInvoiceTotal.value;
+});
 const canPreviewInvoice = computed(() => hasInvoiceContext.value && !(selectedInvoiceTotal.value === 0 && selectedInvoiceRemaining.value === 0));
 
 const selectConsultation = (consultationId) => {
@@ -970,6 +979,11 @@ const handleCancelWithConfirm = (event, consultation) => {
                                 @click="emit('open-caisse-validate')"
                                 class="rounded-xl bg-blue-500 px-3 py-2 text-xs font-medium text-white shadow-md transition-all hover:bg-blue-600 dark:bg-blue-700 dark:hover:bg-blue-800 dark:text-white">
                                 <i class="pi pi-check mr-1"></i>Valider
+                            </button>
+                            <button v-if="canModifyInvoice"
+                                @click="emit('open-caisse-modify')"
+                                class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700 transition-all hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
+                                <i class="pi pi-file-edit mr-1"></i>Modifier
                             </button>
                             <button @click="emit('open-caisse-preview')"
                                 class="rounded-xl border border-surface-200 bg-white px-3 py-2 text-xs font-medium text-surface-600 transition-all hover:bg-surface-50 dark:border-surface-700 dark:bg-surface-800 dark:text-surface-400">

@@ -6,7 +6,11 @@ import { useAuthStore } from '@/stores/auth';
 import router from '@/router';
 import { getDeviceMetadata } from '@/utils/deviceFingerprint';
 
-const REQUEST_TIMEOUT_MS = 20000;
+/** Timeout par défaut pour la plupart des requêtes API (20 s). */
+export const REQUEST_TIMEOUT_MS = 20000;
+
+/** Timeout étendu pour les listes volumineuses (caisse, exports, etc.). */
+export const HEAVY_REQUEST_TIMEOUT_MS = 60000;
 
 const userFacingMessages = {
     slow: 'Connexion au serveur impossible ou bloquee (reseau/CORS). Veuillez reessayer dans un instant.',
@@ -41,6 +45,9 @@ const isConnectionIssue = (error) => {
 
     return ['ECONNABORTED', 'ERR_NETWORK', 'ETIMEDOUT'].includes(error.code);
 };
+
+export const isDeviceNotAllowedError = (error) =>
+    error?.response?.status === 403 && error?.response?.data?.error === 'device_not_allowed';
 
 export const getHttpErrorMessage = (error, fallback = userFacingMessages.generic) => {
     const status = error?.response?.status;
@@ -116,6 +123,22 @@ http.interceptors.response.use(
     (response) => response,
     (error) => {
         normalizeHttpError(error);
+
+        if (isDeviceNotAllowedError(error)) {
+            try {
+                const auth = useAuthStore();
+                auth?.setDeviceBlock(
+                    error.response?.data?.message,
+                    error.response?.data?.status
+                );
+            } catch (_) {
+                // Pinia pas initialisé
+            }
+            if (router.currentRoute.value.name !== 'devicePending') {
+                router.replace({ name: 'devicePending' });
+            }
+            return Promise.reject(error);
+        }
 
         // Si réponse HTTP et statut 401 => token invalide/expiré
         if (error.response && error.response.status === 401) {

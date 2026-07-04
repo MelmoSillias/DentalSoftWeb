@@ -50,8 +50,14 @@ class PayrollController extends AbstractController
         try {
             $month = $request->query->getInt('month', (int) date('n'));
             $year = $request->query->getInt('year', (int) date('Y'));
+            $day = $request->query->get('day');
 
-            return $this->json($this->payrollService->getPaymentContext($employeeId, $month, $year));
+            return $this->json($this->payrollService->getPaymentContext(
+                $employeeId,
+                $month,
+                $year,
+                is_string($day) && $day !== '' ? $day : null
+            ));
         } catch (\InvalidArgumentException $exception) {
             return $this->json(['message' => $exception->getMessage()], 400);
         }
@@ -72,14 +78,10 @@ class PayrollController extends AbstractController
         }
     }
 
-    #[Route('/{id}', name: 'api_payrolls_delete', methods: ['DELETE'])]
-    public function delete(int $id): JsonResponse
+    #[Route('/payment-methods', name: 'api_payrolls_payment_methods', methods: ['GET'])]
+    public function paymentMethods(): JsonResponse
     {
-        try {
-            return $this->json($this->payrollService->deleteSalaryPayment($id));
-        } catch (\InvalidArgumentException $exception) {
-            return $this->json(['message' => $exception->getMessage()], 404);
-        }
+        return $this->json($this->payrollService->listActivePaymentMethods());
     }
 
     #[Route('/{id}/print', name: 'api_payrolls_print', methods: ['GET'])]
@@ -87,6 +89,38 @@ class PayrollController extends AbstractController
     {
         try {
             return $this->json($this->payrollService->getPrintPayload($id));
+        } catch (\InvalidArgumentException $exception) {
+            return $this->json(['message' => $exception->getMessage()], 404);
+        }
+    }
+
+    #[Route('/{id}', name: 'api_payrolls_show', methods: ['GET'])]
+    public function show(int $id): JsonResponse
+    {
+        try {
+            return $this->json($this->payrollService->getSalaryPayment($id));
+        } catch (\InvalidArgumentException $exception) {
+            return $this->json(['message' => $exception->getMessage()], 404);
+        }
+    }
+
+    #[Route('/{id}', name: 'api_payrolls_update', methods: ['PUT'])]
+    public function update(int $id, Request $request): JsonResponse
+    {
+        try {
+            $payload = json_decode($request->getContent(), true) ?? [];
+
+            return $this->json($this->payrollService->updateSalaryPayment($id, $payload));
+        } catch (\InvalidArgumentException $exception) {
+            return $this->json(['message' => $exception->getMessage()], 400);
+        }
+    }
+
+    #[Route('/{id}', name: 'api_payrolls_delete', methods: ['DELETE'])]
+    public function delete(int $id): JsonResponse
+    {
+        try {
+            return $this->json($this->payrollService->deleteSalaryPayment($id));
         } catch (\InvalidArgumentException $exception) {
             return $this->json(['message' => $exception->getMessage()], 404);
         }

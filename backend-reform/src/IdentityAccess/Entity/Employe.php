@@ -52,6 +52,14 @@ class Employe
     #[ORM\Column(type: 'decimal', precision: 10, scale: 2, nullable: true)]
     private ?string $valeurSalaire = null;
 
+    #[ORM\Column(length: 32, options: ['default' => 'mensuel'])]
+    private string $frequencePaiement = 'mensuel';
+
+    #[ORM\Column(length: 32, options: ['default' => 'aucune'])]
+    private string $typePrime = 'aucune';
+
+    #[ORM\Column(type: 'decimal', precision: 10, scale: 2, nullable: true)]
+    private ?string $valeurPrime = null;
 
     #[ORM\Column(length: 255, unique: true, nullable: true)]
     private ?string $email = null;
@@ -223,6 +231,39 @@ class Employe
     public function setValeurSalaire(?float $valeurSalaire): static
     {
         $this->valeurSalaire = $valeurSalaire === null ? null : (string) $valeurSalaire;
+        return $this;
+    }
+
+    public function getFrequencePaiement(): string
+    {
+        return $this->frequencePaiement;
+    }
+
+    public function setFrequencePaiement(string $frequencePaiement): static
+    {
+        $this->frequencePaiement = $frequencePaiement;
+        return $this;
+    }
+
+    public function getTypePrime(): string
+    {
+        return $this->typePrime;
+    }
+
+    public function setTypePrime(string $typePrime): static
+    {
+        $this->typePrime = $typePrime;
+        return $this;
+    }
+
+    public function getValeurPrime(): ?float
+    {
+        return $this->valeurPrime === null ? null : (float) $this->valeurPrime;
+    }
+
+    public function setValeurPrime(?float $valeurPrime): static
+    {
+        $this->valeurPrime = $valeurPrime === null ? null : (string) $valeurPrime;
         return $this;
     }
 

@@ -69,7 +69,7 @@ onMounted(() => {
         <div class="flex flex-wrap items-center justify-between gap-4" data-tour="rapports-medecin.range">
             <div>
                 <h2 class="text-2xl font-semibold text-surface-900 dark:text-surface-0">
-                    Bienvenue Dr {{ connectedMedecinFullName }}
+                    Bienvenue {{ connectedMedecinFullName }}
                 </h2>
                 <p class="text-sm text-surface-500 dark:text-surface-400">Période : {{ periodLabel }}</p>
             </div>

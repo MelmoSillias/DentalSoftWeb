@@ -511,9 +511,14 @@ export const useConsultationsForm = ({ ficheId, consultId, token, mode }) => {
         }
     };
 
+    const documentsUploadProgress = ref(null);
+
     const saveDocumentsSection = async () => {
         if (!dirty.documents) return;
         setSaving('documents', true);
+        const files = (data.documents?.documents || []).map((d) => d.files || []);
+        const totalBytes = files.flat().reduce((sum, file) => sum + (file?.size || 0), 0);
+        documentsUploadProgress.value = { percent: 0, loaded: 0, total: totalBytes };
         try {
             const documents = (data.documents?.documents || []).map((d) => ({
                 groupKey: d.groupKey ?? null,
@@ -521,11 +526,19 @@ export const useConsultationsForm = ({ ficheId, consultId, token, mode }) => {
                 libelle: d.libelle ?? '',
                 urls: (d.urls || []).map(stripFilePrefix).filter(Boolean)
             }));
-            const files = (data.documents?.documents || []).map((d) => d.files || []);
-            await saveDocuments(ficheId.value, { documents }, files, token);
+            await saveDocuments(ficheId.value, { documents }, files, token, {
+                onUploadProgress: ({ percent, loaded, total }) => {
+                    documentsUploadProgress.value = {
+                        percent,
+                        loaded,
+                        total: total || totalBytes
+                    };
+                }
+            });
             clearDirty(['documents']);
         } finally {
             setSaving('documents', false);
+            documentsUploadProgress.value = null;
         }
     };
 
@@ -674,6 +687,7 @@ export const useConsultationsForm = ({ ficheId, consultId, token, mode }) => {
         saveBilansSection,
         savePlanTraitementSection,
         saveDocumentsSection,
+        documentsUploadProgress,
         saveDevisSection,
         saveConsultSection,
         saveOrdonnanceSection,

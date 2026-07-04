@@ -175,11 +175,18 @@ export function deactivateCaisseTourMock() {
     caisseTourMockState = buildSeedState();
 }
 
-export function fetchFacturesTourMock({ start, end, unpaidOnly = false } = {}) {
-    let list = caisseTourMockState.factures.filter((item) => matchesRange(item.date, start, end));
-    if (unpaidOnly) {
+export function fetchFacturesTourMock({ start, end, factureType = 'all', unpaidOnly = false } = {}) {
+    const type = factureType || (unpaidOnly ? 'impaye' : 'all');
+    let list = caisseTourMockState.factures;
+
+    if (type !== 'impaye_toutes') {
+        list = list.filter((item) => matchesRange(item.date, start, end));
+    }
+
+    if (type === 'impaye' || type === 'impaye_toutes') {
         list = list.filter((item) => Number(item.reste) > 0);
     }
+
     return cloneValue(list);
 }
 
@@ -231,12 +238,19 @@ export function validateEmptyFactureTourMock(factureId) {
 }
 
 export function fetchFactureLinesTourMock(consultationId) {
-    return cloneValue(caisseTourMockState.factureLines[consultationId] || []);
+    const lines = cloneValue(caisseTourMockState.factureLines[consultationId] || []);
+    return {
+        lines,
+        date: '2026-07-04',
+        time: '10:30',
+        modifiable: true
+    };
 }
 
-export function updateFactureLinesTourMock(consultationId, lignes = []) {
-    caisseTourMockState.factureLines[consultationId] = cloneValue(lignes);
-    return { success: true };
+export function updateFactureLinesTourMock(consultationId, lignes = [], options = {}) {
+    const lines = Array.isArray(lignes) ? lignes : lignes?.lines ?? lignes?.lignes ?? [];
+    caisseTourMockState.factureLines[consultationId] = cloneValue(lines);
+    return { success: true, date: options?.date ?? null, time: options?.time ?? null };
 }
 
 export function fetchFactureDetailTourMock(factureId) {

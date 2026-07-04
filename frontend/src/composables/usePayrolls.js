@@ -2,9 +2,12 @@ import { ref } from 'vue';
 import {
     createPayroll,
     deletePayroll,
+    fetchPayroll,
     fetchPayrollContext,
+    fetchPayrollPaymentMethods,
     fetchPayrollPrintPayload,
-    fetchPayrolls
+    fetchPayrolls,
+    updatePayroll
 } from '@/services/rhManagementService';
 
 const payrolls = ref([]);
@@ -12,6 +15,7 @@ const totalRecords = ref(0);
 const loading = ref(false);
 const contextLoading = ref(false);
 const paymentContext = ref(null);
+const paymentMethods = ref([]);
 const error = ref(null);
 
 const getToken = () => localStorage.getItem('token') || localStorage.getItem('authToken');
@@ -40,7 +44,28 @@ export function usePayrolls() {
         }
     };
 
-    const fetchContext = async (employeeId, month, year) => {
+    const fetchPaymentMethods = async () => {
+        try {
+            const data = await fetchPayrollPaymentMethods(getToken());
+            paymentMethods.value = data;
+            return data;
+        } catch (err) {
+            paymentMethods.value = [];
+            return [];
+        }
+    };
+
+    const fetchOne = async (id) => {
+        error.value = null;
+        try {
+            return await fetchPayroll(id, getToken());
+        } catch (err) {
+            error.value = err?.response?.data?.message || err?.message || 'Erreur lors du chargement du paiement.';
+            throw err;
+        }
+    };
+
+    const fetchContext = async (employeeId, { month, year, day = null } = {}) => {
         if (!employeeId || !month || !year) {
             paymentContext.value = null;
             return null;
@@ -49,7 +74,7 @@ export function usePayrolls() {
         contextLoading.value = true;
         error.value = null;
         try {
-            const data = await fetchPayrollContext(employeeId, { month, year }, getToken());
+            const data = await fetchPayrollContext(employeeId, { month, year, day }, getToken());
             paymentContext.value = data;
             return data;
         } catch (err) {
@@ -71,6 +96,16 @@ export function usePayrolls() {
         }
     };
 
+    const edit = async (id, payload) => {
+        error.value = null;
+        try {
+            return await updatePayroll(id, payload, getToken());
+        } catch (err) {
+            error.value = err?.response?.data?.message || err?.message || 'Erreur lors de la mise a jour du paiement.';
+            throw err;
+        }
+    };
+
     const remove = async (id) => {
         error.value = null;
         try {
@@ -86,7 +121,7 @@ export function usePayrolls() {
         try {
             return await fetchPayrollPrintPayload(id, getToken());
         } catch (err) {
-            error.value = err?.response?.data?.message || err?.message || 'Erreur lors du chargement de la fiche de paie.';
+            error.value = err?.response?.data?.message || err?.message || 'Erreur lors du chargement du bulletin de paie.';
             throw err;
         }
     };
@@ -97,10 +132,14 @@ export function usePayrolls() {
         loading,
         contextLoading,
         paymentContext,
+        paymentMethods,
         error,
         fetchData,
+        fetchPaymentMethods,
+        fetchOne,
         fetchContext,
         add,
+        edit,
         remove,
         fetchPrintPayload
     };

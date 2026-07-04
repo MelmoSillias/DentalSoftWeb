@@ -51,6 +51,86 @@ const defaultCrossTableState = () => ({
     }
 });
 
+const defaultDayOverviewState = () => ({
+    date: '',
+    dateLabel: '',
+    transactions: [],
+    totals: { revenue: 0, expense: 0 },
+    patients: { newPatients: 0, returningPatients: 0 },
+    appointments: { scheduled: 0, confirmed: 0, pending: 0, cancelled: 0, confirmationRate: 0 },
+    consultations: { total: 0, paid: 0, free: 0, pending: 0 },
+    actes: [],
+    actsByType: [],
+    doctors: [],
+    doctorsKpi: { totalRevenue: 0, afterFees: 0, totalSalaries: 0, totalConsultations: 0 }
+});
+
+const buildMockDayOverview = (date) => {
+    const safeDate = date || new Date().toISOString().slice(0, 10);
+    const parsed = new Date(`${safeDate}T12:00:00`);
+    const dateLabel = Number.isNaN(parsed.getTime())
+        ? safeDate
+        : parsed.toLocaleDateString('fr-FR');
+
+    return {
+        ...defaultDayOverviewState(),
+        date: safeDate,
+        dateLabel,
+        transactions: [
+            {
+                id: 1,
+                description: 'Paiement consultation',
+                motif: 'Paiement patient',
+                typeKey: 'revenue',
+                typeLabel: 'Revenu',
+                amount: 15000,
+                validatedAt: `${safeDate}T10:30:00+00:00`,
+                validationStatus: 'validated',
+                modeDePaiement: { libelle: 'Espèces' }
+            },
+            {
+                id: 2,
+                description: 'Achat consommables',
+                motif: 'Achat matériel',
+                typeKey: 'expense',
+                typeLabel: 'Dépense',
+                amount: 5000,
+                validatedAt: `${safeDate}T14:00:00+00:00`,
+                validationStatus: 'validated',
+                modeDePaiement: { libelle: 'Banque' }
+            }
+        ],
+        totals: { revenue: 15000, expense: 5000 },
+        patients: { newPatients: 2, returningPatients: 5 },
+        appointments: { scheduled: 8, confirmed: 6, pending: 2, cancelled: 1, confirmationRate: 75 },
+        consultations: { total: 7, paid: 5, free: 2, pending: 1 },
+        actes: [
+            {
+                date: dateLabel,
+                medecin: 'Dr. Tour',
+                patient: 'Patient Démo',
+                description: 'Consultation + Détartrage',
+                montant: 15000
+            }
+        ],
+        actsByType: [
+            { label: 'Détartrage', value: 2 },
+            { label: 'Consultation', value: 5 }
+        ],
+        doctors: [
+            {
+                name: 'Dr. Tour',
+                consultations: 4,
+                consultations_paid: 3,
+                apport: 45000,
+                revenue: 40000,
+                reliquat: 5000
+            }
+        ],
+        doctorsKpi: { totalRevenue: 40000, afterFees: 32000, totalSalaries: 8000, totalConsultations: 7 }
+    };
+};
+
 const buildMockCrossTable = ({ year, month, type }) => {
     const safeYear = Number(year || new Date().getFullYear());
     const safeMonth = Number(month || new Date().getMonth() + 1);
@@ -105,6 +185,7 @@ export function useFinances() {
 
     const chartData = ref(defaultChartState());
     const crossTableData = ref(defaultCrossTableState());
+    const crossTableDayOverview = ref(defaultDayOverviewState());
     const fixedCharges = ref([]);
     const fixedChargesTotal = ref(0);
     const paymentMethods = ref([]);
@@ -114,6 +195,7 @@ export function useFinances() {
     const loading = ref({
         charts: false,
         crossTable: false,
+        dayOverview: false,
         fixedCharges: false,
         methods: false,
         assurances: false,
@@ -196,8 +278,7 @@ export function useFinances() {
                         nom: item.libelle,
                         code: null,
                         actif: item.actif !== false,
-                        notes: item.notes || null,
-                        defaultRate: Number(item?.coverageRate ?? 0) || 0
+                        notes: item.notes || null
                     }));
                 return assurances.value;
             }
@@ -227,8 +308,7 @@ export function useFinances() {
                     nom: String(payload?.nom || '').trim(),
                     code: String(payload?.code || '').trim() || null,
                     actif: payload?.actif !== false,
-                    notes: String(payload?.notes || '').trim() || null,
-                    defaultRate: Number(payload?.defaultRate || 0) || 0
+                    notes: String(payload?.notes || '').trim() || null
                 };
                 assurances.value = [...(assurances.value || []), item];
                 return item;
@@ -368,6 +448,35 @@ export function useFinances() {
             handleError(err);
         } finally {
             loading.value.crossTable = false;
+        }
+    };
+
+    const fetchCrossTableDayOverview = async (date) => {
+        loading.value.dayOverview = true;
+        error.value = null;
+        try {
+            if (!date) {
+                throw new Error('La date est requise.');
+            }
+            if (isFinancesTourMockEnabled()) {
+                crossTableDayOverview.value = buildMockDayOverview(date);
+                return crossTableDayOverview.value;
+            }
+
+            const params = new URLSearchParams({ date: String(date) });
+            const res = await http.get(`${apiPrefix}/finances/cross-table/day-overview?${params.toString()}`, {
+                headers: buildHeaders(false)
+            });
+            crossTableDayOverview.value = {
+                ...defaultDayOverviewState(),
+                ...(res.data || {})
+            };
+            return crossTableDayOverview.value;
+        } catch (err) {
+            handleError(err);
+            crossTableDayOverview.value = defaultDayOverviewState();
+        } finally {
+            loading.value.dayOverview = false;
         }
     };
 
@@ -597,6 +706,7 @@ export function useFinances() {
     return {
         chartData,
         crossTableData,
+        crossTableDayOverview,
         fixedCharges,
         fixedChargesTotal,
         paymentMethods,
@@ -606,6 +716,7 @@ export function useFinances() {
         error,
         fetchChartData,
         fetchCrossTable,
+        fetchCrossTableDayOverview,
         fetchFixedCharges,
         fetchPaymentMethods,
         fetchAssurances,

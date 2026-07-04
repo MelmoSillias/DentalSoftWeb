@@ -1,5 +1,5 @@
 {
-  "id": "default",
+  "id": "maf",
   "displayName": "Cabinet Dentaire MAF",
   "appTitle": "DentalSoft - Cabinet Dentaire MAF",
   "brandName": "DentalSoft",
@@ -10,6 +10,17 @@
   "smsTestMessage": "Message de test CABINET DENTAIRE MAF.",
   "reportCabinetName": "CABINET DENTAIRE MAF",
   "cabinetPhone": "+223 76 66 80 37 / +223 76 56 51 86",
+  "printProfile": {
+    "name": "CABINET DENTAIRE MAF",
+    "addressLines": [
+      "sis à Garantibougou 55ème plaque"
+    ],
+    "phones": [
+      "76 66 80 37",
+      "76 56 51 86"
+    ],
+    "email": "Cabinetdentairemaf@gmail.com"
+  },
   "viteApiPrefix": "https://api.cabinetdentairemaf.com/api",
   "viteFilePrefix": "https://api.cabinetdentairemaf.com/",
   "brandingAssets": {

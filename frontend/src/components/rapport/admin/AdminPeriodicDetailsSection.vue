@@ -4,6 +4,7 @@ import Button from 'primevue/button';
 import Chart from 'primevue/chart';
 import ToggleButton from 'primevue/togglebutton';
 import ValueListCard from '@/components/rapport/common/ValueListCard.vue';
+import { printReport } from '@/utils/reportPrint';
 
 const props = defineProps({
     patients: { type: Object, default: () => ({}) },
@@ -12,10 +13,9 @@ const props = defineProps({
     roomUsage: { type: Object, default: () => ({ usage: [], topRoom: '' }) },
     paymentBalances: { type: Array, default: () => [] },
     paymentFrequency: { type: Object, default: () => ({ frequency: [], topMode: '' }) },
-    loading: { type: Boolean, default: false }
+    loading: { type: Boolean, default: false },
+    periodLabel: { type: String, default: '' }
 });
-
-const emit = defineEmits(['print']);
 const showPatientsChart = ref(false);
 const showConsultationsChart = ref(false);
 const showAppointmentsChart = ref(false);
@@ -179,13 +179,57 @@ const paymentFrequencyChartData = computed(() => {
         ]
     };
 });
+
+function printSection() {
+    printReport({
+        title: 'Détails périodiques',
+        periodLabel: props.periodLabel,
+        sections: [
+            {
+                title: 'Patients',
+                items: patientsItems(props.patients)
+            },
+            {
+                title: 'Consultations',
+                items: consultationsItems(props.consultations)
+            },
+            {
+                title: 'Rendez-vous',
+                items: appointmentsItems(props.appointments)
+            },
+            {
+                title: 'Utilisation des salles',
+                items: roomUsageItems(props.roomUsage),
+                emptyLabel: 'Aucune salle utilisée.',
+                note: props.roomUsage.topRoom ? `Salle la plus utilisée : ${props.roomUsage.topRoom}` : ''
+            },
+            {
+                title: 'Solde des comptes de paiement',
+                items: props.paymentBalances,
+                emptyLabel: 'Aucune donnée de solde.'
+            },
+            {
+                title: 'Utilisation des modes de paiement',
+                items: props.paymentFrequency.frequency || [],
+                emptyLabel: 'Aucune donnée de fréquence.',
+                note: props.paymentFrequency.topMode ? `Mode le plus utilisé : ${props.paymentFrequency.topMode}` : ''
+            }
+        ]
+    });
+}
 </script>
 
 <template>
     <section class="space-y-4" id="admin-periodic">
-        <div>
-            <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-0">Détails périodiques</h3>
-            <p class="text-sm text-surface-500 dark:text-surface-400">Données filtrées par la période sélectionnée</p>
+        <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+                <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-0">Détails périodiques</h3>
+                <p class="text-sm text-surface-500 dark:text-surface-400">
+                    Données filtrées par la période sélectionnée
+                    <span v-if="periodLabel"> — {{ periodLabel }}</span>
+                </p>
+            </div>
+            <Button label="Imprimer la section" icon="pi pi-print" outlined size="small" @click="printSection" />
         </div>
 
         <div class="grid gap-4 lg:grid-cols-3">
@@ -198,7 +242,6 @@ const paymentFrequencyChartData = computed(() => {
             >
                 <template #actions>
                     <ToggleButton v-model="showPatientsChart" onLabel="Graphique" offLabel="Données" onIcon="pi pi-chart-pie" offIcon="pi pi-list" />
-                    <Button icon="pi pi-print" text rounded @click="emit('print', 'admin-periodic-patients')" />
                 </template>
                 <template #chart>
                     <div class="aspect-square w-full">
@@ -216,7 +259,6 @@ const paymentFrequencyChartData = computed(() => {
             >
                 <template #actions>
                     <ToggleButton v-model="showConsultationsChart" onLabel="Graphique" offLabel="Données" onIcon="pi pi-chart-bar" offIcon="pi pi-list" />
-                    <Button icon="pi pi-print" text rounded @click="emit('print', 'admin-periodic-consults')" />
                 </template>
                 <template #chart>
                     <div class="aspect-[16/9] w-full">
@@ -234,7 +276,6 @@ const paymentFrequencyChartData = computed(() => {
             >
                 <template #actions>
                     <ToggleButton v-model="showAppointmentsChart" onLabel="Graphique" offLabel="Données" onIcon="pi pi-chart-bar" offIcon="pi pi-list" />
-                    <Button icon="pi pi-print" text rounded @click="emit('print', 'admin-periodic-appointments')" />
                 </template>
                 <template #chart>
                     <div class="aspect-[16/9] w-full">
@@ -253,7 +294,6 @@ const paymentFrequencyChartData = computed(() => {
             >
                 <template #actions>
                     <ToggleButton v-model="showRoomUsageChart" onLabel="Graphique" offLabel="Données" onIcon="pi pi-chart-bar" offIcon="pi pi-list" />
-                    <Button icon="pi pi-print" text rounded @click="emit('print', 'admin-room-usage')" />
                 </template>
                 <template #chart>
                     <div class="aspect-[16/9] w-full">
@@ -277,7 +317,6 @@ const paymentFrequencyChartData = computed(() => {
             >
                 <template #actions>
                     <ToggleButton v-model="showPaymentBalancesChart" onLabel="Graphique" offLabel="Données" onIcon="pi pi-chart-bar" offIcon="pi pi-list" />
-                    <Button icon="pi pi-print" text rounded @click="emit('print', 'admin-payment-balances')" />
                 </template>
                 <template #chart>
                     <div class="aspect-[16/9] w-full">
@@ -296,7 +335,6 @@ const paymentFrequencyChartData = computed(() => {
             >
                 <template #actions>
                     <ToggleButton v-model="showPaymentFrequencyChart" onLabel="Graphique" offLabel="Données" onIcon="pi pi-chart-bar" offIcon="pi pi-list" />
-                    <Button icon="pi pi-print" text rounded @click="emit('print', 'admin-payment-frequency')" />
                 </template>
                 <template #chart>
                     <div class="aspect-[16/9] w-full">

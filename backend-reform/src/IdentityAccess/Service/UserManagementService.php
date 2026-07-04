@@ -9,7 +9,6 @@ use App\Shared\Event\EntityActionEvent;
 use App\Patient\Entity\Patient;
 use App\Patient\Repository\PatientRepository;
 use App\IdentityAccess\Repository\EmployeRepository;
-use App\IdentityAccess\Repository\UserDeviceRepository;
 use App\IdentityAccess\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
@@ -23,7 +22,6 @@ class UserManagementService
         private UserRepository $userRepo,
         private EmployeRepository $employeRepo,
         private PatientRepository $patientRepo,
-        private UserDeviceRepository $userDeviceRepo,
         private EntityManagerInterface $em,
         private UserPasswordHasherInterface $passwordHasher,
         private NotificationRecipientResolver $recipientResolver,
@@ -126,23 +124,11 @@ class UserManagementService
     public function getUserList(): array
     {
         $users = $this->userRepo->findAll();
-        $userIds = array_values(array_filter(array_map(static fn(User $user) => $user->getId(), $users)));
-        $deviceStatsRows = $this->userDeviceRepo->countStatsGroupedByUserIds($userIds);
-        $deviceStats = [];
-        foreach ($deviceStatsRows as $row) {
-            $deviceStats[(int) $row['userId']] = [
-                'approved' => (int) $row['approvedCount'],
-                'pending' => (int) $row['pendingCount'],
-                'total' => (int) $row['totalCount'],
-            ];
-        }
-
         $result = [];
         foreach ($users as $user) {
             $employee = $this->findEmployeeByUser($user);
             $patient = $this->findPatientByUser($user);
             $roles = $user->getRoles();
-            $stats = $deviceStats[(int) $user->getId()] ?? ['approved' => 0, 'pending' => 0, 'total' => 0];
 
             $result[] = [
                 'id' => $user->getId(),
@@ -162,7 +148,6 @@ class UserManagementService
                     'prenom' => $patient->getPrenom(),
                     'numCarnet' => $patient->getNumCarnet(),
                 ] : null,
-                'deviceStats' => $stats,
             ];
         }
         return $result;

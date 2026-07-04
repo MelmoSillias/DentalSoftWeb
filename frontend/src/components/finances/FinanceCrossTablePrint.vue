@@ -1,16 +1,21 @@
 <script setup>
 import { computed } from 'vue';
+import PrintA4Page from '@/components/print/PrintA4Page.vue';
+import PrintDocumentHeader from '@/components/print/PrintDocumentHeader.vue';
+import logoImg from '@/assets/logo.png';
 
 const props = defineProps({
     crossTableData: { type: Object, required: true },
     headerHtml: { type: String, default: '' },
-    title: { type: String, default: 'Tableau croisé' }
+    title: { type: String, default: 'Tableau croisé' },
+    logoSrc: { type: String, default: logoImg }
 });
 
 const weeks = computed(() => props.crossTableData?.weeks || []);
 const rows = computed(() => props.crossTableData?.rows || []);
 const columnTotals = computed(() => props.crossTableData?.columnTotals || []);
 const grandTotal = computed(() => Number(props.crossTableData?.grandTotal || 0));
+const printDate = computed(() => new Date());
 
 const formatFcfa = (value) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF' }).format(Number(value || 0));
 
@@ -44,29 +49,25 @@ const formatCellDate = (week, weekday) => {
 </script>
 
 <script>
-// Cette constante est utile si vous passez le style à une librairie comme Print.js
 export const printStyles = `
-    @page { size: landscape; margin: 10mm; }
-    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-    .print-root { font-family: sans-serif; color: #111827; background: #fff; padding: 5mm; }
-    .print-header { margin-bottom: 15px; }
-    .print-title { margin-bottom: 15px; font-size: 18pt; font-weight: bold; }
-    .print-table { width: 100%; border-collapse: collapse; font-size: 10pt; }
-    .print-table th, .print-table td { border: 1px solid #d1d5db !important; padding: 8px; text-align: left; }
-    .print-table thead th { background-color: #f3f4f6 !important; font-weight: bold; }
+    @page { size: A4 landscape; margin: 10mm; }
+    .print-cross-table { font-size: 9.5pt; }
+    .print-cross-table th, .print-cross-table td { padding: 5px 7px; }
     .muted, .cell-date { font-size: 8pt; color: #6b7280 !important; }
     .row-label { font-weight: 600; background-color: #f9fafb; }
     .row-total, .grand-total { font-weight: bold; text-align: right; }
-    .totals-row th, .totals-row td { background-color: #f3f4f6 !important; font-weight: bold; }
+    .totals-row th, .totals-row td { background-color: #eef3f8 !important; font-weight: bold; }
 `;
 </script>
 
 <template>
-    <div class="print-root">
-        <div v-if="headerHtml" class="print-header" v-html="headerHtml"></div>
-        <h2 class="print-title">{{ title }}</h2>
+    <PrintA4Page :logo-src="logoSrc" orientation="landscape">
+        <template #header>
+            <div v-if="headerHtml" class="legacy-header" v-html="headerHtml" />
+            <PrintDocumentHeader v-else :title="title" :date="printDate" />
+        </template>
 
-        <table class="print-table">
+        <table class="print-doc-table print-cross-table">
             <thead>
                 <tr>
                     <th>Jours de la semaine</th>
@@ -93,52 +94,38 @@ export const printStyles = `
                 </tr>
             </tbody>
         </table>
-    </div>
+    </PrintA4Page>
 </template>
 
-<style>
-/* Style appliqué uniquement lors de l'impression physique */
-@media print {
-    /* Injecte la constante définie plus haut */
-    @page { size: landscape; margin: 10mm; }
-    
-    body { background: white !important; }
-
-    /* On force l'affichage des couleurs */
-    * { 
-        -webkit-print-color-adjust: exact !important; 
-        print-color-adjust: exact !important; 
-    }
-
-    .print-root { 
-        font-family: -apple-system, system-ui, sans-serif;
-        width: 100%;
-    }
-
-    .print-table { 
-        width: 100%; 
-        border-collapse: collapse; 
-    }
-
-    .print-table th, .print-table td { 
-        border: 1px solid #000 !important; /* Bordure plus sombre pour papier */
-        padding: 4px 8px; 
-    }
-
-    .print-table thead th { 
-        background-color: #f3f4f6 !important; 
-    }
-
-    .totals-row th, .totals-row td { 
-        background-color: #f3f4f6 !important; 
-    }
+<style scoped>
+.legacy-header {
+    margin-bottom: 8px;
 }
 
-/* Style pour l'écran (optionnel, pour que ça soit joli aussi dans l'app) */
-@media screen {
-    .print-root { padding: 20px; background: #fff; border: 1px solid #eee; margin: 10px; border-radius: 8px; }
-    .print-table { width: 100%; border-collapse: collapse; }
-    .print-table th, .print-table td { border: 1px solid #e5e7eb; padding: 8px; }
-    .print-table thead th { background: #f9fafb; }
+.muted,
+.cell-date {
+    font-size: 8pt;
+    color: #6b7280;
+}
+
+.row-label {
+    font-weight: 600;
+    background-color: #f9fafb;
+}
+
+.row-total,
+.grand-total {
+    font-weight: 700;
+    text-align: right;
+}
+
+.totals-row th,
+.totals-row td {
+    background-color: #eef3f8;
+    font-weight: 700;
+}
+
+.print-cross-table {
+    font-size: 9.5pt;
 }
 </style>

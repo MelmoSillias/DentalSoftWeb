@@ -104,6 +104,28 @@ function validateConfig(cabinetId, config) {
         throw new Error(`Invalid config for cabinet "${cabinetId}": "pwa.includeAssets" must be an array.`);
     }
 
+    if (config.printProfile !== undefined) {
+        const profile = config.printProfile;
+        if (!profile || typeof profile !== 'object') {
+            throw new Error(`Invalid config for cabinet "${cabinetId}": "printProfile" must be an object.`);
+        }
+        if (typeof profile.name !== 'string' || profile.name.trim() === '') {
+            throw new Error(`Invalid config for cabinet "${cabinetId}": "printProfile.name" must be a non-empty string.`);
+        }
+        if (profile.addressLines !== undefined && !Array.isArray(profile.addressLines)) {
+            throw new Error(`Invalid config for cabinet "${cabinetId}": "printProfile.addressLines" must be an array.`);
+        }
+        if (profile.phones !== undefined && !Array.isArray(profile.phones)) {
+            throw new Error(`Invalid config for cabinet "${cabinetId}": "printProfile.phones" must be an array.`);
+        }
+        if (profile.email !== undefined && typeof profile.email !== 'string') {
+            throw new Error(`Invalid config for cabinet "${cabinetId}": "printProfile.email" must be a string.`);
+        }
+        if (profile.website !== undefined && typeof profile.website !== 'string') {
+            throw new Error(`Invalid config for cabinet "${cabinetId}": "printProfile.website" must be a string.`);
+        }
+    }
+
     const optionalViteFields = ['viteApiPrefix', 'viteFilePrefix'];
     for (const field of optionalViteFields) {
         if (config[field] !== undefined && (typeof config[field] !== 'string' || config[field].trim() === '')) {
@@ -188,10 +210,89 @@ function expandPatternEntries(cabinetPublicDir, entries) {
     return resolvedFiles;
 }
 
+function copyDirectory(sourceDir, targetDir) {
+    if (!fs.existsSync(sourceDir) || !fs.statSync(sourceDir).isDirectory()) {
+        return 0;
+    }
+
+    fs.mkdirSync(targetDir, { recursive: true });
+    let copied = 0;
+
+    for (const entry of fs.readdirSync(sourceDir, { withFileTypes: true })) {
+        const from = path.join(sourceDir, entry.name);
+        const to = path.join(targetDir, entry.name);
+
+        if (entry.isDirectory()) {
+            copied += copyDirectory(from, to);
+            continue;
+        }
+
+        fs.copyFileSync(from, to);
+        copied += 1;
+    }
+
+    return copied;
+}
+
+function resetSyncedPublicDir() {
+    const preserve = new Set(['.htaccess']);
+
+    if (!fs.existsSync(publicDir)) {
+        return;
+    }
+
+    for (const entry of fs.readdirSync(publicDir, { withFileTypes: true })) {
+        if (preserve.has(entry.name)) {
+            continue;
+        }
+
+        fs.rmSync(path.join(publicDir, entry.name), { recursive: true, force: true });
+    }
+}
+
+function validateRequiredAssets(cabinetId, config, cabinetPublicDir) {
+    const missing = [];
+
+    for (const icon of config.pwa.icons) {
+        const relativePath = normalizeRelativePath(icon?.src);
+        if (!relativePath || !isSafeRelativePath(relativePath)) {
+            continue;
+        }
+
+        if (!fileExists(path.join(cabinetPublicDir, relativePath))) {
+            missing.push(relativePath);
+        }
+    }
+
+    for (const [key, value] of Object.entries(config.brandingAssets || {})) {
+        if (typeof value !== 'string') {
+            continue;
+        }
+
+        const relativePath = normalizeRelativePath(value);
+        if (!relativePath || !isSafeRelativePath(relativePath)) {
+            continue;
+        }
+
+        if (!fileExists(path.join(cabinetPublicDir, relativePath))) {
+            missing.push(`brandingAssets.${key} (${relativePath})`);
+        }
+    }
+
+    if (missing.length > 0) {
+        throw new Error(
+            `Missing required assets for cabinet "${cabinetId}": ${missing.join(', ')}. `
+            + `Add them under cabinet-configs/${cabinetId}/public/.`
+        );
+    }
+}
+
 function syncCabinetAssets(config, cabinetPublicDir) {
     if (!fs.existsSync(cabinetPublicDir) || !fs.statSync(cabinetPublicDir).isDirectory()) {
         throw new Error(`Cabinet public directory not found: ${cabinetPublicDir}`);
     }
+
+    resetSyncedPublicDir();
 
     const brandingFiles = collectBrandingFiles(config);
     const pwaInclude = Array.isArray(config?.pwa?.includeAssets) ? config.pwa.includeAssets : [];
@@ -215,6 +316,11 @@ function syncCabinetAssets(config, cabinetPublicDir) {
             copiedToPublic += 1;
         }
     }
+
+    copiedToPublic += copyDirectory(
+        path.join(cabinetPublicDir, 'demo'),
+        path.join(publicDir, 'demo')
+    );
 
     const assetTargets = new Set(brandingFiles);
     let copiedToAssets = 0;
@@ -252,6 +358,7 @@ function main() {
 
     const config = readJsonFile(configPath);
     validateConfig(cabinetId, config);
+    validateRequiredAssets(cabinetId, config, cabinetPublicDir);
 
     const syncResult = syncCabinetAssets(config, cabinetPublicDir);
 

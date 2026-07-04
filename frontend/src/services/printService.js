@@ -36,6 +36,11 @@ export const fetchPaymentsListPrintData = async ({ start, end }, token) => {
     return res.data;
 };
 
+export const fetchFactureAssurancePrintData = async (claimId, token) => {
+    const res = await axios.get(`${apiPrefix}/prints/assurances/claims/${claimId}`, withHeaders(token));
+    return res.data;
+};
+
 export const fetchOrdonnancePrintData = async (ordonnanceId, token) => {
     const res = await axios.get(`${apiPrefix}/prints/ordonnances/${ordonnanceId}`, withHeaders(token));
     return res.data;

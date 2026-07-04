@@ -141,6 +141,21 @@ class PaymentMethodController extends AbstractController
         return $this->json($this->financeService->getMonthlyCrossTable($year, $month, $type));
     }
 
+    #[Route('/api/finances/cross-table/day-overview', name: 'api_finances_cross_table_day_overview', methods: ['GET'])]
+    public function getCrossTableDayOverview(Request $request): JsonResponse
+    {
+        $date = (string) $request->query->get('date', '');
+        if ($date === '' || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+            return $this->json(['error' => 'Le paramètre date (YYYY-MM-DD) est requis.'], 400);
+        }
+
+        try {
+            return $this->json($this->financeService->getCrossTableDayOverview($date));
+        } catch (\InvalidArgumentException $exception) {
+            return $this->json(['error' => $exception->getMessage()], 400);
+        }
+    }
+
     #[Route('/api/finances/fixed-charges', name: 'api_finances_fixed_charges_list', methods: ['GET'])]
     public function listFixedCharges(): JsonResponse
     {

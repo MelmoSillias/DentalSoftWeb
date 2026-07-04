@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, ref, watch, createApp, nextTick } from 'vue';
 import FinanceCrossTablePrint, { printStyles } from './FinanceCrossTablePrint.vue';
+import FinanceCrossTableDayDialog from './FinanceCrossTableDayDialog.vue';
 import Button from 'primevue/button';
 import DatePicker from 'primevue/datepicker';
 import SelectButton from 'primevue/selectbutton';
@@ -16,6 +17,8 @@ const props = defineProps({
 const { crossTableData, loading, fetchCrossTable } = useFinances();
 
 const printRef = ref(null);
+const dayDialogVisible = ref(false);
+const selectedDay = ref('');
 
 const printCrossTable = async () => {
     const headerHtml = props.printerHeader || '';
@@ -137,6 +140,27 @@ const formatCellDate = (week, weekday) => {
         month: '2-digit'
     });
 };
+
+const toIsoDate = (date) => {
+    if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
+        return '';
+    }
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
+const isClickableDayCell = (week, weekday) => Boolean(getCellDate(week, weekday));
+
+const openDayOverview = (week, weekday) => {
+    const date = getCellDate(week, weekday);
+    if (!date) {
+        return;
+    }
+    selectedDay.value = toIsoDate(date);
+    dayDialogVisible.value = true;
+};
 </script>
 
 <template>
@@ -207,7 +231,14 @@ const formatCellDate = (week, weekday) => {
                             <th class="sticky left-0 bg-inherit px-4 py-3 text-left text-base font-semibold text-primary-600 dark:text-primary-300">
                                 {{ row.label }}
                             </th>
-                            <td v-for="(value, index) in row.values" :key="`${row.weekday}-${index}`" class="px-4 py-3 text-surface-900 dark:text-surface-100">
+                            <td
+                                v-for="(value, index) in row.values"
+                                :key="`${row.weekday}-${index}`"
+                                class="px-4 py-3 text-surface-900 dark:text-surface-100"
+                                :class="isClickableDayCell(weeks[index], row.weekday) ? 'cursor-pointer transition-colors hover:bg-primary-50/80 dark:hover:bg-primary-900/20' : ''"
+                                :title="isClickableDayCell(weeks[index], row.weekday) ? 'Double-cliquer pour voir le détail' : undefined"
+                                @dblclick="openDayOverview(weeks[index], row.weekday)"
+                            >
                                 <div class="relative flex min-h-[5.5rem] items-center justify-center">
                                     <span class="text-center text-base font-medium leading-snug">{{ formatFcfa(value) }}</span>
                                     <span class="absolute bottom-0 right-0 text-xs font-semibold uppercase tracking-wide text-surface-500 dark:text-surface-400">
@@ -234,6 +265,8 @@ const formatCellDate = (week, weekday) => {
                 </table>
             </div>
         </div>
+
+        <FinanceCrossTableDayDialog v-model:visible="dayDialogVisible" :date="selectedDay" />
     </section>
 </template>
 

@@ -305,6 +305,19 @@
                             responsiveLayout="scroll"
                             sortField="nom"
                             :sortOrder="1">
+                            <Column header="Logo" style="width: 5.5rem">
+                                <template #body="{ data }">
+                                    <div class="assurance-table-logo">
+                                        <img
+                                            v-if="resolveAssuranceLogoUrl(data.logoPath)"
+                                            :src="resolveAssuranceLogoUrl(data.logoPath)"
+                                            :alt="data.nom"
+                                            class="assurance-table-logo-img"
+                                        />
+                                        <i v-else class="pi pi-shield text-primary text-xl"></i>
+                                    </div>
+                                </template>
+                            </Column>
                             <Column field="nom" header="Nom" sortable>
                                 <template #body="{ data }">
                                     <span class="font-medium text-surface-900 dark:text-surface-100">{{ data.nom || '-' }}</span>
@@ -318,11 +331,6 @@
                             <Column field="statusLabel" header="Statut" sortable>
                                 <template #body="{ data }">
                                     <Tag :value="data.statusLabel" :severity="data.actif ? 'success' : 'secondary'" />
-                                </template>
-                            </Column>
-                            <Column field="defaultRate" header="Taux par défaut" sortable>
-                                <template #body="{ data }">
-                                    <span class="text-sm text-surface-600 dark:text-surface-300">{{ Number(data.defaultRate || data.tauxParDefaut || 0) }} %</span>
                                 </template>
                             </Column>
                             <Column field="notes" header="Notes">
@@ -511,6 +519,7 @@ import {
     resolvePaymentMethodTypeKey,
     sortPaymentMethods
 } from '@/utils/paymentMethodUtils';
+import { resolveAssuranceLogoUrl } from '@/utils/assuranceUtils';
 
 const toast = useToast();
 const confirm = useConfirm();
@@ -1519,3 +1528,30 @@ onBeforeUnmount(() => {
     resetTourDialogs();
 });
 </script>
+
+<style scoped>
+.assurance-table-logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 4rem;
+    height: 4rem;
+    border-radius: 0.875rem;
+    background: #fff;
+    border: 1px solid var(--p-surface-200);
+    padding: 0.375rem;
+}
+
+.assurance-table-logo-img {
+    max-height: 3rem;
+    max-width: 100%;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+}
+
+:global(.app-dark) .assurance-table-logo {
+    background: var(--p-surface-800);
+    border-color: var(--p-surface-700);
+}
+</style>

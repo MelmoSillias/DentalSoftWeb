@@ -74,6 +74,20 @@ export const loadOrdonnances = async (consultId, token) => {
     return Array.isArray(res.data) ? res.data : [];
 };
 
+export const fetchOrdonnanceById = async (ordonnanceId, token) => {
+    const res = await axios.get(`${apiPrefix}/ordonnance/${ordonnanceId}`, {
+        headers: authHeaders(token)
+    });
+    return res.data;
+};
+
+export const updateOrdonnance = async (ordonnanceId, payload, token) => {
+    const res = await axios.put(`${apiPrefix}/ordonnance/${ordonnanceId}`, payload, {
+        headers: authHeaders(token)
+    });
+    return res.data;
+};
+
 export const saveOrdonnance = async (consultId, payload, token) => {
     const res = await axios.post(`${apiPrefix}/consultations/${consultId}/ordonnances`, payload, {
         headers: authHeaders(token)

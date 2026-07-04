@@ -49,6 +49,9 @@ class EmployeeService
                 'matricule' => $employee->getMatricule(),
                 'typeContrat' => $employee->getTypeContrat(),
                 'dureeContrat' => $employee->getDureeContrat(),
+                'typeSalaire' => $employee->getTypeSalaire(),
+                'frequencePaiement' => $employee->getFrequencePaiement(),
+                'typePrime' => $employee->getTypePrime(),
                 'administrativeFiles' => $employee->getAdministrativeFiles(),
             ];
         }, $employees);
@@ -87,6 +90,9 @@ class EmployeeService
         $dateEmbauche = $this->createDateFromInput($data['dateEmbauche'], "Date d'embauche");
         $typeSalaire = $this->normalizeTypeSalaire($data['typeSalaire'] ?? null);
         $valeurSalaire = $this->normalizeSalaireValue($typeSalaire, $data['type'] ?? null, $data['valeurSalaire'] ?? null);
+        $frequencePaiement = $this->normalizeFrequencePaiement($data['frequencePaiement'] ?? null);
+        $typePrime = $this->normalizeTypePrime($data['typePrime'] ?? null, $data['type'] ?? null);
+        $valeurPrime = $this->normalizePrimeValue($typePrime, $data['valeurPrime'] ?? null);
 
         $typeContrat = $this->sanitizeString($data['typeContrat']);
         $dureeContrat = $this->normalizeDureeContrat($typeContrat, $data['dureeContrat'] ?? null);
@@ -104,6 +110,9 @@ class EmployeeService
         $employe->setDureeContrat($dureeContrat);
         $employe->setTypeSalaire($typeSalaire);
         $employe->setValeurSalaire($valeurSalaire);
+        $employe->setFrequencePaiement($frequencePaiement);
+        $employe->setTypePrime($typePrime);
+        $employe->setValeurPrime($valeurPrime);
         $employe->setComingDaysInWeek($comingDays);
         $employe->setIsOnDaysOff(false);
         $matricule = 'EMP-' . date('YmdHis');
@@ -129,6 +138,7 @@ class EmployeeService
             'nom' => 'Nom',
             'prenom' => 'Prénom',
             'fonction' => 'Fonction',
+            'type' => 'Type',
             'dateEmbauche' => "Date d'embauche",
             'typeContrat' => 'Type de contrat',
         ]);
@@ -155,6 +165,12 @@ class EmployeeService
             $data['type'] ?? $employee->getType(),
             $data['valeurSalaire'] ?? $employee->getValeurSalaire()
         );
+        $frequencePaiement = $this->normalizeFrequencePaiement($data['frequencePaiement'] ?? $employee->getFrequencePaiement());
+        $typePrime = $this->normalizeTypePrime(
+            $data['typePrime'] ?? $employee->getTypePrime(),
+            $data['type'] ?? $employee->getType()
+        );
+        $valeurPrime = $this->normalizePrimeValue($typePrime, $data['valeurPrime'] ?? $employee->getValeurPrime());
 
         $typeContrat = $this->sanitizeString($data['typeContrat']);
         $dureeContrat = $this->normalizeDureeContrat($typeContrat, $data['dureeContrat'] ?? $employee->getDureeContrat());
@@ -169,6 +185,9 @@ class EmployeeService
         $employee->setDateEmbauche($dateEmbauche);
         $employee->setTypeSalaire($typeSalaire);
         $employee->setValeurSalaire($valeurSalaire);
+        $employee->setFrequencePaiement($frequencePaiement);
+        $employee->setTypePrime($typePrime);
+        $employee->setValeurPrime($valeurPrime);
         $employee->setTypeContrat($typeContrat);
         $employee->setDureeContrat($dureeContrat);
         $employee->setComingDaysInWeek($comingDays);
@@ -293,6 +312,61 @@ class EmployeeService
         return $value === null || $value === ''
             ? 100000.0
             : $this->normalizeAmount($value, 'Valeur du salaire');
+    }
+
+    private function normalizeFrequencePaiement(?string $value): string
+    {
+        $normalized = $this->sanitizeString($value ?? '');
+
+        if ($normalized === '') {
+            return 'mensuel';
+        }
+
+        $allowed = ['mensuel', 'journalier'];
+        if (!in_array($normalized, $allowed, true)) {
+            throw new InvalidArgumentException('Frequence de paiement invalide.');
+        }
+
+        return $normalized;
+    }
+
+    private function normalizeTypePrime(?string $value, ?string $typeEmploye): string
+    {
+        $normalized = $this->sanitizeString($value ?? '');
+
+        if ($normalized === '') {
+            return 'aucune';
+        }
+
+        $allowed = ['aucune', 'fixe', 'actes'];
+        if (!in_array($normalized, $allowed, true)) {
+            throw new InvalidArgumentException('Type de prime invalide.');
+        }
+
+        if ($normalized === 'actes' && $typeEmploye !== 'Medecin') {
+            throw new InvalidArgumentException('La prime sur actes est reservee aux medecins.');
+        }
+
+        return $normalized;
+    }
+
+    private function normalizePrimeValue(string $typePrime, mixed $value): ?float
+    {
+        if ($typePrime === 'aucune') {
+            return null;
+        }
+
+        if ($value === null || $value === '') {
+            throw new InvalidArgumentException('La valeur de prime est requise lorsqu\'une prime est configuree.');
+        }
+
+        $normalized = $this->normalizeAmount($value, 'Valeur de la prime');
+
+        if ($typePrime === 'actes' && $normalized > 100) {
+            throw new InvalidArgumentException('Le pourcentage de prime sur actes ne peut pas depasser 100.');
+        }
+
+        return $normalized;
     }
 
     private function normalizeDureeContrat(string $typeContrat, mixed $value): ?int

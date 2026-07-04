@@ -6,10 +6,15 @@ import Dialog from 'primevue/dialog';
 import InputNumber from 'primevue/inputnumber';
 import Select from 'primevue/select';
 import Textarea from 'primevue/textarea';
+import SalaryPreviewPanel from '@/components/administration/SalaryPreviewPanel.vue';
 
 const props = defineProps({
     visible: Boolean,
     employees: {
+        type: Array,
+        default: () => []
+    },
+    paymentMethods: {
         type: Array,
         default: () => []
     },
@@ -31,21 +36,80 @@ const emit = defineEmits(['update:visible', 'request-context', 'submit']);
 
 const localVisible = ref(false);
 const monthModel = ref(new Date());
+const dayModel = ref(new Date());
+const primeAmountModel = ref(null);
 const form = ref({
     employeeId: null,
     paidAmount: null,
     paidAt: new Date(),
+    paymentMethodId: null,
     note: ''
+});
+
+const selectedEmployee = computed(() =>
+    (props.employees || []).find((employee) => employee.id === form.value.employeeId) || null
+);
+
+const isJournalier = computed(() => {
+    const freq = props.context?.employee?.frequencePaiement || selectedEmployee.value?.frequencePaiement;
+    return freq === 'journalier';
+});
+
+const hasFixedPrime = computed(() => {
+    const type = props.context?.employee?.typePrime;
+    return type === 'fixe';
+});
+
+const selectedMonth = computed(() => (monthModel.value ? monthModel.value.getMonth() + 1 : null));
+const selectedYear = computed(() => (monthModel.value ? monthModel.value.getFullYear() : null));
+const selectedDay = computed(() => {
+    if (!isJournalier.value || !dayModel.value) return null;
+    return dayModel.value.toISOString().slice(0, 10);
+});
+
+const canSubmit = computed(() => {
+    if (!form.value.employeeId || !selectedMonth.value || !selectedYear.value || !form.value.paidAmount) {
+        return false;
+    }
+    if (!form.value.paymentMethodId) return false;
+    if (isJournalier.value && !selectedDay.value) return false;
+    if (props.context && props.context.canPay === false) return false;
+    return true;
+});
+
+const submitTooltip = computed(() => {
+    if (!form.value.paymentMethodId) {
+        return 'Sélectionnez un mode de règlement.';
+    }
+    if (props.context?.canPay === false) {
+        return props.context?.blockReason || 'Cette période est déjà entièrement réglée.';
+    }
+    if (isJournalier.value && !selectedDay.value) {
+        return 'Sélectionnez le jour travaillé à payer.';
+    }
+    return '';
+});
+
+const effectiveRemaining = computed(() => {
+    if (!props.context) return null;
+    const base = Number(props.context.breakdown?.baseSalary ?? props.context.baseSalaryAmount ?? 0);
+    const prime = Number(primeAmountModel.value ?? props.context.primeAmount ?? 0);
+    const alreadyPaid = Number(props.context.breakdown?.alreadyPaid ?? 0);
+    return Math.max(0, base + prime - alreadyPaid);
 });
 
 watch(() => props.visible, (val) => {
     localVisible.value = val;
     if (val) {
-        monthModel.value = new Date();
+        const now = new Date();
+        monthModel.value = now;
+        dayModel.value = now;
+        primeAmountModel.value = null;
         form.value = {
             employeeId: null,
             paidAmount: null,
-            paidAt: new Date(),
+            paidAt: now,
+            paymentMethodId: props.paymentMethods?.[0]?.id ?? null,
             note: ''
         };
     }
@@ -53,14 +117,23 @@ watch(() => props.visible, (val) => {
 
 watch(localVisible, (val) => emit('update:visible', val));
 
-const selectedMonth = computed(() => (monthModel.value ? monthModel.value.getMonth() + 1 : null));
-const selectedYear = computed(() => (monthModel.value ? monthModel.value.getFullYear() : null));
+watch(
+    () => props.paymentMethods,
+    (methods) => {
+        if (!form.value.paymentMethodId && methods?.length) {
+            form.value.paymentMethodId = methods[0].id;
+        }
+    },
+    { immediate: true }
+);
 
 watch(
-    () => [form.value.employeeId, selectedMonth.value, selectedYear.value],
-    ([employeeId, month, year]) => {
+    () => [form.value.employeeId, selectedMonth.value, selectedYear.value, selectedDay.value],
+    ([employeeId, month, year, day]) => {
         if (!employeeId || !month || !year) return;
-        emit('request-context', { employeeId, month, year });
+        const employee = (props.employees || []).find((item) => item.id === employeeId);
+        if (employee?.frequencePaiement === 'journalier' && !day) return;
+        emit('request-context', { employeeId, month, year, day: day || null });
     }
 );
 
@@ -68,30 +141,48 @@ watch(
     () => props.context,
     (val) => {
         if (!val) return;
-        const calculated = Number(val?.calculatedAmount || 0);
-        form.value.paidAmount = calculated > 0 ? calculated : null;
+        primeAmountModel.value = Number(val?.primeAmount || 0);
+        const remaining = effectiveRemaining.value ?? Number(val?.breakdown?.remaining || val?.calculatedAmount || 0);
+        form.value.paidAmount = remaining > 0 ? remaining : null;
     }
 );
+
+watch(primeAmountModel, () => {
+    if (!props.context) return;
+    const remaining = effectiveRemaining.value;
+    form.value.paidAmount = remaining > 0 ? remaining : null;
+});
 
 const close = () => {
     localVisible.value = false;
 };
 
 const submit = () => {
-    if (!form.value.employeeId || !selectedMonth.value || !selectedYear.value || !form.value.paidAmount) return;
+    if (!canSubmit.value) return;
 
     const paidAt = form.value.paidAt instanceof Date
         ? form.value.paidAt.toISOString().slice(0, 10)
         : '';
 
-    emit('submit', {
+    const payload = {
         employeeId: form.value.employeeId,
         month: selectedMonth.value,
         year: selectedYear.value,
         paidAmount: Number(form.value.paidAmount),
         paidAt,
+        paymentMethodId: form.value.paymentMethodId,
         note: form.value.note || ''
-    });
+    };
+
+    if (isJournalier.value && selectedDay.value) {
+        payload.day = selectedDay.value;
+    }
+
+    if (hasFixedPrime.value && primeAmountModel.value !== null) {
+        payload.primeAmount = Number(primeAmountModel.value);
+    }
+
+    emit('submit', payload);
 };
 
 const employeeOptions = computed(() =>
@@ -103,64 +194,93 @@ const employeeOptions = computed(() =>
 </script>
 
 <template>
-    <Dialog v-model:visible="localVisible" modal header="Paiement de salaire" :style="{ width: '44rem' }" @hide="close">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div class="space-y-1">
-                <label class="text-sm font-medium">Employe</label>
-                <Select
-                    v-model="form.employeeId"
-                    :options="employeeOptions"
-                    optionLabel="label"
-                    optionValue="value"
-                    class="w-full"
-                    placeholder="Selectionnez un employe"
-                />
-            </div>
+    <Dialog
+        v-model:visible="localVisible"
+        modal
+        header="Paiement de salaire"
+        :style="{ width: '52rem', maxWidth: '95vw' }"
+        @hide="close"
+    >
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <div class="space-y-4">
+                <div class="space-y-1">
+                    <label class="text-sm font-medium">Employé</label>
+                    <Select
+                        v-model="form.employeeId"
+                        :options="employeeOptions"
+                        optionLabel="label"
+                        optionValue="value"
+                        class="w-full"
+                        placeholder="Sélectionnez un employé"
+                    />
+                </div>
 
-            <div class="space-y-1">
-                <label class="text-sm font-medium">Mois de paie</label>
-                <DatePicker v-model="monthModel" view="month" dateFormat="mm/yy" showIcon class="w-full" />
-            </div>
+                <div class="space-y-1">
+                    <label class="text-sm font-medium">{{ isJournalier ? 'Mois de référence' : 'Mois de paie' }}</label>
+                    <DatePicker v-model="monthModel" view="month" dateFormat="mm/yy" showIcon class="w-full" />
+                </div>
 
-            <div class="space-y-1">
-                <label class="text-sm font-medium">Montant verse</label>
-                <InputNumber v-model="form.paidAmount" class="w-full" :min="0" mode="decimal" :minFractionDigits="0" :maxFractionDigits="2" suffix=" F CFA" />
-            </div>
+                <div v-if="isJournalier" class="space-y-1">
+                    <label class="text-sm font-medium">Jour travaillé à payer</label>
+                    <DatePicker v-model="dayModel" dateFormat="yy-mm-dd" showIcon class="w-full" />
+                </div>
 
-            <div class="space-y-1">
-                <label class="text-sm font-medium">Date de paiement</label>
-                <DatePicker v-model="form.paidAt" dateFormat="yy-mm-dd" showIcon class="w-full" />
-            </div>
-        </div>
+                <div class="space-y-1">
+                    <label class="text-sm font-medium">Montant versé</label>
+                    <InputNumber
+                        v-model="form.paidAmount"
+                        class="w-full"
+                        :min="0"
+                        mode="decimal"
+                        :minFractionDigits="0"
+                        :maxFractionDigits="2"
+                        suffix=" F CFA"
+                    />
+                </div>
 
-        <div class="space-y-1 mt-4">
-            <label class="text-sm font-medium">Note (optionnel)</label>
-            <Textarea v-model="form.note" rows="3" class="w-full" autoResize />
-        </div>
+                <div class="space-y-1">
+                    <label class="text-sm font-medium">Mode de règlement</label>
+                    <Select
+                        v-model="form.paymentMethodId"
+                        :options="paymentMethods"
+                        optionLabel="libelle"
+                        optionValue="id"
+                        class="w-full"
+                        placeholder="Sélectionnez un mode"
+                    />
+                </div>
 
-        <div class="mt-4 rounded-xl border border-surface-200 dark:border-surface-700 p-4 bg-surface-50/70 dark:bg-surface-800/40">
-            <div class="flex items-center justify-between mb-2">
-                <h4 class="font-semibold">Apercu du salaire</h4>
-                <span v-if="contextLoading" class="text-sm text-surface-500">Calcul en cours...</span>
-            </div>
-            <div v-if="context" class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-                <div><strong>Nom:</strong> {{ context.employee?.fullname || '-' }}</div>
-                <div><strong>Fonction:</strong> {{ context.employee?.fonction || '-' }}</div>
-                <div><strong>Type salaire:</strong> {{ context.employee?.typeSalaire || '-' }}</div>
-                <div><strong>Valeur salaire:</strong> {{ context.employee?.valeurSalaire ?? '-' }}</div>
-                <div><strong>Dernier paiement:</strong> {{ context.employee?.dateDernierPaiement || '-' }}</div>
-                <div><strong>Apport mensuel:</strong> {{ Number(context.baseAmount || 0).toLocaleString('fr-FR') }} F CFA</div>
-                <div class="md:col-span-2 text-base font-semibold text-primary-600 dark:text-primary-300">
-                    Montant calcule: {{ Number(context.calculatedAmount || 0).toLocaleString('fr-FR') }} F CFA
+                <div class="space-y-1">
+                    <label class="text-sm font-medium">Date de règlement</label>
+                    <DatePicker v-model="form.paidAt" dateFormat="yy-mm-dd" showIcon class="w-full" />
+                </div>
+
+                <div class="space-y-1">
+                    <label class="text-sm font-medium">Note (optionnel)</label>
+                    <Textarea v-model="form.note" rows="3" class="w-full" autoResize />
                 </div>
             </div>
-            <p v-else class="text-sm text-surface-500">Selectionnez un employe et un mois pour calculer automatiquement.</p>
+
+            <SalaryPreviewPanel
+                :context="context"
+                :loading="contextLoading"
+                v-model:prime-amount="primeAmountModel"
+                :editable-prime="hasFixedPrime"
+            />
         </div>
 
         <template #footer>
             <div class="flex justify-end gap-2">
                 <Button label="Annuler" text severity="secondary" @click="close" />
-                <Button label="Enregistrer" icon="pi pi-check" :loading="loading" @click="submit" />
+                <span v-tooltip.top="submitTooltip">
+                    <Button
+                        label="Enregistrer"
+                        icon="pi pi-check"
+                        :loading="loading"
+                        :disabled="!canSubmit"
+                        @click="submit"
+                    />
+                </span>
             </div>
         </template>
     </Dialog>

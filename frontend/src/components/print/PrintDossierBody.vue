@@ -1,12 +1,11 @@
 <template>
-    <div class="paper" :style="{ '--watermark': `url(${logoSrc})` }">
-        <header>
-            <img :src="headerSrc" alt="Cabinet Dentaire Orodent" class="header-banner" />
-            <h3>Dossier patient</h3>
-        </header>
+    <PrintA4Page :logo-src="logoSrc">
+        <template #header>
+            <PrintDocumentHeader title="Dossier patient" :date="patient?.dateInscription" />
+        </template>
 
-        <h2 class="section-title">Informations personnelles</h2>
-        <table class="info-table">
+        <h2 class="print-section-title">Informations personnelles</h2>
+        <table class="print-doc-table info-table">
             <tbody>
                 <tr><th>Nom</th><td>{{ patient?.nom || '—' }}</td></tr>
                 <tr><th>Prénom</th><td>{{ patient?.prenom || '—' }}</td></tr>
@@ -27,24 +26,22 @@
                             {{ patient.contactUrgence?.nom }} ({{ patient.contactUrgence?.lienParente }})<br />
                             Tél : {{ patient.contactUrgence?.telephone }}
                         </template>
-                        <template v-else>
-                            Aucun contact d'urgence disponible.
-                        </template>
+                        <template v-else>Aucun contact d'urgence disponible.</template>
                     </td>
                 </tr>
             </tbody>
         </table>
 
-        <h2 class="section-title">Allergies</h2>
-        <ul v-if="patient?.allergies?.length">
+        <h2 class="print-section-title">Allergies</h2>
+        <ul v-if="patient?.allergies?.length" class="list">
             <li v-for="(a, idx) in patient.allergies" :key="idx">
                 {{ a.libelle }}<template v-if="a.description"> : {{ a.description }}</template>
             </li>
         </ul>
         <p v-else class="muted">Aucune allergie renseignée.</p>
 
-        <h2 class="section-title">Antécédents médicaux</h2>
-        <ul v-if="patient?.antecedents?.length">
+        <h2 class="print-section-title">Antécédents médicaux</h2>
+        <ul v-if="patient?.antecedents?.length" class="list">
             <li v-for="(ant, idx) in patient.antecedents" :key="idx">
                 {{ ant.type || '—' }}
                 <template v-if="ant.description"> ({{ ant.description }})</template>
@@ -52,16 +49,16 @@
             </li>
         </ul>
         <p v-else class="muted">Aucun antécédent médical enregistré.</p>
-    </div>
+    </PrintA4Page>
 </template>
 
 <script setup>
-import headerImg from '@/assets/header-big.jpeg';
+import PrintA4Page from './PrintA4Page.vue';
+import PrintDocumentHeader from './PrintDocumentHeader.vue';
 import logoImg from '@/assets/logo.png';
 
 defineProps({
     patient: { type: Object, default: () => ({}) },
-    headerSrc: { type: String, default: headerImg },
     logoSrc: { type: String, default: logoImg }
 });
 
@@ -81,105 +78,35 @@ const formatDateTime = (value) => {
 </script>
 
 <style scoped>
-.paper {
-    position: relative;
-    background: #fff;
-    padding: 24px;
-    border-radius: 8px;
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
-    overflow: hidden;
-    font-family: Arial, sans-serif;
-    color: #1f2d3d;
-}
-
-.paper::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: var(--watermark) center center no-repeat;
-    background-size: 60% auto;
-    opacity: 0.06;
-    pointer-events: none;
-}
-
-header {
-    text-align: center;
-    margin-bottom: 24px;
-}
-
-.header-banner {
-    width: 100%;
-    max-height: 120px;
-    object-fit: contain;
-    margin-bottom: 8px;
-}
-
-.section-title {
-    margin: 26px 0 12px;
-    font-size: 16px;
-    color: #0f4c75;
-    display: inline-block;
-    position: relative;
-    padding-left: 18px;
-}
-
-.section-title::before {
-    content: '◆';
-    position: absolute;
-    left: 0;
-    top: -1px;
-    color: #0f4c75;
-    font-size: 12px;
-}
-
-.info-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-bottom: 16px;
-    font-size: 13px;
-}
-
 .info-table th {
-    width: 210px;
-    text-align: left;
-    padding: 8px 10px;
-    color: #5f6c7b;
+    width: 32%;
+    background: #f6f8fb;
     font-weight: 600;
-    border-bottom: 1px solid #d9e2ec;
-    background: #f9fbfd;
 }
 
-.info-table td {
-    padding: 8px 10px;
-    border-bottom: 1px solid #d9e2ec;
-}
-
-.info-table tr:nth-child(even) td {
-    background: #fafbff;
-}
-
-ul {
+.list {
     list-style: none;
-    padding-left: 0;
-    margin: 0 0 8px;
-    font-size: 13px;
+    padding: 0;
+    margin: 0 0 12px;
+    font-size: 10.5pt;
 }
 
-ul li {
+.list li {
     margin: 4px 0;
     padding-left: 14px;
     position: relative;
 }
 
-ul li::before {
+.list li::before {
     content: '•';
     position: absolute;
     left: 0;
-    color: #0f4c75;
+    color: #1d6fbf;
+    font-weight: 700;
 }
 
 .muted {
-    color: #5f6c7b;
-    font-size: 12px;
+    color: #586574;
+    font-size: 10pt;
 }
 </style>

@@ -18,6 +18,7 @@ import UserForm from '@/components/administration/UserForm.vue';
 import { GUIDED_TOUR_START_EVENT } from '@/tours';
 import { createAdministrationUsersTour } from '@/tours/administrationUsersTour';
 import { startTourGuide } from '@/tours/tourGuideClient';
+import { formatEmployeeTypeLabel } from '@/utils/employeeTypeUtils';
 
 const toast = useToast();
 const confirm = useConfirm();
@@ -31,10 +32,6 @@ const {
     error,
     fetchUsers,
     fetchUserAssociations,
-    fetchUserDevices,
-    approveUserDevice,
-    rejectUserDevice,
-    deleteUserDevice,
     availableEmployees,
     availablePatients,
     addUser,
@@ -61,11 +58,6 @@ const groupByType = ref(false);
 const expandedGroups = ref([]);
 const isGuidedTourStarting = ref(false);
 const usersAssociationView = ref('employees');
-const expandedRows = ref({});
-const userDevicesMap = ref({});
-const userDeviceLogsMap = ref({});
-const devicesDialogVisible = ref(false);
-const devicesDialogUser = ref(null);
 
 const usersAssociationOptions = [
     { label: 'Employes', value: 'employees' },
@@ -77,7 +69,7 @@ const usersView = computed(() =>
         const roles = Array.isArray(user?.roles) ? user.roles : user?.role ? [user.role] : [];
         const fonction = user?.fonction ? String(user.fonction) : '';
 
-        const typeLabel =
+        const typeLabel = formatEmployeeTypeLabel(
             user?.type ||
             (fonction
                 ? fonction.charAt(0).toUpperCase() + fonction.slice(1)
@@ -91,7 +83,8 @@ const usersView = computed(() =>
                         ? 'Agent'
                         : roles.includes('ROLE_COMMERCIAL')
                           ? 'Commercial'
-                          : 'Utilisateur');
+                          : 'Utilisateur')
+        );
 
         const employee = user?.employee || user?.employe || null;
         const patient = user?.patient || null;
@@ -123,114 +116,11 @@ const associationColumnHeader = computed(() =>
     usersAssociationView.value === 'patients' ? 'Patient associe' : 'Employe associe'
 );
 
-const currentDialogDevices = computed(() => {
-    const userId = devicesDialogUser.value?.id;
-    if (!userId) return [];
-    return userDevicesMap.value[userId]?.devices || [];
-});
-
-const currentDialogDeviceLogs = computed(() => {
-    const userId = devicesDialogUser.value?.id;
-    if (!userId) return [];
-    return userDeviceLogsMap.value[userId] || [];
-});
-
-const currentDialogDeviceMax = computed(() => {
-    const userId = devicesDialogUser.value?.id;
-    if (!userId) return 0;
-    return userDevicesMap.value[userId]?.maxDevices || 0;
-});
-
 const loadUsers = async () => {
     await fetchUsers();
     if (error.value) {
         toast.add({ severity: 'error', summary: 'Erreur', detail: error.value, life: 4000 });
     }
-};
-
-const loadDevicesForUser = async (userId) => {
-    if (!userId) return;
-    const payload = await fetchUserDevices(userId);
-    userDevicesMap.value = {
-        ...userDevicesMap.value,
-        [userId]: {
-            devices: Array.isArray(payload?.devices) ? payload.devices : [],
-            maxDevices: Number(payload?.maxDevices || 0)
-        }
-    };
-    userDeviceLogsMap.value = {
-        ...userDeviceLogsMap.value,
-        [userId]: Array.isArray(payload?.logs) ? payload.logs : []
-    };
-};
-
-const getUserDevices = (userId) => userDevicesMap.value[userId]?.devices || [];
-
-const formatDeviceStatusLabel = (status) => {
-    if (status === 'approved') return 'Approuve';
-    if (status === 'rejected') return 'Refuse';
-    return 'En attente';
-};
-
-const formatDeviceStatusSeverity = (status) => {
-    if (status === 'approved') return 'success';
-    if (status === 'rejected') return 'danger';
-    return 'warning';
-};
-
-const onRowExpand = async ({ data }) => {
-    try {
-        await loadDevicesForUser(data?.id);
-    } catch (err) {
-        toast.add({ severity: 'error', summary: 'Erreur', detail: err?.message || 'Chargement des appareils impossible.', life: 4000 });
-    }
-};
-
-const openDevicesDialog = async (user) => {
-    devicesDialogUser.value = user;
-    devicesDialogVisible.value = true;
-    try {
-        await loadDevicesForUser(user?.id);
-    } catch (err) {
-        toast.add({ severity: 'error', summary: 'Erreur', detail: err?.message || 'Chargement des appareils impossible.', life: 4000 });
-    }
-};
-
-const confirmDeviceAction = (action, user, device, event) => {
-    const userId = user?.id;
-    const deviceId = device?.id;
-    if (!userId || !deviceId) return;
-
-    const labels = {
-        approve: 'approuver',
-        reject: 'refuser',
-        delete: 'supprimer'
-    };
-
-    confirm.require({
-        target: event?.currentTarget,
-        message: `Confirmer pour ${labels[action]} cet appareil ?`,
-        icon: 'pi pi-shield',
-        acceptLabel: 'Confirmer',
-        rejectLabel: 'Annuler',
-        accept: async () => {
-            try {
-                if (action === 'approve') {
-                    await approveUserDevice(userId, deviceId);
-                } else if (action === 'reject') {
-                    await rejectUserDevice(userId, deviceId);
-                } else {
-                    await deleteUserDevice(userId, deviceId);
-                }
-
-                await loadDevicesForUser(userId);
-                await loadUsers();
-                toast.add({ severity: 'success', summary: 'Succes', detail: 'Mise a jour de l appareil effectuee.', life: 2500 });
-            } catch (err) {
-                toast.add({ severity: 'error', summary: 'Erreur', detail: err?.response?.data?.error || err?.message || 'Action impossible.', life: 4500 });
-            }
-        }
-    });
 };
 
 const loadAssociations = async () => {
@@ -548,8 +438,6 @@ onBeforeUnmount(() => {
             <DataTable
                 :value="filteredUsersView"
                 dataKey="id"
-                v-model:expandedRows="expandedRows"
-                @rowExpand="onRowExpand"
                 :paginator="true"
                 :rows="10"
                 :rowsPerPageOptions="[10, 20, 50]"
@@ -583,60 +471,21 @@ onBeforeUnmount(() => {
                         <div class="font-medium text-surface-900 dark:text-surface-100">{{ data.username }}</div>
                     </template>
                 </Column>
-                <Column expander style="width: 3rem" />
                 <Column field="associationLabel" :header="associationColumnHeader" sortable></Column>
                 <Column field="typeLabel" header="Type" sortable>
                     <template #body="{ data }">
                         <Tag :value="data.typeLabel" :severity="data.typeLabel === 'Administrateur' ? 'danger' : 'info'" />
                     </template>
-                </Column> 
-                <Column header="Appareils autorises" sortable>
-                    <template #body="{ data }">
-                        <div class="flex items-center gap-2">
-                            <Tag :value="`${data.deviceStats?.approved || 0}`" severity="success" />
-                            <span class="text-xs text-surface-500">approuves</span>
-                            <Tag v-if="(data.deviceStats?.pending || 0) > 0" :value="`${data.deviceStats?.pending} en attente`" severity="warning" />
-                        </div>
-                    </template>
                 </Column>
                 <Column header="Actions" style="min-width: 200px">
                     <template #body="{ data }">
                         <div data-tour="admin-users.actions" class="flex flex-wrap gap-2">
-                            <Button icon="pi pi-mobile" severity="help" text @click="openDevicesDialog(data)" />
                             <Button icon="pi pi-pencil" severity="secondary" text @click="openEdit(data)" />
                             <Button icon="pi pi-key" severity="info" text @click="openResetPassword(data)" /> 
                             <Button icon="pi pi-trash" severity="danger" text @click="confirmDelete(data, $event)" />
                         </div>
                     </template>
                 </Column>
-
-                <template #expansion="{ data }">
-                    <div class="p-4 bg-surface-50 dark:bg-surface-900/20 rounded-xl">
-                        <h4 class="font-semibold mb-3">Appareils associes</h4>
-                        <DataTable :value="getUserDevices(data.id)" size="small" responsiveLayout="scroll">
-                            <Column field="deviceName" header="Appareil" />
-                            <Column field="deviceType" header="Type" />
-                            <Column field="status" header="Etat">
-                                <template #body="{ data: device }">
-                                    <Tag :value="formatDeviceStatusLabel(device.status)" :severity="formatDeviceStatusSeverity(device.status)" />
-                                </template>
-                            </Column>
-                            <Column header="Actions" style="width: 220px">
-                                <template #body="{ data: device }">
-                                    <div class="flex gap-2">
-                                        <Button v-if="device.status === 'pending'" icon="pi pi-check" severity="success" text @click="confirmDeviceAction('approve', data, device, $event)" />
-                                        <Button v-if="device.status === 'pending'" icon="pi pi-times" severity="warning" text @click="confirmDeviceAction('reject', data, device, $event)" />
-                                        <Button v-if="device.status !== 'pending'" icon="pi pi-trash" severity="danger" text @click="confirmDeviceAction('delete', data, device, $event)" />
-                                    </div>
-                                </template>
-                            </Column>
-
-                            <template #empty>
-                                <div class="text-sm text-surface-500 py-2">Aucun appareil enregistre.</div>
-                            </template>
-                        </DataTable>
-                    </div>
-                </template>
 
                 <template #empty>
                     <div class="text-center py-12 text-surface-600 dark:text-surface-300">
@@ -655,51 +504,6 @@ onBeforeUnmount(() => {
             :loading="loading"
             tourTarget="admin-users.dialog.create"
             @submit="confirmFormSubmit" />
-
-            <Dialog v-model:visible="devicesDialogVisible" header="Gestion des appareils" :style="{ width: '820px' }" :modal="true">
-                <div class="space-y-4">
-                    <div class="text-sm text-surface-600">
-                        Utilisateur: <strong>{{ devicesDialogUser?.username }}</strong>
-                        <span v-if="currentDialogDeviceMax" class="ml-2">| Limite: {{ currentDialogDeviceMax }} appareils approuves</span>
-                    </div>
-
-                    <DataTable :value="currentDialogDevices" responsiveLayout="scroll" size="small">
-                        <Column field="deviceName" header="Appareil" />
-                        <Column field="deviceType" header="Type" />
-                        <Column field="ipAddress" header="IP" />
-                        <Column field="status" header="Etat">
-                            <template #body="{ data: device }">
-                                <Tag :value="formatDeviceStatusLabel(device.status)" :severity="formatDeviceStatusSeverity(device.status)" />
-                            </template>
-                        </Column>
-                        <Column field="lastSeenAt" header="Derniere activite" />
-                        <Column header="Actions" style="width: 220px">
-                            <template #body="{ data: device }">
-                                <div class="flex gap-2">
-                                    <Button v-if="device.status === 'pending'" icon="pi pi-check" severity="success" text @click="confirmDeviceAction('approve', devicesDialogUser, device, $event)" />
-                                    <Button v-if="device.status === 'pending'" icon="pi pi-times" severity="warning" text @click="confirmDeviceAction('reject', devicesDialogUser, device, $event)" />
-                                    <Button v-if="device.status !== 'pending'" icon="pi pi-trash" severity="danger" text @click="confirmDeviceAction('delete', devicesDialogUser, device, $event)" />
-                                </div>
-                            </template>
-                        </Column>
-                    </DataTable>
-
-                    <div>
-                        <h5 class="font-semibold mb-2">Logs d'acces</h5>
-                        <DataTable :value="currentDialogDeviceLogs" size="small" responsiveLayout="scroll">
-                            <Column field="createdAt" header="Date" />
-                            <Column field="path" header="Route" />
-                            <Column field="status" header="Etat" />
-                            <Column field="deviceName" header="Appareil" />
-                            <Column field="ipAddress" header="IP" />
-                        </DataTable>
-                    </div>
-                </div>
-
-                <template #footer>
-                    <Button label="Fermer" icon="pi pi-times" text severity="secondary" @click="devicesDialogVisible = false" />
-                </template>
-            </Dialog>
 
             <Dialog header="Réinitialiser le mot de passe" v-model:visible="resetDialogVisible" :style="{ width: '420px' }" :modal="true">
                 <div class="flex flex-col gap-3" data-tour="admin-users.dialog.reset">

@@ -1,4 +1,5 @@
 <script setup>
+import ActeLineCard from '@/components/consultations/ActeLineCard.vue';
 import Button from 'primevue/button';
 import Dialog from 'primevue/dialog';
 import InputNumber from 'primevue/inputnumber';
@@ -6,6 +7,7 @@ import InputText from 'primevue/inputtext';
 import Select from 'primevue/select';
 import Tag from 'primevue/tag';
 import { computed } from 'vue';
+import { normalizeDentList } from '@/services/consultations';
 
 const props = defineProps({
     payDialogVisible: { type: Boolean, default: false },
@@ -35,6 +37,8 @@ const props = defineProps({
     validateLoading: { type: Boolean, default: false },
     factureDialogVisible: { type: Boolean, default: false },
     factureLines: { type: Array, default: () => [] },
+    factureDate: { type: String, default: '' },
+    factureTime: { type: String, default: '' },
     factureSaving: { type: Boolean, default: false },
     factureTotal: { type: Number, default: 0 },
     soinsList: { type: Array, default: () => [] },
@@ -56,6 +60,8 @@ const emit = defineEmits([
     'update:resetPaymentDialogVisible',
     'update:validateDialogVisible',
     'update:factureDialogVisible',
+    'update:factureDate',
+    'update:factureTime',
     'update:previewDialogVisible',
     'update:previewDialogTab',
     'submit-payment',
@@ -65,7 +71,11 @@ const emit = defineEmits([
     'print-invoice'
 ]);
 
-const createEmptyLine = () => ({ dent: '', type: '', description: '', prix: 0, quantite: 1 });
+const createEmptyLine = () => ({ dent: [], type: '', description: '', prix: 0, quantite: 1 });
+
+const lineTotal = (line) => (Number(line?.quantite) || 0) * (Number(line?.prix) || 0);
+
+const factureLineSubtotals = computed(() => (props.factureLines || []).map((line) => lineTotal(line)));
 
 const addFactureLine = () => {
     props.factureLines.push(createEmptyLine());
@@ -76,6 +86,19 @@ const removeFactureLine = (index) => {
     if (!props.factureLines.length) {
         props.factureLines.push(createEmptyLine());
     }
+};
+
+const updateFactureLine = (index, patch) => {
+    const line = props.factureLines[index];
+    if (!line) {
+        return;
+    }
+
+    const next = { ...line, ...patch };
+    if (Object.prototype.hasOwnProperty.call(patch || {}, 'dent')) {
+        next.dent = normalizeDentList(patch.dent);
+    }
+    props.factureLines[index] = next;
 };
 
 const hasPreviewData = computed(() => Boolean(props.previewData));
@@ -167,28 +190,81 @@ const hasPreviewData = computed(() => Boolean(props.previewData));
         </template>
     </Dialog>
 
-    <Dialog :visible="factureDialogVisible" header="Modifier la facture" :modal="true" :style="{ width: '720px' }" @update:visible="emit('update:factureDialogVisible', $event)">
-        <div class="flex flex-col gap-3">
-            <div v-for="(line, idx) in factureLines" :key="idx" class="border rounded p-3 flex flex-col gap-2">
-                <div class="grid md:grid-cols-2 gap-2">
-                    <InputText v-model="line.dent" placeholder="Dent" />
-                    <Select v-model="line.type" :options="soinsList" placeholder="Acte / Soin" />
-                </div>
-                <InputText v-model="line.description" placeholder="Description" />
-                <div class="grid grid-cols-2 gap-2">
-                    <InputNumber v-model="line.prix" mode="decimal" locale="fr-FR" :min="0" class="w-full" placeholder="Prix" />
-                    <InputNumber v-model="line.quantite" :min="1" class="w-full" placeholder="Quantité" />
-                </div>
-                <div class="flex justify-end">
-                    <Button label="Supprimer" icon="pi pi-trash" text severity="danger" @click="removeFactureLine(idx)" />
+    <Dialog :visible="factureDialogVisible" header="Modifier la facture" :modal="true" :style="{ width: '52rem', maxWidth: '98vw' }" @update:visible="emit('update:factureDialogVisible', $event)">
+        <div class="flex flex-col gap-4">
+            <div class="rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800/40 p-4">
+                <p class="mb-3 text-sm font-semibold text-surface-900 dark:text-surface-100">Date de la facture</p>
+                <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div>
+                        <label class="mb-1 block text-xs font-medium uppercase tracking-wide text-surface-500">Date</label>
+                        <InputText :model-value="factureDate" type="date" class="w-full" @update:model-value="emit('update:factureDate', $event)" />
+                    </div>
+                    <div>
+                        <label class="mb-1 block text-xs font-medium uppercase tracking-wide text-surface-500">Heure</label>
+                        <InputText :model-value="factureTime" type="time" class="w-full" @update:model-value="emit('update:factureTime', $event)" />
+                    </div>
                 </div>
             </div>
-            <Button label="Ajouter une ligne" icon="pi pi-plus" outlined @click="addFactureLine" />
-            <div class="text-right font-semibold">Total TTC : {{ formatFcfa(factureTotal) }}</div>
+
+            <div class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/30 p-4">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-500/10">
+                            <i class="pi pi-file-edit text-amber-600 dark:text-amber-400"></i>
+                        </div>
+                        <div>
+                            <p class="font-semibold text-surface-900 dark:text-surface-100">Actes posés</p>
+                            <p class="text-sm text-surface-500 dark:text-surface-400">Modifiez les soins facturés pour cette consultation</p>
+                        </div>
+                    </div>
+                    <Button
+                        icon="pi pi-plus"
+                        label="Ajouter un soin"
+                        size="small"
+                        class="rounded-xl border-0 bg-gradient-to-r from-blue-500 to-blue-600 px-4 py-2.5 text-white shadow-sm transition-all hover:shadow-md"
+                        @click="addFactureLine"
+                    />
+                </div>
+            </div>
+
+            <div v-if="!factureLines.length" class="rounded-xl border border-dashed border-surface-200 bg-surface-50/60 p-8 text-center dark:border-surface-700 dark:bg-surface-800/20">
+                <div class="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-full bg-surface-100 dark:bg-surface-800">
+                    <i class="pi pi-inbox text-2xl text-surface-400"></i>
+                </div>
+                <p class="text-sm text-surface-600 dark:text-surface-400">Aucun acte. Ajoutez au moins une ligne pour enregistrer la facture.</p>
+            </div>
+
+            <div v-else class="space-y-4">
+                <ActeLineCard
+                    v-for="(line, idx) in factureLines"
+                    :key="`${idx}-${line.type}-${(line.dent || []).join('-')}`"
+                    :acte="line"
+                    :index="idx"
+                    :soins="soinsList"
+                    :subtotal="factureLineSubtotals[idx] ?? lineTotal(line)"
+                    @update="(patch) => updateFactureLine(idx, patch)"
+                    @remove="removeFactureLine(idx)"
+                />
+            </div>
+
+            <div v-if="factureLines.length" class="rounded-xl border border-surface-200 bg-gradient-to-r from-amber-50 to-orange-50 p-4 dark:border-surface-700 dark:from-amber-900/20 dark:to-orange-900/10">
+                <div class="flex items-center justify-between gap-3">
+                    <span class="text-base font-semibold text-surface-900 dark:text-surface-100">Total TTC</span>
+                    <span class="text-2xl font-bold text-amber-700 dark:text-amber-300">{{ formatFcfa(factureTotal) }}</span>
+                </div>
+            </div>
         </div>
         <template #footer>
-            <Button label="Annuler" text @click="emit('update:factureDialogVisible', false)" />
-            <Button label="Enregistrer" severity="primary" icon="pi pi-save" :loading="factureSaving" @click="emit('save-facture')" />
+            <div class="flex w-full flex-wrap items-center justify-end gap-2">
+                <Button label="Annuler" icon="pi pi-times" severity="secondary" text class="rounded-xl px-4" @click="emit('update:factureDialogVisible', false)" />
+                <Button
+                    label="Enregistrer"
+                    icon="pi pi-save"
+                    :loading="factureSaving"
+                    class="rounded-xl border-0 bg-gradient-to-r from-primary-500 to-primary-600 px-5 py-2.5 font-medium text-white shadow-sm transition-all hover:shadow-md"
+                    @click="emit('save-facture')"
+                />
+            </div>
         </template>
     </Dialog>
 

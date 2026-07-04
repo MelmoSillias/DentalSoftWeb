@@ -1,5 +1,5 @@
 {
-  "id": "default",
+  "id": "cdos",
   "displayName": "Cabinet Dentaire Ousmane SOW",
   "appTitle": "DentalSoft - Cabinet Dentaire Ousmane SOW",
   "brandName": "DentalSoft",
@@ -10,6 +10,18 @@
   "smsTestMessage": "Message de test CABINET DENTAIRE OUSMANE SOW.",
   "reportCabinetName": "CABINET DENTAIRE OUSMANE SOW",
   "cabinetPhone": "+223 93 28 87 23 / +223 84 07 55 18",
+  "printProfile": {
+    "name": "CABINET DENTAIRE OUSMANE SOW",
+    "addressLines": [
+      "À 100M DU FEU DE GARANTIBOUGOU, EN FACE DE LA VOIE DE GARANTIBOUGOU",
+      "RUE : 426 ; PORTE : 192; BKO MALI"
+    ],
+    "phones": [
+      "84 07 55 18",
+      "44 56 94 39"
+    ],
+    "email": "ousmanes007@gmail.com"
+  },
   "viteApiPrefix": "https://api.cabinetdentaireousmanesow.cloud/api",
   "viteFilePrefix": "https://api.cabinetdentaireousmanesow.cloud",
   "brandingAssets": {

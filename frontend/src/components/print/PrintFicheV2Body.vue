@@ -1,12 +1,14 @@
 <template>
-    <div class="paper" :style="{ '--watermark': `url(${logoSrc})` }">
-        <header>
-            <img :src="headerSrc" alt="Cabinet Dentaire Orodent" class="header-banner" />
-            <h1>Fiche medicale</h1>
-            <small class="muted">N° {{ ficheNumber }}</small>
-        </header>
+    <PrintA4Page :logo-src="logoSrc">
+        <template #header>
+            <PrintDocumentHeader
+                title="Fiche médicale"
+                :doc-id="fiche?.id"
+                :date="fiche?.createdAt || fiche?.dateCreation"
+            />
+        </template>
 
-        <h2>Resume</h2>
+        <h2 class="print-section-title">Résumé</h2>
         <table>
             <tbody>
                 <tr>
@@ -382,7 +384,7 @@
                         <td>
                             Medecin : {{ seance?.medecin?.nom || '—' }}<br />
                             <hr />
-                            Infirmier : {{ seance?.infirmier?.nom || '—' }}<br />
+                            Aide soignant(e) : {{ seance?.infirmier?.nom || '—' }}<br />
                             <hr />
                             Salle : {{ seance?.salle?.nom || '—' }}
                         </td>
@@ -431,12 +433,13 @@
             </table>
             <p v-else class="muted">Aucune seance precedente.</p>
         </template>
-    </div>
+    </PrintA4Page>
 </template>
 
 <script setup>
 import { computed } from 'vue';
-import headerImg from '@/assets/header-big.jpeg';
+import PrintA4Page from './PrintA4Page.vue';
+import PrintDocumentHeader from './PrintDocumentHeader.vue';
 import logoImg from '@/assets/logo.png';
 import { filePrefix } from '@/config';
 
@@ -445,7 +448,6 @@ const props = defineProps({
     patient: { type: Object, default: () => ({}) },
     sections: { type: Array, default: () => [] },
     printEmpty: { type: Boolean, default: false },
-    headerSrc: { type: String, default: headerImg },
     logoSrc: { type: String, default: logoImg }
 });
 
@@ -472,11 +474,6 @@ const dentalRows = [
     { left: [48, 47, 46, 45, 44, 43, 42, 41], right: [31, 32, 33, 34, 35, 36, 37, 38] },
     { left: [85, 84, 83, 82, 81], right: [71, 72, 73, 74, 75] }
 ];
-
-const ficheNumber = computed(() => {
-    const raw = String(props.fiche?.id || '');
-    return raw ? raw.padStart(6, '0') : '—';
-});
 
 const formatDate = (value) => {
     if (!value) return '—';
@@ -734,58 +731,13 @@ const etatLegend = [
 </script>
 
 <style scoped>
-.paper {
-    position: relative;
-    border: 1px solid #cfd8e3;
-    padding: 20px;
-    background-color: #fff;
-    overflow: hidden;
-    font-family: Arial, sans-serif;
-    color: #1f2d3d;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-}
-
-.paper::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background-image: var(--watermark);
-    background-repeat: space;
-    background-position: center;
-    background-size: 60% auto;
-    opacity: 0.06;
-    pointer-events: none;
-    z-index: 0;
-}
-
-.paper > * {
-    position: relative;
-    z-index: 1;
-}
-
-header {
-    text-align: center;
-    margin-bottom: 16px;
-}
-
-.header-banner {
-    width: 100%;
-    max-height: 110px;
-    object-fit: contain;
-    margin-bottom: 6px;
-}
-
-h1 {
-    font-size: 18px;
-    margin: 8px 0 4px;
-    font-weight: 700;
-}
-
 h2 {
-    font-size: 15px;
-    margin: 18px 0 6px;
+    font-size: 12pt;
+    margin: 14px 0 6px;
     font-weight: 700;
+    color: #1d6fbf;
+    padding-bottom: 4px;
+    border-bottom: 1px solid #cfd8e3;
 }
 
 h3 {
@@ -1000,12 +952,5 @@ th {
 .mini-table td {
     border: 1px solid #d6dee8;
     padding: 4px 6px;
-}
-
-@media print {
-    .paper::before {
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-    }
 }
 </style>

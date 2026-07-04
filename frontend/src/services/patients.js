@@ -69,7 +69,6 @@ export const fetchPatients = async (token, { page = 1, limit = 10, q = '', sortF
         headers: authHeaders(token),
         params: { page, limit, q, sortField, sortOrder }
     });
-    console.log('fetchPatients response:', res.data);
     const data = res.data || {};
     const items = Array.isArray(data.items) ? data.items.map(normalizePatient) : [];
     return { ...data, items };
@@ -127,6 +126,20 @@ export const fetchPatientsByMedecin = async (token, { page = 1, limit = 10, q = 
     const data = res.data || {};
     const items = Array.isArray(data.items) ? data.items.map(normalizePatient) : [];
     return { ...data, items };
+};
+
+export const fetchPatientsOverviewStats = async (token, { medecinOnly = false } = {}) => {
+    const endpoint = medecinOnly ? `${apiPrefix}/patients/medecin/overview-stats` : `${apiPrefix}/patients/overview-stats`;
+    const res = await axios.get(endpoint, { headers: authHeaders(token) });
+    const data = res.data || {};
+
+    return {
+        totalPatients: Number(data.totalPatients || 0),
+        consultationsToday: Number(data.consultationsToday || 0),
+        upcomingAppointments: Number(data.upcomingAppointments || 0),
+        newPatientsThisMonth: Number(data.newPatientsThisMonth || 0),
+        referrals: Array.isArray(data.referrals) ? data.referrals : []
+    };
 };
 
 export const updatePatient = async (patientId, payload, token) => {

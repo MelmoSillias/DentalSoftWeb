@@ -14,16 +14,34 @@ export const fetchPayrolls = async ({ start = 0, length = 10, employeeId = null,
     return res.data || { data: [], recordsFiltered: 0, recordsTotal: 0 };
 };
 
-export const fetchPayrollContext = async (employeeId, { month, year }, token) => {
+export const fetchPayrollContext = async (employeeId, { month, year, day = null }, token) => {
+    const params = { month, year };
+    if (day) params.day = day;
+
     const res = await http.get(`${apiPrefix}/payrolls/context/${employeeId}`, {
-        params: { month, year },
+        params,
         ...withHeaders(token)
     });
     return res.data;
 };
 
+export const fetchPayrollPaymentMethods = async (token) => {
+    const res = await http.get(`${apiPrefix}/payrolls/payment-methods`, withHeaders(token));
+    return Array.isArray(res.data) ? res.data : [];
+};
+
+export const fetchPayroll = async (id, token) => {
+    const res = await http.get(`${apiPrefix}/payrolls/${id}`, withHeaders(token));
+    return res.data;
+};
+
 export const createPayroll = async (payload, token) => {
     const res = await http.post(`${apiPrefix}/payrolls`, payload, withHeaders(token));
+    return res.data;
+};
+
+export const updatePayroll = async (id, payload, token) => {
+    const res = await http.put(`${apiPrefix}/payrolls/${id}`, payload, withHeaders(token));
     return res.data;
 };
 

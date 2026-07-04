@@ -1,6 +1,7 @@
 import AppLayout from '@/layout/AppLayout.vue';
 import { createRouter, createWebHistory } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
+import { isDeviceNotAllowedError } from '@/service/http';
 
 const router = createRouter({
     history: createWebHistory(),
@@ -157,8 +158,8 @@ const router = createRouter({
                 //    meta: { requiresAuth: true, roles: ['ROLE_ADMIN', "ROLE_SECRETAIRE", "ROLE_TOPO"], fixedWidth: true }
                 // },
                 {
-                    path: '/parametres/apparence',
-                    name: 'settings-apparence',
+                    path: '/parametres/general-options',
+                    name: 'settings-general-options',
                     component: () => import('@/views/settings/GeneralOptions.vue'),
                     meta: { requiresAuth: true, roles: ['ROLE_ADMIN', "ROLE_SECRETAIRE", "ROLE_TOPO"], fixedWidth: true }
                 },
@@ -180,6 +181,12 @@ const router = createRouter({
             name: 'login',
             component: () => import('@/views/pages/auth/Login.vue'),
             meta: { requiresGuest: true } // Accessible uniquement aux non-connectés
+        },
+        {
+            path: '/auth/device-pending',
+            name: 'devicePending',
+            component: () => import('@/views/pages/auth/DevicePending.vue'),
+            meta: { requiresToken: true }
         },
         {
             path: '/auth/access',
@@ -208,6 +215,14 @@ router.beforeEach(async (to, from, next) => {
     const authStore = useAuthStore();
     const token = localStorage.getItem('token');
 
+    // Route en attente d'autorisation appareil
+    if (to.name === 'devicePending') {
+        if (!token) {
+            return next({ name: 'login' });
+        }
+        return next();
+    }
+
     // 🔹 1. Si route protégée sans token → redirection login
     if (to.meta.requiresAuth && !token) {
         return next({ name: 'login' });
@@ -224,6 +239,9 @@ router.beforeEach(async (to, from, next) => {
             // Puis récupère l'utilisateur
             await authStore.fetchUser();
         } catch (error) {
+            if (isDeviceNotAllowedError(error)) {
+                return next({ name: 'devicePending' });
+            }
             console.error('Erreur lors de la validation du token:', error);
             localStorage.removeItem('token');
             return next({ name: 'login' });

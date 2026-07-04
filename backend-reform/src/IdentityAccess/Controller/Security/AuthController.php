@@ -1,7 +1,9 @@
 <?php
 namespace App\IdentityAccess\Controller\Security;
 
+use App\IdentityAccess\Entity\User;
 use App\IdentityAccess\Service\AuthService;
+use App\IdentityAccess\Service\UserDeviceService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -10,8 +12,10 @@ use Symfony\Component\Routing\Annotation\Route;
 
 class AuthController extends AbstractController
 {
-    public function __construct(private AuthService $authService)
-    {
+    public function __construct(
+        private AuthService $authService,
+        private UserDeviceService $userDeviceService,
+    ) {
     }
 
     #[Route('/api/register', name: 'api_register', methods: ['POST'])]
@@ -59,6 +63,23 @@ class AuthController extends AbstractController
     public function validateToken(): JsonResponse
     {
         return $this->respond(fn() => $this->authService->validateToken(), 200);
+    }
+
+    #[Route('/api/device/status', name: 'api_device_status', methods: ['GET'])]
+    public function deviceStatus(Request $request): JsonResponse
+    {
+        $user = $this->getUser();
+        if (!$user instanceof User) {
+            return $this->json(['error' => 'unauthorized'], 401);
+        }
+
+        $result = $this->userDeviceService->enforceDeviceForRequest($user, $request);
+
+        return $this->json([
+            'allowed' => $result['allowed'],
+            'status' => $result['device']->getStatus(),
+            'message' => $result['message'],
+        ], $result['allowed'] ? 200 : 403);
     }
 
     private function respond(callable $callback, int $status = 200): JsonResponse

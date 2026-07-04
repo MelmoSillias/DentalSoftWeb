@@ -11,6 +11,10 @@ const props = defineProps({
         type: Boolean,
         default: false
     },
+    canModifyInvoiceByRole: {
+        type: Boolean,
+        default: false
+    },
     cancelLoading: {
         type: Boolean,
         default: false
@@ -31,9 +35,9 @@ const canCancel = computed(() => props.consultation?.state === 0);
 const canOpenDossier = computed(() => props.consultation?.state !== 0 && Boolean(props.consultation?.patientId));
 const canEditFacture = computed(
     () =>
-        props.isAdmin &&
-    props.consultation?.state === 1 &&
-        (props.consultation?.factState === 0 || props.consultation?.factState === null || typeof props.consultation?.factState === 'undefined')
+        props.canModifyInvoiceByRole &&
+        props.consultation?.state === 1 &&
+        props.consultation?.factModifiable === true
 );
 
 const actions = computed(() => {
@@ -72,8 +76,9 @@ const actions = computed(() => {
         base.push({
             id: 'facture',
             label: 'Modifier facture',
-            icon: 'fas fa-edit',
+            icon: 'pi pi-file-edit',
             severity: 'warning',
+            outlined: true,
             command: () => emit('edit-facture', props.consultation),
             loading: props.factureLoading
         });

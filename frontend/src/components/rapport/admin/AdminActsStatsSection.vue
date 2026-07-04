@@ -4,13 +4,13 @@ import Button from 'primevue/button';
 import Chart from 'primevue/chart';
 import ToggleButton from 'primevue/togglebutton';
 import ValueListCard from '@/components/rapport/common/ValueListCard.vue';
+import { printReport } from '@/utils/reportPrint';
 
 const props = defineProps({
     actsStats: { type: Array, default: () => [] },
-    loading: { type: Boolean, default: false }
+    loading: { type: Boolean, default: false },
+    periodLabel: { type: String, default: '' }
 });
-
-const emit = defineEmits(['print']);
 const showChart = ref(false);
 
 const chartData = computed(() => {
@@ -43,12 +43,33 @@ const chartOptions = computed(() => {
         }
     };
 });
+
+function printSection() {
+    printReport({
+        title: 'Statistiques des soins médicaux',
+        periodLabel: props.periodLabel,
+        sections: [
+            {
+                title: 'Répartition des soins',
+                items: props.actsStats,
+                emptyLabel: 'Aucun soin enregistré.'
+            }
+        ]
+    });
+}
 </script>
 
 <template>
     <section class="space-y-4" id="admin-acts-stats">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+                <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-0">Statistiques des soins médicaux</h3>
+                <p v-if="periodLabel" class="text-sm text-surface-500 dark:text-surface-400">Période : {{ periodLabel }}</p>
+            </div>
+            <Button label="Imprimer" icon="pi pi-print" outlined size="small" @click="printSection" />
+        </div>
         <ValueListCard
-            title="Statistiques des soins médicaux"
+            title="Répartition des soins"
             :items="actsStats"
             :loading="loading"
             :show-chart="showChart"
@@ -56,7 +77,6 @@ const chartOptions = computed(() => {
         >
             <template #actions>
                 <ToggleButton v-model="showChart" onLabel="Graphique" offLabel="Données" onIcon="pi pi-chart-bar" offIcon="pi pi-list" />
-                <Button icon="pi pi-print" text rounded @click="emit('print', 'admin-acts-stats')" />
             </template>
             <template #chart>
                 <div class="aspect-[16/9] w-full">

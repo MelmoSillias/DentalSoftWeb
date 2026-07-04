@@ -63,7 +63,7 @@ const handleHide = () => emit('update:visible', false);
                             <Tag v-if="details.medecin" :value="details.medecin" />
                             <span v-else class="font-semibold">—</span>
                         </div>
-                        <div class="flex items-center gap-2"><span class="text-gray-500">Infirmier :</span>
+                        <div class="flex items-center gap-2"><span class="text-gray-500">Aide soignant(e) :</span>
                             <span class="font-semibold">{{ details.infirmier || '—' }}</span>
                         </div>
                         <div class="flex items-center gap-2"><span class="text-gray-500">Salle :</span>

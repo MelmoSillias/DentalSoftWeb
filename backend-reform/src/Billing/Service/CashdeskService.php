@@ -4,10 +4,12 @@ namespace App\Billing\Service;
 
 use App\Billing\Entity\Devis;
 use App\Billing\Entity\Facture;
+use App\Billing\Entity\FactureAssurance;
 use App\Billing\Entity\Paiement;
 use App\Billing\Entity\Transaction;
 use App\Billing\Repository\AssuranceRepository;
 use App\Billing\Repository\DevisRepository;
+use App\Billing\Repository\FactureAssuranceRepository;
 use App\Billing\Repository\FactureRepository;
 use App\Billing\Repository\ModeDePaiementRepository;
 use App\Billing\Repository\PaiementRepository;
@@ -22,6 +24,7 @@ class CashdeskService
     public function __construct(
         private FactureRepository $factureRepo,
         private DevisRepository $devisRepo,
+        private FactureAssuranceRepository $factureAssuranceRepo,
         private AssuranceRepository $assuranceRepo,
         private PaiementRepository $paiementRepo,
         private ModeDePaiementRepository $modeRepo,
@@ -48,46 +51,20 @@ class CashdeskService
         return array_map(fn (Facture $facture): array => $this->mapFactureToArray($facture), $factures);
     }
 
-    public function listFacturesImpayees(): array
+    public function listFacturesImpayees(?DateTimeInterface $start = null, ?DateTimeInterface $end = null): array
     {
-        $factures = $this->factureRepo->createQueryBuilder('f')
-            ->leftJoin('f.consultation', 'c')->addSelect('c')
-            ->leftJoin('c.patient', 'p')->addSelect('p')
-            ->leftJoin('c.factureAssurance', 'fa')
-            ->andWhere('fa.id IS NULL')
-            ->orderBy('f.dateFacture', 'ASC')
-            ->addOrderBy('f.id', 'ASC')
-            ->getQuery()
-            ->getResult();
+        $factures = $this->factureRepo->findUnpaidClassicFactures($start, $end);
+        $this->prefetchFactureListRelations($factures);
 
-        $factures = array_values(array_filter(
-            $factures,
-            static fn (Facture $facture): bool => ((float) ($facture->computeMontantsFromConsultation()['restePatient'] ?? 0.0)) > 0.0
-        ));
-
-        return array_map(fn (Facture $facture): array => $this->mapFactureToArray($facture), $factures);
+        return array_map(fn (Facture $facture): array => $this->mapFactureToArray($facture, true, false), $factures);
     }
 
     public function listFacturesImpayeesByPatient(int $patientId): array
     {
-        $factures = $this->factureRepo->createQueryBuilder('f')
-            ->leftJoin('f.consultation', 'c')->addSelect('c')
-            ->leftJoin('c.patient', 'p')->addSelect('p')
-            ->leftJoin('c.factureAssurance', 'fa')
-            ->andWhere('fa.id IS NULL')
-            ->andWhere('p.id = :patientId')
-            ->setParameter('patientId', $patientId)
-            ->orderBy('f.dateFacture', 'ASC')
-            ->addOrderBy('f.id', 'ASC')
-            ->getQuery()
-            ->getResult();
+        $factures = $this->factureRepo->findUnpaidClassicFactures(null, null, $patientId);
+        $this->prefetchFactureListRelations($factures);
 
-        $factures = array_values(array_filter(
-            $factures,
-            static fn (Facture $facture): bool => ((float) ($facture->computeMontantsFromConsultation()['restePatient'] ?? 0.0)) > 0.0
-        ));
-
-        return array_map(fn (Facture $facture): array => $this->mapFactureToArray($facture), $factures);
+        return array_map(fn (Facture $facture): array => $this->mapFactureToArray($facture, true, false), $factures);
     }
 
     public function listFacturesByPatient(int $patientId): array
@@ -369,7 +346,7 @@ class CashdeskService
             }
 
             $transaction->setPaiement(null);
-            $transaction->setDevis(null);
+            $transaction->setFacture(null);
             $transaction->setConsultation(null);
             $this->em->remove($transaction);
         }
@@ -388,14 +365,16 @@ class CashdeskService
         return ['success' => true];
     }
 
-    private function mapFactureToArray(Facture $facture, bool $forceFacture = true): array
+    private function mapFactureToArray(Facture $facture, bool $forceFacture = true, bool $includeDetails = true): array
     {
         $consultation = $facture->getConsultation();
         $patient = $consultation?->getPatient();
-        $contenuArr = $facture->buildLignesFromConsultation();
-        $montants = $facture->computeMontantsFromConsultation();
+        $factureAssurance = $consultation?->getFactureAssurance();
+        $montants = $this->resolveFactureMontants($facture);
         $reste = $forceFacture ? (float) $montants['restePatient'] : 0.0;
-        $isRegle = $facture->IsReglee();
+        $isRegle = ((float) ($montants['montantTotal'] ?? 0.0)) > 0.0
+            ? $reste <= 0.0
+            : $facture->isReglee();
 
         return [
             'id' => $facture->getId(),
@@ -405,17 +384,113 @@ class CashdeskService
             'reste' => $reste,
             'statut' => $isRegle ? 1 : 0,
             'isRegle' => $isRegle,
+            'hasPayments' => $facture->getPaiements()->count() > 0,
             'patient' => [
                 'nom' => $patient?->getNom() ?? '',
                 'prenom' => $patient?->getPrenom() ?? '',
                 'telephone' => $patient?->getTelephone() ?? '',
             ],
             'telephone' => $patient?->getTelephone(),
-            'contenus' => $contenuArr,
-            'paiements' => $this->buildFacturePaymentDetails($facture),
+            'contenus' => $includeDetails ? $facture->buildLignesFromConsultation() : [],
+            'paiements' => $includeDetails ? $this->buildFacturePaymentDetails($facture) : [],
             'type' => 'Facture',
-            'insurance' => $this->buildFactureInsuranceMetadata($facture),
+            'insurance' => $includeDetails
+                ? $this->buildFactureInsuranceMetadata($facture, $montants)
+                : ($factureAssurance !== null
+                    ? ['hasInsurance' => true, 'insuranceStatus' => $factureAssurance->getInsuranceStatus()]
+                    : ['hasInsurance' => false, 'insuranceStatus' => 'none']),
         ];
+    }
+
+    private function resolveFactureMontants(Facture $facture): array
+    {
+        $consultation = $facture->getConsultation();
+        $factureAssurance = $consultation?->getFactureAssurance();
+
+        if ($factureAssurance !== null) {
+            $totals = $factureAssurance->computeTotals();
+            $patientAmount = (float) ($totals['montantPatient'] ?? 0.0);
+            $patientPaid = $this->resolveInsurancePatientPaidAmount($consultation, $facture);
+
+            return [
+                'montantTotal' => (float) ($totals['montantTotal'] ?? 0.0),
+                'montantPatient' => $patientAmount,
+                'montantAssureur' => (float) ($totals['montantAssureur'] ?? 0.0),
+                'patientPaid' => $patientPaid,
+                'restePatient' => max(0.0, $patientAmount - $patientPaid),
+            ];
+        }
+
+        return $facture->computeMontantsFromConsultation();
+    }
+
+    private function resolveInsurancePatientPaidAmount(?Consultation $consultation, Facture $facture): float
+    {
+        $paid = (float) $facture->computePatientPaidAmount();
+
+        if ($consultation) {
+            $paid += (float) $this->transactionRepo->createQueryBuilder('t')
+                ->select('COALESCE(SUM(t.montant), 0)')
+                ->where('t.consultation = :consultation')
+                ->andWhere('t.rolePaiement = :role')
+                ->andWhere('t.validationStatus = :status')
+                ->setParameter('consultation', $consultation)
+                ->setParameter('role', 'patient_insurance')
+                ->setParameter('status', 'validated')
+                ->getQuery()
+                ->getSingleScalarResult();
+        }
+
+        return max(0.0, $paid);
+    }
+
+    /**
+     * @param Facture[] $factures
+     */
+    private function prefetchFactureListRelations(array $factures): void
+    {
+        if ($factures === []) {
+            return;
+        }
+
+        $consultationIds = [];
+        $factureIds = [];
+
+        foreach ($factures as $facture) {
+            if (!$facture instanceof Facture) {
+                continue;
+            }
+
+            $factureIds[] = $facture->getId();
+            $consultationId = $facture->getConsultation()?->getId();
+            if ($consultationId !== null) {
+                $consultationIds[] = $consultationId;
+            }
+        }
+
+        if ($consultationIds !== []) {
+            $this->em->createQueryBuilder()
+                ->select('c', 'a', 'fa')
+                ->from(Consultation::class, 'c')
+                ->leftJoin('c.actes', 'a')
+                ->leftJoin('c.factureAssurance', 'fa')
+                ->where('c.id IN (:ids)')
+                ->setParameter('ids', array_values(array_unique($consultationIds)))
+                ->getQuery()
+                ->getResult();
+        }
+
+        if ($factureIds !== []) {
+            $this->em->createQueryBuilder()
+                ->select('f', 'pay', 'pt')
+                ->from(Facture::class, 'f')
+                ->leftJoin('f.paiements', 'pay')
+                ->leftJoin('pay.transaction', 'pt')
+                ->where('f.id IN (:ids)')
+                ->setParameter('ids', array_values(array_unique($factureIds)))
+                ->getQuery()
+                ->getResult();
+        }
     }
 
     private function buildFacturePaymentDetails(Facture $facture): array
@@ -460,10 +535,11 @@ class CashdeskService
         return $details;
     }
 
-    private function buildFactureInsuranceMetadata(Facture $facture): array
+    private function buildFactureInsuranceMetadata(Facture $facture, ?array $montants = null): array
     {
         $consultation = $facture->getConsultation();
-        $patientPaidAmount = (float) $facture->computePatientPaidAmount();
+        $montants ??= $this->resolveFactureMontants($facture);
+        $patientPaidAmount = (float) ($montants['patientPaid'] ?? 0.0);
 
         $factureAssurance = $consultation?->getFactureAssurance();
         if ($factureAssurance !== null) {
@@ -471,32 +547,41 @@ class CashdeskService
             $insuranceAmount = (float) ($totals['montantAssureur'] ?? 0.0);
             $insuranceRate = $factureAssurance->getCoverageRate();
 
-            $insurancePaidAmount = (float) $this->transactionRepo->createQueryBuilder('t')
-                ->select('COALESCE(SUM(t.montant), 0)')
-                ->where('t.consultation = :consultation')
-                ->andWhere('t.rolePaiement = :role')
-                ->andWhere('t.validationStatus = :status')
-                ->setParameter('consultation', $consultation)
-                ->setParameter('role', 'insurance')
-                ->setParameter('status', 'validated')
-                ->getQuery()
-                ->getSingleScalarResult();
+            $insurancePaidAmount = $factureAssurance->isRecouvre()
+                ? $insuranceAmount
+                : (float) $this->transactionRepo->createQueryBuilder('t')
+                    ->select('COALESCE(SUM(t.montant), 0)')
+                    ->where('t.consultation = :consultation')
+                    ->andWhere('t.rolePaiement IN (:roles)')
+                    ->andWhere('t.validationStatus = :status')
+                    ->setParameter('consultation', $consultation)
+                    ->setParameter('roles', ['insurance', 'insurance_lot'])
+                    ->setParameter('status', 'validated')
+                    ->getQuery()
+                    ->getSingleScalarResult();
 
             $insurancePendingAmount = max(0.0, $insuranceAmount - $insurancePaidAmount);
+            $lot = $factureAssurance->getLotFactureAssurance();
 
             return [
                 'hasInsurance' => true,
                 'insuranceStatus' => $factureAssurance->getInsuranceStatus(),
                 'assuranceId' => $factureAssurance->getAssurance()?->getId(),
+                'assuranceCode' => $factureAssurance->getAssurance()?->getCode(),
                 'insuranceModeLabel' => $factureAssurance->getAssurance()?->getNom(),
                 'insuranceRate' => $insuranceRate,
                 'insuranceAmount' => $insuranceAmount,
+                'montantPatient' => (float) ($totals['montantPatient'] ?? 0.0),
+                'montantAssurance' => $insuranceAmount,
                 'insurancePaidAmount' => $insurancePaidAmount,
                 'insurancePendingAmount' => $insurancePendingAmount,
                 'insuranceTransactionId' => null,
                 'insurancePaymentId' => null,
+                'lotId' => $lot?->getId(),
+                'lotStatut' => $lot?->getStatut(),
+                'lotDescription' => $lot?->getDescription(),
                 'patientPaidAmount' => $patientPaidAmount,
-                'patientRemainingAmount' => max(0.0, (float) ($facture->computeMontantsFromConsultation()['restePatient'] ?? 0.0)),
+                'patientRemainingAmount' => max(0.0, (float) ($montants['restePatient'] ?? 0.0)),
             ];
         }
 
@@ -512,7 +597,7 @@ class CashdeskService
             'insuranceTransactionId' => null,
             'insurancePaymentId' => null,
             'patientPaidAmount' => $patientPaidAmount,
-            'patientRemainingAmount' => max(0.0, (float) ($facture->computeMontantsFromConsultation()['restePatient'] ?? 0.0)),
+            'patientRemainingAmount' => max(0.0, (float) ($montants['restePatient'] ?? 0.0)),
         ];
     }
 
@@ -546,8 +631,10 @@ class CashdeskService
     {
         $patient = $this->resolvePatientFromPaiement($paiement);
         $factureId = $paiement->getFacture()?->getId();
+        $consultation = $paiement->getConsultation();
+        $assuranceBlock = $this->buildAssurancePrintBlock($consultation?->getFactureAssurance());
 
-        return [
+        $payload = [
             'id' => $paiement->getId(),
             'date' => $paiement->getDate()?->format('Y-m-d H:i'),
             'montant' => $paiement->getMontant(),
@@ -566,13 +653,33 @@ class CashdeskService
                 ],
             ] : null,
         ];
+
+        if ($assuranceBlock !== null) {
+            $payload['assurance'] = $assuranceBlock;
+            if (!$payload['devis'] && $patient) {
+                $payload['devis'] = [
+                    'id' => $consultation?->getFactureAssurance()?->getId(),
+                    'total' => $assuranceBlock['montantTotal'],
+                    'reste' => $assuranceBlock['restePatient'],
+                    'fiche' => [
+                        'patient' => [
+                            'nom' => $patient->getNom(),
+                            'prenom' => $patient->getPrenom(),
+                        ],
+                    ],
+                ];
+            }
+        }
+
+        return $payload;
     }
 
     public function mapPaiementTicket(Paiement $paiement): array
     {
         $patient = $paiement?->getConsultation()?->getPatient();
-        
-        return [
+        $assuranceBlock = $this->buildAssurancePrintBlock($paiement->getConsultation()?->getFactureAssurance());
+
+        $payload = [
             'id' => $paiement->getId(),
             'date' => $paiement->getDate()?->format('Y-m-d H:i'),
             'montant' => $paiement->getMontant(),
@@ -585,6 +692,97 @@ class CashdeskService
                     'prenom' => $patient->getPrenom(),
                 ] : null,
             ] : null,
+        ];
+
+        if ($assuranceBlock !== null) {
+            $payload['assurance'] = $assuranceBlock;
+        }
+
+        return $payload;
+    }
+
+    public function mapFactureAssurancePrint(int $id): ?array
+    {
+        $facture = $this->factureAssuranceRepo->find($id);
+        if (!$facture instanceof FactureAssurance) {
+            return null;
+        }
+
+        $totals = $facture->computeTotals();
+        $patient = $facture->getConsultation()?->getPatient() ?? $facture->getPatient();
+        $lot = $facture->getLotFactureAssurance();
+        $lines = [];
+
+        foreach ($facture->buildLignes() as $line) {
+            $lines[] = [
+                'designation' => $line['designation'] ?? 'Soin',
+                'description' => $line['description'] ?? '',
+                'quantite' => $line['quantite'] ?? 1,
+                'prix' => $line['prix'] ?? 0,
+                'total' => $line['total'] ?? 0,
+            ];
+        }
+
+        return [
+            'id' => $facture->getId(),
+            'dateFacture' => $facture->getDateFacture()?->format('Y-m-d H:i'),
+            'patient' => [
+                'nom' => $patient?->getNom(),
+                'prenom' => $patient?->getPrenom(),
+                'telephone' => $patient?->getTelephone(),
+            ],
+            'assurance' => $this->buildAssurancePrintBlock($facture),
+            'lignes' => $lines,
+            'montantTotal' => (float) ($totals['montantTotal'] ?? 0.0),
+            'montantAssurance' => (float) ($totals['montantAssureur'] ?? 0.0),
+            'montantPatient' => (float) ($totals['montantPatient'] ?? 0.0),
+            'tauxCouverture' => $facture->getCoverageRate(),
+            'insuranceStatus' => $facture->getInsuranceStatus(),
+            'isRecouvre' => $facture->isRecouvre(),
+            'lot' => $lot ? [
+                'id' => $lot->getId(),
+                'description' => $lot->getDescription(),
+                'statut' => $lot->getStatut(),
+            ] : null,
+        ];
+    }
+
+    private function buildAssurancePrintBlock(?FactureAssurance $factureAssurance): ?array
+    {
+        if (!$factureAssurance instanceof FactureAssurance) {
+            return null;
+        }
+
+        $totals = $factureAssurance->computeTotals();
+        $consultation = $factureAssurance->getConsultation();
+        $patientPaid = 0.0;
+
+        if ($consultation) {
+            $patientPaid = (float) $this->transactionRepo->createQueryBuilder('t')
+                ->select('COALESCE(SUM(t.montant), 0)')
+                ->where('t.consultation = :consultation')
+                ->andWhere('t.rolePaiement = :role')
+                ->andWhere('t.validationStatus = :status')
+                ->setParameter('consultation', $consultation)
+                ->setParameter('role', 'patient_insurance')
+                ->setParameter('status', 'validated')
+                ->getQuery()
+                ->getSingleScalarResult();
+        }
+
+        $montantPatient = (float) ($totals['montantPatient'] ?? 0.0);
+
+        return [
+            'nom' => $factureAssurance->getAssurance()?->getNom(),
+            'code' => $factureAssurance->getAssurance()?->getCode(),
+            'tauxCouverture' => $factureAssurance->getCoverageRate(),
+            'montantTotal' => (float) ($totals['montantTotal'] ?? 0.0),
+            'montantAssurance' => (float) ($totals['montantAssureur'] ?? 0.0),
+            'montantPatient' => $montantPatient,
+            'partPatientPayee' => $patientPaid,
+            'restePatient' => max(0.0, $montantPatient - $patientPaid),
+            'insuranceStatus' => $factureAssurance->getInsuranceStatus(),
+            'factureAssuranceId' => $factureAssurance->getId(),
         ];
     }
 

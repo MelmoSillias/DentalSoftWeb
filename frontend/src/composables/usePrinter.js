@@ -16,12 +16,47 @@ const injectPrintBaseStyles = (targetDocument) => {
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
             background: #fff;
+            margin: 0;
+            padding: 0;
         }
 
         @media print {
+            @page {
+                size: A4;
+                margin: 10mm;
+            }
+
+            @page ticket {
+                size: 80mm auto;
+                margin: 5px 2mm 2mm;
+            }
+
             html, body {
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
+                background: #fff !important;
+            }
+
+            .print-ticket-page,
+            .print-ticket-page * {
+                color: #000 !important;
+            }
+
+            .print-ticket-page .brand-logo,
+            .print-cabinet-header--ticket .brand-logo {
+                filter: grayscale(100%) contrast(400%) brightness(0.88) !important;
+                -webkit-filter: grayscale(100%) contrast(400%) brightness(0.88) !important;
+            }
+
+            .print-a4-page,
+            .print-ticket-page,
+            .paper,
+            .page,
+            .print-ordo-container,
+            .payments-list,
+            .print-root {
+                box-shadow: none !important;
+                border-radius: 0 !important;
             }
         }
     `;

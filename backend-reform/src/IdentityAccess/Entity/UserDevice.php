@@ -8,7 +8,7 @@ use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: UserDeviceRepository::class)]
 #[ORM\Table(name: 'user_device')]
-#[ORM\UniqueConstraint(name: 'uniq_user_device_identifier', columns: ['user_id', 'device_identifier'])]
+#[ORM\UniqueConstraint(name: 'uniq_device_identifier', columns: ['device_identifier'])]
 #[ORM\Index(name: 'idx_user_device_status', columns: ['status'])]
 class UserDevice
 {
@@ -21,15 +21,14 @@ class UserDevice
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\ManyToOne(inversedBy: 'devices')]
-    #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
-    private ?User $user = null;
-
     #[ORM\Column(length: 128)]
     private ?string $deviceIdentifier = null;
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $deviceName = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $customName = null;
 
     #[ORM\Column(length: 80)]
     private string $deviceType = 'desktop';
@@ -53,6 +52,10 @@ class UserDevice
     #[ORM\JoinColumn(onDelete: 'SET NULL')]
     private ?User $validatedBy = null;
 
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(onDelete: 'SET NULL')]
+    private ?User $requestedBy = null;
+
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $rejectionReason = null;
 
@@ -62,18 +65,6 @@ class UserDevice
     public function getId(): ?int
     {
         return $this->id;
-    }
-
-    public function getUser(): ?User
-    {
-        return $this->user;
-    }
-
-    public function setUser(?User $user): static
-    {
-        $this->user = $user;
-
-        return $this;
     }
 
     public function getDeviceIdentifier(): ?string
@@ -98,6 +89,30 @@ class UserDevice
         $this->deviceName = $deviceName;
 
         return $this;
+    }
+
+    public function getCustomName(): ?string
+    {
+        return $this->customName;
+    }
+
+    public function setCustomName(?string $customName): static
+    {
+        $this->customName = $customName !== null && trim($customName) === '' ? null : $customName;
+
+        return $this;
+    }
+
+    public function getDisplayName(): string
+    {
+        $custom = trim((string) ($this->customName ?? ''));
+        if ($custom !== '') {
+            return $custom;
+        }
+
+        $technical = trim((string) ($this->deviceName ?? ''));
+
+        return $technical !== '' ? $technical : 'Appareil inconnu';
     }
 
     public function getDeviceType(): string
@@ -180,6 +195,18 @@ class UserDevice
     public function setValidatedBy(?User $validatedBy): static
     {
         $this->validatedBy = $validatedBy;
+
+        return $this;
+    }
+
+    public function getRequestedBy(): ?User
+    {
+        return $this->requestedBy;
+    }
+
+    public function setRequestedBy(?User $requestedBy): static
+    {
+        $this->requestedBy = $requestedBy;
 
         return $this;
     }

@@ -65,34 +65,7 @@ watch(
 
 onMounted(() => {
     refresh(true);
-    
 });
-
-function printSection(id) {
-    const target = document.getElementById(id);
-    if (!target) return;
-    const html = `
-        <html>
-        <head>
-            <title>Impression</title>
-            <style>
-                body { font-family: Arial, sans-serif; margin: 20px; }
-                .card { border: 1px solid #ddd; border-radius: 8px; padding: 12px; margin-bottom: 16px; }
-            </style>
-        </head>
-        <body>${target.outerHTML}</body>
-        </html>
-    `;
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) return;
-    printWindow.document.write(html);
-    printWindow.document.close();
-    setTimeout(() => {
-        printWindow.focus();
-        printWindow.print();
-        printWindow.close();
-    }, 400);
-}
 </script>
 
 <template>
@@ -116,7 +89,7 @@ function printSection(id) {
         </div>
 
         <div data-tour="rapports-admin.global">
-            <AdminGlobalStatsSection :stats="adminGlobalStats" :loading="adminLoading" @print="printSection" />
+            <AdminGlobalStatsSection :stats="adminGlobalStats" :loading="adminLoading" />
         </div>
 
         <div data-tour="rapports-admin.non-periodic">
@@ -126,7 +99,6 @@ function printSection(id) {
                 :patients="adminGlobalPatients"
                 :patient-referrals="adminPatientReferrals"
                 :loading="adminLoading"
-                @print="printSection"
             />
         </div>
 
@@ -139,7 +111,7 @@ function printSection(id) {
                 :payment-balances="adminPaymentBalances"
                 :payment-frequency="adminPaymentFrequency"
                 :loading="adminLoading"
-                @print="printSection"
+                :period-label="periodLabel"
             />
         </div>
 
@@ -150,7 +122,11 @@ function printSection(id) {
         </div>
 
         <div data-tour="rapports-admin.acts">
-            <AdminActsStatsSection :acts-stats="adminActsStats" :loading="adminLoading" @print="printSection" />
+            <AdminActsStatsSection
+                :acts-stats="adminActsStats"
+                :loading="adminLoading"
+                :period-label="periodLabel"
+            />
         </div>
 
         <div data-tour="rapports-admin.doctors">

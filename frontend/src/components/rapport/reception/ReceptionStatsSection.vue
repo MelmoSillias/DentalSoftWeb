@@ -1,12 +1,15 @@
 <script setup>
 import { computed, ref } from 'vue';
+import Button from 'primevue/button';
 import Chart from 'primevue/chart';
 import ToggleButton from 'primevue/togglebutton';
 import StatsCardsGrid from '@/components/rapport/common/StatsCardsGrid.vue';
+import { printReport } from '@/utils/reportPrint';
 
 const props = defineProps({
     stats: { type: Object, default: () => ({}) },
-    loading: { type: Boolean, default: false }
+    loading: { type: Boolean, default: false },
+    periodLabel: { type: String, default: '' }
 });
 
 const showChart = ref(false);
@@ -75,16 +78,38 @@ const chartOptions = computed(() => {
         }
     };
 });
+
+function printSection() {
+    printReport({
+        title: 'Statistiques du jour',
+        periodLabel: props.periodLabel,
+        sections: [
+            {
+                title: 'Indicateurs de la réception',
+                items: buildItems(props.stats).map((item) => ({
+                    label: item.label,
+                    value: item.value
+                }))
+            }
+        ]
+    });
+}
 </script>
 
 <template>
-    <div class="space-y-4">
+    <div class="space-y-4" id="reception-daily-stats">
         <div class="flex flex-wrap items-center justify-between gap-3">
             <div>
                 <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-0">Statistiques du jour</h3>
-                <p class="text-sm text-surface-500 dark:text-surface-400">Vue instantanée des indicateurs de la réception</p>
+                <p class="text-sm text-surface-500 dark:text-surface-400">
+                    Vue instantanée des indicateurs de la réception
+                    <span v-if="periodLabel"> — Journée du {{ periodLabel }}</span>
+                </p>
             </div>
-            <ToggleButton v-model="showChart" onLabel="Graphique" offLabel="Données" onIcon="pi pi-chart-bar" offIcon="pi pi-list" />
+            <div class="flex items-center gap-2">
+                <ToggleButton v-model="showChart" onLabel="Graphique" offLabel="Données" onIcon="pi pi-chart-bar" offIcon="pi pi-list" />
+                <Button label="Imprimer" icon="pi pi-print" outlined size="small" data-tour="rapports-reception.print" @click="printSection" />
+            </div>
         </div>
         <StatsCardsGrid v-if="!showChart" :items="buildItems(stats)" :loading="loading" />
         <div v-else class="rounded-2xl border border-surface-200/60 bg-gradient-to-br from-surface-0 to-surface-50/70 p-4 shadow-sm dark:border-surface-700 dark:from-surface-900 dark:to-surface-800">

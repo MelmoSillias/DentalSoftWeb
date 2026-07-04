@@ -188,10 +188,10 @@ app.use(ConfirmationService);
 app.component('AppToast', AppToast);
 
 const updateSW = registerSW({
+    immediate: true,
     onNeedRefresh() {
-        if (confirm('Une nouvelle version est disponible. Recharger ?')) {
-            updateSW(true);
-        }
+        // Mise à jour silencieuse : pas de vidage manuel du cache navigateur.
+        updateSW(true);
     },
     onOfflineReady() {
         console.log('Application prête hors-ligne.');

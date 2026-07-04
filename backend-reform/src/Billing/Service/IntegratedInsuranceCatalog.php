@@ -21,7 +21,6 @@ class IntegratedInsuranceCatalog
                 'logoPath' => '/assurances/sbn-logo.png',
                 'website' => null,
                 'email' => null,
-                'defaultRate' => null,
                 'formSchema' => [
                     'fields' => [
                         ['key' => 'societe', 'label' => 'Societe', 'type' => 'text', 'required' => false],
@@ -40,7 +39,6 @@ class IntegratedInsuranceCatalog
                 'logoPath' => '/assurances/assurancesbleues-logo.png',
                 'website' => null,
                 'email' => null,
-                'defaultRate' => null,
                 'formSchema' => [
                     'fields' => [
                         ['key' => 'souscripteur', 'label' => 'Souscripteur', 'type' => 'text', 'required' => true],
@@ -86,8 +84,7 @@ class IntegratedInsuranceCatalog
                 ->setLogoPath(isset($definition['logoPath']) ? (string) $definition['logoPath'] : null)
                 ->setWebsite(isset($definition['website']) ? (string) $definition['website'] : null)
                 ->setEmail(isset($definition['email']) ? (string) $definition['email'] : null)
-                ->setFormSchema(is_array($definition['formSchema'] ?? null) ? $definition['formSchema'] : [])
-                ->setTauxParDefaut(isset($definition['defaultRate']) ? (float) $definition['defaultRate'] : null);
+                ->setFormSchema(is_array($definition['formSchema'] ?? null) ? $definition['formSchema'] : []);
 
             if ($assurance->getId() === null) {
                 $assurance->setActif(false);

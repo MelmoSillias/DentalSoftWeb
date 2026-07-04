@@ -128,6 +128,27 @@ final class ConsultationController extends AbstractController{
         return new JsonResponse($data);
     }
 
+    #[Route('/api/ordonnance/{id}', name: 'api_ordonnance_update', methods: ['PUT'])]
+    public function updateOrdonnance(Request $request, int $id): JsonResponse
+    {
+        $payload = json_decode($request->getContent(), true);
+        if (!is_array($payload)) {
+            return new JsonResponse(['error' => 'Payload invalide'], 400);
+        }
+
+        try {
+            $data = $this->consultationService->updateOrdonnance($id, $payload);
+        } catch (\InvalidArgumentException $exception) {
+            return new JsonResponse(['error' => $exception->getMessage()], 400);
+        }
+
+        if (!$data) {
+            return new JsonResponse(['error' => 'Ordonnance introuvable'], 404);
+        }
+
+        return new JsonResponse($data);
+    }
+
     #[Route('/api/ordonnance/{id}/print', name: 'api_ordonnance_print', methods: ['GET'])]
     public function printOrdonnance(int $id): Response
     {
@@ -171,14 +192,36 @@ final class ConsultationController extends AbstractController{
     #[Route('/api/consultations/{consultation}/facture/update', name: 'api_consultation_facture_update', methods: ['PUT'])]
     public function updateFactureLines(Request $request, Consultation $consultation): JsonResponse
     {
+        if (!$this->canModifyConsultationInvoice()) {
+            return new JsonResponse(['error' => 'Modification de facture non autorisée pour votre profil.'], 403);
+        }
+
         $data = json_decode($request->getContent(), true);
         if (!isset($data['lignes'])) {
             return new JsonResponse(['error' => 'Payload invalide'], 400);
         }
 
-        $result = $this->consultationService->updateFactureLines($consultation, $data['lignes']);
+        $result = $this->consultationService->updateFactureLines(
+            $consultation,
+            $data['lignes'],
+            $data['date'] ?? $data['dateFacture'] ?? null,
+            $data['time'] ?? $data['timeFacture'] ?? null,
+        );
 
         return new JsonResponse($result, isset($result['error']) ? 400 : 200);
+    }
+
+    private function canModifyConsultationInvoice(): bool
+    {
+        if ($this->isGranted('ROLE_ADMIN')) {
+            return true;
+        }
+
+        $isSecretary = $this->isGranted('ROLE_RECEPTION')
+            || $this->isGranted('ROLE_RECEPTIONNISTE')
+            || $this->isGranted('ROLE_SECRETAIRE');
+
+        return $isSecretary && $this->globalSettingsService->isReceptionInvoiceModificationAllowed();
     }
 
     #[Route('/api/admin/consultation/{id}/details', name: 'api_consultation_details', methods: ['GET'])]

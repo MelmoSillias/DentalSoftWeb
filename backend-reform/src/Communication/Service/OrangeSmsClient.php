@@ -56,7 +56,7 @@ final class OrangeSmsClient
             $token = $this->requestToken($config);
             $endpoint = rtrim($config->getBaseUrl(), '/') . '/sms/admin/v1/contracts';
             $response = $this->httpClient->request('GET', $endpoint, [
-                'headers' => [
+                's' => [
                     'Authorization' => 'Bearer ' . $token,
                     'Accept' => 'application/json',
                 ],

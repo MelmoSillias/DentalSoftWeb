@@ -4,6 +4,7 @@ import Button from 'primevue/button';
 import Chart from 'primevue/chart';
 import ToggleButton from 'primevue/togglebutton';
 import ValueListCard from '@/components/rapport/common/ValueListCard.vue';
+import { formatAsOfLabel, printReport } from '@/utils/reportPrint';
 
 const props = defineProps({
     employeeDistribution: { type: Array, default: () => [] },
@@ -12,8 +13,6 @@ const props = defineProps({
     patientReferrals: { type: Array, default: () => [] },
     loading: { type: Boolean, default: false }
 });
-
-const emit = defineEmits(['print']);
 const showEmployeesChart = ref(false);
 const showLowStockChart = ref(false);
 const showPatientsChart = ref(false);
@@ -148,6 +147,35 @@ const barOptions = computed(() => {
         }
     };
 });
+
+function printSection() {
+    printReport({
+        title: 'Détails globaux',
+        periodLabel: formatAsOfLabel(),
+        sections: [
+            {
+                title: 'Répartition des employés',
+                items: props.employeeDistribution,
+                emptyLabel: 'Aucun employé à afficher.'
+            },
+            {
+                title: 'Consommables à stock bas',
+                items: props.lowStock,
+                emptyLabel: 'Aucun consommable critique.'
+            },
+            {
+                title: 'Patients',
+                items: patientItems(props.patients),
+                emptyLabel: 'Aucune donnée patient.'
+            },
+            {
+                title: 'Comment les patients ont connu le cabinet',
+                items: props.patientReferrals,
+                emptyLabel: 'Aucune provenance disponible.'
+            }
+        ]
+    });
+}
 </script>
 
 <template>
@@ -157,6 +185,7 @@ const barOptions = computed(() => {
                 <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-0">Détails globaux</h3>
                 <p class="text-sm text-surface-500 dark:text-surface-400">Indicateurs non liés à la période sélectionnée</p>
             </div>
+            <Button label="Imprimer la section" icon="pi pi-print" outlined size="small" @click="printSection" />
         </div>
 
         <div class="grid gap-4 lg:grid-cols-2">
@@ -170,7 +199,6 @@ const barOptions = computed(() => {
             >
                 <template #actions>
                     <ToggleButton v-model="showEmployeesChart" onLabel="Graphique" offLabel="Données" onIcon="pi pi-chart-pie" offIcon="pi pi-list" />
-                    <Button icon="pi pi-print" text rounded @click="emit('print', 'admin-employee-distribution')" />
                 </template>
                 <template #chart>
                     <div class="aspect-square w-full">
@@ -189,7 +217,6 @@ const barOptions = computed(() => {
             >
                 <template #actions>
                     <ToggleButton v-model="showLowStockChart" onLabel="Graphique" offLabel="Données" onIcon="pi pi-chart-bar" offIcon="pi pi-list" />
-                    <Button icon="pi pi-print" text rounded @click="emit('print', 'admin-low-stock')" />
                 </template>
                 <template #chart>
                     <div class="aspect-[16/9] w-full">
@@ -198,7 +225,7 @@ const barOptions = computed(() => {
                 </template>
             </ValueListCard>
         </div>
-
+        <div class="grid gap-4 lg:grid-cols-2">
         <ValueListCard
             id="admin-global-patients"
             title="Patients"
@@ -209,7 +236,6 @@ const barOptions = computed(() => {
         >
             <template #actions>
                 <ToggleButton v-model="showPatientsChart" onLabel="Graphique" offLabel="Données" onIcon="pi pi-chart-pie" offIcon="pi pi-list" />
-                <Button icon="pi pi-print" text rounded @click="emit('print', 'admin-global-patients')" />
             </template>
             <template #chart>
                 <div class="aspect-square w-full">
@@ -228,13 +254,13 @@ const barOptions = computed(() => {
         >
             <template #actions>
                 <ToggleButton v-model="showPatientReferralsChart" onLabel="Graphique" offLabel="Données" onIcon="pi pi-chart-bar" offIcon="pi pi-list" />
-                <Button icon="pi pi-print" text rounded @click="emit('print', 'admin-patient-referrals')" />
             </template>
             <template #chart>
                 <div class="aspect-[16/9] w-full">
                     <Chart type="bar" :data="patientReferralsChartData" :options="barOptions" class="h-full w-full" />
                 </div>
-            </template>
-        </ValueListCard>
+                </template>
+            </ValueListCard>
+        </div>
     </section>
 </template>

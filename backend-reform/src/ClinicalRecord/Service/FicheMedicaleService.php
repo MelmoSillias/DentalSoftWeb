@@ -5,6 +5,7 @@ namespace App\ClinicalRecord\Service;
 use App\Billing\Entity\ContenuDevis;
 use App\Billing\Entity\Devis;
 use App\Billing\Repository\DevisRepository;
+use App\CareDelivery\Repository\ConsultationRepository;
 use App\ClinicalRecord\Entity\FicheBilan;
 use App\ClinicalRecord\Entity\FicheDocument;
 use App\ClinicalRecord\Entity\FicheEntretien;
@@ -23,6 +24,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
+use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class FicheMedicaleService
@@ -32,6 +34,7 @@ class FicheMedicaleService
     public function __construct(
         private EntityManagerInterface $em,
         private DevisRepository $devisRepo,
+        private ConsultationRepository $consultationRepo,
         ParameterBagInterface $params,
     ) {
         $this->projectDir = $params->get('kernel.project_dir');
@@ -73,6 +76,27 @@ class FicheMedicaleService
             $collection->removeElement($item);
             $this->em->remove($item);
         }
+    }
+
+    private function assertUploadedFileIsValid(UploadedFile $file): void
+    {
+        if ($file->isValid()) {
+            return;
+        }
+
+        $filename = $file->getClientOriginalName() ?: 'document';
+        $message = match ($file->getError()) {
+            UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE => sprintf(
+                'Le fichier "%s" dépasse la taille maximale autorisée (%s).',
+                $filename,
+                ini_get('upload_max_filesize') ?: 'limite serveur'
+            ),
+            UPLOAD_ERR_PARTIAL => sprintf('Le fichier "%s" n\'a été que partiellement téléversé.', $filename),
+            UPLOAD_ERR_NO_FILE => 'Aucun fichier n\'a été téléversé.',
+            default => sprintf('Erreur lors du téléversement du fichier "%s".', $filename),
+        };
+
+        throw new BadRequestHttpException($message);
     }
 
     private function getOrCreateEntretien(FicheMedicale $fiche): FicheEntretien
@@ -601,6 +625,8 @@ class FicheMedicaleService
                     continue;
                 }
 
+                $this->assertUploadedFileIsValid($file);
+
                 $originalName = pathinfo($file->getClientOriginalName(), PATHINFO_BASENAME);
                 if (!$originalName) {
                     $extension = $file->guessExtension() ?: $file->getClientOriginalExtension();
@@ -727,6 +753,10 @@ class FicheMedicaleService
             $existingDevis = $this->devisRepo->findBy(['ficheMedicale' => $fiche]);
             foreach ($existingDevis as $existing) {
                 if (!in_array($existing, $keptDevis, true)) {
+                    $devisId = $existing->getId();
+                    if ($devisId !== null) {
+                        $this->consultationRepo->clearLegacyDevisReference($devisId);
+                    }
                     $this->em->remove($existing);
                 }
             }

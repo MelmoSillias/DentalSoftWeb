@@ -29,7 +29,7 @@ const baseModel = ref([
 const settingsSection = {
     label: 'Paramètres',
     items: [
-        { label: 'Paramètres généraux', icon: 'pi pi-fw pi-cog', to: '/parametres/apparence' },
+        { label: 'Paramètres généraux', icon: 'pi pi-fw pi-cog', to: '/parametres/general-options' },
         { label: 'API SMS', icon: 'pi pi-fw pi-send', to: '/administration/api-sms', adminOnly: true },
         // { label: 'Options des fichiers', icon: 'pi pi-fw pi-file-edit', to: '/parametres/fileOptions' },
 

@@ -4,10 +4,12 @@ import FormCreateConsultation from '@/components/patients/FormCreateConsultation
 import FormPatient from '@/components/patients/FormPatient.vue';
 import PatientAvatar from '@/components/patients/PatientAvatar.vue';
 import FormRendezVous from '@/components/patients/FormRendezVous.vue';
+import PatientsReferralStats from '@/components/patients/PatientsReferralStats.vue';
 import PrintDataTablePage from '@/components/print/PrintDataTablePage.vue';
 import { usePrinter } from '@/composables/usePrinter';
 import { usePatients } from '@/composables/usePatients';
 import { fetchPublicGeneralSettings } from '@/services/globalSettingsService';
+import { fetchPatientsOverviewStats } from '@/services/patients';
 import {
     activatePatientsTourMock,
     deactivatePatientsTourMock,
@@ -64,6 +66,14 @@ const consultationLoading = ref({});
 const isGuidedTourStarting = ref(false);
 const loadErrorMessage = ref('');
 const initializingPage = ref(true);
+const statsLoading = ref(false);
+const overviewStats = ref({
+    totalPatients: 0,
+    consultationsToday: 0,
+    upcomingAppointments: 0,
+    newPatientsThisMonth: 0,
+    referrals: []
+});
 let guidedTourTableState = null;
 let guidedTourDemoActive = false;
 let guidedTourCleanupPromise = null;
@@ -147,13 +157,25 @@ const loadVisibilityPolicy = async ({ asPageLoad = false } = {}) => {
     }
 };
 
+const loadOverviewStats = async () => {
+    statsLoading.value = true;
+    try {
+        overviewStats.value = await fetchPatientsOverviewStats(token, { medecinOnly: isMedecin.value });
+    } catch (error) {
+        console.error('Erreur chargement statistiques patients', error);
+    } finally {
+        statsLoading.value = false;
+    }
+};
+
 const initializePage = async () => {
     initializingPage.value = true;
     loadErrorMessage.value = '';
     try {
         const [visibilityOk, patientsOk] = await Promise.all([
             loadVisibilityPolicy({ asPageLoad: true }),
-            loadPatients({ page: 1, limit: rowsPerPage.value, asPageLoad: true })
+            loadPatients({ page: 1, limit: rowsPerPage.value, asPageLoad: true }),
+            loadOverviewStats()
         ]);
         if (!visibilityOk && !patientsOk && !loadErrorMessage.value) {
             loadErrorMessage.value = 'Impossible de charger les données de la page patients.';
@@ -246,6 +268,7 @@ const handlePatientSaved = (saved) => {
         lastTouchedId.value = null;
     }, 3000);
     showPatientDialog.value = false;
+    loadOverviewStats();
 };
 
 const openConsultation = async (patient = null) => {
@@ -377,6 +400,7 @@ const confirmDeletePatient = async () => {
                 q: trashSearch.value
             });
         }
+        await loadOverviewStats();
     } catch (error) {
         console.error('Erreur suppression patient', error);
         toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de supprimer ce patient.', life: 3000 });
@@ -435,6 +459,7 @@ const restorePatientFromTrash = async (patient) => {
             sort: sortField.value,
             order: sortOrder.value
         });
+        await loadOverviewStats();
     } catch (error) {
         console.error('Erreur restauration patient', error);
         toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de restaurer ce patient.', life: 3000 });
@@ -950,13 +975,15 @@ onMounted(() => {
         </div>
 
         <!-- Stats Overview -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-0 md:mb-8 mt-6" data-tour="patients-list.stats">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 mt-6" data-tour="patients-list.stats">
             <div
                 class="bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-900/20 dark:to-blue-800/20 rounded-2xl p-4 sm:p-5 border border-blue-200/50 dark:border-blue-800/50">
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-sm text-blue-700 dark:text-blue-300 font-medium">Total Patients</p>
-                        <p class="text-2xl font-bold text-blue-900 dark:text-blue-100 mt-2">{{ totalRecords || patients.length }}</p>
+                        <p class="text-2xl font-bold text-blue-900 dark:text-blue-100 mt-2">
+                            {{ statsLoading ? '—' : (overviewStats.totalPatients || totalRecords || patients.length) }}
+                        </p>
                     </div>
                     <i class="fas fa-users text-2xl text-blue-500"></i>
                 </div>
@@ -967,7 +994,9 @@ onMounted(() => {
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-sm text-green-700 dark:text-green-300 font-medium">Consultations aujourd'hui</p>
-                        <p class="text-2xl font-bold text-green-900 dark:text-green-100 mt-2">--</p>
+                        <p class="text-2xl font-bold text-green-900 dark:text-green-100 mt-2">
+                            {{ statsLoading ? '—' : overviewStats.consultationsToday }}
+                        </p>
                     </div>
                     <i class="fas fa-stethoscope text-2xl text-green-500"></i>
                 </div>
@@ -978,7 +1007,9 @@ onMounted(() => {
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-sm text-amber-700 dark:text-amber-300 font-medium">Rendez-vous à venir</p>
-                        <p class="text-2xl font-bold text-amber-900 dark:text-amber-100 mt-2">--</p>
+                        <p class="text-2xl font-bold text-amber-900 dark:text-amber-100 mt-2">
+                            {{ statsLoading ? '—' : overviewStats.upcomingAppointments }}
+                        </p>
                     </div>
                     <i class="fas fa-calendar-day text-2xl text-amber-500"></i>
                 </div>
@@ -989,12 +1020,20 @@ onMounted(() => {
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-sm text-purple-700 dark:text-purple-300 font-medium">Nouveaux ce mois</p>
-                        <p class="text-2xl font-bold text-purple-900 dark:text-purple-100 mt-2">--</p>
+                        <p class="text-2xl font-bold text-purple-900 dark:text-purple-100 mt-2">
+                            {{ statsLoading ? '—' : overviewStats.newPatientsThisMonth }}
+                        </p>
                     </div>
                     <i class="fas fa-chart-line text-2xl text-purple-500"></i>
                 </div>
             </div>
         </div>
+
+        <PatientsReferralStats
+            class="mb-6 md:mb-8"
+            :referrals="overviewStats.referrals"
+            :loading="statsLoading"
+        />
         </template>
 
         <!-- Dialogs -->

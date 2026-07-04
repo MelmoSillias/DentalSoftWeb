@@ -331,7 +331,7 @@ defineExpose({ reloadOnAction });
           </div>
 
           <div class="text-sm text-gray-600 dark:text-gray-400">
-            {{ popoverEvent.extendedProps.medecinName ? `Dr. ${popoverEvent.extendedProps.medecinName}` : '' }}
+            {{ popoverEvent.extendedProps.medecinName ? `${popoverEvent.extendedProps.medecinName}` : '' }}
           </div>
 
           <div class="flex items-center gap-2 text-sm">

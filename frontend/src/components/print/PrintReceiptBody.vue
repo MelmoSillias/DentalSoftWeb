@@ -1,84 +1,109 @@
 <template>
-    <div class="ticket" :style="{ '--watermark': `url(${logoSrc})` }">
-        <div class="small content">
-            <PrintTicketHeader title="Reçu de paiement" />
+    <PrintTicketPage :logo-src="logoSrc">
+        <PrintTicketHeader title="Reçu de paiement" />
 
-            <hr />
+        <hr />
 
-            <table class="small">
+        <table class="print-ticket-table small">
+            <tbody>
+                <tr>
+                    <td>Reçu N°</td>
+                    <td class="right">{{ paiement?.id || '—' }}</td>
+                </tr>
+                <tr>
+                    <td>Date</td>
+                    <td class="right">{{ dateLabel }}</td>
+                </tr>
+                <tr>
+                    <td>Patient</td>
+                    <td class="right">
+                        {{ paiement?.devis?.fiche?.patient?.nom || '—' }}
+                        {{ paiement?.devis?.fiche?.patient?.prenom || '' }}
+                    </td>
+                </tr>
+                <tr>
+                    <td>Mode</td>
+                    <td class="right">{{ paiement?.mode?.libelle || '—' }}</td>
+                </tr>
+                <tr>
+                    <td>Facture N°</td>
+                    <td class="right">{{ paiement?.devis?.id || '—' }}</td>
+                </tr>
+                <tr>
+                    <td>Montant facture</td>
+                    <td class="right">{{ formatMoney(paiement?.devis?.total) }}</td>
+                </tr>
+                <tr>
+                    <td>Reste à payer</td>
+                    <td class="right">{{ formatMoney(paiement?.devis?.reste) }}</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <hr />
+
+        <div v-if="paiement?.assurance" class="assurance-block">
+            <p class="bold center">Informations assurance</p>
+            <table class="print-ticket-table small">
                 <tbody>
                     <tr>
-                        <td>Reçu N°</td>
-                        <td class="right">{{ paiement?.id || '—' }}</td>
+                        <td>Assurance</td>
+                        <td class="right">{{ paiement.assurance.nom || '—' }} ({{ paiement.assurance.code || '—' }})</td>
                     </tr>
                     <tr>
-                        <td>Date</td>
-                        <td class="right">{{ dateLabel }}</td>
+                        <td>Taux</td>
+                        <td class="right">{{ paiement.assurance.tauxCouverture ?? '—' }}%</td>
                     </tr>
                     <tr>
-                        <td>Patient</td>
-                        <td class="right">
-                            {{ paiement?.devis?.fiche?.patient?.nom || '—' }}
-                            {{ paiement?.devis?.fiche?.patient?.prenom || '' }}
-                        </td>
+                        <td>Montant total</td>
+                        <td class="right">{{ formatMoney(paiement.assurance.montantTotal) }}</td>
                     </tr>
                     <tr>
-                        <td>Mode</td>
-                        <td class="right">{{ paiement?.mode?.libelle || '—' }}</td>
+                        <td>Part assurance</td>
+                        <td class="right">{{ formatMoney(paiement.assurance.montantAssurance) }}</td>
                     </tr>
                     <tr>
-                        <td>Facture N°</td>
-                        <td class="right">{{ paiement?.devis?.id || '—' }}</td>
+                        <td>Part patient</td>
+                        <td class="right">{{ formatMoney(paiement.assurance.montantPatient) }}</td>
                     </tr>
                     <tr>
-                        <td>Montant facture</td>
-                        <td class="right">{{ formatMoney(paiement?.devis?.total) }}</td>
-                    </tr>
-                    <tr>
-                        <td>Reste à payer</td>
-                        <td class="right">{{ formatMoney(paiement?.devis?.reste) }}</td>
+                        <td>Reste patient</td>
+                        <td class="right">{{ formatMoney(paiement.assurance.restePatient) }}</td>
                     </tr>
                 </tbody>
             </table>
-
-            <hr />
-
-            <table>
-                <thead>
-                    <tr>
-                        <th>Description</th>
-                        <th class="right">Montant</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>Paiement devis #{{ paiement?.devis?.id || '—' }}</td>
-                        <td class="right">{{ formatMoney(paiement?.montant) }}</td>
-                    </tr>
-                </tbody>
-                <tfoot>
-                    <tr>
-                        <td class="bold">Total payé</td>
-                        <td class="right bold">{{ formatMoney(paiement?.montant) }}</td>
-                    </tr>
-                </tfoot>
-            </table>
-
-            <hr />
-
-            <div class="small center">
-                Merci de votre confiance !<br />
-                Tél: {{ cabinetPhone }}
-            </div>
         </div>
-    </div>
+
+        <hr v-if="paiement?.assurance" />
+
+        <table class="print-ticket-table">
+            <thead>
+                <tr>
+                    <th>Description</th>
+                    <th class="right">Montant</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Paiement devis #{{ paiement?.devis?.id || '—' }}</td>
+                    <td class="right">{{ formatMoney(paiement?.montant) }}</td>
+                </tr>
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td class="bold">Total payé</td>
+                    <td class="right bold">{{ formatMoney(paiement?.montant) }}</td>
+                </tr>
+            </tfoot>
+        </table>
+    </PrintTicketPage>
 </template>
 
 <script setup>
 import { computed } from 'vue';
+import PrintTicketPage from './PrintTicketPage.vue';
 import PrintTicketHeader from './PrintTicketHeader.vue';
 import logoImg from '@/assets/logo.png';
-import cabinetConfig from '@/cabinetConfig';
 
 const props = defineProps({
     paiement: { type: Object, default: () => ({}) },
@@ -92,42 +117,17 @@ const dateLabel = computed(() => {
 });
 
 const formatMoney = (value) => `${Number(value || 0).toLocaleString('fr-FR')} FCFA`;
-const cabinetPhone = computed(() => cabinetConfig.cabinetPhone || '—');
 </script>
 
 <style scoped>
-.ticket {
-    position: relative;
-    width: 80mm;
-    padding: 2mm;
-    color: #000;
-    font-family: Arial, sans-serif;
-    font-size: 14px;
-    overflow: hidden;
-}
-
-.ticket::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: var(--watermark) center center no-repeat;
-    background-size: 70% auto;
-    opacity: 0.06;
-    pointer-events: none;
-    z-index: 0;
-}
-
-.content {
-    position: relative;
-    z-index: 1;
-}
-
 .small {
     font-size: 12px;
+    font-weight: 600;
 }
 
 .center {
     text-align: center;
+    font-weight: 700;
 }
 
 .right {
@@ -135,27 +135,10 @@ const cabinetPhone = computed(() => cabinetConfig.cabinetPhone || '—');
 }
 
 .bold {
-    font-weight: 700;
+    font-weight: 800;
 }
 
-hr {
-    border: none;
-    border-top: 1px dashed #000;
-    margin: 3px 0;
-}
-
-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin: 3px 0;
-}
-
-th,
-td {
-    padding: 1px 0;
-}
-
-th {
-    font-weight: 700;
+.assurance-block {
+    margin: 4px 0;
 }
 </style>

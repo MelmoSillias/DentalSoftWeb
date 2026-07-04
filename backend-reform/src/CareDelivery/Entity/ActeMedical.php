@@ -21,8 +21,7 @@ class ActeMedical
     #[ORM\JoinColumn(nullable: false)]
     private ?string $type = null;
 
-    #[ORM\Column(type: 'string', length: 10)]
-    #[ORM\JoinColumn(nullable: true)]
+    #[ORM\Column(type: 'string', length: 255, nullable: true)]
     private ?string $dent = null;
 
     #[ORM\Column(type: 'text', nullable: true)]

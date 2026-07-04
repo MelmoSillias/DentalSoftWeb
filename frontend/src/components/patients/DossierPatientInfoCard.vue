@@ -19,6 +19,14 @@ const props = defineProps({
     hidePhotoAction: {
         type: Boolean,
         default: false
+    },
+    ordonnances: {
+        type: Array,
+        default: () => []
+    },
+    consultationReadonly: {
+        type: Boolean,
+        default: false
     }
 });
 
@@ -33,10 +41,30 @@ const emit = defineEmits([
     'delete-allergy',
     'create-portal-account',
     'reset-portal-password',
-    'toggle-portal-active'
+    'toggle-portal-active',
+    'open-ordonnance',
+    'view-ordonnance',
+    'edit-ordonnance',
+    'print-ordonnance'
 ]);
 
 const photoInput = ref(null);
+
+const referralLabels = {
+    'Reseaux sociaux': 'Réseaux sociaux',
+    'Bouche a oreille': 'Bouche à oreille',
+    'Bouche a bouche': 'Bouche à oreille',
+    Recommandation: 'Recommandation',
+    'Par un medecin': 'Par un médecin',
+    Publicite: 'Publicité',
+    Autres: 'Autres'
+};
+
+const referencementLabel = computed(() => {
+    const value = String(props.patient?.referencement || '').trim();
+    if (!value) return '--';
+    return referralLabels[value] || value;
+});
 
 const insuranceProfile = computed(() => props.patient?.insuranceProfile || null);
 const insuranceName = computed(() => insuranceProfile.value?.assurance?.nom || insuranceProfile.value?.assurance?.code || 'Assurance');
@@ -139,6 +167,10 @@ const handlePhotoChange = (event) => {
                     <span class="text-surface-600 dark:text-surface-400">Profession</span>
                     <span class="font-medium text-surface-900 dark:text-surface-100">{{ patient.profession || '--' }}</span>
                 </div>
+                <div class="flex items-center justify-between p-3 rounded-xl bg-surface-50 dark:bg-surface-700/50">
+                    <span class="text-surface-600 dark:text-surface-400">Référencement</span>
+                    <span class="font-medium text-surface-900 dark:text-surface-100 text-right">{{ referencementLabel }}</span>
+                </div>
             </div>
 
             <div class="mt-6 pt-6 border-t border-surface-200/50 dark:border-surface-700/50" data-tour="patients-dossier.contact">
@@ -215,6 +247,45 @@ const handlePhotoChange = (event) => {
                     </div>
                 </div>
                 <p v-else class="text-sm text-surface-500 dark:text-surface-400">Aucune allergie renseignée.</p>
+            </div>
+
+            <div class="mt-6 pt-6 border-t border-surface-200/50 dark:border-surface-700/50" data-tour="patients-dossier.ordonnances">
+                <div class="flex items-center justify-between mb-3">
+                    <h4 class="text-sm font-medium text-surface-700 dark:text-surface-300">Ordonnances</h4>
+                    <Button
+                        v-if="!consultationReadonly"
+                        icon="pi pi-plus"
+                        label="Nouvelle"
+                        size="small"
+                        outlined
+                        @click="emit('open-ordonnance')"
+                    />
+                </div>
+
+                <div v-if="ordonnances?.length" class="space-y-2">
+                    <div
+                        v-for="ordo in ordonnances"
+                        :key="ordo.id || `${ordo.date}-${ordo.medecinNom}`"
+                        class="rounded-xl border border-surface-200/80 dark:border-surface-700/80 bg-surface-50/80 dark:bg-surface-800/40 p-2.5"
+                    >
+                        <div class="flex items-start justify-between gap-2">
+                            <div class="min-w-0">
+                                <div class="text-sm font-medium text-surface-900 dark:text-surface-100 truncate">
+                                    {{ ordo.date || '—' }}
+                                </div>
+                                <div class="text-xs text-surface-500 dark:text-surface-400 truncate">
+                                    {{ ordo.medecinNom || ordo.medecin || '—' }} · {{ ordo.lignes?.length || 0 }} ligne(s)
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-2 flex flex-wrap gap-1">
+                            <Button icon="pi pi-eye" label="Voir" size="small" text class="!px-2 !py-1" @click="emit('view-ordonnance', ordo)" />
+                            <Button icon="pi pi-pencil" label="Modifier" size="small" text class="!px-2 !py-1" @click="emit('edit-ordonnance', ordo)" />
+                            <Button icon="pi pi-print" label="Imprimer" size="small" text class="!px-2 !py-1" @click="emit('print-ordonnance', ordo)" />
+                        </div>
+                    </div>
+                </div>
+                <p v-else class="text-sm text-surface-500 dark:text-surface-400">Aucune ordonnance pour cette consultation.</p>
             </div>
 
             <div class="mt-6 pt-6 border-t border-surface-200/50 dark:border-surface-700/50" data-tour="patients-dossier.emergency-contact">

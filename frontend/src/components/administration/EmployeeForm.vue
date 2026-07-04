@@ -7,8 +7,9 @@ import Select from 'primevue/select';
 import Calendar from 'primevue/calendar';
 import MultiSelect from 'primevue/multiselect';
 import FileUpload from 'primevue/fileupload';
-import Divider from 'primevue/divider';
 import Button from 'primevue/button';
+import EmployeeSalarySection from '@/components/administration/EmployeeSalarySection.vue';
+import { employeeTypeInfirmierOption } from '@/utils/employeeTypeUtils';
 
 const props = defineProps({
     visible: { type: Boolean, default: false },
@@ -22,7 +23,7 @@ const emit = defineEmits(['update:visible', 'submit', 'cancel']);
 
 const typeOptions = [
     { label: 'Médecin', value: 'Medecin' },
-    { label: 'Infirmier', value: 'Infirmier' },
+    employeeTypeInfirmierOption,
     { label: 'Réceptionniste', value: 'Receptionniste' },
     { label: 'Admin', value: 'Admin' },
     { label: 'Autre', value: 'Autre' }
@@ -33,12 +34,6 @@ const typeContratOptions = [
     { label: 'CDD', value: 'CDD' },
     { label: 'Stage', value: 'Stage' },
     { label: 'Prestataire', value: 'Prestataire' }
-];
-
-const baseTypeSalaireOptions = [
-    { label: 'Non défini', value: 'non_defini' },
-    { label: 'Fixe', value: 'fixe' },
-    { label: 'Pourcentage', value: 'pourcentage' }
 ];
 
 const daysOptions = [
@@ -62,6 +57,9 @@ const form = ref({
     dureeContrat: null,
     typeSalaire: 'fixe',
     valeurSalaire: 100000,
+    frequencePaiement: 'mensuel',
+    typePrime: 'aucune',
+    valeurPrime: null,
     comingDays: []
 });
 
@@ -82,6 +80,9 @@ const hydrateForm = (employee) => {
         dureeContrat: employee?.dureeContrat ?? null,
         typeSalaire: employee?.typeSalaire || 'fixe',
         valeurSalaire: employee?.valeurSalaire ?? null,
+        frequencePaiement: employee?.frequencePaiement || 'mensuel',
+        typePrime: employee?.typePrime || 'aucune',
+        valeurPrime: employee?.valeurPrime ?? null,
         comingDays: Array.isArray(employee?.comingDays)
             ? employee.comingDays.filter((day) => day !== 'Dimanche')
             : []
@@ -89,45 +90,11 @@ const hydrateForm = (employee) => {
     files.value = [];
 };
 
-const isMedecin = computed(() => form.value.type === 'Medecin');
-const typeSalaireOptions = computed(() => {
-    if (isMedecin.value) return baseTypeSalaireOptions;
-    return baseTypeSalaireOptions.filter((option) => option.value !== 'pourcentage');
-});
-
-const isSalaireDisabled = computed(() => form.value.typeSalaire === 'non_defini');
-const salaryMax = computed(() => (form.value.typeSalaire === 'pourcentage' ? 100 : null));
-const salarySuffix = computed(() => (form.value.typeSalaire === 'pourcentage' ? '%' : 'F CFA'));
-
 watch(
     () => form.value.type,
     (value) => {
         if (value !== 'Medecin' && form.value.typeSalaire === 'pourcentage') {
             form.value.typeSalaire = 'fixe';
-        }
-    }
-);
-
-watch(
-    () => form.value.typeSalaire,
-    (value) => {
-        if (value === 'non_defini') {
-            form.value.valeurSalaire = null;
-            return;
-        }
-
-        if (value === 'pourcentage') {
-            if (form.value.valeurSalaire === null || form.value.valeurSalaire === '') {
-                form.value.valeurSalaire = 35;
-            }
-            if (form.value.valeurSalaire > 100) {
-                form.value.valeurSalaire = 100;
-            }
-            return;
-        }
-
-        if (form.value.valeurSalaire === null || form.value.valeurSalaire === '') {
-            form.value.valeurSalaire = 100000;
         }
     }
 );
@@ -203,93 +170,111 @@ const closeDialog = () => {
 </script>
 
 <template>
-    <Dialog :visible="visible" modal :style="{ width: '70vw', maxWidth: '960px' }" :header="dialogTitle"
-        @update:visible="emit('update:visible', $event)">
-        <div class="space-y-5" :data-tour="props.tourTarget || null">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div class="space-y-1">
-                    <label class="text-sm font-medium">Nom</label>
-                    <InputText v-model="form.nom" placeholder="Nom" class="w-full" />
+    <Dialog
+        :visible="visible"
+        modal
+        :style="{ width: '75vw', maxWidth: '980px' }"
+        :header="dialogTitle"
+        @update:visible="emit('update:visible', $event)"
+    >
+        <div class="space-y-5 max-h-[70vh] overflow-y-auto pr-1" :data-tour="props.tourTarget || null">
+            <section class="rounded-xl border border-surface-200 dark:border-surface-700 overflow-hidden">
+                <div class="px-4 py-3 border-b border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-900/40">
+                    <h5 class="font-semibold flex items-center gap-2"><i class="pi pi-user text-primary-500"></i> Identité</h5>
                 </div>
-                <div class="space-y-1">
-                    <label class="text-sm font-medium">Prénom</label>
-                    <InputText v-model="form.prenom" placeholder="Prénom" class="w-full" />
+                <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="space-y-1">
+                        <label class="text-sm font-medium">Nom</label>
+                        <InputText v-model="form.nom" placeholder="Nom" class="w-full" />
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-sm font-medium">Prénom</label>
+                        <InputText v-model="form.prenom" placeholder="Prénom" class="w-full" />
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-sm font-medium">Téléphone</label>
+                        <InputText v-model="form.telephone" placeholder="Téléphone" class="w-full" />
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-sm font-medium">Email</label>
+                        <InputText v-model="form.email" placeholder="Email" class="w-full" />
+                    </div>
                 </div>
-                <div class="space-y-1">
-                    <label class="text-sm font-medium">Téléphone</label>
-                    <InputText v-model="form.telephone" placeholder="Téléphone" class="w-full" />
-                </div>
-                <div class="space-y-1">
-                    <label class="text-sm font-medium">Email</label>
-                    <InputText v-model="form.email" placeholder="Email" class="w-full" />
-                </div>
-            </div>
+            </section>
 
-            <Divider />
+            <section class="rounded-xl border border-surface-200 dark:border-surface-700 overflow-hidden">
+                <div class="px-4 py-3 border-b border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-900/40">
+                    <h5 class="font-semibold flex items-center gap-2"><i class="pi pi-briefcase text-primary-500"></i> Rôle & contrat</h5>
+                </div>
+                <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="space-y-1">
+                        <label class="text-sm font-medium">Fonction</label>
+                        <Select v-model="form.type" :options="typeOptions" optionLabel="label" optionValue="value" class="w-full" />
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-sm font-medium">Description</label>
+                        <InputText v-model="form.fonction" placeholder="Description" class="w-full" />
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-sm font-medium">Date d'embauche</label>
+                        <DatePicker v-model="form.dateEmbauche" class="w-full" dateFormat="yy-mm-dd" showIcon placeholder="YYYY-MM-DD" />
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-sm font-medium">Type de contrat</label>
+                        <Select v-model="form.typeContrat" :options="typeContratOptions" optionLabel="label" optionValue="value" class="w-full" />
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-sm font-medium">Durée du contrat (mois)</label>
+                        <InputNumber v-model="form.dureeContrat" class="w-full" :min="1" :disabled="form.typeContrat === 'CDI'" />
+                    </div>
+                </div>
+            </section>
 
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div class="space-y-1">
-                    <label class="text-sm font-medium">Fonction</label>
-                    <Select v-model="form.type" :options="typeOptions" optionLabel="label" optionValue="value"
-                        class="w-full" />
+            <section class="rounded-xl border border-surface-200 dark:border-surface-700 overflow-hidden">
+                <div class="px-4 py-3 border-b border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-900/40">
+                    <h5 class="font-semibold flex items-center gap-2"><i class="pi pi-wallet text-primary-500"></i> Rémunération</h5>
                 </div>
-                <div class="space-y-1 md:col-span-2">
-                    <label class="text-sm font-medium">Description</label>
-                    <InputText v-model="form.fonction" placeholder="Description" class="w-full" />
+                <div class="p-4">
+                    <EmployeeSalarySection v-model:form="form" :employee-type="form.type" />
                 </div>
-                
-                <div class="space-y-1">
-                    <label class="text-sm font-medium">Date d'embauche</label>
-                    <Calendar v-model="form.dateEmbauche" class="w-full" dateFormat="yy-mm-dd" showIcon
-                        placeholder="YYYY-MM-DD" />
-                </div>
-            </div>
+            </section>
 
-            <Divider />
-
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div class="space-y-1">
-                    <label class="text-sm font-medium">Type de contrat</label>
-                    <Select v-model="form.typeContrat" :options="typeContratOptions" optionLabel="label"
-                        optionValue="value" class="w-full" />
+            <section class="rounded-xl border border-surface-200 dark:border-surface-700 overflow-hidden">
+                <div class="px-4 py-3 border-b border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-900/40">
+                    <h3 class="font-semibold flex items-center gap-2"><i class="pi pi-calendar text-primary-500"></i> Planning</h3>
                 </div>
-                <div class="space-y-1">
-                    <label class="text-sm font-medium">Durée du contrat (mois)</label>
-                    <InputNumber v-model="form.dureeContrat" class="w-full" :min="1" :disabled="form.typeContrat === 'CDI'" />
-                </div>
-                <div class="space-y-1">
-                    <label class="text-sm font-medium">Type de salaire</label>
-                    <Select v-model="form.typeSalaire" :options="typeSalaireOptions" optionLabel="label"
-                        optionValue="value" class="w-full" />
-                </div>
-                <div class="space-y-1">
-                    <label class="text-sm font-medium">Valeur du salaire</label>
-                    <InputNumber
-                        v-model="form.valeurSalaire"
+                <div class="p-4 space-y-1">
+                    <label class="text-sm font-medium">Jours travaillés</label>
+                    <MultiSelect
+                        v-model="form.comingDays"
+                        :options="daysOptions"
+                        optionLabel="label"
+                        optionValue="value"
+                        display="chip"
                         class="w-full"
-                        :min="0"
-                        :max="salaryMax"
-                        :step="0.01"
-                        :suffix="salarySuffix"
-                        :disabled="isSalaireDisabled"
+                        placeholder="Sélectionner les jours"
                     />
                 </div>
-            </div>
+            </section>
 
-            <div class="space-y-1">
-                <label class="text-sm font-medium">Jours travaillés</label>
-                <MultiSelect v-model="form.comingDays" :options="daysOptions" optionLabel="label"
-                    optionValue="value" display="chip" class="w-full" placeholder="Sélectionner les jours" />
-            </div>
-
-            <Divider />
-
-            <div class="space-y-1">
-                <label class="text-sm font-medium">Documents administratifs</label>
-                <FileUpload name="administrativeFiles[]" :multiple="true" :customUpload="true" :auto="false"
-                    @select="onFilesSelect" @clear="onFilesClear" chooseLabel="Choisir" uploadLabel="Ajouter"
-                    cancelLabel="Vider" />
-            </div>
+            <section class="rounded-xl border border-surface-200 dark:border-surface-700 overflow-hidden">
+                <div class="px-4 py-3 border-b border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-900/40">
+                    <h5  class="font-semibold flex items-center gap-2"><i class="pi pi-file text-primary-500"></i> Documents</h5>
+                </div>
+                <div class="p-4">
+                    <FileUpload
+                        name="administrativeFiles[]"
+                        :multiple="true"
+                        :customUpload="true"
+                        :auto="false"
+                        @select="onFilesSelect"
+                        @clear="onFilesClear"
+                        chooseLabel="Choisir"
+                        uploadLabel="Ajouter"
+                        cancelLabel="Vider"
+                    />
+                </div>
+            </section>
         </div>
 
         <template #footer>
@@ -300,3 +285,12 @@ const closeDialog = () => {
         </template>
     </Dialog>
 </template>
+
+<style scoped>
+
+h5 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-color-secondary);
+}
+</style>

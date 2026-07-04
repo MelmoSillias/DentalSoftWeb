@@ -11,6 +11,7 @@ use App\Billing\Entity\Paiement;
 use App\Billing\Repository\ChargeFixeRepository;
 use App\Billing\Repository\ModeDePaiementRepository;
 use App\Billing\Repository\TransactionRepository;
+use App\Reporting\Service\ReportService;
 use App\Settings\Service\GlobalSettingsService;
 use DateTime;
 use DateTimeImmutable;
@@ -25,6 +26,8 @@ class FinanceService
         private TransactionRepository $transactionRepo,
         private EntityManagerInterface $em,
         private GlobalSettingsService $globalSettingsService,
+        private LotFactureAssuranceService $lotFactureAssuranceService,
+        private ReportService $reportService,
     ) {
     }
 
@@ -382,30 +385,91 @@ class FinanceService
             ->getQuery()
             ->getResult();
 
-        return array_map(function (Transaction $transaction) {
-            $typeKey = $this->resolveTransactionTypeKey($transaction->getType());
+        return array_map(fn (Transaction $transaction) => $this->mapTransactionToArray($transaction), $transactions);
+    }
 
-            return [
-                'date' => $transaction->getDateTransaction()->format('Y-m-d'),
-                'dateTransaction' => $transaction->getDateTransaction()->format('Y-m-d H:i:s'),
-                'id' => $transaction->getId(),
-                'description' => $transaction->getDescription(),
-                'motif' => $transaction->getMotif(),
-                'type' => $transaction->getType(),
-                'typeKey' => $typeKey,
-                'typeLabel' => $typeKey === 'revenue' ? 'Revenu' : ($typeKey === 'expense' ? 'Dépense' : ($transaction->getType() ?? '')), 
-                'amount' => $transaction->getMontant(),
-                'validated' => $transaction->isValidated(),
-                'validationStatus' => $transaction->getValidationStatus(),
-                'validationComment' => $transaction->getValidationComment(),
-                'validatedAt' => $transaction->getValidatedAt()?->format(DATE_ATOM),
-                'modeDePaiement' => [
-                    'id' => $transaction->getModeDePaiement()->getId(),
-                    'libelle' => $transaction->getModeDePaiement()->getLibelle(),
-                    'type' => $transaction->getModeDePaiement()->getType(),
-                ],
-            ];
-        }, $transactions);
+    public function getCrossTableDayOverview(string $date): array
+    {
+        $from = DateTimeImmutable::createFromFormat('Y-m-d', $date)?->setTime(0, 0, 0);
+        $to = DateTimeImmutable::createFromFormat('Y-m-d', $date)?->setTime(23, 59, 59);
+        if (!$from instanceof DateTimeImmutable || !$to instanceof DateTimeImmutable) {
+            throw new \InvalidArgumentException('Date invalide.');
+        }
+
+        $fromMutable = DateTime::createFromImmutable($from);
+        $toMutable = DateTime::createFromImmutable($to);
+
+        $typeAliases = array_merge(
+            $this->resolveTransactionTypeAliases('revenue'),
+            $this->resolveTransactionTypeAliases('expense'),
+        );
+        $validatedTransactions = $this->transactionRepo->findValidatedBetweenByTypes($from, $to, $typeAliases);
+
+        $revenueTotal = 0.0;
+        $expenseTotal = 0.0;
+        $mappedTransactions = [];
+        foreach ($validatedTransactions as $transaction) {
+            if (!$transaction instanceof Transaction) {
+                continue;
+            }
+
+            $row = $this->mapTransactionToArray($transaction);
+            $mappedTransactions[] = $row;
+            $amount = (float) ($transaction->getMontant() ?? 0);
+            if ($row['typeKey'] === 'revenue') {
+                $revenueTotal += $amount;
+            } elseif ($row['typeKey'] === 'expense') {
+                $expenseTotal += $amount;
+            }
+        }
+
+        $doctorReports = $this->reportService->periodicDoctorReports($from, $to);
+        $actes = [];
+        foreach ($doctorReports['doctors'] ?? [] as $doctor) {
+            foreach ($doctor['actes'] ?? [] as $acte) {
+                $actes[] = [
+                    'date' => $acte['date'] ?? '',
+                    'medecin' => $doctor['name'] ?? '',
+                    'patient' => $acte['patient'] ?? '',
+                    'description' => $acte['description'] ?? '',
+                    'montant' => $acte['montant'] ?? 0,
+                ];
+            }
+        }
+
+        $actsStatsMap = $this->reportService->periodicActsStats($fromMutable, $toMutable);
+        $actsByType = [];
+        foreach ($actsStatsMap as $label => $value) {
+            $actsByType[] = ['label' => (string) $label, 'value' => (int) $value];
+        }
+        usort($actsByType, static fn (array $a, array $b): int => $b['value'] <=> $a['value']);
+
+        $patientStats = $this->reportService->periodicPatients($fromMutable, $toMutable);
+        $appointmentStats = $this->reportService->periodicAppointments($fromMutable, $toMutable);
+        $consultStats = $this->reportService->periodicConsultations($fromMutable, $toMutable);
+        $receptionStats = $this->reportService->getReceptionStats($from, $to);
+
+        return [
+            'date' => $date,
+            'dateLabel' => $from->format('d/m/Y'),
+            'transactions' => $mappedTransactions,
+            'totals' => [
+                'revenue' => round($revenueTotal, 2),
+                'expense' => round($expenseTotal, 2),
+            ],
+            'patients' => $patientStats,
+            'appointments' => $appointmentStats,
+            'consultations' => [
+                'total' => $consultStats['total'] ?? 0,
+                'paid' => $consultStats['paid'] ?? 0,
+                'free' => $consultStats['free'] ?? 0,
+                'pending' => $receptionStats['pendingConsultations'] ?? 0,
+            ],
+            'actes' => $actes,
+            'actsByType' => $actsByType,
+            'doctors' => $doctorReports['doctors'] ?? [],
+            'doctorsKpi' => $doctorReports['kpi'] ?? [],
+        ];
     }
 
     public function listModes(): array
@@ -497,6 +561,7 @@ class FinanceService
 
         } elseif ($status === 'rejected') {
             $devis = $this->detachTransactionPayment($transaction);
+            $this->lotFactureAssuranceService->rollbackLotRecoveryFromTransaction($transaction);
             $transaction->markRejected($comment);
         } else {
             return ['error' => 'Statut de validation invalide', 'status' => 400];
@@ -516,11 +581,13 @@ class FinanceService
 
         $devis = $this->detachTransactionPayment($transaction);
         if ($devis === null) {
-            $devis = $transaction->getDevis();
+            $devis = $transaction->getFacture();
         }
 
+        $this->lotFactureAssuranceService->rollbackLotRecoveryFromTransaction($transaction);
         $transaction->setConsultation(null);
-        $transaction->setDevis(null);
+        $transaction->setFacture(null);
+        $transaction->setLotFactureAssurance(null);
         $this->em->remove($transaction);
         $this->em->flush();
 
@@ -640,6 +707,44 @@ class FinanceService
         $this->em->remove($paiement);
 
         return $facture;
+    }
+
+    private function mapTransactionToArray(Transaction $transaction): array
+    {
+        $typeKey = $this->resolveTransactionTypeKey($transaction->getType());
+        $lot = $transaction->getLotFactureAssurance();
+
+        return [
+            'date' => $transaction->getDateTransaction()->format('Y-m-d'),
+            'dateTransaction' => $transaction->getDateTransaction()->format('Y-m-d H:i:s'),
+            'id' => $transaction->getId(),
+            'description' => $transaction->getDescription(),
+            'motif' => $transaction->getMotif(),
+            'type' => $transaction->getType(),
+            'typeKey' => $typeKey,
+            'typeLabel' => $typeKey === 'revenue' ? 'Revenu' : ($typeKey === 'expense' ? 'Dépense' : ($transaction->getType() ?? '')),
+            'amount' => $transaction->getMontant(),
+            'validated' => $transaction->isValidated(),
+            'validationStatus' => $transaction->getValidationStatus(),
+            'validationComment' => $transaction->getValidationComment(),
+            'validatedAt' => $transaction->getValidatedAt()?->format(DATE_ATOM),
+            'rolePaiement' => $transaction->getRolePaiement(),
+            'lotFactureAssurance' => $lot ? [
+                'id' => $lot->getId(),
+                'description' => $lot->getDescription(),
+                'statut' => $lot->getStatut(),
+                'assurance' => [
+                    'id' => $lot->getAssurance()?->getId(),
+                    'nom' => $lot->getAssurance()?->getNom(),
+                    'code' => $lot->getAssurance()?->getCode(),
+                ],
+            ] : null,
+            'modeDePaiement' => [
+                'id' => $transaction->getModeDePaiement()->getId(),
+                'libelle' => $transaction->getModeDePaiement()->getLibelle(),
+                'type' => $transaction->getModeDePaiement()->getType(),
+            ],
+        ];
     }
 
     private function resolveTransactionTypeKey(?string $type): string

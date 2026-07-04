@@ -1,17 +1,29 @@
 const cabinetConfig = {
-    "id": "default",
-    "displayName": "Cabinet Demo",
-    "appTitle": "DentalSoft - Cabinet Demo",
+    "id": "cdos",
+    "displayName": "Cabinet Dentaire Ousmane SOW",
+    "appTitle": "DentalSoft - Cabinet Dentaire Ousmane SOW",
     "brandName": "DentalSoft",
-    "brandSubtitle": "Cabinet Dentaire Demo",
+    "brandSubtitle": "Cabinet Dentaire Ousmane SOW",
     "settingsTitle": "Configuration du cabinet",
     "settingsDescription": "Personnalisez l'apparence et les flux metier de DentalSoft",
-    "smsCabinetName": "CABINET DEMO",
-    "smsTestMessage": "Message de test CABINET DEMO.",
-    "reportCabinetName": "CABINET DENTAIRE DEMO",
-    "cabinetPhone": "+223 XX XX XX XX / +223 XX XX XX XX",
-    "viteApiPrefix": "http://localhost:8010/api",
-    "viteFilePrefix": "http://localhost:8010",
+    "smsCabinetName": "CABINET DENTAIRE OUSMANE SOW",
+    "smsTestMessage": "Message de test CABINET DENTAIRE OUSMANE SOW.",
+    "reportCabinetName": "CABINET DENTAIRE OUSMANE SOW",
+    "cabinetPhone": "+223 93 28 87 23 / +223 84 07 55 18",
+    "printProfile": {
+        "name": "CABINET DENTAIRE OUSMANE SOW",
+        "addressLines": [
+            "À 100M DU FEU DE GARANTIBOUGOU, EN FACE DE LA VOIE DE GARANTIBOUGOU",
+            "RUE : 426 ; PORTE : 192; BKO MALI"
+        ],
+        "phones": [
+            "84 07 55 18",
+            "44 56 94 39"
+        ],
+        "email": "ousmanes007@gmail.com"
+    },
+    "viteApiPrefix": "https://api.cabinetdentaireousmanesow.cloud/api",
+    "viteFilePrefix": "https://api.cabinetdentaireousmanesow.cloud",
     "brandingAssets": {
         "logo": "logo.png",
         "logoAlt": "logo.jpeg",
@@ -23,9 +35,9 @@ const cabinetConfig = {
         "notificationSound": "notification.mp3"
     },
     "pwa": {
-        "name": "DENTALSOFT - CABINET DEMO",
+        "name": "DENTALSOFT - CABINET DENTAIRE OUSMANE SOW",
         "shortName": "DENTALSOFT",
-        "description": "Application de gestion de cabinet dentaire - CABINET DEMO",
+        "description": "Application de gestion de cabinet dentaire - CABINET DENTAIRE OUSMANE SOW",
         "themeColor": "#5ad6f5",
         "backgroundColor": "#ffffff",
         "startUrl": "/",

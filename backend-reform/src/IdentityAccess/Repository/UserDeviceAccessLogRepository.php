@@ -2,7 +2,6 @@
 
 namespace App\IdentityAccess\Repository;
 
-use App\IdentityAccess\Entity\User;
 use App\IdentityAccess\Entity\UserDeviceAccessLog;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
@@ -18,12 +17,11 @@ class UserDeviceAccessLogRepository extends ServiceEntityRepository
     }
 
     /** @return UserDeviceAccessLog[] */
-    public function findLatestByUser(User $user, int $limit = 50): array
+    public function findLatest(int $limit = 50): array
     {
         return $this->createQueryBuilder('l')
             ->leftJoin('l.device', 'd')->addSelect('d')
-            ->andWhere('l.user = :user')
-            ->setParameter('user', $user)
+            ->leftJoin('l.user', 'u')->addSelect('u')
             ->orderBy('l.createdAt', 'DESC')
             ->setMaxResults($limit)
             ->getQuery()

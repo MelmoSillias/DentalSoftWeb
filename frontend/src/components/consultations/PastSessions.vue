@@ -130,7 +130,7 @@ const getSessionOrdonnances = (session) => {
                             <div class="p-3 rounded-xl bg-surface-50 dark:bg-surface-700/30">
                                 <div class="flex items-center gap-2 mb-2">
                                     <i class="pi pi-user text-surface-400"></i>
-                                    <span class="text-sm font-medium text-surface-700 dark:text-surface-300">Infirmier</span>
+                                    <span class="text-sm font-medium text-surface-700 dark:text-surface-300">Aide soignant(e)</span>
                                 </div>
                                 <p class="font-semibold text-surface-900 dark:text-surface-100">{{ session.infirmier || '—' }}</p>
                             </div>

@@ -4,13 +4,12 @@ import Button from 'primevue/button';
 import Chart from 'primevue/chart';
 import ToggleButton from 'primevue/togglebutton';
 import StatsCardsGrid from '@/components/rapport/common/StatsCardsGrid.vue';
+import { formatAsOfLabel, printReport } from '@/utils/reportPrint';
 
 const props = defineProps({
     stats: { type: Object, default: () => ({}) },
     loading: { type: Boolean, default: false }
 });
-
-const emit = defineEmits(['print']);
 const showChart = ref(false);
 
 function formatFcfa(amount) {
@@ -141,6 +140,23 @@ const chartOptions = computed(() => {
         }
     };
 });
+
+function printSection() {
+    printReport({
+        title: 'Statistiques globales',
+        periodLabel: formatAsOfLabel(),
+        sections: [
+            {
+                title: 'Indicateurs clés du cabinet',
+                items: items(props.stats).map((item) => ({
+                    label: item.label,
+                    value: item.value,
+                    sub: item.sub
+                }))
+            }
+        ]
+    });
+}
 </script>
 
 <template>
@@ -152,7 +168,7 @@ const chartOptions = computed(() => {
             </div>
             <div class="flex items-center gap-2">
                 <ToggleButton v-model="showChart" onLabel="Graphique" offLabel="Données" onIcon="pi pi-chart-bar" offIcon="pi pi-list" />
-                <Button label="Imprimer" icon="pi pi-print" outlined size="small" @click="emit('print', 'admin-global-stats')" />
+                <Button label="Imprimer" icon="pi pi-print" outlined size="small" @click="printSection" />
             </div>
         </div>
 

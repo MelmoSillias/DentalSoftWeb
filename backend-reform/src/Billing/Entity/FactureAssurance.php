@@ -50,6 +50,10 @@ class FactureAssurance
     #[ORM\Column(type: Types::JSON)]
     private array $assuranceSnapshot = [];
 
+    #[ORM\ManyToOne(targetEntity: LotFactureAssurance::class, inversedBy: 'facturesAssurance')]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?LotFactureAssurance $lotFactureAssurance = null;
+
     public function getId(): ?int
     {
         return $this->id;
@@ -171,6 +175,18 @@ class FactureAssurance
     public function setAssuranceSnapshot(array $assuranceSnapshot): static
     {
         $this->assuranceSnapshot = $assuranceSnapshot;
+
+        return $this;
+    }
+
+    public function getLotFactureAssurance(): ?LotFactureAssurance
+    {
+        return $this->lotFactureAssurance;
+    }
+
+    public function setLotFactureAssurance(?LotFactureAssurance $lotFactureAssurance): static
+    {
+        $this->lotFactureAssurance = $lotFactureAssurance;
 
         return $this;
     }

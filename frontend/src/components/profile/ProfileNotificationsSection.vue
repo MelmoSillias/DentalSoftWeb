@@ -50,6 +50,11 @@ const filteredItems = computed(() => {
 })
 
 // Pagination
+const rowsPerPageOptions = [
+  { label: '5', value: 5 },
+  { label: '10', value: 10 },
+  { label: '20', value: 20 }
+]
 const currentPage = ref(1)
 const rowsPerPage = ref(5)
 
@@ -232,7 +237,13 @@ const markAll = (event) => {
         <div v-if="filteredItems.length" class="flex flex-col sm:flex-row items-center justify-between gap-4 mt-5 pt-4 border-t border-surface-100 dark:border-surface-700/50">
           <div class="flex items-center gap-2 text-xs text-surface-500">
             <span>Par page :</span>
-            <SelectButton v-model="rowsPerPage" :options="[5, 10, 20]" size="small" />
+            <SelectButton
+              v-model="rowsPerPage"
+              :options="rowsPerPageOptions"
+              optionLabel="label"
+              optionValue="value"
+              size="small"
+            />
           </div>
           <Paginator
             :rows="rowsPerPage"

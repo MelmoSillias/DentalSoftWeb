@@ -8,7 +8,7 @@ import Button from 'primevue/button';
 import Checkbox from 'primevue/checkbox';
 import Tag from 'primevue/tag';
 
-import { computed, onMounted, ref, toRefs } from 'vue';
+import { computed, onMounted, ref, toRefs, watch } from 'vue';
 
 const props = defineProps({
     consultations: {
@@ -50,6 +50,7 @@ const showCompletedMedecin = defineModel('showCompletedMedecin', {
 
 const newestFirstMedecin = ref(false);
 const embeddedFicheRef = ref(null);
+const consultationOrdonnances = ref([]);
 
 const parseDateTime = (value) => {
     if (!value) return null;
@@ -179,9 +180,36 @@ const updatePatientPhoto = (file) => {
     embeddedFicheRef.value?.updatePatientPhoto?.(file);
 };
 
+const handleOrdonnancesChanged = (ordonnances) => {
+    consultationOrdonnances.value = Array.isArray(ordonnances) ? ordonnances : [];
+};
+
+const openOrdonnanceModal = () => {
+    embeddedFicheRef.value?.openOrdonnanceModal?.();
+};
+
+const openViewOrdonnance = (ordo) => {
+    embeddedFicheRef.value?.openViewOrdonnance?.(ordo);
+};
+
+const openEditOrdonnance = (ordo) => {
+    embeddedFicheRef.value?.openEditOrdonnance?.(ordo);
+};
+
+const printOrdonnance = (ordo) => {
+    embeddedFicheRef.value?.handlePrintOrdonnance?.(ordo);
+};
+
 onMounted(() => {
     emit('clear-selection');
 });
+
+watch(
+    () => selectedConsultationId.value,
+    () => {
+        consultationOrdonnances.value = [];
+    }
+);
 </script>
 
 <template>
@@ -200,12 +228,18 @@ onMounted(() => {
                     <DossierPatientInfoCard v-if="selectedPatient && !hidePatientDossier" :patient="selectedPatient"
                         :hide-actions="true"
                         :hide-phone="hidePatientPhone"
+                        :ordonnances="consultationOrdonnances"
+                        :consultation-readonly="currentConsultationClosed"
                         class="flex-1 overflow-y-auto"
                         @add-antecedent="openAntecedentDialog"
                         @add-allergy="openAllergyDialog"
                         @delete-antecedent="deleteAntecedent"
                         @delete-allergy="deleteAllergy"
                         @photo-selected="updatePatientPhoto"
+                        @open-ordonnance="openOrdonnanceModal"
+                        @view-ordonnance="openViewOrdonnance"
+                        @edit-ordonnance="openEditOrdonnance"
+                        @print-ordonnance="printOrdonnance"
                     />
 
                     <div v-else-if="selectedPatient && hidePatientDossier"
@@ -248,6 +282,7 @@ onMounted(() => {
                         :fiche-id="selectedEmbeddedFicheId" :mode="selectedEmbeddedMode"
                         :readonly="currentConsultationClosed" :choice-label="selectedChoiceLabel"
                         @patient-loaded="(payload) => emit('patient-loaded', payload)"
+                        @ordonnances-changed="handleOrdonnancesChanged"
                         @closed="() => emit('consultation-closed')" />
                 </div>
 

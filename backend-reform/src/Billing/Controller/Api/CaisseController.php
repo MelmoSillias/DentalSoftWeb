@@ -94,9 +94,33 @@ class CaisseController extends AbstractController
     }
 
     #[Route('/api/factures/unpaid', name: 'api_factures_unpaid', methods: ['GET'])]
-    public function getFacturesImpayees(): JsonResponse
+    public function getFacturesImpayees(Request $request): JsonResponse
     {
-        return new JsonResponse($this->cashdeskService->listFacturesImpayees());
+        $start = null;
+        $end = null;
+
+        if ($request->query->has('start') && $request->query->get('start') !== '') {
+            try {
+                $start = new \DateTime((string) $request->query->get('start'));
+            } catch (\Exception) {
+                return new JsonResponse(['error' => 'Date de debut invalide'], 400);
+            }
+        }
+
+        if ($request->query->has('end') && $request->query->get('end') !== '') {
+            try {
+                $end = new \DateTime((string) $request->query->get('end'));
+                $end->setTime(23, 59, 59);
+            } catch (\Exception) {
+                return new JsonResponse(['error' => 'Date de fin invalide'], 400);
+            }
+        }
+
+        if ($start !== null && $end === null) {
+            $end = (clone $start)->setTime(23, 59, 59);
+        }
+
+        return new JsonResponse($this->cashdeskService->listFacturesImpayees($start, $end));
     }
 
     #[Route('/api/factures/payments', name: 'api_factures_payments', methods: ['GET'])]
@@ -319,6 +343,20 @@ class CaisseController extends AbstractController
 
         return new JsonResponse([
             'paiement' => $this->cashdeskService->mapPaiementTicket($paiement),
+        ]);
+    }
+
+    #[Route('/api/prints/assurances/claims/{id}', name: 'api_print_assurance_claim_data', methods: ['GET'])]
+    public function getFactureAssurancePrintData(int $id): JsonResponse
+    {
+        $data = $this->cashdeskService->mapFactureAssurancePrint($id);
+        if ($data === null) {
+            return new JsonResponse(['error' => 'Facture assurance introuvable'], 404);
+        }
+
+        return new JsonResponse([
+            'doc' => $data,
+            'title' => 'Facture assurance',
         ]);
     }
 

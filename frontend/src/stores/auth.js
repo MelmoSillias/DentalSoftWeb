@@ -1,6 +1,6 @@
 // src/stores/auth.js
 import { defineStore } from 'pinia';
-import http from '@/service/http';
+import http, { isDeviceNotAllowedError } from '@/service/http';
 
 export const useAuthStore = defineStore('auth', {
     state: () => ({
@@ -8,24 +8,54 @@ export const useAuthStore = defineStore('auth', {
         token: localStorage.getItem('token') || null,
         mercure: null,
         loading: false,
-        error: null
+        error: null,
+        deviceBlockMessage: null,
+        deviceBlockStatus: null,
     }),
 
     actions: {
+        setDeviceBlock(message, status = 'pending') {
+            this.deviceBlockMessage = message || null;
+            this.deviceBlockStatus = status || 'pending';
+        },
+
+        clearDeviceBlock() {
+            this.deviceBlockMessage = null;
+            this.deviceBlockStatus = null;
+        },
+
         async login(username, password) {
             this.loading = true;
             this.error = null;
+            this.clearDeviceBlock();
             try {
                 const res = await http.post('login_check', { username, password });
                 this.token = res.data.token;
                 localStorage.setItem('token', this.token); 
                 await this.fetchUser(); 
             } catch (err) {
+                if (isDeviceNotAllowedError(err)) {
+                    this.setDeviceBlock(err.response?.data?.message, err.response?.data?.status);
+                    throw err;
+                }
                 this.logout();
                 this.error = err.response?.data?.message || 'Erreur de connexion'; 
                 throw err;
             } finally {
                 this.loading = false;
+            }
+        },
+
+        async checkDeviceStatus() {
+            try {
+                const response = await http.get('device/status');
+                return response.data;
+            } catch (error) {
+                const data = error?.response?.data;
+                if (error?.response?.status === 403 && data?.status) {
+                    return data;
+                }
+                throw error;
             }
         },
 
@@ -52,8 +82,13 @@ export const useAuthStore = defineStore('auth', {
                 const res = await http.get('me');
                 this.user = res.data.user;
                 this.mercure = res.data.mercure || null;
+                this.clearDeviceBlock();
                 return res.data;
             } catch (err) {
+                if (isDeviceNotAllowedError(err)) {
+                    this.setDeviceBlock(err.response?.data?.message, err.response?.data?.status);
+                    throw err;
+                }
                 if (err.response && err.response.status === 401) {
                     this.logout();
                 }
@@ -65,6 +100,7 @@ export const useAuthStore = defineStore('auth', {
             this.user = null;
             this.token = null;
             this.mercure = null;
+            this.clearDeviceBlock();
             localStorage.removeItem('token');
         }
     }

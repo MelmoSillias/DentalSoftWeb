@@ -65,7 +65,7 @@ class InsuranceController extends AbstractController
         ]);
     }
 
-    #[Route('/api/assurances/claims/{id}/validate', name: 'api_insurance_claims_validate', methods: ['PATCH'])]
+    #[Route('/api/assurances/claims/{id}/validate', name: 'api_insurance_claims_validate', methods: ['PATCH'], requirements: ['id' => '\d+'])]
     public function validateClaim(int $id): JsonResponse
     {
         $result = $this->insuranceClaimService->validateClaim($id);
@@ -77,7 +77,7 @@ class InsuranceController extends AbstractController
         return $this->json($result);
     }
 
-    #[Route('/api/assurances/claims/{id}/reject', name: 'api_insurance_claims_reject', methods: ['PATCH'])]
+    #[Route('/api/assurances/claims/{id}/reject', name: 'api_insurance_claims_reject', methods: ['PATCH'], requirements: ['id' => '\d+'])]
     public function rejectClaim(int $id, Request $request): JsonResponse
     {
         $payload = json_decode($request->getContent(), true) ?: [];
@@ -92,7 +92,7 @@ class InsuranceController extends AbstractController
         return $this->json($result);
     }
 
-    #[Route('/api/assurances/claims/{id}/recover', name: 'api_insurance_claims_recover', methods: ['POST'])]
+    #[Route('/api/assurances/claims/{id}/recover', name: 'api_insurance_claims_recover', methods: ['POST'], requirements: ['id' => '\d+'])]
     public function recoverClaim(int $id, Request $request): JsonResponse
     {
         $payload = json_decode($request->getContent(), true) ?: [];
@@ -116,7 +116,7 @@ class InsuranceController extends AbstractController
         return $this->json($result, 201);
     }
 
-    #[Route('/api/assurances/claims/{id}/patient-pay', name: 'api_insurance_claims_patient_pay', methods: ['POST'])]
+    #[Route('/api/assurances/claims/{id}/patient-pay', name: 'api_insurance_claims_patient_pay', methods: ['POST'], requirements: ['id' => '\d+'])]
     public function payPatientShare(int $id, Request $request): JsonResponse
     {
         $payload = json_decode($request->getContent(), true) ?: [];
@@ -150,8 +150,6 @@ class InsuranceController extends AbstractController
             'code' => $assurance->getCode(),
             'actif' => $assurance->isActif(),
             'notes' => $assurance->getNotes(),
-            'defaultRate' => $assurance->getTauxParDefaut(),
-            'tauxParDefaut' => $assurance->getTauxParDefaut(),
             'website' => $assurance->getWebsite(),
             'email' => $assurance->getEmail(),
             'logoPath' => $assurance->getLogoPath(),

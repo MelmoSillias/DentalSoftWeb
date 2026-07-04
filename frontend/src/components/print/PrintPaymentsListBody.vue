@@ -1,15 +1,22 @@
 <template>
-    <div class="payments-list">
-        <h1>Recettes Paiements Devis</h1>
-        <h3>Du {{ startLabel }} au {{ endLabel }}</h3>
+    <PrintA4Page :logo-src="logoSrc">
+        <template #header>
+            <PrintDocumentHeader
+                title="Recettes paiements devis"
+                :date="end"
+                :doc-id="periodId"
+            />
+        </template>
 
-        <table>
+        <p class="period">Période du {{ startLabel }} au {{ endLabel }}</p>
+
+        <table class="print-doc-table">
             <thead>
                 <tr>
                     <th>N° Devis</th>
                     <th>Patient</th>
-                    <th>Montant</th>
-                    <th>Mode de Paiement</th>
+                    <th style="text-align: right">Montant</th>
+                    <th>Mode de paiement</th>
                     <th>Date</th>
                 </tr>
             </thead>
@@ -17,28 +24,37 @@
                 <tr v-for="(p, idx) in paiements" :key="idx">
                     <td>DEV-{{ p?.devis?.id || '' }}</td>
                     <td>{{ p?.devis?.fiche?.patient?.nom || '—' }} {{ p?.devis?.fiche?.patient?.prenom || '' }}</td>
-                    <td class="right">{{ formatMoney(p?.montant) }}</td>
+                    <td style="text-align: right">{{ formatMoney(p?.montant) }}</td>
                     <td>{{ p?.mode?.libelle || '—' }}</td>
                     <td>{{ formatDateTime(p?.date) }}</td>
                 </tr>
                 <tr v-if="!paiements.length">
-                    <td colspan="5" class="center">Aucun paiement effectué sur cette période</td>
+                    <td colspan="5" class="empty">Aucun paiement effectué sur cette période</td>
                 </tr>
             </tbody>
+            <tfoot>
+                <tr>
+                    <th colspan="2" style="text-align: right">Total des recettes</th>
+                    <th style="text-align: right">{{ formatMoney(total) }}</th>
+                    <th colspan="2" />
+                </tr>
+            </tfoot>
         </table>
-
-        <p class="total">Total des recettes : {{ formatMoney(total) }}</p>
-    </div>
+    </PrintA4Page>
 </template>
 
 <script setup>
 import { computed } from 'vue';
+import PrintA4Page from './PrintA4Page.vue';
+import PrintDocumentHeader from './PrintDocumentHeader.vue';
+import logoImg from '@/assets/logo.png';
 
 const props = defineProps({
     paiements: { type: Array, default: () => [] },
     start: { type: [String, Date], default: '' },
     end: { type: [String, Date], default: '' },
-    total: { type: Number, default: 0 }
+    total: { type: Number, default: 0 },
+    logoSrc: { type: String, default: logoImg }
 });
 
 const formatDate = (value) => {
@@ -57,45 +73,19 @@ const formatDateTime = (value) => {
 
 const startLabel = computed(() => formatDate(props.start));
 const endLabel = computed(() => formatDate(props.end));
+const periodId = computed(() => {
+    const start = startLabel.value.replace(/\//g, '');
+    const end = endLabel.value.replace(/\//g, '');
+    return start && end ? `${start}-${end}` : '';
+});
 const formatMoney = (value) => `${Number(value || 0).toLocaleString('fr-FR')} FCFA`;
 </script>
 
 <style scoped>
-.payments-list {
-    font-family: sans-serif;
-    margin: 20px auto;
-    color: #333;
-}
-
-h1,
-h3 {
+.period {
     text-align: center;
-}
-
-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 30px;
-}
-
-td,
-th {
-    padding: 10px;
-    border: 1px solid #ddd;
-    font-size: 14px;
-}
-
-.right {
-    text-align: right;
-}
-
-.center {
-    text-align: center;
-}
-
-.total {
-    margin-top: 20px;
-    font-weight: bold;
-    text-align: right;
+    color: #586574;
+    font-size: 10.5pt;
+    margin: -4mm 0 10px;
 }
 </style>

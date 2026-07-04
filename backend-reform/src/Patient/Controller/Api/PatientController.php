@@ -43,6 +43,24 @@ final class PatientController extends AbstractController
         return $this->json($result);
     }
 
+    #[Route('/api/patients/overview-stats', name: 'api_patients_overview_stats', methods: ['GET'])]
+    public function getPatientsOverviewStats(): JsonResponse
+    {
+        return $this->json($this->patientService->getOverviewStats());
+    }
+
+    #[Route('/api/patients/medecin/overview-stats', name: 'api_patients_medecin_overview_stats', methods: ['GET'])]
+    public function getPatientsOverviewStatsByMedecin(): JsonResponse
+    {
+        $result = $this->patientService->getOverviewStats($this->getUser(), medecinOnly: true);
+
+        if (isset($result['error'])) {
+            return $this->json(['error' => $result['error']], $result['status'] ?? 400);
+        }
+
+        return $this->json($result);
+    }
+
     #[Route('/api/patients/medecin', name: 'api_patients_by_medecin', methods: ['GET'])]
     public function getPatientsByMedecin(Request $request): JsonResponse
     {

@@ -105,7 +105,8 @@ function buildStaticDailyConsultations() {
             ficheId: 8301,
             lastFicheId: 8301,
             state: 1,
-            factState: 1
+            factState: 0,
+            factModifiable: true
         }
     ];
 }
@@ -334,11 +335,18 @@ export function closeConsultationTourMock(ficheId, consultationId) {
 }
 
 export function fetchConsultationInvoiceTourMock(consultationId) {
-    return cloneValue(consultationsTourMockState.consultationInvoices?.[consultationId] || []);
+    const lines = cloneValue(consultationsTourMockState.consultationInvoices?.[consultationId] || []);
+    return {
+        lines,
+        date: '2026-07-04',
+        time: '10:30',
+        modifiable: true
+    };
 }
 
-export function updateConsultationInvoiceTourMock(consultationId, lignes = []) {
-    consultationsTourMockState.consultationInvoices[consultationId] = (lignes || []).map((line, index) => ({
+export function updateConsultationInvoiceTourMock(consultationId, lignes = [], options = {}) {
+    const lines = Array.isArray(lignes) ? lignes : lignes?.lines ?? lignes?.lignes ?? [];
+    consultationsTourMockState.consultationInvoices[consultationId] = (lines || []).map((line, index) => ({
         id: line.id ?? index + 1,
         dent: line.dent ?? '',
         type: line.type ?? '',
@@ -346,7 +354,7 @@ export function updateConsultationInvoiceTourMock(consultationId, lignes = []) {
         quantite: Number(line.quantite ?? 1),
         description: line.description ?? ''
     }));
-    return { success: true };
+    return { success: true, date: options?.date ?? null, time: options?.time ?? null };
 }
 
 export function fetchTourMockMedecins() {

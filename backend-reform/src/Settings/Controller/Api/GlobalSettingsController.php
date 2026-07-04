@@ -3,6 +3,7 @@
 namespace App\Settings\Controller\Api;
 
 use App\IdentityAccess\Entity\User;
+use App\IdentityAccess\Service\UserDeviceService;
 use App\Patient\Service\PatientService;
 use App\Settings\Service\DatabaseMaintenanceService;
 use App\Settings\Service\GlobalSettingsService;
@@ -20,6 +21,7 @@ class GlobalSettingsController extends AbstractController
         private GlobalSettingsService $globalSettingsService,
         private DatabaseMaintenanceService $databaseMaintenanceService,
         private PatientService $patientService,
+        private UserDeviceService $userDeviceService,
     ) {
     }
 
@@ -68,6 +70,70 @@ class GlobalSettingsController extends AbstractController
         return $this->json($saved);
     }
 
+    #[Route('/devices', name: 'devices_list', methods: ['GET'])]
+    public function listDevices(): JsonResponse
+    {
+        $this->denyAccessUnlessGranted('ROLE_ADMIN');
+
+        return $this->json($this->userDeviceService->listGlobalDevices(50));
+    }
+
+    #[Route('/devices/{deviceId}/approve', name: 'devices_approve', methods: ['POST'])]
+    public function approveDevice(int $deviceId): JsonResponse
+    {
+        $this->denyAccessUnlessGranted('ROLE_ADMIN');
+
+        $admin = $this->getUser();
+        $result = $this->userDeviceService->approveDevice(
+            $deviceId,
+            $admin instanceof User ? $admin : null,
+        );
+        $status = $result['status'] ?? (isset($result['error']) ? 400 : 200);
+
+        return $this->json($result, $status);
+    }
+
+    #[Route('/devices/{deviceId}/reject', name: 'devices_reject', methods: ['POST'])]
+    public function rejectDevice(int $deviceId): JsonResponse
+    {
+        $this->denyAccessUnlessGranted('ROLE_ADMIN');
+
+        $admin = $this->getUser();
+        $result = $this->userDeviceService->rejectDevice(
+            $deviceId,
+            $admin instanceof User ? $admin : null,
+        );
+        $status = $result['status'] ?? (isset($result['error']) ? 400 : 200);
+
+        return $this->json($result, $status);
+    }
+
+    #[Route('/devices/{deviceId}/rename', name: 'devices_rename', methods: ['PUT', 'PATCH'])]
+    public function renameDevice(int $deviceId, Request $request): JsonResponse
+    {
+        $this->denyAccessUnlessGranted('ROLE_ADMIN');
+
+        $payload = json_decode($request->getContent(), true) ?? [];
+        $result = $this->userDeviceService->renameDevice(
+            $deviceId,
+            (string) ($payload['name'] ?? ''),
+        );
+        $status = $result['status'] ?? (isset($result['error']) ? 400 : 200);
+
+        return $this->json($result, $status);
+    }
+
+    #[Route('/devices/{deviceId}', name: 'devices_delete', methods: ['DELETE'])]
+    public function deleteDevice(int $deviceId): JsonResponse
+    {
+        $this->denyAccessUnlessGranted('ROLE_ADMIN');
+
+        $result = $this->userDeviceService->deleteDevice($deviceId);
+        $status = $result['status'] ?? (isset($result['error']) ? 400 : 200);
+
+        return $this->json($result, $status);
+    }
+
     #[Route('/general/patient-portal/create-missing', name: 'general_patient_portal_create_missing', methods: ['POST'])]
     public function createMissingPatientPortalAccounts(): JsonResponse
     {
@@ -98,9 +164,10 @@ class GlobalSettingsController extends AbstractController
         $payload = json_decode($request->getContent(), true) ?? [];
         $enabled = (bool) ($payload['enabled'] ?? false);
         $password = (string) ($payload['password'] ?? '');
+        $deleteTestData = (bool) ($payload['deleteTestData'] ?? true);
 
         try {
-            $result = $this->globalSettingsService->toggleTestMode($enabled, $admin, $password);
+            $result = $this->globalSettingsService->toggleTestMode($enabled, $admin, $password, $deleteTestData);
             return $this->json($result);
         } catch (\InvalidArgumentException $e) {
             return $this->json(['error' => $e->getMessage()], 400);

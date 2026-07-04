@@ -140,8 +140,26 @@ class Facture
 
     public function computeMontantsFromConsultation(): array
     {
-        $total = 0.0;
         $consultation = $this->getConsultation();
+        $factureAssurance = $consultation?->getFactureAssurance();
+
+        if ($factureAssurance !== null) {
+            $totals = $factureAssurance->computeTotals();
+            $total = (float) ($totals['montantTotal'] ?? 0.0);
+            $patientAmount = (float) ($totals['montantPatient'] ?? 0.0);
+            $patientPaid = max(0.0, $this->computePatientPaidAmount());
+            $patientRemaining = max(0.0, $patientAmount - $patientPaid);
+
+            return [
+                'montantTotal' => $total,
+                'montantPatient' => $patientAmount,
+                'montantAssureur' => (float) ($totals['montantAssureur'] ?? 0.0),
+                'patientPaid' => $patientPaid,
+                'restePatient' => $patientRemaining,
+            ];
+        }
+
+        $total = 0.0;
 
         if ($consultation) {
             foreach ($consultation->getActes() as $acte) {

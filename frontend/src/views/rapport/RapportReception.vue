@@ -1,6 +1,5 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue';
-import Button from 'primevue/button';
 import DatePicker from 'primevue/datepicker';
 import { useRapports } from '@/composables/useRapports';
 import ReceptionStatsSection from '@/components/rapport/reception/ReceptionStatsSection.vue';
@@ -32,31 +31,6 @@ watch(
 onMounted(() => {
     refresh(true);
 });
-
-function printSection() {
-    const target = document.getElementById('reception-daily-stats');
-    if (!target) return;
-    const html = `
-        <html>
-        <head>
-            <title>Statistiques du jour</title>
-            <style>
-                body { font-family: Arial, sans-serif; margin: 20px; }
-            </style>
-        </head>
-        <body>${target.outerHTML}</body>
-        </html>
-    `;
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) return;
-    printWindow.document.write(html);
-    printWindow.document.close();
-    setTimeout(() => {
-        printWindow.focus();
-        printWindow.print();
-        printWindow.close();
-    }, 400);
-}
 </script>
 
 <template>
@@ -74,12 +48,15 @@ function printSection() {
                     class="w-64"
                     placeholder="Choisir une date"
                 />
-                <Button label="Imprimer" icon="pi pi-print" outlined @click="printSection" />
             </div>
         </div>
 
-        <div id="reception-daily-stats" data-tour="rapports-reception.daily">
-            <ReceptionStatsSection :stats="receptionStats" :loading="receptionLoading" />
+        <div data-tour="rapports-reception.daily">
+            <ReceptionStatsSection
+                :stats="receptionStats"
+                :loading="receptionLoading"
+                :period-label="periodLabel"
+            />
         </div>
 
         <div data-tour="rapports-reception.doctors">

@@ -371,7 +371,6 @@ const printSectionOptions = [
 const fiches = computed(() => patient.value.fiches || []);
 const rdvs = computed(() => patient.value.rdvs || []);
 const archiveFiles = computed(() => patient.value.archiveFiles || []);
-console.log('archiveFiles', archiveFiles.value);
 const paiements = computed(() => patient.value.paiements || []);
 const factures = computed(() => patient.value.factures || []);
 const isReception = computed(() => Boolean(auth.user?.roles?.includes('ROLE_RECEPTION')));

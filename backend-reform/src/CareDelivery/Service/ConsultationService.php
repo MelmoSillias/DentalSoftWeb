@@ -100,7 +100,7 @@ class ConsultationService
                     $assurance = $profile?->getAssurance();
                     $insuranceEnabled = $profile !== null && $assurance !== null && $assurance->isActif();
                     $insuranceRate = $insuranceEnabled
-                        ? max(0, min(100, (float) ($profile?->getCoverageRate() ?? $assurance?->getTauxParDefaut() ?? 0)))
+                        ? max(0, min(100, (float) ($profile?->getCoverageRate() ?? 0)))
                         : 0.0;
 
                     $insuranceAmount = $insuranceEnabled ? ($consultationAmount * $insuranceRate) / 100 : 0.0;
@@ -440,6 +440,40 @@ class ConsultationService
         }
 
         return 0;
+    }
+
+    private function isFactureModifiable(?Facture $facture): bool
+    {
+        if (!$facture) {
+            return false;
+        }
+
+        return $facture->getPaiements()->count() === 0;
+    }
+
+    private function resolveFactureDateFromConsultation(Consultation $consultation): \DateTime
+    {
+        $createdAt = $consultation->getCreatedAt();
+
+        return $createdAt instanceof \DateTimeInterface
+            ? \DateTime::createFromInterface($createdAt)
+            : new \DateTime('now');
+    }
+
+    private function parseFactureDateInput(?string $date, ?string $time, Consultation $consultation): \DateTime
+    {
+        $date = trim((string) ($date ?? ''));
+        $time = trim((string) ($time ?? ''));
+
+        if ($date !== '' && $time !== '') {
+            return new \DateTime($date . ' ' . $time);
+        }
+
+        if ($date !== '') {
+            return new \DateTime($date);
+        }
+
+        return $this->resolveFactureDateFromConsultation($consultation);
     }
 
     private function buildFocusConsultationDto(Consultation $consultation, int $counter): FocusReceptionConsultationDto
@@ -841,9 +875,12 @@ class ConsultationService
             throw new \InvalidArgumentException('Le médecin est obligatoire pour clôturer la consultation.');
         }
 
+        $isNewFacture = !$consultation->getFacture();
         $facture = $consultation->getFacture() ?? new Facture();
         $facture->setConsultation($consultation);
-        $facture->setDateFacture(new \DateTime('now'));
+        if ($isNewFacture) {
+            $facture->setDateFacture($this->resolveFactureDateFromConsultation($consultation));
+        }
 
         $montants = $facture->computeMontantsFromConsultation(); 
         $consultation->setFacture($facture);
@@ -906,6 +943,7 @@ class ConsultationService
                 'salle' => $consultation->getSalle()?->getNom(),
                 'state' => $consultation->getStatut(),
                 'factstate' => $this->resolveFocusFactState($facture),
+                'factModifiable' => $this->isFactureModifiable($facture),
                 'patientId' => $consultation->getPatient()?->getId(),
             ];
         }, $consultations);
@@ -1243,6 +1281,11 @@ class ConsultationService
 
     public function getFactureLines(Consultation $consultation): ?array
     {
+        $facture = $consultation->getFacture();
+        if (!$facture) {
+            return null;
+        }
+
         $lignes = [];
 
         foreach ($consultation->getActes() as $acte) {
@@ -1263,10 +1306,17 @@ class ConsultationService
             ];
         }
 
-        return $lignes;
+        $dateFacture = $facture->getDateFacture();
+
+        return [
+            'lignes' => $lignes,
+            'dateFacture' => $dateFacture?->format('Y-m-d'),
+            'timeFacture' => $dateFacture?->format('H:i'),
+            'modifiable' => $this->isFactureModifiable($facture),
+        ];
     }
 
-    public function updateFactureLines(Consultation $consultation, array $lignes): array
+    public function updateFactureLines(Consultation $consultation, array $lignes, ?string $date = null, ?string $time = null): array
     {
         if (!is_array($lignes)) {
             return ['error' => 'Payload invalide'];
@@ -1276,6 +1326,10 @@ class ConsultationService
 
         if (!$facture) {
             return ['error' => 'Facture non trouvée'];
+        }
+
+        if (!$this->isFactureModifiable($facture)) {
+            return ['error' => 'Cette facture ne peut plus être modifiée car elle possède déjà des paiements.'];
         }
 
         // Re-synchronise les actes de la consultation avec les lignes soumises
@@ -1310,9 +1364,8 @@ class ConsultationService
         $montants = $facture->computeMontantsFromConsultation();
 
         $facture
-            ->setIsReglee(((float) $montants['restePatient']) <= 0.0)
-            
-            ->setDateFacture(new \DateTime());
+            ->setDateFacture($this->parseFactureDateInput($date, $time, $consultation))
+            ->setIsReglee(((float) $montants['restePatient']) <= 0.0);
 
         $this->em->persist($facture);
         $this->em->flush();
@@ -1338,6 +1391,7 @@ class ConsultationService
                 'medecin' => $c->getMedecin()?->getFullName(),
                 'createdAt' => $c->getCreatedAt()->format('d/m/Y H:i'),
                 'factstate' => $this->resolveFocusFactState($c->getFacture()),
+                'factModifiable' => $c->getStatut() === 1 && $this->isFactureModifiable($c->getFacture()),
                 'state' => $c->getStatut(),
                 'hasFiche' => $ficheData['hasFiche'],
                 'fiche' => $ficheData['fiche'],
@@ -1427,6 +1481,7 @@ class ConsultationService
             'consultationId' => $ord->getConsultation()?->getId(),
             'patient' => $ord->getConsultation()?->getPatient()?->getFullName(),
             'lignes' => array_map(fn(OrdonnanceLigne $l) => [
+                'id' => $l->getId(),
                 'designation' => $l->getDesignation(),
                 'posologie' => $l->getPosologie(),
                 'frequence' => $l->getFrequence(),
@@ -1435,6 +1490,57 @@ class ConsultationService
                 'instructions' => $l->getInstructions(),
             ], $ord->getLignes()->toArray()),
         ];
+    }
+
+    public function updateOrdonnance(int $id, array $payload): ?array
+    {
+        $ord = $this->em->getRepository(Ordonnance::class)->find($id);
+        if (!$ord) {
+            return null;
+        }
+
+        $lignes = $payload['lignes'] ?? [];
+        if (!is_array($lignes) || empty($lignes)) {
+            throw new \InvalidArgumentException('Au moins une ligne de prescription est requise.');
+        }
+
+        if (isset($payload['date']) && is_string($payload['date']) && $payload['date'] !== '') {
+            $ord->setDate(new \DateTime($payload['date']));
+        }
+
+        if (array_key_exists('medecinNom', $payload)) {
+            $ord->setMedecinNom($payload['medecinNom']);
+        }
+
+        if (array_key_exists('note', $payload)) {
+            $ord->setNote($payload['note']);
+        }
+
+        foreach ($ord->getLignes()->toArray() as $ligne) {
+            $ord->removeLigne($ligne);
+            $this->em->remove($ligne);
+        }
+
+        foreach ($lignes as $line) {
+            if (!is_array($line)) {
+                continue;
+            }
+
+            $ol = new OrdonnanceLigne();
+            $ol->setOrdonnance($ord)
+                ->setDesignation($line['designation'] ?? '')
+                ->setPosologie($line['posologie'] ?? null)
+                ->setFrequence($line['frequence'] ?? null)
+                ->setDuree($line['duree'] ?? null)
+                ->setQuantite(isset($line['quantite']) ? (int) $line['quantite'] : null)
+                ->setInstructions($line['instructions'] ?? null);
+            $this->em->persist($ol);
+            $ord->addLigne($ol);
+        }
+
+        $this->em->flush();
+
+        return $this->getOrdonnanceData($id);
     }
 }
 

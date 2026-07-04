@@ -2,7 +2,6 @@
 
 namespace App\IdentityAccess\Repository;
 
-use App\IdentityAccess\Entity\User;
 use App\IdentityAccess\Entity\UserDevice;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
@@ -17,55 +16,50 @@ class UserDeviceRepository extends ServiceEntityRepository
         parent::__construct($registry, UserDevice::class);
     }
 
-    public function findOneByUserAndIdentifier(User $user, string $identifier): ?UserDevice
+    public function findOneByIdentifier(string $identifier): ?UserDevice
     {
-        return $this->findOneBy([
-            'user' => $user,
-            'deviceIdentifier' => $identifier,
-        ]);
+        return $this->findOneBy(['deviceIdentifier' => $identifier]);
     }
 
     /** @return UserDevice[] */
-    public function findByUserOrdered(User $user): array
+    public function findAllOrdered(): array
     {
         return $this->createQueryBuilder('d')
-            ->andWhere('d.user = :user')
-            ->setParameter('user', $user)
             ->orderBy('d.requestedAt', 'DESC')
             ->getQuery()
             ->getResult();
     }
 
-    public function countApprovedByUser(User $user): int
+    public function countApproved(): int
     {
         return (int) $this->createQueryBuilder('d')
             ->select('COUNT(d.id)')
-            ->andWhere('d.user = :user')
             ->andWhere('d.status = :status')
-            ->setParameter('user', $user)
             ->setParameter('status', UserDevice::STATUS_APPROVED)
             ->getQuery()
             ->getSingleScalarResult();
     }
 
-    /** @return array<int, array{userId:int,approvedCount:int,pendingCount:int,totalCount:int}> */
-    public function countStatsGroupedByUserIds(array $userIds): array
+    /** @return array{approved:int,pending:int,rejected:int,total:int} */
+    public function countByStatus(): array
     {
-        if ($userIds === []) {
-            return [];
-        }
-
-        return $this->createQueryBuilder('d')
-            ->select('IDENTITY(d.user) AS userId')
-            ->addSelect('SUM(CASE WHEN d.status = :approved THEN 1 ELSE 0 END) AS approvedCount')
-            ->addSelect('SUM(CASE WHEN d.status = :pending THEN 1 ELSE 0 END) AS pendingCount')
-            ->addSelect('COUNT(d.id) AS totalCount')
-            ->andWhere('d.user IN (:userIds)')
-            ->setParameter('userIds', $userIds)
-            ->setParameter('approved', UserDevice::STATUS_APPROVED)
-            ->setParameter('pending', UserDevice::STATUS_PENDING)
-            ->groupBy('d.user')
+        $rows = $this->createQueryBuilder('d')
+            ->select('d.status AS status')
+            ->addSelect('COUNT(d.id) AS total')
+            ->groupBy('d.status')
             ->getQuery()
             ->getArrayResult();
+
+        $stats = ['approved' => 0, 'pending' => 0, 'rejected' => 0, 'total' => 0];
+        foreach ($rows as $row) {
+            $status = (string) ($row['status'] ?? '');
+            $count = (int) ($row['total'] ?? 0);
+            if (array_key_exists($status, $stats)) {
+                $stats[$status] = $count;
+            }
+            $stats['total'] += $count;
+        }
+
+        return $stats;
     }
 }

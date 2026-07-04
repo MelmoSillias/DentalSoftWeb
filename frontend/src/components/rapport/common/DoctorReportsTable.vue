@@ -6,7 +6,11 @@ import Column from 'primevue/column';
 import DataTable from 'primevue/datatable';
 import Dialog from 'primevue/dialog';
 import Tag from 'primevue/tag';
-import cabinetConfig from '@/cabinetConfig';
+import {
+    buildPrintHtmlDocument,
+    buildPrintTitleBandHtml
+} from '@/utils/printDocumentStyles';
+import { openPrintWindow } from '@/utils/reportPrint';
 
 const props = defineProps({
     title: { type: String, default: 'Rapports périodiques par médecin' },
@@ -22,7 +26,6 @@ const printDialogVisible = ref(false);
 
 const doctors = computed(() => props.data?.doctors || []);
 const kpi = computed(() => props.data?.kpi || {});
-const reportCabinetName = computed(() => cabinetConfig.reportCabinetName || 'CABINET DENTAIRE');
 
 function formatFcfa(amount) {
     const value = Number(amount || 0);
@@ -52,7 +55,7 @@ function formatDoctorDetails(row) {
 
     return `
         <div class="p-3">
-            <table style="width:100%; border-collapse: collapse;" border="1" cellpadding="6">
+            <table class="print-table">
                 <thead>
                     <tr>
                         <th>Date</th>
@@ -70,78 +73,36 @@ function formatDoctorDetails(row) {
     `;
 }
 
-function openPrintWindow(html) {
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) return;
-    printWindow.document.write(html);
-    printWindow.document.close();
-    setTimeout(() => {
-        printWindow.focus();
-        printWindow.print();
-        printWindow.close();
-    }, 500);
-}
-
 function printDoctorRow(row) {
-    const currentDate = new Date().toLocaleDateString('fr-FR');
-    const html = `
-        <html>
-        <head>
-            <title>Rapport Dr ${row.name || ''}</title>
-            <style>
-                @page { size: A4 landscape; margin: 10mm; }
-                body { font-family: "Times New Roman", serif; font-size: 12pt; line-height: 1.4; color: #000; margin: 0; padding: 10mm; }
-                .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 10px; }
-                .header h2 { margin: 0; font-size: 18pt; text-transform: uppercase; }
-                .header p { margin: 5px 0 0; font-size: 11pt; }
-                table { width: 100%; border-collapse: collapse; margin: 15px 0; }
-                th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-                th { background-color: #f2f2f2; }
-                .section-title { font-weight: bold; font-size: 13pt; margin: 25px 0 10px; border-bottom: 1px solid #ccc; padding-bottom: 3px; }
-                .signature-table { margin-top: 20px; width: 100%; }
-                .signature-cell { width: 45%; text-align: center; }
-                .signature-line { border-top: 1px solid #000; width: 80%; margin: 15px auto 5px; }
-                .footer { position: absolute; bottom: 10px; width: 100%; font-size: 9pt; text-align: center; color: #555; }
-            </style>
-        </head>
-        <body>
-            <div class="header">
-                <h2>${reportCabinetName.value}
-</h2>
-                <p>RAPPORT DE SERVICE MÉDICAL</p>
-                <p>Rue 612 Bacodjicoroni ACI | Bamako-MALI | Tél: +223 77 27 28 61 / +223 44 51 61 85</p>
-            </div>
-            <div>
-                <strong>Médecin :</strong> Dr ${row.name || ''}<br />
-                <strong>Période concernée :</strong> ${props.periodLabel || '(non spécifiée)'}
-            </div>
-            <div class="section-title">Statistiques d'activité</div>
-            ${formatDoctorTable(row)}
-            <div class="section-title">Détails de l'activité</div>
-            ${formatDoctorDetails(row)}
-            <table class="signature-table">
-                <tr>
-                    <td class="signature-cell">
-                        <div class="signature-line"></div>
-                        <p>Signature du praticien</p>
-                    </td>
-                    <td class="signature-cell">
-                        <div class="signature-line"></div>
-                        <p>Cachet et visa de la direction</p>
-                    </td>
-                </tr>
-            </table>
-            <div class="footer">le ${currentDate}</div>
-        </body>
-        </html>
+    const body = `
+        ${buildPrintTitleBandHtml('Rapport de service médical', `${row.name || ''} — Période : ${props.periodLabel || '(non spécifiée)'}`)}
+        <div class="print-section-title">Statistiques d'activité</div>
+        ${formatDoctorTable(row)}
+        <div class="print-section-title">Détails de l'activité</div>
+        ${formatDoctorDetails(row)}
+        <table class="signature-table">
+            <tr>
+                <td>
+                    <div class="signature-line"></div>
+                    <p>Signature du praticien</p>
+                </td>
+                <td>
+                    <div class="signature-line"></div>
+                    <p>Cachet et visa de la direction</p>
+                </td>
+            </tr>
+        </table>
     `;
 
-    openPrintWindow(html);
+    openPrintWindow(buildPrintHtmlDocument({
+        title: `Rapport ${row.name || ''}`,
+        body
+    }));
 }
 
 function formatDoctorTable(row) {
     return `
-        <table>
+        <table class="print-table">
             <tbody>
                 <tr>
                     <td> <strong>Consultations réalisées</strong></td>
@@ -163,7 +124,6 @@ function formatDoctorTable(row) {
 }
 
 function printSummary() {
-    const currentDate = new Date().toLocaleDateString('fr-FR');
     const rows = doctors.value
         .map(
             (row) => `
@@ -179,48 +139,27 @@ function printSummary() {
         )
         .join('');
 
-    const html = `
-        <html>
-        <head>
-            <title>Rapport de service</title>
-            <style>
-                @page { size: A4 landscape; margin: 20mm; }
-                body { font-family: Arial, sans-serif; }
-                table { width: 100%; border-collapse: collapse; }
-                th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-                th { background: #f2f2f2; }
-                .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 10px; }
-            </style>
-        </head>
-        <body>
-            <div class="header">
-                <h2>${reportCabinetName.value}
-</h2>
-                <p><strong>Rapport de service (Résumé)</strong> - ${currentDate}</p>
-                <p>Rue 612 Bacodjicoroni ACI | Bamako-MALI | Tél: +223 77 27 28 61 / +223 44 51 61 85</p>
-            </div>
-            <p><strong>Période :</strong> ${props.periodLabel || '(non spécifiée)'}</p>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Médecin</th>
-                        <th>Consultations</th>
-                        <th>Montant généré (Fcfa)</th>
-                        <th>Montant payé (Fcfa)</th>
-                        <th>Réliquat patient</th>
-                        <th>Salaire</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${rows}
-                </tbody>
-            </table>
-        </body>
-        </html>
+    const body = `
+        ${buildPrintTitleBandHtml('Rapport de service (Résumé)', `Période : ${props.periodLabel || '(non spécifiée)'}`)}
+        <table class="print-table">
+            <thead>
+                <tr>
+                    <th>Médecin</th>
+                    <th>Consultations</th>
+                    <th>Montant généré (Fcfa)</th>
+                    <th>Montant payé (Fcfa)</th>
+                    <th>Réliquat patient</th>
+                    <th>Salaire</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${rows}
+            </tbody>
+        </table>
     `;
 
     printDialogVisible.value = false;
-    openPrintWindow(html);
+    openPrintWindow(buildPrintHtmlDocument({ title: 'Rapport de service', body }));
 }
 
 function printAllActs() {
@@ -255,45 +194,27 @@ function printAllActs() {
 
     const total = acts.reduce((sum, act) => sum + Number(act.montant || 0), 0);
 
-    const html = `
-        <html>
-        <head>
-            <title>Liste des actes médicaux</title>
-            <style>
-                @page { size: A4 landscape; margin: 20mm; }
-                body { font-family: Arial, sans-serif; }
-                table { width: 100%; border-collapse: collapse; }
-                th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-                th { background: #f2f2f2; }
-                .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 10px; }
-            </style>
-        </head>
-        <body>
-            <div class="header">
-                <h2>Liste des actes médicaux</h2>
-                <p><strong>Période :</strong> ${props.periodLabel || '(non spécifiée)'}</p>
-            </div>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Date</th>
-                        <th>Médecin</th>
-                        <th>Patient</th>
-                        <th>Description</th>
-                        <th>Montant</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${rows}
-                </tbody>
-            </table>
-            <p style="margin-top: 12px; font-weight: 600;">Total = ${formatFcfa(total)}</p>
-        </body>
-        </html>
+    const body = `
+        ${buildPrintTitleBandHtml('Liste des actes médicaux', `Période : ${props.periodLabel || '(non spécifiée)'}`)}
+        <table class="print-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Médecin</th>
+                    <th>Patient</th>
+                    <th>Description</th>
+                    <th>Montant</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${rows}
+            </tbody>
+        </table>
+        <p style="margin-top: 12px; font-weight: 600;">Total = ${formatFcfa(total)}</p>
     `;
 
     printDialogVisible.value = false;
-    openPrintWindow(html);
+    openPrintWindow(buildPrintHtmlDocument({ title: 'Liste des actes médicaux', body }));
 }
 </script>
 

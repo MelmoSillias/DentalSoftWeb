@@ -80,7 +80,7 @@ class GlobalSettingsService
     ) {
     }
 
-    /** @return array{autoApproveDevices: bool, requireMedecinOnConsultationCreation: bool, allowReceptionQuickCloseConsultation: bool, allowReceptionConsultationQuickActions: bool, showReceptionQuickCloseButton: bool, allowReceptionBypassMedecinPasswordOnQuickClose: bool, hidePatientDossierForMedecins: bool, hidePatientPhoneForMedecins: bool, paiementDirectAssurance: bool, ficheFormSimplifie: bool, consultationPrice: float, transactionMotifs: array{revenue: string[], expense: string[]}, soinsList: string[], examensTypes: string[], traitementTypes: string[], allergyTypes: string[], antecedentTypes: string[], patientPortalEnabled: bool, patientPortalClosedMessage: string, patientPortalBaseUrl: ?string, cabinetShowcaseWebsiteUrl: ?string, autoCreatePortalAccountOnPatientCreation: bool} */
+    /** @return array{autoApproveDevices: bool, requireMedecinOnConsultationCreation: bool, allowReceptionQuickCloseConsultation: bool, allowReceptionConsultationQuickActions: bool, showReceptionQuickCloseButton: bool, allowReceptionBypassMedecinPasswordOnQuickClose: bool, hidePatientDossierForMedecins: bool, hidePatientPhoneForMedecins: bool, paiementDirectAssurance: bool, ficheFormSimplifie: bool, showDiagnosticPositifInConsultation: bool, consultationPrice: float, transactionMotifs: array{revenue: string[], expense: string[]}, soinsList: string[], examensTypes: string[], traitementTypes: string[], allergyTypes: string[], antecedentTypes: string[], patientPortalEnabled: bool, patientPortalClosedMessage: string, patientPortalBaseUrl: ?string, cabinetShowcaseWebsiteUrl: ?string, autoCreatePortalAccountOnPatientCreation: bool} */
     public function getGeneralSettings(): array
     {
         $entry = $this->appSettingRepo->findOneByKey(self::KEY_GENERAL);
@@ -95,10 +95,12 @@ class GlobalSettingsService
             'allowReceptionConsultationQuickActions' => $allowReceptionConsultationQuickActions,
             'showReceptionQuickCloseButton' => $showReceptionQuickCloseButton,
             'allowReceptionBypassMedecinPasswordOnQuickClose' => $showReceptionQuickCloseButton && (bool) ($value['allowReceptionBypassMedecinPasswordOnQuickClose'] ?? false),
+            'allowReceptionInvoiceModification' => (bool) ($value['allowReceptionInvoiceModification'] ?? false),
             'hidePatientDossierForMedecins' => (bool) ($value['hidePatientDossierForMedecins'] ?? false),
             'hidePatientPhoneForMedecins' => (bool) ($value['hidePatientPhoneForMedecins'] ?? false),
             'paiementDirectAssurance' => (bool) ($value['paiementDirectAssurance'] ?? false),
             'ficheFormSimplifie' => (bool) ($value['ficheFormSimplifie'] ?? false),
+            'showDiagnosticPositifInConsultation' => (bool) ($value['showDiagnosticPositifInConsultation'] ?? true),
             'consultationPrice' => $this->sanitizePositiveAmount($value['consultationPrice'] ?? null, self::DEFAULT_CONSULTATION_PRICE),
             'transactionMotifs' => $this->sanitizeTransactionMotifs($value['transactionMotifs'] ?? null),
             'soinsList' => $this->sanitizeStringList($value['soinsList'] ?? null, self::DEFAULT_SOINS_LIST),
@@ -141,10 +143,12 @@ class GlobalSettingsService
             'allowReceptionConsultationQuickActions' => $allowReceptionConsultationQuickActions,
             'showReceptionQuickCloseButton' => $showReceptionQuickCloseButton,
             'allowReceptionBypassMedecinPasswordOnQuickClose' => $showReceptionQuickCloseButton && (bool) ($payload['allowReceptionBypassMedecinPasswordOnQuickClose'] ?? ($current['allowReceptionBypassMedecinPasswordOnQuickClose'] ?? false)),
+            'allowReceptionInvoiceModification' => (bool) ($payload['allowReceptionInvoiceModification'] ?? ($current['allowReceptionInvoiceModification'] ?? false)),
             'hidePatientDossierForMedecins' => (bool) ($payload['hidePatientDossierForMedecins'] ?? ($current['hidePatientDossierForMedecins'] ?? false)),
             'hidePatientPhoneForMedecins' => (bool) ($payload['hidePatientPhoneForMedecins'] ?? ($current['hidePatientPhoneForMedecins'] ?? false)),
             'paiementDirectAssurance' => (bool) ($payload['paiementDirectAssurance'] ?? $payload['paymentDirectInsurance'] ?? ($current['paiementDirectAssurance'] ?? false)),
             'ficheFormSimplifie' => (bool) ($payload['ficheFormSimplifie'] ?? ($current['ficheFormSimplifie'] ?? false)),
+            'showDiagnosticPositifInConsultation' => (bool) ($payload['showDiagnosticPositifInConsultation'] ?? ($current['showDiagnosticPositifInConsultation'] ?? true)),
             'consultationPrice' => $this->sanitizePositiveAmount($payload['consultationPrice'] ?? ($current['consultationPrice'] ?? null), self::DEFAULT_CONSULTATION_PRICE),
             'transactionMotifs' => $this->sanitizeTransactionMotifs($payload['transactionMotifs'] ?? ($current['transactionMotifs'] ?? null)),
             'soinsList' => $this->sanitizeStringList($payload['soinsList'] ?? ($current['soinsList'] ?? null), self::DEFAULT_SOINS_LIST),
@@ -190,6 +194,11 @@ class GlobalSettingsService
         return $this->getGeneralSettings()['allowReceptionBypassMedecinPasswordOnQuickClose'];
     }
 
+    public function isReceptionInvoiceModificationAllowed(): bool
+    {
+        return $this->getGeneralSettings()['allowReceptionInvoiceModification'];
+    }
+
     public function isPatientDossierHiddenForMedecins(): bool
     {
         return $this->getGeneralSettings()['hidePatientDossierForMedecins'];
@@ -217,7 +226,7 @@ class GlobalSettingsService
         ];
     }
 
-    public function toggleTestMode(bool $enabled, User $admin, string $password): array
+    public function toggleTestMode(bool $enabled, User $admin, string $password, bool $deleteTestData = true): array
     {
         if (!$this->databaseMaintenanceService->verifyAdminPassword($admin, $password)) {
             throw new \InvalidArgumentException('Mot de passe admin invalide.');
@@ -252,32 +261,46 @@ class GlobalSettingsService
 
         if (!$enabled && $currentlyEnabled) {
             $snapshotPath = (string) ($current[self::TEST_MODE_SNAPSHOT_PATH_KEY] ?? '');
-            if ($snapshotPath === '') {
-                throw new \RuntimeException('Snapshot du mode test introuvable.');
+
+            if ($deleteTestData) {
+                if ($snapshotPath === '') {
+                    throw new \RuntimeException('Snapshot du mode test introuvable.');
+                }
+
+                $this->databaseMaintenanceService->restoreSqlBackup($snapshotPath);
+
+                $entryAfterRestore = $this->appSettingRepo->findOneByKey(self::KEY_GENERAL);
+                if (!$entryAfterRestore) {
+                    $entryAfterRestore = (new AppSetting())->setKeyName(self::KEY_GENERAL);
+                    $this->em->persist($entryAfterRestore);
+                }
+
+                $restored = $entryAfterRestore->getValue();
+                $entryAfterRestore->setValue([
+                    ...$restored,
+                    self::TEST_MODE_ENABLED_KEY => false,
+                    self::TEST_MODE_SNAPSHOT_PATH_KEY => $snapshotPath,
+                    self::TEST_MODE_SNAPSHOT_CREATED_AT_KEY => $current[self::TEST_MODE_SNAPSHOT_CREATED_AT_KEY] ?? null,
+                    self::TEST_MODE_LAST_PURGE_AT_KEY => (new \DateTimeImmutable())->format(DATE_ATOM),
+                ]);
+
+                $this->em->flush();
+
+                return [
+                    ...$this->getTestModeStatus(),
+                    'message' => 'Mode test désactivé. Données test supprimées via restauration snapshot.',
+                ];
             }
 
-            $this->databaseMaintenanceService->restoreSqlBackup($snapshotPath);
-
-            $entryAfterRestore = $this->appSettingRepo->findOneByKey(self::KEY_GENERAL);
-            if (!$entryAfterRestore) {
-                $entryAfterRestore = (new AppSetting())->setKeyName(self::KEY_GENERAL);
-                $this->em->persist($entryAfterRestore);
-            }
-
-            $restored = $entryAfterRestore->getValue();
-            $entryAfterRestore->setValue([
-                ...$restored,
+            $entry->setValue([
+                ...$current,
                 self::TEST_MODE_ENABLED_KEY => false,
-                self::TEST_MODE_SNAPSHOT_PATH_KEY => $snapshotPath,
-                self::TEST_MODE_SNAPSHOT_CREATED_AT_KEY => $current[self::TEST_MODE_SNAPSHOT_CREATED_AT_KEY] ?? null,
-                self::TEST_MODE_LAST_PURGE_AT_KEY => (new \DateTimeImmutable())->format(DATE_ATOM),
             ]);
-
             $this->em->flush();
 
             return [
                 ...$this->getTestModeStatus(),
-                'message' => 'Mode test désactivé. Données test supprimées via restauration snapshot.',
+                'message' => 'Mode test désactivé. Les données actuelles ont été conservées.',
             ];
         }
 
@@ -389,7 +412,7 @@ class GlobalSettingsService
         ];
     }
 
-    /** @return array{requireMedecinOnConsultationCreation: bool, allowReceptionQuickCloseConsultation: bool, allowReceptionConsultationQuickActions: bool, showReceptionQuickCloseButton: bool, allowReceptionBypassMedecinPasswordOnQuickClose: bool, hidePatientDossierForMedecins: bool, hidePatientPhoneForMedecins: bool, paiementDirectAssurance: bool, ficheFormSimplifie: bool, consultationPrice: float, soinsList: string[], examensTypes: string[], traitementTypes: string[], allergyTypes: string[], antecedentTypes: string[], patientPortalEnabled: bool, patientPortalClosedMessage: string, patientPortalBaseUrl: ?string, cabinetShowcaseWebsiteUrl: ?string} */
+    /** @return array{requireMedecinOnConsultationCreation: bool, allowReceptionQuickCloseConsultation: bool, allowReceptionConsultationQuickActions: bool, showReceptionQuickCloseButton: bool, allowReceptionBypassMedecinPasswordOnQuickClose: bool, hidePatientDossierForMedecins: bool, hidePatientPhoneForMedecins: bool, paiementDirectAssurance: bool, ficheFormSimplifie: bool, showDiagnosticPositifInConsultation: bool, consultationPrice: float, soinsList: string[], examensTypes: string[], traitementTypes: string[], allergyTypes: string[], antecedentTypes: string[], patientPortalEnabled: bool, patientPortalClosedMessage: string, patientPortalBaseUrl: ?string, cabinetShowcaseWebsiteUrl: ?string} */
     public function getStaffOperationalSettings(): array
     {
         $settings = $this->getGeneralSettings();
@@ -400,10 +423,12 @@ class GlobalSettingsService
             'allowReceptionConsultationQuickActions' => $settings['allowReceptionConsultationQuickActions'],
             'showReceptionQuickCloseButton' => $settings['showReceptionQuickCloseButton'],
             'allowReceptionBypassMedecinPasswordOnQuickClose' => $settings['allowReceptionBypassMedecinPasswordOnQuickClose'],
+            'allowReceptionInvoiceModification' => $settings['allowReceptionInvoiceModification'],
             'hidePatientDossierForMedecins' => $settings['hidePatientDossierForMedecins'],
             'hidePatientPhoneForMedecins' => $settings['hidePatientPhoneForMedecins'],
             'paiementDirectAssurance' => $settings['paiementDirectAssurance'],
             'ficheFormSimplifie' => $settings['ficheFormSimplifie'],
+            'showDiagnosticPositifInConsultation' => $settings['showDiagnosticPositifInConsultation'],
             'consultationPrice' => $settings['consultationPrice'],
             'soinsList' => $settings['soinsList'],
             'examensTypes' => $settings['examensTypes'],

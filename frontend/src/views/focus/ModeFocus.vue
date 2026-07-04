@@ -12,6 +12,7 @@ import { defaultSoinList, fetchConsultationDetails, fetchConsultationInvoice, fe
 import {  getDefaultClassicMethod } from '@/utils/paymentMethodUtils';
 import { fetchAssurances, fetchFactureDetail, payFacture, resetFacturePayments, validateEmptyFacture } from '@/services/caisseService';
 import { fetchPublicGeneralSettings } from '@/services/globalSettingsService';
+import { canUserModifyInvoice } from '@/utils/invoiceModificationAccess';
 import { fetchInvoicePrintData, fetchReceiptPrintData } from '@/services/printService';
 import { checkConsultationActive, deleteConsultation } from '@/services/patients';
 import { fetchPatientById, normalizePatient } from '@/services/patients';
@@ -41,6 +42,7 @@ const paymentMethodsStore = usePaymentMethodsStore();
 const loading = ref(false);
 const consultations = ref([]);
 const allowReceptionQuickClose = ref(true);
+const allowReceptionInvoiceModification = ref(false);
 const hidePatientDossierForMedecins = ref(false);
 const hidePatientPhoneForMedecins = ref(false);
 const soinsList = ref([...defaultSoinList]);
@@ -57,6 +59,8 @@ const detailData = ref(null);
 const factureDialogVisible = ref(false);
 const factureSaving = ref(false);
 const factureLines = ref([]);
+const factureDate = ref('');
+const factureTime = ref('');
 const factureConsultation = ref(null);
 const paymentMethods = ref([]);
 const assurances = ref([]);
@@ -112,6 +116,9 @@ const hasInitialLoadCompleted = ref(false);
 
 const roles = computed(() => auth.user?.roles || []);
 const isAdmin = computed(() => roles.value.includes('ROLE_ADMIN'));
+const canModifyInvoiceByRole = computed(() =>
+    canUserModifyInvoice(auth.user, { allowReceptionInvoiceModification: allowReceptionInvoiceModification.value })
+);
 const isMedecin = computed(() => roles.value.includes('ROLE_MEDECIN'));
 const isReception = computed(() => roles.value.includes('ROLE_RECEPTION') || roles.value.includes('ROLE_RECEPTIONNISTE') || roles.value.includes('ROLE_SECRETAIRE'));
 const isRestrictedMedecin = computed(() => isMedecin.value && !isAdmin.value);
@@ -357,13 +364,6 @@ const selectedAssurance = computed(() =>
     || (selectedFactureInsurance.value?.insuranceModeLabel ? { nom: selectedFactureInsurance.value.insuranceModeLabel } : null)
 );
 
-const resolveAssuranceDefaultRate = (assurance) => {
-    if (!assurance) {
-        return 0;
-    }
-
-    return Math.max(0, Math.min(100, Number(assurance?.defaultRate ?? assurance?.tauxParDefaut ?? 0) || 0));
-};
 const insuranceCoveredAmount = computed(() => {
     if (invoiceHasInsurance.value) return Number(selectedFactureInsurance.value?.insuranceAmount) || 0;
     return effectiveInsuranceAmount.value;
@@ -419,11 +419,13 @@ const loadSettings = async () => {
         const settings = await fetchPublicGeneralSettings(token);
         allowReceptionQuickClose.value = settings?.allowReceptionConsultationQuickActions !== false
             && settings?.allowReceptionQuickCloseConsultation !== false;
+        allowReceptionInvoiceModification.value = settings?.allowReceptionInvoiceModification === true;
         hidePatientDossierForMedecins.value = settings?.hidePatientDossierForMedecins === true;
         hidePatientPhoneForMedecins.value = settings?.hidePatientPhoneForMedecins === true;
         soinsList.value = normalizeSoinList(settings?.soinsList);
     } catch (_) {
         allowReceptionQuickClose.value = true;
+        allowReceptionInvoiceModification.value = false;
         hidePatientDossierForMedecins.value = false;
         hidePatientPhoneForMedecins.value = false;
         soinsList.value = [...defaultSoinList];
@@ -565,12 +567,15 @@ const openValidateDialog = () => {
 };
 
 const openModifyDialog = async () => {
-    if (!currentConsultation.value?.id) return;
+    if (!canModifyInvoiceByRole.value || !currentConsultation.value?.id) return;
     factureConsultation.value = currentConsultation.value;
     factureDialogVisible.value = true;
     factureLoading.value = true;
     try {
-        factureLines.value = await fetchConsultationInvoice(currentConsultation.value.id, token);
+        const invoice = await fetchConsultationInvoice(currentConsultation.value.id, token);
+        factureLines.value = invoice.lines;
+        factureDate.value = invoice.date || '';
+        factureTime.value = invoice.time || '';
     } finally {
         factureLoading.value = false;
     }
@@ -650,16 +655,37 @@ const submitPayment = async () => {
     }
 };
 
+const reloadFacturePreview = async (factureId) => {
+    if (!previewDialogVisible.value || !factureId) {
+        return;
+    }
+
+    previewLoading.value = true;
+    try {
+        previewData.value = await fetchFactureDetail(factureId, token);
+    } catch (_) {
+        toast.add({ severity: 'error', summary: 'Facture', detail: 'Actualisation du détail impossible', life: 3500 });
+    } finally {
+        previewLoading.value = false;
+    }
+};
+
 const resetSelectedDevisPayments = async () => {
-    if (!selectedFacture.value) return;
+    const factureId = selectedFacture.value?.id ?? previewData.value?.id ?? currentReceptionInvoiceRow.value?.id;
+    if (!factureId) return;
+
     resetPaymentsLoading.value = true;
     try {
-        await resetFacturePayments(selectedFacture.value.id, token);
+        await resetFacturePayments(factureId, token);
         resetPaymentDialogVisible.value = false;
         payDialogVisible.value = false;
-        previewDialogVisible.value = false;
         toast.add({ severity: 'success', summary: 'Facture', detail: 'Facture réinitialisée.', life: 3000 });
         await loadConsultations();
+        await reloadFacturePreview(factureId);
+
+        if (currentReceptionInvoiceRow.value) {
+            selectedFacture.value = currentReceptionInvoiceRow.value;
+        }
     } catch (_) {
         toast.add({ severity: 'error', summary: 'Facture', detail: 'Réinitialisation impossible.', life: 3500 });
     } finally {
@@ -722,11 +748,15 @@ const sendInvoiceBySms = async () => {
     }
 };
 
-const handleSaveFacture = async (lines) => {
+const handleSaveFacture = async () => {
     if (!factureConsultation.value?.id) return;
     factureSaving.value = true;
     try {
-        await updateConsultationInvoice(factureConsultation.value.id, lines, token);
+        await updateConsultationInvoice(factureConsultation.value.id, {
+            lines: factureLines.value,
+            date: factureDate.value,
+            time: factureTime.value
+        }, token);
         toast.add({ severity: 'success', summary: 'Facture mise a jour', life: 2200 });
         factureDialogVisible.value = false;
         await loadConsultations();
@@ -965,26 +995,13 @@ watch(
 
         const defaultAssurance = (assurances.value || []).find((item) => item?.actif !== false) || null;
         payForm.value.assuranceId = payForm.value.assuranceId || defaultAssurance?.id || null;
-        if (!invoiceHasInsurance.value && payForm.value.assuranceId) {
-            const assurance = (assurances.value || []).find((item) => Number(item?.id) === Number(payForm.value.assuranceId)) || null;
-            payForm.value.insuranceRate = resolveAssuranceDefaultRate(assurance);
-        }
         payForm.value.montant = 0;
     }
 );
 
 watch(
     () => payForm.value.assuranceId,
-    (assuranceId) => {
-        if (!assuranceId) {
-            return;
-        }
-
-        if (!invoiceHasInsurance.value) {
-            const assurance = (assurances.value || []).find((item) => Number(item?.id) === Number(assuranceId)) || null;
-            payForm.value.insuranceRate = resolveAssuranceDefaultRate(assurance);
-        }
-
+    () => {
         if ((Number(payForm.value.montant) || 0) > maxClientPaymentAmount.value) {
             payForm.value.montant = maxClientPaymentAmount.value;
         }
@@ -1128,6 +1145,7 @@ onBeforeUnmount(() => {
                 :consultation-toolbar-loading="consultationToolbarLoading"
                 :consultation-loading-by-patient="createConsultationLoading"
                 :allow-reception-quick-close="allowReceptionQuickClose"
+                :allow-reception-invoice-modification="canModifyInvoiceByRole"
                 :is-admin="isAdmin"
                 :selected-consultation-id="selectedConsultationId"
                 @refresh="loadConsultations"
@@ -1204,6 +1222,8 @@ onBeforeUnmount(() => {
                 :validate-loading="validateLoading"
                 :facture-dialog-visible="factureDialogVisible"
                 :facture-lines="factureLines"
+                :facture-date="factureDate"
+                :facture-time="factureTime"
                 :facture-saving="factureSaving"
                 :facture-total="factureTotal"
                 :soins-list="soinsList"
@@ -1221,12 +1241,14 @@ onBeforeUnmount(() => {
                 @update:resetPaymentDialogVisible="resetPaymentDialogVisible = $event"
                 @update:validateDialogVisible="validateDialogVisible = $event"
                 @update:factureDialogVisible="factureDialogVisible = $event"
+                @update:factureDate="factureDate = $event"
+                @update:factureTime="factureTime = $event"
                 @update:previewDialogVisible="previewDialogVisible = $event"
                 @update:previewDialogTab="previewDialogTab = $event"
                 @submit-payment="submitPayment"
                 @confirm-reset="resetSelectedDevisPayments"
                 @confirm-validate="confirmValidate"
-                @save-facture="handleSaveFacture(factureLines)"
+                @save-facture="handleSaveFacture"
                 @print-invoice="printInvoice"
             />
             <Dialog v-model:visible="createPatientDialogVisible" modal :style="{ width: '45rem' }">

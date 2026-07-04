@@ -19,6 +19,10 @@ const props = defineProps({
     soins: {
         type: Array,
         default: () => defaultSoinList
+    },
+    readonly: {
+        type: Boolean,
+        default: false
     }
 });
 
@@ -328,6 +332,7 @@ function subtotal(service) {
             </div>
             <div class="flex flex-wrap gap-2">
                 <Button
+                    v-if="!readonly"
                     label="Sauvegarder"
                     icon="pi pi-save"
                     :loading="saving"
@@ -361,12 +366,13 @@ function subtotal(service) {
                             @click.stop="emitPrintDevisAtIndex(idx)"
                         ></i>
                         <i
-                            v-if="devisTabs.length > 1"
+                            v-if="!readonly && devisTabs.length > 1"
                             class="pi pi-times text-xs cursor-pointer"
                             @click.stop="removeDevisTab(idx)"
                         ></i>
                     </button>
                     <Button
+                        v-if="!readonly"
                         icon="pi pi-plus"
                         label="Nouveau devis"
                         size="small"
@@ -383,6 +389,7 @@ function subtotal(service) {
                     :modelValue="activeDevis.description"
                     placeholder="Ex: Devis implanto-prothétique"
                     class="w-full"
+                    :disabled="readonly"
                     @update:modelValue="(value) => updateField('description', value || '')"
                 />
             </div>
@@ -398,6 +405,7 @@ function subtotal(service) {
                         v-model="dateModel"
                         dateFormat="dd/mm/yy"
                         showIcon
+                        :disabled="readonly"
                         inputClass="w-full rounded-xl border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-800/50 p-3 focus:ring-2 focus:ring-primary-500/20 transition-all"
                     />
                 </div>
@@ -431,6 +439,7 @@ function subtotal(service) {
                     </div>
                 </div>
                 <Button
+                    v-if="!readonly"
                     icon="pi pi-plus"
                     label="Ajouter un service"
                     size="small"
@@ -449,7 +458,8 @@ function subtotal(service) {
                 </div>
 
                 <div v-for="(service, idx) in activeDevis.services" :key="idx"
-                     class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/30 p-5 shadow-sm hover:shadow-md transition-all">
+                     class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/30 p-5 shadow-sm hover:shadow-md transition-all"
+                     :class="readonly ? 'pointer-events-none opacity-90' : ''">
                     <!-- Service Header -->
                     <div class="flex items-center justify-between mb-4">
                         <div class="flex items-center gap-2">
@@ -459,6 +469,7 @@ function subtotal(service) {
                             <span class="font-medium text-surface-900 dark:text-surface-100">Service {{ idx + 1 }}</span>
                         </div>
                         <Button
+                            v-if="!readonly"
                             icon="pi pi-trash"
                             severity="danger"
                             text

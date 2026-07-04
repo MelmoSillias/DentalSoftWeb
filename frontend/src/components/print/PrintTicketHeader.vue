@@ -1,33 +1,60 @@
 <template>
-    <div class="ticket-header">
-        <img :src="logoSrc" alt="Cabinet Dentaire Orodent" class="header-logo" />
-        <div class="title">{{ title }}</div>
-    </div>
+    <header class="ticket-header">
+        <PrintCabinetHeader variant="ticket" />
+        <div v-if="title" class="ticket-header__title-band">
+            <span class="ticket-header__line" />
+            <span class="ticket-header__title">{{ title }}</span>
+            <span class="ticket-header__line" />
+        </div>
+    </header>
 </template>
 
 <script setup>
-import headerImg from '@/assets/header-big.jpeg';
+import PrintCabinetHeader from './PrintCabinetHeader.vue';
 
 defineProps({
-    title: { type: String, default: 'Ticket de caisse' },
-    logoSrc: { type: String, default: headerImg }
+    title: { type: String, default: '' }
 });
 </script>
 
 <style scoped>
 .ticket-header {
+    margin-bottom: 6px;
+    color: #000;
+}
+
+.ticket-header__title-band {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 6px;
+}
+
+.ticket-header__line {
+    flex: 1;
+    height: 2px;
+    background: #000;
+}
+
+.ticket-header__title {
+    flex-shrink: 0;
+    font-weight: 800;
+    font-size: 12px;
     text-align: center;
-    margin-bottom: 3px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #000;
+    -webkit-text-stroke: 0.2px #000;
 }
 
-.header-logo {
-    width: 100%;
-    max-height: 30mm;
-    object-fit: contain;
-    margin-bottom: 3px;
-}
+@media print {
+    .ticket-header,
+    .ticket-header__title {
+        color: #000 !important;
+    }
 
-.title {
-    font-weight: 700;
+    .ticket-header__line {
+        background: #000 !important;
+    }
 }
 </style>

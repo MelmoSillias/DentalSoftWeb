@@ -220,6 +220,7 @@ class PatientService
             'profession' => $patient->getProfession(),
             'lieuNaissance' => $patient->getLieuNaissance(),
             'groupeSanguin' => $patient->getGroupeSanguin(),
+            'referencement' => $patient->getReferencement() ?? '',
             'contactUrgence' => $contact ? [
                 'nom' => $contact->getNom(),
                 'telephone' => $contact->getTelephone(),
@@ -424,6 +425,85 @@ class PatientService
         ];
     }
 
+    public function getOverviewStats(?object $user = null, bool $medecinOnly = false): array
+    {
+        $medecin = null;
+        if ($medecinOnly) {
+            $resolved = $this->resolveMedecinFromUser($user);
+            if (isset($resolved['error'])) {
+                return $resolved;
+            }
+            $medecin = $resolved['employe'];
+        }
+
+        $todayStart = new DateTimeImmutable('today 00:00:00');
+        $todayEnd = new DateTimeImmutable('today 23:59:59');
+        $monthStart = new DateTimeImmutable('first day of this month 00:00:00');
+        $now = new DateTimeImmutable();
+
+        $totalQb = $this->patientRepo->createQueryBuilder('p')
+            ->select('COUNT(p.id)')
+            ->andWhere('p.deletedAt IS NULL');
+
+        $consultationsTodayQb = $this->consultationRepo->createQueryBuilder('c')
+            ->select('COUNT(c.id)')
+            ->innerJoin('c.patient', 'cp')
+            ->andWhere('cp.deletedAt IS NULL')
+            ->andWhere('c.CreatedAt BETWEEN :todayStart AND :todayEnd')
+            ->setParameter('todayStart', $todayStart)
+            ->setParameter('todayEnd', $todayEnd);
+
+        $upcomingRdvsQb = $this->em->createQueryBuilder()
+            ->select('COUNT(r.id)')
+            ->from(Rdv::class, 'r')
+            ->innerJoin('r.patient', 'rp')
+            ->andWhere('rp.deletedAt IS NULL')
+            ->andWhere('r.dateRdv >= :now')
+            ->andWhere('r.statut IN (0, 1)')
+            ->setParameter('now', $now);
+
+        $newPatientsMonthQb = $this->patientRepo->createQueryBuilder('p')
+            ->select('COUNT(p.id)')
+            ->andWhere('p.deletedAt IS NULL')
+            ->andWhere('p.dateInscription >= :monthStart')
+            ->setParameter('monthStart', $monthStart);
+
+        $referralsQb = $this->patientRepo->createQueryBuilder('p')
+            ->select('p.referencement AS source, COUNT(p.id) AS cnt')
+            ->andWhere('p.deletedAt IS NULL')
+            ->groupBy('p.referencement')
+            ->orderBy('cnt', 'DESC');
+
+        if ($medecin instanceof Employe) {
+            $medecinScope = 'EXISTS (SELECT 1 FROM ' . Consultation::class . ' c2 WHERE c2.patient = p AND c2.medecin = :medecin) OR EXISTS (SELECT 1 FROM ' . Rdv::class . ' r2 WHERE r2.patient = p AND r2.medecin = :medecin)';
+            $totalQb->andWhere($medecinScope)->setParameter('medecin', $medecin);
+            $newPatientsMonthQb->andWhere($medecinScope)->setParameter('medecin', $medecin);
+            $referralsQb->andWhere($medecinScope)->setParameter('medecin', $medecin);
+
+            $consultationsTodayQb
+                ->andWhere('c.medecin = :medecin')
+                ->setParameter('medecin', $medecin);
+
+            $upcomingRdvsQb
+                ->andWhere('r.medecin = :medecin')
+                ->setParameter('medecin', $medecin);
+        }
+
+        $referralRows = $referralsQb->getQuery()->getArrayResult();
+        $referrals = array_map(static fn (array $row): array => [
+            'source' => ($row['source'] ?? '') !== '' ? (string) $row['source'] : 'Non renseigné',
+            'count' => (int) ($row['cnt'] ?? 0),
+        ], $referralRows);
+
+        return [
+            'totalPatients' => (int) $totalQb->getQuery()->getSingleScalarResult(),
+            'consultationsToday' => (int) $consultationsTodayQb->getQuery()->getSingleScalarResult(),
+            'upcomingAppointments' => (int) $upcomingRdvsQb->getQuery()->getSingleScalarResult(),
+            'newPatientsThisMonth' => (int) $newPatientsMonthQb->getQuery()->getSingleScalarResult(),
+            'referrals' => $referrals,
+        ];
+    }
+
     public function softDeletePatient(int $id): array
     {
         $patient = $this->findActivePatient($id);
@@ -505,7 +585,7 @@ class PatientService
             $patient->setDateInscription(new DateTime());
             $patient->setNumCarnet(uniqid('PAT-', true));
             $patient->setGroupeSanguin($data['groupeSanguin'] ?? null);
-            $patient->setReferencement('');
+            $patient->setReferencement((string) ($data['referencement'] ?? ''));
             $this->applySmsPreferences($patient, $data);
             $this->applyInsuranceProfile($patient, $data);
 
@@ -574,6 +654,9 @@ class PatientService
             $patient->setLieuNaissance($data['lieuNaissance'] ?? $patient->getLieuNaissance());
             $patient->setGroupeSanguin($data['groupeSanguin'] ?? $patient->getGroupeSanguin());
             $patient->setSexe($data['sexe'] ?? $patient->getSexe());
+            if (array_key_exists('referencement', $data)) {
+                $patient->setReferencement((string) ($data['referencement'] ?? ''));
+            }
             $this->applySmsPreferences($patient, $data);
             $this->applyInsuranceProfile($patient, $data);
             if (!empty($data['dateNaissance'])) {
@@ -867,6 +950,7 @@ public function removeArchiveFile(int $patientId, string $fileUrl): array
             'numCarnet' => $patient->getNumCarnet(),
             'groupeSanguin' => $patient->getGroupeSanguin(),
             'dateInscription' => $patient->getDateInscription()->format('Y-m-d H:i'),
+            'referencement' => $patient->getReferencement() ?? '',
             'contactUrgence' => $contactUrgence,
             'smsPreferences' => $this->extractSmsPreferences($patient),
             'insuranceProfile' => $this->formatInsuranceProfile($patient),
@@ -1243,6 +1327,7 @@ public function removeArchiveFile(int $patientId, string $fileUrl): array
             'numCarnet' => $patient->getNumCarnet(),
             'groupeSanguin' => $patient->getGroupeSanguin(),
             'dateInscription' => $patient->getDateInscription()->format('Y-m-d H:i'),
+            'referencement' => $patient->getReferencement() ?? '',
             'contactUrgence' => $contactUrgence,
             'portalAccount' => $this->formatPortalAccount($patient),
             'smsPreferences' => $this->extractSmsPreferences($patient),
@@ -1269,7 +1354,7 @@ public function removeArchiveFile(int $patientId, string $fileUrl): array
             return ['error' => 'Patient introuvable', 'status' => 404];
         }
 
-        $simples = ['nom', 'prenom', 'sexe', 'telephone', 'adresse', 'numCarnet', 'groupeSanguin', 'email', 'profession', 'lieuNaissance'];
+        $simples = ['nom', 'prenom', 'sexe', 'telephone', 'adresse', 'numCarnet', 'groupeSanguin', 'email', 'profession', 'lieuNaissance', 'referencement'];
         foreach ($simples as $field) {
             if (array_key_exists($field, $payload)) {
                 $setter = 'set' . ucfirst($field);
@@ -1504,7 +1589,7 @@ public function removeArchiveFile(int $patientId, string $fileUrl): array
             throw new \InvalidArgumentException('Assurance invalide ou inactive pour ce patient.');
         }
 
-        $coverageRateRaw = $raw['coverageRate'] ?? $raw['tauxCouverture'] ?? $assurance->getTauxParDefaut();
+        $coverageRateRaw = $raw['coverageRate'] ?? $raw['tauxCouverture'] ?? null;
         $coverageRate = $coverageRateRaw === null || $coverageRateRaw === ''
             ? null
             : max(0.0, min(100.0, (float) $coverageRateRaw));

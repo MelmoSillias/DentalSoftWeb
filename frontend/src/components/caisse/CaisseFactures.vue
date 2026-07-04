@@ -12,7 +12,8 @@ const props = defineProps({
     facturesLoading: { type: Boolean, default: false },
     factureType: { type: String, default: 'all' },
     factureRange: { type: Array, default: () => [] },
-    hidePatientPhone: { type: Boolean, default: false }
+    hidePatientPhone: { type: Boolean, default: false },
+    allowInvoiceModification: { type: Boolean, default: false }
 });
 
 const emit = defineEmits([
@@ -28,8 +29,11 @@ const emit = defineEmits([
 
 const factureTypeOptions = [
     { label: 'Toutes', value: 'all' },
-    { label: 'Factures impayées', value: 'impaye' }
+    { label: 'Impayées (période)', value: 'impaye' },
+    { label: 'Toutes les impayées', value: 'impaye_toutes' }
 ];
+
+const periodFilterDisabled = computed(() => props.factureType === 'impaye_toutes');
 
 const safeFactures = computed(() => (Array.isArray(props.factures) ? props.factures : []));
 
@@ -80,7 +84,7 @@ const computeStatus = (row) => {
     return { label: 'Partiellement payé', severity: 'warning' };
 };
 
-const canModify = (row) => (Number(row.montant) === Number(row.reste)) && !row.isRegle;
+const canModify = (row) => props.allowInvoiceModification && !row?.hasPayments && (Number(row.montant) === Number(row.reste)) && !row.isRegle;
 const canPreview = (row) => !(Number(row.montant) === 0 && Number(row.reste) === 0);
 const targetIsFree = (row) => !row.isRegle && Number(row.reste) === 0;
 
@@ -155,7 +159,7 @@ const displayPhone = (value) => (props.hidePatientPhone ? 'Masqué par l\'admini
                     <div class="filter-item">
                         <label>Période</label>
                         <DatePicker v-model="factureRangeModel" selectionMode="range" dateFormat="yy-mm-dd" showIcon
-                            fluid />
+                            fluid :disabled="periodFilterDisabled" />
                     </div>
                     <Button label="Rafraîchir" icon="pi pi-refresh" text @click="emit('refresh-factures')" />
                 </div>

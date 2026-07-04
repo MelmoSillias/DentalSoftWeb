@@ -66,6 +66,10 @@ class Transaction
     #[ORM\OneToOne(inversedBy: 'transaction', cascade: ['persist', 'remove'])]
     private ?Paiement $paiement = null;
 
+    #[ORM\ManyToOne(targetEntity: LotFactureAssurance::class, inversedBy: 'transactions')]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?LotFactureAssurance $lotFactureAssurance = null;
+
     public function getId(): ?int
     {
         return $this->id;
@@ -260,6 +264,18 @@ class Transaction
     public function setPaiement(?Paiement $paiement): static
     {
         $this->paiement = $paiement;
+
+        return $this;
+    }
+
+    public function getLotFactureAssurance(): ?LotFactureAssurance
+    {
+        return $this->lotFactureAssurance;
+    }
+
+    public function setLotFactureAssurance(?LotFactureAssurance $lotFactureAssurance): static
+    {
+        $this->lotFactureAssurance = $lotFactureAssurance;
 
         return $this;
     }

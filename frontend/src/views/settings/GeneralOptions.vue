@@ -2,7 +2,11 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useToast } from 'primevue/usetoast';
+import { useConfirm } from 'primevue/useconfirm';
 import Button from 'primevue/button';
+import Column from 'primevue/column';
+import ConfirmPopup from 'primevue/confirmpopup';
+import DataTable from 'primevue/datatable';
 import Dialog from 'primevue/dialog';
 import InputText from 'primevue/inputtext';
 import Password from 'primevue/password';
@@ -12,6 +16,7 @@ import Tab from 'primevue/tab';
 import TabList from 'primevue/tablist';
 import Tabs from 'primevue/tabs';
 import Textarea from 'primevue/textarea';
+import Tag from 'primevue/tag';
 import ToggleSwitch from 'primevue/toggleswitch';
 import Divider from 'primevue/divider';
 import Card from 'primevue/card';
@@ -28,10 +33,15 @@ import { createSettingsApparenceTour } from '@/tours/settingsApparenceTour';
 import { startTourGuide } from '@/tours/tourGuideClient';
 import {
     cleanTestMode,
+    approveDevice as approveDeviceApi,
     createMissingPatientPortalAccounts,
+    deleteDevice as deleteDeviceApi,
     downloadDatabaseExport,
     exportDatabase,
+    fetchApprovedDevices,
     fetchGeneralSettings,
+    rejectDevice as rejectDeviceApi,
+    renameDevice as renameDeviceApi,
     resetDatabase,
     saveGeneralSettings,
     toggleTestMode
@@ -42,6 +52,7 @@ import cabinetConfig from '@/cabinetConfig';
 
 const router = useRouter();
 const toast = useToast();
+const confirm = useConfirm();
 const { printComponent } = usePrinter();
 const token = localStorage.getItem('token');
 const auth = useAuthStore();
@@ -49,7 +60,7 @@ const uiSettings = useUiSettingsStore();
 const isGuidedTourStarting = ref(false);
 const activeCategory = ref('appearance');
 const activeSubSection = ref('overview');
-const settingsDisplayMode = ref('page');
+const settingsDisplayMode = ref('tabs');
 const settingsDisplayModeOptions = [
     { label: 'Page', value: 'page', icon: 'pi pi-align-justify' },
     { label: 'Onglets', value: 'tabs', icon: 'pi pi-objects-column' }
@@ -82,12 +93,13 @@ const generalLoading = ref(false);
 const generalSettingsLoaded = ref(false);
 const loadErrorMessage = ref('');
 const savingStates = reactive({
-    consultationAccess: false,
+    consultationPolicy: false,
+    medecinPrivacy: false,
+    clinicalForm: false,
     devicePolicy: false,
     billingPolicy: false,
     portalSettings: false,
     portalBulkCreate: false,
-    transactionMotifs: false,
     soinsCatalog: false,
     testMode: false,
     databaseExport: false,
@@ -96,22 +108,44 @@ const savingStates = reactive({
 
 // Settings data
 const devicePolicy = reactive({
-    autoApproveDevices: true,
+    autoApproveDevices: true
+});
+
+const approvedDevices = ref([]);
+const deviceAccessLogs = ref([]);
+const deviceAccessLogsDialogVisible = ref(false);
+const deviceRenameDialogVisible = ref(false);
+const deviceBeingRenamed = ref(null);
+const deviceRenameValue = ref('');
+const deviceRenameSaving = ref(false);
+const deviceStats = ref({ approved: 0, pending: 0, rejected: 0, total: 0 });
+const devicesLoading = ref(false);
+
+const consultationPolicy = reactive({
     requireMedecinOnConsultationCreation: true,
-    paiementDirectAssurance: false
-});
-
-const billingPolicy = reactive({
-    consultationPrice: 5000
-});
-
-const consultationAccess = reactive({
     allowReceptionConsultationQuickActions: true,
     showReceptionQuickCloseButton: true,
     allowReceptionBypassMedecinPasswordOnQuickClose: false,
+    consultationPrice: 5000
+});
+
+const medecinPrivacy = reactive({
     hidePatientDossierForMedecins: false,
-    hidePatientPhoneForMedecins: false,
-    ficheFormSimplifie: false
+    hidePatientPhoneForMedecins: false
+});
+
+const clinicalForm = reactive({
+    ficheFormSimplifie: false,
+    showDiagnosticPositifInConsultation: true,
+    examensTypesText: 'Bacteriologique\nSerologique\nHistologique\nRadiologique\nAutre',
+    traitementTypesText: 'Urgence\nDentaires\nParodontaux\nOrthodontiques\nAutres',
+    allergyTypesText: 'Médicamenteuses\nAlimentaires\nEnvironnementales\nAutres',
+    antecedentTypesText: 'Personnel\nFamilial\nMédical'
+});
+
+const billingPolicy = reactive({
+    paiementDirectAssurance: false,
+    allowReceptionInvoiceModification: false
 });
 
 const transactionMotifs = reactive({
@@ -121,13 +155,6 @@ const transactionMotifs = reactive({
 
 const soinsCatalog = reactive({
     text: 'Consultation\nDétartrage\nExtraction\nRemplissage\nComposite\nAmalgame\nTraitement de canal\nTraumatisme\nCouronne\nBlanchiment\nRadio\nProthèse\nOrthodontie\nChirurgie'
-});
-
-const ficheSimplifieCatalog = reactive({
-    examensTypesText: 'Bacteriologique\nSerologique\nHistologique\nRadiologique\nAutre',
-    traitementTypesText: 'Urgence\nDentaires\nParodontaux\nOrthodontiques\nAutres',
-    allergyTypesText: 'Médicamenteuses\nAlimentaires\nEnvironnementales\nAutres',
-    antecedentTypesText: 'Personnel\nFamilial\nMédical'
 });
 
 const portalPatientConfig = reactive({
@@ -156,6 +183,8 @@ const backupDownloadModeOptions = [
     { label: 'Tous les formats', value: 'all' }
 ];
 
+const ADMIN_CATEGORIES = ['cabinet', 'portal', 'administration'];
+
 // Navigation structure
 const navigation = {
     appearance: {
@@ -169,18 +198,30 @@ const navigation = {
             { id: 'layout', label: 'Disposition', icon: 'pi pi-th-large' }
         ]
     },
-    workflow: {
-        label: 'Flux métier',
+    cabinet: {
+        label: 'Cabinet',
         icon: 'pi pi-briefcase',
         sections: [
-            { id: 'consultation-access', label: 'Consultation & Focus', icon: 'pi pi-lock' },
-            { id: 'device-security', label: 'Sécurité appareils', icon: 'pi pi-shield' },
-            { id: 'billing-rules', label: 'Règles facturation', icon: 'pi pi-wallet' },
-            { id: 'patient-portal', label: 'Portail patient', icon: 'pi pi-mobile' },
-            { id: 'test-mode', label: 'Mode test', icon: 'pi pi-gauge' },
-            { id: 'database-maintenance', label: 'Sauvegarde et reset', icon: 'pi pi-database' },
-            { id: 'transaction-motifs', label: 'Motifs transaction', icon: 'pi pi-dollar' },
-            { id: 'soins-list', label: 'Liste des soins', icon: 'pi pi-heart' }
+            { id: 'consultations', label: 'Consultations & réception', icon: 'pi pi-calendar' },
+            { id: 'medecin-privacy', label: 'Interface médecin', icon: 'pi pi-user' },
+            { id: 'clinical-form', label: 'Fiche clinique', icon: 'pi pi-file' },
+            { id: 'billing', label: 'Caisse & finances', icon: 'pi pi-wallet' },
+            { id: 'soins-catalog', label: 'Catalogue des soins', icon: 'pi pi-heart' }
+        ]
+    },
+    portal: {
+        label: 'Portail patient',
+        icon: 'pi pi-mobile',
+        sections: [
+            { id: 'portal-settings', label: 'Configuration', icon: 'pi pi-cog' }
+        ]
+    },
+    administration: {
+        label: 'Administration',
+        icon: 'pi pi-shield',
+        sections: [
+            { id: 'devices', label: 'Appareils autorisés', icon: 'pi pi-desktop' },
+            { id: 'system-maintenance', label: 'Maintenance système', icon: 'pi pi-database' }
         ]
     }
 };
@@ -189,6 +230,11 @@ const canAccessWorkflowSettings = computed(() => (auth.user?.roles || []).includ
 const isSuperAdmin = computed(() => Number(auth.user?.id || 0) === 1);
 const isSecurityDialogSubmitting = computed(() => savingStates.testMode || savingStates.databaseExport || savingStates.databaseReset);
 const isResetDialogMode = computed(() => securityDialog.mode === 'db-reset');
+const isDisablingTestMode = computed(() => securityDialog.mode === 'test-toggle' && !testMode.enabled && persistedTestModeEnabled.value);
+const testModeDeleteOptions = [
+    { label: 'Supprimer les données de test', value: true },
+    { label: 'Conserver les données', value: false }
+];
 const persistedTestModeEnabled = ref(false);
 
 const securityDialog = reactive({
@@ -221,17 +267,23 @@ const tabModeSections = computed(() => {
         return sections;
     }
 
-    return [
-        ...sections,
-        ...navigation.workflow.sections.map((section) => ({
-            id: `workflow:${section.id}`,
-            label: section.label,
-            icon: section.icon
-        }))
-    ];
+    for (const categoryKey of ADMIN_CATEGORIES) {
+        const category = navigation[categoryKey];
+        for (const section of category.sections) {
+            sections.push({
+                id: `${categoryKey}:${section.id}`,
+                label: section.label,
+                icon: section.icon
+            });
+        }
+    }
+
+    return sections;
 });
 const isAppearanceVisible = computed(() => settingsDisplayMode.value === 'page' || activeSettingsTab.value === 'appearance');
-const isWorkflowVisible = computed(() => settingsDisplayMode.value === 'page' || activeSettingsTab.value.startsWith('workflow:'));
+const isCabinetVisible = computed(() => settingsDisplayMode.value === 'page' || activeSettingsTab.value.startsWith('cabinet:'));
+const isPortalVisible = computed(() => settingsDisplayMode.value === 'page' || activeSettingsTab.value.startsWith('portal:'));
+const isAdministrationVisible = computed(() => settingsDisplayMode.value === 'page' || activeSettingsTab.value.startsWith('administration:'));
 
 const extractApiError = (error, fallback) => getHttpErrorMessage(error, fallback);
 
@@ -254,19 +306,22 @@ const selectSettingsTab = (tabId) => {
         return;
     }
 
-    const sectionId = tabId.replace('workflow:', '');
-    activeCategory.value = 'workflow';
-    activeSubSection.value = sectionId;
+    const colonIndex = tabId.indexOf(':');
+    if (colonIndex === -1) return;
+
+    activeCategory.value = tabId.slice(0, colonIndex);
+    activeSubSection.value = tabId.slice(colonIndex + 1);
 };
 
-const isWorkflowSectionVisible = (sectionId) => {
+const isSectionVisible = (category, sectionId) => {
     if (settingsDisplayMode.value === 'page') return true;
-    return activeSettingsTab.value === `workflow:${sectionId}`;
+    if (category === 'appearance') return activeSettingsTab.value === 'appearance';
+    return activeSettingsTab.value === `${category}:${sectionId}`;
 };
 
 const scrollToSection = async (category, sectionId) => {
     if (settingsDisplayMode.value === 'tabs') {
-        selectSettingsTab(category === 'appearance' ? 'appearance' : `workflow:${sectionId}`);
+        selectSettingsTab(category === 'appearance' ? 'appearance' : `${category}:${sectionId}`);
         return;
     }
 
@@ -331,24 +386,26 @@ const loadGeneralSettings = async (force = false) => {
     try {
         const settings = await fetchGeneralSettings(token);
         devicePolicy.autoApproveDevices = settings.autoApproveDevices !== false;
-        devicePolicy.requireMedecinOnConsultationCreation = settings.requireMedecinOnConsultationCreation !== false;
-        devicePolicy.paiementDirectAssurance = settings.paiementDirectAssurance === true;
-        consultationAccess.allowReceptionConsultationQuickActions = settings.allowReceptionConsultationQuickActions !== false
+        consultationPolicy.requireMedecinOnConsultationCreation = settings.requireMedecinOnConsultationCreation !== false;
+        consultationPolicy.allowReceptionConsultationQuickActions = settings.allowReceptionConsultationQuickActions !== false
             && settings.allowReceptionQuickCloseConsultation !== false;
-        consultationAccess.showReceptionQuickCloseButton = settings.showReceptionQuickCloseButton !== false;
-        consultationAccess.allowReceptionBypassMedecinPasswordOnQuickClose = consultationAccess.showReceptionQuickCloseButton
+        consultationPolicy.showReceptionQuickCloseButton = settings.showReceptionQuickCloseButton !== false;
+        consultationPolicy.allowReceptionBypassMedecinPasswordOnQuickClose = consultationPolicy.showReceptionQuickCloseButton
             && settings.allowReceptionBypassMedecinPasswordOnQuickClose === true;
-        consultationAccess.hidePatientDossierForMedecins = settings.hidePatientDossierForMedecins === true;
-        consultationAccess.hidePatientPhoneForMedecins = settings.hidePatientPhoneForMedecins === true;
-        consultationAccess.ficheFormSimplifie = settings.ficheFormSimplifie === true;
-        billingPolicy.consultationPrice = Number(settings.consultationPrice || 5000);
+        consultationPolicy.consultationPrice = Number(settings.consultationPrice || 5000);
+        medecinPrivacy.hidePatientDossierForMedecins = settings.hidePatientDossierForMedecins === true;
+        medecinPrivacy.hidePatientPhoneForMedecins = settings.hidePatientPhoneForMedecins === true;
+        clinicalForm.ficheFormSimplifie = settings.ficheFormSimplifie === true;
+        clinicalForm.showDiagnosticPositifInConsultation = settings.showDiagnosticPositifInConsultation !== false;
+        billingPolicy.paiementDirectAssurance = settings.paiementDirectAssurance === true;
+        billingPolicy.allowReceptionInvoiceModification = settings.allowReceptionInvoiceModification === true;
         transactionMotifs.revenueText = (settings.transactionMotifs?.revenue || []).join('\n');
         transactionMotifs.expenseText = (settings.transactionMotifs?.expense || []).join('\n');
         soinsCatalog.text = (settings.soinsList || []).join('\n');
-        ficheSimplifieCatalog.examensTypesText = (settings.examensTypes || []).join('\n');
-        ficheSimplifieCatalog.traitementTypesText = (settings.traitementTypes || []).join('\n');
-        ficheSimplifieCatalog.allergyTypesText = (settings.allergyTypes || []).join('\n');
-        ficheSimplifieCatalog.antecedentTypesText = (settings.antecedentTypes || []).join('\n');
+        clinicalForm.examensTypesText = (settings.examensTypes || []).join('\n');
+        clinicalForm.traitementTypesText = (settings.traitementTypes || []).join('\n');
+        clinicalForm.allergyTypesText = (settings.allergyTypes || []).join('\n');
+        clinicalForm.antecedentTypesText = (settings.antecedentTypes || []).join('\n');
         portalPatientConfig.patientPortalEnabled = settings.patientPortalEnabled !== false;
         portalPatientConfig.patientPortalClosedMessage = settings.patientPortalClosedMessage || portalPatientConfig.patientPortalClosedMessage;
         portalPatientConfig.patientPortalBaseUrl = settings.patientPortalBaseUrl || '';
@@ -360,6 +417,7 @@ const loadGeneralSettings = async (force = false) => {
         testMode.lastPurgeAt = settings.testModeLastPurgeAt || null;
         generalSettingsLoaded.value = true;
         loadErrorMessage.value = '';
+        await loadApprovedDevices();
     } catch (error) {
         console.error(error);
         loadErrorMessage.value = extractApiError(error, 'Chargement impossible');
@@ -378,10 +436,9 @@ const saveDevicePolicyAction = async () => {
     savingStates.devicePolicy = true;
     try {
         await saveGeneralSettings({
-            autoApproveDevices: devicePolicy.autoApproveDevices,
-            requireMedecinOnConsultationCreation: devicePolicy.requireMedecinOnConsultationCreation
+            autoApproveDevices: devicePolicy.autoApproveDevices
         }, token);
-        toast.add({ severity: 'success', summary: 'Sécurité appareils', detail: 'Paramètres enregistrés', life: 2500 });
+        toast.add({ severity: 'success', summary: 'Appareils autorisés', detail: 'Paramètres enregistrés', life: 2500 });
     } catch (error) {
         toast.add({ severity: 'error', summary: 'Erreur', detail: extractApiError(error, 'Sauvegarde impossible'), life: 3500 });
     } finally {
@@ -389,28 +446,173 @@ const saveDevicePolicyAction = async () => {
     }
 };
 
-const saveConsultationAccessAction = async () => {
+const loadApprovedDevices = async () => {
     if (!canAccessWorkflowSettings.value) return;
-    savingStates.consultationAccess = true;
+    devicesLoading.value = true;
+    try {
+        const payload = await fetchApprovedDevices(token);
+        approvedDevices.value = Array.isArray(payload?.devices) ? payload.devices : [];
+        deviceAccessLogs.value = Array.isArray(payload?.logs) ? payload.logs : [];
+        deviceStats.value = payload?.stats || { approved: 0, pending: 0, rejected: 0, total: 0 };
+    } catch (error) {
+        toast.add({ severity: 'error', summary: 'Erreur', detail: extractApiError(error, 'Chargement des appareils impossible'), life: 3500 });
+    } finally {
+        devicesLoading.value = false;
+    }
+};
+
+const formatDeviceStatusLabel = (status) => {
+    if (status === 'approved') return 'Approuvé';
+    if (status === 'rejected') return 'Refusé';
+    return 'En attente';
+};
+
+const formatDeviceStatusSeverity = (status) => {
+    if (status === 'approved') return 'success';
+    if (status === 'rejected') return 'danger';
+    return 'warning';
+};
+
+const formatDeviceDate = (value) => {
+    if (!value) return '-';
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? value : date.toLocaleString('fr-FR');
+};
+
+const formatDeviceTypeIcon = (deviceType) => {
+    const type = String(deviceType || '').toLowerCase();
+    if (type.includes('mobile') || type.includes('phone') || type.includes('tablet')) return 'pi pi-mobile';
+    if (type.includes('desktop') || type.includes('pc')) return 'pi pi-desktop';
+    return 'pi pi-server';
+};
+
+const getDeviceDisplayName = (device) => device?.displayName || device?.customName || device?.deviceName || 'Appareil inconnu';
+
+const openDeviceRenameDialog = (device) => {
+    deviceBeingRenamed.value = device;
+    deviceRenameValue.value = getDeviceDisplayName(device);
+    deviceRenameDialogVisible.value = true;
+};
+
+const closeDeviceRenameDialog = () => {
+    deviceRenameDialogVisible.value = false;
+    deviceBeingRenamed.value = null;
+    deviceRenameValue.value = '';
+};
+
+const saveDeviceRename = async () => {
+    const deviceId = deviceBeingRenamed.value?.id;
+    const name = deviceRenameValue.value.trim();
+    if (!deviceId || !name) {
+        toast.add({ severity: 'warn', summary: 'Renommage', detail: 'Veuillez saisir un nom.', life: 3000 });
+        return;
+    }
+
+    deviceRenameSaving.value = true;
+    try {
+        await renameDeviceApi(deviceId, name, token);
+        await loadApprovedDevices();
+        toast.add({ severity: 'success', summary: 'Appareils', detail: 'Nom mis à jour.', life: 2500 });
+        closeDeviceRenameDialog();
+    } catch (error) {
+        toast.add({ severity: 'error', summary: 'Erreur', detail: extractApiError(error, 'Renommage impossible'), life: 4500 });
+    } finally {
+        deviceRenameSaving.value = false;
+    }
+};
+
+const openDeviceAccessLogsDialog = () => {
+    deviceAccessLogsDialogVisible.value = true;
+};
+
+const confirmDeviceAction = (action, device, event) => {
+    const deviceId = device?.id;
+    if (!deviceId) return;
+
+    const labels = {
+        approve: 'approuver',
+        reject: 'refuser',
+        delete: 'supprimer'
+    };
+
+    confirm.require({
+        target: event?.currentTarget,
+        message: `Confirmer pour ${labels[action]} cet appareil pour tout le cabinet ?`,
+        icon: 'pi pi-shield',
+        acceptLabel: 'Confirmer',
+        rejectLabel: 'Annuler',
+        accept: async () => {
+            try {
+                if (action === 'approve') {
+                    await approveDeviceApi(deviceId, token);
+                } else if (action === 'reject') {
+                    await rejectDeviceApi(deviceId, token);
+                } else {
+                    await deleteDeviceApi(deviceId, token);
+                }
+
+                await loadApprovedDevices();
+                toast.add({ severity: 'success', summary: 'Appareils', detail: 'Mise à jour effectuée.', life: 2500 });
+            } catch (error) {
+                toast.add({ severity: 'error', summary: 'Erreur', detail: extractApiError(error, 'Action impossible'), life: 4500 });
+            }
+        }
+    });
+};
+
+const saveConsultationPolicyAction = async () => {
+    if (!canAccessWorkflowSettings.value) return;
+    savingStates.consultationPolicy = true;
     try {
         await saveGeneralSettings({
-            allowReceptionConsultationQuickActions: consultationAccess.allowReceptionConsultationQuickActions,
-            allowReceptionQuickCloseConsultation: consultationAccess.allowReceptionConsultationQuickActions,
-            showReceptionQuickCloseButton: consultationAccess.showReceptionQuickCloseButton,
-            allowReceptionBypassMedecinPasswordOnQuickClose: consultationAccess.showReceptionQuickCloseButton && consultationAccess.allowReceptionBypassMedecinPasswordOnQuickClose,
-            hidePatientDossierForMedecins: consultationAccess.hidePatientDossierForMedecins,
-            hidePatientPhoneForMedecins: consultationAccess.hidePatientPhoneForMedecins,
-            ficheFormSimplifie: consultationAccess.ficheFormSimplifie,
-            examensTypes: normalizeLines(ficheSimplifieCatalog.examensTypesText),
-            traitementTypes: normalizeLines(ficheSimplifieCatalog.traitementTypesText),
-            allergyTypes: normalizeLines(ficheSimplifieCatalog.allergyTypesText),
-            antecedentTypes: normalizeLines(ficheSimplifieCatalog.antecedentTypesText)
+            requireMedecinOnConsultationCreation: consultationPolicy.requireMedecinOnConsultationCreation,
+            allowReceptionConsultationQuickActions: consultationPolicy.allowReceptionConsultationQuickActions,
+            allowReceptionQuickCloseConsultation: consultationPolicy.allowReceptionConsultationQuickActions,
+            showReceptionQuickCloseButton: consultationPolicy.showReceptionQuickCloseButton,
+            allowReceptionBypassMedecinPasswordOnQuickClose: consultationPolicy.showReceptionQuickCloseButton && consultationPolicy.allowReceptionBypassMedecinPasswordOnQuickClose,
+            consultationPrice: Number(consultationPolicy.consultationPrice || 5000)
         }, token);
-        toast.add({ severity: 'success', summary: 'Consultation & Focus', detail: 'Paramètres enregistrés', life: 2500 });
+        toast.add({ severity: 'success', summary: 'Consultations & réception', detail: 'Paramètres enregistrés', life: 2500 });
     } catch (error) {
         toast.add({ severity: 'error', summary: 'Erreur', detail: extractApiError(error, 'Sauvegarde impossible'), life: 3500 });
     } finally {
-        savingStates.consultationAccess = false;
+        savingStates.consultationPolicy = false;
+    }
+};
+
+const saveMedecinPrivacyAction = async () => {
+    if (!canAccessWorkflowSettings.value) return;
+    savingStates.medecinPrivacy = true;
+    try {
+        await saveGeneralSettings({
+            hidePatientDossierForMedecins: medecinPrivacy.hidePatientDossierForMedecins,
+            hidePatientPhoneForMedecins: medecinPrivacy.hidePatientPhoneForMedecins
+        }, token);
+        toast.add({ severity: 'success', summary: 'Interface médecin', detail: 'Paramètres enregistrés', life: 2500 });
+    } catch (error) {
+        toast.add({ severity: 'error', summary: 'Erreur', detail: extractApiError(error, 'Sauvegarde impossible'), life: 3500 });
+    } finally {
+        savingStates.medecinPrivacy = false;
+    }
+};
+
+const saveClinicalFormAction = async () => {
+    if (!canAccessWorkflowSettings.value) return;
+    savingStates.clinicalForm = true;
+    try {
+        await saveGeneralSettings({
+            ficheFormSimplifie: clinicalForm.ficheFormSimplifie,
+            showDiagnosticPositifInConsultation: clinicalForm.showDiagnosticPositifInConsultation,
+            examensTypes: normalizeLines(clinicalForm.examensTypesText),
+            traitementTypes: normalizeLines(clinicalForm.traitementTypesText),
+            allergyTypes: normalizeLines(clinicalForm.allergyTypesText),
+            antecedentTypes: normalizeLines(clinicalForm.antecedentTypesText)
+        }, token);
+        toast.add({ severity: 'success', summary: 'Fiche clinique', detail: 'Paramètres enregistrés', life: 2500 });
+    } catch (error) {
+        toast.add({ severity: 'error', summary: 'Erreur', detail: extractApiError(error, 'Sauvegarde impossible'), life: 3500 });
+    } finally {
+        savingStates.clinicalForm = false;
     }
 };
 
@@ -419,10 +621,14 @@ const saveBillingPolicyAction = async () => {
     savingStates.billingPolicy = true;
     try {
         await saveGeneralSettings({
-            paiementDirectAssurance: devicePolicy.paiementDirectAssurance,
-            consultationPrice: Number(billingPolicy.consultationPrice || 5000)
+            paiementDirectAssurance: billingPolicy.paiementDirectAssurance,
+            allowReceptionInvoiceModification: billingPolicy.allowReceptionInvoiceModification,
+            transactionMotifs: {
+                revenue: normalizeLines(transactionMotifs.revenueText),
+                expense: normalizeLines(transactionMotifs.expenseText)
+            }
         }, token);
-        toast.add({ severity: 'success', summary: 'Règles facturation', detail: 'Paramètres enregistrés', life: 2500 });
+        toast.add({ severity: 'success', summary: 'Caisse & finances', detail: 'Paramètres enregistrés', life: 2500 });
     } catch (error) {
         toast.add({ severity: 'error', summary: 'Erreur', detail: extractApiError(error, 'Sauvegarde impossible'), life: 3500 });
     } finally {
@@ -487,30 +693,12 @@ const copyToClipboard = async (label, value) => {
     }
 };
 
-const saveTransactionMotifsAction = async () => {
-    if (!canAccessWorkflowSettings.value) return;
-    savingStates.transactionMotifs = true;
-    try {
-        await saveGeneralSettings({
-            transactionMotifs: {
-                revenue: normalizeLines(transactionMotifs.revenueText),
-                expense: normalizeLines(transactionMotifs.expenseText)
-            }
-        }, token);
-        toast.add({ severity: 'success', summary: 'Motifs transaction', detail: 'Paramètres enregistrés', life: 2500 });
-    } catch (error) {
-        toast.add({ severity: 'error', summary: 'Erreur', detail: extractApiError(error, 'Sauvegarde impossible'), life: 3500 });
-    } finally {
-        savingStates.transactionMotifs = false;
-    }
-};
-
 const saveSoinsCatalogAction = async () => {
     if (!canAccessWorkflowSettings.value) return;
     savingStates.soinsCatalog = true;
     try {
         await saveGeneralSettings({ soinsList: normalizeLines(soinsCatalog.text) }, token);
-        toast.add({ severity: 'success', summary: 'Liste des soins', detail: 'Paramètres enregistrés', life: 2500 });
+        toast.add({ severity: 'success', summary: 'Catalogue des soins', detail: 'Paramètres enregistrés', life: 2500 });
     } catch (error) {
         toast.add({ severity: 'error', summary: 'Erreur', detail: extractApiError(error, 'Sauvegarde impossible'), life: 3500 });
     } finally {
@@ -583,7 +771,10 @@ const confirmSecurityDialog = async () => {
     if (securityDialog.mode === 'test-toggle') {
         savingStates.testMode = true;
         try {
-            const response = await toggleTestMode({ enabled: testMode.enabled, password }, token);
+            const deleteTestData = isDisablingTestMode.value
+                ? securityDialog.payload?.deleteTestData !== false
+                : true;
+            const response = await toggleTestMode({ enabled: testMode.enabled, password, deleteTestData }, token);
             applyTestModeResponse(response);
             toast.add({ severity: 'success', summary: 'Mode test', detail: response.message || 'Paramètre mis à jour', life: 3000 });
             closeSecurityDialog();
@@ -687,10 +878,26 @@ const confirmSecurityDialog = async () => {
 const saveTestModeAction = async () => {
     if (!canAccessWorkflowSettings.value) return;
 
+    const isDisabling = persistedTestModeEnabled.value && !testMode.enabled;
+    const isEnabling = !persistedTestModeEnabled.value && testMode.enabled;
+
+    if (!isDisabling && !isEnabling) {
+        toast.add({
+            severity: 'info',
+            summary: 'Mode test',
+            detail: testMode.enabled ? 'Le mode test est déjà actif.' : 'Le mode test est déjà inactif.',
+            life: 2500
+        });
+        return;
+    }
+
     openSecurityDialog({
         mode: 'test-toggle',
-        title: 'Confirmation mode test',
-        message: 'Confirmez votre mot de passe admin pour appliquer ce changement de mode test.'
+        title: isDisabling ? 'Désactiver le mode test' : 'Activer le mode test',
+        message: isDisabling
+            ? 'Le mode test a été activé par erreur ? Choisissez si les données créées pendant les tests doivent être supprimées.'
+            : 'Un snapshot de la base sera créé. Confirmez avec votre mot de passe admin.',
+        payload: { deleteTestData: true }
     });
 };
 
@@ -816,7 +1023,7 @@ const printPatientPortalSingleQr = async (entryKey) => {
 };
 
 watch(canAccessWorkflowSettings, async (allowed) => {
-    if (!allowed && activeCategory.value === 'workflow') {
+    if (!allowed && ADMIN_CATEGORIES.includes(activeCategory.value)) {
         activeCategory.value = 'appearance';
         activeSubSection.value = 'overview';
     }
@@ -829,8 +1036,8 @@ watch(canAccessWorkflowSettings, async (allowed) => {
 
 watch(settingsDisplayMode, async () => {
     if (settingsDisplayMode.value === 'tabs') {
-        if (activeCategory.value === 'workflow' && canAccessWorkflowSettings.value) {
-            selectSettingsTab(`workflow:${activeSubSection.value}`);
+        if (ADMIN_CATEGORIES.includes(activeCategory.value) && canAccessWorkflowSettings.value) {
+            selectSettingsTab(`${activeCategory.value}:${activeSubSection.value}`);
         } else {
             selectSettingsTab('appearance');
         }
@@ -840,10 +1047,10 @@ watch(settingsDisplayMode, async () => {
 });
 
 watch(
-    () => consultationAccess.showReceptionQuickCloseButton,
+    () => consultationPolicy.showReceptionQuickCloseButton,
     (enabled) => {
         if (!enabled) {
-            consultationAccess.allowReceptionBypassMedecinPasswordOnQuickClose = false;
+            consultationPolicy.allowReceptionBypassMedecinPasswordOnQuickClose = false;
         }
     }
 );
@@ -866,6 +1073,7 @@ onBeforeUnmount(() => {
 
 <template>
     <div class="settings-container">
+        <ConfirmPopup />
         <!-- Header -->
         <div class="settings-header">
             <div class="settings-header-content">
@@ -1108,37 +1316,45 @@ onBeforeUnmount(() => {
                         </div>
                     </div>
 
-                    <!-- Workflow Section -->
-                    <div v-if="canAccessWorkflowSettings" v-show="isWorkflowVisible" class="settings-category">
+                    <!-- Cabinet -->
+                    <div v-if="canAccessWorkflowSettings" v-show="isCabinetVisible" class="settings-category">
                         <div class="settings-category-header">
                             <div class="settings-category-title">
                                 <i class="pi pi-briefcase"></i>
-                                <h2>Flux métier</h2>
+                                <h2>Cabinet</h2>
                             </div>
                         </div>
 
-                        <!-- Consultation Access -->
-                        <div v-show="isWorkflowSectionVisible('consultation-access')" id="workflow-consultation-access" class="settings-section">
+                        <!-- Consultations & réception -->
+                        <div v-show="isSectionVisible('cabinet', 'consultations')" id="cabinet-consultations" class="settings-section">
                             <div class="settings-section-header">
                                 <div>
-                                    <h3>Consultation & Focus</h3>
-                                    <p class="settings-section-description">Gestion de la visibilité des actions et informations pour les médecins/réception</p>
+                                    <h3>Consultations & réception</h3>
+                                    <p class="settings-section-description">Règles de création de consultation, actions rapides réception et tarif par défaut</p>
                                 </div>
                                 <Button
                                     label="Enregistrer"
                                     icon="pi pi-save"
-                                    :loading="savingStates.consultationAccess"
-                                    @click="saveConsultationAccessAction"
+                                    :loading="savingStates.consultationPolicy"
+                                    @click="saveConsultationPolicyAction"
                                 />
                             </div>
                             <div class="settings-card">
                                 <div class="toggle-group">
                                     <div class="toggle-item">
                                         <div class="toggle-info">
+                                            <label>Médecin requis à la création</label>
+                                            <span class="toggle-description">La consultation peut être créée sans médecin assigné si désactivé</span>
+                                        </div>
+                                        <ToggleSwitch v-model="consultationPolicy.requireMedecinOnConsultationCreation" />
+                                    </div>
+                                    <Divider />
+                                    <div class="toggle-item">
+                                        <div class="toggle-info">
                                             <label>Actions rapides pour réceptionniste</label>
                                             <span class="toggle-description">Active ou masque les boutons d'actions rapides de consultation côté réception</span>
                                         </div>
-                                        <ToggleSwitch v-model="consultationAccess.allowReceptionConsultationQuickActions" />
+                                        <ToggleSwitch v-model="consultationPolicy.allowReceptionConsultationQuickActions" />
                                     </div>
                                     <Divider />
                                     <div class="toggle-item">
@@ -1146,7 +1362,7 @@ onBeforeUnmount(() => {
                                             <label>Afficher la clôturation rapide pour la réception</label>
                                             <span class="toggle-description">Affiche ou masque le bouton de clôture rapide pour les secrétaires dans focus et l'historique</span>
                                         </div>
-                                        <ToggleSwitch v-model="consultationAccess.showReceptionQuickCloseButton" />
+                                        <ToggleSwitch v-model="consultationPolicy.showReceptionQuickCloseButton" />
                                     </div>
                                     <Divider />
                                     <div class="toggle-item">
@@ -1154,15 +1370,49 @@ onBeforeUnmount(() => {
                                             <label>Bypass code médecin en clôture rapide</label>
                                             <span class="toggle-description">Si activé, la réception peut clôturer rapidement sans validation du code médecin</span>
                                         </div>
-                                        <ToggleSwitch v-model="consultationAccess.allowReceptionBypassMedecinPasswordOnQuickClose" :disabled="!consultationAccess.showReceptionQuickCloseButton" />
+                                        <ToggleSwitch v-model="consultationPolicy.allowReceptionBypassMedecinPasswordOnQuickClose" :disabled="!consultationPolicy.showReceptionQuickCloseButton" />
                                     </div>
                                     <Divider />
+                                    <div class="toggle-item">
+                                        <div class="toggle-info">
+                                            <label>Prix consultation par défaut</label>
+                                            <span class="toggle-description">Montant appliqué aux nouvelles consultations payantes</span>
+                                        </div>
+                                        <InputNumber
+                                            v-model="consultationPolicy.consultationPrice"
+                                            mode="decimal"
+                                            locale="fr-FR"
+                                            :min="1"
+                                            :minFractionDigits="0"
+                                            :maxFractionDigits="2"
+                                            inputClass="w-40" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Interface médecin -->
+                        <div v-show="isSectionVisible('cabinet', 'medecin-privacy')" id="cabinet-medecin-privacy" class="settings-section">
+                            <div class="settings-section-header">
+                                <div>
+                                    <h3>Interface médecin</h3>
+                                    <p class="settings-section-description">Contrôle de la visibilité des informations patient pour les médecins non-admin</p>
+                                </div>
+                                <Button
+                                    label="Enregistrer"
+                                    icon="pi pi-save"
+                                    :loading="savingStates.medecinPrivacy"
+                                    @click="saveMedecinPrivacyAction"
+                                />
+                            </div>
+                            <div class="settings-card">
+                                <div class="toggle-group">
                                     <div class="toggle-item">
                                         <div class="toggle-info">
                                             <label>Masquer le dossier patient aux médecins</label>
                                             <span class="toggle-description">Le dossier patient et les redirections associées sont masqués aux médecins non-admin</span>
                                         </div>
-                                        <ToggleSwitch v-model="consultationAccess.hidePatientDossierForMedecins" />
+                                        <ToggleSwitch v-model="medecinPrivacy.hidePatientDossierForMedecins" />
                                     </div>
                                     <Divider />
                                     <div class="toggle-item">
@@ -1170,15 +1420,41 @@ onBeforeUnmount(() => {
                                             <label>Masquer les numéros des patients aux médecins</label>
                                             <span class="toggle-description">Les numéros de téléphone patients sont masqués dans l'interface médecin</span>
                                         </div>
-                                        <ToggleSwitch v-model="consultationAccess.hidePatientPhoneForMedecins" />
+                                        <ToggleSwitch v-model="medecinPrivacy.hidePatientPhoneForMedecins" />
                                     </div>
-                                    <Divider />
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Fiche clinique -->
+                        <div v-show="isSectionVisible('cabinet', 'clinical-form')" id="cabinet-clinical-form" class="settings-section">
+                            <div class="settings-section-header">
+                                <div>
+                                    <h3>Fiche clinique</h3>
+                                    <p class="settings-section-description">Formulaire simplifié et listes de référence pour la synthèse clinique</p>
+                                </div>
+                                <Button
+                                    label="Enregistrer"
+                                    icon="pi pi-save"
+                                    :loading="savingStates.clinicalForm"
+                                    @click="saveClinicalFormAction"
+                                />
+                            </div>
+                            <div class="settings-card">
+                                <div class="toggle-group">
                                     <div class="toggle-item">
                                         <div class="toggle-info">
                                             <label>Formulaire simplifié de fiche consultation</label>
-                                            <span class="toggle-description">Active une vue condensée "Synthèse clinique" pour la fiche consultation</span>
+                                            <span class="toggle-description">Active une vue condensée « Synthèse clinique » pour la fiche consultation</span>
                                         </div>
-                                        <ToggleSwitch v-model="consultationAccess.ficheFormSimplifie" />
+                                        <ToggleSwitch v-model="clinicalForm.ficheFormSimplifie" />
+                                    </div>
+                                    <div class="toggle-item">
+                                        <div class="toggle-info">
+                                            <label>Diagnostic positif dans la consultation en cours</label>
+                                            <span class="toggle-description">Affiche un raccourci vers le diagnostic positif à côté de la note de séance</span>
+                                        </div>
+                                        <ToggleSwitch v-model="clinicalForm.showDiagnosticPositifInConsultation" />
                                     </div>
                                 </div>
                                 <Divider />
@@ -1186,7 +1462,7 @@ onBeforeUnmount(() => {
                                     <div class="field-group">
                                         <label>Types d'examens (synthèse)</label>
                                         <Textarea
-                                            v-model="ficheSimplifieCatalog.examensTypesText"
+                                            v-model="clinicalForm.examensTypesText"
                                             rows="5"
                                             autoResize
                                             placeholder="Un type d'examen par ligne"
@@ -1195,7 +1471,7 @@ onBeforeUnmount(() => {
                                     <div class="field-group">
                                         <label>Types de traitements (synthèse)</label>
                                         <Textarea
-                                            v-model="ficheSimplifieCatalog.traitementTypesText"
+                                            v-model="clinicalForm.traitementTypesText"
                                             rows="5"
                                             autoResize
                                             placeholder="Un type de traitement par ligne"
@@ -1204,7 +1480,7 @@ onBeforeUnmount(() => {
                                     <div class="field-group">
                                         <label>Types d'allergies</label>
                                         <Textarea
-                                            v-model="ficheSimplifieCatalog.allergyTypesText"
+                                            v-model="clinicalForm.allergyTypesText"
                                             rows="4"
                                             autoResize
                                             placeholder="Un type d'allergie par ligne"
@@ -1213,7 +1489,7 @@ onBeforeUnmount(() => {
                                     <div class="field-group">
                                         <label>Types d'antécédents</label>
                                         <Textarea
-                                            v-model="ficheSimplifieCatalog.antecedentTypesText"
+                                            v-model="clinicalForm.antecedentTypesText"
                                             rows="4"
                                             autoResize
                                             placeholder="Un type d'antécédent par ligne"
@@ -1223,47 +1499,12 @@ onBeforeUnmount(() => {
                             </div>
                         </div>
 
-                        <!-- Device Security -->
-                        <div v-show="isWorkflowSectionVisible('device-security')" id="workflow-device-security" class="settings-section">
+                        <!-- Caisse & finances -->
+                        <div v-show="isSectionVisible('cabinet', 'billing')" id="cabinet-billing" class="settings-section">
                             <div class="settings-section-header">
                                 <div>
-                                    <h3>Sécurité des appareils</h3>
-                                    <p class="settings-section-description">Gestion des règles de sécurité et des appareils</p>
-                                </div>
-                                <Button
-                                    label="Enregistrer"
-                                    icon="pi pi-save"
-                                    :loading="savingStates.devicePolicy"
-                                    @click="saveDevicePolicyAction"
-                                />
-                            </div>
-                            <div class="settings-card">
-                                <div class="toggle-group">
-                                    <div class="toggle-item">
-                                        <div class="toggle-info">
-                                            <label>Approbation automatique</label>
-                                            <span class="toggle-description">Active l'approbation automatique des nouveaux appareils</span>
-                                        </div>
-                                        <ToggleSwitch v-model="devicePolicy.autoApproveDevices" />
-                                    </div>
-                                    <Divider />
-                                    <div class="toggle-item">
-                                        <div class="toggle-info">
-                                            <label>Médecin requis à la création</label>
-                                            <span class="toggle-description">La consultation peut être créée sans médecin assigné si désactivé</span>
-                                        </div>
-                                        <ToggleSwitch v-model="devicePolicy.requireMedecinOnConsultationCreation" />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Billing Rules -->
-                        <div v-show="isWorkflowSectionVisible('billing-rules')" id="workflow-billing-rules" class="settings-section">
-                            <div class="settings-section-header">
-                                <div>
-                                    <h3>Règles facturation</h3>
-                                    <p class="settings-section-description">Comportement de la prise en charge assurance côté caisse</p>
+                                    <h3>Caisse & finances</h3>
+                                    <p class="settings-section-description">Comportement assurance côté caisse et motifs de transaction</p>
                                 </div>
                                 <Button
                                     label="Enregistrer"
@@ -1279,32 +1520,86 @@ onBeforeUnmount(() => {
                                             <label>Paiement direct assurance</label>
                                             <span class="toggle-description">La part assurance crée un paiement immédiat</span>
                                         </div>
-                                        <ToggleSwitch v-model="devicePolicy.paiementDirectAssurance" />
+                                        <ToggleSwitch v-model="billingPolicy.paiementDirectAssurance" />
                                     </div>
                                     <Divider />
                                     <div class="toggle-item">
                                         <div class="toggle-info">
-                                            <label>Prix consultation</label>
-                                            <span class="toggle-description">Montant par défaut appliqué aux nouvelles consultations payantes</span>
+                                            <label>Modification de facture par les secrétaires</label>
+                                            <span class="toggle-description">Autorise les réceptionnistes à modifier les factures sans paiement dans l'historique, la caisse et le mode focus</span>
                                         </div>
-                                        <InputNumber
-                                            v-model="billingPolicy.consultationPrice"
-                                            mode="decimal"
-                                            locale="fr-FR"
-                                            :min="1"
-                                            :minFractionDigits="0"
-                                            :maxFractionDigits="2"
-                                            inputClass="w-40" />
+                                        <ToggleSwitch v-model="billingPolicy.allowReceptionInvoiceModification" />
+                                    </div>
+                                </div>
+                                <Divider />
+                                <div class="two-columns">
+                                    <div class="field-group">
+                                        <label>Motifs de revenus</label>
+                                        <Textarea
+                                            v-model="transactionMotifs.revenueText"
+                                            rows="8"
+                                            autoResize
+                                            placeholder="Saisissez un motif par ligne"
+                                        />
+                                        <span class="field-helper">Un motif par ligne</span>
+                                    </div>
+                                    <div class="field-group">
+                                        <label>Motifs de dépenses</label>
+                                        <Textarea
+                                            v-model="transactionMotifs.expenseText"
+                                            rows="8"
+                                            autoResize
+                                            placeholder="Saisissez un motif par ligne"
+                                        />
+                                        <span class="field-helper">Un motif par ligne</span>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div v-show="isWorkflowSectionVisible('patient-portal')" id="workflow-patient-portal" class="settings-section">
+                        <!-- Catalogue des soins -->
+                        <div v-show="isSectionVisible('cabinet', 'soins-catalog')" id="cabinet-soins-catalog" class="settings-section">
                             <div class="settings-section-header">
                                 <div>
-                                    <h3>Portail patient</h3>
-                                    <p class="settings-section-description">Activation globale, message de fermeture, domaine frontend patient, URL vitrine et QR codes</p>
+                                    <h3>Catalogue des soins</h3>
+                                    <p class="settings-section-description">Liste des actes proposés dans les consultations et la facturation</p>
+                                </div>
+                                <Button
+                                    label="Enregistrer"
+                                    icon="pi pi-save"
+                                    :loading="savingStates.soinsCatalog"
+                                    @click="saveSoinsCatalogAction"
+                                />
+                            </div>
+                            <div class="settings-card">
+                                <div class="field-group">
+                                    <label>Soins proposés</label>
+                                    <Textarea
+                                        v-model="soinsCatalog.text"
+                                        rows="12"
+                                        autoResize
+                                        placeholder="Saisissez un soin par ligne"
+                                    />
+                                    <span class="field-helper">Un soin par ligne. Utilisé dans les actes posés et la modification de facture.</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Portail patient -->
+                    <div v-if="canAccessWorkflowSettings" v-show="isPortalVisible" class="settings-category">
+                        <div class="settings-category-header">
+                            <div class="settings-category-title">
+                                <i class="pi pi-mobile"></i>
+                                <h2>Portail patient</h2>
+                            </div>
+                        </div>
+
+                        <div v-show="isSectionVisible('portal', 'portal-settings')" id="portal-portal-settings" class="settings-section">
+                            <div class="settings-section-header">
+                                <div>
+                                    <h3>Configuration portail patient</h3>
+                                    <p class="settings-section-description">Activation, URLs, création de comptes et QR codes pour le portail patient</p>
                                 </div>
                                 <div class="settings-inline-actions">
                                     <Button
@@ -1489,23 +1784,173 @@ onBeforeUnmount(() => {
                                 </div>
                             </div>
                         </div>
+                    </div>
 
-                        <!-- Test Mode -->
-                        <div v-show="isWorkflowSectionVisible('test-mode')" id="workflow-test-mode" class="settings-section">
+                    <!-- Administration -->
+                    <div v-if="canAccessWorkflowSettings" v-show="isAdministrationVisible" class="settings-category">
+                        <div class="settings-category-header">
+                            <div class="settings-category-title">
+                                <i class="pi pi-shield"></i>
+                                <h2>Administration</h2>
+                            </div>
+                        </div>
+
+                        <!-- Appareils autorisés -->
+                        <div v-show="isSectionVisible('administration', 'devices')" id="administration-devices" class="settings-section">
                             <div class="settings-section-header">
                                 <div>
-                                    <h3>Mode test</h3>
-                                    <p class="settings-section-description">Mode volatil global: snapshot à l'activation, restauration automatique à la désactivation</p>
+                                    <h3>Appareils autorisés</h3>
+                                    <p class="settings-section-description">Approbation automatique et gestion des appareils connectés au cabinet</p>
                                 </div>
                                 <Button
-                                    label="Appliquer"
+                                    label="Enregistrer"
                                     icon="pi pi-save"
-                                    :loading="savingStates.testMode"
-                                    @click="saveTestModeAction"
+                                    :loading="savingStates.devicePolicy"
+                                    @click="saveDevicePolicyAction"
                                 />
                             </div>
                             <div class="settings-card">
                                 <div class="toggle-group">
+                                    <div class="toggle-item">
+                                        <div class="toggle-info">
+                                            <label>Approbation automatique</label>
+                                            <span class="toggle-description">Active l'approbation automatique des nouveaux appareils. Sans cette option, seul le premier appareil est autorise automatiquement ; les suivants necessitent une validation manuelle.</span>
+                                        </div>
+                                        <ToggleSwitch v-model="devicePolicy.autoApproveDevices" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="settings-card mt-4">
+                                <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+                                    <div>
+                                        <h4 class="text-base font-semibold m-0">Appareils du cabinet</h4>
+                                        <p class="settings-section-description m-0 mt-1">
+                                            Un appareil approuvé autorise la connexion de tous les comptes utilisateurs.
+                                        </p>
+                                    </div>
+                                    <div class="flex flex-wrap gap-2">
+                                        <Tag :value="`${deviceStats.approved || 0} approuvés`" severity="success" />
+                                        <Tag v-if="(deviceStats.pending || 0) > 0" :value="`${deviceStats.pending} en attente`" severity="warning" />
+                                        <Button
+                                            label="Journal d'accès"
+                                            icon="pi pi-history"
+                                            severity="secondary"
+                                            outlined
+                                            :loading="devicesLoading"
+                                            @click="openDeviceAccessLogsDialog"
+                                        />
+                                        <Button icon="pi pi-refresh" text severity="secondary" :loading="devicesLoading" @click="loadApprovedDevices" />
+                                    </div>
+                                </div>
+
+                                <div v-if="devicesLoading && approvedDevices.length === 0" class="device-cards-grid">
+                                    <div v-for="i in 3" :key="i" class="device-card device-card-skeleton"></div>
+                                </div>
+                                <div v-else-if="approvedDevices.length === 0" class="device-cards-empty">
+                                    <i class="pi pi-desktop"></i>
+                                    <p>Aucun appareil enregistré.</p>
+                                </div>
+                                <div v-else class="device-cards-grid">
+                                    <article
+                                        v-for="device in approvedDevices"
+                                        :key="device.id"
+                                        class="device-card"
+                                        :class="`device-card--${device.status || 'pending'}`"
+                                    >
+                                        <div class="device-card-header">
+                                            <div class="device-card-icon">
+                                                <i :class="formatDeviceTypeIcon(device.deviceType)"></i>
+                                            </div>
+                                            <div class="device-card-title">
+                                                <h5 class="m-0">{{ getDeviceDisplayName(device) }}</h5>
+                                                <span v-if="device.customName && device.deviceName" class="device-card-subtitle">{{ device.deviceName }}</span>
+                                                <span class="device-card-type">{{ device.deviceType || 'Type inconnu' }}</span>
+                                            </div>
+                                            <Tag
+                                                :value="formatDeviceStatusLabel(device.status)"
+                                                :severity="formatDeviceStatusSeverity(device.status)"
+                                            />
+                                        </div>
+                                        <div class="device-card-body">
+                                            <div class="device-card-meta">
+                                                <span class="device-card-meta-label">IP</span>
+                                                <span>{{ device.ipAddress || '-' }}</span>
+                                            </div>
+                                            <div class="device-card-meta">
+                                                <span class="device-card-meta-label">Première connexion</span>
+                                                <span>{{ device.requestedBy || '-' }}</span>
+                                            </div>
+                                            <div class="device-card-meta">
+                                                <span class="device-card-meta-label">Dernière activité</span>
+                                                <span>{{ formatDeviceDate(device.lastSeenAt) }}</span>
+                                            </div>
+                                        </div>
+                                        <div class="device-card-actions">
+                                            <Button
+                                                label="Renommer"
+                                                icon="pi pi-pencil"
+                                                severity="secondary"
+                                                size="small"
+                                                outlined
+                                                @click="openDeviceRenameDialog(device)"
+                                            />
+                                            <Button
+                                                v-if="device.status === 'pending'"
+                                                label="Approuver"
+                                                icon="pi pi-check"
+                                                severity="success"
+                                                size="small"
+                                                outlined
+                                                @click="confirmDeviceAction('approve', device, $event)"
+                                            />
+                                            <Button
+                                                v-if="device.status === 'pending'"
+                                                label="Refuser"
+                                                icon="pi pi-times"
+                                                severity="warning"
+                                                size="small"
+                                                outlined
+                                                @click="confirmDeviceAction('reject', device, $event)"
+                                            />
+                                            <Button
+                                                v-if="device.status !== 'pending'"
+                                                label="Supprimer"
+                                                icon="pi pi-trash"
+                                                severity="danger"
+                                                size="small"
+                                                text
+                                                @click="confirmDeviceAction('delete', device, $event)"
+                                            />
+                                        </div>
+                                    </article>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Maintenance système -->
+                        <div v-show="isSectionVisible('administration', 'system-maintenance')" id="administration-system-maintenance" class="settings-section">
+                            <div class="settings-section-header">
+                                <div>
+                                    <h3>Maintenance système</h3>
+                                    <p class="settings-section-description">Mode test volatil, sauvegarde/export et réinitialisation de la base de données</p>
+                                </div>
+                            </div>
+
+                            <div class="settings-card">
+                                <div class="settings-section-header mb-0">
+                                    <div>
+                                        <h4 class="text-base font-semibold m-0">Mode test</h4>
+                                        <p class="settings-section-description m-0 mt-1">Snapshot à l'activation, choix de suppression ou conservation des données à la désactivation</p>
+                                    </div>
+                                    <Button
+                                        label="Appliquer"
+                                        icon="pi pi-save"
+                                        :loading="savingStates.testMode"
+                                        @click="saveTestModeAction"
+                                    />
+                                </div>
+                                <div class="toggle-group mt-4">
                                     <div class="toggle-item">
                                         <div class="toggle-info">
                                             <label>Activer le mode test global</label>
@@ -1536,17 +1981,12 @@ onBeforeUnmount(() => {
                                     @click="cleanTestModeAction"
                                 />
                             </div>
-                        </div>
 
-                        <!-- Database Maintenance -->
-                        <div v-show="isWorkflowSectionVisible('database-maintenance')" id="workflow-database-maintenance" class="settings-section">
-                            <div class="settings-section-header">
-                                <div>
-                                    <h3>Sauvegarde et reset base</h3>
-                                    <p class="settings-section-description">Export SQL/ZIP/JSON avec confirmation admin, et reset complet réservé au super-admin id=1</p>
+                            <div class="settings-card mt-4">
+                                <div class="mb-4">
+                                    <h4 class="text-base font-semibold m-0">Sauvegarde et reset base</h4>
+                                    <p class="settings-section-description m-0 mt-1">Export SQL/ZIP/JSON avec confirmation admin, reset complet réservé au super-admin id=1</p>
                                 </div>
-                            </div>
-                            <div class="settings-card">
                                 <div class="two-columns">
                                     <div class="field-group">
                                         <label>Formats d'export</label>
@@ -1601,74 +2041,6 @@ onBeforeUnmount(() => {
                                 </div>
                             </div>
                         </div>
-
-                        <!-- Transaction Motifs -->
-                        <div v-show="isWorkflowSectionVisible('transaction-motifs')" id="workflow-transaction-motifs" class="settings-section">
-                            <div class="settings-section-header">
-                                <div>
-                                    <h3>Motifs de transaction</h3>
-                                    <p class="settings-section-description">Personnalisez les motifs disponibles pour les transactions</p>
-                                </div>
-                                <Button
-                                    label="Enregistrer"
-                                    icon="pi pi-save"
-                                    :loading="savingStates.transactionMotifs"
-                                    @click="saveTransactionMotifsAction"
-                                />
-                            </div>
-                            <div class="settings-card">
-                                <div class="two-columns">
-                                    <div class="field-group">
-                                        <label>Motifs de revenus</label>
-                                        <Textarea
-                                            v-model="transactionMotifs.revenueText"
-                                            rows="8"
-                                            autoResize
-                                            placeholder="Saisissez un motif par ligne"
-                                        />
-                                        <span class="field-helper">Un motif par ligne</span>
-                                    </div>
-                                    <div class="field-group">
-                                        <label>Motifs de dépenses</label>
-                                        <Textarea
-                                            v-model="transactionMotifs.expenseText"
-                                            rows="8"
-                                            autoResize
-                                            placeholder="Saisissez un motif par ligne"
-                                        />
-                                        <span class="field-helper">Un motif par ligne</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Soins List -->
-                        <div v-show="isWorkflowSectionVisible('soins-list')" id="workflow-soins-list" class="settings-section">
-                            <div class="settings-section-header">
-                                <div>
-                                    <h3>Liste des soins</h3>
-                                    <p class="settings-section-description">Catalogue des soins disponibles dans l'application</p>
-                                </div>
-                                <Button
-                                    label="Enregistrer"
-                                    icon="pi pi-save"
-                                    :loading="savingStates.soinsCatalog"
-                                    @click="saveSoinsCatalogAction"
-                                />
-                            </div>
-                            <div class="settings-card">
-                                <div class="field-group">
-                                    <label>Soins proposés</label>
-                                    <Textarea
-                                        v-model="soinsCatalog.text"
-                                        rows="12"
-                                        autoResize
-                                        placeholder="Saisissez un soin par ligne"
-                                    />
-                                    <span class="field-helper">Un soin par ligne. Utilisé dans les actes posés et la modification de facture.</span>
-                                </div>
-                            </div>
-                        </div>
                     </div>
                 </div>
             </main>
@@ -1694,6 +2066,63 @@ onBeforeUnmount(() => {
         </div>
 
         <Dialog
+            :visible="deviceAccessLogsDialogVisible"
+            header="Journal d'accès récent"
+            :modal="true"
+            :style="{ width: '56rem', maxWidth: '96vw' }"
+            @update:visible="(value) => { deviceAccessLogsDialogVisible = value; }"
+        >
+            <p class="settings-section-description m-0 mb-4">
+                Historique des tentatives de connexion et accès récents par appareil.
+            </p>
+            <DataTable :value="deviceAccessLogs" :loading="devicesLoading" size="small" responsiveLayout="scroll">
+                <Column field="createdAt" header="Date">
+                    <template #body="{ data }">
+                        {{ formatDeviceDate(data.createdAt) }}
+                    </template>
+                </Column>
+                <Column field="username" header="Utilisateur" />
+                <Column field="deviceName" header="Appareil" />
+                <Column field="status" header="État" />
+                <Column field="path" header="Route" />
+                <Column field="ipAddress" header="IP" />
+                <template #empty>
+                    <div class="text-sm text-surface-500 py-3">Aucun accès récent.</div>
+                </template>
+            </DataTable>
+            <template #footer>
+                <Button label="Fermer" icon="pi pi-times" severity="secondary" @click="deviceAccessLogsDialogVisible = false" />
+            </template>
+        </Dialog>
+
+        <Dialog
+            :visible="deviceRenameDialogVisible"
+            header="Renommer l'appareil"
+            :modal="true"
+            :style="{ width: '28rem', maxWidth: '96vw' }"
+            @update:visible="(value) => { if (!value) closeDeviceRenameDialog(); }"
+        >
+            <p class="settings-section-description m-0 mb-4">
+                Choisissez un nom explicite (ex. « Accueil », « Salle 2 », « PC Dr Martin ») pour distinguer cet appareil.
+            </p>
+            <div class="field-group">
+                <label for="device-rename-input">Nom affiché</label>
+                <InputText
+                    id="device-rename-input"
+                    v-model="deviceRenameValue"
+                    class="w-full"
+                    maxlength="255"
+                    placeholder="Nom de l'appareil"
+                    @keyup.enter="saveDeviceRename"
+                />
+            </div>
+            <template #footer>
+                <Button label="Annuler" icon="pi pi-times" severity="secondary" text :disabled="deviceRenameSaving" @click="closeDeviceRenameDialog" />
+                <Button label="Enregistrer" icon="pi pi-check" :loading="deviceRenameSaving" @click="saveDeviceRename" />
+            </template>
+        </Dialog>
+
+        <Dialog
             :visible="securityDialog.visible"
             :header="securityDialog.title"
             :modal="true"
@@ -1705,6 +2134,25 @@ onBeforeUnmount(() => {
         >
             <div class="space-y-4">
                 <p class="text-sm text-color-secondary m-0">{{ securityDialog.message }}</p>
+
+                <div v-if="isDisablingTestMode" class="space-y-2 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/20">
+                    <p class="m-0 text-sm font-semibold text-amber-800 dark:text-amber-200">Que faire des données de test ?</p>
+                    <SelectButton
+                        v-model="securityDialog.payload.deleteTestData"
+                        :options="testModeDeleteOptions"
+                        optionLabel="label"
+                        optionValue="value"
+                        :allowEmpty="false"
+                        :disabled="isSecurityDialogSubmitting"
+                        class="w-full test-mode-delete-select"
+                    />
+                    <p v-if="securityDialog.payload.deleteTestData" class="m-0 text-xs text-amber-700/90 dark:text-amber-300/90">
+                        La base sera restaurée à l'état du snapshot initial : toutes les données créées pendant le mode test seront supprimées.
+                    </p>
+                    <p v-else class="m-0 text-xs text-amber-700/90 dark:text-amber-300/90">
+                        Seul le mode test sera désactivé. Les patients, consultations et factures créés pendant les tests seront conservés.
+                    </p>
+                </div>
 
                 <div v-if="isResetDialogMode" class="space-y-2 rounded-lg border border-red-200 bg-red-50 p-3 dark:border-red-800 dark:bg-red-950/20">
                     <p class="m-0 text-sm font-semibold text-red-700 dark:text-red-300">Check de sécurité renforcé requis</p>
@@ -2065,6 +2513,151 @@ onBeforeUnmount(() => {
     font-weight: 600;
 }
 
+/* Device cards */
+.device-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+}
+
+.device-cards-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 2.5rem 1rem;
+    border: 1px dashed var(--surface-border);
+    border-radius: 16px;
+    color: var(--text-color-secondary);
+}
+
+.device-cards-empty i {
+    font-size: 2rem;
+    opacity: 0.6;
+}
+
+.device-card {
+    background: var(--surface-card);
+    border: 1px solid var(--surface-border);
+    border-radius: 16px;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.875rem;
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.device-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.06);
+}
+
+.device-card--approved {
+    border-left: 3px solid var(--green-500, #22c55e);
+}
+
+.device-card--pending {
+    border-left: 3px solid var(--orange-500, #f97316);
+}
+
+.device-card--rejected {
+    border-left: 3px solid var(--red-500, #ef4444);
+}
+
+.device-card-skeleton {
+    min-height: 180px;
+    background: linear-gradient(90deg, var(--surface-100) 25%, var(--surface-200) 50%, var(--surface-100) 75%);
+    background-size: 200% 100%;
+    animation: device-card-shimmer 1.2s infinite;
+}
+
+@keyframes device-card-shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+.device-card-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+}
+
+.device-card-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--primary-color), transparent 88%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.device-card-icon i {
+    font-size: 1.25rem;
+    color: var(--primary-color);
+}
+
+.device-card-title {
+    flex: 1;
+    min-width: 0;
+}
+
+.device-card-title h5 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    word-break: break-word;
+}
+
+.device-card-type {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--text-color-secondary);
+    margin-top: 0.15rem;
+}
+
+.device-card-subtitle {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-color-secondary);
+    opacity: 0.85;
+    margin-top: 0.15rem;
+    word-break: break-word;
+}
+
+.device-card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.device-card-meta {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    font-size: 0.85rem;
+}
+
+.device-card-meta-label {
+    color: var(--text-color-secondary);
+    flex-shrink: 0;
+}
+
+.device-card-meta span:last-child {
+    text-align: right;
+    word-break: break-word;
+}
+
+.device-card-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: auto;
+    padding-top: 0.25rem;
+    border-top: 1px solid var(--surface-border);
+}
+
 /* Color Section */
 .color-section {
     margin-bottom: 1rem;
@@ -2251,6 +2844,14 @@ onBeforeUnmount(() => {
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
+}
+
+:deep(.test-mode-delete-select .p-togglebutton) {
+    flex: 1 1 auto;
+    white-space: normal;
+    text-align: center;
+    font-size: 0.8rem;
+    line-height: 1.3;
 }
 
 /* Responsive */

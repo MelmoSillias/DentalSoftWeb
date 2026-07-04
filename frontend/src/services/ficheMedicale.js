@@ -40,7 +40,7 @@ export const savePlanTraitement = async (ficheId, payload, token) => {
     return res.data;
 };
 
-export const saveDocuments = async (ficheId, payload, files, token) => {
+export const saveDocuments = async (ficheId, payload, files, token, options = {}) => {
     const formData = new FormData();
     if (payload) formData.append('data', JSON.stringify(payload));
     (files || []).forEach((docFiles, index) => {
@@ -53,6 +53,13 @@ export const saveDocuments = async (ficheId, payload, files, token) => {
         headers: {
             ...authHeaders(token),
             'Content-Type': 'multipart/form-data'
+        },
+        onUploadProgress: (event) => {
+            if (typeof options.onUploadProgress !== 'function') return;
+            const total = event.total || 0;
+            const loaded = event.loaded || 0;
+            const percent = total > 0 ? Math.min(100, Math.round((loaded * 100) / total)) : 0;
+            options.onUploadProgress({ percent, loaded, total });
         }
     });
     return res.data;

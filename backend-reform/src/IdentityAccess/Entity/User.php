@@ -42,9 +42,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\OneToOne(mappedBy: 'portalUser', targetEntity: Patient::class)]
     private ?Patient $portalPatient = null;
 
-    #[ORM\OneToMany(mappedBy: 'user', targetEntity: UserDevice::class, orphanRemoval: true)]
-    private Collection $devices;
-
     #[ORM\Column(options: ['default' => true])]
     private bool $active = true;
 
@@ -54,7 +51,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function __construct()
     {
         $this->notifications = new ArrayCollection();
-        $this->devices = new ArrayCollection();
     }
     public function getNotifications(): Collection
     {
@@ -126,30 +122,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
 
         if ($portalPatient !== null && $portalPatient->getPortalUser() !== $this) {
             $portalPatient->setPortalUser($this);
-        }
-
-        return $this;
-    }
-
-    public function getDevices(): Collection
-    {
-        return $this->devices;
-    }
-
-    public function addDevice(UserDevice $device): static
-    {
-        if (!$this->devices->contains($device)) {
-            $this->devices->add($device);
-            $device->setUser($this);
-        }
-
-        return $this;
-    }
-
-    public function removeDevice(UserDevice $device): static
-    {
-        if ($this->devices->removeElement($device) && $device->getUser() === $this) {
-            $device->setUser(null);
         }
 
         return $this;

@@ -6,8 +6,19 @@ import Components from 'unplugin-vue-components/vite';
 import { VitePWA } from 'vite-plugin-pwa';
 import { defineConfig } from 'vite';
 import cabinetConfig from './src/generated/cabinet-config.generated.js';
+import { injectBuildVersion } from './plugins/injectBuildVersion.mjs';
 
 const cabinetPwa = cabinetConfig.pwa || {};
+
+const manifestIconSrcs = (cabinetPwa.icons || [])
+    .map((icon) => icon?.src)
+    .filter((src) => typeof src === 'string' && src.trim() !== '');
+
+// Exclude glob patterns (e.g. icons/*.svg): Workbox precaches exact URLs and fails on 404.
+const staticIncludeAssets = (cabinetPwa.includeAssets || ['favicon.ico', 'robots.txt'])
+    .filter((entry) => typeof entry === 'string' && !entry.includes('*'));
+
+const pwaIncludeAssets = [...new Set([...staticIncludeAssets, ...manifestIconSrcs])];
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -27,11 +38,19 @@ export default defineConfig({
         
     },
     plugins: [
+        injectBuildVersion(),
         vue(),
         // PWA plugin: génère le service worker et le manifest
         VitePWA({
             registerType: 'autoUpdate',
-            includeAssets: cabinetPwa.includeAssets || ['favicon.ico', 'robots.txt', 'icons/*.svg'],
+            includeAssets: pwaIncludeAssets,
+            workbox: {
+                cleanupOutdatedCaches: true,
+                clientsClaim: true,
+                skipWaiting: true,
+                navigateFallback: 'index.html',
+                navigateFallbackDenylist: [/^\/api/],
+            },
             manifest: {
                 name: cabinetPwa.name || 'DENTALSOFT',
                 short_name: cabinetPwa.shortName || 'DENTALSOFT',
@@ -51,5 +70,14 @@ export default defineConfig({
         alias: {
             '@': fileURLToPath(new URL('./src', import.meta.url))
         }
-    }
+    },
+    build: {
+        rollupOptions: {
+            output: {
+                entryFileNames: 'assets/[name]-[hash].js',
+                chunkFileNames: 'assets/[name]-[hash].js',
+                assetFileNames: 'assets/[name]-[hash][extname]',
+            },
+        },
+    },
 });

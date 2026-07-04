@@ -139,54 +139,6 @@ export function useUsers() {
         }
     }
 
-    async function fetchUserDevices(userId) {
-        try {
-            const response = await http.get(`${apiPrefix}/users/${userId}/devices`, {
-                headers: buildAuthHeaders()
-            });
-            return response.data;
-        } catch (err) {
-            error.value = err.message;
-            throw err;
-        }
-    }
-
-    async function approveUserDevice(userId, deviceId) {
-        try {
-            const response = await http.post(`${apiPrefix}/users/${userId}/devices/${deviceId}/approve`, {}, {
-                headers: buildAuthHeaders(true)
-            });
-            return response.data;
-        } catch (err) {
-            error.value = err.message;
-            throw err;
-        }
-    }
-
-    async function rejectUserDevice(userId, deviceId) {
-        try {
-            const response = await http.post(`${apiPrefix}/users/${userId}/devices/${deviceId}/reject`, {}, {
-                headers: buildAuthHeaders(true)
-            });
-            return response.data;
-        } catch (err) {
-            error.value = err.message;
-            throw err;
-        }
-    }
-
-    async function deleteUserDevice(userId, deviceId) {
-        try {
-            const response = await http.delete(`${apiPrefix}/users/${userId}/devices/${deviceId}`, {
-                headers: buildAuthHeaders(true)
-            });
-            return response.data;
-        } catch (err) {
-            error.value = err.message;
-            throw err;
-        }
-    }
-
     return {
         users,
         availableEmployees,
@@ -196,14 +148,10 @@ export function useUsers() {
         error,
         fetchUsers,
         fetchUserAssociations,
-        fetchUserDevices,
         addUser,
         updateUser,
         resetPassword,
         deleteUser,
-        toggleUserStatus,
-        approveUserDevice,
-        rejectUserDevice,
-        deleteUserDevice
+        toggleUserStatus
     };
 }

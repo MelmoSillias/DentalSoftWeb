@@ -17,7 +17,7 @@ const axios = http;
 
 const authHeaders = (token) => (token ? { Authorization: `Bearer ${token}` } : {});
 
-const normalizeDentList = (value) => {
+export const normalizeDentList = (value) => {
     if (Array.isArray(value)) {
         return [...new Set(value.map((item) => String(item || '').trim()).filter(Boolean))];
     }
@@ -79,6 +79,7 @@ export const normalizeConsultation = (raw = {}) => {
     const patientId = raw.patientId ?? raw.patient_id ?? patient?.id ?? null;
     const state = raw.state ?? raw.statut ?? raw.status ?? null;
     const factState = raw.factstate ?? raw.factState ?? raw.fact_state ?? null;
+    const factModifiable = raw.factModifiable ?? raw.fact_modifiable ?? false;
     const ficheId = raw.ficheId ?? raw.fiche_id ?? raw.fiche?.id ?? null;
     const lastFicheId = raw.lastFicheId ?? raw.last_fiche_id ?? null;
     const isPaid = raw.isPaid ?? raw.paid ?? raw.payee ?? false;
@@ -106,6 +107,7 @@ export const normalizeConsultation = (raw = {}) => {
         patientId,
         state,
         factState,
+        factModifiable: Boolean(factModifiable),
         ficheId,
         lastFicheId,
     }
@@ -235,31 +237,58 @@ export const verifyConsultationMedecinPassword = async (consultationId, password
     return Boolean(res.data?.valid);
 };
 
+export const normalizeInvoiceLine = (line = {}, idx = 0) => ({
+    id: line.id || line.idLigne || idx,
+    dent: normalizeDentList(line.dent ?? line.dents ?? ''),
+    type: line.type ?? line.designation ?? '',
+    prix: Number(line.prix ?? line.montant ?? 0),
+    quantite: Number(line.quantite ?? line.qty ?? 1),
+    description: line.description ?? line.designation ?? ''
+});
+
+export const parseConsultationInvoiceResponse = (data) => {
+    const lines = Array.isArray(data) ? data : Array.isArray(data?.lignes) ? data.lignes : [];
+    const dateFacture = data?.dateFacture ?? data?.date ?? null;
+    const timeFacture = data?.timeFacture ?? data?.time ?? null;
+    let date = typeof dateFacture === 'string' ? dateFacture.slice(0, 10) : '';
+    let time = typeof timeFacture === 'string' ? timeFacture.slice(0, 5) : '';
+
+    if (!date && typeof dateFacture === 'string' && dateFacture.includes(' ')) {
+        const [parsedDate, parsedTime] = dateFacture.split(' ');
+        date = parsedDate || '';
+        time = (parsedTime || '').slice(0, 5);
+    }
+
+    return {
+        lines: lines.map((line, idx) => normalizeInvoiceLine(line, idx)),
+        date,
+        time,
+        modifiable: data?.modifiable !== false
+    };
+};
+
 export const fetchConsultationInvoice = async (consultationId, token) => {
     if (isConsultationsTourMockEnabled()) {
         return fetchConsultationInvoiceTourMock(consultationId);
     }
 
     const res = await axios.get(`${apiPrefix}/consultations/${consultationId}/facture`, { headers: authHeaders(token) });
-    const lines = Array.isArray(res.data) ? res.data : Array.isArray(res.data?.lignes) ? res.data.lignes : [];
-    return lines.map((line, idx) => ({
-        id: line.id || line.idLigne || idx,
-        dent: line.dent ?? '',
-        type: line.type ?? line.designation ?? '',
-        prix: Number(line.prix ?? line.montant ?? 0),
-        quantite: Number(line.quantite ?? line.qty ?? 1),
-        description: line.description ?? line.designation ?? ''
-    }));
+    return parseConsultationInvoiceResponse(res.data);
 };
 
-export const updateConsultationInvoice = async (consultationId, lignes = [], token) => {
+export const updateConsultationInvoice = async (consultationId, payload = {}, token) => {
+    const lines = Array.isArray(payload) ? payload : payload?.lines ?? payload?.lignes ?? [];
+    const date = Array.isArray(payload) ? null : payload?.date ?? null;
+    const time = Array.isArray(payload) ? null : payload?.time ?? null;
+
     if (isConsultationsTourMockEnabled()) {
-        return updateConsultationInvoiceTourMock(consultationId, lignes);
+        return updateConsultationInvoiceTourMock(consultationId, lines, { date, time });
     }
 
-    const payload = {
-        lignes: (lignes || []).map((l) => ({
-            dent: l.dent || '',
+    const requestPayload = {
+        lignes: (lines || []).map((l) => ({
+            dent: normalizeDentList(l.dent ?? l.dents ?? '').join(','),
+            dents: normalizeDentList(l.dent ?? l.dents ?? ''),
             type: l.type || '',
             prix: Number(l.prix) || 0,
             quantite: Number(l.quantite) || 1,
@@ -267,7 +296,14 @@ export const updateConsultationInvoice = async (consultationId, lignes = [], tok
         }))
     };
 
-    const res = await axios.put(`${apiPrefix}/consultations/${consultationId}/facture/update`, payload, {
+    if (date) {
+        requestPayload.date = date;
+    }
+    if (time) {
+        requestPayload.time = time;
+    }
+
+    const res = await axios.put(`${apiPrefix}/consultations/${consultationId}/facture/update`, requestPayload, {
         headers: authHeaders(token)
     });
     return res.data;
@@ -317,3 +353,27 @@ export const normalizeSoinList = (items) => {
 
     return clean.length ? clean : [...defaultSoinList];
 };
+
+export const teethOptions = (() => {
+    const options = [];
+    [1, 2, 3, 4].forEach((quadrant) => {
+        for (let i = 1; i <= 8; i += 1) {
+            const value = `${quadrant}${i}`;
+            options.push({ label: value, value });
+        }
+    });
+    [5, 6, 7, 8].forEach((quadrant) => {
+        for (let i = 1; i <= 5; i += 1) {
+            const value = `${quadrant}${i}`;
+            options.push({ label: value, value });
+        }
+    });
+    return options;
+})();
+
+export const formatActeCurrency = (value) => new Intl.NumberFormat('fr-FR', {
+    style: 'currency',
+    currency: 'XOF',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+}).format(Number(value) || 0);

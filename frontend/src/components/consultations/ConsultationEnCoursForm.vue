@@ -1,14 +1,13 @@
 <script setup>
 import Button from 'primevue/button';
 import Dialog from 'primevue/dialog';
-import InputNumber from 'primevue/inputnumber';
-import InputText from 'primevue/inputtext';
 import MultiSelect from 'primevue/multiselect';
 import ProgressSpinner from 'primevue/progressspinner';
 import Select from 'primevue/select';
 import Textarea from 'primevue/textarea';
 import { computed, ref, watch } from 'vue';
-import { defaultSoinList, normalizeSoinList } from '@/services/consultations';
+import ActeLineCard from '@/components/consultations/ActeLineCard.vue';
+import { defaultSoinList, formatActeCurrency, normalizeDentList, normalizeSoinList } from '@/services/consultations';
 
 const props = defineProps({
     modelValue: {
@@ -67,13 +66,25 @@ const props = defineProps({
         type: Boolean,
         default: false
     },
+    readonly: {
+        type: Boolean,
+        default: false
+    },
     soins: {
         type: Array,
         default: () => defaultSoinList
+    },
+    diagnosticPositif: {
+        type: String,
+        default: ''
+    },
+    showDiagnosticPositif: {
+        type: Boolean,
+        default: false
     }
 });
 
-const emit = defineEmits(['update:modelValue', 'save', 'cloture', 'open-ordonnance', 'print-ordonnance']);
+const emit = defineEmits(['update:modelValue', 'update:diagnosticPositif', 'save', 'cloture', 'open-ordonnance', 'print-ordonnance', 'view-ordonnance', 'edit-ordonnance']);
 
 const form = computed({
     get: () => props.modelValue,
@@ -88,21 +99,7 @@ const updateField = (key, value) => {
     form.value = { ...form.value, [key]: value };
 };
 
-const normalizeDentSelection = (value) => {
-    if (Array.isArray(value)) {
-        return [...new Set(value.map((item) => String(item || '').trim()).filter(Boolean))];
-    }
-
-    if (typeof value === 'string') {
-        return [...new Set(value.split(',').map((item) => item.trim()).filter(Boolean))];
-    }
-
-    if (typeof value === 'number') {
-        return [String(value)];
-    }
-
-    return [];
-};
+const normalizeDentSelection = normalizeDentList;
 
 const addActe = (dent = '') => {
     const actes = form.value.actes || [];
@@ -264,16 +261,10 @@ watch(
 );
 
 function formatCurrency(value) {
-    return new Intl.NumberFormat('fr-FR', {
-        style: 'currency',
-        currency: 'XOF',
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0
-    }).format(value);
+    return formatActeCurrency(value);
 }
 
 const soinsList = computed(() => normalizeSoinList(props.soins));
-const soinOptions = computed(() => soinsList.value.map((item) => ({ label: item, value: item })));
 
 const consultationTypes = [
     { label: 'Première Consultation', value: 'initiale' },
@@ -282,33 +273,6 @@ const consultationTypes = [
     { label: 'Urgence Dentaire', value: 'urgence' },
     { label: 'Autre', value: 'autre' }
 ];
-
-const teethOptions = (() => {
-    const options = [];
-    const quadrants = [1, 2, 3, 4];
-    quadrants.forEach((q) => {
-        for (let i = 1; i <= 8; i += 1) {
-            const value = `${q}${i}`;
-            options.push({ label: value, value });
-        }
-    });
-    const temporaryQuadrants = [5, 6, 7, 8];
-    temporaryQuadrants.forEach((q) => {
-        for (let i = 1; i <= 5; i += 1) {
-            const value = `${q}${i}`;
-            options.push({ label: value, value });
-        }
-    });
-    return options;
-})();
-
-const isValidTooth = (value) => {
-    return (
-        value !== null &&
-        typeof value !== 'undefined' &&
-        !(typeof value === 'object' && 'target' in value)
-    )
-}
 
 </script>
 
@@ -335,6 +299,7 @@ const isValidTooth = (value) => {
             </div>
             <div class="flex flex-wrap gap-2">
                 <Button
+                    v-if="!readonly"
                     label="Sauvegarder"
                     icon="pi pi-save"
                     :loading="saving"
@@ -342,6 +307,7 @@ const isValidTooth = (value) => {
                     @click="emit('save')"
                 />
                 <Button
+                    v-if="!readonly"
                     label="Clôturer"
                     icon="pi pi-lock"
                     severity="danger"
@@ -353,7 +319,7 @@ const isValidTooth = (value) => {
         </div>
 
         <!-- Content -->
-        <div class="space-y-6">
+        <div class="space-y-6" :class="readonly ? 'pointer-events-none select-none opacity-80' : ''">
             <!-- Personnel & Salle -->
             <div class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/30 p-5">
                 <div class="flex flex-wrap gap-4">
@@ -379,7 +345,7 @@ const isValidTooth = (value) => {
                     <div class="flex-1 space-y-2 col-6 md:col-4">
                         <label class="text-sm font-medium text-surface-700 dark:text-surface-300 flex items-center gap-2">
                             <i class="pi pi-users text-surface-400"></i>
-                            Infirmier(ère)s
+                            Aide(s) soignant(e)s
                         </label>
                         <MultiSelect
                             v-model="form.infirmierIds"
@@ -426,19 +392,35 @@ const isValidTooth = (value) => {
                 </div>
             </div>
 
-            <!-- Note de séance -->
-            <div class="space-y-2">
-                <label class="text-sm font-medium text-surface-700 dark:text-surface-300 flex items-center gap-2">
-                    <i class="pi pi-file-edit text-surface-400"></i>
-                    Note de séance
-                </label>
-                <Textarea
-                    v-model="form.noteSeance"
-                    rows="4"
-                    placeholder="Notes et observations de la séance..."
-                    class="w-full rounded-xl border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-800/50 focus:ring-2 focus:ring-primary-500/20 transition-all"
-                    @update:modelValue="(v) => updateField('noteSeance', v)"
-                />
+            <!-- Note de séance & diagnostic positif -->
+            <div :class="showDiagnosticPositif ? 'grid grid-cols-1 lg:grid-cols-2 gap-4' : 'space-y-2'">
+                <div class="space-y-2">
+                    <label class="text-sm font-medium text-surface-700 dark:text-surface-300 flex items-center gap-2">
+                        <i class="pi pi-file-edit text-surface-400"></i>
+                        Note de séance
+                    </label>
+                    <Textarea
+                        v-model="form.noteSeance"
+                        rows="4"
+                        placeholder="Notes et observations de la séance..."
+                        class="w-full rounded-xl border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-800/50 focus:ring-2 focus:ring-primary-500/20 transition-all"
+                        @update:modelValue="(v) => updateField('noteSeance', v)"
+                    />
+                </div>
+
+                <div v-if="showDiagnosticPositif" class="space-y-2">
+                    <label class="text-sm font-medium text-surface-700 dark:text-surface-300 flex items-center gap-2">
+                        <i class="pi pi-clipboard text-indigo-400"></i>
+                        Diagnostic positif
+                    </label>
+                    <Textarea
+                        :modelValue="diagnosticPositif"
+                        rows="4"
+                        placeholder="Diagnostic positif, constatations cliniques..."
+                        class="w-full rounded-xl border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-800/50 focus:ring-2 focus:ring-primary-500/20 transition-all"
+                        @update:modelValue="(v) => emit('update:diagnosticPositif', v)"
+                    />
+                </div>
             </div>
 
             <!-- Soins -->
@@ -479,143 +461,16 @@ const isValidTooth = (value) => {
                         <p class="text-surface-600 dark:text-surface-400">Aucun acte ajouté. Commencez par ajouter votre premier soin.</p>
                     </div>
 
-                    <div v-for="(acte, idx) in form.actes" :key="idx"
-                         class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-800 p-4 shadow-sm hover:shadow-md transition-all">
-                        <!-- Acte Header -->
-                        <div class="flex items-center justify-between mb-4">
-                            <div class="flex items-center gap-2">
-                                <span class="flex items-center justify-center w-6 h-6 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 text-sm font-bold">
-                                    {{ idx + 1 }}
-                                </span>
-                                <span class="font-medium text-surface-900 dark:text-surface-100">Acte {{ idx + 1 }}</span>
-                            </div>
-                            <Button
-                                icon="pi pi-trash"
-                                severity="danger"
-                                text
-                                rounded
-                                v-tooltip="'Supprimer cet acte'"
-                                class="hover:bg-red-50 dark:hover:bg-red-900/20"
-                                @click="removeActe(idx)"
-                            />
-                        </div>
-
-                        <!-- Acte Content -->
-                        <div class="grid grid-cols-1 lg:grid-cols-12 gap-3">
-                            <div class="lg:col-span-4 h-full">
-                                <FloatLabel variant="in" class="h-full">
-                                    <MultiSelect
-                                        :options="teethOptions"
-                                        :modelValue="normalizeDentSelection(acte.dent)"
-                                        optionLabel="label"
-                                        optionValue="value"
-                                        :filter="true"
-                                        showClear
-                                        class="w-full h-full rounded-lg border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800 text-sm"
-                                        @update:modelValue="(v) => updateActe(idx, { dent: v })"
-                                    >
-                                        <template #value="slotProps">
-                                            <div class="flex flex-wrap gap-2">
-                                                <div
-                                                    v-for="val in (slotProps.value || [])"
-                                                    :key="val"
-                                                    class="flex items-center gap-1 px-2 py-1 rounded-full text-xs border h-full"
-                                                    :class="toothStateClass(val)"
-                                                >
-                                                    🦷 {{ val }}
-                                                </div>
-                                            </div>
-                                        </template>
-                                        <template #option="slotProps">
-                                            <div class="flex items-center gap-3 p-2">
-
-                                                <!-- Icône dent -->
-                                                <div class="relative">
-                                                    <i class="fa fa-tooth text-lg"
-                                                    :class="toothStateClass(slotProps.option.value)">
-                                                    </i>
-
-                                                </div>
-
-                                                <!-- Infos -->
-                                                <div class="flex flex-col">
-                                                    <span class="font-semibold">
-                                                        Dent {{ slotProps.option.label }}
-                                                    </span>
-                                                    <span class="text-xs text-gray-500">
-                                                        {{ toothSummary(slotProps.option.value) || 'Aucun acte' }}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        </template>
-                                    </MultiSelect>
-                                    <label class="text-xs font-medium text-surface-600 dark:text-surface-400">Dent</label>
-                                </FloatLabel>
-                            </div>
-                            <div class="w-full lg:col-span-4">
-                                <FloatLabel variant="in">
-                                    <Select
-                                        :modelValue="acte.type"
-                                        :options="soinOptions"
-                                        optionLabel="label"
-                                        optionValue="value"
-                                        :filter="true"
-                                        filterPlaceholder="Rechercher..."
-                                        showClear
-                                        class="w-full [&_.p-select]:rounded-lg [&_.p-select]:border-surface-200 [&_.p-select]:dark:border-surface-700 [&_.p-select]:bg-surface-50 [&_.p-select]:dark:bg-surface-800 [&_.p-select]:p-2 [&_.p-select]:text-sm"
-                                        @update:modelValue="(v) => updateActe(idx, { type: v || '' })"
-                                    />
-                                    <label class="text-xs font-medium text-surface-600 dark:text-surface-400">Type d'acte</label>
-                                </FloatLabel>
-                            </div>
-                            <div class="w-full">
-                                <FloatLabel variant="in">
-                                    <InputNumber
-                                        :modelValue="acte.quantite"
-                                        :min="1"
-                                        mode="decimal"
-                                        :useGrouping="false"
-                                        inputClass="w-full rounded-lg border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800 p-2 text-sm"
-                                        @update:modelValue="(v) => updateActe(idx, { quantite: v ?? 1 })"
-                                    />
-                                    <label class="text-xs font-medium text-surface-600 dark:text-surface-400">Qté</label>
-                                </FloatLabel>
-                            </div>
-                            <div class="w-full lg:col-span-3">
-                                <FloatLabel variant="in">
-                                    <InputNumber
-                                        :modelValue="acte.prix"
-                                        mode="decimal"
-                                        :minFractionDigits="0"
-                                        :maxFractionDigits="2"
-                                        inputClass="w-full rounded-lg border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800 p-2 text-sm"
-                                        @update:modelValue="(v) => updateActe(idx, { prix: v ?? 0 })"
-                                    />
-                                    <label class="text-xs font-medium text-surface-600 dark:text-surface-400">Prix</label>
-                                </FloatLabel>
-                            </div>
-                            <div class="w-full lg:col-span-12">
-                                <FloatLabel variant="in">
-                                    <InputText
-                                        :value="acte.description"
-                                        class="w-full rounded-lg border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800 p-2 text-sm"
-                                        @update:modelValue="(v) => updateActe(idx, { description: v })"
-                                    />
-                                    <label class="text-xs font-medium text-surface-600 dark:text-surface-400">Description</label>
-                                </FloatLabel>
-                            </div>
-
-                        </div>
-
-                        <!-- Acte Subtotal -->
-                        <div class="mt-3 pt-3 border-t border-surface-200 dark:border-surface-700">
-                            <div class="flex items-center justify-end gap-2">
-                                <span class="text-sm text-surface-600 dark:text-surface-400">Sous-total :</span>
-                                <span class="font-bold text-primary-600 dark:text-primary-400">
-                                    {{ formatCurrency(acteSubtotals[idx] ?? acteTotal(acte)) }}
-                                </span>
-                            </div>
-                        </div>
+                    <div v-for="(acte, idx) in form.actes" :key="idx">
+                        <ActeLineCard
+                            :acte="acte"
+                            :index="idx"
+                            :soins="soinsList"
+                            :formule-dentaire="formuleDentaire"
+                            :subtotal="acteSubtotals[idx] ?? acteTotal(acte)"
+                            @update="(patch) => updateActe(idx, patch)"
+                            @remove="removeActe(idx)"
+                        />
                     </div>
                 </div>
 
@@ -675,7 +530,7 @@ const isValidTooth = (value) => {
             </Dialog>
 
             <!-- Ordonnances -->
-            <div v-if="!hideOrdonnances" class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/30 p-5">
+            <div v-if="!hideOrdonnances" class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/30 p-5" :class="readonly ? 'pointer-events-auto select-auto opacity-100' : ''">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
                     <div class="flex items-center gap-3">
                         <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-purple-500/10">
@@ -687,6 +542,7 @@ const isValidTooth = (value) => {
                         </div>
                     </div>
                     <Button
+                        v-if="!readonly"
                         icon="pi pi-plus"
                         label="Nouvelle ordonnance"
                         size="small"
@@ -706,27 +562,43 @@ const isValidTooth = (value) => {
 
                     <div v-for="ordo in ordonnances" :key="ordo.id"
                          class="flex items-center justify-between p-3 rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-800 hover:bg-surface-50 dark:hover:bg-surface-700 transition-colors">
-                        <div class="flex items-center gap-3">
-                            <div class="flex items-center justify-center w-10 h-10 rounded-lg bg-purple-500/10">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <div class="flex items-center justify-center w-10 h-10 rounded-lg bg-purple-500/10 shrink-0">
                                 <i class="pi pi-prescription text-purple-500"></i>
                             </div>
-                            <div>
-                                <div class="font-medium text-surface-900 dark:text-surface-100">
+                            <div class="min-w-0">
+                                <div class="font-medium text-surface-900 dark:text-surface-100 truncate">
                                     Ordonnance du {{ ordo.date || '—' }}
                                 </div>
-                                <div class="text-sm text-surface-600 dark:text-surface-400">
+                                <div class="text-sm text-surface-600 dark:text-surface-400 truncate">
                                     Par {{ ordo.medecinNom || ordo.medecin || '—' }}
                                 </div>
                             </div>
                         </div>
-                        <div class="flex items-center gap-2">
-                            <Badge :value="ordo.lignes?.length || 0" severity="info" class="px-2 py-1 text-xs" />
+                        <div class="flex items-center gap-1 shrink-0">
+                            <Badge :value="ordo.lignes?.length || 0" severity="info" class="px-2 py-1 text-xs hidden sm:inline-flex" />
+                            <Button
+                                icon="pi pi-eye"
+                                label="Voir"
+                                size="small"
+                                text
+                                class="rounded-lg px-2 py-1.5"
+                                @click="emit('view-ordonnance', ordo)"
+                            />
+                            <Button
+                                icon="pi pi-pencil"
+                                label="Modifier"
+                                size="small"
+                                text
+                                class="rounded-lg px-2 py-1.5"
+                                @click="emit('edit-ordonnance', ordo)"
+                            />
                             <Button
                                 icon="pi pi-print"
                                 label="Imprimer"
                                 size="small"
                                 outlined
-                                class="rounded-lg px-3 py-1.5"
+                                class="rounded-lg px-2 py-1.5"
                                 @click="emit('print-ordonnance', ordo)"
                             />
                         </div>

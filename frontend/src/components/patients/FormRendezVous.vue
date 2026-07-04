@@ -137,25 +137,26 @@ watch(
     { immediate: true }
 );
 
-watch(
-    () => props.initialMedecinId,
-    (value) => {
-        if (value !== null && value !== undefined) {
-            selectedMedecinId.value = value;
-        }
-    },
-    { immediate: true }
-);
+const isValidMedecinId = (value) => {
+    const id = Number(value ?? Number.NaN);
+    return Number.isFinite(id) && id > 0;
+};
 
-watch(
-    () => props.lockedMedecinId,
-    (value) => {
-        if (value !== null && value !== undefined) {
-            selectedMedecinId.value = value;
-        }
-    },
-    { immediate: true }
-);
+const applyMedecinSelection = () => {
+    if (isValidMedecinId(props.initialMedecinId)) {
+        selectedMedecinId.value = props.initialMedecinId;
+        return;
+    }
+    if (isValidMedecinId(props.lockedMedecinId)) {
+        selectedMedecinId.value = props.lockedMedecinId;
+        return;
+    }
+    if (!isMedecinUser.value) return;
+    const connectedId = resolveConnectedMedecinId();
+    if (connectedId) {
+        selectedMedecinId.value = connectedId;
+    }
+};
 
 const patientOptions = computed(() =>
     patients.value.map((p) => ({
@@ -228,14 +229,8 @@ const connectedMedecinDisplayName = computed(() => {
 });
 
 watch(
-    () => [isMedecinUser.value, medecinOptions.value.length],
-    () => {
-        if (!isMedecinUser.value) return;
-        const connectedId = resolveConnectedMedecinId();
-        if (connectedId) {
-            selectedMedecinId.value = connectedId;
-        }
-    },
+    () => [props.initialMedecinId, props.lockedMedecinId, isMedecinUser.value, medecins.value.length],
+    applyMedecinSelection,
     { immediate: true }
 );
 

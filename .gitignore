@@ -2,6 +2,8 @@
 /prompts/
 /mercure
 /orodent_prod
+/cdos_prod
+/mondentiste-prod
 
 /backend-reform/migrations*
 

@@ -36,6 +36,9 @@ function buildSeedState() {
                 dureeContrat: null,
                 typeSalaire: 'pourcentage',
                 valeurSalaire: 35,
+                frequencePaiement: 'mensuel',
+                typePrime: 'actes',
+                valeurPrime: 10,
                 comingDays: ['Lundi', 'Mardi', 'Jeudi', 'Vendredi']
             },
             {
@@ -52,6 +55,9 @@ function buildSeedState() {
                 dureeContrat: 12,
                 typeSalaire: 'fixe',
                 valeurSalaire: 180000,
+                frequencePaiement: 'mensuel',
+                typePrime: 'fixe',
+                valeurPrime: 15000,
                 comingDays: ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi']
             },
             {
@@ -68,6 +74,9 @@ function buildSeedState() {
                 dureeContrat: null,
                 typeSalaire: 'fixe',
                 valeurSalaire: 220000,
+                frequencePaiement: 'journalier',
+                typePrime: 'aucune',
+                valeurPrime: null,
                 comingDays: ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi']
             },
             {
@@ -84,6 +93,9 @@ function buildSeedState() {
                 dureeContrat: 6,
                 typeSalaire: 'non_defini',
                 valeurSalaire: null,
+                frequencePaiement: 'journalier',
+                typePrime: 'aucune',
+                valeurPrime: null,
                 comingDays: ['Lundi', 'Mercredi', 'Vendredi']
             }
         ],
@@ -96,7 +108,7 @@ function buildSeedState() {
         users: [
             { id: 701, username: 'aminata.diallo', type: 'ROLE_RECEPTION', fonction: 'Réception', employee: { nom: 'Diallo', prenom: 'Aminata' } },
             { id: 702, username: 'dr.seck', type: 'ROLE_MEDECIN', fonction: 'Médecin', employee: { nom: 'Seck', prenom: 'Mamadou' } },
-            { id: 703, username: 'rokhaya.ba', type: 'ROLE_INFIRMIER', fonction: 'Infirmier', employee: { nom: 'Ba', prenom: 'Rokhaya' } },
+            { id: 703, username: 'rokhaya.ba', type: 'ROLE_INFIRMIER', fonction: 'Aide soignant(e)', employee: { nom: 'Ba', prenom: 'Rokhaya' } },
             { id: 704, username: 'admin.ka', type: 'ROLE_ADMIN', fonction: 'Administration', employee: { nom: 'Ka', prenom: 'Fatou' } }
         ],
         sentNotifications: []

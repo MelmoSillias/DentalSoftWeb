@@ -1,12 +1,16 @@
 <script setup>
-import AutoComplete from 'primevue/autocomplete';
-import { defaultSoinList } from '@/services/consultations';
+import ActeLineCard from '@/components/consultations/ActeLineCard.vue';
 import Button from 'primevue/button';
-import Dialog from 'primevue/dialog'; 
-import InputNumber from 'primevue/inputnumber';
+import Dialog from 'primevue/dialog';
 import InputText from 'primevue/inputtext';
-import Textarea from 'primevue/textarea';
+import ProgressSpinner from 'primevue/progressspinner';
 import { computed, ref, watch } from 'vue';
+import {
+    defaultSoinList,
+    formatActeCurrency,
+    normalizeDentList,
+    normalizeSoinList
+} from '@/services/consultations';
 
 const props = defineProps({
     visible: {
@@ -29,26 +33,34 @@ const props = defineProps({
         type: Array,
         default: () => defaultSoinList
     },
+    formuleDentaire: {
+        type: Object,
+        default: () => ({})
+    },
     tourTarget: {
         type: String,
         default: null
+    },
+    date: {
+        type: String,
+        default: ''
+    },
+    time: {
+        type: String,
+        default: ''
     }
 });
 
 const emit = defineEmits(['update:visible', 'save']);
 
 const localLines = ref([]);
-const soinSuggestions = ref([]);
-
-const searchSoins = (event) => {
-    const query = String(event?.query || '').toLowerCase();
-    const list = Array.isArray(props.soins) && props.soins.length ? props.soins : defaultSoinList;
-    soinSuggestions.value = query ? list.filter((item) => String(item).toLowerCase().includes(query)) : list;
-};
+const lineSubtotals = ref([]);
+const localDate = ref('');
+const localTime = ref('');
 
 const normalizeLine = (line = {}, idx = 0) => ({
     id: line.id ?? `${Date.now()}-${idx}-${Math.round(Math.random() * 1000)}`,
-    dent: line.dent ?? '',
+    dent: normalizeDentList(line.dent ?? line.dents ?? ''),
     type: line.type ?? '',
     prix: Number(line.prix ?? 0) || 0,
     quantite: Number(line.quantite ?? 1) || 1,
@@ -57,7 +69,7 @@ const normalizeLine = (line = {}, idx = 0) => ({
 
 const syncLines = () => {
     const source = props.lines?.length ? props.lines : [normalizeLine()];
-    localLines.value = source.map((l, idx) => normalizeLine(l, idx));
+    localLines.value = source.map((line, idx) => normalizeLine(line, idx));
 };
 
 watch(
@@ -69,8 +81,38 @@ watch(
 watch(
     () => props.visible,
     (visible) => {
-        if (visible) syncLines();
+        if (visible) {
+            syncLines();
+            localDate.value = props.date || '';
+            localTime.value = props.time || '';
+        }
     }
+);
+
+watch(
+    () => [props.date, props.time],
+    ([date, time]) => {
+        if (props.visible) {
+            localDate.value = date || '';
+            localTime.value = time || '';
+        }
+    }
+);
+
+const lineTotal = (line) => (Number(line.quantite) || 0) * (Number(line.prix) || 0);
+
+watch(
+    localLines,
+    (lines) => {
+        lineSubtotals.value = (lines || []).map((line) => lineTotal(line));
+    },
+    { deep: true, immediate: true }
+);
+
+const soinsList = computed(() => normalizeSoinList(props.soins));
+
+const totalTtc = computed(() =>
+    localLines.value.reduce((sum, line) => sum + lineTotal(line), 0)
 );
 
 const addLine = () => {
@@ -82,83 +124,133 @@ const removeLine = (idx) => {
         localLines.value = [normalizeLine()];
         return;
     }
-    localLines.value = localLines.value.filter((_, i) => i !== idx);
+    localLines.value = localLines.value.filter((_, index) => index !== idx);
 };
 
-const updateField = (idx, key, value) => {
-    localLines.value = localLines.value.map((line, i) => (i === idx ? { ...line, [key]: value } : line));
-};
+const updateLine = (idx, patch) => {
+    localLines.value = localLines.value.map((line, index) => {
+        if (index !== idx) {
+            return line;
+        }
 
-const totalTtc = computed(() =>
-    localLines.value.reduce((sum, line) => sum + (Number(line.prix) || 0) * (Number(line.quantite) || 0), 0)
-);
+        const next = { ...line, ...patch };
+        if (Object.prototype.hasOwnProperty.call(patch || {}, 'dent')) {
+            next.dent = normalizeDentList(patch.dent);
+        }
+        return next;
+    });
+};
 
 const handleSave = () => {
-    emit('save', localLines.value.map((l, idx) => normalizeLine(l, idx)));
+    emit('save', {
+        lines: localLines.value.map((line, idx) => normalizeLine(line, idx)),
+        date: localDate.value,
+        time: localTime.value
+    });
 };
 
 const handleHide = () => emit('update:visible', false);
 </script>
 
 <template>
-    <Dialog :visible="visible" modal header="Modifier la facture" :style="{ width: '52rem', maxWidth: '98vw' }"
-        @update:visible="handleHide">
+    <Dialog
+        :visible="visible"
+        modal
+        header="Modifier la facture"
+        :style="{ width: '52rem', maxWidth: '98vw' }"
+        @update:visible="handleHide"
+    >
         <div :data-tour="props.tourTarget || null">
-            <div v-if="loading" class="p-6 text-center text-gray-600 dark:text-gray-300"> <i class="pi pi-spin pi-spinner"></i> Chargement des lignes de facture...</div>
+            <div v-if="loading" class="flex min-h-[12rem] flex-col items-center justify-center gap-3 p-6 text-surface-600 dark:text-surface-300">
+                <ProgressSpinner strokeWidth="4" style="width: 42px; height: 42px" />
+                <p class="text-sm">Chargement des lignes de facture...</p>
+            </div>
 
             <div v-else class="flex flex-col gap-4">
-                <div v-for="(line, idx) in localLines" :key="line.id" class="border rounded-lg p-3 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
-                        <div class="flex flex-col gap-1">
-                            <label class="text-sm text-gray-600 dark:text-gray-300">Dent</label>
-                            <InputText v-model="line.dent" placeholder="Ex : 21"
-                                @update:modelValue="(val) => updateField(idx, 'dent', val)" />
+                <div class="rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800/40 p-4">
+                    <p class="mb-3 text-sm font-semibold text-surface-900 dark:text-surface-100">Date de la facture</p>
+                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <div>
+                            <label class="mb-1 block text-xs font-medium uppercase tracking-wide text-surface-500">Date</label>
+                            <InputText v-model="localDate" type="date" class="w-full" />
                         </div>
-                        <div class="flex flex-col gap-1">
-                            <label class="text-sm text-gray-600 dark:text-gray-300">Acte / Soin</label>
-                            <AutoComplete v-model="line.type" :suggestions="soinSuggestions" placeholder="Choisir un soin" class="w-full"
-                                dropdown @complete="searchSoins" @update:modelValue="(val) => updateField(idx, 'type', val || '')" />
-                        </div>
-                    </div>
-
-                    <div class="flex flex-col gap-1 mb-3">
-                        <label class="text-sm text-gray-600 dark:text-gray-300">Description</label>
-                        <Textarea v-model="line.description" autoResize rows="2"
-                            @update:modelValue="(val) => updateField(idx, 'description', val)" />
-                    </div>
-
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
-                        <div class="flex flex-col gap-1">
-                            <label class="text-sm text-gray-600 dark:text-gray-300">Prix (FCFA)</label>
-                            <InputNumber v-model="line.prix" mode="decimal" :minFractionDigits="0" :maxFractionDigits="2"
-                                :min="0" class="w-full" inputClass="w-full"
-                                @update:modelValue="(val) => updateField(idx, 'prix', val ?? 0)" />
-                        </div>
-                        <div class="flex flex-col gap-1">
-                            <label class="text-sm text-gray-600 dark:text-gray-300">Quantité</label>
-                            <InputNumber v-model="line.quantite" :min="1" :max="999" mode="decimal" :useGrouping="false"
-                                class="w-full" inputClass="w-full"
-                                @update:modelValue="(val) => updateField(idx, 'quantite', val ?? 1)" />
-                        </div>
-                        <div class="flex justify-end sm:justify-start md:justify-end">
-                            <Button icon="pi pi-trash" label="Retirer" severity="danger" outlined size="small"
-                                @click="removeLine(idx)" />
+                        <div>
+                            <label class="mb-1 block text-xs font-medium uppercase tracking-wide text-surface-500">Heure</label>
+                            <InputText v-model="localTime" type="time" class="w-full" />
                         </div>
                     </div>
                 </div>
 
-                <div class="flex items-center justify-between gap-3 flex-wrap">
-                    <Button icon="pi pi-plus" label="Ajouter une ligne" outlined severity="primary" @click="addLine" />
-                    <Tag severity="success" class="text-xl font-semibold">Total TTC : {{ totalTtc.toFixed(2) }} F CFA</Tag>
+                <div class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/30 p-4">
+                    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-500/10">
+                                <i class="pi pi-file-edit text-amber-600 dark:text-amber-400"></i>
+                            </div>
+                            <div>
+                                <p class="font-semibold text-surface-900 dark:text-surface-100">Actes posés</p>
+                                <p class="text-sm text-surface-500 dark:text-surface-400">Modifiez les soins facturés pour cette consultation</p>
+                            </div>
+                        </div>
+                        <Button
+                            icon="pi pi-plus"
+                            label="Ajouter un soin"
+                            size="small"
+                            class="rounded-xl border-0 bg-gradient-to-r from-blue-500 to-blue-600 px-4 py-2.5 text-white shadow-sm transition-all hover:shadow-md"
+                            @click="addLine"
+                        />
+                    </div>
+                </div>
+
+                <div v-if="!localLines.length" class="rounded-xl border border-dashed border-surface-200 bg-surface-50/60 p-8 text-center dark:border-surface-700 dark:bg-surface-800/20">
+                    <div class="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-full bg-surface-100 dark:bg-surface-800">
+                        <i class="pi pi-inbox text-2xl text-surface-400"></i>
+                    </div>
+                    <p class="text-sm text-surface-600 dark:text-surface-400">Aucun acte. Ajoutez au moins une ligne pour enregistrer la facture.</p>
+                </div>
+
+                <div v-else class="space-y-4">
+                    <ActeLineCard
+                        v-for="(line, idx) in localLines"
+                        :key="line.id"
+                        :acte="line"
+                        :index="idx"
+                        :soins="soinsList"
+                        :formule-dentaire="formuleDentaire"
+                        :subtotal="lineSubtotals[idx] ?? lineTotal(line)"
+                        @update="(patch) => updateLine(idx, patch)"
+                        @remove="removeLine(idx)"
+                    />
+                </div>
+
+                <div v-if="localLines.length" class="rounded-xl border border-surface-200 bg-gradient-to-r from-amber-50 to-orange-50 p-4 dark:border-surface-700 dark:from-amber-900/20 dark:to-orange-900/10">
+                    <div class="flex items-center justify-between gap-3">
+                        <span class="text-base font-semibold text-surface-900 dark:text-surface-100">Total TTC</span>
+                        <span class="text-2xl font-bold text-amber-700 dark:text-amber-300">
+                            {{ formatActeCurrency(totalTtc) }}
+                        </span>
+                    </div>
                 </div>
             </div>
         </div>
 
         <template #footer>
-            <div class="flex justify-end gap-2">
-                <Button label="Fermer" severity="secondary" @click="handleHide" />
-                <Button label="Enregistrer" icon="pi pi-save" :loading="saving" severity="primary"
-                    @click="handleSave" />
+            <div class="flex w-full flex-wrap items-center justify-end gap-2">
+                <Button
+                    label="Fermer"
+                    icon="pi pi-times"
+                    severity="secondary"
+                    text
+                    class="rounded-xl px-4"
+                    @click="handleHide"
+                />
+                <Button
+                    label="Enregistrer"
+                    icon="pi pi-save"
+                    :loading="saving"
+                    class="rounded-xl border-0 bg-gradient-to-r from-primary-500 to-primary-600 px-5 py-2.5 font-medium text-white shadow-sm transition-all hover:shadow-md"
+                    @click="handleSave"
+                />
             </div>
         </template>
     </Dialog>

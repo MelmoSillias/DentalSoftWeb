@@ -4,6 +4,7 @@ import Dialog from 'primevue/dialog';
 import FileUpload from 'primevue/fileupload';
 import Galleria from 'primevue/galleria';
 import InputText from 'primevue/inputtext';
+import ProgressBar from 'primevue/progressbar';
 import Select from 'primevue/select';
 import { computed, onBeforeUnmount, reactive, ref } from 'vue';
 import { filePrefix } from '@/config';
@@ -16,6 +17,10 @@ const props = defineProps({
     saving: {
         type: Boolean,
         default: false
+    },
+    uploadProgress: {
+        type: Object,
+        default: null
     },
     compact: {
         type: Boolean,
@@ -59,6 +64,26 @@ const draftUrlInput = ref('');
 const fileUrlCache = new Map();
 
 const dialogTitle = computed(() => (dialogMode.value === 'edit' ? 'Modifier un document' : 'Ajouter un document'));
+
+const formatBytes = (bytes) => {
+    const value = Number(bytes) || 0;
+    if (value <= 0) return '0 o';
+    const units = ['o', 'Ko', 'Mo', 'Go'];
+    const unitIndex = Math.min(Math.floor(Math.log(value) / Math.log(1024)), units.length - 1);
+    const scaled = value / 1024 ** unitIndex;
+    return `${scaled.toFixed(unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
+};
+
+const isUploading = computed(() => props.saving && props.uploadProgress !== null);
+const uploadPercent = computed(() => Math.max(0, Math.min(100, Number(props.uploadProgress?.percent) || 0)));
+const uploadLabel = computed(() => {
+    const loaded = props.uploadProgress?.loaded || 0;
+    const total = props.uploadProgress?.total || 0;
+    if (total > 0) {
+        return `${formatBytes(loaded)} / ${formatBytes(total)}`;
+    }
+    return 'Preparation de l\'envoi...';
+});
 
 const resetDraft = () => {
     draftDocument.type = 'Document';
@@ -383,6 +408,23 @@ onBeforeUnmount(() => {
                     :class="props.compact ? 'px-3 py-2 text-xs' : 'px-5 py-3'"
                 />
             </div>
+        </div>
+
+        <div
+            v-if="isUploading"
+            class="mb-4 rounded-xl border border-primary-200/70 dark:border-primary-700/50 bg-primary-50/80 dark:bg-primary-950/30 p-4 shadow-sm"
+            role="status"
+            aria-live="polite"
+        >
+            <div class="flex items-center justify-between gap-3 mb-2">
+                <div class="flex items-center gap-2 text-sm font-medium text-primary-800 dark:text-primary-200">
+                    <i class="pi pi-cloud-upload animate-pulse"></i>
+                    <span>Envoi des fichiers...</span>
+                </div>
+                <span class="text-sm font-semibold tabular-nums text-primary-700 dark:text-primary-300">{{ uploadPercent }}%</span>
+            </div>
+            <ProgressBar :value="uploadPercent" :showValue="false" class="h-2" />
+            <p class="mt-2 text-xs text-primary-700/80 dark:text-primary-300/80">{{ uploadLabel }}</p>
         </div>
 
         <div class="space-y-4">

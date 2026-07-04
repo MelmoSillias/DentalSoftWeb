@@ -55,6 +55,40 @@ class SalaryPaymentRepository extends ServiceEntityRepository
             ->getOneOrNullResult();
     }
 
+    public function sumPaidForMonthlyPeriod(Employe $employee, int $month, int $year): float
+    {
+        $result = $this->createQueryBuilder('sp')
+            ->select('COALESCE(SUM(sp.paidAmount), 0)')
+            ->andWhere('sp.employe = :employee')
+            ->andWhere('sp.month = :month')
+            ->andWhere('sp.year = :year')
+            ->andWhere('sp.frequenceSnapshot = :frequence')
+            ->setParameter('employee', $employee)
+            ->setParameter('month', $month)
+            ->setParameter('year', $year)
+            ->setParameter('frequence', 'mensuel')
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        return round((float) $result, 2);
+    }
+
+    public function sumPaidForWorkedDay(Employe $employee, \DateTimeInterface $workedDay): float
+    {
+        $result = $this->createQueryBuilder('sp')
+            ->select('COALESCE(SUM(sp.paidAmount), 0)')
+            ->andWhere('sp.employe = :employee')
+            ->andWhere('sp.workedDay = :workedDay')
+            ->andWhere('sp.frequenceSnapshot = :frequence')
+            ->setParameter('employee', $employee)
+            ->setParameter('workedDay', $workedDay->format('Y-m-d'))
+            ->setParameter('frequence', 'journalier')
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        return round((float) $result, 2);
+    }
+
     private function applyFilters($qb, ?int $employeeId, ?int $month, ?int $year): void
     {
         if ($employeeId) {

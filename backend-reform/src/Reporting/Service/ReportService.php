@@ -166,52 +166,29 @@ class ReportService
     }
 
     /**
-     * Charge une seule fois toutes les données nécessaires pour une période
+     * Charge les consultations d'une période avec toutes les relations nécessaires au calcul.
+     * Non mis en cache : les entités évoluent (clôture, actes, paiements) et une sérialisation
+     * Doctrine figerait statut/collections, excluant les actes du total.
+     *
+     * @return Consultation[]
      */
-    private function getPeriodData(DateTimeInterface $from, DateTimeInterface $to): array
+    private function loadConsultationsForPeriod(DateTimeInterface $from, DateTimeInterface $to): array
     {
-        $cacheKey = 'report.period_data.' . $from->format('Ymd') . '.' . $to->format('Ymd');
-
-        return $this->remember($cacheKey, 300, function () use ($from, $to) {
-            // Consultations avec tous les joins nécessaires
-            $consultations = $this->consultRepo->createQueryBuilder('c')
-                ->leftJoin('c.patient', 'p')
-                ->leftJoin('c.medecin', 'm')
-                ->leftJoin('c.facture', 'f')
-                ->leftJoin('c.factureAssurance', 'fa')
-                ->leftJoin('c.actes', 'a')
-                ->leftJoin('c.paiement', 'pay')
-                ->andWhere('c.CreatedAt BETWEEN :from AND :to')
-                ->setParameter('from', $from)
-                ->setParameter('to', $to)
-                ->getQuery()
-                ->getResult();
-
-            // Transactions
-            $transactions = $this->transactionRepo->createQueryBuilder('t')
-                ->leftJoin('t.modeDePaiement', 'm')
-                ->leftJoin('t.consultation', 'c')
-                ->andWhere('t.dateTransaction BETWEEN :from AND :to')
-                ->setParameter('from', $from)
-                ->setParameter('to', $to)
-                ->getQuery()
-                ->getResult();
-
-            // Rendez-vous
-            $rdvs = $this->rdvRepo->createQueryBuilder('r')
-                ->leftJoin('r.patient', 'p')
-                ->andWhere('r.dateRdv BETWEEN :from AND :to')
-                ->setParameter('from', $from)
-                ->setParameter('to', $to)
-                ->getQuery()
-                ->getResult();
-
-            return [
-                'consultations' => $consultations,
-                'transactions'  => $transactions,
-                'rdvs'          => $rdvs,
-            ];
-        });
+        return $this->consultRepo->createQueryBuilder('c')
+            ->select('c', 'p', 'm', 'f', 'fp', 'fa', 'a', 'pay')
+            ->distinct()
+            ->leftJoin('c.patient', 'p')
+            ->leftJoin('c.medecin', 'm')
+            ->leftJoin('c.facture', 'f')
+            ->leftJoin('f.paiements', 'fp')
+            ->leftJoin('c.factureAssurance', 'fa')
+            ->leftJoin('c.actes', 'a')
+            ->leftJoin('c.paiement', 'pay')
+            ->andWhere('c.CreatedAt BETWEEN :from AND :to')
+            ->setParameter('from', $from)
+            ->setParameter('to', $to)
+            ->getQuery()
+            ->getResult();
     }
 
     // ====================== RAPPORTS GÉNÉRAUX ======================
@@ -466,145 +443,184 @@ class ReportService
 
     public function periodicDoctorReports(DateTimeImmutable $from, DateTimeImmutable $to): array
     {
-        $cacheKey = 'report.doctor.reports.' . $from->format('Ymd') . '.' . $to->format('Ymd');
+        $consultations = $this->loadConsultationsForPeriod($from, $to);
+        $doctors = $this->employeRepo->FindAllMedecin() ?? [];
 
-        return $this->remember($cacheKey, 120, function () use ($from, $to) {
-            $periodData = $this->getPeriodData($from, $to);
-            $doctors = $this->employeRepo->FindAllMedecin() ?? [];
-
-            $doctorStats = [];
-            $totalRevenue = $totalSalaries = 0.0;
-
-            foreach ($doctors as $doctor) {
-                $consults = array_filter($periodData['consultations'], fn(Consultation $c) =>
-                    $c->getMedecin()?->getId() === $doctor->getId()
-                );
-
-                $stats = $this->computeDoctorStats($doctor, $consults, $from, $to, $periodData['transactions']);
-
-                $totalRevenue += $stats['revenue'];
-                $totalSalaries += $stats['salary'];
-
-                $doctorStats[] = $stats;
+        $consultationsByDoctor = [];
+        foreach ($consultations as $consultation) {
+            $doctorId = $consultation->getMedecin()?->getId();
+            if ($doctorId === null) {
+                continue;
             }
+            $consultationsByDoctor[$doctorId][] = $consultation;
+        }
 
-            return [
-                'kpi' => [
-                    'totalRevenue' => $totalRevenue,
-                    'afterFees' => $totalRevenue - $totalSalaries,
-                    'totalSalaries' => $totalSalaries,
-                    'totalConsultations' => count($periodData['consultations']),
-                ],
-                'doctors' => $doctorStats,
-            ];
-        });
+        $doctorStats = [];
+        $totalRevenue = $totalSalaries = 0.0;
+
+        foreach ($doctors as $doctor) {
+            $consults = $consultationsByDoctor[$doctor->getId()] ?? [];
+            $stats = $this->computeDoctorStats($doctor, $consults);
+
+            $totalRevenue += $stats['revenue'];
+            $totalSalaries += $stats['salary'];
+
+            $doctorStats[] = $stats;
+        }
+
+        return [
+            'kpi' => [
+                'totalRevenue' => $totalRevenue,
+                'afterFees' => $totalRevenue - $totalSalaries,
+                'totalSalaries' => $totalSalaries,
+                'totalConsultations' => count($consultations),
+            ],
+            'doctors' => $doctorStats,
+        ];
     }
 
-    private function computeDoctorStats(
-        Employe $doctor,
-        array $consultations,
-        DateTimeImmutable $from,
-        DateTimeImmutable $to,
-        array $allTransactions
-    ): array {
-        $paid = $free = 0;
-        $apport = $revenue = $totalAmount = $actsAmount = $relicat = 0.0;
-        $newPatients = $returningPatients = $totalActs = 0;
-        $patientIds = [];
-        $consultationDetails = [];
+    /**
+     * @return array{amount: float, labels: string[]}
+     */
+    private function computeConsultationActs(Consultation $consultation, bool $includeActs): array
+    {
+        if (!$includeActs) {
+            return ['amount' => 0.0, 'labels' => []];
+        }
+
+        $amount = 0.0;
+        $labels = [];
+
+        foreach ($consultation->getActes() as $acte) {
+            $amount += (float) (($acte->getPrix() ?? 0) * max(1, (int) ($acte->getQuantite() ?? 1)));
+
+            $label = trim((string) ($acte->getType() ?? ''));
+            if ($label === '') {
+                $label = trim((string) ($acte->getDescription() ?? ''));
+            }
+            if ($label !== '') {
+                $labels[] = $label;
+            }
+        }
+
+        return ['amount' => $amount, 'labels' => $labels];
+    }
+
+    /**
+     * @return array{
+     *     consultationAmount: float,
+     *     actsAmount: float,
+     *     totalAmount: float,
+     *     patientPaid: float,
+     *     reliquat: float,
+     *     isPaidConsultation: bool,
+     *     actLabels: string[]
+     * }
+     */
+    private function resolveConsultationBilling(Consultation $consultation): array
+    {
+        $isClosed = $consultation->getStatut() === 1;
+        $acts = $this->computeConsultationActs($consultation, $isClosed);
+        $actsAmount = $acts['amount'];
+        $actLabels = $acts['labels'];
+
+        $factureAssurance = $consultation->getFactureAssurance();
+        if ($factureAssurance !== null) {
+            $consultationAmount = $factureAssurance->isConsultationPayante()
+                ? (float) $factureAssurance->getConsultationAmount()
+                : 0.0;
+            $totalAmount = $consultationAmount + $actsAmount;
+            $patientPaid = $totalAmount;
+
+            return [
+                'consultationAmount' => $consultationAmount,
+                'actsAmount' => $actsAmount,
+                'totalAmount' => $totalAmount,
+                'patientPaid' => $patientPaid,
+                'reliquat' => max(0.0, $totalAmount - $patientPaid),
+                'isPaidConsultation' => $consultationAmount > 0.0,
+                'actLabels' => $actLabels,
+            ];
+        }
+
+        $consultationAmount = (float) ($consultation->getPaiement()?->getMontant() ?? 0);
+        $totalAmount = $consultationAmount + $actsAmount;
+        $patientPaid = $consultationAmount;
+
+        $facture = $consultation->getFacture();
+        if ($facture !== null) {
+            $patientPaid += (float) $facture->computePatientPaidAmount();
+        }
+
+        return [
+            'consultationAmount' => $consultationAmount,
+            'actsAmount' => $actsAmount,
+            'totalAmount' => $totalAmount,
+            'patientPaid' => $patientPaid,
+            'reliquat' => max(0.0, $totalAmount - $patientPaid),
+            'isPaidConsultation' => $consultationAmount > 0.0,
+            'actLabels' => $actLabels,
+        ];
+    }
+
+    private function buildConsultationActLineDescription(bool $hasConsultationFee, array $actLabels): string
+    {
+        $parts = $hasConsultationFee ? ['Consultation'] : [];
+        foreach ($actLabels as $label) {
+            $parts[] = $label;
+        }
+
+        return implode(' + ', $parts) ?: 'Consultation';
+    }
+
+    private function computeDoctorSalary(Employe $doctor, float $revenue): float
+    {
+        return match ($doctor->getTypeSalaire()) {
+            'pourcentage', 'percentage' => ($doctor->getValeurSalaire() ?? 0) / 100 * $revenue,
+            'non_defini' => 0.0,
+            default => (float) ($doctor->getValeurSalaire() ?? 0),
+        };
+    }
+
+    private function computeDoctorStats(Employe $doctor, array $consultations): array
+    {
+        $paidConsultations = 0;
+        $apport = $revenue = $reliquat = 0.0;
+        $newPatients = $returningPatients = 0;
+        $seenPatientIds = [];
         $actesList = [];
-        $paiementsPeriode = [];
 
-        /** @var Consultation $consult */
-        foreach ($consultations as $consult) {
-            /** @var Facture|null $facture */
-            $facture = $consult->getFacture();
-            /** @var FactureAssurance|null $factureAssurance */
-            $factureAssurance = $consult->getFactureAssurance();
-            $factureAssuranceTotals = $factureAssurance?->computeTotals() ?? [];
+        foreach ($consultations as $consultation) {
+            $billing = $this->resolveConsultationBilling($consultation);
 
-            $consultTotalAmount = $facture !== null
-                ? (float)($facture->computeMontantsFromConsultation()['montantTotal'] + $consult->getPaiement()?->getMontant() ?? 0)
-                : (float)($factureAssuranceTotals['montantTotal'] ?? 0);
-
-            $patientPaid = (float)($consult->getPaiement()?->getMontant() ?? 0);
-            $remainingPatient = $facture !== null
-                ? (float)($facture->computeMontantsFromConsultation()['restePatient'] ?? $consultTotalAmount)
-                : max(0, (float)($factureAssuranceTotals['montantPatient'] ?? 0) - $patientPaid);
-
-            $isInsuranceSettled = !$factureAssurance || $factureAssurance->getInsuranceStatus() === 'recouvre';
-
-            if ($facture !== null && $consult->getPaiement()?->getMontant() === 0 || $factureAssurance !== null && $factureAssurance->getConsultationAmount() === 0) {
-                $free++;
-            } else {
-                $paid++;
+            if ($billing['isPaidConsultation']) {
+                $paidConsultations++;
             }
 
-            $apport += $consultTotalAmount;
-            $totalAmount += $consultTotalAmount;
-            $relicat += $remainingPatient;
+            $apport += $billing['totalAmount'];
+            $revenue += $billing['patientPaid'];
+            $reliquat += $billing['reliquat'];
 
-            $patientId = $consult->getPatient()?->getId();
-            if ($patientId) {
-                if (!in_array($patientId, $patientIds, true)) {
+            $patientId = $consultation->getPatient()?->getId();
+            if ($patientId !== null) {
+                if (!isset($seenPatientIds[$patientId])) {
+                    $seenPatientIds[$patientId] = true;
                     $newPatients++;
-                    $patientIds[] = $patientId;
                 } else {
                     $returningPatients++;
                 }
             }
 
-            // Actes
-            $consultActesTotal = 0.0;
-            $actLabels = [];
-            foreach ($consult->getActes() as $acte) {
-                $totalActs++;
-                $actAmount = (float)(($acte->getPrix() ?? 0) * max(1, (int)($acte->getQuantite() ?? 1)));
-                $actsAmount += $actAmount;
-                $consultActesTotal += $actAmount;
-                $totalAmount += $actAmount;
-                $label = trim((string)($acte->getType() ?? ''));
-                if ($label === '') {
-                    $label = trim((string)($acte->getDescription() ?? ''));
-                }
-                if ($label !== '') {
-                    $actLabels[] = $label;
-                }
-            }
-
-            // Détails
-            if ($facture || $factureAssurance) {
-                $hasPaiement = $consult->getPaiement() !== null;
-                $parts = $hasPaiement ? ['Consultation'] : [];
-                foreach ($actLabels as $label) {
-                    $parts[] = $label;
-                }
-                $actesList[] = [
-                    'date'        => $consult->getCreatedAt()?->format('d/m/Y'),
-                    'patient'     => $consult->getPatient()?->getFullName() ?? 'Inconnu',
-                    'description' => implode(' + ', $parts) ?: 'Acte médical',
-                    'montant'     => $consultTotalAmount,
-                ];
-            }
+            $actesList[] = [
+                'date' => $consultation->getCreatedAt()?->format('d/m/Y'),
+                'patient' => $consultation->getPatient()?->getFullName() ?? 'Inconnu',
+                'description' => $this->buildConsultationActLineDescription(
+                    $billing['consultationAmount'] > 0.0,
+                    $billing['actLabels']
+                ),
+                'montant' => $billing['totalAmount'],
+            ];
         }
-
-        // Revenue via paiements (transactions filtrées par médecin)
-        $doctorTransactions = array_filter($allTransactions, fn(Transaction $t) =>
-            $t->getConsultation()?->getMedecin()?->getId() === $doctor->getId()
-        );
-
-        foreach ($doctorTransactions as $tx) {
-            if ($this->isRevenueTransactionType($tx->getType())) {
-                $revenue += (float)$tx->getMontant();
-            }
-        }
-
-        // Calcul salaire
-        $salary = match ($doctor->getTypeSalaire()) {
-            'pourcentage' => ($doctor->getValeurSalaire() ?? 0) / 100 * $revenue,
-            'non_defini'  => 0.0,
-            default       => (float)$doctor->getValeurSalaire(),
-        };
 
         return [
             'id' => $doctor->getId(),
@@ -614,15 +630,60 @@ class ReportService
             'returning_patients' => $returningPatients,
             'revenue' => $revenue,
             'apport' => $apport,
-            'reliquat' => $relicat,
-            'consultations_paid' => $paid,
-            'salary' => $salary,
+            'reliquat' => $reliquat,
+            'consultations_paid' => $paidConsultations,
+            'salary' => $this->computeDoctorSalary($doctor, $revenue),
             'actes' => $actesList,
-            // Ajoute d'autres champs si nécessaire
         ];
     }
 
     // ====================== AUTRES MÉTHODES (exemples optimisés) ======================
+
+    /**
+     * @return array<string, int> label => count (quantité)
+     */
+    public function periodicActsStats(?DateTime $from, ?DateTime $to): array
+    {
+        $cacheKey = 'report.periodicActsStats.' . ($from?->format('Ymd') ?? '') . '.' . ($to?->format('Ymd') ?? '');
+
+        return $this->remember($cacheKey, 180, function () use ($from, $to) {
+            $qb = $this->acteRepo->createQueryBuilder('a')
+                ->select('a.type', 'a.description', 'SUM(COALESCE(a.quantite, 1)) AS total')
+                ->innerJoin('a.consultation', 'c')
+                ->innerJoin('c.patient', 'p')
+                ->andWhere('p.deletedAt IS NULL');
+
+            if ($from) {
+                $qb->andWhere('c.CreatedAt >= :from')->setParameter('from', $from);
+            }
+            if ($to) {
+                $qb->andWhere('c.CreatedAt <= :to')->setParameter('to', $to);
+            }
+
+            $rows = $qb
+                ->groupBy('a.type', 'a.description')
+                ->orderBy('total', 'DESC')
+                ->getQuery()
+                ->getArrayResult();
+
+            $stats = [];
+            foreach ($rows as $row) {
+                $label = trim((string) ($row['type'] ?? ''));
+                if ($label === '') {
+                    $label = trim((string) ($row['description'] ?? ''));
+                }
+                if ($label === '') {
+                    $label = 'Autre';
+                }
+
+                $stats[$label] = ($stats[$label] ?? 0) + (int) ($row['total'] ?? 0);
+            }
+
+            arsort($stats);
+
+            return $stats;
+        });
+    }
 
     public function periodicConsultations(?DateTime $from, ?DateTime $to): array
     {

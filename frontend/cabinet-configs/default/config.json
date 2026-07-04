@@ -10,6 +10,17 @@
   "smsTestMessage": "Message de test CABINET DEMO.",
   "reportCabinetName": "CABINET DENTAIRE DEMO",
   "cabinetPhone": "+223 XX XX XX XX / +223 XX XX XX XX",
+  "printProfile": {
+    "name": "CABINET DENTAIRE DEMO",
+    "addressLines": [
+      "BAMAKO, MALI, SIMCORP,",
+      "PORTE : 192; BKO MALI"
+    ],
+    "phones": [
+      "82 81 90 79"
+    ],
+    "email": "bamogomohamed90@gmail.com"
+  },
   "viteApiPrefix": "http://localhost:8010/api",
   "viteFilePrefix": "http://localhost:8010",
   "brandingAssets": {

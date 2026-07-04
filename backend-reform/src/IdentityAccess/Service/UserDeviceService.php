@@ -9,7 +9,6 @@ use App\IdentityAccess\Entity\UserDevice;
 use App\IdentityAccess\Entity\UserDeviceAccessLog;
 use App\IdentityAccess\Repository\UserDeviceAccessLogRepository;
 use App\IdentityAccess\Repository\UserDeviceRepository;
-use App\IdentityAccess\Repository\UserRepository;
 use App\Settings\Service\GlobalSettingsService;
 use Doctrine\DBAL\Exception\RetryableException;
 use Doctrine\ORM\EntityManagerInterface;
@@ -22,18 +21,11 @@ class UserDeviceService
     public function __construct(
         private UserDeviceRepository $userDeviceRepo,
         private UserDeviceAccessLogRepository $accessLogRepo,
-        private UserRepository $userRepo,
         private EntityManagerInterface $em,
         private NotificationService $notificationService,
         private NotificationRecipientResolver $recipientResolver,
         private GlobalSettingsService $globalSettingsService,
-        private int $maxDevicesPerUser = 2,
     ) {
-    }
-
-    public function getMaxDevicesPerUser(): int
-    {
-        return max(1, $this->maxDevicesPerUser);
     }
 
     /** @return array{id:string,name:string,type:string,userAgent:?string,ip:?string} */
@@ -71,22 +63,21 @@ class UserDeviceService
     {
         $context = $this->resolveRequestDevice($request);
 
-        $device = $this->userDeviceRepo->findOneByUserAndIdentifier($user, $context['id']);
+        $device = $this->userDeviceRepo->findOneByIdentifier($context['id']);
         $now = new \DateTimeImmutable();
 
         if (!$device) {
             $autoApproveEnabled = $this->globalSettingsService->isAutoApproveDevicesEnabled();
-            $isBootstrapAdminDevice = in_array('ROLE_ADMIN', $user->getRoles(), true)
-                && $this->userDeviceRepo->countApprovedByUser($user) === 0;
-            $shouldAutoApprove = $autoApproveEnabled || $isBootstrapAdminDevice;
+            $isBootstrapDevice = $this->userDeviceRepo->countApproved() === 0;
+            $shouldAutoApprove = $autoApproveEnabled || $isBootstrapDevice;
 
             $device = (new UserDevice())
-                ->setUser($user)
                 ->setDeviceIdentifier($context['id'])
                 ->setDeviceName($context['name'])
                 ->setDeviceType($context['type'])
                 ->setUserAgent($context['userAgent'])
                 ->setIpAddress($context['ip'])
+                ->setRequestedBy($user)
                 ->setRequestedAt($now)
                 ->setLastSeenAt($now)
                 ->setStatus($shouldAutoApprove ? UserDevice::STATUS_APPROVED : UserDevice::STATUS_PENDING)
@@ -167,37 +158,24 @@ class UserDeviceService
         ];
     }
 
-    /** @return array<int, array<string,mixed>> */
-    public function listDevicesForUser(int $userId): array
+    /** @return array{devices: array<int, array<string,mixed>>, stats: array{approved:int,pending:int,rejected:int,total:int}, logs: array<int, array<string,mixed>>} */
+    public function listGlobalDevices(int $logLimit = 50): array
     {
-        $user = $this->userRepo->find($userId);
-        if (!$user) {
-            return [];
-        }
-
-        return array_map(fn(UserDevice $device) => $this->serializeDevice($device), $this->userDeviceRepo->findByUserOrdered($user));
+        return [
+            'devices' => array_map(
+                fn (UserDevice $device) => $this->serializeDevice($device),
+                $this->userDeviceRepo->findAllOrdered()
+            ),
+            'stats' => $this->userDeviceRepo->countByStatus(),
+            'logs' => $this->getRecentAccessLogs($logLimit),
+        ];
     }
 
-    public function approveDevice(int $userId, int $deviceId, ?User $admin): array
+    public function approveDevice(int $deviceId, ?User $admin): array
     {
-        $user = $this->userRepo->find($userId);
-        if (!$user) {
-            return ['error' => 'Utilisateur introuvable', 'status' => 404];
-        }
-
         $device = $this->userDeviceRepo->find($deviceId);
-        if (!$device || $device->getUser()?->getId() !== $user->getId()) {
+        if (!$device) {
             return ['error' => 'Appareil introuvable', 'status' => 404];
-        }
-
-        $approvedCount = $this->userDeviceRepo->countApprovedByUser($user);
-        $isAlreadyApproved = $device->getStatus() === UserDevice::STATUS_APPROVED;
-
-        if (!$isAlreadyApproved && $approvedCount >= $this->getMaxDevicesPerUser()) {
-            return [
-                'error' => sprintf('Limite atteinte: maximum %d appareils autorises.', $this->getMaxDevicesPerUser()),
-                'status' => 400,
-            ];
         }
 
         $device
@@ -208,27 +186,13 @@ class UserDeviceService
 
         $this->em->flush();
 
-        $this->notificationService->notify(
-            $user,
-            sprintf('Votre appareil "%s" a ete approuve.', $device->getDeviceName() ?? 'Inconnu'),
-            'info',
-            '/profile',
-            'success',
-            $admin,
-        );
-
         return ['success' => true, 'device' => $this->serializeDevice($device)];
     }
 
-    public function rejectDevice(int $userId, int $deviceId, ?User $admin): array
+    public function rejectDevice(int $deviceId, ?User $admin): array
     {
-        $user = $this->userRepo->find($userId);
-        if (!$user) {
-            return ['error' => 'Utilisateur introuvable', 'status' => 404];
-        }
-
         $device = $this->userDeviceRepo->find($deviceId);
-        if (!$device || $device->getUser()?->getId() !== $user->getId()) {
+        if (!$device) {
             return ['error' => 'Appareil introuvable', 'status' => 404];
         }
 
@@ -239,27 +203,13 @@ class UserDeviceService
 
         $this->em->flush();
 
-        $this->notificationService->notify(
-            $user,
-            sprintf('Votre appareil "%s" a ete refuse.', $device->getDeviceName() ?? 'Inconnu'),
-            'warning',
-            '/profile',
-            'warning',
-            $admin,
-        );
-
         return ['success' => true, 'device' => $this->serializeDevice($device)];
     }
 
-    public function deleteDevice(int $userId, int $deviceId): array
+    public function deleteDevice(int $deviceId): array
     {
-        $user = $this->userRepo->find($userId);
-        if (!$user) {
-            return ['error' => 'Utilisateur introuvable', 'status' => 404];
-        }
-
         $device = $this->userDeviceRepo->find($deviceId);
-        if (!$device || $device->getUser()?->getId() !== $user->getId()) {
+        if (!$device) {
             return ['error' => 'Appareil introuvable', 'status' => 404];
         }
 
@@ -269,48 +219,53 @@ class UserDeviceService
         return ['success' => true];
     }
 
-    /** @return array<int, array<string,mixed>> */
-    public function getUserAccessLogs(int $userId, int $limit = 50): array
+    public function renameDevice(int $deviceId, string $name): array
     {
-        $user = $this->userRepo->find($userId);
-        if (!$user) {
-            return [];
+        $device = $this->userDeviceRepo->find($deviceId);
+        if (!$device) {
+            return ['error' => 'Appareil introuvable', 'status' => 404];
         }
 
-        $logs = $this->accessLogRepo->findLatestByUser($user, max(1, min(200, $limit)));
+        $name = trim($name);
+        if ($name === '' || mb_strlen($name) > 255) {
+            return ['error' => 'Nom invalide (1 a 255 caracteres)', 'status' => 400];
+        }
 
-        return array_map(static fn(UserDeviceAccessLog $log): array => [
+        $device->setCustomName($name);
+        $this->em->flush();
+
+        return ['success' => true, 'device' => $this->serializeDevice($device)];
+    }
+
+    /** @return array<int, array<string,mixed>> */
+    public function getRecentAccessLogs(int $limit = 50): array
+    {
+        $logs = $this->accessLogRepo->findLatest(max(1, min(200, $limit)));
+
+        return array_map(static fn (UserDeviceAccessLog $log): array => [
             'id' => $log->getId(),
+            'username' => $log->getUser()?->getUsername(),
             'path' => $log->getPath(),
             'status' => $log->getStatus(),
             'ipAddress' => $log->getIpAddress(),
             'userAgent' => $log->getUserAgent(),
             'createdAt' => $log->getCreatedAt()?->format(DATE_ATOM),
             'deviceId' => $log->getDevice()?->getId(),
-            'deviceName' => $log->getDevice()?->getDeviceName(),
+            'deviceName' => $log->getDevice()?->getDisplayName(),
         ], $logs);
     }
 
     private function notifyNewDeviceRequest(User $user, UserDevice $device): void
     {
-        $deviceName = $device->getDeviceName() ?: 'Appareil inconnu';
-
-        $this->notificationService->notify(
-            $user,
-            sprintf('Connexion detectee sur un nouvel appareil "%s". En attente de validation.', $deviceName),
-            'warning',
-            '/profile',
-            'warning',
-            null,
-        );
+        $deviceName = $device->getDisplayName();
 
         $admins = $this->recipientResolver->admins();
         if ($admins !== []) {
             $this->notificationService->notifyMany(
                 $admins,
-                sprintf('Nouvelle demande d appareil pour %s (%s).', $user->getUsername(), $deviceName),
+                sprintf('Nouvelle demande d appareil "%s" (premiere connexion: %s).', $deviceName, $user->getUsername()),
                 'warning',
-                '/administration/utilisateurs',
+                '/parametres/apparence',
                 'warning',
                 null
             );
@@ -386,10 +341,13 @@ class UserDeviceService
             'id' => $device->getId(),
             'deviceIdentifier' => $device->getDeviceIdentifier(),
             'deviceName' => $device->getDeviceName(),
+            'customName' => $device->getCustomName(),
+            'displayName' => $device->getDisplayName(),
             'deviceType' => $device->getDeviceType(),
             'status' => $device->getStatus(),
             'ipAddress' => $device->getIpAddress(),
             'requestedAt' => $device->getRequestedAt()?->format(DATE_ATOM),
+            'requestedBy' => $device->getRequestedBy()?->getUsername(),
             'validatedAt' => $device->getValidatedAt()?->format(DATE_ATOM),
             'lastSeenAt' => $device->getLastSeenAt()?->format(DATE_ATOM),
             'validatedBy' => $device->getValidatedBy()?->getUsername(),

@@ -28,10 +28,10 @@ export const fetchTestModeStatus = async (token) => {
     return res.data;
 };
 
-export const toggleTestMode = async ({ enabled, password }, token) => {
+export const toggleTestMode = async ({ enabled, password, deleteTestData = true }, token) => {
     const res = await http.put(
         `${apiPrefix}/settings/test-mode/toggle`,
-        { enabled, password },
+        { enabled, password, deleteTestData },
         { headers: authHeaders(token) }
     );
 
@@ -82,5 +82,34 @@ export const resetDatabase = async ({ password }, token) => {
         { headers: authHeaders(token) }
     );
 
+    return res.data;
+};
+
+export const fetchApprovedDevices = async (token) => {
+    const res = await http.get(`${apiPrefix}/settings/devices`, { headers: authHeaders(token) });
+    return res.data;
+};
+
+export const approveDevice = async (deviceId, token) => {
+    const res = await http.post(`${apiPrefix}/settings/devices/${deviceId}/approve`, {}, { headers: authHeaders(token) });
+    return res.data;
+};
+
+export const rejectDevice = async (deviceId, token) => {
+    const res = await http.post(`${apiPrefix}/settings/devices/${deviceId}/reject`, {}, { headers: authHeaders(token) });
+    return res.data;
+};
+
+export const deleteDevice = async (deviceId, token) => {
+    const res = await http.delete(`${apiPrefix}/settings/devices/${deviceId}`, { headers: authHeaders(token) });
+    return res.data;
+};
+
+export const renameDevice = async (deviceId, name, token) => {
+    const res = await http.put(
+        `${apiPrefix}/settings/devices/${deviceId}/rename`,
+        { name },
+        { headers: authHeaders(token) }
+    );
     return res.data;
 };

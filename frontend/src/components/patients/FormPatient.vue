@@ -52,7 +52,7 @@ const groups = [
 
 const referralSources = [
     { label: 'Réseaux sociaux', value: 'Reseaux sociaux' },
-    { label: 'Bouche à bouche', value: 'Bouche a bouche' },
+    { label: 'Bouche à oreille', value: 'Bouche a oreille' },
     { label: 'Recommandation', value: 'Recommandation' },
     { label: 'Par un médecin', value: 'Par un medecin' },
     { label: 'Publicité', value: 'Publicite' },
@@ -330,11 +330,6 @@ watch(
         form.insuranceProfile.assuranceId = insurance?.id ?? null;
         if (!insurance) {
             return;
-        }
-
-        const defaultRate = Number(insurance?.defaultRate ?? insurance?.tauxParDefaut ?? 0) || 0;
-        if (!(Number(form.insuranceProfile.coverageRate) > 0)) {
-            form.insuranceProfile.coverageRate = defaultRate;
         }
     }
 );

@@ -1,5 +1,5 @@
 {
-  "id": "default",
+  "id": "massaman",
   "displayName": "CENTRE DENTAIRE MASSAMAN",
   "appTitle": "DentalSoft - CENTRE DENTAIRE MASSAMAN",
   "brandName": "DentalSoft",
@@ -9,7 +9,18 @@
   "smsCabinetName": "CENTRE DENTAIRE MASSAMAN",
   "smsTestMessage": "Message de test CENTRE DENTAIRE MASSAMAN.",
   "reportCabinetName": "CENTRE DENTAIRE MASSAMAN",
-  "cabinetPhone": "+223 77 27 28 61 / +223 44 51 61 85",
+  "cabinetPhone": "+223 44 54 26 09 / +223 97 08 12 92",
+  "printProfile": {
+    "name": "CENTRE DENTAIRE MASSAMAN",
+    "addressLines": [
+      "Kalaban coura ACI Rue 404 Porte 963"
+    ],
+    "phones": [
+      "44 54 26 09",
+      "97 08 12 92"
+    ],
+    "email": "cheickba16@gmail.com"
+  },
   "viteApiPrefix": "https://api.cabinet-orodent.org/api",
   "viteFilePrefix": "https://api.cabinet-orodent.org/",
   "brandingAssets": {

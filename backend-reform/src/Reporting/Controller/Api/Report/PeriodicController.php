@@ -78,7 +78,22 @@ class PeriodicController extends AbstractController
     #[Route('/periodic/acts-stats', name: 'periodic_acts_stats', methods: ['GET'])]
     public function periodicActsStats(Request $request): JsonResponse
     {
-        return $this->json((object) []);
+        $from = $request->query->get('from');
+        $to = $request->query->get('to');
+        $fromDate = $from ? \DateTime::createFromFormat('Y-m-d', $from) : null;
+        $toDate = $to ? \DateTime::createFromFormat('Y-m-d', $to) : null;
+        if (($from && !$fromDate) || ($to && !$toDate)) {
+            return $this->json(['error' => 'Invalid date format. Use YYYY-MM-DD.'], 400);
+        }
+
+        if ($fromDate) {
+            $fromDate->setTime(0, 0, 0);
+        }
+        if ($toDate) {
+            $toDate->setTime(23, 59, 59);
+        }
+
+        return $this->json($this->reportService->periodicActsStats($fromDate, $toDate));
     }
 
     #[Route('/periodic/doctor-reports', name: 'periodic_doctor_reports', methods: ['GET'])]

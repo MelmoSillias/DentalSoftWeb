@@ -38,7 +38,11 @@ final class ApiDeviceGuardSubscriber implements EventSubscriberInterface
             return;
         }
 
-        if (str_starts_with($path, '/api/login') || str_starts_with($path, '/api/token/validate')) {
+        if (
+            str_starts_with($path, '/api/login')
+            || str_starts_with($path, '/api/token/validate')
+            || str_starts_with($path, '/api/device/status')
+        ) {
             return;
         }
 
@@ -55,6 +59,7 @@ final class ApiDeviceGuardSubscriber implements EventSubscriberInterface
         $event->setController(static fn() => new JsonResponse([
             'error' => 'device_not_allowed',
             'message' => $result['message'],
+            'status' => $result['device']->getStatus(),
         ], $result['code']));
     }
 }
