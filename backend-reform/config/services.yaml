@@ -19,6 +19,7 @@ services:
         resource: '../src/'
         exclude:
             - '../src/DependencyInjection/'
+            - '../src/DataFixtures/'
             - '../src/Entity/'
             - '../src/Patient/Entity/'
             - '../src/ClinicalRecord/Entity/'
@@ -41,3 +42,21 @@ services:
     Symfony\Component\Mercure\Jwt\TokenFactoryInterface: '@defaultTokenFactory'
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
+
+when@dev:
+    services:
+        _defaults:
+            autowire: true
+            autoconfigure: true
+
+        App\DataFixtures\:
+            resource: '../src/DataFixtures/'
+
+when@test:
+    services:
+        _defaults:
+            autowire: true
+            autoconfigure: true
+
+        App\DataFixtures\:
+            resource: '../src/DataFixtures/'
