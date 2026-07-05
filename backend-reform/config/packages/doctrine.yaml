@@ -18,12 +18,60 @@ doctrine:
             Doctrine\DBAL\Platforms\PostgreSQLPlatform: identity
         auto_mapping: true
         mappings:
-            App:
+            Billing:
                 type: attribute
                 is_bundle: false
-                dir: '%kernel.project_dir%/src'
-                prefix: 'App'
-                alias: App
+                dir: '%kernel.project_dir%/src/Billing/Entity'
+                prefix: 'App\Billing\Entity'
+                alias: Billing
+            CareDelivery:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/src/CareDelivery/Entity'
+                prefix: 'App\CareDelivery\Entity'
+                alias: CareDelivery
+            ClinicalRecord:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/src/ClinicalRecord/Entity'
+                prefix: 'App\ClinicalRecord\Entity'
+                alias: ClinicalRecord
+            Communication:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/src/Communication/Entity'
+                prefix: 'App\Communication\Entity'
+                alias: Communication
+            IdentityAccess:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/src/IdentityAccess/Entity'
+                prefix: 'App\IdentityAccess\Entity'
+                alias: IdentityAccess
+            Inventory:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/src/Inventory/Entity'
+                prefix: 'App\Inventory\Entity'
+                alias: Inventory
+            Patient:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/src/Patient/Entity'
+                prefix: 'App\Patient\Entity'
+                alias: Patient
+            Scheduling:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/src/Scheduling/Entity'
+                prefix: 'App\Scheduling\Entity'
+                alias: Scheduling
+            Settings:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/src/Settings/Entity'
+                prefix: 'App\Settings\Entity'
+                alias: Settings
         controller_resolver:
             auto_mapping: false
 
