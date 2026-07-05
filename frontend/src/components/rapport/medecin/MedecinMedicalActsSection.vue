@@ -7,6 +7,8 @@ import Tag from 'primevue/tag';
 
 const props = defineProps({
     acts: { type: Array, default: () => [] },
+    reliquatPayments: { type: Array, default: () => [] },
+    reliquatTotal: { type: Number, default: 0 },
     loading: { type: Boolean, default: false }
 });
 
@@ -23,9 +25,14 @@ const chartData = computed(() => {
         labels: props.acts.map((row) => row.description || 'Acte'),
         datasets: [
             {
-                label: 'Montant',
+                label: 'Montant apport',
                 backgroundColor: documentStyle.getPropertyValue('--p-primary-500'),
                 data: props.acts.map((row) => Number(row.montant || 0))
+            },
+            {
+                label: 'Montant payé',
+                backgroundColor: documentStyle.getPropertyValue('--p-emerald-500'),
+                data: props.acts.map((row) => Number(row.montantPaye || 0))
             }
         ]
     };
@@ -64,20 +71,59 @@ const chartOptions = computed(() => {
                 </div>
             </div>
             <template v-else>
-                <ul v-if="acts.length" class="space-y-2">
-                    <li
-                        v-for="(act, idx) in acts"
-                        :key="idx"
-                        class="flex flex-col gap-1 rounded-xl border border-surface-200/60 bg-surface-50 p-3 text-sm dark:border-surface-700 dark:bg-surface-800"
-                    >
-                        <div class="flex items-center justify-between gap-2">
-                            <strong class="text-surface-900 dark:text-surface-0">{{ act.description }}</strong>
-                            <Tag :value="formatFcfa(act.montant)" severity="secondary" />
+                <div class="space-y-6">
+                    <div>
+                        <h4 class="mb-2 text-sm font-semibold text-surface-900 dark:text-surface-0">Soins de la période</h4>
+                        <ul v-if="acts.length" class="space-y-2">
+                            <li
+                                v-for="(act, idx) in acts"
+                                :key="idx"
+                                class="flex flex-col gap-2 rounded-xl border border-surface-200/60 bg-surface-50 p-3 text-sm dark:border-surface-700 dark:bg-surface-800"
+                            >
+                                <div class="flex flex-wrap items-center justify-between gap-2">
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <strong class="text-surface-900 dark:text-surface-0">{{ act.description }}</strong>
+                                        <Tag v-if="act.isInsurance" value="Assurance" severity="info" />
+                                    </div>
+                                    <div class="flex flex-wrap gap-2">
+                                        <Tag :value="`Apport ${formatFcfa(act.montant)}`" severity="secondary" />
+                                        <Tag v-if="act.isInsurance" :value="`Assurance ${formatFcfa(act.montantAssurance)}`" severity="info" />
+                                        <Tag v-if="act.isInsurance" :value="`Patient ${formatFcfa(act.montantPatient)}`" severity="secondary" />
+                                        <Tag :value="`Payé ${formatFcfa(act.montantPaye)}`" severity="success" />
+                                    </div>
+                                </div>
+                                <p class="text-surface-500">{{ act.patient }} • {{ act.date }}</p>
+                            </li>
+                        </ul>
+                        <p v-else class="text-sm text-surface-500">Aucun soin posé durant cette période.</p>
+                    </div>
+
+                    <div>
+                        <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+                            <h4 class="text-sm font-semibold text-surface-900 dark:text-surface-0">Paiements de reliquats</h4>
+                            <Tag :value="`Total ${formatFcfa(reliquatTotal)}`" severity="info" />
                         </div>
-                        <p class="text-surface-500">{{ act.patient }} • {{ act.date }}</p>
-                    </li>
-                </ul>
-                <p v-else class="text-sm text-surface-500">Aucun acte posé durant cette période.</p>
+                        <ul v-if="reliquatPayments.length" class="space-y-2">
+                            <li
+                                v-for="(payment, idx) in reliquatPayments"
+                                :key="`reliquat-${idx}`"
+                                class="flex flex-col gap-1 rounded-xl border border-surface-200/60 bg-surface-50 p-3 text-sm dark:border-surface-700 dark:bg-surface-800"
+                            >
+                                <div class="flex flex-wrap items-center justify-between gap-2">
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <strong class="text-surface-900 dark:text-surface-0">{{ payment.description }}</strong>
+                                        <Tag v-if="payment.isInsurance" value="Assurance" severity="info" />
+                                    </div>
+                                    <Tag :value="formatFcfa(payment.montant)" severity="info" />
+                                </div>
+                                <p class="text-surface-500">
+                                    {{ payment.patient }} • Paiement {{ payment.date }} • Consultation {{ payment.consultation_date }}
+                                </p>
+                            </li>
+                        </ul>
+                        <p v-else class="text-sm text-surface-500">Aucun paiement de reliquat sur cette période.</p>
+                    </div>
+                </div>
             </template>
         </template>
     </Card>

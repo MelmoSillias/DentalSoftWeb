@@ -364,7 +364,10 @@ class FinanceService
         $transaction->setDateTransaction($date);
         $transaction->setModeDePaiement($mode);
 
-        $transaction->markValidated();
+        $validatedAt = $date instanceof DateTimeImmutable
+            ? $date
+            : DateTimeImmutable::createFromInterface($date);
+        $transaction->markValidated($validatedAt);
 
         $this->em->persist($transaction);
         $this->em->flush();
@@ -531,7 +534,10 @@ class FinanceService
         $tOut->setDateTransaction($date);
         $tOut->setDescription("[Transfert] vers {$to->getLibelle()} - {$motif}");
         $tOut->setModeDePaiement($from);
-        $tOut->markValidated();
+        $validatedAt = $date instanceof DateTimeImmutable
+            ? $date
+            : DateTimeImmutable::createFromInterface($date);
+        $tOut->markValidated($validatedAt);
         $this->em->persist($tOut);
 
         $tIn = new Transaction();
@@ -540,7 +546,7 @@ class FinanceService
         $tIn->setDateTransaction($date);
         $tIn->setDescription("[Transfert] depuis {$from->getLibelle()} - {$motif}");
         $tIn->setModeDePaiement($to);
-        $tIn->markValidated();
+        $tIn->markValidated($validatedAt);
         $this->em->persist($tIn);
 
         $this->em->flush();

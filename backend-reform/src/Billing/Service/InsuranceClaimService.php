@@ -216,7 +216,7 @@ class InsuranceClaimService
         $transaction->setConsultation($consultation);
         $transaction->setRolePaiement('patient_insurance');
         $transaction->setTauxPriseEnCharge($facture->getCoverageRate());
-        $transaction->markValidated();
+        $transaction->markValidated($dateTransaction);
         $transaction->setPaiement($paiement);
 
         $this->em->persist($paiement);

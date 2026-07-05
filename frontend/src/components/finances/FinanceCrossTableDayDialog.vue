@@ -99,7 +99,9 @@ const synthesisItems = computed(() => [
     { key: 'revenue', label: 'Revenus validés', value: formatFcfa(overview.value.totals?.revenue), icon: 'pi pi-arrow-down-left', iconBg: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-300' },
     { key: 'expense', label: 'Dépenses validées', value: formatFcfa(overview.value.totals?.expense), icon: 'pi pi-arrow-up-right', iconBg: 'bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-300' },
     { key: 'doctors', label: 'Médecins actifs', value: (overview.value.doctors || []).length, icon: 'pi pi-id-card' },
-    { key: 'doctorRevenue', label: 'Apport total médecins', value: formatFcfa(overview.value.doctorsKpi?.totalRevenue), icon: 'pi pi-chart-bar' }
+    { key: 'doctorRevenue', label: 'Apport total médecins', value: formatFcfa(overview.value.doctorsKpi?.totalApport ?? overview.value.doctorsKpi?.totalRevenue), icon: 'pi pi-chart-bar' },
+    { key: 'doctorInsurance', label: 'Parts assurance', value: formatFcfa(overview.value.doctorsKpi?.totalPartAssurance), icon: 'pi pi-shield' },
+    { key: 'doctorCash', label: 'Encaissement réel médecins', value: formatFcfa(overview.value.doctorsKpi?.totalPaidCash ?? overview.value.doctorsKpi?.totalPaid), icon: 'pi pi-wallet' }
 ]);
 
 const actsTotal = computed(() =>

@@ -240,7 +240,7 @@ class LotFactureAssuranceService
         $transaction->setModeDePaiement($mode);
         $transaction->setLotFactureAssurance($lot);
         $transaction->setRolePaiement('insurance_lot');
-        $transaction->markValidated();
+        $transaction->markValidated($dateTransaction);
 
         foreach ($lot->getFacturesAssurance() as $facture) {
             if (!$facture instanceof FactureAssurance) {

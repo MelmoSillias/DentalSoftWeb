@@ -1,0 +1,14 @@
+var/
+vendor/
+.env.local
+.env.*.local
+.env.local.php
+node_modules/
+public/bundles/
+public/assets/
+assets/vendor/
+.git
+.gitignore
+.phpunit.result.cache
+phpunit.xml
+migrations/

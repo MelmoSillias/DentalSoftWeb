@@ -1,0 +1,11 @@
+node_modules
+dist
+.env
+.env.*
+coverage
+*.log
+.DS_Store
+.idea
+.eslintcache
+.git
+.gitignore

@@ -5,6 +5,7 @@ namespace App\Reporting\Service;
 use App\Billing\Entity\ModeDePaiement;
 use App\Billing\Entity\Facture;
 use App\Billing\Entity\FactureAssurance;
+use App\Billing\Entity\Paiement;
 use App\Billing\Entity\Transaction;
 use App\Billing\Repository\TransactionRepository;
 use App\CareDelivery\Entity\Consultation;
@@ -445,9 +446,12 @@ class ReportService
     {
         $consultations = $this->loadConsultationsForPeriod($from, $to);
         $doctors = $this->employeRepo->FindAllMedecin() ?? [];
+        $reliquatPaymentsByDoctor = $this->loadReliquatPaymentsByDoctor($from, $to);
 
         $consultationsByDoctor = [];
+        $consultationCount = 0;
         foreach ($consultations as $consultation) {
+            $consultationCount++;
             $doctorId = $consultation->getMedecin()?->getId();
             if ($doctorId === null) {
                 continue;
@@ -456,13 +460,18 @@ class ReportService
         }
 
         $doctorStats = [];
-        $totalRevenue = $totalSalaries = 0.0;
+        $totalApport = $totalPartAssurance = $totalPaidCash = $totalRemuneration = $totalSalaries = 0.0;
 
         foreach ($doctors as $doctor) {
-            $consults = $consultationsByDoctor[$doctor->getId()] ?? [];
-            $stats = $this->computeDoctorStats($doctor, $consults);
+            $doctorId = $doctor->getId();
+            $consults = $consultationsByDoctor[$doctorId] ?? [];
+            $reliquatPayments = $reliquatPaymentsByDoctor[$doctorId] ?? [];
+            $stats = $this->computeDoctorStats($doctor, $consults, $from, $to, $reliquatPayments);
 
-            $totalRevenue += $stats['revenue'];
+            $totalApport += $stats['apport'];
+            $totalPartAssurance += $stats['apport_assurance'];
+            $totalPaidCash += $stats['revenue_cash'];
+            $totalRemuneration += $stats['revenue_total'];
             $totalSalaries += $stats['salary'];
 
             $doctorStats[] = $stats;
@@ -470,10 +479,15 @@ class ReportService
 
         return [
             'kpi' => [
-                'totalRevenue' => $totalRevenue,
-                'afterFees' => $totalRevenue - $totalSalaries,
+                'totalApport' => $totalApport,
+                'totalPartAssurance' => $totalPartAssurance,
+                'totalPaidCash' => $totalPaidCash,
+                'totalRemuneration' => $totalRemuneration,
+                'totalPaid' => $totalPaidCash,
+                'totalRevenue' => $totalRemuneration,
+                'afterFees' => $totalRemuneration - $totalSalaries,
                 'totalSalaries' => $totalSalaries,
-                'totalConsultations' => count($consultations),
+                'totalConsultations' => $consultationCount,
             ],
             'doctors' => $doctorStats,
         ];
@@ -511,9 +525,12 @@ class ReportService
      *     consultationAmount: float,
      *     actsAmount: float,
      *     totalAmount: float,
+     *     apportPatient: float,
+     *     apportAssurance: float,
      *     patientPaid: float,
      *     reliquat: float,
      *     isPaidConsultation: bool,
+     *     isInsurance: bool,
      *     actLabels: string[]
      * }
      */
@@ -526,39 +543,58 @@ class ReportService
 
         $factureAssurance = $consultation->getFactureAssurance();
         if ($factureAssurance !== null) {
+            if (!$isClosed) {
+                $consultationFee = $factureAssurance->isConsultationPayante()
+                    ? (float) $factureAssurance->getConsultationAmount()
+                    : 0.0;
+                $totalAmount = $consultationFee;
+                $rate = $factureAssurance->getCoverageRate();
+                $rateValue = $rate === null ? null : max(0.0, min(100.0, (float) $rate));
+                $apportAssurance = $rateValue === null
+                    ? 0.0
+                    : max(0.0, min($totalAmount, ($totalAmount * $rateValue) / 100));
+                $apportPatient = max(0.0, $totalAmount - $apportAssurance);
+            } else {
+                $totals = $factureAssurance->computeTotals();
+                $totalAmount = (float) ($totals['montantTotal'] ?? 0.0);
+                $apportPatient = (float) ($totals['montantPatient'] ?? 0.0);
+                $apportAssurance = (float) ($totals['montantAssureur'] ?? 0.0);
+            }
+
+            $patientPaid = $this->sumValidatedInsurancePatientPayments($consultation)
+                + $this->sumValidatedTicketPayment($consultation);
             $consultationAmount = $factureAssurance->isConsultationPayante()
                 ? (float) $factureAssurance->getConsultationAmount()
                 : 0.0;
-            $totalAmount = $consultationAmount + $actsAmount;
-            $patientPaid = $totalAmount;
 
             return [
                 'consultationAmount' => $consultationAmount,
-                'actsAmount' => $actsAmount,
+                'actsAmount' => $isClosed ? $actsAmount : 0.0,
                 'totalAmount' => $totalAmount,
+                'apportPatient' => $apportPatient,
+                'apportAssurance' => $apportAssurance,
                 'patientPaid' => $patientPaid,
-                'reliquat' => max(0.0, $totalAmount - $patientPaid),
-                'isPaidConsultation' => $consultationAmount > 0.0,
-                'actLabels' => $actLabels,
+                'reliquat' => max(0.0, $apportPatient - $patientPaid),
+                'isPaidConsultation' => $apportPatient > 0.0,
+                'isInsurance' => true,
+                'actLabels' => $isClosed ? $actLabels : [],
             ];
         }
 
-        $consultationAmount = (float) ($consultation->getPaiement()?->getMontant() ?? 0);
+        $consultationAmount = $this->sumValidatedTicketPayment($consultation);
         $totalAmount = $consultationAmount + $actsAmount;
-        $patientPaid = $consultationAmount;
-
-        $facture = $consultation->getFacture();
-        if ($facture !== null) {
-            $patientPaid += (float) $facture->computePatientPaidAmount();
-        }
+        $patientPaid = $consultationAmount + $this->sumValidatedFacturePayments($consultation);
 
         return [
             'consultationAmount' => $consultationAmount,
             'actsAmount' => $actsAmount,
             'totalAmount' => $totalAmount,
+            'apportPatient' => $totalAmount,
+            'apportAssurance' => 0.0,
             'patientPaid' => $patientPaid,
             'reliquat' => max(0.0, $totalAmount - $patientPaid),
             'isPaidConsultation' => $consultationAmount > 0.0,
+            'isInsurance' => false,
             'actLabels' => $actLabels,
         ];
     }
@@ -582,10 +618,21 @@ class ReportService
         };
     }
 
-    private function computeDoctorStats(Employe $doctor, array $consultations): array
-    {
+    /**
+     * @param array<int, array<string, mixed>> $reliquatPayments
+     */
+    private function computeDoctorStats(
+        Employe $doctor,
+        array $consultations,
+        DateTimeImmutable $from,
+        DateTimeImmutable $to,
+        array $reliquatPayments,
+    ): array {
         $paidConsultations = 0;
-        $apport = $revenue = $reliquat = 0.0;
+        $apport = $revenue = $reliquat = $revenueAssurance = 0.0;
+        $apportPatient = $apportAssurance = 0.0;
+        $apportConsultations = $apportActes = 0.0;
+        $revenueConsultations = $revenueActes = 0.0;
         $newPatients = $returningPatients = 0;
         $seenPatientIds = [];
         $actesList = [];
@@ -598,7 +645,20 @@ class ReportService
             }
 
             $apport += $billing['totalAmount'];
-            $revenue += $billing['patientPaid'];
+            $apportPatient += $billing['apportPatient'];
+            $apportAssurance += $billing['apportAssurance'];
+            $apportConsultations += $billing['consultationAmount'];
+            $apportActes += $billing['actsAmount'];
+            $revenueAssurance += $billing['apportAssurance'];
+
+            $paymentBreakdown = $this->sumConsultationPaymentsInPeriodBreakdown($consultation, $from, $to);
+            $revenue += $paymentBreakdown['total'];
+            if ($billing['isInsurance']) {
+                $revenueConsultations += $paymentBreakdown['total'];
+            } else {
+                $revenueConsultations += $paymentBreakdown['ticket'];
+                $revenueActes += $paymentBreakdown['facture'];
+            }
             $reliquat += $billing['reliquat'];
 
             $patientId = $consultation->getPatient()?->getId();
@@ -611,16 +671,31 @@ class ReportService
                 }
             }
 
+            $hasConsultationFee = $billing['isInsurance']
+                ? $billing['consultationAmount'] > 0.0
+                : $billing['consultationAmount'] > 0.0;
+
             $actesList[] = [
                 'date' => $consultation->getCreatedAt()?->format('d/m/Y'),
                 'patient' => $consultation->getPatient()?->getFullName() ?? 'Inconnu',
                 'description' => $this->buildConsultationActLineDescription(
-                    $billing['consultationAmount'] > 0.0,
+                    $hasConsultationFee,
                     $billing['actLabels']
                 ),
                 'montant' => $billing['totalAmount'],
+                'montantPaye' => $billing['patientPaid'],
+                'montantPatient' => $billing['apportPatient'],
+                'montantAssurance' => $billing['apportAssurance'],
+                'isInsurance' => $billing['isInsurance'],
             ];
         }
+
+        $revenueReliquats = array_sum(array_map(
+            static fn(array $payment): float => (float) ($payment['montant'] ?? 0.0),
+            $reliquatPayments
+        ));
+        $revenueCash = $revenue + $revenueReliquats;
+        $revenueTotal = $revenueCash + $revenueAssurance;
 
         return [
             'id' => $doctor->getId(),
@@ -629,12 +704,316 @@ class ReportService
             'new_patients' => $newPatients,
             'returning_patients' => $returningPatients,
             'revenue' => $revenue,
+            'revenue_consultations' => $revenueConsultations,
+            'revenue_actes' => $revenueActes,
+            'revenue_reliquats' => $revenueReliquats,
+            'revenue_assurance' => $revenueAssurance,
+            'revenue_cash' => $revenueCash,
+            'revenue_total' => $revenueTotal,
             'apport' => $apport,
+            'apport_patient' => $apportPatient,
+            'apport_assurance' => $apportAssurance,
+            'apport_consultations' => $apportConsultations,
+            'apport_actes' => $apportActes,
             'reliquat' => $reliquat,
             'consultations_paid' => $paidConsultations,
-            'salary' => $this->computeDoctorSalary($doctor, $revenue),
+            'salary' => $this->computeDoctorSalary($doctor, $revenueTotal),
             'actes' => $actesList,
+            'paiements_reliquats' => $reliquatPayments,
+            'paiements_reliquats_total' => $revenueReliquats,
         ];
+    }
+
+    private function sumValidatedTicketPayment(Consultation $consultation): float
+    {
+        $ticket = $consultation->getPaiement();
+        if ($ticket === null || !$this->isValidatedPayment($ticket)) {
+            return 0.0;
+        }
+
+        if ($consultation->getFactureAssurance() !== null) {
+            $role = $ticket->getTransaction()?->getRolePaiement();
+            if ($role === 'patient_insurance') {
+                return 0.0;
+            }
+        }
+
+        return (float) $ticket->getMontant();
+    }
+
+    private function sumValidatedFacturePayments(Consultation $consultation): float
+    {
+        $facture = $consultation->getFacture();
+        if ($facture === null) {
+            return 0.0;
+        }
+
+        return (float) $facture->computePatientPaidAmount();
+    }
+
+    private function sumValidatedInsurancePatientPayments(Consultation $consultation): float
+    {
+        if ($consultation->getFactureAssurance() === null) {
+            return 0.0;
+        }
+
+        return max(0.0, (float) $this->em->createQueryBuilder()
+            ->select('COALESCE(SUM(t.montant), 0)')
+            ->from(Transaction::class, 't')
+            ->where('t.consultation = :consultation')
+            ->andWhere('t.rolePaiement = :role')
+            ->andWhere('t.validationStatus = :status')
+            ->setParameter('consultation', $consultation)
+            ->setParameter('role', 'patient_insurance')
+            ->setParameter('status', 'validated')
+            ->getQuery()
+            ->getSingleScalarResult());
+    }
+
+    private function sumInsurancePatientPaymentsInPeriod(
+        Consultation $consultation,
+        DateTimeInterface $from,
+        DateTimeInterface $to,
+    ): float {
+        if ($consultation->getFactureAssurance() === null) {
+            return 0.0;
+        }
+
+        return max(0.0, (float) $this->em->createQueryBuilder()
+            ->select('COALESCE(SUM(t.montant), 0)')
+            ->from(Transaction::class, 't')
+            ->where('t.consultation = :consultation')
+            ->andWhere('t.rolePaiement = :role')
+            ->andWhere('t.validationStatus = :status')
+            ->andWhere('t.dateTransaction BETWEEN :from AND :to')
+            ->setParameter('consultation', $consultation)
+            ->setParameter('role', 'patient_insurance')
+            ->setParameter('status', 'validated')
+            ->setParameter('from', $from)
+            ->setParameter('to', $to)
+            ->getQuery()
+            ->getSingleScalarResult());
+    }
+
+    private function isValidatedPayment(Paiement $payment): bool
+    {
+        $status = $payment->getTransaction()?->getValidationStatus();
+
+        return $status === null || $status === 'validated';
+    }
+
+    private function isPaymentInPeriod(Paiement $payment, DateTimeInterface $from, DateTimeInterface $to): bool
+    {
+        $date = $payment->getDate();
+        if ($date === null) {
+            return false;
+        }
+
+        return $date >= $from && $date <= $to;
+    }
+
+    private function resolvePaymentConsultation(Paiement $payment): ?Consultation
+    {
+        return $payment->getFacture()?->getConsultation() ?? $payment->getConsultation();
+    }
+
+    private function isConsultationInPeriod(Consultation $consultation, DateTimeInterface $from, DateTimeInterface $to): bool
+    {
+        $createdAt = $consultation->getCreatedAt();
+        if ($createdAt === null) {
+            return false;
+        }
+
+        return $createdAt >= $from && $createdAt <= $to;
+    }
+
+    private function sumConsultationPaymentsInPeriod(
+        Consultation $consultation,
+        DateTimeInterface $from,
+        DateTimeInterface $to,
+    ): float {
+        return $this->sumConsultationPaymentsInPeriodBreakdown($consultation, $from, $to)['total'];
+    }
+
+    /**
+     * @return array{ticket: float, facture: float, total: float}
+     */
+    private function sumConsultationPaymentsInPeriodBreakdown(
+        Consultation $consultation,
+        DateTimeInterface $from,
+        DateTimeInterface $to,
+    ): array {
+        if ($consultation->getFactureAssurance() !== null) {
+            $insurancePaid = $this->sumInsurancePatientPaymentsInPeriod($consultation, $from, $to);
+            $ticketPaid = $this->sumValidatedTicketPayment($consultation);
+            $ticketInPeriod = 0.0;
+            $ticket = $consultation->getPaiement();
+            if ($ticket !== null
+                && $this->isValidatedPayment($ticket)
+                && $this->isPaymentInPeriod($ticket, $from, $to)
+                && $ticket->getTransaction()?->getRolePaiement() !== 'patient_insurance') {
+                $ticketInPeriod = $ticketPaid;
+            }
+
+            $total = $insurancePaid + $ticketInPeriod;
+
+            return [
+                'ticket' => $ticketInPeriod,
+                'facture' => 0.0,
+                'total' => $total,
+            ];
+        }
+
+        $ticketPaid = 0.0;
+        $facturePaid = 0.0;
+
+        $ticket = $consultation->getPaiement();
+        if ($ticket !== null && $this->isValidatedPayment($ticket) && $this->isPaymentInPeriod($ticket, $from, $to)) {
+            $ticketPaid = (float) $ticket->getMontant();
+        }
+
+        $facture = $consultation->getFacture();
+        if ($facture !== null) {
+            foreach ($facture->getPaiements() as $payment) {
+                if (!$this->isValidatedPayment($payment) || !$this->isPaymentInPeriod($payment, $from, $to)) {
+                    continue;
+                }
+
+                $facturePaid += (float) $payment->getMontant();
+            }
+        }
+
+        return [
+            'ticket' => $ticketPaid,
+            'facture' => $facturePaid,
+            'total' => $ticketPaid + $facturePaid,
+        ];
+    }
+
+    /**
+     * @return array<int, list<array<string, mixed>>>
+     */
+    private function loadReliquatPaymentsByDoctor(DateTimeImmutable $from, DateTimeImmutable $to): array
+    {
+        $grouped = [];
+        $seenTransactionIds = [];
+
+        /** @var Paiement[] $paiements */
+        $paiements = $this->em->createQueryBuilder()
+            ->select('p', 'f', 'cf', 'ct', 'mf', 'mt', 'pf', 'pt', 'faf', 'taf', 'tp', 'tf')
+            ->from(Paiement::class, 'p')
+            ->leftJoin('p.transaction', 'tp')
+            ->leftJoin('p.facture', 'f')
+            ->leftJoin('f.consultation', 'cf')
+            ->leftJoin('cf.medecin', 'mf')
+            ->leftJoin('cf.patient', 'pf')
+            ->leftJoin('cf.factureAssurance', 'faf')
+            ->leftJoin('p.consultation', 'ct')
+            ->leftJoin('ct.medecin', 'mt')
+            ->leftJoin('ct.patient', 'pt')
+            ->leftJoin('ct.factureAssurance', 'taf')
+            ->where('p.date BETWEEN :from AND :to')
+            ->setParameter('from', $from)
+            ->setParameter('to', $to)
+            ->getQuery()
+            ->getResult();
+
+        foreach ($paiements as $payment) {
+            if (!$this->isValidatedPayment($payment)) {
+                continue;
+            }
+
+            $transactionId = $payment->getTransaction()?->getId();
+            if ($transactionId !== null) {
+                if (isset($seenTransactionIds[$transactionId])) {
+                    continue;
+                }
+                $seenTransactionIds[$transactionId] = true;
+            }
+
+            $consultation = $this->resolvePaymentConsultation($payment);
+            if ($consultation === null) {
+                continue;
+            }
+
+            if ($this->isConsultationInPeriod($consultation, $from, $to)) {
+                continue;
+            }
+
+            $doctorId = $consultation->getMedecin()?->getId();
+            if ($doctorId === null) {
+                continue;
+            }
+
+            $billing = $this->resolveConsultationBilling($consultation);
+
+            $grouped[$doctorId][] = [
+                'date' => $payment->getDate()?->format('d/m/Y') ?? '--',
+                'consultation_date' => $consultation->getCreatedAt()?->format('d/m/Y') ?? '--',
+                'patient' => $consultation->getPatient()?->getFullName() ?? 'Inconnu',
+                'description' => $this->buildConsultationActLineDescription(
+                    $billing['consultationAmount'] > 0.0,
+                    $billing['actLabels']
+                ),
+                'montant' => (float) $payment->getMontant(),
+                'isInsurance' => $billing['isInsurance'],
+            ];
+        }
+
+        /** @var Transaction[] $transactions */
+        $transactions = $this->em->createQueryBuilder()
+            ->select('t', 'c', 'm', 'p', 'fa')
+            ->from(Transaction::class, 't')
+            ->innerJoin('t.consultation', 'c')
+            ->innerJoin('c.medecin', 'm')
+            ->leftJoin('c.patient', 'p')
+            ->leftJoin('c.factureAssurance', 'fa')
+            ->where('t.rolePaiement = :role')
+            ->andWhere('t.validationStatus = :status')
+            ->andWhere('t.dateTransaction BETWEEN :from AND :to')
+            ->setParameter('role', 'patient_insurance')
+            ->setParameter('status', 'validated')
+            ->setParameter('from', $from)
+            ->setParameter('to', $to)
+            ->getQuery()
+            ->getResult();
+
+        foreach ($transactions as $transaction) {
+            $transactionId = $transaction->getId();
+            if ($transactionId !== null && isset($seenTransactionIds[$transactionId])) {
+                continue;
+            }
+            if ($transactionId !== null) {
+                $seenTransactionIds[$transactionId] = true;
+            }
+
+            $consultation = $transaction->getConsultation();
+            if ($consultation === null || $this->isConsultationInPeriod($consultation, $from, $to)) {
+                continue;
+            }
+
+            $doctorId = $consultation->getMedecin()?->getId();
+            if ($doctorId === null) {
+                continue;
+            }
+
+            $billing = $this->resolveConsultationBilling($consultation);
+            $date = $transaction->getDateTransaction();
+
+            $grouped[$doctorId][] = [
+                'date' => $date?->format('d/m/Y') ?? '--',
+                'consultation_date' => $consultation->getCreatedAt()?->format('d/m/Y') ?? '--',
+                'patient' => $consultation->getPatient()?->getFullName() ?? 'Inconnu',
+                'description' => $this->buildConsultationActLineDescription(
+                    $billing['consultationAmount'] > 0.0,
+                    $billing['actLabels']
+                ),
+                'montant' => (float) $transaction->getMontant(),
+                'isInsurance' => true,
+            ];
+        }
+
+        return $grouped;
     }
 
     // ====================== AUTRES MÉTHODES (exemples optimisés) ======================
@@ -781,7 +1160,7 @@ class ReportService
                 'consultations' => $d['consultations'],
                 'patients' => $d['new_patients'] + $d['returning_patients'],
                 'avgTime' => 0,
-                'revenue' => round($d['revenue']),
+                'revenue' => round($d['revenue_total'] ?? $d['revenue']),
             ], $doctorReports['doctors']);
 
             if ($employeeId) {

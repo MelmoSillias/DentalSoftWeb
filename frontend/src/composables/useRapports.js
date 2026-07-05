@@ -87,7 +87,7 @@ export function useRapports() {
     const adminPaymentFrequency = ref({ frequency: [], topMode: '' });
     const adminActsStats = ref([]);
     const adminDoctorReports = ref({
-        kpi: { totalRevenue: 0, afterFees: 0, totalSalaries: 0 },
+        kpi: { totalApport: 0, totalPartAssurance: 0, totalPaidCash: 0, totalRemuneration: 0, totalRevenue: 0, afterFees: 0, totalSalaries: 0 },
         doctors: []
     });
 
@@ -137,7 +137,7 @@ export function useRapports() {
     });
 
     const receptionDoctorReports = ref({
-        kpi: { totalRevenue: 0, afterFees: 0, totalSalaries: 0 },
+        kpi: { totalApport: 0, totalPartAssurance: 0, totalPaidCash: 0, totalRemuneration: 0, totalRevenue: 0, afterFees: 0, totalSalaries: 0 },
         doctors: []
     });
 
@@ -321,7 +321,12 @@ export function useRapports() {
         const data = await fetchJson('/report/periodic/doctor-reports', { from, to });
         target.value = {
             kpi: {
-                totalRevenue: data.kpi?.totalRevenue || 0,
+                totalApport: data.kpi?.totalApport || 0,
+                totalPartAssurance: data.kpi?.totalPartAssurance || 0,
+                totalPaidCash: data.kpi?.totalPaidCash || data.kpi?.totalPaid || 0,
+                totalRemuneration: data.kpi?.totalRemuneration || data.kpi?.totalRevenue || 0,
+                totalPaid: data.kpi?.totalPaidCash || data.kpi?.totalPaid || 0,
+                totalRevenue: data.kpi?.totalRemuneration || data.kpi?.totalRevenue || 0,
                 afterFees: data.kpi?.afterFees || 0,
                 totalSalaries: data.kpi?.totalSalaries || 0
             },
@@ -401,7 +406,20 @@ export function useRapports() {
                     rdvReportes: data.period?.rdvReportes || 0,
                     rdvAnnules: data.period?.rdvAnnules || 0,
                     apportTotal: data.period?.apportTotal || 0,
-                    paiements_period: safeArray(data.period?.paiements_period),
+                    apportConsultations: data.period?.apportConsultations || 0,
+                    apportActes: data.period?.apportActes || 0,
+                    apportPatient: data.period?.apportPatient || 0,
+                    apportAssurance: data.period?.apportAssurance || 0,
+                    revenue: data.period?.revenue || 0,
+                    revenueConsultations: data.period?.revenueConsultations || 0,
+                    revenueActes: data.period?.revenueActes || 0,
+                    revenueReliquats: data.period?.revenueReliquats || 0,
+                    revenueAssurance: data.period?.revenueAssurance || 0,
+                    revenueCash: data.period?.revenueCash || 0,
+                    revenueTotal: data.period?.revenueTotal || 0,
+                    reliquat: data.period?.reliquat || 0,
+                    paiementsReliquats: safeArray(data.period?.paiementsReliquats),
+                    paiementsReliquatsTotal: data.period?.paiementsReliquatsTotal || 0,
                     actesMedicaux: safeArray(data.period?.actesMedicaux)
                 },
                 joursTravailles: safeArray(identity.joursTravailles ?? data.joursTravailles)

@@ -32,10 +32,109 @@ function formatFcfa(amount) {
     return `${new Intl.NumberFormat('fr-FR').format(value)} Fcfa`;
 }
 
-function formatDoctorDetails(row) {
-    const items = Array.isArray(row?.actes) ? row.actes : [];
+function doctorRevenueTotal(row) {
+    return Number(row?.revenue_total ?? row?.revenue ?? 0);
+}
+
+function doctorRevenueCash(row) {
+    return Number(row?.revenue_cash ?? (Number(row?.revenue || 0) + Number(row?.revenue_reliquats || 0)));
+}
+
+function actPaymentBasis(act) {
+    if (act?.isInsurance) {
+        return {
+            due: Number(act.montantPatient || 0),
+            paid: Number(act.montantPaye || 0)
+        };
+    }
+
+    return {
+        due: Number(act.montant || 0),
+        paid: Number(act.montantPaye || 0)
+    };
+}
+
+function sumActesField(row, field) {
+    return (row?.actes || []).reduce((sum, item) => sum + Number(item?.[field] || 0), 0);
+}
+
+function paymentProgress(montant, montantPaye) {
+    const total = Number(montant || 0);
+    const paid = Number(montantPaye || 0);
+    if (total <= 0) {
+        return paid > 0 ? 100 : 0;
+    }
+
+    return Math.min(100, Math.round((paid / total) * 100));
+}
+
+function paymentStatus(montant, montantPaye) {
+    const total = Number(montant || 0);
+    const paid = Number(montantPaye || 0);
+    const remaining = Math.max(0, total - paid);
+
+    if (total <= 0 && paid <= 0) {
+        return { label: 'Gratuit', severity: 'secondary', remaining: 0 };
+    }
+    if (remaining <= 0) {
+        return { label: 'Soldé', severity: 'success', remaining: 0 };
+    }
+    if (paid > 0) {
+        return { label: 'Partiel', severity: 'warn', remaining };
+    }
+
+    return { label: 'Impayé', severity: 'danger', remaining: total };
+}
+
+function doctorSummaryCards(row) {
+    return [
+        {
+            key: 'apport',
+            label: 'Apport',
+            value: formatFcfa(row?.apport),
+            icon: 'pi pi-briefcase',
+            tone: 'text-indigo-600 dark:text-indigo-300',
+            bg: 'bg-indigo-50 dark:bg-indigo-950/40'
+        },
+        {
+            key: 'cash',
+            label: 'Encaissé patient',
+            value: formatFcfa(doctorRevenueCash(row)),
+            icon: 'pi pi-wallet',
+            tone: 'text-emerald-600 dark:text-emerald-300',
+            bg: 'bg-emerald-50 dark:bg-emerald-950/40'
+        },
+        {
+            key: 'assurance',
+            label: 'Part assurance',
+            value: formatFcfa(row?.revenue_assurance ?? row?.apport_assurance),
+            icon: 'pi pi-shield',
+            tone: 'text-violet-600 dark:text-violet-300',
+            bg: 'bg-violet-50 dark:bg-violet-950/40'
+        },
+        {
+            key: 'reliquats',
+            label: 'Reliquats encaissés',
+            value: formatFcfa(row?.revenue_reliquats),
+            icon: 'pi pi-history',
+            tone: 'text-sky-600 dark:text-sky-300',
+            bg: 'bg-sky-50 dark:bg-sky-950/40'
+        },
+        {
+            key: 'remaining',
+            label: 'Réliquat patient',
+            value: formatFcfa(row?.reliquat),
+            icon: 'pi pi-exclamation-circle',
+            tone: 'text-amber-600 dark:text-amber-300',
+            bg: 'bg-amber-50 dark:bg-amber-950/40'
+        }
+    ];
+}
+
+function formatReliquatPaymentsSection(row) {
+    const items = Array.isArray(row?.paiements_reliquats) ? row.paiements_reliquats : [];
     if (!items.length) {
-        return '<div class="p-3"><em>Aucune entrée enregistrée sur cette période.</em></div>';
+        return '';
     }
 
     let total = 0;
@@ -45,6 +144,7 @@ function formatDoctorDetails(row) {
             return `
                 <tr>
                     <td>${item.date || '--'}</td>
+                    <td>${item.consultation_date || '--'}</td>
                     <td>${item.patient || '--'}</td>
                     <td>${item.description || '--'}</td>
                     <td>${formatFcfa(item.montant)}</td>
@@ -54,21 +154,76 @@ function formatDoctorDetails(row) {
         .join('');
 
     return `
+        <div class="print-section-title" style="margin-top: 16px;">Paiements de reliquats</div>
+        <table class="print-table">
+            <thead>
+                <tr>
+                    <th>Date paiement</th>
+                    <th>Date consultation</th>
+                    <th>Patient</th>
+                    <th>Description</th>
+                    <th>Montant</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${rows}
+            </tbody>
+        </table>
+        <p style="margin-top: 12px; font-weight: 600;">Total reliquats = ${formatFcfa(total)}</p>
+    `;
+}
+
+function formatDoctorDetails(row) {
+    const items = Array.isArray(row?.actes) ? row.actes : [];
+    const reliquats = Array.isArray(row?.paiements_reliquats) ? row.paiements_reliquats : [];
+
+    if (!items.length && !reliquats.length) {
+        return '<div class="p-3"><em>Aucune entrée enregistrée sur cette période.</em></div>';
+    }
+
+    let apportTotal = 0;
+    let paidTotal = 0;
+    const actRows = items
+        .map((item) => {
+            apportTotal += Number(item.montant || 0);
+            paidTotal += Number(item.montantPaye || 0);
+            return `
+                <tr>
+                    <td>${item.date || '--'}</td>
+                    <td>${item.patient || '--'}</td>
+                    <td>${item.description || '--'}</td>
+                    <td>${formatFcfa(item.montant)}</td>
+                    <td>${formatFcfa(item.montantPaye)}</td>
+                </tr>
+            `;
+        })
+        .join('');
+
+    const actsSection = items.length
+        ? `
+        <div class="print-section-title">Soins de la période</div>
+        <table class="print-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Patient</th>
+                    <th>Description</th>
+                    <th>Montant apport</th>
+                    <th>Montant payé</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${actRows}
+            </tbody>
+        </table>
+        <p style="margin-top: 12px; font-weight: 600;">Total apport = ${formatFcfa(apportTotal)} · Total payé = ${formatFcfa(paidTotal)}</p>
+    `
+        : '';
+
+    return `
         <div class="p-3">
-            <table class="print-table">
-                <thead>
-                    <tr>
-                        <th>Date</th>
-                        <th>Patient</th>
-                        <th>Description</th>
-                        <th>Montant</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${rows}
-                </tbody>
-            </table>
-            <p style="margin-top: 12px; font-weight: 600;">Total = ${formatFcfa(total)}</p>
+            ${actsSection}
+            ${formatReliquatPaymentsSection(row)}
         </div>
     `;
 }
@@ -105,18 +260,42 @@ function formatDoctorTable(row) {
         <table class="print-table">
             <tbody>
                 <tr>
-                    <td> <strong>Consultations réalisées</strong></td>
+                    <td><strong>Consultations réalisées</strong></td>
                     <td>${row.consultations || 0}</td>
                     <td>${row.consultations_amount ? formatFcfa(row.consultations_amount) : formatFcfa(0)}</td>
                 </tr>
                 <tr>
-                    <td> <strong>Actes posés</strong></td>
+                    <td><strong>Actes posés</strong></td>
                     <td>${row.acts || 0}</td>
                     <td>${row.acts_amount ? formatFcfa(row.acts_amount) : formatFcfa(0)}</td>
                 </tr>
                 <tr>
-                    <td colspan="2"> <strong>Apport total</strong></td>
-                    <td>${row.apport ? formatFcfa(row.apport) : formatFcfa(0)}</td>
+                    <td colspan="2"><strong>Apport total</strong></td>
+                    <td>${formatFcfa(row.apport)}</td>
+                </tr>
+                <tr>
+                    <td colspan="2"><strong>Part assurance</strong></td>
+                    <td>${formatFcfa(row.revenue_assurance ?? row.apport_assurance)}</td>
+                </tr>
+                <tr>
+                    <td colspan="2"><strong>Encaissé patient période</strong></td>
+                    <td>${formatFcfa(row.revenue)}</td>
+                </tr>
+                <tr>
+                    <td colspan="2"><strong>Paiements de reliquats</strong></td>
+                    <td>${formatFcfa(row.revenue_reliquats)}</td>
+                </tr>
+                <tr>
+                    <td colspan="2"><strong>Encaissement réel</strong></td>
+                    <td>${formatFcfa(doctorRevenueCash(row))}</td>
+                </tr>
+                <tr>
+                    <td colspan="2"><strong>Rémunération totale</strong></td>
+                    <td>${formatFcfa(doctorRevenueTotal(row))}</td>
+                </tr>
+                <tr>
+                    <td colspan="2"><strong>Réliquat patient</strong></td>
+                    <td>${formatFcfa(row.reliquat)}</td>
                 </tr>
             </tbody>
         </table>
@@ -131,7 +310,9 @@ function printSummary() {
                 <td>${row.name || ''}</td>
                 <td>${row.consultations || 0} (${row.consultations_paid || 0} payantes)</td>
                 <td>${formatFcfa(row.apport)}</td>
-                <td>${formatFcfa(row.revenue)}</td>
+                <td>${formatFcfa(row.revenue_assurance ?? row.apport_assurance)}</td>
+                <td>${formatFcfa(doctorRevenueCash(row))}</td>
+                <td>${formatFcfa(doctorRevenueTotal(row))}</td>
                 <td>${formatFcfa(row.reliquat)}</td>
                 <td>${formatFcfa(row.salary)}</td>
             </tr>
@@ -146,8 +327,10 @@ function printSummary() {
                 <tr>
                     <th>Médecin</th>
                     <th>Consultations</th>
-                    <th>Montant généré (Fcfa)</th>
-                    <th>Montant payé (Fcfa)</th>
+                    <th>Apport (Fcfa)</th>
+                    <th>Part assurance</th>
+                    <th>Encaissement réel</th>
+                    <th>Rémunération</th>
                     <th>Réliquat patient</th>
                     <th>Salaire</th>
                 </tr>
@@ -164,11 +347,27 @@ function printSummary() {
 
 function printAllActs() {
     const acts = [];
+    const reliquats = [];
+
     doctors.value.forEach((doctor) => {
         if (Array.isArray(doctor.actes)) {
             doctor.actes.forEach((item) => {
                 acts.push({
                     date: item.date || '--',
+                    medecin: doctor.name || '--',
+                    patient: item.patient || '--',
+                    description: item.description || '--',
+                    montant: item.montant || 0,
+                    montantPaye: item.montantPaye || 0
+                });
+            });
+        }
+
+        if (Array.isArray(doctor.paiements_reliquats)) {
+            doctor.paiements_reliquats.forEach((item) => {
+                reliquats.push({
+                    date: item.date || '--',
+                    consultationDate: item.consultation_date || '--',
                     medecin: doctor.name || '--',
                     patient: item.patient || '--',
                     description: item.description || '--',
@@ -178,7 +377,7 @@ function printAllActs() {
         }
     });
 
-    const rows = acts
+    const actRows = acts
         .map(
             (act) => `
             <tr>
@@ -187,15 +386,34 @@ function printAllActs() {
                 <td>${act.patient}</td>
                 <td>${act.description}</td>
                 <td>${formatFcfa(act.montant)}</td>
+                <td>${formatFcfa(act.montantPaye)}</td>
             </tr>
         `
         )
         .join('');
 
-    const total = acts.reduce((sum, act) => sum + Number(act.montant || 0), 0);
+    const reliquatRows = reliquats
+        .map(
+            (item) => `
+            <tr>
+                <td>${item.date}</td>
+                <td>${item.consultationDate}</td>
+                <td>${item.medecin}</td>
+                <td>${item.patient}</td>
+                <td>${item.description}</td>
+                <td>${formatFcfa(item.montant)}</td>
+            </tr>
+        `
+        )
+        .join('');
+
+    const apportTotal = acts.reduce((sum, act) => sum + Number(act.montant || 0), 0);
+    const paidTotal = acts.reduce((sum, act) => sum + Number(act.montantPaye || 0), 0);
+    const reliquatTotal = reliquats.reduce((sum, item) => sum + Number(item.montant || 0), 0);
 
     const body = `
-        ${buildPrintTitleBandHtml('Liste des actes médicaux', `Période : ${props.periodLabel || '(non spécifiée)'}`)}
+        ${buildPrintTitleBandHtml('Liste des soins médicaux', `Période : ${props.periodLabel || '(non spécifiée)'}`)}
+        <div class="print-section-title">Soins de la période</div>
         <table class="print-table">
             <thead>
                 <tr>
@@ -203,18 +421,36 @@ function printAllActs() {
                     <th>Médecin</th>
                     <th>Patient</th>
                     <th>Description</th>
+                    <th>Montant apport</th>
+                    <th>Montant payé</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${actRows}
+            </tbody>
+        </table>
+        <p style="margin-top: 12px; font-weight: 600;">Total apport = ${formatFcfa(apportTotal)} · Total payé = ${formatFcfa(paidTotal)}</p>
+        <div class="print-section-title" style="margin-top: 16px;">Paiements de reliquats</div>
+        <table class="print-table">
+            <thead>
+                <tr>
+                    <th>Date paiement</th>
+                    <th>Date consultation</th>
+                    <th>Médecin</th>
+                    <th>Patient</th>
+                    <th>Description</th>
                     <th>Montant</th>
                 </tr>
             </thead>
             <tbody>
-                ${rows}
+                ${reliquatRows || '<tr><td colspan="6"><em>Aucun paiement de reliquat</em></td></tr>'}
             </tbody>
         </table>
-        <p style="margin-top: 12px; font-weight: 600;">Total = ${formatFcfa(total)}</p>
+        <p style="margin-top: 12px; font-weight: 600;">Total reliquats = ${formatFcfa(reliquatTotal)}</p>
     `;
 
     printDialogVisible.value = false;
-    openPrintWindow(buildPrintHtmlDocument({ title: 'Liste des actes médicaux', body }));
+    openPrintWindow(buildPrintHtmlDocument({ title: 'Liste des soins médicaux', body }));
 }
 </script>
 
@@ -230,10 +466,18 @@ function printAllActs() {
             </div>
         </template>
         <template #content>
-            <div v-if="showKpi" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 mb-6">
+            <div v-if="showKpi" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 mb-6">
                 <div class="rounded-2xl border border-surface-200/60 bg-surface-50/80 p-3 sm:p-4 text-center shadow-sm dark:border-surface-700/60 dark:bg-surface-800/70">
                     <p class="text-xs font-semibold uppercase text-surface-500">Apports total</p>
-                    <p class="text-lg sm:text-xl font-semibold text-surface-900 dark:text-surface-0">{{ formatFcfa(kpi.totalRevenue) }}</p>
+                    <p class="text-lg sm:text-xl font-semibold text-surface-900 dark:text-surface-0">{{ formatFcfa(kpi.totalApport ?? 0) }}</p>
+                </div>
+                <div class="rounded-2xl border border-surface-200/60 bg-surface-50/80 p-3 sm:p-4 text-center shadow-sm dark:border-surface-700/60 dark:bg-surface-800/70">
+                    <p class="text-xs font-semibold uppercase text-surface-500">Parts assurance</p>
+                    <p class="text-lg sm:text-xl font-semibold text-surface-900 dark:text-surface-0">{{ formatFcfa(kpi.totalPartAssurance ?? 0) }}</p>
+                </div>
+                <div class="rounded-2xl border border-surface-200/60 bg-surface-50/80 p-3 sm:p-4 text-center shadow-sm dark:border-surface-700/60 dark:bg-surface-800/70">
+                    <p class="text-xs font-semibold uppercase text-surface-500">Encaissement réel</p>
+                    <p class="text-lg sm:text-xl font-semibold text-surface-900 dark:text-surface-0">{{ formatFcfa(kpi.totalPaidCash ?? kpi.totalPaid ?? 0) }}</p>
                 </div>
                 <div class="rounded-2xl border border-surface-200/60 bg-surface-50/80 p-3 sm:p-4 text-center shadow-sm dark:border-surface-700/60 dark:bg-surface-800/70">
                     <p class="text-xs font-semibold uppercase text-surface-500">Après retrait des %</p>
@@ -268,7 +512,15 @@ function printAllActs() {
                         <template #body="{ data }">{{ formatFcfa(data.apport) }}</template>
                     </Column>
                     <Column v-if="variant === 'admin'" header="Montant payé">
-                        <template #body="{ data }">{{ formatFcfa(data.revenue) }}</template>
+                        <template #body="{ data }">
+                            <div>{{ formatFcfa(doctorRevenueTotal(data)) }}</div>
+                            <div class="text-[11px] text-surface-500">
+                                encaissé : {{ formatFcfa(doctorRevenueCash(data)) }}
+                                <span v-if="Number(data.revenue_assurance || 0) > 0">
+                                    · assurance : {{ formatFcfa(data.revenue_assurance) }}
+                                </span>
+                            </div>
+                        </template>
                     </Column>
                     <Column v-if="variant === 'admin'" header="Reliquat patient">
                         <template #body="{ data }">{{ formatFcfa(data.reliquat) }}</template>
@@ -290,29 +542,220 @@ function printAllActs() {
                         </template>
                     </Column>
                     <template #expansion="{ data }">
-                        <div class="rounded-2xl border border-surface-200/60 bg-surface-50/80 p-3 text-xs sm:text-sm shadow-sm dark:border-surface-700/60 dark:bg-surface-800/70">
-                            <div v-if="!data?.actes || !data.actes.length" class="text-surface-500">
-                                Aucun acte enregistré sur cette période.
+                        <div class="doctor-row-details space-y-5 p-1 sm:p-2">
+                            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                <div>
+                                    <p class="text-[11px] font-semibold uppercase tracking-wide text-surface-500">Détail financier</p>
+                                    <h4 class="text-base font-semibold text-surface-900 dark:text-surface-0">
+                                        {{ data.name || 'Médecin' }}
+                                    </h4>
+                                    <p class="text-xs text-surface-500">
+                                        Rémunération :
+                                        <span class="font-semibold text-violet-600 dark:text-violet-300">
+                                            {{ formatFcfa(doctorRevenueTotal(data)) }}
+                                        </span>
+                                        · Encaissé :
+                                        <span class="font-semibold text-emerald-600 dark:text-emerald-300">
+                                            {{ formatFcfa(doctorRevenueCash(data)) }}
+                                        </span>
+                                    </p>
+                                </div>
+                                <div class="flex flex-wrap gap-2">
+                                    <Tag
+                                        :value="`${data.consultations || 0} consultation${(data.consultations || 0) > 1 ? 's' : ''}`"
+                                        severity="secondary"
+                                    />
+                                    <Tag
+                                        :value="`${(data.actes || []).length} soin${(data.actes || []).length > 1 ? 's' : ''}`"
+                                        severity="info"
+                                    />
+                                    <Tag
+                                        v-if="(data.paiements_reliquats || []).length"
+                                        :value="`${data.paiements_reliquats.length} reliquat${data.paiements_reliquats.length > 1 ? 's' : ''}`"
+                                        severity="warn"
+                                    />
+                                </div>
                             </div>
-                            <div v-else>
-                                <table class="w-full border-collapse text-xs sm:text-sm">
-                                    <thead>
-                                        <tr class="text-left text-surface-500">
-                                            <th class="border-b p-2">Date</th>
-                                            <th class="border-b p-2">Patient</th>
-                                            <th class="border-b p-2">Description</th>
-                                            <th class="border-b p-2">Montant des actes</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr v-for="(row, idx) in data.actes" :key="idx">
-                                            <td class="border-b p-2">{{ row.date }}</td>
-                                            <td class="border-b p-2">{{ row.patient }}</td>
-                                            <td class="border-b p-2">{{ row.description }}</td>
-                                            <td class="border-b p-2">{{ formatFcfa(row.montant) }}</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
+
+                            <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+                                <div
+                                    v-for="card in doctorSummaryCards(data)"
+                                    :key="card.key"
+                                    class="rounded-xl border border-surface-200/70 p-3 shadow-sm dark:border-surface-700/70"
+                                    :class="card.bg"
+                                >
+                                    <div class="mb-2 flex items-center gap-2">
+                                        <span
+                                            class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-white/70 dark:bg-surface-900/40"
+                                            :class="card.tone"
+                                        >
+                                            <i :class="card.icon" />
+                                        </span>
+                                        <p class="text-[11px] font-semibold uppercase tracking-wide text-surface-500">{{ card.label }}</p>
+                                    </div>
+                                    <p class="text-sm font-semibold text-surface-900 dark:text-surface-0">{{ card.value }}</p>
+                                </div>
+                            </div>
+
+                            <div class="grid gap-5 xl:grid-cols-2">
+                                <section class="rounded-2xl border border-surface-200/70 bg-surface-0/80 p-4 shadow-sm dark:border-surface-700/70 dark:bg-surface-900/40">
+                                    <div class="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-surface-200/60 pb-3 dark:border-surface-700/60">
+                                        <div class="flex items-center gap-2">
+                                            <span class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-primary-50 text-primary-600 dark:bg-primary-950/40 dark:text-primary-300">
+                                                <i class="pi pi-heart" />
+                                            </span>
+                                            <div>
+                                                <h5 class="text-sm font-semibold text-surface-900 dark:text-surface-0">Soins de la période</h5>
+                                                <p class="text-xs text-surface-500">Consultations et actes réalisés</p>
+                                            </div>
+                                        </div>
+                                        <Tag :value="`${(data.actes || []).length} ligne${(data.actes || []).length > 1 ? 's' : ''}`" severity="secondary" />
+                                    </div>
+
+                                    <div
+                                        v-if="!data?.actes?.length"
+                                        class="flex flex-col items-center justify-center rounded-xl border border-dashed border-surface-300/80 px-4 py-8 text-center dark:border-surface-600/80"
+                                    >
+                                        <i class="pi pi-inbox mb-2 text-2xl text-surface-400" />
+                                        <p class="text-sm text-surface-500">Aucun soin enregistré sur cette période.</p>
+                                    </div>
+
+                                    <ul v-else class="max-h-[320px] space-y-3 overflow-y-auto pr-1">
+                                        <li
+                                            v-for="(row, idx) in data.actes"
+                                            :key="`acte-${idx}`"
+                                            class="rounded-xl border border-surface-200/70 bg-surface-50/80 p-3 dark:border-surface-700/70 dark:bg-surface-800/60"
+                                        >
+                                            <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                                <div class="min-w-0 flex-1">
+                                                    <div class="mb-1 flex flex-wrap items-center gap-2">
+                                                        <strong class="truncate text-sm text-surface-900 dark:text-surface-0">
+                                                            {{ row.description }}
+                                                        </strong>
+                                                        <Tag v-if="row.isInsurance" value="Assurance" severity="info" />
+                                                        <Tag
+                                                            :value="paymentStatus(actPaymentBasis(row).due, actPaymentBasis(row).paid).label"
+                                                            :severity="paymentStatus(actPaymentBasis(row).due, actPaymentBasis(row).paid).severity"
+                                                        />
+                                                    </div>
+                                                    <p class="text-xs text-surface-500">
+                                                        <i class="pi pi-user mr-1 text-[10px]" />
+                                                        {{ row.patient }}
+                                                        <span class="mx-1">•</span>
+                                                        <i class="pi pi-calendar mr-1 text-[10px]" />
+                                                        {{ row.date }}
+                                                    </p>
+                                                </div>
+                                                <div class="grid shrink-0 gap-2 text-right" :class="row.isInsurance ? 'grid-cols-2 sm:min-w-[280px] sm:grid-cols-4' : 'grid-cols-2 sm:min-w-[210px]'">
+                                                    <div class="rounded-lg bg-surface-0 px-2 py-1 dark:bg-surface-900/50">
+                                                        <p class="text-[10px] uppercase text-surface-500">Apport</p>
+                                                        <p class="text-xs font-semibold text-surface-900 dark:text-surface-0">{{ formatFcfa(row.montant) }}</p>
+                                                    </div>
+                                                    <div v-if="row.isInsurance" class="rounded-lg bg-violet-50 px-2 py-1 dark:bg-violet-950/30">
+                                                        <p class="text-[10px] uppercase text-violet-700 dark:text-violet-300">Assurance</p>
+                                                        <p class="text-xs font-semibold text-violet-700 dark:text-violet-200">{{ formatFcfa(row.montantAssurance) }}</p>
+                                                    </div>
+                                                    <div v-if="row.isInsurance" class="rounded-lg bg-surface-0 px-2 py-1 dark:bg-surface-900/50">
+                                                        <p class="text-[10px] uppercase text-surface-500">Part patient</p>
+                                                        <p class="text-xs font-semibold text-surface-900 dark:text-surface-0">{{ formatFcfa(row.montantPatient) }}</p>
+                                                    </div>
+                                                    <div class="rounded-lg bg-emerald-50 px-2 py-1 dark:bg-emerald-950/30">
+                                                        <p class="text-[10px] uppercase text-emerald-700 dark:text-emerald-300">Payé</p>
+                                                        <p class="text-xs font-semibold text-emerald-700 dark:text-emerald-200">{{ formatFcfa(row.montantPaye) }}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="mt-3">
+                                                <div class="mb-1 flex items-center justify-between text-[10px] text-surface-500">
+                                                    <span>{{ row.isInsurance ? 'Recouvrement part patient' : 'Taux de recouvrement' }}</span>
+                                                    <span>{{ paymentProgress(actPaymentBasis(row).due, actPaymentBasis(row).paid) }}%</span>
+                                                </div>
+                                                <div class="h-1.5 overflow-hidden rounded-full bg-surface-200 dark:bg-surface-700">
+                                                    <div
+                                                        class="h-full rounded-full bg-emerald-500 transition-all"
+                                                        :style="{ width: `${paymentProgress(actPaymentBasis(row).due, actPaymentBasis(row).paid)}%` }"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </li>
+                                    </ul>
+
+                                    <div
+                                        v-if="data?.actes?.length"
+                                        class="mt-4 grid gap-2 rounded-xl border border-surface-200/70 bg-surface-50/70 p-3 text-xs dark:border-surface-700/70 dark:bg-surface-800/50 sm:grid-cols-2"
+                                    >
+                                        <div class="flex items-center justify-between gap-2">
+                                            <span class="text-surface-500">Total apport</span>
+                                            <strong class="text-surface-900 dark:text-surface-0">{{ formatFcfa(sumActesField(data, 'montant')) }}</strong>
+                                        </div>
+                                        <div class="flex items-center justify-between gap-2">
+                                            <span class="text-surface-500">Total payé</span>
+                                            <strong class="text-emerald-600 dark:text-emerald-300">{{ formatFcfa(sumActesField(data, 'montantPaye')) }}</strong>
+                                        </div>
+                                    </div>
+                                </section>
+
+                                <section class="rounded-2xl border border-surface-200/70 bg-surface-0/80 p-4 shadow-sm dark:border-surface-700/70 dark:bg-surface-900/40">
+                                    <div class="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-surface-200/60 pb-3 dark:border-surface-700/60">
+                                        <div class="flex items-center gap-2">
+                                            <span class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-sky-50 text-sky-600 dark:bg-sky-950/40 dark:text-sky-300">
+                                                <i class="pi pi-replay" />
+                                            </span>
+                                            <div>
+                                                <h5 class="text-sm font-semibold text-surface-900 dark:text-surface-0">Paiements de reliquats</h5>
+                                                <p class="text-xs text-surface-500">Encaissements sur consultations antérieures</p>
+                                            </div>
+                                        </div>
+                                        <Tag :value="formatFcfa(data.paiements_reliquats_total)" severity="info" />
+                                    </div>
+
+                                    <div
+                                        v-if="!data?.paiements_reliquats?.length"
+                                        class="flex flex-col items-center justify-center rounded-xl border border-dashed border-surface-300/80 px-4 py-8 text-center dark:border-surface-600/80"
+                                    >
+                                        <i class="pi pi-check-circle mb-2 text-2xl text-surface-400" />
+                                        <p class="text-sm text-surface-500">Aucun paiement de reliquat sur cette période.</p>
+                                    </div>
+
+                                    <ul v-else class="max-h-[320px] space-y-3 overflow-y-auto pr-1">
+                                        <li
+                                            v-for="(row, idx) in data.paiements_reliquats"
+                                            :key="`reliquat-${idx}`"
+                                            class="rounded-xl border border-sky-200/70 bg-sky-50/50 p-3 dark:border-sky-900/40 dark:bg-sky-950/20"
+                                        >
+                                            <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                                                <div class="min-w-0 flex-1">
+                                                    <strong class="block truncate text-sm text-surface-900 dark:text-surface-0">
+                                                        {{ row.description }}
+                                                    </strong>
+                                                    <p class="mt-1 text-xs text-surface-500">
+                                                        <i class="pi pi-user mr-1 text-[10px]" />
+                                                        {{ row.patient }}
+                                                    </p>
+                                                    <div class="mt-2 flex flex-wrap gap-2">
+                                                        <span class="inline-flex items-center gap-1 rounded-full bg-white/80 px-2 py-0.5 text-[11px] text-surface-600 dark:bg-surface-900/50 dark:text-surface-300">
+                                                            <i class="pi pi-credit-card text-[10px]" />
+                                                            Paiement {{ row.date }}
+                                                        </span>
+                                                        <span class="inline-flex items-center gap-1 rounded-full bg-white/80 px-2 py-0.5 text-[11px] text-surface-600 dark:bg-surface-900/50 dark:text-surface-300">
+                                                            <i class="pi pi-calendar text-[10px]" />
+                                                            Consultation {{ row.consultation_date }}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                <Tag :value="formatFcfa(row.montant)" severity="info" class="shrink-0" />
+                                            </div>
+                                        </li>
+                                    </ul>
+
+                                    <div
+                                        v-if="data?.paiements_reliquats?.length"
+                                        class="mt-4 flex items-center justify-between rounded-xl border border-sky-200/70 bg-sky-50/70 px-3 py-2 text-sm dark:border-sky-900/40 dark:bg-sky-950/20"
+                                    >
+                                        <span class="font-medium text-surface-700 dark:text-surface-200">Total reliquats encaissés</span>
+                                        <strong class="text-sky-700 dark:text-sky-300">{{ formatFcfa(data.paiements_reliquats_total) }}</strong>
+                                    </div>
+                                </section>
                             </div>
                         </div>
                     </template>

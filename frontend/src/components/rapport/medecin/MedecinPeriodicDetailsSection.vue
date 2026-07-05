@@ -12,6 +12,7 @@ const props = defineProps({
 const showConsultationsChart = ref(false);
 const showAppointmentsChart = ref(false);
 const showRevenueChart = ref(false);
+const showReliquatsChart = ref(false);
 
 function formatFcfa(amount) {
     const value = Number(amount || 0);
@@ -21,7 +22,7 @@ function formatFcfa(amount) {
 const consultationsItems = (period) => [
     { label: 'Gratuites', value: period.freeConsultations ?? 0, severity: 'info' },
     { label: 'Payantes', value: period.paidConsultations ?? 0, severity: 'secondary' },
-    { label: 'Total', value: formatFcfa((period.paidConsultations || 0) * 5000), severity: 'success' }
+    { label: 'Total', value: period.paidConsultations ?? 0, severity: 'success' }
 ];
 
 const appointmentsItems = (period) => [
@@ -32,18 +33,51 @@ const appointmentsItems = (period) => [
     { label: 'Annulés', value: period.rdvAnnules ?? 0, severity: 'danger' }
 ];
 
-const revenueItems = (period) => [
+const apportItems = (period) => [
     {
-        label: 'Total sur consultations',
-        value: formatFcfa((period.paidConsultations || 0) * 5000),
+        label: 'Part patient',
+        value: formatFcfa(period.apportPatient || 0),
         severity: 'info'
     },
     {
-        label: 'Total sur soins effectués',
-        value: formatFcfa((period.apportTotal || 0) - (period.paidConsultations || 0) * 5000),
+        label: 'Part assurance',
+        value: formatFcfa(period.apportAssurance || 0),
         severity: 'secondary'
     },
-    { label: 'Montant total', value: formatFcfa(period.apportTotal || 0), severity: 'success' }
+    { label: 'Montant total (apport)', value: formatFcfa(period.apportTotal || 0), severity: 'success' }
+];
+
+const revenueItems = (period) => [
+    {
+        label: 'Encaissé patient période',
+        value: formatFcfa(period.revenue || 0),
+        severity: 'info'
+    },
+    {
+        label: 'Reliquats encaissés',
+        value: formatFcfa(period.revenueReliquats || 0),
+        severity: 'warn'
+    },
+    {
+        label: 'Encaissement réel total',
+        value: formatFcfa(period.revenueCash || 0),
+        severity: 'success'
+    },
+    {
+        label: 'Part assurance (rémunération)',
+        value: formatFcfa(period.revenueAssurance || 0),
+        severity: 'secondary'
+    },
+    {
+        label: 'Rémunération totale',
+        value: formatFcfa(period.revenueTotal || 0),
+        severity: 'success'
+    },
+    {
+        label: 'Réliquat patient',
+        value: formatFcfa(period.reliquat || 0),
+        severity: 'danger'
+    }
 ];
 
 const barOptions = computed(() => {
@@ -113,19 +147,34 @@ const appointmentsChartData = computed(() => {
     };
 });
 
-const revenueChartData = computed(() => {
+const apportChartData = computed(() => {
     const documentStyle = getComputedStyle(document.documentElement);
     const period = props.period || {};
-    const consultTotal = (period.paidConsultations || 0) * 5000;
-    const actsTotal = (period.apportTotal || 0) - consultTotal;
     return {
-        labels: ['Consultations', 'Soins effectués'],
+        labels: ['Part patient', 'Part assurance'],
         datasets: [
             {
-                data: [consultTotal, actsTotal],
+                data: [period.apportPatient || 0, period.apportAssurance || 0],
                 backgroundColor: [
                     documentStyle.getPropertyValue('--p-sky-500'),
                     documentStyle.getPropertyValue('--p-indigo-500')
+                ]
+            }
+        ]
+    };
+});
+
+const revenueChartData = computed(() => {
+    const documentStyle = getComputedStyle(document.documentElement);
+    const period = props.period || {};
+    return {
+        labels: ['Encaissement réel', 'Part assurance'],
+        datasets: [
+            {
+                data: [period.revenueCash || 0, period.revenueAssurance || 0],
+                backgroundColor: [
+                    documentStyle.getPropertyValue('--p-emerald-500'),
+                    documentStyle.getPropertyValue('--p-violet-500')
                 ]
             }
         ]
@@ -140,7 +189,7 @@ const revenueChartData = computed(() => {
             <p class="text-sm text-surface-500 dark:text-surface-400">Synthèse de la période sélectionnée</p>
         </div>
 
-        <div class="grid gap-4 lg:grid-cols-3">
+        <div class="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
             <ValueListCard title="Consultations" :items="consultationsItems(period)" :loading="loading" :show-chart="showConsultationsChart">
                 <template #actions>
                     <ToggleButton v-model="showConsultationsChart" onLabel="Graphique" offLabel="Données" onIcon="pi pi-chart-pie" offIcon="pi pi-list" />
@@ -161,9 +210,19 @@ const revenueChartData = computed(() => {
                     </div>
                 </template>
             </ValueListCard>
-            <ValueListCard title="Apport durant la période" :items="revenueItems(period)" :loading="loading" :show-chart="showRevenueChart">
+            <ValueListCard title="Apport durant la période" :items="apportItems(period)" :loading="loading" :show-chart="showRevenueChart">
                 <template #actions>
                     <ToggleButton v-model="showRevenueChart" onLabel="Graphique" offLabel="Données" onIcon="pi pi-chart-pie" offIcon="pi pi-list" />
+                </template>
+                <template #chart>
+                    <div class="aspect-square w-full">
+                        <Chart type="doughnut" :data="apportChartData" :options="pieOptions" class="h-full w-full" />
+                    </div>
+                </template>
+            </ValueListCard>
+            <ValueListCard title="Encaissements et rémunération" :items="revenueItems(period)" :loading="loading" :show-chart="showReliquatsChart">
+                <template #actions>
+                    <ToggleButton v-model="showReliquatsChart" onLabel="Graphique" offLabel="Données" onIcon="pi pi-chart-pie" offIcon="pi pi-list" />
                 </template>
                 <template #chart>
                     <div class="aspect-square w-full">

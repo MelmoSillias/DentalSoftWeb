@@ -283,9 +283,9 @@ class CashdeskService
         $transaction->setType('Revenue');
         $transaction->setMontant($paiement->getMontant());
         $transaction->setDateTransaction($timestamp);
-        $transaction->setDescription('Paiement de la facture | Facture #' . $facture->getId());
+        $transaction->setDescription('Paiement Facture #' . $facture->getId() . ' | '. $consultation->getFicheMedicale()->getPatient()->getFullName());
         $transaction->setModeDePaiement($mode); 
-        $transaction->markValidated();
+        $transaction->markValidated(\DateTimeImmutable::createFromMutable($timestamp));
         $transaction->setPaiement($paiement);
 
         $this->em->persist($transaction);

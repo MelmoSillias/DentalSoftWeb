@@ -144,7 +144,7 @@ class ConsultationService
                         $transaction->setDescription('Ticket de consultation #' . $consultation->getId() . ' | Part patient');
                         $transaction->setModeDePaiement($modePaiement);
                         $transaction->setConsultation($consultation);
-                        $transaction->markValidated();
+                        $transaction->markValidated($timestamp);
                         $transaction->setPaiement($paiement);
                         $this->em->persist($transaction);
                     }
@@ -1375,7 +1375,7 @@ class ConsultationService
         return ['success' => true];
     }
 
-    public function consultationsDuJour(?string $dateStr, $user): array
+    public function consultationsDuJour(?string $dateStr, ?object $user): array
     {
         $consultations = $this->getConsultationsForDay($dateStr, $user);
 
