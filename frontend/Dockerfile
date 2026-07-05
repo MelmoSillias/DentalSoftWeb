@@ -4,10 +4,11 @@ WORKDIR /app
 
 ARG CABINET=default
 
-COPY package*.json ./
+# Contexte monorepo : Dokploy build depuis la racine avec -f frontend/Dockerfile
+COPY frontend/package*.json ./
 RUN npm ci
 
-COPY . .
+COPY frontend/ .
 RUN npm run build:cabinet -- --cabinet=${CABINET}
 
 # --- Étape 2 : Serveur final (Nginx) ---

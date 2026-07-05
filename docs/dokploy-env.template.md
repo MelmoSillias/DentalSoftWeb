@@ -21,8 +21,21 @@ Les Dockerfiles ne sont utilisés qu'en production sur le serveur — le dévelo
 ### Build
 
 - **Dockerfile path :** `frontend/Dockerfile`
+- **Build Path / Root Directory :** `.` (racine du monorepo) **ou** `frontend`
+- **Docker Context Path :** `.`
 - **Build argument :** `CABINET` = `cdos` ou `mondentiste`
 - **Port exposé :** 80
+
+> Le Dockerfile est écrit pour un build depuis la **racine du monorepo** (`frontend/package.json`, etc.).
+> Si tu mets **Build Path** = `frontend`, utilise plutôt `Dockerfile` comme chemin et adapte si besoin.
+
+Dokploy → Service → Build :
+
+| Champ | Valeur (monorepo racine) |
+|-------|--------------------------|
+| Build Path | `.` ou vide |
+| Dockerfile Path | `frontend/Dockerfile` |
+| Docker Context Path | `.` |
 
 Dokploy → Application → Build → Build Args :
 
