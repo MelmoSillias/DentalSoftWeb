@@ -127,13 +127,15 @@ MESSENGER_TRANSPORT_DSN=doctrine://default?queue_name=default
 
 ### Backend — build Dokploy
 
-| Champ | Valeur (monorepo racine) |
-|-------|--------------------------|
-| Build Path | `.` ou vide |
-| Dockerfile Path | `backend-reform/Dockerfile` |
-| Docker Context Path | `.` |
+| Champ | Valeur |
+|-------|--------|
+| **Build Path** | `backend-reform` |
+| **Dockerfile Path** | `Dockerfile` |
+| **Docker Context Path** | `.` |
 | Port exposé | `80` |
 | Health check | `GET /api/health` → `{"status":"ok"}` |
+
+> Contrairement au frontend (build depuis la racine), l'API se build **depuis le dossier `backend-reform/`**.
 
 ---
 
