@@ -8,7 +8,6 @@
 /backend-reform/public/bundles/
 /backend-reform/var/
 /backend-reform/vendor/
-/backend-reform/migrations/
 ###< symfony/framework-bundle ###
 
 ###> phpunit/phpunit ###

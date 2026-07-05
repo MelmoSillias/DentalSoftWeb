@@ -11,4 +11,3 @@ assets/vendor/
 .gitignore
 .phpunit.result.cache
 phpunit.xml
-migrations/

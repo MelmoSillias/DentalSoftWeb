@@ -5,8 +5,6 @@
 /cdos_prod
 /mondentiste-prod
 
-/backend-reform/migrations*
-
 /backend-reform/.env.local
 /backend-reform/.env.local.php
 /backend-reform/.env.*.local
@@ -14,7 +12,6 @@
 /backend-reform/public/bundles/
 /backend-reform/var/
 /backend-reform/vendor/
-/backend-reform/migrations/
 /backend-reform/public/uploads/
 ###< symfony/framework-bundle ###
 

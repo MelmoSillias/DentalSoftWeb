@@ -57,6 +57,75 @@ Configurer le domaine dans Dokploy ; Let's Encrypt est généré automatiquement
 
 ---
 
+## MariaDB dans Dokploy (recommandé)
+
+Créer la base **dans le même projet** `DentalSoft` que l'API. Les services du même projet communiquent via le réseau interne Docker (`dokploy-network`).
+
+### Étape 1 — Créer MariaDB CDOS
+
+1. Projet **DentalSoft** → **Add Service** → **MariaDB** (pas Application)
+2. Remplir :
+
+| Champ | Exemple |
+|-------|---------|
+| Name | `mariadb-cdos` |
+| Database Name | `dentalsoft_cdos` |
+| Database User | `dentalsoft` |
+| Database Password | mot de passe fort (éviter les caractères problématiques dans l'URL : `@`, `#`, `%`) |
+| Root Password | mot de passe root |
+| Version | `11` ou `10.11` |
+
+3. **Deploy** et attendre le statut **Running**
+4. Noter le **Internal Host** affiché par Dokploy (ex. `mariadb-cdos-a1b2c3` ou le nom `appName`)
+
+> Ne pas exposer MariaDB sur Internet (pas de port externe) sauf pour import temporaire.
+
+### Étape 2 — Importer les données existantes
+
+Depuis le serveur Ubuntu, dumper l'ancienne base :
+
+```bash
+mysqldump -u root -p <ancienne_db_cdos> > /tmp/cdos-backup.sql
+```
+
+Importer dans MariaDB Dokploy (remplacer le host par l'internal host) :
+
+```bash
+# Depuis un conteneur temporaire sur le même réseau, ou via l'outil Import de Dokploy si disponible
+docker exec -i <container_mariadb_cdos> mariadb -u dentalsoft -p<password> dentalsoft_cdos < /tmp/cdos-backup.sql
+```
+
+Ou via phpMyAdmin / Adminer si tu déploies un service d'admin temporaire.
+
+### Étape 3 — Mettre à jour `DATABASE_URL` sur `api-cdos`
+
+Dans **Environment** du service `api-cdos` :
+
+```env
+DATABASE_URL=mysql://dentalsoft:TON_MOT_DE_PASSE@mariadb-cdos-a1b2c3:3306/dentalsoft_cdos?charset=utf8mb4
+```
+
+Remplace `mariadb-cdos-a1b2c3` par le **Internal Host** exact affiché dans Dokploy.
+
+**Règles importantes :**
+- Host = **Internal Host** Dokploy, **jamais** `localhost` ni `127.0.0.1`
+- Port = `3306`
+- Si le mot de passe contient des caractères spéciaux, les encoder en URL (`@` → `%40`, `#` → `%23`)
+
+### Étape 4 — Redeploy l'API
+
+1. **Save** les variables
+2. **Redeploy** `api-cdos` (et `worker-cdos` avec les mêmes variables)
+3. Tester : `GET /api/health` puis login
+
+### Mondentiste — 2e base (plus tard)
+
+Même procédure : **Add Service** → **MariaDB** → `mariadb-mondentiste`, puis `DATABASE_URL` sur `api-mondentiste` avec son internal host.
+
+Tu peux aussi utiliser **une seule** instance MariaDB avec **deux bases** (`dentalsoft_cdos` + `dentalsoft_mondentiste`) — une seule instance à maintenir.
+
+---
+
 ## Backend — variables d'environnement
 
 Définir **uniquement dans Dokploy** (jamais commitées). `.env.local` reste sur la machine de développement.
@@ -68,7 +137,7 @@ APP_ENV=prod
 APP_DEBUG=0
 APP_SECRET=<secret-unique-cdos>
 
-DATABASE_URL=mysql://<user>:<password>@<IP_SERVEUR_UBUNTU>:3306/<db_cdos>?charset=utf8mb4
+DATABASE_URL=mysql://dentalsoft:<password>@<internal-host-mariadb>:3306/dentalsoft_cdos?charset=utf8mb4
 
 MERCURE_URL=http://<mercure-host>:80/.well-known/mercure
 MERCURE_PUBLIC_URL=https://<mercure-public-domain>/.well-known/mercure
@@ -83,6 +152,26 @@ JWT_PASSPHRASE=<passphrase-cdos>
 
 MAILER_DSN=<smtp-prod>
 MESSENGER_TRANSPORT_DSN=doctrine://default?queue_name=default
+RUN_MIGRATIONS=1
+```
+
+> `RUN_MIGRATIONS=1` : applique les migrations au démarrage. Mettre `0` une fois la base provisionnée si tu ne veux plus migrate à chaque restart.
+
+### Provisionnement base CDOS (ordre)
+
+1. MariaDB Dokploy vide + `DATABASE_URL` correcte
+2. Deploy `api-cdos` → migrations créent le schéma
+3. Export données seules depuis l'ancienne base :
+
+```bash
+mysqldump -u root -p --no-create-info --skip-triggers --single-transaction \
+  <ancienne_db> > /tmp/cdos-data-only.sql
+```
+
+4. Import dans MariaDB Dokploy :
+
+```bash
+docker exec -i <conteneur_mariadb> mariadb -u dentalsoft -p dentalsoft_cdos < /tmp/cdos-data-only.sql
 ```
 
 ### API Mondentiste (`api.mondentiste-mali.com`)
@@ -92,7 +181,7 @@ APP_ENV=prod
 APP_DEBUG=0
 APP_SECRET=<secret-unique-mondentiste>
 
-DATABASE_URL=mysql://<user>:<password>@<IP_SERVEUR_UBUNTU>:3306/<db_mondentiste>?charset=utf8mb4
+DATABASE_URL=mysql://dentalsoft:<password>@<internal-host-mariadb>:3306/dentalsoft_mondentiste?charset=utf8mb4
 
 MERCURE_URL=http://<mercure-host>:80/.well-known/mercure
 MERCURE_PUBLIC_URL=https://<mercure-public-domain>/.well-known/mercure
@@ -111,10 +200,10 @@ MESSENGER_TRANSPORT_DSN=doctrine://default?queue_name=default
 
 ### Notes importantes
 
-- **DATABASE_URL :** ne pas utiliser `localhost` depuis le conteneur Docker. Utiliser l'IP du serveur Ubuntu ou `host.docker.internal`.
+- **DATABASE_URL :** utiliser le **Internal Host** du service MariaDB Dokploy (même projet), port `3306`. Ne jamais utiliser `localhost`.
 - **MERCURE_TOPIC_NAMESPACE :** doit être unique par instance si les deux APIs partagent le même hub Mercure.
 - **JWT :** les clés sont dans `config/jwt/` du dépôt. À terme, les injecter via secrets Dokploy plutôt que de les garder dans l'image.
-- **Migrations :** le dossier `migrations/` est gitignoré. Sur une base existante, ne pas lancer `doctrine:migrations:migrate` sans vérification préalable.
+- **Migrations :** le dossier `migrations/` est versionné dans Git. Au démarrage, `doctrine:migrations:migrate` s'exécute (`RUN_MIGRATIONS=1` par défaut). Voir [migrations/README.md](../backend-reform/migrations/README.md).
 
 ### Backend — volumes Dokploy
 
