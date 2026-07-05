@@ -39,6 +39,11 @@ services:
         arguments:
             $mercureJwtSecret: '%env(MERCURE_JWT_SECRET)%'
             $mercurePublicUrl: '%env(MERCURE_PUBLIC_URL)%'
+    App\Communication\Service\MercureHealthService:
+        arguments:
+            $mercureUrl: '%env(MERCURE_URL)%'
+            $mercurePublicUrl: '%env(MERCURE_PUBLIC_URL)%'
+            $mercureJwtSecret: '%env(MERCURE_JWT_SECRET)%'
     Symfony\Component\Mercure\Jwt\TokenFactoryInterface: '@defaultTokenFactory'
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones

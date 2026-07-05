@@ -5,7 +5,7 @@ Les Dockerfiles ne sont utilisés qu'en production sur le serveur — le dévelo
 
 ---
 
-## Applications Dokploy (4 déploiements, 2 images)
+## Applications Dokploy (5 déploiements minimum)
 
 | Application | Root directory | Domaine | Spécificité |
 |-------------|----------------|---------|-------------|
@@ -13,6 +13,7 @@ Les Dockerfiles ne sont utilisés qu'en production sur le serveur — le dévelo
 | Admin Mondentiste | `frontend/` | `admin.mondentiste-mali.com` | Build arg `CABINET=mondentiste` |
 | API CDOS | `backend-reform/` | `api.cabinetdentaireousmanesow.cloud` | Variables env cdos |
 | API Mondentiste | `backend-reform/` | `api.mondentiste-mali.com` | Variables env mondentiste |
+| **Mercure Hub** | `mercure/` | `mercure.cabinetdentaireousmanesow.cloud` | Hub temps réel partagé (SSE) |
 
 ---
 
@@ -126,6 +127,97 @@ Tu peux aussi utiliser **une seule** instance MariaDB avec **deux bases** (`dent
 
 ---
 
+## Mercure Hub — déploiement Dokploy (obligatoire pour le temps réel)
+
+Le backend **publie** sur Mercure ; le navigateur **s'abonne** via SSE. Sans ce service, les notifications et le Focus temps réel ne fonctionnent pas (aucune erreur bloquante au login, mais pas de push).
+
+### Étape 1 — Créer le service Mercure
+
+1. Projet **DentalSoft** → **Add Service** → **Application** (Docker)
+2. Configuration build :
+
+| Champ | Valeur |
+|-------|--------|
+| **Build Path** | `mercure` |
+| **Dockerfile Path** | `Dockerfile` |
+| **Docker Context Path** | `.` |
+| Port exposé | `80` |
+| Domaine | `mercure.cabinetdentaireousmanesow.cloud` (HTTPS Let's Encrypt) |
+
+> Le Dockerfile du repo (`mercure/Dockerfile`) part de `dunglas/mercure` et injecte automatiquement les CORS depuis `MERCURE_CORS_ORIGINS`.
+
+### Étape 2 — Variables d'environnement du hub Mercure
+
+Générer un secret fort (32+ caractères) et **le réutiliser identiquement** sur les 2 APIs :
+
+```env
+SERVER_NAME=:80
+MERCURE_PUBLISHER_JWT_KEY=<meme-secret-que-MERCURE_JWT_SECRET-api>
+MERCURE_SUBSCRIBER_JWT_KEY=<meme-secret-que-MERCURE_JWT_SECRET-api>
+MERCURE_CORS_ORIGINS=https://admin.cabinetdentaireousmanesow.cloud https://admin.mondentiste-mali.com
+TRUSTED_PROXIES=private_ranges
+```
+
+**Règles critiques :**
+- `MERCURE_CORS_ORIGINS` : origines **sans slash final**
+- Le secret JWT doit être **strictement identique** entre hub Mercure et chaque API (`MERCURE_JWT_SECRET`)
+- Ne pas exposer Mercure sans HTTPS en prod (le admin est en HTTPS → mixed content bloqué)
+
+### Étape 3 — Variables Mercure sur chaque API
+
+Remplacer les placeholders par les valeurs réelles :
+
+```env
+# Publication interne (réseau Docker Dokploy — PAS localhost, PAS l'URL publique)
+MERCURE_URL=http://<internal-host-mercure>:80/.well-known/mercure
+
+# URL lue par le navigateur (HTTPS, domaine public du hub)
+MERCURE_PUBLIC_URL=https://mercure.cabinetdentaireousmanesow.cloud/.well-known/mercure
+
+MERCURE_JWT_SECRET=<meme-secret-que-MERCURE_PUBLISHER_JWT_KEY>
+MERCURE_TOPIC_NAMESPACE=dentalsoft-cdos
+```
+
+Pour Mondentiste, seul `MERCURE_TOPIC_NAMESPACE` change :
+
+```env
+MERCURE_TOPIC_NAMESPACE=dentalsoft-mondentiste
+```
+
+`MERCURE_URL`, `MERCURE_PUBLIC_URL` et `MERCURE_JWT_SECRET` restent identiques si un seul hub est partagé.
+
+### Étape 4 — Vérification après deploy
+
+1. **Hub accessible** : `curl -I https://mercure.cabinetdentaireousmanesow.cloud/.well-known/mercure` → réponse HTTP (400 sans topic = hub OK)
+2. **API → hub** : `GET https://api.cabinetdentaireousmanesow.cloud/api/health/mercure`
+   - `status: "ok"` → l'API atteint le hub en interne
+   - `status: "unreachable"` → `MERCURE_URL` incorrect (souvent `localhost` ou mauvais internal host)
+   - `status: "warning"` → `MERCURE_PUBLIC_URL` n'est pas en HTTPS
+3. **Login admin** : la réponse `/api/me` ou login doit contenir `mercure.publicUrl`, `mercure.topic`, `mercure.token`
+4. **Navigateur** (F12 → Réseau) : requête SSE vers `mercure.../.well-known/mercure?topic=...` en statut **200** et type `text/event-stream`
+
+### Dépannage fréquent Dokploy
+
+| Symptôme | Cause probable | Correction |
+|----------|----------------|------------|
+| CORS dans la console | Origines admin absentes du hub | Ajouter les 2 domaines admin dans `MERCURE_CORS_ORIGINS` sur le service Mercure |
+| `Connection failed` / SSE coupée | Proxy Traefik bufferise SSE | Sur le domaine Mercure : désactiver le buffering (header `X-Accel-Buffering: no`) |
+| `401` sur subscribe | JWT secret différent API ↔ hub | Aligner `MERCURE_JWT_SECRET` et `MERCURE_PUBLISHER/SUBSCRIBER_JWT_KEY` |
+| Publish OK, subscribe KO | `MERCURE_PUBLIC_URL` ≠ domaine réel du hub | Utiliser exactement l'URL HTTPS du domaine Mercure Dokploy |
+| `/api/health/mercure` unreachable | `MERCURE_URL` pointe vers localhost | Utiliser l'**Internal Host** Dokploy du service Mercure (`http://mercure-xxx:80/...`) |
+| Notifications silencieuses | `notificationsEnabled: false` sur l'utilisateur | Activer dans le profil utilisateur |
+
+### Proxy SSE (Traefik / Dokploy)
+
+Si la connexion SSE se coupe après quelques secondes, ajouter sur le routeur du domaine Mercure (labels ou interface avancée Dokploy) :
+
+```
+X-Accel-Buffering: no
+Cache-Control: no-cache
+```
+
+---
+
 ## Backend — variables d'environnement
 
 Définir **uniquement dans Dokploy** (jamais commitées). `.env.local` reste sur la machine de développement.
@@ -139,8 +231,8 @@ APP_SECRET=<secret-unique-cdos>
 
 DATABASE_URL=mysql://dentalsoft:<password>@<internal-host-mariadb>:3306/dentalsoft_cdos?charset=utf8mb4
 
-MERCURE_URL=http://<mercure-host>:80/.well-known/mercure
-MERCURE_PUBLIC_URL=https://<mercure-public-domain>/.well-known/mercure
+MERCURE_URL=http://<internal-host-mercure-dokploy>:80/.well-known/mercure
+MERCURE_PUBLIC_URL=https://mercure.cabinetdentaireousmanesow.cloud/.well-known/mercure
 MERCURE_JWT_SECRET=<secret-partage-avec-conteneur-mercure>
 MERCURE_TOPIC_NAMESPACE=dentalsoft-cdos
 
@@ -183,8 +275,8 @@ APP_SECRET=<secret-unique-mondentiste>
 
 DATABASE_URL=mysql://dentalsoft:<password>@<internal-host-mariadb>:3306/dentalsoft_mondentiste?charset=utf8mb4
 
-MERCURE_URL=http://<mercure-host>:80/.well-known/mercure
-MERCURE_PUBLIC_URL=https://<mercure-public-domain>/.well-known/mercure
+MERCURE_URL=http://<internal-host-mercure-dokploy>:80/.well-known/mercure
+MERCURE_PUBLIC_URL=https://mercure.cabinetdentaireousmanesow.cloud/.well-known/mercure
 MERCURE_JWT_SECRET=<secret-partage-avec-conteneur-mercure>
 MERCURE_TOPIC_NAMESPACE=dentalsoft-mondentiste
 
@@ -348,6 +440,7 @@ Apache reste actif tant que le nouveau service n'est pas validé. Bascule DNS/pr
 ### Checklist validation backend (avant chaque bascule API)
 
 - [ ] `GET /api/health` → `{"status":"ok"}`
+- [ ] `GET /api/health/mercure` → `status: "ok"`
 - [ ] `POST /api/login` → JWT + URL Mercure dans la réponse
 - [ ] Upload fichier patient (test 5–50 Mo)
 - [ ] Génération PDF / rapport
