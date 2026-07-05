@@ -814,7 +814,12 @@ class ReportService
 
     private function resolvePaymentConsultation(Paiement $payment): ?Consultation
     {
-        return $payment->getFacture()?->getConsultation() ?? $payment->getConsultation();
+        $transaction = $payment->getTransaction();
+
+        return $payment->getFacture()?->getConsultation()
+            ?? $payment->getConsultation()
+            ?? $transaction?->getConsultation()
+            ?? $transaction?->getFacture()?->getConsultation();
     }
 
     private function isConsultationInPeriod(Consultation $consultation, DateTimeInterface $from, DateTimeInterface $to): bool
@@ -897,13 +902,15 @@ class ReportService
     {
         $grouped = [];
         $seenTransactionIds = [];
+        $processedPaymentTransactionIds = [];
 
         /** @var Paiement[] $paiements */
         $paiements = $this->em->createQueryBuilder()
-            ->select('p', 'f', 'cf', 'ct', 'mf', 'mt', 'pf', 'pt', 'faf', 'taf', 'tp', 'tf')
+            ->select('p', 'f', 'cf', 'ct', 'mf', 'mt', 'pf', 'pt', 'faf', 'taf', 'tp', 'tf', 'tc')
             ->from(Paiement::class, 'p')
             ->leftJoin('p.transaction', 'tp')
             ->leftJoin('tp.facture', 'tf')
+            ->leftJoin('tp.consultation', 'tc')
             ->leftJoin('p.facture', 'f')
             ->leftJoin('f.consultation', 'cf')
             ->leftJoin('cf.medecin', 'mf')
@@ -925,11 +932,8 @@ class ReportService
             }
 
             $transactionId = $payment->getTransaction()?->getId();
-            if ($transactionId !== null) {
-                if (isset($seenTransactionIds[$transactionId])) {
-                    continue;
-                }
-                $seenTransactionIds[$transactionId] = true;
+            if ($transactionId !== null && isset($processedPaymentTransactionIds[$transactionId])) {
+                continue;
             }
 
             $consultation = $this->resolvePaymentConsultation($payment);
@@ -946,7 +950,12 @@ class ReportService
                 continue;
             }
 
+            if ($transactionId !== null) {
+                $processedPaymentTransactionIds[$transactionId] = true;
+            }
+
             $billing = $this->resolveConsultationBilling($consultation);
+            $isInsurancePayment = $payment->getTransaction()?->getRolePaiement() === 'patient_insurance';
 
             $grouped[$doctorId][] = [
                 'date' => $payment->getDate()?->format('d/m/Y') ?? '--',
@@ -957,8 +966,12 @@ class ReportService
                     $billing['actLabels']
                 ),
                 'montant' => (float) $payment->getMontant(),
-                'isInsurance' => $billing['isInsurance'],
+                'isInsurance' => $isInsurancePayment || $billing['isInsurance'],
             ];
+
+            if ($transactionId !== null) {
+                $seenTransactionIds[$transactionId] = true;
+            }
         }
 
         /** @var Transaction[] $transactions */
@@ -983,9 +996,6 @@ class ReportService
             $transactionId = $transaction->getId();
             if ($transactionId !== null && isset($seenTransactionIds[$transactionId])) {
                 continue;
-            }
-            if ($transactionId !== null) {
-                $seenTransactionIds[$transactionId] = true;
             }
 
             $consultation = $transaction->getConsultation();
@@ -1012,6 +1022,10 @@ class ReportService
                 'montant' => (float) $transaction->getMontant(),
                 'isInsurance' => true,
             ];
+
+            if ($transactionId !== null) {
+                $seenTransactionIds[$transactionId] = true;
+            }
         }
 
         return $grouped;
