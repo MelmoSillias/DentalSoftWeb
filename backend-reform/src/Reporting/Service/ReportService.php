@@ -903,6 +903,7 @@ class ReportService
             ->select('p', 'f', 'cf', 'ct', 'mf', 'mt', 'pf', 'pt', 'faf', 'taf', 'tp', 'tf')
             ->from(Paiement::class, 'p')
             ->leftJoin('p.transaction', 'tp')
+            ->leftJoin('tp.facture', 'tf')
             ->leftJoin('p.facture', 'f')
             ->leftJoin('f.consultation', 'cf')
             ->leftJoin('cf.medecin', 'mf')
