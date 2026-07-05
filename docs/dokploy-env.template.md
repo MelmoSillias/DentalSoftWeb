@@ -13,7 +13,7 @@ Les Dockerfiles ne sont utilisés qu'en production sur le serveur — le dévelo
 | Admin Mondentiste | `frontend/` | `admin.mondentiste-mali.com` | Build arg `CABINET=mondentiste` |
 | API CDOS | `backend-reform/` | `api.cabinetdentaireousmanesow.cloud` | Variables env cdos |
 | API Mondentiste | `backend-reform/` | `api.mondentiste-mali.com` | Variables env mondentiste |
-| **Mercure Hub** | `mercure/` | `mercure.cabinetdentaireousmanesow.cloud` | Hub temps réel partagé (SSE) |
+| **Mercure Hub** | `mercure-prod/` | `mercure.cabinetdentaireousmanesow.cloud` | Hub temps réel partagé (SSE) |
 
 ---
 
@@ -138,13 +138,13 @@ Le backend **publie** sur Mercure ; le navigateur **s'abonne** via SSE. Sans ce 
 
 | Champ | Valeur |
 |-------|--------|
-| **Build Path** | `mercure` |
+| **Build Path** | `mercure-prod` |
 | **Dockerfile Path** | `Dockerfile` |
-| **Docker Context Path** | `.` |
+| **Docker Context Path** | `mercure-prod` |
 | Port exposé | `80` |
 | Domaine | `mercure.cabinetdentaireousmanesow.cloud` (HTTPS Let's Encrypt) |
 
-> Le Dockerfile du repo (`mercure/Dockerfile`) part de `dunglas/mercure` et injecte automatiquement les CORS depuis `MERCURE_CORS_ORIGINS`.
+> Le Dockerfile (`mercure-prod/Dockerfile`) part de `dunglas/mercure:v0.16.2` et injecte les directives CORS via `MERCURE_CORS_ORIGINS` (équivalent à `MERCURE_EXTRA_DIRECTIVES` de l'exemple officiel).
 
 ### Étape 2 — Variables d'environnement du hub Mercure
 
@@ -156,6 +156,13 @@ MERCURE_PUBLISHER_JWT_KEY=<meme-secret-que-MERCURE_JWT_SECRET-api>
 MERCURE_SUBSCRIBER_JWT_KEY=<meme-secret-que-MERCURE_JWT_SECRET-api>
 MERCURE_CORS_ORIGINS=https://admin.cabinetdentaireousmanesow.cloud https://admin.mondentiste-mali.com
 TRUSTED_PROXIES=private_ranges
+```
+
+**Équivalent docker-compose officiel dunglas/mercure** (si vous n'utilisez pas `mercure-prod/entrypoint.sh`) :
+
+```env
+MERCURE_EXTRA_DIRECTIVES=cors_origins https://admin.cabinetdentaireousmanesow.cloud
+cors_origins https://admin.mondentiste-mali.com
 ```
 
 **Règles critiques :**
@@ -195,6 +202,16 @@ MERCURE_TOPIC_NAMESPACE=dentalsoft-mondentiste
    - `status: "warning"` → `MERCURE_PUBLIC_URL` n'est pas en HTTPS
 3. **Login admin** : la réponse `/api/me` ou login doit contenir `mercure.publicUrl`, `mercure.topic`, `mercure.token`
 4. **Navigateur** (F12 → Réseau) : requête SSE vers `mercure.../.well-known/mercure?topic=...` en statut **200** et type `text/event-stream`
+5. **CORS** (depuis votre machine) :
+
+```bash
+curl -sI -X OPTIONS "https://mercure.cabinetdentaireousmanesow.cloud/.well-known/mercure" \
+  -H "Origin: https://admin.cabinetdentaireousmanesow.cloud" \
+  -H "Access-Control-Request-Method: GET" \
+  -H "Access-Control-Request-Headers: authorization"
+```
+
+→ doit contenir `Access-Control-Allow-Origin: https://admin.cabinetdentaireousmanesow.cloud`
 
 ### Dépannage fréquent Dokploy
 

@@ -44,6 +44,11 @@ services:
             $mercureUrl: '%env(MERCURE_URL)%'
             $mercurePublicUrl: '%env(MERCURE_PUBLIC_URL)%'
             $mercureJwtSecret: '%env(MERCURE_JWT_SECRET)%'
+    App\Communication\Command\TestMercurePublishCommand:
+        arguments:
+            $mercureUrl: '%env(MERCURE_URL)%'
+            $mercurePublicUrl: '%env(MERCURE_PUBLIC_URL)%'
+            $topicNamespace: '%env(MERCURE_TOPIC_NAMESPACE)%'
     Symfony\Component\Mercure\Jwt\TokenFactoryInterface: '@defaultTokenFactory'
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
