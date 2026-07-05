@@ -16,10 +16,11 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /app
 
-COPY composer.json composer.lock symfony.lock ./
+# Contexte monorepo : Dokploy build depuis la racine avec -f backend-reform/Dockerfile
+COPY backend-reform/composer.json backend-reform/composer.lock backend-reform/symfony.lock ./
 RUN composer install --no-dev --no-scripts --no-autoloader
 
-COPY . .
+COPY backend-reform/ .
 RUN composer dump-autoload --optimize --classmap-authoritative
 
 COPY docker/Caddyfile /etc/caddy/Caddyfile

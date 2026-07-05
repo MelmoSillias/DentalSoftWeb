@@ -127,9 +127,13 @@ MESSENGER_TRANSPORT_DSN=doctrine://default?queue_name=default
 
 ### Backend — build Dokploy
 
-- **Dockerfile path :** `backend-reform/Dockerfile`
-- **Port exposé :** 80
-- **Health check :** `GET /api/health` → `{"status":"ok"}`
+| Champ | Valeur (monorepo racine) |
+|-------|--------------------------|
+| Build Path | `.` ou vide |
+| Dockerfile Path | `backend-reform/Dockerfile` |
+| Docker Context Path | `.` |
+| Port exposé | `80` |
+| Health check | `GET /api/health` → `{"status":"ok"}` |
 
 ---
 
