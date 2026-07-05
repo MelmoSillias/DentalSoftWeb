@@ -22,6 +22,12 @@ RUN composer install --no-dev --no-scripts --no-autoloader
 COPY . .
 RUN composer dump-autoload --optimize --classmap-authoritative
 
+ARG JWT_PASSPHRASE
+RUN mkdir -p config/jwt \
+    && if [ -n "$JWT_PASSPHRASE" ]; then export JWT_PASSPHRASE="$JWT_PASSPHRASE"; \
+       else export JWT_PASSPHRASE="$(grep '^JWT_PASSPHRASE=' .env | cut -d= -f2- | tr -d '"')"; fi \
+    && php bin/console lexik:jwt:generate-keypair --overwrite --no-interaction --env=prod
+
 COPY docker/Caddyfile /etc/caddy/Caddyfile
 COPY docker/php.ini /usr/local/etc/php/conf.d/dentalsoft.ini
 COPY docker/entrypoint.sh /entrypoint.sh
