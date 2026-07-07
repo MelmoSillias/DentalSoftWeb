@@ -15,4 +15,27 @@ if [ "${APP_ENV:-prod}" = "prod" ]; then
     php bin/console cache:warmup --env=prod || echo "[entrypoint] cache:warmup failed (non bloquant)"
 fi
 
+# Worker Messenger (Dokploy worker-cdos / worker-mondentiste) : poll SMS + consume async
+if [ "${WORKER_MODE:-0}" = "1" ]; then
+    _poll_interval="${SMS_POLL_INTERVAL:-60}"
+    _dispatch_limit="${SMS_DISPATCH_LIMIT:-20}"
+    _time_limit="${MESSENGER_TIME_LIMIT:-3600}"
+    _memory_limit="${MESSENGER_MEMORY_LIMIT:-128M}"
+
+    echo "[entrypoint] WORKER_MODE=1 — dispatch SMS toutes les ${_poll_interval}s + messenger:consume async"
+
+    (
+        while true; do
+            php bin/console app:sms:dispatch-queue --limit="${_dispatch_limit}" --env="${APP_ENV:-prod}" \
+                || echo "[worker] app:sms:dispatch-queue failed (non bloquant)"
+            sleep "${_poll_interval}"
+        done
+    ) &
+
+    exec php bin/console messenger:consume async \
+        --time-limit="${_time_limit}" \
+        --memory-limit="${_memory_limit}" \
+        -vv
+fi
+
 exec "$@"

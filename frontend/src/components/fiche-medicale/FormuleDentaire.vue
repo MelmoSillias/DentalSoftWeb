@@ -1,14 +1,21 @@
 <script setup>
 import Button from 'primevue/button';
+import Dialog from 'primevue/dialog';
 import InputText from 'primevue/inputtext';
 import MultiSelect from 'primevue/multiselect';
 import Textarea from 'primevue/textarea';
 import { computed, ref } from 'vue';
+import FormuleDentaireGrid from '@/components/fiche-medicale/FormuleDentaireGrid.vue';
+import { getMatrixForDentition } from '@/utils/formuleDentaireLayout';
 
 const props = defineProps({
     modelValue: {
         type: Object,
         default: () => ({})
+    },
+    dentitionType: {
+        type: String,
+        default: 'adulte'
     }
 });
 
@@ -20,6 +27,9 @@ const form = computed({
 });
 
 const selectedTooth = ref(null);
+const detailVisible = ref(false);
+
+const matrix = computed(() => getMatrixForDentition(props.dentitionType));
 
 const etatOptions = [
     { label: 'Bonne', value: 'BONNE', isDefault: true },
@@ -31,25 +41,6 @@ const etatOptions = [
     { label: 'M = Mobile', value: 'M' },
     { label: 'I = Incluse', value: 'I' },
     { label: 'P = Prothese', value: 'P' }
-];
-
-const rows = [
-    {
-        left: [55, 54, 53, 52, 51],
-        right: [61, 62, 63, 64, 65]
-    },
-    {
-        left: [18, 17, 16, 15, 14, 13, 12, 11],
-        right: [21, 22, 23, 24, 25, 26, 27, 28]
-    },
-    {
-        left: [48, 47, 46, 45, 44, 43, 42, 41],
-        right: [31, 32, 33, 34, 35, 36, 37, 38]
-    },
-    {
-        left: [85, 84, 83, 82, 81],
-        right: [71, 72, 73, 74, 75]
-    }
 ];
 
 const defaultEntry = () => ({
@@ -88,9 +79,15 @@ const ensureTooth = (tooth) => {
     return next;
 };
 
-const selectTooth = (tooth) => {
+const openToothDetail = (tooth) => {
     selectedTooth.value = tooth;
     ensureTooth(tooth);
+    detailVisible.value = true;
+};
+
+const closeToothDetail = () => {
+    detailVisible.value = false;
+    selectedTooth.value = null;
 };
 
 const updateTooth = (tooth, patch) => {
@@ -181,54 +178,6 @@ const removeExamen = (index) => {
     });
 };
 
-const toothSummary = (tooth) => {
-    const entry = form.value?.[tooth];
-    if (!entry?.etat || entry.etat.length === 0) {
-        return '';
-    }
-    return entry.etat.join('-');
-};
-
-const hasData = (entry) => {
-    if (!entry) {
-        return false;
-    }
-    if (entry.etat && entry.etat.length) {
-        return true;
-    }
-    if (entry.estCausale) {
-        return true;
-    }
-    if (entry.diagnosticSuppose) {
-        return true;
-    }
-    if (entry.examensComplementaires && entry.examensComplementaires.length) {
-        return true;
-    }
-    return Object.values(entry.siCausale || {}).some((value) => value);
-};
-
-const toothClasses = (tooth) => {
-    const entry = form.value?.[tooth];
-    const active = selectedTooth.value === tooth;
-    if (entry?.estCausale) {
-        return [
-            'bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-700',
-            active ? 'ring-2 ring-red-400 ring-offset-2' : ''
-        ];
-    }
-    if (hasData(entry)) {
-        return [
-            'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-700',
-            active ? 'ring-2 ring-emerald-400 ring-offset-2' : ''
-        ];
-    }
-    return [
-        'bg-white text-surface-600 border-surface-200 dark:bg-surface-800/30 dark:text-surface-400 dark:border-surface-700',
-        active ? 'ring-2 ring-primary-400 ring-offset-2' : ''
-    ];
-};
-
 const selectedEntry = computed(() => {
     if (!selectedTooth.value) {
         return null;
@@ -249,122 +198,54 @@ const clearEtatLabel = computed(() => {
 </script>
 
 <template>
-    <div class="grid grid-cols-1 xl:grid-cols-[1.3fr_0.8fr] gap-6 w-full min-w-0">
+    <div class="w-full min-w-0">
         <div
             class="rounded-2xl border border-surface-200/70 dark:border-surface-700 bg-gradient-to-br from-surface-0 to-surface-50 dark:from-surface-900 dark:to-surface-900 p-4 sm:p-5 shadow-sm w-full min-w-0 overflow-hidden"
         >
-            <div class="sm:hidden space-y-4">
-                <div v-for="(row, rowIndex) in rows" :key="'stack-' + rowIndex" class="space-y-2">
-                    <div class="flex flex-wrap justify-center gap-2">
-                        <button
-                            v-for="tooth in row.left"
-                            :key="'stack-left-' + tooth"
-                            type="button"
-                            class="h-10 w-10 rounded-xl border text-[10px] font-semibold tracking-tight transition-all duration-200"
-                            :class="toothClasses(tooth)"
-                            @click="selectTooth(tooth)"
-                        >
-                            <div class="text-[9px] leading-tight">Dent</div>
-                            <div class="text-xs font-bold">{{ tooth }}</div>
-                            <div class="text-[9px] leading-tight opacity-80">{{ toothSummary(tooth) || '---' }}</div>
-                        </button>
-                    </div>
-                    <div class="flex flex-wrap justify-center gap-2">
-                        <button
-                            v-for="tooth in row.right"
-                            :key="'stack-right-' + tooth"
-                            type="button"
-                            class="h-10 w-10 rounded-xl border text-[10px] font-semibold tracking-tight transition-all duration-200"
-                            :class="toothClasses(tooth)"
-                            @click="selectTooth(tooth)"
-                        >
-                            <div class="text-[9px] leading-tight">Dent</div>
-                            <div class="text-xs font-bold">{{ tooth }}</div>
-                            <div class="text-[9px] leading-tight opacity-80">{{ toothSummary(tooth) || '---' }}</div>
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <div class="hidden sm:block overflow-x-auto">
-                <table class="w-full sm:min-w-[520px] border-collapse mx-auto">
-                    <tbody>
-                        <tr v-for="(row, rowIndex) in rows" :key="rowIndex">
-                            <!-- Offset for top/bottom rows to center them -->
-                            <template v-if="rowIndex === 0 || rowIndex === rows.length - 1">
-                                <td class="w-6 sm:w-8"></td>
-                                <td class="w-6 sm:w-8"></td>
-                            </template>
-                            <!-- Left teeth -->
-                            <td v-for="tooth in row.left" :key="'left-' + tooth" class="p-1">
-                                <button
-                                    type="button"
-                                    class="h-12 w-12 sm:h-14 sm:w-14 rounded-xl border text-[11px] sm:text-xs font-semibold tracking-tight transition-all duration-200 hover:-translate-y-0.5"
-                                    :class="toothClasses(tooth)"
-                                    @click="selectTooth(tooth)"
-                                >
-                                    <div class="text-[10px] leading-tight">Dent</div>
-                                    <div class="text-sm font-bold">{{ tooth }}</div>
-                                    <div class="text-[10px] leading-tight opacity-80">{{ toothSummary(tooth) || '---' }}</div>
-                                </button>
-                            </td>
-                            <!-- Spacer between left and right -->
-                            <!-- Add 3 empty cells for the first and last row -->
-                            <template v-if="rowIndex === 0 || rowIndex === rows.length - 1">
-                                <td class="w-6 sm:w-8"></td>
-                                <td class="w-6 sm:w-8"></td>
-                                <td class="w-6 sm:w-8"></td>
-                            </template>
-                            <template v-else>
-                                <td class="w-6 sm:w-8"></td>
-                            </template>
-                            <!-- Right teeth -->
-                            <td v-for="tooth in row.right" :key="'right-' + tooth" class="p-1">
-                                <button
-                                    type="button"
-                                    class="h-12 w-12 sm:h-14 sm:w-14 rounded-xl border text-[11px] sm:text-xs font-semibold tracking-tight transition-all duration-200 hover:-translate-y-0.5"
-                                    :class="toothClasses(tooth)"
-                                    @click="selectTooth(tooth)"
-                                >
-                                    <div class="text-[10px] leading-tight">Dent</div>
-                                    <div class="text-sm font-bold">{{ tooth }}</div>
-                                    <div class="text-[10px] leading-tight opacity-80">{{ toothSummary(tooth) || '---' }}</div>
-                                </button>
-                            </td>
-                            <!-- Offset for top/bottom rows to center them -->
-                            <template v-if="rowIndex === 0 || rowIndex === rows.length - 1">
-                                <td class="w-6 sm:w-8"></td>
-                                <td class="w-6 sm:w-8"></td>
-                            </template>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
+            <FormuleDentaireGrid
+                :matrix="matrix"
+                :form="form"
+                :selected-tooth="selectedTooth"
+                mode="edit"
+                @tooth-click="openToothDetail"
+            />
         </div>
 
-        <div class="rounded-2xl border border-surface-200/70 dark:border-surface-700 bg-surface-0 dark:bg-surface-900 p-4 sm:p-6 shadow-sm">
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                <div>
-                    <h5 class="text-base sm:text-lg font-semibold text-surface-900 dark:text-surface-100">
-                        Apercu de la dent
-                    </h5>
-                    <p class="text-xs sm:text-sm text-surface-500 dark:text-surface-400">
-                        Selectionnez une dent dans la grille.
-                    </p>
-                </div>
-                <div
-                    class="text-xs sm:text-sm font-semibold text-primary-600 bg-primary-50 dark:bg-primary-950/30 px-3 py-1 rounded-full w-fit"
-                    v-if="selectedTooth"
-                >
-                    Dent {{ selectedTooth }}
-                </div>
-            </div>
+        <p class="text-xs text-surface-500 dark:text-surface-400 mt-3 text-center">
+            Cliquez sur une dent pour renseigner ses détails
+        </p>
 
-            <div v-if="!selectedTooth" class="mt-6 text-sm text-surface-500 dark:text-surface-400">
-                Cliquez sur une dent pour renseigner ses details.
-            </div>
+        <Dialog
+            v-model:visible="detailVisible"
+            modal
+            :closable="false"
+            :draggable="false"
+            class="w-full max-w-lg formule-dentaire-detail-dialog"
+            :pt="{
+                root: 'rounded-2xl border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900 shadow-xl',
+                header: 'border-b border-surface-200/50 dark:border-surface-700/50 bg-surface-50 dark:bg-surface-900 px-5 py-4',
+                content: 'px-5 py-4 bg-surface-0 dark:bg-surface-900 text-surface-900 dark:text-surface-100',
+                footer: 'border-t border-surface-200/50 dark:border-surface-700/50 bg-surface-50 dark:bg-surface-900 px-5 py-4'
+            }"
+            @hide="selectedTooth = null"
+        >
+            <template #header>
+                <div class="flex items-center gap-3">
+                    <div class="p-2 rounded-xl bg-primary-500/10 dark:bg-primary-500/25">
+                        <i class="pi pi-tooth text-primary-600 dark:text-primary-400"></i>
+                    </div>
+                    <div>
+                        <h4 class="text-lg font-semibold text-surface-900 dark:text-surface-50 m-0">
+                            Dent {{ selectedTooth }}
+                        </h4>
+                        <p class="text-sm text-surface-500 dark:text-surface-400 m-0 mt-0.5">
+                            Détails de la formule dentaire
+                        </p>
+                    </div>
+                </div>
+            </template>
 
-            <div v-else class="mt-5 space-y-5">
+            <div v-if="selectedTooth" class="space-y-5 max-h-[60vh] overflow-y-auto pr-1">
                 <div class="space-y-2">
                     <label class="text-sm font-medium text-surface-700 dark:text-surface-300">Etat</label>
                     <div class="flex flex-wrap items-center justify-between gap-3">
@@ -392,10 +273,10 @@ const clearEtatLabel = computed(() => {
                     />
                 </div>
 
-                <div v-if="selectedEntry?.estCausale" class="space-y-4 rounded-xl border border-red-200 bg-red-50/80 p-4">
+                <div v-if="selectedEntry?.estCausale" class="space-y-4 rounded-xl border border-red-200 bg-red-50/80 dark:bg-red-950/20 dark:border-red-800 p-4">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div class="space-y-2">
-                            <label class="text-xs font-medium text-surface-700">Aspect</label>
+                            <label class="text-xs font-medium text-surface-700 dark:text-surface-300">Aspect</label>
                             <InputText
                                 :modelValue="selectedEntry?.siCausale?.aspect"
                                 class="w-full"
@@ -403,7 +284,7 @@ const clearEtatLabel = computed(() => {
                             />
                         </div>
                         <div class="space-y-2">
-                            <label class="text-xs font-medium text-surface-700">Siege</label>
+                            <label class="text-xs font-medium text-surface-700 dark:text-surface-300">Siege</label>
                             <InputText
                                 :modelValue="selectedEntry?.siCausale?.siege"
                                 class="w-full"
@@ -411,7 +292,7 @@ const clearEtatLabel = computed(() => {
                             />
                         </div>
                         <div class="space-y-2">
-                            <label class="text-xs font-medium text-surface-700">Profondeur</label>
+                            <label class="text-xs font-medium text-surface-700 dark:text-surface-300">Profondeur</label>
                             <InputText
                                 :modelValue="selectedEntry?.siCausale?.profondeur"
                                 class="w-full"
@@ -419,7 +300,7 @@ const clearEtatLabel = computed(() => {
                             />
                         </div>
                         <div class="space-y-2">
-                            <label class="text-xs font-medium text-surface-700">Mobilite</label>
+                            <label class="text-xs font-medium text-surface-700 dark:text-surface-300">Mobilite</label>
                             <InputText
                                 :modelValue="selectedEntry?.siCausale?.mobilite"
                                 class="w-full"
@@ -427,7 +308,7 @@ const clearEtatLabel = computed(() => {
                             />
                         </div>
                         <div class="space-y-2">
-                            <label class="text-xs font-medium text-surface-700">Sonde</label>
+                            <label class="text-xs font-medium text-surface-700 dark:text-surface-300">Sonde</label>
                             <InputText
                                 :modelValue="selectedEntry?.siCausale?.sonde"
                                 class="w-full"
@@ -435,7 +316,7 @@ const clearEtatLabel = computed(() => {
                             />
                         </div>
                         <div class="space-y-2">
-                            <label class="text-xs font-medium text-surface-700">Tests de Vitalite (Froid, Chaud)</label>
+                            <label class="text-xs font-medium text-surface-700 dark:text-surface-300">Tests de Vitalite (Froid, Chaud)</label>
                             <InputText
                                 :modelValue="selectedEntry?.siCausale?.testsVitalite"
                                 class="w-full"
@@ -443,7 +324,7 @@ const clearEtatLabel = computed(() => {
                             />
                         </div>
                         <div class="space-y-2">
-                            <label class="text-xs font-medium text-surface-700">Percussions</label>
+                            <label class="text-xs font-medium text-surface-700 dark:text-surface-300">Percussions</label>
                             <InputText
                                 :modelValue="selectedEntry?.siCausale?.percussions"
                                 class="w-full"
@@ -500,6 +381,18 @@ const clearEtatLabel = computed(() => {
                     </div>
                 </div>
             </div>
-        </div>
+
+            <template #footer>
+                <div class="flex justify-end w-full">
+                    <Button
+                        label="Fermer"
+                        icon="pi pi-times"
+                        severity="secondary"
+                        class="dark:border-surface-600 dark:text-surface-200"
+                        @click="closeToothDetail"
+                    />
+                </div>
+            </template>
+        </Dialog>
     </div>
 </template>

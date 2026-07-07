@@ -12,6 +12,18 @@ export const REQUEST_TIMEOUT_MS = 20000;
 /** Timeout étendu pour les listes volumineuses (caisse, exports, etc.). */
 export const HEAVY_REQUEST_TIMEOUT_MS = 60000;
 
+/** Timeout pour les uploads de fichiers (images médicales, archives, photos). */
+export const UPLOAD_REQUEST_TIMEOUT_MS = 600000;
+
+const isUploadRequest = (config) => {
+    if (config?.data instanceof FormData) {
+        return true;
+    }
+
+    const contentType = config?.headers?.['Content-Type'] ?? config?.headers?.['content-type'] ?? '';
+    return typeof contentType === 'string' && contentType.includes('multipart/form-data');
+};
+
 const userFacingMessages = {
     slow: 'Connexion au serveur impossible ou bloquee (reseau/CORS). Veuillez reessayer dans un instant.',
     unauthorized: 'Votre session a expire. Veuillez vous reconnecter.',
@@ -113,6 +125,11 @@ http.interceptors.request.use(
         } catch (_) {
             // Pinia pas initialisé encore, fallback localStorage déjà géré
         }
+
+        if (isUploadRequest(config)) {
+            config.timeout = Math.max(config.timeout ?? 0, UPLOAD_REQUEST_TIMEOUT_MS);
+        }
+
         return config;
     },
     (error) => Promise.reject(error)

@@ -1,125 +1,200 @@
 <script setup>
-import { computed } from 'vue';
+import Button from 'primevue/button';
+import Dialog from 'primevue/dialog';
+import { computed, ref } from 'vue';
+import FormuleDentaireGrid from '@/components/fiche-medicale/FormuleDentaireGrid.vue';
+import ReadonlyFieldGrid from '@/components/fiche-medicale/ReadonlyFieldGrid.vue';
+import { getMatrixForDentition, hasToothData } from '@/utils/formuleDentaireLayout';
 
 const props = defineProps({
     modelValue: {
         type: Object,
         default: () => ({})
+    },
+    dentitionType: {
+        type: String,
+        default: 'adulte'
     }
 });
 
 const form = computed(() => props.modelValue || {});
+const selectedTooth = ref(null);
+const detailVisible = ref(false);
 
-const rows = [
-    { left: [55, 54, 53, 52, 51], right: [61, 62, 63, 64, 65] },
-    { left: [18, 17, 16, 15, 14, 13, 12, 11], right: [21, 22, 23, 24, 25, 26, 27, 28] },
-    { left: [48, 47, 46, 45, 44, 43, 42, 41], right: [31, 32, 33, 34, 35, 36, 37, 38] },
-    { left: [85, 84, 83, 82, 81], right: [71, 72, 73, 74, 75] }
-];
+const matrix = computed(() => getMatrixForDentition(props.dentitionType));
 
-const toothSummary = (tooth) => {
-    const entry = form.value?.[tooth];
-    if (!entry?.etat || entry.etat.length === 0) {
-        return '';
-    }
-    return Array.isArray(entry.etat) ? entry.etat.join('-') : String(entry.etat);
+const selectedEntry = computed(() => {
+    if (!selectedTooth.value) return null;
+    return form.value?.[selectedTooth.value] || null;
+});
+
+const selectedHasData = computed(() => hasToothData(selectedEntry.value));
+
+const siCausaleFields = computed(() => {
+    const si = selectedEntry.value?.siCausale || {};
+    return [
+        { label: 'Aspect', value: si.aspect },
+        { label: 'Siège', value: si.siege },
+        { label: 'Profondeur', value: si.profondeur },
+        { label: 'Mobilité', value: si.mobilite },
+        { label: 'Sonde', value: si.sonde },
+        { label: 'Tests de vitalité (froid, chaud)', value: si.testsVitalite },
+        { label: 'Percussions', value: si.percussions }
+    ];
+});
+
+const openToothDetail = (tooth) => {
+    selectedTooth.value = tooth;
+    detailVisible.value = true;
 };
 
-const hasData = (entry) => {
-    if (!entry) return false;
-    if (entry.etat && entry.etat.length) return true;
-    if (entry.estCausale) return true;
-    if (entry.diagnosticSuppose) return true;
-    if (entry.examensComplementaires && entry.examensComplementaires.length) return true;
-    return Object.values(entry.siCausale || {}).some((value) => value);
+const closeToothDetail = () => {
+    detailVisible.value = false;
+    selectedTooth.value = null;
 };
 
-const toothClasses = (tooth) => {
-    const entry = form.value?.[tooth];
-    if (entry?.estCausale) {
-        return 'bg-red-100 text-red-700 border-red-200';
-    }
-    if (hasData(entry)) {
-        return 'bg-emerald-100 text-emerald-700 border-emerald-200';
-    }
-    return 'bg-white text-surface-600 border-surface-200';
+const formatEtat = (etat) => {
+    if (!etat || (Array.isArray(etat) && !etat.length)) return '—';
+    return Array.isArray(etat) ? etat.join(', ') : String(etat);
 };
+
+const formatField = (value) => {
+    if (value === null || value === undefined) return '—';
+    if (typeof value === 'string' && !value.trim()) return '—';
+    return String(value);
+};
+
+const examensComplementairesView = computed(() => {
+    const list = Array.isArray(selectedEntry.value?.examensComplementaires)
+        ? selectedEntry.value.examensComplementaires
+        : [];
+    return list.length ? list : [{ titre: null, description: null, isPlaceholder: true }];
+});
 </script>
 
 <template>
     <div class="w-full min-w-0">
-        <div class="sm:hidden space-y-4">
-            <div v-for="(row, rowIndex) in rows" :key="'stack-' + rowIndex" class="space-y-2">
-                <div class="flex flex-wrap justify-center gap-2">
-                    <div
-                        v-for="tooth in row.left"
-                        :key="'stack-left-' + tooth"
-                        class="h-10 w-10 rounded-xl border text-[10px] font-semibold tracking-tight flex flex-col items-center justify-center"
-                        :class="toothClasses(tooth)"
-                    >
-                        <div class="text-[9px] leading-tight">Dent</div>
-                        <div class="text-xs font-bold">{{ tooth }}</div>
-                        <div class="text-[9px] leading-tight opacity-80">{{ toothSummary(tooth) || '---' }}</div>
+        <FormuleDentaireGrid
+            :matrix="matrix"
+            :form="form"
+            mode="readonly"
+            @tooth-click="openToothDetail"
+        />
+
+        <p class="text-xs text-surface-500 dark:text-surface-400 mt-3 text-center">
+            Cliquez sur une dent pour afficher les détails
+        </p>
+
+        <Dialog
+            v-model:visible="detailVisible"
+            modal
+            :closable="false"
+            :draggable="false"
+            class="w-full max-w-lg formule-dentaire-detail-dialog"
+            :pt="{
+                root: 'rounded-2xl border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900 shadow-xl',
+                header: 'border-b border-surface-200/50 dark:border-surface-700/50 bg-surface-50 dark:bg-surface-900 px-5 py-4',
+                content: 'px-5 py-4 bg-surface-0 dark:bg-surface-900 text-surface-900 dark:text-surface-100',
+                footer: 'border-t border-surface-200/50 dark:border-surface-700/50 bg-surface-50 dark:bg-surface-900 px-5 py-4'
+            }"
+            @hide="selectedTooth = null"
+        >
+            <template #header>
+                <div class="flex items-center gap-3">
+                    <div class="p-2 rounded-xl bg-primary-500/10 dark:bg-primary-500/25">
+                        <i class="pi pi-tooth text-primary-600 dark:text-primary-400"></i>
+                    </div>
+                    <div>
+                        <h4 class="text-lg font-semibold text-surface-900 dark:text-surface-50 m-0">
+                            Dent {{ selectedTooth }}
+                        </h4>
+                        <p class="text-sm text-surface-500 dark:text-surface-400 m-0 mt-0.5">
+                            Détails de la formule dentaire
+                        </p>
                     </div>
                 </div>
-                <div class="flex flex-wrap justify-center gap-2">
-                    <div
-                        v-for="tooth in row.right"
-                        :key="'stack-right-' + tooth"
-                        class="h-10 w-10 rounded-xl border text-[10px] font-semibold tracking-tight"
-                        :class="toothClasses(tooth)"
+            </template>
+
+            <div
+                v-if="selectedTooth && !selectedHasData"
+                class="flex flex-col items-center justify-center text-center py-10 px-4 rounded-xl border border-dashed border-surface-200 dark:border-surface-700 bg-surface-50/80 dark:bg-surface-800/50"
+            >
+                <div class="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-surface-100 dark:bg-surface-800 text-surface-400 dark:text-surface-500">
+                    <i class="pi pi-tooth text-2xl"></i>
+                </div>
+                <p class="text-base font-medium text-surface-700 dark:text-surface-200">
+                    Dent non examinée
+                </p>
+                <p class="mt-2 max-w-xs text-sm text-surface-500 dark:text-surface-400">
+                    Aucune information n'a été saisie pour cette dent dans la formule dentaire.
+                </p>
+            </div>
+
+            <div v-else-if="selectedTooth" class="space-y-5 text-sm max-h-[60vh] overflow-y-auto pr-1">
+                <div class="space-y-2">
+                    <h5 class="text-xs font-semibold uppercase tracking-wide text-surface-500 dark:text-surface-400">État</h5>
+                    <p class="text-surface-800 dark:text-surface-200">{{ formatEtat(selectedEntry?.etat) }}</p>
+                </div>
+
+                <div class="space-y-2">
+                    <h5 class="text-xs font-semibold uppercase tracking-wide text-surface-500 dark:text-surface-400">Dent causale</h5>
+                    <span
+                        v-if="selectedEntry?.estCausale"
+                        class="inline-flex items-center gap-1 rounded-full bg-red-100 dark:bg-red-900/30 px-2.5 py-1 text-xs font-semibold text-red-700 dark:text-red-300"
                     >
-                        <div class="text-[9px] leading-tight">Dent</div>
-                        <div class="text-xs font-bold">{{ tooth }}</div>
-                        <div class="text-[9px] leading-tight opacity-80">{{ toothSummary(tooth) || '---' }}</div>
+                        <i class="pi pi-exclamation-circle text-[10px]"></i>
+                        Oui
+                    </span>
+                    <span v-else class="text-surface-600 dark:text-surface-400">Non</span>
+                </div>
+
+                <div class="space-y-2">
+                    <h5 class="text-xs font-semibold uppercase tracking-wide text-surface-500 dark:text-surface-400">Si causale</h5>
+                    <ReadonlyFieldGrid :fields="siCausaleFields" :columns="1" />
+                </div>
+
+                <div class="space-y-2">
+                    <h5 class="text-xs font-semibold uppercase tracking-wide text-surface-500 dark:text-surface-400">Diagnostic supposé</h5>
+                    <p class="text-surface-800 dark:text-surface-200 whitespace-pre-wrap">
+                        {{ formatField(selectedEntry?.diagnosticSuppose) }}
+                    </p>
+                </div>
+
+                <div class="space-y-2">
+                    <h5 class="text-xs font-semibold uppercase tracking-wide text-surface-500 dark:text-surface-400">Examens complémentaires</h5>
+                    <div class="space-y-2">
+                        <div
+                            v-for="(examen, idx) in examensComplementairesView"
+                            :key="idx"
+                            class="p-3 rounded-lg bg-surface-50 dark:bg-surface-800 border border-surface-200 dark:border-surface-700"
+                        >
+                            <template v-if="examen.isPlaceholder">
+                                <p class="text-surface-600 dark:text-surface-400">—</p>
+                            </template>
+                            <template v-else>
+                                <div class="font-medium text-surface-800 dark:text-surface-200">
+                                    {{ formatField(examen.titre) }}
+                                </div>
+                                <p class="text-surface-600 dark:text-surface-400 mt-1 whitespace-pre-wrap">
+                                    {{ formatField(examen.description ?? examen.raison) }}
+                                </p>
+                            </template>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <div class="hidden sm:block overflow-x-auto">
-            <table class="w-full sm:min-w-[520px] border-collapse mx-auto">
-                <tbody>
-                    <tr v-for="(row, rowIndex) in rows" :key="rowIndex">
-                        <template v-if="rowIndex === 0 || rowIndex === rows.length - 1">
-                            <td class="w-6 sm:w-8"></td>
-                            <td class="w-6 sm:w-8"></td>
-                        </template>
-                        <td v-for="tooth in row.left" :key="'left-' + tooth" class="p-1">
-                            <div
-                                class="h-12 w-12 sm:h-14 sm:w-14 rounded-xl border text-[11px] sm:text-xs font-semibold tracking-tight flex flex-col items-center justify-center"
-                                :class="toothClasses(tooth)"
-                            >
-                                <div class="text-[10px] leading-tight">Dent</div>
-                                <div class="text-sm font-bold">{{ tooth }}</div>
-                                <div class="text-[10px] leading-tight opacity-80">{{ toothSummary(tooth) || '---' }}</div>
-                            </div>
-                        </td>
-                        <template v-if="rowIndex === 0 || rowIndex === rows.length - 1">
-                            <td class="w-6 sm:w-8"></td>
-                            <td class="w-6 sm:w-8"></td>
-                            <td class="w-6 sm:w-8"></td>
-                        </template>
-                        <template v-else>
-                            <td class="w-6 sm:w-8"></td>
-                        </template>
-                        <td v-for="tooth in row.right" :key="'right-' + tooth" class="p-1">
-                            <div
-                                class="h-12 w-12 sm:h-14 sm:w-14 rounded-xl border text-[11px] sm:text-xs font-semibold tracking-tight flex flex-col items-center justify-center"
-                                :class="toothClasses(tooth)"
-                            >
-                                <div class="text-[10px] leading-tight">Dent</div>
-                                <div class="text-sm font-bold">{{ tooth }}</div>
-                                <div class="text-[10px] leading-tight opacity-80">{{ toothSummary(tooth) || '---' }}</div>
-                            </div>
-                        </td>
-                        <template v-if="rowIndex === 0 || rowIndex === rows.length - 1">
-                            <td class="w-6 sm:w-8"></td>
-                            <td class="w-6 sm:w-8"></td>
-                        </template>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
+            <template #footer>
+                <div class="flex justify-end w-full">
+                    <Button
+                        label="Fermer"
+                        icon="pi pi-times"
+                        severity="secondary"
+                        class="dark:border-surface-600 dark:text-surface-200"
+                        @click="closeToothDetail"
+                    />
+                </div>
+            </template>
+        </Dialog>
     </div>
 </template>

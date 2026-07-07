@@ -1,5 +1,5 @@
 import { apiPrefix } from '@/config';
-import http from '@/service/http';
+import http, { UPLOAD_REQUEST_TIMEOUT_MS } from '@/service/http';
 
 const axios = http;
 
@@ -54,6 +54,7 @@ export const saveDocuments = async (ficheId, payload, files, token, options = {}
             ...authHeaders(token),
             'Content-Type': 'multipart/form-data'
         },
+        timeout: UPLOAD_REQUEST_TIMEOUT_MS,
         onUploadProgress: (event) => {
             if (typeof options.onUploadProgress !== 'function') return;
             const total = event.total || 0;

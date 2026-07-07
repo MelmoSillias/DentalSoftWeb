@@ -58,6 +58,39 @@
             <p class="mt-2 text-sm text-surface-600 dark:text-surface-400">L'accès au dossier patient est restreint pour votre profil.</p>
         </div>
 
+        <div v-else-if="layoutMode === 'tabs'" class="space-y-6">
+            <DossierPatientTabsView
+                :patient="patient"
+                :patient-id="props.patientId"
+                :fiches="fiches"
+                :consultations="consultations"
+                :consultations-loading="consultationsLoading"
+                :rdvs="rdvs"
+                :paiements="paiements"
+                :factures="factures"
+                :archive-files="archiveFiles"
+                :is-reception="isReception"
+                :is-medecin="isMedecin"
+                :show-consultations-tab="showConsultationsTab"
+                :hide-phone="shouldHidePatientPhoneForMedecin"
+                @print-dossier="handlePrintDossier"
+                @edit="() => (showEditDialog = true)"
+                @new-rdv="() => (showRdvDialog = true)"
+                @photo-selected="handlePhotoSelected"
+                @add-antecedent="() => (showAntecedentDialog = true)"
+                @add-allergy="() => (showAllergyDialog = true)"
+                @delete-antecedent="handleDeleteAntecedent"
+                @delete-allergy="handleDeleteAllergy"
+                @create-portal-account="handleCreatePortalAccount"
+                @reset-portal-password="handleResetPortalPassword"
+                @toggle-portal-active="handleTogglePortalActive"
+                @print-fiche="handlePrintFiche"
+                @new-consultation="() => (showConsultationDialog = true)"
+                @fiche-updated="handleFicheUpdated"
+                @refresh-archive="loadDossier(props.patientId)"
+            />
+        </div>
+
         <div v-else class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <!-- Colonne de gauche : Infos patient -->
             <div class="lg:col-span-1 space-y-6">
@@ -119,9 +152,11 @@
                     <FichesMedicalesSection
                         v-else
                         :fiches="fiches"
+                        :patient-age="patientAge"
                         :can-create-consultation="!isMedecin"
                         @print-fiche="handlePrintFiche"
                         @new-consultation="() => (showConsultationDialog = true)"
+                        @fiche-updated="handleFicheUpdated"
                     />
                 </div>
                 <div data-tour="patients-dossier.finance">
@@ -143,6 +178,17 @@
                     </div>
             </div>
         </div>
+
+        <Button
+            v-if="!loadErrorMessage && !dossierHiddenForMedecin"
+            data-tour="patients-dossier.layout-toggle"
+            :icon="layoutMode === 'tabs' ? 'pi pi-list' : 'pi pi-th-large'"
+            rounded
+            class="!fixed bottom-6 right-6 z-50 shadow-lg !w-14 !h-14 bg-gradient-to-r from-primary-500 to-primary-600 border-0"
+            :aria-label="layoutMode === 'tabs' ? 'Affichage classique' : 'Affichage en onglets'"
+            v-tooltip.left="layoutMode === 'tabs' ? 'Affichage classique' : 'Affichage en onglets'"
+            @click="toggleLayoutMode"
+        />
 
         <Dialog v-if="!isMedecin" v-model:visible="showConsultationDialog" modal :style="{ width: '50rem' }" :pt="{
             root: 'rounded-2xl',
@@ -287,7 +333,9 @@ import RdvPaiementsSection from '@/components/patients/RdvPaiementsSection.vue';
 import PrintDossierBody from '@/components/print/PrintDossierBody.vue';
 import PrintFicheV2Body from '@/components/print/PrintFicheV2Body.vue';
 import { usePrinter } from '@/composables/usePrinter';
+import { useDossierLayout } from '@/composables/useDossierLayout';
 import { usePatients } from '@/composables/usePatients';
+import { computeAgeYears } from '@/utils/formuleDentaireLayout';
 import { fetchPublicGeneralSettings } from '@/services/globalSettingsService';
 import {
     activatePatientsTourMock,
@@ -310,6 +358,7 @@ import { useToast } from 'primevue/usetoast';
 import { computed, ref, onBeforeUnmount, onMounted, nextTick, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import ArchiveFilesSection from '@/components/patients/ArchiveFilesSection.vue';
+import DossierPatientTabsView from '@/components/patients/DossierPatientTabsView.vue';
 
 const props = defineProps({
     patientId: {
@@ -327,6 +376,7 @@ const breadcrumbItems = [
 ];
 
 const patientStore = usePatients();
+const { layoutMode, toggleLayoutMode } = useDossierLayout();
 const toast = useToast();
 const { printComponent } = usePrinter();
 const router = useRouter();
@@ -369,6 +419,7 @@ const printSectionOptions = [
 ];
 
 const fiches = computed(() => patient.value.fiches || []);
+const patientAge = computed(() => computeAgeYears(patient.value?.dateNaissance || patient.value?.age));
 const rdvs = computed(() => patient.value.rdvs || []);
 const archiveFiles = computed(() => patient.value.archiveFiles || []);
 const paiements = computed(() => patient.value.paiements || []);
@@ -919,6 +970,12 @@ const handlePrintDossier = async () => {
         console.error(error);
         toast.add({ severity: 'error', summary: 'Dossier', detail: 'Impression indisponible', life: 3500 });
     }
+};
+
+const handleFicheUpdated = async () => {
+    const patientId = getDisplayedPatientId();
+    if (!patientId) return;
+    await loadDossier(patientId);
 };
 
 const handlePrintFiche = async (fiche) => {

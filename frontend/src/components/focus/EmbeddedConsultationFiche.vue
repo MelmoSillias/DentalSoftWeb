@@ -451,7 +451,7 @@ const saveEntretienSection = async ({ silent = false } = {}) => {
             emit('closed');
             return;
         }
-        if (!silent) toast.add({ severity: 'error', summary: 'Erreur', detail: 'Sauvegarde entretien impossible.' });
+        if (!silent) toast.add({ severity: 'error', summary: 'Erreur', detail: 'Sauvegarde entretien impossible.', life: 3000 });
     }
 };
 
@@ -465,7 +465,7 @@ const saveExamensSection = async ({ silent = false } = {}) => {
             emit('closed');
             return;
         }
-        if (!silent) toast.add({ severity: 'error', summary: 'Erreur', detail: 'Sauvegarde examens impossible.' });
+        if (!silent) toast.add({ severity: 'error', summary: 'Erreur', detail: 'Sauvegarde examens impossible.', life: 3000 });
     }
 };
 
@@ -479,7 +479,7 @@ const saveDocumentsSection = async ({ silent = false } = {}) => {
             emit('closed');
             return;
         }
-        if (!silent) toast.add({ severity: 'error', summary: 'Erreur', detail: 'Sauvegarde documents impossible.' });
+        if (!silent) toast.add({ severity: 'error', summary: 'Erreur', detail: 'Sauvegarde documents impossible.', life: 3000 });
     }
 };
 
@@ -507,7 +507,7 @@ const savePlanTraitementSection = async ({ silent = false } = {}) => {
             emit('closed');
             return;
         }
-        if (!silent) toast.add({ severity: 'error', summary: 'Erreur', detail: 'Sauvegarde plan traitement impossible.' });
+        if (!silent) toast.add({ severity: 'error', summary: 'Erreur', detail: 'Sauvegarde plan traitement impossible.', life: 3000 });
     }
 };
 
@@ -521,7 +521,7 @@ const saveDevisSection = async ({ silent = false } = {}) => {
             emit('closed');
             return;
         }
-        if (!silent) toast.add({ severity: 'error', summary: 'Erreur', detail: 'Sauvegarde devis impossible.' });
+        if (!silent) toast.add({ severity: 'error', summary: 'Erreur', detail: 'Sauvegarde devis impossible.', life: 3000 });
     }
 };
 
@@ -547,7 +547,7 @@ const saveConsultSection = async ({ silent = false } = {}) => {
             emit('closed');
             return;
         }
-        if (!silent) toast.add({ severity: 'error', summary: 'Erreur', detail: 'Sauvegarde consultation impossible.' });
+        if (!silent) toast.add({ severity: 'error', summary: 'Erreur', detail: 'Sauvegarde consultation impossible.', life: 3000 });
     }
 };
 
@@ -567,7 +567,7 @@ const saveOrdonnanceSection = async ({ silent = false } = {}) => {
             notifyOrdonnancesChanged();
             if (!silent) toast.add({ severity: 'success', summary: 'Ordonnance mise à jour', life: 2000 });
         } catch (_) {
-            if (!silent) toast.add({ severity: 'error', summary: 'Erreur', detail: "Impossible de modifier l'ordonnance." });
+            if (!silent) toast.add({ severity: 'error', summary: 'Erreur', detail: "Impossible de modifier l'ordonnance.", life: 3000 });
         }
         return;
     }
@@ -606,7 +606,7 @@ const handleSaveAntecedent = async (payload) => {
         showAntecedentDialog.value = false;
         emit('patient-loaded', { ...data.patient });
     } catch (_) {
-        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible d\'ajouter l\'antecedent.' });
+        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible d\'ajouter l\'antecedent.', life: 3000 });
     } finally {
         savingAntecedent.value = false;
     }

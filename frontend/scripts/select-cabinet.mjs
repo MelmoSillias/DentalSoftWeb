@@ -36,6 +36,8 @@ function parseArgs(argv) {
     return data;
 }
 
+const SUPPORTED_CONFIG_ENVS = new Set(['dev', 'prod']);
+
 function ensureCabinetId(value) {
     if (!value || typeof value !== 'string') {
         throw new Error('Missing cabinet id. Use --cabinet=<id>.');
@@ -47,6 +49,42 @@ function ensureCabinetId(value) {
     }
 
     return safe;
+}
+
+function ensureConfigEnv(value) {
+    const safe = String(value || '').trim().toLowerCase();
+    if (!SUPPORTED_CONFIG_ENVS.has(safe)) {
+        throw new Error(`Invalid config env "${value}". Use dev or prod.`);
+    }
+
+    return safe;
+}
+
+function resolveConfigEnv(args) {
+    const fromArgs = typeof args.env === 'string' ? args.env : '';
+    const fromEnv = process.env.CABINET_ENV || process.env.BUILD_ENV || '';
+    return ensureConfigEnv(fromArgs || fromEnv || 'dev');
+}
+
+function resolveConfigPath(cabinetDir, configEnv) {
+    const envConfigPath = path.join(cabinetDir, `config.${configEnv}.json`);
+    const legacyConfigPath = path.join(cabinetDir, 'config.json');
+
+    if (fs.existsSync(envConfigPath)) {
+        return envConfigPath;
+    }
+
+    if (fs.existsSync(legacyConfigPath)) {
+        console.warn(
+            `[cabinet] config.${configEnv}.json not found in ${path.basename(cabinetDir)}, falling back to config.json.`
+        );
+        return legacyConfigPath;
+    }
+
+    throw new Error(
+        `Config not found for cabinet "${path.basename(cabinetDir)}" (env=${configEnv}). `
+        + `Expected ${envConfigPath} or ${legacyConfigPath}.`
+    );
 }
 
 function readJsonFile(filePath) {
@@ -351,9 +389,10 @@ function main() {
     const fromArgs = typeof args.cabinet === 'string' ? args.cabinet : '';
     const fromEnv = process.env.CABINET || process.env.npm_config_cabinet || '';
     const cabinetId = ensureCabinetId(fromArgs || fromEnv || 'default');
+    const configEnv = resolveConfigEnv(args);
 
     const cabinetDir = path.join(cabinetsRoot, cabinetId);
-    const configPath = path.join(cabinetDir, 'config.json');
+    const configPath = resolveConfigPath(cabinetDir, configEnv);
     const cabinetPublicDir = path.join(cabinetDir, 'public');
 
     const config = readJsonFile(configPath);
@@ -365,7 +404,8 @@ function main() {
     fs.mkdirSync(path.dirname(generatedConfigPath), { recursive: true });
     fs.writeFileSync(generatedConfigPath, generateModuleSource(config), 'utf8');
 
-    console.log(`[cabinet] Active cabinet: ${cabinetId}`);
+    console.log(`[cabinet] Active cabinet: ${cabinetId} (${configEnv})`);
+    console.log(`[cabinet] Config source: ${path.relative(rootDir, configPath)}`);
     console.log(`[cabinet] Generated: ${path.relative(rootDir, generatedConfigPath)}`);
     console.log(`[cabinet] Assets synced (selected): ${path.relative(rootDir, cabinetPublicDir)} -> public (${syncResult.copiedToPublic} files)`);
     console.log(`[cabinet] Assets synced (selected): ${path.relative(rootDir, cabinetPublicDir)} -> src/assets (${syncResult.copiedToAssets} files)`);

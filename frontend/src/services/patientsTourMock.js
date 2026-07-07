@@ -344,7 +344,19 @@ function buildMockFiche() {
         bilans: {
             bilanDentaire: {
                 formuleDentaire: null
-            }
+            },
+            bilanRadiographique: {
+                radiographieExtraBuccaleHypothese: 'Image compatible avec une lésion carieuse sur la 46.',
+                radiographieIntraBuccaleHypothese: 'Perte osseuse localisée au niveau de la 46.'
+            },
+            bilanSanguin: {
+                nfsDetaillee: 'Normale',
+                tpTcaInr: 'Dans les normes',
+                uree: '0,35 g/L',
+                creatininemie: '7 mg/L',
+                glycemie: '0,95 g/L'
+            },
+            diagnosticPositif: 'Pulpite irréversible sur la 46 avec indication de traitement endodontique.'
         },
         devis: [],
         consultations: [

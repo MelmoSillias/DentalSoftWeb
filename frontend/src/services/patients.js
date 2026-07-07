@@ -19,7 +19,7 @@ import {
     searchPatientsTourMock,
     updatePatientTourMock
 } from '@/services/patientsTourMock';
-import http from '@/service/http';
+import http, { UPLOAD_REQUEST_TIMEOUT_MS } from '@/service/http';
 
 const axios = http;
 
@@ -355,7 +355,8 @@ export const addArchiveFile = async (patientId, formData, token) => {
         headers: {
             ...authHeaders(token),
             'Content-Type': 'multipart/form-data'
-        }
+        },
+        timeout: UPLOAD_REQUEST_TIMEOUT_MS
     });
     return res.data;
 };

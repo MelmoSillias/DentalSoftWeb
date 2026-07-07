@@ -4,6 +4,7 @@ import { spawnSync } from 'node:child_process';
 function parseArgs(argv) {
     const viteArgs = [];
     let cabinet = '';
+    let configEnv = '';
 
     for (let i = 0; i < argv.length; i += 1) {
         const token = argv[i];
@@ -22,11 +23,26 @@ function parseArgs(argv) {
             }
         }
 
+        if (token.startsWith('--env=')) {
+            configEnv = token.slice('--env='.length);
+            continue;
+        }
+
+        if (token === '--env') {
+            const next = argv[i + 1];
+            if (next && !next.startsWith('--')) {
+                configEnv = next;
+                i += 1;
+                continue;
+            }
+        }
+
         viteArgs.push(token);
     }
 
     const resolvedCabinet = cabinet || process.env.CABINET || process.env.npm_config_cabinet || 'default';
-    return { cabinet: resolvedCabinet, viteArgs };
+    const resolvedEnv = configEnv || process.env.CABINET_ENV || process.env.BUILD_ENV || 'dev';
+    return { cabinet: resolvedCabinet, configEnv: resolvedEnv, viteArgs };
 }
 
 function run(command, args, env) {
@@ -46,11 +62,16 @@ function run(command, args, env) {
 }
 
 function main() {
-    const { cabinet, viteArgs } = parseArgs(process.argv.slice(2));
-    const env = { ...process.env, CABINET: cabinet };
+    const { cabinet, configEnv, viteArgs } = parseArgs(process.argv.slice(2));
+    const env = {
+        ...process.env,
+        CABINET: cabinet,
+        CABINET_ENV: configEnv,
+        BUILD_ENV: configEnv
+    };
 
     const nodeBin = process.execPath;
-    run(nodeBin, ['./scripts/select-cabinet.mjs', `--cabinet=${cabinet}`], env);
+    run(nodeBin, ['./scripts/select-cabinet.mjs', `--cabinet=${cabinet}`, `--env=${configEnv}`], env);
 
     run(nodeBin, ['./node_modules/vite/bin/vite.js', ...viteArgs], env);
 }

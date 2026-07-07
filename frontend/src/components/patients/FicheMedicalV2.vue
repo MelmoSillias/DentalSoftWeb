@@ -2,10 +2,14 @@
 import Button from 'primevue/button';
 import Card from 'primevue/card';
 import Galleria from 'primevue/galleria';
+import SelectButton from 'primevue/selectbutton';
 import Timeline from 'primevue/timeline';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
+import { defaultDentitionFromAge, DENTITION_OPTIONS } from '@/utils/formuleDentaireLayout';
 import { filePrefix } from '@/config';
+import DevisForm from '@/components/consultations/DevisForm.vue';
 import FormuleDentaireReadonly from '@/components/fiche-medicale/FormuleDentaireReadonly.vue';
+import ReadonlyFieldGrid from '@/components/fiche-medicale/ReadonlyFieldGrid.vue';
 import SeancesSection from '@/components/fiche-medicale/SeancesSection.vue';
 
 const props = defineProps({
@@ -16,28 +20,125 @@ const props = defineProps({
     positionLabel: {
         type: String,
         default: ''
+    },
+    compact: {
+        type: Boolean,
+        default: false
+    },
+    hideActions: {
+        type: Boolean,
+        default: false
+    },
+    patientAge: {
+        type: Number,
+        default: 0
     }
 });
 
 const emit = defineEmits(['print']);
 
 const activeSection = ref(0);
+const dentitionType = ref(defaultDentitionFromAge(props.patientAge));
+
+watch(
+    () => props.patientAge,
+    (age) => {
+        dentitionType.value = defaultDentitionFromAge(age);
+    },
+    { immediate: true }
+);
 
 const sections = [
-    { title: 'Questionnaire médical', icon: 'pi pi-file-edit' },
-    { title: 'Examen', icon: 'pi pi-stethoscope' },
-    { title: 'Images et Docs', icon: 'pi pi-images' },
-    { title: 'Plan de traitement', icon: 'pi pi-sitemap' },
-    { title: 'Bilan', icon: 'pi pi-clipboard' },
-    { title: 'Devis', icon: 'pi pi-file' },
-    { title: 'Seances passees', icon: 'pi pi-history' }
+    { key: 'entretien', title: 'Questionnaire médical', icon: 'pi pi-file-edit' },
+    { key: 'examens', title: 'Examen', icon: 'pi pi-stethoscope' },
+    { key: 'documents', title: 'Images et Docs', icon: 'pi pi-images' },
+    { key: 'plan', title: 'Plan de traitement', icon: 'pi pi-sitemap' },
+    { key: 'bilan', title: 'Bilan', icon: 'pi pi-clipboard' },
+    { key: 'devis', title: 'Devis', icon: 'pi pi-file' },
+    { key: 'seances', title: 'Séances passées', icon: 'pi pi-history' }
 ];
 
 const entretien = computed(() => props.fiche?.entretien || {});
 const examens = computed(() => props.fiche?.examens || {});
 const bilans = computed(() => props.fiche?.bilans || {});
 const documents = computed(() => props.fiche?.documents || []);
-const devis = computed(() => (Array.isArray(props.fiche?.devis) ? props.fiche.devis : props.fiche?.devis ? [props.fiche.devis] : []));
+const normalizeDevisEntry = (entry = {}) => ({
+    id: Number(entry?.id) || null,
+    type: entry?.type ?? null,
+    date: entry?.date ?? null,
+    description: entry?.description || '',
+    services: Array.isArray(entry?.services)
+        ? entry.services
+        : Array.isArray(entry?.contenus)
+            ? entry.contenus.map((s) => ({
+                designation: s?.designation || '',
+                qte: Number(s?.qte) || 1,
+                montant: Number(s?.montant) || 0
+            }))
+            : []
+});
+
+const devisModel = computed(() => {
+    const rawDevis = props.fiche?.devis;
+    let entries = [];
+    if (Array.isArray(rawDevis)) {
+        entries = rawDevis.map(normalizeDevisEntry);
+    } else if (rawDevis && Array.isArray(rawDevis.devisList)) {
+        entries = rawDevis.devisList.map(normalizeDevisEntry);
+    } else if (rawDevis && typeof rawDevis === 'object') {
+        entries = [normalizeDevisEntry(rawDevis)];
+    }
+    return {
+        devisList: entries.length ? entries : [],
+        activeDevisIndex: 0,
+        date: entries[0]?.date ?? null,
+        services: entries[0]?.services ?? []
+    };
+});
+
+const examensLabo = computed(() => (Array.isArray(examens.value?.examensLabo) ? examens.value.examensLabo : []));
+
+const bilanRadiographiqueFields = computed(() => [
+    { label: 'Radiographie extra buccale', value: bilans.value?.bilanRadiographique?.radiographieExtraBuccaleHypothese },
+    { label: 'Radiographie intra buccale', value: bilans.value?.bilanRadiographique?.radiographieIntraBuccaleHypothese }
+]);
+
+const bilanSanguinFields = computed(() => [
+    { label: 'NFS détaillée', value: bilans.value?.bilanSanguin?.nfsDetaillee },
+    { label: 'TP / TCA / INR', value: bilans.value?.bilanSanguin?.tpTcaInr },
+    { label: 'Urée', value: bilans.value?.bilanSanguin?.uree },
+    { label: 'Créatininémie', value: bilans.value?.bilanSanguin?.creatininemie },
+    { label: 'Glycémie', value: bilans.value?.bilanSanguin?.glycemie }
+]);
+
+const diagnosticPositifValue = computed(() => {
+    const raw = bilans.value?.diagnosticPositif ?? bilans.value?.diagnostic_positif ?? '';
+    return typeof raw === 'string' ? raw.trim() : String(raw || '').trim();
+});
+
+const hasValue = (value) => {
+    if (value === null || value === undefined) return false;
+    if (typeof value === 'boolean') return true;
+    if (Array.isArray(value)) return value.length > 0;
+    if (typeof value === 'object') return Object.values(value).some((v) => hasValue(v));
+    return String(value).trim() !== '';
+};
+
+const sectionHasContent = computed(() => ({
+    entretien: hasValue(entretien.value?.motifConsultation)
+        || antecedentsRows.value.length > 0
+        || (entretien.value?.questions || []).length > 0
+        || (entretien.value?.habitudes || []).length > 0,
+    examens: hasValue(examens.value) || examensLabo.value.length > 0,
+    documents: documents.value.length > 0,
+    plan: plansTraitement.value.length > 0,
+    bilan: hasValue(bilans.value?.bilanDentaire?.formuleDentaire)
+        || bilanRadiographiqueFields.value.some((f) => hasValue(f.value))
+        || bilanSanguinFields.value.some((f) => hasValue(f.value))
+        || hasValue(diagnosticPositifValue.value),
+    devis: devisModel.value.devisList.some((d) => d.services?.length || d.date || d.description),
+    seances: consultations.value.length > 0
+}));
 const plansTraitement = computed(() => props.fiche?.planTraitement || []);
 const consultations = computed(() => props.fiche?.consultations || []);
 const patientSex = computed(() => props.fiche?.patient?.sexe || props.fiche?.sexe || '');
@@ -278,30 +379,41 @@ const sessions = computed(() =>
 </script>
 
 <template>
-    <div class="bg-surface-0 dark:bg-surface-800/80 rounded-2xl shadow-lg border border-surface-200/50 dark:border-surface-700/50 overflow-hidden backdrop-blur-sm">
-        <div class="p-5 border-b border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900/50 dark:to-surface-800">
+    <div>
+    <div
+        class="overflow-hidden backdrop-blur-sm"
+        :class="compact
+            ? ''
+            : 'bg-surface-0 dark:bg-surface-800/80 rounded-2xl shadow-lg border border-surface-200/50 dark:border-surface-700/50'"
+    >
+        <div
+            v-if="!compact"
+            class="p-5 border-b border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900/50 dark:to-surface-800"
+        >
             <div class="flex items-center justify-between">
                 <div>
                     <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-100 flex items-center gap-2">
                         <i class="pi pi-file-medical text-primary-500"></i>
-                        Fiche Medicale {{ positionLabel || '' }}
+                        Fiche médicale {{ positionLabel || '' }}
                     </h3>
                     <p class="text-sm text-surface-600 dark:text-surface-300 mt-1">
-                        Creee le {{ formatDate(props.fiche?.dateCreation || props.fiche?.createdAt) }}
+                        Créée le {{ formatDate(props.fiche?.dateCreation || props.fiche?.createdAt) }}
                     </p>
                 </div>
             </div>
         </div>
 
-        <div class="p-5">
-            <div class="mb-6">
+        <div :class="compact ? '' : 'p-5'">
+            <div
+                class="mb-6 sticky top-0 z-10 -mx-1 px-1 py-2 bg-surface-0/95 dark:bg-surface-800/95 backdrop-blur-sm"
+            >
                 <div class="flex flex-wrap gap-2 border-b border-surface-200/50 dark:border-surface-700/50 pb-4">
                     <button
                         v-for="(section, index) in sections"
-                        :key="index"
+                        :key="section.key"
                         @click="activeSection = index"
                         :class="[
-                            'px-4 py-2 rounded-lg text-sm button-sm font-medium transition-all duration-300',
+                            'relative px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300',
                             activeSection === index
                                 ? 'bg-primary-500 text-white shadow-sm'
                                 : 'text-surface-600 dark:text-surface-400 hover:text-surface-900 dark:hover:text-surface-100 hover:bg-surface-100 dark:hover:bg-surface-700'
@@ -310,12 +422,16 @@ const sessions = computed(() =>
                         <div class="flex items-center gap-2">
                             <i :class="section.icon"></i>
                             <span class="hidden sm:inline">{{ section.title }}</span>
+                            <span
+                                v-if="sectionHasContent[section.key]"
+                                class="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-emerald-400 ring-2 ring-white dark:ring-surface-800"
+                            />
                         </div>
                     </button>
                 </div>
             </div>
 
-            <div class="space-y-6">
+            <div class="space-y-6" :class="compact ? 'max-h-[55vh] overflow-y-auto pr-1' : ''">
                 <div v-if="activeSection === 0" class="animate-fadeIn space-y-6">
                     <div class="rounded-2xl border border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-br from-surface-0 to-surface-50/80 dark:from-surface-800 dark:to-surface-900/80 p-6 shadow-sm">
                         <div class="flex items-center gap-3 mb-6 pb-4 border-b border-surface-100 dark:border-surface-700">
@@ -324,18 +440,18 @@ const sessions = computed(() =>
                             </div>
                             <div>
                                 <h3 class="text-xl font-bold text-surface-900 dark:text-surface-50">Questionnaire médical</h3>
-                                <p class="text-sm text-surface-500 dark:text-surface-400 mt-1">Anamnese, antecedents et habitudes declarees</p>
+                                <p class="text-sm text-surface-500 dark:text-surface-400 mt-1">Anamnèse, antécédents et habitudes déclarées</p>
                             </div>
                         </div>
 
                         <div class="space-y-6">
                             <div class="p-4 rounded-xl bg-surface-50 dark:bg-surface-700/30 border border-surface-200 dark:border-surface-700">
-                                <h4 class="font-semibold text-surface-900 dark:text-surface-100 mb-3">Anamnese</h4>
+                                <h4 class="font-semibold text-surface-900 dark:text-surface-100 mb-3">Anamnèse</h4>
                                 <p class="text-surface-700 dark:text-surface-300 whitespace-pre-wrap">{{ entretien.motifConsultation || '—' }}</p>
                             </div>
 
                             <div v-if="isFemalePatient" class="p-4 rounded-xl bg-surface-50 dark:bg-surface-700/30 border border-surface-200 dark:border-surface-700">
-                                    <h4 class="font-semibold text-surface-900 dark:text-surface-100 mb-3">Etat gynecologique</h4>
+                                    <h4 class="font-semibold text-surface-900 dark:text-surface-100 mb-3">État gynécologique</h4>
                                     <div class="space-y-3 text-sm">
                                         <div class="flex items-center justify-between">
                                             <span class="text-surface-700 dark:text-surface-300">Allaitement</span>
@@ -353,7 +469,7 @@ const sessions = computed(() =>
                             </div>
 
                             <div class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/30 p-4">
-                                <h4 class="font-semibold text-surface-900 dark:text-surface-100 mb-3">Antecedents medicaux (medicaments et affections)</h4>
+                                <h4 class="font-semibold text-surface-900 dark:text-surface-100 mb-3">Antécédents médicaux (médicaments et affections)</h4>
                                 <div class="overflow-x-auto rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900/40">
                                     <table class="w-full text-sm">
                                         <thead>
@@ -578,20 +694,56 @@ const sessions = computed(() =>
 
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div class="p-4 rounded-xl bg-surface-50 dark:bg-surface-700/30 border border-surface-200 dark:border-surface-700">
-                                    <h4 class="font-semibold text-surface-900 dark:text-surface-100 mb-2">Examens bacteriologiques</h4>
-                                    <p class="text-sm text-surface-600 dark:text-surface-400">Observation: {{ examens.examensBacteriologiques?.observation || '—' }}</p>
-                                    <p class="text-sm text-surface-600 dark:text-surface-400">Resultat: {{ examens.examensBacteriologiques?.resultat || '—' }}</p>
+                                    <h4 class="font-semibold text-surface-900 dark:text-surface-100 mb-2">Examens bactériologiques</h4>
+                                    <p class="text-sm text-surface-600 dark:text-surface-400">Observation : {{ examens.examensBacteriologiques?.observation || '—' }}</p>
+                                    <p class="text-sm text-surface-600 dark:text-surface-400">Résultat : {{ examens.examensBacteriologiques?.resultat || '—' }}</p>
                                 </div>
                                 <div class="p-4 rounded-xl bg-surface-50 dark:bg-surface-700/30 border border-surface-200 dark:border-surface-700">
-                                    <h4 class="font-semibold text-surface-900 dark:text-surface-100 mb-2">Examens serologiques</h4>
-                                    <p class="text-sm text-surface-600 dark:text-surface-400">Observation: {{ examens.examensSerologiques?.observation || '—' }}</p>
-                                    <p class="text-sm text-surface-600 dark:text-surface-400">Resultat: {{ examens.examensSerologiques?.resultat || '—' }}</p>
+                                    <h4 class="font-semibold text-surface-900 dark:text-surface-100 mb-2">Examens sérologiques</h4>
+                                    <p class="text-sm text-surface-600 dark:text-surface-400">Observation : {{ examens.examensSerologiques?.observation || '—' }}</p>
+                                    <p class="text-sm text-surface-600 dark:text-surface-400">Résultat : {{ examens.examensSerologiques?.resultat || '—' }}</p>
                                 </div>
                                 <div class="p-4 rounded-xl bg-surface-50 dark:bg-surface-700/30 border border-surface-200 dark:border-surface-700">
                                     <h4 class="font-semibold text-surface-900 dark:text-surface-100 mb-2">Examens histologiques</h4>
-                                    <p class="text-sm text-surface-600 dark:text-surface-400">Observation: {{ examens.examensHistologiques?.observation || '—' }}</p>
-                                    <p class="text-sm text-surface-600 dark:text-surface-400">Resultat: {{ examens.examensHistologiques?.resultat || '—' }}</p>
+                                    <p class="text-sm text-surface-600 dark:text-surface-400">Observation : {{ examens.examensHistologiques?.observation || '—' }}</p>
+                                    <p class="text-sm text-surface-600 dark:text-surface-400">Résultat : {{ examens.examensHistologiques?.resultat || '—' }}</p>
                                 </div>
+                            </div>
+
+                            <div class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/30 p-4">
+                                <h4 class="font-semibold text-surface-900 dark:text-surface-100 mb-3">Examens complémentaires (laboratoire)</h4>
+                                <div class="overflow-x-auto rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900/40">
+                                    <table class="w-full text-sm">
+                                        <thead>
+                                            <tr class="border-b border-surface-200 dark:border-surface-700 bg-surface-100/80 dark:bg-surface-800/80">
+                                                <th class="p-3 text-left font-semibold text-surface-700 dark:text-surface-300">Type</th>
+                                                <th class="p-3 text-left font-semibold text-surface-700 dark:text-surface-300">Description</th>
+                                                <th class="p-3 text-left font-semibold text-surface-700 dark:text-surface-300">Date</th>
+                                                <th class="p-3 text-left font-semibold text-surface-700 dark:text-surface-300">Résultat</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr v-if="!examensLabo.length">
+                                                <td colspan="4" class="p-4 text-center text-surface-500 dark:text-surface-400">Aucun examen complémentaire.</td>
+                                            </tr>
+                                            <tr
+                                                v-for="(item, idx) in examensLabo"
+                                                :key="idx"
+                                                class="border-b border-surface-200/70 dark:border-surface-700/70 last:border-b-0"
+                                            >
+                                                <td class="p-3 text-surface-700 dark:text-surface-300">{{ item.type || '—' }}</td>
+                                                <td class="p-3 text-surface-700 dark:text-surface-300">{{ item.description || '—' }}</td>
+                                                <td class="p-3 text-surface-600 dark:text-surface-400">{{ formatDateShort(item.date) }}</td>
+                                                <td class="p-3 text-surface-600 dark:text-surface-400">{{ item.resultat || '—' }}</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <div v-if="examens.diagnosticSupposeExamens" class="p-4 rounded-xl bg-surface-50 dark:bg-surface-700/30 border border-surface-200 dark:border-surface-700">
+                                <h4 class="font-semibold text-surface-900 dark:text-surface-100 mb-2">Diagnostic supposé (examens)</h4>
+                                <p class="text-sm text-surface-700 dark:text-surface-300 whitespace-pre-wrap">{{ examens.diagnosticSupposeExamens }}</p>
                             </div>
                         </div>
                     </div>
@@ -704,13 +856,45 @@ const sessions = computed(() =>
                             </div>
                             <div>
                                 <h3 class="text-xl font-bold text-surface-900 dark:text-surface-50">Bilan</h3>
-                                <p class="text-sm text-surface-500 dark:text-surface-400 mt-1">Formule dentaire</p>
+                                <p class="text-sm text-surface-500 dark:text-surface-400 mt-1">Formule dentaire et examens complémentaires</p>
                             </div>
                         </div>
 
-                        <div class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/30 p-5">
-                            <h4 class="font-semibold text-surface-900 dark:text-surface-100 mb-4">Formule dentaire</h4>
-                            <FormuleDentaireReadonly :modelValue="bilans.bilanDentaire?.formuleDentaire" />
+                        <div class="space-y-6">
+                            <div class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/30 p-5">
+                                <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+                                    <h4 class="font-semibold text-surface-900 dark:text-surface-100">Formule dentaire</h4>
+                                    <SelectButton
+                                        v-model="dentitionType"
+                                        :options="DENTITION_OPTIONS"
+                                        optionLabel="label"
+                                        optionValue="value"
+                                        :allowEmpty="false"
+                                        class="text-sm"
+                                    />
+                                </div>
+                                <FormuleDentaireReadonly
+                                    :modelValue="bilans.bilanDentaire?.formuleDentaire"
+                                    :dentition-type="dentitionType"
+                                />
+                            </div>
+
+                            <div class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/30 p-5">
+                                <h4 class="font-semibold text-surface-900 dark:text-surface-100 mb-4">Bilan radiographique</h4>
+                                <ReadonlyFieldGrid :fields="bilanRadiographiqueFields" />
+                            </div>
+
+                            <div class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/30 p-5">
+                                <h4 class="font-semibold text-surface-900 dark:text-surface-100 mb-4">Bilan sanguin</h4>
+                                <ReadonlyFieldGrid :fields="bilanSanguinFields" />
+                            </div>
+
+                            <div class="rounded-xl border-2 border-dashed border-emerald-500/50 dark:border-emerald-700/50 bg-emerald-50/30 dark:bg-emerald-950/20 p-5">
+                                <h4 class="font-semibold text-surface-900 dark:text-surface-100 mb-3">Diagnostic positif</h4>
+                                <p class="text-sm text-surface-700 dark:text-surface-300 whitespace-pre-wrap">
+                                    {{ diagnosticPositifValue || '—' }}
+                                </p>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -723,53 +907,38 @@ const sessions = computed(() =>
                             </div>
                             <div>
                                 <h3 class="text-xl font-bold text-surface-900 dark:text-surface-50">Devis</h3>
-                                <p class="text-sm text-surface-500 dark:text-surface-400 mt-1">Details des devis</p>
+                                <p class="text-sm text-surface-500 dark:text-surface-400 mt-1">Détails des devis</p>
                             </div>
                         </div>
 
-                        <div v-if="devis.length" class="space-y-4">
-                            <div v-for="(item, index) in devis" :key="item.id || item.date || index" class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/30 p-4">
-                                <div class="flex items-center justify-between">
-                                    <div>
-                                        <h4 class="font-semibold text-surface-900 dark:text-surface-100">Devis du {{ formatDateShort(item.date) }}</h4>
-                                        <p class="text-sm text-surface-600 dark:text-surface-400">{{ item.type || 'Devis' }}</p>
-                                    </div>
-                                    <div class="text-right">
-                                        <div class="text-sm text-surface-500">Montant</div>
-                                        <div class="font-semibold text-surface-900 dark:text-surface-100">{{ item.montant ?? 0 }}</div>
-                                    </div>
-                                </div>
-                                <div v-if="item.reste !== undefined" class="mt-2 text-sm text-surface-600 dark:text-surface-400">
-                                    Reste: {{ item.reste }}
-                                </div>
-                                <div v-if="item.contenus?.length" class="mt-3 space-y-2">
-                                    <div v-for="contenu in item.contenus" :key="contenu.id" class="flex items-center justify-between p-3 rounded-lg bg-surface-0 dark:bg-surface-800">
-                                        <div class="font-medium text-surface-700 dark:text-surface-300">{{ contenu.designation || 'Service' }}</div>
-                                        <div class="text-sm text-surface-600 dark:text-surface-400">{{ contenu.qte || 1 }} x {{ contenu.montant || 0 }}</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <p v-else class="text-sm text-surface-500 dark:text-surface-400">Aucun devis enregistre.</p>
+                        <DevisForm
+                            v-if="devisModel.devisList.length"
+                            :modelValue="devisModel"
+                            readonly
+                        />
+                        <p v-else class="text-sm text-surface-500 dark:text-surface-400">Aucun devis enregistré.</p>
                     </div>
                 </div>
 
                 <div v-if="activeSection === 6" class="animate-fadeIn">
                     <div class="rounded-2xl border border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-br from-surface-0 to-surface-50/80 dark:from-surface-800 dark:to-surface-900/80 p-6 shadow-sm">
                         <SeancesSection :sessions="sessions" />
-                        <p v-if="!sessions.length" class="text-sm text-surface-500 dark:text-surface-400 mt-4">Aucune seance precedente.</p>
+                        <p v-if="!sessions.length" class="text-sm text-surface-500 dark:text-surface-400 mt-4">Aucune séance précédente.</p>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="px-5 py-4 border-t border-surface-200/50 dark:border-surface-700/50 bg-surface-50/50 dark:bg-surface-900/50">
+        <div
+            v-if="!hideActions"
+            class="px-5 py-4 border-t border-surface-200/50 dark:border-surface-700/50 bg-surface-50/50 dark:bg-surface-900/50"
+        >
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-4">
                     <Button icon="pi pi-print" label="Imprimer" severity="secondary" outlined size="small" @click="emit('print')" :pt="{ label: { class: 'hidden sm:inline' } }" />
                 </div>
                 <div class="text-sm text-surface-600 dark:text-surface-400">
-                    Derniere modification : {{ formatDate(props.fiche?.createdAt || props.fiche?.dateCreation) }}
+                    Dernière modification : {{ formatDate(props.fiche?.createdAt || props.fiche?.dateCreation) }}
                 </div>
             </div>
         </div>
@@ -834,6 +1003,7 @@ const sessions = computed(() =>
             </div>
         </template>
     </Galleria>
+    </div>
 </template>
 
 <style scoped>

@@ -5,14 +5,16 @@ Les Dockerfiles ne sont utilisés qu'en production sur le serveur — le dévelo
 
 ---
 
-## Applications Dokploy (5 déploiements minimum)
+## Applications Dokploy (7 déploiements minimum)
 
 | Application | Root directory | Domaine | Spécificité |
 |-------------|----------------|---------|-------------|
 | Admin CDOS | `frontend/` | `admin.cabinetdentaireousmanesow.cloud` | Build arg `CABINET=cdos` |
 | Admin Mondentiste | `frontend/` | `admin.mondentiste-mali.com` | Build arg `CABINET=mondentiste` |
 | API CDOS | `backend-reform/` | `api.cabinetdentaireousmanesow.cloud` | Variables env cdos |
+| **Worker CDOS** | `backend-reform/` | *(aucun — interne)* | `WORKER_MODE=1`, même image/env que API CDOS |
 | API Mondentiste | `backend-reform/` | `api.mondentiste-mali.com` | Variables env mondentiste |
+| **Worker Mondentiste** | `backend-reform/` | *(aucun — interne)* | `WORKER_MODE=1`, même image/env que API Mondentiste |
 | **Mercure Hub** | `mercure-prod/` | `mercure.cabinetdentaireousmanesow.cloud` | Hub temps réel partagé (SSE) |
 
 ---
@@ -408,22 +410,70 @@ tar -czf /srv/data/backups-mondentiste/uploads-$(date +%Y%m%d).tar.gz -C /srv/da
 
 ---
 
-## Workers Messenger (SMS async)
+## Workers Messenger (traitement SMS async)
 
-L'API utilise un transport Doctrine async (`config/packages/messenger.yaml`) pour la file SMS. Sans worker, les SMS ne seront pas traités.
+L'API met les SMS en file (`sms_queue`) puis déclenche le traitement via Messenger (`ProcessSmsQueueMessage` → transport `async` Doctrine). **Sans worker, les SMS restent en attente** (y compris les rappels RDV programmés).
 
-### Configuration Dokploy — 2 services worker supplémentaires
+Le worker intégré (`WORKER_MODE=1` dans `docker/entrypoint.sh`) fait deux choses en parallèle :
 
-Créer un service Dokploy **par backend**, avec la **même image** que l'API mais une commande différente :
+1. **Poll SMS** — toutes les 60 s (configurable), exécute `app:sms:dispatch-queue` pour enfiler un traitement
+2. **Consume Messenger** — `messenger:consume async` traite les messages (SMS, emails async, etc.)
 
-| Service | Image source | Commande |
-|---------|--------------|----------|
-| Worker CDOS | Même build que API CDOS | `php bin/console messenger:consume async --time-limit=3600 -vv` |
-| Worker Mondentiste | Même build que API Mondentiste | `php bin/console messenger:consume async --time-limit=3600 -vv` |
+### Étape 1 — Créer le worker CDOS
 
-**Variables d'environnement :** identiques à l'API correspondante (`DATABASE_URL`, `APP_SECRET`, etc.).
+1. Projet **DentalSoft** → **Add Service** → **Application** (Docker)
+2. Même build que `api-cdos` :
 
-**Pas de port exposé** — service interne uniquement.
+| Champ | Valeur |
+|-------|--------|
+| **Name** | `worker-cdos` |
+| **Build Path** | `backend-reform` |
+| **Dockerfile Path** | `Dockerfile` |
+| **Docker Context Path** | `.` |
+| Port exposé | *(aucun)* |
+| Domaine | *(aucun)* |
+
+3. **Environment** — copier **toutes** les variables de `api-cdos`, puis ajouter :
+
+```env
+WORKER_MODE=1
+RUN_MIGRATIONS=0
+SMS_POLL_INTERVAL=60
+SMS_DISPATCH_LIMIT=20
+MESSENGER_TIME_LIMIT=3600
+MESSENGER_MEMORY_LIMIT=128M
+```
+
+> `RUN_MIGRATIONS=0` évite de lancer les migrations en double (déjà faites par l'API au démarrage).
+
+4. **Deploy** — le conteneur doit rester **Running** en permanence (pas de health check HTTP).
+
+### Étape 2 — Worker Mondentiste
+
+Même procédure avec `worker-mondentiste` et les variables env de `api-mondentiste` + `WORKER_MODE=1`.
+
+### Vérification
+
+Depuis le conteneur worker (logs Dokploy ou `docker exec`) :
+
+```bash
+# Doit afficher « ProcessSmsQueueMessage dispatché » toutes les ~60 s
+php bin/console app:sms:dispatch-queue --limit=5
+
+# Traitement synchrone de test (sans passer par Messenger)
+php bin/console app:sms:process-queue --limit=5
+```
+
+Côté admin → **Paramètres SMS → File SMS** : les entrées `pending` passent à `sent` après le poll.
+
+### Variables worker optionnelles
+
+| Variable | Défaut | Rôle |
+|----------|--------|------|
+| `SMS_POLL_INTERVAL` | `60` | Secondes entre deux dispatch de la file SMS |
+| `SMS_DISPATCH_LIMIT` | `20` | SMS max traités par cycle |
+| `MESSENGER_TIME_LIMIT` | `3600` | Redémarrage auto du consumer après 1 h |
+| `MESSENGER_MEMORY_LIMIT` | `128M` | Limite mémoire du consumer |
 
 ### Cron optionnel — nettoyage notifications
 

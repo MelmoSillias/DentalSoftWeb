@@ -1,0 +1,57 @@
+{
+  "id": "massaman",
+  "displayName": "CENTRE DENTAIRE MASSAMAN",
+  "appTitle": "DentalSoft - CENTRE DENTAIRE MASSAMAN",
+  "brandName": "DentalSoft",
+  "brandSubtitle": "CENTRE DENTAIRE MASSAMAN",
+  "settingsTitle": "Configuration du cabinet",
+  "settingsDescription": "Personnalisez l'apparence et les flux metier de DentalSoft",
+  "smsCabinetName": "CENTRE DENTAIRE MASSAMAN",
+  "smsTestMessage": "Message de test CENTRE DENTAIRE MASSAMAN.",
+  "reportCabinetName": "CENTRE DENTAIRE MASSAMAN",
+  "cabinetPhone": "+223 44 54 26 09 / +223 97 08 12 92",
+  "printProfile": {
+    "name": "CENTRE DENTAIRE MASSAMAN",
+    "addressLines": [
+      "Kalaban coura ACI Rue 404 Porte 963"
+    ],
+    "phones": [
+      "44 54 26 09",
+      "97 08 12 92"
+    ],
+    "email": "cheickba16@gmail.com"
+  },
+  "viteApiPrefix": "https://api.cabinet-orodent.org/api",
+  "viteFilePrefix": "https://api.cabinet-orodent.org/",
+  "brandingAssets": {
+    "logo": "logo.png",
+    "logoAlt": "logo.jpeg",
+    "header": "header.png",
+    "headerAlt": "header.jpeg",
+    "headerLarge": "header-big.jpeg",
+    "profile": "profil.png",
+    "landingIllustration": "landing-illustration.png",
+    "notificationSound": "notification.mp3"
+  },
+  "pwa": {
+    "name": "DENTALSOFT - CENTRE DENTAIRE MASSAMAN",
+    "shortName": "DENTALSOFT",
+    "description": "Application de gestion de cabinet dentaire - CENTRE DENTAIRE MASSAMAN",
+    "themeColor": "#5ad6f5",
+    "backgroundColor": "#ffffff",
+    "startUrl": "/",
+    "display": "standalone",
+    "includeAssets": [
+      "favicon.ico",
+      "robots.txt",
+      "icons/*.svg"
+    ],
+    "icons": [
+      {
+        "src": "logo.png",
+        "sizes": "512x512",
+        "type": "image/png"
+      }
+    ]
+  }
+}

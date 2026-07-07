@@ -12,7 +12,8 @@
 # Ou depuis l'hôte si le port est exposé :
 #   ./scripts/db-import-data.sh 127.0.0.1 cdosuser cdosdb /tmp/cdos-data-only.sql
 #
-# Le script prépare automatiquement le dump (fix employe + transaction atomique).
+# Le script prépare automatiquement le dump (JSON, transaction atomique).
+# Un export avec db-export-data-only.sh (--complete-insert) évite les décalages de colonnes.
 
 set -e
 

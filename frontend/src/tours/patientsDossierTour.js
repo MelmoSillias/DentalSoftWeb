@@ -50,24 +50,31 @@ export function createPatientsDossierTour({
         },
         {
             group: 'patients-dossier',
-            order: 20,
-            target: '[data-tour="patients-dossier.info-card"]',
-            title: 'Vue synthese du patient',
-            content: 'La colonne de gauche regroupe l identite du patient, ses coordonnees, ses informations utiles et les acces rapides au dossier.'
+            order: 25,
+            target: '[data-tour="patients-dossier.layout-toggle"]',
+            title: 'Mode d affichage',
+            content: 'Ce bouton flottant permet de basculer entre la vue classique en colonnes et une vue en onglets pour naviguer plus facilement dans le dossier.'
         },
         {
             group: 'patients-dossier',
             order: 30,
+            target: '[data-tour="patients-dossier.info-card"], [data-tour="patients-dossier.main-tabs"]',
+            title: 'Vue synthese du patient',
+            content: 'La colonne de gauche ou l onglet Identite regroupe l identite du patient, ses coordonnees, ses informations utiles et les acces rapides au dossier.'
+        },
+        {
+            group: 'patients-dossier',
+            order: 35,
             target: '[data-tour="patients-dossier.antecedents"]',
             title: 'Antecedents et allergies',
             content: 'Ces zones servent a consigner les alertes medicales importantes, y compris le contact d urgence utile en cas de besoin.'
         },
         {
             group: 'patients-dossier',
-            order: 35,
+            order: 38,
             target: '[data-tour="patients-dossier.portal-account"]',
             title: 'Compte espace patient',
-            content: 'Cette nouvelle section permet de creer le compte patient, reinitialiser le mot de passe a 123, puis activer ou desactiver l acces au portail.'
+            content: 'Cette section permet de creer le compte patient, reinitialiser le mot de passe a 123, puis activer ou desactiver l acces au portail.'
         },
         {
             group: 'patients-dossier',
@@ -82,6 +89,13 @@ export function createPatientsDossierTour({
             target: '[data-tour="patients-dossier.medical"]',
             title: 'Suivi clinique',
             content: 'Cette zone regroupe la partie clinique du dossier avec les fiches medicales ou la liste des consultations selon votre role.'
+        },
+        {
+            group: 'patients-dossier',
+            order: 55,
+            target: '[data-tour="patients-dossier.archive-files"]',
+            title: 'Fichiers administratifs',
+            content: 'Les documents administratifs du patient sont consultables ici, en vue classique ou dans l onglet Identite et archives.'
         },
         {
             group: 'patients-dossier',
@@ -117,6 +131,13 @@ export function createPatientsDossierTour({
                 target: '[data-tour="patients-dossier.fiches-preview"]',
                 title: 'Lecture des fiches',
                 content: 'La fiche medicale concentre les details cliniques du patient et le selecteur du bas permet de naviguer dans l historique.'
+            },
+            {
+                group: 'patients-dossier',
+                order: 85,
+                target: '[data-tour="patients-dossier.fiches-expand"]',
+                title: 'Vue agrandie',
+                content: 'Le bouton Agrandir ouvre la fiche en plein ecran avec impression, modification section par section et navigation entre les fiches.'
             }
         );
     }

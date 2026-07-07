@@ -1,9 +1,11 @@
 <script setup>
 import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
+import SelectButton from 'primevue/selectbutton';
 import Textarea from 'primevue/textarea';
-import { computed, h } from 'vue';
+import { computed, ref, watch } from 'vue';
 import FormuleDentaire from './FormuleDentaire.vue';
+import { defaultDentitionFromAge, DENTITION_OPTIONS } from '@/utils/formuleDentaireLayout';
 
 const props = defineProps({
     modelValue: {
@@ -37,6 +39,16 @@ const updateNested = (section, field, value) => {
     form.value = { ...form.value, [section]: next };
 };
 
+const dentitionType = ref(defaultDentitionFromAge(props.patientAge));
+
+watch(
+    () => props.patientAge,
+    (age) => {
+        dentitionType.value = defaultDentitionFromAge(age);
+    },
+    { immediate: true }
+);
+
 </script>
 
 <template>
@@ -62,9 +74,20 @@ const updateNested = (section, field, value) => {
 
         <div class="space-y-6">
             <div class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/30 p-5">
-                <h4 class="font-semibold text-surface-900 dark:text-surface-100 mb-4">Formule dentaire</h4>
+                <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+                    <h4 class="font-semibold text-surface-900 dark:text-surface-100">Formule dentaire</h4>
+                    <SelectButton
+                        v-model="dentitionType"
+                        :options="DENTITION_OPTIONS"
+                        optionLabel="label"
+                        optionValue="value"
+                        :allowEmpty="false"
+                        class="text-sm"
+                    />
+                </div>
                 <FormuleDentaire
                     :modelValue="form.bilanDentaire?.formuleDentaire"
+                    :dentition-type="dentitionType"
                     @update:modelValue="(v) => updateNested('bilanDentaire', 'formuleDentaire', v)"
                 />
             </div>
