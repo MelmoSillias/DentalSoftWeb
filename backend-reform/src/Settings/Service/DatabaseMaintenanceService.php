@@ -134,6 +134,11 @@ class DatabaseMaintenanceService
             throw new \RuntimeException('Fichier de snapshot introuvable.');
         }
 
+        $sql = file_get_contents($absolute);
+        if ($sql === false) {
+            throw new \RuntimeException('Lecture du fichier de snapshot impossible.');
+        }
+
         $params = $this->databaseParams();
         $mysql = $this->resolveExecutable('mysql');
         $command = [
@@ -146,9 +151,17 @@ class DatabaseMaintenanceService
             $params['dbname'],
         ];
 
+        // Force foreign key / unique checks off for the whole import session. Some dumps
+        // (created with --skip-comments / compact options, or by mariadb-dump) omit the
+        // SET FOREIGN_KEY_CHECKS=0 directive, which makes the restore fail with foreign key
+        // constraint errors when tables are dropped/created in a non-dependency order.
+        $wrappedSql = "SET FOREIGN_KEY_CHECKS=0;\nSET UNIQUE_CHECKS=0;\n"
+            . $sql
+            . "\nSET FOREIGN_KEY_CHECKS=1;\nSET UNIQUE_CHECKS=1;\n";
+
         $process = new Process($command, $this->projectDir);
         $process->setTimeout(600);
-        $process->setInput(file_get_contents($absolute));
+        $process->setInput($wrappedSql);
         $process->run();
 
         if (!$process->isSuccessful()) {
@@ -173,13 +186,16 @@ class DatabaseMaintenanceService
         $excluded = ['user', 'doctrine_migration_versions'];
         $tableNames = array_values(array_filter($tables, static fn (string $name) => !in_array($name, $excluded, true)));
 
+        // NOTE: we intentionally use DELETE instead of TRUNCATE. In MySQL, TRUNCATE is a
+        // DDL statement that triggers an implicit COMMIT, which ends the transaction opened
+        // by beginTransaction() and later causes "There is no active transaction." on commit().
         $connection->beginTransaction();
         try {
             $connection->executeStatement('SET FOREIGN_KEY_CHECKS=0');
 
             foreach ($tableNames as $tableName) {
                 $quoted = $connection->getDatabasePlatform()->quoteIdentifier($tableName);
-                $connection->executeStatement('TRUNCATE TABLE ' . $quoted);
+                $connection->executeStatement('DELETE FROM ' . $quoted);
             }
 
             $connection->executeStatement('DELETE FROM `user` WHERE id <> 1');
@@ -189,6 +205,16 @@ class DatabaseMaintenanceService
             $connection->rollBack();
             $connection->executeStatement('SET FOREIGN_KEY_CHECKS=1');
             throw $e;
+        }
+
+        // Best-effort reset of AUTO_INCREMENT counters (DDL, cannot run inside the transaction).
+        foreach ($tableNames as $tableName) {
+            try {
+                $quoted = $connection->getDatabasePlatform()->quoteIdentifier($tableName);
+                $connection->executeStatement('ALTER TABLE ' . $quoted . ' AUTO_INCREMENT = 1');
+            } catch (\Throwable) {
+                // Ignore tables without an AUTO_INCREMENT column.
+            }
         }
 
         $this->em->clear();
