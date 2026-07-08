@@ -333,9 +333,31 @@ MESSENGER_TRANSPORT_DSN=doctrine://default?queue_name=default
 | **Dockerfile Path** | `Dockerfile` |
 | **Docker Context Path** | `.` |
 | Port exposé | `80` |
-| Health check | `GET /api/health` → `{"status":"ok"}` |
+| Health check | Utiliser le **HEALTHCHECK Docker intégré** (script `/healthcheck.sh`) |
 
 > Contrairement au frontend (build depuis la racine), l'API se build **depuis le dossier `backend-reform/`**.
+
+### Backend — healthcheck recommandé (API + worker)
+
+Le backend embarque un healthcheck Docker natif dans l'image:
+
+- Script: `/healthcheck.sh`
+- Dockerfile: `HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=5 CMD ["/healthcheck.sh"]`
+
+Comportement:
+
+- **API (`WORKER_MODE=0`)**:
+  - vérifie `http://127.0.0.1/health` (ou `HEALTHCHECK_URL` si défini)
+  - exige HTTP `2xx` + payload contenant `"status":"ok"`
+- **Worker (`WORKER_MODE=1`)**:
+  - ne fait **pas** de check HTTP
+  - vérifie la présence du process `messenger:consume async`
+
+Réglage Dokploy recommandé:
+
+- Ne pas forcer un healthcheck HTTP séparé côté Dokploy pour le worker.
+- S'appuyer sur le healthcheck de l'image (ou, si Dokploy l'exige, reproduire la même logique process pour le worker).
+- Garder un `start period` suffisant pour éviter les faux négatifs pendant `migrations`/`cache:warmup`.
 
 ---
 

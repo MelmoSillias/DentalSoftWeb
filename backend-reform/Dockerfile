@@ -35,9 +35,13 @@ RUN mkdir -p config/jwt \
 COPY docker/Caddyfile /etc/caddy/Caddyfile
 COPY docker/php.ini /usr/local/etc/php/conf.d/dentalsoft.ini
 COPY docker/entrypoint.sh /entrypoint.sh
-RUN sed -i 's/\r$//' /entrypoint.sh && chmod +x /entrypoint.sh
+COPY docker/healthcheck.sh /healthcheck.sh
+RUN sed -i 's/\r$//' /entrypoint.sh /healthcheck.sh \
+    && chmod +x /entrypoint.sh /healthcheck.sh
 
 EXPOSE 80
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=5 CMD ["/healthcheck.sh"]
 
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["frankenphp", "run", "--config", "/etc/caddy/Caddyfile"]
