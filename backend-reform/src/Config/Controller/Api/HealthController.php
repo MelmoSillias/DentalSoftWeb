@@ -15,6 +15,7 @@ final class HealthController extends AbstractController
     }
 
     #[Route('/api/health', name: 'api_health', methods: ['GET'])]
+    #[Route('/health', name: 'health', methods: ['GET'])]
     public function health(): JsonResponse
     {
         return $this->json([

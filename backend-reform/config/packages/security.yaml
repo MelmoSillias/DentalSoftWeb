@@ -25,6 +25,11 @@ security:
             pattern: ^/(_(profiler|wdt)|css|images|js)/
             security: false
 
+        # ✅ Health endpoints must stay auth-free for orchestrators (Dokploy)
+        health:
+            pattern: ^/(api/health|health)
+            security: false
+
         # 🔐 JWT LOGIN (API)
         api_login:
             pattern: ^/api/login
