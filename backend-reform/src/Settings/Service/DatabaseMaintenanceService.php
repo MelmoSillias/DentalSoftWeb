@@ -169,7 +169,12 @@ class DatabaseMaintenanceService
             throw new \RuntimeException('Restauration SQL impossible: ' . $message);
         }
 
+        // The restore ran on a separate `mysql` process that dropped/recreated every table.
+        // Close the ORM connection so any later query/flush uses a fresh connection with a
+        // clean transaction state, instead of the now-stale one (which otherwise triggers
+        // "There is no active transaction." on the next EntityManager::flush()).
         $this->em->clear();
+        $this->em->getConnection()->close();
     }
 
     public function resetDatabaseDataPreservingSuperAdmin(): array
@@ -200,10 +205,21 @@ class DatabaseMaintenanceService
 
             $connection->executeStatement('DELETE FROM `user` WHERE id <> 1');
             $connection->executeStatement('SET FOREIGN_KEY_CHECKS=1');
-            $connection->commit();
+
+            // Guard the commit: only commit if the transaction is still active, so we never
+            // surface a misleading "There is no active transaction." error.
+            if ($connection->isTransactionActive()) {
+                $connection->commit();
+            }
         } catch (\Throwable $e) {
-            $connection->rollBack();
-            $connection->executeStatement('SET FOREIGN_KEY_CHECKS=1');
+            if ($connection->isTransactionActive()) {
+                $connection->rollBack();
+            }
+            try {
+                $connection->executeStatement('SET FOREIGN_KEY_CHECKS=1');
+            } catch (\Throwable) {
+                // Connection may be unusable; ignore so the original error is surfaced.
+            }
             throw $e;
         }
 
