@@ -11,6 +11,7 @@ import AppToast from '@/components/AppToast.vue';
 import router from './router';
 import { useUiSettingsStore } from '@/stores/uiSettings';
 import cabinetConfig from '@/cabinetConfig';
+import { frLocale } from '@/locales/primevue-fr';
 // main.js ou main.ts
 
 
@@ -166,6 +167,7 @@ const app = createApp(App);
  
 app.use(PrimeVue, {
     ripple: true,
+    locale: frLocale,
     theme: {
         preset: SkyPreset,
         options: {

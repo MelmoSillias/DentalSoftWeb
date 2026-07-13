@@ -65,9 +65,9 @@ const trigger = (eventName) => {
 </script>
 
 <template>
-  <div class="group relative h-full min-h-[112px] xs:min-h-[128px] bg-white p-2 xs:p-3 shadow-sm transition-all duration-200 hover:shadow-md dark:bg-gray-800 dark:shadow-gray-900/30">
+  <div class="group relative h-full min-h-[112px] xs:min-h-[128px] bg-surface-0 p-2 xs:p-3 shadow-sm transition-all duration-200 hover:shadow-md dark:bg-surface-900 dark:shadow-none dark:ring-1 dark:ring-surface-800/80">
     <!-- Header -->
-    <div class="mb-1.5 xs:mb-2.5 flex items-center justify-between text-[10px] xs:text-xs font-medium text-gray-500 dark:text-gray-400">
+    <div class="mb-1.5 xs:mb-2.5 flex items-center justify-between text-[10px] xs:text-xs font-medium text-surface-500 dark:text-surface-400">
       <span>{{ slotLabel }}</span>
       <Button
         v-if="!hasRdv"
@@ -84,16 +84,16 @@ const trigger = (eventName) => {
     <!-- Contenu RDV -->
     <Card
       v-if="hasRdv"
-      class="h-full border border-gray-200 bg-gray-50/70 shadow-sm transition-colors hover:border-blue-200 dark:border-gray-700 dark:bg-gray-750 dark:hover:border-blue-800/40"
+      class="h-full border border-surface-200 bg-surface-50/80 shadow-sm transition-colors hover:border-primary-300 dark:border-surface-700 dark:bg-surface-800 dark:hover:border-primary-700/50"
     >
       <template #content>
         <div class="flex flex-col h-full">
           <div class="mb-1.5 xs:mb-2.5 flex items-start justify-between gap-2 xs:gap-3">
             <div class="min-w-0 flex-1">
-              <div class="truncate font-semibold text-gray-900 dark:text-gray-100 text-sm xs:text-base leading-tight">
+              <div class="truncate font-semibold text-surface-900 dark:text-surface-0 text-sm xs:text-base leading-tight">
                 {{ patientLabel }}
               </div>
-              <div class="mt-0.5 truncate text-xs xs:text-sm text-gray-600 dark:text-gray-400">
+              <div class="mt-0.5 truncate text-xs xs:text-sm text-surface-600 dark:text-surface-400">
                 {{ medecinLabel }}
               </div>
             </div>
@@ -104,7 +104,7 @@ const trigger = (eventName) => {
             />
           </div>
 
-          <p class="mb-3 xs:mb-4 line-clamp-2 text-xs xs:text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+          <p class="mb-3 xs:mb-4 line-clamp-2 text-xs xs:text-sm text-surface-700 dark:text-surface-300 leading-relaxed">
             {{ descriptionLabel }}
           </p>
 
@@ -149,7 +149,7 @@ const trigger = (eventName) => {
     <!-- Placeholder quand pas de RDV -->
     <div
       v-else
-      class="mt-2 xs:mt-3 flex h-16 xs:h-20 items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50/40 text-xs xs:text-sm text-gray-400 transition-colors hover:border-gray-400 dark:border-gray-600 dark:bg-gray-800/30 dark:hover:border-gray-500"
+      class="mt-2 xs:mt-3 flex h-16 xs:h-20 items-center justify-center rounded-lg border-2 border-dashed border-surface-300 bg-surface-50/50 text-xs xs:text-sm text-surface-400 transition-colors hover:border-surface-400 dark:border-surface-600 dark:bg-surface-800/40 dark:text-surface-500 dark:hover:border-surface-500"
     >
       Disponible
     </div>

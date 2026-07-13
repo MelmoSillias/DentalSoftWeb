@@ -31,11 +31,22 @@ const slots = computed(() => {
   return data;
 });
 
-const doctorColumnWidth = 220;
+const doctorColumnWidth = 280;
+const timeColumnWidth = 88;
 const gridTemplateColumns = computed(() => {
   const count = Array.isArray(props.medecins) ? props.medecins.length : 0;
-  return `80px repeat(${Math.max(count, 1)}, ${doctorColumnWidth}px)`;
+  return `${timeColumnWidth}px repeat(${Math.max(count, 1)}, ${doctorColumnWidth}px)`;
 });
+
+const doctorInitials = (name) => {
+  const parts = String(name || '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (!parts.length) return '?';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0] || ''}${parts[1][0] || ''}`.toUpperCase();
+};
 
 const rdvByKey = computed(() => {
   const map = new Map();
@@ -53,32 +64,51 @@ const resolveRdv = (medecinId, minutes) => rdvByKey.value.get(`${medecinId}-${mi
 
 <template>
   <div
-    class="inline-block min-w-full rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-850"
+    class="schedule-table inline-block min-w-full overflow-hidden rounded-xl border border-surface-200 bg-surface-0 shadow-sm dark:border-surface-700 dark:bg-surface-900 dark:shadow-none"
     :style="{ transform: `scale(${zoom / 100})`, transformOrigin: 'top left' }"
   >
     <!-- En-tête -->
     <div
-      class="sticky top-0 z-10 grid bg-gray-50 font-semibold text-gray-700 dark:bg-gray-800 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700"
+      class="sticky top-0 z-10 grid border-b border-surface-200 bg-gradient-to-b from-surface-100 to-surface-50 dark:border-surface-700 dark:from-surface-800 dark:to-surface-900"
       :style="{ gridTemplateColumns }"
     >
-      <div class="flex items-center justify-center px-2 xs:px-4 py-2 xs:py-3.5 text-xs xs:text-sm">Heure</div>
+      <div class="flex flex-col items-center justify-center gap-1 px-2 py-3 text-center">
+        <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-surface-200/80 text-surface-600 dark:bg-surface-700 dark:text-surface-200">
+          <i class="pi pi-clock text-sm" />
+        </span>
+        <span class="text-[10px] font-semibold uppercase tracking-wide text-surface-500 dark:text-surface-400">Heure</span>
+      </div>
+
       <div
         v-for="med in medecins"
         :key="med.id"
-        class="flex items-center justify-center border-l border-gray-200 px-2 xs:px-4 py-2 xs:py-3.5 text-center text-xs xs:text-sm dark:border-gray-700"
+        class="flex items-center justify-center gap-2.5 border-l border-surface-200/80 px-3 py-3 dark:border-surface-700/80"
       >
-        {{ med.name }}
+        <span
+          class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-500/15 text-xs font-bold text-primary-700 ring-1 ring-primary-500/25 dark:bg-primary-400/15 dark:text-primary-300 dark:ring-primary-400/30"
+        >
+          {{ doctorInitials(med.name) }}
+        </span>
+        <div class="min-w-0 text-left">
+          <p class="truncate text-sm font-semibold text-surface-900 dark:text-surface-0" :title="med.name">
+            {{ med.name }}
+          </p>
+          <p class="truncate text-[10px] font-medium uppercase tracking-wide text-surface-500 dark:text-surface-400">
+            Médecin
+          </p>
+        </div>
       </div>
+
       <div
         v-if="!medecins.length"
-        class="flex items-center justify-center border-l border-gray-200 px-2 py-2 text-xs text-surface-500 dark:border-gray-700"
+        class="flex items-center justify-center border-l border-surface-200 px-3 py-3 text-xs text-surface-500 dark:border-surface-700 dark:text-surface-400"
       >
         Aucun médecin
       </div>
     </div>
 
     <!-- Corps -->
-    <div class="divide-y divide-gray-100 dark:divide-gray-800">
+    <div class="divide-y divide-surface-100 bg-surface-0 dark:divide-surface-800 dark:bg-surface-900">
       <div
         v-for="slot in slots"
         :key="slot.minutes"
@@ -86,7 +116,7 @@ const resolveRdv = (medecinId, minutes) => rdvByKey.value.get(`${medecinId}-${mi
         :style="{ gridTemplateColumns }"
       >
         <div
-          class="flex items-center justify-center bg-gray-50 px-2 xs:px-4 py-2 xs:py-3 text-xs xs:text-sm font-medium text-gray-600 dark:bg-gray-900 dark:text-gray-400 border-r border-gray-200 dark:border-gray-700"
+          class="flex items-center justify-center border-r border-surface-200 bg-surface-50 px-2 py-2 text-xs font-semibold tabular-nums text-surface-600 dark:border-surface-700 dark:bg-surface-950 dark:text-surface-300"
         >
           {{ slot.label }}
         </div>
@@ -95,7 +125,7 @@ const resolveRdv = (medecinId, minutes) => rdvByKey.value.get(`${medecinId}-${mi
           <div
             v-for="med in medecins"
             :key="med.id"
-            class="border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-850 transition-colors hover:bg-blue-50/40 dark:hover:bg-blue-950/20"
+            class="border-l border-surface-200 bg-surface-0 transition-colors hover:bg-primary-50/40 dark:border-surface-700 dark:bg-surface-900 dark:hover:bg-primary-950/25"
           >
             <ScheduleCell
               :slot-label="slot.label"
@@ -110,7 +140,7 @@ const resolveRdv = (medecinId, minutes) => rdvByKey.value.get(`${medecinId}-${mi
         </template>
         <div
           v-else
-          class="border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-850"
+          class="border-l border-surface-200 bg-surface-0 dark:border-surface-700 dark:bg-surface-900"
         />
       </div>
     </div>
