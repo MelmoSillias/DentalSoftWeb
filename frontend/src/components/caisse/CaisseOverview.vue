@@ -3,13 +3,13 @@ import Button from 'primevue/button';
 import Column from 'primevue/column';
 import DataTable from 'primevue/datatable';
 import DataView from 'primevue/dataview';
-import DatePicker from 'primevue/datepicker';
 import Dialog from 'primevue/dialog';
 import InputText from 'primevue/inputtext';
 import Select from 'primevue/select';
 import SelectButton from 'primevue/selectbutton';
 import Tag from 'primevue/tag';
 import { computed, ref } from 'vue';
+import PanelDatePicker from '@/components/common/PanelDatePicker.vue';
 
 const props = defineProps({
     factures: { type: Array, default: () => [] },
@@ -90,10 +90,8 @@ const factureSearchQuery = computed(() => normalizeText(factureSearch.value.trim
 const paymentsSearchQuery = computed(() => normalizeText(paymentsSearch.value.trim()));
 
 const isInsurancePayment = (payment) => {
-    const role = String(payment?.rolePaiement || '').toLowerCase();
-    const mode = normalizeText(payment?.mode);
-
-    return role === 'insurance' || mode.includes('assur');
+    const role = String(payment?.rolePaiement || payment?.role || '').toLowerCase();
+    return role === 'patient_insurance';
 };
 
 const filteredFactures = computed(() => {
@@ -155,13 +153,6 @@ const filteredFacturesR = computed(() => {
 });
 
 const computePaymentModeTag = (payment) => {
-    if (payment?.insuranceStatus === 'pending') {
-        return {
-            label: payment?.mode || 'Assurance',
-            severity: 'warning'
-        };
-    }
-
     if (isInsurancePayment(payment)) {
         return {
             label: payment?.mode || 'Assurance',
@@ -268,7 +259,6 @@ const detailedStats = computed(() => {
 
     const insurancePayments = allPayments.filter((payment) => isInsurancePayment(payment));
     const totalInsurance = insurancePayments.reduce((sum, p) => sum + (Number(p.montant) || 0), 0);
-    const pendingInsurance = insurancePayments.filter(p => p.insuranceStatus === 'pending').length;
     const paymentModeRows = Object.entries(paymentModeBreakdown)
         .map(([mode, amount]) => ({ mode, amount: Number(amount) || 0 }))
         .sort((left, right) => right.amount - left.amount);
@@ -281,7 +271,6 @@ const detailedStats = computed(() => {
         paymentModeBreakdown,
         paymentModeRows,
         totalInsurance,
-        pendingInsurance,
         totalPaymentsCount: allPayments.length,
         totalPaymentsAmount: totalRevenue
     };
@@ -318,13 +307,11 @@ const computeInsuranceBadge = (row) => {
         return null;
     }
 
-    return insurance.insuranceStatus === 'pending'
-        ? { label: 'Assurance en attente', severity: 'warning' }
-        : { label: 'Assurance', severity: 'info' };
+    return { label: 'Assurance', severity: 'info' };
 };
 
 const canModify = (row) => props.allowInvoiceModification && !row?.hasPayments && (Number(row.montant) === Number(row.reste)) && !row.isRegle;
-const canPreview = (row) => !(Number(row.montant) === 0 && Number(row.reste) === 0);
+const canPreview = (row) => row?.insurance?.hasInsurance || !(Number(row.montant) === 0 && Number(row.reste) === 0);
 const targetIsFree = (row) => !row.isRegle && Number(row.reste) === 0;
 
 const handlePay = (row) => emit('pay', row);
@@ -416,8 +403,7 @@ const printDetailPayment = (row) => {
                     <div class="stats-grid">
                         <div>Total: {{ detailedStats.totalPaymentsCount }}</div>
                         <div>Montant: {{ formatFcfa(detailedStats.totalPaymentsAmount) }}</div>
-                        <div>Assurances: {{ formatFcfa(detailedStats.totalInsurance) }}</div>
-                        <div>En attente: {{ detailedStats.pendingInsurance }}</div>
+                        <div>Parts patient assurance: {{ formatFcfa(detailedStats.totalInsurance) }}</div>
                     </div>
                 </div>
 
@@ -459,7 +445,7 @@ const printDetailPayment = (row) => {
                     </div>
                     <div class="filter-item">
                         <label>Période</label>
-                        <DatePicker v-model="factureRangeModel" selectionMode="range" dateFormat="yy-mm-dd" showIcon
+                        <PanelDatePicker v-model="factureRangeModel" dateFormat="yy-mm-dd" showIcon
                             fluid :disabled="periodFilterDisabled" />
                     </div>
                     <Button label="Rafraîchir" icon="pi pi-refresh" text @click="emit('refresh-factures')" />
@@ -651,7 +637,7 @@ const printDetailPayment = (row) => {
                     </div>
                     <div class="filter-item">
                         <label>Période</label>
-                        <DatePicker v-model="paymentRangeModel" selectionMode="range" dateFormat="yy-mm-dd" showIcon
+                        <PanelDatePicker v-model="paymentRangeModel" dateFormat="yy-mm-dd" showIcon
                             fluid />
                     </div>
                     <Button label="Imprimer la période" icon="pi pi-print" severity="primary"
@@ -678,7 +664,7 @@ const printDetailPayment = (row) => {
                         <div class="flex flex-wrap gap-2">
                             <Tag :value="computePaymentModeTag(data).label"
                                 :severity="computePaymentModeTag(data).severity" />
-                            <Tag v-if="data.insuranceStatus === 'pending'" value="Assurance en attente" severity="warning" />
+                            <Tag v-if="isInsurancePayment(data)" value="Assurance" severity="info" icon="pi pi-shield" />
                         </div>
                     </template>
                 </Column>

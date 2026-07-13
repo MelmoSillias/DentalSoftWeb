@@ -24,12 +24,14 @@ class LotFactureAssuranceRepository extends ServiceEntityRepository
             ->andWhere('l.statut = :statut')
             ->setParameter('assurance', $assurance)
             ->setParameter('statut', 'ouvert')
+            ->orderBy('l.dateCreation', 'DESC')
             ->setMaxResults(1)
             ->getQuery()
             ->getOneOrNullResult();
     }
 
-    public function findLatestOpenLotForAssurance(Assurance $assurance): ?LotFactureAssurance
+    /** @return list<LotFactureAssurance> */
+    public function findOpenLotsForAssurance(Assurance $assurance): array
     {
         return $this->createQueryBuilder('l')
             ->andWhere('l.assurance = :assurance')
@@ -37,8 +39,12 @@ class LotFactureAssuranceRepository extends ServiceEntityRepository
             ->setParameter('assurance', $assurance)
             ->setParameter('statut', 'ouvert')
             ->orderBy('l.dateCreation', 'DESC')
-            ->setMaxResults(1)
             ->getQuery()
-            ->getOneOrNullResult();
+            ->getResult();
+    }
+
+    public function findLatestOpenLotForAssurance(Assurance $assurance): ?LotFactureAssurance
+    {
+        return $this->findOpenLotForAssurance($assurance);
     }
 }

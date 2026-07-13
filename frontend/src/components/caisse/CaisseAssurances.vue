@@ -2,55 +2,65 @@
 import { ref, watch } from 'vue';
 import CaisseAssurancesDashboard from '@/components/caisse/assurances/CaisseAssurancesDashboard.vue';
 import CaisseAssuranceLots from '@/components/caisse/assurances/CaisseAssuranceLots.vue';
-import CaisseAssuranceLotDialog from '@/components/caisse/assurances/CaisseAssuranceLotDialog.vue';
+import CaisseAssuranceLotPage from '@/components/caisse/assurances/CaisseAssuranceLotPage.vue';
 import CaisseAssuranceClaimDetail from '@/components/caisse/assurances/CaisseAssuranceClaimDetail.vue';
 
 const props = defineProps({
     dashboardCards: { type: Array, default: () => [] },
-    unpaidClaims: { type: Array, default: () => [] },
     lotsAssurance: { type: Object, default: null },
     lots: { type: Array, default: () => [] },
+    openLots: { type: Array, default: () => [] },
     unassignedClaims: { type: Array, default: () => [] },
-    openLot: { type: Object, default: null },
     selectedClaim: { type: Object, default: null },
     selectedLot: { type: Object, default: null },
+    paymentMethods: { type: Array, default: () => [] },
     dashboardLoading: { type: Boolean, default: false },
     lotsLoading: { type: Boolean, default: false },
     claimLoading: { type: Boolean, default: false },
-    lotDialogLoading: { type: Boolean, default: false },
-    actionLoadingId: { type: Number, default: null },
-    lotDialogVisible: { type: Boolean, default: false }
+    lotLoading: { type: Boolean, default: false },
+    actionLoadingId: { type: Number, default: null }
 });
 
 const emit = defineEmits([
     'refresh-dashboard',
     'refresh-lots',
-    'load-lot-detail',
+    'refresh-lot',
     'view-lots',
     'back-to-dashboard',
-    'open-lot',
-    'view-lot-dialog',
-    'close-lot-dialog',
+    'back-to-lots',
+    'create-lot',
+    'update-lot',
+    'view-lot',
+    'send-lot',
+    'reopen-lot',
+    'confirm-lot',
+    'unconfirm-lot',
+    'refund-lot',
+    'cancel-refund',
     'view-claim',
     'back-from-claim',
-    'send-lot',
-    'recover-lot',
-    'cancel-recovery',
-    'validate-claim',
-    'reject-claim',
     'collect-patient-share',
+    'modify-claim',
+    'assign-claim',
+    'change-claim-lot',
+    'remove-claim',
     'print-receipt',
-    'print-claim',
-    'add-claim-to-lot'
+    'print-claim'
 ]);
 
 const currentView = ref('dashboard');
 
 watch(() => props.lotsAssurance, (value) => {
-    if (value?.code) {
+    if (value?.code && currentView.value === 'dashboard') {
         currentView.value = 'lots';
     }
 }, { deep: true });
+
+watch(() => props.selectedLot, (value) => {
+    if (value?.id) {
+        currentView.value = 'lot';
+    }
+});
 
 watch(() => props.selectedClaim, (value) => {
     if (value?.id) {
@@ -68,13 +78,29 @@ const handleBack = () => {
     emit('back-to-dashboard');
 };
 
+const handleViewLot = (lot) => {
+    emit('view-lot', lot);
+    currentView.value = 'lot';
+};
+
+const handleBackFromLot = () => {
+    currentView.value = 'lots';
+    emit('back-to-lots');
+};
+
 const handleViewClaim = (claim) => {
     emit('view-claim', claim);
     currentView.value = 'claim';
 };
 
 const handleBackFromClaim = () => {
-    currentView.value = props.lotsAssurance?.code ? 'lots' : 'dashboard';
+    if (props.selectedLot?.id) {
+        currentView.value = 'lot';
+    } else if (props.lotsAssurance?.code) {
+        currentView.value = 'lots';
+    } else {
+        currentView.value = 'dashboard';
+    }
     emit('back-from-claim');
 };
 </script>
@@ -84,36 +110,54 @@ const handleBackFromClaim = () => {
     <CaisseAssurancesDashboard
       v-if="currentView === 'dashboard'"
       :cards="dashboardCards"
-      :unpaid-claims="unpaidClaims"
       :loading="dashboardLoading"
-      :action-loading-id="actionLoadingId"
       @refresh="emit('refresh-dashboard')"
       @view-lots="handleViewLots"
-      @view-lot-dialog="emit('view-lot-dialog', $event)"
-      @open-lot="emit('open-lot', $event)"
-      @view-claim="handleViewClaim"
-      @collect-patient-share="emit('collect-patient-share', $event)"
-      @validate-claim="emit('validate-claim', $event)"
-      @reject-claim="emit('reject-claim', $event)"
     />
 
     <CaisseAssuranceLots
       v-else-if="currentView === 'lots'"
       :assurance="lotsAssurance"
       :lots="lots"
+      :open-lots="openLots"
       :unassigned-claims="unassignedClaims"
-      :open-lot="openLot"
       :loading="lotsLoading"
       :action-loading-id="actionLoadingId"
       @back="handleBack"
       @refresh="emit('refresh-lots')"
-      @open-lot="emit('open-lot', lotsAssurance)"
-      @view-lot="emit('load-lot-detail', $event)"
+      @create-lot="emit('create-lot', $event)"
+      @update-lot="emit('update-lot', $event)"
+      @view-lot="handleViewLot"
       @send-lot="emit('send-lot', $event)"
-      @recover-lot="emit('recover-lot', $event)"
-      @cancel-recovery="emit('cancel-recovery', $event)"
+      @reopen-lot="emit('reopen-lot', $event)"
+      @confirm-lot="emit('confirm-lot', $event)"
+      @unconfirm-lot="emit('unconfirm-lot', $event)"
+      @refund-lot="emit('refund-lot', $event)"
       @view-claim="handleViewClaim"
-      @add-claim-to-lot="emit('add-claim-to-lot', $event)"
+      @pay-claim="emit('collect-patient-share', $event)"
+      @modify-claim="emit('modify-claim', $event)"
+      @assign-claim="emit('assign-claim', $event)"
+      @change-claim-lot="emit('change-claim-lot', $event)"
+    />
+
+    <CaisseAssuranceLotPage
+      v-else-if="currentView === 'lot'"
+      :lot="selectedLot"
+      :loading="lotLoading"
+      :action-loading="actionLoadingId !== null"
+      :payment-methods="paymentMethods"
+      @back="handleBackFromLot"
+      @refresh="emit('refresh-lot')"
+      @send-lot="emit('send-lot', $event)"
+      @reopen-lot="emit('reopen-lot', $event)"
+      @confirm-lot="emit('confirm-lot', $event)"
+      @unconfirm-lot="emit('unconfirm-lot', $event)"
+      @refund-lot="emit('refund-lot', $event)"
+      @cancel-refund="emit('cancel-refund', $event)"
+      @view-claim="handleViewClaim"
+      @pay-claim="emit('collect-patient-share', $event)"
+      @modify-claim="emit('modify-claim', $event)"
+      @remove-claim="emit('remove-claim', $event)"
     />
 
     <CaisseAssuranceClaimDetail
@@ -125,20 +169,6 @@ const handleBackFromClaim = () => {
       @collect-patient-share="emit('collect-patient-share', $event)"
       @print-receipt="emit('print-receipt', $event)"
       @print-claim="emit('print-claim', $event)"
-      @validate-claim="emit('validate-claim', $event)"
-      @reject-claim="emit('reject-claim', $event)"
-    />
-
-    <CaisseAssuranceLotDialog
-      :visible="lotDialogVisible"
-      :lot="selectedLot"
-      :loading="lotDialogLoading"
-      :action-loading="actionLoadingId !== null"
-      @update:visible="emit('close-lot-dialog', $event)"
-      @send-lot="emit('send-lot', $event)"
-      @recover-lot="emit('recover-lot', $event)"
-      @cancel-recovery="emit('cancel-recovery', $event)"
-      @view-claim="handleViewClaim"
     />
   </div>
 </template>

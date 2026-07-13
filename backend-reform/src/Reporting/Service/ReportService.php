@@ -1042,9 +1042,10 @@ class ReportService
 
         return $this->remember($cacheKey, 180, function () use ($from, $to) {
             $qb = $this->acteRepo->createQueryBuilder('a')
-                ->select('a.type', 'a.description', 'SUM(COALESCE(a.quantite, 1)) AS total')
+                ->select('a.type', 'a.description', 'SUM(COALESCE(a.quantite, 1)) AS total', 'COUNT(fa.id) AS insuranceCount')
                 ->innerJoin('a.consultation', 'c')
                 ->innerJoin('c.patient', 'p')
+                ->leftJoin('c.factureAssurance', 'fa')
                 ->andWhere('p.deletedAt IS NULL');
 
             if ($from) {
@@ -1070,7 +1071,12 @@ class ReportService
                     $label = 'Autre';
                 }
 
-                $stats[$label] = ($stats[$label] ?? 0) + (int) ($row['total'] ?? 0);
+                $count = (int) ($row['total'] ?? 0);
+                $insuranceCount = (int) ($row['insuranceCount'] ?? 0);
+                $isInsuranceDominant = $insuranceCount > 0;
+                $displayLabel = $isInsuranceDominant ? ($label . ' (Assurance)') : $label;
+
+                $stats[$displayLabel] = ($stats[$displayLabel] ?? 0) + $count;
             }
 
             arsort($stats);

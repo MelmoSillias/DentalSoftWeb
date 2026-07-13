@@ -350,6 +350,50 @@ export function useFinances() {
         }
     };
 
+    const updateAssurance = async (code, payload) => {
+        loading.value.action = true;
+        error.value = null;
+        try {
+            if (isFinancesTourMockEnabled()) {
+                assurances.value = (assurances.value || []).map((item) => {
+                    if ((item?.code || '') !== code) {
+                        return item;
+                    }
+
+                    return {
+                        ...item,
+                        nom: payload?.nom !== undefined ? String(payload.nom || '').trim() : item.nom,
+                        website: payload?.website !== undefined
+                            ? (String(payload.website || '').trim() || null)
+                            : item.website,
+                        email: payload?.email !== undefined
+                            ? (String(payload.email || '').trim() || null)
+                            : item.email
+                    };
+                });
+
+                return assurances.value.find((item) => (item?.code || '') === code) || null;
+            }
+
+            const res = await http.patch(`${apiPrefix}/assurances/${encodeURIComponent(code)}`, payload || {}, {
+                headers: buildHeaders(true)
+            });
+
+            const updated = res.data ?? null;
+            if (updated?.code) {
+                assurances.value = (assurances.value || []).map((item) => (
+                    (item?.code || '') === updated.code ? { ...item, ...updated } : item
+                ));
+            }
+
+            return updated;
+        } catch (err) {
+            handleError(err);
+        } finally {
+            loading.value.action = false;
+        }
+    };
+
     const fetchFixedCharges = async () => {
         loading.value.fixedCharges = true;
         error.value = null;
@@ -722,6 +766,7 @@ export function useFinances() {
         fetchAssurances,
         createAssurance,
         toggleAssurance,
+        updateAssurance,
         createFixedCharge,
         createPaymentMethod,
         updateFixedCharge,

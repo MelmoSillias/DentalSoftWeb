@@ -349,9 +349,9 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-	<section class="flex flex-col ml-4 gap-3 xs:gap-4 rounded-xl xs:rounded-2xl bg-surface-0 p-4 xs:p-5 shadow-sm dark:bg-surface-900 dark:shadow-none dark:ring-1 dark:ring-surface-700 sm:shadow-none sm:ring-0 ">
+	<section class="rendez-vous-page flex min-h-0 flex-col ml-4 gap-3 xs:gap-4 rounded-xl xs:rounded-2xl bg-surface-0 p-4 xs:p-5 shadow-sm dark:bg-surface-900 dark:shadow-none dark:ring-1 dark:ring-surface-700 sm:shadow-none sm:ring-0">
 		<AppToast />
-		<div data-tour="agenda-rdv.header" class="flex flex-wrap items-center justify-between gap-3 xs:gap-4 border-b border-surface-200 pb-2 xs:pb-3 dark:border-surface-700">
+		<div data-tour="agenda-rdv.header" class="flex flex-shrink-0 flex-wrap items-center justify-between gap-3 xs:gap-4 border-b border-surface-200 pb-2 xs:pb-3 dark:border-surface-700">
 			<div class="space-y-0.5 xs:space-y-1">
 				<h2 class="text-xl xs:text-2xl font-semibold text-surface-900 dark:text-surface-200">Gestion des Rendez-vous</h2>
 				<Breadcrumb :home="breadcrumbHome" :model="breadcrumbItems" />
@@ -374,12 +374,12 @@ onBeforeUnmount(() => {
 
 		<template v-else>
 
-		<Tabs v-model:value="activeIndex">
-			<TabList data-tour="agenda-rdv.tabs">
+		<Tabs v-model:value="activeIndex" class="rendez-vous-tabs flex min-h-0 flex-1 flex-col">
+			<TabList data-tour="agenda-rdv.tabs" class="flex-shrink-0">
 				<Tab value="week">Vue hebdomadaire</Tab>
 				<Tab value="day">Vue journalière</Tab>
 			</TabList>
-			<TabPanels>
+			<TabPanels class="min-h-0 flex-1">
 				<TabPanel value="week">
 					<div data-tour="agenda-rdv.calendar">
 					       <WeeklyView
@@ -398,8 +398,8 @@ onBeforeUnmount(() => {
 					       />
 					</div>
 				</TabPanel>
-				<TabPanel value="day">
-					<div data-tour="agenda-rdv.calendar">
+				<TabPanel value="day" class="h-full">
+					<div data-tour="agenda-rdv.calendar" class="flex h-full min-h-0 flex-col">
 					<DailyView
 						:medecins="scopedMedecinsList"
 						:api="api"
@@ -498,4 +498,19 @@ onBeforeUnmount(() => {
 		</template>
 	</section>
 </template>
+
+<style scoped>
+.rendez-vous-page {
+	min-height: calc(100dvh - 6rem);
+}
+
+.rendez-vous-tabs :deep(.p-tabpanels),
+.rendez-vous-tabs :deep(.p-tabpanel) {
+	display: flex;
+	flex: 1 1 auto;
+	min-height: 0;
+	flex-direction: column;
+	height: 100%;
+}
+</style>
 

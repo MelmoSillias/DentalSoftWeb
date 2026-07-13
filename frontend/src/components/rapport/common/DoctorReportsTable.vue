@@ -40,6 +40,10 @@ function doctorRevenueCash(row) {
     return Number(row?.revenue_cash ?? (Number(row?.revenue || 0) + Number(row?.revenue_reliquats || 0)));
 }
 
+function doctorCashCollected(row) {
+    return doctorRevenueCash(row);
+}
+
 function actPaymentBasis(act) {
     if (act?.isInsurance) {
         return {
@@ -689,8 +693,12 @@ function printAllActs() {
                                             <strong class="text-surface-900 dark:text-surface-0">{{ formatFcfa(sumActesField(data, 'montant')) }}</strong>
                                         </div>
                                         <div class="flex items-center justify-between gap-2">
-                                            <span class="text-surface-500">Total payé</span>
+                                            <span class="text-surface-500">Total payé (soins)</span>
                                             <strong class="text-emerald-600 dark:text-emerald-300">{{ formatFcfa(sumActesField(data, 'montantPaye')) }}</strong>
+                                        </div>
+                                        <div class="flex items-center justify-between gap-2 sm:col-span-2">
+                                            <span class="text-surface-500">Montant réellement encaissé</span>
+                                            <strong class="text-sky-700 dark:text-sky-300">{{ formatFcfa(doctorCashCollected(data)) }}</strong>
                                         </div>
                                     </div>
                                 </section>

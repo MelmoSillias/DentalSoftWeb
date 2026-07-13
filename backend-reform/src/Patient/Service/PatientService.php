@@ -32,6 +32,7 @@ use App\Patient\Entity\Patient;
 use App\Patient\Entity\PatientAssuranceProfile;
 use App\Patient\Repository\PatientRepository;
 use App\CareDelivery\Repository\ConsultationRepository;
+use App\CareDelivery\Service\ConsultationService;
 use App\Scheduling\Entity\Rdv;
 use App\Scheduling\Repository\SalleRepository;
 use App\Scheduling\Service\RdvNotificationService;
@@ -147,6 +148,7 @@ class PatientService
         private AssuranceRepository $assuranceRepo,
         private SalleRepository $salleRepo,
         private ConsultationRepository $consultationRepo,
+        private ConsultationService $consultationService,
         private EmployeRepository $employeRepo,
         private ConsultationNotificationService $consultationNotificationService,
         private NotificationRecipientResolver $notificationRecipientResolver,
@@ -504,11 +506,25 @@ class PatientService
         ];
     }
 
-    public function softDeletePatient(int $id): array
+    public function softDeletePatient(int $id, ?User $actor = null): array
     {
         $patient = $this->findActivePatient($id);
         if (!$patient) {
             return ['error' => 'Patient non trouvé', 'status' => 404];
+        }
+
+        $activeConsultations = $this->consultationRepo->findBy([
+            'patient' => $patient,
+            'statut' => 0,
+        ]);
+
+        foreach ($activeConsultations as $consultation) {
+            if ($patient->getDerniereConsultation()?->getId() === $consultation->getId()) {
+                $patient->setDerniereConsultation(null);
+                $this->em->flush();
+            }
+
+            $this->consultationService->deleteConsultation((int) $consultation->getId(), $actor);
         }
 
         $patient->setDeletedAt(new DateTimeImmutable());
@@ -1487,6 +1503,7 @@ public function removeArchiveFile(int $patientId, string $fileUrl): array
 
         return [
             'id' => $profile->getId(),
+            'enabled' => true,
             'coverageRate' => $profile->getCoverageRate(),
             'formData' => $profile->getFormData(),
             'assurance' => $assurance ? [

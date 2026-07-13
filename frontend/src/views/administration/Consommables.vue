@@ -11,6 +11,7 @@ import { createAdministrationConsumablesTour } from '@/tours/administrationConsu
 import { startTourGuide } from '@/tours/tourGuideClient'
 import PrintDataTablePage from '@/components/print/PrintDataTablePage.vue'
 import { usePrinter } from '@/composables/usePrinter'
+import PanelDatePicker from '@/components/common/PanelDatePicker.vue'
 import { useToast } from 'primevue/usetoast'
 
 const showForm = ref(false) 
@@ -728,18 +729,18 @@ const handleGuidedTourRequest = async (event) => {
                             Période
                         </label>
                         <div class="flex gap-3">
-                            <DatePicker 
-                                v-model="filters.period" 
-                                selectionMode="range" 
+                            <PanelDatePicker
+                                v-model="filters.period"
                                 showClear
-                                :manualInput="false" 
-                                dateFormat="dd/mm/yy" 
+                                :manualInput="false"
+                                dateFormat="dd/mm/yy"
                                 placeholder="Sélectionnez une période"
-                                class="flex-1 rounded-xl border-surface-200 dark:border-surface-700 [&_.p-datepicker]:p-3.5"
+                                class="flex-1"
+                                inputClass="rounded-xl border-surface-200 dark:border-surface-700"
                             />
-                            <Button 
-                                icon="pi pi-filter" 
-                                severity="secondary" 
+                            <Button
+                                icon="pi pi-filter"
+                                severity="secondary"
                                 outlined
                                 label="Filtrer"
                                 class="rounded-xl px-5"

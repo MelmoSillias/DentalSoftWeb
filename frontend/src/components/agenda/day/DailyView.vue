@@ -2,10 +2,13 @@
 import Button from 'primevue/button';
 import Divider from 'primevue/divider';
 import ProgressSpinner from 'primevue/progressspinner';
-import { computed, ref, watch } from 'vue';
+import ScrollPanel from 'primevue/scrollpanel';
+import { computed, onMounted, ref, watch } from 'vue';
 import DateChooser from './DateChooser.vue';
 import ScheduleTable from './ScheduleTable.vue';
 import StatsCards from './StatsCards.vue';
+import { fetchPublicGeneralSettings } from '@/services/globalSettingsService';
+import { useAuthStore } from '@/stores/auth';
 
 const props = defineProps({
     medecins: {
@@ -28,12 +31,15 @@ const props = defineProps({
 
 const emit = defineEmits(['request-create', 'request-validate', 'request-cancel', 'request-report']);
 
+const auth = useAuthStore();
 const selectedDate = ref(new Date());
 const zoom = ref(100);
 const dayEvents = ref([]);
 const stats = ref({ pending: 0, validated: 0, postponed: 0, cancelled: 0 });
 const loadingDay = ref(false);
 const loadingStats = ref(false);
+const openingTime = ref('08:00');
+const closingTime = ref('18:00');
 
 const medecinsOptions = computed(() => (Array.isArray(props.medecins) ? props.medecins : props.medecins?.value || []));
 
@@ -43,6 +49,16 @@ const computeDateFromSlot = (slotMinutes) => {
     const minutes = slotMinutes % 60;
     base.setHours(hours, minutes, 0, 0);
     return base;
+};
+
+const loadOpeningHours = async () => {
+    try {
+        const settings = await fetchPublicGeneralSettings(auth.token);
+        openingTime.value = settings?.openingTime || '08:00';
+        closingTime.value = settings?.closingTime || '18:00';
+    } catch (error) {
+        console.error('Erreur chargement horaires journaliers:', error);
+    }
 };
 
 const refreshDay = async () => {
@@ -103,6 +119,10 @@ const zoomOut = () => {
     zoom.value = Math.max(50, zoom.value - 10);
 };
 
+onMounted(() => {
+    loadOpeningHours();
+});
+
 watch(
     () => [selectedDate.value, props.refreshKey],
     () => {
@@ -114,8 +134,8 @@ watch(
 </script>
 
 <template>
-    <section class="flex flex-col gap-3 xs:gap-4  min-w-[600px]">
-        <div class="flex flex-wrap items-center justify-between gap-3 xs:gap-4 rounded-xl bg-surface-0 p-2 xs:p-3 shadow-sm dark:bg-surface-900 dark:shadow-none dark:ring-1 dark:ring-surface-700">
+    <section class="daily-view flex min-h-0 flex-1 flex-col gap-3 xs:gap-4">
+        <div class="flex flex-shrink-0 flex-wrap items-center justify-between gap-3 xs:gap-4 rounded-xl bg-surface-0 p-2 xs:p-3 shadow-sm dark:bg-surface-900 dark:shadow-none dark:ring-1 dark:ring-surface-700">
             <DateChooser :modelValue="selectedDate" @update:modelValue="onDateChange" />
             <div class="flex items-center gap-1 xs:gap-2 text-xs xs:text-sm font-medium text-surface-700">
                 <span>Zoom</span>
@@ -125,26 +145,47 @@ watch(
             </div>
         </div>
 
-        <div class="rounded-xl bg-surface-0 p-2 xs:p-3 shadow-sm dark:bg-surface-900 dark:shadow-none">
+        <div class="flex-shrink-0 rounded-xl bg-surface-0 p-2 xs:p-3 shadow-sm dark:bg-surface-900 dark:shadow-none">
             <StatsCards :stats="stats" :loading="loadingStats" />
         </div>
 
-        <Divider class="my-1 xs:my-2" />
+        <Divider class="my-1 flex-shrink-0 xs:my-2" />
 
-        <div class="relative overflow-auto rounded-xl border border-surface-200 bg-surface-0 p-2 xs:p-3 shadow-sm dark:bg-surface-900 dark:border-surface-700">
+        <div class="daily-schedule-frame relative min-h-0 flex-1 overflow-hidden rounded-xl border border-surface-200 bg-surface-0 shadow-sm dark:border-surface-700 dark:bg-surface-900">
             <div v-if="loadingDay" class="absolute inset-0 z-10 flex items-center justify-center bg-surface-0/60 dark:bg-surface-900/60">
-                <ProgressSpinner strokeWidth="4" style="width: 40px; height: 40px" class="xs:style='width: 48px; height: 48px'" />
+                <ProgressSpinner strokeWidth="4" style="width: 40px; height: 40px" />
             </div>
-            <ScheduleTable
-                :medecins="medecinsOptions"
-                :rdvs="dayEvents"
-                :zoom="zoom"
-                @create="onCreate"
-                @validate="onValidate"
-                @cancel="onCancel"
-                @report="onReport"
-            />
+            <ScrollPanel class="daily-schedule-scroll h-full w-full">
+                <div class="p-2 xs:p-3">
+                    <ScheduleTable
+                        :medecins="medecinsOptions"
+                        :rdvs="dayEvents"
+                        :zoom="zoom"
+                        :opening-time="openingTime"
+                        :closing-time="closingTime"
+                        @create="onCreate"
+                        @validate="onValidate"
+                        @cancel="onCancel"
+                        @report="onReport"
+                    />
+                </div>
+            </ScrollPanel>
         </div>
     </section>
 </template>
 
+<style scoped>
+.daily-schedule-frame {
+    min-height: 18rem;
+    height: calc(100dvh - 22rem);
+}
+
+.daily-schedule-scroll :deep(.p-scrollpanel-content) {
+    padding: 0;
+}
+
+.daily-schedule-scroll :deep(.p-scrollpanel-wrapper),
+.daily-schedule-scroll :deep(.p-scrollpanel-content) {
+    height: 100%;
+}
+</style>

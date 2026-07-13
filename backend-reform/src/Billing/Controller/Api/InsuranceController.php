@@ -55,6 +55,42 @@ class InsuranceController extends AbstractController
         return $this->json($this->mapAssurance($assurance));
     }
 
+    #[Route('/api/assurances/{code}', name: 'api_assurances_update', methods: ['PATCH'])]
+    public function updateAssurance(string $code, Request $request): JsonResponse
+    {
+        $this->catalog->syncCatalog($this->assuranceRepository, $this->em);
+        $assurance = $this->assuranceRepository->findOneByCode($code);
+
+        if (!$assurance) {
+            return $this->json(['error' => 'Assurance introuvable'], 404);
+        }
+
+        $payload = json_decode($request->getContent(), true) ?: [];
+
+        if (array_key_exists('nom', $payload)) {
+            $nom = trim((string) $payload['nom']);
+            if ($nom === '') {
+                return $this->json(['error' => 'Le nom est obligatoire'], 400);
+            }
+            $assurance->setNom($nom);
+        }
+
+        if (array_key_exists('website', $payload)) {
+            $website = trim((string) ($payload['website'] ?? ''));
+            $assurance->setWebsite($website !== '' ? $website : null);
+        }
+
+        if (array_key_exists('email', $payload)) {
+            $email = trim((string) ($payload['email'] ?? ''));
+            $assurance->setEmail($email !== '' ? $email : null);
+        }
+
+        $this->em->persist($assurance);
+        $this->em->flush();
+
+        return $this->json($this->mapAssurance($assurance));
+    }
+
     #[Route('/api/assurances/claims', name: 'api_insurance_claims_list', methods: ['GET'])]
     public function listClaims(Request $request): JsonResponse
     {
@@ -63,57 +99,6 @@ class InsuranceController extends AbstractController
         return $this->json([
             'data' => $this->insuranceClaimService->listClaims(is_string($status) ? $status : null),
         ]);
-    }
-
-    #[Route('/api/assurances/claims/{id}/validate', name: 'api_insurance_claims_validate', methods: ['PATCH'], requirements: ['id' => '\d+'])]
-    public function validateClaim(int $id): JsonResponse
-    {
-        $result = $this->insuranceClaimService->validateClaim($id);
-
-        if (isset($result['error'])) {
-            return $this->json(['error' => $result['error']], $result['status'] ?? 400);
-        }
-
-        return $this->json($result);
-    }
-
-    #[Route('/api/assurances/claims/{id}/reject', name: 'api_insurance_claims_reject', methods: ['PATCH'], requirements: ['id' => '\d+'])]
-    public function rejectClaim(int $id, Request $request): JsonResponse
-    {
-        $payload = json_decode($request->getContent(), true) ?: [];
-        $reason = isset($payload['reason']) ? (string) $payload['reason'] : null;
-
-        $result = $this->insuranceClaimService->rejectClaim($id, $reason);
-
-        if (isset($result['error'])) {
-            return $this->json(['error' => $result['error']], $result['status'] ?? 400);
-        }
-
-        return $this->json($result);
-    }
-
-    #[Route('/api/assurances/claims/{id}/recover', name: 'api_insurance_claims_recover', methods: ['POST'], requirements: ['id' => '\d+'])]
-    public function recoverClaim(int $id, Request $request): JsonResponse
-    {
-        $payload = json_decode($request->getContent(), true) ?: [];
-        $modeId = (int) ($payload['modeId'] ?? 0);
-
-        $date = null;
-        if (!empty($payload['date'])) {
-            try {
-                $date = new \DateTimeImmutable((string) $payload['date']);
-            } catch (\Exception) {
-                return $this->json(['error' => 'Date invalide'], 400);
-            }
-        }
-
-        $result = $this->insuranceClaimService->recoverClaim($id, $modeId, $date);
-
-        if (isset($result['error'])) {
-            return $this->json(['error' => $result['error']], $result['status'] ?? 400);
-        }
-
-        return $this->json($result, 201);
     }
 
     #[Route('/api/assurances/claims/{id}/patient-pay', name: 'api_insurance_claims_patient_pay', methods: ['POST'], requirements: ['id' => '\d+'])]
@@ -149,7 +134,6 @@ class InsuranceController extends AbstractController
             'nom' => $assurance->getNom(),
             'code' => $assurance->getCode(),
             'actif' => $assurance->isActif(),
-            'notes' => $assurance->getNotes(),
             'website' => $assurance->getWebsite(),
             'email' => $assurance->getEmail(),
             'logoPath' => $assurance->getLogoPath(),

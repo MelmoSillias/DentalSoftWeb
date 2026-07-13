@@ -170,10 +170,8 @@ const resolvePatientPhoto = (value = {}) => (
 
 const currentConsultation = computed(() => consultations.value.find((item) => item.id === selectedConsultationId.value) || null);
     const isInsurancePayment = (payment) => {
-        const role = String(payment?.rolePaiement || '').toLowerCase();
-        const mode = String(payment?.mode || '').toLowerCase();
-
-        return role === 'insurance' || mode.includes('assur');
+        const role = String(payment?.rolePaiement || payment?.role || '').toLowerCase();
+        return role === 'patient_insurance';
     };
 
 const currentReceptionBilling = computed(() => {
@@ -599,23 +597,13 @@ const openPreviewDialog = async () => {
 
 const submitPayment = async () => {
     if (!selectedFacture.value) return;
-    const isNewInsurancePayment = payForm.value.insuranceEnabled && invoiceAllowsInsurance.value;
     const montant = Number(payForm.value.montant) || 0;
-    const insuranceAmount = isNewInsurancePayment ? effectiveInsuranceAmount.value : 0;
     const max = Number(selectedFacture.value.reste) || 0;
-    if (montant < 0 || (montant + insuranceAmount) <= 0 || (montant + insuranceAmount) > max) {
+    if (montant <= 0 || montant > max) {
         toast.add({ severity: 'warn', summary: 'Paiement', detail: 'Montant invalide', life: 3500 });
         return;
     }
-    if (payForm.value.insuranceEnabled && !invoiceAllowsInsurance.value) {
-        toast.add({ severity: 'warn', summary: 'Paiement', detail: 'Assurance non disponible pour cette facture.', life: 3500 });
-        return;
-    }
-    if (isNewInsurancePayment && !payForm.value.assuranceId) {
-        toast.add({ severity: 'warn', summary: 'Paiement', detail: 'Sélectionnez une assurance.', life: 3500 });
-        return;
-    }
-    if ((requiresClassicPayment.value && !payForm.value.modeId) || !payForm.value.date || !payForm.value.time) {
+    if (!payForm.value.modeId || !payForm.value.date || !payForm.value.time) {
         toast.add({ severity: 'warn', summary: 'Paiement', detail: 'Informations de paiement incomplètes.', life: 3500 });
         return;
     }
@@ -626,12 +614,7 @@ const submitPayment = async () => {
             montant,
             modeId: payForm.value.modeId,
             date: payForm.value.date,
-            time: payForm.value.time,
-            insurance_enabled: isNewInsurancePayment,
-            assurance_id: payForm.value.assuranceId,
-            insurance_rate: payForm.value.insuranceRate,
-            insurance_amount: insuranceAmount,
-            patient_amount: montant
+            time: payForm.value.time
         }, token);
         payDialogVisible.value = false;
         const paymentId = res?.paiement_id ?? res?.paiementId ?? null;

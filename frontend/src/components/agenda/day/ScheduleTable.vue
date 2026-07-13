@@ -6,20 +6,35 @@ import { formatTimeLabel, parseISO } from '@/utils/dateUtils';
 const props = defineProps({
   medecins: { type: Array, default: () => [] },
   rdvs: { type: Array, default: () => [] },
-  zoom: { type: Number, default: 100 }
+  zoom: { type: Number, default: 100 },
+  openingTime: { type: String, default: '08:00' },
+  closingTime: { type: String, default: '18:00' }
 });
 
 const emit = defineEmits(['create', 'validate', 'cancel', 'report']);
 
+const toMinutes = (value, fallbackMinutes) => {
+  const match = String(value || '').match(/^(\d{1,2}):(\d{2})/);
+  if (!match) return fallbackMinutes;
+  return Number(match[1]) * 60 + Number(match[2]);
+};
+
 const slots = computed(() => {
-  const start = 6 * 60;
-  const end = 20 * 60;
+  const start = toMinutes(props.openingTime, 8 * 60);
+  const end = toMinutes(props.closingTime, 18 * 60);
   const step = 15;
   const data = [];
-  for (let minutes = start; minutes <= end; minutes += step) {
+  const safeEnd = end > start ? end : start + 60;
+  for (let minutes = start; minutes <= safeEnd; minutes += step) {
     data.push({ minutes, label: formatTimeLabel(minutes) });
   }
   return data;
+});
+
+const doctorColumnWidth = 220;
+const gridTemplateColumns = computed(() => {
+  const count = Array.isArray(props.medecins) ? props.medecins.length : 0;
+  return `80px repeat(${Math.max(count, 1)}, ${doctorColumnWidth}px)`;
 });
 
 const rdvByKey = computed(() => {
@@ -38,12 +53,13 @@ const resolveRdv = (medecinId, minutes) => rdvByKey.value.get(`${medecinId}-${mi
 
 <template>
   <div
-    class="w-full overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-850"
+    class="inline-block min-w-full rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-850"
     :style="{ transform: `scale(${zoom / 100})`, transformOrigin: 'top left' }"
   >
     <!-- En-tête -->
     <div
-      class="sticky top-0 z-10 grid grid-cols-[80px_repeat(auto-fit,minmax(200px,1fr))] xs:grid-cols-[70px_repeat(auto-fit,minmax(240px,1fr))] bg-gray-50 font-semibold text-gray-700 dark:bg-gray-800 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700"
+      class="sticky top-0 z-10 grid bg-gray-50 font-semibold text-gray-700 dark:bg-gray-800 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700"
+      :style="{ gridTemplateColumns }"
     >
       <div class="flex items-center justify-center px-2 xs:px-4 py-2 xs:py-3.5 text-xs xs:text-sm">Heure</div>
       <div
@@ -53,32 +69,49 @@ const resolveRdv = (medecinId, minutes) => rdvByKey.value.get(`${medecinId}-${mi
       >
         {{ med.name }}
       </div>
+      <div
+        v-if="!medecins.length"
+        class="flex items-center justify-center border-l border-gray-200 px-2 py-2 text-xs text-surface-500 dark:border-gray-700"
+      >
+        Aucun médecin
+      </div>
     </div>
 
     <!-- Corps -->
-    <div class="divide-y divide-gray-100 dark:divide-gray-800 overflow-x-auto min-w-[600px]"> 
-      <div v-for="slot in slots" :key="slot.minutes" class="grid grid-cols-[80px_repeat(auto-fit,minmax(200px,1fr))] xs:grid-cols-[100px_repeat(auto-fit,minmax(240px,1fr))]">
+    <div class="divide-y divide-gray-100 dark:divide-gray-800">
+      <div
+        v-for="slot in slots"
+        :key="slot.minutes"
+        class="grid"
+        :style="{ gridTemplateColumns }"
+      >
         <div
           class="flex items-center justify-center bg-gray-50 px-2 xs:px-4 py-2 xs:py-3 text-xs xs:text-sm font-medium text-gray-600 dark:bg-gray-900 dark:text-gray-400 border-r border-gray-200 dark:border-gray-700"
         >
           {{ slot.label }}
         </div>
 
+        <template v-if="medecins.length">
+          <div
+            v-for="med in medecins"
+            :key="med.id"
+            class="border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-850 transition-colors hover:bg-blue-50/40 dark:hover:bg-blue-950/20"
+          >
+            <ScheduleCell
+              :slot-label="slot.label"
+              :rdv="resolveRdv(med.id, slot.minutes)"
+              :medecin-name="med.name"
+              @create="emit('create', { medecin: med, slot })"
+              @validate="emit('validate', $event)"
+              @cancel="emit('cancel', $event)"
+              @report="emit('report', $event)"
+            />
+          </div>
+        </template>
         <div
-          v-for="med in medecins"
-          :key="med.id"
-          class="border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-850 transition-colors hover:bg-blue-50/40 dark:hover:bg-blue-950/20"
-        >
-          <ScheduleCell
-            :slot-label="slot.label"
-            :rdv="resolveRdv(med.id, slot.minutes)"
-            :medecin-name="med.name"
-            @create="emit('create', { medecin: med, slot })"
-            @validate="emit('validate', $event)"
-            @cancel="emit('cancel', $event)"
-            @report="emit('report', $event)"
-          />
-        </div>
+          v-else
+          class="border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-850"
+        />
       </div>
     </div>
   </div>

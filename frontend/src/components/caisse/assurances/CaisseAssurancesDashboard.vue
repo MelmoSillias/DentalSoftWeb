@@ -1,38 +1,15 @@
 <script setup>
 import Button from 'primevue/button';
-import DataTable from 'primevue/datatable';
-import Column from 'primevue/column';
-import Tag from 'primevue/tag';
 import { resolveAssuranceLogoUrl } from '@/utils/assuranceUtils';
 
-const props = defineProps({
+defineProps({
     cards: { type: Array, default: () => [] },
-    unpaidClaims: { type: Array, default: () => [] },
-    loading: { type: Boolean, default: false },
-    actionLoadingId: { type: Number, default: null }
+    loading: { type: Boolean, default: false }
 });
 
-const emit = defineEmits([
-    'refresh',
-    'view-lots',
-    'view-lot-dialog',
-    'open-lot',
-    'view-claim',
-    'collect-patient-share',
-    'validate-claim',
-    'reject-claim'
-]);
+const emit = defineEmits(['refresh', 'view-lots']);
 
-const formatFcfa = (value) => `${Number(value || 0).toLocaleString('fr-FR')} FCFA`;
-
-const statusTag = (status) => {
-    if (status === 'validated') return { label: 'Validée', severity: 'success' };
-    if (status === 'rejected') return { label: 'Rejetée', severity: 'danger' };
-    if (status === 'recouvre') return { label: 'Recouvrée', severity: 'info' };
-    return { label: 'En attente', severity: 'warning' };
-};
-
-const canAct = (id) => props.actionLoadingId === null || props.actionLoadingId !== Number(id);
+const countValue = (card, key) => Number(card?.counts?.[key] ?? 0);
 </script>
 
 <template>
@@ -61,7 +38,8 @@ const canAct = (id) => props.actionLoadingId === null || props.actionLoadingId !
         <article
           v-for="card in cards"
           :key="card.id || card.code"
-          class="assurance-card group"
+          class="assurance-card group cursor-pointer"
+          @click="emit('view-lots', card)"
         >
           <div class="assurance-card-brand">
             <div class="assurance-logo">
@@ -80,93 +58,35 @@ const canAct = (id) => props.actionLoadingId === null || props.actionLoadingId !
           </div>
 
           <div class="assurance-card-body">
-            <div class="flex justify-between items-baseline">
-              <span class="muted-text text-sm">Reliquat total</span>
-              <span class="text-lg font-bold text-primary">{{ formatFcfa(card.reliquatTotal) }}</span>
-            </div>
-            <div v-if="card.pendingClaimsCount" class="muted-text text-xs mt-1">
-              {{ card.pendingClaimsCount }} créance(s) en attente
-            </div>
-
-            <div v-if="card.dernierLotOuvert" class="lot-highlight mt-4 p-3 rounded-xl">
-              <p class="muted-text text-xs font-semibold uppercase mb-1">Dernier lot ouvert</p>
-              <p class="card-title font-medium text-sm truncate">{{ card.dernierLotOuvert.description || `Lot #${card.dernierLotOuvert.id}` }}</p>
-              <div class="flex flex-wrap gap-2 mt-2 text-xs muted-text">
-                <span>{{ card.dernierLotOuvert.nbFactures || 0 }} facture(s)</span>
-                <span>·</span>
-                <span>{{ formatFcfa(card.dernierLotOuvert.montantTotal) }}</span>
+            <div class="counts-grid">
+              <div class="count-item">
+                <span class="count-value">{{ countValue(card, 'sansLot') }}</span>
+                <span class="count-label">Sans lot</span>
+              </div>
+              <div class="count-item">
+                <span class="count-value">{{ countValue(card, 'ouverts') }}</span>
+                <span class="count-label">Ouverts</span>
+              </div>
+              <div class="count-item">
+                <span class="count-value">{{ countValue(card, 'envoyes') }}</span>
+                <span class="count-label">Envoyés</span>
+              </div>
+              <div class="count-item">
+                <span class="count-value">{{ countValue(card, 'confirmes') }}</span>
+                <span class="count-label">Confirmés</span>
+              </div>
+              <div class="count-item">
+                <span class="count-value">{{ countValue(card, 'rembourses') }}</span>
+                <span class="count-label">Remboursés</span>
               </div>
             </div>
-            <div v-else class="mt-4 text-sm muted-text italic">Aucun lot ouvert</div>
           </div>
 
           <div class="assurance-card-actions">
-            <Button label="Voir" icon="pi pi-arrow-right" size="small" @click="emit('view-lots', card)" />
-            <Button
-              v-if="card.dernierLotOuvert"
-              label="Dernier lot"
-              icon="pi pi-eye"
-              size="small"
-              outlined
-              @click="emit('view-lot-dialog', card.dernierLotOuvert)"
-            />
-            <Button label="Ouvrir lot" icon="pi pi-plus" size="small" severity="secondary" outlined @click="emit('open-lot', card)" />
+            <Button label="Ouvrir" icon="pi pi-arrow-right" size="small" @click.stop="emit('view-lots', card)" />
           </div>
         </article>
       </div>
-    </div>
-
-    <div class="section-card p-5">
-      <div class="mb-4">
-        <h3 class="section-title text-lg font-bold">Parts patient non réglées</h3>
-        <p class="muted-text text-sm">Factures assurance avec reste patient à encaisser.</p>
-      </div>
-
-      <DataTable
-        :value="unpaidClaims"
-        :loading="loading"
-        striped-rows
-        size="small"
-        paginator
-        :rows="8"
-        row-hover
-        class="text-sm"
-        @row-click="(e) => emit('view-claim', e.data)"
-      >
-        <Column field="patient" header="Patient" />
-        <Column field="telephone" header="Téléphone" />
-        <Column header="Assurance">
-          <template #body="{ data }">{{ data?.assurance?.nom || '—' }}</template>
-        </Column>
-        <Column header="Date">
-          <template #body="{ data }">{{ data?.dateFacture?.slice(0, 10) || '—' }}</template>
-        </Column>
-        <Column header="Reste patient">
-          <template #body="{ data }">
-            <span class="amount-warning font-semibold">{{ formatFcfa(data?.restePatient) }}</span>
-          </template>
-        </Column>
-        <Column header="Statut">
-          <template #body="{ data }">
-            <Tag :value="statusTag(data?.insuranceStatus).label" :severity="statusTag(data?.insuranceStatus).severity" />
-          </template>
-        </Column>
-        <Column header="Actions" style="min-width: 14rem">
-          <template #body="{ data }">
-            <div class="flex flex-wrap gap-1" @click.stop>
-              <Button
-                v-if="data?.availableActions?.canCollectPatient"
-                icon="pi pi-wallet"
-                label="Encaisser"
-                size="small"
-                :disabled="!canAct(data.id)"
-                @click="emit('collect-patient-share', data)"
-              />
-              <Button icon="pi pi-eye" size="small" text rounded @click="emit('view-claim', data)" />
-            </div>
-          </template>
-        </Column>
-      </DataTable>
     </div>
   </div>
 </template>
@@ -195,10 +115,6 @@ const canAct = (id) => props.actionLoadingId === null || props.actionLoadingId !
 .card-subtitle,
 .muted-text {
   color: var(--text-color-secondary);
-}
-
-.amount-warning {
-  color: #d97706;
 }
 
 .assurance-card {
@@ -253,9 +169,34 @@ const canAct = (id) => props.actionLoadingId === null || props.actionLoadingId !
   flex: 1;
 }
 
-.lot-highlight {
+.counts-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.count-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.5rem 0.25rem;
+  border-radius: 0.75rem;
   background: var(--p-surface-50);
   border: 1px solid var(--surface-border);
+}
+
+.count-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-color);
+}
+
+.count-label {
+  font-size: 0.65rem;
+  text-align: center;
+  color: var(--text-color-secondary);
+  line-height: 1.2;
 }
 
 .assurance-card-actions {
@@ -281,13 +222,9 @@ const canAct = (id) => props.actionLoadingId === null || props.actionLoadingId !
   border-color: var(--p-surface-700);
 }
 
-.app-dark .lot-highlight,
+.app-dark .count-item,
 .app-dark .assurance-card-actions {
   background: var(--p-surface-800);
   border-color: var(--p-surface-700);
-}
-
-.app-dark .amount-warning {
-  color: #fbbf24;
 }
 </style>

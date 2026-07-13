@@ -1,15 +1,20 @@
 <script setup>
+import { computed, ref } from 'vue';
 import Button from 'primevue/button';
-import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
+import DataTable from 'primevue/datatable';
+import Dialog from 'primevue/dialog';
+import InputText from 'primevue/inputtext';
+import Menu from 'primevue/menu';
 import Tag from 'primevue/tag';
+import DatePicker from 'primevue/datepicker';
 import { resolveAssuranceLogoUrl } from '@/utils/assuranceUtils';
 
 const props = defineProps({
     assurance: { type: Object, default: null },
     lots: { type: Array, default: () => [] },
+    openLots: { type: Array, default: () => [] },
     unassignedClaims: { type: Array, default: () => [] },
-    openLot: { type: Object, default: null },
     loading: { type: Boolean, default: false },
     actionLoadingId: { type: Number, default: null }
 });
@@ -17,25 +22,156 @@ const props = defineProps({
 const emit = defineEmits([
     'back',
     'refresh',
-    'open-lot',
+    'create-lot',
+    'update-lot',
     'view-lot',
     'send-lot',
-    'recover-lot',
-    'cancel-recovery',
+    'reopen-lot',
+    'confirm-lot',
+    'unconfirm-lot',
+    'refund-lot',
     'view-claim',
-    'add-claim-to-lot'
+    'pay-claim',
+    'modify-claim',
+    'assign-claim',
+    'change-claim-lot'
 ]);
 
 const formatFcfa = (value) => `${Number(value || 0).toLocaleString('fr-FR')} FCFA`;
 
 const lotStatutTag = (statut) => {
-    if (statut === 'envoye') return { label: 'Envoyé', severity: 'info' };
-    if (statut === 'recouvre') return { label: 'Recouvré', severity: 'success' };
-    if (statut === 'ouvert') return { label: 'Ouvert', severity: 'warning' };
-    return { label: statut || '—', severity: 'secondary' };
+    const map = {
+        ouvert: { label: 'Ouvert', severity: 'warning' },
+        envoye: { label: 'Envoyé', severity: 'info' },
+        confirme: { label: 'Confirmé', severity: 'primary' },
+        partiellement_rembourse: { label: 'Partiellement remboursé', severity: 'help' },
+        rembourse: { label: 'Remboursé', severity: 'success' },
+        recouvre: { label: 'Remboursé', severity: 'success' }
+    };
+    return map[statut] || { label: statut || '—', severity: 'secondary' };
 };
 
 const canAct = (id) => props.actionLoadingId === null || props.actionLoadingId !== Number(id);
+
+const createDialogVisible = ref(false);
+const editDialogVisible = ref(false);
+const assignDialogVisible = ref(false);
+const lotForm = ref({ description: '', dateDebut: null, dateFin: null });
+const editingLot = ref(null);
+const assignClaim = ref(null);
+const selectedAssignLotId = ref(null);
+const claimMenu = ref();
+const claimMenuItems = ref([]);
+const activeClaim = ref(null);
+
+const openLotsOptions = computed(() => props.openLots || props.lots.filter((l) => l.statut === 'ouvert'));
+
+const openCreateDialog = () => {
+    lotForm.value = { description: '', dateDebut: new Date(), dateFin: new Date() };
+    createDialogVisible.value = true;
+};
+
+const submitCreate = () => {
+    emit('create-lot', {
+        description: lotForm.value.description,
+        dateDebut: formatDate(lotForm.value.dateDebut),
+        dateFin: formatDate(lotForm.value.dateFin)
+    });
+    createDialogVisible.value = false;
+};
+
+const openEditDialog = (lot) => {
+    editingLot.value = lot;
+    lotForm.value = {
+        description: lot.description || '',
+        dateDebut: lot.dateDebut ? new Date(lot.dateDebut) : null,
+        dateFin: lot.dateFin ? new Date(lot.dateFin) : null
+    };
+    editDialogVisible.value = true;
+};
+
+const submitEdit = () => {
+    if (!editingLot.value) return;
+    emit('update-lot', {
+        lot: editingLot.value,
+        payload: {
+            description: lotForm.value.description,
+            dateDebut: formatDate(lotForm.value.dateDebut),
+            dateFin: formatDate(lotForm.value.dateFin)
+        }
+    });
+    editDialogVisible.value = false;
+};
+
+const formatDate = (value) => {
+    if (!value) return null;
+    const d = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(d.getTime())) return null;
+    return d.toISOString().slice(0, 10);
+};
+
+const openClaimMenu = (event, claim) => {
+    activeClaim.value = claim;
+    claimMenuItems.value = [
+        {
+            label: 'Gestion du lot',
+            items: [
+                {
+                    label: 'Affecter à un lot',
+                    icon: 'pi pi-folder-plus',
+                    disabled: !openLotsOptions.value.length,
+                    command: () => openAssignDialog(claim, false)
+                },
+                {
+                    label: 'Changer de lot',
+                    icon: 'pi pi-sync',
+                    disabled: true,
+                    command: () => openAssignDialog(claim, true)
+                }
+            ]
+        },
+        { separator: true },
+        {
+            label: 'Gestion de la facture',
+            items: [
+                {
+                    label: 'Payer',
+                    icon: 'pi pi-wallet',
+                    disabled: !(claim?.canPay || Number(claim?.restePatient) > 0),
+                    command: () => emit('pay-claim', claim)
+                },
+                {
+                    label: 'Voir',
+                    icon: 'pi pi-eye',
+                    command: () => emit('view-claim', claim)
+                },
+                {
+                    label: 'Modifier',
+                    icon: 'pi pi-pencil',
+                    disabled: claim?.canModify === false,
+                    command: () => emit('modify-claim', claim)
+                }
+            ]
+        }
+    ];
+    claimMenu.value?.toggle(event);
+};
+
+const openAssignDialog = (claim, isChange) => {
+    assignClaim.value = { ...claim, isChange };
+    selectedAssignLotId.value = openLotsOptions.value[0]?.id ?? null;
+    assignDialogVisible.value = true;
+};
+
+const submitAssign = () => {
+    if (!assignClaim.value || !selectedAssignLotId.value) return;
+    if (assignClaim.value.isChange) {
+        emit('change-claim-lot', { claim: assignClaim.value, lotId: selectedAssignLotId.value });
+    } else {
+        emit('assign-claim', { claim: assignClaim.value, lotId: selectedAssignLotId.value });
+    }
+    assignDialogVisible.value = false;
+};
 </script>
 
 <template>
@@ -59,14 +195,14 @@ const canAct = (id) => props.actionLoadingId === null || props.actionLoadingId !
       </div>
       <div class="flex gap-2">
         <Button icon="pi pi-refresh" label="Rafraîchir" outlined rounded @click="emit('refresh')" />
-        <Button icon="pi pi-plus" label="Ouvrir un lot" @click="emit('open-lot')" />
+        <Button icon="pi pi-plus" label="Créer un lot" @click="openCreateDialog" />
       </div>
     </div>
 
     <div class="section-panel">
       <div class="mb-4">
-        <h3 class="page-title text-lg font-bold">Lots</h3>
-        <p class="muted-text text-sm">Historique des lots pour cet assureur.</p>
+        <h3 class="page-title text-lg font-bold">Gestion des lots</h3>
+        <p class="muted-text text-sm">Création, modification et transitions du cycle de vie.</p>
       </div>
 
       <DataTable :value="lots" :loading="loading" striped-rows paginator :rows="10" size="small" row-hover>
@@ -89,21 +225,25 @@ const canAct = (id) => props.actionLoadingId === null || props.actionLoadingId !
           </template>
         </Column>
         <Column field="nbFactures" header="Factures" />
-        <Column header="Montant">
+        <Column header="Montant assurance">
           <template #body="{ data }">{{ formatFcfa(data.montantTotal) }}</template>
         </Column>
-        <Column header="Envoi / Recouvrement">
-          <template #body="{ data }">
-            <div class="text-xs muted-text">
-              <div v-if="data.dateEnvoi">Envoyé: {{ data.dateEnvoi?.slice(0, 10) }}</div>
-              <div v-if="data.dateRecouvrement">Recouvré: {{ data.dateRecouvrement?.slice(0, 10) }}</div>
-            </div>
-          </template>
+        <Column header="Reste à rembourser">
+          <template #body="{ data }">{{ formatFcfa(data.resteARembourser) }}</template>
         </Column>
-        <Column header="Actions" style="min-width: 16rem">
+        <Column header="Actions" style="min-width: 18rem">
           <template #body="{ data }">
             <div class="flex flex-wrap gap-1">
               <Button icon="pi pi-eye" label="Voir" size="small" text @click="emit('view-lot', data)" />
+              <Button
+                v-if="data.availableActions?.canEdit"
+                icon="pi pi-pencil"
+                size="small"
+                text
+                rounded
+                :disabled="!canAct(data.id)"
+                @click="openEditDialog(data)"
+              />
               <Button
                 v-if="data.availableActions?.canSend"
                 icon="pi pi-send"
@@ -113,23 +253,39 @@ const canAct = (id) => props.actionLoadingId === null || props.actionLoadingId !
                 @click="emit('send-lot', data)"
               />
               <Button
-                v-if="data.availableActions?.canRecover"
+                v-if="data.availableActions?.canReopen"
+                icon="pi pi-replay"
+                label="Rouvrir"
+                size="small"
+                outlined
+                :disabled="!canAct(data.id)"
+                @click="emit('reopen-lot', data)"
+              />
+              <Button
+                v-if="data.availableActions?.canConfirm"
+                icon="pi pi-check"
+                label="Confirmer"
+                size="small"
+                :disabled="!canAct(data.id)"
+                @click="emit('confirm-lot', data)"
+              />
+              <Button
+                v-if="data.availableActions?.canUnconfirm"
+                icon="pi pi-undo"
+                label="Retour"
+                size="small"
+                outlined
+                :disabled="!canAct(data.id)"
+                @click="emit('unconfirm-lot', data)"
+              />
+              <Button
+                v-if="data.availableActions?.canRefund"
                 icon="pi pi-wallet"
-                label="Encaisser"
+                label="Rembourser"
                 size="small"
                 severity="success"
                 :disabled="!canAct(data.id)"
-                @click="emit('recover-lot', data)"
-              />
-              <Button
-                v-if="data.availableActions?.canCancelRecovery"
-                icon="pi pi-times"
-                label="Annuler"
-                size="small"
-                severity="danger"
-                outlined
-                :disabled="!canAct(data.id)"
-                @click="emit('cancel-recovery', data)"
+                @click="emit('refund-lot', data)"
               />
             </div>
           </template>
@@ -138,17 +294,9 @@ const canAct = (id) => props.actionLoadingId === null || props.actionLoadingId !
     </div>
 
     <div class="section-panel">
-      <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h3 class="page-title text-lg font-bold">Factures hors lot</h3>
-          <p class="muted-text text-sm">
-            Factures validées non rattachées à un lot.
-            <span v-if="openLot" class="text-primary font-medium">
-              Lot ouvert : {{ openLot.description || `Lot #${openLot.id}` }}
-            </span>
-            <span v-else class="alert-text font-medium">Aucun lot ouvert — ouvrez un lot pour y ajouter des factures.</span>
-          </p>
-        </div>
+      <div class="mb-4">
+        <h3 class="page-title text-lg font-bold">Factures non affectées</h3>
+        <p class="muted-text text-sm">FacturesAssurance clôturées non rattachées à un lot.</p>
       </div>
 
       <DataTable
@@ -160,43 +308,98 @@ const canAct = (id) => props.actionLoadingId === null || props.actionLoadingId !
         size="small"
         row-hover
         class="text-sm"
-        @row-click="(e) => emit('view-claim', e.data)"
       >
         <Column field="patient" header="Patient" />
         <Column field="telephone" header="Téléphone" />
         <Column header="Date">
           <template #body="{ data }">{{ data?.dateFacture?.slice(0, 10) || '—' }}</template>
         </Column>
-        <Column header="Taux">
-          <template #body="{ data }">{{ Number(data?.tauxCouverture || 0) }} %</template>
+        <Column header="Total">
+          <template #body="{ data }">{{ formatFcfa(data?.montantTotal) }}</template>
+        </Column>
+        <Column header="Part patient">
+          <template #body="{ data }">{{ formatFcfa(data?.montantPatient) }}</template>
+        </Column>
+        <Column header="Reste patient">
+          <template #body="{ data }">
+            <span class="font-semibold">{{ formatFcfa(data?.restePatient) }}</span>
+          </template>
         </Column>
         <Column header="Part assurance">
           <template #body="{ data }">
             <span class="font-semibold text-primary">{{ formatFcfa(data?.montantAssurance) }}</span>
           </template>
         </Column>
-        <Column header="Statut">
-          <template #body>
-            <Tag value="Validée" severity="success" />
-          </template>
-        </Column>
-        <Column header="Actions" style="min-width: 12rem">
+        <Column header="Actions" style="min-width: 6rem">
           <template #body="{ data }">
-            <div class="flex flex-wrap gap-1" @click.stop>
-              <Button
-                v-if="openLot"
-                icon="pi pi-plus"
-                label="Ajouter au lot"
-                size="small"
-                :disabled="!canAct(data.id)"
-                @click="emit('add-claim-to-lot', data)"
-              />
-              <Button icon="pi pi-eye" size="small" text rounded @click="emit('view-claim', data)" />
-            </div>
+            <Button icon="pi pi-ellipsis-v" text rounded @click="openClaimMenu($event, data)" />
           </template>
         </Column>
       </DataTable>
+      <Menu ref="claimMenu" :model="claimMenuItems" popup />
     </div>
+
+    <Dialog v-model:visible="createDialogVisible" modal header="Créer un lot" class="w-full max-w-lg">
+      <div class="flex flex-col gap-4 py-2">
+        <div>
+          <label class="block text-sm mb-1">Nom</label>
+          <InputText v-model="lotForm.description" class="w-full" placeholder="Nom du lot" />
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-sm mb-1">Début</label>
+            <DatePicker v-model="lotForm.dateDebut" date-format="yy-mm-dd" class="w-full" show-icon />
+          </div>
+          <div>
+            <label class="block text-sm mb-1">Fin</label>
+            <DatePicker v-model="lotForm.dateFin" date-format="yy-mm-dd" class="w-full" show-icon />
+          </div>
+        </div>
+      </div>
+      <template #footer>
+        <Button label="Annuler" text @click="createDialogVisible = false" />
+        <Button label="Créer" icon="pi pi-check" @click="submitCreate" />
+      </template>
+    </Dialog>
+
+    <Dialog v-model:visible="editDialogVisible" modal header="Modifier le lot" class="w-full max-w-lg">
+      <div class="flex flex-col gap-4 py-2">
+        <div>
+          <label class="block text-sm mb-1">Nom</label>
+          <InputText v-model="lotForm.description" class="w-full" />
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-sm mb-1">Début</label>
+            <DatePicker v-model="lotForm.dateDebut" date-format="yy-mm-dd" class="w-full" show-icon />
+          </div>
+          <div>
+            <label class="block text-sm mb-1">Fin</label>
+            <DatePicker v-model="lotForm.dateFin" date-format="yy-mm-dd" class="w-full" show-icon />
+          </div>
+        </div>
+      </div>
+      <template #footer>
+        <Button label="Annuler" text @click="editDialogVisible = false" />
+        <Button label="Enregistrer" icon="pi pi-check" @click="submitEdit" />
+      </template>
+    </Dialog>
+
+    <Dialog v-model:visible="assignDialogVisible" modal header="Affecter à un lot" class="w-full max-w-md">
+      <div class="flex flex-col gap-3 py-2">
+        <p class="muted-text text-sm">{{ assignClaim?.patient }}</p>
+        <label class="block text-sm mb-1">Lot ouvert</label>
+        <select v-model="selectedAssignLotId" class="lot-select">
+          <option v-for="lot in openLotsOptions" :key="lot.id" :value="lot.id">
+            {{ lot.description || `Lot #${lot.id}` }}
+          </option>
+        </select>
+      </div>
+      <template #footer>
+        <Button label="Annuler" text @click="assignDialogVisible = false" />
+        <Button label="Affecter" icon="pi pi-check" :disabled="!selectedAssignLotId" @click="submitAssign" />
+      </template>
+    </Dialog>
   </div>
 </template>
 
@@ -217,10 +420,6 @@ const canAct = (id) => props.actionLoadingId === null || props.actionLoadingId !
   color: var(--text-color-secondary);
 }
 
-.alert-text {
-  color: #d97706;
-}
-
 .assurance-logo-sm {
   display: flex;
   align-items: center;
@@ -237,21 +436,19 @@ const canAct = (id) => props.actionLoadingId === null || props.actionLoadingId !
 .assurance-logo-sm-img {
   max-height: 3.25rem;
   max-width: 100%;
-  width: auto;
-  height: auto;
   object-fit: contain;
+}
+
+.lot-select {
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--surface-border);
+  background: var(--surface-card);
+  color: var(--text-color);
 }
 
 .app-dark .section-panel {
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
-}
-
-.app-dark .assurance-logo-sm {
-  background: var(--p-surface-800);
-  border-color: var(--p-surface-700);
-}
-
-.app-dark .alert-text {
-  color: #fbbf24;
 }
 </style>

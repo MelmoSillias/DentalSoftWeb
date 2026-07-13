@@ -584,6 +584,13 @@ const viewOptions = [
                                                     </h3>
                                                     <Tag v-if="consultation.statut" :value="consultation.statut"
                                                         severity="info" class="px-3 py-1 rounded-full font-medium" />
+                                                    <Tag
+                                                        v-if="consultation.hasInsurance"
+                                                        value="Assuré"
+                                                        severity="success"
+                                                        icon="pi pi-shield"
+                                                        class="px-3 py-1 rounded-full font-medium"
+                                                    />
                                                 </div>
                                                 <div
                                                     class="flex items-center gap-2 text-sm text-surface-500 dark:text-surface-400">

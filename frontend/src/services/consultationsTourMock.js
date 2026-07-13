@@ -49,8 +49,9 @@ function buildStaticDailyConsultations() {
     return [
         {
             id: 9201,
-            patient: { id: 1002, nom: 'Ndiaye', prenom: 'Ibrahima', telephone: '+221775551212' },
+            patient: { id: 1002, nom: 'Ndiaye', prenom: 'Ibrahima', telephone: '+221775551212', createdAt: hoursAgo(48) },
             patientName: 'Ibrahima Ndiaye',
+            patientCreatedAt: hoursAgo(48),
             medecin: 'Dr Mamadou Seck',
             createdAt: hoursAgo(5.2),
             motif: 'Derniere fiche a reprendre',
@@ -64,8 +65,9 @@ function buildStaticDailyConsultations() {
         },
         {
             id: 9202,
-            patient: { id: 1001, nom: 'Diallo', prenom: 'Aminata', telephone: '+221771001010' },
+            patient: { id: 1001, nom: 'Diallo', prenom: 'Aminata', telephone: '+221771001010', createdAt: hoursAgo(72) },
             patientName: 'Aminata Diallo',
+            patientCreatedAt: hoursAgo(72),
             medecin: 'Dr Aissatou Fall',
             createdAt: hoursAgo(2.4),
             motif: 'Fiche deja liee a poursuivre',
@@ -79,8 +81,9 @@ function buildStaticDailyConsultations() {
         },
         {
             id: 9203,
-            patient: { id: 1003, nom: 'Sarr', prenom: 'Mariam', telephone: '+221781231234' },
+            patient: { id: 1003, nom: 'Sarr', prenom: 'Mariam', telephone: '+221781231234', createdAt: hoursAgo(0.5) },
             patientName: 'Mariam Sarr',
+            patientCreatedAt: hoursAgo(0.5),
             medecin: 'Dr Khadija Ndiaye',
             createdAt: hoursAgo(1.1),
             motif: 'Nouvelle prise en charge',
@@ -94,8 +97,9 @@ function buildStaticDailyConsultations() {
         },
         {
             id: 9204,
-            patient: { id: 1001, nom: 'Diallo', prenom: 'Aminata', telephone: '+221771001010' },
+            patient: { id: 1001, nom: 'Diallo', prenom: 'Aminata', telephone: '+221771001010', createdAt: hoursAgo(72) },
             patientName: 'Aminata Diallo',
+            patientCreatedAt: hoursAgo(72),
             medecin: 'Dr Aissatou Fall',
             createdAt: hoursAgo(8.7),
             motif: 'Consultation cloturee du jour',

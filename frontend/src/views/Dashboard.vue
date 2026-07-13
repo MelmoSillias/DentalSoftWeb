@@ -10,6 +10,7 @@ import { createDashboardTour } from '@/tours/dashboardTour';
 import { startTourGuide } from '@/tours/tourGuideClient';
 import { useDashboards } from '@/composables/useDashboards';
 import { useProfile } from '@/composables/useProfile';
+import PanelDatePicker from '@/components/common/PanelDatePicker.vue';
 import DashboardQuickStats from '@/components/dashboard/DashboardQuickStats.vue';
 import DashboardCarouselSection from '@/components/dashboard/DashboardCarouselSection.vue';
 import DashboardTabsPanel from '@/components/dashboard/DashboardTabsPanel.vue';
@@ -669,16 +670,14 @@ onBeforeUnmount(() => {
                         /> 
                     </div>
                     <div class="relative w-full sm:w-auto" v-else-if="showRangeFilters">
-                        <DatePicker
+                        <PanelDatePicker
                             v-model="selectedRange"
-                            selectionMode="range"
                             showIcon
-                            iconDisplay="input"
                             dateFormat="dd/mm/yy"
                             placeholder="Choisir periode"
-                            class="rounded-xl border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-800 [&_.p-datepicker]:p-3.5 w-full sm:w-64 lg:w-72"
-                            :pt="{ input: 'pl-10 py-2.5 sm:py-3', icon: 'left-3 top-3 text-surface-400' }"
-                        /> 
+                            class="w-full sm:w-64 lg:w-72"
+                            inputClass="rounded-xl border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-800 py-2.5 sm:py-3"
+                        />
                     </div>
                 </div>
             </div>

@@ -2,11 +2,11 @@
 import Accordion from 'primevue/accordion';
 import AccordionPanel from 'primevue/accordionpanel';
 import Button from 'primevue/button';
-import DatePicker from 'primevue/datepicker';
 import InputText from 'primevue/inputtext';
 import Select from 'primevue/select';
 import Tag from 'primevue/tag';
 import { computed, ref } from 'vue';
+import PanelDatePicker from '@/components/common/PanelDatePicker.vue';
 
 const props = defineProps({
     payments: { type: Array, default: () => [] },
@@ -48,7 +48,7 @@ const isInsurancePayment = (payment) => {
     const role = String(payment?.rolePaiement || '').toLowerCase();
     const mode = normalizeText(payment?.mode);
 
-    return role === 'insurance' || mode.includes('assur');
+    return role === 'patient_insurance';
 };
 
 const computeModeTag = (payment) => {
@@ -172,7 +172,7 @@ const miniChart = computed(() => {
                     </div>
                     <div class="filter-item">
                         <label>Période</label>
-                        <DatePicker v-model="paymentRangeModel" selectionMode="range" dateFormat="yy-mm-dd" showIcon
+                        <PanelDatePicker v-model="paymentRangeModel" dateFormat="yy-mm-dd" showIcon
                             fluid />
                     </div>
                     <div class="filter-item">

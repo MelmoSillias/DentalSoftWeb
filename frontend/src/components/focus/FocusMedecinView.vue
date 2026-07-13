@@ -70,6 +70,32 @@ const formatTime = (value) => {
     return parsed ? parsed.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '--:--';
 };
 
+const isSameCalendarDay = (left, right) => {
+    const leftDate = parseDateTime(left);
+    const rightDate = parseDateTime(right);
+    if (!leftDate || !rightDate) return false;
+    return leftDate.getFullYear() === rightDate.getFullYear()
+        && leftDate.getMonth() === rightDate.getMonth()
+        && leftDate.getDate() === rightDate.getDate();
+};
+
+const patientCreatedAt = (consultation) => {
+    const patient = consultation?.patient && typeof consultation.patient === 'object'
+        ? consultation.patient
+        : null;
+    return consultation?.patientCreatedAt
+        || consultation?.patient_created_at
+        || patient?.createdAt
+        || patient?.created_at
+        || patient?.dateInscription
+        || patient?.date_inscription
+        || patient?.dateCreation
+        || patient?.date_creation
+        || null;
+};
+
+const isNewPatient = (consultation) => isSameCalendarDay(patientCreatedAt(consultation), new Date());
+
 const patientLabel = (consultation) => {
     if (!consultation) return 'Patient';
     if (typeof consultation.patientName === 'string' && consultation.patientName.trim()) return consultation.patientName;
@@ -296,7 +322,7 @@ watch(
             </SplitterPanel>
 
             <SplitterPanel :size="20" class="flex flex-col">
-                <div class="h-full flex flex-col bg-white dark:bg-surface-900 border-l border-surface-200 dark:border-surface-700"> 
+                <div class="h-full flex flex-col bg-white dark:bg-surface-900 border-l border-surface-200 dark:border-surface-700">
                     <div
                         class="flex items-center justify-between px-5 py-4 border-b border-surface-200 dark:border-surface-700">
                         <div>
@@ -330,7 +356,7 @@ watch(
                                 <button v-for="(consultation, index) in medecinQueue" :key="consultation.id"
                                     @click="emit('select-consultation', consultation.id)"
                                     class="relative w-full text-left flex gap-4 group">
-                                    
+
                                     <div class="relative z-10 flex flex-col items-center">
                                         <div :class="[
                                             'w-8 h-8 flex items-center justify-center rounded-full text-xs font-bold border transition-all',
@@ -343,10 +369,10 @@ watch(
                                         ]">
                                             {{ index + 1 }}
                                         </div>
- 
+
                                         <div class="flex-1 w-px"></div>
                                     </div>
- 
+
                                     <div :class="[
                                         'flex-1 rounded-xl border p-3 transition-all',
 
@@ -370,18 +396,25 @@ watch(
                                                 {{ Number(consultation.state) === 1 ? 'Terminé' : 'En attente' }}
                                             </span>
                                         </div>
- 
+
                                         <p class="font-semibold text-sm text-surface-900 dark:text-white truncate">
                                             {{ patientLabel(consultation) }}
                                         </p>
- 
+
                                         <p class="text-xs text-surface-500 truncate">
                                             {{ medecinLabel(consultation) }}
                                         </p>
- 
-                                        <div class="mt-2">
-                                            <Tag :value="(consultation.hasFiche || consultation.lastFicheId) ? 'Ancien patient' : 'Nouveau patient'"
-                                                size="small" severity="contrast" />
+
+                                        <div class="mt-2 flex flex-wrap gap-1">
+                                            <Tag v-if="isNewPatient(consultation)" value="Nouveau patient"
+                                                size="small" severity="info" />
+                                            <Tag
+                                                v-if="consultation.hasInsurance || consultation.patient?.insuranceProfile"
+                                                value="Assuré"
+                                                size="small"
+                                                severity="success"
+                                                icon="pi pi-shield"
+                                            />
                                         </div>
 
                                     </div>

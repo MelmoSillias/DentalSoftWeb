@@ -168,7 +168,30 @@ const paymentMethodOptions = computed(() =>
         }))
 );
 
-const requiresClassicPayment = computed(() => form.payant);
+const patientInsurance = computed(() => {
+    const fromProps = props.patient?.insuranceProfile ?? props.patient?.assuranceProfile ?? null;
+    const fromList = patients.value.find((p) => p.id === selectedPatientId.value)?.insuranceProfile ?? null;
+    const profile = fromProps ?? fromList;
+    if (!profile) return null;
+    const enabled = profile.enabled !== false;
+    const assurance = profile.assurance ?? null;
+    const hasAssurance = Boolean(
+        assurance?.id
+        || assurance?.code
+        || profile.assuranceCode
+        || profile.assuranceId
+    );
+    if (!enabled || !hasAssurance) return null;
+    if (assurance?.actif === false) return null;
+    return {
+        nom: assurance?.nom || assurance?.code || profile.assuranceCode || 'Assurance',
+        coverageRate: Number(profile.coverageRate ?? 0) || 0,
+    };
+});
+const isPatientInsured = computed(() => patientInsurance.value !== null);
+
+/** Part patient classique : uniquement si payante ET non assurée (sinon part via caisse assurance). */
+const requiresClassicPayment = computed(() => form.payant && !isPatientInsured.value);
 
 const resetForm = () => {
     form.notes = '';
@@ -366,6 +389,14 @@ const handleSubmit = (event) => {
                 <DatePicker v-model="form.dateConsultation" showTime hourFormat="24" dateFormat="dd/mm/yy"
                     class="w-full" />
             </div>
+            <div v-if="isPatientInsured" class="md:col-span-2 p-3 rounded border border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200">
+                <div class="font-semibold">Patient assuré — {{ patientInsurance.nom }}</div>
+                <small class="block mt-1 opacity-90">
+                    Une facture assurance sera créée automatiquement
+                    <template v-if="patientInsurance.coverageRate > 0"> (couverture {{ patientInsurance.coverageRate }} %)</template>.
+                    La part patient sera encaissée en caisse après clôture.
+                </small>
+            </div>
             <div class="flex flex-col gap-2">
                 <label class="font-semibold">Consultation payante</label>
                 <div class="flex items-center gap-2">
@@ -373,12 +404,12 @@ const handleSubmit = (event) => {
                     <span class="text-sm text-gray-600 dark:text-gray-400">{{ form.payant ? `Payante (${consultationAmount.toLocaleString('fr-FR')})` : 'Gratuite' }}</span>
                 </div>
             </div>
-            <div class="flex flex-col gap-2" v-if="form.payant">
+            <div class="flex flex-col gap-2" v-if="requiresClassicPayment">
                 <label class="font-semibold">Mode de paiement patient</label>
                 <Select v-model="form.modePaiementId" :options="paymentMethodOptions  || []" optionLabel="label"
                     optionValue="value" placeholder="Choisir un mode de paiement" class="w-full" />
                 <small class="text-gray-500 dark:text-gray-400">
-                    Le mode de paiement reste requis pour les consultations payantes.
+                    Le mode de paiement reste requis pour les consultations payantes non assurées.
                 </small>
             </div>
             <!-- <div class="md:col-span-2 flex flex-col gap-2">

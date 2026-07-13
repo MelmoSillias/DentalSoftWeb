@@ -22,6 +22,7 @@ import Divider from 'primevue/divider';
 import Card from 'primevue/card';
 import Badge from 'primevue/badge';
 import InputNumber from 'primevue/inputnumber';
+import DatePicker from 'primevue/datepicker';
 import { useAuthStore } from '@/stores/auth';
 import { usePrinter } from '@/composables/usePrinter';
 import { useUiSettingsStore } from '@/stores/uiSettings';
@@ -94,6 +95,7 @@ const generalSettingsLoaded = ref(false);
 const loadErrorMessage = ref('');
 const savingStates = reactive({
     consultationPolicy: false,
+    openingHours: false,
     medecinPrivacy: false,
     clinicalForm: false,
     devicePolicy: false,
@@ -127,6 +129,40 @@ const consultationPolicy = reactive({
     showReceptionQuickCloseButton: true,
     allowReceptionBypassMedecinPasswordOnQuickClose: false,
     consultationPrice: 5000
+});
+
+const openingHours = reactive({
+    openingTime: '08:00',
+    closingTime: '18:00'
+});
+
+const parseTimeToDate = (value, fallback = '08:00') => {
+    const raw = String(value || fallback);
+    const match = raw.match(/^(\d{1,2}):(\d{2})/);
+    const hours = match ? Number(match[1]) : 8;
+    const minutes = match ? Number(match[2]) : 0;
+    const date = new Date();
+    date.setHours(hours, minutes, 0, 0);
+    return date;
+};
+
+const formatTimeFromDate = (value, fallback = '08:00') => {
+    if (!(value instanceof Date) || Number.isNaN(value.getTime())) return fallback;
+    return `${String(value.getHours()).padStart(2, '0')}:${String(value.getMinutes()).padStart(2, '0')}`;
+};
+
+const openingTimeModel = computed({
+    get: () => parseTimeToDate(openingHours.openingTime, '08:00'),
+    set: (val) => {
+        openingHours.openingTime = formatTimeFromDate(val, '08:00');
+    }
+});
+
+const closingTimeModel = computed({
+    get: () => parseTimeToDate(openingHours.closingTime, '18:00'),
+    set: (val) => {
+        openingHours.closingTime = formatTimeFromDate(val, '18:00');
+    }
 });
 
 const medecinPrivacy = reactive({
@@ -203,6 +239,7 @@ const navigation = {
         icon: 'pi pi-briefcase',
         sections: [
             { id: 'consultations', label: 'Consultations & réception', icon: 'pi pi-calendar' },
+            { id: 'opening-hours', label: 'Horaires d\'ouverture', icon: 'pi pi-clock' },
             { id: 'medecin-privacy', label: 'Interface médecin', icon: 'pi pi-user' },
             { id: 'clinical-form', label: 'Fiche clinique', icon: 'pi pi-file' },
             { id: 'billing', label: 'Caisse & finances', icon: 'pi pi-wallet' },
@@ -393,6 +430,8 @@ const loadGeneralSettings = async (force = false) => {
         consultationPolicy.allowReceptionBypassMedecinPasswordOnQuickClose = consultationPolicy.showReceptionQuickCloseButton
             && settings.allowReceptionBypassMedecinPasswordOnQuickClose === true;
         consultationPolicy.consultationPrice = Number(settings.consultationPrice || 5000);
+        openingHours.openingTime = settings.openingTime || '08:00';
+        openingHours.closingTime = settings.closingTime || '18:00';
         medecinPrivacy.hidePatientDossierForMedecins = settings.hidePatientDossierForMedecins === true;
         medecinPrivacy.hidePatientPhoneForMedecins = settings.hidePatientPhoneForMedecins === true;
         clinicalForm.ficheFormSimplifie = settings.ficheFormSimplifie === true;
@@ -577,6 +616,24 @@ const saveConsultationPolicyAction = async () => {
         toast.add({ severity: 'error', summary: 'Erreur', detail: extractApiError(error, 'Sauvegarde impossible'), life: 3500 });
     } finally {
         savingStates.consultationPolicy = false;
+    }
+};
+
+const saveOpeningHoursAction = async () => {
+    if (!canAccessWorkflowSettings.value) return;
+    savingStates.openingHours = true;
+    try {
+        const saved = await saveGeneralSettings({
+            openingTime: openingHours.openingTime,
+            closingTime: openingHours.closingTime
+        }, token);
+        openingHours.openingTime = saved.openingTime || openingHours.openingTime;
+        openingHours.closingTime = saved.closingTime || openingHours.closingTime;
+        toast.add({ severity: 'success', summary: 'Horaires d\'ouverture', detail: 'Horaires enregistrés', life: 2500 });
+    } catch (error) {
+        toast.add({ severity: 'error', summary: 'Erreur', detail: extractApiError(error, 'Sauvegarde impossible'), life: 3500 });
+    } finally {
+        savingStates.openingHours = false;
     }
 };
 
@@ -1388,6 +1445,49 @@ onBeforeUnmount(() => {
                                             inputClass="w-40" />
                                     </div>
                                 </div>
+                            </div>
+                        </div>
+
+                        <!-- Horaires d'ouverture -->
+                        <div v-show="isSectionVisible('cabinet', 'opening-hours')" id="cabinet-opening-hours" class="settings-section">
+                            <div class="settings-section-header">
+                                <div>
+                                    <h3>Horaires d'ouverture</h3>
+                                    <p class="settings-section-description">Plage horaire affichée dans l'agenda (vue hebdomadaire et journalière)</p>
+                                </div>
+                                <Button
+                                    label="Enregistrer"
+                                    icon="pi pi-save"
+                                    :loading="savingStates.openingHours"
+                                    @click="saveOpeningHoursAction"
+                                />
+                            </div>
+                            <div class="settings-card">
+                                <div class="grid gap-4 sm:grid-cols-2">
+                                    <div class="field-group">
+                                        <label>Heure d'ouverture</label>
+                                        <DatePicker
+                                            v-model="openingTimeModel"
+                                            timeOnly
+                                            hourFormat="24"
+                                            showIcon
+                                            iconDisplay="input"
+                                            class="w-full"
+                                        />
+                                    </div>
+                                    <div class="field-group">
+                                        <label>Heure de fermeture</label>
+                                        <DatePicker
+                                            v-model="closingTimeModel"
+                                            timeOnly
+                                            hourFormat="24"
+                                            showIcon
+                                            iconDisplay="input"
+                                            class="w-full"
+                                        />
+                                    </div>
+                                </div>
+                                <span class="field-helper mt-2 block">L'heure d'ouverture doit être antérieure à l'heure de fermeture (défaut 08:00 – 18:00).</span>
                             </div>
                         </div>
 

@@ -191,13 +191,21 @@ class FactureAssurance
         return $this;
     }
 
+    /**
+     * Editable / persisted lines: medical acts only (no virtual consultation line).
+     */
     public function buildLignes(): array
     {
-        $consultation = $this->getConsultation();
-        if (!$consultation) {
-            return [];
-        }
+        return $this->buildActeLignes();
+    }
 
+    /**
+     * Display lines: virtual consultation first, then acts.
+     *
+     * @return list<array{designation: string, description: string, quantite: int, prix: float, total: float, virtual?: bool}>
+     */
+    public function buildDisplayLignes(): array
+    {
         $lines = [];
         if ($this->isConsultationPayante() && $this->consultationAmount > 0) {
             $lines[] = [
@@ -206,9 +214,28 @@ class FactureAssurance
                 'quantite' => 1,
                 'prix' => (float) $this->consultationAmount,
                 'total' => (float) $this->consultationAmount,
+                'virtual' => true,
             ];
         }
 
+        foreach ($this->buildActeLignes() as $line) {
+            $lines[] = $line;
+        }
+
+        return $lines;
+    }
+
+    /**
+     * @return list<array{designation: string, description: string, quantite: int, prix: float, total: float, virtual?: bool}>
+     */
+    public function buildActeLignes(): array
+    {
+        $consultation = $this->getConsultation();
+        if (!$consultation) {
+            return [];
+        }
+
+        $lines = [];
         foreach ($consultation->getActes() as $acte) {
             if (!$acte instanceof ActeMedical) {
                 continue;
@@ -226,6 +253,7 @@ class FactureAssurance
                 'quantite' => $quantite,
                 'prix' => $prix,
                 'total' => $quantite * $prix,
+                'virtual' => false,
             ];
         }
 
@@ -235,7 +263,10 @@ class FactureAssurance
     public function computeTotals(): array
     {
         $total = 0.0;
-        foreach ($this->buildLignes() as $line) {
+        if ($this->isConsultationPayante() && $this->consultationAmount > 0) {
+            $total += (float) $this->consultationAmount;
+        }
+        foreach ($this->buildActeLignes() as $line) {
             $total += (float) ($line['total'] ?? 0.0);
         }
 
@@ -248,6 +279,7 @@ class FactureAssurance
             'montantAssureur' => $assureur,
             'montantPatient' => $patient,
             'tauxCouverture' => $rate,
+            'consultationAmount' => $this->isConsultationPayante() ? (float) $this->consultationAmount : 0.0,
         ];
     }
 }

@@ -113,7 +113,7 @@ const hasPreviewData = computed(() => Boolean(props.previewData));
                 <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/20 border border-blue-200 dark:border-blue-700/50 p-4 shadow-sm">
                     <div class="flex items-center gap-2 mb-1">
                         <i class="pi pi-file-edit text-blue-500 text-xs"></i>
-                        <p class="text-xs font-medium uppercase tracking-wider text-blue-600 dark:text-blue-400">Total facture</p>
+                        <p class="text-xs font-medium uppercase tracking-wider text-blue-600 dark:text-blue-400">{{ invoiceHasInsurance ? 'Part patient' : 'Total facture' }}</p>
                     </div>
                     <p class="text-lg font-bold text-blue-800 dark:text-blue-200">{{ formatFcfa(selectedFacture?.montant) }}</p>
                 </div>
@@ -127,9 +127,24 @@ const hasPreviewData = computed(() => Boolean(props.previewData));
                 <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/30 dark:to-orange-800/20 border border-orange-200 dark:border-orange-700/50 p-4 shadow-sm">
                     <div class="flex items-center gap-2 mb-1">
                         <i class="pi pi-clock text-orange-500 text-xs"></i>
-                        <p class="text-xs font-medium uppercase tracking-wider text-orange-600 dark:text-orange-400">Reste à payer</p>
+                        <p class="text-xs font-medium uppercase tracking-wider text-orange-600 dark:text-orange-400">Reste patient</p>
                     </div>
                     <p class="text-lg font-bold text-orange-800 dark:text-orange-200">{{ formatFcfa(patientOutstandingAmount) }}</p>
+                </div>
+            </div>
+
+            <div v-if="invoiceHasInsurance" class="rounded-2xl border border-sky-200 dark:border-sky-800 bg-sky-50/70 dark:bg-sky-950/20 p-4 grid gap-3 md:grid-cols-3">
+                <div>
+                    <p class="text-xs uppercase tracking-wide text-sky-700 dark:text-sky-300">Assurance</p>
+                    <p class="font-semibold">{{ insuranceStatusLabel || selectedAssurance?.nom || '—' }}</p>
+                </div>
+                <div>
+                    <p class="text-xs uppercase tracking-wide text-sky-700 dark:text-sky-300">Taux</p>
+                    <p class="font-semibold">{{ Number(payForm?.insuranceRate || 0) }} %</p>
+                </div>
+                <div>
+                    <p class="text-xs uppercase tracking-wide text-sky-700 dark:text-sky-300">Part assurance</p>
+                    <p class="font-semibold">{{ formatFcfa(insuranceCoveredAmount) }}</p>
                 </div>
             </div>
 
@@ -280,7 +295,7 @@ const hasPreviewData = computed(() => Boolean(props.previewData));
                     </div>
                     <div class="flex flex-col items-end gap-2">
                         <Tag :value="'Reste ' + formatFcfa(previewData.reste)" severity="warning" />
-                        <Tag v-if="previewData.insurance?.hasInsurance" :value="previewData.insurance?.insuranceStatus === 'pending' ? 'Assurance en attente' : 'Assurance liée'" :severity="previewData.insurance?.insuranceStatus === 'pending' ? 'warning' : 'info'" icon="pi pi-shield" />
+                        <Tag v-if="previewData.insurance?.hasInsurance" value="Assurance" severity="info" icon="pi pi-shield" />
                     </div>
                 </div>
                 <Tabs :value="previewDialogTab" @update:value="emit('update:previewDialogTab', $event)">
@@ -339,18 +354,36 @@ const hasPreviewData = computed(() => Boolean(props.previewData));
                         </TabPanel>
                         <TabPanel value="paiements">
                             <div class="flex flex-col gap-4">
-                                <div class="grid gap-3 md:grid-cols-3">
+                                <div v-if="previewData.insurance?.hasInsurance" class="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
                                     <div class="preview-summary-card rounded-xl border border-surface-200 bg-surface-50/70 p-3 dark:bg-surface-800/70 dark:border-surface-700">
-                                        <p class="preview-summary-label text-xs uppercase tracking-wide text-gray-500">Écritures</p>
-                                        <p class="mt-1 text-base font-semibold">{{ previewPayments.length }}</p>
+                                        <p class="preview-summary-label text-xs uppercase tracking-wide text-gray-500">Assurance</p>
+                                        <p class="mt-1 text-base font-semibold">{{ previewData.insurance?.assuranceNom || previewData.insurance?.insuranceModeLabel || '—' }}</p>
+                                    </div>
+                                    <div class="preview-summary-card rounded-xl border border-surface-200 bg-surface-50/70 p-3 dark:bg-surface-800/70 dark:border-surface-700">
+                                        <p class="preview-summary-label text-xs uppercase tracking-wide text-gray-500">Taux</p>
+                                        <p class="mt-1 text-base font-semibold">{{ Number(previewData.insurance?.tauxCouverture ?? previewData.insurance?.insuranceRate ?? 0) }} %</p>
+                                    </div>
+                                    <div class="preview-summary-card rounded-xl border border-surface-200 bg-surface-50/70 p-3 dark:bg-surface-800/70 dark:border-surface-700">
+                                        <p class="preview-summary-label text-xs uppercase tracking-wide text-gray-500">Montant total</p>
+                                        <p class="mt-1 text-base font-semibold">{{ formatFcfa(previewData.insurance?.montantTotal ?? previewData.montantTotal) }}</p>
                                     </div>
                                     <div class="preview-summary-card rounded-xl border border-surface-200 bg-surface-50/70 p-3 dark:bg-surface-800/70 dark:border-surface-700">
                                         <p class="preview-summary-label text-xs uppercase tracking-wide text-gray-500">Part assurance</p>
-                                        <p class="mt-1 text-base font-semibold">{{ formatFcfa(previewData.insurance?.insuranceAmount) }}</p>
+                                        <p class="mt-1 text-base font-semibold">{{ formatFcfa(previewData.insurance?.montantAssurance ?? previewData.insurance?.insuranceAmount) }}</p>
                                     </div>
                                     <div class="preview-summary-card rounded-xl border border-surface-200 bg-surface-50/70 p-3 dark:bg-surface-800/70 dark:border-surface-700">
-                                        <p class="preview-summary-label text-xs uppercase tracking-wide text-gray-500">Part client déjà réglée</p>
-                                        <p class="mt-1 text-base font-semibold">{{ formatFcfa(previewData.insurance?.patientPaidAmount) }}</p>
+                                        <p class="preview-summary-label text-xs uppercase tracking-wide text-gray-500">Part patient</p>
+                                        <p class="mt-1 text-base font-semibold">{{ formatFcfa(previewData.insurance?.montantPatient ?? previewData.montant) }}</p>
+                                    </div>
+                                    <div class="preview-summary-card rounded-xl border border-surface-200 bg-surface-50/70 p-3 dark:bg-surface-800/70 dark:border-surface-700">
+                                        <p class="preview-summary-label text-xs uppercase tracking-wide text-gray-500">Reste patient</p>
+                                        <p class="mt-1 text-base font-semibold">{{ formatFcfa(previewData.insurance?.restePatient ?? previewData.reste) }}</p>
+                                    </div>
+                                </div>
+                                <div v-else class="grid gap-3 md:grid-cols-3">
+                                    <div class="preview-summary-card rounded-xl border border-surface-200 bg-surface-50/70 p-3 dark:bg-surface-800/70 dark:border-surface-700">
+                                        <p class="preview-summary-label text-xs uppercase tracking-wide text-gray-500">Écritures</p>
+                                        <p class="mt-1 text-base font-semibold">{{ previewPayments.length }}</p>
                                     </div>
                                 </div>
                                 <div v-if="previewPayments.length" class="flex flex-col gap-3">

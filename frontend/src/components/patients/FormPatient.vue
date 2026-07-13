@@ -104,7 +104,20 @@ const form = reactive({
             patientNomPrenom: '',
             patientMatricule: '',
             patientAge: '',
-            patientSexe: ''
+            patientSexe: '',
+            carteNumero: '',
+            numeroPolice: '',
+            titulaireNomPrenoms: '',
+            assurePrincipalNom: '',
+            assurePrincipalTel: '',
+            avenant: '',
+            numeroAssure: '',
+            assureNomPrenom: '',
+            assureNomPrenoms: '',
+            beneficiaireNomPrenoms: '',
+            beneficiaireMatricule: '',
+            identifiant: '',
+            nomPrenoms: ''
         }
     }
 });
@@ -127,6 +140,10 @@ const selectedInsurance = computed(() =>
 
 const isSbn = computed(() => form.insuranceProfile.assuranceCode === 'SBN');
 const isBleues = computed(() => form.insuranceProfile.assuranceCode === 'BLEUES');
+const isSunu = computed(() => form.insuranceProfile.assuranceCode === 'SUNU');
+const isLafia = computed(() => form.insuranceProfile.assuranceCode === 'LAFIA');
+const isSaham = computed(() => form.insuranceProfile.assuranceCode === 'SAHAM');
+const isMsh = computed(() => form.insuranceProfile.assuranceCode === 'MSH');
 
 const defaultInsuranceFormData = () => ({
     societe: '',
@@ -141,7 +158,20 @@ const defaultInsuranceFormData = () => ({
     patientNomPrenom: '',
     patientMatricule: '',
     patientAge: '',
-    patientSexe: ''
+    patientSexe: '',
+    carteNumero: '',
+    numeroPolice: '',
+    titulaireNomPrenoms: '',
+    assurePrincipalNom: '',
+    assurePrincipalTel: '',
+    avenant: '',
+    numeroAssure: '',
+    assureNomPrenom: '',
+    assureNomPrenoms: '',
+    beneficiaireNomPrenoms: '',
+    beneficiaireMatricule: '',
+    identifiant: '',
+    nomPrenoms: ''
 });
 
 const resolveInsuranceProfile = (value) => {
@@ -351,6 +381,22 @@ watch(
             form.insuranceProfile.formData.patientNomPrenom = fullName;
             form.insuranceProfile.formData.patientAge = ageInput.value || '';
             form.insuranceProfile.formData.patientSexe = form.sexe || '';
+        }
+
+        if (isSunu.value) {
+            form.insuranceProfile.formData.titulaireNomPrenoms = fullName;
+        }
+
+        if (isLafia.value) {
+            form.insuranceProfile.formData.assureNomPrenom = fullName;
+        }
+
+        if (isSaham.value) {
+            form.insuranceProfile.formData.beneficiaireNomPrenoms = fullName;
+        }
+
+        if (isMsh.value) {
+            form.insuranceProfile.formData.nomPrenoms = fullName;
         }
     },
     { immediate: true }
@@ -595,6 +641,86 @@ const handleSubmit = (event) => {
                             <div class="flex flex-col gap-2">
                                 <label class="font-semibold">Patient - Sexe</label>
                                 <InputText v-model="form.insuranceProfile.formData.patientSexe" />
+                            </div>
+                        </template>
+
+                        <template v-if="form.insuranceProfile.enabled && isSunu">
+                            <div class="flex flex-col gap-2">
+                                <label class="font-semibold">Carte N°</label>
+                                <InputText v-model="form.insuranceProfile.formData.carteNumero" />
+                            </div>
+                            <div class="flex flex-col gap-2">
+                                <label class="font-semibold">Société</label>
+                                <InputText v-model="form.insuranceProfile.formData.societe" />
+                            </div>
+                            <div class="flex flex-col gap-2">
+                                <label class="font-semibold">N° police</label>
+                                <InputText v-model="form.insuranceProfile.formData.numeroPolice" />
+                            </div>
+                            <div class="flex flex-col gap-2">
+                                <label class="font-semibold">Titulaire - Nom et prénoms</label>
+                                <InputText v-model="form.insuranceProfile.formData.titulaireNomPrenoms" />
+                            </div>
+                            <div class="flex flex-col gap-2">
+                                <label class="font-semibold">Assuré principal - Nom et prénoms</label>
+                                <InputText v-model="form.insuranceProfile.formData.assurePrincipalNom" />
+                            </div>
+                            <div class="flex flex-col gap-2">
+                                <label class="font-semibold">Assuré principal - N° tel</label>
+                                <InputText v-model="form.insuranceProfile.formData.assurePrincipalTel" />
+                            </div>
+                        </template>
+
+                        <template v-if="form.insuranceProfile.enabled && isLafia">
+                            <div class="flex flex-col gap-2">
+                                <label class="font-semibold">Police</label>
+                                <InputText v-model="form.insuranceProfile.formData.numeroPolice" />
+                            </div>
+                            <div class="flex flex-col gap-2">
+                                <label class="font-semibold">Avenant</label>
+                                <InputText v-model="form.insuranceProfile.formData.avenant" />
+                            </div>
+                            <div class="flex flex-col gap-2">
+                                <label class="font-semibold">N° assuré</label>
+                                <InputText v-model="form.insuranceProfile.formData.numeroAssure" />
+                            </div>
+                            <div class="flex flex-col gap-2">
+                                <label class="font-semibold">Souscripteur</label>
+                                <InputText v-model="form.insuranceProfile.formData.souscripteur" />
+                            </div>
+                            <div class="flex flex-col gap-2">
+                                <label class="font-semibold">Nom et prénom</label>
+                                <InputText v-model="form.insuranceProfile.formData.assureNomPrenom" />
+                            </div>
+                        </template>
+
+                        <template v-if="form.insuranceProfile.enabled && isSaham">
+                            <div class="flex flex-col gap-2">
+                                <label class="font-semibold">Assuré - Nom et prénoms</label>
+                                <InputText v-model="form.insuranceProfile.formData.assureNomPrenoms" />
+                            </div>
+                            <div class="flex flex-col gap-2">
+                                <label class="font-semibold">Assuré - N°</label>
+                                <InputText v-model="form.insuranceProfile.formData.assureNumero" />
+                            </div>
+                            <div class="flex flex-col gap-2">
+                                <label class="font-semibold">Bénéficiaire - Nom et prénoms</label>
+                                <InputText v-model="form.insuranceProfile.formData.beneficiaireNomPrenoms" />
+                            </div>
+                            <div class="flex flex-col gap-2">
+                                <label class="font-semibold">Bénéficiaire - Matricule</label>
+                                <InputText v-model="form.insuranceProfile.formData.beneficiaireMatricule" />
+                            </div>
+                        </template>
+
+                        <template v-if="form.insuranceProfile.enabled && isMsh">
+                            <div class="flex flex-col gap-2">
+                                <label class="font-semibold">Identifiant</label>
+                                <InputText v-model="form.insuranceProfile.formData.identifiant" />
+                            </div>
+                            <div class="flex flex-col gap-2">
+                                <label class="font-semibold">Nom et prénoms</label>
+                                <InputText v-model="form.insuranceProfile.formData.nomPrenoms" />
                             </div>
                         </template>
 

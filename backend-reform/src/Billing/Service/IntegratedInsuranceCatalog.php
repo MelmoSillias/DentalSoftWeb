@@ -10,6 +10,10 @@ class IntegratedInsuranceCatalog
 {
     public const CODE_SBN = 'SBN';
     public const CODE_BLEUES = 'BLEUES';
+    public const CODE_SUNU = 'SUNU';
+    public const CODE_LAFIA = 'LAFIA';
+    public const CODE_SAHAM = 'SAHAM';
+    public const CODE_MSH = 'MSH';
 
     /** @return array<int, array<string, mixed>> */
     public function getCatalog(): array
@@ -52,6 +56,71 @@ class IntegratedInsuranceCatalog
                     ],
                 ],
             ],
+            [
+                'code' => self::CODE_SUNU,
+                'nom' => 'SUNU Assurances',
+                'logoPath' => '/assurances/sunu-logo.png',
+                'website' => null,
+                'email' => null,
+                'formSchema' => [
+                    'fields' => [
+                        ['key' => 'carteNumero', 'label' => 'Carte N°', 'type' => 'text', 'required' => true],
+                        ['key' => 'societe', 'label' => 'Societe', 'type' => 'text', 'required' => false],
+                        ['key' => 'numeroPolice', 'label' => 'N° police', 'type' => 'text', 'required' => true],
+                        ['key' => 'titulaireNomPrenoms', 'label' => 'Titulaire - Nom et prenoms', 'type' => 'text', 'required' => true, 'source' => 'patient.fullName'],
+                        ['key' => 'assurePrincipalNom', 'label' => 'Assure principal - Nom et prenoms', 'type' => 'text', 'required' => true],
+                        ['key' => 'assurePrincipalTel', 'label' => 'Assure principal - N° tel', 'type' => 'text', 'required' => false],
+                        ['key' => 'coverageRate', 'label' => 'Taux de couverture', 'type' => 'number', 'required' => true],
+                    ],
+                ],
+            ],
+            [
+                'code' => self::CODE_LAFIA,
+                'nom' => 'LAFIA',
+                'logoPath' => '/assurances/lafia-logo.png',
+                'website' => null,
+                'email' => null,
+                'formSchema' => [
+                    'fields' => [
+                        ['key' => 'numeroPolice', 'label' => 'Police', 'type' => 'text', 'required' => true],
+                        ['key' => 'avenant', 'label' => 'Avenant', 'type' => 'text', 'required' => false],
+                        ['key' => 'numeroAssure', 'label' => 'N° assuré', 'type' => 'text', 'required' => true],
+                        ['key' => 'souscripteur', 'label' => 'Souscripteur', 'type' => 'text', 'required' => true],
+                        ['key' => 'assureNomPrenom', 'label' => 'Nom et prénom', 'type' => 'text', 'required' => true, 'source' => 'patient.fullName'],
+                        ['key' => 'coverageRate', 'label' => 'Taux de couverture', 'type' => 'number', 'required' => true],
+                    ],
+                ],
+            ],
+            [
+                'code' => self::CODE_SAHAM,
+                'nom' => 'SAHAM',
+                'logoPath' => '/assurances/saham-logo.png',
+                'website' => null,
+                'email' => null,
+                'formSchema' => [
+                    'fields' => [
+                        ['key' => 'assureNomPrenoms', 'label' => 'Assuré - Nom et prénoms', 'type' => 'text', 'required' => true],
+                        ['key' => 'assureNumero', 'label' => 'Assuré - N°', 'type' => 'text', 'required' => true],
+                        ['key' => 'beneficiaireNomPrenoms', 'label' => 'Bénéficiaire - Nom et prénoms', 'type' => 'text', 'required' => true, 'source' => 'patient.fullName'],
+                        ['key' => 'beneficiaireMatricule', 'label' => 'Bénéficiaire - Matricule', 'type' => 'text', 'required' => true],
+                        ['key' => 'coverageRate', 'label' => 'Taux de couverture', 'type' => 'number', 'required' => true],
+                    ],
+                ],
+            ],
+            [
+                'code' => self::CODE_MSH,
+                'nom' => 'MSH',
+                'logoPath' => '/assurances/msh-logo.png',
+                'website' => 'https://www.msh-intl.com',
+                'email' => 'providers.africa@msh-intl.com',
+                'formSchema' => [
+                    'fields' => [
+                        ['key' => 'identifiant', 'label' => 'Identifiant', 'type' => 'text', 'required' => true],
+                        ['key' => 'nomPrenoms', 'label' => 'Nom et prénoms', 'type' => 'text', 'required' => true, 'source' => 'patient.fullName'],
+                        ['key' => 'coverageRate', 'label' => 'Taux de couverture', 'type' => 'number', 'required' => true],
+                    ],
+                ],
+            ],
         ];
     }
 
@@ -78,16 +147,19 @@ class IntegratedInsuranceCatalog
             }
 
             $assurance = $assuranceRepository->findOneByCode($code) ?? new Assurance();
+            $isNew = $assurance->getId() === null;
+
             $assurance
                 ->setCode($code)
-                ->setNom((string) ($definition['nom'] ?? $code))
                 ->setLogoPath(isset($definition['logoPath']) ? (string) $definition['logoPath'] : null)
-                ->setWebsite(isset($definition['website']) ? (string) $definition['website'] : null)
-                ->setEmail(isset($definition['email']) ? (string) $definition['email'] : null)
                 ->setFormSchema(is_array($definition['formSchema'] ?? null) ? $definition['formSchema'] : []);
 
-            if ($assurance->getId() === null) {
-                $assurance->setActif(false);
+            if ($isNew) {
+                $assurance
+                    ->setNom((string) ($definition['nom'] ?? $code))
+                    ->setWebsite(isset($definition['website']) ? (string) $definition['website'] : null)
+                    ->setEmail(isset($definition['email']) ? (string) $definition['email'] : null)
+                    ->setActif(false);
             }
 
             $em->persist($assurance);

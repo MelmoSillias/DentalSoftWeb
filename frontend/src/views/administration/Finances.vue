@@ -120,22 +120,30 @@
                                 <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
                                     <div>
                                         <h2 class="text-lg font-semibold text-surface-900 dark:text-surface-100 md:text-xl">Historique des transactions</h2>
-                                        <p class="text-sm text-surface-500 dark:text-surface-400">Filtre par période, recherche libre et filtres détaillés en pied de tableau.</p>
+                                        <p class="text-sm text-surface-500 dark:text-surface-400">Filtre par période, type, recherche libre et statut en pied de tableau.</p>
                                     </div>
 
-                                    <div class="grid w-full gap-3 md:grid-cols-2 xl:w-auto xl:grid-cols-3">
-                                        <DatePicker
+                                    <div class="grid w-full gap-3 md:grid-cols-2 xl:w-auto xl:grid-cols-[minmax(16rem,1fr)_auto_minmax(18rem,1fr)_auto]">
+                                        <PanelDatePicker
                                             v-model="transactionRange"
-                                            selectionMode="range"
                                             dateFormat="dd/mm/yy"
                                             showIcon
-                                            class="w-full min-w-0 xl:w-64"
+                                            class="w-full min-w-0"
                                             inputClass="w-full" />
+                                        <SelectButton
+                                            v-model="transactionTypeFilter"
+                                            :options="transactionTypeOptions"
+                                            optionLabel="label"
+                                            optionValue="value"
+                                            class="w-full min-w-0" />
                                         <InputText
                                             v-model="transactionSearch"
                                             placeholder="Rechercher une transaction"
-                                            class="w-full min-w-0 xl:w-72" />
-                                        <Button icon="pi pi-refresh" severity="secondary" outlined @click="loadTransactions" />
+                                            class="w-full min-w-0" />
+                                        <div class="flex gap-2">
+                                            <Button icon="pi pi-print" severity="secondary" outlined @click="printTransactions" />
+                                            <Button icon="pi pi-refresh" severity="secondary" outlined @click="loadTransactions" />
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -170,15 +178,6 @@
                                             <Tag :value="data.typeLabel" :severity="data.typeSeverity" />
                                             <small class="text-surface-500 dark:text-surface-400">{{ data.motif || 'Sans motif' }}</small>
                                         </div>
-                                    </template>
-                                    <template #footer>
-                                        <Select
-                                            v-model="transactionTypeFilter"
-                                            :options="transactionTypeOptions"
-                                            optionLabel="label"
-                                            optionValue="value"
-                                            placeholder="Tous les types"
-                                            class="w-full min-w-0" />
                                     </template>
                                 </Column>
                                 <Column field="amountValue" header="Montant" sortable>
@@ -333,19 +332,31 @@
                                     <Tag :value="data.statusLabel" :severity="data.actif ? 'success' : 'secondary'" />
                                 </template>
                             </Column>
-                            <Column field="notes" header="Notes">
+                            <Column header="Actions" style="width: 11rem">
                                 <template #body="{ data }">
-                                    <span class="text-sm text-surface-600 dark:text-surface-300">{{ data.notes || '-' }}</span>
-                                </template>
-                            </Column>
-                            <Column header="Actions" style="width: 140px">
-                                <template #body="{ data }">
-                                    <Button
-                                        :icon="data.actif ? 'pi pi-power-off' : 'pi pi-check'"
-                                        text
-                                        :severity="data.actif ? 'warning' : 'success'"
-                                        :title="data.actif ? 'Désactiver' : 'Activer'"
-                                        @click="handleToggleAssurance(data)" />
+                                    <div class="flex items-center gap-1">
+                                        <Button
+                                            icon="pi pi-eye"
+                                            text
+                                            rounded
+                                            severity="secondary"
+                                            title="Voir les champs"
+                                            @click="openAssuranceFieldsDialog(data)" />
+                                        <Button
+                                            icon="pi pi-pencil"
+                                            text
+                                            rounded
+                                            severity="info"
+                                            title="Modifier"
+                                            @click="openAssuranceEditDialog(data)" />
+                                        <Button
+                                            :icon="data.actif ? 'pi pi-power-off' : 'pi pi-check'"
+                                            text
+                                            rounded
+                                            :severity="data.actif ? 'warning' : 'success'"
+                                            :title="data.actif ? 'Désactiver' : 'Activer'"
+                                            @click="handleToggleAssurance(data)" />
+                                    </div>
                                 </template>
                             </Column>
                         </DataTable>
@@ -484,6 +495,55 @@
             tourTarget="admin-finances.dialog.mode"
             @submit="handleModeSubmit" />
 
+        <Dialog
+            v-model:visible="assuranceFieldsDialogVisible"
+            modal
+            :header="assuranceFieldsDialogTitle"
+            :style="{ width: '560px' }">
+            <div v-if="assuranceFieldsList.length" class="space-y-2">
+                <div
+                    v-for="field in assuranceFieldsList"
+                    :key="field.key"
+                    class="flex items-start justify-between gap-3 rounded-xl border border-surface-200/70 px-3 py-2.5 dark:border-surface-700/60">
+                    <div class="min-w-0">
+                        <p class="font-medium text-surface-900 dark:text-surface-100">{{ field.label }}</p>
+                        <p class="text-xs text-surface-500 dark:text-surface-400">{{ field.key }} · {{ field.type }}</p>
+                    </div>
+                    <Tag :value="field.required ? 'Obligatoire' : 'Optionnel'" :severity="field.required ? 'warn' : 'secondary'" />
+                </div>
+            </div>
+            <p v-else class="text-sm text-surface-500 dark:text-surface-400">Aucun champ configuré pour cette assurance.</p>
+        </Dialog>
+
+        <Dialog
+            v-model:visible="assuranceEditDialogVisible"
+            modal
+            header="Modifier l'assurance"
+            :style="{ width: '480px' }">
+            <div class="space-y-4">
+                <div class="flex flex-col gap-2">
+                    <label class="text-sm font-medium text-surface-700 dark:text-surface-200">Code</label>
+                    <InputText :model-value="assuranceEditForm.code" disabled class="w-full" />
+                </div>
+                <div class="flex flex-col gap-2">
+                    <label class="text-sm font-medium text-surface-700 dark:text-surface-200">Nom</label>
+                    <InputText v-model="assuranceEditForm.nom" class="w-full" />
+                </div>
+                <div class="flex flex-col gap-2">
+                    <label class="text-sm font-medium text-surface-700 dark:text-surface-200">Site web</label>
+                    <InputText v-model="assuranceEditForm.website" class="w-full" placeholder="https://..." />
+                </div>
+                <div class="flex flex-col gap-2">
+                    <label class="text-sm font-medium text-surface-700 dark:text-surface-200">Email</label>
+                    <InputText v-model="assuranceEditForm.email" class="w-full" placeholder="contact@..." />
+                </div>
+            </div>
+            <template #footer>
+                <Button label="Annuler" text @click="assuranceEditDialogVisible = false" />
+                <Button label="Enregistrer" icon="pi pi-check" :loading="loading.action" @click="handleUpdateAssurance" />
+            </template>
+        </Dialog>
+
     </section>
 </template>
 
@@ -501,9 +561,12 @@ import Dialog from 'primevue/dialog';
 import InputText from 'primevue/inputtext';
 import Select from 'primevue/select';
 import Tag from 'primevue/tag';
-import Toast from 'primevue/toast';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
+import PanelDatePicker from '@/components/common/PanelDatePicker.vue';
+import PrintDataTablePage from '@/components/print/PrintDataTablePage.vue';
+import { usePrinter } from '@/composables/usePrinter';
+import SelectButton from 'primevue/selectbutton';
 import FinanceCrossTable from '@/components/finances/FinanceCrossTable.vue';
 import FixedChargesTab from '@/components/finances/FixedChargesTab.vue';
 import PaymentModeFormDialog from '@/components/administration/finances/PaymentModeFormDialog.vue';
@@ -537,6 +600,7 @@ const {
     fetchPaymentMethods,
     fetchAssurances,
     toggleAssurance,
+    updateAssurance,
     fetchTransactionsRange,
     createFixedCharge,
     createTransaction,
@@ -559,6 +623,15 @@ const transactionDialogVisible = ref(false);
 const draftTransaction = ref(null);
 const modeDialogVisible = ref(false);
 const validationDialogVisible = ref(false);
+const assuranceFieldsDialogVisible = ref(false);
+const assuranceEditDialogVisible = ref(false);
+const selectedAssuranceForFields = ref(null);
+const assuranceEditForm = ref({
+    code: '',
+    nom: '',
+    website: '',
+    email: ''
+});
 const editingMode = ref(null);
 const isGuidedTourStarting = ref(false);
 const transactionValidationDate = ref(new Date());
@@ -596,7 +669,13 @@ const waitForTourUi = (ms = 180) => new Promise((resolve) => {
     window.setTimeout(resolve, ms);
 });
 
-const hasOpenDialogs = computed(() => transactionDialogVisible.value || modeDialogVisible.value || validationDialogVisible.value);
+const hasOpenDialogs = computed(() => (
+    transactionDialogVisible.value
+    || modeDialogVisible.value
+    || validationDialogVisible.value
+    || assuranceFieldsDialogVisible.value
+    || assuranceEditDialogVisible.value
+));
 
 const transactionStatusOptions = [
     { label: 'Tous les statuts', value: 'all' },
@@ -606,7 +685,7 @@ const transactionStatusOptions = [
 ];
 
 const transactionTypeOptions = [
-    { label: 'Tous les types', value: 'all' },
+    { label: 'Tous', value: 'all' },
     { label: 'Revenus', value: 'revenue' },
     { label: 'Dépenses', value: 'expense' }
 ];
@@ -720,6 +799,35 @@ const filteredTransactionsView = computed(() => {
     });
 });
 
+const { printComponent } = usePrinter();
+
+const printTransactions = async () => {
+    const rows = filteredTransactionsView.value.map((row) => ({
+        dateLabel: row.dateLabel,
+        description: row.description || 'Sans description',
+        typeLabel: row.typeLabel,
+        motif: row.motif || 'Sans motif',
+        amountLabel: formatFcfa(row.amountValue),
+        modeLabel: row.modeLabel || '—',
+        statusLabel: row.statusLabel || '—'
+    }));
+
+    await printComponent(PrintDataTablePage, {
+        title: 'Historique des transactions',
+        subtitle: `${rows.length} transaction(s)`,
+        columns: [
+            { key: 'dateLabel', label: 'Date' },
+            { key: 'description', label: 'Description' },
+            { key: 'typeLabel', label: 'Type' },
+            { key: 'motif', label: 'Motif' },
+            { key: 'amountLabel', label: 'Montant', align: 'right' },
+            { key: 'modeLabel', label: 'Mode' },
+            { key: 'statusLabel', label: 'Statut' }
+        ],
+        rows
+    });
+};
+
 const paymentMethodsView = computed(() =>
     sortPaymentMethods(paymentMethods.value || []).map((mode) => {
         const definition = getPaymentMethodDefinition(mode);
@@ -753,11 +861,33 @@ const assurancesView = computed(() =>
         searchBlob: normalizeText([
             item?.nom,
             item?.code,
-            item?.notes,
+            item?.website,
+            item?.email,
             item?.actif ? 'actif' : 'inactif'
         ].join(' '))
     }))
 );
+
+const assuranceFieldsDialogTitle = computed(() => {
+    const name = selectedAssuranceForFields.value?.nom || selectedAssuranceForFields.value?.code || 'Assurance';
+    return `Champs — ${name}`;
+});
+
+const assuranceFieldsList = computed(() => {
+    const fields = selectedAssuranceForFields.value?.formSchema?.fields;
+    if (!Array.isArray(fields)) {
+        return [];
+    }
+
+    return fields
+        .filter((field) => field && typeof field === 'object')
+        .map((field) => ({
+            key: String(field.key || ''),
+            label: String(field.label || field.key || 'Champ'),
+            type: String(field.type || 'text'),
+            required: Boolean(field.required)
+        }));
+});
 
 const filteredAssurancesView = computed(() => {
     const searchQuery = normalizeText(assuranceSearch.value);
@@ -1234,6 +1364,49 @@ const handleToggleAssurance = (assurance) => {
     });
 };
 
+const openAssuranceFieldsDialog = (assurance) => {
+    selectedAssuranceForFields.value = assurance || null;
+    assuranceFieldsDialogVisible.value = true;
+};
+
+const openAssuranceEditDialog = (assurance) => {
+    assuranceEditForm.value = {
+        code: assurance?.code || '',
+        nom: assurance?.nom || '',
+        website: assurance?.website || '',
+        email: assurance?.email || ''
+    };
+    assuranceEditDialogVisible.value = true;
+};
+
+const handleUpdateAssurance = async () => {
+    const code = String(assuranceEditForm.value.code || '').trim();
+    const nom = String(assuranceEditForm.value.nom || '').trim();
+
+    if (!code) {
+        toast.add({ severity: 'warn', summary: 'Assurances', detail: 'Code assurance manquant.', life: 3000 });
+        return;
+    }
+
+    if (!nom) {
+        toast.add({ severity: 'warn', summary: 'Assurances', detail: 'Le nom est obligatoire.', life: 3000 });
+        return;
+    }
+
+    try {
+        await updateAssurance(code, {
+            nom,
+            website: String(assuranceEditForm.value.website || '').trim(),
+            email: String(assuranceEditForm.value.email || '').trim()
+        });
+        toast.add({ severity: 'success', summary: 'Assurances', detail: 'Assurance mise à jour.', life: 3000 });
+        assuranceEditDialogVisible.value = false;
+        await fetchAssurances();
+    } catch (error) {
+        toast.add({ severity: 'error', summary: 'Erreur', detail: error?.message || 'Mise à jour impossible.', life: 3500 });
+    }
+};
+
 const handleDeleteMode = ({ mode }) => {
     if (mode?.isLocked) {
         toast.add({ severity: 'warn', summary: 'Mode protégé', detail: 'Ce mode ne peut pas être supprimé.', life: 3000 });
@@ -1352,6 +1525,9 @@ const resetTourDialogs = () => {
     draftTransaction.value = null;
     modeDialogVisible.value = false;
     validationDialogVisible.value = false;
+    assuranceFieldsDialogVisible.value = false;
+    assuranceEditDialogVisible.value = false;
+    selectedAssuranceForFields.value = null;
     editingMode.value = null;
     transactionToValidate.value = null;
 };

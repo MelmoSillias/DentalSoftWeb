@@ -4,7 +4,7 @@ import Tag from 'primevue/tag';
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
 
-const props = defineProps({
+defineProps({
     claim: { type: Object, default: null },
     loading: { type: Boolean, default: false },
     actionLoading: { type: Boolean, default: false }
@@ -14,18 +14,19 @@ const emit = defineEmits([
     'back',
     'collect-patient-share',
     'print-receipt',
-    'print-claim',
-    'validate-claim',
-    'reject-claim'
+    'print-claim'
 ]);
 
 const formatFcfa = (value) => `${Number(value || 0).toLocaleString('fr-FR')} FCFA`;
 
 const statusTag = (status) => {
-    if (status === 'validated') return { label: 'Validée', severity: 'success' };
-    if (status === 'rejected') return { label: 'Rejetée', severity: 'danger' };
-    if (status === 'recouvre') return { label: 'Recouvrée', severity: 'info' };
-    return { label: 'En attente', severity: 'warning' };
+    const map = {
+        open: { label: 'Consultation ouverte', severity: 'warning' },
+        ready: { label: 'Prête', severity: 'success' },
+        in_lot: { label: 'Dans un lot', severity: 'info' },
+        rembourse: { label: 'Remboursée', severity: 'secondary' }
+    };
+    return map[status] || { label: status || '—', severity: 'secondary' };
 };
 </script>
 
@@ -43,7 +44,15 @@ const statusTag = (status) => {
     <div v-if="loading" class="py-12 text-center"><i class="pi pi-spin pi-spinner text-2xl"></i></div>
 
     <template v-else-if="claim">
-      <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div class="info-card">
+          <span class="info-label">Assurance</span>
+          <span class="info-value">{{ claim.assurance?.nom || '—' }}</span>
+        </div>
+        <div class="info-card">
+          <span class="info-label">Taux de prise en charge</span>
+          <span class="info-value">{{ claim.tauxCouverture ?? '—' }}%</span>
+        </div>
         <div class="info-card">
           <span class="info-label">Montant total</span>
           <span class="info-value">{{ formatFcfa(claim.montantTotal) }}</span>
@@ -57,8 +66,8 @@ const statusTag = (status) => {
           <span class="info-value">{{ formatFcfa(claim.montantPatient) }}</span>
         </div>
         <div class="info-card">
-          <span class="info-label">Taux couverture</span>
-          <span class="info-value">{{ claim.tauxCouverture ?? '—' }}%</span>
+          <span class="info-label">Reste patient</span>
+          <span class="info-value">{{ formatFcfa(claim.restePatient) }}</span>
         </div>
       </div>
 
@@ -70,27 +79,9 @@ const statusTag = (status) => {
 
       <div class="flex flex-wrap gap-2">
         <Button
-          v-if="claim.availableActions?.canValidate"
-          icon="pi pi-check"
-          label="Valider"
-          size="small"
-          :loading="actionLoading"
-          @click="emit('validate-claim', claim)"
-        />
-        <Button
-          v-if="claim.availableActions?.canReject"
-          icon="pi pi-times"
-          label="Rejeter"
-          size="small"
-          severity="danger"
-          outlined
-          :loading="actionLoading"
-          @click="emit('reject-claim', claim)"
-        />
-        <Button
           v-if="claim.availableActions?.canCollectPatient"
           icon="pi pi-wallet"
-          label="Encaisser part patient"
+          label="Payer"
           size="small"
           severity="success"
           :loading="actionLoading"
@@ -102,7 +93,12 @@ const statusTag = (status) => {
       <div class="section-card p-4 rounded-xl">
         <h3 class="page-title font-semibold mb-3">Lignes de facturation</h3>
         <DataTable :value="claim.lignes || []" size="small">
-          <Column field="designation" header="Désignation" />
+          <Column header="Désignation">
+            <template #body="{ data }">
+              <span>{{ data.designation }}</span>
+              <Tag v-if="data.virtual" value="Consultation" severity="secondary" class="ml-2" />
+            </template>
+          </Column>
           <Column field="quantite" header="Qté" />
           <Column header="Prix">
             <template #body="{ data }">{{ formatFcfa(data.montant || data.prix) }}</template>
@@ -114,7 +110,7 @@ const statusTag = (status) => {
       </div>
 
       <div class="section-card p-4 rounded-xl">
-        <h3 class="page-title font-semibold mb-3">Paiements liés (part patient)</h3>
+        <h3 class="page-title font-semibold mb-3">Paiements patient</h3>
         <div v-if="!(claim.paiements || []).length" class="text-sm muted-text italic">Aucun paiement enregistré.</div>
         <DataTable v-else :value="claim.paiements" size="small">
           <Column header="Date">

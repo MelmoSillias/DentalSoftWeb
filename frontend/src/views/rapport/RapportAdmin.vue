@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue';
 import Button from 'primevue/button';
-import DatePicker from 'primevue/datepicker';
+import PanelDatePicker from '@/components/common/PanelDatePicker.vue';
 import AdminActsStatsSection from '@/components/rapport/admin/AdminActsStatsSection.vue';
 import FinanceCrossTable from '@/components/finances/FinanceCrossTable.vue';
 import AdminGlobalStatsSection from '@/components/rapport/admin/AdminGlobalStatsSection.vue';
@@ -76,13 +76,12 @@ onMounted(() => {
                 <p class="text-sm text-surface-500 dark:text-surface-400">Suivi global de l'activité du cabinet</p>
             </div>
             <div class="flex flex-wrap items-center gap-3">
-                <DatePicker
+                <PanelDatePicker
                     v-model="range"
-                    selectionMode="range"
                     showIcon
                     dateFormat="dd/mm/yy"
                     class="w-72"
-                    :placeholder="'Choisir période'"
+                    placeholder="Choisir période"
                 />
                 <Button label="Rafraîchir" icon="pi pi-refresh" outlined @click="refresh(false)" />
             </div>

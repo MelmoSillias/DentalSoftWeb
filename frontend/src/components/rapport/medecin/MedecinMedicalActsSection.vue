@@ -54,6 +54,10 @@ const chartOptions = computed(() => {
         }
     };
 });
+
+const totalApport = computed(() => props.acts.reduce((sum, act) => sum + Number(act.montant || 0), 0));
+const totalPayeSoins = computed(() => props.acts.reduce((sum, act) => sum + Number(act.montantPaye || 0), 0));
+const realEncashed = computed(() => totalPayeSoins.value + Number(props.reliquatTotal || 0));
 </script>
 
 <template>
@@ -96,6 +100,20 @@ const chartOptions = computed(() => {
                             </li>
                         </ul>
                         <p v-else class="text-sm text-surface-500">Aucun soin posé durant cette période.</p>
+                        <div v-if="acts.length" class="mt-3 grid gap-2 rounded-xl border border-surface-200/70 bg-surface-50/70 p-3 text-xs dark:border-surface-700/70 dark:bg-surface-800/50 sm:grid-cols-3">
+                            <div class="flex items-center justify-between gap-2">
+                                <span class="text-surface-500">Total apport</span>
+                                <strong>{{ formatFcfa(totalApport) }}</strong>
+                            </div>
+                            <div class="flex items-center justify-between gap-2">
+                                <span class="text-surface-500">Total payé</span>
+                                <strong class="text-emerald-600">{{ formatFcfa(totalPayeSoins) }}</strong>
+                            </div>
+                            <div class="flex items-center justify-between gap-2">
+                                <span class="text-surface-500">Réellement encaissé</span>
+                                <strong class="text-sky-700">{{ formatFcfa(realEncashed) }}</strong>
+                            </div>
+                        </div>
                     </div>
 
                     <div>

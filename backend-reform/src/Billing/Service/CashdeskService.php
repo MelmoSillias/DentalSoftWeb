@@ -38,9 +38,9 @@ class CashdeskService
         $factures = $this->factureRepo->createQueryBuilder('f')
             ->leftJoin('f.consultation', 'c')->addSelect('c')
             ->leftJoin('c.patient', 'p')->addSelect('p')
-            ->leftJoin('c.factureAssurance', 'fa')
-            ->andWhere('fa.id IS NULL')
+            ->leftJoin('c.factureAssurance', 'fa')->addSelect('fa')
             ->andWhere('f.dateFacture BETWEEN :start AND :end')
+            ->andWhere('c.statut = 1')
             ->setParameter('start', $start)
             ->setParameter('end', $end)
             ->orderBy('f.dateFacture', 'DESC')
@@ -72,9 +72,9 @@ class CashdeskService
         $factures = $this->factureRepo->createQueryBuilder('f')
             ->leftJoin('f.consultation', 'c')->addSelect('c')
             ->leftJoin('c.patient', 'p')->addSelect('p')
-            ->leftJoin('c.factureAssurance', 'fa')
-            ->andWhere('fa.id IS NULL')
+            ->leftJoin('c.factureAssurance', 'fa')->addSelect('fa')
             ->andWhere('p.id = :patientId')
+            ->andWhere('c.statut = 1')
             ->setParameter('patientId', $patientId)
             ->orderBy('f.dateFacture', 'ASC')
             ->addOrderBy('f.id', 'ASC')
@@ -240,9 +240,7 @@ class CashdeskService
             return ['error' => 'Consultation introuvable'];
         }
 
-        if ($consultation->getFactureAssurance() !== null) {
-            return ['error' => 'Cette facture assurance doit etre reglee depuis le workflow assurances'];
-        }
+        $factureAssurance = $consultation->getFactureAssurance();
 
         $modeId = (int) ($payload['modeId'] ?? 0);
         $montant = (float) ($payload['montant'] ?? 0);
@@ -258,7 +256,7 @@ class CashdeskService
             }
         }
 
-        $updatedMontants = $facture->computeMontantsFromConsultation();
+        $updatedMontants = $this->resolveFactureMontants($facture);
         $remaining = max(0.0, (float) ($updatedMontants['restePatient'] ?? 0.0));
 
         if ($remaining <= 0.0) {
@@ -277,21 +275,32 @@ class CashdeskService
         $facture->addPaiement($paiement);
         $paiement->setMode($mode);
         $paiement->setMontant($montant);
-        $paiement->setDate($timestamp); 
+        $paiement->setDate($timestamp);
+        $paiement->setConsultation($consultation);
 
         $transaction = new Transaction();
         $transaction->setType('Revenue');
         $transaction->setMontant($paiement->getMontant());
         $transaction->setDateTransaction($timestamp);
-        $transaction->setDescription('Paiement Facture #' . $facture->getId() . ' | '. $consultation->getFicheMedicale()->getPatient()->getFullName());
-        $transaction->setModeDePaiement($mode); 
+        $patientName = $consultation->getFicheMedicale()?->getPatient()?->getFullName() ?? '';
+        $transaction->setDescription(
+            $factureAssurance !== null
+                ? sprintf('Encaissement patient | Facture assurance #%d | %s', $factureAssurance->getId(), $patientName)
+                : 'Paiement Facture #' . $facture->getId() . ' | ' . $patientName
+        );
+        $transaction->setModeDePaiement($mode);
+        $transaction->setConsultation($consultation);
+        if ($factureAssurance !== null) {
+            $transaction->setRolePaiement('patient_insurance');
+            $transaction->setMotif('Encaissement patient assurance');
+        }
         $transaction->markValidated(\DateTimeImmutable::createFromMutable($timestamp));
         $transaction->setPaiement($paiement);
 
         $this->em->persist($transaction);
         $this->em->persist($paiement);
 
-        $updatedMontants = $facture->computeMontantsFromConsultation();
+        $updatedMontants = $this->resolveFactureMontants($facture);
         $remainingAfter = max(0.0, (float) ($updatedMontants['restePatient'] ?? 0.0));
 
         $facture->setIsReglee($remainingAfter <= 0.0);
@@ -335,7 +344,7 @@ class CashdeskService
 
         $txQb->orWhere('t.consultation = :consultation AND t.rolePaiement = :roleInsurance')
             ->setParameter('consultation', $consultation)
-            ->setParameter('roleInsurance', 'insurance');
+            ->setParameter('roleInsurance', 'patient_insurance');
 
         $transactions = $txQb->getQuery()->getResult();
 
@@ -372,32 +381,51 @@ class CashdeskService
         $factureAssurance = $consultation?->getFactureAssurance();
         $montants = $this->resolveFactureMontants($facture);
         $reste = $forceFacture ? (float) $montants['restePatient'] : 0.0;
-        $isRegle = ((float) ($montants['montantTotal'] ?? 0.0)) > 0.0
+        $displayMontant = $factureAssurance !== null
+            ? (float) ($montants['montantPatient'] ?? 0.0)
+            : (float) ($montants['montantTotal'] ?? 0.0);
+        $isRegle = $displayMontant > 0.0
             ? $reste <= 0.0
             : $facture->isReglee();
+
+        $contenus = [];
+        if ($includeDetails) {
+            if ($factureAssurance !== null) {
+                $contenus = $factureAssurance->buildDisplayLignes();
+            } else {
+                $contenus = $facture->buildLignesFromConsultation();
+            }
+        }
 
         return [
             'id' => $facture->getId(),
             'date' => $facture->getDateFacture()?->format('Y-m-d') ?? (new \DateTime())->format('Y-m-d'),
             'consultation' => $consultation?->getId(),
-            'montant' => (float) $montants['montantTotal'],
+            'montant' => $displayMontant,
+            'montantTotal' => (float) ($montants['montantTotal'] ?? 0.0),
+            'montantPatient' => (float) ($montants['montantPatient'] ?? $displayMontant),
+            'montantAssureur' => (float) ($montants['montantAssureur'] ?? 0.0),
             'reste' => $reste,
             'statut' => $isRegle ? 1 : 0,
             'isRegle' => $isRegle,
-            'hasPayments' => $facture->getPaiements()->count() > 0,
+            'hasPayments' => $facture->getPaiements()->count() > 0
+                || ($factureAssurance !== null && (float) ($montants['patientPaid'] ?? 0.0) > 0),
             'patient' => [
                 'nom' => $patient?->getNom() ?? '',
                 'prenom' => $patient?->getPrenom() ?? '',
                 'telephone' => $patient?->getTelephone() ?? '',
             ],
             'telephone' => $patient?->getTelephone(),
-            'contenus' => $includeDetails ? $facture->buildLignesFromConsultation() : [],
+            'contenus' => $contenus,
             'paiements' => $includeDetails ? $this->buildFacturePaymentDetails($facture) : [],
             'type' => 'Facture',
             'insurance' => $includeDetails
                 ? $this->buildFactureInsuranceMetadata($facture, $montants)
                 : ($factureAssurance !== null
-                    ? ['hasInsurance' => true, 'insuranceStatus' => $factureAssurance->getInsuranceStatus()]
+                    ? [
+                        'hasInsurance' => true,
+                        'insuranceStatus' => $consultation?->getStatut() === 1 ? 'ready' : 'open',
+                    ]
                     : ['hasInsurance' => false, 'insuranceStatus' => 'none']),
         ];
     }
@@ -547,41 +575,40 @@ class CashdeskService
             $insuranceAmount = (float) ($totals['montantAssureur'] ?? 0.0);
             $insuranceRate = $factureAssurance->getCoverageRate();
 
-            $insurancePaidAmount = $factureAssurance->isRecouvre()
-                ? $insuranceAmount
-                : (float) $this->transactionRepo->createQueryBuilder('t')
-                    ->select('COALESCE(SUM(t.montant), 0)')
-                    ->where('t.consultation = :consultation')
-                    ->andWhere('t.rolePaiement IN (:roles)')
-                    ->andWhere('t.validationStatus = :status')
-                    ->setParameter('consultation', $consultation)
-                    ->setParameter('roles', ['insurance', 'insurance_lot'])
-                    ->setParameter('status', 'validated')
-                    ->getQuery()
-                    ->getSingleScalarResult();
-
-            $insurancePendingAmount = max(0.0, $insuranceAmount - $insurancePaidAmount);
             $lot = $factureAssurance->getLotFactureAssurance();
+            $lotStatut = $lot?->getStatut();
+            if ($lotStatut === 'recouvre') {
+                $lotStatut = 'rembourse';
+            }
+            $insurancePaidAmount = $factureAssurance->isRecouvre() ? $insuranceAmount : 0.0;
+            $insurancePendingAmount = max(0.0, $insuranceAmount - $insurancePaidAmount);
+            $derivedStatus = ($consultation?->getStatut() === 1)
+                ? ($factureAssurance->isRecouvre() ? 'rembourse' : ($lot ? 'in_lot' : 'ready'))
+                : 'open';
 
             return [
                 'hasInsurance' => true,
-                'insuranceStatus' => $factureAssurance->getInsuranceStatus(),
+                'insuranceStatus' => $derivedStatus,
                 'assuranceId' => $factureAssurance->getAssurance()?->getId(),
                 'assuranceCode' => $factureAssurance->getAssurance()?->getCode(),
+                'assuranceNom' => $factureAssurance->getAssurance()?->getNom(),
                 'insuranceModeLabel' => $factureAssurance->getAssurance()?->getNom(),
                 'insuranceRate' => $insuranceRate,
+                'tauxCouverture' => $insuranceRate,
                 'insuranceAmount' => $insuranceAmount,
+                'montantTotal' => (float) ($totals['montantTotal'] ?? 0.0),
                 'montantPatient' => (float) ($totals['montantPatient'] ?? 0.0),
                 'montantAssurance' => $insuranceAmount,
+                'consultationAmount' => (float) ($totals['consultationAmount'] ?? 0.0),
                 'insurancePaidAmount' => $insurancePaidAmount,
                 'insurancePendingAmount' => $insurancePendingAmount,
-                'insuranceTransactionId' => null,
-                'insurancePaymentId' => null,
                 'lotId' => $lot?->getId(),
-                'lotStatut' => $lot?->getStatut(),
+                'lotStatut' => $lotStatut,
                 'lotDescription' => $lot?->getDescription(),
                 'patientPaidAmount' => $patientPaidAmount,
                 'patientRemainingAmount' => max(0.0, (float) ($montants['restePatient'] ?? 0.0)),
+                'restePatient' => max(0.0, (float) ($montants['restePatient'] ?? 0.0)),
+                'canModify' => $this->canModifyInsuranceFacture($factureAssurance),
             ];
         }
 
@@ -713,13 +740,14 @@ class CashdeskService
         $lot = $facture->getLotFactureAssurance();
         $lines = [];
 
-        foreach ($facture->buildLignes() as $line) {
+        foreach ($facture->buildDisplayLignes() as $line) {
             $lines[] = [
                 'designation' => $line['designation'] ?? 'Soin',
                 'description' => $line['description'] ?? '',
                 'quantite' => $line['quantite'] ?? 1,
                 'prix' => $line['prix'] ?? 0,
                 'total' => $line['total'] ?? 0,
+                'virtual' => !empty($line['virtual']),
             ];
         }
 
@@ -831,6 +859,35 @@ class CashdeskService
 
         return $paiement->getConsultation()?->getPatient()
             ?? $paiement->getFacture()?->getConsultation()?->getPatient();
+    }
+
+    private function canModifyInsuranceFacture(FactureAssurance $factureAssurance): bool
+    {
+        $lot = $factureAssurance->getLotFactureAssurance();
+        if ($lot !== null) {
+            $statut = $lot->getStatut() === 'recouvre' ? 'rembourse' : $lot->getStatut();
+            if (in_array($statut, ['envoye', 'confirme', 'partiellement_rembourse', 'rembourse'], true)) {
+                return false;
+            }
+        }
+
+        $consultation = $factureAssurance->getConsultation();
+        if (!$consultation) {
+            return true;
+        }
+
+        $paid = (float) $this->transactionRepo->createQueryBuilder('t')
+            ->select('COALESCE(SUM(t.montant), 0)')
+            ->where('t.consultation = :consultation')
+            ->andWhere('t.rolePaiement = :role')
+            ->andWhere('t.validationStatus = :status')
+            ->setParameter('consultation', $consultation)
+            ->setParameter('role', 'patient_insurance')
+            ->setParameter('status', 'validated')
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        return $paid <= 0;
     }
 }
 

@@ -81,118 +81,99 @@ class ConsultationService
             }
 
             $result = $this->em->wrapInTransaction(function () use ($data, $triggeredBy): array {
-                if (($data['payant'] ?? 0) == 1) {
-                    $defaultConsultationAmount = $this->globalSettingsService->getConsultationPrice();
+                $patient = $this->patientRepo->find($data['patient_id'] ?? null);
+                if (!$patient) {
+                    return [
+                        'error' => 'Patient introuvable.',
+                        'status' => 404,
+                    ];
+                }
+
+                $isPayant = ((int) ($data['payant'] ?? 0)) === 1;
+                $insuranceEnabled = $this->patientHasActiveInsurance($patient);
+                $profile = $patient->getAssuranceProfile();
+                $assurance = $profile?->getAssurance();
+                $insuranceRate = $insuranceEnabled
+                    ? max(0, min(100, (float) ($profile?->getCoverageRate() ?? 0)))
+                    : 0.0;
+
+                $defaultConsultationAmount = $this->globalSettingsService->getConsultationPrice();
+                $consultationAmount = 0.0;
+                if ($isPayant) {
                     $consultationAmount = (float) ($data['consultation_amount'] ?? $defaultConsultationAmount);
                     if ($consultationAmount <= 0) {
                         $consultationAmount = $defaultConsultationAmount;
                     }
+                }
 
-                    $patient = $this->patientRepo->find($data['patient_id'] ?? null);
-                    if (!$patient) {
-                        return [
-                            'error' => 'Patient introuvable.',
-                            'status' => 404,
-                        ];
-                    }
+                $insuranceAmount = $insuranceEnabled && $isPayant
+                    ? ($consultationAmount * $insuranceRate) / 100
+                    : 0.0;
+                $patientAmount = $isPayant ? max(0.0, $consultationAmount - $insuranceAmount) : 0.0;
 
-                    $profile = $patient->getAssuranceProfile();
-                    $assurance = $profile?->getAssurance();
-                    $insuranceEnabled = $profile !== null && $assurance !== null && $assurance->isActif();
-                    $insuranceRate = $insuranceEnabled
-                        ? max(0, min(100, (float) ($profile?->getCoverageRate() ?? 0)))
-                        : 0.0;
-
-                    $insuranceAmount = $insuranceEnabled ? ($consultationAmount * $insuranceRate) / 100 : 0.0;
-                    $patientAmount = max(0.0, $consultationAmount - $insuranceAmount);
-
-                    if ($patientAmount > 0 && !$insuranceEnabled && !isset($data['mode_paiement_id'])) {
-                        return [
-                            'error' => 'Le mode de paiement est requis pour une consultation payante.',
-                            'status' => 400,
-                        ];
-                    }
-
-                    $consultation = $this->consultationRepo->NewConsultation($data, $this->patientRepo, $this->employeRepo, false);
-                    $createdPaiementId = null;
-                    $patientPayment = null;
-                    $timestamp = new DateTimeImmutable();
-
-                    if ($patientAmount > 0 && !$insuranceEnabled) {
-                        $modePaiement = $this->em->getRepository(ModeDePaiement::class)->find($data['mode_paiement_id']);
-
-                        if (!$modePaiement) {
-                            return [
-                                'error' => 'Mode de paiement invalide.',
-                                'status' => 400,
-                            ];
-                        }
-
-                        $paiement = new Paiement();
-                        $paiement->setFacture(null);
-                        $paiement->setMode($modePaiement);
-                        $paiement->setMontant($patientAmount);
-                        $paiement->setDate($timestamp);
-                        $paiement->setConsultation($consultation);
-                        $this->em->persist($paiement);
-                        $patientPayment = $paiement;
-
-                        $transaction = new Transaction();
-                        $transaction->setType('Revenue');
-                        $transaction->setMontant((string) $patientAmount);
-                        $transaction->setDateTransaction($timestamp);
-                        $transaction->setDescription('Ticket de consultation #' . $consultation->getId() . ' | Part patient');
-                        $transaction->setModeDePaiement($modePaiement);
-                        $transaction->setConsultation($consultation);
-                        $transaction->markValidated($timestamp);
-                        $transaction->setPaiement($paiement);
-                        $this->em->persist($transaction);
-                    }
-
-                    if ($insuranceEnabled && $assurance instanceof Assurance) {
-                        $factureAssurance = new FactureAssurance();
-                        $factureAssurance
-                            ->setConsultation($consultation)
-                            ->setPatient($patient)
-                            ->setAssurance($assurance)
-                            ->setCoverageRate($insuranceRate > 0 ? $insuranceRate : null)
-                            ->setDateFacture(new DateTime())
-                            ->setConsultationAmount($consultationAmount)
-                            ->setIsConsultationPayante(true)
-                            ->setInsuranceStatus('pending')
-                            ->setAssuranceSnapshot([
-                                'code' => $assurance->getCode(),
-                                'nom' => $assurance->getNom(),
-                                'logoPath' => $assurance->getLogoPath(),
-                                'website' => $assurance->getWebsite(),
-                                'email' => $assurance->getEmail(),
-                                'formData' => $profile?->getFormData() ?? [],
-                            ]);
-
-                        $consultation->setFactureAssurance($factureAssurance);
-                        $this->em->persist($factureAssurance);
-                    }
-
-                    $this->em->flush();
-
-                    if ($patientPayment instanceof Paiement && $patientPayment->getId() !== null) {
-                        $createdPaiementId = $patientPayment->getId();
-                    } elseif ($consultation->getPaiement()) {
-                        $createdPaiementId = $consultation->getPaiement()->getId();
-                    }
-
-                    $this->consultationNotificationService->notifyCreation($consultation, $triggeredBy);
-
+                if ($patientAmount > 0 && !$insuranceEnabled && !isset($data['mode_paiement_id'])) {
                     return [
-                        'success' => true,
-                        'status' => 200,
-                        'consultation_id' => $consultation->getId(),
-                        'paiement_id' => $createdPaiementId,
+                        'error' => 'Le mode de paiement est requis pour une consultation payante.',
+                        'status' => 400,
                     ];
                 }
 
                 $consultation = $this->consultationRepo->NewConsultation($data, $this->patientRepo, $this->employeRepo, false);
+                $createdPaiementId = null;
+                $patientPayment = null;
+                $timestamp = new DateTimeImmutable();
+
+                if ($patientAmount > 0 && !$insuranceEnabled) {
+                    $modePaiement = $this->em->getRepository(ModeDePaiement::class)->find($data['mode_paiement_id']);
+
+                    if (!$modePaiement) {
+                        return [
+                            'error' => 'Mode de paiement invalide.',
+                            'status' => 400,
+                        ];
+                    }
+
+                    $paiement = new Paiement();
+                    $paiement->setFacture(null);
+                    $paiement->setMode($modePaiement);
+                    $paiement->setMontant($patientAmount);
+                    $paiement->setDate($timestamp);
+                    $paiement->setConsultation($consultation);
+                    $this->em->persist($paiement);
+                    $patientPayment = $paiement;
+
+                    $transaction = new Transaction();
+                    $transaction->setType('Revenue');
+                    $transaction->setMontant((string) $patientAmount);
+                    $transaction->setDateTransaction($timestamp);
+                    $transaction->setDescription('Ticket de consultation #' . $consultation->getId() . ' | Part patient');
+                    $transaction->setModeDePaiement($modePaiement);
+                    $transaction->setConsultation($consultation);
+                    $transaction->markValidated($timestamp);
+                    $transaction->setPaiement($paiement);
+                    $this->em->persist($transaction);
+                }
+
+                if ($insuranceEnabled && $assurance instanceof Assurance) {
+                    $this->attachFactureAssurance(
+                        $consultation,
+                        $patient,
+                        $assurance,
+                        $insuranceRate,
+                        $isPayant ? $consultationAmount : 0.0,
+                        $isPayant,
+                        $profile?->getFormData() ?? [],
+                        'pending',
+                    );
+                }
+
                 $this->em->flush();
+
+                if ($patientPayment instanceof Paiement && $patientPayment->getId() !== null) {
+                    $createdPaiementId = $patientPayment->getId();
+                } elseif ($consultation->getPaiement()) {
+                    $createdPaiementId = $consultation->getPaiement()->getId();
+                }
 
                 $this->consultationNotificationService->notifyCreation($consultation, $triggeredBy);
 
@@ -200,6 +181,7 @@ class ConsultationService
                     'success' => true,
                     'status' => 200,
                     'consultation_id' => $consultation->getId(),
+                    'paiement_id' => $createdPaiementId,
                 ];
             });
 
@@ -387,7 +369,10 @@ class ConsultationService
                 'hasFiche' => $ficheData['hasFiche'],
                 'fiche' => $ficheData['fiche'],
                 'ficheId' => $ficheData['ficheId'],
-                'lastFicheId' => $ficheData['lastFicheId'], 
+                'lastFicheId' => $ficheData['lastFicheId'],
+                'hasInsurance' => $c->getFactureAssurance() !== null || $this->patientHasActiveInsurance($patient),
+                'assuranceNom' => $c->getFactureAssurance()?->getAssurance()?->getNom()
+                    ?? $patient->getAssuranceProfile()?->getAssurance()?->getNom(),
             ];
         }, $consultations);
     }
@@ -407,12 +392,15 @@ class ConsultationService
         [$start, $end] = $this->resolveDayBounds($dateStr);
 
         $qb = $this->em->createQueryBuilder()
-            ->select('c', 'p', 'm', 'f', 'pa')
+            ->select('c', 'p', 'm', 'f', 'pa', 'fa', 'ap', 'ass')
             ->from(Consultation::class, 'c')
             ->join('c.patient', 'p')
             ->leftJoin('c.medecin', 'm')
             ->leftJoin('c.facture', 'f')
             ->leftJoin('c.paiement', 'pa')
+            ->leftJoin('c.factureAssurance', 'fa')
+            ->leftJoin('p.assuranceProfile', 'ap')
+            ->leftJoin('ap.assurance', 'ass')
             ->where('c.CreatedAt BETWEEN :start AND :end')
             ->orderBy('c.CreatedAt', 'ASC')
             ->setParameter('start', $start)
@@ -448,7 +436,37 @@ class ConsultationService
             return false;
         }
 
-        return $facture->getPaiements()->count() === 0;
+        if ($facture->getPaiements()->count() > 0) {
+            return false;
+        }
+
+        $consultation = $facture->getConsultation();
+        $factureAssurance = $consultation?->getFactureAssurance();
+        if ($factureAssurance === null) {
+            return true;
+        }
+
+        $lot = $factureAssurance->getLotFactureAssurance();
+        if ($lot !== null) {
+            $statut = $lot->getStatut() === 'recouvre' ? 'rembourse' : $lot->getStatut();
+            if (in_array($statut, ['envoye', 'confirme', 'partiellement_rembourse', 'rembourse'], true)) {
+                return false;
+            }
+        }
+
+        $patientPaid = (float) $this->em->createQueryBuilder()
+            ->select('COALESCE(SUM(t.montant), 0)')
+            ->from(Transaction::class, 't')
+            ->where('t.consultation = :consultation')
+            ->andWhere('t.rolePaiement = :role')
+            ->andWhere('t.validationStatus = :status')
+            ->setParameter('consultation', $consultation)
+            ->setParameter('role', 'patient_insurance')
+            ->setParameter('status', 'validated')
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        return $patientPaid <= 0;
     }
 
     private function resolveFactureDateFromConsultation(Consultation $consultation): \DateTime
@@ -490,10 +508,13 @@ class ConsultationService
                 'prenom' => $patient->getPrenom(),
                 'telephone' => $patient->getTelephone(),
                 'photo' => $patient->getPhoto(),
+                'createdAt' => $patient->getDateInscription()?->format(DATE_ATOM),
+                'insuranceProfile' => $this->resolvePatientInsuranceProfile($patient),
             ],
             'patientName' => $patient->getFullName(),
             'patientPhoto' => $patient->getPhoto(),
             'patientId' => $patient->getId(),
+            'patientCreatedAt' => $patient->getDateInscription()?->format(DATE_ATOM),
             'medecin' => $consultation->getMedecin()?->getFullName(),
             'isPaid' => $consultation->getPaiement() ? true : false,
             'paiementId' => $consultation->getPaiement()?->getId(),
@@ -503,9 +524,109 @@ class ConsultationService
             'factstate' => $this->resolveFocusFactState($consultation->getFacture()),
             'state' => $consultation->getStatut(),
             'hasFiche' => $ficheData['hasFiche'],
-            'ficheId' => $ficheData['ficheId'],  
-            'lastFicheId' => $ficheData['lastFicheId'], 
+            'ficheId' => $ficheData['ficheId'],
+            'lastFicheId' => $ficheData['lastFicheId'],
+            'hasInsurance' => $consultation->getFactureAssurance() !== null || $this->patientHasActiveInsurance($patient),
+            'assuranceNom' => $consultation->getFactureAssurance()?->getAssurance()?->getNom()
+                ?? $patient->getAssuranceProfile()?->getAssurance()?->getNom(),
         ]);
+    }
+
+    private function patientHasActiveInsurance(?\App\Patient\Entity\Patient $patient): bool
+    {
+        $profile = $patient?->getAssuranceProfile();
+        $assurance = $profile?->getAssurance();
+
+        return $profile !== null && $assurance !== null && $assurance->isActif();
+    }
+
+    private function resolvePatientInsuranceProfile(?\App\Patient\Entity\Patient $patient): ?array
+    {
+        if (!$this->patientHasActiveInsurance($patient)) {
+            return null;
+        }
+        $assurance = $patient->getAssuranceProfile()?->getAssurance();
+
+        return [
+            'enabled' => true,
+            'coverageRate' => $patient->getAssuranceProfile()?->getCoverageRate(),
+            'assurance' => [
+                'id' => $assurance?->getId(),
+                'nom' => $assurance?->getNom(),
+                'code' => $assurance?->getCode(),
+            ],
+        ];
+    }
+
+    /**
+     * Creates FactureAssurance when the patient is insured and none exists yet
+     * (e.g. consultation créée via RDV, ou créée avant le profil assurance).
+     */
+    private function ensureFactureAssurance(Consultation $consultation): ?FactureAssurance
+    {
+        $existing = $consultation->getFactureAssurance();
+        if ($existing !== null) {
+            return $existing;
+        }
+
+        $patient = $consultation->getPatient();
+        if (!$this->patientHasActiveInsurance($patient)) {
+            return null;
+        }
+
+        $profile = $patient->getAssuranceProfile();
+        $assurance = $profile?->getAssurance();
+        if (!$assurance instanceof Assurance) {
+            return null;
+        }
+
+        // Ticket déjà encaissé hors assurance : ne pas re-facturer la consultation dans la FA.
+        // Les actes restent couverts via buildActeLignes().
+        return $this->attachFactureAssurance(
+            $consultation,
+            $patient,
+            $assurance,
+            max(0, min(100, (float) ($profile?->getCoverageRate() ?? 0))),
+            0.0,
+            false,
+            $profile?->getFormData() ?? [],
+            'pending',
+        );
+    }
+
+    private function attachFactureAssurance(
+        Consultation $consultation,
+        Patient $patient,
+        Assurance $assurance,
+        float $insuranceRate,
+        float $consultationAmount,
+        bool $isConsultationPayante,
+        array $formData,
+        string $insuranceStatus = 'pending',
+    ): FactureAssurance {
+        $factureAssurance = new FactureAssurance();
+        $factureAssurance
+            ->setConsultation($consultation)
+            ->setPatient($patient)
+            ->setAssurance($assurance)
+            ->setCoverageRate($insuranceRate > 0 ? $insuranceRate : null)
+            ->setDateFacture(new DateTime())
+            ->setConsultationAmount($isConsultationPayante ? $consultationAmount : 0.0)
+            ->setIsConsultationPayante($isConsultationPayante)
+            ->setInsuranceStatus($insuranceStatus)
+            ->setAssuranceSnapshot([
+                'code' => $assurance->getCode(),
+                'nom' => $assurance->getNom(),
+                'logoPath' => $assurance->getLogoPath(),
+                'website' => $assurance->getWebsite(),
+                'email' => $assurance->getEmail(),
+                'formData' => $formData,
+            ]);
+
+        $consultation->setFactureAssurance($factureAssurance);
+        $this->em->persist($factureAssurance);
+
+        return $factureAssurance;
     }
 
     private function buildFocusPatientDto(Patient $patient): FocusReceptionPatientDto
@@ -882,7 +1003,17 @@ class ConsultationService
             $facture->setDateFacture($this->resolveFactureDateFromConsultation($consultation));
         }
 
-        $montants = $facture->computeMontantsFromConsultation(); 
+        $factureAssurance = $this->ensureFactureAssurance($consultation);
+        $montants = $facture->computeMontantsFromConsultation();
+        if ($factureAssurance !== null) {
+            $faTotals = $factureAssurance->computeTotals();
+            $facture->setIsReglee(((float) ($faTotals['montantPatient'] ?? 0.0)) <= 0.0);
+            $factureAssurance->setInsuranceStatus('ready');
+            $this->em->persist($factureAssurance);
+        } else {
+            $facture->setIsReglee(((float) ($montants['restePatient'] ?? 0.0)) <= 0.0);
+        }
+
         $consultation->setFacture($facture);
         $this->em->persist($facture);
         $this->em->flush();
@@ -892,7 +1023,10 @@ class ConsultationService
 
         $this->focusRealtimePublisher->publishConsultationRefresh($consultation, 'closed');
 
-        $this->notifyReceptionOnClosure($consultation, (float) $montants['montantTotal']);
+        $notifyAmount = $factureAssurance !== null
+            ? (float) ($factureAssurance->computeTotals()['montantPatient'] ?? 0.0)
+            : (float) $montants['montantTotal'];
+        $this->notifyReceptionOnClosure($consultation, $notifyAmount);
     }
 
     private function notifyReceptionOnClosure(Consultation $consultation, float $invoiceAmount): void
@@ -1361,11 +1495,20 @@ class ConsultationService
             $this->em->persist($acte);
         }
 
+        $factureAssurance = $this->ensureFactureAssurance($consultation);
         $montants = $facture->computeMontantsFromConsultation();
+        if ($factureAssurance !== null) {
+            $faTotals = $factureAssurance->computeTotals();
+            $facture->setIsReglee(((float) ($faTotals['montantPatient'] ?? 0.0)) <= 0.0);
+            if ($consultation->getStatut() === 1) {
+                $factureAssurance->setInsuranceStatus('ready');
+            }
+            $this->em->persist($factureAssurance);
+        } else {
+            $facture->setIsReglee(((float) $montants['restePatient']) <= 0.0);
+        }
 
-        $facture
-            ->setDateFacture($this->parseFactureDateInput($date, $time, $consultation))
-            ->setIsReglee(((float) $montants['restePatient']) <= 0.0);
+        $facture->setDateFacture($this->parseFactureDateInput($date, $time, $consultation));
 
         $this->em->persist($facture);
         $this->em->flush();
@@ -1383,11 +1526,21 @@ class ConsultationService
         $counter = 1;
         foreach ($consultations as $c) {
             $ficheData = $this->resolvePendingFicheData($c);
+            $patient = $c->getPatient();
             $data[] = [
                 'id' => $c->getId(),
                 'numero' => $counter++,
-                'patient' => $c->getPatient()->getFullName(),
-                'patientId' => $c->getPatient()->getId(),
+                'patient' => [
+                    'id' => $patient->getId(),
+                    'nom' => $patient->getNom(),
+                    'prenom' => $patient->getPrenom(),
+                    'telephone' => $patient->getTelephone(),
+                    'photo' => $patient->getPhoto(),
+                    'insuranceProfile' => $this->resolvePatientInsuranceProfile($patient),
+                ],
+                'patientName' => $patient->getFullName(),
+                'patientId' => $patient->getId(),
+                'patientCreatedAt' => $patient->getDateInscription()?->format(DATE_ATOM),
                 'medecin' => $c->getMedecin()?->getFullName(),
                 'createdAt' => $c->getCreatedAt()->format('d/m/Y H:i'),
                 'factstate' => $this->resolveFocusFactState($c->getFacture()),
@@ -1395,7 +1548,11 @@ class ConsultationService
                 'state' => $c->getStatut(),
                 'hasFiche' => $ficheData['hasFiche'],
                 'fiche' => $ficheData['fiche'],
-                'ficheId' => $ficheData['ficheId'],  
+                'ficheId' => $ficheData['ficheId'],
+                'lastFicheId' => $ficheData['lastFicheId'],
+                'hasInsurance' => $c->getFactureAssurance() !== null || $this->patientHasActiveInsurance($patient),
+                'assuranceNom' => $c->getFactureAssurance()?->getAssurance()?->getNom()
+                    ?? $patient->getAssuranceProfile()?->getAssurance()?->getNom(),
             ];
         }
 

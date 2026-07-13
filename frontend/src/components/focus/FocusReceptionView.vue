@@ -142,10 +142,8 @@ const formatDateTime = (value) => {
 
 const formatFcfa = (value) => `${Number(value || 0).toLocaleString('fr-FR')} FCFA`;
 const isInsurancePayment = (payment) => {
-    const role = String(payment?.rolePaiement || '').toLowerCase();
-    const mode = String(payment?.mode || '').toLowerCase();
-
-    return role === 'insurance' || mode.includes('assur');
+    const role = String(payment?.rolePaiement || payment?.role || '').toLowerCase();
+    return role === 'patient_insurance';
 };
 
 const isSameCalendarDay = (left, right) => {
@@ -349,7 +347,6 @@ const dailyRevenueStats = computed(() => {
         totalUnpaid,
         totalPaymentsCount: payments.length,
         totalInsurance: insurancePayments.reduce((sum, payment) => sum + (Number(payment?.montant) || 0), 0),
-        pendingInsurance: insurancePayments.filter((payment) => payment?.status === 'pending').length,
         paymentModeRows,
         statusCounts
     };
@@ -752,9 +749,8 @@ const handleCancelWithConfirm = (event, consultation) => {
 
                             <div class="rounded-2xl border border-surface-200 bg-white p-4 dark:border-surface-700 dark:bg-surface-900/50">
                                 <h4 class="text-sm font-semibold text-surface-900 dark:text-surface-50">Assurances</h4>
-                                <div class="mt-4 grid grid-cols-2 gap-3 text-sm">
-                                    <div class="rounded-xl bg-sky-50 px-3 py-3 text-sky-700 dark:bg-sky-950/20 dark:text-sky-300">Montant: <strong>{{ formatFcfa(dailyRevenueStats.totalInsurance) }}</strong></div>
-                                    <div class="rounded-xl bg-amber-50 px-3 py-3 text-amber-700 dark:bg-amber-950/20 dark:text-amber-300">En attente: <strong>{{ dailyRevenueStats.pendingInsurance }}</strong></div>
+                                <div class="mt-4 grid grid-cols-1 gap-3 text-sm">
+                                    <div class="rounded-xl bg-sky-50 px-3 py-3 text-sky-700 dark:bg-sky-950/20 dark:text-sky-300">Parts patient encaissées: <strong>{{ formatFcfa(dailyRevenueStats.totalInsurance) }}</strong></div>
                                 </div>
                             </div>
                         </div>

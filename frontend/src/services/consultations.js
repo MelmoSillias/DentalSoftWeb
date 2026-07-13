@@ -71,12 +71,20 @@ const normalizeFocusBilling = (raw = {}) => ({
 export const normalizeConsultation = (raw = {}) => {
     const patient = raw.patient
     const patient_photo = patient?.photo ?? patient?.photoUrl ?? patient?.patientPhoto ?? patient?.patient_photo ?? null;
-    const patientName = (raw.patientName ?? raw.patient_name ?? `${patient?.prenom ?? ''} ${patient?.nom ?? ''}`.trim()) || patient?.nom || '';
+    const patientName = (raw.patientName ?? raw.patient_name
+        ?? (typeof patient === 'string' ? patient : `${patient?.prenom ?? ''} ${patient?.nom ?? ''}`.trim()))
+        || patient?.nom
+        || '';
 
     const createdAt = raw.createdAt ?? raw.created_at ?? raw.date ?? raw.created_at_consultation ?? null;
     const hasFiche = raw.hasFiche ?? raw.has_fiche ?? Boolean(raw.fiche || raw.ficheId);
 
     const patientId = raw.patientId ?? raw.patient_id ?? patient?.id ?? null;
+    const patientCreatedAt = raw.patientCreatedAt
+        ?? raw.patient_created_at
+        ?? (patient && typeof patient === 'object'
+            ? (patient.createdAt ?? patient.created_at ?? patient.dateInscription ?? patient.date_inscription ?? null)
+            : null);
     const state = raw.state ?? raw.statut ?? raw.status ?? null;
     const factState = raw.factstate ?? raw.factState ?? raw.fact_state ?? null;
     const factModifiable = raw.factModifiable ?? raw.fact_modifiable ?? false;
@@ -85,19 +93,26 @@ export const normalizeConsultation = (raw = {}) => {
     const isPaid = raw.isPaid ?? raw.paid ?? raw.payee ?? false;
     const paymentId = raw.paymentId ?? raw.paiementId ?? raw.payment_id ?? raw.paiement_id ?? null;
     const paiementAmount = Number(raw.paiementAmount ?? raw.paymentAmount ?? raw.montantPaiement ?? raw.montant_paiement ?? 0) || 0;
+    const hasInsurance = Boolean(
+        raw.hasInsurance
+        ?? raw.has_insurance
+        ?? patient?.insuranceProfile?.enabled
+        ?? patient?.insuranceProfile
+    );
 
     return {
         id: raw.id,
         patient,
         patientName,
         patientPhoto: raw.patientPhoto ?? raw.patient_photo ?? patient?.photo ?? null,
-        patientPhone: patient?.telephone || patient?.phone || '',
+        patientPhone: (typeof patient === 'object' ? (patient?.telephone || patient?.phone) : null) || raw.patientPhone || '',
         medecin: raw.medecin,
         createdAt,
+        patientCreatedAt,
         motif: raw.motif ?? raw.note ?? raw.noteSeance ?? '',
         statut: raw.statut ?? raw.status ?? '',
         hasFiche,
-        ficheId: raw.ficheId ?? raw.fiche_id ?? raw.fiche?.id ?? null,
+        ficheId,
         fiche: raw.fiche ?? null,
         patientHasFiche: Boolean(patient?.hasFiche || patient?.fiche || patient?.ficheId),
         type: raw.type ?? null,
@@ -108,8 +123,9 @@ export const normalizeConsultation = (raw = {}) => {
         state,
         factState,
         factModifiable: Boolean(factModifiable),
-        ficheId,
         lastFicheId,
+        hasInsurance,
+        assuranceNom: raw.assuranceNom ?? patient?.insuranceProfile?.assurance?.nom ?? null,
     }
 };
 

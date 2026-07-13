@@ -7,11 +7,13 @@ import MultiSelect from 'primevue/multiselect';
 import InputText from 'primevue/inputtext';
 import ContextMenu from 'primevue/contextmenu';
 import ProgressSpinner from 'primevue/progressspinner';
-import { computed, reactive, ref, watch } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import Popover from 'primevue/popover';
 import DetailsRdv from './DetailsRdv.vue';
 import { addMinutes } from '@/utils/dateUtils';
 import { useRdvStatus } from '@/composables/useRdvStatus';
+import { fetchPublicGeneralSettings } from '@/services/globalSettingsService';
+import { useAuthStore } from '@/stores/auth';
 
 const props = defineProps({
   medecins: { type: Array, default: () => [] },
@@ -22,6 +24,14 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['request-create', 'request-validate', 'request-cancel', 'request-report', 'request-sms-reminder', 'request-sms-schedule']);
+
+const auth = useAuthStore();
+const toSlotTime = (value, fallback) => {
+  const raw = String(value || fallback);
+  const match = raw.match(/^(\d{1,2}):(\d{2})/);
+  if (!match) return `${fallback}:00`;
+  return `${String(Number(match[1])).padStart(2, '0')}:${match[2]}:00`;
+};
 
 const calendarPlugins = [timeGridPlugin, interactionPlugin];
 const popoverRef = ref();
@@ -205,6 +215,25 @@ const calendarOptions = reactive({
     week: "Semaine",
     day: "Jour"
   }
+});
+
+const applyOpeningHours = async () => {
+  try {
+    const settings = await fetchPublicGeneralSettings(auth.token);
+    calendarOptions.slotMinTime = toSlotTime(settings?.openingTime, '08:00');
+    calendarOptions.slotMaxTime = toSlotTime(settings?.closingTime, '18:00');
+    const api = calendarRef.value?.getApi?.();
+    if (api) {
+      api.setOption('slotMinTime', calendarOptions.slotMinTime);
+      api.setOption('slotMaxTime', calendarOptions.slotMaxTime);
+    }
+  } catch (error) {
+    console.error('Erreur chargement horaires agenda:', error);
+  }
+};
+
+onMounted(() => {
+  applyOpeningHours();
 });
 
 watch(events, (next) => {

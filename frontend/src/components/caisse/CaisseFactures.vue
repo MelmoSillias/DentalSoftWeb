@@ -1,11 +1,11 @@
 <script setup>
 import Button from 'primevue/button';
 import DataView from 'primevue/dataview';
-import DatePicker from 'primevue/datepicker';
 import InputText from 'primevue/inputtext';
 import Select from 'primevue/select';
 import Tag from 'primevue/tag';
 import { computed, ref } from 'vue';
+import PanelDatePicker from '@/components/common/PanelDatePicker.vue';
 
 const props = defineProps({
     factures: { type: Array, default: () => [] },
@@ -69,9 +69,7 @@ const computeInsuranceBadge = (row) => {
         return null;
     }
 
-    return insurance.insuranceStatus === 'pending'
-        ? { label: 'Assurance en attente', severity: 'warning' }
-        : { label: 'Assurance', severity: 'info' };
+    return { label: 'Assurance', severity: 'info' };
 };
 
 const computeStatus = (row) => {
@@ -85,7 +83,7 @@ const computeStatus = (row) => {
 };
 
 const canModify = (row) => props.allowInvoiceModification && !row?.hasPayments && (Number(row.montant) === Number(row.reste)) && !row.isRegle;
-const canPreview = (row) => !(Number(row.montant) === 0 && Number(row.reste) === 0);
+const canPreview = (row) => row?.insurance?.hasInsurance || !(Number(row.montant) === 0 && Number(row.reste) === 0);
 const targetIsFree = (row) => !row.isRegle && Number(row.reste) === 0;
 
 const filteredFactures = computed(() => {
@@ -158,7 +156,7 @@ const displayPhone = (value) => (props.hidePatientPhone ? 'Masqué par l\'admini
                     </div>
                     <div class="filter-item">
                         <label>Période</label>
-                        <DatePicker v-model="factureRangeModel" selectionMode="range" dateFormat="yy-mm-dd" showIcon
+                        <PanelDatePicker v-model="factureRangeModel" dateFormat="yy-mm-dd" showIcon
                             fluid :disabled="periodFilterDisabled" />
                     </div>
                     <Button label="Rafraîchir" icon="pi pi-refresh" text @click="emit('refresh-factures')" />

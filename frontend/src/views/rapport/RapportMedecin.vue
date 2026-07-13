@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue';
 import Button from 'primevue/button';
-import DatePicker from 'primevue/datepicker';
+import PanelDatePicker from '@/components/common/PanelDatePicker.vue';
 import { useRapports } from '@/composables/useRapports';
 import MedecinGlobalStatsSection from '@/components/rapport/medecin/MedecinGlobalStatsSection.vue';
 import MedecinQuickStatsSection from '@/components/rapport/medecin/MedecinQuickStatsSection.vue';
@@ -74,9 +74,8 @@ onMounted(() => {
                 <p class="text-sm text-surface-500 dark:text-surface-400">Période : {{ periodLabel }}</p>
             </div>
             <div class="flex flex-wrap items-center gap-3">
-                <DatePicker
+                <PanelDatePicker
                     v-model="range"
-                    selectionMode="range"
                     showIcon
                     dateFormat="dd/mm/yy"
                     class="w-72"

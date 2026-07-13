@@ -877,9 +877,18 @@ const currentFactureLoading = computed(() => {
                                 text-class="font-semibold"
                             />
                             <div>
-                                <span class="font-semibold text-surface-900 dark:text-surface-100">
-                                    {{ patientLabel(data) || '—' }}
-                                </span>
+                                <div class="flex items-center gap-2">
+                                    <span class="font-semibold text-surface-900 dark:text-surface-100">
+                                        {{ patientLabel(data) || '—' }}
+                                    </span>
+                                    <Tag
+                                        v-if="data.hasInsurance"
+                                        value="Assuré"
+                                        severity="success"
+                                        icon="pi pi-shield"
+                                        class="text-xs"
+                                    />
+                                </div>
                                 <div v-if="data.patientPhone && !shouldHidePatientPhoneForMedecin" class="flex items-center gap-1 mt-1">
                                     <i class="pi pi-phone text-xs text-surface-400"></i>
                                     <span class="text-xs text-surface-500">{{ data.patientPhone }}</span>

@@ -88,7 +88,20 @@ const insuranceFormDataEntries = computed(() => {
         patientNomPrenom: 'Patient',
         patientMatricule: 'Matricule patient',
         patientAge: 'Âge patient',
-        patientSexe: 'Sexe patient'
+        patientSexe: 'Sexe patient',
+        carteNumero: 'Carte N°',
+        numeroPolice: 'N° police',
+        titulaireNomPrenoms: 'Titulaire',
+        assurePrincipalNom: 'Assuré principal',
+        assurePrincipalTel: 'Tél. assuré principal',
+        avenant: 'Avenant',
+        numeroAssure: 'N° assuré',
+        assureNomPrenom: 'Nom et prénom',
+        assureNomPrenoms: 'Assuré',
+        beneficiaireNomPrenoms: 'Bénéficiaire',
+        beneficiaireMatricule: 'Matricule bénéficiaire',
+        identifiant: 'Identifiant',
+        nomPrenoms: 'Nom et prénoms'
     };
 
     return Object.entries(formData)

@@ -15,6 +15,8 @@ class GlobalSettingsService
     private const TEST_MODE_SNAPSHOT_CREATED_AT_KEY = 'testModeSnapshotCreatedAt';
     private const TEST_MODE_LAST_PURGE_AT_KEY = 'testModeLastPurgeAt';
     private const DEFAULT_CONSULTATION_PRICE = 5000.0;
+    private const DEFAULT_OPENING_TIME = '08:00';
+    private const DEFAULT_CLOSING_TIME = '18:00';
     private const DEFAULT_TRANSACTION_MOTIFS = [
         'revenue' => [
             'Paiement patient',
@@ -88,7 +90,7 @@ class GlobalSettingsService
         $allowReceptionConsultationQuickActions = (bool) ($value['allowReceptionConsultationQuickActions'] ?? ($value['allowReceptionQuickCloseConsultation'] ?? true));
         $showReceptionQuickCloseButton = (bool) ($value['showReceptionQuickCloseButton'] ?? true);
 
-        return [
+        $result = [
             'autoApproveDevices' => (bool) ($value['autoApproveDevices'] ?? true),
             'requireMedecinOnConsultationCreation' => (bool) ($value['requireMedecinOnConsultationCreation'] ?? true),
             'allowReceptionQuickCloseConsultation' => $allowReceptionConsultationQuickActions,
@@ -102,6 +104,8 @@ class GlobalSettingsService
             'ficheFormSimplifie' => (bool) ($value['ficheFormSimplifie'] ?? false),
             'showDiagnosticPositifInConsultation' => (bool) ($value['showDiagnosticPositifInConsultation'] ?? true),
             'consultationPrice' => $this->sanitizePositiveAmount($value['consultationPrice'] ?? null, self::DEFAULT_CONSULTATION_PRICE),
+            'openingTime' => $this->sanitizeTimeOfDay($value['openingTime'] ?? null, self::DEFAULT_OPENING_TIME),
+            'closingTime' => $this->sanitizeTimeOfDay($value['closingTime'] ?? null, self::DEFAULT_CLOSING_TIME),
             'transactionMotifs' => $this->sanitizeTransactionMotifs($value['transactionMotifs'] ?? null),
             'soinsList' => $this->sanitizeStringList($value['soinsList'] ?? null, self::DEFAULT_SOINS_LIST),
             'examensTypes' => $this->sanitizeStringList($value['examensTypes'] ?? null, self::DEFAULT_EXAMENS_TYPES),
@@ -121,6 +125,15 @@ class GlobalSettingsService
             'testModeSnapshotCreatedAt' => $value[self::TEST_MODE_SNAPSHOT_CREATED_AT_KEY] ?? null,
             'testModeLastPurgeAt' => $value[self::TEST_MODE_LAST_PURGE_AT_KEY] ?? null,
         ];
+
+        [$openingTime, $closingTime] = $this->normalizeOpeningHoursPair(
+            $result['openingTime'],
+            $result['closingTime']
+        );
+        $result['openingTime'] = $openingTime;
+        $result['closingTime'] = $closingTime;
+
+        return $result;
     }
 
     /** @param array<string,mixed> $payload */
@@ -135,6 +148,10 @@ class GlobalSettingsService
         $current = $entry->getValue();
         $allowReceptionConsultationQuickActions = (bool) ($payload['allowReceptionConsultationQuickActions'] ?? ($payload['allowReceptionQuickCloseConsultation'] ?? ($current['allowReceptionConsultationQuickActions'] ?? ($current['allowReceptionQuickCloseConsultation'] ?? true))));
         $showReceptionQuickCloseButton = (bool) ($payload['showReceptionQuickCloseButton'] ?? ($current['showReceptionQuickCloseButton'] ?? true));
+        [$openingTime, $closingTime] = $this->normalizeOpeningHoursPair(
+            $this->sanitizeTimeOfDay($payload['openingTime'] ?? ($current['openingTime'] ?? null), self::DEFAULT_OPENING_TIME),
+            $this->sanitizeTimeOfDay($payload['closingTime'] ?? ($current['closingTime'] ?? null), self::DEFAULT_CLOSING_TIME)
+        );
         $entry->setValue([
             ...$current,
             'autoApproveDevices' => (bool) ($payload['autoApproveDevices'] ?? ($current['autoApproveDevices'] ?? true)),
@@ -150,6 +167,8 @@ class GlobalSettingsService
             'ficheFormSimplifie' => (bool) ($payload['ficheFormSimplifie'] ?? ($current['ficheFormSimplifie'] ?? false)),
             'showDiagnosticPositifInConsultation' => (bool) ($payload['showDiagnosticPositifInConsultation'] ?? ($current['showDiagnosticPositifInConsultation'] ?? true)),
             'consultationPrice' => $this->sanitizePositiveAmount($payload['consultationPrice'] ?? ($current['consultationPrice'] ?? null), self::DEFAULT_CONSULTATION_PRICE),
+            'openingTime' => $openingTime,
+            'closingTime' => $closingTime,
             'transactionMotifs' => $this->sanitizeTransactionMotifs($payload['transactionMotifs'] ?? ($current['transactionMotifs'] ?? null)),
             'soinsList' => $this->sanitizeStringList($payload['soinsList'] ?? ($current['soinsList'] ?? null), self::DEFAULT_SOINS_LIST),
             'examensTypes' => $this->sanitizeStringList($payload['examensTypes'] ?? ($current['examensTypes'] ?? null), self::DEFAULT_EXAMENS_TYPES),
@@ -430,6 +449,8 @@ class GlobalSettingsService
             'ficheFormSimplifie' => $settings['ficheFormSimplifie'],
             'showDiagnosticPositifInConsultation' => $settings['showDiagnosticPositifInConsultation'],
             'consultationPrice' => $settings['consultationPrice'],
+            'openingTime' => $settings['openingTime'],
+            'closingTime' => $settings['closingTime'],
             'soinsList' => $settings['soinsList'],
             'examensTypes' => $settings['examensTypes'],
             'traitementTypes' => $settings['traitementTypes'],
@@ -518,6 +539,36 @@ class GlobalSettingsService
         }
 
         return round($amount, 2);
+    }
+
+    private function sanitizeTimeOfDay(mixed $value, string $default): string
+    {
+        $raw = trim((string) ($value ?? ''));
+        if ($raw === '') {
+            return $default;
+        }
+
+        if (!preg_match('/^(\d{1,2}):(\d{2})(?::\d{2})?$/', $raw, $matches)) {
+            return $default;
+        }
+
+        $hours = (int) $matches[1];
+        $minutes = (int) $matches[2];
+        if ($hours < 0 || $hours > 23 || $minutes < 0 || $minutes > 59) {
+            return $default;
+        }
+
+        return sprintf('%02d:%02d', $hours, $minutes);
+    }
+
+    /** @return array{0: string, 1: string} */
+    private function normalizeOpeningHoursPair(string $openingTime, string $closingTime): array
+    {
+        if ($openingTime < $closingTime) {
+            return [$openingTime, $closingTime];
+        }
+
+        return [self::DEFAULT_OPENING_TIME, self::DEFAULT_CLOSING_TIME];
     }
 
     private function sanitizeUrl(mixed $value): ?string

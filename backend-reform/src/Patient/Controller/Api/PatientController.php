@@ -221,7 +221,11 @@ public function removeArchiveFile(int $id, Request $request): JsonResponse
     #[Route('/api/patient/{id}', name: 'api_patient_soft_delete', methods: ['DELETE'])]
     public function softDeletePatient(int $id): JsonResponse
     {
-        $result = $this->patientService->softDeletePatient($id);
+        $user = $this->getUser();
+        $result = $this->patientService->softDeletePatient(
+            $id,
+            $user instanceof User ? $user : null,
+        );
 
         if (isset($result['error'])) {
             return $this->json(['message' => $result['error']], $result['status'] ?? 400);

@@ -7,6 +7,7 @@ import Column from 'primevue/column';
 import ConfirmPopup from 'primevue/confirmpopup';
 import DataTable from 'primevue/datatable';
 import DatePicker from 'primevue/datepicker';
+import PanelDatePicker from '@/components/common/PanelDatePicker.vue';
 import InputText from 'primevue/inputtext';
 import Select from 'primevue/select';
 import Tag from 'primevue/tag';
@@ -747,7 +748,7 @@ onBeforeUnmount(() => {
                                 </div>
                                 <div class="md:col-span-4">
                                     <label class="block text-sm font-medium mb-2">Periode</label>
-                                    <DatePicker v-model="leaveRange" selectionMode="range" showIcon dateFormat="yy-mm-dd" class="w-full" />
+                                    <PanelDatePicker v-model="leaveRange" showIcon dateFormat="yy-mm-dd" class="w-full" fluid />
                                 </div>
                                 <div class="md:col-span-1 flex justify-end">
                                     <Button icon="pi pi-refresh" severity="secondary" outlined @click="loadLeaves" />

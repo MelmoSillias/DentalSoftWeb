@@ -198,21 +198,6 @@ export const fetchInsuranceClaims = async ({ status, start, end, patient, assura
     return Array.isArray(res?.data?.data) ? res.data.data : [];
 };
 
-export const validateInsuranceClaim = async (claimId, token) => {
-    const res = await axios.patch(`${apiPrefix}/assurances/claims/${claimId}/validate`, {}, withHeaders(token));
-    return res.data;
-};
-
-export const rejectInsuranceClaim = async (claimId, reason, token) => {
-    const res = await axios.patch(`${apiPrefix}/assurances/claims/${claimId}/reject`, { reason }, withHeaders(token));
-    return res.data;
-};
-
-export const recoverInsuranceClaim = async (claimId, { modeId, date } = {}, token) => {
-    const res = await axios.post(`${apiPrefix}/assurances/claims/${claimId}/recover`, { modeId, date }, withHeaders(token));
-    return res.data;
-};
-
 export const payInsurancePatientShare = async (claimId, { modeId, date, amount } = {}, token) => {
     const res = await axios.post(
         `${apiPrefix}/assurances/claims/${claimId}/patient-pay`,
@@ -224,11 +209,6 @@ export const payInsurancePatientShare = async (claimId, { modeId, date, amount }
 
 export const fetchAssurancesDashboard = async (token) => {
     const res = await axios.get(`${apiPrefix}/assurances/dashboard`, withHeaders(token));
-    return Array.isArray(res?.data?.data) ? res.data.data : [];
-};
-
-export const fetchInsuranceClaimsUnpaidPatient = async (token) => {
-    const res = await axios.get(`${apiPrefix}/assurances/claims/unpaid-patient`, withHeaders(token));
     return Array.isArray(res?.data?.data) ? res.data.data : [];
 };
 
@@ -244,6 +224,11 @@ export const openAssuranceLot = async (assuranceCode, payload = {}, token) => {
     return res.data;
 };
 
+export const updateAssuranceLot = async (lotId, payload = {}, token) => {
+    const res = await axios.patch(`${apiPrefix}/assurances/lots/${lotId}`, payload, withHeaders(token));
+    return res.data;
+};
+
 export const fetchAssuranceLotDetail = async (lotId, token) => {
     const res = await axios.get(`${apiPrefix}/assurances/lots/${lotId}`, withHeaders(token));
     return res?.data?.data || null;
@@ -254,11 +239,43 @@ export const sendAssuranceLot = async (lotId, token) => {
     return res.data;
 };
 
-export const recoverAssuranceLot = async (lotId, { modeId, date } = {}, token) => {
-    const res = await axios.post(`${apiPrefix}/assurances/lots/${lotId}/recover`, { modeId, date }, withHeaders(token));
+export const reopenAssuranceLot = async (lotId, token) => {
+    const res = await axios.post(`${apiPrefix}/assurances/lots/${lotId}/reopen`, {}, withHeaders(token));
     return res.data;
 };
 
+export const confirmAssuranceLot = async (lotId, token) => {
+    const res = await axios.post(`${apiPrefix}/assurances/lots/${lotId}/confirm`, {}, withHeaders(token));
+    return res.data;
+};
+
+export const unconfirmAssuranceLot = async (lotId, token) => {
+    const res = await axios.post(`${apiPrefix}/assurances/lots/${lotId}/unconfirm`, {}, withHeaders(token));
+    return res.data;
+};
+
+export const refundAssuranceLot = async (lotId, { modeId, date, amount } = {}, token) => {
+    const res = await axios.post(
+        `${apiPrefix}/assurances/lots/${lotId}/refund`,
+        { modeId, date, amount },
+        withHeaders(token)
+    );
+    return res.data;
+};
+
+/** @deprecated Use refundAssuranceLot */
+export const recoverAssuranceLot = async (lotId, payload = {}, token) => refundAssuranceLot(lotId, payload, token);
+
+export const cancelAssuranceLotRefund = async (lotId, transactionId, { comment } = {}, token) => {
+    const res = await axios.patch(
+        `${apiPrefix}/assurances/lots/${lotId}/refunds/${transactionId}/cancel`,
+        { comment },
+        withHeaders(token)
+    );
+    return res.data;
+};
+
+/** @deprecated Use cancelAssuranceLotRefund */
 export const cancelAssuranceLotRecovery = async (lotId, { comment } = {}, token) => {
     const res = await axios.patch(`${apiPrefix}/assurances/lots/${lotId}/recover/cancel`, { comment }, withHeaders(token));
     return res.data;
@@ -266,6 +283,15 @@ export const cancelAssuranceLotRecovery = async (lotId, { comment } = {}, token)
 
 export const addClaimToAssuranceLot = async (lotId, factureId, token) => {
     const res = await axios.post(`${apiPrefix}/assurances/lots/${lotId}/claims`, { factureId }, withHeaders(token));
+    return res.data;
+};
+
+export const moveClaimToAssuranceLot = async (factureId, lotId, token) => {
+    const res = await axios.post(
+        `${apiPrefix}/assurances/claims/${factureId}/move-lot`,
+        { lotId },
+        withHeaders(token)
+    );
     return res.data;
 };
 

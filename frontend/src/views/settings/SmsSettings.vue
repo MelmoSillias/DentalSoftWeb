@@ -7,6 +7,7 @@ import Column from 'primevue/column';
 import Card from 'primevue/card';
 import DataTable from 'primevue/datatable';
 import DatePicker from 'primevue/datepicker';
+import PanelDatePicker from '@/components/common/PanelDatePicker.vue';
 import Dialog from 'primevue/dialog';
 import Divider from 'primevue/divider';
 import FloatLabel from 'primevue/floatlabel';
@@ -1039,7 +1040,7 @@ const retryLoadSmsSettings = async () => {
 
                             <div class="space-y-2">
                                 <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Période</label>
-                                <DatePicker v-model="logsDateRange" selectionMode="range" showIcon dateFormat="dd/mm/yy" class="w-full" />
+                                <PanelDatePicker v-model="logsDateRange" showIcon dateFormat="dd/mm/yy" class="w-full" fluid />
                             </div>
                         </div>
 
