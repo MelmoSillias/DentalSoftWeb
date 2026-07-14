@@ -1,0 +1,18 @@
+# Context monorepo (deploy/cabinet Dockerfile)
+.git
+.cursor
+**/node_modules
+frontend/dist
+frontend/node_modules
+backend-reform/vendor
+backend-reform/var
+backend-reform/public/uploads
+**/.env.local
+**/.env.*.local
+**/tests
+**/*_test.go
+*.md
+!deploy/cabinet/README.md
+agent-transcripts
+docs
+mercure-prod

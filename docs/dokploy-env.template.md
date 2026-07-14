@@ -5,6 +5,18 @@ Les Dockerfiles ne sont utilisés qu'en production sur le serveur — le dévelo
 
 ---
 
+## Alternative — all-in-one par cabinet (Compose)
+
+Pour un **seul déploiement Dokploy par cabinet** (admin + API + MariaDB) :
+
+- Dossier : [`deploy/cabinet/`](../deploy/cabinet/README.md)
+- Compose : `deploy/cabinet/docker-compose.yml`
+- Image app : admin Vue + API FrankenPHP + worker embarqué ; DB en service voisin
+
+Voir [`deploy/cabinet/README.md`](../deploy/cabinet/README.md). Les sections ci-dessous décrivent le mode multi-services historique.
+
+---
+
 ## Applications Dokploy (5 déploiements minimum)
 
 | Application | Root directory | Domaine | Spécificité |

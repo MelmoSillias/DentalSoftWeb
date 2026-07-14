@@ -1,0 +1,30 @@
+{
+	frankenphp {
+		num_threads 2
+	}
+}
+
+# Un seul domaine : SPA admin + API Symfony (+ uploads).
+:80 {
+	encode zstd gzip
+
+	# Endpoints backend (Symfony / FrankenPHP)
+	@backend path /api /api/* /health /health/*
+	handle @backend {
+		root * /app/public
+		php_server
+	}
+
+	# Fichiers uploadés
+	handle /uploads* {
+		root * /app/public
+		file_server
+	}
+
+	# Admin Vue (SPA) — fallback index.html
+	handle {
+		root * /srv/admin
+		try_files {path} /index.html
+		file_server
+	}
+}
