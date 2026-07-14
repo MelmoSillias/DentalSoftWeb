@@ -39,8 +39,9 @@ final class ProcessSmsQueueCommand extends Command
 
         $snapshot = $result['snapshot']['before'] ?? null;
         if (is_array($snapshot)) {
+            // Libellés FR sans le mot "failed" : Dokploy colore sinon la ligne en error.
             $io->writeln(sprintf(
-                'État file avant traitement: pending dus=%d, pending programmés=%d, failed dus=%d, failed programmés=%d, failed épuisés=%d, sending=%d, sent=%d, cancelled=%d.',
+                '[info] État file avant traitement: en_attente_dus=%d, en_attente_programmes=%d, echecs_dus=%d, echecs_programmes=%d, echecs_epuises=%d, en_cours=%d, envoyes=%d, annules=%d.',
                 (int) ($snapshot['pendingDue'] ?? 0),
                 (int) ($snapshot['pendingScheduled'] ?? 0),
                 (int) ($snapshot['failedDue'] ?? 0),
@@ -52,7 +53,10 @@ final class ProcessSmsQueueCommand extends Command
             ));
 
             if ((int) ($result['processed'] ?? 0) === 0 && !empty($snapshot['nextScheduledAt'])) {
-                $io->note(sprintf('Prochain SMS programmable/relançable prévu à partir de %s.', (string) $snapshot['nextScheduledAt']));
+                $io->writeln(sprintf(
+                    '[info] Prochain SMS programmable/relançable prévu à partir de %s.',
+                    (string) $snapshot['nextScheduledAt']
+                ));
             }
         }
 
