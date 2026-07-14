@@ -351,13 +351,14 @@ Comportement:
   - exige HTTP `2xx` + payload contenant `"status":"ok"`
 - **Worker (`WORKER_MODE=1`)**:
   - ne fait **pas** de check HTTP
-  - vérifie la présence du process `messenger:consume async`
+  - vérifie la présence du process `messenger:consume` (`pgrep` / scan `/proc`)
 
 Réglage Dokploy recommandé:
 
-- Ne pas forcer un healthcheck HTTP séparé côté Dokploy pour le worker.
-- S'appuyer sur le healthcheck de l'image (ou, si Dokploy l'exige, reproduire la même logique process pour le worker).
-- Garder un `start period` suffisant pour éviter les faux négatifs pendant `migrations`/`cache:warmup`.
+- **Ne pas** configurer de healthcheck HTTP (`/health`, `/api/health`) sur le worker — il n'écoute pas HTTP, Dokploy le marquera unhealthy et recrée le conteneur en boucle.
+- Désactiver le healthcheck UI Dokploy sur le worker, ou laisser uniquement le HEALTHCHECK de l'image (`/healthcheck.sh`).
+- Vérifier que `WORKER_MODE=1` est bien dans les variables d'environnement du service worker.
+- Garder un `start period` ≥ 90s pour éviter les faux négatifs pendant `migrations`/`cache:warmup`.
 
 ---
 

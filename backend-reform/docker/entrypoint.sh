@@ -32,10 +32,15 @@ if [ "${WORKER_MODE:-0}" = "1" ]; then
         done
     ) &
 
-    exec php bin/console messenger:consume async \
-        --time-limit="${_time_limit}" \
-        --memory-limit="${_memory_limit}" \
-        -vv
+    # Boucle : time-limit / memory-limit font sortir le consumer sans tuer le conteneur.
+    while true; do
+        php bin/console messenger:consume async \
+            --time-limit="${_time_limit}" \
+            --memory-limit="${_memory_limit}" \
+            -vv \
+            || echo "[worker] messenger:consume exited (relance dans 2s)"
+        sleep 2
+    done
 fi
 
 exec "$@"

@@ -1,9 +1,28 @@
 #!/bin/sh
 set -eu
 
-# Worker container: no HTTP server, ensure the consumer process is alive.
+# Returns 0 if a messenger:consume process is alive (worker).
+# Uses pgrep when available, otherwise scans /proc (no procps required).
+worker_process_alive() {
+    if command -v pgrep >/dev/null 2>&1; then
+        if pgrep -f 'messenger:consume' >/dev/null 2>&1; then
+            return 0
+        fi
+    fi
+
+    for cmdline in /proc/[0-9]*/cmdline; do
+        [ -r "$cmdline" ] || continue
+        case "$(tr '\0' ' ' < "$cmdline" 2>/dev/null || true)" in
+            *messenger:consume*) return 0 ;;
+        esac
+    done
+
+    return 1
+}
+
+# Worker container: no HTTP server — only check the consumer process.
 if [ "${WORKER_MODE:-0}" = "1" ]; then
-    if pgrep -f "messenger:consume async" >/dev/null 2>&1; then
+    if worker_process_alive; then
         exit 0
     fi
 
