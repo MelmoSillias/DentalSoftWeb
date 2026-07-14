@@ -20,7 +20,9 @@ worker_process_alive() {
     return 1
 }
 
-# Worker container: no HTTP server — only check the consumer process.
+# Conteneur worker exclusif (WORKER_MODE=1) : pas de serveur HTTP.
+# Mode API (défaut / worker embarqué) : ne pas exiger messenger:consume —
+# un redémarrage court du consumer ne doit pas marquer l'API unhealthy.
 if [ "${WORKER_MODE:-0}" = "1" ]; then
     if worker_process_alive; then
         exit 0
@@ -30,7 +32,7 @@ if [ "${WORKER_MODE:-0}" = "1" ]; then
     exit 1
 fi
 
-# API container: verify local health endpoint answers 2xx and payload is OK.
+# API (+ workers embarqués) : endpoint HTTP local 2xx + payload OK.
 HEALTHCHECK_URL="${HEALTHCHECK_URL:-http://127.0.0.1/health}"
 
 php -r '

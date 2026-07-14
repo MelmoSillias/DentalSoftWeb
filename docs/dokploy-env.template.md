@@ -5,17 +5,17 @@ Les Dockerfiles ne sont utilisés qu'en production sur le serveur — le dévelo
 
 ---
 
-## Applications Dokploy (7 déploiements minimum)
+## Applications Dokploy (5 déploiements minimum)
 
 | Application | Root directory | Domaine | Spécificité |
 |-------------|----------------|---------|-------------|
 | Admin CDOS | `frontend/` | `admin.cabinetdentaireousmanesow.cloud` | Build arg `CABINET=cdos` |
 | Admin Mondentiste | `frontend/` | `admin.mondentiste-mali.com` | Build arg `CABINET=mondentiste` |
-| API CDOS | `backend-reform/` | `api.cabinetdentaireousmanesow.cloud` | Variables env cdos |
-| **Worker CDOS** | `backend-reform/` | *(aucun — interne)* | `WORKER_MODE=1`, même image/env que API CDOS |
-| API Mondentiste | `backend-reform/` | `api.mondentiste-mali.com` | Variables env mondentiste |
-| **Worker Mondentiste** | `backend-reform/` | *(aucun — interne)* | `WORKER_MODE=1`, même image/env que API Mondentiste |
+| API CDOS | `backend-reform/` | `api.cabinetdentaireousmanesow.cloud` | Env cdos — worker SMS/Messenger **embarqué** par défaut |
+| API Mondentiste | `backend-reform/` | `api.mondentiste-mali.com` | Env mondentiste — worker SMS/Messenger **embarqué** par défaut |
 | **Mercure Hub** | `mercure-prod/` | `mercure.cabinetdentaireousmanesow.cloud` | Hub temps réel partagé (SSE) |
+
+> Les services `worker-*` séparés sont **optionnels** (scaling). Par défaut, FrankenPHP + poll SMS + `messenger:consume` tournent dans le **même** conteneur API (`ENABLE_EMBEDDED_WORKER=1`).
 
 ---
 
@@ -118,7 +118,7 @@ Remplace `mariadb-cdos-a1b2c3` par le **Internal Host** exact affiché dans Dokp
 ### Étape 4 — Redeploy l'API
 
 1. **Save** les variables
-2. **Redeploy** `api-cdos` (et `worker-cdos` avec les mêmes variables)
+2. **Redeploy** `api-cdos`
 3. Tester : `GET /api/health` puis login
 
 ### Mondentiste — 2e base (plus tard)
@@ -337,7 +337,7 @@ MESSENGER_TRANSPORT_DSN=doctrine://default?queue_name=default
 
 > Contrairement au frontend (build depuis la racine), l'API se build **depuis le dossier `backend-reform/`**.
 
-### Backend — healthcheck recommandé (API + worker)
+### Backend — healthcheck recommandé
 
 Le backend embarque un healthcheck Docker natif dans l'image:
 
@@ -346,19 +346,20 @@ Le backend embarque un healthcheck Docker natif dans l'image:
 
 Comportement:
 
-- **API (`WORKER_MODE=0`)**:
+- **API (défaut, y compris worker embarqué)** :
   - vérifie `http://127.0.0.1/health` (ou `HEALTHCHECK_URL` si défini)
   - exige HTTP `2xx` + payload contenant `"status":"ok"`
-- **Worker (`WORKER_MODE=1`)**:
+  - **ne** dépend **pas** du process Messenger (évite les redémarrages si le consumer se relance)
+- **Worker exclusif (`WORKER_MODE=1`, optionnel)** :
   - ne fait **pas** de check HTTP
   - vérifie la présence du process `messenger:consume` (`pgrep` / scan `/proc`)
 
 Réglage Dokploy recommandé:
 
-- **Ne pas** configurer de healthcheck HTTP (`/health`, `/api/health`) sur le worker — il n'écoute pas HTTP, Dokploy le marquera unhealthy et recrée le conteneur en boucle.
-- Désactiver le healthcheck UI Dokploy sur le worker, ou laisser uniquement le HEALTHCHECK de l'image (`/healthcheck.sh`).
-- Vérifier que `WORKER_MODE=1` est bien dans les variables d'environnement du service worker.
-- Garder un `start period` ≥ 90s pour éviter les faux négatifs pendant `migrations`/`cache:warmup`.
+- Sur l’API : healthcheck HTTP `/health` **ou** s’appuyer sur le HEALTHCHECK de l’image.
+- **Ne jamais** mettre `WORKER_MODE=1` sur le service API (sinon plus de FrankenPHP → 502).
+- Si tu crées un worker dédié : **pas** de healthcheck HTTP Dokploy sur ce service.
+- Garder un `start period` ≥ 90s pour `migrations` / `cache:warmup`.
 
 ---
 
@@ -433,74 +434,77 @@ tar -czf /srv/data/backups-mondentiste/uploads-$(date +%Y%m%d).tar.gz -C /srv/da
 
 ---
 
-## Workers Messenger (traitement SMS async)
+## Worker Messenger embarqué (SMS + async) — recommandé
 
-L'API met les SMS en file (`sms_queue`) puis déclenche le traitement via Messenger (`ProcessSmsQueueMessage` → transport `async` Doctrine). **Sans worker, les SMS restent en attente** (y compris les rappels RDV programmés).
+L'API met les SMS en file (`sms_queue`). Le traitement automatique tourne **dans le même conteneur** que FrankenPHP (pas de second service Dokploy).
 
-Le worker intégré (`WORKER_MODE=1` dans `docker/entrypoint.sh`) fait deux choses en parallèle :
+Au démarrage (`docker/entrypoint.sh`), si `WORKER_MODE` est absent/`0` et `ENABLE_EMBEDDED_WORKER=1` (défaut) :
 
-1. **Poll SMS** — toutes les 60 s (configurable), exécute `app:sms:dispatch-queue` pour enfiler un traitement
-2. **Consume Messenger** — `messenger:consume async` traite les messages (SMS, emails async, etc.)
+1. **Poll SMS** — toutes les 60 s : `app:sms:process-queue` (traitement direct des SMS dus)
+2. **Consume Messenger** — `messenger:consume async` (mails / autres messages async)
+3. **FrankenPHP** — HTTP sur le port 80 (PID principal)
 
-### Étape 1 — Créer le worker CDOS
+### Configuration API (aucun service worker à créer)
 
-1. Projet **DentalSoft** → **Add Service** → **Application** (Docker)
-2. Même build que `api-cdos` :
-
-| Champ | Valeur |
-|-------|--------|
-| **Name** | `worker-cdos` |
-| **Build Path** | `backend-reform` |
-| **Dockerfile Path** | `Dockerfile` |
-| **Docker Context Path** | `.` |
-| Port exposé | *(aucun)* |
-| Domaine | *(aucun)* |
-
-3. **Environment** — copier **toutes** les variables de `api-cdos`, puis ajouter :
+Sur `api-cdos` / `api-mondentiste` :
 
 ```env
-WORKER_MODE=1
-RUN_MIGRATIONS=0
+# Obligatoire : ne PAS mettre WORKER_MODE=1 (sinon plus d'HTTP → 502)
+# WORKER_MODE=0
+
+# Défaut = 1 (peut être omis). Mettre 0 uniquement pour désactiver les boucles embarquées.
+ENABLE_EMBEDDED_WORKER=1
+
 SMS_POLL_INTERVAL=60
 SMS_DISPATCH_LIMIT=20
 MESSENGER_TIME_LIMIT=3600
 MESSENGER_MEMORY_LIMIT=128M
 ```
 
-> `RUN_MIGRATIONS=0` évite de lancer les migrations en double (déjà faites par l'API au démarrage).
+**Redeploy** l’API. Dans les logs tu dois voir :
 
-4. **Deploy** — le conteneur doit rester **Running** en permanence (pas de health check HTTP).
+```text
+[entrypoint] ENABLE_EMBEDDED_WORKER=1 — process-queue SMS + messenger:consume en arrière-plan
+```
 
-### Étape 2 — Worker Mondentiste
-
-Même procédure avec `worker-mondentiste` et les variables env de `api-mondentiste` + `WORKER_MODE=1`.
+puis le démarrage FrankenPHP / Caddy.
 
 ### Vérification
 
-Depuis le conteneur worker (logs Dokploy ou `docker exec`) :
-
 ```bash
-# Doit afficher « ProcessSmsQueueMessage dispatché » toutes les ~60 s
-php bin/console app:sms:dispatch-queue --limit=5
-
-# Traitement synchrone de test (sans passer par Messenger)
-php bin/console app:sms:process-queue --limit=5
+# Depuis le conteneur API
+php bin/console app:sms:process-queue --limit=5 --env=prod
 ```
 
-Côté admin → **Paramètres SMS → File SMS** : les entrées `pending` passent à `sent` après le poll.
+Admin → **Paramètres SMS → File SMS** : les `pending` dus passent à `sent` après le poll (~60 s).
 
-### Variables worker optionnelles
+Pas besoin de Schedule Dokploy pour les SMS si le worker embarqué tourne.
+
+### Variables optionnelles
 
 | Variable | Défaut | Rôle |
 |----------|--------|------|
-| `SMS_POLL_INTERVAL` | `60` | Secondes entre deux dispatch de la file SMS |
+| `ENABLE_EMBEDDED_WORKER` | `1` | Worker SMS + Messenger dans le conteneur API |
+| `SMS_POLL_INTERVAL` | `60` | Secondes entre deux traitements de la file SMS |
 | `SMS_DISPATCH_LIMIT` | `20` | SMS max traités par cycle |
 | `MESSENGER_TIME_LIMIT` | `3600` | Redémarrage auto du consumer après 1 h |
 | `MESSENGER_MEMORY_LIMIT` | `128M` | Limite mémoire du consumer |
 
+### Worker dédié (optionnel — scaling)
+
+Uniquement si la charge le justifie : second service avec la **même image**, env de l’API + :
+
+```env
+WORKER_MODE=1
+RUN_MIGRATIONS=0
+ENABLE_EMBEDDED_WORKER=0
+```
+
+Dans ce cas, mettre `ENABLE_EMBEDDED_WORKER=0` sur l’API pour éviter un double traitement SMS. Pas de domaine / pas de healthcheck HTTP sur le worker.
+
 ### Cron optionnel — nettoyage notifications
 
-Dans Dokploy, planifier sur chaque backend :
+Dans Dokploy Schedule sur chaque API :
 
 ```bash
 php bin/console app:notifications:cleanup
@@ -521,9 +525,9 @@ Apache reste actif tant que le nouveau service n'est pas validé. Bascule DNS/pr
 | 1 | Installer Dokploy sur Ubuntu | Interface accessible |
 | 2 | Déployer Admin CDOS (`CABINET=cdos`) | SPA charge, login vers API Apache actuelle |
 | 3 | Déployer Admin Mondentiste (`CABINET=mondentiste`) | Idem |
-| 4 | Déployer API CDOS + worker | Checklist backend ci-dessous |
+| 4 | Déployer API CDOS (worker embarqué) | Checklist backend ci-dessous |
 | 5 | Bascule `api.cabinetdentaireousmanesow.cloud` | Rollback = réactiver vhost Apache |
-| 6 | Déployer API Mondentiste + worker | Checklist backend |
+| 6 | Déployer API Mondentiste (worker embarqué) | Checklist backend |
 | 7 | Bascule `api.mondentiste-mali.com` | Rollback = réactiver vhost Apache |
 | 8 | Bascule admins (si pas fait aux étapes 2-3) | Rollback = réactiver vhost Apache admin |
 
@@ -536,7 +540,7 @@ Apache reste actif tant que le nouveau service n'est pas validé. Bascule DNS/pr
 - [ ] Génération PDF / rapport
 - [ ] Envoi email test
 - [ ] Notification temps réel (Mercure)
-- [ ] SMS (worker Messenger actif)
+- [ ] SMS (log `ENABLE_EMBEDDED_WORKER=1` + file SMS qui avance)
 
 ### Checklist validation frontend (avant bascule admin)
 
