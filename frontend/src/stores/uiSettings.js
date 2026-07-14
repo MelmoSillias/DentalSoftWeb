@@ -19,8 +19,11 @@ const DEFAULT_LAYOUT = {
 
 const FONT_FAMILY_MAP = {
     Inter: 'Inter, system-ui, -apple-system, sans-serif',
+    Outfit: 'Outfit, system-ui, -apple-system, sans-serif',
     Roboto: 'Roboto, system-ui, -apple-system, sans-serif',
     'Open Sans': '"Open Sans", system-ui, -apple-system, sans-serif',
+    Lato: 'Lato, system-ui, -apple-system, sans-serif',
+    Poppins: 'Poppins, system-ui, -apple-system, sans-serif',
     System: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
 };
 

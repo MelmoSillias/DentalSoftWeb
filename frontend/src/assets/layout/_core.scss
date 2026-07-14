@@ -1,11 +1,17 @@
+:root {
+    --app-font-family: Inter, system-ui, -apple-system, sans-serif;
+    --app-font-size: 16px;
+}
+
 html {
     height: 100%;
-    font-size: 14px;
+    font-size: var(--app-font-size);
+    font-family: var(--app-font-family);
     line-height: 1.2;
 }
 
 body {
-    font-family: 'Lato', sans-serif;
+    font-family: var(--app-font-family);
     color: var(--text-color);
     background-color: var(--surface-ground);
     margin: 0;

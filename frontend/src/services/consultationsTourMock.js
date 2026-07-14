@@ -281,20 +281,24 @@ export function verifyConsultationMedecinPasswordTourMock() {
     return true;
 }
 
-export function setConsultationFicheTourMock(consultationId, ficheId = null) {
+export function setConsultationFicheTourMock(consultationId, ficheId = null, options = {}) {
     const consultation = findPendingConsultation(consultationId);
     if (!consultation) {
         throw new Error('Consultation introuvable');
     }
 
+    const createNew = Boolean(options?.createNew);
     let resolvedFicheId = ficheId;
-    if (!resolvedFicheId) {
+    if (createNew) {
+        resolvedFicheId = consultationsTourMockState.nextFicheId++;
+    } else if (!resolvedFicheId) {
         resolvedFicheId = consultation.ficheId || consultation.lastFicheId || consultationsTourMockState.nextFicheId++;
     }
 
     consultationsTourMockState.activeFicheLinks[consultationId] = resolvedFicheId;
     return {
         ficheId: resolvedFicheId,
+        created: createNew || (!ficheId && !consultation.ficheId && !consultation.lastFicheId),
     };
 }
 

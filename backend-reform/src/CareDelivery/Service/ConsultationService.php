@@ -331,12 +331,29 @@ class ConsultationService
         }
     }
 
+    private function findLastFicheMedicale(?Patient $patient): ?FicheMedicale
+    {
+        if (!$patient?->getId()) {
+            return null;
+        }
+
+        return $this->em->getRepository(FicheMedicale::class)
+            ->createQueryBuilder('f')
+            ->andWhere('f.patient = :patient')
+            ->setParameter('patient', $patient)
+            ->orderBy('f.createdAt', 'DESC')
+            ->addOrderBy('f.id', 'DESC')
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
+
     private function resolvePendingFicheData(Consultation $consultation): array
     {
         $patient = $consultation->getPatient();
-        $lastFicheMedicale = $patient->getFichesMedicales()->filter(fn($f) => $f !== null)->last() ?: null; 
+        $lastFicheMedicale = $this->findLastFicheMedicale($patient);
 
-        $ficheMedicale = $consultation->getFicheMedicale(); 
+        $ficheMedicale = $consultation->getFicheMedicale();
 
         $linkedFiche = $ficheMedicale;
 
@@ -346,12 +363,12 @@ class ConsultationService
         }
 
         return [
-            'ficheMedicale' => $ficheMedicale, 
+            'ficheMedicale' => $ficheMedicale,
             'fiche' => $linkedFiche,
             'ficheId' => $linkedFiche?->getId(),
             'hasFiche' => (bool) ($linkedFiche || $lastFicheCandidate),
             'lastFicheId' => $lastFicheCandidate?->getId(),
-            'motif' =>  $lastFicheMedicale?->getEntretien()?->getMotifConsultation() ?? ''
+            'motif' => $lastFicheMedicale?->getEntretien()?->getMotifConsultation() ?? '',
         ];
     }
 
@@ -1217,18 +1234,23 @@ class ConsultationService
         }, $consults);
     }
 
-    public function linkOrCreateFiche(int $consultationId, ?int $ficheId = null, ?object $user = null, bool $restrictToMedecin = false): array
-    {
+    public function linkOrCreateFiche(
+        int $consultationId,
+        ?int $ficheId = null,
+        ?object $user = null,
+        bool $restrictToMedecin = false,
+        bool $forceCreate = false,
+    ): array {
         $consultation = $this->consultationRepo->find($consultationId);
 
         if (!$consultation) {
             throw new NotFoundHttpException('Consultation introuvable');
         }
 
-        $existingMedicalFiche = $consultation->getFicheMedicale();  
+        $existingMedicalFiche = $consultation->getFicheMedicale();
         if ($consultation->getStatut() === 1) {
             $existingFicheId = $existingMedicalFiche?->getId();
-            if ($existingFicheId !== null && ($ficheId === null || $ficheId === $existingFicheId)) {
+            if ($existingFicheId !== null && ($ficheId === null || $ficheId === $existingFicheId) && !$forceCreate) {
                 return [
                     'ficheId' => $existingFicheId,
                     'consultationId' => $consultation->getId(),
@@ -1246,31 +1268,37 @@ class ConsultationService
         $fiche = $consultation->getFicheMedicale();
         $created = false;
 
-        if ($ficheId) {
+        if ($forceCreate) {
+            $fiche = new FicheMedicale();
+            $fiche->setPatient($consultation->getPatient());
+            $this->em->persist($fiche);
+            $created = true;
+        } elseif ($ficheId) {
             $ficheMedicale = $this->em->getRepository(FicheMedicale::class)->find($ficheId);
 
             if (!$ficheMedicale) {
                 throw new NotFoundHttpException('Fiche introuvable');
             }
 
-            $fichePatientId = $ficheMedicale?->getPatient()?->getId();
+            $fichePatientId = $ficheMedicale->getPatient()?->getId();
             if ($fichePatientId !== $consultation->getPatient()?->getId()) {
                 throw new \InvalidArgumentException('La fiche ne correspond pas au patient de la consultation.');
             }
 
-            if ($ficheMedicale) { 
-                $consultation->setFicheMedicale($ficheMedicale);
-                $fiche = $ficheMedicale;
+            $consultation->setFicheMedicale($ficheMedicale);
+            $fiche = $ficheMedicale;
+        } elseif ($fiche) {
+            // Already linked — keep existing fiche.
+        } else {
+            $lastFiche = $this->findLastFicheMedicale($consultation->getPatient());
+            if ($lastFiche) {
+                $fiche = $lastFiche;
             } else {
-                $consultation->setFicheMedicale(null);
+                $fiche = new FicheMedicale();
+                $fiche->setPatient($consultation->getPatient());
+                $this->em->persist($fiche);
+                $created = true;
             }
-        }
-
-        if (!$fiche) {
-            $fiche = new FicheMedicale();
-            $fiche->setPatient($consultation->getPatient());
-            $this->em->persist($fiche);
-            $created = true;
         }
 
         $consultation->setFicheMedicale($fiche);
@@ -1306,10 +1334,8 @@ class ConsultationService
         } else {
             $fiche = $consultation->getFicheMedicale();
             if (!$fiche) {
-                $fiche = $consultation->getPatient()->getFichesMedicales()
-                    ->filter(fn($f) => $f !== null)
-                    ->last();
-                if (!$consultation->getFicheMedicale()) {
+                $fiche = $this->findLastFicheMedicale($consultation->getPatient());
+                if ($fiche) {
                     $consultation->setFicheMedicale($fiche);
                 }
             }

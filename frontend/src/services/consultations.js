@@ -325,20 +325,22 @@ export const updateConsultationInvoice = async (consultationId, payload = {}, to
     return res.data;
 };
 
-export const setConsultationFiche = async (consultationId, ficheId = null, token) => {
+export const setConsultationFiche = async (consultationId, ficheId = null, token, options = {}) => {
     if (!consultationId) {
         throw new Error('consultationId requis');
     }
 
+    const createNew = Boolean(options?.createNew);
+
     if (isConsultationsTourMockEnabled()) {
-        return setConsultationFicheTourMock(consultationId, ficheId);
+        return setConsultationFicheTourMock(consultationId, ficheId, { createNew });
     }
 
-    const suffix = ficheId ? `/${ficheId}` : '';
+    const suffix = ficheId && !createNew ? `/${ficheId}` : '';
     try {
         const res = await axios.post(
             `${apiPrefix}/consultation/set_fiche${suffix}`,
-            { consultationId },
+            { consultationId, createNew },
             { headers: authHeaders(token) }
         );
 

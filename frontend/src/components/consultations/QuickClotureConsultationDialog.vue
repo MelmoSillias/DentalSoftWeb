@@ -181,7 +181,9 @@ const loadQuickData = async () => {
         salles.value = salleItems || [];
 
         const targetFicheId = resolveTargetFicheId(consultation, props.actionMode);
-        const linked = await setConsultationFiche(consultation.id, targetFicheId, token);
+        const linked = await setConsultationFiche(consultation.id, targetFicheId, token, {
+            createNew: props.actionMode === 'new-fiche',
+        });
         ficheId.value = linked?.ficheId ?? null;
 
         const details = await fetchConsultationDetails(consultation.id, token);

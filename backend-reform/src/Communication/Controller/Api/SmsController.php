@@ -99,9 +99,40 @@ final class SmsController extends AbstractController
     }
 
     #[Route('/stats', name: 'stats', methods: ['GET'])]
-    public function stats(): JsonResponse
+    public function stats(Request $request): JsonResponse
     {
-        return $this->json($this->smsService->stats());
+        $fromRaw = trim((string) $request->query->get('from', ''));
+        $toRaw = trim((string) $request->query->get('to', ''));
+
+        $from = null;
+        $to = null;
+
+        if ($fromRaw !== '') {
+            $from = DateTimeImmutable::createFromFormat('!Y-m-d', $fromRaw);
+            if (!$from instanceof DateTimeImmutable) {
+                return $this->json(['error' => 'Paramètre from invalide (attendu Y-m-d).'], 400);
+            }
+        }
+
+        if ($toRaw !== '') {
+            $to = DateTimeImmutable::createFromFormat('!Y-m-d', $toRaw);
+            if (!$to instanceof DateTimeImmutable) {
+                return $this->json(['error' => 'Paramètre to invalide (attendu Y-m-d).'], 400);
+            }
+        }
+
+        if ($from instanceof DateTimeImmutable && $to instanceof DateTimeImmutable && $from > $to) {
+            return $this->json(['error' => 'La date de début doit précéder la date de fin.'], 400);
+        }
+
+        if ($from instanceof DateTimeImmutable && $to instanceof DateTimeImmutable) {
+            $days = (int) $from->diff($to)->days;
+            if ($days > 92) {
+                return $this->json(['error' => 'La période ne peut pas dépasser 92 jours.'], 400);
+            }
+        }
+
+        return $this->json($this->smsService->stats($from, $to));
     }
 
     #[Route('/provider-overview', name: 'provider_overview', methods: ['GET'])]

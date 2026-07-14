@@ -76,6 +76,7 @@ const extractApiError = (error, fallback) => getHttpErrorMessage(error, fallback
 const {
     smsLoading,
     smsLoaded,
+    smsPeriodLoading,
     smsTesting,
     smsSendingTest,
     smsSaving,
@@ -103,6 +104,12 @@ const {
     monthlySeries,
     maxDaily,
     maxMonthly,
+    periodDailySeries,
+    periodByType,
+    maxPeriodDaily,
+    maxPeriodByType,
+    toIsoDate,
+    loadPeriodStats,
     loadSmsData,
     refreshSmsData,
     saveSmsConfigAction,
@@ -115,6 +122,38 @@ const {
     processQueueAction,
     updateQueueItemAction
 } = useSmsAdminSettings(token, toast, extractApiError);
+
+const statsPeriodStart = new Date();
+statsPeriodStart.setDate(1);
+statsPeriodStart.setHours(0, 0, 0, 0);
+const statsPeriodRange = ref([statsPeriodStart, new Date()]);
+const statsPeriodHasLoaded = ref(false);
+
+const statsPeriodLabel = computed(() => {
+    const [start, end] = statsPeriodRange.value || [];
+    if (!start || !end) return 'Choisir période';
+    return `${start.toLocaleDateString('fr-FR')} - ${end.toLocaleDateString('fr-FR')}`;
+});
+
+const formatSmsTypeLabel = (type) => {
+    const labels = {
+        manual: 'Manuel',
+        receipt: 'Reçu',
+        invoice: 'Facture',
+        ticket: 'Ticket',
+        'appointment reminder': 'Rappel RDV',
+        appointment_reminder: 'Rappel RDV',
+        reminder: 'Rappel',
+        test: 'Test'
+    };
+    return labels[type] || type || 'Autre';
+};
+
+const refreshPeriodStats = async (silent = false) => {
+    const [start, end] = statsPeriodRange.value || [];
+    if (!start || !end) return;
+    await loadPeriodStats(toIsoDate(start), toIsoDate(end), { silent });
+};
 
 const queueRecurrenceOptions = [
     { label: 'Sans répétition', value: 'none' },
@@ -358,9 +397,32 @@ watch(manualTemplateCode, () => {
     applyTemplateToManualSms();
 });
 
+watch(
+    () => statsPeriodRange.value,
+    () => {
+        const [start, end] = statsPeriodRange.value || [];
+        if (!start || !end) return;
+        if (!statsPeriodHasLoaded.value) {
+            statsPeriodHasLoaded.value = true;
+            if (smsLoaded.value) {
+                refreshPeriodStats(true);
+            }
+            return;
+        }
+        refreshPeriodStats(true);
+    },
+    { deep: true }
+);
+
 onMounted(async () => {
     try {
+        const [start, end] = statsPeriodRange.value || [];
+        if (start && end) {
+            smsStats.period.from = toIsoDate(start);
+            smsStats.period.to = toIsoDate(end);
+        }
         await loadSmsData(true);
+        statsPeriodHasLoaded.value = true;
         loadErrorMessage.value = '';
     } catch (error) {
         loadErrorMessage.value = extractApiError(error, 'Impossible de charger les paramètres SMS.');
@@ -521,6 +583,112 @@ const retryLoadSmsSettings = async () => {
                                         </div>
                                         <div class="rounded-xl bg-orange-50 p-2 dark:bg-orange-900/20">
                                             <i class="pi pi-file text-orange-600 dark:text-orange-400"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Period detailed stats -->
+                            <div class="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900/50">
+                                <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                                    <div>
+                                        <p class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Période</p>
+                                        <h3 class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">Statistiques détaillées</h3>
+                                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ statsPeriodLabel }}</p>
+                                    </div>
+                                    <div class="flex flex-wrap items-center gap-3">
+                                        <PanelDatePicker
+                                            v-model="statsPeriodRange"
+                                            showIcon
+                                            dateFormat="dd/mm/yy"
+                                            class="w-72"
+                                            placeholder="Choisir période"
+                                        />
+                                        <Button
+                                            label="Rafraîchir"
+                                            icon="pi pi-refresh"
+                                            outlined
+                                            :loading="smsPeriodLoading"
+                                            @click="refreshPeriodStats(false)"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                                    <div class="rounded-xl border border-gray-100 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/30">
+                                        <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Envoyés</p>
+                                        <p class="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{{ smsStats.period.sent }}</p>
+                                    </div>
+                                    <div class="rounded-xl border border-gray-100 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/30">
+                                        <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Échecs</p>
+                                        <p class="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{{ smsStats.period.failed }}</p>
+                                    </div>
+                                    <div class="rounded-xl border border-gray-100 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/30">
+                                        <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Total tentatives</p>
+                                        <p class="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{{ smsStats.period.total }}</p>
+                                    </div>
+                                    <div class="rounded-xl border border-gray-100 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/30">
+                                        <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Taux de succès</p>
+                                        <p class="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{{ smsStats.period.successRate }}%</p>
+                                    </div>
+                                </div>
+
+                                <div class="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
+                                    <div>
+                                        <div class="mb-4 flex items-center justify-between gap-3">
+                                            <h4 class="text-sm font-semibold text-gray-900 dark:text-white">Trafic journalier (période)</h4>
+                                            <Tag severity="info" :value="`${periodDailySeries.length} jour(s)`" />
+                                        </div>
+                                        <div v-if="periodDailySeries.length" class="max-h-72 space-y-3 overflow-y-auto pr-1">
+                                            <div
+                                                v-for="([day, count]) in periodDailySeries"
+                                                :key="day"
+                                                class="flex items-center gap-3 text-sm"
+                                            >
+                                                <span class="w-24 shrink-0 text-gray-600 dark:text-gray-400">{{ day }}</span>
+                                                <div class="h-2 flex-1 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+                                                    <div
+                                                        class="h-2 rounded-full bg-gradient-to-r from-emerald-500 to-emerald-600"
+                                                        :style="{ width: `${Math.round((Number(count) / maxPeriodDaily) * 100)}%` }"
+                                                    />
+                                                </div>
+                                                <span class="w-12 text-right font-medium text-gray-700 dark:text-gray-300">{{ count }}</span>
+                                            </div>
+                                        </div>
+                                        <div
+                                            v-else
+                                            class="rounded-xl border border-dashed border-gray-300 px-4 py-8 text-center text-sm text-gray-500 dark:border-gray-600 dark:text-gray-400"
+                                        >
+                                            Aucun envoi sur cette période.
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <div class="mb-4 flex items-center justify-between gap-3">
+                                            <h4 class="text-sm font-semibold text-gray-900 dark:text-white">Répartition par type</h4>
+                                            <Tag severity="secondary" :value="`${periodByType.length} type(s)`" />
+                                        </div>
+                                        <div v-if="periodByType.length" class="space-y-3">
+                                            <div
+                                                v-for="([type, count]) in periodByType"
+                                                :key="type"
+                                                class="flex items-center gap-3 text-sm"
+                                            >
+                                                <span class="w-28 shrink-0 text-gray-600 dark:text-gray-400">{{ formatSmsTypeLabel(type) }}</span>
+                                                <div class="h-2 flex-1 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+                                                    <div
+                                                        class="h-2 rounded-full bg-gradient-to-r from-indigo-500 to-indigo-600"
+                                                        :style="{ width: `${Math.round((Number(count) / maxPeriodByType) * 100)}%` }"
+                                                    />
+                                                </div>
+                                                <span class="w-12 text-right font-medium text-gray-700 dark:text-gray-300">{{ count }}</span>
+                                            </div>
+                                        </div>
+                                        <div
+                                            v-else
+                                            class="rounded-xl border border-dashed border-gray-300 px-4 py-8 text-center text-sm text-gray-500 dark:border-gray-600 dark:text-gray-400"
+                                        >
+                                            Aucune répartition disponible pour cette période.
                                         </div>
                                     </div>
                                 </div>

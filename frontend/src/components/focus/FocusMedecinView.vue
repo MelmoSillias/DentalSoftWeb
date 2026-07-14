@@ -111,41 +111,24 @@ const medecinLabel = (consultation) => {
     return medecin.label || medecin.fullName || medecin.name || `${medecin.prenom ?? ''} ${medecin.nom ?? ''}`.trim() || 'Non assigné';
 };
 
-const requiresChoice = computed(() => {
-    const consultation = currentConsultation.value;
-    if (!consultation) return false;
-    if (consultation.ficheId) return false;
-    return Boolean(consultation.hasFiche || consultation.lastFicheId);
-});
-
-const selectedActionChoice = computed(() => {
-    const consultation = currentConsultation.value;
-    if (!consultation) return null;
-    return consultation.ficheId ? 'continue-last' : consultation.focusActionChoice || null;
-});
-
 const selectedEmbeddedMode = computed(() => {
-    const consultation = currentConsultation.value;
-    if (!consultation) return 'continue';
-    if (consultation.ficheId) return 'continue';
-    if (!requiresChoice.value) return 'new-fiche';
-    return selectedActionChoice.value === 'new-fiche' ? 'new-fiche' : 'continue';
+    // Focus never force-creates: backend links last fiche or creates only if none exist.
+    return 'continue';
 });
 
 const selectedEmbeddedFicheId = computed(() => {
     const consultation = currentConsultation.value;
     if (!consultation) return null;
     if (consultation.ficheId) return consultation.ficheId;
-    if (selectedActionChoice.value === 'continue-last') return consultation.lastFicheId || null;
-    return null;
+    return consultation.lastFicheId || null;
 });
 
 const selectedChoiceLabel = computed(() => {
-    if (selectedActionChoice.value === 'continue-last') return 'Reprise de la dernière fiche';
-    if (selectedActionChoice.value === 'new-fiche') return 'Nouvelle fiche choisie';
     if (currentConsultation.value?.ficheId) return 'Fiche liée en cours';
-    if (!requiresChoice.value) return 'Nouvelle fiche automatique';
-    return '';
+    if (currentConsultation.value?.hasFiche || currentConsultation.value?.lastFicheId) {
+        return 'Reprise de la dernière fiche';
+    }
+    return 'Nouvelle fiche';
 });
 
 const currentConsultation = computed(() =>
@@ -284,24 +267,6 @@ watch(
 
             <SplitterPanel :size="56" :minSize="40"
                 class="flex flex-col overflow-y-auto bg-surface-50 dark:bg-surface-950">
-                <div v-if="currentConsultation && !currentConsultationClosed && requiresChoice && !selectedActionChoice"
-                    class="m-4 rounded-xl border-l-4 border-amber-500 bg-amber-50 p-4 dark:bg-amber-950/30 dark:border-amber-600">
-                    <div class="flex items-start justify-between gap-4">
-                        <div>
-                            <p class="font-medium text-amber-900 dark:text-amber-100">Fiche existante détectée</p>
-                            <p class="text-sm text-amber-700 dark:text-amber-300 mt-1">
-                                Choisissez une action pour ce patient
-                            </p>
-                        </div>
-                        <div class="flex gap-3">
-                            <Button label="Reprendre la dernière" severity="warning" outlined
-                                @click="emit('select-action-choice', currentConsultation, 'continue-last')" />
-                            <Button label="Nouvelle fiche" severity="warning"
-                                @click="emit('select-action-choice', currentConsultation, 'new-fiche')" />
-                        </div>
-                    </div>
-                </div>
-
                 <div v-if="canShowEmbeddedWorkspace"
                     class="flex-1 border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-900 overflow-y-auto">
                     <EmbeddedConsultationFiche ref="embeddedFicheRef" :consultation-id="currentConsultation.id"

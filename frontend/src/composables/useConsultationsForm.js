@@ -294,8 +294,11 @@ export const useConsultationsForm = ({ ficheId, consultId, token, mode }) => {
     const ensureFicheLinked = async () => {
         if (!consultId.value) return null;
 
-        const requestedFicheId = mode?.value === 'continue' ? (ficheId.value || null) : null;
-        const res = await setConsultationFiche(consultId.value, requestedFicheId, token);
+        const isNewFiche = mode?.value === 'new-fiche';
+        const requestedFicheId = isNewFiche ? null : (ficheId.value || null);
+        const res = await setConsultationFiche(consultId.value, requestedFicheId, token, {
+            createNew: isNewFiche,
+        });
         const linkedId = res?.ficheId ?? res?.id ?? null;
         if (linkedId) ficheId.value = linkedId;
         return ficheId.value;

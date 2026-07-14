@@ -58,8 +58,20 @@ export function useSmsAdminSettings(token, toast, extractApiError) {
             totalSent: 0
         },
         dailyConsumption: {},
-        monthlyConsumption: {}
+        monthlyConsumption: {},
+        period: {
+            from: null,
+            to: null,
+            sent: 0,
+            failed: 0,
+            total: 0,
+            successRate: 0,
+            daily: {},
+            byType: {}
+        }
     });
+
+    const smsPeriodLoading = ref(false);
 
     const smsLogs = ref([]);
     const smsQueue = ref([]);
@@ -90,6 +102,59 @@ export function useSmsAdminSettings(token, toast, extractApiError) {
     const monthlySeries = computed(() => Object.entries(smsStats.monthlyConsumption || {}));
     const maxDaily = computed(() => Math.max(1, ...dailySeries.value.map(([, value]) => Number(value) || 0)));
     const maxMonthly = computed(() => Math.max(1, ...monthlySeries.value.map(([, value]) => Number(value) || 0)));
+    const periodDailySeries = computed(() => Object.entries(smsStats.period?.daily || {}));
+    const periodByType = computed(() => Object.entries(smsStats.period?.byType || {}));
+    const maxPeriodDaily = computed(() => Math.max(1, ...periodDailySeries.value.map(([, value]) => Number(value) || 0)));
+    const maxPeriodByType = computed(() => Math.max(1, ...periodByType.value.map(([, value]) => Number(value) || 0)));
+
+    const applyStatsPayload = (stats) => {
+        smsStats.balance = stats.balance || smsStats.balance;
+        smsStats.dailyConsumption = stats.dailyConsumption || {};
+        smsStats.monthlyConsumption = stats.monthlyConsumption || {};
+        if (stats.period && typeof stats.period === 'object') {
+            smsStats.period = {
+                from: stats.period.from || null,
+                to: stats.period.to || null,
+                sent: Number(stats.period.sent) || 0,
+                failed: Number(stats.period.failed) || 0,
+                total: Number(stats.period.total) || 0,
+                successRate: Number(stats.period.successRate) || 0,
+                daily: stats.period.daily || {},
+                byType: stats.period.byType || {}
+            };
+        }
+    };
+
+    const toIsoDate = (value) => {
+        if (!value) return null;
+        if (typeof value === 'string') return value;
+        const date = value instanceof Date ? value : new Date(value);
+        if (Number.isNaN(date.getTime())) return null;
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
+    const loadPeriodStats = async (from, to, { silent = true } = {}) => {
+        const fromIso = toIsoDate(from);
+        const toIso = toIsoDate(to);
+        if (!fromIso || !toIso) return;
+
+        smsPeriodLoading.value = true;
+        try {
+            const stats = await fetchSmsStats(token, { from: fromIso, to: toIso });
+            applyStatsPayload(stats);
+            if (!silent) {
+                toast.add({ severity: 'success', summary: 'Stats SMS', detail: 'Statistiques période mises à jour.', life: 2500 });
+            }
+        } catch (error) {
+            console.error(error);
+            toast.add({ severity: 'error', summary: 'Stats SMS', detail: extractApiError(error, 'Chargement des stats période impossible.'), life: 3500 });
+        } finally {
+            smsPeriodLoading.value = false;
+        }
+    };
 
     const loadSmsData = async (force = false) => {
         if (!force && (smsLoaded.value || smsLoading.value)) return;
@@ -116,17 +181,19 @@ export function useSmsAdminSettings(token, toast, extractApiError) {
             smsConfig.baseUrl = smsSettings.baseUrl || 'https://api.orange.com';
             smsConfig.oauthUrl = smsSettings.oauthUrl || 'https://api.orange.com/oauth/v3/token';
 
+            const from = smsStats.period.from;
+            const to = smsStats.period.to;
+            const statsParams = from && to ? { from, to } : {};
+
             const [stats, logs, queue, templates, overview] = await Promise.all([
-                fetchSmsStats(token),
+                fetchSmsStats(token, statsParams),
                 fetchSmsLogs({ limit: 50 }, token),
                 fetchSmsQueue({ limit: 100 }, token),
                 fetchSmsTemplates(token),
                 fetchSmsProviderOverview(token)
             ]);
 
-            smsStats.balance = stats.balance || smsStats.balance;
-            smsStats.dailyConsumption = stats.dailyConsumption || {};
-            smsStats.monthlyConsumption = stats.monthlyConsumption || {};
+            applyStatsPayload(stats);
             smsLogs.value = logs;
             smsQueue.value = queue;
             smsTemplates.value = templates;
@@ -333,6 +400,7 @@ export function useSmsAdminSettings(token, toast, extractApiError) {
     return {
         smsLoading,
         smsLoaded,
+        smsPeriodLoading,
         smsTesting,
         smsSendingTest,
         smsSaving,
@@ -360,6 +428,12 @@ export function useSmsAdminSettings(token, toast, extractApiError) {
         monthlySeries,
         maxDaily,
         maxMonthly,
+        periodDailySeries,
+        periodByType,
+        maxPeriodDaily,
+        maxPeriodByType,
+        toIsoDate,
+        loadPeriodStats,
         loadSmsData,
         refreshSmsData,
         saveSmsConfigAction,

@@ -238,12 +238,20 @@ final class SmsService
     /**
      * @return array<string, mixed>
      */
-    public function stats(): array
+    public function stats(?DateTimeImmutable $from = null, ?DateTimeImmutable $to = null): array
     {
         $todayStart = new DateTimeImmutable('today 00:00:00');
         $todayEnd = new DateTimeImmutable('today 23:59:59');
         $monthStart = new DateTimeImmutable('first day of this month 00:00:00');
         $monthEnd = new DateTimeImmutable('last day of this month 23:59:59');
+
+        $periodStart = ($from ?? $monthStart)->setTime(0, 0, 0);
+        $periodEnd = ($to ?? $monthEnd)->setTime(23, 59, 59);
+
+        $sent = $this->logRepository->countByStatusBetween($periodStart, $periodEnd, 'sent');
+        $failed = $this->logRepository->countByStatusBetween($periodStart, $periodEnd, 'failed');
+        $total = $this->logRepository->countBetween($periodStart, $periodEnd);
+        $successRate = $total > 0 ? round(($sent / $total) * 100, 1) : 0.0;
 
         return [
             'balance' => [
@@ -253,6 +261,16 @@ final class SmsService
             ],
             'dailyConsumption' => $this->logRepository->dailySentSeries(7),
             'monthlyConsumption' => $this->logRepository->monthlySentSeries(6),
+            'period' => [
+                'from' => $periodStart->format('Y-m-d'),
+                'to' => $periodEnd->format('Y-m-d'),
+                'sent' => $sent,
+                'failed' => $failed,
+                'total' => $total,
+                'successRate' => $successRate,
+                'daily' => $this->logRepository->dailySentSeriesBetween($periodStart, $periodEnd),
+                'byType' => $this->logRepository->sentByTypeBetween($periodStart, $periodEnd),
+            ],
         ];
     }
 

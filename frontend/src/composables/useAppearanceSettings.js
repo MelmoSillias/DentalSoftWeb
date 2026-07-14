@@ -31,7 +31,7 @@ export function useAppearanceSettings() {
         { label: 'Système', value: 'system' }
     ]);
 
-    const fontFamilyOptions = ref(['Inter', 'Roboto', 'Open Sans', 'System']);
+    const fontFamilyOptions = ref(['Inter', 'Outfit', 'Roboto', 'Open Sans', 'Lato', 'Poppins', 'System']);
     const fontSizeOptions = ref([
         { label: 'Petit', value: 'small' },
         { label: 'Normal', value: 'normal' },

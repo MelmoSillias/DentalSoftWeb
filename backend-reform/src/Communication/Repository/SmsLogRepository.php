@@ -138,4 +138,95 @@ class SmsLogRepository extends ServiceEntityRepository
             ->getQuery()
             ->getResult();
     }
+
+    public function countByStatusBetween(DateTimeInterface $start, DateTimeInterface $end, string $status): int
+    {
+        return (int) $this->createQueryBuilder('l')
+            ->select('COUNT(l.id)')
+            ->andWhere('l.createdAt BETWEEN :start AND :end')
+            ->andWhere('l.status = :status')
+            ->setParameter('start', $start)
+            ->setParameter('end', $end)
+            ->setParameter('status', $status)
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
+    public function countBetween(DateTimeInterface $start, DateTimeInterface $end): int
+    {
+        return (int) $this->createQueryBuilder('l')
+            ->select('COUNT(l.id)')
+            ->andWhere('l.createdAt BETWEEN :start AND :end')
+            ->setParameter('start', $start)
+            ->setParameter('end', $end)
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
+    /**
+     * @return array<string, int>
+     */
+    public function dailySentSeriesBetween(DateTimeInterface $start, DateTimeInterface $end): array
+    {
+        $startDay = DateTimeImmutable::createFromInterface($start)->setTime(0, 0, 0);
+        $endDay = DateTimeImmutable::createFromInterface($end)->setTime(0, 0, 0);
+
+        $rows = $this->createQueryBuilder('l')
+            ->select('l.createdAt AS createdAt')
+            ->andWhere('l.createdAt BETWEEN :start AND :end')
+            ->andWhere('l.status = :status')
+            ->setParameter('start', $start)
+            ->setParameter('end', $end)
+            ->setParameter('status', 'sent')
+            ->orderBy('l.createdAt', 'ASC')
+            ->getQuery()
+            ->getArrayResult();
+
+        $series = [];
+        $cursor = $startDay;
+        while ($cursor <= $endDay) {
+            $series[$cursor->format('Y-m-d')] = 0;
+            $cursor = $cursor->modify('+1 day');
+        }
+
+        foreach ($rows as $row) {
+            $key = ($row['createdAt'] instanceof DateTimeInterface)
+                ? $row['createdAt']->format('Y-m-d')
+                : (new DateTimeImmutable((string) $row['createdAt']))->format('Y-m-d');
+
+            if (isset($series[$key])) {
+                ++$series[$key];
+            }
+        }
+
+        return $series;
+    }
+
+    /**
+     * Sent SMS counts grouped by type for the given period.
+     *
+     * @return array<string, int>
+     */
+    public function sentByTypeBetween(DateTimeInterface $start, DateTimeInterface $end): array
+    {
+        $rows = $this->createQueryBuilder('l')
+            ->select('l.type AS type, COUNT(l.id) AS cnt')
+            ->andWhere('l.createdAt BETWEEN :start AND :end')
+            ->andWhere('l.status = :status')
+            ->setParameter('start', $start)
+            ->setParameter('end', $end)
+            ->setParameter('status', 'sent')
+            ->groupBy('l.type')
+            ->orderBy('COUNT(l.id)', 'DESC')
+            ->getQuery()
+            ->getArrayResult();
+
+        $byType = [];
+        foreach ($rows as $row) {
+            $type = (string) ($row['type'] ?? 'unknown');
+            $byType[$type] = (int) ($row['cnt'] ?? 0);
+        }
+
+        return $byType;
+    }
 }

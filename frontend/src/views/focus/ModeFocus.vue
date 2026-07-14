@@ -904,12 +904,14 @@ const handleConsultationCreated = async (saved) => {
 const openMedicalWorkspace = (consultation, choice = null) => {
     if (!consultation?.id) return;
     selectedConsultationId.value = consultation.id;
-    if (choice) {
-        actionChoiceByConsultation.value = {
-            ...actionChoiceByConsultation.value,
-            [consultation.id]: choice
-        };
-    }
+    const resolvedChoice = choice
+        || (consultation.ficheId || consultation.hasFiche || consultation.lastFicheId
+            ? 'continue-last'
+            : 'new-fiche');
+    actionChoiceByConsultation.value = {
+        ...actionChoiceByConsultation.value,
+        [consultation.id]: resolvedChoice
+    };
     selectedMode.value = 'medecin';
 };
 
@@ -1003,12 +1005,17 @@ watch(
     () => currentConsultation.value?.id,
     (id) => {
         if (!id) return;
-        if (!actionChoiceByConsultation.value[id] && currentConsultation.value?.ficheId) {
-            actionChoiceByConsultation.value = {
-                ...actionChoiceByConsultation.value,
-                [id]: 'continue-last'
-            };
-        }
+        const consultation = currentConsultation.value;
+        if (!consultation) return;
+        if (actionChoiceByConsultation.value[id]) return;
+
+        const autoChoice = (consultation.ficheId || consultation.hasFiche || consultation.lastFicheId)
+            ? 'continue-last'
+            : 'new-fiche';
+        actionChoiceByConsultation.value = {
+            ...actionChoiceByConsultation.value,
+            [id]: autoChoice
+        };
     },
     { immediate: true }
 );

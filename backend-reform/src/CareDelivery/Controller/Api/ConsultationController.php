@@ -35,6 +35,7 @@ final class ConsultationController extends AbstractController{
         }
 
         $ficheId = $ficheId !== null ? (int) $ficheId : null;
+        $forceCreate = (bool) ($data['createNew'] ?? $data['forceCreate'] ?? false);
 
         try {
             $restrictToMedecin = $this->isGranted('ROLE_MEDECIN') && !$this->isGranted('ROLE_ADMIN');
@@ -43,6 +44,7 @@ final class ConsultationController extends AbstractController{
                 $ficheId,
                 $this->getUser(),
                 $restrictToMedecin,
+                $forceCreate,
             );
         } catch (NotFoundHttpException $e) {
             return $this->json(['error' => $e->getMessage()], 404);

@@ -31,8 +31,15 @@ export const sendSmsTest = async (payload, token) => {
     return res.data;
 };
 
-export const fetchSmsStats = async (token) => {
-    const res = await axios.get(`${apiPrefix}/sms/stats`, { headers: authHeaders(token) });
+export const fetchSmsStats = async (token, { from = null, to = null } = {}) => {
+    const params = {};
+    if (from) params.from = from;
+    if (to) params.to = to;
+
+    const res = await axios.get(`${apiPrefix}/sms/stats`, {
+        headers: authHeaders(token),
+        params
+    });
     return res.data;
 };
 
