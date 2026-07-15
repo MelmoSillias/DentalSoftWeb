@@ -8,6 +8,8 @@ node_modules/
 public/bundles/
 public/assets/
 assets/vendor/
+src/DataFixtures/
+tests/
 .git
 .gitignore
 .phpunit.result.cache
