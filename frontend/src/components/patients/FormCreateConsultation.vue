@@ -390,12 +390,7 @@ const handleSubmit = (event) => {
                     class="w-full" />
             </div>
             <div v-if="isPatientInsured" class="md:col-span-2 p-3 rounded border border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200">
-                <div class="font-semibold">Patient assuré — {{ patientInsurance.nom }}</div>
-                <small class="block mt-1 opacity-90">
-                    Une facture assurance sera créée automatiquement
-                    <template v-if="patientInsurance.coverageRate > 0"> (couverture {{ patientInsurance.coverageRate }} %)</template>.
-                    La part patient sera encaissée en caisse après clôture.
-                </small>
+                <div class="font-semibold">Patient assuré — {{ patientInsurance.nom }} (couverture {{ patientInsurance.coverageRate }} %)</div>
             </div>
             <div class="flex flex-col gap-2">
                 <label class="font-semibold">Consultation payante</label>

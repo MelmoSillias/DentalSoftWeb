@@ -77,7 +77,7 @@
 
 ## Schema services demarre
 
-- `Billing`: services `CashdeskService`, `FinanceService`
+- `Billing`: services `CashdeskEntryPointService`, `ClassicInvoiceWorkflowService`, `InsuredInvoiceWorkflowService`, `FinanceService`
 - `CareDelivery`: services `ConsultationService`, `ConsultationNotificationService`
 - `ClinicalRecord`: services `FicheMedicaleService`
 - `Communication`: services `NotificationService`, `NotificationRealtimePublisher`, `NotificationRecipientResolver`, `MercureAuthorizationService`, `SmsService`, `SmsTemplateService`, `SmsConfigService`, `OrangeSmsClient`, `CryptoService`

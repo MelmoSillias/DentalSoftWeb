@@ -4,12 +4,9 @@ namespace App\Billing\Controller\Api;
 
 use App\Billing\Entity\Paiement;
 use App\Billing\Repository\PaiementRepository;
-use App\Billing\Service\InsuranceClaimService;
-use App\Patient\Entity\Patient;
-use App\Billing\Service\CashdeskService;
-use App\CareDelivery\Entity\Consultation;
-use App\CareDelivery\Repository\ConsultationRepository;
+use App\Billing\Service\CashdeskEntryPointService;
 use App\Communication\Service\SmsService;
+use App\Patient\Entity\Patient;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -19,11 +16,9 @@ use Symfony\Component\Routing\Attribute\Route;
 class CaisseController extends AbstractController
 {
     public function __construct(
-        private CashdeskService $cashdeskService,
-        private InsuranceClaimService $insuranceClaimService,
+        private CashdeskEntryPointService $entryPoint,
         private SmsService $smsService,
         private PaiementRepository $paiementRepository,
-        private ConsultationRepository $consultationRepository,
     )
     {
     }
@@ -39,7 +34,9 @@ class CaisseController extends AbstractController
         }
         $end->setTime(23, 59, 59);
 
-        return new JsonResponse($this->cashdeskService->listFacturesByPeriod($start, $end));
+        $dto = $this->entryPoint->listAllFactures($start, $end);
+
+        return new JsonResponse($dto->toArray());
     }
 
     #[Route('/api/factures/classiques', name: 'api_factures_classiques_list', methods: ['GET'])]
@@ -53,7 +50,7 @@ class CaisseController extends AbstractController
         }
         $end->setTime(23, 59, 59);
 
-        return new JsonResponse($this->cashdeskService->listFacturesByPeriod($start, $end));
+        return new JsonResponse($this->entryPoint->getClassicWorkflow()->listFacturesByPeriod($start, $end));
     }
 
     #[Route('/api/factures/assurances', name: 'api_factures_assurances_list', methods: ['GET'])]
@@ -82,10 +79,10 @@ class CaisseController extends AbstractController
             }
         }
 
-        $data = $this->insuranceClaimService->listClaims(
-            is_string($status) ? $status : null,
+        $data = $this->entryPoint->getInsuredWorkflow()->listFacturesAssurance(
             $start,
             $end,
+            is_string($status) ? $status : null,
             is_string($patient) ? $patient : null,
             is_string($assuranceCode) ? $assuranceCode : null,
         );
@@ -120,7 +117,7 @@ class CaisseController extends AbstractController
             $end = (clone $start)->setTime(23, 59, 59);
         }
 
-        return new JsonResponse($this->cashdeskService->listFacturesImpayees($start, $end));
+        return new JsonResponse($this->entryPoint->getClassicWorkflow()->listFacturesImpayees($start, $end));
     }
 
     #[Route('/api/factures/payments', name: 'api_factures_payments', methods: ['GET'])]
@@ -134,13 +131,13 @@ class CaisseController extends AbstractController
         }
         $end->setTime(23, 59, 59);
 
-        return new JsonResponse(['data' => $this->cashdeskService->listPaiementsFactures($start, $end)]);
+        return new JsonResponse(['data' => $this->entryPoint->listPaiementsFactures($start, $end)]);
     }
 
     #[Route('/api/factures/{id}', name: 'api_factures_preview', methods: ['GET'])] 
     public function previewFacture(int $id): JsonResponse
     {
-        $data = $this->cashdeskService->previewFactureDetail($id);
+        $data = $this->entryPoint->getClassicWorkflow()->previewFactureDetail($id);
 
         if ($data === null) {
             return new JsonResponse(['error' => 'Facture introuvable'], 404);
@@ -154,11 +151,11 @@ class CaisseController extends AbstractController
     {
         $payload = $request->getContentTypeFormat() === 'json' ? $request->toArray() : $request->request->all();
 
-        $result = $this->cashdeskService->payerFacture($id, $payload);
+        $result = $this->entryPoint->getClassicWorkflow()->payerFacture($id, $payload);
 
         if (!isset($result['error']) && isset($result['paiement_id'])) {
             $paiement = $this->paiementRepository->find((int) $result['paiement_id']);
-            $patient = $this->cashdeskService->resolvePatientFromPaiement($paiement);
+            $patient = $this->entryPoint->resolvePatientFromPaiement($paiement);
 
             if ($patient instanceof Patient) {
                 $this->smsService->queueTemplateForPatient($patient, 'receipt', [
@@ -176,7 +173,7 @@ class CaisseController extends AbstractController
     #[Route('/api/factures/{id}/payments/reset', name: 'api_factures_payments_reset', methods: ['DELETE'])] 
     public function resetFacturePayments(int $id): JsonResponse
     {
-        $result = $this->cashdeskService->resetFacturePayments($id);
+        $result = $this->entryPoint->getClassicWorkflow()->resetFacturePayments($id);
 
         return new JsonResponse($result, isset($result['error']) ? 404 : 200);
     }
@@ -184,7 +181,7 @@ class CaisseController extends AbstractController
     #[Route('/api/factures/{id}/print', name: 'api_factures_print', methods: ['GET'])] 
     public function printFactureFromLegacyRoute(int $id): Response
     {
-        $data = $this->cashdeskService->previewFactureDetail($id);
+        $data = $this->entryPoint->getClassicWorkflow()->previewFactureDetail($id);
         if ($data === null) {
             throw $this->createNotFoundException('Facture introuvable.');
         }
@@ -198,7 +195,7 @@ class CaisseController extends AbstractController
     #[Route('/api/invoices/{id}/print', name: 'api_invoice_print', methods: ['GET'])]
     public function printFacture(int $id): Response
     {
-        $data = $this->cashdeskService->previewFacture($id);
+        $data = $this->entryPoint->getClassicWorkflow()->previewFacture($id);
         if ($data === null) {
             throw $this->createNotFoundException('Facture introuvable.');
         }
@@ -220,7 +217,7 @@ class CaisseController extends AbstractController
         }
         $end->setTime(23, 59, 59);
 
-        $paiements = $this->cashdeskService->paiementsForPeriod($start, $end);
+        $paiements = $this->entryPoint->paiementsForPeriod($start, $end);
 
         return $this->render('devis/print_paiements_liste.html.twig', [
             'paiements' => $paiements,
@@ -232,7 +229,7 @@ class CaisseController extends AbstractController
     #[Route('/api/payments/{id}/print', name: 'api_payment_print', methods: ['GET'])]
     public function printPaiement(int $id): Response
     {
-        $paiement = $this->cashdeskService->paiementById($id);
+        $paiement = $this->entryPoint->paiementById($id);
         if (!$paiement) {
             throw $this->createNotFoundException('Paiement introuvable.');
         }
@@ -245,7 +242,7 @@ class CaisseController extends AbstractController
     #[Route('/api/receipts/{id}/print', name: 'api_receipt_print', methods: ['GET'])]
     public function printTicket(int $id): Response
     {
-        $paiement = $this->cashdeskService->paiementById($id);
+        $paiement = $this->entryPoint->paiementById($id);
         if (!$paiement) {
             throw $this->createNotFoundException('Paiement introuvable.');
         }
@@ -258,7 +255,7 @@ class CaisseController extends AbstractController
     #[Route('/api/prints/devis/{id}', name: 'api_print_devis_data', methods: ['GET'])]
     public function getDevisPrintData(int $id): JsonResponse
     {
-        $data = $this->cashdeskService->previewDevis($id);
+        $data = $this->entryPoint->getClassicWorkflow()->previewDevis($id);
         if ($data === null) {
             return new JsonResponse(['error' => 'Devis introuvable'], 404);
         }
@@ -272,7 +269,7 @@ class CaisseController extends AbstractController
     #[Route('/api/prints/factures/{id}', name: 'api_print_factures_data', methods: ['GET'])] 
     public function getFacturePrintDataLegacy(int $id): JsonResponse
     {
-        $data = $this->cashdeskService->previewFactureDetail($id);
+        $data = $this->entryPoint->getClassicWorkflow()->previewFactureDetail($id);
         if ($data === null) {
             return new JsonResponse(['error' => 'Facture introuvable'], 404);
         }
@@ -286,7 +283,7 @@ class CaisseController extends AbstractController
     #[Route('/api/prints/invoices/{id}', name: 'api_print_invoice_data', methods: ['GET'])]
     public function getFacturePrintData(int $id): JsonResponse
     {
-        $data = $this->cashdeskService->previewFacture($id);
+        $data = $this->entryPoint->getClassicWorkflow()->previewFacture($id);
         if ($data === null) {
             return new JsonResponse(['error' => 'Facture introuvable'], 404);
         }
@@ -308,8 +305,8 @@ class CaisseController extends AbstractController
         }
         $end->setTime(23, 59, 59);
 
-        $paiements = $this->cashdeskService->paiementsForPeriod($start, $end);
-        $items = array_map(fn (Paiement $p) => $this->cashdeskService->mapPaiementListItem($p), $paiements);
+        $paiements = $this->entryPoint->paiementsForPeriod($start, $end);
+        $items = array_map(fn (Paiement $p) => $this->entryPoint->mapPaiementListItem($p), $paiements);
         $total = array_reduce($items, fn ($sum, $p) => $sum + (float) ($p['montant'] ?? 0), 0);
 
         return new JsonResponse([
@@ -323,33 +320,33 @@ class CaisseController extends AbstractController
     #[Route('/api/prints/receipts/{id}', name: 'api_print_receipt_data', methods: ['GET'])]
     public function getReceiptPrintData(int $id): JsonResponse
     {
-        $paiement = $this->cashdeskService->paiementById($id);
+        $paiement = $this->entryPoint->paiementById($id);
         if (!$paiement) {
             return new JsonResponse(['error' => 'Paiement introuvable'], 404);
         }
 
         return new JsonResponse([
-            'paiement' => $this->cashdeskService->mapPaiementReceipt($paiement),
+            'paiement' => $this->entryPoint->mapPaiementReceipt($paiement),
         ]);
     }
 
     #[Route('/api/prints/tickets/{id}', name: 'api_print_ticket_data', methods: ['GET'])]
     public function getTicketPrintData(int $id): JsonResponse
     {
-        $paiement = $this->cashdeskService->paiementById($id);
+        $paiement = $this->entryPoint->paiementById($id);
         if (!$paiement) {
             return new JsonResponse(['error' => 'Paiement introuvable'], 404);
         }
 
         return new JsonResponse([
-            'paiement' => $this->cashdeskService->mapPaiementTicket($paiement),
+            'paiement' => $this->entryPoint->mapPaiementTicket($paiement),
         ]);
     }
 
     #[Route('/api/prints/assurances/claims/{id}', name: 'api_print_assurance_claim_data', methods: ['GET'])]
     public function getFactureAssurancePrintData(int $id): JsonResponse
     {
-        $data = $this->cashdeskService->mapFactureAssurancePrint($id);
+        $data = $this->entryPoint->getInsuredWorkflow()->mapFactureAssurancePrint($id);
         if ($data === null) {
             return new JsonResponse(['error' => 'Facture assurance introuvable'], 404);
         }
@@ -359,5 +356,4 @@ class CaisseController extends AbstractController
             'title' => 'Facture assurance',
         ]);
     }
-
 }

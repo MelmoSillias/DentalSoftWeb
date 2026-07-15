@@ -1,28 +1,24 @@
 <?php
 
-namespace App\Billing\Service;
+namespace App\Billing\Service\Workflow;
 
 use App\Billing\Entity\Devis;
 use App\Billing\Entity\Facture;
-use App\Billing\Entity\FactureAssurance;
 use App\Billing\Entity\Paiement;
 use App\Billing\Entity\Transaction;
 use App\Billing\Repository\DevisRepository;
-use App\Billing\Repository\FactureAssuranceRepository;
 use App\Billing\Repository\FactureRepository;
 use App\Billing\Repository\ModeDePaiementRepository;
 use App\Billing\Repository\PaiementRepository;
 use App\CareDelivery\Entity\Consultation;
-use App\Patient\Entity\Patient;
 use DateTimeInterface;
 use Doctrine\ORM\EntityManagerInterface;
 
-class CashdeskService
+class ClassicInvoiceWorkflowService
 {
     public function __construct(
         private FactureRepository $factureRepo,
         private DevisRepository $devisRepo,
-        private FactureAssuranceRepository $factureAssuranceRepo,
         private PaiementRepository $paiementRepo,
         private ModeDePaiementRepository $modeRepo,
         private EntityManagerInterface $em,
@@ -78,91 +74,6 @@ class CashdeskService
             ->getResult();
 
         return array_map(fn (Facture $facture): array => $this->mapFactureToArray($facture), $factures);
-    }
-
-    public function listPaiementsFactures(DateTimeInterface $start, DateTimeInterface $end): array
-    {
-        $paiements = $this->paiementRepo->createQueryBuilder('p')
-            ->leftJoin('p.consultation', 'c')->addSelect('c')
-            ->leftJoin('c.patient', 'pat')->addSelect('pat')
-            ->leftJoin('p.facture', 'f')->addSelect('f')
-            ->leftJoin('f.consultation', 'fc')->addSelect('fc')
-            ->leftJoin('fc.patient', 'fpat')->addSelect('fpat')
-            ->leftJoin('p.factureAssurance', 'fa')->addSelect('fa')
-            ->leftJoin('fa.consultation', 'fac')->addSelect('fac')
-            ->leftJoin('fac.patient', 'fapat')->addSelect('fapat')
-            ->join('p.mode', 'm')->addSelect('m')
-            ->where('p.date BETWEEN :start AND :end')
-            ->setParameter('start', $start)
-            ->setParameter('end', $end)
-            ->orderBy('p.date', 'DESC')
-            ->getQuery()
-            ->getResult();
-
-        return array_map(function (Paiement $p) {
-            $patient = $p->getConsultation()?->getPatient()
-                ?? $p->getFacture()?->getConsultation()?->getPatient()
-                ?? $p->getFactureAssurance()?->getPatient();
-            $factureId = $p->getFacture()?->getId() ?? $p->getFactureAssurance()?->getId();
-            $consultationId = $p->getFacture()?->getConsultation()?->getId()
-                ?? $p->getFactureAssurance()?->getConsultation()?->getId()
-                ?? $p->getConsultation()?->getId();
-            $type = $p->getFacture() ? 'facture' : ($p->getFactureAssurance() ? 'facture_assurance' : 'ticket');
-
-            return [
-                'factureId' => $factureId ?? $p->getId(),
-                'consultationId' => $consultationId,
-                'patient' => $patient ? $patient->getFullName() : 'Anonyme',
-                'telephone' => $patient?->getTelephone(),
-                'montant' => $p->getMontant(),
-                'mode' => $p->getMode()->getLibelle(),
-                'modeId' => $p->getMode()->getId(),
-                'date' => $p->getDate()->format('Y-m-d H:i:s'),
-                'type' => $type,
-                'pId' => $p->getId(),
-            ];
-        }, $paiements);
-    }
-
-    public function listPaiementsByPatients(Patient $patient): array
-    {
-        $paiements = $this->paiementRepo->createQueryBuilder('p')
-            ->leftJoin('p.consultation', 'c')->addSelect('c')
-            ->leftJoin('c.patient', 'pat')->addSelect('pat')
-            ->leftJoin('p.facture', 'f')->addSelect('f')
-            ->leftJoin('f.consultation', 'fc')->addSelect('fc')
-            ->leftJoin('fc.patient', 'fpat')->addSelect('fpat')
-            ->leftJoin('p.factureAssurance', 'fa')->addSelect('fa')
-            ->leftJoin('fa.patient', 'fapat')->addSelect('fapat')
-            ->join('p.mode', 'm')->addSelect('m')
-            ->where('pat = :patient OR fpat = :patient OR fapat = :patient')
-            ->setParameter('patient', $patient)
-            ->orderBy('p.date', 'DESC')
-            ->getQuery()
-            ->getResult();
-
-        return array_map(function (Paiement $p) {
-            $resolvedPatient = $p->getConsultation()?->getPatient()
-                ?? $p->getFacture()?->getConsultation()?->getPatient()
-                ?? $p->getFactureAssurance()?->getPatient();
-            $factureId = $p->getFacture()?->getId() ?? $p->getFactureAssurance()?->getId();
-            $consultationId = $p->getFacture()?->getConsultation()?->getId()
-                ?? $p->getFactureAssurance()?->getConsultation()?->getId()
-                ?? $p->getConsultation()?->getId();
-            $type = $p->getFacture() ? 'facture' : ($p->getFactureAssurance() ? 'facture_assurance' : 'ticket');
-
-            return [
-                'factureId' => $factureId ?? $p->getId(),
-                'consultationId' => $consultationId,
-                'patient' => $resolvedPatient ? $resolvedPatient->getFullName() : 'Anonyme',
-                'telephone' => $resolvedPatient?->getTelephone(),
-                'montant' => $p->getMontant(),
-                'mode' => $p->getMode()->getLibelle(),
-                'date' => $p->getDate()->format('Y-m-d H:i:s'),
-                'type' => $type,
-                'pId' => $p->getId(),
-            ];
-        }, $paiements);
     }
 
     public function previewDevis(int $id): ?array
@@ -223,20 +134,6 @@ class CashdeskService
         }
 
         return $this->mapFactureToArray($facture, true);
-    }
-
-    private function consultationHasValidatedPatientPayment(Consultation $consultation): bool
-    {
-        $payment = $consultation->getPaiement();
-        if ($payment === null) {
-            return false;
-        }
-        $status = $payment->getTransaction()?->getValidationStatus();
-        if ($status === null || $status === 'validated') {
-            return true;
-        }
-
-        return false;
     }
 
     public function payerFacture(int $id, array $payload = []): array
@@ -346,7 +243,7 @@ class CashdeskService
         return ['success' => true];
     }
 
-    private function mapFactureToArray(Facture $facture, bool $forceFacture = true, bool $includeDetails = true): array
+    public function mapFactureToArray(Facture $facture, bool $forceFacture = true, bool $includeDetails = true): array
     {
         $consultation = $facture->getConsultation();
         $patient = $consultation?->getPatient();
@@ -454,12 +351,12 @@ class CashdeskService
             $transaction = $payment->getTransaction();
             $details[] = [
                 'id' => $payment->getId(),
-                'sourceType' => 'payment', 
+                'sourceType' => 'payment',
                 'mode' => $payment->getMode()?->getLibelle(),
                 'modeId' => $payment->getMode()?->getId(),
                 'montant' => $payment->getMontant(),
                 'date' => $payment->getDate()?->format('Y-m-d H:i:s'),
-                'status' => $transaction?->getValidationStatus() ?? 'validated', 
+                'status' => $transaction?->getValidationStatus() ?? 'validated',
                 'description' => $transaction?->getDescription(),
             ];
         }
@@ -477,187 +374,4 @@ class CashdeskService
 
         return $details;
     }
-
-    public function paiementsForPeriod(DateTimeInterface $start, DateTimeInterface $end): array
-    {
-        return $this->paiementRepo->createQueryBuilder('p')
-            ->leftJoin('p.consultation', 'c')->addSelect('c')
-            ->leftJoin('c.patient', 'pat')->addSelect('pat')
-            ->join('p.mode', 'm')->addSelect('m')
-            ->where('p.date BETWEEN :start AND :end')
-            ->setParameter('start', $start)
-            ->setParameter('end', $end)
-            ->orderBy('p.date', 'DESC')
-            ->getQuery()
-            ->getResult();
-    }
-
-    public function paiementById(int $id): ?Paiement
-    {
-        return $this->paiementRepo->find($id);
-    }
-
-    public function getCaissePageContext(): array
-    {
-        return [
-            'modesPaiement' => $this->modeRepo->findAll(),
-        ];
-    }
-
-    public function mapPaiementReceipt(Paiement $paiement): array
-    {
-        $patient = $this->resolvePatientFromPaiement($paiement);
-        $factureId = $paiement->getFacture()?->getId();
-
-        return [
-            'id' => $paiement->getId(),
-            'date' => $paiement->getDate()?->format('Y-m-d H:i'),
-            'montant' => $paiement->getMontant(),
-            'mode' => [
-                'libelle' => $paiement->getMode()?->getLibelle(),
-            ],
-            'devis' => $factureId ? [
-                'id' => $factureId,
-                'total' => $paiement->getFacture()->computeMontantsFromConsultation()['montantTotal'] ?? 0.0,
-                'reste' => $paiement->getFacture()->computeMontantsFromConsultation()['restePatient'] ?? 0.0,
-                'fiche' => [
-                    'patient' => $patient ? [
-                        'nom' => $patient->getNom(),
-                        'prenom' => $patient->getPrenom(),
-                    ] : null,
-                ],
-            ] : null,
-        ];
-    }
-
-    public function mapPaiementTicket(Paiement $paiement): array
-    {
-        $consultation = $paiement->getConsultation();
-        $patient = $consultation?->getPatient();
-
-        return [
-            'id' => $paiement->getId(),
-            'date' => $paiement->getDate()?->format('Y-m-d H:i'),
-            'montant' => $paiement->getMontant(),
-            'mode' => [
-                'libelle' => $paiement->getMode()?->getLibelle(),
-            ],
-            'consultation' => $consultation ? [
-                'patient' => $patient ? [
-                    'nom' => $patient->getNom(),
-                    'prenom' => $patient->getPrenom(),
-                ] : null,
-            ] : null,
-        ];
-    }
-
-    public function mapFactureAssurancePrint(int $id): ?array
-    {
-        $facture = $this->factureAssuranceRepo->find($id);
-        if (!$facture instanceof FactureAssurance) {
-            return null;
-        }
-
-        $totals = $facture->computeTotals();
-        $patient = $facture->getConsultation()?->getPatient() ?? $facture->getPatient();
-        $lot = $facture->getLotFactureAssurance();
-        $montantPatient = (float) ($totals['montantPatient'] ?? 0.0);
-        $patientPaid = $facture->computePatientPaidAmount();
-        $lines = [];
-
-        foreach ($facture->buildDisplayLignes() as $line) {
-            $lines[] = [
-                'designation' => $line['designation'] ?? 'Soin',
-                'description' => $line['description'] ?? '',
-                'quantite' => $line['quantite'] ?? 1,
-                'prix' => $line['prix'] ?? 0,
-                'total' => $line['total'] ?? 0,
-                'virtual' => !empty($line['virtual']),
-            ];
-        }
-
-        return [
-            'id' => $facture->getId(),
-            'dateFacture' => $facture->getDateFacture()?->format('Y-m-d H:i'),
-            'patient' => [
-                'nom' => $patient?->getNom(),
-                'prenom' => $patient?->getPrenom(),
-                'telephone' => $patient?->getTelephone(),
-            ],
-            'assurance' => [
-                'nom' => $facture->getAssurance()?->getNom(),
-                'code' => $facture->getAssurance()?->getCode(),
-                'tauxCouverture' => $facture->getCoverageRate(),
-                'montantTotal' => (float) ($totals['montantTotal'] ?? 0.0),
-                'montantAssurance' => (float) ($totals['montantAssureur'] ?? 0.0),
-                'montantPatient' => $montantPatient,
-                'partPatientPayee' => $patientPaid,
-                'restePatient' => max(0.0, $montantPatient - $patientPaid),
-                'insuranceStatus' => $facture->getInsuranceStatus(),
-                'factureAssuranceId' => $facture->getId(),
-            ],
-            'lignes' => $lines,
-            'montantTotal' => (float) ($totals['montantTotal'] ?? 0.0),
-            'montantAssurance' => (float) ($totals['montantAssureur'] ?? 0.0),
-            'montantPatient' => $montantPatient,
-            'tauxCouverture' => $facture->getCoverageRate(),
-            'insuranceStatus' => $facture->getInsuranceStatus(),
-            'isRecouvre' => $facture->isRecouvre(),
-            'lot' => $lot ? [
-                'id' => $lot->getId(),
-                'description' => $lot->getDescription(),
-                'statut' => $lot->getStatut(),
-            ] : null,
-        ];
-    }
-
-    public function mapPaiementListItem(Paiement $paiement): array
-    {
-        $patient = $this->resolvePatientFromPaiement($paiement);
-        $factureId = $paiement->getFacture()?->getId();
-
-        return [
-            'facture' => $factureId ? [
-                'id' => $factureId,
-                'fiche' => [
-                    'patient' => $patient ? [
-                        'nom' => $patient->getNom(),
-                        'prenom' => $patient->getPrenom(),
-                    ] : null,
-                ],
-            ] : null,
-            'montant' => $paiement->getMontant(),
-            'mode' => [
-                'libelle' => $paiement->getMode()?->getLibelle(),
-            ],
-            'date' => $paiement->getDate()?->format('Y-m-d H:i'),
-        ];
-    }
-
-    public function resolvePatientFromPaiement(?Paiement $paiement): ?Patient
-    {
-        if (!$paiement instanceof Paiement) {
-            return null;
-        }
-
-        $facture = $paiement->getFacture();
-        $fromFicheMedicale = $facture?->getConsultation()?->getFicheMedicale()?->getPatient();
-        if ($fromFicheMedicale instanceof Patient) {
-            return $fromFicheMedicale;
-        }
-
-        $fiche = $facture?->getConsultation()?->getFicheMedicale();
-        if ($fiche && method_exists($fiche, 'getPatient')) {
-            $patient = $fiche->getPatient();
-            if ($patient instanceof Patient) {
-                return $patient;
-            }
-        }
-
-        return $paiement->getConsultation()?->getPatient()
-            ?? $paiement->getFacture()?->getConsultation()?->getPatient()
-            ?? $paiement->getFactureAssurance()?->getPatient();
-    }
-
 }
-

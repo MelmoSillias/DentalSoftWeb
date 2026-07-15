@@ -40,7 +40,7 @@ use App\Settings\Service\GlobalSettingsService;
 use DateTime;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
-use App\Billing\Service\CashdeskService;
+use App\Billing\Service\CashdeskEntryPointService;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
@@ -155,7 +155,7 @@ class PatientService
         private RdvNotificationService $rdvNotificationService,
         private UserRepository $userRepo,
         private UserPasswordHasherInterface $passwordHasher,
-        private CashdeskService $cashdeskService,
+        private CashdeskEntryPointService $cashdeskService,
         private FicheMedicaleService $ficheMedicaleService,
         private SmsService $smsService,
         private SmsQueueRepository $smsQueueRepository,
@@ -284,10 +284,9 @@ class PatientService
 
     public function getPatientImpayees(int $id): int
     {
-        $factures = $this->cashdeskService->listFacturesImpayeesByPatient($id);
+        $factures = $this->cashdeskService->getClassicWorkflow()->listFacturesImpayeesByPatient($id);
         $impayees = 0;
         foreach ($factures as $facture) {
-            // You can add more detailed info if needed
             $impayees += $facture['reste'];
         }
         return $impayees;
@@ -1323,7 +1322,7 @@ public function removeArchiveFile(int $patientId, string $fileUrl): array
             $fiches[] = $ficheData;
         }
 
-        $factures = $this->cashdeskService->listFacturesImpayeesByPatient($patient->getId());
+        $factures = $this->cashdeskService->getClassicWorkflow()->listFacturesImpayeesByPatient($patient->getId());
         $paiements = $this->cashdeskService->listPaiementsByPatients($patient);
         
 
