@@ -63,13 +63,15 @@ const factureRangeModel = computed({
 
 const formatFcfa = (value) => `${Number(value || 0).toLocaleString('fr-FR')} FCFA`;
 
+const isInsuranceRow = (row) => row?.type === 'FactureAssurance' || row?.insurance?.hasInsurance === true;
+
 const computeInsuranceBadge = (row) => {
-    const insurance = row?.insurance;
-    if (!insurance?.hasInsurance) {
+    if (!isInsuranceRow(row)) {
         return null;
     }
 
-    return { label: 'Assurance', severity: 'info' };
+    const nom = row?.insurance?.assuranceNom;
+    return { label: nom ? `Assurance · ${nom}` : 'Assurance', severity: 'info' };
 };
 
 const computeStatus = (row) => {
@@ -82,7 +84,7 @@ const computeStatus = (row) => {
     return { label: 'Partiellement payé', severity: 'warning' };
 };
 
-const canModify = (row) => props.allowInvoiceModification && !row?.hasPayments && (Number(row.montant) === Number(row.reste)) && !row.isRegle;
+const canModify = (row) => !isInsuranceRow(row) && props.allowInvoiceModification && !row?.hasPayments && (Number(row.montant) === Number(row.reste)) && !row.isRegle;
 const canPreview = (row) => row?.insurance?.hasInsurance || !(Number(row.montant) === 0 && Number(row.reste) === 0);
 const targetIsFree = (row) => !row.isRegle && Number(row.reste) === 0;
 
@@ -199,9 +201,9 @@ const displayPhone = (value) => (props.hidePatientPhone ? 'Masqué par l\'admini
 
                             <!-- En-tête document -->
                             <div class="fct-header">
-                                <div class="fct-doc-badge">
-                                    <i class="pi pi-file-invoice"></i>
-                                    <span>FACTURE #{{ row.id }}</span>
+                                <div class="fct-doc-badge" :class="{ 'fct-doc-badge--insurance': isInsuranceRow(row) }">
+                                    <i :class="isInsuranceRow(row) ? 'pi pi-shield' : 'pi pi-file-invoice'"></i>
+                                    <span>{{ isInsuranceRow(row) ? 'FACTURE ASSURANCE' : 'FACTURE' }} #{{ row.id }}</span>
                                 </div>
                                 <div class="fct-status-badges">
                                     <Tag :value="computeStatus(row).label" :severity="computeStatus(row).severity" />
@@ -232,8 +234,12 @@ const displayPhone = (value) => (props.hidePatientPhone ? 'Masqué par l\'admini
 
                                 <!-- Montants -->
                                 <div class="fct-amounts">
+                                    <div v-if="isInsuranceRow(row)" class="fct-amount-line" style="margin-bottom:0.15rem">
+                                        <span class="fct-amount-label">Total facture</span>
+                                        <span class="fct-amount-value" style="font-size:0.82rem;opacity:0.7">{{ formatFcfa(row.insurance?.montantTotal ?? row.montantTotal) }}</span>
+                                    </div>
                                     <div class="fct-amount-line">
-                                        <span class="fct-amount-label">Montant total</span>
+                                        <span class="fct-amount-label">{{ isInsuranceRow(row) ? 'Part patient' : 'Montant total' }}</span>
                                         <span class="fct-amount-value">{{ formatFcfa(row.montant) }}</span>
                                     </div>
                                     <div class="fct-amount-line fct-amount-line--reste">
@@ -547,6 +553,20 @@ const displayPhone = (value) => (props.hidePatientPhone ? 'Masqué par l\'admini
 }
 
 .fct-doc-badge .pi { font-size: 0.85rem; color: #64748b; }
+
+.fct-doc-badge--insurance {
+    background: #e0f2fe;
+    color: #0369a1;
+}
+
+.fct-doc-badge--insurance .pi { color: #0369a1; }
+
+.app-dark .fct-doc-badge--insurance {
+    background: #0c4a6e;
+    color: #7dd3fc;
+}
+
+.app-dark .fct-doc-badge--insurance .pi { color: #7dd3fc; }
 
 .fct-status-badges {
     display: flex;

@@ -49,11 +49,15 @@ export const fetchFactures = async ({ start, end, factureType = 'all', unpaidOnl
         return res.data || [];
     }
 
-    const res = await axios.get(`${apiPrefix}/factures/classiques`, {
+    const res = await axios.get(`${apiPrefix}/factures`, {
         params: { start, end },
         ...heavyListConfig(token),
     });
-    return res.data || [];
+    const data = res.data;
+    if (data && Array.isArray(data.all)) {
+        return data.all;
+    }
+    return Array.isArray(data) ? data : [];
 };
 
 export const fetchPayments = async ({ start, end }, token) => {

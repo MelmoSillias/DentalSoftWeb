@@ -113,9 +113,24 @@ class InsuranceClaimService
             return ['error' => 'Mode de paiement introuvable', 'status' => 400];
         }
 
-        $patientTotal = (float) ($facture->computeTotals()['montantPatient'] ?? 0.0);
+        $totals = $facture->computeTotals();
+        $patientTotal = (float) ($totals['montantPatient'] ?? 0.0);
+        $montantTotal = (float) ($totals['montantTotal'] ?? 0.0);
         $alreadyPaid = $this->resolvePatientPaidAmount($facture);
         $remaining = max(0.0, $patientTotal - $alreadyPaid);
+
+        if ($patientTotal <= 0.0 && $montantTotal <= 0.0 && $alreadyPaid <= 0.0) {
+            $facture->setInsuranceStatus('validated_empty');
+            $this->em->flush();
+
+            return [
+                'success' => true,
+                'paiementId' => null,
+                'transactionId' => null,
+                'restePatient' => 0.0,
+                'validatedEmpty' => true,
+            ];
+        }
 
         if ($remaining <= 0.0) {
             return ['error' => 'La part patient est deja totalement encaissee', 'status' => 400];
@@ -243,6 +258,10 @@ class InsuranceClaimService
 
     private function resolveDerivedStatus(FactureAssurance $facture): string
     {
+        if ($facture->getInsuranceStatus() === 'validated_empty') {
+            return 'validated_empty';
+        }
+
         $consultation = $facture->getConsultation();
         if ($consultation && $consultation->getStatut() !== 1) {
             return 'open';

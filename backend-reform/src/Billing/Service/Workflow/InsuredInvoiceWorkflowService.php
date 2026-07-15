@@ -31,6 +31,71 @@ class InsuredInvoiceWorkflowService
         );
     }
 
+    /**
+     * Returns insurance invoices normalized to the same shape as classic factures,
+     * so the cashdesk overview can display both in a single list.
+     */
+    public function listFacturesAssuranceForCashdesk(DateTimeInterface $start, DateTimeInterface $end): array
+    {
+        $claims = $this->insuranceClaimService->listClaims(null, $start, $end);
+
+        return array_map(static function (array $claim): array {
+            $montantPatient = (float) ($claim['montantPatient'] ?? 0.0);
+            $patientPaid = (float) ($claim['patientPaidAmount'] ?? 0.0);
+            $restePatient = (float) ($claim['restePatient'] ?? max(0.0, $montantPatient - $patientPaid));
+            $montantTotal = (float) ($claim['montantTotal'] ?? 0.0);
+            $insuranceStatus = $claim['insuranceStatus'] ?? 'pending';
+            $isRegle = $insuranceStatus === 'validated_empty'
+                || ($montantTotal > 0.0 && $restePatient <= 0.0);
+
+            $patientName = $claim['patient'] ?? '';
+            $telephone = $claim['telephone'] ?? '';
+
+            return [
+                'id' => $claim['id'],
+                'factureAssuranceId' => $claim['factureId'] ?? $claim['id'],
+                'date' => isset($claim['dateFacture']) ? (new \DateTime($claim['dateFacture']))->format('Y-m-d') : null,
+                'consultation' => $claim['consultationId'] ?? null,
+                'montant' => $montantPatient,
+                'montantTotal' => $montantTotal,
+                'montantPatient' => $montantPatient,
+                'montantAssureur' => (float) ($claim['montantAssurance'] ?? 0.0),
+                'reste' => $restePatient,
+                'statut' => $isRegle ? 1 : 0,
+                'isRegle' => $isRegle,
+                'hasPayments' => $patientPaid > 0,
+                'patient' => is_string($patientName)
+                    ? $patientName
+                    : ['nom' => '', 'prenom' => ''],
+                'telephone' => $telephone,
+                'contenus' => [],
+                'paiements' => [],
+                'type' => 'FactureAssurance',
+                'insurance' => [
+                    'hasInsurance' => true,
+                    'assuranceId' => $claim['assurance']['id'] ?? null,
+                    'assuranceNom' => $claim['assurance']['nom'] ?? null,
+                    'assuranceCode' => $claim['assurance']['code'] ?? null,
+                    'logoPath' => $claim['assurance']['logoPath'] ?? null,
+                    'tauxCouverture' => $claim['tauxCouverture'] ?? 0,
+                    'insuranceRate' => $claim['tauxCouverture'] ?? 0,
+                    'montantTotal' => $montantTotal,
+                    'montantAssurance' => (float) ($claim['montantAssurance'] ?? 0.0),
+                    'insuranceAmount' => (float) ($claim['montantAssurance'] ?? 0.0),
+                    'montantPatient' => $montantPatient,
+                    'patientPaidAmount' => $patientPaid,
+                    'patientRemainingAmount' => $restePatient,
+                    'restePatient' => $restePatient,
+                    'insuranceStatus' => $claim['insuranceStatus'] ?? 'pending',
+                    'factureAssuranceId' => $claim['factureId'] ?? $claim['id'],
+                    'lotId' => $claim['lotId'] ?? null,
+                    'lotStatut' => $claim['lotStatut'] ?? null,
+                    'consultationAmount' => (float) ($claim['consultationAmount'] ?? 0.0),
+                ],
+            ];
+        }, $claims);
+    }
+
     public function getClaimDetail(int $factureId): array
     {
         return $this->insuranceClaimService->getClaimDetail($factureId);

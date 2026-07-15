@@ -36,7 +36,7 @@ class CashdeskEntryPointService
     public function listAllFactures(DateTimeInterface $start, DateTimeInterface $end): CashdeskFactureListDto
     {
         $classiques = $this->classicWorkflow->listFacturesByPeriod($start, $end);
-        $assurances = $this->insuredWorkflow->listFacturesAssurance($start, $end);
+        $assurances = $this->insuredWorkflow->listFacturesAssuranceForCashdesk($start, $end);
 
         return new CashdeskFactureListDto($classiques, $assurances);
     }

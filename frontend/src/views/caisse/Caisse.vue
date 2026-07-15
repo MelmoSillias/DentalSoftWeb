@@ -835,58 +835,34 @@ const printInsuranceReceipt = async (paymentRow) => {
 };
 
 const collectPatientShare = async (claim) => {
-	const classicMethod = getDefaultClassicMethod(paymentMethods.value);
-	if (!classicMethod?.id) {
-		toast.add({ severity: 'warn', summary: 'Assurances', detail: 'Aucun mode de paiement actif.', life: 3500 });
-		return;
-	}
 	const amount = Number(claim?.restePatient);
-	if (!(amount > 0) && claim?.factureId) {
-		await openPayDialog({
-			id: claim.factureId,
-			reste: 0,
-			montant: Number(claim.montantPatient) || 0,
-			isRegle: false,
-			insurance: { hasInsurance: true }
-		});
-		return;
-	}
-	if (claim?.factureId) {
-		await openPayDialog({
-			id: claim.factureId,
-			reste: amount,
-			montant: Number(claim.montantPatient) || 0,
-			isRegle: false,
-			insurance: {
-				hasInsurance: true,
-				assuranceId: claim?.assurance?.id,
-				insuranceRate: claim?.tauxCouverture,
-				insuranceAmount: claim?.montantAssurance,
-				montantPatient: claim?.montantPatient,
-				patientRemainingAmount: amount,
-				patientPaidAmount: claim?.patientPaidAmount
-			}
-		});
-		return;
-	}
-	try {
-		insuranceActionLoadingId.value = Number(claim?.id) || null;
-		await payInsurancePatientShare(claim.id, {
-			modeId: classicMethod.id,
-			date: new Date().toISOString(),
-			amount: amount > 0 ? amount : undefined
-		}, token);
-		toast.add({ severity: 'success', summary: 'Assurances', detail: 'Paiement patient enregistré.', life: 3000 });
-		await Promise.all([refreshInsuranceViews({ includePayments: true }), loadFactures()]);
-		if (Number(insuranceSelectedClaim.value?.id) === Number(claim?.id)) {
-			await loadInsuranceClaimDetail(claim);
+	const claimId = claim?.factureId || claim?.id;
+
+	await openPayDialog({
+		id: claimId,
+		factureAssuranceId: claimId,
+		reste: amount > 0 ? amount : 0,
+		montant: Number(claim.montantPatient) || 0,
+		isRegle: false,
+		type: 'FactureAssurance',
+		insurance: {
+			hasInsurance: true,
+			assuranceId: claim?.assurance?.id,
+			assuranceNom: claim?.assurance?.nom,
+			assuranceCode: claim?.assurance?.code,
+			insuranceRate: claim?.tauxCouverture,
+			tauxCouverture: claim?.tauxCouverture,
+			montantTotal: Number(claim?.montantTotal) || 0,
+			montantAssurance: Number(claim?.montantAssurance) || 0,
+			insuranceAmount: Number(claim?.montantAssurance) || 0,
+			montantPatient: Number(claim?.montantPatient) || 0,
+			patientRemainingAmount: amount > 0 ? amount : 0,
+			restePatient: amount > 0 ? amount : 0,
+			patientPaidAmount: Number(claim?.patientPaidAmount) || 0,
+			factureAssuranceId: claimId,
+			insuranceStatus: claim?.insuranceStatus,
 		}
-	} catch (error) {
-		console.error(error);
-		toast.add({ severity: 'error', summary: 'Assurances', detail: error?.response?.data?.error || 'Paiement impossible.', life: 3500 });
-	} finally {
-		insuranceActionLoadingId.value = null;
-	}
+	});
 };
 
 const loadPublicGeneralSettings = async () => {
@@ -995,6 +971,8 @@ watch(
 	}
 );
 
+const isInsuranceFacture = (row) => row?.type === 'FactureAssurance' || row?.insurance?.hasInsurance === true;
+
 const submitPayment = async () => {
 
 	if (!selectedFacture.value) return;
@@ -1020,12 +998,25 @@ const submitPayment = async () => {
 	try {
 		payLoading.value = true;
 		const canPrintClientReceipt = montant > 0;
-		const res = await payFacture(selectedFacture.value.id, {
-			montant,
-			modeId: payForm.value.modeId,
-			date: payForm.value.date,
-			time: payForm.value.time
-		}, token);
+		const isInsured = isInsuranceFacture(selectedFacture.value);
+		const claimId = selectedFacture.value.factureAssuranceId || selectedFacture.value.insurance?.factureAssuranceId || selectedFacture.value.id;
+
+		let res;
+		if (isInsured) {
+			res = await payInsurancePatientShare(claimId, {
+				modeId: payForm.value.modeId,
+				date: `${payForm.value.date}T${payForm.value.time}`,
+				amount: montant
+			}, token);
+		} else {
+			res = await payFacture(selectedFacture.value.id, {
+				montant,
+				modeId: payForm.value.modeId,
+				date: payForm.value.date,
+				time: payForm.value.time
+			}, token);
+		}
+
 		const factureId = selectedFacture.value.id;
 		const paymentId = res?.paiement_id ?? res?.paiementId ?? null;
 		const toastPayload = {
@@ -1055,10 +1046,14 @@ const submitPayment = async () => {
 
 		toast.add(toastPayload);
 		payDialogVisible.value = false;
-		await Promise.all([loadFactures(), loadPayments()]);
+		const tasks = [loadFactures(), loadPayments()];
+		if (isInsured) {
+			tasks.push(refreshInsuranceViews({ includePayments: false }));
+		}
+		await Promise.all(tasks);
 	} catch (error) {
 		console.error(error);
-		toast.add({ severity: 'error', summary: 'Paiement', detail: 'Enregistrement impossible', life: 3500 });
+		toast.add({ severity: 'error', summary: 'Paiement', detail: error?.response?.data?.error || 'Enregistrement impossible', life: 3500 });
 	} finally {
 		payLoading.value = false;
 	}
@@ -1128,11 +1123,25 @@ const confirmValidate = async () => {
 	if (!pendingFacture.value) return;
 	validateLoading.value = true;
 	try {
-
-		await validateEmptyFacture(pendingFacture.value.id, token);
+		const isInsured = isInsuranceFacture(pendingFacture.value);
+		if (isInsured) {
+			const claimId = pendingFacture.value.factureAssuranceId || pendingFacture.value.insurance?.factureAssuranceId || pendingFacture.value.id;
+			const classicMethod = getDefaultClassicMethod(paymentMethods.value);
+			await payInsurancePatientShare(claimId, {
+				modeId: classicMethod?.id,
+				date: new Date().toISOString(),
+				amount: 0
+			}, token);
+		} else {
+			await validateEmptyFacture(pendingFacture.value.id, token);
+		}
 		toast.add({ severity: 'success', summary: 'Validation', detail: 'Facture vide validée', life: 2500 });
 		validateDialogVisible.value = false;
-		await Promise.all([loadFactures(), loadPayments()]);
+		const tasks = [loadFactures(), loadPayments()];
+		if (isInsured) {
+			tasks.push(refreshInsuranceViews({ includePayments: false }));
+		}
+		await Promise.all(tasks);
 	} catch (error) {
 		console.error(error);
 		toast.add({ severity: 'error', summary: 'Validation', detail: 'Échec de la validation', life: 3500 });

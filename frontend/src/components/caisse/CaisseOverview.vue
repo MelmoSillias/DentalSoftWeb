@@ -301,16 +301,18 @@ const computeStatus = (row) => {
     return { label: 'Partiellement payé', severity: 'warning' };
 };
 
+const isInsuranceRow = (row) => row?.type === 'FactureAssurance' || row?.insurance?.hasInsurance === true;
+
 const computeInsuranceBadge = (row) => {
-    const insurance = row?.insurance;
-    if (!insurance?.hasInsurance) {
+    if (!isInsuranceRow(row)) {
         return null;
     }
 
-    return { label: 'Assurance', severity: 'info' };
+    const nom = row?.insurance?.assuranceNom;
+    return { label: nom ? `Assurance · ${nom}` : 'Assurance', severity: 'info' };
 };
 
-const canModify = (row) => props.allowInvoiceModification && !row?.hasPayments && (Number(row.montant) === Number(row.reste)) && !row.isRegle;
+const canModify = (row) => !isInsuranceRow(row) && props.allowInvoiceModification && !row?.hasPayments && (Number(row.montant) === Number(row.reste)) && !row.isRegle;
 const canPreview = (row) => row?.insurance?.hasInsurance || !(Number(row.montant) === 0 && Number(row.reste) === 0);
 const targetIsFree = (row) => !row.isRegle && Number(row.reste) === 0;
 
@@ -469,10 +471,20 @@ const printDetailPayment = (row) => {
                     <template #body="{ data }">{{ displayPhone(data.telephone) }}</template>
                 </Column>
                 <Column field="montant" header="Montant" sortable>
-                    <template #body="{ data }">{{ formatFcfa(data.montant) }}</template>
+                    <template #body="{ data }">
+                        <div>
+                            <span>{{ formatFcfa(data.montant) }}</span>
+                            <p v-if="isInsuranceRow(data)" class="text-xs text-sky-600 mt-0.5">Part patient</p>
+                        </div>
+                    </template>
                 </Column>
                 <Column field="reste" header="Reste" sortable>
-                    <template #body="{ data }">{{ formatFcfa(data.reste) }}</template>
+                    <template #body="{ data }">
+                        <div>
+                            <span>{{ formatFcfa(data.reste) }}</span>
+                            <p v-if="isInsuranceRow(data)" class="text-xs text-sky-600 mt-0.5">Part patient</p>
+                        </div>
+                    </template>
                 </Column>
                 <Column header="Statut">
                     <template #body="{ data }">
@@ -511,9 +523,9 @@ const printDetailPayment = (row) => {
 
                             <!-- ── DOCUMENT HEADER ── -->
                             <div class="inv-doc-header">
-                                <div class="inv-doc-badge">
-                                    <i class="pi pi-file-invoice"></i>
-                                    <span>FACTURE</span>
+                                <div class="inv-doc-badge" :class="{ 'inv-doc-badge--insurance': isInsuranceRow(invoice) }">
+                                    <i :class="isInsuranceRow(invoice) ? 'pi pi-shield' : 'pi pi-file-invoice'"></i>
+                                    <span>{{ isInsuranceRow(invoice) ? 'FACTURE ASSURANCE' : 'FACTURE' }}</span>
                                 </div>
                                 <span class="inv-doc-id">#{{ invoice.id }}</span>
                             </div>
@@ -542,8 +554,12 @@ const printDetailPayment = (row) => {
 
                                 <!-- Montants -->
                                 <div class="inv-amounts-block">
-                                    <div class="inv-amount-row">
+                                    <div v-if="isInsuranceRow(invoice)" class="inv-amount-row" style="margin-bottom:0.2rem">
                                         <span class="inv-amount-label">Total facture</span>
+                                        <span class="inv-amount-value" style="font-size:0.82rem;opacity:0.7">{{ formatFcfa(invoice.insurance?.montantTotal ?? invoice.montantTotal) }}</span>
+                                    </div>
+                                    <div class="inv-amount-row">
+                                        <span class="inv-amount-label">{{ isInsuranceRow(invoice) ? 'Part patient' : 'Total facture' }}</span>
                                         <span class="inv-amount-value">{{ formatFcfa(invoice.montant) }}</span>
                                     </div>
                                     <div class="inv-amount-row inv-amount-row--reste">
@@ -1228,6 +1244,16 @@ const printDetailPayment = (row) => {
 }
 
 .inv-doc-badge .pi { font-size: 0.8rem; }
+
+.inv-doc-badge--insurance {
+    background: #e0f2fe;
+    color: #0369a1;
+}
+
+.app-dark .inv-doc-badge--insurance {
+    background: #0c4a6e;
+    color: #7dd3fc;
+}
 
 .inv-doc-id {
     font-size: 0.82rem;
