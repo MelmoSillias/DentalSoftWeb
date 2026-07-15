@@ -818,6 +818,7 @@ class ReportService
 
         return $payment->getFacture()?->getConsultation()
             ?? $payment->getConsultation()
+            ?? $payment->getFactureAssurance()?->getConsultation()
             ?? $transaction?->getConsultation()
             ?? $transaction?->getFacture()?->getConsultation();
     }
@@ -906,7 +907,7 @@ class ReportService
 
         /** @var Paiement[] $paiements */
         $paiements = $this->em->createQueryBuilder()
-            ->select('p', 'f', 'cf', 'ct', 'mf', 'mt', 'pf', 'pt', 'faf', 'taf', 'tp', 'tf', 'tc')
+            ->select('p', 'f', 'cf', 'ct', 'mf', 'mt', 'pf', 'pt', 'faf', 'taf', 'tp', 'tf', 'tc', 'pfa', 'pfac', 'pfam', 'pfap')
             ->from(Paiement::class, 'p')
             ->leftJoin('p.transaction', 'tp')
             ->leftJoin('tp.facture', 'tf')
@@ -920,6 +921,10 @@ class ReportService
             ->leftJoin('ct.medecin', 'mt')
             ->leftJoin('ct.patient', 'pt')
             ->leftJoin('ct.factureAssurance', 'taf')
+            ->leftJoin('p.factureAssurance', 'pfa')
+            ->leftJoin('pfa.consultation', 'pfac')
+            ->leftJoin('pfac.medecin', 'pfam')
+            ->leftJoin('pfac.patient', 'pfap')
             ->where('p.date BETWEEN :from AND :to')
             ->setParameter('from', $from)
             ->setParameter('to', $to)

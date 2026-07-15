@@ -474,7 +474,8 @@ final class SmsController extends AbstractController
             }
         }
 
-        return $paiement->getConsultation()?->getPatient();
+        return $paiement->getConsultation()?->getPatient()
+            ?? $paiement->getFactureAssurance()?->getPatient();
     }
 }
 

@@ -575,12 +575,14 @@ class DashboardService
     private function listPayments(\DateTimeImmutable $from, \DateTimeImmutable $to): array
     {
         $qb = $this->em->createQueryBuilder()
-            ->select('pd', 'c', 'p')
+            ->select('pd', 'c', 'p', 'fa', 'fap')
             ->from(Paiement::class, 'pd')
             ->leftJoin('pd.consultation', 'c')
             ->leftJoin('c.patient', 'p')
+            ->leftJoin('pd.factureAssurance', 'fa')
+            ->leftJoin('fa.patient', 'fap')
             ->andWhere('pd.date BETWEEN :from AND :to')
-            ->andWhere('p.deletedAt IS NULL')
+            ->andWhere('p.deletedAt IS NULL OR fap.deletedAt IS NULL')
             ->setParameter('from', $from)
             ->setParameter('to', $to)
             ->orderBy('pd.date', 'DESC')
@@ -589,7 +591,9 @@ class DashboardService
         $paiements = $qb->getQuery()->getResult();
 
         return array_map(function (Paiement $paiement) {
-            $patient = $paiement->getConsultation()?->getPatient();
+            $patient = $paiement->getConsultation()?->getPatient()
+                ?? $paiement->getFacture()?->getConsultation()?->getPatient()
+                ?? $paiement->getFactureAssurance()?->getPatient();
 
             return [
                 'id' => $paiement->getId(),

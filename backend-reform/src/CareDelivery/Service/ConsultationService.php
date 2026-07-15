@@ -471,19 +471,7 @@ class ConsultationService
             }
         }
 
-        $patientPaid = (float) $this->em->createQueryBuilder()
-            ->select('COALESCE(SUM(t.montant), 0)')
-            ->from(Transaction::class, 't')
-            ->where('t.consultation = :consultation')
-            ->andWhere('t.rolePaiement = :role')
-            ->andWhere('t.validationStatus = :status')
-            ->setParameter('consultation', $consultation)
-            ->setParameter('role', 'patient_insurance')
-            ->setParameter('status', 'validated')
-            ->getQuery()
-            ->getSingleScalarResult();
-
-        return $patientPaid <= 0;
+        return $factureAssurance->computePatientPaidAmount() <= 0;
     }
 
     private function resolveFactureDateFromConsultation(Consultation $consultation): \DateTime
@@ -1013,37 +1001,42 @@ class ConsultationService
             throw new \InvalidArgumentException('Le médecin est obligatoire pour clôturer la consultation.');
         }
 
-        $isNewFacture = !$consultation->getFacture();
-        $facture = $consultation->getFacture() ?? new Facture();
-        $facture->setConsultation($consultation);
-        if ($isNewFacture) {
-            $facture->setDateFacture($this->resolveFactureDateFromConsultation($consultation));
-        }
-
         $factureAssurance = $this->ensureFactureAssurance($consultation);
-        $montants = $facture->computeMontantsFromConsultation();
+
         if ($factureAssurance !== null) {
-            $faTotals = $factureAssurance->computeTotals();
-            $facture->setIsReglee(((float) ($faTotals['montantPatient'] ?? 0.0)) <= 0.0);
             $factureAssurance->setInsuranceStatus('ready');
             $this->em->persist($factureAssurance);
+            $this->em->flush();
+
+            $consultation->setStatut(1);
+            $this->em->flush();
+
+            $this->focusRealtimePublisher->publishConsultationRefresh($consultation, 'closed');
+
+            $notifyAmount = (float) ($factureAssurance->computeTotals()['montantPatient'] ?? 0.0);
+            $this->notifyReceptionOnClosure($consultation, $notifyAmount);
         } else {
+            $isNewFacture = !$consultation->getFacture();
+            $facture = $consultation->getFacture() ?? new Facture();
+            $facture->setConsultation($consultation);
+            if ($isNewFacture) {
+                $facture->setDateFacture($this->resolveFactureDateFromConsultation($consultation));
+            }
+
+            $montants = $facture->computeMontantsFromConsultation();
             $facture->setIsReglee(((float) ($montants['restePatient'] ?? 0.0)) <= 0.0);
+
+            $consultation->setFacture($facture);
+            $this->em->persist($facture);
+            $this->em->flush();
+
+            $consultation->setStatut(1);
+            $this->em->flush();
+
+            $this->focusRealtimePublisher->publishConsultationRefresh($consultation, 'closed');
+
+            $this->notifyReceptionOnClosure($consultation, (float) $montants['montantTotal']);
         }
-
-        $consultation->setFacture($facture);
-        $this->em->persist($facture);
-        $this->em->flush();
-
-        $consultation->setStatut(1);
-        $this->em->flush();
-
-        $this->focusRealtimePublisher->publishConsultationRefresh($consultation, 'closed');
-
-        $notifyAmount = $factureAssurance !== null
-            ? (float) ($factureAssurance->computeTotals()['montantPatient'] ?? 0.0)
-            : (float) $montants['montantTotal'];
-        $this->notifyReceptionOnClosure($consultation, $notifyAmount);
     }
 
     private function notifyReceptionOnClosure(Consultation $consultation, float $invoiceAmount): void
@@ -1386,29 +1379,41 @@ class ConsultationService
 
         $paiementConsultation = $consultation->getPaiement();
         if ($paiementConsultation) {
+            $transaction = $paiementConsultation->getTransaction();
+            if ($transaction) {
+                $transaction->setPaiement(null);
+                $this->em->remove($transaction);
+            }
             $paiementConsultation->setConsultation(null);
             $paiementConsultation->setFacture(null);
             $this->em->remove($paiementConsultation);
             $this->em->flush();
         }
-        if ($facture) {
-            $paiementsFacture = $facture ? $facture->getPaiements() : []; 
-            
-            foreach ($paiementsFacture as $paiement) {
-                $transaction = $paiement->getTransaction();
 
+        $factureAssurance = $consultation->getFactureAssurance();
+        if ($factureAssurance) {
+            foreach ($factureAssurance->getPaiements() as $paiement) {
+                $transaction = $paiement->getTransaction();
                 if ($transaction) {
                     $transaction->setPaiement(null);
-                    $transaction->setConsultation(null);
-                    $transaction->setFacture(null);
                     $this->em->remove($transaction);
-                    $this->em->flush();
                 }
+                $paiement->setFactureAssurance(null);
+                $this->em->remove($paiement);
+            }
+            $this->em->remove($factureAssurance);
+            $this->em->flush();
+        }
 
-                $paiement->setConsultation(null);
+        if ($facture) {
+            foreach ($facture->getPaiements() as $paiement) {
+                $transaction = $paiement->getTransaction();
+                if ($transaction) {
+                    $transaction->setPaiement(null);
+                    $this->em->remove($transaction);
+                }
                 $paiement->setFacture(null);
                 $this->em->remove($paiement);
-                $this->em->flush();
             }
 
             $consultation->setFacture(null);
@@ -1521,16 +1526,14 @@ class ConsultationService
             $this->em->persist($acte);
         }
 
-        $factureAssurance = $this->ensureFactureAssurance($consultation);
-        $montants = $facture->computeMontantsFromConsultation();
+        $factureAssurance = $consultation->getFactureAssurance();
         if ($factureAssurance !== null) {
-            $faTotals = $factureAssurance->computeTotals();
-            $facture->setIsReglee(((float) ($faTotals['montantPatient'] ?? 0.0)) <= 0.0);
             if ($consultation->getStatut() === 1) {
                 $factureAssurance->setInsuranceStatus('ready');
             }
             $this->em->persist($factureAssurance);
         } else {
+            $montants = $facture->computeMontantsFromConsultation();
             $facture->setIsReglee(((float) $montants['restePatient']) <= 0.0);
         }
 

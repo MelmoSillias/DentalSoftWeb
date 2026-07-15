@@ -6,6 +6,8 @@ use App\Billing\Repository\FactureAssuranceRepository;
 use App\CareDelivery\Entity\ActeMedical;
 use App\CareDelivery\Entity\Consultation;
 use App\Patient\Entity\Patient;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
@@ -53,6 +55,15 @@ class FactureAssurance
     #[ORM\ManyToOne(targetEntity: LotFactureAssurance::class, inversedBy: 'facturesAssurance')]
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     private ?LotFactureAssurance $lotFactureAssurance = null;
+
+    /** @var Collection<int, Paiement> */
+    #[ORM\OneToMany(mappedBy: 'factureAssurance', targetEntity: Paiement::class)]
+    private Collection $paiements;
+
+    public function __construct()
+    {
+        $this->paiements = new ArrayCollection();
+    }
 
     public function getId(): ?int
     {
@@ -258,6 +269,35 @@ class FactureAssurance
         }
 
         return $lines;
+    }
+
+    /** @return Collection<int, Paiement> */
+    public function getPaiements(): Collection
+    {
+        return $this->paiements;
+    }
+
+    public function addPaiement(Paiement $paiement): static
+    {
+        if (!$this->paiements->contains($paiement)) {
+            $this->paiements->add($paiement);
+            $paiement->setFactureAssurance($this);
+        }
+
+        return $this;
+    }
+
+    public function computePatientPaidAmount(): float
+    {
+        $total = 0.0;
+        foreach ($this->paiements as $paiement) {
+            $status = $paiement->getTransaction()?->getValidationStatus();
+            if ($status === null || $status === 'validated') {
+                $total += $paiement->getMontant();
+            }
+        }
+
+        return max(0.0, $total);
     }
 
     public function computeTotals(): array

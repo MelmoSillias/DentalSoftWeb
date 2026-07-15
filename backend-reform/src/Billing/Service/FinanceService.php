@@ -710,6 +710,7 @@ class FinanceService
         $transaction->setPaiement(null);
         $paiement->setConsultation(null);
         $paiement->setFacture(null);
+        $paiement->setFactureAssurance(null);
         $this->em->remove($paiement);
 
         return $facture;
