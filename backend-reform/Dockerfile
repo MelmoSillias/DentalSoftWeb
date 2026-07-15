@@ -23,6 +23,7 @@ COPY composer.json composer.lock symfony.lock ./
 RUN composer install --no-dev --no-scripts --no-autoloader
 
 COPY . .
+RUN rm -rf src/DataFixtures tests
 RUN composer dump-autoload --optimize --classmap-authoritative
 
 ARG JWT_PASSPHRASE
