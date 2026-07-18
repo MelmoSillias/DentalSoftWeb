@@ -14,7 +14,8 @@ const emit = defineEmits([
     'back',
     'collect-patient-share',
     'print-receipt',
-    'print-claim'
+    'print-claim',
+    'print-claim-devis'
 ]);
 
 const formatFcfa = (value) => `${Number(value || 0).toLocaleString('fr-FR')} FCFA`;
@@ -88,6 +89,7 @@ const statusTag = (status) => {
           @click="emit('collect-patient-share', claim)"
         />
         <Button icon="pi pi-print" label="Imprimer facture" size="small" outlined @click="emit('print-claim', claim)" />
+        <Button icon="pi pi-file" label="Imprimer devis" size="small" outlined @click="emit('print-claim-devis', claim)" />
       </div>
 
       <div class="section-card p-4 rounded-xl">

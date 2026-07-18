@@ -203,24 +203,20 @@ const openClaimMenu = (event, claim) => {
       <div class="section-panel">
         <h3 class="page-title text-lg font-bold mb-3">Factures du lot</h3>
         <DataTable :value="lot.factures || []" striped-rows size="small" paginator :rows="10">
-          <Column field="patient" header="Patient" />
           <Column header="Date">
             <template #body="{ data }">{{ data?.dateFacture?.slice(0, 10) || '—' }}</template>
           </Column>
+          <Column field="patient" header="Patient" />
           <Column header="Total">
             <template #body="{ data }">{{ formatFcfa(data.montantTotal) }}</template>
           </Column>
-          <Column header="Part assurance">
-            <template #body="{ data }">{{ formatFcfa(data.montantAssurance) }}</template>
-          </Column>
-          <Column header="Part patient">
-            <template #body="{ data }">{{ formatFcfa(data.montantPatient) }}</template>
-          </Column>
-          <Column header="Reste patient">
-            <template #body="{ data }">{{ formatFcfa(data.restePatient) }}</template>
-          </Column>
           <Column header="Taux">
             <template #body="{ data }">{{ Number(data.tauxCouverture || 0) }} %</template>
+          </Column>
+          <Column header="Reste patient">
+            <template #body="{ data }">
+              <span class="font-semibold">{{ formatFcfa(data.restePatient) }}</span>
+            </template>
           </Column>
           <Column header="Actions" style="min-width: 5rem">
             <template #body="{ data }">

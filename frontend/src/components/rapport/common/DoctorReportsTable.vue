@@ -32,6 +32,38 @@ function formatFcfa(amount) {
     return `${new Intl.NumberFormat('fr-FR').format(value)} Fcfa`;
 }
 
+function formatFcfaNumber(amount) {
+    return new Intl.NumberFormat('fr-FR').format(Number(amount || 0));
+}
+
+function actPaidIncludingInsurance(act) {
+    return Number(act?.montantPaye || 0) + Number(act?.montantAssurance || 0);
+}
+
+function formatPaidWithInsurance(act) {
+    const paid = actPaidIncludingInsurance(act);
+    const assurance = Number(act?.montantAssurance || 0);
+    if (act?.isInsurance && assurance > 0) {
+        return `${formatFcfa(paid)} (${formatFcfaNumber(assurance)})`;
+    }
+    return formatFcfa(paid);
+}
+
+function parseReportDate(value) {
+    if (!value || value === '--') {
+        return 0;
+    }
+    const parts = String(value).split('/');
+    if (parts.length !== 3) {
+        return 0;
+    }
+    const [day, month, year] = parts.map(Number);
+    if (!day || !month || !year) {
+        return 0;
+    }
+    return new Date(year, month - 1, day).getTime();
+}
+
 function doctorRevenueTotal(row) {
     return Number(row?.revenue_total ?? row?.revenue ?? 0);
 }
@@ -141,11 +173,10 @@ function formatReliquatPaymentsSection(row) {
         return '';
     }
 
-    let total = 0;
-    const rows = items
-        .map((item) => {
-            total += Number(item.montant || 0);
-            return `
+    const sorted = [...items].sort((a, b) => parseReportDate(a.date) - parseReportDate(b.date));
+    const rows = sorted
+        .map(
+            (item) => `
                 <tr>
                     <td>${item.date || '--'}</td>
                     <td>${item.consultation_date || '--'}</td>
@@ -153,8 +184,8 @@ function formatReliquatPaymentsSection(row) {
                     <td>${item.description || '--'}</td>
                     <td>${formatFcfa(item.montant)}</td>
                 </tr>
-            `;
-        })
+            `
+        )
         .join('');
 
     return `
@@ -173,12 +204,11 @@ function formatReliquatPaymentsSection(row) {
                 ${rows}
             </tbody>
         </table>
-        <p style="margin-top: 12px; font-weight: 600;">Total reliquats = ${formatFcfa(total)}</p>
     `;
 }
 
 function formatDoctorDetails(row) {
-    const items = Array.isArray(row?.actes) ? row.actes : [];
+    const items = Array.isArray(row?.actes) ? [...(row.actes || [])].sort((a, b) => parseReportDate(a.date) - parseReportDate(b.date)) : [];
     const reliquats = Array.isArray(row?.paiements_reliquats) ? row.paiements_reliquats : [];
 
     if (!items.length && !reliquats.length) {
@@ -190,18 +220,20 @@ function formatDoctorDetails(row) {
     const actRows = items
         .map((item) => {
             apportTotal += Number(item.montant || 0);
-            paidTotal += Number(item.montantPaye || 0);
+            paidTotal += actPaidIncludingInsurance(item);
             return `
                 <tr>
                     <td>${item.date || '--'}</td>
                     <td>${item.patient || '--'}</td>
                     <td>${item.description || '--'}</td>
                     <td>${formatFcfa(item.montant)}</td>
-                    <td>${formatFcfa(item.montantPaye)}</td>
+                    <td>${formatFcfa(actPaidIncludingInsurance(item))}</td>
                 </tr>
             `;
         })
         .join('');
+
+    const reliquatTotal = reliquats.reduce((sum, item) => sum + Number(item.montant || 0), 0);
 
     const actsSection = items.length
         ? `
@@ -220,14 +252,23 @@ function formatDoctorDetails(row) {
                 ${actRows}
             </tbody>
         </table>
-        <p style="margin-top: 12px; font-weight: 600;">Total apport = ${formatFcfa(apportTotal)} · Total payé = ${formatFcfa(paidTotal)}</p>
     `
         : '';
+
+    const recap = `
+        <div class="print-section-title" style="margin-top: 16px;">Récapitulatif</div>
+        <p style="margin-top: 8px; font-weight: 600;">
+            Total apport = ${formatFcfa(apportTotal)} ·
+            Total payé = ${formatFcfa(paidTotal)} ·
+            Total Paiements de reliquats = ${formatFcfa(reliquatTotal)}
+        </p>
+    `;
 
     return `
         <div class="p-3">
             ${actsSection}
             ${formatReliquatPaymentsSection(row)}
+            ${recap}
         </div>
     `;
 }
@@ -278,23 +319,11 @@ function formatDoctorTable(row) {
                     <td>${formatFcfa(row.apport)}</td>
                 </tr>
                 <tr>
-                    <td colspan="2"><strong>Part assurance</strong></td>
-                    <td>${formatFcfa(row.revenue_assurance ?? row.apport_assurance)}</td>
-                </tr>
-                <tr>
-                    <td colspan="2"><strong>Encaissé patient période</strong></td>
-                    <td>${formatFcfa(row.revenue)}</td>
-                </tr>
-                <tr>
                     <td colspan="2"><strong>Paiements de reliquats</strong></td>
                     <td>${formatFcfa(row.revenue_reliquats)}</td>
                 </tr>
                 <tr>
-                    <td colspan="2"><strong>Encaissement réel</strong></td>
-                    <td>${formatFcfa(doctorRevenueCash(row))}</td>
-                </tr>
-                <tr>
-                    <td colspan="2"><strong>Rémunération totale</strong></td>
+                    <td colspan="2"><strong>Total encaissé</strong></td>
                     <td>${formatFcfa(doctorRevenueTotal(row))}</td>
                 </tr>
                 <tr>
@@ -314,8 +343,6 @@ function printSummary() {
                 <td>${row.name || ''}</td>
                 <td>${row.consultations || 0} (${row.consultations_paid || 0} payantes)</td>
                 <td>${formatFcfa(row.apport)}</td>
-                <td>${formatFcfa(row.revenue_assurance ?? row.apport_assurance)}</td>
-                <td>${formatFcfa(doctorRevenueCash(row))}</td>
                 <td>${formatFcfa(doctorRevenueTotal(row))}</td>
                 <td>${formatFcfa(row.reliquat)}</td>
                 <td>${formatFcfa(row.salary)}</td>
@@ -332,9 +359,7 @@ function printSummary() {
                     <th>Médecin</th>
                     <th>Consultations</th>
                     <th>Apport (Fcfa)</th>
-                    <th>Part assurance</th>
-                    <th>Encaissement réel</th>
-                    <th>Rémunération</th>
+                    <th>Total encaissé</th>
                     <th>Réliquat patient</th>
                     <th>Salaire</th>
                 </tr>
@@ -362,7 +387,9 @@ function printAllActs() {
                     patient: item.patient || '--',
                     description: item.description || '--',
                     montant: item.montant || 0,
-                    montantPaye: item.montantPaye || 0
+                    montantPaye: item.montantPaye || 0,
+                    montantAssurance: item.montantAssurance || 0,
+                    isInsurance: Boolean(item.isInsurance)
                 });
             });
         }
@@ -375,11 +402,15 @@ function printAllActs() {
                     medecin: doctor.name || '--',
                     patient: item.patient || '--',
                     description: item.description || '--',
-                    montant: item.montant || 0
+                    montant: item.montant || 0,
+                    isInsurance: Boolean(item.isInsurance)
                 });
             });
         }
     });
+
+    acts.sort((a, b) => parseReportDate(a.date) - parseReportDate(b.date));
+    reliquats.sort((a, b) => parseReportDate(a.date) - parseReportDate(b.date));
 
     const actRows = acts
         .map(
@@ -390,7 +421,7 @@ function printAllActs() {
                 <td>${act.patient}</td>
                 <td>${act.description}</td>
                 <td>${formatFcfa(act.montant)}</td>
-                <td>${formatFcfa(act.montantPaye)}</td>
+                <td>${formatPaidWithInsurance(act)}</td>
             </tr>
         `
         )
@@ -412,7 +443,8 @@ function printAllActs() {
         .join('');
 
     const apportTotal = acts.reduce((sum, act) => sum + Number(act.montant || 0), 0);
-    const paidTotal = acts.reduce((sum, act) => sum + Number(act.montantPaye || 0), 0);
+    const paidTotal = acts.reduce((sum, act) => sum + actPaidIncludingInsurance(act), 0);
+    const assuranceTotal = acts.reduce((sum, act) => sum + Number(act.montantAssurance || 0), 0);
     const reliquatTotal = reliquats.reduce((sum, item) => sum + Number(item.montant || 0), 0);
 
     const body = `
@@ -433,7 +465,6 @@ function printAllActs() {
                 ${actRows}
             </tbody>
         </table>
-        <p style="margin-top: 12px; font-weight: 600;">Total apport = ${formatFcfa(apportTotal)} · Total payé = ${formatFcfa(paidTotal)}</p>
         <div class="print-section-title" style="margin-top: 16px;">Paiements de reliquats</div>
         <table class="print-table">
             <thead>
@@ -450,7 +481,27 @@ function printAllActs() {
                 ${reliquatRows || '<tr><td colspan="6"><em>Aucun paiement de reliquat</em></td></tr>'}
             </tbody>
         </table>
-        <p style="margin-top: 12px; font-weight: 600;">Total reliquats = ${formatFcfa(reliquatTotal)}</p>
+        <div class="print-section-title" style="margin-top: 16px;">Récapitulatif</div>
+        <table class="print-table">
+            <tbody>
+                <tr>
+                    <td><strong>Total apport</strong></td>
+                    <td>${formatFcfa(apportTotal)}</td>
+                </tr>
+                <tr>
+                    <td><strong>Total payé</strong></td>
+                    <td>${formatFcfa(paidTotal)}</td>
+                </tr>
+                <tr>
+                    <td><strong>Total parts assurances</strong></td>
+                    <td>${formatFcfa(assuranceTotal)}</td>
+                </tr>
+                <tr>
+                    <td><strong>Total Paiements de reliquats</strong></td>
+                    <td>${formatFcfa(reliquatTotal)}</td>
+                </tr>
+            </tbody>
+        </table>
     `;
 
     printDialogVisible.value = false;
@@ -760,7 +811,7 @@ function printAllActs() {
                                         v-if="data?.paiements_reliquats?.length"
                                         class="mt-4 flex items-center justify-between rounded-xl border border-sky-200/70 bg-sky-50/70 px-3 py-2 text-sm dark:border-sky-900/40 dark:bg-sky-950/20"
                                     >
-                                        <span class="font-medium text-surface-700 dark:text-surface-200">Total reliquats encaissés</span>
+                                        <span class="font-medium text-surface-700 dark:text-surface-200">Total Paiements de reliquats</span>
                                         <strong class="text-sky-700 dark:text-sky-300">{{ formatFcfa(data.paiements_reliquats_total) }}</strong>
                                     </div>
                                 </section>

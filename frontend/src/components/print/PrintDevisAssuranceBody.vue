@@ -2,7 +2,7 @@
     <PrintA4Page :logo-src="logoSrc">
         <template #header>
             <PrintDocumentHeader
-                :title="title || 'Facture assurance'"
+                :title="title || 'Devis assurance'"
                 :doc-id="doc?.id"
                 :date="doc?.date || doc?.dateFacture"
             />
@@ -67,14 +67,6 @@
                     <th colspan="3" style="text-align: right">Part assurance</th>
                     <th>{{ formatMoney(doc?.montantAssurance) }}</th>
                 </tr>
-                <tr>
-                    <th colspan="3" style="text-align: right">Part patient</th>
-                    <th>{{ formatMoney(doc?.montantPatient) }}</th>
-                </tr>
-                <tr v-if="restePatient != null">
-                    <th colspan="3" style="text-align: right">Reste à payer</th>
-                    <th>{{ formatMoney(restePatient) }}</th>
-                </tr>
             </tfoot>
         </table>
 
@@ -99,7 +91,7 @@ import logoImg from '@/assets/logo.png';
 
 const props = defineProps({
     doc: { type: Object, default: () => ({}) },
-    title: { type: String, default: 'Facture assurance' },
+    title: { type: String, default: 'Devis assurance' },
     logoSrc: { type: String, default: logoImg }
 });
 
@@ -122,12 +114,6 @@ const lignes = computed(() => {
 const tauxCouvertureLabel = computed(() => {
     const rate = props.doc?.tauxCouverture ?? props.doc?.assurance?.tauxCouverture;
     return rate == null || rate === '' ? '—' : `${rate}%`;
-});
-
-const restePatient = computed(() => {
-    if (props.doc?.restePatient != null) return props.doc.restePatient;
-    if (props.doc?.assurance?.restePatient != null) return props.doc.assurance.restePatient;
-    return null;
 });
 
 const formatMoney = (value) => {

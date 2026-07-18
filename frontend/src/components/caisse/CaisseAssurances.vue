@@ -9,7 +9,6 @@ const props = defineProps({
     dashboardCards: { type: Array, default: () => [] },
     lotsAssurance: { type: Object, default: null },
     lots: { type: Array, default: () => [] },
-    openLots: { type: Array, default: () => [] },
     unassignedClaims: { type: Array, default: () => [] },
     selectedClaim: { type: Object, default: null },
     selectedLot: { type: Object, default: null },
@@ -45,7 +44,8 @@ const emit = defineEmits([
     'change-claim-lot',
     'remove-claim',
     'print-receipt',
-    'print-claim'
+    'print-claim',
+    'print-claim-devis'
 ]);
 
 const currentView = ref('dashboard');
@@ -119,7 +119,6 @@ const handleBackFromClaim = () => {
       v-else-if="currentView === 'lots'"
       :assurance="lotsAssurance"
       :lots="lots"
-      :open-lots="openLots"
       :unassigned-claims="unassignedClaims"
       :loading="lotsLoading"
       :action-loading-id="actionLoadingId"
@@ -169,6 +168,7 @@ const handleBackFromClaim = () => {
       @collect-patient-share="emit('collect-patient-share', $event)"
       @print-receipt="emit('print-receipt', $event)"
       @print-claim="emit('print-claim', $event)"
+      @print-claim-devis="emit('print-claim-devis', $event)"
     />
   </div>
 </template>

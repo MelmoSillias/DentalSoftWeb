@@ -5,6 +5,7 @@ import CaisseOverview from '@/components/caisse/CaisseOverview.vue';
 import CaissePaiements from '@/components/caisse/CaissePaiements.vue';
 import CaisseAssurances from '@/components/caisse/CaisseAssurances.vue';
 import PrintDevisBody from '@/components/print/PrintDevisBody.vue';
+import PrintDevisAssuranceBody from '@/components/print/PrintDevisAssuranceBody.vue';
 import PrintPaymentsListBody from '@/components/print/PrintPaymentsListBody.vue';
 import PrintFactureAssuranceBody from '@/components/print/PrintFactureAssuranceBody.vue';
 import PrintReceiptBody from '@/components/print/PrintReceiptBody.vue';
@@ -48,6 +49,7 @@ import {
 	payFacture,
 	payInsurancePatientShare,
 	resetFacturePayments,
+	resetInsurancePayments,
 	updateFactureLines,
 	validateEmptyFacture
 } from '@/services/caisseService';
@@ -135,7 +137,6 @@ const payments = ref([]);
 const insuranceDashboard = ref([]);
 const insuranceLotsAssurance = ref(null);
 const insuranceLots = ref([]);
-const insuranceOpenLots = ref([]);
 const insuranceUnassignedClaims = ref([]);
 const insuranceSelectedClaim = ref(null);
 const insuranceSelectedLot = ref(null);
@@ -201,6 +202,30 @@ const isInitialLoadPhase = ref(true);
 let guidedTourPageState = null;
 let guidedTourDemoActive = false;
 let guidedTourCleanupPromise = null;
+
+const isInsuranceFacture = (row) => row?.type === 'FactureAssurance' || row?.insurance?.hasInsurance === true;
+
+const mapClaimToPreviewData = (detail, claimId) => ({
+	...detail,
+	insurance: {
+		hasInsurance: true,
+		assuranceNom: detail?.assurance?.nom,
+		assuranceCode: detail?.assurance?.code,
+		tauxCouverture: detail?.tauxCouverture,
+		insuranceRate: detail?.tauxCouverture,
+		montantTotal: detail?.montantTotal,
+		montantAssurance: detail?.montantAssurance,
+		insuranceAmount: detail?.montantAssurance,
+		montantPatient: detail?.montantPatient,
+		restePatient: detail?.restePatient,
+		patientPaidAmount: detail?.patientPaidAmount,
+		factureAssuranceId: claimId,
+	},
+	type: 'FactureAssurance',
+	montant: detail?.montantPatient ?? 0,
+	reste: detail?.restePatient ?? 0,
+	contenus: detail?.lignes || [],
+});
 
 // Explicit setters avoid template auto-unwrapping issues on refs
 const setFactureType = (val) => {
@@ -595,7 +620,6 @@ const loadInsuranceLots = async () => {
 		insuranceLotsLoading.value = true;
 		const res = await fetchAssuranceLots(code, {}, token);
 		insuranceLots.value = Array.isArray(res?.data) ? res.data : [];
-		insuranceOpenLots.value = Array.isArray(res?.openLots) ? res.openLots : [];
 		insuranceUnassignedClaims.value = Array.isArray(res?.unassignedClaims) ? res.unassignedClaims : [];
 		if (res?.assurance) {
 			insuranceLotsAssurance.value = { ...insuranceLotsAssurance.value, ...res.assurance };
@@ -646,7 +670,6 @@ const viewInsuranceLots = async (card) => {
 const backToInsuranceDashboard = () => {
 	insuranceLotsAssurance.value = null;
 	insuranceLots.value = [];
-	insuranceOpenLots.value = [];
 	insuranceUnassignedClaims.value = [];
 	insuranceSelectedLot.value = null;
 	insuranceSelectedClaim.value = null;
@@ -817,14 +840,28 @@ const printInsuranceClaim = async (claim) => {
 	if (!claimId) return;
 	try {
 		const res = await fetchFactureAssurancePrintData(claimId, token);
-		await printComponent(
-			PrintFactureAssuranceBody,
-			{ doc: res.doc, title: res.title || 'Facture assurance' },
-			{ format: [226.77, 255.12], width: '80mm' }
-		);
+		await printComponent(PrintFactureAssuranceBody, {
+			doc: res.doc,
+			title: res.title || 'Facture assurance'
+		});
 	} catch (error) {
 		console.error(error);
 		toast.add({ severity: 'error', summary: 'Assurances', detail: 'Impression indisponible', life: 3500 });
+	}
+};
+
+const printInsuranceClaimDevis = async (claim) => {
+	const claimId = Number(claim?.id);
+	if (!claimId) return;
+	try {
+		const res = await fetchFactureAssurancePrintData(claimId, token);
+		await printComponent(PrintDevisAssuranceBody, {
+			doc: res.doc,
+			title: 'Devis assurance'
+		});
+	} catch (error) {
+		console.error(error);
+		toast.add({ severity: 'error', summary: 'Assurances', detail: 'Impression devis indisponible', life: 3500 });
 	}
 };
 
@@ -971,8 +1008,6 @@ watch(
 	}
 );
 
-const isInsuranceFacture = (row) => row?.type === 'FactureAssurance' || row?.insurance?.hasInsurance === true;
-
 const submitPayment = async () => {
 
 	if (!selectedFacture.value) return;
@@ -1078,7 +1113,13 @@ const reloadFacturePreview = async (factureId) => {
 
 	previewLoading.value = true;
 	try {
-		previewData.value = await fetchFactureDetail(factureId, token);
+		if (isInsuranceFacture(selectedFacture.value) || isInsuranceFacture(previewData.value)) {
+			const claimId = selectedFacture.value?.factureAssuranceId || previewData.value?.insurance?.factureAssuranceId || factureId;
+			const detail = await fetchInsuranceClaimDetail(claimId, token);
+			previewData.value = mapClaimToPreviewData(detail, claimId);
+		} else {
+			previewData.value = await fetchFactureDetail(factureId, token);
+		}
 	} catch (error) {
 		console.error(error);
 		toast.add({ severity: 'error', summary: 'Facture', detail: 'Actualisation du détail impossible', life: 3500 });
@@ -1088,18 +1129,33 @@ const reloadFacturePreview = async (factureId) => {
 };
 
 const resetSelectedDevisPayments = async () => {
-	const factureId = selectedFacture.value?.id ?? previewData.value?.id ?? activeInvoiceContext.value?.id;
+	const context = selectedFacture.value ?? previewData.value ?? activeInvoiceContext.value;
+	const factureId = context?.id;
 	if (!factureId) {
 		return;
 	}
 
+	const isInsured = isInsuranceFacture(context);
+
 	try {
 		resetPaymentsLoading.value = true;
-		await resetFacturePayments(factureId, token);
+
+		if (isInsured) {
+			const claimId = context.factureAssuranceId || context.insurance?.factureAssuranceId || factureId;
+			await resetInsurancePayments(claimId, token);
+		} else {
+			await resetFacturePayments(factureId, token);
+		}
+
 		toast.add({ severity: 'success', summary: 'Facture', detail: 'La facture a été réinitialisée.', life: 3000 });
 		resetPaymentDialogVisible.value = false;
 		payDialogVisible.value = false;
-		await Promise.all([loadFactures(), loadPayments()]);
+
+		const tasks = [loadFactures(), loadPayments()];
+		if (isInsured) {
+			tasks.push(refreshInsuranceViews({ includePayments: false }));
+		}
+		await Promise.all(tasks);
 		await reloadFacturePreview(factureId);
 
 		const updatedRow = factures.value.find((row) => Number(row.id) === Number(factureId));
@@ -1215,7 +1271,13 @@ const openPreviewDialog = async (row) => {
 	previewDialogTab.value = 'services';
 	selectedFacture.value = row;
 	try {
-		previewData.value = await fetchFactureDetail(row.id, token);
+		if (isInsuranceFacture(row)) {
+			const claimId = row.factureAssuranceId || row.insurance?.factureAssuranceId || row.id;
+			const detail = await fetchInsuranceClaimDetail(claimId, token);
+			previewData.value = mapClaimToPreviewData(detail, claimId);
+		} else {
+			previewData.value = await fetchFactureDetail(row.id, token);
+		}
 	} catch (error) {
 		console.error(error);
 		toast.add({ severity: 'error', summary: 'Facture', detail: 'Aperçu indisponible', life: 3500 });
@@ -1388,8 +1450,17 @@ const handleGuidedTourRequest = async (event) => {
 const printInvoice = async () => {
 	if (!previewData.value?.id) return;
 	try {
-		const res = await fetchInvoicePrintData(previewData.value.id, token);
-		await printComponent(PrintDevisBody, { doc: res.doc, title: res.title || 'Facture' });
+		if (isInsuranceFacture(previewData.value) || isInsuranceFacture(selectedFacture.value)) {
+			const claimId = previewData.value.insurance?.factureAssuranceId || selectedFacture.value?.factureAssuranceId || previewData.value.id;
+			const res = await fetchFactureAssurancePrintData(claimId, token);
+			await printComponent(PrintFactureAssuranceBody, {
+				doc: res.doc,
+				title: res.title || 'Facture assurance'
+			});
+		} else {
+			const res = await fetchInvoicePrintData(previewData.value.id, token);
+			await printComponent(PrintDevisBody, { doc: res.doc, title: res.title || 'Facture' });
+		}
 	} catch (error) {
 		console.error(error);
 		toast.add({ severity: 'error', summary: 'Facture', detail: 'Impression indisponible', life: 3500 });
@@ -1460,6 +1531,10 @@ const printReceiptById = async (paymentId) => {
 
 const sendInvoiceBySms = async (row) => {
 	if (!row?.id) return;
+	if (isInsuranceFacture(row)) {
+		toast.add({ severity: 'info', summary: 'SMS Facture', detail: 'L\'envoi SMS n\'est pas disponible pour les factures assurance.', life: 3500 });
+		return;
+	}
 	try {
 		const res = await sendInvoiceSms(row.id, {}, token);
 		toast.add({
@@ -1587,7 +1662,6 @@ onBeforeUnmount(() => {
 						:dashboard-cards="insuranceDashboard"
 						:lots-assurance="insuranceLotsAssurance"
 						:lots="insuranceLots"
-						:open-lots="insuranceOpenLots"
 						:unassigned-claims="insuranceUnassignedClaims"
 						:selected-claim="insuranceSelectedClaim"
 						:selected-lot="insuranceSelectedLot"
@@ -1621,6 +1695,7 @@ onBeforeUnmount(() => {
 						@remove-claim="removeClaimFromLot"
 						@print-receipt="printInsuranceReceipt"
 						@print-claim="printInsuranceClaim"
+						@print-claim-devis="printInsuranceClaimDevis"
 					/>
 				</TabPanel>
 			</TabPanels>

@@ -247,6 +247,11 @@
         background: #fff;
     }
 
+    .print-doc-table tr {
+        page-break-inside: avoid;
+        break-inside: avoid;
+    }
+
     .print-a4-page__watermark {
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;

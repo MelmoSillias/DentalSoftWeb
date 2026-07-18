@@ -75,10 +75,6 @@ class LotFactureAssuranceService
 
         return [
             'assurance' => $this->mapAssuranceSummary($assurance),
-            'openLots' => array_map(
-                fn (LotFactureAssurance $lot) => $this->mapLotSummary($lot),
-                $this->lotRepository->findOpenLotsForAssurance($assurance)
-            ),
             'unassignedClaims' => $this->listUnassignedClaims($assurance),
             'data' => array_map(fn (LotFactureAssurance $lot) => $this->mapLotSummary($lot), $lots),
         ];
@@ -587,22 +583,7 @@ class LotFactureAssuranceService
 
     private function resolvePatientPaidAmount(FactureAssurance $facture): float
     {
-        $consultation = $facture->getConsultation();
-        if (!$consultation) {
-            return 0.0;
-        }
-
-        return max(0.0, (float) $this->em->createQueryBuilder()
-            ->select('COALESCE(SUM(t.montant), 0)')
-            ->from(Transaction::class, 't')
-            ->where('t.consultation = :consultation')
-            ->andWhere('t.rolePaiement = :role')
-            ->andWhere('t.validationStatus = :status')
-            ->setParameter('consultation', $consultation)
-            ->setParameter('role', 'patient_insurance')
-            ->setParameter('status', 'validated')
-            ->getQuery()
-            ->getSingleScalarResult());
+        return $facture->computePatientPaidAmount();
     }
 
     private function mapAssuranceSummary(Assurance $assurance): array

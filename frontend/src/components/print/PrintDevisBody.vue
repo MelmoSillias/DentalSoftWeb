@@ -50,7 +50,7 @@
                 <div class="sign-line" />
             </div>
             <div class="sign-col">
-                <p>Cachet de la clinique</p>
+                <p>Cachet du cabinet</p>
                 <div class="sign-line" />
             </div>
         </div>

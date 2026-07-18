@@ -36,10 +36,17 @@ export const PRINT_DOCUMENT_BASE_CSS = `
     }
     .print-page {
         position: relative;
-        min-height: 190mm;
-        padding: 0;
-        overflow: hidden;
     }
+    /* Table conteneur : le tfoot se répète sur chaque page et réserve la place du footer fixe */
+    .print-running { width: 100%; border-collapse: collapse; }
+    .print-running > tbody > tr > td,
+    .print-running > tfoot > tr > td {
+        padding: 0;
+        border: none;
+        background: transparent;
+        vertical-align: top;
+    }
+    .print-footer-space { height: 20mm; }
     .print-page::before {
         content: '';
         position: fixed;
@@ -115,12 +122,17 @@ export const PRINT_DOCUMENT_BASE_CSS = `
         text-align: left;
         vertical-align: top;
     }
+    .print-table thead {
+        display: table-header-group;
+    }
     .print-table thead th {
         background: #eef3f8;
         font-weight: 700;
         border-bottom: 2px solid #1d6fbf;
     }
     .print-table tbody tr:nth-child(even) td { background: #fafbfd; }
+    /* Une ligne qui toucherait le footer bascule entièrement à la page suivante */
+    .print-table tr { page-break-inside: avoid; break-inside: avoid; }
     .print-footer {
         position: fixed;
         bottom: 0;
@@ -133,6 +145,7 @@ export const PRINT_DOCUMENT_BASE_CSS = `
         display: flex;
         justify-content: space-between;
         background: #fff;
+        z-index: 2;
     }
     .print-footer strong { color: #111827; text-transform: uppercase; }
     .signature-table { margin-top: 24px; width: 100%; border: none; }
@@ -194,9 +207,18 @@ export function buildPrintHtmlDocument({ title = 'Document', body = '', landscap
     </head>
     <body>
         <div class="print-page">
-            ${buildPrintCabinetHeaderHtml()}
-            ${body}
             ${buildPrintFooterHtml()}
+            <table class="print-running">
+                <tfoot>
+                    <tr><td><div class="print-footer-space"></div></td></tr>
+                </tfoot>
+                <tbody>
+                    <tr><td>
+                        ${buildPrintCabinetHeaderHtml()}
+                        ${body}
+                    </td></tr>
+                </tbody>
+            </table>
         </div>
     </body>
     </html>

@@ -106,6 +106,11 @@ class InsuredInvoiceWorkflowService
         return $this->insuranceClaimService->payPatientShare($factureId, $modeId, $amount, $date);
     }
 
+    public function resetPayments(int $factureId): array
+    {
+        return $this->insuranceClaimService->resetPayments($factureId);
+    }
+
     public function mapFactureAssurancePrint(int $id): ?array
     {
         $facture = $this->factureAssuranceRepo->find($id);
@@ -116,45 +121,78 @@ class InsuredInvoiceWorkflowService
         $totals = $facture->computeTotals();
         $patient = $facture->getConsultation()?->getPatient() ?? $facture->getPatient();
         $lot = $facture->getLotFactureAssurance();
+        $montantTotal = (float) ($totals['montantTotal'] ?? 0.0);
+        $montantAssurance = (float) ($totals['montantAssureur'] ?? 0.0);
         $montantPatient = (float) ($totals['montantPatient'] ?? 0.0);
         $patientPaid = $facture->computePatientPaidAmount();
+        $restePatient = max(0.0, $montantPatient - $patientPaid);
+        $snapshot = $facture->getAssuranceSnapshot() ?: [];
+        $assurance = $facture->getAssurance();
         $lines = [];
+        $contenus = [];
 
         foreach ($facture->buildDisplayLignes() as $line) {
+            $quantite = (int) ($line['quantite'] ?? 1);
+            $prix = (float) ($line['prix'] ?? 0);
+            $total = (float) ($line['total'] ?? 0);
+            $designation = (string) ($line['designation'] ?? 'Soin');
+
             $lines[] = [
-                'designation' => $line['designation'] ?? 'Soin',
+                'designation' => $designation,
                 'description' => $line['description'] ?? '',
-                'quantite' => $line['quantite'] ?? 1,
-                'prix' => $line['prix'] ?? 0,
-                'total' => $line['total'] ?? 0,
+                'quantite' => $quantite,
+                'prix' => $prix,
+                'total' => $total,
                 'virtual' => !empty($line['virtual']),
+            ];
+            $contenus[] = [
+                'designation' => $designation,
+                'qte' => $quantite,
+                'montant' => $prix,
+                'total' => $total,
             ];
         }
 
+        $dateFacture = $facture->getDateFacture()?->format('Y-m-d H:i');
+        $dateShort = $facture->getDateFacture()?->format('Y-m-d');
+
         return [
             'id' => $facture->getId(),
-            'dateFacture' => $facture->getDateFacture()?->format('Y-m-d H:i'),
+            'date' => $dateShort,
+            'dateFacture' => $dateFacture,
             'patient' => [
                 'nom' => $patient?->getNom(),
                 'prenom' => $patient?->getPrenom(),
                 'telephone' => $patient?->getTelephone(),
             ],
             'assurance' => [
-                'nom' => $facture->getAssurance()?->getNom(),
-                'code' => $facture->getAssurance()?->getCode(),
+                'nom' => $assurance?->getNom() ?? ($snapshot['nom'] ?? null),
+                'code' => $assurance?->getCode() ?? ($snapshot['code'] ?? null),
+                'logoPath' => $assurance?->getLogoPath() ?? ($snapshot['logoPath'] ?? null),
                 'tauxCouverture' => $facture->getCoverageRate(),
-                'montantTotal' => (float) ($totals['montantTotal'] ?? 0.0),
-                'montantAssurance' => (float) ($totals['montantAssureur'] ?? 0.0),
+                'montantTotal' => $montantTotal,
+                'montantAssurance' => $montantAssurance,
                 'montantPatient' => $montantPatient,
                 'partPatientPayee' => $patientPaid,
-                'restePatient' => max(0.0, $montantPatient - $patientPaid),
+                'restePatient' => $restePatient,
                 'insuranceStatus' => $facture->getInsuranceStatus(),
                 'factureAssuranceId' => $facture->getId(),
             ],
+            'assuranceSnapshot' => [
+                'code' => $snapshot['code'] ?? $assurance?->getCode(),
+                'nom' => $snapshot['nom'] ?? $assurance?->getNom(),
+                'logoPath' => $snapshot['logoPath'] ?? $assurance?->getLogoPath(),
+                'formData' => is_array($snapshot['formData'] ?? null) ? $snapshot['formData'] : [],
+            ],
+            'assureFields' => $this->buildAssureFields($assurance?->getFormSchema() ?? [], $snapshot['formData'] ?? []),
             'lignes' => $lines,
-            'montantTotal' => (float) ($totals['montantTotal'] ?? 0.0),
-            'montantAssurance' => (float) ($totals['montantAssureur'] ?? 0.0),
+            'contenus' => $contenus,
+            'montant' => $montantTotal,
+            'montantTotal' => $montantTotal,
+            'montantAssurance' => $montantAssurance,
             'montantPatient' => $montantPatient,
+            'partPatientPayee' => $patientPaid,
+            'restePatient' => $restePatient,
             'tauxCouverture' => $facture->getCoverageRate(),
             'insuranceStatus' => $facture->getInsuranceStatus(),
             'isRecouvre' => $facture->isRecouvre(),
@@ -163,6 +201,63 @@ class InsuredInvoiceWorkflowService
                 'description' => $lot->getDescription(),
                 'statut' => $lot->getStatut(),
             ] : null,
+            'type' => 'DevisAssurance',
         ];
+    }
+
+    /**
+     * @param array<string, mixed> $formSchema
+     * @param mixed $formData
+     * @return list<array{key: string, label: string, value: string}>
+     */
+    private function buildAssureFields(array $formSchema, mixed $formData): array
+    {
+        if (!is_array($formData)) {
+            $formData = [];
+        }
+
+        $fields = $formSchema['fields'] ?? [];
+        if (!is_array($fields)) {
+            return [];
+        }
+
+        $result = [];
+        foreach ($fields as $field) {
+            if (!is_array($field)) {
+                continue;
+            }
+
+            $key = (string) ($field['key'] ?? '');
+            if ($key === '' || $key === 'coverageRate') {
+                continue;
+            }
+
+            $raw = $formData[$key] ?? null;
+            if ($raw === null || $raw === '') {
+                continue;
+            }
+
+            $result[] = [
+                'key' => $key,
+                'label' => (string) ($field['label'] ?? $key),
+                'value' => is_scalar($raw) ? (string) $raw : json_encode($raw, JSON_UNESCAPED_UNICODE),
+            ];
+        }
+
+        // Fallback: dump remaining formData keys when schema is empty/outdated
+        if ($result === [] && $formData !== []) {
+            foreach ($formData as $key => $raw) {
+                if (!is_string($key) || $key === 'coverageRate' || $raw === null || $raw === '') {
+                    continue;
+                }
+                $result[] = [
+                    'key' => $key,
+                    'label' => $key,
+                    'value' => is_scalar($raw) ? (string) $raw : json_encode($raw, JSON_UNESCAPED_UNICODE),
+                ];
+            }
+        }
+
+        return $result;
     }
 }

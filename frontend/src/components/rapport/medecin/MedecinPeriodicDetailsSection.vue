@@ -34,42 +34,17 @@ const appointmentsItems = (period) => [
 ];
 
 const apportItems = (period) => [
-    {
-        label: 'Part patient',
-        value: formatFcfa(period.apportPatient || 0),
-        severity: 'info'
-    },
-    {
-        label: 'Part assurance',
-        value: formatFcfa(period.apportAssurance || 0),
-        severity: 'secondary'
-    },
     { label: 'Montant total (apport)', value: formatFcfa(period.apportTotal || 0), severity: 'success' }
 ];
 
 const revenueItems = (period) => [
-    {
-        label: 'Encaissé patient période',
-        value: formatFcfa(period.revenue || 0),
-        severity: 'info'
-    },
     {
         label: 'Reliquats encaissés',
         value: formatFcfa(period.revenueReliquats || 0),
         severity: 'warn'
     },
     {
-        label: 'Encaissement réel total',
-        value: formatFcfa(period.revenueCash || 0),
-        severity: 'success'
-    },
-    {
-        label: 'Part assurance (rémunération)',
-        value: formatFcfa(period.revenueAssurance || 0),
-        severity: 'secondary'
-    },
-    {
-        label: 'Rémunération totale',
+        label: 'Total encaissé',
         value: formatFcfa(period.revenueTotal || 0),
         severity: 'success'
     },
@@ -151,14 +126,11 @@ const apportChartData = computed(() => {
     const documentStyle = getComputedStyle(document.documentElement);
     const period = props.period || {};
     return {
-        labels: ['Part patient', 'Part assurance'],
+        labels: ['Apport total'],
         datasets: [
             {
-                data: [period.apportPatient || 0, period.apportAssurance || 0],
-                backgroundColor: [
-                    documentStyle.getPropertyValue('--p-sky-500'),
-                    documentStyle.getPropertyValue('--p-indigo-500')
-                ]
+                data: [period.apportTotal || 0],
+                backgroundColor: [documentStyle.getPropertyValue('--p-sky-500')]
             }
         ]
     };
@@ -168,13 +140,13 @@ const revenueChartData = computed(() => {
     const documentStyle = getComputedStyle(document.documentElement);
     const period = props.period || {};
     return {
-        labels: ['Encaissement réel', 'Part assurance'],
+        labels: ['Total encaissé', 'Réliquat patient'],
         datasets: [
             {
-                data: [period.revenueCash || 0, period.revenueAssurance || 0],
+                data: [period.revenueTotal || 0, period.reliquat || 0],
                 backgroundColor: [
                     documentStyle.getPropertyValue('--p-emerald-500'),
-                    documentStyle.getPropertyValue('--p-violet-500')
+                    documentStyle.getPropertyValue('--p-amber-500')
                 ]
             }
         ]

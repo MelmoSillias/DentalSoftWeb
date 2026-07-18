@@ -19,6 +19,10 @@ function formatFcfa(amount) {
     return `${new Intl.NumberFormat('fr-FR').format(value)} Fcfa`;
 }
 
+function actPaidIncludingInsurance(act) {
+    return Number(act?.montantPaye || 0) + Number(act?.montantAssurance || 0);
+}
+
 const chartData = computed(() => {
     const documentStyle = getComputedStyle(document.documentElement);
     return {
@@ -32,7 +36,7 @@ const chartData = computed(() => {
             {
                 label: 'Montant payé',
                 backgroundColor: documentStyle.getPropertyValue('--p-emerald-500'),
-                data: props.acts.map((row) => Number(row.montantPaye || 0))
+                data: props.acts.map((row) => actPaidIncludingInsurance(row))
             }
         ]
     };
@@ -56,7 +60,7 @@ const chartOptions = computed(() => {
 });
 
 const totalApport = computed(() => props.acts.reduce((sum, act) => sum + Number(act.montant || 0), 0));
-const totalPayeSoins = computed(() => props.acts.reduce((sum, act) => sum + Number(act.montantPaye || 0), 0));
+const totalPayeSoins = computed(() => props.acts.reduce((sum, act) => sum + actPaidIncludingInsurance(act), 0));
 const realEncashed = computed(() => totalPayeSoins.value + Number(props.reliquatTotal || 0));
 </script>
 
@@ -91,9 +95,7 @@ const realEncashed = computed(() => totalPayeSoins.value + Number(props.reliquat
                                     </div>
                                     <div class="flex flex-wrap gap-2">
                                         <Tag :value="`Apport ${formatFcfa(act.montant)}`" severity="secondary" />
-                                        <Tag v-if="act.isInsurance" :value="`Assurance ${formatFcfa(act.montantAssurance)}`" severity="info" />
-                                        <Tag v-if="act.isInsurance" :value="`Patient ${formatFcfa(act.montantPatient)}`" severity="secondary" />
-                                        <Tag :value="`Payé ${formatFcfa(act.montantPaye)}`" severity="success" />
+                                        <Tag :value="`Payé ${formatFcfa(actPaidIncludingInsurance(act))}`" severity="success" />
                                     </div>
                                 </div>
                                 <p class="text-surface-500">{{ act.patient }} • {{ act.date }}</p>

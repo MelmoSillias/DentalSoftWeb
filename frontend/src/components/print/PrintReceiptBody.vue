@@ -85,7 +85,7 @@
             </thead>
             <tbody>
                 <tr>
-                    <td>Paiement devis #{{ paiement?.devis?.id || '—' }}</td>
+                    <td>{{ paiement?.assurance ? 'Paiement facture assurance' : 'Paiement devis' }} #{{ paiement?.devis?.id || '—' }}</td>
                     <td class="right">{{ formatMoney(paiement?.montant) }}</td>
                 </tr>
             </tbody>

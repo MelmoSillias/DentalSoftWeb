@@ -13,7 +13,6 @@ import { resolveAssuranceLogoUrl } from '@/utils/assuranceUtils';
 const props = defineProps({
     assurance: { type: Object, default: null },
     lots: { type: Array, default: () => [] },
-    openLots: { type: Array, default: () => [] },
     unassignedClaims: { type: Array, default: () => [] },
     loading: { type: Boolean, default: false },
     actionLoadingId: { type: Number, default: null }
@@ -64,7 +63,7 @@ const claimMenu = ref();
 const claimMenuItems = ref([]);
 const activeClaim = ref(null);
 
-const openLotsOptions = computed(() => props.openLots || props.lots.filter((l) => l.statut === 'ouvert'));
+const openLotsOptions = computed(() => props.lots.filter((l) => l.statut === 'ouvert'));
 
 const openCreateDialog = () => {
     lotForm.value = { description: '', dateDebut: new Date(), dateFin: new Date() };
@@ -309,25 +308,19 @@ const submitAssign = () => {
         row-hover
         class="text-sm"
       >
-        <Column field="patient" header="Patient" />
-        <Column field="telephone" header="Téléphone" />
         <Column header="Date">
           <template #body="{ data }">{{ data?.dateFacture?.slice(0, 10) || '—' }}</template>
         </Column>
+        <Column field="patient" header="Patient" />
         <Column header="Total">
           <template #body="{ data }">{{ formatFcfa(data?.montantTotal) }}</template>
         </Column>
-        <Column header="Part patient">
-          <template #body="{ data }">{{ formatFcfa(data?.montantPatient) }}</template>
+        <Column header="Taux">
+          <template #body="{ data }">{{ Number(data?.tauxCouverture || 0) }} %</template>
         </Column>
         <Column header="Reste patient">
           <template #body="{ data }">
             <span class="font-semibold">{{ formatFcfa(data?.restePatient) }}</span>
-          </template>
-        </Column>
-        <Column header="Part assurance">
-          <template #body="{ data }">
-            <span class="font-semibold text-primary">{{ formatFcfa(data?.montantAssurance) }}</span>
           </template>
         </Column>
         <Column header="Actions" style="min-width: 6rem">

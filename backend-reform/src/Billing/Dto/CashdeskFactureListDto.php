@@ -4,28 +4,35 @@ namespace App\Billing\Dto;
 
 final class CashdeskFactureListDto
 {
+    /** @var list<array<string, mixed>> */
+    private array $all;
+
     public function __construct(
-        private array $factures,
-        private array $facturesAssurance,
+        array $factures,
+        array $facturesAssurance,
     ) {
+        $merged = array_merge($factures, $facturesAssurance);
+
+        usort($merged, static function (array $a, array $b): int {
+            $dateA = $a['date'] ?? '';
+            $dateB = $b['date'] ?? '';
+
+            return $dateB <=> $dateA;
+        });
+
+        $this->all = $merged;
     }
 
-    public function getFactures(): array
+    /** @return list<array<string, mixed>> */
+    public function getAll(): array
     {
-        return $this->factures;
-    }
-
-    public function getFacturesAssurance(): array
-    {
-        return $this->facturesAssurance;
+        return $this->all;
     }
 
     public function toArray(): array
     {
         return [
-            'factures' => $this->factures,
-            'facturesAssurance' => $this->facturesAssurance,
-            'all' => array_merge($this->factures, $this->facturesAssurance),
+            'all' => $this->all,
         ];
     }
 }

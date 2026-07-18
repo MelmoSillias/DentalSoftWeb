@@ -287,6 +287,17 @@ class FactureAssurance
         return $this;
     }
 
+    public function removePaiement(Paiement $paiement): static
+    {
+        if ($this->paiements->removeElement($paiement)) {
+            if ($paiement->getFactureAssurance() === $this) {
+                $paiement->setFactureAssurance(null);
+            }
+        }
+
+        return $this;
+    }
+
     public function computePatientPaidAmount(): float
     {
         $total = 0.0;

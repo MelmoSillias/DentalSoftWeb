@@ -159,7 +159,34 @@ class CashdeskEntryPointService
     public function mapPaiementReceipt(Paiement $paiement): array
     {
         $patient = $this->resolvePatientFromPaiement($paiement);
-        $factureId = $paiement->getFacture()?->getId();
+        $facture = $paiement->getFacture();
+        $factureAssurance = $paiement->getFactureAssurance();
+        $factureId = $facture?->getId() ?? $factureAssurance?->getId();
+
+        $total = 0.0;
+        $reste = 0.0;
+        $assuranceBlock = null;
+
+        if ($facture) {
+            $montants = $facture->computeMontantsFromConsultation();
+            $total = (float) ($montants['montantTotal'] ?? 0.0);
+            $reste = (float) ($montants['restePatient'] ?? 0.0);
+        } elseif ($factureAssurance) {
+            $totals = $factureAssurance->computeTotals();
+            $montantPatient = (float) ($totals['montantPatient'] ?? 0.0);
+            $patientPaid = $factureAssurance->computePatientPaidAmount();
+            $total = (float) ($totals['montantTotal'] ?? 0.0);
+            $reste = max(0.0, $montantPatient - $patientPaid);
+            $assuranceBlock = [
+                'nom' => $factureAssurance->getAssurance()?->getNom(),
+                'code' => $factureAssurance->getAssurance()?->getCode(),
+                'tauxCouverture' => $factureAssurance->getCoverageRate(),
+                'montantTotal' => $total,
+                'montantAssurance' => (float) ($totals['montantAssureur'] ?? 0.0),
+                'montantPatient' => $montantPatient,
+                'restePatient' => $reste,
+            ];
+        }
 
         return [
             'id' => $paiement->getId(),
@@ -170,8 +197,8 @@ class CashdeskEntryPointService
             ],
             'devis' => $factureId ? [
                 'id' => $factureId,
-                'total' => $paiement->getFacture()->computeMontantsFromConsultation()['montantTotal'] ?? 0.0,
-                'reste' => $paiement->getFacture()->computeMontantsFromConsultation()['restePatient'] ?? 0.0,
+                'total' => $total,
+                'reste' => $reste,
                 'fiche' => [
                     'patient' => $patient ? [
                         'nom' => $patient->getNom(),
@@ -179,6 +206,7 @@ class CashdeskEntryPointService
                     ] : null,
                 ],
             ] : null,
+            'assurance' => $assuranceBlock,
         ];
     }
 

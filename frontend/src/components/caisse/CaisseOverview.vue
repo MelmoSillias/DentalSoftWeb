@@ -90,9 +90,13 @@ const factureSearchQuery = computed(() => normalizeText(factureSearch.value.trim
 const paymentsSearchQuery = computed(() => normalizeText(paymentsSearch.value.trim()));
 
 const isInsurancePayment = (payment) => {
+    if (payment?.type === 'facture_assurance') return true;
     const role = String(payment?.rolePaiement || payment?.role || '').toLowerCase();
     return role === 'patient_insurance';
 };
+
+const isInvoiceStylePayment = (payment) =>
+    ['devis', 'facture', 'facture_assurance'].includes(payment?.type);
 
 const filteredFactures = computed(() => {
     const list = Array.isArray(props.factures) ? props.factures : [];
@@ -123,11 +127,16 @@ const filteredFacturesR = computed(() => {
         const consultationId = Number(invoice?.consultation);
 
         const invoicePayments = payments
-            .filter((payment) => payment?.type === 'facture' && Number(payment?.factureId) === invoiceId)
+            .filter((payment) => {
+                const isInvoicePay = payment?.type === 'facture'
+                    || payment?.type === 'facture_assurance'
+                    || payment?.type === 'devis';
+                return isInvoicePay && Number(payment?.factureId) === invoiceId;
+            })
             .map((payment) => ({
                 ...payment,
-                detailType: 'facture_payment',
-                detailLabel: 'Paiement facture'
+                detailType: payment?.type === 'facture_assurance' ? 'assurance_payment' : 'facture_payment',
+                detailLabel: payment?.type === 'facture_assurance' ? 'Paiement assurance' : 'Paiement facture'
             }));
 
         const consultationTicket = consultationId > 0
@@ -615,10 +624,13 @@ const printDetailPayment = (row) => {
                                             class="inv-payment-row"
                                             :class="detail.detailType === 'consultation_ticket' ? 'inv-payment-row--ticket' : 'inv-payment-row--facture'">
                                             <div class="inv-payment-icon-wrap">
-                                                <i :class="detail.detailType === 'consultation_ticket' ? 'pi pi-ticket' : 'pi pi-wallet'"></i>
+                                                <i :class="detail.detailType === 'consultation_ticket' ? 'pi pi-ticket' : (detail.detailType === 'assurance_payment' ? 'pi pi-shield' : 'pi pi-wallet')"></i>
                                             </div>
                                             <div class="inv-payment-info">
-                                                <span class="inv-payment-type">{{ detail.detailLabel }}</span>
+                                                <span class="inv-payment-type">
+                                                    {{ detail.detailLabel }}
+                                                    <Tag v-if="detail.detailType === 'assurance_payment'" value="Assurance" severity="info" icon="pi pi-shield" class="ml-2" />
+                                                </span>
                                                 <span class="inv-payment-meta">
                                                     {{ formatDate(detail.date, true) }}
                                                     <span v-if="detail.mode" class="inv-payment-mode">· {{ detail.mode }}</span>
@@ -687,8 +699,8 @@ const printDetailPayment = (row) => {
                 <Column header="Actions" style="width: 140px">
                     <template #body="{ data }">
                         <div class="flex gap-2">
-                            <Button :icon="data.type === 'facture' ? 'pi pi-print' : 'pi pi-ticket'" text
-                                @click="emit(data.type === 'facture' ? 'print-payment' : 'print-receipt', data)" />
+                            <Button :icon="isInvoiceStylePayment(data) ? 'pi pi-print' : 'pi pi-ticket'" text
+                                @click="emit(isInvoiceStylePayment(data) ? 'print-payment' : 'print-receipt', data)" />
                             <Button icon="pi pi-send" text @click="emit('send-receipt-sms', data)" />
                         </div>
                     </template>

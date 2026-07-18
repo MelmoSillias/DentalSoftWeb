@@ -178,6 +178,14 @@ class CaisseController extends AbstractController
         return new JsonResponse($result, isset($result['error']) ? 404 : 200);
     }
 
+    #[Route('/api/factures/assurance/{id}/payments/reset', name: 'api_factures_assurance_payments_reset', methods: ['DELETE'])]
+    public function resetFactureAssurancePayments(int $id): JsonResponse
+    {
+        $result = $this->entryPoint->getInsuredWorkflow()->resetPayments($id);
+
+        return new JsonResponse($result, isset($result['error']) ? 400 : 200);
+    }
+
     #[Route('/api/factures/{id}/print', name: 'api_factures_print', methods: ['GET'])] 
     public function printFactureFromLegacyRoute(int $id): Response
     {

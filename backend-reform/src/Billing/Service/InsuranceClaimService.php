@@ -181,6 +181,37 @@ class InsuranceClaimService
         ];
     }
 
+    public function resetPayments(int $factureId): array
+    {
+        $facture = $this->factureAssuranceRepository->find($factureId);
+        if (!$facture) {
+            return ['error' => 'Facture assurance introuvable'];
+        }
+
+        $lot = $facture->getLotFactureAssurance();
+        if ($lot !== null && in_array($lot->getStatut(), ['envoye', 'confirme', 'partiellement_rembourse', 'rembourse', 'recouvre'], true)) {
+            return ['error' => 'Impossible de réinitialiser : la facture est dans un lot verrouillé'];
+        }
+
+        foreach ($facture->getPaiements() as $paiement) {
+            $transaction = $paiement->getTransaction();
+            if ($transaction) {
+                $transaction->setPaiement(null);
+                $this->em->remove($transaction);
+            }
+            $facture->removePaiement($paiement);
+            $this->em->remove($paiement);
+        }
+
+        if ($facture->getInsuranceStatus() === 'validated_empty') {
+            $facture->setInsuranceStatus('pending');
+        }
+
+        $this->em->flush();
+
+        return ['success' => true];
+    }
+
     public function canModifyFactureAssurance(FactureAssurance $facture): bool
     {
         $lot = $facture->getLotFactureAssurance();

@@ -753,21 +753,12 @@ class ReportService
 
     private function sumValidatedInsurancePatientPayments(Consultation $consultation): float
     {
-        if ($consultation->getFactureAssurance() === null) {
+        $factureAssurance = $consultation->getFactureAssurance();
+        if ($factureAssurance === null) {
             return 0.0;
         }
 
-        return max(0.0, (float) $this->em->createQueryBuilder()
-            ->select('COALESCE(SUM(t.montant), 0)')
-            ->from(Transaction::class, 't')
-            ->where('t.consultation = :consultation')
-            ->andWhere('t.rolePaiement = :role')
-            ->andWhere('t.validationStatus = :status')
-            ->setParameter('consultation', $consultation)
-            ->setParameter('role', 'patient_insurance')
-            ->setParameter('status', 'validated')
-            ->getQuery()
-            ->getSingleScalarResult());
+        return $factureAssurance->computePatientPaidAmount();
     }
 
     private function sumInsurancePatientPaymentsInPeriod(
@@ -775,24 +766,25 @@ class ReportService
         DateTimeInterface $from,
         DateTimeInterface $to,
     ): float {
-        if ($consultation->getFactureAssurance() === null) {
+        $factureAssurance = $consultation->getFactureAssurance();
+        if ($factureAssurance === null) {
             return 0.0;
         }
 
-        return max(0.0, (float) $this->em->createQueryBuilder()
-            ->select('COALESCE(SUM(t.montant), 0)')
-            ->from(Transaction::class, 't')
-            ->where('t.consultation = :consultation')
-            ->andWhere('t.rolePaiement = :role')
-            ->andWhere('t.validationStatus = :status')
-            ->andWhere('t.dateTransaction BETWEEN :from AND :to')
-            ->setParameter('consultation', $consultation)
-            ->setParameter('role', 'patient_insurance')
-            ->setParameter('status', 'validated')
-            ->setParameter('from', $from)
-            ->setParameter('to', $to)
-            ->getQuery()
-            ->getSingleScalarResult());
+        $total = 0.0;
+        foreach ($factureAssurance->getPaiements() as $paiement) {
+            $status = $paiement->getTransaction()?->getValidationStatus();
+            if ($status !== null && $status !== 'validated') {
+                continue;
+            }
+            $date = $paiement->getDate();
+            if ($date === null || $date < $from || $date > $to) {
+                continue;
+            }
+            $total += (float) $paiement->getMontant();
+        }
+
+        return max(0.0, $total);
     }
 
     private function isValidatedPayment(Paiement $payment): bool

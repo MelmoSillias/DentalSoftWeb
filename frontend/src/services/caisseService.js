@@ -114,6 +114,15 @@ export const resetFacturePayments = async (factureId, token) => {
     return res.data;
 };
 
+export const resetInsurancePayments = async (factureAssuranceId, token) => {
+    if (isCaisseTourMockEnabled()) {
+        return { success: true };
+    }
+
+    const res = await axios.delete(`${apiPrefix}/factures/assurance/${factureAssuranceId}/payments/reset`, withHeaders(token));
+    return res.data;
+};
+
 export const validateEmptyFacture = async (factureId, token) => {
     if (isCaisseTourMockEnabled()) {
         return validateEmptyFactureTourMock(factureId);

@@ -45,11 +45,13 @@ const matchesQuery = (parts, query) => {
 const paymentsSearchQuery = computed(() => normalizeText(paymentsSearch.value.trim()));
 
 const isInsurancePayment = (payment) => {
+    if (payment?.type === 'facture_assurance') return true;
     const role = String(payment?.rolePaiement || '').toLowerCase();
-    const mode = normalizeText(payment?.mode);
-
     return role === 'patient_insurance';
 };
+
+const isInvoiceStylePayment = (payment) =>
+    ['devis', 'facture', 'facture_assurance'].includes(payment?.type);
 
 const computeModeTag = (payment) => {
     if (payment?.insuranceStatus === 'pending') {
@@ -249,6 +251,7 @@ const miniChart = computed(() => {
 
                             <div class="pay-tags">
                                 <Tag :value="computeModeTag(row).label" :severity="computeModeTag(row).severity" />
+                                <Tag v-if="isInsurancePayment(row)" value="Assurance" severity="info" icon="pi pi-shield" />
                                 <Tag v-if="row.insuranceStatus === 'pending'"
                                     value="En attente" severity="warning" icon="pi pi-clock" />
                             </div>
@@ -260,10 +263,10 @@ const miniChart = computed(() => {
                                 </strong>
                                 <div class="pay-actions" data-tour="caisse-paiements.row-actions">
                                     <Button
-                                        :icon="(row.type === 'devis' || row.type === 'facture') ? 'pi pi-print' : 'pi pi-ticket'"
+                                        :icon="isInvoiceStylePayment(row) ? 'pi pi-print' : 'pi pi-ticket'"
                                         size="small" text rounded
-                                        :title="(row.type === 'devis' || row.type === 'facture') ? 'Imprimer reçu' : 'Imprimer ticket'"
-                                        @click="emit((row.type === 'devis' || row.type === 'facture') ? 'print-payment' : 'print-receipt', row)" />
+                                        :title="isInvoiceStylePayment(row) ? 'Imprimer reçu' : 'Imprimer ticket'"
+                                        @click="emit(isInvoiceStylePayment(row) ? 'print-payment' : 'print-receipt', row)" />
                                     <Button icon="pi pi-send" size="small" text rounded title="Envoyer par SMS"
                                         @click="emit('send-receipt-sms', row)" />
                                 </div>

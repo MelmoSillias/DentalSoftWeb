@@ -72,11 +72,11 @@ class FactureRepository extends ServiceEntityRepository
                                 )
                               END
                             - COALESCE((
-                                SELECT SUM(CAST(t.montant AS DECIMAL(12, 2)))
-                                FROM transaction t
-                                WHERE t.consultation_id = c.id
-                                  AND t.role_paiement = 'patient_insurance'
-                                  AND t.validation_status = :validated
+                                SELECT SUM(p2.montant)
+                                FROM paiement p2
+                                LEFT JOIN transaction t ON t.paiement_id = p2.id
+                                WHERE p2.facture_assurance_id = fa.id
+                                  AND (t.id IS NULL OR t.validation_status = :validated)
                             ), 0)
                         )
                     ELSE
