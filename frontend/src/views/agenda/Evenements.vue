@@ -44,9 +44,7 @@ import { useToast } from 'primevue/usetoast'
 import EventForm from '@/components/agenda/EventForm.vue'
 import EventActions from '@/components/agenda/EventActions.vue'
 import { useEvents } from '@/composables/useEvents'
-import { GUIDED_TOUR_START_EVENT } from '@/tours'
-import { createAgendaEvenementsTour } from '@/tours/agendaEvenementsTour'
-import { startTourGuide } from '@/tours/tourGuideClient'
+import { useGuidedTour } from '@/composables/useGuidedTour'
 
 const { events, fetchEvents, createEvent, deleteEvent, validateEvent } = useEvents()
 
@@ -55,7 +53,6 @@ const showForm = ref(false)
 const actionsVisible = ref(false)
 const selectedEventId = ref(null)
 const toast = useToast()
-const isGuidedTourStarting = ref(false)
 
 const breadcrumbHome = { icon: 'pi pi-home', to: '/dashboard' };
 const breadcrumbItems = [
@@ -99,13 +96,10 @@ const calendarOptions = {
 }
 
 onMounted(() => {
-	// initial fetch
 	fetchEvents()
-	window.addEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest)
 })
 
 onBeforeUnmount(() => {
-	window.removeEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest)
 	resetTourDialogs()
 })
 
@@ -121,52 +115,25 @@ const openTourActionsDialog = () => {
 	actionsVisible.value = true
 }
 
-const handleGuidedTourRequest = async (event) => {
-	if (event?.detail?.routeName !== 'agenda-evenements' || isGuidedTourStarting.value) {
-		return
-	}
-
-	if (hasOpenDialogs.value) {
-		toast.add({
-			severity: 'warn',
-			summary: 'Aide guidee',
-			detail: 'Fermez les fenetres ouvertes avant de lancer le tour.',
-			life: 3000
-		})
-		return
-	}
-
-	isGuidedTourStarting.value = true
-
-	try {
-		await fetchEvents()
-		resetTourDialogs()
-		await nextTick()
-
-		const steps = createAgendaEvenementsTour({
-			hasEvents: Array.isArray(events.value) && events.value.length > 0,
-			openActionsDialog: openTourActionsDialog,
-			closeAllDialogs: resetTourDialogs
-		})
-
-		await startTourGuide({
-			group: 'agenda-evenements',
-			steps,
-			onAfterExit: resetTourDialogs,
-			onFinish: resetTourDialogs
-		})
-	} catch (error) {
-		console.error('Erreur lancement guided tour agenda evenements', error)
-		toast.add({
-			severity: 'error',
-			summary: 'Aide guidee',
-			detail: 'Impossible de lancer le tour de la page evenements.',
-			life: 3000
-		})
-	} finally {
-		isGuidedTourStarting.value = false
-	}
+const prepareGuidedTourDemo = async () => {
+	await fetchEvents()
+	resetTourDialogs()
+	await nextTick()
 }
+
+useGuidedTour({
+	routeName: 'agenda-evenements',
+	hasOpenDialogs: () => hasOpenDialogs.value,
+	prepareDemo: prepareGuidedTourDemo,
+	cleanupDemo: resetTourDialogs,
+	getStepContext: () => ({
+		hasEvents: Array.isArray(events.value) && events.value.length > 0,
+		openActionsDialog: openTourActionsDialog,
+		closeAllDialogs: resetTourDialogs
+	}),
+	dialogsMessage: 'Fermez les fenetres ouvertes avant de lancer le tour.',
+	errorMessage: 'Impossible de lancer le tour de la page evenements.'
+})
 
 async function handleCreate(payload) {
 	try {

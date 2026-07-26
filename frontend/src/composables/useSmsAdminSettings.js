@@ -17,6 +17,16 @@ import {
 } from '@/services/smsService';
 import cabinetConfig from '@/cabinetConfig';
 
+export const SMS_PROVIDER_OPTIONS = [
+    { value: 'orange', label: 'Orange' },
+    { value: 'afriksms', label: 'AfrikSms' }
+];
+
+export const SMS_CALLBACK_NOTIFY_OPTIONS = [
+    { value: 1, label: 'POST' },
+    { value: 2, label: 'GET' }
+];
+
 export function useSmsAdminSettings(token, toast, extractApiError) {
     const smsLoading = ref(false);
     const smsLoaded = ref(false);
@@ -48,7 +58,9 @@ export function useSmsAdminSettings(token, toast, extractApiError) {
             blacklisted: false
         },
         baseUrl: 'https://api.orange.com',
-        oauthUrl: 'https://api.orange.com/oauth/v3/token'
+        oauthUrl: 'https://api.orange.com/oauth/v3/token',
+        webhookBaseUrl: '',
+        callbackNotifyType: 2
     });
 
     const smsStats = reactive({
@@ -180,6 +192,8 @@ export function useSmsAdminSettings(token, toast, extractApiError) {
             };
             smsConfig.baseUrl = smsSettings.baseUrl || 'https://api.orange.com';
             smsConfig.oauthUrl = smsSettings.oauthUrl || 'https://api.orange.com/oauth/v3/token';
+            smsConfig.webhookBaseUrl = smsSettings.webhookBaseUrl || '';
+            smsConfig.callbackNotifyType = Number(smsSettings.callbackNotifyType) || 2;
 
             const from = smsStats.period.from;
             const to = smsStats.period.to;
@@ -221,7 +235,7 @@ export function useSmsAdminSettings(token, toast, extractApiError) {
     const saveSmsConfigAction = async () => {
         smsSaving.value = true;
         try {
-            await saveSmsSettings({
+            const res = await saveSmsSettings({
                 provider: smsConfig.provider,
                 enabled: smsConfig.enabled,
                 clientId: smsConfig.clientId,
@@ -231,10 +245,16 @@ export function useSmsAdminSettings(token, toast, extractApiError) {
                 approvedSenderNames: smsConfig.approvedSenderNames,
                 patientPreferenceBypass: smsConfig.patientPreferenceBypass,
                 baseUrl: smsConfig.baseUrl,
-                oauthUrl: smsConfig.oauthUrl
+                oauthUrl: smsConfig.oauthUrl,
+                webhookBaseUrl: smsConfig.webhookBaseUrl,
+                callbackNotifyType: smsConfig.callbackNotifyType
             }, token);
             smsConfig.clientSecret = '';
-            toast.add({ severity: 'success', summary: 'SMS', detail: 'Configuration sauvegardée.', life: 2500 });
+            const callbackRegistration = res?.callbackRegistration;
+            const detail = callbackRegistration
+                ? `Configuration sauvegardée. Callback: ${callbackRegistration.success ? 'enregistré' : callbackRegistration.message || 'non enregistré'}.`
+                : 'Configuration sauvegardée.';
+            toast.add({ severity: 'success', summary: 'SMS', detail, life: 3500 });
         } catch (error) {
             console.error(error);
             toast.add({ severity: 'error', summary: 'SMS', detail: extractApiError(error, 'Sauvegarde impossible.'), life: 3500 });

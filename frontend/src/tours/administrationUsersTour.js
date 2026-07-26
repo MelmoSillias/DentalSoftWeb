@@ -1,93 +1,94 @@
-import { nextTick } from 'vue';
-import { getTourGuideClient } from './tourGuideClient';
+import { flushUi, openDialogStep, normalizeTourSteps } from './shared/tourHelpers';
+import { createTourRegistry } from './shared/createTourRegistry';
 
-function wait(ms = 120) {
-    return new Promise((resolve) => {
-        window.setTimeout(resolve, ms);
-    });
-}
+const GROUP = 'administration-utilisateurs';
 
-async function refreshTourLayout() {
-    const tg = getTourGuideClient();
+const TASKS = [
+    { id: 'overview', label: 'Presentation de la page', icon: 'pi pi-compass', mockScenario: 'static' },
+    { id: 'create-user', label: 'Creer un utilisateur', icon: 'pi pi-user-plus', mockScenario: 'static' },
+    { id: 'edit-roles', label: 'Modifier les roles', icon: 'pi pi-shield', mockScenario: 'static' }
+];
 
-    if (!tg?.isVisible) return;
-    await tg.updatePositions().catch(() => undefined);
-}
-
-async function flushUi() {
-    await nextTick();
-    await wait();
-    await refreshTourLayout();
-}
-
-async function openDialogStep(openDialog, closeAllDialogs) {
-    closeAllDialogs();
-    await flushUi();
-    await openDialog();
-    await flushUi();
-}
-
-export function createAdministrationUsersTour({ hasUsers, openCreateDialog, openResetDialog, closeAllDialogs }) {
-    const steps = [
+function buildOverviewSteps(ctx) {
+    return normalizeTourSteps([
         {
-            group: 'administration-utilisateurs',
-            order: 10,
+            group: GROUP,
             target: '[data-tour="admin-users.header"]',
             title: 'Gestion des comptes',
             content: 'Cette page centralise la creation, la modification et la securisation des utilisateurs applicatifs.'
         },
         {
-            group: 'administration-utilisateurs',
-            order: 20,
+            group: GROUP,
             target: '[data-tour="admin-users.grouping"]',
             title: 'Regrouper par type',
             content: 'Activez le regroupement pour analyser rapidement les comptes par profil metier.'
         },
         {
-            group: 'administration-utilisateurs',
-            order: 30,
+            group: GROUP,
             target: '[data-tour="admin-users.search"]',
             title: 'Recherche globale',
             content: 'Le filtre recherche interroge simultanement nom utilisateur, employe lie et type de compte.'
         },
         {
-            group: 'administration-utilisateurs',
-            order: 40,
+            group: GROUP,
             target: '[data-tour="admin-users.table"]',
             title: 'Table des utilisateurs',
             content: 'La table affiche les comptes existants et permet un tri multi-colonnes pour les controles administratifs.'
         },
         {
-            group: 'administration-utilisateurs',
-            order: 50,
+            group: GROUP,
             target: '[data-tour="admin-users.actions"]',
             title: 'Actions critiques',
             content: 'Chaque ligne propose edition, reinitialisation mot de passe et suppression selon les besoins.'
+        }
+    ]);
+}
+
+export const administrationUtilisateursRegistry = createTourRegistry(GROUP, TASKS, {
+    overview: buildOverviewSteps,
+    'create-user': (ctx) => normalizeTourSteps([
+        {
+            group: GROUP,
+            target: '[data-tour="admin-users.header"]',
+            title: 'Creer un compte',
+            content: 'Depuis la barre principale, ouvrez le formulaire de creation d utilisateur.'
         },
         {
-            group: 'administration-utilisateurs',
-            order: 60,
+            group: GROUP,
             target: '[data-tour="admin-users.dialog.create"]',
-            title: 'Creer un utilisateur',
-            content: 'Le formulaire permet de creer un compte et de le rattacher a un employe existant.',
-            beforeEnter: async () => {
-                await openDialogStep(openCreateDialog, closeAllDialogs);
-            }
+            title: 'Formulaire de creation',
+            content: 'Renseignez le compte et rattachez-le a un employe existant avec le profil adapte.',
+            beforeEnter: async () => openDialogStep(ctx.openCreateDialog, ctx.closeAllDialogs)
         }
-    ];
-
-    if (hasUsers) {
-        steps.push({
-            group: 'administration-utilisateurs',
-            order: 70,
+    ]),
+    'edit-roles': (ctx) => normalizeTourSteps([
+        {
+            group: GROUP,
+            target: '[data-tour="admin-users.actions"]',
+            title: 'Modifier un compte',
+            content: 'Utilisez l action edition sur une ligne pour ajuster le profil et les roles d un utilisateur.'
+        },
+        {
+            group: GROUP,
+            target: '[data-tour="admin-users.dialog.create"]',
+            title: 'Formulaire d edition',
+            content: 'Le meme formulaire s ouvre en mode edition pour modifier le type de compte et les droits associes.',
+            beforeEnter: async () => openDialogStep(ctx.openEditDialog || ctx.openCreateDialog, ctx.closeAllDialogs)
+        },
+        ...(ctx.hasUsers ? [{
+            group: GROUP,
             target: '[data-tour="admin-users.dialog.reset"]',
-            title: 'Reinitialiser un mot de passe',
-            content: 'Utilisez cette modale pour appliquer un nouveau mot de passe temporaire a un utilisateur.',
-            beforeEnter: async () => {
-                await openDialogStep(openResetDialog, closeAllDialogs);
-            }
-        });
-    }
+            title: 'Securiser l acces',
+            content: 'Vous pouvez aussi reinitialiser le mot de passe temporaire d un utilisateur depuis cette page.',
+            beforeEnter: async () => openDialogStep(ctx.openResetDialog, ctx.closeAllDialogs)
+        }] : [])
+    ])
+});
 
-    return steps;
+export function buildAdministrationUsersTourSteps(taskId, variantId, ctx) {
+    return administrationUtilisateursRegistry.buildSteps(taskId, variantId, ctx);
+}
+
+export function createAdministrationUsersTour(ctx) {
+    return buildAdministrationUsersTourSteps('overview', null, ctx);
 }

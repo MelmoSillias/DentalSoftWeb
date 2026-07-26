@@ -30,6 +30,10 @@ security:
             pattern: ^/(api/health|health)
             security: false
 
+        sms_webhooks:
+            pattern: ^/api/sms/webhooks/
+            security: false
+
         # 🔐 JWT LOGIN (API)
         api_login:
             pattern: ^/api/login
@@ -83,6 +87,7 @@ security:
         - { path: ^/api/appreciations/public, roles: PUBLIC_ACCESS }
         - { path: ^/api/appreciations/anonymous, roles: PUBLIC_ACCESS }
         - { path: ^/api/settings/general/public, roles: PUBLIC_ACCESS }
+        - { path: ^/api/sms/webhooks/, roles: PUBLIC_ACCESS }
         - { path: ^/api, roles: PUBLIC_ACCESS, methods: [OPTIONS] }
         - { path: ^/api/portal-patient/me(?:/|$), roles: ROLE_PATIENT }
         - { path: ^/api/me, roles: IS_AUTHENTICATED_FULLY }

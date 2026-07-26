@@ -1,26 +1,19 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed } from 'vue';
+import { useGuidedTour } from '@/composables/useGuidedTour';
 import Breadcrumb from 'primevue/breadcrumb';
-import Toast from 'primevue/toast';
 import { useAuthStore } from '@/stores/auth';
-import { GUIDED_TOUR_START_EVENT } from '@/tours';
-import { createRapportsTour, resolveRapportsTourGroup } from '@/tours/rapportsTour';
-import { startTourGuide } from '@/tours/tourGuideClient';
 import RapportAdmin from '@/views/rapport/RapportAdmin.vue';
 import RapportMedecin from '@/views/rapport/RapportMedecin.vue';
 import RapportReception from '@/views/rapport/RapportReception.vue';
-import { useToast } from 'primevue/usetoast';
 
 const auth = useAuthStore();
-const toast = useToast();
 const roles = computed(() => auth.user?.roles || []);
 const isAdmin = computed(() => roles.value.includes('ROLE_ADMIN'));
 const isMedecin = computed(() => roles.value.includes('ROLE_MEDECIN'));
 const isReception = computed(() =>
     roles.value.includes('ROLE_RECEPTION') || roles.value.includes('ROLE_RECEPTIONNISTE')
 );
-const isGuidedTourStarting = ref(false);
-
 const reportRole = computed(() => {
     if (isAdmin.value) return 'admin';
     if (isMedecin.value) return 'medecin';
@@ -36,39 +29,10 @@ const breadcrumbItems = computed(() => {
     return [{ label: 'Rapports' }];
 });
 
-const handleGuidedTourRequest = async (event) => {
-    if (event?.detail?.routeName !== 'rapports' || isGuidedTourStarting.value) {
-        return;
-    }
-
-    isGuidedTourStarting.value = true;
-
-    try {
-        const role = reportRole.value;
-        const steps = createRapportsTour({ role });
-        await startTourGuide({
-            group: resolveRapportsTourGroup(role),
-            steps
-        });
-    } catch (error) {
-        console.error('Erreur lancement guided tour rapports', error);
-        toast.add({
-            severity: 'error',
-            summary: 'Aide guidee',
-            detail: 'Impossible de lancer le tour de la page rapports.',
-            life: 3000
-        });
-    } finally {
-        isGuidedTourStarting.value = false;
-    }
-};
-
-onMounted(() => {
-    window.addEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
-});
-
-onBeforeUnmount(() => {
-    window.removeEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
+useGuidedTour({
+    routeName: 'rapports',
+    getStepContext: () => ({ role: reportRole.value }),
+    errorMessage: 'Impossible de lancer le tour de la page rapports.'
 });
 </script>
 

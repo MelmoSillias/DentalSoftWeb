@@ -190,6 +190,43 @@
             @click="toggleLayoutMode"
         />
 
+        <Dialog v-model:visible="showActiveConsultWarn" modal :style="{ width: '35rem' }" :pt="{
+            root: 'rounded-2xl',
+            header: 'bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900 dark:to-surface-800 px-6 py-4 border-b',
+            content: 'p-0 mt-4'
+        }">
+            <div class="p-6" data-tour="patients-dossier.dialog.active-warning">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="p-2 rounded-lg bg-amber-100 dark:bg-amber-900/30">
+                        <i class="fas fa-exclamation-triangle text-amber-600 dark:text-amber-400"></i>
+                    </div>
+                    <h4 class="m-0 text-surface-900 dark:text-surface-100">Consultation en cours</h4>
+                </div>
+
+                <p class="text-surface-700 dark:text-surface-300 mb-4">
+                    Une consultation est déjà ouverte pour ce patient. Clôturez-la ou continuez-la avant d'en créer une
+                    nouvelle.
+                </p>
+
+                <p v-if="!activeConsultInfo.hasFiche" class="text-sm text-surface-600 dark:text-surface-400 mb-4">
+                    Si cette consultation a été ouverte par erreur, vous pouvez l annuler directement depuis ce dialogue.
+                </p>
+
+                <div v-if="activeConsultInfo.hasFiche"
+                    class="flex items-center gap-2 p-3 bg-surface-50 dark:bg-surface-800/50 rounded-lg mb-4">
+                    <i class="pi pi-info-circle text-surface-500"></i>
+                    <span class="text-sm text-surface-600 dark:text-surface-400">
+                        Cette consultation est liée à une fiche : elle ne peut pas être supprimée.
+                    </span>
+                </div>
+
+                <div class="flex justify-end gap-2">
+                    <Button label="Compris" severity="secondary" @click="showActiveConsultWarn = false"
+                        class="rounded-xl px-5" />
+                </div>
+            </div>
+        </Dialog>
+
         <Dialog v-if="!isMedecin" v-model:visible="showConsultationDialog" modal :style="{ width: '50rem' }" :pt="{
             root: 'rounded-2xl',
             header: 'bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900 dark:to-surface-800 px-6 py-4 border-b',
@@ -258,7 +295,7 @@
                 </div>
             </template>
             <div data-tour="patients-dossier.dialog.edit">
-                <FormPatient :patient="patient" @saved="handlePatientSaved" @cancel="showEditDialog = false" class="mt-2" />
+                <FormPatient ref="patientEditFormRef" :patient="patient" @saved="handlePatientSaved" @cancel="showEditDialog = false" class="mt-2" />
             </div>
         </Dialog>
 
@@ -340,16 +377,15 @@ import { fetchPublicGeneralSettings } from '@/services/globalSettingsService';
 import {
     activatePatientsTourMock,
     deactivatePatientsTourMock,
-    getPatientsTourMockPrimaryPatientId,
+    getPatientsTourMockPatientIdForScenario,
     resetPatientsTourMockData,
     resolvePatientsTourMockScenario
 } from '@/services/patientsTourMock';
+import { useGuidedTour } from '@/composables/useGuidedTour';
 import { addPatientAllergy, addPatientAntecedent, deletePatientAllergy, deletePatientAntecedent } from '@/services/patients';
 import { fetchPatientDossierPrintData, fetchPatientFichePrintData } from '@/services/printService';
 import { useAuthStore } from '@/stores/auth';
-import { GUIDED_TOUR_START_EVENT } from '@/tours';
-import { createPatientsDossierTour } from '@/tours/patientsDossierTour';
-import { startTourGuide } from '@/tours/tourGuideClient';
+import { useAssurancesStore } from '@/stores/assurances';
 import Button from 'primevue/button';
 import Checkbox from 'primevue/checkbox';
 import Dialog from 'primevue/dialog';
@@ -381,6 +417,7 @@ const toast = useToast();
 const { printComponent } = usePrinter();
 const router = useRouter();
 const auth = useAuthStore();
+const assurancesStore = useAssurancesStore();
 const token = localStorage.getItem('token');
 
 // Patient data
@@ -402,7 +439,9 @@ const showPrintDialog = ref(false);
 const selectedFicheForPrint = ref(null);
 const printIncludeEmpty = ref(false);
 const printSections = ref([]);
-const isGuidedTourStarting = ref(false);
+const showActiveConsultWarn = ref(false);
+const activeConsultInfo = ref({ hasActive: false, consultationId: null, hasFiche: false });
+const patientEditFormRef = ref(null);
 const loadErrorMessage = ref('');
 let patientSearchTimeout = null;
 let guidedTourPageState = null;
@@ -441,6 +480,7 @@ const hasOpenDialogs = computed(() => (
     || showAntecedentDialog.value
     || showAllergyDialog.value
     || showPrintDialog.value
+    || showActiveConsultWarn.value
 ));
 
 const cloneValue = (value) => {
@@ -723,8 +763,8 @@ const loadVisibilityPolicy = async () => {
 };
 
 onMounted(async () => {
-    window.addEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
     await loadVisibilityPolicy();
+    await assurancesStore.load(token).catch(() => []);
     if (props.patientId != null) {
         await loadDossier(props.patientId, { asPageLoad: true });
         await loadConsultations(props.patientId, { asPageLoad: true });
@@ -740,7 +780,6 @@ onBeforeUnmount(() => {
     }
     deactivatePatientsTourMock();
     guidedTourDemoActive = false;
-    window.removeEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
     resetTourDialogs();
 });
 
@@ -789,6 +828,7 @@ const resetTourDialogs = () => {
     showAntecedentDialog.value = false;
     showAllergyDialog.value = false;
     showPrintDialog.value = false;
+    showActiveConsultWarn.value = false;
 };
 
 const capturePageState = () => ({
@@ -814,10 +854,10 @@ const restorePageState = async (state) => {
     await nextTick();
 };
 
-const prepareGuidedTourDemo = async () => {
+const prepareGuidedTourDemo = async ({ taskId = 'overview', variantId = null } = {}) => {
     guidedTourPageState = capturePageState();
-    const scenario = resolvePatientsTourMockScenario('static');
-    const demoPatientId = getPatientsTourMockPrimaryPatientId();
+    const scenario = resolvePatientsTourMockScenario(taskId, variantId, 'static');
+    const demoPatientId = getPatientsTourMockPatientIdForScenario(scenario);
 
     activatePatientsTourMock(scenario);
     resetPatientsTourMockData(scenario);
@@ -864,6 +904,16 @@ const openTourEditDialog = async () => {
     await nextTick();
 };
 
+const switchPatientFormTab = async (tab = 'personal') => {
+    patientEditFormRef.value?.switchTab?.(tab);
+    await nextTick();
+    await waitForTourUi();
+};
+
+const hasActiveInsuranceTab = () => (
+    (assurancesStore.items || []).some((item) => item?.actif !== false)
+);
+
 const openTourRdvDialog = async () => {
     if (!patient.value?.id) return;
     resetTourDialogs();
@@ -901,60 +951,44 @@ const openTourPrintDialog = async () => {
     await nextTick();
 };
 
-const handleGuidedTourRequest = async (event) => {
-    if (event?.detail?.routeName !== 'patients-dossier' || isGuidedTourStarting.value) {
-        return;
-    }
+const openTourDuplicateConsultationDialog = async (variantId = 'blocked-no-fiche') => {
+    resetTourDialogs();
+    await nextTick();
+    await waitForTourUi();
 
-    if (hasOpenDialogs.value) {
-        toast.add({
-            severity: 'warn',
-            summary: 'Aide guidee',
-            detail: 'Fermez les fenetres ouvertes avant de lancer le tour.',
-            life: 3000
-        });
-        return;
-    }
-
-    isGuidedTourStarting.value = true;
-
-    try {
-        await cleanupGuidedTourDemo();
-        await prepareGuidedTourDemo();
-        resetTourDialogs();
-        await nextTick();
-
-        const steps = createPatientsDossierTour({
-            hasPatientContext: Boolean(currentPatientId.value),
-            isMedecin: isMedecin.value,
-            isReception: isReception.value,
-            hasFiches: fiches.value.length > 0,
-            openEditPatientDialog: openTourEditDialog,
-            openRdvDialog: openTourRdvDialog,
-            openConsultationDialog: openTourConsultationDialog,
-            openPrintDialog: openTourPrintDialog,
-            closeAllDialogs: resetTourDialogs
-        });
-
-        await startTourGuide({
-            group: 'patients-dossier',
-            steps,
-            onAfterExit: cleanupGuidedTourDemo,
-            onFinish: cleanupGuidedTourDemo
-        });
-    } catch (error) {
-        console.error('Erreur lancement guided tour dossier patient', error);
-        await cleanupGuidedTourDemo();
-        toast.add({
-            severity: 'error',
-            summary: 'Aide guidee',
-            detail: 'Impossible de lancer le tour du dossier patient.',
-            life: 3000
-        });
-    } finally {
-        isGuidedTourStarting.value = false;
-    }
+    activeConsultInfo.value = {
+        hasActive: true,
+        consultationId: 5001,
+        hasFiche: variantId === 'blocked-with-fiche'
+    };
+    showActiveConsultWarn.value = true;
+    await nextTick();
+    await waitForTourUi();
 };
+
+const { isGuidedTourStarting } = useGuidedTour({
+    routeName: 'patients-dossier',
+    hasOpenDialogs: () => hasOpenDialogs.value,
+    prepareDemo: prepareGuidedTourDemo,
+    cleanupDemo: cleanupGuidedTourDemo,
+    getStepContext: () => ({
+        hasPatientContext: Boolean(currentPatientId.value),
+        isMedecin: isMedecin.value,
+        isReception: isReception.value,
+        hasFiches: fiches.value.length > 0,
+        hasInsuranceTab: hasActiveInsuranceTab(),
+        hasInsuranceProfile: Boolean(patient.value?.insuranceProfile?.assurance),
+        openEditPatientDialog: openTourEditDialog,
+        openRdvDialog: openTourRdvDialog,
+        openConsultationDialog: openTourConsultationDialog,
+        openPrintDialog: openTourPrintDialog,
+        openDuplicateConsultationDialog: openTourDuplicateConsultationDialog,
+        switchPatientFormTab,
+        closeAllDialogs: resetTourDialogs
+    }),
+    dialogsMessage: 'Fermez les fenetres ouvertes avant de lancer le tour.',
+    errorMessage: 'Impossible de lancer le tour du dossier patient.'
+});
 
 const goBackToList = () => {
     router.push({ name: 'patients-liste' });

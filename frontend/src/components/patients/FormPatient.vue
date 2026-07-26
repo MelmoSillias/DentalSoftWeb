@@ -468,19 +468,27 @@ const handleSubmit = (event) => {
         accept: savePatient
     });
 };
+
+function switchTab(tab) {
+    activeTab.value = tab;
+}
+
+defineExpose({
+    switchTab
+});
 </script>
 
 <template>
     <div class="flex flex-col gap-4">
         <ConfirmPopup />
         <Tabs :value="activeTab" @update:value="activeTab = $event">
-            <TabList class="flex flex-wrap gap-2 border-b border-surface-200 dark:border-surface-700">
-                <Tab value="personal">Informations personnelles</Tab>
-                <Tab value="sms">Paramètres SMS</Tab>
-                <Tab v-if="hasActiveInsurances" value="insurance">Informations assurances</Tab>
+            <TabList class="flex flex-wrap gap-2 border-b border-surface-200 dark:border-surface-700" data-tour="patients-form.tabs">
+                <Tab value="personal" data-tour="patients-form.tab-personal">Informations personnelles</Tab>
+                <Tab value="sms" data-tour="patients-form.tab-sms">Paramètres SMS</Tab>
+                <Tab v-if="hasActiveInsurances" value="insurance" data-tour="patients-form.tab-insurance">Informations assurances</Tab>
             </TabList>
             <TabPanels class="mt-4">
-                <TabPanel value="personal">
+                <TabPanel value="personal" data-tour="patients-form.panel-personal">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div class="flex flex-col gap-2">
                             <label for="nom" class="font-semibold"><span class="text-red-500">*</span> Nom</label>
@@ -532,7 +540,7 @@ const handleSubmit = (event) => {
                     </div>
                 </TabPanel>
 
-                <TabPanel value="sms">
+                <TabPanel value="sms" data-tour="patients-form.panel-sms">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 rounded-xl border border-surface-200 p-4 dark:border-surface-700">
                         <div class="md:col-span-2">
                             <p class="text-sm text-surface-600 dark:text-surface-400">
@@ -570,7 +578,7 @@ const handleSubmit = (event) => {
                     </div>
                 </TabPanel>
 
-                <TabPanel v-if="hasActiveInsurances" value="insurance">
+                <TabPanel v-if="hasActiveInsurances" value="insurance" data-tour="patients-form.panel-insurance">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 rounded-xl border border-surface-200 p-4 dark:border-surface-700">
                         <div class="md:col-span-2 flex items-center gap-3">
                             <Checkbox inputId="patient-insurance-enabled" v-model="form.insuranceProfile.enabled" binary />
@@ -731,7 +739,7 @@ const handleSubmit = (event) => {
                 </TabPanel>
             </TabPanels>
         </Tabs>
-        <div class="flex gap-2 justify-end">
+        <div class="flex gap-2 justify-end" data-tour="patients-form.actions">
             <Button type="button" label="Annuler" severity="secondary" @click="emit('cancel')" />
             <Button type="button" :label="isEdit ? 'Mettre à jour' : 'Créer'" icon="pi pi-check" :loading="loading"
                 @click="handleSubmit" />

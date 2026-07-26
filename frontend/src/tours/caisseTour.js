@@ -1,193 +1,287 @@
-import { nextTick } from 'vue';
-import { getTourGuideClient } from './tourGuideClient';
+import { flushUi, openDialogStep, normalizeTourSteps } from './shared/tourHelpers';
+import { createTourRegistry } from './shared/createTourRegistry';
 
-function wait(ms = 120) {
-    return new Promise((resolve) => {
-        window.setTimeout(resolve, ms);
-    });
-}
+const GROUP = 'caisse';
 
-async function refreshTourLayout() {
-    const tg = getTourGuideClient();
-
-    if (!tg?.isVisible) {
-        return;
-    }
-
-    await tg.updatePositions().catch(() => undefined);
-}
-
-async function flushUi() {
-    await nextTick();
-    await wait();
-    await refreshTourLayout();
-}
+const TASKS = [
+    { id: 'overview', label: 'Presentation de la page', icon: 'pi pi-compass', mockScenario: 'static' },
+    {
+        id: 'register-payment',
+        label: 'Enregistrer un paiement',
+        icon: 'pi pi-wallet',
+        mockScenario: 'static',
+        variants: [
+            { id: 'classic', label: 'Paiement classique', mockScenario: 'static' },
+            { id: 'insurance-active', label: 'Assurance active', mockScenario: 'static' },
+            { id: 'insurance-disabled', label: 'Assurance desactivee', mockScenario: 'static' }
+        ]
+    },
+    { id: 'validate-empty-invoice', label: 'Valider une facture vide', icon: 'pi pi-check-circle', mockScenario: 'static' },
+    { id: 'manage-factures', label: 'Gerer les factures', icon: 'pi pi-file', mockScenario: 'static' },
+    { id: 'preview-facture', label: 'Previsualiser une facture', icon: 'pi pi-eye', mockScenario: 'static' },
+    { id: 'modify-facture', label: 'Modifier une facture', icon: 'pi pi-pencil', mockScenario: 'static' },
+    { id: 'track-payments', label: 'Suivre les paiements', icon: 'pi pi-money-bill', mockScenario: 'static' },
+    { id: 'manage-assurances', label: 'Gerer les assurances', icon: 'pi pi-shield', mockScenario: 'static' }
+];
 
 export function resolveCaisseTourGroup(activeView) {
-    return 'caisse';
+    return GROUP;
 }
 
-export function createCaisseTour({
-    canOpenPaymentDialog,
-    canOpenPreviewDialog,
-    canOpenModifyDialog,
-    openPaymentDialog,
-    openPreviewDialog,
-    openModifyDialog,
-    switchView,
-    closeAllDialogs
-}) {
+async function switchViewStep(ctx, view) {
+    await ctx.closeAllDialogs?.();
+    await ctx.switchView?.(view);
+    await flushUi();
+}
+
+function buildOverviewSteps(ctx) {
+    return normalizeTourSteps([
+        { group: GROUP, target: '[data-tour="caisse.tabs"]', title: 'Choisir la sous-vue', content: 'Les onglets separent la vue d ensemble, les factures, les paiements et les assurances.' },
+        { group: GROUP, target: '[data-tour="caisse-overview.stats"]', title: 'Lire les chiffres du jour', content: 'Les cartes de synthese donnent le volume visible de factures, le restant du et la recette sur la periode.' },
+        { group: GROUP, target: '[data-tour="caisse-overview.factures"]', title: 'Gerer les factures impayees', content: 'Ce bloc permet de filtrer les factures, de les regler, de les modifier ou de les previsualiser.' },
+        { group: GROUP, target: '[data-tour="caisse-overview.payments"]', title: 'Suivre les encaissements', content: 'La seconde zone resume les paiements deja enregistres et permet d imprimer ou d envoyer les recus.' }
+    ]);
+}
+
+function buildRegisterPaymentSteps(ctx, variantId) {
+    const insuranceActive = variantId === 'insurance-active';
+    const insuranceDisabled = variantId === 'insurance-disabled';
+
     const steps = [
         {
-            group: 'caisse',
-            order: 10,
-            target: '[data-tour="caisse.tabs"]',
-            title: 'Choisir la sous-vue',
-            content: 'Les onglets separent la vue d ensemble, les factures et les paiements selon le besoin du moment.'
-        },
-        {
-            group: 'caisse',
-            order: 20,
-            target: '[data-tour="caisse-overview.stats"]',
-            title: 'Lire les chiffres du jour',
-            content: 'Les cartes de synthese donnent le volume visible de factures, le restant du et la recette sur la periode.'
-        },
-        {
-            group: 'caisse',
-            order: 30,
-            target: '[data-tour="caisse-overview.factures"]',
-            title: 'Gerer les factures impayees',
-            content: 'Ce bloc permet de filtrer les factures, de les regler, de les modifier ou de les previsualiser.'
-        },
-        {
-            group: 'caisse',
-            order: 40,
-            target: '[data-tour="caisse-overview.payments"]',
-            title: 'Suivre les encaissements',
-            content: 'La seconde zone resume les paiements deja enregistres et permet d imprimer ou d envoyer les recus.'
+            group: GROUP,
+            target: '[data-tour="caisse-overview.factures"], [data-tour="caisse-factures.actions"]',
+            title: 'Selectionner une facture',
+            content: 'Choisissez une facture impayee ou partiellement reglee pour ouvrir le reglement.',
+            beforeEnter: async () => switchViewStep(ctx, 'overview')
         }
     ];
 
-    if (canOpenPaymentDialog) {
+    if (ctx.canOpenPaymentDialog !== false) {
         steps.push({
-            group: 'caisse',
-            order: 50,
+            group: GROUP,
             target: '[data-tour="caisse-overview.payment-dialog"]',
-            title: 'Enregistrer un paiement',
-            content: 'La modale de reglement gere le montant patient, le mode de paiement, les assurances et le reste a payer.',
-            beforeEnter: async () => {
-                await openPaymentDialog();
-                await flushUi();
-            },
+            title: insuranceActive
+                ? 'Regler avec assurance'
+                : insuranceDisabled
+                  ? 'Reglement sans assurance'
+                  : 'Enregistrer un paiement',
+            content: insuranceActive
+                ? 'La modale permet de saisir la part patient et d activer la prise en charge assurance avec taux et montant couvert.'
+                : insuranceDisabled
+                  ? 'Lorsque l assurance est indisponible ou desactivee pour la facture, seule la part patient reste editable.'
+                  : 'La modale de reglement gere le montant patient, le mode de paiement, les assurances et le reste a payer.',
+            beforeEnter: async () => openDialogStep(
+                () => ctx.openPaymentDialog?.(variantId),
+                ctx.closeAllDialogs
+            )
         });
     }
 
-    steps.push(
+    return normalizeTourSteps(steps);
+}
+
+function buildValidateEmptyInvoiceSteps(ctx) {
+    return normalizeTourSteps([
         {
-            group: 'caisse',
-            order: 60,
+            group: GROUP,
             target: '[data-tour="caisse.tabs"]',
             title: 'Basculer vers les factures',
-            content: 'Le tour passe maintenant sur la vue Factures pour montrer les cas de facture impayee, partielle, vide et reglee.',
-            beforeEnter: async () => {
-                await closeAllDialogs();
-                await switchView('factures');
-                await flushUi();
-            }
+            content: 'Les factures vides non validees sont visibles dans la vue Factures ou depuis la vue d ensemble.',
+            beforeEnter: async () => switchViewStep(ctx, 'factures')
         },
         {
-            group: 'caisse',
-            order: 70,
+            group: GROUP,
+            target: '[data-tour="caisse-factures.cards"]',
+            title: 'Reperer une facture vide',
+            content: 'Une facture a zero franc avec le statut vide non valide doit etre confirmee avant archivage.'
+        },
+        {
+            group: GROUP,
+            target: '[data-tour="caisse-factures.actions"]',
+            title: 'Lancer la validation',
+            content: 'Utilisez l action de validation sur la carte concernee.'
+        },
+        {
+            group: GROUP,
+            target: '[data-tour="caisse-factures.validate"]',
+            title: 'Confirmer la facture vide',
+            content: 'Le dialogue de validation confirme qu aucun reglement n est attendu pour cette facture.',
+            beforeEnter: async () => openDialogStep(
+                () => ctx.openValidateDialog?.(),
+                ctx.closeAllDialogs
+            )
+        }
+    ]);
+}
+
+function buildManageFacturesSteps(ctx) {
+    return normalizeTourSteps([
+        {
+            group: GROUP,
+            target: '[data-tour="caisse.tabs"]',
+            title: 'Vue Factures',
+            content: 'Cette vue concentre le suivi des factures impayees, partielles, vides et reglees.',
+            beforeEnter: async () => switchViewStep(ctx, 'factures')
+        },
+        {
+            group: GROUP,
             target: '[data-tour="caisse-factures.filters"]',
             title: 'Filtrer les factures',
             content: 'Recherchez, changez la periode et limitez l affichage aux factures impayees si besoin.'
         },
         {
-            group: 'caisse',
-            order: 80,
+            group: GROUP,
             target: '[data-tour="caisse-factures.cards"]',
             title: 'Lire les cartes facture',
-            content: 'Chaque carte montre le patient, le montant, le reste et le statut de paiement pour couvrir plusieurs cas metier dans la meme vue.'
+            content: 'Chaque carte montre le patient, le montant, le reste et le statut de paiement.'
         },
         {
-            group: 'caisse',
-            order: 90,
+            group: GROUP,
             target: '[data-tour="caisse-factures.actions"]',
             title: 'Agir sur une facture',
             content: 'Depuis une carte, vous pouvez regler, valider une facture vide, modifier, previsualiser ou envoyer la facture par SMS.'
         }
-    );
+    ]);
+}
 
-    if (canOpenPreviewDialog) {
+function buildPreviewFactureSteps(ctx) {
+    const steps = [
+        {
+            group: GROUP,
+            target: '[data-tour="caisse-factures.actions"]',
+            title: 'Ouvrir l apercu',
+            content: 'L action de previsualisation permet de verifier le detail avant impression ou envoi.',
+            beforeEnter: async () => switchViewStep(ctx, 'factures')
+        }
+    ];
+
+    if (ctx.canOpenPreviewDialog !== false) {
         steps.push({
-            group: 'caisse',
-            order: 100,
+            group: GROUP,
             target: '[data-tour="caisse-factures.preview"]',
             title: 'Verifier avant impression',
-            content: 'L apercu detaille la facture et permet une verification avant impression ou envoi.',
-            beforeEnter: async () => {
-                await openPreviewDialog();
-                await flushUi();
-            }
+            content: 'L apercu detaille la facture, les lignes de soins et l historique des paiements.',
+            beforeEnter: async () => openDialogStep(
+                () => ctx.openPreviewDialog?.(),
+                ctx.closeAllDialogs
+            )
         });
     }
 
-    if (canOpenModifyDialog) {
+    return normalizeTourSteps(steps);
+}
+
+function buildModifyFactureSteps(ctx) {
+    const steps = [
+        {
+            group: GROUP,
+            target: '[data-tour="caisse-factures.actions"]',
+            title: 'Modifier une facture',
+            content: 'Seules les factures sans paiement et encore modifiables exposent l action de correction.',
+            beforeEnter: async () => switchViewStep(ctx, 'factures')
+        }
+    ];
+
+    if (ctx.canOpenModifyDialog !== false) {
         steps.push({
-            group: 'caisse',
-            order: 110,
+            group: GROUP,
             target: '[data-tour="caisse-factures.modify"]',
             title: 'Corriger les lignes facture',
             content: 'La modale de modification sert a ajuster les soins, quantites et montants avant validation.',
-            beforeEnter: async () => {
-                await openModifyDialog();
-                await flushUi();
-            }
+            beforeEnter: async () => openDialogStep(
+                () => ctx.openModifyDialog?.(),
+                ctx.closeAllDialogs
+            )
         });
     }
 
-    steps.push(
+    return normalizeTourSteps(steps);
+}
+
+function buildTrackPaymentsSteps(ctx) {
+    return normalizeTourSteps([
         {
-            group: 'caisse',
-            order: 120,
+            group: GROUP,
             target: '[data-tour="caisse.tabs"]',
             title: 'Basculer vers les paiements',
-            content: 'Le tour termine sur la vue Paiements pour montrer le controle des encaissements et les actions disponibles sur chaque reglement.',
-            beforeEnter: async () => {
-                await closeAllDialogs();
-                await switchView('paiements');
-                await flushUi();
-            }
+            content: 'La vue Paiements regroupe tous les encaissements de la periode.',
+            beforeEnter: async () => switchViewStep(ctx, 'paiements')
         },
         {
-            group: 'caisse',
-            order: 130,
+            group: GROUP,
             target: '[data-tour="caisse-paiements.filters"]',
             title: 'Filtrer la periode',
             content: 'Choisissez la plage de dates et la recherche libre pour limiter les paiements affiches.'
         },
         {
-            group: 'caisse',
-            order: 140,
+            group: GROUP,
             target: '[data-tour="caisse-paiements.totals"]',
             title: 'Lire les totaux',
             content: 'Cette synthese donne le nombre de paiements visibles et le montant total encaisse sur la periode.'
         },
         {
-            group: 'caisse',
-            order: 150,
+            group: GROUP,
             target: '[data-tour="caisse-paiements.accordion"]',
             title: 'Explorer par mode de paiement',
             content: 'Les paiements sont regroupes par mode pour faciliter le controle de caisse et les rapprochements.'
         },
         {
-            group: 'caisse',
-            order: 160,
+            group: GROUP,
             target: '[data-tour="caisse-paiements.row-actions"]',
             title: 'Imprimer et envoyer',
             content: 'Chaque ligne permet d imprimer un paiement ou un ticket et d envoyer le recu par SMS.'
         }
-    );
+    ]);
+}
 
-    return steps;
+function buildManageAssurancesSteps(ctx) {
+    return normalizeTourSteps([
+        {
+            group: GROUP,
+            target: '[data-tour="caisse.tabs"]',
+            title: 'Onglet Assurances',
+            content: 'Cette vue suit les dossiers assurance, les lots et les remboursements par organisme.',
+            beforeEnter: async () => switchViewStep(ctx, 'assurances')
+        },
+        {
+            group: GROUP,
+            target: '[data-tour="caisse-assurances.dashboard"]',
+            title: 'Tableau de bord assureurs',
+            content: 'Chaque carte resume les factures sans lot, ouvertes, envoyees, confirmees et remboursees par assurance.'
+        },
+        {
+            group: GROUP,
+            target: '[data-tour="caisse-assurances.lots"]',
+            title: 'Gerer les lots',
+            content: 'Depuis un assureur, ouvrez ses lots pour creer, envoyer, confirmer ou rembourser les prises en charge.',
+            beforeEnter: async () => {
+                await ctx.openAssuranceLots?.();
+                await flushUi();
+            },
+            afterLeave: async () => {
+                await ctx.closeAssuranceLots?.();
+                await flushUi();
+            }
+        }
+    ]);
+}
+
+export const caisseRegistry = createTourRegistry(GROUP, TASKS, {
+    overview: buildOverviewSteps,
+    'register-payment': buildRegisterPaymentSteps,
+    'validate-empty-invoice': buildValidateEmptyInvoiceSteps,
+    'manage-factures': buildManageFacturesSteps,
+    'preview-facture': buildPreviewFactureSteps,
+    'modify-facture': buildModifyFactureSteps,
+    'track-payments': buildTrackPaymentsSteps,
+    'manage-assurances': buildManageAssurancesSteps
+});
+
+export function buildCaisseTourSteps(taskId, variantId, ctx) {
+    return caisseRegistry.buildSteps(taskId, variantId, ctx);
+}
+
+export function createCaisseTour(ctx) {
+    return buildCaisseTourSteps('overview', null, ctx);
 }

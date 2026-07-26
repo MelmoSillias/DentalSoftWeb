@@ -10,8 +10,10 @@ import { usePrinter } from '@/composables/usePrinter';
 import {
     activateConsultationsTourMock,
     deactivateConsultationsTourMock,
-    resetConsultationsTourMockData
+    resetConsultationsTourMockData,
+    resolveConsultationsTourMockScenario
 } from '@/services/consultationsTourMock';
+import { useGuidedTour } from '@/composables/useGuidedTour';
 
 import {
     cancelConsultation,
@@ -25,9 +27,6 @@ import { activatePatientsTourMock, deactivatePatientsTourMock, resetPatientsTour
 
 import { useAuthStore } from '@/stores/auth';
 import { canUserModifyInvoice } from '@/utils/invoiceModificationAccess';
-import { GUIDED_TOUR_START_EVENT } from '@/tours';
-import { createConsultationsTableTour } from '@/tours/consultationsTableTour';
-import { startTourGuide } from '@/tours/tourGuideClient';
 import { FilterMatchMode } from '@primevue/core/api';
 import Button from 'primevue/button';
 import Column from 'primevue/column';
@@ -75,7 +74,6 @@ const quickMenus = {};
 const quickDialogVisible = ref(false);
 const quickDialogConsultation = ref(null);
 const quickDialogActionMode = ref('continue');
-const isGuidedTourStarting = ref(false);
 const loadErrorMessage = ref('');
 const allowReceptionQuickClose = ref(true);
 const hidePatientDossierForMedecins = ref(false);
@@ -225,11 +223,9 @@ const retryLoadPage = async () => {
 
 onMounted(async () => {
     await initializePage();
-    window.addEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
 });
 
 onBeforeUnmount(() => {
-    window.removeEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
     deactivateConsultationsTourMock();
     deactivatePatientsTourMock();
     guidedTourDemoActive = false;
@@ -475,12 +471,13 @@ const restorePageState = async (state) => {
     await nextTick();
 };
 
-const prepareGuidedTourDemo = async () => {
+const prepareGuidedTourDemo = async ({ taskId = 'overview', variantId = null } = {}) => {
     guidedTourPageState = capturePageState();
+    const scenario = resolveConsultationsTourMockScenario(taskId, variantId);
     activatePatientsTourMock('static');
     resetPatientsTourMockData('static');
-    activateConsultationsTourMock();
-    resetConsultationsTourMockData();
+    activateConsultationsTourMock(scenario);
+    resetConsultationsTourMockData(scenario);
     guidedTourDemoActive = true;
     selectedDate.value = new Date();
     filters.value = {
@@ -563,75 +560,32 @@ const openTourFactureDialog = async () => {
     await nextTick();
 };
 
-const handleGuidedTourRequest = async (event) => {
-    if (event?.detail?.routeName !== 'consultations-table' || isGuidedTourStarting.value) {
-        return;
-    }
-
-    if (loading.value) {
-        toast.add({
-            severity: 'warn',
-            summary: 'Aide guidee',
-            detail: 'Attendez la fin du chargement des consultations avant de lancer le tour.',
-            life: 3000
-        });
-        return;
-    }
-
-    if (hasOpenDialogs.value) {
-        toast.add({
-            severity: 'warn',
-            summary: 'Aide guidee',
-            detail: 'Fermez les fenetres ouvertes avant de lancer le tour.',
-            life: 3000
-        });
-        return;
-    }
-
-    isGuidedTourStarting.value = true;
-
-    try {
-        await cleanupGuidedTourDemo();
-        await prepareGuidedTourDemo();
-        resetTourDialogs();
-        await nextTick();
-
-        const steps = createConsultationsTableTour({
-            hasConsultations: consultations.value.length > 0,
-            hasOpenConsultation: Boolean(firstOpenConsultation.value),
-            hasRepriseCase: Boolean(repriseConsultation.value),
-            hasLinkedCase: Boolean(linkedConsultation.value),
-            hasFreshCase: Boolean(freshConsultation.value),
-            hasClosedCase: Boolean(closedConsultation.value),
-            hasUrgentCase: Boolean(urgentConsultation.value),
-            isAdmin: isAdmin.value,
-            isMedecin: isMedecin.value,
-            openCreateConsultationDialog: openTourCreateConsultationDialog,
-            openQuickDialog: openTourQuickDialog,
-            openDetailsDialog: openTourDetailsDialog,
-            openFactureDialog: openTourFactureDialog,
-            closeAllDialogs: resetTourDialogs
-        });
-
-        await startTourGuide({
-            group: 'consultations-table',
-            steps,
-            onAfterExit: cleanupGuidedTourDemo,
-            onFinish: cleanupGuidedTourDemo
-        });
-    } catch (error) {
-        console.error('Erreur lancement guided tour consultations table', error);
-        await cleanupGuidedTourDemo();
-        toast.add({
-            severity: 'error',
-            summary: 'Aide guidee',
-            detail: 'Impossible de lancer le tour de la table des consultations.',
-            life: 3000
-        });
-    } finally {
-        isGuidedTourStarting.value = false;
-    }
-};
+const { isGuidedTourStarting } = useGuidedTour({
+    routeName: 'consultations-table',
+    isLoading: () => loading.value,
+    hasOpenDialogs: () => hasOpenDialogs.value,
+    prepareDemo: prepareGuidedTourDemo,
+    cleanupDemo: cleanupGuidedTourDemo,
+    getStepContext: () => ({
+        hasConsultations: consultations.value.length > 0,
+        hasOpenConsultation: Boolean(firstOpenConsultation.value),
+        hasRepriseCase: Boolean(repriseConsultation.value),
+        hasLinkedCase: Boolean(linkedConsultation.value),
+        hasFreshCase: Boolean(freshConsultation.value),
+        hasClosedCase: Boolean(closedConsultation.value),
+        hasUrgentCase: Boolean(urgentConsultation.value),
+        isAdmin: isAdmin.value,
+        isMedecin: isMedecin.value,
+        openCreateConsultationDialog: openTourCreateConsultationDialog,
+        openQuickDialog: openTourQuickDialog,
+        openDetailsDialog: openTourDetailsDialog,
+        openFactureDialog: openTourFactureDialog,
+        closeAllDialogs: resetTourDialogs
+    }),
+    loadingMessage: 'Attendez la fin du chargement des consultations avant de lancer le tour.',
+    dialogsMessage: 'Fermez les fenetres ouvertes avant de lancer le tour.',
+    errorMessage: 'Impossible de lancer le tour de la table des consultations.'
+});
 
 const currentFactureLoading = computed(() => {
     const id = factureConsultation.value?.id;

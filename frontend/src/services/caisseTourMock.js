@@ -1,5 +1,6 @@
 let caisseTourMockEnabled = false;
-let caisseTourMockState = buildSeedState();
+let caisseTourMockScenario = 'static';
+let caisseTourMockState = buildSeedState('static');
 
 function cloneValue(value) {
     if (value === undefined) return undefined;
@@ -14,7 +15,16 @@ function isoDateOffset(daysOffset = 0, hour = 9, minute = 0) {
     return date.toISOString();
 }
 
-function buildSeedState() {
+function normalizeCaisseScenario(scenario) {
+    const normalized = String(scenario || '').toLowerCase();
+    if (normalized === 'insurance-active') return 'insurance-active';
+    if (normalized === 'insurance-disabled') return 'insurance-disabled';
+    return 'static';
+}
+
+function buildSeedState(scenario = 'static') {
+    const normalizedScenario = normalizeCaisseScenario(scenario);
+
     return {
         paymentMethods: [
             { id: 1, libelle: 'Especes', type: 'Especes', typeKey: 'cash', family: 'classic', coverageRate: null, actif: true },
@@ -140,6 +150,31 @@ function buildSeedState() {
                 type: 'receipt'
             }
         ],
+        insuranceDashboard: {
+            totalClaims: 12,
+            pendingClaims: 4,
+            approvedAmount: 850000,
+            patientShare: 210000
+        },
+        insuranceLots: [
+            {
+                id: 501,
+                label: 'Lot Mars 2026',
+                status: 'pending',
+                claimsCount: 4,
+                totalAmount: 320000
+            },
+            {
+                id: 502,
+                label: 'Lot Fevrier 2026',
+                status: 'submitted',
+                claimsCount: 8,
+                totalAmount: 530000
+            }
+        ],
+        insuranceDisabledReason: normalizedScenario === 'insurance-disabled'
+            ? 'Assurance deja liee a cette facture.'
+            : null,
         nextPaymentId: 9900
     };
 }
@@ -159,20 +194,42 @@ export function isCaisseTourMockEnabled() {
     return caisseTourMockEnabled;
 }
 
-export function activateCaisseTourMock() {
-    caisseTourMockState = buildSeedState();
+export function resolveCaisseTourMockScenario(taskId = 'overview', variantId = null, fallbackScenario = 'static') {
+    const variantKey = String(variantId || '').toLowerCase();
+    if (variantKey === 'insurance-active') return 'insurance-active';
+    if (variantKey === 'insurance-disabled') return 'insurance-disabled';
+    return normalizeCaisseScenario(fallbackScenario);
+}
+
+export function fetchInsuranceDashboardTourMock() {
+    return cloneValue(caisseTourMockState.insuranceDashboard || {});
+}
+
+export function fetchInsuranceLotsTourMock() {
+    return cloneValue(caisseTourMockState.insuranceLots || []);
+}
+
+export function getCaisseInsuranceDisabledReasonTourMock() {
+    return caisseTourMockState.insuranceDisabledReason || null;
+}
+
+export function activateCaisseTourMock(scenario = 'static') {
+    caisseTourMockScenario = normalizeCaisseScenario(scenario);
+    caisseTourMockState = buildSeedState(caisseTourMockScenario);
     caisseTourMockEnabled = true;
     return cloneValue(caisseTourMockState);
 }
 
-export function resetCaisseTourMockData() {
-    caisseTourMockState = buildSeedState();
+export function resetCaisseTourMockData(scenario = caisseTourMockScenario) {
+    caisseTourMockScenario = normalizeCaisseScenario(scenario);
+    caisseTourMockState = buildSeedState(caisseTourMockScenario);
     return cloneValue(caisseTourMockState);
 }
 
 export function deactivateCaisseTourMock() {
     caisseTourMockEnabled = false;
-    caisseTourMockState = buildSeedState();
+    caisseTourMockScenario = 'static';
+    caisseTourMockState = buildSeedState('static');
 }
 
 export function fetchFacturesTourMock({ start, end, factureType = 'all', unpaidOnly = false } = {}) {

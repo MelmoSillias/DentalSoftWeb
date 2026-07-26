@@ -7,9 +7,7 @@ import EditSalleDialog from '@/components/salles/EditSalleDialog.vue';
 import SallesTable from '@/components/salles/SallesTable.vue'; 
 import PrintDataTablePage from '@/components/print/PrintDataTablePage.vue';
 import { usePrinter } from '@/composables/usePrinter';
-import { GUIDED_TOUR_START_EVENT } from '@/tours';
-import { createAdministrationSallesTour } from '@/tours/administrationSallesTour';
-import { startTourGuide } from '@/tours/tourGuideClient';
+import { useGuidedTour } from '@/composables/useGuidedTour';
 import Button from 'primevue/button';
 import ConfirmPopup from 'primevue/confirmpopup';
 import Toast from 'primevue/toast';
@@ -30,7 +28,6 @@ const breadcrumbItems = ref([
 const addDialogVisible = ref(false);
 const editDialogVisible = ref(false);
 const currentSalle = ref(null);
-const isGuidedTourStarting = ref(false);
 let guidedTourPageState = null;
 let guidedTourDemoActive = false;
 let guidedTourCleanupPromise = null;
@@ -41,11 +38,9 @@ const firstSalle = computed(() => salles.value?.[0] || null);
 
 onMounted(() => {
   fetchSalles();
-  window.addEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
 });
 
 onBeforeUnmount(() => {
-  window.removeEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
   deactivateAdminTourMock();
   guidedTourDemoActive = false;
   resetTourDialogs();
@@ -219,50 +214,19 @@ const openTourEditDialog = async () => {
   openEdit(firstSalle.value);
 };
 
-const handleGuidedTourRequest = async (event) => {
-  if (event?.detail?.routeName !== 'administration-salles' || isGuidedTourStarting.value) {
-    return;
-  }
-
-  if (hasOpenDialogs.value) {
-    toast.add({
-      severity: 'warn',
-      summary: 'Aide guidee',
-      detail: 'Fermez les fenetres ouvertes avant de lancer le tour.',
-      life: 3000
-    });
-    return;
-  }
-
-  isGuidedTourStarting.value = true;
-
-  try {
-    await cleanupGuidedTourDemo();
-    await prepareGuidedTourDemo();
-    const steps = createAdministrationSallesTour({
-      openAddDialog: openTourAddDialog,
-      openEditDialog: openTourEditDialog,
-      closeAllDialogs: resetTourDialogs
-    });
-    await startTourGuide({
-      group: 'administration-salles',
-      steps,
-      onAfterExit: cleanupGuidedTourDemo,
-      onFinish: cleanupGuidedTourDemo
-    });
-  } catch (error) {
-    console.error('Erreur lancement guided tour salles', error);
-    await cleanupGuidedTourDemo();
-    toast.add({
-      severity: 'error',
-      summary: 'Aide guidee',
-      detail: 'Impossible de lancer le tour des salles.',
-      life: 3000
-    });
-  } finally {
-    isGuidedTourStarting.value = false;
-  }
-};
+useGuidedTour({
+  routeName: 'administration-salles',
+  hasOpenDialogs: () => hasOpenDialogs.value,
+  prepareDemo: prepareGuidedTourDemo,
+  cleanupDemo: cleanupGuidedTourDemo,
+  getStepContext: () => ({
+    openAddDialog: openTourAddDialog,
+    openEditDialog: openTourEditDialog,
+    closeAllDialogs: resetTourDialogs
+  }),
+  dialogsMessage: 'Fermez les fenetres ouvertes avant de lancer le tour.',
+  errorMessage: 'Impossible de lancer le tour des salles.'
+});
 </script>
 
  <template>

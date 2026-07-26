@@ -359,7 +359,7 @@ const handleSubmit = (event) => {
             Une consultation est déjà en cours pour ce patient. Clôturez-la avant d'en créer une nouvelle.
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div class="flex flex-col gap-2 md:col-span-2" v-if="!isPatientPreselected">
+            <div class="flex flex-col gap-2 md:col-span-2" v-if="!isPatientPreselected" data-tour="patients-form-consultation.patient">
                 <label class="font-semibold">Patient</label>
                 <Select v-model="selectedPatientId" :options="patientOptions  || []" optionLabel="label" optionValue="value"
                     placeholder="Choisir un patient" class="w-full" filter :loading="patientsLoading"
@@ -374,11 +374,11 @@ const handleSubmit = (event) => {
                     </template>
                 </Select>
             </div>
-            <div v-else class="flex flex-col gap-2 md:col-span-2">
+            <div v-else class="flex flex-col gap-2 md:col-span-2" data-tour="patients-form-consultation.patient">
                 <label class="font-semibold">Patient</label>
                 <InputText :value="patientDisplayName" disabled />
             </div>
-            <div class="flex flex-col gap-2">
+            <div class="flex flex-col gap-2" data-tour="patients-form-consultation.schedule">
                 <label class="font-semibold">Médecin {{ requireMedecinOnCreation ? '' : '(optionnel)' }}</label>
                 <Select v-model="form.medecinId" :options="medecinOptions  || []" optionLabel="label" optionValue="value"
                     placeholder="Choisir un médecin" class="w-full" />
@@ -389,10 +389,10 @@ const handleSubmit = (event) => {
                 <DatePicker v-model="form.dateConsultation" showTime hourFormat="24" dateFormat="dd/mm/yy"
                     class="w-full" />
             </div>
-            <div v-if="isPatientInsured" class="md:col-span-2 p-3 rounded border border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200">
+            <div v-if="isPatientInsured" class="md:col-span-2 p-3 rounded border border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200" data-tour="patients-form-consultation.insurance">
                 <div class="font-semibold">Patient assuré — {{ patientInsurance.nom }} (couverture {{ patientInsurance.coverageRate }} %)</div>
             </div>
-            <div class="flex flex-col gap-2">
+            <div class="flex flex-col gap-2" data-tour="patients-form-consultation.payment">
                 <label class="font-semibold">Consultation payante</label>
                 <div class="flex items-center gap-2">
                     <ToggleSwitch v-model="form.payant" />
@@ -412,7 +412,7 @@ const handleSubmit = (event) => {
                 <Textarea v-model="form.notes" rows="3" auto-resize placeholder="Notes supplémentaires" />
             </div> -->
         </div>
-        <div class="flex gap-2 justify-end">
+        <div class="flex gap-2 justify-end" data-tour="patients-form-consultation.actions">
             <Button type="button" label="Annuler" severity="secondary" @click="emit('cancel')" />
             <Button type="button" label="Créer" icon="pi pi-check" :loading="loading || checkingActive" :disabled="checkingActive || hasActiveConsultation" @click="handleSubmit" />
         </div>

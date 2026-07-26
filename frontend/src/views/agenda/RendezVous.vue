@@ -15,9 +15,7 @@ import ReportRdvDialog from '@/components/agenda/shared/ReportRdvDialog.vue';
 import ValidateRdvDialog from '@/components/agenda/shared/ValidateRdvDialog.vue';
 import FormRendezVous from '@/components/patients/FormRendezVous.vue';
 import WeeklyView from '@/components/agenda/week/WeeklyView.vue';
-import { GUIDED_TOUR_START_EVENT } from '@/tours';
-import { createAgendaRendezvousTour } from '@/tours/agendaRendezvousTour';
-import { startTourGuide } from '@/tours/tourGuideClient';
+import { useGuidedTour } from '@/composables/useGuidedTour';
 import { scheduleAppointmentReminderSms, sendAppointmentReminderSms } from '@/services/smsService';
 import { useRdvApi } from '@/composables/useRdvApi';
 import { useAuthStore } from '@/stores/auth';
@@ -90,7 +88,6 @@ const smsScheduleOptions = ref([
 ]);
 const smsLoading = ref(false);
 const token = localStorage.getItem('token');
-const isGuidedTourStarting = ref(false);
 const rdvLoadErrorMessage = computed(() => {
 	const errorValue = api.error?.value ?? api.error;
 	return typeof errorValue === 'string' && errorValue.trim() ? errorValue : '';
@@ -286,64 +283,35 @@ const openTourCreateDialog = () => {
 	});
 };
 
-const handleGuidedTourRequest = async (event) => {
-	if (event?.detail?.routeName !== 'agenda-rendezvous' || isGuidedTourStarting.value) {
-		return;
-	}
-
-	if (hasOpenDialogs.value) {
-		toast.add({
-			severity: 'warn',
-			summary: 'Aide guidee',
-			detail: 'Fermez les fenetres ouvertes avant de lancer le tour.',
-			life: 3000
-		});
-		return;
-	}
-
-	isGuidedTourStarting.value = true;
-
-	try {
-		activeIndex.value = 'week';
-		resetTourDialogs();
-		await nextTick();
-
-		const steps = createAgendaRendezvousTour({
-			isMedecin: isMedecinUser.value,
-			openCreateDialog: openTourCreateDialog,
-			closeAllDialogs: resetTourDialogs
-		});
-
-		await startTourGuide({
-			group: 'agenda-rendezvous',
-			steps,
-			onAfterExit: resetTourDialogs,
-			onFinish: resetTourDialogs
-		});
-	} catch (error) {
-		console.error('Erreur lancement guided tour agenda rendez-vous', error);
-		toast.add({
-			severity: 'error',
-			summary: 'Aide guidee',
-			detail: 'Impossible de lancer le tour de la page rendez-vous.',
-			life: 3000
-		});
-	} finally {
-		isGuidedTourStarting.value = false;
-	}
+const prepareGuidedTourDemo = async () => {
+	activeIndex.value = 'week';
+	resetTourDialogs();
+	await nextTick();
 };
+
+useGuidedTour({
+	routeName: 'agenda-rendezvous',
+	hasOpenDialogs: () => hasOpenDialogs.value,
+	prepareDemo: prepareGuidedTourDemo,
+	cleanupDemo: resetTourDialogs,
+	getStepContext: () => ({
+		isMedecin: isMedecinUser.value,
+		openCreateDialog: openTourCreateDialog,
+		closeAllDialogs: resetTourDialogs
+	}),
+	dialogsMessage: 'Fermez les fenetres ouvertes avant de lancer le tour.',
+	errorMessage: 'Impossible de lancer le tour de la page rendez-vous.'
+});
 
 const retryLoadAgenda = async () => {
 	refreshKey.value += 1;
 };
 
 onMounted(() => {
-	useLayout().layoutState.overlayMenuActive = false; // Ferme le menu si on arrive sur cette page depuis un lien direct
-	window.addEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
+	useLayout().layoutState.overlayMenuActive = false;
 });
 
 onBeforeUnmount(() => {
-	window.removeEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
 	resetTourDialogs();
 });
 </script>

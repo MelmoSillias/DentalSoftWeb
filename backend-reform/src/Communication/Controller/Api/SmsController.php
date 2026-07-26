@@ -10,7 +10,7 @@ use App\Communication\Message\ProcessSmsQueueMessage;
 use App\Patient\Entity\Patient;
 use App\Scheduling\Entity\Rdv;
 use App\Scheduling\Repository\RdvRepository;
-use App\Communication\Service\OrangeSmsClient;
+use App\Communication\Service\SmsClientResolver;
 use App\Communication\Service\SmsConfigService;
 use App\Communication\Service\SmsService;
 use DateTimeImmutable;
@@ -51,7 +51,7 @@ final class SmsController extends AbstractController
     public function __construct(
         private readonly SmsConfigService $smsConfigService,
         private readonly SmsService $smsService,
-        private readonly OrangeSmsClient $orangeSmsClient,
+        private readonly SmsClientResolver $smsClientResolver,
         private readonly MessageBusInterface $messageBus,
         private readonly RdvRepository $rdvRepository,
         private readonly DevisRepository $devisRepository,
@@ -71,13 +71,30 @@ final class SmsController extends AbstractController
         $payload = json_decode($request->getContent(), true) ?? [];
         $saved = $this->smsConfigService->saveConfig($payload);
 
+        $config = $this->smsConfigService->getConfig();
+        if ($config->getProvider() === SmsClientResolver::PROVIDER_AFRIKSMS && $config->isEnabled()) {
+            $notifyUrl = $this->smsConfigService->buildAfrikSmsWebhookUrl($config);
+            if ($notifyUrl !== null) {
+                $saved['callbackRegistration'] = $this->smsClientResolver->getAfrikSmsClient()->configureCallbackUrl(
+                    $notifyUrl,
+                    $config->getCallbackNotifyType(),
+                    $config
+                );
+            } else {
+                $saved['callbackRegistration'] = [
+                    'success' => false,
+                    'message' => 'URL webhook publique non configurée. Les accusés de réception AfrikSms ne seront pas enregistrés.',
+                ];
+            }
+        }
+
         return $this->json($saved);
     }
 
     #[Route('/test-connection', name: 'test_connection', methods: ['POST'])]
     public function testConnection(): JsonResponse
     {
-        $result = $this->orangeSmsClient->testConnection();
+        $result = $this->smsClientResolver->getClient()->testConnection();
 
         return $this->json($result, ($result['success'] ?? false) ? 200 : 400);
     }
@@ -138,9 +155,34 @@ final class SmsController extends AbstractController
     #[Route('/provider-overview', name: 'provider_overview', methods: ['GET'])]
     public function providerOverview(): JsonResponse
     {
-        $result = $this->orangeSmsClient->fetchContractOverview();
+        $result = $this->smsClientResolver->getClient()->fetchProviderOverview();
 
         return $this->json($result, ($result['success'] ?? false) ? 200 : 400);
+    }
+
+    #[Route('/webhooks/afriksms', name: 'webhook_afriksms', methods: ['GET', 'POST'])]
+    public function afrikSmsWebhook(Request $request): JsonResponse
+    {
+        $payload = $request->getMethod() === 'POST'
+            ? (json_decode($request->getContent(), true) ?? $request->request->all())
+            : $request->query->all();
+
+        $resourceId = trim((string) ($payload['resourceId'] ?? ''));
+        $code = trim((string) ($payload['code'] ?? ''));
+        $message = trim((string) ($payload['message'] ?? ''));
+
+        if ($resourceId === '' || $code === '') {
+            return $this->json(['success' => false, 'message' => 'Accusé de réception incomplet.'], 400);
+        }
+
+        $result = $this->smsService->handleDeliveryReport(
+            SmsClientResolver::PROVIDER_AFRIKSMS,
+            $resourceId,
+            $code,
+            $message
+        );
+
+        return $this->json($result, ($result['success'] ?? false) ? 200 : 404);
     }
 
     #[Route('/logs', name: 'logs', methods: ['GET'])]

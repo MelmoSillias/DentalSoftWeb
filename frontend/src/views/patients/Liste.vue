@@ -14,13 +14,13 @@ import {
     activatePatientsTourMock,
     deactivatePatientsTourMock,
     getPatientsTourMockActivePatient,
+    getPatientsTourMockPatientIdForScenario,
     resetPatientsTourMockData,
     resolvePatientsTourMockScenario
 } from '@/services/patientsTourMock';
 import { useAuthStore } from '@/stores/auth';
-import { GUIDED_TOUR_START_EVENT } from '@/tours';
-import { createPatientsListTour } from '@/tours/patientsListTour';
-import { startTourGuide } from '@/tours/tourGuideClient';
+import { useAssurancesStore } from '@/stores/assurances';
+import { useGuidedTour } from '@/composables/useGuidedTour';
 import Button from 'primevue/button';
 import Column from 'primevue/column';
 import DataTable from 'primevue/datatable';
@@ -50,6 +50,7 @@ const {
     restorePatient
 } = usePatients();
 const auth = useAuthStore();
+const assurancesStore = useAssurancesStore();
 const isMedecin = computed(() => Boolean(auth.user?.roles?.includes('ROLE_MEDECIN')));
 const isAdmin = computed(() => Boolean(auth.user?.roles?.includes('ROLE_ADMIN')));
 const hidePatientPhoneForMedecins = ref(false);
@@ -63,7 +64,6 @@ const lastTouchedId = ref(null);
 let highlightTimeout = null;
 const toolbarConsultLoading = ref(false);
 const consultationLoading = ref({});
-const isGuidedTourStarting = ref(false);
 const loadErrorMessage = ref('');
 const initializingPage = ref(true);
 const statsLoading = ref(false);
@@ -94,6 +94,7 @@ const activeConsultInfo = ref({ hasActive: false, consultationId: null, hasFiche
 const patientToDelete = ref(null);
 const deletingPatientId = ref(null);
 const restoringPatientId = ref(null);
+const patientFormRef = ref(null);
 
 const trashPatients = ref([]);
 const trashTotalRecords = ref(0);
@@ -175,7 +176,8 @@ const initializePage = async () => {
         const [visibilityOk, patientsOk] = await Promise.all([
             loadVisibilityPolicy({ asPageLoad: true }),
             loadPatients({ page: 1, limit: rowsPerPage.value, asPageLoad: true }),
-            loadOverviewStats()
+            loadOverviewStats(),
+            assurancesStore.load(token).catch(() => [])
         ]);
         if (!visibilityOk && !patientsOk && !loadErrorMessage.value) {
             loadErrorMessage.value = 'Impossible de charger les données de la page patients.';
@@ -563,9 +565,9 @@ const restoreTableState = async (state) => {
     syncingTourState = false;
 };
 
-const prepareGuidedTourDemo = async () => {
+const prepareGuidedTourDemo = async ({ taskId = 'overview', variantId = null } = {}) => {
     guidedTourTableState = captureTableState();
-    const scenario = resolvePatientsTourMockScenario('static');
+    const scenario = resolvePatientsTourMockScenario(taskId, variantId, 'static');
 
     activatePatientsTourMock(scenario);
     resetPatientsTourMockData(scenario);
@@ -613,7 +615,7 @@ const findTourDuplicateConsultationPatient = () => (
     || null
 );
 
-const openTourConsultationWarning = async () => {
+const openTourConsultationWarning = async (variantId = 'blocked-no-fiche') => {
     resetTourDialogs();
     await nextTick();
     await wait();
@@ -623,73 +625,75 @@ const openTourConsultationWarning = async () => {
         return;
     }
 
+    if (variantId === 'blocked-with-fiche') {
+        activeConsultInfo.value = {
+            hasActive: true,
+            consultationId: 5001,
+            hasFiche: true
+        };
+        activeConsultWarnPatient.value = patient;
+        showActiveConsultWarn.value = true;
+        await nextTick();
+        await wait();
+        return;
+    }
+
     await openConsultation(patient);
     await nextTick();
     await wait();
 };
 
-const handleGuidedTourRequest = async (event) => {
-    if (event?.detail?.routeName !== 'patients-liste' || isGuidedTourStarting.value) {
-        return;
-    }
-
-    if (loading.value) {
-        toast.add({
-            severity: 'warn',
-            summary: 'Aide guidée',
-            detail: 'Attendez la fin du chargement des patients avant de lancer le tour.',
-            life: 3000
-        });
-        return;
-    }
-
-    if (hasOpenPatientDialog.value) {
-        toast.add({
-            severity: 'warn',
-            summary: 'Aide guidée',
-            detail: 'Fermez d abord les fenetres ouvertes avant de lancer le tour.',
-            life: 3000
-        });
-        return;
-    }
-
-    isGuidedTourStarting.value = true;
-
-    try {
-        await cleanupGuidedTourDemo();
-        await prepareGuidedTourDemo();
-        resetTourDialogs();
-        await nextTick();
-
-        const steps = createPatientsListTour({
-            hasPatients: patients.value.length > 0,
-            isMedecin: isMedecin.value,
-            openCreatePatientDialog: openCreatePatient,
-            openRendezVousDialog: () => openRendezVous(),
-            openConsultationDialog: () => openConsultation(),
-            openDuplicateConsultationDialog: openTourConsultationWarning,
-            closeAllDialogs: resetTourDialogs
-        });
-
-        await startTourGuide({
-            group: 'patients-liste',
-            steps,
-            onAfterExit: cleanupGuidedTourDemo,
-            onFinish: cleanupGuidedTourDemo
-        });
-    } catch (error) {
-        console.error('Erreur lancement guided tour patients', error);
-        await cleanupGuidedTourDemo();
-        toast.add({
-            severity: 'error',
-            summary: 'Aide guidée',
-            detail: 'Impossible de lancer le tour guide sur la page patients.',
-            life: 3000
-        });
-    } finally {
-        isGuidedTourStarting.value = false;
-    }
+const openTourEditPatientDialog = async () => {
+    const patient = patients.value[0] || null;
+    if (!patient) return;
+    resetTourDialogs();
+    await nextTick();
+    editingPatient.value = patient;
+    showPatientDialog.value = true;
+    await nextTick();
 };
+
+const switchPatientFormTab = async (tab = 'personal') => {
+    patientFormRef.value?.switchTab?.(tab);
+    await nextTick();
+    await wait();
+};
+
+const openTourTrashDialog = async () => {
+    resetTourDialogs();
+    await nextTick();
+    await openTrashDialog();
+    await nextTick();
+    await wait();
+};
+
+const hasActiveInsuranceTab = () => (
+    (assurancesStore.items || []).some((item) => item?.actif !== false)
+);
+
+const { isGuidedTourStarting } = useGuidedTour({
+    routeName: 'patients-liste',
+    isLoading: () => loading.value || initializingPage.value,
+    hasOpenDialogs: () => hasOpenPatientDialog.value,
+    prepareDemo: prepareGuidedTourDemo,
+    cleanupDemo: cleanupGuidedTourDemo,
+    getStepContext: () => ({
+        hasPatients: patients.value.length > 0,
+        isMedecin: isMedecin.value,
+        hasInsuranceTab: hasActiveInsuranceTab(),
+        openCreatePatientDialog: openCreatePatient,
+        openEditPatientDialog: openTourEditPatientDialog,
+        openRendezVousDialog: () => openRendezVous(),
+        openConsultationDialog: () => openConsultation(),
+        openDuplicateConsultationDialog: openTourConsultationWarning,
+        openTrashDialog: openTourTrashDialog,
+        switchPatientFormTab,
+        closeAllDialogs: resetTourDialogs
+    }),
+    loadingMessage: 'Attendez la fin du chargement des patients avant de lancer le tour.',
+    dialogsMessage: 'Fermez d abord les fenetres ouvertes avant de lancer le tour.',
+    errorMessage: 'Impossible de lancer le tour guide sur la page patients.'
+});
 
 onBeforeUnmount(() => {
     if (highlightTimeout) clearTimeout(highlightTimeout);
@@ -697,12 +701,7 @@ onBeforeUnmount(() => {
     if (trashSearchTimeout) clearTimeout(trashSearchTimeout);
     deactivatePatientsTourMock();
     guidedTourDemoActive = false;
-    window.removeEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
     resetTourDialogs();
-});
-
-onMounted(() => {
-    window.addEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
 });
 </script>
 
@@ -730,6 +729,7 @@ onMounted(() => {
                 </div>
                 <div class="flex flex-row gap-3 w-full md:w-auto" data-tour="patients-list.toolbar">
                     <Button label="Corbeille" icon="pi pi-trash" severity="secondary"
+                        data-tour="patients-list.trash-button"
                         class="sm:w-auto shadow-lg hover:shadow-xl transition-all duration-300 px-5 py-2.5 rounded-xl font-medium"
                         @click="openTrashDialog" :pt="{ label: { class: 'hidden sm:inline' } }" />
                     <Button label="Nouveau rendez-vous" icon="fas fa-calendar-plus" severity="warn"
@@ -1065,7 +1065,7 @@ onMounted(() => {
                 </div>
             </template>
             <div data-tour="patients-list.dialog.patient">
-                <FormPatient :patient="editingPatient" @saved="handlePatientSaved" @cancel="showPatientDialog = false"
+                <FormPatient ref="patientFormRef" :patient="editingPatient" @saved="handlePatientSaved" @cancel="showPatientDialog = false"
                     class="mt-2" />
             </div>
         </Dialog>
@@ -1211,7 +1211,7 @@ onMounted(() => {
                 </div>
             </template>
 
-            <div class="p-5 space-y-4">
+            <div class="p-5 space-y-4" data-tour="patients-list.dialog.trash">
                 <div class="flex flex-col sm:flex-row sm:items-end gap-3">
                     <div class="w-full sm:max-w-md">
                         <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">Rechercher dans la corbeille</label>

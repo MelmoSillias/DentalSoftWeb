@@ -12,13 +12,10 @@ import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
 import { useUsers } from '@/composables/useUsers';
 import { useNotifications } from '@/composables/useNotifications';
-import { GUIDED_TOUR_START_EVENT } from '@/tours';
-import { createAdministrationNotificationsTour } from '@/tours/administrationNotificationsTour';
-import { startTourGuide } from '@/tours/tourGuideClient';
+import { useGuidedTour } from '@/composables/useGuidedTour';
 
 const toast = useToast();
 const confirm = useConfirm();
-const isGuidedTourStarting = ref(false);
 let guidedTourPageState = null;
 let guidedTourDemoActive = false;
 let guidedTourCleanupPromise = null;
@@ -232,44 +229,18 @@ watch(selectedByType, (nv) => {
     nv.forEach(t => addTypeUsers(t));
 });
 
-const handleGuidedTourRequest = async (event) => {
-    if (event?.detail?.routeName !== 'administration-notifications' || isGuidedTourStarting.value) {
-        return;
-    }
-
-    isGuidedTourStarting.value = true;
-
-    try {
-        await cleanupGuidedTourDemo();
-        await prepareGuidedTourDemo();
-        const steps = createAdministrationNotificationsTour();
-        await startTourGuide({
-            group: 'administration-notifications',
-            steps,
-            onAfterExit: cleanupGuidedTourDemo,
-            onFinish: cleanupGuidedTourDemo
-        });
-    } catch (error) {
-        console.error('Erreur lancement guided tour notifications', error);
-        await cleanupGuidedTourDemo();
-        toast.add({
-            severity: 'error',
-            summary: 'Aide guidee',
-            detail: 'Impossible de lancer le tour des notifications.',
-            life: 3000
-        });
-    } finally {
-        isGuidedTourStarting.value = false;
-    }
-};
+useGuidedTour({
+    routeName: 'administration-notifications',
+    prepareDemo: prepareGuidedTourDemo,
+    cleanupDemo: cleanupGuidedTourDemo,
+    errorMessage: 'Impossible de lancer le tour des notifications.'
+});
 
 onMounted(() => {
     load();
-    window.addEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
 });
 
 onBeforeUnmount(() => {
-    window.removeEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
     deactivateAdminTourMock();
     guidedTourDemoActive = false;
 });

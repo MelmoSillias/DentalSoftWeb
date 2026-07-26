@@ -1,13 +1,11 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import Breadcrumb from 'primevue/breadcrumb';
 import DatePicker from 'primevue/datepicker';
 import SelectButton from 'primevue/selectbutton';
 import Button from 'primevue/button';
 import { useAuthStore } from '@/stores/auth';
-import { GUIDED_TOUR_START_EVENT } from '@/tours';
-import { createDashboardTour } from '@/tours/dashboardTour';
-import { startTourGuide } from '@/tours/tourGuideClient';
+import { useGuidedTour } from '@/composables/useGuidedTour';
 import { useDashboards } from '@/composables/useDashboards';
 import { useProfile } from '@/composables/useProfile';
 import PanelDatePicker from '@/components/common/PanelDatePicker.vue';
@@ -38,7 +36,6 @@ const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1
 const selectedRange = ref([startOfMonth, new Date()]);
 
 const selectedPeriod = ref('month');
-const isGuidedTourStarting = ref(false);
 const loadErrorMessage = ref('');
 
 const breadcrumbHome = { icon: 'pi pi-home', to: '/' };
@@ -541,41 +538,13 @@ const handleMarkAll = async () => {
     await markAllNotificationsRead();
 };
 
-const handleGuidedTourRequest = async (event) => {
-    if (event?.detail?.routeName !== 'dashboard' || isGuidedTourStarting.value) {
-        return;
-    }
-
-    if (loading.value) {
-        toast.add({
-            severity: 'warn',
-            summary: 'Aide guidee',
-            detail: 'Attendez la fin du chargement des indicateurs avant de lancer le tour.',
-            life: 3000
-        });
-        return;
-    }
-
-    isGuidedTourStarting.value = true;
-
-    try {
-        const steps = createDashboardTour({ role: role.value });
-        await startTourGuide({
-            group: 'dashboard',
-            steps
-        });
-    } catch (error) {
-        console.error('Erreur lancement guided tour dashboard', error);
-        toast.add({
-            severity: 'error',
-            summary: 'Aide guidee',
-            detail: 'Impossible de lancer le tour du dashboard.',
-            life: 3000
-        });
-    } finally {
-        isGuidedTourStarting.value = false;
-    }
-};
+const { isGuidedTourStarting } = useGuidedTour({
+    routeName: 'dashboard',
+    isLoading: () => loading.value,
+    getStepContext: () => ({ role: role.value }),
+    loadingMessage: 'Attendez la fin du chargement des indicateurs avant de lancer le tour.',
+    errorMessage: 'Impossible de lancer le tour du dashboard.'
+});
 
 watch(
     () => [role.value, filterParams.value],
@@ -615,7 +584,6 @@ const retryLoadDashboard = async () => {
 };
 
 onMounted(async () => {
-    window.addEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
     try {
         await fetchProfile();
         await fetchNotifications(notificationsFilter.value);
@@ -624,9 +592,6 @@ onMounted(async () => {
     }
 });
 
-onBeforeUnmount(() => {
-    window.removeEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
-});
 </script>
 
 <template>

@@ -1,38 +1,35 @@
 export const GUIDED_TOUR_START_EVENT = 'orodent:guided-tour:start';
 
-const supportedRoutes = new Set([
-    'dashboard',
-    'patients-liste',
-    'consultations-cards',
-    'consultations-table',
-    'consultations-form',
-    'patients-dossier',
-    'agenda-rendezvous',
-    'agenda-evenements',
-    'caisse',
-    'rapports',
-    'administration-consommables',
-    'administration-salles',
-    'administration-notifications',
-    'administration-finances',
-    'administration-utilisateurs',
-    'administration-gestionrh',
-    'administration-employee-details',
-    'settings-apparence'
-]);
+export {
+    buildTourStepsForRoute,
+    getRegistryForRoute,
+    getSupportedTourRoutes,
+    getTaskForRoute,
+    getTaskMenuItemsForRoute,
+    getTasksForRoute,
+    resolveRouteMockScenario
+} from './registry';
+
+import { getSupportedTourRoutes } from './registry';
+
+const supportedRoutes = new Set(getSupportedTourRoutes());
 
 export function isGuidedTourRoute(routeName) {
     return Boolean(routeName && supportedRoutes.has(routeName));
 }
 
-export function requestGuidedTourStart(routeName) {
+export function requestGuidedTourStart(routeName, { taskId = 'overview', variantId = null } = {}) {
     if (typeof window === 'undefined' || !routeName) {
         return;
     }
 
     window.dispatchEvent(
         new CustomEvent(GUIDED_TOUR_START_EVENT, {
-            detail: { routeName }
+            detail: {
+                routeName,
+                taskId,
+                variantId
+            }
         })
     );
 }

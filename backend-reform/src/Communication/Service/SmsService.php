@@ -20,7 +20,7 @@ final class SmsService
         private readonly PatientRepository $patientRepository,
         private readonly \App\Communication\Service\SmsConfigService $configService,
         private readonly \App\Communication\Service\SmsTemplateService $templateService,
-        private readonly \App\Communication\Service\OrangeSmsClient $orangeSmsClient,
+        private readonly SmsClientResolver $smsClientResolver,
         private readonly NotificationService $notificationService,
         private readonly \App\Communication\Service\NotificationRecipientResolver $recipientResolver,
     ) {
@@ -118,80 +118,28 @@ final class SmsService
     {
         $snapshotBefore = $this->queueRepository->getProcessingSnapshot();
         $items = $this->queueRepository->findProcessable($limit);
+        $processedCount = count($items);
         $sent = 0;
         $failed = 0;
 
+        $config = $this->configService->getConfig();
+        $provider = $config->getProvider();
+
+        if ($provider === SmsClientResolver::PROVIDER_AFRIKSMS && count($items) > 1) {
+            $batchResult = $this->processAfrikSmsBatch($items, $config);
+            $sent += $batchResult['sent'];
+            $failed += $batchResult['failed'];
+            $items = $batchResult['remaining'];
+        }
+
         foreach ($items as $queueItem) {
-            $queueItem->setStatus(SmsQueue::STATUS_SENDING);
-            $this->entityManager->persist($queueItem);
-            $this->entityManager->flush();
-
-            // Valider la configuration avant envoi pour produire une erreur descriptive
-            $config = $this->configService->getConfig();
-            $check = $this->configService->validateReadyConfig($config);
-            if (!($check['valid'] ?? false)) {
-                $hasClientId = $config->getClientId() ? 'oui' : 'non';
-                $hasClientSecret = $this->configService->getClientSecret($config) ? 'oui' : 'non';
-                $sender = $config->getSenderAddress() ?: 'absent';
-                $detailed = sprintf("%s (clientId:%s, secret:%s, sender:%s)", $check['message'] ?? 'Configuration SMS invalide', $hasClientId, $hasClientSecret, $sender);
-                $result = ['success' => false, 'error' => $detailed];
-            } else {
-                $result = $this->orangeSmsClient->sendSms($queueItem->getPhone(), $queueItem->getMessage());
-            }
-
-            if (($result['success'] ?? false) === true) {
-                $queueItem
-                    ->setStatus(SmsQueue::STATUS_SENT)
-                    ->setSentAt(new DateTimeImmutable())
-                    ->setLastError(null);
-
-                $log = (new SmsLog())
-                    ->setPatient($queueItem->getPatient())
-                    ->setPhone($queueItem->getPhone())
-                    ->setMessage($queueItem->getMessage())
-                    ->setStatus('sent')
-                    ->setType($queueItem->getType())
-                    ->setSource($queueItem->getSource())
-                    ->setProvider('orange')
-                    ->setProviderMessageId(isset($result['providerMessageId']) ? (string) $result['providerMessageId'] : null);
-
-                $this->entityManager->persist($log);
-                ++$sent;
-            } else {
-                $retry = $queueItem->getRetryCount() + 1;
-                $error = (string) ($result['error'] ?? 'Erreur d\'envoi SMS');
-
-                $queueItem
-                    ->setRetryCount($retry)
-                    ->setStatus(SmsQueue::STATUS_FAILED)
-                    ->setLastError($error)
-                    ->setSendAt((new DateTimeImmutable())->modify('+5 minutes'));
-
-                $log = (new SmsLog())
-                    ->setPatient($queueItem->getPatient())
-                    ->setPhone($queueItem->getPhone())
-                    ->setMessage($queueItem->getMessage())
-                    ->setStatus('failed')
-                    ->setType($queueItem->getType())
-                    ->setSource($queueItem->getSource())
-                    ->setProvider('orange')
-                    ->setErrorMessage($error);
-
-                $this->entityManager->persist($log);
-
-                if ($retry >= 3) {
-                    $this->notifyAdminFailure($queueItem, $error);
-                }
-
-                ++$failed;
-            }
-
-            $this->entityManager->persist($queueItem);
-            $this->entityManager->flush();
+            $batchOutcome = $this->processQueueItem($queueItem, $config, $provider);
+            $sent += $batchOutcome['sent'];
+            $failed += $batchOutcome['failed'];
         }
 
         return [
-            'processed' => count($items),
+            'processed' => $processedCount,
             'sent' => $sent,
             'failed' => $failed,
             'snapshot' => [
@@ -217,7 +165,9 @@ final class SmsService
      */
     public function testSend(string $phone, string $message): array
     {
-        $result = $this->orangeSmsClient->sendSms($phone, $message);
+        $config = $this->configService->getConfig();
+        $client = $this->smsClientResolver->getClient($config);
+        $result = $client->sendSms($phone, $message);
 
         $log = (new SmsLog())
             ->setPhone($phone)
@@ -225,7 +175,7 @@ final class SmsService
             ->setStatus(($result['success'] ?? false) ? 'sent' : 'failed')
             ->setType('manual')
             ->setSource('test')
-            ->setProvider('orange')
+            ->setProvider($config->getProvider())
             ->setProviderMessageId(isset($result['providerMessageId']) ? (string) $result['providerMessageId'] : null)
             ->setErrorMessage(isset($result['error']) ? (string) $result['error'] : null);
 
@@ -233,6 +183,38 @@ final class SmsService
         $this->entityManager->flush();
 
         return $result;
+    }
+
+    /**
+     * @return array{success: bool, message?: string, status?: string}
+     */
+    public function handleDeliveryReport(string $provider, string $resourceId, string $code, string $message): array
+    {
+        $log = $this->logRepository->findLatestByProviderMessageId($resourceId, $provider);
+        if (!$log instanceof SmsLog) {
+            return ['success' => false, 'message' => 'Log SMS introuvable pour cet accusé de réception.'];
+        }
+
+        $normalizedCode = str_pad(trim($code), 3, '0', STR_PAD_LEFT);
+
+        if ($normalizedCode === '000') {
+            $log->setStatus('delivered');
+            $log->setErrorMessage(null);
+        } elseif ($normalizedCode === '001') {
+            $log->setStatus('sent');
+        } else {
+            $log->setStatus('failed');
+            $log->setErrorMessage($message !== '' ? $message : 'Échec de livraison SMS.');
+        }
+
+        $this->entityManager->persist($log);
+        $this->entityManager->flush();
+
+        return [
+            'success' => true,
+            'message' => 'Accusé de réception traité.',
+            'status' => $log->getStatus(),
+        ];
     }
 
     /**
@@ -484,6 +466,186 @@ final class SmsService
 
         $message = sprintf('Échec SMS (%s) vers %s après 3 tentatives: %s', $queue->getType(), $queue->getPhone(), $error);
         $this->notificationService->notifyMany($recipients, $message, 'warning', '/parametres/apparence', 'warning');
+    }
+
+    /**
+     * @param list<SmsQueue> $items
+     * @return array{sent: int, failed: int, remaining: list<SmsQueue>}
+     */
+    private function processAfrikSmsBatch(array $items, \App\Communication\Entity\SmsProviderConfig $config): array
+    {
+        $check = $this->configService->validateReadyConfig($config);
+        if (!($check['valid'] ?? false)) {
+            return ['sent' => 0, 'failed' => 0, 'remaining' => $items];
+        }
+
+        $messages = [];
+        foreach ($items as $item) {
+            $messages[$item->getMessage()] = true;
+        }
+
+        $afrikClient = $this->smsClientResolver->getAfrikSmsClient();
+
+        if (count($messages) === 1) {
+            $message = array_key_first($messages);
+            $phones = array_map(static fn (SmsQueue $item): string => $item->getPhone(), $items);
+            $result = $afrikClient->sendBulkSms($phones, (string) $message);
+
+            return $this->finalizeAfrikSmsBatch($items, $config->getProvider(), $result['results'] ?? [], (string) ($result['error'] ?? ''));
+        }
+
+        $entries = array_map(static fn (SmsQueue $item): array => [
+            'phone' => $item->getPhone(),
+            'message' => $item->getMessage(),
+        ], $items);
+
+        $result = $afrikClient->sendPersonalizedBulkSms($entries);
+
+        return $this->finalizeAfrikSmsBatch($items, $config->getProvider(), $result['results'] ?? [], (string) ($result['error'] ?? ''));
+    }
+
+    /**
+     * @param list<SmsQueue> $items
+     * @param list<array<string, mixed>> $results
+     * @return array{sent: int, failed: int, remaining: list<SmsQueue>}
+     */
+    private function finalizeAfrikSmsBatch(array $items, string $provider, array $results, string $globalError): array
+    {
+        if ($results === []) {
+            return ['sent' => 0, 'failed' => 0, 'remaining' => $items];
+        }
+
+        $resultsByPhone = [];
+        foreach ($results as $result) {
+            if (!is_array($result)) {
+                continue;
+            }
+
+            $phone = preg_replace('/\D/', '', (string) ($result['phone'] ?? '')) ?: (string) ($result['phone'] ?? '');
+            if ($phone !== '') {
+                $resultsByPhone[$phone] = $result;
+            }
+        }
+
+        $sent = 0;
+        $failed = 0;
+        $remaining = [];
+
+        foreach ($items as $index => $queueItem) {
+            $queueItem->setStatus(SmsQueue::STATUS_SENDING);
+            $result = $results[$index] ?? null;
+
+            if (!is_array($result)) {
+                $normalizedPhone = preg_replace('/\D/', '', $queueItem->getPhone()) ?: $queueItem->getPhone();
+                $result = $resultsByPhone[$normalizedPhone] ?? null;
+            }
+
+            if (!is_array($result)) {
+                $remaining[] = $queueItem;
+                continue;
+            }
+
+            if (($result['success'] ?? false) === true) {
+                $this->markQueueItemSent($queueItem, $provider, isset($result['providerMessageId']) ? (string) $result['providerMessageId'] : null);
+                ++$sent;
+            } else {
+                $error = (string) ($result['error'] ?? $globalError ?: 'Erreur d\'envoi SMS AfrikSms');
+                $this->markQueueItemFailed($queueItem, $provider, $error);
+                ++$failed;
+            }
+
+            $this->entityManager->persist($queueItem);
+        }
+
+        $this->entityManager->flush();
+
+        return ['sent' => $sent, 'failed' => $failed, 'remaining' => $remaining];
+    }
+
+    /**
+     * @return array{sent: int, failed: int}
+     */
+    private function processQueueItem(SmsQueue $queueItem, \App\Communication\Entity\SmsProviderConfig $config, string $provider): array
+    {
+        $queueItem->setStatus(SmsQueue::STATUS_SENDING);
+        $this->entityManager->persist($queueItem);
+        $this->entityManager->flush();
+
+        $check = $this->configService->validateReadyConfig($config);
+        if (!($check['valid'] ?? false)) {
+            $hasClientId = $config->getClientId() ? 'oui' : 'non';
+            $hasClientSecret = $this->configService->getClientSecret($config) ? 'oui' : 'non';
+            $sender = $provider === SmsClientResolver::PROVIDER_AFRIKSMS
+                ? ($config->getSenderName() ?: 'absent')
+                : ($config->getSenderAddress() ?: 'absent');
+            $detailed = sprintf('%s (clientId:%s, secret:%s, sender:%s)', $check['message'] ?? 'Configuration SMS invalide', $hasClientId, $hasClientSecret, $sender);
+            $result = ['success' => false, 'error' => $detailed];
+        } else {
+            $client = $this->smsClientResolver->getClient($config);
+            $result = $client->sendSms($queueItem->getPhone(), $queueItem->getMessage());
+        }
+
+        if (($result['success'] ?? false) === true) {
+            $this->markQueueItemSent($queueItem, $provider, isset($result['providerMessageId']) ? (string) $result['providerMessageId'] : null);
+            $this->entityManager->persist($queueItem);
+            $this->entityManager->flush();
+
+            return ['sent' => 1, 'failed' => 0];
+        }
+
+        $error = (string) ($result['error'] ?? 'Erreur d\'envoi SMS');
+        $this->markQueueItemFailed($queueItem, $provider, $error);
+        $this->entityManager->persist($queueItem);
+        $this->entityManager->flush();
+
+        return ['sent' => 0, 'failed' => 1];
+    }
+
+    private function markQueueItemSent(SmsQueue $queueItem, string $provider, ?string $providerMessageId): void
+    {
+        $queueItem
+            ->setStatus(SmsQueue::STATUS_SENT)
+            ->setSentAt(new DateTimeImmutable())
+            ->setLastError(null);
+
+        $log = (new SmsLog())
+            ->setPatient($queueItem->getPatient())
+            ->setPhone($queueItem->getPhone())
+            ->setMessage($queueItem->getMessage())
+            ->setStatus('sent')
+            ->setType($queueItem->getType())
+            ->setSource($queueItem->getSource())
+            ->setProvider($provider)
+            ->setProviderMessageId($providerMessageId);
+
+        $this->entityManager->persist($log);
+    }
+
+    private function markQueueItemFailed(SmsQueue $queueItem, string $provider, string $error): void
+    {
+        $retry = $queueItem->getRetryCount() + 1;
+
+        $queueItem
+            ->setRetryCount($retry)
+            ->setStatus(SmsQueue::STATUS_FAILED)
+            ->setLastError($error)
+            ->setSendAt((new DateTimeImmutable())->modify('+5 minutes'));
+
+        $log = (new SmsLog())
+            ->setPatient($queueItem->getPatient())
+            ->setPhone($queueItem->getPhone())
+            ->setMessage($queueItem->getMessage())
+            ->setStatus('failed')
+            ->setType($queueItem->getType())
+            ->setSource($queueItem->getSource())
+            ->setProvider($provider)
+            ->setErrorMessage($error);
+
+        $this->entityManager->persist($log);
+
+        if ($retry >= 3) {
+            $this->notifyAdminFailure($queueItem, $error);
+        }
     }
 
     private function mapTemplateCodeToType(string $templateCode): string

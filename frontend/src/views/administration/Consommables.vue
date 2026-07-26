@@ -6,9 +6,7 @@ import { useStockVariations } from '@/composables/useStockVariations'
 import ConsumableForm from '@/components/consumables/ConsumableForm.vue'
 import AddRetireStockForm from '@/components/consumables/AddRetireStockForm.vue'
 import { useEmployees } from '@/composables/useEmployees'
-import { GUIDED_TOUR_START_EVENT } from '@/tours'
-import { createAdministrationConsumablesTour } from '@/tours/administrationConsumablesTour'
-import { startTourGuide } from '@/tours/tourGuideClient'
+import { useGuidedTour } from '@/composables/useGuidedTour'
 import PrintDataTablePage from '@/components/print/PrintDataTablePage.vue'
 import { usePrinter } from '@/composables/usePrinter'
 import PanelDatePicker from '@/components/common/PanelDatePicker.vue'
@@ -21,7 +19,6 @@ const addRetireFormType = ref("add")
 const showDetails = ref(false)
 const detailConsumable = ref(null)
 const toast = useToast()
-const isGuidedTourStarting = ref(false)
 let guidedTourPageState = null
 let guidedTourDemoActive = false
 let guidedTourCleanupPromise = null
@@ -161,12 +158,9 @@ watch(filters, async (newF, oldF) => {
 onMounted(() => {
     consumablesStore.fetchConsumables(); 
     stockVariationsStore.fetchStockVariations(filters.value.consumableId, filters.value.period[0], filters.value.period[1]);
-    window.addEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
-
 });
 
 onBeforeUnmount(() => {
-    window.removeEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
     deactivateAdminTourMock();
     guidedTourDemoActive = false;
     resetTourDialogs();
@@ -307,54 +301,21 @@ const openTourDetailsDialog = async () => {
     await nextTick();
 };
 
-const handleGuidedTourRequest = async (event) => {
-    if (event?.detail?.routeName !== 'administration-consommables' || isGuidedTourStarting.value) {
-        return;
-    }
-
-    if (hasOpenDialogs.value) {
-        toast.add({
-            severity: 'warn',
-            summary: 'Aide guidee',
-            detail: 'Fermez les fenetres ouvertes avant de lancer le tour.',
-            life: 3000
-        });
-        return;
-    }
-
-    isGuidedTourStarting.value = true;
-
-    try {
-        await cleanupGuidedTourDemo();
-        await prepareGuidedTourDemo();
-        await nextTick();
-        const steps = createAdministrationConsumablesTour({
-            setMode: setTourMode,
-            openCreateDialog: openTourCreateDialog,
-            openStockDialog: openTourStockDialog,
-            openDetailsDialog: openTourDetailsDialog,
-            closeAllDialogs: resetTourDialogs
-        });
-
-        await startTourGuide({
-            group: 'administration-consommables',
-            steps,
-            onAfterExit: cleanupGuidedTourDemo,
-            onFinish: cleanupGuidedTourDemo
-        });
-    } catch (error) {
-        console.error('Erreur lancement guided tour consommables', error);
-        await cleanupGuidedTourDemo();
-        toast.add({
-            severity: 'error',
-            summary: 'Aide guidee',
-            detail: 'Impossible de lancer le tour des consommables.',
-            life: 3000
-        });
-    } finally {
-        isGuidedTourStarting.value = false;
-    }
-};
+useGuidedTour({
+    routeName: 'administration-consommables',
+    hasOpenDialogs: () => hasOpenDialogs.value,
+    prepareDemo: prepareGuidedTourDemo,
+    cleanupDemo: cleanupGuidedTourDemo,
+    getStepContext: () => ({
+        setMode: setTourMode,
+        openCreateDialog: openTourCreateDialog,
+        openStockDialog: openTourStockDialog,
+        openDetailsDialog: openTourDetailsDialog,
+        closeAllDialogs: resetTourDialogs
+    }),
+    dialogsMessage: 'Fermez les fenetres ouvertes avant de lancer le tour.',
+    errorMessage: 'Impossible de lancer le tour des consommables.'
+});
 
 </script>
 <template>

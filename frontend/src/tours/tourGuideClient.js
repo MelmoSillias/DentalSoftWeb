@@ -1,9 +1,14 @@
 import { TourGuideClient } from '@sjmc11/tourguidejs/src/Tour';
+import {
+    activateTourScrollControls,
+    deactivateTourScrollControls,
+    enhanceTourStepsForLayout
+} from './shared/tourScrollControl';
 
 const baseOptions = {
     autoScroll: true,
     autoScrollSmooth: true,
-    autoScrollOffset: 32,
+    autoScrollOffset: 48,
     backdropAnimate: true,
     backdropClass: 'orodent-tour-backdrop',
     backdropColor: 'rgba(15, 23, 42, 0.72)',
@@ -42,6 +47,20 @@ export function getTourGuideClient() {
     return tourGuide;
 }
 
+function wrapTourLifecycleCallback(callback) {
+    return async (...args) => {
+        try {
+            if (typeof callback === 'function') {
+                return await callback(...args);
+            }
+        } finally {
+            deactivateTourScrollControls();
+        }
+
+        return undefined;
+    };
+}
+
 export async function startTourGuide({ group, steps, options = {}, onAfterExit, onFinish }) {
     const tg = getTourGuideClient();
 
@@ -50,27 +69,33 @@ export async function startTourGuide({ group, steps, options = {}, onAfterExit, 
     }
 
     if (tg.isVisible) {
+        deactivateTourScrollControls();
         await tg.exit().catch(() => undefined);
     }
 
-    tg.onFinish(async () => {
+    const enhancedSteps = enhanceTourStepsForLayout(steps);
+
+    tg.onFinish(wrapTourLifecycleCallback(async () => {
         if (typeof onFinish === 'function') {
             await onFinish();
         }
         return true;
-    });
+    }));
 
-    tg.onAfterExit(() => {
-        if (typeof onAfterExit === 'function') {
-            onAfterExit();
-        }
-    });
+    tg.onAfterExit(wrapTourLifecycleCallback(onAfterExit));
 
     await tg.setOptions({
         ...baseOptions,
         ...options,
-        steps
+        steps: enhancedSteps
     });
 
-    return tg.start(group);
+    activateTourScrollControls();
+
+    try {
+        return await tg.start(group);
+    } catch (error) {
+        deactivateTourScrollControls();
+        throw error;
+    }
 }

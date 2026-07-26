@@ -14,11 +14,10 @@ import { usePrinter } from '@/composables/usePrinter';
 import {
 	activateCaisseTourMock,
 	deactivateCaisseTourMock,
-	resetCaisseTourMockData
+	resetCaisseTourMockData,
+	resolveCaisseTourMockScenario
 } from '@/services/caisseTourMock';
-import { GUIDED_TOUR_START_EVENT } from '@/tours';
-import { createCaisseTour, resolveCaisseTourGroup } from '@/tours/caisseTour';
-import { startTourGuide } from '@/tours/tourGuideClient';
+import { useGuidedTour } from '@/composables/useGuidedTour';
 import { useAuthStore } from '@/stores/auth';
 import { useAssurancesStore } from '@/stores/assurances';
 import { usePaymentMethodsStore } from '@/stores/paymentMethods';
@@ -196,7 +195,6 @@ const previewLoading = ref(false);
 const previewData = ref(null);
 const previewDialogTab = ref('services');
 const payLoading = ref(false);
-const isGuidedTourStarting = ref(false);
 const loadErrorMessage = ref('');
 const isInitialLoadPhase = ref(true);
 let guidedTourPageState = null;
@@ -1343,10 +1341,11 @@ const restorePageState = async (state) => {
 	await nextTick();
 };
 
-const prepareGuidedTourDemo = async () => {
+const prepareGuidedTourDemo = async ({ taskId = 'overview', variantId = null } = {}) => {
 	guidedTourPageState = capturePageState();
-	activateCaisseTourMock();
-	resetCaisseTourMockData();
+	const scenario = resolveCaisseTourMockScenario(taskId, variantId);
+	activateCaisseTourMock(scenario);
+	resetCaisseTourMockData(scenario);
 	guidedTourDemoActive = true;
 	setActiveView('overview');
 	await Promise.all([loadFactures(), loadPayments(), loadPaymentMethods(), loadAssurances()]);
@@ -1377,75 +1376,32 @@ const cleanupGuidedTourDemo = async () => {
 	return guidedTourCleanupPromise;
 };
 
-const handleGuidedTourRequest = async (event) => {
-	if (event?.detail?.routeName !== 'caisse' || isGuidedTourStarting.value) {
-		return;
-	}
-
-	if (facturesLoading.value || paymentsLoading.value) {
-		toast.add({
-			severity: 'warn',
-			summary: 'Aide guidee',
-			detail: 'Attendez la fin du chargement de la caisse avant de lancer le tour.',
-			life: 3000
-		});
-		return;
-	}
-
-	if (hasOpenDialogs.value) {
-		toast.add({
-			severity: 'warn',
-			summary: 'Aide guidee',
-			detail: 'Fermez les fenetres ouvertes avant de lancer le tour.',
-			life: 3000
-		});
-		return;
-	}
-
-	isGuidedTourStarting.value = true;
-
-	try {
-		await cleanupGuidedTourDemo();
-		await prepareGuidedTourDemo();
-		resetTourDialogs();
-		await nextTick();
-
-		const steps = createCaisseTour({
-			activeView: activeView.value,
-			canOpenPaymentDialog: Boolean(firstPayableFacture.value),
-			canOpenPreviewDialog: Boolean(firstPreviewableFacture.value),
-			canOpenModifyDialog: Boolean(firstModifiableFacture.value),
-			openPaymentDialog: openTourPaymentDialogStable,
-			openPreviewDialog: openTourPreviewDialogStable,
-			openModifyDialog: openTourModifyDialogStable,
-			switchView: async (view) => {
-				setActiveView(view);
-				resetTourDialogs();
-				await nextTick();
-				await waitForTourUi(220);
-			},
-			closeAllDialogs: resetTourDialogs
-		});
-
-		await startTourGuide({
-			group: resolveCaisseTourGroup(activeView.value),
-			steps,
-			onAfterExit: cleanupGuidedTourDemo,
-			onFinish: cleanupGuidedTourDemo
-		});
-	} catch (error) {
-		console.error('Erreur lancement guided tour caisse', error);
-		await cleanupGuidedTourDemo();
-		toast.add({
-			severity: 'error',
-			summary: 'Aide guidee',
-			detail: 'Impossible de lancer le tour de la caisse.',
-			life: 3000
-		});
-	} finally {
-		isGuidedTourStarting.value = false;
-	}
-};
+const { isGuidedTourStarting } = useGuidedTour({
+	routeName: 'caisse',
+	isLoading: () => facturesLoading.value || paymentsLoading.value,
+	hasOpenDialogs: () => hasOpenDialogs.value,
+	prepareDemo: prepareGuidedTourDemo,
+	cleanupDemo: cleanupGuidedTourDemo,
+	getStepContext: () => ({
+		activeView: activeView.value,
+		canOpenPaymentDialog: Boolean(firstPayableFacture.value),
+		canOpenPreviewDialog: Boolean(firstPreviewableFacture.value),
+		canOpenModifyDialog: Boolean(firstModifiableFacture.value),
+		openPaymentDialog: openTourPaymentDialogStable,
+		openPreviewDialog: openTourPreviewDialogStable,
+		openModifyDialog: openTourModifyDialogStable,
+		switchView: async (view) => {
+			setActiveView(view);
+			resetTourDialogs();
+			await nextTick();
+			await waitForTourUi(220);
+		},
+		closeAllDialogs: resetTourDialogs
+	}),
+	loadingMessage: 'Attendez la fin du chargement de la caisse avant de lancer le tour.',
+	dialogsMessage: 'Fermez les fenetres ouvertes avant de lancer le tour.',
+	errorMessage: 'Impossible de lancer le tour de la caisse.'
+});
 
 const printInvoice = async () => {
 	if (!previewData.value?.id) return;
@@ -1589,11 +1545,9 @@ onMounted(async () => {
 	await Promise.all([loadPaymentMethods(), loadAssurances()]);
 	setActiveView(activeView.value);
 	isInitialLoadPhase.value = false;
-	window.addEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
 });
 
 onBeforeUnmount(() => {
-	window.removeEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
 	deactivateCaisseTourMock();
 	guidedTourDemoActive = false;
 	resetTourDialogs();

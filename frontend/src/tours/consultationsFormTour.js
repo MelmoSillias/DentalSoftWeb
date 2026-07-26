@@ -1,179 +1,159 @@
-import { nextTick } from 'vue';
-import { getTourGuideClient } from './tourGuideClient';
+import { flushUi, openDialogStep, normalizeTourSteps } from './shared/tourHelpers';
+import { createTourRegistry } from './shared/createTourRegistry';
 
-function wait(ms = 120) {
-    return new Promise((resolve) => {
-        window.setTimeout(resolve, ms);
-    });
-}
+const GROUP = 'consultations-form';
 
-async function refreshTourLayout() {
-    const tg = getTourGuideClient();
+const TASKS = [
+    { id: 'overview', label: 'Presentation de la page', icon: 'pi pi-compass', mockScenario: 'static' },
+    { id: 'fill-entretien', label: 'Remplir l entretien', icon: 'pi pi-comments', mockScenario: 'static' },
+    { id: 'fill-examens', label: 'Saisir les examens', icon: 'pi pi-search', mockScenario: 'static' },
+    { id: 'manage-ordonnance', label: 'Gerer l ordonnance', icon: 'pi pi-file', mockScenario: 'static' },
+    { id: 'treatment-plan', label: 'Plan de traitement', icon: 'pi pi-list-check', mockScenario: 'static' },
+    { id: 'close-fiche', label: 'Cloturer la fiche', icon: 'pi pi-check-circle', mockScenario: 'static' }
+];
 
-    if (!tg?.isVisible) {
-        return;
-    }
-
-    await tg.updatePositions().catch(() => undefined);
-}
-
-async function flushUi() {
-    await nextTick();
-    await wait();
-    await refreshTourLayout();
-}
-
-export function createConsultationsFormTour({ setSection, openOrdonnanceDialog, closeAllDialogs }) {
-    return [
+function buildOverviewSteps(ctx) {
+    return normalizeTourSteps([
         {
-            group: 'consultations-form',
-            order: 10,
+            group: GROUP,
             target: '[data-tour="consultations-form.header"]',
             title: 'Fiche medicale patient',
-            content: 'Cette vue centralise toute la prise en charge: evaluation clinique, examens, documents, devis, seances et cloture de consultation.'
+            content: 'Cette vue centralise toute la prise en charge: evaluation clinique, examens, documents, devis, seances et cloture.'
         },
         {
-            group: 'consultations-form',
-            order: 20,
+            group: GROUP,
             target: '[data-tour="consultations-form.navigation"]',
             title: 'Navigation rapide',
-            content: 'Le bouton Retour vous ramene a la page precedente sans perdre le contexte. Utilisez-le apres verification des donnees sauvegardees.'
+            content: 'Le bouton Retour vous ramene a la page precedente sans perdre le contexte.'
         },
         {
-            group: 'consultations-form',
-            order: 30,
+            group: GROUP,
             target: '[data-tour="consultations-form.display-mode"]',
             title: 'Mode d affichage',
-            content: 'Basculez entre vue onglets et vue sidebar selon votre confort de lecture pendant la consultation.'
+            content: 'Basculez entre vue onglets et vue sidebar selon votre confort de lecture.'
         },
         {
-            group: 'consultations-form',
-            order: 40,
+            group: GROUP,
             target: '[data-tour="consultations-form.save-indicator"]',
             title: 'Suivi de sauvegarde',
-            content: 'L indicateur affiche les sections modifiees, l etat de sauvegarde et permet de lancer une sauvegarde globale a tout moment.'
+            content: 'L indicateur affiche les sections modifiees, l etat de sauvegarde et permet une sauvegarde globale.'
         },
         {
-            group: 'consultations-form',
-            order: 50,
+            group: GROUP,
             target: '[data-tour="consultations-form.switcher"]',
             title: 'Parcours section par section',
-            content: 'Le switcher structure la fiche en blocs metier pour avancer dans le bon ordre: infos, clinique, pieces justificatives, actes et cloture.'
+            content: 'Le switcher structure la fiche en blocs metier pour avancer dans le bon ordre clinique.'
+        }
+    ]);
+}
+
+export const consultationsFormRegistry = createTourRegistry(GROUP, TASKS, {
+    overview: buildOverviewSteps,
+    'fill-entretien': (ctx) => normalizeTourSteps([
+        {
+            group: GROUP,
+            target: '[data-tour="consultations-form.switcher"]',
+            title: 'Acceder a l entretien',
+            content: 'Selectionnez la section entretien dans le switcher pour saisir le questionnaire medical.'
         },
         {
-            group: 'consultations-form',
-            order: 60,
-            target: '[data-tour="consultations-form.section.infos"]',
-            title: 'Informations patient',
-            content: 'Cette section consolide identite, contacts, antecedents et allergies. C est la base avant toute decision clinique.',
-            beforeEnter: async () => {
-                setSection('infos');
-                await flushUi();
-            }
-        },
-        {
-            group: 'consultations-form',
-            order: 70,
+            group: GROUP,
             target: '[data-tour="consultations-form.section.entretien"]',
-            title: 'Questionnaire médical',
+            title: 'Questionnaire medical',
             content: 'Saisissez le motif, l histoire de la plainte et les informations contextuelles qui orientent les examens.',
             beforeEnter: async () => {
-                setSection('entretien');
+                ctx.setSection('entretien');
                 await flushUi();
             }
+        }
+    ]),
+    'fill-examens': (ctx) => normalizeTourSteps([
+        {
+            group: GROUP,
+            target: '[data-tour="consultations-form.switcher"]',
+            title: 'Acceder aux examens',
+            content: 'Basculez vers la section examens pour documenter les constatations cliniques.'
         },
         {
-            group: 'consultations-form',
-            order: 80,
+            group: GROUP,
             target: '[data-tour="consultations-form.section.examens"]',
             title: 'Examens cliniques',
             content: 'Documentez les constatations, observations et resultats cliniques qui soutiennent le diagnostic.',
             beforeEnter: async () => {
-                setSection('examens');
-                await flushUi();
-            }
-        },
-        {
-            group: 'consultations-form',
-            order: 90,
-            target: '[data-tour="consultations-form.section.documents"]',
-            title: 'Images et documents',
-            content: 'Ajoutez radios, photos ou fichiers utiles pour garder des preuves exploitables dans le suivi et la communication medicale.',
-            beforeEnter: async () => {
-                setSection('documents');
-                await flushUi();
-            }
-        },
-        {
-            group: 'consultations-form',
-            order: 100,
-            target: '[data-tour="consultations-form.section.bilans"]',
-            title: 'Bilans',
-            content: 'Centralisez les bilans medicaux et dentaires pour disposer d une vue complete avant le plan de traitement.',
-            beforeEnter: async () => {
-                setSection('bilans');
-                await flushUi();
-            }
-        },
-        {
-            group: 'consultations-form',
-            order: 110,
-            target: '[data-tour="consultations-form.section.plan-traitement"]',
-            title: 'Plan de traitement',
-            content: 'Definissez ici la strategie therapeutique, les etapes et les priorites pour la suite de la prise en charge.',
-            beforeEnter: async () => {
-                setSection('plan-traitement');
-                await flushUi();
-            }
-        },
-        {
-            group: 'consultations-form',
-            order: 120,
-            target: '[data-tour="consultations-form.section.devis"]',
-            title: 'Devis',
-            content: 'Le devis transforme les actes prevus en chiffrage clair pour le patient et la partie caisse.',
-            beforeEnter: async () => {
-                setSection('devis');
-                await flushUi();
-            }
-        },
-        {
-            group: 'consultations-form',
-            order: 130,
-            target: '[data-tour="consultations-form.section.seances"]',
-            title: 'Seances',
-            content: 'Cette partie recapitule les seances deja enregistrees pour suivre l avancement reel du traitement.',
-            beforeEnter: async () => {
-                setSection('seances');
-                await flushUi();
-            }
-        },
-        {
-            group: 'consultations-form',
-            order: 140,
-            target: '[data-tour="consultations-form.section.consult"]',
-            title: 'Consultation en cours',
-            content: 'Finalisez ici les actes de seance, les intervenants, les ordonnances puis lancez la cloture une fois la verification terminee.',
-            beforeEnter: async () => {
-                setSection('consult');
-                await flushUi();
-            }
-        },
-        {
-            group: 'consultations-form',
-            order: 150,
-            target: '[data-tour="consultations-form.dialogs"]',
-            title: 'Dialogues metier',
-            content: 'Les modales servent a completer rapidement antecedents, allergies et ordonnances sans quitter la fiche.',
-            beforeEnter: async () => {
-                setSection('consult');
-                openOrdonnanceDialog();
-                await flushUi();
-            },
-            afterLeave: async () => {
-                closeAllDialogs();
+                ctx.setSection('examens');
                 await flushUi();
             }
         }
-    ];
+    ]),
+    'manage-ordonnance': (ctx) => normalizeTourSteps([
+        {
+            group: GROUP,
+            target: '[data-tour="consultations-form.section.consult"]',
+            title: 'Section consultation',
+            content: 'La section consultation regroupe les actes de seance et les ordonnances.',
+            beforeEnter: async () => {
+                ctx.setSection('consult');
+                await flushUi();
+            }
+        },
+        {
+            group: GROUP,
+            target: '[data-tour="consultations-form.dialogs"]',
+            title: 'Dialogue ordonnance',
+            content: 'La modale ordonnance permet de completer rapidement la prescription sans quitter la fiche.',
+            beforeEnter: async () => {
+                ctx.setSection('consult');
+                ctx.openOrdonnanceDialog();
+                await flushUi();
+            },
+            afterLeave: async () => {
+                ctx.closeAllDialogs();
+                await flushUi();
+            }
+        }
+    ]),
+    'treatment-plan': (ctx) => normalizeTourSteps([
+        {
+            group: GROUP,
+            target: '[data-tour="consultations-form.switcher"]',
+            title: 'Plan de traitement',
+            content: 'Accedez au bloc plan de traitement depuis le switcher de sections.'
+        },
+        {
+            group: GROUP,
+            target: '[data-tour="consultations-form.section.plan-traitement"]',
+            title: 'Definir la strategie',
+            content: 'Definissez ici la strategie therapeutique, les etapes et les priorites pour la suite de la prise en charge.',
+            beforeEnter: async () => {
+                ctx.setSection('plan-traitement');
+                await flushUi();
+            }
+        }
+    ]),
+    'close-fiche': (ctx) => normalizeTourSteps([
+        {
+            group: GROUP,
+            target: '[data-tour="consultations-form.save-indicator"]',
+            title: 'Verifier la sauvegarde',
+            content: 'Assurez-vous que toutes les sections modifiees sont bien enregistrees avant la cloture.'
+        },
+        {
+            group: GROUP,
+            target: '[data-tour="consultations-form.section.consult"]',
+            title: 'Finaliser la consultation',
+            content: 'Finalisez les actes de seance, les intervenants et les ordonnances puis lancez la cloture.',
+            beforeEnter: async () => {
+                ctx.setSection('consult');
+                await flushUi();
+            }
+        }
+    ])
+});
+
+export function buildConsultationsFormTourSteps(taskId, variantId, ctx) {
+    return consultationsFormRegistry.buildSteps(taskId, variantId, ctx);
+}
+
+export function createConsultationsFormTour(ctx) {
+    return buildConsultationsFormTourSteps('overview', null, ctx);
 }

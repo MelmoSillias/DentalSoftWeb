@@ -3,16 +3,15 @@ import QuickClotureConsultationDialog from '@/components/consultations/QuickClot
 import {
     activateConsultationsTourMock,
     deactivateConsultationsTourMock,
-    resetConsultationsTourMockData
+    resetConsultationsTourMockData,
+    resolveConsultationsTourMockScenario
 } from '@/services/consultationsTourMock';
+import { useGuidedTour } from '@/composables/useGuidedTour';
 import FormCreateConsultation from '@/components/patients/FormCreateConsultation.vue';
 import { cancelConsultation, fetchPendingConsultations } from '@/services/consultations';
 import { fetchPublicGeneralSettings } from '@/services/globalSettingsService';
 import { activatePatientsTourMock, deactivatePatientsTourMock, resetPatientsTourMockData } from '@/services/patientsTourMock';
 import { useAuthStore } from '@/stores/auth';
-import { GUIDED_TOUR_START_EVENT } from '@/tours';
-import { createConsultationsCardsTour } from '@/tours/consultationsCardsTour';
-import { startTourGuide } from '@/tours/tourGuideClient';
 import Button from 'primevue/button';
 import ConfirmPopup from 'primevue/confirmpopup';
 import Dialog from 'primevue/dialog';
@@ -39,7 +38,6 @@ const quickMenus = {};
 const quickDialogVisible = ref(false);
 const quickDialogConsultation = ref(null);
 const quickDialogActionMode = ref('continue');
-const isGuidedTourStarting = ref(false);
 const allowReceptionQuickClose = ref(true);
 const hidePatientPhoneForMedecins = ref(false);
 let guidedTourPageState = null;
@@ -74,11 +72,9 @@ const loadQuickClosePolicy = async () => {
 onMounted(() => {
     loadQuickClosePolicy();
     loadPending();
-    window.addEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
 });
 
 onBeforeUnmount(() => {
-    window.removeEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
     deactivateConsultationsTourMock();
     deactivatePatientsTourMock();
     guidedTourDemoActive = false;
@@ -302,12 +298,13 @@ const restorePageState = async (state) => {
     await nextTick();
 };
 
-const prepareGuidedTourDemo = async () => {
+const prepareGuidedTourDemo = async ({ taskId = 'overview', variantId = null } = {}) => {
     guidedTourPageState = capturePageState();
+    const scenario = resolveConsultationsTourMockScenario(taskId, variantId);
     activatePatientsTourMock('static');
     resetPatientsTourMockData('static');
-    activateConsultationsTourMock();
-    resetConsultationsTourMockData();
+    activateConsultationsTourMock(scenario);
+    resetConsultationsTourMockData(scenario);
     guidedTourDemoActive = true;
 
     await loadPending();
@@ -373,41 +370,15 @@ const openTourQuickDialog = async () => {
     }
 };
 
-const handleGuidedTourRequest = async (event) => {
-    if (event?.detail?.routeName !== 'consultations-cards' || isGuidedTourStarting.value) {
-        return;
-    }
-
-    if (loading.value) {
-        toast.add({
-            severity: 'warn',
-            summary: 'Aide guidée',
-            detail: 'Attendez la fin du chargement de la file d attente avant de lancer le tour.',
-            life: 3000
-        });
-        return;
-    }
-
-    if (openCreateConsultationDialog.value || quickDialogVisible.value) {
-        toast.add({
-            severity: 'warn',
-            summary: 'Aide guidée',
-            detail: 'Fermez les fenetres ouvertes avant de lancer le tour.',
-            life: 3000
-        });
-        return;
-    }
-
-    isGuidedTourStarting.value = true;
-
-    try {
-        await cleanupGuidedTourDemo();
-        await prepareGuidedTourDemo();
-        resetTourDialogs();
-        await nextTick();
-
+const { isGuidedTourStarting } = useGuidedTour({
+    routeName: 'consultations-cards',
+    isLoading: () => loading.value,
+    hasOpenDialogs: () => openCreateConsultationDialog.value || quickDialogVisible.value,
+    prepareDemo: prepareGuidedTourDemo,
+    cleanupDemo: cleanupGuidedTourDemo,
+    getStepContext: () => {
         const consultation = firstConsultation.value;
-        const steps = createConsultationsCardsTour({
+        return {
             hasConsultations: sortedConsultations.value.length > 0,
             isMedecin: isMedecin.value,
             openCreateConsultationDialog: openTourCreateConsultationDialog,
@@ -419,27 +390,12 @@ const handleGuidedTourRequest = async (event) => {
             hasLinkedCase: Boolean(linkedConsultation.value),
             hasFreshCase: Boolean(freshConsultation.value),
             canOpenCreateDialog: !isMedecin.value
-        });
-
-        await startTourGuide({
-            group: 'consultations-cards',
-            steps,
-            onAfterExit: cleanupGuidedTourDemo,
-            onFinish: cleanupGuidedTourDemo
-        });
-    } catch (error) {
-        console.error('Erreur lancement guided tour file attente', error);
-        await cleanupGuidedTourDemo();
-        toast.add({
-            severity: 'error',
-            summary: 'Aide guidée',
-            detail: 'Impossible de lancer le tour de la file d attente.',
-            life: 3000
-        });
-    } finally {
-        isGuidedTourStarting.value = false;
-    }
-};
+        };
+    },
+    loadingMessage: 'Attendez la fin du chargement de la file d attente avant de lancer le tour.',
+    dialogsMessage: 'Fermez les fenetres ouvertes avant de lancer le tour.',
+    errorMessage: 'Impossible de lancer le tour de la file d attente.'
+});
 
 function getBorderColor(index) {
     if (index === 0) return 'emerald' // Plus ancien

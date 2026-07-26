@@ -109,6 +109,7 @@ const handleBackFromClaim = () => {
   <div>
     <CaisseAssurancesDashboard
       v-if="currentView === 'dashboard'"
+      data-tour="caisse-assurances.dashboard"
       :cards="dashboardCards"
       :loading="dashboardLoading"
       @refresh="emit('refresh-dashboard')"
@@ -117,6 +118,7 @@ const handleBackFromClaim = () => {
 
     <CaisseAssuranceLots
       v-else-if="currentView === 'lots'"
+      data-tour="caisse-assurances.lots"
       :assurance="lotsAssurance"
       :lots="lots"
       :unassigned-claims="unassignedClaims"

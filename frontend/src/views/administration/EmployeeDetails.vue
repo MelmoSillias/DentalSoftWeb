@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import Breadcrumb from 'primevue/breadcrumb';
 import Button from 'primevue/button';
@@ -17,9 +17,7 @@ import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
 import { filePrefix } from '@/config';
 import { useEmployeeDetails } from '@/composables/useEmployeeDetails';
-import { GUIDED_TOUR_START_EVENT } from '@/tours';
-import { createAdministrationEmployeeDetailsTour } from '@/tours/administrationEmployeeDetailsTour';
-import { startTourGuide } from '@/tours/tourGuideClient';
+import { useGuidedTour } from '@/composables/useGuidedTour';
 import { formatEmployeeTypeLabel } from '@/utils/employeeTypeUtils';
 import EmployeeSalarySection from '@/components/administration/EmployeeSalarySection.vue';
 
@@ -54,7 +52,6 @@ const daysOptions = [
 const { employee, loading, error, fetchEmployee, updateEmployee } = useEmployeeDetails();
 
 const files = ref([]);
-const isGuidedTourStarting = ref(false);
 
 const form = ref({
     nom: '',
@@ -175,40 +172,12 @@ const confirmSave = (event) => {
     });
 };
 
-const handleGuidedTourRequest = async (event) => {
-    if (event?.detail?.routeName !== 'administration-employee-details' || isGuidedTourStarting.value) {
-        return;
-    }
-
-    if (loading.value) {
-        toast.add({
-            severity: 'warn',
-            summary: 'Aide guidee',
-            detail: 'Attendez la fin du chargement de la fiche employe avant de lancer le tour.',
-            life: 3000
-        });
-        return;
-    }
-
-    isGuidedTourStarting.value = true;
-
-    try {
-        await startTourGuide({
-            group: 'administration-employee-details',
-            steps: createAdministrationEmployeeDetailsTour()
-        });
-    } catch (error) {
-        console.error('Erreur lancement guided tour details employe', error);
-        toast.add({
-            severity: 'error',
-            summary: 'Aide guidee',
-            detail: 'Impossible de lancer le tour de la fiche employe.',
-            life: 3000
-        });
-    } finally {
-        isGuidedTourStarting.value = false;
-    }
-};
+useGuidedTour({
+    routeName: 'administration-employee-details',
+    isLoading: () => loading.value,
+    loadingMessage: 'Attendez la fin du chargement de la fiche employe avant de lancer le tour.',
+    errorMessage: 'Impossible de lancer le tour de la fiche employe.'
+});
 
 const onFilesSelect = (event) => {
     files.value = event.files || [];
@@ -354,11 +323,6 @@ watch(employeeId, () => {
 
 onMounted(() => {
     loadEmployee();
-    window.addEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
-});
-
-onBeforeUnmount(() => {
-    window.removeEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
 });
 </script>
 

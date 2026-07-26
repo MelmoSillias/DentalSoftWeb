@@ -1,5 +1,15 @@
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { useGuidedTour } from '@/composables/useGuidedTour';
+import {
+    activateSmsTourMock,
+    deactivateSmsTourMock,
+    fetchSmsOverviewTourMock,
+    fetchSmsQueueTourMock,
+    fetchSmsTemplatesTourMock,
+    resetSmsTourMockData,
+    resolveSmsTourMockScenario
+} from '@/services/smsTourMock';
 import { useToast } from 'primevue/usetoast';
 import Button from 'primevue/button';
 import Chip from 'primevue/chip';
@@ -22,8 +32,9 @@ import TabPanel from 'primevue/tabpanel';
 import TabPanels from 'primevue/tabpanels';
 import Tabs from 'primevue/tabs';
 import Tag from 'primevue/tag';
+import Chart from 'primevue/chart';
 import ToggleSwitch from 'primevue/toggleswitch';
-import { useSmsAdminSettings } from '@/composables/useSmsAdminSettings';
+import { useSmsAdminSettings, SMS_PROVIDER_OPTIONS, SMS_CALLBACK_NOTIFY_OPTIONS } from '@/composables/useSmsAdminSettings';
 import { fetchSmsQueueDetails } from '@/services/smsService';
 import { getHttpErrorMessage } from '@/service/http';
 
@@ -46,6 +57,20 @@ const queueDetailsDialogVisible = ref(false);
 const queueDetailsLoading = ref(false);
 const queueDetailsItem = ref(null);
 const queueDetailsLogs = ref([]);
+
+let guidedTourDemoActive = false;
+let guidedTourPageState = null;
+
+const hasOpenDialogs = computed(() => (
+    queueDialogVisible.value
+    || queueActionDialogVisible.value
+    || queueDetailsDialogVisible.value
+));
+
+const switchTab = async (tab) => {
+    activeTab.value = tab;
+    await new Promise((resolve) => window.setTimeout(resolve, 180));
+};
 
 const smsAutomationOperational = computed(() => smsConfig.enabled && providerOverview.value.success);
 const smsAutomationStatusLabel = computed(() => (smsAutomationOperational.value ? 'Service automatique opérationnel' : 'Service automatique à vérifier'));
@@ -106,7 +131,6 @@ const {
     maxMonthly,
     periodDailySeries,
     periodByType,
-    maxPeriodDaily,
     maxPeriodByType,
     toIsoDate,
     loadPeriodStats,
@@ -122,6 +146,77 @@ const {
     processQueueAction,
     updateQueueItemAction
 } = useSmsAdminSettings(token, toast, extractApiError);
+
+const applySmsTourMockData = () => {
+    const overview = fetchSmsOverviewTourMock();
+    smsConfig.enabled = overview.configured;
+    providerOverview.value = {
+        success: Boolean(overview.automationOperational),
+        message: overview.configured ? 'Provider joignable pour la demonstration.' : 'Configuration requise.',
+        contracts: []
+    };
+    smsStats.balance.sentToday = overview.stats?.sentToday ?? 0;
+    smsStats.balance.sentMonth = overview.stats?.sentToday ?? 0;
+    smsQueue.value = fetchSmsQueueTourMock().map((item) => ({
+        id: item.id,
+        createdAt: item.scheduledAt,
+        sendAt: item.scheduledAt,
+        patient: null,
+        phone: item.recipient,
+        message: item.message,
+        status: item.status,
+        source: 'tour-mock'
+    }));
+    smsTemplates.value = fetchSmsTemplatesTourMock().map((item) => ({
+        code: item.key,
+        name: item.label,
+        content: item.body,
+        enabled: true
+    }));
+    if (smsTemplates.value.length > 0) {
+        selectedTemplateCode.value = smsTemplates.value[0].code;
+    }
+    smsLoaded.value = true;
+};
+
+const prepareGuidedTourDemo = async ({ taskId = 'overview', variantId = null } = {}) => {
+    guidedTourPageState = { activeTab: activeTab.value };
+    const scenario = resolveSmsTourMockScenario(taskId, variantId);
+    activateSmsTourMock(scenario);
+    resetSmsTourMockData(scenario);
+    guidedTourDemoActive = true;
+    applySmsTourMockData();
+    activeTab.value = 'overview';
+    await switchTab(activeTab.value);
+};
+
+const cleanupGuidedTourDemo = async () => {
+    if (!guidedTourDemoActive) {
+        return;
+    }
+
+    deactivateSmsTourMock();
+    guidedTourDemoActive = false;
+    const previousTab = guidedTourPageState?.activeTab || 'overview';
+    guidedTourPageState = null;
+    smsLoaded.value = false;
+    await loadSmsData(true);
+    activeTab.value = previousTab;
+};
+
+useGuidedTour({
+    routeName: 'administration-api-sms',
+    isLoading: () => smsLoading.value && !smsLoaded.value,
+    hasOpenDialogs: () => hasOpenDialogs.value,
+    prepareDemo: prepareGuidedTourDemo,
+    cleanupDemo: cleanupGuidedTourDemo,
+    getStepContext: () => ({
+        switchTab
+    }),
+    loadingMessage: 'Attendez la fin du chargement SMS avant de lancer le tour.',
+    dialogsMessage: 'Fermez les fenetres ouvertes avant de lancer le tour.',
+    errorMessage: 'Impossible de lancer le tour de la page SMS.'
+});
 
 const statsPeriodStart = new Date();
 statsPeriodStart.setDate(1);
@@ -266,6 +361,15 @@ const totalCharacters = computed(() =>
     smsTemplates.value.reduce((sum, template) => sum + String(template?.content || '').length, 0)
 );
 const recommendedContract = computed(() => providerOverview.value.contracts.find((item) => item.isRecommended) || providerOverview.value.contracts[0] || null);
+const isOrangeProvider = computed(() => smsConfig.provider === 'orange');
+const isAfrikSmsProvider = computed(() => smsConfig.provider === 'afriksms');
+const providerLabel = computed(() => SMS_PROVIDER_OPTIONS.find((item) => item.value === smsConfig.provider)?.label || smsConfig.provider || '—');
+const providerOverviewTitle = computed(() => (isAfrikSmsProvider.value ? 'Solde AfrikSms' : 'Contrat Orange'));
+const providerOverviewEmptyMessage = computed(() => (
+    isAfrikSmsProvider.value
+        ? (providerOverview.value.message || 'Aucun solde AfrikSms disponible pour le moment.')
+        : (providerOverview.value.message || 'Aucun contrat Orange disponible pour le moment.')
+));
 const approvedSenderNameOptions = computed(() => smsConfig.approvedSenderNames.map((item) => ({ label: item, value: item })));
 const patientPreferenceBypassOptions = [
     { key: 'patientCreated', label: 'Création patient', description: 'Ignore la préférence patient de SMS après création.' },
@@ -291,9 +395,105 @@ const formatDateTime = (value) => {
 const statusOptions = [
     { label: 'Tous', value: null },
     { label: 'Envoyé', value: 'sent' },
+    { label: 'Livré', value: 'delivered' },
     { label: 'Échec', value: 'failed' },
     { label: 'En attente', value: 'pending' }
 ];
+
+const logStatusSeverity = (status) => {
+    if (status === 'delivered' || status === 'sent') return 'success';
+    if (status === 'failed') return 'danger';
+    return 'warning';
+};
+
+const applyProviderDefaults = (provider) => {
+    if (provider === 'afriksms') {
+        smsConfig.baseUrl = 'https://api.afriksms.com/api/web/web_v1/outbounds';
+        return;
+    }
+
+    smsConfig.baseUrl = 'https://api.orange.com';
+    smsConfig.oauthUrl = 'https://api.orange.com/oauth/v3/token';
+};
+
+const formatPeriodDayLabel = (day, { short = true } = {}) => {
+    const date = new Date(`${day}T00:00:00`);
+    if (Number.isNaN(date.getTime())) return day;
+    return date.toLocaleDateString('fr-FR', short
+        ? { day: '2-digit', month: 'short' }
+        : { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
+};
+
+const periodDailyChartData = computed(() => {
+    const labels = periodDailySeries.value.map(([day]) => formatPeriodDayLabel(day));
+    const values = periodDailySeries.value.map(([, count]) => Number(count) || 0);
+
+    return {
+        labels,
+        datasets: [
+            {
+                label: 'SMS envoyés',
+                data: values,
+                fill: true,
+                tension: 0.35,
+                borderColor: '#10b981',
+                backgroundColor: 'rgba(16, 185, 129, 0.12)',
+                pointBackgroundColor: '#10b981',
+                pointBorderColor: '#ffffff',
+                pointHoverBackgroundColor: '#ffffff',
+                pointHoverBorderColor: '#059669',
+                pointRadius: 4,
+                pointHoverRadius: 6
+            }
+        ]
+    };
+});
+
+const periodDailyChartOptions = computed(() => {
+    const documentStyle = getComputedStyle(document.documentElement);
+    const textColorSecondary = documentStyle.getPropertyValue('--text-color-secondary');
+    const surfaceBorder = documentStyle.getPropertyValue('--surface-border');
+
+    return {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { intersect: false, mode: 'index' },
+        plugins: {
+            legend: { display: false },
+            tooltip: {
+                callbacks: {
+                    title: (items) => {
+                        const index = items[0]?.dataIndex ?? 0;
+                        const [day] = periodDailySeries.value[index] || [];
+                        return day ? formatPeriodDayLabel(day, { short: false }) : '';
+                    },
+                    label: (item) => `${item.formattedValue} SMS envoyé(s)`
+                }
+            }
+        },
+        scales: {
+            x: {
+                ticks: {
+                    color: textColorSecondary,
+                    maxRotation: 45,
+                    minRotation: 0,
+                    autoSkip: true,
+                    maxTicksLimit: 12
+                },
+                grid: { display: false }
+            },
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    color: textColorSecondary,
+                    precision: 0,
+                    stepSize: 1
+                },
+                grid: { color: surfaceBorder }
+            }
+        }
+    };
+});
 
 const trafficTrend = computed(() => {
     const series = dailySeries.value;
@@ -429,6 +629,11 @@ onMounted(async () => {
     }
 });
 
+onBeforeUnmount(() => {
+    deactivateSmsTourMock();
+    guidedTourDemoActive = false;
+});
+
 const retryLoadSmsSettings = async () => {
     loadErrorMessage.value = '';
     await loadSmsData(true);
@@ -450,7 +655,7 @@ const retryLoadSmsSettings = async () => {
 
         <template v-else>
         <!-- Header Section -->
-        <div class="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900/50">
+        <div class="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900/50" data-tour="sms-settings.overview">
             <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div class="space-y-2">
                     <p class="text-sm font-semibold uppercase tracking-wider text-blue-600 dark:text-blue-400">
@@ -465,6 +670,7 @@ const retryLoadSmsSettings = async () => {
                         </p>
                         <div
                             class="mt-3 inline-flex max-w-3xl items-start gap-3 rounded-2xl border px-4 py-3"
+                            data-tour="sms-settings.status"
                             :class="smsAutomationOperational
                                 ? 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-800/60 dark:bg-emerald-950/20 dark:text-emerald-200'
                                 : 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-800/60 dark:bg-amber-950/20 dark:text-amber-200'"
@@ -501,7 +707,7 @@ const retryLoadSmsSettings = async () => {
 
         <!-- Tabs Navigation -->
         <Tabs :value="activeTab" @update:value="activeTab = $event">
-            <TabList class="flex flex-wrap gap-2 border-b border-gray-200 dark:border-gray-800">
+            <TabList class="flex flex-wrap gap-2 border-b border-gray-200 dark:border-gray-800" data-tour="sms-settings.tabs">
                 <Tab
                     v-for="item in tabItems"
                     :key="item.value"
@@ -537,7 +743,7 @@ const retryLoadSmsSettings = async () => {
                                     <div class="flex items-start justify-between">
                                         <div>
                                             <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Provider</p>
-                                            <p class="mt-2 text-2xl font-bold text-gray-900 dark:text-white">{{ smsConfig.provider || '—' }}</p>
+                                            <p class="mt-2 text-2xl font-bold text-gray-900 dark:text-white">{{ providerLabel }}</p>
                                             <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ smsConfig.enabled ? 'Actif' : 'Désactivé' }}</p>
                                         </div>
                                         <div class="rounded-xl bg-blue-50 p-2 dark:bg-blue-900/20">
@@ -639,20 +845,9 @@ const retryLoadSmsSettings = async () => {
                                             <h4 class="text-sm font-semibold text-gray-900 dark:text-white">Trafic journalier (période)</h4>
                                             <Tag severity="info" :value="`${periodDailySeries.length} jour(s)`" />
                                         </div>
-                                        <div v-if="periodDailySeries.length" class="max-h-72 space-y-3 overflow-y-auto pr-1">
-                                            <div
-                                                v-for="([day, count]) in periodDailySeries"
-                                                :key="day"
-                                                class="flex items-center gap-3 text-sm"
-                                            >
-                                                <span class="w-24 shrink-0 text-gray-600 dark:text-gray-400">{{ day }}</span>
-                                                <div class="h-2 flex-1 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
-                                                    <div
-                                                        class="h-2 rounded-full bg-gradient-to-r from-emerald-500 to-emerald-600"
-                                                        :style="{ width: `${Math.round((Number(count) / maxPeriodDaily) * 100)}%` }"
-                                                    />
-                                                </div>
-                                                <span class="w-12 text-right font-medium text-gray-700 dark:text-gray-300">{{ count }}</span>
+                                        <div v-if="periodDailySeries.length" class="rounded-xl border border-gray-100 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/30">
+                                            <div class="h-72">
+                                                <Chart type="line" :data="periodDailyChartData" :options="periodDailyChartOptions" class="h-full w-full" />
                                             </div>
                                         </div>
                                         <div
@@ -753,12 +948,12 @@ const retryLoadSmsSettings = async () => {
                                 </div>
                             </div>
 
-                            <!-- Orange Contract -->
+                            <!-- Provider Overview -->
                             <div class="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900/50">
                                 <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                                     <div>
-                                        <p class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Contrat Orange</p>
-                                        <h3 class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">Forfait et disponibilité</h3>
+                                        <p class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">{{ providerOverviewTitle }}</p>
+                                        <h3 class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">{{ isAfrikSmsProvider ? 'Crédits par pays' : 'Forfait et disponibilité' }}</h3>
                                     </div>
                                     <Tag
                                         :severity="providerOverview.success ? 'success' : 'warn'"
@@ -774,18 +969,18 @@ const retryLoadSmsSettings = async () => {
                                     </div>
 
                                     <div class="rounded-xl border border-gray-100 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/30">
-                                        <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Unités restantes</p>
+                                        <p class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ isAfrikSmsProvider ? 'SMS restants' : 'Unités restantes' }}</p>
                                         <p class="mt-1 text-xl font-bold text-gray-900 dark:text-white">{{ recommendedContract.availableUnits ?? '—' }}</p>
-                                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Contrat recommandé</p>
+                                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ isAfrikSmsProvider ? 'Solde recommandé' : 'Contrat recommandé' }}</p>
                                     </div>
 
-                                    <div class="rounded-xl border border-gray-100 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/30">
+                                    <div v-if="!isAfrikSmsProvider" class="rounded-xl border border-gray-100 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/30">
                                         <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Statut</p>
                                         <p class="mt-1 text-xl font-bold text-gray-900 dark:text-white">{{ recommendedContract.status || '—' }}</p>
                                         <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Type {{ recommendedContract.type || '—' }}</p>
                                     </div>
 
-                                    <div class="rounded-xl border border-gray-100 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/30">
+                                    <div v-if="!isAfrikSmsProvider" class="rounded-xl border border-gray-100 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/30">
                                         <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Expiration</p>
                                         <p class="mt-1 text-xl font-bold text-gray-900 dark:text-white">{{ formatDateTime(recommendedContract.expirationDate) }}</p>
                                         <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ providerOverview.message || 'Données Orange' }}</p>
@@ -793,7 +988,7 @@ const retryLoadSmsSettings = async () => {
                                 </div>
 
                                 <div v-else class="rounded-xl border border-dashed border-gray-300 px-4 py-8 text-center text-sm text-gray-500 dark:border-gray-600 dark:text-gray-400">
-                                    {{ providerOverview.message || 'Aucun contrat Orange disponible pour le moment.' }}
+                                    {{ providerOverviewEmptyMessage }}
                                 </div>
                             </div>
                         </template>
@@ -802,25 +997,31 @@ const retryLoadSmsSettings = async () => {
 
                 <!-- Configuration Tab -->
                 <TabPanel value="config">
-                    <div class="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900/50">
+                    <div class="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900/50" data-tour="sms-settings.config">
                         <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                             <div>
                                 <p class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Configuration</p>
                                 <h3 class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">Configuration & test</h3>
                             </div>
                             <div class="flex flex-wrap gap-3">
-                                <Button label="Test connexion" icon="pi pi-bolt" severity="secondary" :loading="smsTesting" @click="testConnectionAction" />
+                                <Button label="Test connexion" icon="pi pi-bolt" severity="secondary" :loading="smsTesting" data-tour="sms-settings.test-connection" @click="testConnectionAction" />
                                 <Button label="Envoyer SMS test" icon="pi pi-send" severity="info" :loading="smsSendingTest" @click="sendSmsTestAction" />
-                                <Button label="Sauvegarder" icon="pi pi-save" :loading="smsSaving" @click="saveSmsConfigAction" />
+                                <Button label="Sauvegarder" icon="pi pi-save" :loading="smsSaving" data-tour="sms-settings.save-config" @click="saveSmsConfigAction" />
                             </div>
                         </div>
 
                         <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
-                            <div>
-                                <FloatLabel variant="on">
-                                    <InputText id="sms-provider" v-model="smsConfig.provider" disabled class="w-full" />
-                                    <label for="sms-provider">Provider</label>
-                                </FloatLabel>
+                            <div class="space-y-2">
+                                <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Provider</label>
+                                <Select
+                                    id="sms-provider"
+                                    v-model="smsConfig.provider"
+                                    :options="SMS_PROVIDER_OPTIONS"
+                                    optionLabel="label"
+                                    optionValue="value"
+                                    class="w-full"
+                                    @update:modelValue="applyProviderDefaults"
+                                />
                             </div>
 
                             <div class="space-y-2">
@@ -837,18 +1038,18 @@ const retryLoadSmsSettings = async () => {
                             <div>
                                 <FloatLabel variant="on">
                                     <InputText id="sms-client-id" v-model="smsConfig.clientId" class="w-full" />
-                                    <label for="sms-client-id">Client ID</label>
+                                    <label for="sms-client-id">{{ isAfrikSmsProvider ? 'Identifiant API (ClientId)' : 'Client ID' }}</label>
                                 </FloatLabel>
                             </div>
 
                             <div>
                                 <FloatLabel variant="on">
                                     <InputText id="sms-client-secret" v-model="smsConfig.clientSecret" type="password" class="w-full" />
-                                    <label for="sms-client-secret">Client Secret</label>
+                                    <label for="sms-client-secret">{{ isAfrikSmsProvider ? 'Clé API (ApiKey)' : 'Client Secret' }}</label>
                                 </FloatLabel>
                             </div>
 
-                            <div class="space-y-2">
+                            <div v-if="isOrangeProvider" class="space-y-2">
                                 <FloatLabel variant="on">
                                     <InputText id="sms-sender-address" v-model="smsConfig.senderAddress" class="w-full" />
                                     <label for="sms-sender-address">Sender Address</label>
@@ -857,9 +1058,9 @@ const retryLoadSmsSettings = async () => {
                             </div>
 
                             <div class="space-y-3">
-                                <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Sender Name</label>
+                                <label class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ isAfrikSmsProvider ? 'SenderId' : 'Sender Name' }}</label>
                                 <Select
-                                    v-if="approvedSenderNameOptions.length"
+                                    v-if="isOrangeProvider && approvedSenderNameOptions.length"
                                     v-model="smsConfig.senderName"
                                     :options="approvedSenderNameOptions"
                                     optionLabel="label"
@@ -870,9 +1071,30 @@ const retryLoadSmsSettings = async () => {
                                 />
                                 <FloatLabel variant="on">
                                     <InputText id="sms-sender-name" v-model="smsConfig.senderName" class="w-full" />
-                                    <label for="sms-sender-name">Saisie manuelle</label>
+                                    <label for="sms-sender-name">{{ isAfrikSmsProvider ? 'SenderId (11 caractères max)' : 'Saisie manuelle' }}</label>
                                 </FloatLabel>
-                                <p class="text-xs text-gray-500 dark:text-gray-400">Optionnel. Doit être whitelisté par Orange et limité à 11 caractères alphanumériques ou espaces.</p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">
+                                    {{ isAfrikSmsProvider ? 'Obligatoire pour AfrikSms. 11 caractères maximum.' : 'Optionnel. Doit être whitelisté par Orange et limité à 11 caractères alphanumériques ou espaces.' }}
+                                </p>
+                            </div>
+
+                            <div v-if="isAfrikSmsProvider" class="space-y-2">
+                                <FloatLabel variant="on">
+                                    <InputText id="sms-webhook-base-url" v-model="smsConfig.webhookBaseUrl" class="w-full" />
+                                    <label for="sms-webhook-base-url">URL publique du backend</label>
+                                </FloatLabel>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">Ex: https://cabinet.example.com — utilisée pour enregistrer /api/sms/webhooks/afriksms chez AfrikSms.</p>
+                            </div>
+
+                            <div v-if="isAfrikSmsProvider" class="space-y-2">
+                                <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Méthode callback DLR</label>
+                                <Select
+                                    v-model="smsConfig.callbackNotifyType"
+                                    :options="SMS_CALLBACK_NOTIFY_OPTIONS"
+                                    optionLabel="label"
+                                    optionValue="value"
+                                    class="w-full"
+                                />
                             </div>
 
                             <div>
@@ -882,7 +1104,7 @@ const retryLoadSmsSettings = async () => {
                                 </FloatLabel>
                             </div>
 
-                            <div>
+                            <div v-if="isOrangeProvider">
                                 <FloatLabel variant="on">
                                     <InputText id="sms-oauth-url" v-model="smsConfig.oauthUrl" class="w-full" />
                                     <label for="sms-oauth-url">OAuth URL</label>
@@ -917,7 +1139,7 @@ const retryLoadSmsSettings = async () => {
 
                         <div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
                             <!-- Approved Sender Names -->
-                            <div class="rounded-xl border border-gray-200 bg-gray-50 p-5 dark:border-gray-700 dark:bg-gray-800/30">
+                            <div v-if="isOrangeProvider" class="rounded-xl border border-gray-200 bg-gray-50 p-5 dark:border-gray-700 dark:bg-gray-800/30">
                                 <div class="mb-4">
                                     <h4 class="text-base font-semibold text-gray-900 dark:text-white">Sender Names approuvés</h4>
                                     <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Ajoutez ici les Sender Names déjà whitelistés dans votre portail Orange Developer.</p>
@@ -969,7 +1191,7 @@ const retryLoadSmsSettings = async () => {
                 </TabPanel>
 
                 <TabPanel value="queue">
-                    <div class="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,1.6fr)]">
+                    <div class="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,1.6fr)]" data-tour="sms-settings.queue">
                         <div class="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900/50">
                             <div class="mb-6 flex items-start justify-between gap-3">
                                 <div>
@@ -1015,7 +1237,7 @@ const retryLoadSmsSettings = async () => {
                                 </div>
                             </div>
 
-                            <DataTable :value="smsQueue" paginator :rows="10" :rowsPerPageOptions="[10, 20, 50]" dataKey="id" responsiveLayout="scroll" stripedRows showGridlines class="text-sm">
+                            <DataTable :value="smsQueue" paginator :rows="10" :rowsPerPageOptions="[10, 20, 50]" dataKey="id" responsiveLayout="scroll" stripedRows showGridlines class="text-sm" data-tour="sms-settings.queue-actions">
                                 <template #empty>
                                     <div class="py-10 text-center text-sm text-gray-500 dark:text-gray-400">
                                         Aucun SMS en file pour le moment.
@@ -1240,7 +1462,7 @@ const retryLoadSmsSettings = async () => {
                             </Column>
                             <Column field="status" header="Statut" class="whitespace-nowrap">
                                 <template #body="{ data }">
-                                    <Tag :severity="data.status === 'sent' ? 'success' : data.status === 'failed' ? 'danger' : 'warning'" :value="data.status" />
+                                    <Tag :severity="logStatusSeverity(data.status)" :value="data.status" />
                                 </template>
                             </Column>
                             <Column field="type" header="Type" class="whitespace-nowrap"></Column>
@@ -1251,7 +1473,7 @@ const retryLoadSmsSettings = async () => {
 
                 <!-- Templates Tab -->
                 <TabPanel value="templates">
-                    <div class="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900/50">
+                    <div class="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900/50" data-tour="sms-settings.templates">
                         <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                             <div>
                                 <p class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Contenu</p>
@@ -1286,7 +1508,7 @@ const retryLoadSmsSettings = async () => {
                             </div>
 
                             <!-- Preview Section -->
-                            <div class="rounded-xl border border-gray-200 bg-gray-50 p-5 dark:border-gray-700 dark:bg-gray-800/30">
+                            <div class="rounded-xl border border-gray-200 bg-gray-50 p-5 dark:border-gray-700 dark:bg-gray-800/30" data-tour="sms-settings.template-preview">
                                 <div class="mb-4">
                                     <h4 class="text-base font-semibold text-gray-900 dark:text-white">Variables dynamiques</h4>
                                     <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Ajustez les variables puis générez un aperçu.</p>
@@ -1337,7 +1559,7 @@ const retryLoadSmsSettings = async () => {
 
                 <!-- Manual Send Tab -->
                 <TabPanel value="manual">
-                    <div class="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900/50">
+                    <div class="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900/50" data-tour="sms-settings.manual-send">
                         <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                             <div>
                                 <p class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Action directe</p>

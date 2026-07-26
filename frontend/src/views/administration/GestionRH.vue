@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import Breadcrumb from 'primevue/breadcrumb';
 import Button from 'primevue/button';
@@ -23,9 +23,8 @@ import { useEmployees } from '@/composables/useEmployees';
 import { useLeaves } from '@/composables/useLeaves';
 import { usePayrolls } from '@/composables/usePayrolls';
 import { usePrinter } from '@/composables/usePrinter';
-import { GUIDED_TOUR_START_EVENT } from '@/tours';
-import { createAdministrationGestionRHTour } from '@/tours/administrationGestionRHTour';
-import { startTourGuide } from '@/tours/tourGuideClient';
+import { activateAdminTourMock, deactivateAdminTourMock, resetAdminTourMockData } from '@/services/adminTourMock';
+import { useGuidedTour } from '@/composables/useGuidedTour';
 import { employeeTypeInfirmierOption, formatEmployeeTypeLabel } from '@/utils/employeeTypeUtils';
 
 const router = useRouter();
@@ -113,7 +112,7 @@ const formVisible = ref(false);
 const formMode = ref('create');
 const currentEmployee = ref(null);
 
-const isGuidedTourStarting = ref(false);
+let guidedTourDemoActive = false;
 
 const employeeOptions = computed(() => employees.value || []);
 
@@ -453,37 +452,52 @@ const confirmDeleteLeave = (event, row) => {
     });
 };
 
-const handleGuidedTourRequest = async (event) => {
-    if (event?.detail?.routeName !== 'administration-gestionrh' || isGuidedTourStarting.value) return;
-
-    isGuidedTourStarting.value = true;
-    try {
-        activeTab.value = 'employees';
-        await startTourGuide({
-            group: 'administration-gestionrh',
-            steps: createAdministrationGestionRHTour({
-                hasEmployees: filteredEmployees.value.length > 0,
-                openCreateDialog: async () => openCreateEmployee(),
-                openEditDialog: async () => {
-                    if (filteredEmployees.value.length) {
-                        openEditEmployee(filteredEmployees.value[0]);
-                    }
-                },
-                expandGroups: async () => undefined,
-                closeAllDialogs: () => {
-                    formVisible.value = false;
-                    leaveDialogVisible.value = false;
-                    payrollDialogVisible.value = false;
-                    payrollDetailVisible.value = false;
-                }
-            })
-        });
-    } catch (error) {
-        toast.add({ severity: 'error', summary: 'Aide guidee', detail: 'Impossible de lancer le tour RH.', life: 3000 });
-    } finally {
-        isGuidedTourStarting.value = false;
-    }
+const closeRhTourDialogs = () => {
+    formVisible.value = false;
+    leaveDialogVisible.value = false;
+    payrollDialogVisible.value = false;
+    payrollDetailVisible.value = false;
 };
+
+const prepareGuidedTourDemo = async () => {
+    activateAdminTourMock();
+    resetAdminTourMockData();
+    guidedTourDemoActive = true;
+    activeTab.value = 'employees';
+    await loadEmployees();
+    await nextTick();
+};
+
+const cleanupGuidedTourDemo = async () => {
+    if (!guidedTourDemoActive) {
+        closeRhTourDialogs();
+        return;
+    }
+
+    closeRhTourDialogs();
+    deactivateAdminTourMock();
+    guidedTourDemoActive = false;
+    await loadEmployees();
+    await nextTick();
+};
+
+useGuidedTour({
+    routeName: 'administration-gestionrh',
+    prepareDemo: prepareGuidedTourDemo,
+    cleanupDemo: cleanupGuidedTourDemo,
+    getStepContext: () => ({
+        hasEmployees: filteredEmployees.value.length > 0,
+        openCreateDialog: async () => openCreateEmployee(),
+        openEditDialog: async () => {
+            if (filteredEmployees.value.length) {
+                openEditEmployee(filteredEmployees.value[0]);
+            }
+        },
+        expandGroups: async () => undefined,
+        closeAllDialogs: closeRhTourDialogs
+    }),
+    errorMessage: 'Impossible de lancer le tour RH.'
+});
 
 let searchTimer = null;
 watch(search, () => {
@@ -515,11 +529,12 @@ watch(activeTab, (tab) => {
 
 onMounted(async () => {
     await loadEmployees();
-    window.addEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
 });
 
 onBeforeUnmount(() => {
-    window.removeEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
+    deactivateAdminTourMock();
+    guidedTourDemoActive = false;
+    closeRhTourDialogs();
 });
 </script>
 

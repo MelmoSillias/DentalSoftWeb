@@ -355,7 +355,7 @@ const handleSubmit = (event) => {
 <template>
     <div class="flex flex-col gap-4">
         <ConfirmPopup />
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4" data-tour="patients-form-rdv.details">
             <div class="flex flex-col gap-2" v-if="!isPatientPreselected">
                 <label class="font-semibold">Patient</label>
                 <Select v-model="selectedPatientId" :options="patientOptions" optionLabel="label" optionValue="value"
@@ -397,7 +397,7 @@ const handleSubmit = (event) => {
                 <label class="font-semibold">Notes</label>
                 <Textarea v-model="form.notes" rows="3" auto-resize placeholder="Notes supplémentaires" />
             </div>
-            <div class="md:col-span-2 rounded-xl border border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-800/40">
+            <div class="md:col-span-2 rounded-xl border border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-800/40" data-tour="patients-form-rdv.sms-reminder">
                 <div class="mb-4 flex items-start justify-between gap-3">
                     <div>
                         <label class="font-semibold">Programmation SMS rapide</label>
@@ -423,7 +423,7 @@ const handleSubmit = (event) => {
                 </p>
             </div>
         </div>
-        <div class="flex gap-2 justify-end">
+        <div class="flex gap-2 justify-end" data-tour="patients-form-rdv.actions">
             <Button type="button" label="Annuler" severity="secondary" @click="emit('cancel')" />
             <Button type="button" label="Créer" icon="pi pi-check" :loading="loading" @click="handleSubmit" />
         </div>

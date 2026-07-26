@@ -10,7 +10,7 @@ import { useToast } from 'primevue/usetoast';
 import router from '@/router';
 import { useMercureNotifications } from '@/composables/useMercureNotifications';
 import { useRoute } from 'vue-router';
-import { isGuidedTourRoute, requestGuidedTourStart } from '@/tours';
+import { getTaskMenuItemsForRoute, isGuidedTourRoute, requestGuidedTourStart } from '@/tours';
 import cabinetConfig from '@/cabinetConfig';
 
 const { toggleMenu, toggleDarkMode, isDarkTheme } = useLayout();
@@ -27,6 +27,9 @@ const notificationsPopover = ref(null);
 const profilePopover = ref(null);
 const isLoggingOut = ref(false);
 const isNotificationsLoading = ref(false);
+const showHelpPopover = ref(false);
+const helpButton = ref(null);
+const helpPopover = ref(null);
 
 
 const {
@@ -95,6 +98,13 @@ if (onNotificationReceived) {
 
 const topbarNotifications = computed(() => notifications.value.slice(0, 5));
 const isGuidedTourAvailable = computed(() => isGuidedTourRoute(route.name));
+const guidedTourMenuItems = computed(() => {
+    if (!isGuidedTourAvailable.value) {
+        return [];
+    }
+
+    return getTaskMenuItemsForRoute(route.name, { roles: auth.roles || auth.user?.roles || [] });
+});
 
 function getNotificationIcon(notification) {
     const type = notification?.type;
@@ -243,18 +253,33 @@ async function handleNotificationClick(notification) {
     }
 }
 
-function handleStartGuidedTour() {
+function toggleHelpPopover(event) {
     if (!isGuidedTourAvailable.value) {
         toast.add({
             severity: 'info',
-            summary: 'Aide guidée',
+            summary: 'Aide guidee',
             detail: 'Aucun tour n est encore disponible sur cette page.',
             life: 2500
         });
         return;
     }
 
-    requestGuidedTourStart(route.name);
+    if (showHelpPopover.value) {
+        helpPopover.value?.hide?.();
+    } else {
+        helpPopover.value?.show?.(event);
+    }
+    showHelpPopover.value = !showHelpPopover.value;
+}
+
+function closeHelpPopover() {
+    showHelpPopover.value = false;
+    helpPopover.value?.hide?.();
+}
+
+function handleStartGuidedTourTask(taskId, variantId = null) {
+    closeHelpPopover();
+    requestGuidedTourStart(route.name, { taskId, variantId });
 }
 </script>
 
@@ -282,12 +307,54 @@ function handleStartGuidedTour() {
                     type="button"
                     class="layout-topbar-action"
                     :class="{ 'layout-topbar-action-disabled': !isGuidedTourAvailable }"
-                    @click="handleStartGuidedTour"
+                    @click="toggleHelpPopover($event)"
+                    ref="helpButton"
                     :aria-disabled="!isGuidedTourAvailable"
-                    title="Aide guidée"
+                    title="Aide guidee"
                 >
                     <i class="pi pi-question-circle"></i>
                 </button>
+                <Popover
+                    ref="helpPopover"
+                    v-model:visible="showHelpPopover"
+                    :autoHide="true"
+                    :dismissable="true"
+                    :target="helpButton"
+                    position="bottom"
+                    class="w-[22rem] max-w-[90vw] bg-surface-0 dark:bg-surface-900 shadow-xl rounded-2xl border border-surface-200/70 dark:border-surface-700/70 p-0 overflow-hidden"
+                    style="z-index: 1000"
+                >
+                    <div class="px-4 py-3 border-b border-surface-200/70 dark:border-surface-700/70 bg-surface-50/80 dark:bg-surface-800/80">
+                        <div class="flex items-center gap-2">
+                            <i class="pi pi-question-circle text-primary-500"></i>
+                            <span class="font-semibold text-surface-900 dark:text-surface-50">Aide guidee</span>
+                        </div>
+                        <p class="text-xs text-surface-500 dark:text-surface-400 mt-1">
+                            Choisissez une action a decouvrir sur cette page.
+                        </p>
+                    </div>
+                    <div class="p-2 space-y-1 max-h-[24rem] overflow-y-auto">
+                        <button
+                            v-for="item in guidedTourMenuItems"
+                            :key="`${item.taskId}:${item.variantId || 'default'}`"
+                            type="button"
+                            class="w-full text-left p-3 rounded-xl border border-transparent hover:border-surface-200 dark:hover:border-surface-700 hover:bg-surface-50 dark:hover:bg-surface-800 transition-colors"
+                            @click="handleStartGuidedTourTask(item.taskId, item.variantId)"
+                        >
+                            <div class="flex items-start gap-3">
+                                <i :class="[item.icon, 'mt-0.5 text-primary-500']"></i>
+                                <div class="min-w-0 flex-1">
+                                    <p class="text-sm font-medium text-surface-800 dark:text-surface-100 leading-5">
+                                        {{ item.label }}
+                                    </p>
+                                    <p v-if="item.description" class="text-xs text-surface-500 dark:text-surface-400 mt-1">
+                                        {{ item.description }}
+                                    </p>
+                                </div>
+                            </div>
+                        </button>
+                    </div>
+                </Popover>
                 <!-- <div class="relative">
                      <button
                         v-styleclass="{ selector: '@next', enterFromClass: 'hidden', enterActiveClass: 'animate-scalein', leaveToClass: 'hidden', leaveActiveClass: 'animate-fadeout', hideOnOutsideClick: true }"

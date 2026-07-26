@@ -21,7 +21,7 @@ final class SmsConfigService
     public function __construct(
         private readonly SmsProviderConfigRepository $configRepository,
         private readonly EntityManagerInterface $entityManager,
-        private readonly \App\Communication\Service\CryptoService $cryptoService,
+        private readonly CryptoService $cryptoService,
     ) {
     }
 
@@ -57,23 +57,42 @@ final class SmsConfigService
             'patientPreferenceBypass' => $this->sanitizePatientPreferenceBypass($config->getPatientPreferenceBypass()),
             'baseUrl' => $config->getBaseUrl(),
             'oauthUrl' => $config->getOauthUrl(),
+            'webhookBaseUrl' => $config->getWebhookBaseUrl(),
+            'callbackNotifyType' => $config->getCallbackNotifyType(),
             'updatedAt' => $config->getUpdatedAt()->format('Y-m-d H:i:s'),
         ];
     }
 
     /**
      * @param array<string, mixed> $payload
+     * @return array<string, mixed>
      */
     public function saveConfig(array $payload): array
     {
         $config = $this->getConfig();
+        $previousProvider = $config->getProvider();
 
+        $provider = $this->sanitizeString($payload['provider'] ?? $config->getProvider()) ?: $config->getProvider();
+        if (!in_array($provider, [SmsClientResolver::PROVIDER_ORANGE, SmsClientResolver::PROVIDER_AFRIKSMS], true)) {
+            $provider = SmsClientResolver::PROVIDER_ORANGE;
+        }
+
+        $config->setProvider($provider);
         $config->setEnabled((bool) ($payload['enabled'] ?? $config->isEnabled()));
         $config->setClientId($this->sanitizeString($payload['clientId'] ?? $config->getClientId()));
-        $config->setSenderAddress($this->sanitizeString($payload['senderAddress'] ?? $payload['senderName'] ?? $config->getSenderAddress()));
+        $config->setSenderAddress($this->sanitizeString($payload['senderAddress'] ?? $config->getSenderAddress()));
         $config->setSenderName($this->sanitizeString($payload['senderName'] ?? $config->getSenderName()));
         $config->setApprovedSenderNames($this->sanitizeSenderNameList($payload['approvedSenderNames'] ?? $config->getApprovedSenderNames()));
         $config->setPatientPreferenceBypass($this->sanitizePatientPreferenceBypass($payload['patientPreferenceBypass'] ?? $config->getPatientPreferenceBypass()));
+        $config->setWebhookBaseUrl($this->sanitizeString($payload['webhookBaseUrl'] ?? $config->getWebhookBaseUrl()));
+
+        if (array_key_exists('callbackNotifyType', $payload)) {
+            $config->setCallbackNotifyType((int) $payload['callbackNotifyType']);
+        }
+
+        if ($provider !== $previousProvider) {
+            $this->applyProviderDefaults($config, $provider);
+        }
 
         $baseUrl = $this->sanitizeString($payload['baseUrl'] ?? $config->getBaseUrl()) ?: $config->getBaseUrl();
         $oauthUrl = $this->sanitizeString($payload['oauthUrl'] ?? $config->getOauthUrl()) ?: $config->getOauthUrl();
@@ -97,6 +116,17 @@ final class SmsConfigService
     public function getClientSecret(SmsProviderConfig $config): ?string
     {
         return $this->cryptoService->decrypt($config->getClientSecretEncrypted());
+    }
+
+    public function buildAfrikSmsWebhookUrl(?SmsProviderConfig $config = null): ?string
+    {
+        $config ??= $this->getConfig();
+        $baseUrl = trim((string) ($config->getWebhookBaseUrl() ?? ''));
+        if ($baseUrl === '') {
+            return null;
+        }
+
+        return rtrim($baseUrl, '/') . '/api/sms/webhooks/afriksms';
     }
 
     /**
@@ -127,7 +157,22 @@ final class SmsConfigService
             return ['valid' => false, 'message' => 'Le module SMS est désactivé.'];
         }
 
-        if (!$config->getClientId() || !$this->getClientSecret($config) || !$config->getSenderAddress()) {
+        if (!$config->getClientId() || !$this->getClientSecret($config)) {
+            return ['valid' => false, 'message' => 'Configuration SMS incomplète (identifiants API manquants).'];
+        }
+
+        return match ($config->getProvider()) {
+            SmsClientResolver::PROVIDER_AFRIKSMS => $this->validateAfrikSmsConfig($config),
+            default => $this->validateOrangeConfig($config),
+        };
+    }
+
+    /**
+     * @return array{valid: bool, message?: string}
+     */
+    private function validateOrangeConfig(SmsProviderConfig $config): array
+    {
+        if (!$config->getSenderAddress()) {
             return ['valid' => false, 'message' => 'Configuration SMS incomplète (Client ID / Secret / Sender).'];
         }
 
@@ -146,6 +191,38 @@ final class SmsConfigService
         }
 
         return ['valid' => true];
+    }
+
+    /**
+     * @return array{valid: bool, message?: string}
+     */
+    private function validateAfrikSmsConfig(SmsProviderConfig $config): array
+    {
+        $senderId = trim((string) ($config->getSenderName() ?? ''));
+        if ($senderId === '') {
+            return ['valid' => false, 'message' => 'Configuration AfrikSms incomplète (SenderId requis).'];
+        }
+
+        if (!$this->looksLikeSenderName($senderId)) {
+            return [
+                'valid' => false,
+                'message' => 'SenderId invalide. Utilisez 11 caractères maximum, alphanumériques et espaces uniquement.',
+            ];
+        }
+
+        return ['valid' => true];
+    }
+
+    private function applyProviderDefaults(SmsProviderConfig $config, string $provider): void
+    {
+        if ($provider === SmsClientResolver::PROVIDER_AFRIKSMS) {
+            $config->setBaseUrl(AfrikSmsClient::DEFAULT_BASE_URL);
+
+            return;
+        }
+
+        $config->setBaseUrl('https://api.orange.com');
+        $config->setOauthUrl('https://api.orange.com/oauth/v3/token');
     }
 
     private function looksLikeSenderName(string $value): bool

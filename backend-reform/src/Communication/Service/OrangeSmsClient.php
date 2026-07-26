@@ -2,11 +2,12 @@
 
 namespace App\Communication\Service;
 
+use App\Communication\Contract\SmsClientInterface;
 use App\Communication\Entity\SmsProviderConfig;
 use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
-final class OrangeSmsClient
+final class OrangeSmsClient implements SmsClientInterface
 {
     public function __construct(
         private readonly HttpClientInterface $httpClient,
@@ -40,7 +41,7 @@ final class OrangeSmsClient
     /**
      * @return array<string, mixed>
      */
-    public function fetchContractOverview(): array
+    public function fetchProviderOverview(): array
     {
         try {
             $config = $this->smsConfigService->getConfig();

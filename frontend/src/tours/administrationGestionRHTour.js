@@ -1,101 +1,99 @@
-import { nextTick } from 'vue';
-import { getTourGuideClient } from './tourGuideClient';
+import { flushUi, openDialogStep, normalizeTourSteps } from './shared/tourHelpers';
+import { createTourRegistry } from './shared/createTourRegistry';
 
-function wait(ms = 120) {
-    return new Promise((resolve) => {
-        window.setTimeout(resolve, ms);
-    });
-}
+const GROUP = 'administration-gestionrh';
 
-async function refreshTourLayout() {
-    const tg = getTourGuideClient();
+const TASKS = [
+    { id: 'overview', label: 'Presentation de la page', icon: 'pi pi-compass', mockScenario: 'static' },
+    { id: 'add-employee', label: 'Ajouter un employe', icon: 'pi pi-user-plus', mockScenario: 'static' },
+    { id: 'manage-contracts', label: 'Gerer les contrats', icon: 'pi pi-briefcase', mockScenario: 'static' }
+];
 
-    if (!tg?.isVisible) return;
-    await tg.updatePositions().catch(() => undefined);
-}
-
-async function flushUi() {
-    await nextTick();
-    await wait();
-    await refreshTourLayout();
-}
-
-async function openDialogStep(openDialog, closeAllDialogs) {
-    closeAllDialogs();
-    await flushUi();
-    await openDialog();
-    await flushUi();
-}
-
-export function createAdministrationGestionRHTour({ hasEmployees, openCreateDialog, openEditDialog, expandGroups, closeAllDialogs }) {
-    const steps = [
+function buildOverviewSteps(ctx) {
+    return normalizeTourSteps([
         {
-            group: 'administration-gestionrh',
-            order: 10,
+            group: GROUP,
             target: '[data-tour="admin-rh.header"]',
             title: 'Pilotage RH',
-            content: 'Cette page centralise la gestion RH du cabinet. Vous y retrouvez la liste des employes, l acces au formulaire de creation et les actions d administration courantes sur chaque fiche.'
+            content: 'Cette page centralise la gestion RH du cabinet: liste des employes, creation et actions courantes.'
         },
         {
-            group: 'administration-gestionrh',
-            order: 20,
+            group: GROUP,
             target: '[data-tour="admin-rh.table"]',
-            title: 'Onglet employes',
-            content: 'Le premier onglet centralise la liste des employes, les filtres de recherche et les actions de consultation, modification ou suppression de fiche RH.'
-        },
-        {
-            group: 'administration-gestionrh',
-            order: 30,
-            target: '[data-tour="admin-rh.table"]',
-            title: 'Table employes',
-            content: 'La table affiche les informations RH utiles pour chaque employe: identite, fonction, type, telephone et date d embauche.',
+            title: 'Liste des employes',
+            content: 'Le tableau affiche identite, fonction, type, telephone et date d embauche pour chaque employe.',
             beforeEnter: async () => {
-                await expandGroups();
+                await ctx.expandGroups?.();
+                await flushUi();
             }
         },
         {
-            group: 'administration-gestionrh',
-            order: 40,
+            group: GROUP,
             target: '[data-tour="admin-rh.actions"]',
             title: 'Actions par ligne',
-            content: 'Chaque ligne donne acces aux actions metier principales: ouvrir la fiche detaillee dans un nouvel onglet, modifier les informations RH directement depuis la liste, ou supprimer un profil si necessaire.',
+            content: 'Chaque ligne donne acces a la fiche detaillee, a la modification RH ou a la suppression.',
             beforeEnter: async () => {
-                await expandGroups();
+                await ctx.expandGroups?.();
+                await flushUi();
             }
         },
         {
-            group: 'administration-gestionrh',
-            order: 50,
+            group: GROUP,
             target: '[data-tour="admin-rh.stats"]',
             title: 'Indicateurs rapides',
-            content: 'Les cartes de synthese fournissent une lecture rapide des employes, des paiements de salaire et des conges enregistres.'
+            content: 'Les cartes de synthese fournissent une lecture rapide des employes, salaires et conges enregistres.'
+        }
+    ]);
+}
+
+export const administrationGestionrhRegistry = createTourRegistry(GROUP, TASKS, {
+    overview: buildOverviewSteps,
+    'add-employee': (ctx) => normalizeTourSteps([
+        {
+            group: GROUP,
+            target: '[data-tour="admin-rh.header"]',
+            title: 'Ajouter un employe',
+            content: 'Depuis la page RH, ouvrez le formulaire pour creer un nouveau collaborateur.'
         },
         {
-            group: 'administration-gestionrh',
-            order: 60,
+            group: GROUP,
             target: '[data-tour="admin-rh.dialog.form"]',
-            title: 'Ajouter un employe',
-            content: 'Le formulaire RH permet de creer un collaborateur sans quitter la liste. Il regroupe les donnees personnelles, les informations contractuelles, la configuration du salaire et les documents administratifs.',
+            title: 'Formulaire RH',
+            content: 'Renseignez donnees personnelles, informations contractuelles, salaire et documents administratifs.',
             beforeEnter: async () => {
-                await expandGroups();
-                await openDialogStep(openCreateDialog, closeAllDialogs);
+                await ctx.expandGroups?.();
+                await openDialogStep(ctx.openCreateDialog, ctx.closeAllDialogs);
             }
         }
-    ];
-
-    if (hasEmployees) {
-        steps.push({
-            group: 'administration-gestionrh',
-            order: 70,
-            target: '[data-tour="admin-rh.dialog.form"]',
+    ]),
+    'manage-contracts': (ctx) => normalizeTourSteps([
+        {
+            group: GROUP,
+            target: '[data-tour="admin-rh.actions"]',
             title: 'Modifier un employe',
-            content: 'La meme modale sert ensuite a mettre a jour une fiche existante. C est le point d entree principal pour corriger un contrat, ajuster un salaire ou completer les informations d un employe deja cree.',
+            content: 'Utilisez l action edition sur une ligne pour mettre a jour le contrat ou le salaire.',
             beforeEnter: async () => {
-                await expandGroups();
-                await openDialogStep(openEditDialog, closeAllDialogs);
+                await ctx.expandGroups?.();
+                await flushUi();
             }
-        });
-    }
+        },
+        {
+            group: GROUP,
+            target: '[data-tour="admin-rh.dialog.form"]',
+            title: 'Formulaire de modification',
+            content: 'La modale permet de corriger un contrat, ajuster un salaire ou completer les informations RH.',
+            beforeEnter: async () => {
+                await ctx.expandGroups?.();
+                await openDialogStep(ctx.openEditDialog, ctx.closeAllDialogs);
+            }
+        }
+    ])
+});
 
-    return steps;
+export function buildAdministrationGestionRHTourSteps(taskId, variantId, ctx) {
+    return administrationGestionrhRegistry.buildSteps(taskId, variantId, ctx);
+}
+
+export function createAdministrationGestionRHTour(ctx) {
+    return buildAdministrationGestionRHTourSteps('overview', null, ctx);
 }

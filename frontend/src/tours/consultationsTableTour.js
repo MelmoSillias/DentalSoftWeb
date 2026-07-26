@@ -1,201 +1,212 @@
-import { nextTick } from 'vue';
-import { getTourGuideClient } from './tourGuideClient';
+import { flushUi, openDialogStep, normalizeTourSteps } from './shared/tourHelpers';
+import { createTourRegistry } from './shared/createTourRegistry';
 
-function wait(ms = 120) {
-    return new Promise((resolve) => {
-        window.setTimeout(resolve, ms);
-    });
-}
+const GROUP = 'consultations-table';
 
-async function refreshTourLayout() {
-    const tg = getTourGuideClient();
+const TASKS = [
+    { id: 'overview', label: 'Presentation de la page', icon: 'pi pi-compass', mockScenario: 'static' },
+    { id: 'filter-date', label: 'Filtrer par date', icon: 'pi pi-filter', mockScenario: 'static' },
+    { id: 'continue-open', label: 'Poursuivre une consultation', icon: 'pi pi-play', mockScenario: 'static' },
+    { id: 'view-details', label: 'Voir les details', icon: 'pi pi-eye', mockScenario: 'static' },
+    { id: 'quick-cloture', label: 'Cloture rapide', icon: 'pi pi-check-circle', mockScenario: 'static' },
+    { id: 'modify-facture', label: 'Modifier une facture', icon: 'pi pi-file-edit', roles: ['admin'], mockScenario: 'static' },
+    { id: 'urgent-case', label: 'Cas urgent', icon: 'pi pi-exclamation-triangle', mockScenario: 'static' }
+];
 
-    if (!tg?.isVisible) {
-        return;
-    }
-
-    await tg.updatePositions().catch(() => undefined);
-}
-
-async function flushUi() {
-    await nextTick();
-    await wait();
-    await refreshTourLayout();
-}
-
-async function openDialogStep(openDialog, closeAllDialogs) {
-    closeAllDialogs();
-    await flushUi();
-    await openDialog();
-    await flushUi();
-}
-
-export function createConsultationsTableTour({
-    hasConsultations,
-    hasOpenConsultation,
-    hasRepriseCase,
-    hasLinkedCase,
-    hasFreshCase,
-    hasClosedCase,
-    hasUrgentCase,
-    isAdmin,
-    isMedecin,
-    openCreateConsultationDialog,
-    openQuickDialog,
-    openDetailsDialog,
-    openFactureDialog,
-    closeAllDialogs
-}) {
+function buildOverviewSteps(ctx) {
     const steps = [
         {
-            group: 'consultations-table',
-            order: 10,
+            group: GROUP,
             target: '[data-tour="consultations-table.header"]',
             title: 'Historique des consultations',
             content: 'Cette vue liste les consultations de la date choisie avec leur statut et leurs actions metier.'
         },
         {
-            group: 'consultations-table',
-            order: 20,
+            group: GROUP,
             target: '[data-tour="consultations-table.stats"]',
             title: 'Synthese du jour',
-            content: 'Les cartes du bas resument le volume total, les consultations cloturees et celles encore en cours pour la date affichee.'
+            content: 'Les cartes resument le volume total, les consultations cloturees et celles encore en cours.'
         },
         {
-            group: 'consultations-table',
-            order: 30,
+            group: GROUP,
             target: '[data-tour="consultations-table.filters"]',
             title: 'Filtres de la journee',
-            content: 'Combinez la recherche et le filtre de date pour isoler rapidement un patient, un medecin ou une situation precise.'
+            content: 'Combinez la recherche et le filtre de date pour isoler rapidement un patient ou une situation.'
         },
         {
-            group: 'consultations-table',
-            order: 40,
+            group: GROUP,
             target: '[data-tour="consultations-table.table"]',
             title: 'Tableau des consultations',
-            content: 'Le tableau centralise patient, medecin, date de creation et statut pour une lecture rapide de l activite.'
+            content: 'Le tableau centralise patient, medecin, date de creation et statut pour une lecture rapide.'
+        },
+        {
+            group: GROUP,
+            target: '[data-tour="consultations-table.status"]',
+            title: 'Lecture du statut',
+            content: 'Les badges distinguent les consultations en cours et cloturees, avec indication urgente si presente.'
         }
     ];
 
-    if (hasRepriseCase) {
+    if (ctx.hasConsultations) {
         steps.push({
-            group: 'consultations-table',
-            order: 50,
-            target: '[data-tour="consultations-table.case-last-fiche"]',
-            title: 'Cas reprise de derniere fiche',
-            content: 'Cette ligne illustre une consultation encore ouverte mais non reliee a une fiche active, avec une derniere fiche deja existante a reprendre.'
-        });
-    }
-
-    if (hasLinkedCase) {
-        steps.push({
-            group: 'consultations-table',
-            order: 60,
-            target: '[data-tour="consultations-table.case-linked"]',
-            title: 'Cas fiche deja liee',
-            content: 'Ici, la consultation est deja rattachee a une fiche active. Le bon chemin est de poursuivre cette fiche plutot que d en ouvrir une nouvelle.'
-        });
-    }
-
-    if (hasFreshCase) {
-        steps.push({
-            group: 'consultations-table',
-            order: 70,
-            target: '[data-tour="consultations-table.case-new"]',
-            title: 'Cas nouvelle fiche',
-            content: 'Cette ligne represente un patient sans fiche precedente reutilisable. Une nouvelle fiche peut alors etre creee proprement.'
-        });
-    }
-
-    if (hasClosedCase) {
-        steps.push({
-            group: 'consultations-table',
-            order: 80,
-            target: '[data-tour="consultations-table.case-closed"]',
-            title: 'Cas consultation cloturee',
-            content: 'Une consultation cloturee reste visible dans l historique, peut etre revue dans ses details et, pour les profils autorises, sa facture peut encore etre ajustee.'
-        });
-    }
-
-    if (hasUrgentCase) {
-        steps.push({
-            group: 'consultations-table',
-            order: 90,
-            target: '[data-tour="consultations-table.case-urgent"]',
-            title: 'Indicateur d urgence',
-            content: 'L indicateur urgent permet de reperer immediatement les consultations qui demandent une attention prioritaire dans la journee.'
-        });
-    }
-
-    steps.push(
-        {
-            group: 'consultations-table',
-            order: 100,
-            target: '[data-tour="consultations-table.status"]',
-            title: 'Lecture du statut',
-            content: 'Les badges distinguent les consultations en cours et cloturees, avec indication urgente quand presente.'
-        }
-    );
-
-    if (hasConsultations) {
-        steps.push({
-            group: 'consultations-table',
-            order: 110,
+            group: GROUP,
             target: '[data-tour="consultations-table.actions"]',
             title: 'Actions par ligne',
-            content: 'Depuis une ligne, vous pouvez ouvrir le dossier, voir les details, gerer la facture, annuler ou lancer des actions rapides.'
+            content: 'Depuis une ligne, vous pouvez ouvrir le dossier, voir les details, gerer la facture ou lancer des actions rapides.'
         });
+    }
 
-        steps.push({
-            group: 'consultations-table',
-            order: 120,
-            target: '[data-tour="consultations-table.dialog.details"]',
-            title: 'Dialogue de details',
-            content: 'Ce dialogue centralise la consultation, la note de seance et les actes deja enregistres pour une relecture rapide.',
-            beforeEnter: async () => {
-                await openDialogStep(openDetailsDialog, closeAllDialogs);
-            }
-        });
+    return normalizeTourSteps(steps);
+}
 
-        if (isAdmin && hasClosedCase) {
+export const consultationsTableRegistry = createTourRegistry(GROUP, TASKS, {
+    overview: buildOverviewSteps,
+    'filter-date': (ctx) => normalizeTourSteps([
+        {
+            group: GROUP,
+            target: '[data-tour="consultations-table.filters"]',
+            title: 'Filtres de la journee',
+            content: 'La recherche et le selecteur de date permettent d isoler les consultations d une journee precise.'
+        },
+        {
+            group: GROUP,
+            target: '[data-tour="consultations-table.table"]',
+            title: 'Resultats filtres',
+            content: 'Le tableau se met a jour selon les criteres choisis pour afficher uniquement les lignes correspondantes.'
+        },
+        {
+            group: GROUP,
+            target: '[data-tour="consultations-table.stats"]',
+            title: 'Synthese recalculee',
+            content: 'Les cartes du bas s adaptent aux consultations visibles pour la date selectionnee.'
+        }
+    ]),
+    'continue-open': (ctx) => {
+        const steps = [];
+
+        if (ctx.hasRepriseCase) {
             steps.push({
-                group: 'consultations-table',
-                order: 130,
-                target: '[data-tour="consultations-table.dialog.facture"]',
-                title: 'Dialogue de facture',
-                content: 'Le dialogue de facture permet de revoir les lignes facturees et de corriger une facture d une consultation deja cloturee.',
-                beforeEnter: async () => {
-                    await openDialogStep(openFactureDialog, closeAllDialogs);
-                }
+                group: GROUP,
+                target: '[data-tour="consultations-table.case-last-fiche"]',
+                title: 'Reprise de derniere fiche',
+                content: 'Cette ligne montre une consultation ouverte avec une derniere fiche existante a reprendre.'
             });
         }
-    }
 
-    if (!isMedecin) {
-        steps.push({
-            group: 'consultations-table',
-            order: 140,
-            target: '[data-tour="consultations-table.dialog.create"]',
-            title: 'Dialogue de creation',
-            content: 'Ce formulaire sert a creer une consultation sans quitter l historique de la journee.',
-            beforeEnter: async () => {
-                await openDialogStep(openCreateConsultationDialog, closeAllDialogs);
+        if (ctx.hasLinkedCase) {
+            steps.push({
+                group: GROUP,
+                target: '[data-tour="consultations-table.case-linked"]',
+                title: 'Fiche deja liee',
+                content: 'Poursuivez la fiche active plutot que d en ouvrir une nouvelle.'
+            });
+        }
+
+        if (ctx.hasFreshCase) {
+            steps.push({
+                group: GROUP,
+                target: '[data-tour="consultations-table.case-new"]',
+                title: 'Nouvelle fiche',
+                content: 'Ce patient peut recevoir une nouvelle fiche proprement.'
+            });
+        }
+
+        if (ctx.hasOpenConsultation) {
+            steps.push({
+                group: GROUP,
+                target: '[data-tour="consultations-table.dialog.quick"]',
+                title: 'Actions rapides',
+                content: 'Le dialogue permet de continuer ou creer une fiche selon le contexte de la consultation.',
+                beforeEnter: async () => openDialogStep(ctx.openQuickDialog, ctx.closeAllDialogs)
+            });
+        }
+
+        return normalizeTourSteps(steps.length ? steps : [
+            {
+                group: GROUP,
+                target: '[data-tour="consultations-table.actions"]',
+                title: 'Actions par ligne',
+                content: 'Utilisez les actions de ligne pour reprendre une consultation encore ouverte.'
             }
-        });
-    }
-
-    if (hasOpenConsultation) {
-        steps.push({
-            group: 'consultations-table',
-            order: 150,
+        ]);
+    },
+    'view-details': (ctx) => normalizeTourSteps([
+        {
+            group: GROUP,
+            target: '[data-tour="consultations-table.actions"]',
+            title: 'Ouvrir les details',
+            content: 'Depuis une ligne, l action details permet une relecture rapide de la consultation.'
+        },
+        {
+            group: GROUP,
+            target: '[data-tour="consultations-table.dialog.details"]',
+            title: 'Dialogue de details',
+            content: 'Ce dialogue centralise la consultation, la note de seance et les actes enregistres.',
+            beforeEnter: async () => openDialogStep(ctx.openDetailsDialog, ctx.closeAllDialogs)
+        }
+    ]),
+    'quick-cloture': (ctx) => normalizeTourSteps([
+        {
+            group: GROUP,
+            target: '[data-tour="consultations-table.actions"]',
+            title: 'Actions rapides',
+            content: 'Depuis une consultation ouverte, lancez une action rapide pour cloturer sans ouvrir toute la fiche.'
+        },
+        {
+            group: GROUP,
             target: '[data-tour="consultations-table.dialog.quick"]',
             title: 'Dialogue metier rapide',
-            content: 'Les actions rapides ouvrent un dialogue pour continuer ou creer une fiche selon le contexte.',
-            beforeEnter: async () => {
-                await openDialogStep(openQuickDialog, closeAllDialogs);
-            }
-        });
-    }
+            content: 'Ce dialogue guide la cloturation ou la reprise de fiche selon le contexte.',
+            beforeEnter: async () => openDialogStep(ctx.openQuickDialog, ctx.closeAllDialogs)
+        }
+    ]),
+    'modify-facture': (ctx) => normalizeTourSteps([
+        {
+            group: GROUP,
+            target: '[data-tour="consultations-table.case-closed"]',
+            title: 'Consultation cloturee',
+            content: 'Une consultation cloturee reste visible et peut faire l objet d ajustements de facture.'
+        },
+        {
+            group: GROUP,
+            target: '[data-tour="consultations-table.actions"]',
+            title: 'Gerer la facture',
+            content: 'Depuis une ligne cloturee, ouvrez la gestion de facture si votre profil le permet.'
+        },
+        {
+            group: GROUP,
+            target: '[data-tour="consultations-table.dialog.facture"]',
+            title: 'Dialogue de facture',
+            content: 'Revoyez les lignes facturees et corrigez une facture de consultation deja cloturee.',
+            beforeEnter: async () => openDialogStep(ctx.openFactureDialog, ctx.closeAllDialogs)
+        }
+    ]),
+    'urgent-case': (ctx) => normalizeTourSteps([
+        {
+            group: GROUP,
+            target: '[data-tour="consultations-table.case-urgent"]',
+            title: 'Indicateur d urgence',
+            content: 'L indicateur urgent permet de reperer immediatement les consultations prioritaires.'
+        },
+        {
+            group: GROUP,
+            target: '[data-tour="consultations-table.status"]',
+            title: 'Badge de statut',
+            content: 'Le badge de statut confirme visuellement l urgence associee a la consultation.'
+        },
+        {
+            group: GROUP,
+            target: '[data-tour="consultations-table.actions"]',
+            title: 'Traiter en priorite',
+            content: 'Depuis la ligne urgente, ouvrez le dossier ou les details pour accelerer la prise en charge.'
+        }
+    ])
+});
 
-    return steps;
+export function buildConsultationsTableTourSteps(taskId, variantId, ctx) {
+    return consultationsTableRegistry.buildSteps(taskId, variantId, ctx);
+}
+
+export function createConsultationsTableTour(ctx) {
+    return buildConsultationsTableTourSteps('overview', null, ctx);
 }

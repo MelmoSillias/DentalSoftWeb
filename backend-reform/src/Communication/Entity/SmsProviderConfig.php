@@ -44,6 +44,12 @@ class SmsProviderConfig
     #[ORM\Column(length: 255)]
     private string $oauthUrl = 'https://api.orange.com/oauth/v3/token';
 
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $webhookBaseUrl = null;
+
+    #[ORM\Column(type: Types::SMALLINT, options: ['default' => 2])]
+    private int $callbackNotifyType = 2;
+
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $createdAt;
 
@@ -99,6 +105,20 @@ class SmsProviderConfig
     public function setBaseUrl(string $baseUrl): static { $this->baseUrl = rtrim($baseUrl, '/'); return $this; }
     public function getOauthUrl(): string { return $this->oauthUrl; }
     public function setOauthUrl(string $oauthUrl): static { $this->oauthUrl = $oauthUrl; return $this; }
+    public function getWebhookBaseUrl(): ?string { return $this->webhookBaseUrl; }
+    public function setWebhookBaseUrl(?string $webhookBaseUrl): static
+    {
+        $this->webhookBaseUrl = $webhookBaseUrl !== null ? rtrim($webhookBaseUrl, '/') : null;
+
+        return $this;
+    }
+    public function getCallbackNotifyType(): int { return $this->callbackNotifyType; }
+    public function setCallbackNotifyType(int $callbackNotifyType): static
+    {
+        $this->callbackNotifyType = max(1, min(2, $callbackNotifyType));
+
+        return $this;
+    }
     public function getCreatedAt(): \DateTimeImmutable { return $this->createdAt; }
     public function setCreatedAt(\DateTimeImmutable $createdAt): static { $this->createdAt = $createdAt; return $this; }
     public function getUpdatedAt(): \DateTimeImmutable { return $this->updatedAt; }

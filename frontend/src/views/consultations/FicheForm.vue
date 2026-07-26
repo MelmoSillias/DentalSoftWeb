@@ -26,10 +26,14 @@ import { fetchOrdonnanceById, loadOrdonnances, updateOrdonnance } from '@/servic
 import { fetchPublicGeneralSettings } from '@/services/globalSettingsService';
 import { addPatientAllergy, addPatientAntecedent, deletePatientAllergy, deletePatientAntecedent } from '@/services/patients';
 import { fetchDevisPrintData, fetchOrdonnancePrintData, fetchPatientFichePrintData } from '@/services/printService';
+import {
+    activateConsultationsTourMock,
+    deactivateConsultationsTourMock,
+    resetConsultationsTourMockData,
+    resolveConsultationsTourMockScenario
+} from '@/services/consultationsTourMock';
+import { useGuidedTour } from '@/composables/useGuidedTour';
 import { useAuthStore } from '@/stores/auth';
-import { GUIDED_TOUR_START_EVENT } from '@/tours';
-import { createConsultationsFormTour } from '@/tours/consultationsFormTour';
-import { startTourGuide } from '@/tours/tourGuideClient';
 import Button from 'primevue/button';
 import ConfirmDialog from 'primevue/confirmdialog';
 import Dialog from 'primevue/dialog';
@@ -90,7 +94,7 @@ const savingAntecedent = ref(false);
 const savingAllergy = ref(false);
 const isIndicatorFloating = ref(false);
 const allowRouteLeaveAfterCloture = ref(false);
-const isGuidedTourStarting = ref(false);
+let guidedTourDemoActive = false;
 const isMedecinOptionalOnCreation = ref(false);
 const hidePatientPhoneForMedecins = ref(false);
 const ficheFormSimplifie = ref(false);
@@ -841,51 +845,47 @@ const resetTourDialogs = () => {
     showRdvDialog.value = false;
 };
 
-const handleGuidedTourRequest = async (event) => {
-    if (event?.detail?.routeName !== 'consultations-form' || isGuidedTourStarting.value) {
+const prepareGuidedTourDemo = async ({ taskId = 'overview', variantId = null } = {}) => {
+    if (taskId === 'overview') {
         return;
     }
 
-    if (pageLoading.value || loading.value || hasOpenDialogs.value) {
-        toast.add({
-            severity: 'warn',
-            summary: 'Aide guidee',
-            detail: 'Attendez la fin du chargement et fermez les fenetres ouvertes avant de lancer le tour.',
-            life: 3000
-        });
-        return;
-    }
-
-    isGuidedTourStarting.value = true;
-
-    try {
-        resetTourDialogs();
-        await nextTick();
-
-        const steps = createConsultationsFormTour({
-            setSection: setTourSection,
-            openOrdonnanceDialog: openOrdonnanceModal,
-            closeAllDialogs: resetTourDialogs
-        });
-
-        await startTourGuide({
-            group: 'consultations-form',
-            steps,
-            onAfterExit: resetTourDialogs,
-            onFinish: resetTourDialogs
-        });
-    } catch (error) {
-        console.error('Erreur lancement guided tour fiche consultation', error);
-        toast.add({
-            severity: 'error',
-            summary: 'Aide guidee',
-            detail: 'Impossible de lancer le tour de la fiche medicale.',
-            life: 3000
-        });
-    } finally {
-        isGuidedTourStarting.value = false;
-    }
+    const scenario = resolveConsultationsTourMockScenario(taskId, variantId);
+    activateConsultationsTourMock(scenario);
+    resetConsultationsTourMockData(scenario);
+    guidedTourDemoActive = true;
+    await loadData();
+    await nextTick();
 };
+
+const cleanupGuidedTourDemo = async () => {
+    if (!guidedTourDemoActive) {
+        resetTourDialogs();
+        return;
+    }
+
+    resetTourDialogs();
+    deactivateConsultationsTourMock();
+    guidedTourDemoActive = false;
+    await loadData();
+    await nextTick();
+};
+
+const { isGuidedTourStarting } = useGuidedTour({
+    routeName: 'consultations-form',
+    isLoading: () => pageLoading.value || loading.value,
+    hasOpenDialogs: () => hasOpenDialogs.value,
+    prepareDemo: prepareGuidedTourDemo,
+    cleanupDemo: cleanupGuidedTourDemo,
+    getStepContext: () => ({
+        setSection: setTourSection,
+        openOrdonnanceDialog: openOrdonnanceModal,
+        closeAllDialogs: resetTourDialogs
+    }),
+    loadingMessage: 'Attendez la fin du chargement et fermez les fenetres ouvertes avant de lancer le tour.',
+    dialogsMessage: 'Attendez la fin du chargement et fermez les fenetres ouvertes avant de lancer le tour.',
+    errorMessage: 'Impossible de lancer le tour de la fiche medicale.'
+});
 
 const confirmLeave = () => new Promise((resolve) => {
     confirm.require({
@@ -923,7 +923,6 @@ onMounted(async () => {
         pageLoading.value = false;
     }
     handleScroll();
-    window.addEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
     window.addEventListener('scroll', handleScroll, { passive: true });
     window.addEventListener('beforeunload', handleBeforeUnload);
 });
@@ -952,9 +951,10 @@ watch(
 );
 
 onBeforeUnmount(() => {
-    window.removeEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
     window.removeEventListener('scroll', handleScroll);
     window.removeEventListener('beforeunload', handleBeforeUnload);
+    deactivateConsultationsTourMock();
+    guidedTourDemoActive = false;
     resetTourDialogs();
     if (!useLayout().isSidebarActive) useLayout().toggleMenu();
 });

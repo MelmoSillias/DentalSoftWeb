@@ -33,7 +33,8 @@ const STATIC_SALLES = [
 ];
 
 let consultationsTourMockEnabled = false;
-let consultationsTourMockState = buildSeedState();
+let consultationsTourMockScenario = 'queue-mixed';
+let consultationsTourMockState = buildSeedState('queue-mixed');
 
 function cloneValue(value) {
     if (value === undefined) return undefined;
@@ -134,12 +135,22 @@ function buildStaticConsultationInvoices() {
     };
 }
 
-function buildSeedState() {
-    const dayConsultations = buildStaticDailyConsultations();
+function normalizeConsultationsScenario(scenario) {
+    const normalized = String(scenario || '').toLowerCase();
+    if (normalized === 'queue-empty') return 'queue-empty';
+    if (normalized === 'fiche-draft') return 'fiche-draft';
+    return 'queue-mixed';
+}
+
+function buildSeedState(scenario = 'queue-mixed') {
+    const normalizedScenario = normalizeConsultationsScenario(scenario);
+    const dayConsultations = normalizedScenario === 'queue-empty' ? [] : buildStaticDailyConsultations();
+    const pendingConsultations = dayConsultations.filter((consultation) => Number(consultation.state) !== 1);
+
     return {
         dayConsultations,
-        pendingConsultations: dayConsultations.filter((consultation) => Number(consultation.state) !== 1).map((consultation) => consultation),
-        consultationDetails: {
+        pendingConsultations,
+        consultationDetails: normalizedScenario === 'queue-empty' ? {} : {
             9201: {
                 id: 9201,
                 date: hoursAgo(5.2),
@@ -197,15 +208,24 @@ function buildSeedState() {
                 ]
             }
         },
-        consultationInvoices: buildStaticConsultationInvoices(),
-        activeFicheLinks: {
+        consultationInvoices: normalizedScenario === 'queue-empty' ? {} : buildStaticConsultationInvoices(),
+        activeFicheLinks: normalizedScenario === 'queue-empty' ? {} : {
             9201: 8101,
             9202: 8201,
             9203: null,
             9204: 8301
         },
         nextConsultationId: 9300,
-        nextFicheId: 8400
+        nextFicheId: 8400,
+        draftFiche: normalizedScenario === 'fiche-draft'
+            ? {
+                id: 8401,
+                consultationId: 9202,
+                entretien: { motifConsultation: 'Douleur persistante molaire 16.' },
+                examens: { observations: 'Sensibilite au froid.' },
+                status: 'draft'
+            }
+            : null
     };
 }
 
@@ -223,20 +243,35 @@ export function isConsultationsTourMockEnabled() {
     return consultationsTourMockEnabled;
 }
 
-export function activateConsultationsTourMock() {
-    consultationsTourMockState = buildSeedState();
+export function resolveConsultationsTourMockScenario(taskId = 'overview', variantId = null, fallbackScenario = 'queue-mixed') {
+    const taskKey = String(taskId || 'overview').toLowerCase();
+    const variantKey = String(variantId || '').toLowerCase();
+
+    if (taskKey === 'empty-queue') return 'queue-empty';
+    if (taskKey === 'fill-entretien' || taskKey === 'fill-examens' || taskKey === 'manage-ordonnance' || taskKey === 'treatment-plan' || taskKey === 'close-fiche') {
+        return 'fiche-draft';
+    }
+
+    return normalizeConsultationsScenario(fallbackScenario);
+}
+
+export function activateConsultationsTourMock(scenario = 'queue-mixed') {
+    consultationsTourMockScenario = normalizeConsultationsScenario(scenario);
+    consultationsTourMockState = buildSeedState(consultationsTourMockScenario);
     consultationsTourMockEnabled = true;
     return cloneValue(consultationsTourMockState);
 }
 
-export function resetConsultationsTourMockData() {
-    consultationsTourMockState = buildSeedState();
+export function resetConsultationsTourMockData(scenario = consultationsTourMockScenario) {
+    consultationsTourMockScenario = normalizeConsultationsScenario(scenario);
+    consultationsTourMockState = buildSeedState(consultationsTourMockScenario);
     return cloneValue(consultationsTourMockState);
 }
 
 export function deactivateConsultationsTourMock() {
     consultationsTourMockEnabled = false;
-    consultationsTourMockState = buildSeedState();
+    consultationsTourMockScenario = 'queue-mixed';
+    consultationsTourMockState = buildSeedState('queue-mixed');
 }
 
 export function fetchPendingConsultationsTourMock() {

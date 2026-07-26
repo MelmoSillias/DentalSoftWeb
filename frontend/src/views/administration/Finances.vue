@@ -572,9 +572,7 @@ import FixedChargesTab from '@/components/finances/FixedChargesTab.vue';
 import PaymentModeFormDialog from '@/components/administration/finances/PaymentModeFormDialog.vue';
 import TransactionFormDialog from '@/components/administration/finances/TransactionFormDialog.vue';
 import { fetchGeneralSettings } from '@/services/globalSettingsService';
-import { GUIDED_TOUR_START_EVENT } from '@/tours';
-import { createAdministrationFinancesTour, resolveAdministrationFinancesTourGroup } from '@/tours/administrationFinancesTour';
-import { startTourGuide } from '@/tours/tourGuideClient';
+import { useGuidedTour } from '@/composables/useGuidedTour';
 import { useFinances } from '@/composables/useFinances';
 import {
     getPaymentMethodDefinition,
@@ -633,7 +631,6 @@ const assuranceEditForm = ref({
     email: ''
 });
 const editingMode = ref(null);
-const isGuidedTourStarting = ref(false);
 const transactionValidationDate = ref(new Date());
 const transactionToValidate = ref(null);
 let guidedTourPageState = null;
@@ -1632,51 +1629,22 @@ const openTourModeDialog = async () => {
     await nextTick();
 };
 
-const handleGuidedTourRequest = async (event) => {
-    if (event?.detail?.routeName !== 'administration-finances' || isGuidedTourStarting.value) {
-        return;
-    }
-
-    if (loading.transactions || loading.methods || loading.charts || hasOpenDialogs.value) {
-        toast.add({
-            severity: 'warn',
-            summary: 'Aide guidee',
-            detail: 'Attendez la fin du chargement et fermez les fenetres ouvertes avant de lancer le tour.',
-            life: 3000
-        });
-        return;
-    }
-
-    isGuidedTourStarting.value = true;
-
-    try {
-        await cleanupGuidedTourDemo();
-        await prepareGuidedTourDemo();
-        const steps = createAdministrationFinancesTour({
-            switchTab: switchTourTab,
-            openTransactionDialog: openTourTransactionDialog,
-            openModeDialog: openTourModeDialog,
-            closeAllDialogs: resetTourDialogs
-        });
-        await startTourGuide({
-            group: resolveAdministrationFinancesTourGroup(activeTab.value),
-            steps,
-            onAfterExit: cleanupGuidedTourDemo,
-            onFinish: cleanupGuidedTourDemo
-        });
-    } catch (error) {
-        console.error('Erreur lancement guided tour finances', error);
-        await cleanupGuidedTourDemo();
-        toast.add({
-            severity: 'error',
-            summary: 'Aide guidee',
-            detail: 'Impossible de lancer le tour de la page finances.',
-            life: 3000
-        });
-    } finally {
-        isGuidedTourStarting.value = false;
-    }
-};
+useGuidedTour({
+    routeName: 'administration-finances',
+    isLoading: () => loading.transactions || loading.methods || loading.charts,
+    hasOpenDialogs: () => hasOpenDialogs.value,
+    prepareDemo: prepareGuidedTourDemo,
+    cleanupDemo: cleanupGuidedTourDemo,
+    getStepContext: () => ({
+        switchTab: switchTourTab,
+        openTransactionDialog: openTourTransactionDialog,
+        openModeDialog: openTourModeDialog,
+        closeAllDialogs: resetTourDialogs
+    }),
+    loadingMessage: 'Attendez la fin du chargement et fermez les fenetres ouvertes avant de lancer le tour.',
+    dialogsMessage: 'Attendez la fin du chargement et fermez les fenetres ouvertes avant de lancer le tour.',
+    errorMessage: 'Impossible de lancer le tour de la page finances.'
+});
 
 watch(transactionRange, () => {
     loadTransactions();
@@ -1694,11 +1662,9 @@ onMounted(async () => {
     if (chartData.value?.year) {
         selectedYear.value = Number(chartData.value.year);
     }
-    window.addEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
 });
 
 onBeforeUnmount(() => {
-    window.removeEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
     deactivateFinancesTourMock();
     guidedTourDemoActive = false;
     resetTourDialogs();

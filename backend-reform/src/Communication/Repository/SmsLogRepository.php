@@ -229,4 +229,17 @@ class SmsLogRepository extends ServiceEntityRepository
 
         return $byType;
     }
+
+    public function findLatestByProviderMessageId(string $providerMessageId, string $provider): ?SmsLog
+    {
+        return $this->createQueryBuilder('l')
+            ->andWhere('l.providerMessageId = :providerMessageId')
+            ->andWhere('l.provider = :provider')
+            ->setParameter('providerMessageId', $providerMessageId)
+            ->setParameter('provider', $provider)
+            ->orderBy('l.createdAt', 'DESC')
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
 }

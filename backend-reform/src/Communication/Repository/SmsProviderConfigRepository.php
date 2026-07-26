@@ -3,6 +3,7 @@
 namespace App\Communication\Repository;
 
 use App\Communication\Entity\SmsProviderConfig;
+use App\Communication\Service\SmsClientResolver;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
@@ -18,13 +19,18 @@ class SmsProviderConfigRepository extends ServiceEntityRepository
 
     public function getMainConfig(): SmsProviderConfig
     {
-        $config = $this->findOneBy(['provider' => 'orange']);
+        $config = $this->createQueryBuilder('c')
+            ->orderBy('c.id', 'ASC')
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+
         if ($config instanceof SmsProviderConfig) {
             return $config;
         }
 
         $config = new SmsProviderConfig();
-        $config->setProvider('orange');
+        $config->setProvider(SmsClientResolver::PROVIDER_ORANGE);
 
         $em = $this->getEntityManager();
         $em->persist($config);

@@ -29,9 +29,7 @@ import { useUiSettingsStore } from '@/stores/uiSettings';
 import { useAppearanceSettings } from '@/composables/useAppearanceSettings';
 import PrintPatientPortalQrPoster from '@/components/print/PrintPatientPortalQrPoster.vue';
 import PrintPatientPortalQrSingle from '@/components/print/PrintPatientPortalQrSingle.vue';
-import { GUIDED_TOUR_START_EVENT } from '@/tours';
-import { createSettingsApparenceTour } from '@/tours/settingsApparenceTour';
-import { startTourGuide } from '@/tours/tourGuideClient';
+import { useGuidedTour } from '@/composables/useGuidedTour';
 import {
     cleanTestMode,
     approveDevice as approveDeviceApi,
@@ -58,7 +56,6 @@ const { printComponent } = usePrinter();
 const token = localStorage.getItem('token');
 const auth = useAuthStore();
 const uiSettings = useUiSettingsStore();
-const isGuidedTourStarting = ref(false);
 const activeCategory = ref('appearance');
 const activeSubSection = ref('overview');
 const settingsDisplayMode = ref('tabs');
@@ -1009,17 +1006,16 @@ const goToSmsPage = () => {
     router.push({ name: 'administration-api-sms' });
 };
 
-const handleGuidedTourRequest = async (event) => {
-    if (event?.detail?.routeName !== 'settings-apparence' || isGuidedTourStarting.value) return;
-    isGuidedTourStarting.value = true;
-    try {
-        await startTourGuide({ group: 'settings-apparence', steps: createSettingsApparenceTour() });
-    } catch (error) {
-        toast.add({ severity: 'error', summary: 'Aide guidée', detail: 'Impossible de lancer le tour', life: 3000 });
-    } finally {
-        isGuidedTourStarting.value = false;
-    }
-};
+useGuidedTour({
+    routeName: 'settings-apparence',
+    isLoading: () => generalLoading.value && !generalSettingsLoaded.value,
+    getStepContext: () => ({
+        navigateToSection: async (category, sectionId) => {
+            await scrollToSection(category, sectionId);
+        }
+    }),
+    errorMessage: 'Impossible de lancer le tour guide sur les parametres.'
+});
 
 const currentThemeLabel = computed(() => themeOptions.value.find((option) => option.value === themeMode.value)?.label || 'Système');
 const currentFontSizeLabel = computed(() => fontSizeOptions.value.find((option) => option.value === fontSize.value)?.label || 'Normal');
@@ -1119,12 +1115,10 @@ onMounted(async () => {
         generalSettingsLoaded.value = true;
     }
     setupObserver();
-    window.addEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
 });
 
 onBeforeUnmount(() => {
     observer?.disconnect();
-    window.removeEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
 });
 </script>
 
@@ -1154,9 +1148,9 @@ onBeforeUnmount(() => {
             </div>
         </div>
 
-        <div class="settings-body">
+        <div class="settings-body" data-tour="settings-appearance.main">
             <!-- Sidebar Navigation -->
-            <aside v-if="settingsDisplayMode === 'page'" class="settings-sidebar">
+            <aside v-if="settingsDisplayMode === 'page'" class="settings-sidebar" data-tour="settings-appearance.navigation">
                 <div class="settings-nav-card">
                     <nav class="settings-nav">
 						<div v-for="(category, key) in visibleNavigation" :key="key" class="settings-nav-group">
@@ -1223,7 +1217,7 @@ onBeforeUnmount(() => {
                         </div>
 
                         <!-- Overview -->
-                        <div id="appearance-overview" class="settings-section">
+                        <div id="appearance-overview" class="settings-section" data-tour="settings-appearance.theme">
                             <div class="settings-section-header">
                                 <h3>Aperçu visuel</h3>
                                 <p class="settings-section-description">Vue d'ensemble de votre configuration actuelle</p>
@@ -1278,7 +1272,7 @@ onBeforeUnmount(() => {
                         </div>
 
                         <!-- Colors -->
-                        <div id="appearance-colors" class="settings-section">
+                        <div id="appearance-colors" class="settings-section" data-tour="settings-appearance.primary">
                             <div class="settings-section-header">
                                 <h3>Couleurs</h3>
                                 <p class="settings-section-description">Personnalisez la palette de couleurs de l'application</p>
@@ -1329,7 +1323,7 @@ onBeforeUnmount(() => {
                         </div>
 
                         <!-- Typography -->
-                        <div id="appearance-typography" class="settings-section">
+                        <div id="appearance-typography" class="settings-section" data-tour="settings-appearance.font-family">
                             <div class="settings-section-header">
                                 <h3>Typographie</h3>
                                 <p class="settings-section-description">Police et taille du texte</p>
@@ -1355,7 +1349,7 @@ onBeforeUnmount(() => {
                         </div>
 
                         <!-- Layout -->
-                        <div id="appearance-layout" class="settings-section">
+                        <div id="appearance-layout" class="settings-section" data-tour="settings-appearance.layout">
                             <div class="settings-section-header">
                                 <h3>Disposition</h3>
                                 <p class="settings-section-description">Comportement du menu de navigation</p>
@@ -1383,7 +1377,7 @@ onBeforeUnmount(() => {
                         </div>
 
                         <!-- Consultations & réception -->
-                        <div v-show="isSectionVisible('cabinet', 'consultations')" id="cabinet-consultations" class="settings-section">
+                        <div v-show="isSectionVisible('cabinet', 'consultations')" id="cabinet-consultations" class="settings-section" data-tour="settings-cabinet.consultations">
                             <div class="settings-section-header">
                                 <div>
                                     <h3>Consultations & réception</h3>
@@ -1449,7 +1443,7 @@ onBeforeUnmount(() => {
                         </div>
 
                         <!-- Horaires d'ouverture -->
-                        <div v-show="isSectionVisible('cabinet', 'opening-hours')" id="cabinet-opening-hours" class="settings-section">
+                        <div v-show="isSectionVisible('cabinet', 'opening-hours')" id="cabinet-opening-hours" class="settings-section" data-tour="settings-cabinet.opening-hours">
                             <div class="settings-section-header">
                                 <div>
                                     <h3>Horaires d'ouverture</h3>
@@ -1600,7 +1594,7 @@ onBeforeUnmount(() => {
                         </div>
 
                         <!-- Caisse & finances -->
-                        <div v-show="isSectionVisible('cabinet', 'billing')" id="cabinet-billing" class="settings-section">
+                        <div v-show="isSectionVisible('cabinet', 'billing')" id="cabinet-billing" class="settings-section" data-tour="settings-cabinet.billing">
                             <div class="settings-section-header">
                                 <div>
                                     <h3>Caisse & finances</h3>
@@ -1695,7 +1689,7 @@ onBeforeUnmount(() => {
                             </div>
                         </div>
 
-                        <div v-show="isSectionVisible('portal', 'portal-settings')" id="portal-portal-settings" class="settings-section">
+                        <div v-show="isSectionVisible('portal', 'portal-settings')" id="portal-portal-settings" class="settings-section" data-tour="settings-portal.portal-settings">
                             <div class="settings-section-header">
                                 <div>
                                     <h3>Configuration portail patient</h3>
@@ -1896,7 +1890,7 @@ onBeforeUnmount(() => {
                         </div>
 
                         <!-- Appareils autorisés -->
-                        <div v-show="isSectionVisible('administration', 'devices')" id="administration-devices" class="settings-section">
+                        <div v-show="isSectionVisible('administration', 'devices')" id="administration-devices" class="settings-section" data-tour="settings-administration.devices">
                             <div class="settings-section-header">
                                 <div>
                                     <h3>Appareils autorisés</h3>
@@ -2029,7 +2023,7 @@ onBeforeUnmount(() => {
                         </div>
 
                         <!-- Maintenance système -->
-                        <div v-show="isSectionVisible('administration', 'system-maintenance')" id="administration-system-maintenance" class="settings-section">
+                        <div v-show="isSectionVisible('administration', 'system-maintenance')" id="administration-system-maintenance" class="settings-section" data-tour="settings-administration.system-maintenance">
                             <div class="settings-section-header">
                                 <div>
                                     <h3>Maintenance système</h3>

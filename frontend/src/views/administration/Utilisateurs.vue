@@ -15,9 +15,8 @@ import { useToast } from 'primevue/usetoast';
 import Dialog from 'primevue/dialog';
 import { useUsers } from '@/composables/useUsers';
 import UserForm from '@/components/administration/UserForm.vue';
-import { GUIDED_TOUR_START_EVENT } from '@/tours';
-import { createAdministrationUsersTour } from '@/tours/administrationUsersTour';
-import { startTourGuide } from '@/tours/tourGuideClient';
+import { activateAdminTourMock, deactivateAdminTourMock, resetAdminTourMockData } from '@/services/adminTourMock';
+import { useGuidedTour } from '@/composables/useGuidedTour';
 import { formatEmployeeTypeLabel } from '@/utils/employeeTypeUtils';
 
 const toast = useToast();
@@ -56,7 +55,7 @@ const resetTargetUser = ref(null);
 
 const groupByType = ref(false);
 const expandedGroups = ref([]);
-const isGuidedTourStarting = ref(false);
+let guidedTourDemoActive = false;
 const usersAssociationView = ref('employees');
 
 const usersAssociationOptions = [
@@ -286,52 +285,43 @@ const openTourResetDialog = async () => {
     await nextTick();
 };
 
-const handleGuidedTourRequest = async (event) => {
-    if (event?.detail?.routeName !== 'administration-utilisateurs' || isGuidedTourStarting.value) {
-        return;
-    }
-
-    if (loading.value || hasOpenDialogs.value) {
-        toast.add({
-            severity: 'warn',
-            summary: 'Aide guidee',
-            detail: 'Attendez la fin du chargement et fermez les fenetres ouvertes avant de lancer le tour.',
-            life: 3000
-        });
-        return;
-    }
-
-    isGuidedTourStarting.value = true;
-
-    try {
-        resetTourDialogs();
-        await nextTick();
-
-        const steps = createAdministrationUsersTour({
-            hasUsers: usersView.value.length > 0,
-            openCreateDialog: openTourCreateDialog,
-            openResetDialog: openTourResetDialog,
-            closeAllDialogs: resetTourDialogs
-        });
-
-        await startTourGuide({
-            group: 'administration-utilisateurs',
-            steps,
-            onAfterExit: resetTourDialogs,
-            onFinish: resetTourDialogs
-        });
-    } catch (error) {
-        console.error('Erreur lancement guided tour utilisateurs', error);
-        toast.add({
-            severity: 'error',
-            summary: 'Aide guidee',
-            detail: 'Impossible de lancer le tour de la page utilisateurs.',
-            life: 3000
-        });
-    } finally {
-        isGuidedTourStarting.value = false;
-    }
+const prepareGuidedTourDemo = async () => {
+    activateAdminTourMock();
+    resetAdminTourMockData();
+    guidedTourDemoActive = true;
+    await loadUsers();
+    await nextTick();
 };
+
+const cleanupGuidedTourDemo = async () => {
+    if (!guidedTourDemoActive) {
+        resetTourDialogs();
+        return;
+    }
+
+    resetTourDialogs();
+    deactivateAdminTourMock();
+    guidedTourDemoActive = false;
+    await loadUsers();
+    await nextTick();
+};
+
+useGuidedTour({
+    routeName: 'administration-utilisateurs',
+    isLoading: () => loading.value,
+    hasOpenDialogs: () => hasOpenDialogs.value,
+    prepareDemo: prepareGuidedTourDemo,
+    cleanupDemo: cleanupGuidedTourDemo,
+    getStepContext: () => ({
+        hasUsers: usersView.value.length > 0,
+        openCreateDialog: openTourCreateDialog,
+        openResetDialog: openTourResetDialog,
+        closeAllDialogs: resetTourDialogs
+    }),
+    loadingMessage: 'Attendez la fin du chargement et fermez les fenetres ouvertes avant de lancer le tour.',
+    dialogsMessage: 'Attendez la fin du chargement et fermez les fenetres ouvertes avant de lancer le tour.',
+    errorMessage: 'Impossible de lancer le tour de la page utilisateurs.'
+});
 
 watch(search, (value) => {
     filters.value.global.value = value;
@@ -340,11 +330,11 @@ watch(search, (value) => {
 onMounted(() => {
     loadUsers();
     loadAssociations();
-    window.addEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
 });
 
 onBeforeUnmount(() => {
-    window.removeEventListener(GUIDED_TOUR_START_EVENT, handleGuidedTourRequest);
+    deactivateAdminTourMock();
+    guidedTourDemoActive = false;
     resetTourDialogs();
 });
 </script>

@@ -91,7 +91,40 @@ function cloneValue(value) {
 }
 
 function normalizeScenario(scenario) {
-    return String(scenario || '').toLowerCase() === 'empty' ? 'empty' : DEFAULT_SCENARIO;
+    const normalized = String(scenario || '').toLowerCase();
+
+    if (normalized === 'empty') return 'empty';
+    if (normalized === 'clean-patient') return 'clean-patient';
+    if (normalized === 'active-no-fiche') return 'active-no-fiche';
+    if (normalized === 'active-with-fiche') return 'active-with-fiche';
+
+    return DEFAULT_SCENARIO;
+}
+
+function buildStaticConsultationsForScenario(scenario) {
+    if (scenario === 'clean-patient') {
+        return {};
+    }
+
+    if (scenario === 'active-with-fiche') {
+        return {
+            5001: {
+                id: 5001,
+                patientId: 1002,
+                medecinId: 2,
+                date: '2026-04-01 10:15',
+                hasFiche: true,
+                previousDerniereConsultation: {
+                    id: 4102,
+                    date: '2026-03-25 14:15',
+                    motif: 'Urgence molaire',
+                    statut: 'NORMAL'
+                }
+            }
+        };
+    }
+
+    return buildStaticConsultations();
 }
 
 function defaultSmsPreferences() {
@@ -175,6 +208,24 @@ function buildStaticPatients() {
                 lienParente: 'Epouse'
             },
             smsPreferences: defaultSmsPreferences(),
+            insuranceProfile: {
+                enabled: true,
+                assuranceCode: 'PREMIUM',
+                assuranceId: 3,
+                coverageRate: 80,
+                assurance: {
+                    id: 3,
+                    nom: 'Assurance Premium',
+                    code: 'PREMIUM'
+                },
+                formData: {
+                    societe: 'Entreprise Demo SA',
+                    assureNom: 'Ibrahima Ndiaye',
+                    assureNumero: 'ASS-2026-0042',
+                    beneficiaireNom: 'Ibrahima Ndiaye',
+                    beneficiaireNumero: 'BEN-0042'
+                }
+            },
             derniereConsultation: {
                 id: 5001,
                 date: '2026-04-01 10:15',
@@ -544,9 +595,19 @@ function buildStaticPatientDossiers(patients) {
 function buildSeedState(scenario) {
     const normalizedScenario = normalizeScenario(scenario);
     const patients = normalizedScenario === 'empty' ? {} : buildStaticPatients();
-    const consultations = normalizedScenario === 'empty' ? {} : buildStaticConsultations();
+    const consultations = normalizedScenario === 'empty'
+        ? {}
+        : buildStaticConsultationsForScenario(normalizedScenario);
     const dossiers = normalizedScenario === 'empty' ? {} : buildStaticPatientDossiers(patients);
     const consultationHistory = normalizedScenario === 'empty' ? {} : buildStaticConsultationHistory();
+
+    if (normalizedScenario === 'active-with-fiche' && dossiers[1002]) {
+        dossiers[1002].fiches = [buildMockFiche()];
+        dossiers[1002].stats = {
+            ...dossiers[1002].stats,
+            fiches: 1
+        };
+    }
 
     return {
         patients,
@@ -663,8 +724,28 @@ function findActiveConsultation(patientId) {
     ) || null;
 }
 
-export function resolvePatientsTourMockScenario(fallbackScenario = DEFAULT_SCENARIO) {
+export function resolvePatientsTourMockScenario(taskId = 'overview', variantId = null, fallbackScenario = DEFAULT_SCENARIO) {
+    const taskKey = String(taskId || 'overview').toLowerCase();
+    const variantKey = String(variantId || '').toLowerCase();
+
+    if (taskKey === 'search-patient' && variantKey === 'empty') {
+        return 'empty';
+    }
+
+    if (taskKey === 'create-consultation') {
+        if (variantKey === 'blocked-no-fiche') return 'active-no-fiche';
+        if (variantKey === 'blocked-with-fiche') return 'active-with-fiche';
+        return 'clean-patient';
+    }
+
     return normalizeScenario(fallbackScenario);
+}
+
+export function getPatientsTourMockPatientIdForScenario(scenario) {
+    const normalized = normalizeScenario(scenario);
+    if (normalized === 'clean-patient') return 1001;
+    if (normalized === 'active-no-fiche' || normalized === 'active-with-fiche') return 1002;
+    return 1002;
 }
 
 export function isPatientsTourMockEnabled() {
