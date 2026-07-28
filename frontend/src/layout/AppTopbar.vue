@@ -24,6 +24,7 @@ const {
     canOpenSmsSettings,
     providerLabel: smsProviderLabel,
     displayUnits: smsDisplayUnits,
+    displayExpiration: smsDisplayExpiration,
     overviewSuccess: smsOverviewSuccess,
     loading: smsCreditsLoading,
     titleHint: smsCreditsTitle,
@@ -331,21 +332,44 @@ function handleStartGuidedTourTask(taskId, variantId = null) {
         <div class="layout-topbar-actions">
             <div class="layout-config-menu">
                 <button
-                    v-if="showSmsCredits"
+                    v-if="showSmsCredits && canOpenSmsSettings"
                     type="button"
                     class="sms-credits-pill layout-topbar-action"
-                    :class="{
-                        'sms-credits-pill--warn': !smsOverviewSuccess && !smsCreditsLoading,
-                        'sms-credits-pill--readonly': !canOpenSmsSettings
-                    }"
+                    :class="{ 'sms-credits-pill--warn': !smsOverviewSuccess && !smsCreditsLoading }"
                     :title="smsCreditsTitle"
                     @click="openSmsSettings"
                 >
                     <i class="pi pi-comment" aria-hidden="true"></i>
-                    <span class="sms-credits-pill__label">{{ smsProviderLabel }}</span>
-                    <span class="sms-credits-pill__value">{{ smsDisplayUnits }}</span>
-                    <span class="sms-credits-pill__suffix">SMS</span>
+                    <span class="sms-credits-pill__body">
+                        <span class="sms-credits-pill__row">
+                            <span class="sms-credits-pill__label">{{ smsProviderLabel }}</span>
+                            <span class="sms-credits-pill__value">{{ smsDisplayUnits }}</span>
+                            <span class="sms-credits-pill__suffix">SMS restants</span>
+                        </span>
+                        <span v-if="smsDisplayExpiration" class="sms-credits-pill__row sms-credits-pill__exp">
+                            Exp. {{ smsDisplayExpiration }}
+                        </span>
+                    </span>
                 </button>
+                <span
+                    v-else-if="showSmsCredits"
+                    class="sms-credits-pill sms-credits-pill--readonly layout-topbar-action"
+                    :class="{ 'sms-credits-pill--warn': !smsOverviewSuccess && !smsCreditsLoading }"
+                    :title="smsCreditsTitle"
+                    role="status"
+                >
+                    <i class="pi pi-comment" aria-hidden="true"></i>
+                    <span class="sms-credits-pill__body">
+                        <span class="sms-credits-pill__row">
+                            <span class="sms-credits-pill__label">{{ smsProviderLabel }}</span>
+                            <span class="sms-credits-pill__value">{{ smsDisplayUnits }}</span>
+                            <span class="sms-credits-pill__suffix">SMS restants</span>
+                        </span>
+                        <span v-if="smsDisplayExpiration" class="sms-credits-pill__row sms-credits-pill__exp">
+                            Exp. {{ smsDisplayExpiration }}
+                        </span>
+                    </span>
+                </span>
                 <button type="button" class="layout-topbar-action" @click="toggleDarkMode">
                     <i :class="['pi', { 'pi-moon': isDarkTheme, 'pi-sun': !isDarkTheme }]"></i>
                 </button>
@@ -606,13 +630,29 @@ function handleStartGuidedTourTask(taskId, variantId = null) {
 .sms-credits-pill {
     display: inline-flex;
     align-items: center;
-    gap: 0.35rem;
+    gap: 0.45rem;
     padding: 0.35rem 0.65rem;
-    border-radius: 999px;
+    border-radius: 0.75rem;
     background: rgba(255, 255, 255, 0.14);
     font-size: 0.8125rem;
     line-height: 1.2;
     white-space: nowrap;
+    border: none;
+}
+
+.sms-credits-pill__body {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.1rem;
+    min-width: 0;
+}
+
+.sms-credits-pill__row {
+    display: inline-flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 0.3rem;
 }
 
 .sms-credits-pill--warn .sms-credits-pill__value {
@@ -621,6 +661,13 @@ function handleStartGuidedTourTask(taskId, variantId = null) {
 
 .sms-credits-pill--readonly {
     cursor: default;
+    pointer-events: none;
+}
+
+.sms-credits-pill__exp {
+    font-size: 0.6875rem;
+    opacity: 0.88;
+    line-height: 1.1;
 }
 
 .sms-credits-pill__label {
