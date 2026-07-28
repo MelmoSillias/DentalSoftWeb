@@ -1,6 +1,6 @@
 <script setup>
 import { useLayout } from '@/layout/composables/layout';
-import { computed, ref, watch } from 'vue';
+import { computed, provide, ref, watch } from 'vue';
 import AppFooter from './AppFooter.vue';
 import AppSidebar from './AppSidebar.vue';
 import AppTopbar from './AppTopbar.vue';
@@ -8,6 +8,22 @@ import AppTopbar from './AppTopbar.vue';
 const { layoutConfig, layoutState, isSidebarActive } = useLayout();
 
 const outsideClickListener = ref(null);
+const pageRouteReady = ref(true);
+
+provide('pageRouteReady', pageRouteReady);
+
+function onPageRouteBeforeLeave() {
+    pageRouteReady.value = false;
+}
+
+function onPageRouteBeforeEnter() {
+    pageRouteReady.value = false;
+}
+
+function onPageRouteAfterEnter() {
+    pageRouteReady.value = true;
+    window.dispatchEvent(new Event('resize'));
+}
 
 watch(isSidebarActive, (newVal) => {
     if (newVal) {
@@ -63,7 +79,19 @@ function isOutsideClicked(event) {
             <AppSidebar />
             <div class="layout-main-container">
                 <div class="layout-main">
-                    <router-view />
+                    <router-view v-slot="{ Component, route: viewRoute }">
+                        <Transition
+                            name="page-route"
+                            mode="out-in"
+                            @before-leave="onPageRouteBeforeLeave"
+                            @before-enter="onPageRouteBeforeEnter"
+                            @after-enter="onPageRouteAfterEnter"
+                        >
+                            <div v-if="Component" :key="viewRoute.fullPath" class="page-route-root">
+                                <component :is="Component" />
+                            </div>
+                        </Transition>
+                    </router-view>
                 </div>
                 <AppFooter />
             </div>

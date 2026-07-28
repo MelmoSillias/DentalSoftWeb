@@ -32,7 +32,7 @@ import TabPanel from 'primevue/tabpanel';
 import TabPanels from 'primevue/tabpanels';
 import Tabs from 'primevue/tabs';
 import Tag from 'primevue/tag';
-import Chart from 'primevue/chart';
+import AppChart from '@/components/common/AppChart.vue';
 import ToggleSwitch from 'primevue/toggleswitch';
 import { useSmsAdminSettings, SMS_PROVIDER_OPTIONS, SMS_CALLBACK_NOTIFY_OPTIONS } from '@/composables/useSmsAdminSettings';
 import { fetchSmsQueueDetails } from '@/services/smsService';
@@ -847,7 +847,7 @@ const retryLoadSmsSettings = async () => {
                                         </div>
                                         <div v-if="periodDailySeries.length" class="rounded-xl border border-gray-100 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/30">
                                             <div class="h-72">
-                                                <Chart type="line" :data="periodDailyChartData" :options="periodDailyChartOptions" class="h-full w-full" />
+                                                <AppChart type="line" :data="periodDailyChartData" :options="periodDailyChartOptions" class="h-full w-full" />
                                             </div>
                                         </div>
                                         <div

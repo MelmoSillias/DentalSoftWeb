@@ -1,7 +1,7 @@
 <script setup>
 import { computed, ref } from 'vue';
 import Button from 'primevue/button';
-import Chart from 'primevue/chart';
+import AppChart from '@/components/common/AppChart.vue';
 import ToggleButton from 'primevue/togglebutton';
 import ValueListCard from '@/components/rapport/common/ValueListCard.vue';
 import { printReport } from '@/utils/reportPrint';
@@ -245,7 +245,7 @@ function printSection() {
                 </template>
                 <template #chart>
                     <div class="aspect-square w-full">
-                        <Chart type="doughnut" :data="patientsChartData" :options="pieOptions" class="h-full w-full" />
+                        <AppChart type="doughnut" :data="patientsChartData" :options="pieOptions" class="h-full w-full" />
                     </div>
                 </template>
             </ValueListCard>
@@ -262,7 +262,7 @@ function printSection() {
                 </template>
                 <template #chart>
                     <div class="aspect-[16/9] w-full">
-                        <Chart type="bar" :data="consultationsChartData" :options="barOptions" class="h-full w-full" />
+                        <AppChart type="bar" :data="consultationsChartData" :options="barOptions" class="h-full w-full" />
                     </div>
                 </template>
             </ValueListCard>
@@ -279,7 +279,7 @@ function printSection() {
                 </template>
                 <template #chart>
                     <div class="aspect-[16/9] w-full">
-                        <Chart type="bar" :data="appointmentsChartData" :options="barOptions" class="h-full w-full" />
+                        <AppChart type="bar" :data="appointmentsChartData" :options="barOptions" class="h-full w-full" />
                     </div>
                 </template>
             </ValueListCard>
@@ -297,7 +297,7 @@ function printSection() {
                 </template>
                 <template #chart>
                     <div class="aspect-[16/9] w-full">
-                        <Chart type="bar" :data="roomUsageChartData" :options="barOptions" class="h-full w-full" />
+                        <AppChart type="bar" :data="roomUsageChartData" :options="barOptions" class="h-full w-full" />
                     </div>
                 </template>
                 <template #footer>
@@ -320,7 +320,7 @@ function printSection() {
                 </template>
                 <template #chart>
                     <div class="aspect-[16/9] w-full">
-                        <Chart type="bar" :data="paymentBalancesChartData" :options="barOptions" class="h-full w-full" />
+                        <AppChart type="bar" :data="paymentBalancesChartData" :options="barOptions" class="h-full w-full" />
                     </div>
                 </template>
             </ValueListCard>
@@ -338,7 +338,7 @@ function printSection() {
                 </template>
                 <template #chart>
                     <div class="aspect-[16/9] w-full">
-                        <Chart type="bar" :data="paymentFrequencyChartData" :options="barOptions" class="h-full w-full" />
+                        <AppChart type="bar" :data="paymentFrequencyChartData" :options="barOptions" class="h-full w-full" />
                     </div>
                 </template>
                 <template #footer>

@@ -1,7 +1,7 @@
 <script setup>
 import { computed, ref } from 'vue';
 import Button from 'primevue/button';
-import Chart from 'primevue/chart';
+import AppChart from '@/components/common/AppChart.vue';
 import ToggleButton from 'primevue/togglebutton';
 import StatsCardsGrid from '@/components/rapport/common/StatsCardsGrid.vue';
 import { printReport } from '@/utils/reportPrint';
@@ -114,7 +114,7 @@ function printSection() {
         <StatsCardsGrid v-if="!showChart" :items="buildItems(stats)" :loading="loading" />
         <div v-else class="rounded-2xl border border-surface-200/60 bg-gradient-to-br from-surface-0 to-surface-50/70 p-4 shadow-sm dark:border-surface-700 dark:from-surface-900 dark:to-surface-800">
             <div class="aspect-[16/9] w-full">
-                <Chart type="bar" :data="chartData" :options="chartOptions" class="h-full w-full" />
+                <AppChart type="bar" :data="chartData" :options="chartOptions" class="h-full w-full" />
             </div>
         </div>
     </div>

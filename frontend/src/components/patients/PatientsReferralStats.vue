@@ -1,5 +1,5 @@
 <script setup>
-import Chart from 'primevue/chart';
+import AppChart from '@/components/common/AppChart.vue';
 import Skeleton from 'primevue/skeleton';
 import { computed } from 'vue';
 
@@ -217,7 +217,7 @@ const chartOptions = computed(() => {
                         Répartition visuelle
                     </p>
                     <div class="h-[280px] sm:h-[320px]">
-                        <Chart type="bar" :data="chartData" :options="chartOptions" class="h-full w-full" />
+                        <AppChart type="bar" :data="chartData" :options="chartOptions" class="h-full w-full" />
                     </div>
                 </div>
             </div>

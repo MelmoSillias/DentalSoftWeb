@@ -1,7 +1,7 @@
 <script setup>
 import { computed, ref } from 'vue';
 import Card from 'primevue/card';
-import Chart from 'primevue/chart';
+import AppChart from '@/components/common/AppChart.vue';
 import ToggleButton from 'primevue/togglebutton';
 import Tag from 'primevue/tag';
 
@@ -75,7 +75,7 @@ const realEncashed = computed(() => totalPayeSoins.value + Number(props.reliquat
         <template #content>
             <div v-if="showChart" class="min-h-[240px]">
                 <div class="aspect-[16/9] w-full">
-                    <Chart type="bar" :data="chartData" :options="chartOptions" class="h-full w-full" />
+                    <AppChart type="bar" :data="chartData" :options="chartOptions" class="h-full w-full" />
                 </div>
             </div>
             <template v-else>

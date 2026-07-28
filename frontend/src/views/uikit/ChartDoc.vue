@@ -1,6 +1,5 @@
 <script setup>
-import { useLayout } from '@/layout/composables/layout';
-import { onMounted, ref, watch } from 'vue';
+import AppChart from '@/components/common/AppChart.vue';
 
 const { getPrimary, getSurface, isDarkTheme } = useLayout();
 const lineData = ref(null);
@@ -232,37 +231,37 @@ watch(
         <div class="col-span-12 xl:col-span-6">
             <div class="card">
                 <div class="font-semibold text-xl mb-4">Linear</div>
-                <Chart type="line" :data="lineData" :options="lineOptions"></Chart>
+                <AppChart type="line" :data="lineData" :options="lineOptions"></AppChart>
             </div>
         </div>
         <div class="col-span-12 xl:col-span-6">
             <div class="card">
                 <div class="font-semibold text-xl mb-4">Bar</div>
-                <Chart type="bar" :data="barData" :options="barOptions"></Chart>
+                <AppChart type="bar" :data="barData" :options="barOptions"></AppChart>
             </div>
         </div>
         <div class="col-span-12 xl:col-span-6">
             <div class="card flex flex-col items-center">
                 <div class="font-semibold text-xl mb-4">Pie</div>
-                <Chart type="pie" :data="pieData" :options="pieOptions"></Chart>
+                <AppChart type="pie" :data="pieData" :options="pieOptions"></AppChart>
             </div>
         </div>
         <div class="col-span-12 xl:col-span-6">
             <div class="card flex flex-col items-center">
                 <div class="font-semibold text-xl mb-4">Doughnut</div>
-                <Chart type="doughnut" :data="pieData" :options="pieOptions"></Chart>
+                <AppChart type="doughnut" :data="pieData" :options="pieOptions"></AppChart>
             </div>
         </div>
         <div class="col-span-12 xl:col-span-6">
             <div class="card flex flex-col items-center">
                 <div class="font-semibold text-xl mb-4">Polar Area</div>
-                <Chart type="polarArea" :data="polarData" :options="polarOptions"></Chart>
+                <AppChart type="polarArea" :data="polarData" :options="polarOptions"></AppChart>
             </div>
         </div>
         <div class="col-span-12 xl:col-span-6">
             <div class="card flex flex-col items-center">
                 <div class="font-semibold text-xl mb-4">Radar</div>
-                <Chart type="radar" :data="radarData" :options="radarOptions"></Chart>
+                <AppChart type="radar" :data="radarData" :options="radarOptions"></AppChart>
             </div>
         </div>
     </Fluid>

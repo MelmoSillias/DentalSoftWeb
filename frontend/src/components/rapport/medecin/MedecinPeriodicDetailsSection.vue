@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref } from 'vue';
-import Chart from 'primevue/chart';
+import AppChart from '@/components/common/AppChart.vue';
 import ToggleButton from 'primevue/togglebutton';
 import ValueListCard from '@/components/rapport/common/ValueListCard.vue';
 
@@ -168,7 +168,7 @@ const revenueChartData = computed(() => {
                 </template>
                 <template #chart>
                     <div class="aspect-square w-full">
-                        <Chart type="doughnut" :data="consultationsChartData" :options="pieOptions" class="h-full w-full" />
+                        <AppChart type="doughnut" :data="consultationsChartData" :options="pieOptions" class="h-full w-full" />
                     </div>
                 </template>
             </ValueListCard>
@@ -178,7 +178,7 @@ const revenueChartData = computed(() => {
                 </template>
                 <template #chart>
                     <div class="aspect-[16/9] w-full">
-                        <Chart type="bar" :data="appointmentsChartData" :options="barOptions" class="h-full w-full" />
+                        <AppChart type="bar" :data="appointmentsChartData" :options="barOptions" class="h-full w-full" />
                     </div>
                 </template>
             </ValueListCard>
@@ -188,7 +188,7 @@ const revenueChartData = computed(() => {
                 </template>
                 <template #chart>
                     <div class="aspect-square w-full">
-                        <Chart type="doughnut" :data="apportChartData" :options="pieOptions" class="h-full w-full" />
+                        <AppChart type="doughnut" :data="apportChartData" :options="pieOptions" class="h-full w-full" />
                     </div>
                 </template>
             </ValueListCard>
@@ -198,7 +198,7 @@ const revenueChartData = computed(() => {
                 </template>
                 <template #chart>
                     <div class="aspect-square w-full">
-                        <Chart type="doughnut" :data="revenueChartData" :options="pieOptions" class="h-full w-full" />
+                        <AppChart type="doughnut" :data="revenueChartData" :options="pieOptions" class="h-full w-full" />
                     </div>
                 </template>
             </ValueListCard>

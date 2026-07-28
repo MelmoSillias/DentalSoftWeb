@@ -392,7 +392,7 @@
                                 </div>
 
                                 <div class="h-80">
-                                    <Chart type="bar" :data="monthlyFlowData" :options="monthlyFlowOptions" class="h-full w-full" />
+                                    <AppChart type="bar" :data="monthlyFlowData" :options="monthlyFlowOptions" class="h-full w-full" />
                                 </div>
                             </section>
 
@@ -403,7 +403,7 @@
                                 </div>
 
                                 <div class="h-80">
-                                    <Chart type="doughnut" :data="paymentDistributionData" :options="paymentDistributionOptions" class="h-full w-full" />
+                                    <AppChart type="doughnut" :data="paymentDistributionData" :options="paymentDistributionOptions" class="h-full w-full" />
                                 </div>
                             </section>
                         </div>
@@ -416,7 +416,7 @@
                                 </div>
 
                                 <div class="h-80">
-                                    <Chart type="bar" :data="accountFlowData" :options="accountFlowOptions" class="h-full w-full" />
+                                    <AppChart type="bar" :data="accountFlowData" :options="accountFlowOptions" class="h-full w-full" />
                                 </div>
                             </section>
 
@@ -427,7 +427,7 @@
                                 </div>
 
                                 <div class="h-80">
-                                    <Chart type="doughnut" :data="capitalShareData" :options="capitalShareOptions" class="h-full w-full" />
+                                    <AppChart type="doughnut" :data="capitalShareData" :options="capitalShareOptions" class="h-full w-full" />
                                 </div>
                             </section>
 
@@ -438,7 +438,7 @@
                                 </div>
 
                                 <div class="h-80">
-                                    <Chart type="doughnut" :data="validationStatusData" :options="validationStatusOptions" class="h-full w-full" />
+                                    <AppChart type="doughnut" :data="validationStatusData" :options="validationStatusOptions" class="h-full w-full" />
                                 </div>
                             </section>
                         </div>
@@ -450,7 +450,7 @@
                             </div>
 
                             <div class="h-80">
-                                <Chart type="line" :data="capitalEvolutionData" :options="capitalEvolutionOptions" class="h-full w-full" />
+                                <AppChart type="line" :data="capitalEvolutionData" :options="capitalEvolutionOptions" class="h-full w-full" />
                             </div>
                         </section>
                     </div>
@@ -552,7 +552,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { activateFinancesTourMock, deactivateFinancesTourMock, resetFinancesTourMockData } from '@/services/financesTourMock';
 import Breadcrumb from 'primevue/breadcrumb';
 import Button from 'primevue/button';
-import Chart from 'primevue/chart';
+import AppChart from '@/components/common/AppChart.vue';
 import Column from 'primevue/column';
 import ConfirmPopup from 'primevue/confirmpopup';
 import DataTable from 'primevue/datatable';

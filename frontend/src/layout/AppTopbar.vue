@@ -12,11 +12,27 @@ import { useMercureNotifications } from '@/composables/useMercureNotifications';
 import { useRoute } from 'vue-router';
 import { getTaskMenuItemsForRoute, isGuidedTourRoute, requestGuidedTourStart } from '@/tours';
 import cabinetConfig from '@/cabinetConfig';
+import { useSmsTopbarCredits } from '@/composables/useSmsTopbarCredits';
 
 const { toggleMenu, toggleDarkMode, isDarkTheme } = useLayout();
 const auth = useAuthStore();
 const toast = useToast();
 const route = useRoute();
+
+const {
+    showInTopbar: showSmsCredits,
+    canOpenSmsSettings,
+    providerLabel: smsProviderLabel,
+    displayUnits: smsDisplayUnits,
+    overviewSuccess: smsOverviewSuccess,
+    loading: smsCreditsLoading,
+    titleHint: smsCreditsTitle,
+    startPolling: startSmsCreditsPolling,
+    stopPolling: stopSmsCreditsPolling
+} = useSmsTopbarCredits(
+    () => auth.token,
+    () => auth.user?.roles || []
+);
 const currentTime = ref('');
 const currentDate = ref('');
 const showNotificationsPopover = ref(false);
@@ -129,13 +145,18 @@ function updateDateTime() {
 }
 
 let timer;
-onMounted(() => {
+onMounted(async () => {
     updateDateTime();
     timer = setInterval(updateDateTime, 1000);
     if (auth.token && !auth.user) {
-        auth.fetchUser(); // Fetch user data if token exists
+        try {
+            await auth.fetchUser();
+        } catch {
+            // ignore — notifications / SMS topbar gérés ci-dessous
+        }
     }
     if (auth.token) {
+        startSmsCreditsPolling();
         isNotificationsLoading.value = true;
         startNotifications()
             .catch(() => {
@@ -153,7 +174,16 @@ onMounted(() => {
 });
 onBeforeUnmount(() => {
     clearInterval(timer);
+    stopSmsCreditsPolling();
 });
+
+function openSmsSettings() {
+    if (!canOpenSmsSettings.value) {
+        return;
+    }
+
+    router.push({ name: 'administration-api-sms' });
+}
 
 function toggleNotificationsPopover(event) {
     if (showNotificationsPopover.value) {
@@ -300,6 +330,22 @@ function handleStartGuidedTourTask(taskId, variantId = null) {
         </div>
         <div class="layout-topbar-actions">
             <div class="layout-config-menu">
+                <button
+                    v-if="showSmsCredits"
+                    type="button"
+                    class="sms-credits-pill layout-topbar-action"
+                    :class="{
+                        'sms-credits-pill--warn': !smsOverviewSuccess && !smsCreditsLoading,
+                        'sms-credits-pill--readonly': !canOpenSmsSettings
+                    }"
+                    :title="smsCreditsTitle"
+                    @click="openSmsSettings"
+                >
+                    <i class="pi pi-comment" aria-hidden="true"></i>
+                    <span class="sms-credits-pill__label">{{ smsProviderLabel }}</span>
+                    <span class="sms-credits-pill__value">{{ smsDisplayUnits }}</span>
+                    <span class="sms-credits-pill__suffix">SMS</span>
+                </button>
                 <button type="button" class="layout-topbar-action" @click="toggleDarkMode">
                     <i :class="['pi', { 'pi-moon': isDarkTheme, 'pi-sun': !isDarkTheme }]"></i>
                 </button>
@@ -555,6 +601,40 @@ function handleStartGuidedTourTask(taskId, variantId = null) {
 :deep(.p-button.p-button-danger:hover) {
     background-color: #dc2626;
     border-color: #dc2626;
+}
+
+.sms-credits-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.35rem 0.65rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.14);
+    font-size: 0.8125rem;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+.sms-credits-pill--warn .sms-credits-pill__value {
+    opacity: 0.85;
+}
+
+.sms-credits-pill--readonly {
+    cursor: default;
+}
+
+.sms-credits-pill__label {
+    opacity: 0.9;
+    font-weight: 500;
+}
+
+.sms-credits-pill__value {
+    font-weight: 700;
+}
+
+.sms-credits-pill__suffix {
+    opacity: 0.85;
+    font-size: 0.75rem;
 }
 
 .notification-btn {
