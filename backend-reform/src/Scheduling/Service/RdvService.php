@@ -266,22 +266,32 @@ class RdvService
         return $actor instanceof User && in_array('ROLE_MEDECIN', $actor->getRoles(), true);
     }
 
-    private function canAutoCreateConsultation(?User $actor, array $payload = []): bool
+    private function shouldCreateConsultation(array $payload = []): bool
     {
-        if (($payload['create_consultation'] ?? null) === false) {
-            return false;
-        }
+        $flag = $payload['create_consultation'] ?? false;
 
-        return !$this->isMedecinUser($actor);
+        return $flag === true || $flag === 1 || $flag === '1';
     }
 
-    private function createConsultationFromRdv(Rdv $rdv, ?int $medecinId = null): Consultation
+    /**
+     * @return array{medecin: Employe}|array{error: string, status: int}
+     */
+    private function resolveMedecinForConsultation(Rdv $rdv, array $payload): array
     {
+        $medecinId = isset($payload['medecin']) ? (int) $payload['medecin'] : null;
         $medecin = $medecinId ? $this->employeRepo->find($medecinId) : $rdv->getMedecin();
-        if (!$medecin) {
-            throw new NotFoundHttpException('Médecin introuvable');
+
+        if (!$medecin instanceof Employe) {
+            return ['error' => 'Un médecin est requis pour créer la consultation.', 'status' => 400];
         }
 
+        $rdv->setMedecin($medecin);
+
+        return ['medecin' => $medecin];
+    }
+
+    private function createConsultationFromRdv(Rdv $rdv, Employe $medecin): Consultation
+    {
         $consultation = new Consultation();
         $consultation->setMedecin($medecin);
         $consultation->setPatient($rdv->getPatient());
@@ -303,8 +313,12 @@ class RdvService
         $rdv->setStatut($newStatus);
         $createdConsultation = null;
 
-        if ($newStatus === 1 && $this->canAutoCreateConsultation($actor, $payload)) {
-            $createdConsultation = $this->createConsultationFromRdv($rdv, $payload['medecin'] ?? null);
+        if ($newStatus === 1 && $this->shouldCreateConsultation($payload)) {
+            $resolved = $this->resolveMedecinForConsultation($rdv, $payload);
+            if (isset($resolved['error'])) {
+                return $resolved;
+            }
+            $createdConsultation = $this->createConsultationFromRdv($rdv, $resolved['medecin']);
         }
 
         $this->em->flush();
@@ -341,8 +355,12 @@ class RdvService
 
         if ($action === 'validate') {
             $rdv->setStatut(1);
-            if ($this->canAutoCreateConsultation($actor, $payload)) {
-                $createdConsultation = $this->createConsultationFromRdv($rdv, $payload['medecin'] ?? null);
+            if ($this->shouldCreateConsultation($payload)) {
+                $resolved = $this->resolveMedecinForConsultation($rdv, $payload);
+                if (isset($resolved['error'])) {
+                    return $resolved;
+                }
+                $createdConsultation = $this->createConsultationFromRdv($rdv, $resolved['medecin']);
             }
         } elseif ($action === 'cancel') {
             $rdv->setStatut(-2);

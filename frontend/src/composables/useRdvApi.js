@@ -325,11 +325,22 @@ export function useRdvApi() {
     };
 
     const validateRdv = async (id, medecinId, options = {}) => {
-        await http.post(`rdv/${id}/validate`, {
-            medecin: medecinId,
-            create_consultation: options.createConsultation ?? true
-        });
-        rdvs.value = rdvs.value.map((rdv) => (rdv.id === id ? { ...rdv, medecinId: medecinId || rdv.medecinId, statut: 1 } : rdv));
+        const payload = {
+            create_consultation: options.createConsultation === true
+        };
+        if (medecinId != null && medecinId !== '') {
+            payload.medecin = medecinId;
+        }
+        await http.post(`rdv/${id}/validate`, payload);
+        rdvs.value = rdvs.value.map((rdv) =>
+            rdv.id === id
+                ? {
+                      ...rdv,
+                      medecinId: payload.medecin ?? rdv.medecinId,
+                      statut: 1
+                  }
+                : rdv
+        );
     };
 
     const cancelRdv = async (id) => {

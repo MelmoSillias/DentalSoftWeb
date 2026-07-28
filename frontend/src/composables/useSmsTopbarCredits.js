@@ -66,33 +66,15 @@ export function useSmsTopbarCredits(getToken, getRoles) {
     });
 
     const displayExpiration = computed(() => {
-        if (loading.value && !expirationDate.value) {
-            return null;
+        if (loading.value && !expirationDate.value && remainingUnits.value === null) {
+            return '…';
         }
 
         if (!overviewSuccess.value) {
-            return null;
+            return '—';
         }
 
         return formatExpirationDate(expirationDate.value) || '—';
-    });
-
-    const titleHint = computed(() => {
-        const parts = [`Solde ${providerLabel.value}`];
-        if (remainingUnits.value !== null && remainingUnits.value !== undefined && overviewSuccess.value) {
-            parts.push(`${remainingUnits.value} SMS restants`);
-        } else if (overviewMessage.value) {
-            parts.push(overviewMessage.value);
-        }
-        const formattedExpiry = formatExpirationDate(expirationDate.value);
-        if (formattedExpiry) {
-            parts.push(`Expiration ${formattedExpiry}`);
-        }
-        if (lastUpdated.value) {
-            parts.push(`Mis à jour ${lastUpdated.value.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`);
-        }
-        parts.push('Actualisation automatique toutes les 5 min');
-        return parts.join(' · ');
     });
 
     const refresh = async ({ silent = true } = {}) => {
@@ -160,7 +142,6 @@ export function useSmsTopbarCredits(getToken, getRoles) {
         displayExpiration,
         overviewSuccess,
         loading,
-        titleHint,
         refresh,
         startPolling,
         stopPolling

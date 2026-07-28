@@ -27,7 +27,6 @@ const {
     displayExpiration: smsDisplayExpiration,
     overviewSuccess: smsOverviewSuccess,
     loading: smsCreditsLoading,
-    titleHint: smsCreditsTitle,
     startPolling: startSmsCreditsPolling,
     stopPolling: stopSmsCreditsPolling
 } = useSmsTopbarCredits(
@@ -334,42 +333,51 @@ function handleStartGuidedTourTask(taskId, variantId = null) {
                 <button
                     v-if="showSmsCredits && canOpenSmsSettings"
                     type="button"
-                    class="sms-credits-pill layout-topbar-action"
-                    :class="{ 'sms-credits-pill--warn': !smsOverviewSuccess && !smsCreditsLoading }"
-                    :title="smsCreditsTitle"
+                    class="sms-credits-widget sms-credits-widget--clickable"
+                    :class="{ 'sms-credits-widget--warn': !smsOverviewSuccess && !smsCreditsLoading }"
                     @click="openSmsSettings"
                 >
-                    <i class="pi pi-comment" aria-hidden="true"></i>
-                    <span class="sms-credits-pill__body">
-                        <span class="sms-credits-pill__row">
-                            <span class="sms-credits-pill__label">{{ smsProviderLabel }}</span>
-                            <span class="sms-credits-pill__value">{{ smsDisplayUnits }}</span>
-                            <span class="sms-credits-pill__suffix">SMS restants</span>
-                        </span>
-                        <span v-if="smsDisplayExpiration" class="sms-credits-pill__row sms-credits-pill__exp">
-                            Exp. {{ smsDisplayExpiration }}
-                        </span>
-                    </span>
+                    <div class="sms-credits-widget__icon" aria-hidden="true">
+                        <i class="pi pi-comment"></i>
+                    </div>
+                    <div class="sms-credits-widget__content">
+                        <span class="sms-credits-widget__provider">{{ smsProviderLabel }}</span>
+                        <div class="sms-credits-widget__metrics">
+                            <div class="sms-credits-widget__metric">
+                                <span class="sms-credits-widget__metric-label">Restants</span>
+                                <span class="sms-credits-widget__metric-value">{{ smsDisplayUnits }}</span>
+                            </div>
+                            <div class="sms-credits-widget__metric">
+                                <span class="sms-credits-widget__metric-label">Expiration</span>
+                                <span class="sms-credits-widget__metric-value sms-credits-widget__metric-value--date">{{ smsDisplayExpiration }}</span>
+                            </div>
+                        </div>
+                    </div>
                 </button>
-                <span
+                <div
                     v-else-if="showSmsCredits"
-                    class="sms-credits-pill sms-credits-pill--readonly layout-topbar-action"
-                    :class="{ 'sms-credits-pill--warn': !smsOverviewSuccess && !smsCreditsLoading }"
-                    :title="smsCreditsTitle"
+                    class="sms-credits-widget"
+                    :class="{ 'sms-credits-widget--warn': !smsOverviewSuccess && !smsCreditsLoading }"
                     role="status"
+                    aria-live="polite"
                 >
-                    <i class="pi pi-comment" aria-hidden="true"></i>
-                    <span class="sms-credits-pill__body">
-                        <span class="sms-credits-pill__row">
-                            <span class="sms-credits-pill__label">{{ smsProviderLabel }}</span>
-                            <span class="sms-credits-pill__value">{{ smsDisplayUnits }}</span>
-                            <span class="sms-credits-pill__suffix">SMS restants</span>
-                        </span>
-                        <span v-if="smsDisplayExpiration" class="sms-credits-pill__row sms-credits-pill__exp">
-                            Exp. {{ smsDisplayExpiration }}
-                        </span>
-                    </span>
-                </span>
+                    <div class="sms-credits-widget__icon" aria-hidden="true">
+                        <i class="pi pi-comment"></i>
+                    </div>
+                    <div class="sms-credits-widget__content">
+                        <span class="sms-credits-widget__provider">{{ smsProviderLabel }}</span>
+                        <div class="sms-credits-widget__metrics">
+                            <div class="sms-credits-widget__metric">
+                                <span class="sms-credits-widget__metric-label">Restants</span>
+                                <span class="sms-credits-widget__metric-value">{{ smsDisplayUnits }}</span>
+                            </div>
+                            <div class="sms-credits-widget__metric">
+                                <span class="sms-credits-widget__metric-label">Expiration</span>
+                                <span class="sms-credits-widget__metric-value sms-credits-widget__metric-value--date">{{ smsDisplayExpiration }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
                 <button type="button" class="layout-topbar-action" @click="toggleDarkMode">
                     <i :class="['pi', { 'pi-moon': isDarkTheme, 'pi-sun': !isDarkTheme }]"></i>
                 </button>
@@ -627,61 +635,103 @@ function handleStartGuidedTourTask(taskId, variantId = null) {
     border-color: #dc2626;
 }
 
-.sms-credits-pill {
+.sms-credits-widget {
     display: inline-flex;
     align-items: center;
-    gap: 0.45rem;
-    padding: 0.35rem 0.65rem;
-    border-radius: 0.75rem;
-    background: rgba(255, 255, 255, 0.14);
-    font-size: 0.8125rem;
-    line-height: 1.2;
-    white-space: nowrap;
-    border: none;
+    gap: 0.5rem;
+    padding: 0.3rem 0.65rem 0.3rem 0.45rem;
+    max-height: 2.65rem;
+    border-radius: 0.625rem;
+    background: rgba(255, 255, 255, 0.94);
+    border: 1px solid rgba(255, 255, 255, 0.55);
+    box-shadow:
+        0 1px 2px rgba(15, 23, 42, 0.08),
+        inset 0 1px 0 rgba(255, 255, 255, 0.85);
+    color: #334155;
+    text-align: left;
+    flex-shrink: 0;
 }
 
-.sms-credits-pill__body {
+.sms-credits-widget--clickable {
+    cursor: pointer;
+    font: inherit;
+    appearance: none;
+    transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.sms-credits-widget--clickable:hover {
+    box-shadow:
+        0 2px 8px rgba(15, 23, 42, 0.12),
+        inset 0 1px 0 rgba(255, 255, 255, 0.85);
+    transform: translateY(-1px);
+}
+
+.sms-credits-widget--clickable:active {
+    transform: translateY(0);
+}
+
+.sms-credits-widget--warn {
+    border-color: rgba(251, 191, 36, 0.65);
+    background: rgba(255, 251, 235, 0.96);
+}
+
+.sms-credits-widget__icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 0.45rem;
+    background: color-mix(in srgb, var(--primary-color, #3b82f6) 14%, white);
+    color: var(--primary-color, #3b82f6);
+    font-size: 0.85rem;
+    flex-shrink: 0;
+}
+
+.sms-credits-widget__content {
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
-    gap: 0.1rem;
+    gap: 0.05rem;
     min-width: 0;
+    line-height: 1.15;
 }
 
-.sms-credits-pill__row {
+.sms-credits-widget__provider {
+    font-size: 0.625rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #64748b;
+}
+
+.sms-credits-widget__metrics {
+    display: flex;
+    align-items: baseline;
+    gap: 0.65rem;
+}
+
+.sms-credits-widget__metric {
     display: inline-flex;
     align-items: baseline;
-    flex-wrap: wrap;
-    gap: 0.3rem;
+    gap: 0.25rem;
+    white-space: nowrap;
 }
 
-.sms-credits-pill--warn .sms-credits-pill__value {
-    opacity: 0.85;
-}
-
-.sms-credits-pill--readonly {
-    cursor: default;
-    pointer-events: none;
-}
-
-.sms-credits-pill__exp {
+.sms-credits-widget__metric-label {
     font-size: 0.6875rem;
-    opacity: 0.88;
-    line-height: 1.1;
+    color: #64748b;
 }
 
-.sms-credits-pill__label {
-    opacity: 0.9;
-    font-weight: 500;
-}
-
-.sms-credits-pill__value {
+.sms-credits-widget__metric-value {
+    font-size: 0.8125rem;
     font-weight: 700;
+    color: #0f172a;
+    font-variant-numeric: tabular-nums;
 }
 
-.sms-credits-pill__suffix {
-    opacity: 0.85;
+.sms-credits-widget__metric-value--date {
     font-size: 0.75rem;
+    font-weight: 600;
 }
 
 .notification-btn {

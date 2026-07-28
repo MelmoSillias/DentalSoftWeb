@@ -150,18 +150,22 @@ const openValidate = (rdv) => {
 	dialogState.validate = true;
 };
 
-const confirmValidate = async ({ id, medecinId }) => {
+const confirmValidate = async ({ id, medecinId, createConsultation }) => {
 	actionLoading.value = true;
 	try {
-		const effectiveMedecinId = isMedecinUser.value ? connectedMedecinId.value : medecinId;
-		await api.validateRdv(id, effectiveMedecinId, { createConsultation: !isMedecinUser.value });
+		const wantsConsultation = Boolean(createConsultation);
+		const effectiveMedecinId = wantsConsultation
+			? (isMedecinUser.value ? connectedMedecinId.value : medecinId)
+			: null;
+		await api.validateRdv(id, effectiveMedecinId, { createConsultation: wantsConsultation });
 		notify('Rendez-vous validé');
 		refreshKey.value += 1;
 		nextTick(() => {
 			weeklyViewRef.value?.reloadOnAction?.();
 		});
 	} catch (err) {
-		notify('Validation impossible', 'error');
+		const detail = err?.response?.data?.error || 'Validation impossible';
+		notify(detail, 'error');
 		console.error(err);
 	} finally {
 		actionLoading.value = false;
@@ -418,7 +422,6 @@ onBeforeUnmount(() => {
 			:medecins="scopedMedecinsList"
 			:lockedMedecinId="isMedecinUser ? connectedMedecinId : null"
 			:medecinReadonly="isMedecinUser"
-			:autoCreateConsultation="!isMedecinUser"
 			:loading="actionLoading"
 			@confirm="confirmValidate"
 		/>
