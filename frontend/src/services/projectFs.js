@@ -1,3 +1,4 @@
+import { logAppError } from '@/utils/appLogger';
 import * as fsService from '@/services/olders/fsService';
 import { computeCalculations } from '@/services/olders/topoCalc';
 import { exportTopoPDF } from '@/services/olders/topoExport';
@@ -22,7 +23,7 @@ export const ensureFsRoot = async (notifier) => {
         }
         return true;
     } catch (e) {
-        console.error('FS root unavailable', e);
+        logAppError('FS root unavailable', e);
         notify(notifier, {
             severity: 'warn',
             summary: 'Dossier racine',
@@ -60,7 +61,7 @@ export const saveDefaultFiles = async (projectTitle, locality, geo, notifier) =>
             life: 3000
         });
     } catch (e) {
-        console.error('Default export failed', e);
+        logAppError('Default export failed', e);
         notify(notifier, {
             severity: 'warn',
             summary: 'Export',

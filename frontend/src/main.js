@@ -12,7 +12,7 @@ import router from './router';
 import { useUiSettingsStore } from '@/stores/uiSettings';
 import cabinetConfig from '@/cabinetConfig';
 import { frLocale } from '@/locales/primevue-fr';
-// main.js ou main.ts
+import { devDebug, logAppError, setAppLoggerRouteResolver } from '@/utils/appLogger';
 
 
 // Défensive: wrappe l'ajout/suppression de listeners sur matchMedia
@@ -31,7 +31,9 @@ if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
                     try {
                         return listener.call(this, e);
                     } catch (err) {
-                        console.warn('matchMedia listener error (wrapped):', err);
+                        if (import.meta.env.DEV) {
+                            logAppError('matchMedia.listener', err);
+                        }
                     }
                 };
                 // store mapping to allow proper removal
@@ -59,7 +61,9 @@ if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
                     try {
                         return listener.call(this, e);
                     } catch (err) {
-                        console.warn('matchMedia addListener error (wrapped):', err);
+                        if (import.meta.env.DEV) {
+                            logAppError('matchMedia.addListener', err);
+                        }
                     }
                 };
                 if (!this.__wrappedListeners) this.__wrappedListeners = new WeakMap();
@@ -78,8 +82,10 @@ if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
 
         // no EventSource polyfill here; we use fetch-event-source in composable
 
-    } catch (e) { 
-        console.warn('matchMedia safe wrapper failed:', e);
+    } catch (e) {
+        if (import.meta.env.DEV) {
+            logAppError('matchMedia.wrapper', e);
+        }
     }
 }
  
@@ -164,7 +170,17 @@ const SkyPreset = definePreset(Aura, {
 });
 
 const app = createApp(App);
- 
+
+app.config.errorHandler = (err, instance, info) => {
+    logAppError(`vue:${info}`, err, { component: instance?.$options?.name });
+};
+
+if (typeof window !== 'undefined') {
+    window.addEventListener('unhandledrejection', (event) => {
+        logAppError('unhandledrejection', event.reason);
+    });
+}
+
 app.use(PrimeVue, {
     ripple: true,
     locale: frLocale,
@@ -185,6 +201,10 @@ const uiSettings = useUiSettingsStore(pinia);
 uiSettings.initialize();
 
 app.use(router);
+setAppLoggerRouteResolver(() => router.currentRoute.value?.fullPath);
+router.onError((error) => {
+    logAppError('router.chunk', error);
+});
 app.use(ToastService);
 app.use(ConfirmationService);
 app.component('AppToast', AppToast);
@@ -196,7 +216,7 @@ const updateSW = registerSW({
         updateSW(true);
     },
     onOfflineReady() {
-        console.log('Application prête hors-ligne.');
+        devDebug('Application prête hors-ligne.');
     }
 });
 

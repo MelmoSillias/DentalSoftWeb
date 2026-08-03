@@ -58,6 +58,7 @@
 </template>
 
 <script setup>
+import { logAppError } from '@/utils/appLogger';
 import { ref } from 'vue';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
@@ -111,7 +112,7 @@ const submitAdd = async () => {
         emit('refresh');
         closeAddDialog();
     } catch (err) {
-        console.error(err);
+        logAppError('ArchiveFilesSection', err);
         toast.add({ severity: 'error', summary: 'Erreur', detail: "Impossible d'ajouter le fichier", life: 3000 });
     } finally {
         uploading.value = false;
@@ -146,7 +147,7 @@ const confirmDelete = (file) => {
                 toast.add({ severity: 'success', summary: 'Supprimé', detail: 'Fichier supprimé', life: 2500 });
                 emit('refresh');
             } catch (err) {
-                console.error(err);
+                logAppError('ArchiveFilesSection', err);
                 toast.add({ severity: 'error', summary: 'Erreur', detail: 'Suppression impossible', life: 3000 });
             } finally {
                 loading.value = false;

@@ -2,6 +2,7 @@ import AppLayout from '@/layout/AppLayout.vue';
 import { createRouter, createWebHistory } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { isDeviceNotAllowedError } from '@/service/http';
+import { logAppError } from '@/utils/appLogger';
 
 const router = createRouter({
     history: createWebHistory(),
@@ -242,7 +243,7 @@ router.beforeEach(async (to, from, next) => {
             if (isDeviceNotAllowedError(error)) {
                 return next({ name: 'devicePending' });
             }
-            console.error('Erreur lors de la validation du token:', error);
+            logAppError('router.validateToken', error);
             localStorage.removeItem('token');
             return next({ name: 'login' });
         }

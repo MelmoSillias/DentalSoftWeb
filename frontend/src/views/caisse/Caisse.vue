@@ -1,4 +1,6 @@
 <script setup>
+import { logAppError } from '@/utils/appLogger';
+
 import CaisseInvoiceDialogs from '@/components/caisse/CaisseInvoiceDialogs.vue';
 import CaisseFactures from '@/components/caisse/CaisseFactures.vue';
 import CaisseOverview from '@/components/caisse/CaisseOverview.vue';
@@ -508,7 +510,7 @@ const loadFactures = async () => {
 			loadErrorMessage.value = '';
 		}
 	} catch (error) {
-		console.error(error);
+		logAppError('Caisse', error);
 		if (isInitialLoadPhase.value) {
 			loadErrorMessage.value = 'Impossible de charger les factures de caisse.';
 		}
@@ -534,7 +536,7 @@ const loadPayments = async () => {
 			loadErrorMessage.value = '';
 		}
 	} catch (error) {
-		console.error(error);
+		logAppError('Caisse', error);
 		if (isInitialLoadPhase.value) {
 			loadErrorMessage.value = 'Impossible de charger les paiements de caisse.';
 		}
@@ -548,7 +550,7 @@ const loadPaymentMethods = async () => {
 	try {
 		paymentMethods.value = await paymentMethodsStore.load(token);
 	} catch (error) {
-		console.error(error);
+		logAppError('Caisse', error);
 		toast.add({ severity: 'warn', summary: 'Modes de paiement', detail: 'Chargement impossible', life: 3000 });
 	}
 };
@@ -557,7 +559,7 @@ const loadAssurances = async () => {
 	try {
 		assurances.value = await assurancesStore.load(token);
 	} catch (error) {
-		console.error(error);
+		logAppError('Caisse', error);
 		toast.add({ severity: 'warn', summary: 'Assurances', detail: 'Chargement impossible', life: 3000 });
 	}
 };
@@ -600,7 +602,7 @@ const loadInsuranceDashboard = async () => {
 			insuranceDashboard.value = cards;
 		}
 	} catch (error) {
-		console.error(error);
+		logAppError('Caisse', error);
 		if (!assurances.value.length) {
 			await loadAssurances();
 		}
@@ -623,7 +625,7 @@ const loadInsuranceLots = async () => {
 			insuranceLotsAssurance.value = { ...insuranceLotsAssurance.value, ...res.assurance };
 		}
 	} catch (error) {
-		console.error(error);
+		logAppError('Caisse', error);
 		toast.add({ severity: 'error', summary: 'Assurances', detail: 'Chargement des lots impossible', life: 3500 });
 	} finally {
 		insuranceLotsLoading.value = false;
@@ -637,7 +639,7 @@ const loadInsuranceClaimDetail = async (claim) => {
 		insuranceClaimLoading.value = true;
 		insuranceSelectedClaim.value = await fetchInsuranceClaimDetail(claimId, token);
 	} catch (error) {
-		console.error(error);
+		logAppError('Caisse', error);
 		toast.add({ severity: 'error', summary: 'Assurances', detail: 'Chargement du détail impossible', life: 3500 });
 	} finally {
 		insuranceClaimLoading.value = false;
@@ -651,7 +653,7 @@ const loadInsuranceLotDetail = async (lot) => {
 		insuranceLotLoading.value = true;
 		insuranceSelectedLot.value = await fetchAssuranceLotDetail(lotId, token);
 	} catch (error) {
-		console.error(error);
+		logAppError('Caisse', error);
 		toast.add({ severity: 'error', summary: 'Assurances', detail: 'Chargement du lot impossible', life: 3500 });
 	} finally {
 		insuranceLotLoading.value = false;
@@ -691,7 +693,7 @@ const createInsuranceLot = async (payload) => {
 		toast.add({ severity: 'success', summary: 'Assurances', detail: 'Lot créé.', life: 3000 });
 		await refreshInsuranceViews();
 	} catch (error) {
-		console.error(error);
+		logAppError('Caisse', error);
 		const detail = error?.response?.data?.error || 'Création du lot impossible.';
 		toast.add({ severity: 'error', summary: 'Assurances', detail, life: 3500 });
 	} finally {
@@ -706,7 +708,7 @@ const updateInsuranceLotMeta = async ({ lot, payload }) => {
 		toast.add({ severity: 'success', summary: 'Assurances', detail: 'Lot mis à jour.', life: 3000 });
 		await refreshInsuranceViews();
 	} catch (error) {
-		console.error(error);
+		logAppError('Caisse', error);
 		toast.add({ severity: 'error', summary: 'Assurances', detail: 'Modification du lot impossible.', life: 3500 });
 	} finally {
 		insuranceActionLoadingId.value = null;
@@ -724,7 +726,7 @@ const runLotTransition = async (lot, action, successMessage) => {
 		toast.add({ severity: 'success', summary: 'Assurances', detail: successMessage, life: 3000 });
 		await refreshInsuranceViews();
 	} catch (error) {
-		console.error(error);
+		logAppError('Caisse', error);
 		const detail = error?.response?.data?.error || 'Action impossible.';
 		toast.add({ severity: 'error', summary: 'Assurances', detail, life: 3500 });
 	} finally {
@@ -751,7 +753,7 @@ const refundInsuranceLot = async (payload) => {
 		toast.add({ severity: 'success', summary: 'Assurances', detail: 'Remboursement enregistré.', life: 3000 });
 		await refreshInsuranceViews({ includePayments: false });
 	} catch (error) {
-		console.error(error);
+		logAppError('Caisse', error);
 		const detail = error?.response?.data?.error || 'Remboursement impossible.';
 		toast.add({ severity: 'error', summary: 'Assurances', detail, life: 3500 });
 	} finally {
@@ -766,7 +768,7 @@ const cancelInsuranceLotRefund = async ({ lot, transaction }) => {
 		toast.add({ severity: 'success', summary: 'Assurances', detail: 'Remboursement annulé.', life: 3000 });
 		await refreshInsuranceViews();
 	} catch (error) {
-		console.error(error);
+		logAppError('Caisse', error);
 		toast.add({ severity: 'error', summary: 'Assurances', detail: 'Annulation impossible.', life: 3500 });
 	} finally {
 		insuranceActionLoadingId.value = null;
@@ -780,7 +782,7 @@ const assignClaimToLot = async ({ claim, lotId }) => {
 		toast.add({ severity: 'success', summary: 'Assurances', detail: 'Facture affectée au lot.', life: 3000 });
 		await refreshInsuranceViews();
 	} catch (error) {
-		console.error(error);
+		logAppError('Caisse', error);
 		const detail = error?.response?.data?.error || 'Affectation impossible.';
 		toast.add({ severity: 'error', summary: 'Assurances', detail, life: 3500 });
 	} finally {
@@ -795,7 +797,7 @@ const changeClaimLot = async ({ claim, lotId }) => {
 		toast.add({ severity: 'success', summary: 'Assurances', detail: 'Lot changé.', life: 3000 });
 		await refreshInsuranceViews();
 	} catch (error) {
-		console.error(error);
+		logAppError('Caisse', error);
 		const detail = error?.response?.data?.error || 'Changement de lot impossible.';
 		toast.add({ severity: 'error', summary: 'Assurances', detail, life: 3500 });
 	} finally {
@@ -812,7 +814,7 @@ const removeClaimFromLot = async (claim) => {
 		toast.add({ severity: 'success', summary: 'Assurances', detail: 'Facture retirée du lot.', life: 3000 });
 		await refreshInsuranceViews();
 	} catch (error) {
-		console.error(error);
+		logAppError('Caisse', error);
 		toast.add({ severity: 'error', summary: 'Assurances', detail: 'Retrait impossible.', life: 3500 });
 	} finally {
 		insuranceActionLoadingId.value = null;
@@ -843,7 +845,7 @@ const printInsuranceClaim = async (claim) => {
 			title: res.title || 'Facture assurance'
 		});
 	} catch (error) {
-		console.error(error);
+		logAppError('Caisse', error);
 		toast.add({ severity: 'error', summary: 'Assurances', detail: 'Impression indisponible', life: 3500 });
 	}
 };
@@ -858,7 +860,7 @@ const printInsuranceClaimDevis = async (claim) => {
 			title: 'Devis assurance'
 		});
 	} catch (error) {
-		console.error(error);
+		logAppError('Caisse', error);
 		toast.add({ severity: 'error', summary: 'Assurances', detail: 'Impression devis indisponible', life: 3500 });
 	}
 };
@@ -913,7 +915,7 @@ const loadPublicGeneralSettings = async () => {
 			loadErrorMessage.value = '';
 		}
 	} catch (error) {
-		console.error(error);
+		logAppError('Caisse', error);
 		publicGeneralSettings.value = {
 			paiementDirectAssurance: false,
 			allowReceptionInvoiceModification: false,
@@ -1085,7 +1087,7 @@ const submitPayment = async () => {
 		}
 		await Promise.all(tasks);
 	} catch (error) {
-		console.error(error);
+		logAppError('Caisse', error);
 		toast.add({ severity: 'error', summary: 'Paiement', detail: error?.response?.data?.error || 'Enregistrement impossible', life: 3500 });
 	} finally {
 		payLoading.value = false;
@@ -1119,7 +1121,7 @@ const reloadFacturePreview = async (factureId) => {
 			previewData.value = await fetchFactureDetail(factureId, token);
 		}
 	} catch (error) {
-		console.error(error);
+		logAppError('Caisse', error);
 		toast.add({ severity: 'error', summary: 'Facture', detail: 'Actualisation du détail impossible', life: 3500 });
 	} finally {
 		previewLoading.value = false;
@@ -1161,7 +1163,7 @@ const resetSelectedDevisPayments = async () => {
 			selectedFacture.value = updatedRow;
 		}
 	} catch (error) {
-		console.error(error);
+		logAppError('Caisse', error);
 		toast.add({ severity: 'error', summary: 'Facture', detail: 'Réinitialisation impossible.', life: 3500 });
 	} finally {
 		resetPaymentsLoading.value = false;
@@ -1197,7 +1199,7 @@ const confirmValidate = async () => {
 		}
 		await Promise.all(tasks);
 	} catch (error) {
-		console.error(error);
+		logAppError('Caisse', error);
 		toast.add({ severity: 'error', summary: 'Validation', detail: 'Échec de la validation', life: 3500 });
 	} finally {
 		validateLoading.value = false;
@@ -1214,7 +1216,7 @@ const openModifyDialog = async (row) => {
 		factureTime.value = invoice.time || '';
 		factureDialogVisible.value = true;
 	} catch (error) {
-		console.error(error);
+		logAppError('Caisse', error);
 		toast.add({ severity: 'error', summary: 'Facture', detail: 'Impossible de charger la facture', life: 3500 });
 	}
 };
@@ -1256,7 +1258,7 @@ const saveFacture = async () => {
 		factureDialogVisible.value = false;
 		await loadFactures();
 	} catch (error) {
-		console.error(error);
+		logAppError('Caisse', error);
 		toast.add({ severity: 'error', summary: 'Facture', detail: 'Enregistrement impossible', life: 3500 });
 	} finally {
 		factureSaving.value = false;
@@ -1277,7 +1279,7 @@ const openPreviewDialog = async (row) => {
 			previewData.value = await fetchFactureDetail(row.id, token);
 		}
 	} catch (error) {
-		console.error(error);
+		logAppError('Caisse', error);
 		toast.add({ severity: 'error', summary: 'Facture', detail: 'Aperçu indisponible', life: 3500 });
 	} finally {
 		previewLoading.value = false;
@@ -1418,7 +1420,7 @@ const printInvoice = async () => {
 			await printComponent(PrintDevisBody, { doc: res.doc, title: res.title || 'Facture' });
 		}
 	} catch (error) {
-		console.error(error);
+		logAppError('Caisse', error);
 		toast.add({ severity: 'error', summary: 'Facture', detail: 'Impression indisponible', life: 3500 });
 	}
 };
@@ -1435,7 +1437,7 @@ const printPayments = async () => {
 			total: res.total || 0
 		}, { orientation: 'landscape' });
 	} catch (error) {
-		console.error(error);
+		logAppError('Caisse', error);
 		toast.add({ severity: 'error', summary: 'Paiements', detail: 'Impression indisponible', life: 3500 });
 	}
 };
@@ -1450,7 +1452,7 @@ const printPayment = async (row) => {
 			{ format: [226.77, 255.12], width: '80mm' }
 		);
 	} catch (error) {
-		console.error(error);
+		logAppError('Caisse', error);
 		toast.add({ severity: 'error', summary: 'Paiement', detail: 'Impression indisponible', life: 3500 });
 	}
 };
@@ -1465,7 +1467,7 @@ const printReceipt = async (row) => {
 			{ format: [226.77, 255.12], width: '80mm' }
 		);
 	} catch (error) {
-		console.error(error);
+		logAppError('Caisse', error);
 		toast.add({ severity: 'error', summary: 'Reçu', detail: 'Impression indisponible', life: 3500 });
 	}
 };
@@ -1480,7 +1482,7 @@ const printReceiptById = async (paymentId) => {
 			{ format: [226.77, 255.12], width: '80mm' }
 		);
 	} catch (error) {
-		console.error(error);
+		logAppError('Caisse', error);
 		toast.add({ severity: 'error', summary: 'Reçu', detail: 'Impression indisponible', life: 3500 });
 	}
 };
@@ -1500,7 +1502,7 @@ const sendInvoiceBySms = async (row) => {
 			life: 3500
 		});
 	} catch (error) {
-		console.error(error);
+		logAppError('Caisse', error);
 		toast.add({ severity: 'error', summary: 'SMS Facture', detail: 'Envoi impossible.', life: 3500 });
 	}
 };
@@ -1516,7 +1518,7 @@ const sendReceiptBySms = async (row) => {
 			life: 3500
 		});
 	} catch (error) {
-		console.error(error);
+		logAppError('Caisse', error);
 		toast.add({ severity: 'error', summary: 'SMS Reçu', detail: 'Envoi impossible.', life: 3500 });
 	}
 };

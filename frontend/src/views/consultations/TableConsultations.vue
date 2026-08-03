@@ -1,4 +1,6 @@
 <script setup>
+import { logAppError } from '@/utils/appLogger';
+
 import PatientAvatar from '@/components/patients/PatientAvatar.vue';
 import ConsultationDetailsDialog from '@/components/consultations/ConsultationDetailsDialog.vue';
 import FactureModal from '@/components/consultations/FactureModal.vue';
@@ -174,7 +176,7 @@ const loadConsultations = async ({ asPageLoad = false } = {}) => {
         }
         return true;
     } catch (error) {
-        console.error('Erreur lors du chargement des consultations du jour', error);
+        logAppError('Erreur lors du chargement des consultations du jour', error);
         if (asPageLoad) {
             loadErrorMessage.value = 'Impossible de charger les consultations.';
         }
@@ -196,7 +198,7 @@ const loadQuickClosePolicy = async ({ asPageLoad = false } = {}) => {
         soinsList.value = normalizeSoinList(settings?.soinsList);
         return true;
     } catch (error) {
-        console.error('Erreur chargement politique de clôturation rapide', error);
+        logAppError('Erreur chargement politique de clôturation rapide', error);
         allowReceptionQuickClose.value = true;
         hidePatientDossierForMedecins.value = false;
         hidePatientPhoneForMedecins.value = false;
@@ -318,7 +320,7 @@ const handleCancel = async (consultation) => {
         toast.add({ severity: 'success', summary: 'Consultation annulée', detail: 'Consultation supprimée.', life: 2500 });
         await loadConsultations();
     } catch (error) {
-        console.error('Annulation impossible', error);
+        logAppError('Annulation impossible', error);
         toast.add({ severity: 'error', summary: 'Erreur', detail: "Impossible d'annuler la consultation.", life: 3000 });
     } finally {
         setCanceling(consultation.id, false);
@@ -347,7 +349,7 @@ const openFacture = async (consultation) => {
         factureDate.value = invoice.date || '';
         factureTime.value = invoice.time || '';
     } catch (error) {
-        console.error('Erreur lors du chargement de la facture', error);
+        logAppError('Erreur lors du chargement de la facture', error);
         toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de charger la facture.', life: 3000 });
         factureDialogVisible.value = false;
     } finally {
@@ -364,7 +366,7 @@ const handleSaveFacture = async (payload) => {
         factureDialogVisible.value = false;
         await loadConsultations();
     } catch (error) {
-        console.error('Erreur lors de la sauvegarde de la facture', error);
+        logAppError('Erreur lors de la sauvegarde de la facture', error);
         toast.add({ severity: 'error', summary: 'Erreur', detail: "Impossible d'enregistrer la facture.", life: 3000 });
     } finally {
         factureSaving.value = false;
@@ -390,7 +392,7 @@ const openDetails = async (consultation) => {
     try {
         detailData.value = await fetchConsultationDetails(consultation.id, token);
     } catch (error) {
-        console.error('Erreur lors du chargement des détails de consultation', error);
+        logAppError('Erreur lors du chargement des détails de consultation', error);
         toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de charger les détails.', life: 3000 });
         detailsDialogVisible.value = false;
     } finally {

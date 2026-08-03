@@ -1,4 +1,6 @@
 <script setup>
+import { logAppError } from '@/utils/appLogger';
+
 import { createRdvForPatient, normalizePatient, searchPatients } from '@/services/patients';
 import { useAuthStore } from '@/stores/auth';
 import { useMedecinsStore } from '@/stores/medecins';
@@ -97,7 +99,7 @@ const loadPatients = async (query = '') => {
         const data = await searchPatients(query, token, 20);
         patients.value = data.map((p) => normalizePatient(p));
     } catch (error) {
-        console.error('Erreur lors du chargement des patients', error);
+        logAppError('Erreur lors du chargement des patients', error);
         toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de charger les patients.', life: 3000 });
     } finally {
         patientsLoading.value = false;
@@ -109,7 +111,7 @@ const loadMedecins = async () => {
         const data = await medecinsStore.load(token);
         medecins.value = Array.isArray(data) ? data : [];
     } catch (error) {
-        console.error('Erreur lors du chargement des médecins', error);
+        logAppError('Erreur lors du chargement des médecins', error);
         toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de charger les médecins.', life: 3000 });
     }
 };
@@ -333,7 +335,7 @@ const saveRendezVous = async () => {
             selectedPatientId.value = null;
         }
     } catch (error) {
-        console.error('Erreur lors de la création du rendez-vous', error);
+        logAppError('Erreur lors de la création du rendez-vous', error);
         toast.add({ severity: 'error', summary: 'Erreur', detail: "Impossible de créer le rendez-vous.", life: 3000 });
     } finally {
         loading.value = false;

@@ -1,3 +1,4 @@
+import { logAppError } from '@/utils/appLogger';
 import { computed, ref } from 'vue';
 import { addMinutes, formatISO, isSameDay, isWithinInterval, parseISO, startOfDay } from '../utils/dateUtils';
 import { fetchPatients, fetchMedecins } from '@/services/patients';
@@ -187,7 +188,7 @@ export function useRdvApi() {
             patientsSeed = items.map((p) => ({ id: p.id, name: p.fullname ?? `${p.prenom ?? ''} ${p.nom ?? ''}`.trim() }));
         } catch (e) {
             // ne pas interrompre l'utilisation mock si l'API échoue
-            console.warn('Erreur chargement medecins/patients:', e);
+            logAppError('Erreur chargement medecins/patients:', e);
         }
     })();
 

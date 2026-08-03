@@ -1,4 +1,6 @@
 <script setup>
+import { logAppError } from '@/utils/appLogger';
+
 import {
     checkConsultationActive,
     createConsultationForPatient,
@@ -92,7 +94,7 @@ const loadMedecins = async () => {
             form.medecinId = medecins.value[0]?.id ?? null;
         }
     } catch (error) {
-        console.error('Erreur lors du chargement des medecins', error);
+        logAppError('Erreur lors du chargement des medecins', error);
         toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de charger les médecins.', life: 3000 });
     }
 };
@@ -101,7 +103,7 @@ const loadPaymentMethods = async () => {
     try {
         paymentMethods.value = await paymentMethodsStore.load(token);
     } catch (error) {
-        console.error('Erreur lors du chargement des modes de paiement', error);
+        logAppError('Erreur lors du chargement des modes de paiement', error);
         toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de charger les modes de paiement.', life: 3000 });
     }
 };
@@ -121,7 +123,7 @@ const loadConsultationCreationPolicy = async () => {
         requireMedecinOnCreation.value = settings?.requireMedecinOnConsultationCreation !== false;
         consultationAmount.value = Math.max(1, Number(settings?.consultationPrice || 5000));
     } catch (error) {
-        console.error('Erreur lors du chargement de la politique consultation', error);
+        logAppError('Erreur lors du chargement de la politique consultation', error);
         requireMedecinOnCreation.value = true;
         consultationAmount.value = 5000;
     }
@@ -241,7 +243,7 @@ const refreshActiveConsultationFlag = async (patientId) => {
         const res = await checkConsultationActive(patientId, token);
         hasActiveConsultation.value = Boolean(res?.hasActive);
     } catch (error) {
-        console.error('Erreur lors de la vérification des consultations actives', error);
+        logAppError('Erreur lors de la vérification des consultations actives', error);
         toast.add({ severity: 'warn', summary: 'Vérification', detail: 'Impossible de vérifier les consultations en cours.', life: 2500 });
         hasActiveConsultation.value = false;
     } finally {
@@ -259,7 +261,7 @@ const printConsultationTicket = async (paiementId) => {
             { format: [226.77, 255.12], width: '80mm' }
         );
     } catch (error) {
-        console.error('Erreur lors de l\'impression du ticket', error);
+        logAppError('Erreur lors de l\'impression du ticket', error);
         toast.add({ severity: 'error', summary: 'Ticket', detail: 'Impression indisponible.', life: 3500 });
     }
 };
@@ -329,7 +331,7 @@ const saveConsultation = async () => {
         emit('saved', saved);
         resetForm();
     } catch (error) {
-        console.error('Erreur lors de la création de la consultation', error);
+        logAppError('Erreur lors de la création de la consultation', error);
         toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de créer la consultation.', life: 3000 });
     } finally {
         loading.value = false;

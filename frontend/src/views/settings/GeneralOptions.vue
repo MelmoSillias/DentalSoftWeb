@@ -1,4 +1,6 @@
 <script setup>
+import { logAppError } from '@/utils/appLogger';
+
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useToast } from 'primevue/usetoast';
@@ -455,7 +457,7 @@ const loadGeneralSettings = async (force = false) => {
         loadErrorMessage.value = '';
         await loadApprovedDevices();
     } catch (error) {
-        console.error(error);
+        logAppError('GeneralOptions', error);
         loadErrorMessage.value = extractApiError(error, 'Chargement impossible');
         toast.add({ severity: 'error', summary: 'Erreur', detail: extractApiError(error, 'Chargement impossible'), life: 3500 });
     } finally {

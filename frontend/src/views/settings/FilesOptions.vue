@@ -88,6 +88,8 @@
 </template>
 
 <script setup>
+import { logAppError } from '@/utils/appLogger';
+
 import { apiPrefix } from '@/config';
 import * as fsService from '@/services/olders/fsService';
 import { sanitizeName } from '@/services/olders/fsService';
@@ -112,7 +114,7 @@ async function checkRoot() {
     const h = await fsService.getRootDirectoryHandle();
     rootStatus.value = h ? 'ok' : 'no';
   } catch (err) {
-    console.error('Erreur checkRoot', err);
+    logAppError('Erreur checkRoot', err);
     rootStatus.value = 'no';
   }
 }
@@ -123,7 +125,7 @@ async function selectRoot() {
     await checkRoot();
     toast.add({ severity: 'success', summary: 'Dossier racine', detail: 'Dossier racine configuré.', life: 3000 });
   } catch (err) {
-    console.error(err);
+    logAppError('FilesOptions', err);
     toast.add({ severity: 'error', summary: 'Erreur', detail: 'Sélection du dossier racine annulée ou échouée.', life: 3000 });
   }
 }
@@ -142,7 +144,7 @@ async function clearRoot() {
           await checkRoot();
           toast.add({ severity: 'success', summary: 'Révoqué', detail: 'Accès racine révoqué (local).', life: 3000 });
         } catch (e) {
-          console.error(e);
+          logAppError('FilesOptions', e);
           toast.add({ severity: 'error', summary: 'Erreur', detail: 'Erreur lors de la révocation.', life: 3000 });
         }
       },
@@ -151,7 +153,7 @@ async function clearRoot() {
       }
     });
   } catch (err) {
-    console.error(err);
+    logAppError('FilesOptions', err);
     toast.add({ severity: 'error', summary: 'Erreur', detail: 'Erreur lors de la révocation.', life: 3000 });
   }
 }
@@ -162,7 +164,7 @@ async function requestRootPermission() {
     await checkRoot();
     toast.add({ severity: 'info', summary: 'Permission', detail: 'Permission demandée — vérifiez la boîte de dialogue du navigateur.', life: 3000 });
   } catch (err) {
-    console.error('requestRootPermission error', err);
+    logAppError('requestRootPermission error', err);
     toast.add({ severity: 'error', summary: 'Erreur', detail: 'Aucune handle racine trouvée ou permission refusée.', life: 3000 });
   }
 }
@@ -240,7 +242,7 @@ async function searchMissing() {
 
     toast.add({ severity: 'info', summary: 'Recherche terminée', detail: `${missingRows.value.length} élément(s) manquant(s)`, life: 3000 });
   } catch (err) {
-    console.error('searchMissing error', err);
+    logAppError('searchMissing error', err);
     toast.add({ severity: 'error', summary: 'Erreur', detail: 'Recherche impossible', life: 3000 });
   } finally {
     searching.value = false;
@@ -267,7 +269,7 @@ async function createForRow(row) {
       if (idx !== -1) missingRows.value.splice(idx, 1);
     }
   } catch (err) {
-    console.error('createForRow error', err);
+    logAppError('createForRow error', err);
     toast.add({ severity: 'error', summary: 'Erreur', detail: `Création impossible: ${err.message || err}`, life: 3000 });
   }
 }

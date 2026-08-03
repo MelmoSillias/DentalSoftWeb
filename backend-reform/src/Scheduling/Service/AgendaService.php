@@ -88,8 +88,6 @@ class AgendaService
         if (isset($data['endAt'])) {
             $endAt = new \DateTime($data['endAt']);
         }
-        
-        dump($beginAt, $endAt);
 
         if (!$beginAt) {
             return ['error' => 'Format de date invalide pour beginAt', 'status' => 400];

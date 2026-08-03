@@ -1,4 +1,6 @@
 <script setup>
+import { logAppError } from '@/utils/appLogger';
+
 import Button from 'primevue/button';
 import Divider from 'primevue/divider';
 import ProgressSpinner from 'primevue/progressspinner';
@@ -57,7 +59,7 @@ const loadOpeningHours = async () => {
         openingTime.value = settings?.openingTime || '08:00';
         closingTime.value = settings?.closingTime || '18:00';
     } catch (error) {
-        console.error('Erreur chargement horaires journaliers:', error);
+        logAppError('Erreur chargement horaires journaliers:', error);
     }
 };
 
@@ -67,7 +69,7 @@ const refreshDay = async () => {
     try {
         dayEvents.value = await props.api.fetchEventsByDay(selectedDate.value, props.lockedMedecinId);
     } catch (err) {
-        console.error('Erreur chargement agenda du jour:', err);
+        logAppError('Erreur chargement agenda du jour:', err);
         dayEvents.value = [];
     } finally {
         loadingDay.value = false;
@@ -80,7 +82,7 @@ const refreshStats = async () => {
     try {
         stats.value = await props.api.fetchStats(selectedDate.value, props.lockedMedecinId);
     } catch (err) {
-        console.error('Erreur chargement statistiques rendez-vous:', err);
+        logAppError('Erreur chargement statistiques rendez-vous:', err);
         stats.value = { pending: 0, validated: 0, postponed: 0, cancelled: 0 };
     } finally {
         loadingStats.value = false;

@@ -548,6 +548,8 @@
 </template>
 
 <script setup>
+import { logAppError } from '@/utils/appLogger';
+
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { activateFinancesTourMock, deactivateFinancesTourMock, resetFinancesTourMockData } from '@/services/financesTourMock';
 import Breadcrumb from 'primevue/breadcrumb';
@@ -1204,7 +1206,7 @@ const loadTransactionMotifs = async () => {
             };
         }
     } catch (error) {
-        console.error('Erreur chargement motifs transaction', error);
+        logAppError('Erreur chargement motifs transaction', error);
     }
 };
 

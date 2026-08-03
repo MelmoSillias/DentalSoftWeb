@@ -1,4 +1,6 @@
 <script setup>
+import { logAppError } from '@/utils/appLogger';
+
 import { createPatient, updatePatient } from '@/services/patients';
 import { useAssurancesStore } from '@/stores/assurances';
 import Button from 'primevue/button';
@@ -207,7 +209,7 @@ const loadAssurances = async () => {
     try {
         assurances.value = await assurancesStore.load(token, { force: true });
     } catch (error) {
-        console.error('Erreur chargement assurances', error);
+        logAppError('Erreur chargement assurances', error);
         assurances.value = [];
     }
 };
@@ -451,7 +453,7 @@ const savePatient = async () => {
             resetForm();
         }
     } catch (error) {
-        console.error('Erreur lors de la sauvegarde du patient', error);
+        logAppError('Erreur lors de la sauvegarde du patient', error);
         toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de sauvegarder le patient.', life: 3000 });
     } finally {
         loading.value = false;

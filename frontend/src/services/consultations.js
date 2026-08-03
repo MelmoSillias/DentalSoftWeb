@@ -11,6 +11,7 @@ import {
     verifyConsultationMedecinPasswordTourMock
 } from '@/services/consultationsTourMock';
 import http from '@/service/http';
+import { logAppError } from '@/utils/appLogger';
 import { is } from 'zod/v4/locales';
 
 const axios = http;
@@ -346,13 +347,7 @@ export const setConsultationFiche = async (consultationId, ficheId = null, token
 
         return res.data;
     } catch (err) {
-        // Log full server response if present to help debugging
-        try {
-            // eslint-disable-next-line no-console
-            console.error('setConsultationFiche error response:', err.response && err.response.data ? err.response.data : err);
-        } catch (e) {
-            // ignore
-        }
+        logAppError('setConsultationFiche', err);
         throw err;
     }
 };

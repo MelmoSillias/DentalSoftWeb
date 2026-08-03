@@ -1,4 +1,6 @@
 <script setup>
+import { logAppError } from '@/utils/appLogger';
+
 import FullCalendar from '@fullcalendar/vue3';
 import interactionPlugin from '@fullcalendar/interaction';
 import timeGridPlugin from '@fullcalendar/timegrid';
@@ -228,7 +230,7 @@ const applyOpeningHours = async () => {
       api.setOption('slotMaxTime', calendarOptions.slotMaxTime);
     }
   } catch (error) {
-    console.error('Erreur chargement horaires agenda:', error);
+    logAppError('Erreur chargement horaires agenda:', error);
   }
 };
 

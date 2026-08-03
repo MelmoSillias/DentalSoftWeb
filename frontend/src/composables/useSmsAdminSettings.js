@@ -1,3 +1,4 @@
+import { logAppError } from '@/utils/appLogger';
 import { computed, reactive, ref } from 'vue';
 import {
     fetchSmsLogs,
@@ -161,7 +162,7 @@ export function useSmsAdminSettings(token, toast, extractApiError) {
                 toast.add({ severity: 'success', summary: 'Stats SMS', detail: 'Statistiques période mises à jour.', life: 2500 });
             }
         } catch (error) {
-            console.error(error);
+            logAppError('useSmsAdminSettings', error);
             toast.add({ severity: 'error', summary: 'Stats SMS', detail: extractApiError(error, 'Chargement des stats période impossible.'), life: 3500 });
         } finally {
             smsPeriodLoading.value = false;
@@ -220,7 +221,7 @@ export function useSmsAdminSettings(token, toast, extractApiError) {
 
             smsLoaded.value = true;
         } catch (error) {
-            console.error(error);
+            logAppError('useSmsAdminSettings', error);
             toast.add({ severity: 'error', summary: 'SMS', detail: extractApiError(error, 'Chargement des données SMS impossible.'), life: 3500 });
         } finally {
             smsLoading.value = false;
@@ -256,7 +257,7 @@ export function useSmsAdminSettings(token, toast, extractApiError) {
                 : 'Configuration sauvegardée.';
             toast.add({ severity: 'success', summary: 'SMS', detail, life: 3500 });
         } catch (error) {
-            console.error(error);
+            logAppError('useSmsAdminSettings', error);
             toast.add({ severity: 'error', summary: 'SMS', detail: extractApiError(error, 'Sauvegarde impossible.'), life: 3500 });
         } finally {
             smsSaving.value = false;
@@ -275,7 +276,7 @@ export function useSmsAdminSettings(token, toast, extractApiError) {
             lastTestAt.value = new Date();
             toast.add({ severity: res.success ? 'success' : 'warn', summary: 'SMS', detail: res.message || 'Test terminé.', life: 3000 });
         } catch (error) {
-            console.error(error);
+            logAppError('useSmsAdminSettings', error);
             lastTestResult.value = {
                 kind: 'connection',
                 success: false,
@@ -301,7 +302,7 @@ export function useSmsAdminSettings(token, toast, extractApiError) {
             toast.add({ severity: res.success ? 'success' : 'warn', summary: 'SMS test', detail: res.success ? 'SMS envoyé.' : (res.error || 'Échec.'), life: 3000 });
             await refreshSmsData();
         } catch (error) {
-            console.error(error);
+            logAppError('useSmsAdminSettings', error);
             lastTestResult.value = {
                 kind: 'send',
                 success: false,
@@ -320,7 +321,7 @@ export function useSmsAdminSettings(token, toast, extractApiError) {
             await saveSmsTemplates(smsTemplates.value, token);
             toast.add({ severity: 'success', summary: 'Templates', detail: 'Templates sauvegardés.', life: 2500 });
         } catch (error) {
-            console.error(error);
+            logAppError('useSmsAdminSettings', error);
             toast.add({ severity: 'error', summary: 'Templates', detail: extractApiError(error, 'Sauvegarde impossible.'), life: 3500 });
         } finally {
             smsTemplateSaving.value = false;
@@ -333,7 +334,7 @@ export function useSmsAdminSettings(token, toast, extractApiError) {
             const res = await previewSmsTemplate({ code: selectedTemplateCode.value, variables: previewVariables }, token);
             previewResult.value = res.message || '';
         } catch (error) {
-            console.error(error);
+            logAppError('useSmsAdminSettings', error);
             toast.add({ severity: 'warn', summary: 'Preview', detail: extractApiError(error, 'Preview indisponible.'), life: 3000 });
         }
     };
@@ -348,7 +349,7 @@ export function useSmsAdminSettings(token, toast, extractApiError) {
             toast.add({ severity: res.success ? 'success' : 'warn', summary: 'SMS manuel', detail: res.success ? 'Ajouté à la file.' : (res.error || 'Échec.'), life: 3000 });
             await refreshSmsData();
         } catch (error) {
-            console.error(error);
+            logAppError('useSmsAdminSettings', error);
             toast.add({ severity: 'error', summary: 'SMS manuel', detail: extractApiError(error, 'Envoi impossible.'), life: 5500 });
         }
     };
@@ -383,7 +384,7 @@ export function useSmsAdminSettings(token, toast, extractApiError) {
                 await refreshSmsData();
             }
         } catch (error) {
-            console.error(error);
+            logAppError('useSmsAdminSettings', error);
             toast.add({ severity: 'error', summary: 'Programmation SMS', detail: extractApiError(error, 'Programmation impossible.'), life: 5500 });
         }
     };
@@ -394,7 +395,7 @@ export function useSmsAdminSettings(token, toast, extractApiError) {
             await processSmsQueue({ async: true, limit: 20 }, token);
             toast.add({ severity: 'success', summary: 'Queue SMS', detail: 'Traitement de queue lancé.', life: 2500 });
         } catch (error) {
-            console.error(error);
+            logAppError('useSmsAdminSettings', error);
             toast.add({ severity: 'error', summary: 'Queue SMS', detail: extractApiError(error, 'Lancement impossible.'), life: 3500 });
         } finally {
             smsQueueing.value = false;
@@ -409,7 +410,7 @@ export function useSmsAdminSettings(token, toast, extractApiError) {
             await refreshSmsData();
             return res;
         } catch (error) {
-            console.error(error);
+            logAppError('useSmsAdminSettings', error);
             toast.add({ severity: 'error', summary: 'File SMS', detail: extractApiError(error, 'Action impossible.'), life: 4000 });
             throw error;
         } finally {

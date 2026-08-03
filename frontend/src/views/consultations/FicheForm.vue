@@ -1,4 +1,6 @@
 <script setup>
+import { logAppError } from '@/utils/appLogger';
+
 import ConsultationEnCoursForm from '@/components/consultations/ConsultationEnCoursForm.vue';
 import DevisForm from '@/components/consultations/DevisForm.vue';
 import OrdonnanceModal from '@/components/consultations/OrdonnanceModal.vue';
@@ -211,7 +213,7 @@ const loadConsultationPolicy = async () => {
         allergyTypeOptions.value = Array.isArray(settings?.allergyTypes) && settings.allergyTypes.length ? settings.allergyTypes : allergyTypeOptions.value;
         antecedentTypeOptions.value = Array.isArray(settings?.antecedentTypes) && settings.antecedentTypes.length ? settings.antecedentTypes : antecedentTypeOptions.value;
     } catch (error) {
-        console.error('Erreur chargement politique consultation', error);
+        logAppError('Erreur chargement politique consultation', error);
         isMedecinOptionalOnCreation.value = false;
         hidePatientPhoneForMedecins.value = false;
         ficheFormSimplifie.value = false;
@@ -452,7 +454,7 @@ const saveEntretienSection = async ({ silent = false } = {}) => {
             redirectClosedConsultation();
             return;
         }
-        console.error('Erreur sauvegarde entretien', error);
+        logAppError('Erreur sauvegarde entretien', error);
         if (!silent) toast.add({ severity: 'error', summary: 'Erreur', detail: 'Sauvegarde entretien impossible.' });
     }
 };
@@ -467,7 +469,7 @@ const saveExamensSection = async ({ silent = false } = {}) => {
             redirectClosedConsultation();
             return;
         }
-        console.error('Erreur sauvegarde examens', error);
+        logAppError('Erreur sauvegarde examens', error);
         if (!silent) toast.add({ severity: 'error', summary: 'Erreur', detail: 'Sauvegarde examens impossible.' });
     }
 };
@@ -482,7 +484,7 @@ const saveDocumentsSection = async ({ silent = false } = {}) => {
             redirectClosedConsultation();
             return;
         }
-        console.error('Erreur sauvegarde documents', error);
+        logAppError('Erreur sauvegarde documents', error);
         if (!silent) toast.add({ severity: 'error', summary: 'Erreur', detail: 'Sauvegarde documents impossible.' });
     }
 };
@@ -497,7 +499,7 @@ const saveBilansSection = async ({ silent = false } = {}) => {
             redirectClosedConsultation();
             return;
         }
-        console.error('Erreur sauvegarde bilans', error);
+        logAppError('Erreur sauvegarde bilans', error);
         if (!silent) toast.add({ severity: 'error', summary: 'Erreur', detail: 'Sauvegarde bilans impossible.' });
     }
 };
@@ -512,7 +514,7 @@ const savePlanTraitementSection = async ({ silent = false } = {}) => {
             redirectClosedConsultation();
             return;
         }
-        console.error('Erreur sauvegarde plan traitement', error);
+        logAppError('Erreur sauvegarde plan traitement', error);
         if (!silent) toast.add({ severity: 'error', summary: 'Erreur', detail: 'Sauvegarde plan traitement impossible.' });
     }
 };
@@ -527,7 +529,7 @@ const saveDevisSection = async ({ silent = false } = {}) => {
             redirectClosedConsultation();
             return;
         }
-        console.error('Erreur sauvegarde devis', error);
+        logAppError('Erreur sauvegarde devis', error);
         if (!silent) toast.add({ severity: 'error', summary: 'Erreur', detail: 'Sauvegarde devis impossible.' });
     }
 };
@@ -562,7 +564,7 @@ const saveConsultSection = async ({ silent = false } = {}) => {
             redirectClosedConsultation();
             return;
         }
-        console.error('Erreur sauvegarde consultation', error);
+        logAppError('Erreur sauvegarde consultation', error);
         if (!silent) toast.add({ severity: 'error', summary: 'Erreur', detail: 'Sauvegarde consultation impossible.' });
     }
 };
@@ -582,7 +584,7 @@ const saveOrdonnanceSection = async ({ silent = false } = {}) => {
             ordonnanceModalVisible.value = false;
             if (!silent) toast.add({ severity: 'success', summary: 'Ordonnance mise à jour', life: 2000 });
         } catch (error) {
-            console.error('Erreur modification ordonnance', error);
+            logAppError('Erreur modification ordonnance', error);
             if (!silent) toast.add({ severity: 'error', summary: 'Erreur', detail: "Impossible de modifier l'ordonnance." });
         }
         return;
@@ -621,7 +623,7 @@ const handleSaveAntecedent = async (payload) => {
         toast.add({ severity: 'success', summary: 'Antecedent ajoute', life: 2000 });
         showAntecedentDialog.value = false;
     } catch (error) {
-        console.error('Erreur ajout antecedent', error);
+        logAppError('Erreur ajout antecedent', error);
         toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible d\'ajouter l\'antecedent.' });
     } finally {
         savingAntecedent.value = false;
@@ -637,7 +639,7 @@ const handleSaveAllergy = async (payload) => {
         toast.add({ severity: 'success', summary: 'Allergie ajoutee', life: 2000 });
         showAllergyDialog.value = false;
     } catch (error) {
-        console.error('Erreur ajout allergie', error);
+        logAppError('Erreur ajout allergie', error);
         toast.add({ severity: 'error', summary: 'Erreur', detail: "Impossible d'ajouter l'allergie." });
     } finally {
         savingAllergy.value = false;
@@ -651,7 +653,7 @@ const handleDeleteAntecedent = async (item) => {
         data.patient.antecedents = data.patient.antecedents.filter((a) => a.id !== item.id);
         toast.add({ severity: 'success', summary: 'Antecedent supprime', life: 2000 });
     } catch (error) {
-        console.error('Erreur suppression antecedent', error);
+        logAppError('Erreur suppression antecedent', error);
         toast.add({ severity: 'error', summary: 'Erreur', detail: 'Suppression impossible.' });
     }
 };
@@ -663,7 +665,7 @@ const handleDeleteAllergy = async (item) => {
         data.patient.allergies = data.patient.allergies.filter((a) => a.id !== item.id);
         toast.add({ severity: 'success', summary: 'Allergie supprimee', life: 2000 });
     } catch (error) {
-        console.error('Erreur suppression allergie', error);
+        logAppError('Erreur suppression allergie', error);
         toast.add({ severity: 'error', summary: 'Erreur', detail: 'Suppression impossible.' });
     }
 };
@@ -713,7 +715,7 @@ const handleCloture = () => {
                     redirectClosedConsultation();
                     return;
                 }
-                console.error('Erreur clôture consultation', error);
+                logAppError('Erreur clôture consultation', error);
                 toast.add({ severity: 'error', summary: 'Erreur', detail: 'Clôture impossible.', life: 2500 });
             } finally {
                 isClotureProcessing.value = false;
@@ -728,7 +730,7 @@ const handlePrintOrdonnance = async (ordo) => {
         const res = await fetchOrdonnancePrintData(ordo.id, token);
         await printComponent(PrintOrdonnanceBody, { data: res.data });
     } catch (error) {
-        console.error('Erreur impression ordonnance', error);
+        logAppError('Erreur impression ordonnance', error);
         toast.add({ severity: 'error', summary: 'Erreur', detail: "Impossible d'imprimer l'ordonnance." });
     }
 };
@@ -750,7 +752,7 @@ const handlePrintFiche = async () => {
             printEmpty: false
         });
     } catch (error) {
-        console.error('Erreur impression fiche', error);
+        logAppError('Erreur impression fiche', error);
         toast.add({ severity: 'error', summary: 'Erreur', detail: "Impossible d'imprimer la fiche." });
     }
 };
@@ -766,7 +768,7 @@ const handlePrintDevis = async (devisEntry) => {
         const result = await fetchDevisPrintData(devisId, token);
         await printComponent(PrintDevisBody, { doc: result.doc, title: result.title || 'Devis' });
     } catch (error) {
-        console.error('Erreur impression devis', error);
+        logAppError('Erreur impression devis', error);
         toast.add({ severity: 'error', summary: 'Erreur', detail: "Impossible d'imprimer le devis.", life: 3000 });
     }
 };

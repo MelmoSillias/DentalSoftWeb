@@ -1,4 +1,6 @@
 <script setup>
+import { logAppError } from '@/utils/appLogger';
+
 import Breadcrumb from 'primevue/breadcrumb';
 import Tab from 'primevue/tab';
 import TabList from 'primevue/tablist';
@@ -138,7 +140,7 @@ const submitCreate = async () => {
 			weeklyViewRef.value?.reloadOnAction?.();
 		});
 	} catch (err) {
-		console.error(err);
+		logAppError('RendezVous', err);
 	}
 };
 
@@ -166,7 +168,7 @@ const confirmValidate = async ({ id, medecinId, createConsultation }) => {
 	} catch (err) {
 		const detail = err?.response?.data?.error || 'Validation impossible';
 		notify(detail, 'error');
-		console.error(err);
+		logAppError('RendezVous', err);
 	} finally {
 		actionLoading.value = false;
 	}
@@ -188,7 +190,7 @@ const confirmCancel = async ({ id }) => {
 		});
 	} catch (err) {
 		notify('Annulation impossible', 'error');
-		console.error(err);
+		logAppError('RendezVous', err);
 	} finally {
 		actionLoading.value = false;
 	}
@@ -222,7 +224,7 @@ const sendSmsReminder = async () => {
 		smsDialogVisible.value = false;
 	} catch (err) {
 		notify('Envoi SMS impossible', 'error');
-		console.error(err);
+		logAppError('RendezVous', err);
 	} finally {
 		smsLoading.value = false;
 	}
@@ -244,7 +246,7 @@ const scheduleSmsReminder = async () => {
 		smsScheduleDialogVisible.value = false;
 	} catch (err) {
 		notify('Programmation SMS impossible', 'error');
-		console.error(err);
+		logAppError('RendezVous', err);
 	} finally {
 		smsLoading.value = false;
 	}
@@ -264,7 +266,7 @@ const submitReport = async (payload) => {
 		});
 	} catch (err) {
 		notify('Report impossible', 'error');
-		console.error(err);
+		logAppError('RendezVous', err);
 	} finally {
 		actionLoading.value = false;
 	}

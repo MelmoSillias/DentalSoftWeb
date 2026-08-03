@@ -21,7 +21,8 @@ const staticIncludeAssets = (cabinetPwa.includeAssets || ['favicon.ico', 'robots
 const pwaIncludeAssets = [...new Set([...staticIncludeAssets, ...manifestIconSrcs])];
 
 // https://vitejs.dev/config/
-export default defineConfig({
+// VITE_DROP_CONSOLE=false : build prod avec consoles (diagnostic temporaire)
+export default defineConfig(({ command }) => ({
     optimizeDeps: {
         noDiscovery: true,
         esbuildOptions: {
@@ -71,6 +72,12 @@ export default defineConfig({
             '@': fileURLToPath(new URL('./src', import.meta.url))
         }
     },
+    esbuild: {
+        drop:
+            command === 'build' && process.env.VITE_DROP_CONSOLE !== 'false'
+                ? ['console', 'debugger']
+                : []
+    },
     build: {
         rollupOptions: {
             output: {
@@ -80,4 +87,4 @@ export default defineConfig({
             },
         },
     },
-});
+}));

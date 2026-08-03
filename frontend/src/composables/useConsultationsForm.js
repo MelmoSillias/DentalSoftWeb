@@ -1,3 +1,4 @@
+import { logAppError } from '@/utils/appLogger';
 import { computed, nextTick, reactive, ref, watch } from 'vue';
 import { fetchInfirmiers } from '@/services/corpsmedical';
 import { fetchSalles } from '@/services/salles';
@@ -455,13 +456,13 @@ export const useConsultationsForm = ({ ficheId, consultId, token, mode }) => {
                         actes: Array.isArray(consult.actes) ? consult.actes.map((acte) => normalizeActeEntry(acte)) : []
                     };
                 } catch (error) {
-                    console.error('Erreur chargement consultation', error);
+                    logAppError('Erreur chargement consultation', error);
                 }
 
                 try {
                     data.ordonnances = await loadOrdonnances(consultId.value, token);
                 } catch (error) {
-                    console.error('Erreur chargement ordonnances', error);
+                    logAppError('Erreur chargement ordonnances', error);
                 }
             }
         } finally {

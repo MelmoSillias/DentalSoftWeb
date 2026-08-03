@@ -1,4 +1,6 @@
 <script setup>
+import { logAppError } from '@/utils/appLogger';
+
 import ConsultationEnCoursForm from '@/components/consultations/ConsultationEnCoursForm.vue';
 import { fetchConsultationDetails, setConsultationFiche, verifyConsultationMedecinPassword } from '@/services/consultations';
 import { isConsultationsTourMockEnabled } from '@/services/consultationsTourMock';
@@ -200,7 +202,7 @@ const loadQuickData = async () => {
             actes: Array.isArray(details?.actes) ? details.actes : []
         };
     } catch (error) {
-        console.error('Erreur chargement clôturation rapide', error);
+        logAppError('Erreur chargement clôturation rapide', error);
         toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de préparer la clôturation rapide.', life: 3000 });
         visibleProxy.value = false;
     } finally {
@@ -230,7 +232,7 @@ const handleSave = async ({ silent = false } = {}) => {
         }
         return true;
     } catch (error) {
-        console.error('Erreur sauvegarde rapide', error);
+        logAppError('Erreur sauvegarde rapide', error);
         toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de sauvegarder la consultation.', life: 3000 });
         return false;
     } finally {
@@ -253,7 +255,7 @@ const handleCloture = async () => {
         emit('closed');
         visibleProxy.value = false;
     } catch (error) {
-        console.error('Erreur clôture rapide', error);
+        logAppError('Erreur clôture rapide', error);
         toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de clôturer la consultation.', life: 3000 });
     } finally {
         clotureLoading.value = false;
@@ -280,7 +282,7 @@ const verifyDoctorPassword = async () => {
         passwordValidated.value = true;
         toast.add({ severity: 'success', summary: 'Accès autorisé', detail: 'Vous pouvez clôturer la consultation.', life: 2000 });
     } catch (error) {
-        console.error('Erreur vérification mot de passe médecin', error);
+        logAppError('Erreur vérification mot de passe médecin', error);
         toast.add({ severity: 'error', summary: 'Erreur', detail: 'Vérification du mot de passe impossible.', life: 3000 });
     } finally {
         verifyLoading.value = false;

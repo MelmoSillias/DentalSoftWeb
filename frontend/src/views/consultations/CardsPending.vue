@@ -1,4 +1,6 @@
 <script setup>
+import { logAppError } from '@/utils/appLogger';
+
 import QuickClotureConsultationDialog from '@/components/consultations/QuickClotureConsultationDialog.vue';
 import {
     activateConsultationsTourMock,
@@ -49,7 +51,7 @@ const loadPending = async () => {
     try {
         consultations.value = await fetchPendingConsultations(token);
     } catch (error) {
-        console.error('Erreur lors du chargement des consultations en cours', error);
+        logAppError('Erreur lors du chargement des consultations en cours', error);
         toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de charger les consultations en cours.', life: 3000 });
     } finally {
         loading.value = false;
@@ -63,7 +65,7 @@ const loadQuickClosePolicy = async () => {
             && settings?.allowReceptionQuickCloseConsultation !== false;
         hidePatientPhoneForMedecins.value = settings?.hidePatientPhoneForMedecins === true;
     } catch (error) {
-        console.error('Erreur chargement politique de clôturation rapide', error);
+        logAppError('Erreur chargement politique de clôturation rapide', error);
         allowReceptionQuickClose.value = true;
         hidePatientPhoneForMedecins.value = false;
     }
@@ -166,7 +168,7 @@ const handleCancel = async (consultation) => {
         toast.add({ severity: 'success', summary: 'Consultation annulée', detail: 'Consultation supprimée.', life: 2500 });
         await loadPending();
     } catch (error) {
-        console.error('Annulation impossible', error);
+        logAppError('Annulation impossible', error);
         toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible d\'annuler la consultation.', life: 3000 });
     } finally {
         setCanceling(consultation.id, false);

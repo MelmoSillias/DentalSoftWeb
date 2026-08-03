@@ -1,3 +1,4 @@
+import { logAppError } from '@/utils/appLogger';
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import http from '@/service/http';
@@ -11,7 +12,7 @@ export const usePatientsStore = defineStore('patients', () => {
             const data = response.data;
             patients.value = data;
         } catch (error) {
-            console.error('Error fetching patients:', error);
+            logAppError('Error fetching patients:', error);
         }
     };
 
@@ -21,7 +22,7 @@ export const usePatientsStore = defineStore('patients', () => {
             const data = response.data;
             patients.value = data;
         } catch (error) {
-            console.error('Error fetching patients by ID:', error);
+            logAppError('Error fetching patients by ID:', error);
         }
     };
 

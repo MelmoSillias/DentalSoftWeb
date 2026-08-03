@@ -6,6 +6,7 @@ import { isTaskAllowedForRole } from '@/tours/shared/taskUtils';
 import { startTourGuide } from '@/tours/tourGuideClient';
 import { deactivateTourScrollControls } from '@/tours/shared/tourScrollControl';
 import { useAuthStore } from '@/stores/auth';
+import { logAppError } from '@/utils/appLogger';
 
 export function useGuidedTour({
     routeName,
@@ -88,7 +89,7 @@ export function useGuidedTour({
                 onFinish: cleanupDemo
             });
         } catch (error) {
-            console.error(`Erreur lancement guided tour ${routeName}`, error);
+            logAppError(`Erreur lancement guided tour ${routeName}`, error);
             await cleanupDemo();
             deactivateTourScrollControls();
             toast.add({

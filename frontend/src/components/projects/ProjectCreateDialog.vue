@@ -1,4 +1,6 @@
 <script setup>
+import { logAppError } from '@/utils/appLogger';
+
 import { createClient, fetchClients } from '@/services/olders/clientApi';
 import { createProjectWithParcels, validateParcelNumber as validateParcelNumberApi } from '@/services/projectApi';
 import { saveDefaultFiles } from '@/services/projectFs';
@@ -270,7 +272,7 @@ const loadClients = async () => {
         clientsLoading.value = true;
         clients.value = await fetchClients(token);
     } catch (e) {
-        console.error(e);
+        logAppError('ProjectCreateDialog', e);
         toast.add({ severity: 'error', summary: 'Clients', detail: 'Impossible de charger les clients.', life: 3000 });
     } finally {
         clientsLoading.value = false;
@@ -292,7 +294,7 @@ const createInlineClient = async () => {
         inlineClientAddress.value = '';
         toast.add({ severity: 'success', summary: 'Client', detail: 'Client créé et sélectionné.', life: 3000 });
     } catch (e) {
-        console.error(e);
+        logAppError('ProjectCreateDialog', e);
         toast.add({ severity: 'error', summary: 'Client', detail: 'Création du client impossible.', life: 3000 });
     } finally {
         creatingInlineClient.value = false;
@@ -348,7 +350,7 @@ const createProject = async () => {
         resetProjectForm();
         closeDialog();
     } catch (e) {
-        console.error(e);
+        logAppError('ProjectCreateDialog', e);
         toast.add({ severity: 'error', summary: 'Erreur', detail: 'Création projet impossible', life: 3000 });
     } finally {
         createProjectLoading.value = false;

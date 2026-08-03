@@ -1,4 +1,6 @@
 <script setup>
+import { logAppError } from '@/utils/appLogger';
+
 import ActionsPatient from '@/components/patients/ActionsPatient.vue';
 import FormCreateConsultation from '@/components/patients/FormCreateConsultation.vue';
 import FormPatient from '@/components/patients/FormPatient.vue';
@@ -134,7 +136,7 @@ const loadPatients = async ({ page = 1, limit = rowsPerPage.value, q = searchQue
         }
         return true;
     } catch (error) {
-        console.error('Erreur lors de la récupération des patients:', error);
+        logAppError('Erreur lors de la récupération des patients:', error);
         if (asPageLoad) {
             loadErrorMessage.value = 'Impossible de charger la liste des patients.';
         }
@@ -149,7 +151,7 @@ const loadVisibilityPolicy = async ({ asPageLoad = false } = {}) => {
         hidePatientPhoneForMedecins.value = settings?.hidePatientPhoneForMedecins === true;
         return true;
     } catch (error) {
-        console.error('Erreur chargement politique visibilité patients', error);
+        logAppError('Erreur chargement politique visibilité patients', error);
         hidePatientPhoneForMedecins.value = false;
         if (asPageLoad) {
             loadErrorMessage.value = 'Impossible de charger les paramètres de visibilité des patients.';
@@ -163,7 +165,7 @@ const loadOverviewStats = async () => {
     try {
         overviewStats.value = await fetchPatientsOverviewStats(token, { medecinOnly: isMedecin.value });
     } catch (error) {
-        console.error('Erreur chargement statistiques patients', error);
+        logAppError('Erreur chargement statistiques patients', error);
     } finally {
         statsLoading.value = false;
     }
@@ -299,7 +301,7 @@ const openConsultation = async (patient = null) => {
         consultationPatient.value = patient;
         showConsultationDialog.value = true;
     } catch (error) {
-        console.error('Erreur lors de la vérification des consultations actives', error);
+        logAppError('Erreur lors de la vérification des consultations actives', error);
         toast.add({ severity: 'warn', summary: 'Vérification', detail: 'Impossible de vérifier les consultations en cours.', life: 2500 });
     } finally {
         if (loadingKey) {
@@ -352,7 +354,7 @@ const cancelActiveConsultation = async () => {
             openConsultation(patient);
         }
     } catch (error) {
-        console.error('Erreur lors de la suppression de la consultation active', error);
+        logAppError('Erreur lors de la suppression de la consultation active', error);
         toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de supprimer la consultation en cours.', life: 3000 });
     } finally {
         if (activeConsultWarnPatient.value?.id) {
@@ -404,7 +406,7 @@ const confirmDeletePatient = async () => {
         }
         await loadOverviewStats();
     } catch (error) {
-        console.error('Erreur suppression patient', error);
+        logAppError('Erreur suppression patient', error);
         toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de supprimer ce patient.', life: 3000 });
     } finally {
         deletingPatientId.value = null;
@@ -418,7 +420,7 @@ const loadTrashPatients = async ({ page = 1, limit = trashRowsPerPage.value, q =
         trashPatients.value = Array.isArray(res?.items) ? res.items : [];
         trashTotalRecords.value = res?.total ?? trashPatients.value.length;
     } catch (error) {
-        console.error('Erreur chargement corbeille', error);
+        logAppError('Erreur chargement corbeille', error);
         toast.add({ severity: 'error', summary: 'Corbeille', detail: 'Impossible de charger la corbeille.', life: 3000 });
     } finally {
         trashLoading.value = false;
@@ -463,7 +465,7 @@ const restorePatientFromTrash = async (patient) => {
         });
         await loadOverviewStats();
     } catch (error) {
-        console.error('Erreur restauration patient', error);
+        logAppError('Erreur restauration patient', error);
         toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de restaurer ce patient.', life: 3000 });
     } finally {
         restoringPatientId.value = null;
