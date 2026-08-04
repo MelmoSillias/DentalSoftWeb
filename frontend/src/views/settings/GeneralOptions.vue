@@ -180,7 +180,8 @@ const clinicalForm = reactive({
 
 const billingPolicy = reactive({
     paiementDirectAssurance: false,
-    allowReceptionInvoiceModification: false
+    allowReceptionInvoiceModification: false,
+    allowConsultationPriceEditOnCreation: false
 });
 
 const transactionMotifs = reactive({
@@ -437,6 +438,7 @@ const loadGeneralSettings = async (force = false) => {
         clinicalForm.showDiagnosticPositifInConsultation = settings.showDiagnosticPositifInConsultation !== false;
         billingPolicy.paiementDirectAssurance = settings.paiementDirectAssurance === true;
         billingPolicy.allowReceptionInvoiceModification = settings.allowReceptionInvoiceModification === true;
+        billingPolicy.allowConsultationPriceEditOnCreation = settings.allowConsultationPriceEditOnCreation === true;
         transactionMotifs.revenueText = (settings.transactionMotifs?.revenue || []).join('\n');
         transactionMotifs.expenseText = (settings.transactionMotifs?.expense || []).join('\n');
         soinsCatalog.text = (settings.soinsList || []).join('\n');
@@ -679,6 +681,7 @@ const saveBillingPolicyAction = async () => {
         await saveGeneralSettings({
             paiementDirectAssurance: billingPolicy.paiementDirectAssurance,
             allowReceptionInvoiceModification: billingPolicy.allowReceptionInvoiceModification,
+            allowConsultationPriceEditOnCreation: billingPolicy.allowConsultationPriceEditOnCreation,
             transactionMotifs: {
                 revenue: normalizeLines(transactionMotifs.revenueText),
                 expense: normalizeLines(transactionMotifs.expenseText)
@@ -1625,6 +1628,14 @@ onBeforeUnmount(() => {
                                             <span class="toggle-description">Autorise les réceptionnistes à modifier les factures sans paiement dans l'historique, la caisse et le mode focus</span>
                                         </div>
                                         <ToggleSwitch v-model="billingPolicy.allowReceptionInvoiceModification" />
+                                    </div>
+                                    <Divider />
+                                    <div class="toggle-item">
+                                        <div class="toggle-info">
+                                            <label>Prix de consultation modifiable à la création</label>
+                                            <span class="toggle-description">Affiche un champ pour modifier le prix de la consultation payante lors de sa création</span>
+                                        </div>
+                                        <ToggleSwitch v-model="billingPolicy.allowConsultationPriceEditOnCreation" />
                                     </div>
                                 </div>
                                 <Divider />

@@ -98,6 +98,7 @@ class GlobalSettingsService
             'showReceptionQuickCloseButton' => $showReceptionQuickCloseButton,
             'allowReceptionBypassMedecinPasswordOnQuickClose' => $showReceptionQuickCloseButton && (bool) ($value['allowReceptionBypassMedecinPasswordOnQuickClose'] ?? false),
             'allowReceptionInvoiceModification' => (bool) ($value['allowReceptionInvoiceModification'] ?? false),
+            'allowConsultationPriceEditOnCreation' => (bool) ($value['allowConsultationPriceEditOnCreation'] ?? false),
             'hidePatientDossierForMedecins' => (bool) ($value['hidePatientDossierForMedecins'] ?? false),
             'hidePatientPhoneForMedecins' => (bool) ($value['hidePatientPhoneForMedecins'] ?? false),
             'paiementDirectAssurance' => (bool) ($value['paiementDirectAssurance'] ?? false),
@@ -161,6 +162,7 @@ class GlobalSettingsService
             'showReceptionQuickCloseButton' => $showReceptionQuickCloseButton,
             'allowReceptionBypassMedecinPasswordOnQuickClose' => $showReceptionQuickCloseButton && (bool) ($payload['allowReceptionBypassMedecinPasswordOnQuickClose'] ?? ($current['allowReceptionBypassMedecinPasswordOnQuickClose'] ?? false)),
             'allowReceptionInvoiceModification' => (bool) ($payload['allowReceptionInvoiceModification'] ?? ($current['allowReceptionInvoiceModification'] ?? false)),
+            'allowConsultationPriceEditOnCreation' => (bool) ($payload['allowConsultationPriceEditOnCreation'] ?? ($current['allowConsultationPriceEditOnCreation'] ?? false)),
             'hidePatientDossierForMedecins' => (bool) ($payload['hidePatientDossierForMedecins'] ?? ($current['hidePatientDossierForMedecins'] ?? false)),
             'hidePatientPhoneForMedecins' => (bool) ($payload['hidePatientPhoneForMedecins'] ?? ($current['hidePatientPhoneForMedecins'] ?? false)),
             'paiementDirectAssurance' => (bool) ($payload['paiementDirectAssurance'] ?? $payload['paymentDirectInsurance'] ?? ($current['paiementDirectAssurance'] ?? false)),
@@ -216,6 +218,11 @@ class GlobalSettingsService
     public function isReceptionInvoiceModificationAllowed(): bool
     {
         return $this->getGeneralSettings()['allowReceptionInvoiceModification'];
+    }
+
+    public function isConsultationPriceEditableOnCreation(): bool
+    {
+        return $this->getGeneralSettings()['allowConsultationPriceEditOnCreation'];
     }
 
     public function isPatientDossierHiddenForMedecins(): bool
@@ -443,6 +450,7 @@ class GlobalSettingsService
             'showReceptionQuickCloseButton' => $settings['showReceptionQuickCloseButton'],
             'allowReceptionBypassMedecinPasswordOnQuickClose' => $settings['allowReceptionBypassMedecinPasswordOnQuickClose'],
             'allowReceptionInvoiceModification' => $settings['allowReceptionInvoiceModification'],
+            'allowConsultationPriceEditOnCreation' => $settings['allowConsultationPriceEditOnCreation'],
             'hidePatientDossierForMedecins' => $settings['hidePatientDossierForMedecins'],
             'hidePatientPhoneForMedecins' => $settings['hidePatientPhoneForMedecins'],
             'paiementDirectAssurance' => $settings['paiementDirectAssurance'],

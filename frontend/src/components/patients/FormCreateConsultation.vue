@@ -20,6 +20,7 @@ import {
 import Button from 'primevue/button';
 import ConfirmPopup from 'primevue/confirmpopup';
 import DatePicker from 'primevue/datepicker';
+import InputNumber from 'primevue/inputnumber';
 import InputText from 'primevue/inputtext';
 import Textarea from 'primevue/textarea';
 import { useConfirm } from 'primevue/useconfirm';
@@ -66,6 +67,7 @@ const form = reactive({
 const hasActiveConsultation = ref(false);
 const checkingActive = ref(false);
 const requireMedecinOnCreation = ref(true);
+const allowConsultationPriceEditOnCreation = ref(false);
 let patientSearchTimeout = null;
 
 const isPatientPreselected = computed(() => Boolean(props.patient?.id || props.patientId));
@@ -122,10 +124,12 @@ const loadConsultationCreationPolicy = async () => {
         const settings = await fetchPublicGeneralSettings(token);
         requireMedecinOnCreation.value = settings?.requireMedecinOnConsultationCreation !== false;
         consultationAmount.value = Math.max(1, Number(settings?.consultationPrice || 5000));
+        allowConsultationPriceEditOnCreation.value = settings?.allowConsultationPriceEditOnCreation === true;
     } catch (error) {
         logAppError('Erreur lors du chargement de la politique consultation', error);
         requireMedecinOnCreation.value = true;
         consultationAmount.value = 5000;
+        allowConsultationPriceEditOnCreation.value = false;
     }
 };
 
@@ -398,8 +402,14 @@ const handleSubmit = (event) => {
                 <label class="font-semibold">Consultation payante</label>
                 <div class="flex items-center gap-2">
                     <ToggleSwitch v-model="form.payant" />
-                    <span class="text-sm text-gray-600 dark:text-gray-400">{{ form.payant ? `Payante (${consultationAmount.toLocaleString('fr-FR')})` : 'Gratuite' }}</span>
+                    <span v-if="!form.payant || !allowConsultationPriceEditOnCreation" class="text-sm text-gray-600 dark:text-gray-400">
+                        {{ form.payant ? `Payante (${consultationAmount.toLocaleString('fr-FR')})` : 'Gratuite' }}
+                    </span>
                 </div>
+            </div>
+            <div class="flex flex-col gap-2" v-if="form.payant && allowConsultationPriceEditOnCreation">
+                <label class="font-semibold">Prix de la consultation</label>
+                <InputNumber v-model="consultationAmount" mode="decimal" :min="1" class="w-full" inputClass="w-full" />
             </div>
             <div class="flex flex-col gap-2" v-if="requiresClassicPayment">
                 <label class="font-semibold">Mode de paiement patient</label>

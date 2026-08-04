@@ -100,7 +100,10 @@ class ConsultationService
                 $defaultConsultationAmount = $this->globalSettingsService->getConsultationPrice();
                 $consultationAmount = 0.0;
                 if ($isPayant) {
-                    $consultationAmount = (float) ($data['consultation_amount'] ?? $defaultConsultationAmount);
+                    $canEditPrice = $this->globalSettingsService->isConsultationPriceEditableOnCreation();
+                    $consultationAmount = $canEditPrice
+                        ? (float) ($data['consultation_amount'] ?? $defaultConsultationAmount)
+                        : $defaultConsultationAmount;
                     if ($consultationAmount <= 0) {
                         $consultationAmount = $defaultConsultationAmount;
                     }
