@@ -185,6 +185,7 @@ const loadQuickData = async () => {
         const targetFicheId = resolveTargetFicheId(consultation, props.actionMode);
         const linked = await setConsultationFiche(consultation.id, targetFicheId, token, {
             createNew: props.actionMode === 'new-fiche',
+            allowDuplicate: props.actionMode === 'new-fiche',
         });
         ficheId.value = linked?.ficheId ?? null;
 

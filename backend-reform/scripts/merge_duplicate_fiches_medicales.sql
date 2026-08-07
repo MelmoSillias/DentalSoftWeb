@@ -10,10 +10,11 @@
 --   - OneToOne (entretien / examen / bilan) fusionnés puis doublons supprimés
 --   - Transaction + ROLLBACK automatique en cas d'erreur
 --
--- IMPORTANT : faire un backup avant d'exécuter.
--- Usage :
---   1. Exécuter la section DIAGNOSTIC seule pour inspecter
---   2. Exécuter le reste (PROCÉDURE) pour merger
+-- Usage recommandé :
+--   1. BACKUP complet de la base avant toute exécution
+--   2. Exécuter la section DIAGNOSTIC ci-dessous
+--   3. Décommenter et exécuter la section EXÉCUTION (CREATE PROCEDURE + CALL)
+--   4. Vérifier la section POST-MERGE (0 ligne attendue)
 -- =============================================================================
 
 -- ---------------------------------------------------------------------------
@@ -41,6 +42,8 @@ CREATE PROCEDURE merge_duplicate_fiches_medicales()
 BEGIN
     DECLARE v_dup_count INT DEFAULT 0;
     DECLARE v_remaining INT DEFAULT 0;
+    DECLARE v_patients_before INT DEFAULT 0;
+    DECLARE v_patients_after INT DEFAULT 0;
     DECLARE v_done INT DEFAULT 0;
     DECLARE v_keep_id INT;
     DECLARE v_dup_id INT;
@@ -60,6 +63,14 @@ BEGIN
     END;
 
     START TRANSACTION;
+
+    SELECT COUNT(*) INTO v_patients_before
+    FROM (
+        SELECT patient_id
+        FROM fiche_medicale
+        GROUP BY patient_id
+        HAVING COUNT(*) >= 2
+    ) patients_with_dup;
 
     DROP TEMPORARY TABLE IF EXISTS tmp_fiche_keep;
     DROP TEMPORARY TABLE IF EXISTS tmp_fiche_dup;
@@ -101,7 +112,10 @@ BEGIN
         COMMIT;
         DROP TEMPORARY TABLE IF EXISTS tmp_fiche_keep;
         DROP TEMPORARY TABLE IF EXISTS tmp_fiche_dup;
-        SELECT 'Aucune fiche en double à merger.' AS message;
+        SELECT
+            'Aucune fiche en double à merger.' AS message,
+            v_patients_before AS patients_avec_doublons_avant,
+            0 AS fiches_doublons_traitees;
     ELSE
         -- Curseur sur chaque couple keep/dup
         BEGIN
@@ -378,24 +392,32 @@ BEGIN
                 SET MESSAGE_TEXT = 'Merge interrompu: des patients ont encore plusieurs fiches apres fusion.';
         END IF;
 
+        SET v_patients_after = v_remaining;
+
         COMMIT;
 
         DROP TEMPORARY TABLE IF EXISTS tmp_fiche_keep;
         DROP TEMPORARY TABLE IF EXISTS tmp_fiche_dup;
 
-        SELECT CONCAT('Merge OK. Fiches doublons fusionnees: ', v_dup_count) AS message;
+        SELECT
+            CONCAT('Merge OK. Fiches doublons fusionnees: ', v_dup_count) AS message,
+            v_patients_before AS patients_avec_doublons_avant,
+            v_patients_after AS patients_avec_doublons_apres,
+            v_dup_count AS fiches_doublons_traitees;
     END IF;
 END //
 
 DELIMITER ;
 
--- Exécution
-CALL merge_duplicate_fiches_medicales();
+-- ---------------------------------------------------------------------------
+-- EXÉCUTION (décommenter après backup + revue du diagnostic)
+-- ---------------------------------------------------------------------------
+-- CALL merge_duplicate_fiches_medicales();
+-- DROP PROCEDURE IF EXISTS merge_duplicate_fiches_medicales;
 
--- Nettoyage
-DROP PROCEDURE IF EXISTS merge_duplicate_fiches_medicales;
-
--- Vérification post-merge
+-- ---------------------------------------------------------------------------
+-- POST-MERGE : doit retourner 0 ligne
+-- ---------------------------------------------------------------------------
 SELECT
     fm.patient_id,
     COUNT(*) AS nb_fiches

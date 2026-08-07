@@ -332,16 +332,17 @@ export const setConsultationFiche = async (consultationId, ficheId = null, token
     }
 
     const createNew = Boolean(options?.createNew);
+    const allowDuplicate = Boolean(options?.allowDuplicate);
 
     if (isConsultationsTourMockEnabled()) {
-        return setConsultationFicheTourMock(consultationId, ficheId, { createNew });
+        return setConsultationFicheTourMock(consultationId, ficheId, { createNew, allowDuplicate });
     }
 
     const suffix = ficheId && !createNew ? `/${ficheId}` : '';
     try {
         const res = await axios.post(
             `${apiPrefix}/consultation/set_fiche${suffix}`,
-            { consultationId, createNew },
+            { consultationId, createNew, allowDuplicate },
             { headers: authHeaders(token) }
         );
 

@@ -37,6 +37,7 @@ use App\Scheduling\Repository\SalleRepository;
 use App\CareDelivery\Service\ConsultationNotificationService;
 use DateTime;
 use DateTimeImmutable;
+use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface; 
@@ -1230,12 +1231,102 @@ class ConsultationService
         }, $consults);
     }
 
+    private function lockPatientForFicheResolution(Patient $patient): void
+    {
+        if (!$patient->getId()) {
+            return;
+        }
+
+        $this->em->createQueryBuilder()
+            ->select('p')
+            ->from(Patient::class, 'p')
+            ->where('p.id = :id')
+            ->setParameter('id', $patient->getId())
+            ->getQuery()
+            ->setLockMode(LockMode::PESSIMISTIC_WRITE)
+            ->getOneOrNullResult();
+    }
+
+    /**
+     * @return array{0: FicheMedicale, 1: bool}
+     */
+    private function resolveFicheForConsultation(
+        Consultation $consultation,
+        ?int $ficheId = null,
+        bool $forceCreate = false,
+        bool $allowDuplicate = false,
+    ): array {
+        $patient = $consultation->getPatient();
+        if (!$patient) {
+            throw new \InvalidArgumentException('Consultation sans patient.');
+        }
+
+        $existingFiche = $consultation->getFicheMedicale();
+        if (!$forceCreate && $existingFiche) {
+            if ($ficheId === null || $ficheId === $existingFiche->getId()) {
+                return [$existingFiche, false];
+            }
+        }
+
+        if ($forceCreate) {
+            if (!$allowDuplicate) {
+                $lastFiche = $this->findLastFicheMedicale($patient);
+                if ($lastFiche) {
+                    $consultation->setFicheMedicale($lastFiche);
+
+                    return [$lastFiche, false];
+                }
+            }
+
+            $fiche = new FicheMedicale();
+            $fiche->setPatient($patient);
+            $this->em->persist($fiche);
+            $consultation->setFicheMedicale($fiche);
+
+            return [$fiche, true];
+        }
+
+        if ($ficheId) {
+            $ficheMedicale = $this->em->getRepository(FicheMedicale::class)->find($ficheId);
+            if (!$ficheMedicale) {
+                throw new NotFoundHttpException('Fiche introuvable');
+            }
+
+            if ($ficheMedicale->getPatient()?->getId() !== $patient->getId()) {
+                throw new \InvalidArgumentException('La fiche ne correspond pas au patient de la consultation.');
+            }
+
+            $consultation->setFicheMedicale($ficheMedicale);
+
+            return [$ficheMedicale, false];
+        }
+
+        if ($existingFiche) {
+            return [$existingFiche, false];
+        }
+
+        $lastFiche = $this->findLastFicheMedicale($patient);
+        if ($lastFiche) {
+            $consultation->setFicheMedicale($lastFiche);
+
+            return [$lastFiche, false];
+        }
+
+        $fiche = new FicheMedicale();
+        $fiche->setPatient($patient);
+        $this->em->persist($fiche);
+        $consultation->setFicheMedicale($fiche);
+
+        return [$fiche, true];
+    }
+
     public function linkOrCreateFiche(
         int $consultationId,
         ?int $ficheId = null,
         ?object $user = null,
         bool $restrictToMedecin = false,
         bool $forceCreate = false,
+        bool $allowDuplicate = false,
     ): array {
         $consultation = $this->consultationRepo->find($consultationId);
 
@@ -1258,59 +1349,52 @@ class ConsultationService
         }
 
         $this->enforceMedecinOwnership($consultation, $user, $restrictToMedecin);
-
         $this->ensureConsultationOpen($consultation);
 
-        $fiche = $consultation->getFicheMedicale();
-        $created = false;
-
-        if ($forceCreate) {
-            $fiche = new FicheMedicale();
-            $fiche->setPatient($consultation->getPatient());
-            $this->em->persist($fiche);
-            $created = true;
-        } elseif ($ficheId) {
-            $ficheMedicale = $this->em->getRepository(FicheMedicale::class)->find($ficheId);
-
-            if (!$ficheMedicale) {
-                throw new NotFoundHttpException('Fiche introuvable');
+        $result = $this->em->wrapInTransaction(function () use (
+            $consultationId,
+            $ficheId,
+            $forceCreate,
+            $allowDuplicate,
+        ): array {
+            $consultation = $this->consultationRepo->find($consultationId);
+            if (!$consultation) {
+                throw new NotFoundHttpException('Consultation introuvable');
             }
 
-            $fichePatientId = $ficheMedicale->getPatient()?->getId();
-            if ($fichePatientId !== $consultation->getPatient()?->getId()) {
-                throw new \InvalidArgumentException('La fiche ne correspond pas au patient de la consultation.');
+            $patient = $consultation->getPatient();
+            if (!$patient) {
+                throw new \InvalidArgumentException('Consultation sans patient.');
             }
 
-            $consultation->setFicheMedicale($ficheMedicale);
-            $fiche = $ficheMedicale;
-        } elseif ($fiche) {
-            // Already linked — keep existing fiche.
-        } else {
-            $lastFiche = $this->findLastFicheMedicale($consultation->getPatient());
-            if ($lastFiche) {
-                $fiche = $lastFiche;
-            } else {
-                $fiche = new FicheMedicale();
-                $fiche->setPatient($consultation->getPatient());
-                $this->em->persist($fiche);
-                $created = true;
-            }
-        }
+            $this->lockPatientForFicheResolution($patient);
 
-        $consultation->setFicheMedicale($fiche);
+            [$fiche, $created] = $this->resolveFicheForConsultation(
+                $consultation,
+                $ficheId,
+                $forceCreate,
+                $allowDuplicate,
+            );
 
-        $this->em->persist($consultation);
-        $this->em->flush();
+            $this->em->persist($consultation);
+            $this->em->flush();
+
+            return [
+                'fiche' => $fiche,
+                'consultation' => $consultation,
+                'created' => $created,
+            ];
+        });
 
         $this->focusRealtimePublisher->publishConsultationRefresh(
-            $consultation,
-            $created ? 'linked-created-fiche' : 'linked-fiche',
+            $result['consultation'],
+            $result['created'] ? 'linked-created-fiche' : 'linked-fiche',
         );
 
         return [
-            'ficheId' => $consultation->getFicheMedicale()?->getId() ?? null,
-            'consultationId' => $consultation->getId(),
-            'created' => $created,
+            'ficheId' => $result['fiche']->getId(),
+            'consultationId' => $result['consultation']->getId(),
+            'created' => $result['created'],
         ];
     }
 
@@ -1322,24 +1406,31 @@ class ConsultationService
             throw new NotFoundHttpException('Consultation non trouvée.');
         }
 
-        if ($createNewFiche) {
-            $fiche = new FicheMedicale();
-            $fiche->setPatient($consultation->getPatient());
-            $this->em->persist($fiche);
-            $consultation->setFicheMedicale($fiche);
-        } else {
-            $fiche = $consultation->getFicheMedicale();
-            if (!$fiche) {
-                $fiche = $this->findLastFicheMedicale($consultation->getPatient());
-                if ($fiche) {
-                    $consultation->setFicheMedicale($fiche);
-                }
+        $fiche = $this->em->wrapInTransaction(function () use ($id, $createNewFiche): FicheMedicale {
+            $consultation = $this->consultationRepo->find($id);
+            if (!$consultation) {
+                throw new NotFoundHttpException('Consultation non trouvée.');
             }
-        }
 
-        $this->em->persist($consultation);
-        $this->em->flush();
+            $patient = $consultation->getPatient();
+            if ($patient) {
+                $this->lockPatientForFicheResolution($patient);
+            }
 
+            [$fiche] = $this->resolveFicheForConsultation(
+                $consultation,
+                null,
+                $createNewFiche,
+                $createNewFiche,
+            );
+
+            $this->em->persist($consultation);
+            $this->em->flush();
+
+            return $fiche;
+        });
+
+        $consultation = $this->consultationRepo->find($id);
         $medecins = $this->employeRepo->FindAllMedecin() ?? [];
         $infirmiers = $this->employeRepo->findBy(['type' => 'infirmier']);
         $salles = $this->salleRepo->findAll();

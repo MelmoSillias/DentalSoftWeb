@@ -195,6 +195,8 @@ const defaultConsultation = () => ({
     actes: []
 });
 
+const ficheLinkPromises = new Map();
+
 export const useConsultationsForm = ({ ficheId, consultId, token, mode }) => {
     const medecinsStore = useMedecinsStore();
     const loading = ref(false);
@@ -296,13 +298,33 @@ export const useConsultationsForm = ({ ficheId, consultId, token, mode }) => {
         if (!consultId.value) return null;
 
         const isNewFiche = mode?.value === 'new-fiche';
-        const requestedFicheId = isNewFiche ? null : (ficheId.value || null);
-        const res = await setConsultationFiche(consultId.value, requestedFicheId, token, {
-            createNew: isNewFiche,
-        });
-        const linkedId = res?.ficheId ?? res?.id ?? null;
-        if (linkedId) ficheId.value = linkedId;
-        return ficheId.value;
+        if (!isNewFiche && ficheId.value) {
+            return ficheId.value;
+        }
+
+        const consultKey = String(consultId.value);
+        if (ficheLinkPromises.has(consultKey)) {
+            await ficheLinkPromises.get(consultKey);
+            return ficheId.value;
+        }
+
+        const linkPromise = (async () => {
+            const requestedFicheId = isNewFiche ? null : (ficheId.value || null);
+            const res = await setConsultationFiche(consultId.value, requestedFicheId, token, {
+                createNew: isNewFiche,
+                allowDuplicate: isNewFiche,
+            });
+            const linkedId = res?.ficheId ?? res?.id ?? null;
+            if (linkedId) ficheId.value = linkedId;
+            return ficheId.value;
+        })();
+
+        ficheLinkPromises.set(consultKey, linkPromise);
+        try {
+            return await linkPromise;
+        } finally {
+            ficheLinkPromises.delete(consultKey);
+        }
     };
 
     const hydrateFromFiche = (res) => {
@@ -434,7 +456,7 @@ export const useConsultationsForm = ({ ficheId, consultId, token, mode }) => {
                 hydrateFromFiche(res);
             } catch (error) {
                 const status = error?.response?.status;
-                if (status === 404 && consultId.value) {
+                if (status === 404 && consultId.value && !ficheId.value) {
                     await ensureFicheLinked();
                     if (ficheId.value) {
                         const res = await loadFicheMedicale(ficheId.value, token);

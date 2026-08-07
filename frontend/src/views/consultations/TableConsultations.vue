@@ -527,7 +527,7 @@ const resolveTourQuickActionMode = (consultation) => {
     if (!consultation) return 'continue';
     if (!isLinked(consultation) && patientHasFiche(consultation)) return 'continue-last';
     if (isLinked(consultation)) return 'continue';
-    return 'new-fiche';
+    return 'continue';
 };
 
 const openTourQuickDialog = async () => {

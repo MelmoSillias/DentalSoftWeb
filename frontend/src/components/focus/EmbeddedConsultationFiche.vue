@@ -893,11 +893,21 @@ watch(
 );
 
 watch(
-    () => [props.consultationId, props.ficheId, props.mode],
-    () => {
+    () => props.consultationId,
+    (consultationId, previousId) => {
+        if (!consultationId) return;
+        if (consultationId === previousId && previousId !== undefined) return;
         initialize();
     },
     { immediate: true }
+);
+
+watch(
+    () => [props.ficheId, props.mode],
+    () => {
+        ficheIdRef.value = Number(props.ficheId) || null;
+        modeRef.value = props.mode === 'new-fiche' ? 'new-fiche' : 'continue';
+    }
 );
 
 watch(

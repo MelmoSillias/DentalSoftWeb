@@ -202,7 +202,7 @@ const handleNewFiche = (event, consultation) => {
             goToConsultation(consultation, 'new-fiche')
         );
     } else {
-        goToConsultation(consultation, 'new-fiche');
+        goToConsultation(consultation, 'continue');
     }
 };
 
@@ -351,7 +351,7 @@ const resolveTourQuickActionMode = (consultation) => {
     if (!consultation) return 'continue';
     if (!isLinked(consultation) && patientHasFiche(consultation)) return 'continue-last';
     if (isLinked(consultation)) return 'continue';
-    return 'new-fiche';
+    return 'continue';
 };
 
 const openTourQuickDialog = async () => {

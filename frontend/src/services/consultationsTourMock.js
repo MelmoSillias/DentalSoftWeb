@@ -323,9 +323,12 @@ export function setConsultationFicheTourMock(consultationId, ficheId = null, opt
     }
 
     const createNew = Boolean(options?.createNew);
+    const allowDuplicate = Boolean(options?.allowDuplicate);
     let resolvedFicheId = ficheId;
-    if (createNew) {
+    if (createNew && allowDuplicate) {
         resolvedFicheId = consultationsTourMockState.nextFicheId++;
+    } else if (createNew) {
+        resolvedFicheId = consultation.ficheId || consultation.lastFicheId || consultationsTourMockState.nextFicheId++;
     } else if (!resolvedFicheId) {
         resolvedFicheId = consultation.ficheId || consultation.lastFicheId || consultationsTourMockState.nextFicheId++;
     }
