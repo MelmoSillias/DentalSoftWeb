@@ -135,7 +135,7 @@ class PatientService
         $this->notifyPatientCreation($patient, $actor);
         $this->smsService->queueTemplateForPatient($patient, 'patient_created', [
             'patient_name' => trim(($patient->getPrenom() ?? '') . ' ' . ($patient->getNom() ?? '')),
-            'cabinet_name' => 'ORODENT',
+            'cabinet_name' => $this->globalSettingsService->resolveCabinetName(),
         ], 'patient-created');
 
         return $this->formatPortalAccount($patient);

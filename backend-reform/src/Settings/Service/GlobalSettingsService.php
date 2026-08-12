@@ -74,6 +74,7 @@ class GlobalSettingsService
         'Médical',
     ];
     private const DEFAULT_PATIENT_PORTAL_CLOSED_MESSAGE = 'Le portail patient est temporairement indisponible. Merci de contacter le cabinet pour toute assistance.';
+    private const DEFAULT_CABINET_NAME = 'Cabinet Dentaire';
 
     public function __construct(
         private AppSettingRepository $appSettingRepo,
@@ -122,6 +123,11 @@ class GlobalSettingsService
             'patientPortalBaseUrl' => $this->sanitizeUrl($value['patientPortalBaseUrl'] ?? null),
             'cabinetShowcaseWebsiteUrl' => $this->sanitizeUrl($value['cabinetShowcaseWebsiteUrl'] ?? null),
             'autoCreatePortalAccountOnPatientCreation' => (bool) ($value['autoCreatePortalAccountOnPatientCreation'] ?? false),
+            'cabinetName' => $this->sanitizeFreeText(
+                $value['cabinetName'] ?? null,
+                self::DEFAULT_CABINET_NAME,
+                120
+            ),
             'testModeEnabled' => (bool) ($value[self::TEST_MODE_ENABLED_KEY] ?? false),
             'testModeSnapshotCreatedAt' => $value[self::TEST_MODE_SNAPSHOT_CREATED_AT_KEY] ?? null,
             'testModeLastPurgeAt' => $value[self::TEST_MODE_LAST_PURGE_AT_KEY] ?? null,
@@ -186,6 +192,11 @@ class GlobalSettingsService
             'patientPortalBaseUrl' => $this->sanitizeUrl($payload['patientPortalBaseUrl'] ?? ($current['patientPortalBaseUrl'] ?? null)),
             'cabinetShowcaseWebsiteUrl' => $this->sanitizeUrl($payload['cabinetShowcaseWebsiteUrl'] ?? ($current['cabinetShowcaseWebsiteUrl'] ?? null)),
             'autoCreatePortalAccountOnPatientCreation' => (bool) ($payload['autoCreatePortalAccountOnPatientCreation'] ?? ($current['autoCreatePortalAccountOnPatientCreation'] ?? false)),
+            'cabinetName' => $this->sanitizeFreeText(
+                $payload['cabinetName'] ?? ($current['cabinetName'] ?? null),
+                self::DEFAULT_CABINET_NAME,
+                120
+            ),
         ]);
 
         $this->em->flush();
@@ -411,6 +422,13 @@ class GlobalSettingsService
     public function shouldAutoCreatePortalAccountOnPatientCreation(): bool
     {
         return $this->getGeneralSettings()['autoCreatePortalAccountOnPatientCreation'];
+    }
+
+    public function resolveCabinetName(): string
+    {
+        $cabinetName = trim((string) ($this->getGeneralSettings()['cabinetName'] ?? ''));
+
+        return $cabinetName !== '' ? $cabinetName : self::DEFAULT_CABINET_NAME;
     }
 
     private const STAFF_ROLES = ['ROLE_ADMIN', 'ROLE_MEDECIN', 'ROLE_RECEPTION', 'ROLE_RECEPTIONNISTE'];

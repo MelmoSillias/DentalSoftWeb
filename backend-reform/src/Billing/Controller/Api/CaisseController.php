@@ -17,6 +17,7 @@ use App\Billing\Infrastructure\Persistence\Doctrine\Repository\PaiementRepositor
 use App\Billing\Service\CashdeskEntryPointService;
 use App\Communication\Service\SmsService;
 use App\Patient\Infrastructure\Persistence\Doctrine\Entity\Patient;
+use App\Settings\Service\GlobalSettingsService;
 use App\Shared\Application\Bus\CommandBus;
 use App\Shared\Application\Bus\QueryBus;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -30,6 +31,7 @@ class CaisseController extends AbstractController
     public function __construct(
         private CashdeskEntryPointService $entryPoint,
         private SmsService $smsService,
+        private GlobalSettingsService $globalSettingsService,
         private PaiementRepository $paiementRepository,
         private QueryBus $queryBus,
         private CommandBus $commandBus,
@@ -173,7 +175,7 @@ class CaisseController extends AbstractController
                     'patient_name' => trim(($patient->getPrenom() ?? '') . ' ' . ($patient->getNom() ?? '')),
                     'amount' => (string) ((int) round((float) ($payload['montant'] ?? 0))),
                     'date' => (string) ($payload['date'] ?? (new \DateTime())->format('Y-m-d')),
-                    'cabinet_name' => 'ORODENT',
+                    'cabinet_name' => $this->globalSettingsService->resolveCabinetName(),
                 ], 'payment');
             }
         }

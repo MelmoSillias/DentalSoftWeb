@@ -14,6 +14,7 @@ use App\Patient\Infrastructure\Persistence\Doctrine\Entity\Patient;
 use App\Scheduling\Infrastructure\Persistence\Doctrine\Entity\Rdv;
 use App\Scheduling\Infrastructure\Persistence\Doctrine\Repository\RdvRepository;
 use App\IdentityAccess\Infrastructure\Persistence\Doctrine\Repository\EmployeRepository;
+use App\Settings\Service\GlobalSettingsService;
 use DateTime;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
@@ -40,6 +41,7 @@ class RdvService
         private RdvNotificationService $rdvNotificationService,
         private SmsQueueRepository $smsQueueRepository,
         private SmsService $smsService,
+        private GlobalSettingsService $globalSettingsService,
     ) {
     }
 
@@ -84,7 +86,7 @@ class RdvService
     /**
      * @param array<string, mixed> $smsReminder
      */
-    private function queueAppointmentRemindersForRdv(Rdv $rdv, array $smsReminder, string $cabinetName = 'ORODENT'): int
+    private function queueAppointmentRemindersForRdv(Rdv $rdv, array $smsReminder, string $cabinetName = ''): int
     {
         $enabled = ($smsReminder['enabled'] ?? true) !== false;
         if (!$enabled) {
@@ -102,11 +104,16 @@ class RdvService
         $dates = $this->buildAppointmentReminderDates(DateTimeImmutable::createFromMutable($rdvAt), $daysBefore, $recurrence);
         $now = new DateTimeImmutable();
 
+        $effectiveCabinetName = trim($cabinetName);
+        if ($effectiveCabinetName === '') {
+            $effectiveCabinetName = $this->globalSettingsService->resolveCabinetName();
+        }
+
         $variables = [
             'patient_name' => trim(($patient->getPrenom() ?? '') . ' ' . ($patient->getNom() ?? '')),
             'date' => $rdvAt->format('d/m/Y'),
             'time' => $rdvAt->format('H:i'),
-            'cabinet_name' => $cabinetName,
+            'cabinet_name' => $effectiveCabinetName,
         ];
 
         $queued = 0;
@@ -298,7 +305,7 @@ class RdvService
                 $smsQueuedCount = $this->queueAppointmentRemindersForRdv(
                     $rdv,
                     $data['smsReminder'],
-                    (string) ($data['cabinet_name'] ?? 'ORODENT')
+                    (string) ($data['cabinet_name'] ?? '')
                 );
             }
 

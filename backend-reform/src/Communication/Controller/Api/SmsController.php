@@ -21,6 +21,7 @@ use App\Scheduling\Infrastructure\Persistence\Doctrine\Repository\RdvRepository;
 use App\Communication\Service\SmsClientResolver;
 use App\Communication\Service\SmsConfigService;
 use App\Communication\Service\SmsService;
+use App\Settings\Service\GlobalSettingsService;
 use App\Shared\Application\Bus\CommandBus;
 use App\Shared\Application\Bus\QueryBus;
 use DateTimeImmutable;
@@ -61,6 +62,7 @@ final class SmsController extends AbstractController
     public function __construct(
         private readonly SmsConfigService $smsConfigService,
         private readonly SmsService $smsService,
+        private readonly GlobalSettingsService $globalSettingsService,
         private readonly SmsClientResolver $smsClientResolver,
         private readonly MessageBusInterface $messageBus,
         private readonly RdvRepository $rdvRepository,
@@ -390,11 +392,16 @@ final class SmsController extends AbstractController
         $date = $rdv->getDateRdv()?->format('d/m/Y') ?? '';
         $time = $rdv->getDateRdv()?->format('H:i') ?? '';
 
+        $cabinetName = trim((string) ($payload['cabinet_name'] ?? ''));
+        if ($cabinetName === '') {
+            $cabinetName = $this->globalSettingsService->resolveCabinetName();
+        }
+
         $variables = [
             'patient_name' => trim(($patient->getPrenom() ?? '') . ' ' . ($patient->getNom() ?? '')),
             'date' => $date,
             'time' => $time,
-            'cabinet_name' => (string) ($payload['cabinet_name'] ?? 'ORODENT'),
+            'cabinet_name' => $cabinetName,
         ];
 
         if (!empty($payload['message']) && is_string($payload['message'])) {
@@ -443,11 +450,16 @@ final class SmsController extends AbstractController
             return $this->json(['success' => false, 'error' => 'Patient introuvable'], 404);
         }
 
+        $cabinetName = trim((string) ($payload['cabinet_name'] ?? ''));
+        if ($cabinetName === '') {
+            $cabinetName = $this->globalSettingsService->resolveCabinetName();
+        }
+
         $variables = [
             'patient_name' => trim(($patient->getPrenom() ?? '') . ' ' . ($patient->getNom() ?? '')),
             'date' => $rdvDate->format('d/m/Y'),
             'time' => $rdvDate->format('H:i'),
-            'cabinet_name' => (string) ($payload['cabinet_name'] ?? 'ORODENT'),
+            'cabinet_name' => $cabinetName,
         ];
 
         $result = $this->commandBus->dispatch(new QueueTemplateSmsCommand(
@@ -476,11 +488,16 @@ final class SmsController extends AbstractController
         }
 
         $payload = json_decode($request->getContent(), true) ?? [];
+        $cabinetName = trim((string) ($payload['cabinet_name'] ?? ''));
+        if ($cabinetName === '') {
+            $cabinetName = $this->globalSettingsService->resolveCabinetName();
+        }
+
         $variables = [
             'patient_name' => trim(($patient->getPrenom() ?? '') . ' ' . ($patient->getNom() ?? '')),
             'amount' => (string) ((int) round((float) ($devis->getMontant() ?? 0))),
             'invoice_number' => (string) $devis->getId(),
-            'cabinet_name' => (string) ($payload['cabinet_name'] ?? 'ORODENT'),
+            'cabinet_name' => $cabinetName,
         ];
 
         $result = $this->commandBus->dispatch(new QueueTemplateSmsCommand(
@@ -507,11 +524,16 @@ final class SmsController extends AbstractController
         }
 
         $payload = json_decode($request->getContent(), true) ?? [];
+        $cabinetName = trim((string) ($payload['cabinet_name'] ?? ''));
+        if ($cabinetName === '') {
+            $cabinetName = $this->globalSettingsService->resolveCabinetName();
+        }
+
         $variables = [
             'patient_name' => trim(($patient->getPrenom() ?? '') . ' ' . ($patient->getNom() ?? '')),
             'amount' => (string) ((int) round((float) $paiement->getMontant())),
             'date' => $paiement->getDate()?->format('d/m/Y') ?? '',
-            'cabinet_name' => (string) ($payload['cabinet_name'] ?? 'ORODENT'),
+            'cabinet_name' => $cabinetName,
         ];
 
         $result = $this->commandBus->dispatch(new QueueTemplateSmsCommand(
