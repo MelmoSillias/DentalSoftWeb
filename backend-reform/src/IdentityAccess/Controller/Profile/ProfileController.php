@@ -2,10 +2,10 @@
 
 namespace App\IdentityAccess\Controller\Profile;
 
-use App\Communication\Entity\Notification;
+use App\Communication\Infrastructure\Persistence\Doctrine\Entity\Notification;
 use App\Enum\NotificationStatus;
-use App\Communication\Repository\NotificationRepository;
-use App\IdentityAccess\Entity\User;
+use App\Communication\Infrastructure\Persistence\Doctrine\Repository\NotificationRepository;
+use App\IdentityAccess\Infrastructure\Persistence\Doctrine\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;

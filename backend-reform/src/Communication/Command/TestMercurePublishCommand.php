@@ -4,8 +4,8 @@ namespace App\Communication\Command;
 
 use App\Communication\Mercure\NotificationTopicGenerator;
 use App\Communication\Service\MercureHealthService;
-use App\IdentityAccess\Entity\User;
-use App\IdentityAccess\Repository\UserRepository;
+use App\IdentityAccess\Infrastructure\Persistence\Doctrine\Entity\User;
+use App\IdentityAccess\Infrastructure\Persistence\Doctrine\Repository\UserRepository;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;

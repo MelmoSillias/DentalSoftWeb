@@ -13,7 +13,7 @@ services:
         autowire: true      # Automatically injects dependencies in your services.
         autoconfigure: true # Automatically registers your services as commands, event subscribers, etc.
 
-    # makes classes in src/ available to be used as services
+    # makes classes in src/ available to be services
     # this creates a service per class whose id is the fully-qualified class name
     App\:
         resource: '../src/'
@@ -21,16 +21,125 @@ services:
             - '../src/DependencyInjection/'
             - '../src/DataFixtures/'
             - '../src/Entity/'
-            - '../src/Patient/Entity/'
-            - '../src/ClinicalRecord/Entity/'
-            - '../src/CareDelivery/Entity/'
-            - '../src/IdentityAccess/Entity/'
-            - '../src/Scheduling/Entity/'
-            - '../src/Billing/Entity/'
-            - '../src/Communication/Entity/'
-            - '../src/Inventory/Entity/'
-            - '../src/Settings/Entity/'
+            - '../src/*/Domain/Model/'
+            - '../src/*/Domain/ValueObject/'
+            - '../src/*/Domain/Event/'
+            - '../src/*/Domain/Exception/'
+            - '../src/*/Infrastructure/Persistence/Doctrine/Entity/'
             - '../src/Kernel.php'
+
+    App\Shared\Application\Bus\CommandBus: '@App\Shared\Infrastructure\Bus\SyncCommandBus'
+    App\Shared\Application\Bus\QueryBus: '@App\Shared\Infrastructure\Bus\SyncQueryBus'
+    App\Shared\Application\Port\Clock: '@App\Shared\Infrastructure\Adapter\SystemClock'
+    App\Shared\Application\Port\TransactionManager: '@App\Shared\Infrastructure\Adapter\DoctrineTransactionManager'
+
+    App\Patient\Domain\Repository\PatientRepository: '@App\Patient\Infrastructure\Persistence\Doctrine\Repository\DoctrinePatientRepository'
+    App\Patient\Application\Port\PatientCachePort: '@App\Patient\Infrastructure\Adapter\LegacyPatientCacheAdapter'
+    App\Patient\Application\Port\PatientRealtimePort: '@App\Patient\Infrastructure\Adapter\FocusPatientRealtimeAdapter'
+    App\Patient\Application\Port\CloseActiveConsultationsPort: '@App\Patient\Infrastructure\Adapter\CloseActiveConsultationsAdapter'
+    App\Patient\Application\Port\PatientCreatedSideEffectsPort: '@App\Patient\Infrastructure\Adapter\LegacyPatientCreatedSideEffectsAdapter'
+    App\Patient\Application\Port\PatientInsurancePort: '@App\Patient\Infrastructure\Adapter\LegacyPatientInsuranceAdapter'
+    App\Patient\Application\Port\PatientFileStoragePort: '@App\Patient\Infrastructure\Adapter\LegacyPatientFileStorageAdapter'
+    App\Patient\Application\Port\PatientConsultationsReadPort: '@App\Patient\Infrastructure\Adapter\LegacyPatientConsultationsReadAdapter'
+    App\Patient\Application\Port\PatientSummaryPort: '@App\Patient\Infrastructure\Adapter\LegacyPatientSummaryAdapter'
+    App\Patient\Application\Port\PatientReadPort: '@App\Patient\Infrastructure\Adapter\LegacyPatientReadAdapter'
+    App\Patient\Application\Port\PatientPortalPort: '@App\Patient\Infrastructure\Adapter\LegacyPatientPortalAdapter'
+    App\Patient\Application\Port\ScheduleAppointmentPort: '@App\Patient\Infrastructure\Adapter\LegacyScheduleAppointmentAdapter'
+    App\Patient\Application\Port\CreateConsultationForPatientPort: '@App\Patient\Infrastructure\Adapter\LegacyCreateConsultationForPatientAdapter'
+    App\Patient\Application\Port\CheckActiveConsultationPort: '@App\Patient\Infrastructure\Adapter\LegacyCheckActiveConsultationAdapter'
+    App\Patient\Application\Port\PatientDossierPort: '@App\Patient\Infrastructure\Adapter\LegacyPatientDossierAdapter'
+    App\Patient\Application\Port\PatientPrintPort: '@App\Patient\Infrastructure\Adapter\LegacyPatientPrintAdapter'
+
+    # IdentityAccess
+    App\IdentityAccess\Domain\Repository\UserRepository: '@App\IdentityAccess\Infrastructure\Persistence\Doctrine\Repository\DoctrineUserRepository'
+    App\IdentityAccess\Application\Port\CurrentUserReadPort: '@App\IdentityAccess\Infrastructure\Adapter\LegacyCurrentUserReadAdapter'
+    App\IdentityAccess\Application\Port\AuthWritePort: '@App\IdentityAccess\Infrastructure\Adapter\LegacyAuthWriteAdapter'
+    App\IdentityAccess\Application\Port\UserAdminReadPort: '@App\IdentityAccess\Infrastructure\Adapter\LegacyUserAdminReadAdapter'
+    App\IdentityAccess\Application\Port\UserAdminWritePort: '@App\IdentityAccess\Infrastructure\Adapter\LegacyUserAdminWriteAdapter'
+    App\IdentityAccess\Application\Port\EmployeeReadPort: '@App\IdentityAccess\Infrastructure\Adapter\LegacyEmployeeReadAdapter'
+    App\IdentityAccess\Application\Port\EmployeeWritePort: '@App\IdentityAccess\Infrastructure\Adapter\LegacyEmployeeWriteAdapter'
+    App\IdentityAccess\Application\Port\PayrollReadPort: '@App\IdentityAccess\Infrastructure\Adapter\LegacyPayrollReadAdapter'
+    App\IdentityAccess\Application\Port\PayrollWritePort: '@App\IdentityAccess\Infrastructure\Adapter\LegacyPayrollWriteAdapter'
+
+    # Scheduling
+    App\Scheduling\Domain\Repository\RdvRepository: '@App\Scheduling\Infrastructure\Persistence\Doctrine\Repository\DoctrineRdvRepository'
+    App\Scheduling\Application\Port\RdvReadPort: '@App\Scheduling\Infrastructure\Adapter\LegacyRdvReadAdapter'
+    App\Scheduling\Application\Port\RdvWritePort: '@App\Scheduling\Infrastructure\Adapter\LegacyRdvWriteAdapter'
+
+    # ClinicalRecord
+    App\ClinicalRecord\Domain\Repository\FicheMedicaleRepository: '@App\ClinicalRecord\Infrastructure\Persistence\Doctrine\Repository\DoctrineFicheMedicaleRepository'
+    App\ClinicalRecord\Application\Port\FicheMedicaleReadPort: '@App\ClinicalRecord\Infrastructure\Adapter\LegacyFicheMedicaleReadAdapter'
+    App\ClinicalRecord\Application\Port\FicheMedicaleWritePort: '@App\ClinicalRecord\Infrastructure\Adapter\LegacyFicheMedicaleWriteAdapter'
+
+    # CareDelivery
+    App\CareDelivery\Domain\Repository\ConsultationRepository: '@App\CareDelivery\Infrastructure\Persistence\Doctrine\Repository\DoctrineConsultationRepository'
+    App\CareDelivery\Application\Port\ConsultationReadPort: '@App\CareDelivery\Infrastructure\Adapter\LegacyConsultationReadAdapter'
+    App\CareDelivery\Application\Port\ConsultationWritePort: '@App\CareDelivery\Infrastructure\Adapter\LegacyConsultationWriteAdapter'
+    App\CareDelivery\Application\Port\ConsultationBillingPort: '@App\Billing\Infrastructure\Adapter\ConsultationBillingAdapter'
+    App\CareDelivery\Application\Port\ConsultationFocusPort: '@App\Focus\Infrastructure\Adapter\ConsultationFocusAdapter'
+    App\CareDelivery\Application\Port\ConsultationNotificationPort: '@App\CareDelivery\Infrastructure\Adapter\ConsultationNotificationAdapter'
+    App\CareDelivery\Application\Port\ConsultationSettingsPort: '@App\Settings\Infrastructure\Adapter\ConsultationSettingsAdapter'
+    App\CareDelivery\Application\Port\ConsultationStaffPort: '@App\CareDelivery\Infrastructure\Adapter\ConsultationStaffAdapter'
+    App\CareDelivery\Application\Port\ConsultationClinicalRecordPort: '@App\ClinicalRecord\Infrastructure\Adapter\ConsultationClinicalRecordAdapter'
+    App\CareDelivery\Application\Port\ConsultationPatientPort: '@App\Patient\Infrastructure\Adapter\ConsultationPatientAdapter'
+
+    # Billing
+    App\Billing\Domain\Repository\DevisRepository: '@App\Billing\Infrastructure\Persistence\Doctrine\Repository\DoctrineDevisRepository'
+    App\Billing\Application\Port\BillingReadPort: '@App\Billing\Infrastructure\Adapter\LegacyBillingReadAdapter'
+    App\Billing\Application\Port\BillingWritePort: '@App\Billing\Infrastructure\Adapter\LegacyBillingWriteAdapter'
+    App\Billing\Application\Port\InsuredBillingPort: '@App\Billing\Infrastructure\Adapter\LegacyInsuredBillingAdapter'
+    App\Billing\Application\Port\ClassicBillingPort: '@App\Billing\Infrastructure\Adapter\LegacyClassicBillingAdapter'
+    App\Billing\Application\Port\LotFactureAssurancePort: '@App\Billing\Infrastructure\Adapter\LegacyLotFactureAssuranceAdapter'
+    App\Billing\Application\Port\FinanceReadPort: '@App\Billing\Infrastructure\Adapter\LegacyFinanceReadAdapter'
+    App\Billing\Application\Port\FinanceWritePort: '@App\Billing\Infrastructure\Adapter\LegacyFinanceWriteAdapter'
+
+    # Communication
+    App\Communication\Domain\Repository\SmsQueueRepository: '@App\Communication\Infrastructure\Persistence\Doctrine\Repository\DoctrineSmsQueueRepository'
+    App\Communication\Application\Port\SmsReadPort: '@App\Communication\Infrastructure\Adapter\LegacySmsReadAdapter'
+    App\Communication\Application\Port\SmsWritePort: '@App\Communication\Infrastructure\Adapter\LegacySmsWriteAdapter'
+    App\Communication\Application\Port\NotificationWritePort: '@App\Communication\Infrastructure\Adapter\LegacyNotificationWriteAdapter'
+    App\Communication\Application\Port\SmsClientPort: '@App\Communication\Infrastructure\Adapter\ResolvedSmsClientAdapter'
+
+    # Inventory
+    App\Inventory\Domain\Repository\ConsommableRepository: '@App\Inventory\Infrastructure\Persistence\Doctrine\Repository\DoctrineConsommableRepository'
+    App\Inventory\Application\Port\InventoryReadPort: '@App\Inventory\Infrastructure\Adapter\LegacyInventoryReadAdapter'
+    App\Inventory\Application\Port\InventoryWritePort: '@App\Inventory\Infrastructure\Adapter\LegacyInventoryWriteAdapter'
+
+    # Settings
+    App\Settings\Domain\Repository\AppSettingRepository: '@App\Settings\Infrastructure\Persistence\Doctrine\Repository\DoctrineAppSettingRepository'
+    App\Settings\Application\Port\SettingsReadPort: '@App\Settings\Infrastructure\Adapter\LegacySettingsReadAdapter'
+    App\Settings\Application\Port\SettingsWritePort: '@App\Settings\Infrastructure\Adapter\LegacySettingsWriteAdapter'
+
+    # Reporting
+    App\Reporting\Application\Port\ReportReadPort: '@App\Reporting\Infrastructure\Adapter\LegacyReportReadAdapter'
+
+    # Focus
+    App\Focus\Application\Port\DashboardReadPort: '@App\Focus\Infrastructure\Adapter\LegacyDashboardReadAdapter'
+
+    App\Shared\Infrastructure\Bus\SyncCommandBus:
+        arguments:
+            $commandHandlerLocator: '@app.command_handler_locator'
+
+    App\Shared\Infrastructure\Bus\SyncQueryBus:
+        arguments:
+            $queryHandlerLocator: '@app.query_handler_locator'
+
+    app.command_handler_locator:
+        class: App\Shared\Infrastructure\Bus\HandlerLocator
+        arguments:
+            $handlers: !tagged_iterator app.command_handler
+
+    app.query_handler_locator:
+        class: App\Shared\Infrastructure\Bus\HandlerLocator
+        arguments:
+            $handlers: !tagged_iterator app.query_handler
+
+    _instanceof:
+        App\Shared\Application\Bus\CommandHandler:
+            tags: ['app.command_handler']
+        App\Shared\Application\Bus\QueryHandler:
+            tags: ['app.query_handler']
+
     App\Communication\Mercure\NotificationTopicGenerator:
         arguments:
             $publicHubUrl: '%env(MERCURE_PUBLIC_URL)%'

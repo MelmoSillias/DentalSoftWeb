@@ -2,10 +2,10 @@
 
 namespace App\Scheduling\Service;
 
-use App\IdentityAccess\Repository\EmployeRepository;
-use App\Scheduling\Entity\Booking;
-use App\Scheduling\Repository\BookingRepository;
-use App\Scheduling\Repository\RdvRepository;
+use App\IdentityAccess\Infrastructure\Persistence\Doctrine\Repository\EmployeRepository;
+use App\Scheduling\Infrastructure\Persistence\Doctrine\Entity\Booking;
+use App\Scheduling\Infrastructure\Persistence\Doctrine\Repository\BookingRepository;
+use App\Scheduling\Infrastructure\Persistence\Doctrine\Repository\RdvRepository;
 use Doctrine\ORM\EntityManagerInterface;
 
 class AgendaService

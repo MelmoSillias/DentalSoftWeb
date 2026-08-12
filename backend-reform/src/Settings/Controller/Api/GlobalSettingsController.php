@@ -2,9 +2,13 @@
 
 namespace App\Settings\Controller\Api;
 
-use App\IdentityAccess\Entity\User;
+use App\IdentityAccess\Infrastructure\Persistence\Doctrine\Entity\User;
 use App\IdentityAccess\Service\UserDeviceService;
-use App\Patient\Service\PatientService;
+use App\Patient\Application\Command\CreateMissingPatientPortalAccounts\CreateMissingPatientPortalAccountsCommand;
+use App\Settings\Application\Command\UpdateGeneralSettings\UpdateGeneralSettingsCommand;
+use App\Settings\Application\Query\GetGeneralSettings\GetGeneralSettingsQuery;
+use App\Shared\Application\Bus\CommandBus;
+use App\Shared\Application\Bus\QueryBus;
 use App\Settings\Service\DatabaseMaintenanceService;
 use App\Settings\Service\GlobalSettingsService;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -20,7 +24,8 @@ class GlobalSettingsController extends AbstractController
     public function __construct(
         private GlobalSettingsService $globalSettingsService,
         private DatabaseMaintenanceService $databaseMaintenanceService,
-        private PatientService $patientService,
+        private CommandBus $commandBus,
+        private QueryBus $queryBus,
         private UserDeviceService $userDeviceService,
     ) {
     }
@@ -47,7 +52,7 @@ class GlobalSettingsController extends AbstractController
     {
         $this->denyAccessUnlessGranted('ROLE_ADMIN');
 
-        return $this->json($this->globalSettingsService->getGeneralSettings());
+        return $this->json($this->queryBus->ask(new GetGeneralSettingsQuery()));
     }
 
     #[Route('/general/public', name: 'general_public_get', methods: ['GET'])]
@@ -65,7 +70,9 @@ class GlobalSettingsController extends AbstractController
         $this->denyAccessUnlessGranted('ROLE_ADMIN');
 
         $payload = json_decode($request->getContent(), true) ?? [];
-        $saved = $this->globalSettingsService->saveGeneralSettings($payload);
+        $saved = $this->commandBus->dispatch(new UpdateGeneralSettingsCommand(
+            is_array($payload) ? $payload : [],
+        ));
 
         return $this->json($saved);
     }
@@ -139,7 +146,7 @@ class GlobalSettingsController extends AbstractController
     {
         $this->denyAccessUnlessGranted('ROLE_ADMIN');
 
-        $result = $this->patientService->createMissingPatientPortalAccounts();
+        $result = $this->commandBus->dispatch(new CreateMissingPatientPortalAccountsCommand());
 
         return $this->json($result, $result['status'] ?? 200);
     }

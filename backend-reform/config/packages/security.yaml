@@ -5,12 +5,12 @@ security:
     providers:
         app_user_provider:
             entity:
-                class: App\IdentityAccess\Entity\User
+                class: App\IdentityAccess\Infrastructure\Persistence\Doctrine\Entity\User
                 property: username
 
         users_in_database:
             entity:
-                class: App\IdentityAccess\Entity\User
+                class: App\IdentityAccess\Infrastructure\Persistence\Doctrine\Entity\User
                 property: username
 
         backend_users:
@@ -25,7 +25,7 @@ security:
             pattern: ^/(_(profiler|wdt)|css|images|js)/
             security: false
 
-        # ✅ Health endpoints must stay auth-free for orchestrators (Dokploy)
+        # Ô£à Health endpoints must stay auth-free for orchestrators (Dokploy)
         health:
             pattern: ^/(api/health|health)
             security: false
@@ -34,7 +34,7 @@ security:
             pattern: ^/api/sms/webhooks/
             security: false
 
-        # 🔐 JWT LOGIN (API)
+        # ­ƒöÉ JWT LOGIN (API)
         api_login:
             pattern: ^/api/login
             stateless: true
@@ -47,7 +47,7 @@ security:
                 success_handler: lexik_jwt_authentication.handler.authentication_success
                 failure_handler: lexik_jwt_authentication.handler.authentication_failure
 
-        # 🔐 JWT PROTECTED API
+        # ­ƒöÉ JWT PROTECTED API
         api:
             pattern: ^/api
             stateless: true
@@ -55,7 +55,7 @@ security:
             user_checker: App\IdentityAccess\Security\UserEnabledChecker
             jwt: ~
 
-        # 🌐 SITE WEB CLASSIQUE
+        # ­ƒîÉ SITE WEB CLASSIQUE
         main:
             lazy: true
             provider: users_in_database

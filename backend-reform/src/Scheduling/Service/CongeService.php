@@ -2,11 +2,11 @@
 
 namespace App\Scheduling\Service;
 
-use App\Scheduling\Entity\Conge;
-use App\IdentityAccess\Entity\User;
+use App\Scheduling\Infrastructure\Persistence\Doctrine\Entity\Conge;
+use App\IdentityAccess\Infrastructure\Persistence\Doctrine\Entity\User;
 use App\Shared\Event\EntityActionEvent;
-use App\Scheduling\Repository\CongeRepository;
-use App\IdentityAccess\Repository\EmployeRepository;
+use App\Scheduling\Infrastructure\Persistence\Doctrine\Repository\CongeRepository;
+use App\IdentityAccess\Infrastructure\Persistence\Doctrine\Repository\EmployeRepository;
 use App\Communication\Service\NotificationRecipientResolver;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;

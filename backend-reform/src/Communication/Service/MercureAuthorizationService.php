@@ -3,7 +3,7 @@
 namespace App\Communication\Service;
 
 use App\Communication\Mercure\NotificationTopicGenerator;
-use App\IdentityAccess\Entity\User;
+use App\IdentityAccess\Infrastructure\Persistence\Doctrine\Entity\User;
 
 final class MercureAuthorizationService
 {

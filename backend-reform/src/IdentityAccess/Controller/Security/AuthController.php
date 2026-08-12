@@ -1,9 +1,15 @@
 <?php
 namespace App\IdentityAccess\Controller\Security;
 
-use App\IdentityAccess\Entity\User;
+use App\IdentityAccess\Application\Command\ChangePassword\ChangePasswordCommand;
+use App\IdentityAccess\Application\Command\RegisterUser\RegisterUserCommand;
+use App\IdentityAccess\Application\Command\UpdateUserProfile\UpdateUserProfileCommand;
+use App\IdentityAccess\Application\Query\GetCurrentUser\GetCurrentUserQuery;
+use App\IdentityAccess\Infrastructure\Persistence\Doctrine\Entity\User;
 use App\IdentityAccess\Service\AuthService;
 use App\IdentityAccess\Service\UserDeviceService;
+use App\Shared\Application\Bus\CommandBus;
+use App\Shared\Application\Bus\QueryBus;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -15,6 +21,8 @@ class AuthController extends AbstractController
     public function __construct(
         private AuthService $authService,
         private UserDeviceService $userDeviceService,
+        private QueryBus $queryBus,
+        private CommandBus $commandBus,
     ) {
     }
 
@@ -23,13 +31,16 @@ class AuthController extends AbstractController
     {
         $data = json_decode($request->getContent(), true) ?? [];
 
-        return $this->respond(fn() => $this->authService->register($data), 201);
+        return $this->respond(
+            fn () => $this->commandBus->dispatch(new RegisterUserCommand($data)),
+            201,
+        );
     }
 
     #[Route('/api/me', name: 'api_me', methods: ['GET'])]
     public function me(): JsonResponse
     {
-        return $this->respond(fn() => $this->authService->me());
+        return $this->respond(fn() => $this->queryBus->ask(new GetCurrentUserQuery()));
     }
 
     #[Route('/api/me', name: 'api_me_update', methods: ['PUT', 'POST'])]
@@ -42,7 +53,11 @@ class AuthController extends AbstractController
 
         $file = $request->files->get('photo');
 
-        return $this->respond(fn() => $this->authService->updateMe($data, $file, $uploadDir));
+        return $this->respond(fn () => $this->commandBus->dispatch(new UpdateUserProfileCommand(
+            $data,
+            $file,
+            $uploadDir,
+        )));
     }
 
     #[Route('/api/me/change-password', name: 'api_me_change_password', methods: ['PATCH'])]
@@ -50,7 +65,9 @@ class AuthController extends AbstractController
     {
         $data = json_decode($request->getContent(), true) ?? [];
 
-        return $this->respond(fn() => $this->authService->changePassword($data));
+        return $this->respond(
+            fn () => $this->commandBus->dispatch(new ChangePasswordCommand($data)),
+        );
     }
 
     // #[Route('/api/me/logs', name: 'api_me_logs', methods: ['GET'])]

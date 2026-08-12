@@ -2,13 +2,13 @@
 
 namespace App\Communication\EventSubscriber;
 
-use App\Scheduling\Entity\Conge;
-use App\CareDelivery\Entity\Consultation;
-use App\IdentityAccess\Entity\User;
+use App\Scheduling\Infrastructure\Persistence\Doctrine\Entity\Conge;
+use App\CareDelivery\Infrastructure\Persistence\Doctrine\Entity\Consultation;
+use App\IdentityAccess\Infrastructure\Persistence\Doctrine\Entity\User;
 use App\Shared\Event\EntityActionEvent;
-use App\Inventory\Entity\Consommable;
-use App\Patient\Entity\Patient;
-use App\Scheduling\Entity\Rdv;
+use App\Inventory\Infrastructure\Persistence\Doctrine\Entity\Consommable;
+use App\Patient\Infrastructure\Persistence\Doctrine\Entity\Patient;
+use App\Scheduling\Infrastructure\Persistence\Doctrine\Entity\Rdv;
 use App\Communication\Service\NotificationService;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 

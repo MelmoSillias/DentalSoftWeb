@@ -19,6 +19,13 @@ const printDate = computed(() => new Date());
 
 const formatFcfa = (value) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF' }).format(Number(value || 0));
 
+const formatCellAmount = (week, weekday, value) => {
+    if (!getCellDate(week, weekday)) {
+        return '--';
+    }
+    return formatFcfa(value);
+};
+
 const formatWeekRange = (week) => {
     if (!week?.startDate || !week?.endDate) return '';
     const start = new Date(week.startDate);
@@ -46,16 +53,27 @@ const formatCellDate = (week, weekday) => {
     if (!date) return '';
     return date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' });
 };
+
+const getCellMonthEdgeTag = (week, weekday) => {
+    const date = getCellDate(week, weekday);
+    if (!date) return '';
+    const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+    if (date.getDate() === 1) return '1er';
+    if (date.getDate() === lastDay) return 'Fin';
+    return '';
+};
 </script>
 
 <script>
 export const printStyles = `
     @page { size: A4 landscape; margin: 10mm; }
-    .print-cross-table { font-size: 9.5pt; }
-    .print-cross-table th, .print-cross-table td { padding: 5px 7px; }
-    .muted, .cell-date { font-size: 8pt; color: #6b7280 !important; }
+    .print-cross-table { font-size: 10pt; }
+    .print-cross-table th, .print-cross-table td { padding: 6px 8px; }
+    .muted, .cell-date { font-size: 8pt; color: #6b7280 !important; text-align: right; }
+    .cell-value { font-size: 11pt; font-weight: 700; text-align: center; }
+    .cell-tag { font-size: 7pt; font-weight: 700; color: #1d4ed8 !important; text-align: left; margin-bottom: 2px; }
     .row-label { font-weight: 600; background-color: #f9fafb; }
-    .row-total, .grand-total { font-weight: bold; text-align: right; }
+    .row-total, .grand-total { font-weight: bold; text-align: right; font-size: 11pt; }
     .totals-row th, .totals-row td { background-color: #eef3f8 !important; font-weight: bold; }
 `;
 </script>
@@ -82,7 +100,8 @@ export const printStyles = `
                 <tr v-for="row in rows" :key="row.weekday">
                     <th class="row-label">{{ row.label }}</th>
                     <td v-for="(value, index) in row.values" :key="`${row.weekday}-${index}`">
-                        <div class="cell-value">{{ formatFcfa(value) }}</div>
+                        <div class="cell-tag" v-if="getCellMonthEdgeTag(weeks[index], row.weekday)">{{ getCellMonthEdgeTag(weeks[index], row.weekday) }}</div>
+                        <div class="cell-value">{{ formatCellAmount(weeks[index], row.weekday, value) }}</div>
                         <div class="cell-date">{{ formatCellDate(weeks[index], row.weekday) }}</div>
                     </td>
                     <td class="row-total">{{ formatFcfa(row.total) }}</td>
@@ -102,10 +121,25 @@ export const printStyles = `
     margin-bottom: 8px;
 }
 
+.cell-value {
+    font-size: 11pt;
+    font-weight: 700;
+    text-align: center;
+}
+
+.cell-tag {
+    font-size: 7pt;
+    font-weight: 700;
+    color: #1d4ed8;
+    text-align: left;
+    margin-bottom: 2px;
+}
+
 .muted,
 .cell-date {
     font-size: 8pt;
     color: #6b7280;
+    text-align: right;
 }
 
 .row-label {

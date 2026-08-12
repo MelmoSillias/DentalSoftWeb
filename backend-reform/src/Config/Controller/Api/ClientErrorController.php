@@ -3,7 +3,7 @@
 namespace App\Config\Controller\Api;
 
 use App\Config\Service\ClientErrorReportService;
-use App\IdentityAccess\Entity\User;
+use App\IdentityAccess\Infrastructure\Persistence\Doctrine\Entity\User;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;

@@ -2,78 +2,63 @@
 
 namespace App\CareDelivery\Service;
 
-use App\Billing\Entity\Assurance;
+use App\Billing\Infrastructure\Persistence\Doctrine\Entity\Assurance;
+use App\Billing\Infrastructure\Persistence\Doctrine\Entity\Facture;
+use App\Billing\Infrastructure\Persistence\Doctrine\Entity\Paiement;
+use App\CareDelivery\Application\Port\ConsultationBillingPort;
+use App\CareDelivery\Application\Port\ConsultationClinicalRecordPort;
+use App\CareDelivery\Application\Port\ConsultationFocusPort;
+use App\CareDelivery\Application\Port\ConsultationNotificationPort;
+use App\CareDelivery\Application\Port\ConsultationPatientPort;
+use App\CareDelivery\Application\Port\ConsultationSettingsPort;
+use App\CareDelivery\Application\Port\ConsultationStaffPort;
+use App\CareDelivery\Domain\Exception\CareDeliveryDomainException;
+use App\CareDelivery\Domain\Model\Consultation as DomainConsultation;
+use App\CareDelivery\Infrastructure\Persistence\Doctrine\Entity\ActeMedical;
+use App\CareDelivery\Infrastructure\Persistence\Doctrine\Entity\Consultation;
+use App\CareDelivery\Infrastructure\Persistence\Doctrine\Entity\Ordonnance;
+use App\CareDelivery\Infrastructure\Persistence\Doctrine\Entity\OrdonnanceLigne;
+use App\CareDelivery\Infrastructure\Persistence\Doctrine\Repository\ConsultationRepository;
+use App\ClinicalRecord\Infrastructure\Persistence\Doctrine\Entity\FicheMedicale;
 use App\Dto\Focus\FocusReceptionBillingDto;
 use App\Dto\Focus\FocusReceptionConsultationDto;
 use App\Dto\Focus\FocusReceptionInvoiceLineDto;
 use App\Dto\Focus\FocusReceptionPatientDto;
 use App\Dto\Focus\FocusReceptionPayloadDto;
 use App\Dto\Focus\FocusReceptionPaymentDto;
-use App\Billing\Entity\Facture;
-use App\Billing\Entity\FactureAssurance;
-use App\Billing\Entity\Paiement;
-use App\Billing\Entity\Transaction;
-use App\Billing\Repository\DevisRepository;
-use App\CareDelivery\Entity\ActeMedical;
-use App\CareDelivery\Entity\Consultation;
-use App\CareDelivery\Entity\Ordonnance;
-use App\CareDelivery\Entity\OrdonnanceLigne;
-use App\CareDelivery\Repository\ConsultationRepository; 
-use App\ClinicalRecord\Entity\FicheMedicale; 
-use App\Communication\Service\NotificationRecipientResolver;
-use App\Shared\Event\EntityActionEvent;
-use App\Focus\Service\FocusRealtimePublisher;
-use App\IdentityAccess\Entity\Employe;
-use App\IdentityAccess\Entity\User;
-use App\IdentityAccess\Repository\EmployeRepository;
-use App\Patient\Entity\Allergy;
-use App\Patient\Entity\Antecedent;
-use App\Patient\Entity\Patient;
-use App\Settings\Service\GlobalSettingsService;
-use App\Billing\Entity\ModeDePaiement;
-use App\Patient\Repository\PatientRepository;
-use App\Scheduling\Entity\Salle;
-use App\Scheduling\Repository\SalleRepository;
-use App\CareDelivery\Service\ConsultationNotificationService;
-use DateTime;
+use App\IdentityAccess\Infrastructure\Persistence\Doctrine\Entity\Employe;
+use App\IdentityAccess\Infrastructure\Persistence\Doctrine\Entity\User;
+use App\IdentityAccess\Infrastructure\Persistence\Doctrine\Repository\EmployeRepository;
+use App\Patient\Infrastructure\Persistence\Doctrine\Entity\Patient;
+use App\Patient\Infrastructure\Persistence\Doctrine\Repository\PatientRepository;
+use App\Scheduling\Infrastructure\Persistence\Doctrine\Repository\SalleRepository;
 use DateTimeImmutable;
-use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
-use Symfony\Component\EventDispatcher\EventDispatcherInterface;
-use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface; 
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
-use Symfony\Contracts\Cache\CacheInterface;
-use Symfony\Contracts\Cache\ItemInterface;
 
 class ConsultationService
 {
-    private string $projectDir;
-
     public function __construct(
         private EntityManagerInterface $em,
-        private DevisRepository $devisRepo,
         private ConsultationRepository $consultationRepo,
         private EmployeRepository $employeRepo,
         private SalleRepository $salleRepo,
-        private FocusRealtimePublisher $focusRealtimePublisher,
-        private NotificationRecipientResolver $notificationRecipientResolver,
-        private EventDispatcherInterface $eventDispatcher,
-        private UserPasswordHasherInterface $passwordHasher,
-        ParameterBagInterface $params,
-        private CacheInterface $cache,
-        private GlobalSettingsService $globalSettingsService,
         private PatientRepository $patientRepo,
-        private ConsultationNotificationService $consultationNotificationService,
+        private ConsultationBillingPort $consultationBillingPort,
+        private ConsultationFocusPort $consultationFocusPort,
+        private ConsultationNotificationPort $consultationNotificationPort,
+        private ConsultationSettingsPort $consultationSettingsPort,
+        private ConsultationStaffPort $consultationStaffPort,
+        private ConsultationClinicalRecordPort $consultationClinicalRecordPort,
+        private ConsultationPatientPort $consultationPatientPort,
     ) {
-        $this->projectDir = $params->get('kernel.project_dir');
     }
 
     public function createConsultation(array $data, ?User $triggeredBy = null): array
     {
         try {
-            $isMedecinRequired = $this->globalSettingsService->isMedecinRequiredOnConsultationCreation();
+            $isMedecinRequired = $this->consultationSettingsPort->isMedecinRequiredOnCreation();
             if ($isMedecinRequired && empty($data['medecin_id'])) {
                 return [
                     'error' => 'Le medecin est requis pour creer la consultation.',
@@ -82,8 +67,9 @@ class ConsultationService
             }
 
             $result = $this->em->wrapInTransaction(function () use ($data, $triggeredBy): array {
-                $patient = $this->patientRepo->find($data['patient_id'] ?? null);
-                if (!$patient) {
+                $patientId = (int) ($data['patient_id'] ?? 0);
+                $patient = $patientId > 0 ? $this->consultationPatientPort->findPatient($patientId) : null;
+                if (!$patient instanceof Patient) {
                     return [
                         'error' => 'Patient introuvable.',
                         'status' => 404,
@@ -91,17 +77,17 @@ class ConsultationService
                 }
 
                 $isPayant = ((int) ($data['payant'] ?? 0)) === 1;
-                $insuranceEnabled = $this->patientHasActiveInsurance($patient);
+                $insuranceEnabled = $this->consultationPatientPort->hasActiveInsurance($patient);
                 $profile = $patient->getAssuranceProfile();
                 $assurance = $profile?->getAssurance();
                 $insuranceRate = $insuranceEnabled
                     ? max(0, min(100, (float) ($profile?->getCoverageRate() ?? 0)))
                     : 0.0;
 
-                $defaultConsultationAmount = $this->globalSettingsService->getConsultationPrice();
+                $defaultConsultationAmount = $this->consultationSettingsPort->getConsultationPrice();
                 $consultationAmount = 0.0;
                 if ($isPayant) {
-                    $canEditPrice = $this->globalSettingsService->isConsultationPriceEditableOnCreation();
+                    $canEditPrice = $this->consultationSettingsPort->isConsultationPriceEditableOnCreation();
                     $consultationAmount = $canEditPrice
                         ? (float) ($data['consultation_amount'] ?? $defaultConsultationAmount)
                         : $defaultConsultationAmount;
@@ -122,44 +108,44 @@ class ConsultationService
                     ];
                 }
 
+                try {
+                    // Belt-and-suspenders domain validation before legacy persist.
+                    DomainConsultation::create(
+                        (int) $patient->getId(),
+                        !empty($data['medecin_id']) ? (int) $data['medecin_id'] : null,
+                    );
+                } catch (CareDeliveryDomainException $e) {
+                    return [
+                        'error' => $e->getMessage(),
+                        'status' => 400,
+                    ];
+                }
+
                 $consultation = $this->consultationRepo->NewConsultation($data, $this->patientRepo, $this->employeRepo, false);
                 $createdPaiementId = null;
                 $patientPayment = null;
                 $timestamp = new DateTimeImmutable();
 
                 if ($patientAmount > 0 && !$insuranceEnabled) {
-                    $modePaiement = $this->em->getRepository(ModeDePaiement::class)->find($data['mode_paiement_id']);
+                    $paymentResult = $this->consultationBillingPort->createClassicTicketPayment(
+                        $consultation,
+                        $patientAmount,
+                        (int) $data['mode_paiement_id'],
+                        $timestamp,
+                    );
 
-                    if (!$modePaiement) {
+                    if (($paymentResult['error'] ?? null) !== null) {
                         return [
-                            'error' => 'Mode de paiement invalide.',
-                            'status' => 400,
+                            'error' => $paymentResult['error'],
+                            'status' => $paymentResult['status'] ?? 400,
                         ];
                     }
 
-                    $paiement = new Paiement();
-                    $paiement->setFacture(null);
-                    $paiement->setMode($modePaiement);
-                    $paiement->setMontant($patientAmount);
-                    $paiement->setDate($timestamp);
-                    $paiement->setConsultation($consultation);
-                    $this->em->persist($paiement);
-                    $patientPayment = $paiement;
-
-                    $transaction = new Transaction();
-                    $transaction->setType('Revenue');
-                    $transaction->setMontant((string) $patientAmount);
-                    $transaction->setDateTransaction($timestamp);
-                    $transaction->setDescription('Ticket de consultation #' . $consultation->getId() . ' | Part patient');
-                    $transaction->setModeDePaiement($modePaiement);
-                    $transaction->setConsultation($consultation);
-                    $transaction->markValidated($timestamp);
-                    $transaction->setPaiement($paiement);
-                    $this->em->persist($transaction);
+                    $patientPayment = $paymentResult['paiement'] ?? null;
                 }
 
                 if ($insuranceEnabled && $assurance instanceof Assurance) {
-                    $this->attachFactureAssurance(
+                    $this->consultationBillingPort->attachPendingFactureAssurance(
                         $consultation,
                         $patient,
                         $assurance,
@@ -167,7 +153,6 @@ class ConsultationService
                         $isPayant ? $consultationAmount : 0.0,
                         $isPayant,
                         $profile?->getFormData() ?? [],
-                        'pending',
                     );
                 }
 
@@ -179,7 +164,7 @@ class ConsultationService
                     $createdPaiementId = $consultation->getPaiement()->getId();
                 }
 
-                $this->consultationNotificationService->notifyCreation($consultation, $triggeredBy);
+                $this->consultationNotificationPort->notifyCreation($consultation, $triggeredBy);
 
                 return [
                     'success' => true,
@@ -200,11 +185,9 @@ class ConsultationService
 
     public function getMedecinForUser(?object $user): ?Employe
     {
-        if (!$user) {
-            return null;
-        }
+        $employe = $this->consultationStaffPort->findEmployeForUser($user);
 
-        return $this->employeRepo->findOneBy(['user' => $user]);
+        return $employe instanceof Employe ? $employe : null;
     }
 
     private function isMedecinUser(?object $user): bool
@@ -232,7 +215,7 @@ class ConsultationService
             $consultation->setMedecin($actorMedecin);
             $this->em->persist($consultation);
             $this->em->flush();
-            $this->focusRealtimePublisher->publishConsultationRefresh($consultation, 'assigned');
+            $this->consultationFocusPort->publishConsultationRefresh($consultation, 'assigned');
         }
 
         return $actorMedecin;
@@ -250,7 +233,7 @@ class ConsultationService
             return false;
         }
 
-        return $this->passwordHasher->isPasswordValid($medecinUser, $plainPassword);
+        return $this->consultationStaffPort->verifyUserPassword($medecinUser, $plainPassword);
     }
 
     private function ensureConsultationOpen(Consultation $consultation): void
@@ -335,52 +318,11 @@ class ConsultationService
         }
     }
 
-    private function findLastFicheMedicale(?Patient $patient): ?FicheMedicale
-    {
-        if (!$patient?->getId()) {
-            return null;
-        }
-
-        return $this->em->getRepository(FicheMedicale::class)
-            ->createQueryBuilder('f')
-            ->andWhere('f.patient = :patient')
-            ->setParameter('patient', $patient)
-            ->orderBy('f.createdAt', 'DESC')
-            ->addOrderBy('f.id', 'DESC')
-            ->setMaxResults(1)
-            ->getQuery()
-            ->getOneOrNullResult();
-    }
-
-    private function resolvePendingFicheData(Consultation $consultation): array
-    {
-        $patient = $consultation->getPatient();
-        $lastFicheMedicale = $this->findLastFicheMedicale($patient);
-
-        $ficheMedicale = $consultation->getFicheMedicale();
-
-        $linkedFiche = $ficheMedicale;
-
-        $lastFicheCandidate = null;
-        if (!$linkedFiche) {
-            $lastFicheCandidate = $lastFicheMedicale;
-        }
-
-        return [
-            'ficheMedicale' => $ficheMedicale,
-            'fiche' => $linkedFiche,
-            'ficheId' => $linkedFiche?->getId(),
-            'hasFiche' => (bool) ($linkedFiche || $lastFicheCandidate),
-            'lastFicheId' => $lastFicheCandidate?->getId(),
-            'motif' => $lastFicheMedicale?->getEntretien()?->getMotifConsultation() ?? '',
-        ];
-    }
-
     private function buildPendingConsultationsData(array $consultations): array
     {
         return array_map(function (Consultation $c) {
             $patient = $c->getPatient();
-            $ficheData = $this->resolvePendingFicheData($c);
+            $ficheData = $this->consultationClinicalRecordPort->resolvePendingFicheData($c);
 
             return [
                 'id' => $c->getId(),
@@ -391,7 +333,7 @@ class ConsultationService
                 'fiche' => $ficheData['fiche'],
                 'ficheId' => $ficheData['ficheId'],
                 'lastFicheId' => $ficheData['lastFicheId'],
-                'hasInsurance' => $c->getFactureAssurance() !== null || $this->patientHasActiveInsurance($patient),
+                'hasInsurance' => $c->getFactureAssurance() !== null || $this->consultationPatientPort->hasActiveInsurance($patient),
                 'assuranceNom' => $c->getFactureAssurance()?->getAssurance()?->getNom()
                     ?? $patient->getAssuranceProfile()?->getAssurance()?->getNom(),
             ];
@@ -428,7 +370,7 @@ class ConsultationService
             ->setParameter('end', $end);
 
         if ($user instanceof User && in_array('ROLE_MEDECIN', $user->getRoles(), true)) {
-            $medecin = $this->employeRepo->FindOneBy(['user' => $user]);
+            $medecin = $this->consultationStaffPort->findEmployeForUser($user);
             if ($medecin) {
                 $qb->andWhere('(m = :medecin OR m IS NULL)')
                     ->setParameter('medecin', $medecin);
@@ -451,42 +393,6 @@ class ConsultationService
         return 0;
     }
 
-    private function isFactureModifiable(?Facture $facture): bool
-    {
-        if (!$facture) {
-            return false;
-        }
-
-        if ($facture->getPaiements()->count() > 0) {
-            return false;
-        }
-
-        $consultation = $facture->getConsultation();
-        $factureAssurance = $consultation?->getFactureAssurance();
-        if ($factureAssurance === null) {
-            return true;
-        }
-
-        $lot = $factureAssurance->getLotFactureAssurance();
-        if ($lot !== null) {
-            $statut = $lot->getStatut() === 'recouvre' ? 'rembourse' : $lot->getStatut();
-            if (in_array($statut, ['envoye', 'confirme', 'partiellement_rembourse', 'rembourse'], true)) {
-                return false;
-            }
-        }
-
-        return $factureAssurance->computePatientPaidAmount() <= 0;
-    }
-
-    private function resolveFactureDateFromConsultation(Consultation $consultation): \DateTime
-    {
-        $createdAt = $consultation->getCreatedAt();
-
-        return $createdAt instanceof \DateTimeInterface
-            ? \DateTime::createFromInterface($createdAt)
-            : new \DateTime('now');
-    }
-
     private function parseFactureDateInput(?string $date, ?string $time, Consultation $consultation): \DateTime
     {
         $date = trim((string) ($date ?? ''));
@@ -500,12 +406,16 @@ class ConsultationService
             return new \DateTime($date);
         }
 
-        return $this->resolveFactureDateFromConsultation($consultation);
+        $createdAt = $consultation->getCreatedAt();
+
+        return $createdAt instanceof \DateTimeInterface
+            ? \DateTime::createFromInterface($createdAt)
+            : new \DateTime('now');
     }
 
     private function buildFocusConsultationDto(Consultation $consultation, int $counter): FocusReceptionConsultationDto
     {
-        $ficheData = $this->resolvePendingFicheData($consultation);
+        $ficheData = $this->consultationClinicalRecordPort->resolvePendingFicheData($consultation);
         $patient = $consultation->getPatient();
 
         return new FocusReceptionConsultationDto([
@@ -518,7 +428,7 @@ class ConsultationService
                 'telephone' => $patient->getTelephone(),
                 'photo' => $patient->getPhoto(),
                 'createdAt' => $patient->getDateInscription()?->format(DATE_ATOM),
-                'insuranceProfile' => $this->resolvePatientInsuranceProfile($patient),
+                'insuranceProfile' => $this->consultationPatientPort->getInsuranceProfile($patient),
             ],
             'patientName' => $patient->getFullName(),
             'patientPhoto' => $patient->getPhoto(),
@@ -535,107 +445,10 @@ class ConsultationService
             'hasFiche' => $ficheData['hasFiche'],
             'ficheId' => $ficheData['ficheId'],
             'lastFicheId' => $ficheData['lastFicheId'],
-            'hasInsurance' => $consultation->getFactureAssurance() !== null || $this->patientHasActiveInsurance($patient),
+            'hasInsurance' => $consultation->getFactureAssurance() !== null || $this->consultationPatientPort->hasActiveInsurance($patient),
             'assuranceNom' => $consultation->getFactureAssurance()?->getAssurance()?->getNom()
                 ?? $patient->getAssuranceProfile()?->getAssurance()?->getNom(),
         ]);
-    }
-
-    private function patientHasActiveInsurance(?\App\Patient\Entity\Patient $patient): bool
-    {
-        $profile = $patient?->getAssuranceProfile();
-        $assurance = $profile?->getAssurance();
-
-        return $profile !== null && $assurance !== null && $assurance->isActif();
-    }
-
-    private function resolvePatientInsuranceProfile(?\App\Patient\Entity\Patient $patient): ?array
-    {
-        if (!$this->patientHasActiveInsurance($patient)) {
-            return null;
-        }
-        $assurance = $patient->getAssuranceProfile()?->getAssurance();
-
-        return [
-            'enabled' => true,
-            'coverageRate' => $patient->getAssuranceProfile()?->getCoverageRate(),
-            'assurance' => [
-                'id' => $assurance?->getId(),
-                'nom' => $assurance?->getNom(),
-                'code' => $assurance?->getCode(),
-            ],
-        ];
-    }
-
-    /**
-     * Creates FactureAssurance when the patient is insured and none exists yet
-     * (e.g. consultation créée via RDV, ou créée avant le profil assurance).
-     */
-    private function ensureFactureAssurance(Consultation $consultation): ?FactureAssurance
-    {
-        $existing = $consultation->getFactureAssurance();
-        if ($existing !== null) {
-            return $existing;
-        }
-
-        $patient = $consultation->getPatient();
-        if (!$this->patientHasActiveInsurance($patient)) {
-            return null;
-        }
-
-        $profile = $patient->getAssuranceProfile();
-        $assurance = $profile?->getAssurance();
-        if (!$assurance instanceof Assurance) {
-            return null;
-        }
-
-        // Ticket déjà encaissé hors assurance : ne pas re-facturer la consultation dans la FA.
-        // Les actes restent couverts via buildActeLignes().
-        return $this->attachFactureAssurance(
-            $consultation,
-            $patient,
-            $assurance,
-            max(0, min(100, (float) ($profile?->getCoverageRate() ?? 0))),
-            0.0,
-            false,
-            $profile?->getFormData() ?? [],
-            'pending',
-        );
-    }
-
-    private function attachFactureAssurance(
-        Consultation $consultation,
-        Patient $patient,
-        Assurance $assurance,
-        float $insuranceRate,
-        float $consultationAmount,
-        bool $isConsultationPayante,
-        array $formData,
-        string $insuranceStatus = 'pending',
-    ): FactureAssurance {
-        $factureAssurance = new FactureAssurance();
-        $factureAssurance
-            ->setConsultation($consultation)
-            ->setPatient($patient)
-            ->setAssurance($assurance)
-            ->setCoverageRate($insuranceRate > 0 ? $insuranceRate : null)
-            ->setDateFacture(new DateTime())
-            ->setConsultationAmount($isConsultationPayante ? $consultationAmount : 0.0)
-            ->setIsConsultationPayante($isConsultationPayante)
-            ->setInsuranceStatus($insuranceStatus)
-            ->setAssuranceSnapshot([
-                'code' => $assurance->getCode(),
-                'nom' => $assurance->getNom(),
-                'logoPath' => $assurance->getLogoPath(),
-                'website' => $assurance->getWebsite(),
-                'email' => $assurance->getEmail(),
-                'formData' => $formData,
-            ]);
-
-        $consultation->setFactureAssurance($factureAssurance);
-        $this->em->persist($factureAssurance);
-
-        return $factureAssurance;
     }
 
     private function buildFocusPatientDto(Patient $patient): FocusReceptionPatientDto
@@ -797,14 +610,13 @@ class ConsultationService
         ];
     }
 
-    public function getFicheById(int $ficheId):FicheMedicale
+    public function getFicheById(int $ficheId): FicheMedicale
     {
-        $ficheMed = $this->em->getRepository(FicheMedicale::class)->find($ficheId);
-        if ($ficheMed) {
-            return $ficheMed;
-        }
+        $ficheMed = $this->consultationClinicalRecordPort->getFicheById($ficheId);
 
-        throw new NotFoundHttpException("Fiche {$ficheId} introuvable");
+        return $ficheMed instanceof FicheMedicale
+            ? $ficheMed
+            : throw new NotFoundHttpException("Fiche {$ficheId} introuvable");
     }
 
     public function getFicheAndConsultation(int $ficheId, int $consultationId, ?object $user = null, bool $restrictToMedecin = false): array
@@ -851,129 +663,7 @@ class ConsultationService
     {
         [$fiche, $consultation] = $this->getFicheAndConsultation($ficheId, $consultationId);
 
-        $patient = $fiche->getPatient();
-
-        $allergies = array_map(fn (Allergy $a) => [
-            'id' => $a->getId(),
-            'libelle' => $a->getLibelle(),
-            'description' => $a->getDescription(),
-        ], $patient->getAllergies()->toArray());
-
-        $antecedents = array_map(fn (Antecedent $a) => [
-            'id' => $a->getId(),
-            'type' => $a->getType(),
-            'description' => $a->getDescription(),
-            'dateEnregistrement' => $a->getDateEnregistrement()?->format('Y-m-d'),
-        ], $patient->getAntecedents()->toArray());
-
-        $patientData = [
-            'id'        => $patient->getId(),
-            'nom'       => $patient->getNom(),
-            'prenom'    => $patient->getPrenom(),
-            'age' => $patient->getDateNaissance() ? $patient->getDateNaissance()->format('Y-m-d') : null,
-            'sexe'      => $patient->getSexe(),
-            'telephone' => $patient->getTelephone(),
-            'allergies' => $allergies,
-            'antecedents' => $antecedents,
-        ];
-
-        $consultationData = [
-            'id'         => $consultation->getId(),
-            'type'       => $consultation->getType(),
-            'noteSeance' => $consultation->getNoteSeance(),
-            'medecin'    => $consultation->getMedecin()    ? ['id' => $consultation->getMedecin()->getId(),   'name' => $consultation->getMedecin()->getFullName()] : null,
-            'infirmier'  => $consultation->getInfirmier()  ? ['id' => $consultation->getInfirmier()->getId(), 'name' => $consultation->getInfirmier()->getFullName()] : null,
-            'salle'      => $consultation->getSalle()      ? ['id' => $consultation->getSalle()->getId(),     'name' => $consultation->getSalle()->getNom()]         : null,
-        ];
-
-        $ficheData = [
-            'id'                     => $fiche->getId(),
-            'motif'                  => $fiche->getMotif(),
-            'histoireMaladie'        => $fiche->getHistoireMaladie(),
-            'soinsAnterieurs'        => $fiche->getSoinsAnterieurs(),
-            'exoInspection'          => $fiche->getExoInspection(),
-            'exoPalpation'           => $fiche->getExoPalpation(),
-            'endoInspection'         => $fiche->getEndoInspection(),
-            'endoPalpation'          => $fiche->getEndoPalpation(),
-            'occlusion'              => $fiche->getOcclusion(),
-            'examenParodontal'       => $fiche->getExamenParodontal(),
-            'diagnostic'             => $fiche->getDiagnostic(),
-            'examensComplementaires' => $fiche->getExamensComplementaires(),
-            'diagnosticSupposeExamens' => $fiche->getDiagnosticSupposeExamens(),
-            'traitementUrgence'      => $fiche->getTraitementUrgence(),
-            'traitementDentaire'     => $fiche->getTraitementDentaire(),
-            'traitementParodontal'   => $fiche->getTraitementParodontal(),
-            'traitementOrthodontique'=> $fiche->getTraitementOrthodontique(),
-            'autres'                 => $fiche->getAutres(),
-        ];
-
-        $examens = $fiche->getToothsCheck();
-
-        $documents = [];
-        foreach ($fiche->getDocumentsMedicaux() as $d) {
-            $documents[] = [
-                'libelle'     => $d->getLibelle(),
-                'dateDossier' => $d->getDateDossier()->format('Y-m-d'),
-                'description' => $d->getDescription(),
-                'url'         => $d->getFichier(),
-            ];
-        }
-
-        $devis = $fiche->getDevis()[0] ?? null;
-        $devisData = null;
-        if ($devis) {
-            $contenus = [];
-            foreach ($devis->getContenus() as $c) {
-                $contenus[] = [
-
-                    'designation' => $c->getDesignation(),
-                    'qte'         => $c->getQte(),
-                    'montant'     => $c->getMontant(),
-                ];
-            }
-            $devisData = [
-                'id'       => $devis->getId(),
-                'date'     => $devis->getDate()->format('Y-m-d'),
-                'contenus' => $contenus,
-            ];
-        }
-
-        $precedentes = [];
-        foreach ($fiche->getConsultations() as $s) {
-            if ($s->getId() !== $consultation->getId() && $s->getStatut() === 1) {
-                $precedentes[] = [
-                    'id'         => $s->getId(),
-                    'date'       => $s->getCreatedAt()->format('Y-m-d'),
-                    'medecin'    => $s->getMedecin()   ? $s->getMedecin()->getFullName()   : null,
-                    'infirmier'  => $s->getInfirmier() ? $s->getInfirmier()->getFullName() : null,
-                    'salle'      => $s->getSalle()     ? $s->getSalle()->getNom()          : null,
-                    'noteSeance' => $s->getNoteSeance(),
-                ];
-            }
-        }
-
-        $actes = [];
-        foreach ($consultation->getActes() as $a) {
-            $actes[] = [
-                'dent'        => $a->getDent(),
-                'type'        => $a->getType(),
-                'description' => $a->getDescription(),
-                'prix'        => $a->getPrix(),
-                'quantite'    => $a->getQuantite(),
-            ];
-        }
-
-        return [
-            'patient'      => $patientData,
-            'consultation' => $consultationData,
-            'fiche'        => array_merge($ficheData, [
-                'examens'       => $examens,
-                'documents'     => $documents,
-                'devis'         => $devisData,
-                'consultations' => $precedentes,
-            ]),
-            'actes'        => $actes,
-        ];
+        return $this->consultationClinicalRecordPort->getFicheConsultationPayload($fiche, $consultation);
     }
 
     public function updateConsultation(int $ficheId, int $consultationId, array $data, ?object $user = null, bool $restrictToMedecin = false): void
@@ -986,7 +676,7 @@ class ConsultationService
 
         $this->em->flush();
 
-        $this->focusRealtimePublisher->publishConsultationRefresh($consultation, 'updated');
+        $this->consultationFocusPort->publishConsultationRefresh($consultation, 'updated');
     }
 
     public function clotureConsultation(int $ficheId, int $consultationId, ?object $user = null, bool $restrictToMedecin = false, array $payload = []): void
@@ -1005,75 +695,13 @@ class ConsultationService
             throw new \InvalidArgumentException('Le médecin est obligatoire pour clôturer la consultation.');
         }
 
-        $factureAssurance = $this->ensureFactureAssurance($consultation);
+        $billing = $this->consultationBillingPort->ensureInvoicesOnClosure($consultation);
 
-        if ($factureAssurance !== null) {
-            $factureAssurance->setInsuranceStatus('ready');
-            $this->em->persist($factureAssurance);
-            $this->em->flush();
+        $consultation->setStatut(1);
+        $this->em->flush();
 
-            $consultation->setStatut(1);
-            $this->em->flush();
-
-            $this->focusRealtimePublisher->publishConsultationRefresh($consultation, 'closed');
-
-            $notifyAmount = (float) ($factureAssurance->computeTotals()['montantPatient'] ?? 0.0);
-            $this->notifyReceptionOnClosure($consultation, $notifyAmount);
-        } else {
-            $isNewFacture = !$consultation->getFacture();
-            $facture = $consultation->getFacture() ?? new Facture();
-            $facture->setConsultation($consultation);
-            if ($isNewFacture) {
-                $facture->setDateFacture($this->resolveFactureDateFromConsultation($consultation));
-            }
-
-            $montants = $facture->computeMontantsFromConsultation();
-            $facture->setIsReglee(((float) ($montants['restePatient'] ?? 0.0)) <= 0.0);
-
-            $consultation->setFacture($facture);
-            $this->em->persist($facture);
-            $this->em->flush();
-
-            $consultation->setStatut(1);
-            $this->em->flush();
-
-            $this->focusRealtimePublisher->publishConsultationRefresh($consultation, 'closed');
-
-            $this->notifyReceptionOnClosure($consultation, (float) $montants['montantTotal']);
-        }
-    }
-
-    private function notifyReceptionOnClosure(Consultation $consultation, float $invoiceAmount): void
-    {
-        $recipients = $this->notificationRecipientResolver->receptionists();
-
-        if ($recipients === []) {
-            return;
-        }
-
-        $patient = $consultation->getPatient();
-        $patientName = trim($patient?->getFullName() ?? '') ?: 'un patient';
-        $amountLabel = number_format($invoiceAmount, 0, ',', ' ');
-        $message = sprintf(
-            'Consultation de %s clôturée : facture de %s FCFA prête en caisse.',
-            $patientName,
-            $amountLabel,
-        );
-
-        $this->eventDispatcher->dispatch(
-            new EntityActionEvent(
-                $consultation,
-                'closed',
-                ['ROLE_RECEPTION', 'ROLE_RECEPTIONNISTE'],
-                null,
-                [
-                    'message' => $message,
-                    'priority' => 'info',
-                    'type' => 'success',
-                    'link' => '/reception/caisse',
-                ],
-            )
-        );
+        $this->consultationFocusPort->publishConsultationRefresh($consultation, 'closed');
+        $this->consultationNotificationPort->notifyReceptionOnClosure($consultation, (float) $billing['notifyAmount']);
     }
 
     public function getClosedConsultationsData(): array
@@ -1091,7 +719,7 @@ class ConsultationService
                 'salle' => $consultation->getSalle()?->getNom(),
                 'state' => $consultation->getStatut(),
                 'factstate' => $this->resolveFocusFactState($facture),
-                'factModifiable' => $this->isFactureModifiable($facture),
+                'factModifiable' => $this->consultationBillingPort->isFactureModifiable($facture),
                 'patientId' => $consultation->getPatient()?->getId(),
             ];
         }, $consultations);
@@ -1099,56 +727,17 @@ class ConsultationService
 
     public function listMedecins(): array
     {
-        return $this->cache->get('medecins.list', function (ItemInterface $item) {
-            $item->expiresAfter(120);
-            $employees = $this->employeRepo->FindAllMedecin();
-
-            return array_map(function ($employee) {
-                return [
-                    'id' => $employee->getId(),
-                    'nom' => $employee->getNom(),
-                    'prenom' => $employee->getPrenom(),
-                    'fullName' => $employee->getFullName(),
-                    'fullname' => $employee->getFullName(),
-                    'name' => $employee->getFullName(),
-                    'label' => $employee->getFullName(),
-                    'fonction' => $employee->getFonction(),
-                    'type' => $employee->getType(),
-                    'dateEmbauche' => $employee->getDateEmbauche()->format('Y-m-d'),
-                    'comingDays' => $employee->getComingDaysInWeek(),
-                ];
-            }, $employees);
-        });
+        return $this->consultationStaffPort->listMedecins();
     }
 
     public function listInfirmiers(): array
     {
-        return $this->cache->get('infirmiers.list', function (ItemInterface $item) {
-            $item->expiresAfter(120);
-            $employees = $this->employeRepo->findAllInfirmiers();
-
-            return array_map(function ($employee) {
-                return [
-                    'id' => $employee->getId(),
-                    'nom' => $employee->getNom(),
-                    'prenom' => $employee->getPrenom(),
-                    'fullName' => $employee->getFullName(),
-                    'fullname' => $employee->getFullName(),
-                    'name' => $employee->getFullName(),
-                    'label' => $employee->getFullName(),
-                    'fonction' => $employee->getFonction(),
-                    'type' => $employee->getType(),
-                    'dateEmbauche' => $employee->getDateEmbauche()->format('Y-m-d'),
-                    'comingDays' => $employee->getComingDaysInWeek(),
-                ];
-            }, $employees);
-        });
+        return $this->consultationStaffPort->listInfirmiers();
     }
 
     public function invalidateStaffReferenceCache(): void
     {
-        $this->cache->delete('medecins.list');
-        $this->cache->delete('infirmiers.list');
+        $this->consultationStaffPort->invalidateStaffReferenceCache();
     }
 
     public function getPendingConsultationsContext(): array
@@ -1156,7 +745,7 @@ class ConsultationService
         $consultations = $this->consultationRepo->findPendingConsultations();
 
         $consultationsData = array_map(function (Consultation $c) {
-            $ficheData = $this->resolvePendingFicheData($c);
+            $ficheData = $this->consultationClinicalRecordPort->resolvePendingFicheData($c);
 
             return [
                 'id' => $c->getId(),
@@ -1183,7 +772,7 @@ class ConsultationService
         $consults = $this->consultationRepo->findBy(['statut' => 0]);
 
         return array_map(function (Consultation $c) {
-            $ficheData = $this->resolvePendingFicheData($c);
+            $ficheData = $this->consultationClinicalRecordPort->resolvePendingFicheData($c);
 
             return [
                 'id' => $c->getId(),
@@ -1215,7 +804,7 @@ class ConsultationService
         }
 
         return array_map(function (Consultation $c) {
-            $ficheData = $this->resolvePendingFicheData($c);
+            $ficheData = $this->consultationClinicalRecordPort->resolvePendingFicheData($c);
 
             return [
                 'id' => $c->getId(),
@@ -1231,93 +820,18 @@ class ConsultationService
         }, $consults);
     }
 
-    private function lockPatientForFicheResolution(Patient $patient): void
-    {
-        if (!$patient->getId()) {
-            return;
-        }
-
-        $this->em->createQueryBuilder()
-            ->select('p')
-            ->from(Patient::class, 'p')
-            ->where('p.id = :id')
-            ->setParameter('id', $patient->getId())
-            ->getQuery()
-            ->setLockMode(LockMode::PESSIMISTIC_WRITE)
-            ->getOneOrNullResult();
-    }
-
-    /**
-     * @return array{0: FicheMedicale, 1: bool}
-     */
     private function resolveFicheForConsultation(
         Consultation $consultation,
         ?int $ficheId = null,
         bool $forceCreate = false,
         bool $allowDuplicate = false,
     ): array {
-        $patient = $consultation->getPatient();
-        if (!$patient) {
-            throw new \InvalidArgumentException('Consultation sans patient.');
-        }
-
-        $existingFiche = $consultation->getFicheMedicale();
-        if (!$forceCreate && $existingFiche) {
-            if ($ficheId === null || $ficheId === $existingFiche->getId()) {
-                return [$existingFiche, false];
-            }
-        }
-
-        if ($forceCreate) {
-            if (!$allowDuplicate) {
-                $lastFiche = $this->findLastFicheMedicale($patient);
-                if ($lastFiche) {
-                    $consultation->setFicheMedicale($lastFiche);
-
-                    return [$lastFiche, false];
-                }
-            }
-
-            $fiche = new FicheMedicale();
-            $fiche->setPatient($patient);
-            $this->em->persist($fiche);
-            $consultation->setFicheMedicale($fiche);
-
-            return [$fiche, true];
-        }
-
-        if ($ficheId) {
-            $ficheMedicale = $this->em->getRepository(FicheMedicale::class)->find($ficheId);
-            if (!$ficheMedicale) {
-                throw new NotFoundHttpException('Fiche introuvable');
-            }
-
-            if ($ficheMedicale->getPatient()?->getId() !== $patient->getId()) {
-                throw new \InvalidArgumentException('La fiche ne correspond pas au patient de la consultation.');
-            }
-
-            $consultation->setFicheMedicale($ficheMedicale);
-
-            return [$ficheMedicale, false];
-        }
-
-        if ($existingFiche) {
-            return [$existingFiche, false];
-        }
-
-        $lastFiche = $this->findLastFicheMedicale($patient);
-        if ($lastFiche) {
-            $consultation->setFicheMedicale($lastFiche);
-
-            return [$lastFiche, false];
-        }
-
-        $fiche = new FicheMedicale();
-        $fiche->setPatient($patient);
-        $this->em->persist($fiche);
-        $consultation->setFicheMedicale($fiche);
-
-        return [$fiche, true];
+        return $this->consultationClinicalRecordPort->resolveFicheForConsultation(
+            $consultation,
+            $ficheId,
+            $forceCreate,
+            $allowDuplicate,
+        );
     }
 
     public function linkOrCreateFiche(
@@ -1367,7 +881,7 @@ class ConsultationService
                 throw new \InvalidArgumentException('Consultation sans patient.');
             }
 
-            $this->lockPatientForFicheResolution($patient);
+            $this->consultationClinicalRecordPort->lockPatientForFicheResolution($patient);
 
             [$fiche, $created] = $this->resolveFicheForConsultation(
                 $consultation,
@@ -1386,7 +900,7 @@ class ConsultationService
             ];
         });
 
-        $this->focusRealtimePublisher->publishConsultationRefresh(
+        $this->consultationFocusPort->publishConsultationRefresh(
             $result['consultation'],
             $result['created'] ? 'linked-created-fiche' : 'linked-fiche',
         );
@@ -1414,7 +928,7 @@ class ConsultationService
 
             $patient = $consultation->getPatient();
             if ($patient) {
-                $this->lockPatientForFicheResolution($patient);
+                $this->consultationClinicalRecordPort->lockPatientForFicheResolution($patient);
             }
 
             [$fiche] = $this->resolveFicheForConsultation(
@@ -1468,72 +982,14 @@ class ConsultationService
             return false;
         }
 
-        /** @var Facture|null $facture */
-        $facture = $consultation->getFacture();
-
-        $paiementConsultation = $consultation->getPaiement();
-        if ($paiementConsultation) {
-            $transaction = $paiementConsultation->getTransaction();
-            if ($transaction) {
-                $transaction->setPaiement(null);
-                $this->em->remove($transaction);
-            }
-            $paiementConsultation->setConsultation(null);
-            $paiementConsultation->setFacture(null);
-            $this->em->remove($paiementConsultation);
-            $this->em->flush();
-        }
-
-        $factureAssurance = $consultation->getFactureAssurance();
-        if ($factureAssurance) {
-            foreach ($factureAssurance->getPaiements() as $paiement) {
-                $transaction = $paiement->getTransaction();
-                if ($transaction) {
-                    $transaction->setPaiement(null);
-                    $this->em->remove($transaction);
-                }
-                $paiement->setFactureAssurance(null);
-                $this->em->remove($paiement);
-            }
-            $this->em->remove($factureAssurance);
-            $this->em->flush();
-        }
-
-        if ($facture) {
-            foreach ($facture->getPaiements() as $paiement) {
-                $transaction = $paiement->getTransaction();
-                if ($transaction) {
-                    $transaction->setPaiement(null);
-                    $this->em->remove($transaction);
-                }
-                $paiement->setFacture(null);
-                $this->em->remove($paiement);
-            }
-
-            $consultation->setFacture(null);
-            $facture->setConsultation(null);
-            $this->em->remove($facture);
-            $this->em->flush();
-        }
+        $this->consultationBillingPort->cascadeRemoveBillingForConsultation($consultation);
 
         $this->em->remove($consultation);
         $this->em->flush();
 
-        $this->focusRealtimePublisher->publishConsultationRefresh($consultation, 'deleted');
+        $this->consultationFocusPort->publishConsultationRefresh($consultation, 'deleted');
 
-        $this->eventDispatcher->dispatch(
-            new EntityActionEvent(
-                $consultation,
-                'cancelled',
-                ['ROLE_MEDECIN'],
-                $actor,
-                [
-                    'priority' => 'warning',
-                    'type' => 'warning',
-                    'link' => '/consultations',
-                ],
-            )
-        );
+        $this->consultationNotificationPort->notifyCancelled($consultation, $actor);
 
         return true;
     }
@@ -1571,7 +1027,7 @@ class ConsultationService
             'lignes' => $lignes,
             'dateFacture' => $dateFacture?->format('Y-m-d'),
             'timeFacture' => $dateFacture?->format('H:i'),
-            'modifiable' => $this->isFactureModifiable($facture),
+            'modifiable' => $this->consultationBillingPort->isFactureModifiable($facture),
         ];
     }
 
@@ -1587,7 +1043,7 @@ class ConsultationService
             return ['error' => 'Facture non trouvée'];
         }
 
-        if (!$this->isFactureModifiable($facture)) {
+        if (!$this->consultationBillingPort->isFactureModifiable($facture)) {
             return ['error' => 'Cette facture ne peut plus être modifiée car elle possède déjà des paiements.'];
         }
 
@@ -1636,7 +1092,7 @@ class ConsultationService
         $this->em->persist($facture);
         $this->em->flush();
 
-        $this->focusRealtimePublisher->publishConsultationRefresh($consultation, 'invoice-updated');
+        $this->consultationFocusPort->publishConsultationRefresh($consultation, 'invoice-updated');
 
         return ['success' => true];
     }
@@ -1648,7 +1104,7 @@ class ConsultationService
         $data = [];
         $counter = 1;
         foreach ($consultations as $c) {
-            $ficheData = $this->resolvePendingFicheData($c);
+            $ficheData = $this->consultationClinicalRecordPort->resolvePendingFicheData($c);
             $patient = $c->getPatient();
             $data[] = [
                 'id' => $c->getId(),
@@ -1659,7 +1115,7 @@ class ConsultationService
                     'prenom' => $patient->getPrenom(),
                     'telephone' => $patient->getTelephone(),
                     'photo' => $patient->getPhoto(),
-                    'insuranceProfile' => $this->resolvePatientInsuranceProfile($patient),
+                    'insuranceProfile' => $this->consultationPatientPort->getInsuranceProfile($patient),
                 ],
                 'patientName' => $patient->getFullName(),
                 'patientId' => $patient->getId(),
@@ -1667,13 +1123,13 @@ class ConsultationService
                 'medecin' => $c->getMedecin()?->getFullName(),
                 'createdAt' => $c->getCreatedAt()->format('d/m/Y H:i'),
                 'factstate' => $this->resolveFocusFactState($c->getFacture()),
-                'factModifiable' => $c->getStatut() === 1 && $this->isFactureModifiable($c->getFacture()),
+                'factModifiable' => $c->getStatut() === 1 && $this->consultationBillingPort->isFactureModifiable($c->getFacture()),
                 'state' => $c->getStatut(),
                 'hasFiche' => $ficheData['hasFiche'],
                 'fiche' => $ficheData['fiche'],
                 'ficheId' => $ficheData['ficheId'],
                 'lastFicheId' => $ficheData['lastFicheId'],
-                'hasInsurance' => $c->getFactureAssurance() !== null || $this->patientHasActiveInsurance($patient),
+                'hasInsurance' => $c->getFactureAssurance() !== null || $this->consultationPatientPort->hasActiveInsurance($patient),
                 'assuranceNom' => $c->getFactureAssurance()?->getAssurance()?->getNom()
                     ?? $patient->getAssuranceProfile()?->getAssurance()?->getNom(),
             ];

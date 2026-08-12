@@ -2,11 +2,12 @@
 
 namespace App\Communication\Controller\Api;
 
-use App\Communication\Entity\Notification;
-use App\Communication\Repository\NotificationRepository;
-use App\IdentityAccess\Entity\User;
+use App\Communication\Application\Command\MarkNotificationsRead\MarkNotificationsReadCommand;
+use App\Communication\Infrastructure\Persistence\Doctrine\Entity\Notification;
+use App\Communication\Infrastructure\Persistence\Doctrine\Repository\NotificationRepository;
+use App\IdentityAccess\Infrastructure\Persistence\Doctrine\Entity\User;
 use App\Communication\Service\MercureAuthorizationService;
-use App\Communication\Service\NotificationService;
+use App\Shared\Application\Bus\CommandBus;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -14,6 +15,11 @@ use Symfony\Component\Routing\Attribute\Route;
 
 final class NotificationController extends AbstractController
 {
+    public function __construct(
+        private readonly CommandBus $commandBus,
+    ) {
+    }
+
     #[Route('/api/me/notifications', name: 'api_me_notifications', methods: ['GET'])]
     public function list(Request $request, NotificationRepository $notificationRepository): JsonResponse
     {
@@ -45,7 +51,7 @@ final class NotificationController extends AbstractController
     }
 
     #[Route('/api/me/notifications/mark-read', name: 'api_me_notifications_mark_read', methods: ['POST'])]
-    public function markRead(Request $request, NotificationService $notificationService): JsonResponse
+    public function markRead(Request $request): JsonResponse
     {
         $user = $this->getUser();
         if (!$user instanceof User) {
@@ -61,13 +67,13 @@ final class NotificationController extends AbstractController
             return $this->json(['updated' => 0]);
         }
 
-        $updated = $notificationService->markAsRead($user, $ids);
+        $updated = $this->commandBus->dispatch(new MarkNotificationsReadCommand($user, $ids));
 
         return $this->json(['updated' => $updated]);
     }
 
     #[Route('/api/me/notifications/mark-all', name: 'api_me_notifications_mark_all', methods: ['POST'])]
-    public function markAll(NotificationService $notificationService): JsonResponse
+    public function markAll(): JsonResponse
     {
         $user = $this->getUser();
         if (!$user instanceof User) {
@@ -78,13 +84,13 @@ final class NotificationController extends AbstractController
             return $this->json(['updated' => 0]);
         }
 
-        $updated = $notificationService->markAsRead($user);
+        $updated = $this->commandBus->dispatch(new MarkNotificationsReadCommand($user));
 
         return $this->json(['updated' => $updated]);
     }
 
     #[Route('/api/me/notifications/mercure', name: 'api_me_notifications_mercure', methods: ['GET'])]
-    public function mercure(\App\Communication\Service\MercureAuthorizationService $mercureAuthorizationService): JsonResponse
+    public function mercure(MercureAuthorizationService $mercureAuthorizationService): JsonResponse
     {
         $user = $this->getUser();
         if (!$user instanceof User) {

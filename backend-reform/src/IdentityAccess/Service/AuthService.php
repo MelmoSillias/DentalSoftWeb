@@ -2,11 +2,11 @@
 
 namespace App\IdentityAccess\Service;
 
-use App\Communication\Entity\Notification;
-use App\Communication\Repository\NotificationRepository;
+use App\Communication\Infrastructure\Persistence\Doctrine\Entity\Notification;
+use App\Communication\Infrastructure\Persistence\Doctrine\Repository\NotificationRepository;
 use App\Communication\Service\MercureAuthorizationService;
-use App\IdentityAccess\Entity\User;
-use App\IdentityAccess\Repository\EmployeRepository;
+use App\IdentityAccess\Infrastructure\Persistence\Doctrine\Entity\User;
+use App\IdentityAccess\Infrastructure\Persistence\Doctrine\Repository\EmployeRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\File\UploadedFile;

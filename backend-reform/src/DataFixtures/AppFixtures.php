@@ -2,9 +2,9 @@
 
 namespace App\DataFixtures;
 
-use App\IdentityAccess\Entity\Employe;
-use App\Patient\Entity\Patient;
-use App\IdentityAccess\Entity\User;
+use App\IdentityAccess\Infrastructure\Persistence\Doctrine\Entity\Employe;
+use App\Patient\Infrastructure\Persistence\Doctrine\Entity\Patient;
+use App\IdentityAccess\Infrastructure\Persistence\Doctrine\Entity\User;
 use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Persistence\ObjectManager;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
@@ -394,7 +394,7 @@ class AppFixtures extends Fixture
         ];
 
         foreach ($mode_definitions as $def) {
-            $mode = new \App\Billing\Entity\ModeDePaiement();
+            $mode = new \App\Billing\Infrastructure\Persistence\Doctrine\Entity\ModeDePaiement();
             $mode->setLibelle($def['libelle']);
             $mode->setType($def['type']);
             $mode->setActif($def['actif']);

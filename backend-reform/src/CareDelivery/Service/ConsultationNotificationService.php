@@ -2,8 +2,8 @@
 
 namespace App\CareDelivery\Service;
 
-use App\CareDelivery\Entity\Consultation;
-use App\IdentityAccess\Entity\User;
+use App\CareDelivery\Infrastructure\Persistence\Doctrine\Entity\Consultation;
+use App\IdentityAccess\Infrastructure\Persistence\Doctrine\Entity\User;
 use App\Shared\Event\EntityActionEvent;
 use App\Focus\Service\FocusRealtimePublisher;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;

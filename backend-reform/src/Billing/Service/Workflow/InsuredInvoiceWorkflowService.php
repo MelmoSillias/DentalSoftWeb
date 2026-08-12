@@ -2,8 +2,8 @@
 
 namespace App\Billing\Service\Workflow;
 
-use App\Billing\Entity\FactureAssurance;
-use App\Billing\Repository\FactureAssuranceRepository;
+use App\Billing\Infrastructure\Persistence\Doctrine\Entity\FactureAssurance;
+use App\Billing\Infrastructure\Persistence\Doctrine\Repository\FactureAssuranceRepository;
 use App\Billing\Service\InsuranceClaimService;
 use DateTimeInterface;
 

@@ -2,8 +2,8 @@
 
 namespace App\Billing\Service;
 
-use App\Billing\Entity\Assurance;
-use App\Billing\Repository\AssuranceRepository;
+use App\Billing\Infrastructure\Persistence\Doctrine\Entity\Assurance;
+use App\Billing\Infrastructure\Persistence\Doctrine\Repository\AssuranceRepository;
 use Doctrine\ORM\EntityManagerInterface;
 
 class IntegratedInsuranceCatalog

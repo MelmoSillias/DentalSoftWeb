@@ -2,15 +2,15 @@
 
 namespace App\Billing\Service;
 
-use App\Billing\Entity\ChargeFixe;
-use App\Billing\Entity\Facture;
-use App\Billing\Entity\ModeDePaiement;
-use App\Billing\Entity\Transaction;
-use App\Billing\Entity\Paiement;
+use App\Billing\Infrastructure\Persistence\Doctrine\Entity\ChargeFixe;
+use App\Billing\Infrastructure\Persistence\Doctrine\Entity\Facture;
+use App\Billing\Infrastructure\Persistence\Doctrine\Entity\ModeDePaiement;
+use App\Billing\Infrastructure\Persistence\Doctrine\Entity\Transaction;
+use App\Billing\Infrastructure\Persistence\Doctrine\Entity\Paiement;
 
-use App\Billing\Repository\ChargeFixeRepository;
-use App\Billing\Repository\ModeDePaiementRepository;
-use App\Billing\Repository\TransactionRepository;
+use App\Billing\Infrastructure\Persistence\Doctrine\Repository\ChargeFixeRepository;
+use App\Billing\Infrastructure\Persistence\Doctrine\Repository\ModeDePaiementRepository;
+use App\Billing\Infrastructure\Persistence\Doctrine\Repository\TransactionRepository;
 use App\Reporting\Service\ReportService;
 use App\Settings\Service\GlobalSettingsService;
 use DateTime;

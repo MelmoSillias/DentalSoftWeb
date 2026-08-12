@@ -4,9 +4,9 @@ namespace App\IdentityAccess\Service;
  
 use App\CareDelivery\Service\ConsultationService;
 use App\Focus\Service\FocusRealtimePublisher;
-use App\IdentityAccess\Entity\Employe;
-use App\IdentityAccess\Entity\User as EntityUser;
-use App\IdentityAccess\Repository\EmployeRepository;
+use App\IdentityAccess\Infrastructure\Persistence\Doctrine\Entity\Employe;
+use App\IdentityAccess\Infrastructure\Persistence\Doctrine\Entity\User as EntityUser;
+use App\IdentityAccess\Infrastructure\Persistence\Doctrine\Repository\EmployeRepository;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
 use InvalidArgumentException;

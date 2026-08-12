@@ -3,13 +3,13 @@
 namespace App\IdentityAccess\Service;
 
 use App\Communication\Service\NotificationRecipientResolver;
-use App\IdentityAccess\Entity\Employe;
-use App\IdentityAccess\Entity\User;
+use App\IdentityAccess\Infrastructure\Persistence\Doctrine\Entity\Employe;
+use App\IdentityAccess\Infrastructure\Persistence\Doctrine\Entity\User;
 use App\Shared\Event\EntityActionEvent;
-use App\Patient\Entity\Patient;
-use App\Patient\Repository\PatientRepository;
-use App\IdentityAccess\Repository\EmployeRepository;
-use App\IdentityAccess\Repository\UserRepository;
+use App\Patient\Infrastructure\Persistence\Doctrine\Entity\Patient;
+use App\Patient\Infrastructure\Persistence\Doctrine\Repository\PatientRepository;
+use App\IdentityAccess\Infrastructure\Persistence\Doctrine\Repository\EmployeRepository;
+use App\IdentityAccess\Infrastructure\Persistence\Doctrine\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;

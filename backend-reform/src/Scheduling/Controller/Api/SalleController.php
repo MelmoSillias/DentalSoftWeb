@@ -2,7 +2,7 @@
 
 namespace App\Scheduling\Controller\Api;
 
-use App\Scheduling\Entity\Salle;
+use App\Scheduling\Infrastructure\Persistence\Doctrine\Entity\Salle;
 use App\Scheduling\Service\SalleService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;

@@ -2,20 +2,20 @@
 
 namespace App\Patient\Service;
 
-use App\Billing\Entity\Facture;
-use App\Billing\Entity\Transaction;
-use App\Billing\Repository\FactureRepository;
-use App\Billing\Repository\TransactionRepository;
-use App\CareDelivery\Entity\Consultation;
-use App\CareDelivery\Repository\ConsultationRepository;
-use App\Communication\Entity\Notification;
-use App\Communication\Repository\NotificationRepository;
+use App\Billing\Infrastructure\Persistence\Doctrine\Entity\Facture;
+use App\Billing\Infrastructure\Persistence\Doctrine\Entity\Transaction;
+use App\Billing\Infrastructure\Persistence\Doctrine\Repository\FactureRepository;
+use App\Billing\Infrastructure\Persistence\Doctrine\Repository\TransactionRepository;
+use App\CareDelivery\Infrastructure\Persistence\Doctrine\Entity\Consultation;
+use App\CareDelivery\Infrastructure\Persistence\Doctrine\Repository\ConsultationRepository;
+use App\Communication\Infrastructure\Persistence\Doctrine\Entity\Notification;
+use App\Communication\Infrastructure\Persistence\Doctrine\Repository\NotificationRepository;
 use App\Communication\Service\MercureAuthorizationService;
-use App\IdentityAccess\Entity\User;
-use App\Patient\Entity\Patient;
-use App\Patient\Repository\PatientRepository;
-use App\Scheduling\Entity\Rdv;
-use App\Scheduling\Repository\RdvRepository;
+use App\IdentityAccess\Infrastructure\Persistence\Doctrine\Entity\User;
+use App\Patient\Infrastructure\Persistence\Doctrine\Entity\Patient;
+use App\Patient\Infrastructure\Persistence\Doctrine\Repository\PatientRepository;
+use App\Scheduling\Infrastructure\Persistence\Doctrine\Entity\Rdv;
+use App\Scheduling\Infrastructure\Persistence\Doctrine\Repository\RdvRepository;
 use Doctrine\ORM\EntityManagerInterface;
 
 final class PatientPortalService

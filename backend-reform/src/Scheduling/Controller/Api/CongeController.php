@@ -2,7 +2,7 @@
 
 namespace App\Scheduling\Controller\Api;
 
-use App\IdentityAccess\Entity\User;
+use App\IdentityAccess\Infrastructure\Persistence\Doctrine\Entity\User;
 use App\Scheduling\Service\CongeService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;

@@ -1,9 +1,9 @@
+# Attribute routes: legacy Module/Controller and DDD Module/Presentation/Controller
 controllers:
     resource:
         path: ../src/
         namespace: App
     type: attribute
 
-# config/routes.yaml
 api_login_check:
     path: /api/login_check

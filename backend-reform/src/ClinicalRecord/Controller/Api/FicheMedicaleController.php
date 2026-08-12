@@ -2,7 +2,15 @@
 
 namespace App\ClinicalRecord\Controller\Api;
 
-use App\ClinicalRecord\Service\FicheMedicaleService;
+use App\ClinicalRecord\Application\Command\UpdateFicheBilans\UpdateFicheBilansCommand;
+use App\ClinicalRecord\Application\Command\UpdateFicheDevis\UpdateFicheDevisCommand;
+use App\ClinicalRecord\Application\Command\UpdateFicheDocuments\UpdateFicheDocumentsCommand;
+use App\ClinicalRecord\Application\Command\UpdateFicheEntretien\UpdateFicheEntretienCommand;
+use App\ClinicalRecord\Application\Command\UpdateFicheExamens\UpdateFicheExamensCommand;
+use App\ClinicalRecord\Application\Command\UpdateFichePlanTraitement\UpdateFichePlanTraitementCommand;
+use App\ClinicalRecord\Application\Query\GetFicheMedicale\GetFicheMedicaleQuery;
+use App\Shared\Application\Bus\CommandBus;
+use App\Shared\Application\Bus\QueryBus;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -11,19 +19,24 @@ use Symfony\Component\Routing\Attribute\Route;
 #[Route('/api/fiches-medicales/{ficheId}', name: 'api_fiche_medicale_')]
 class FicheMedicaleController extends AbstractController
 {
-    public function __construct(private FicheMedicaleService $ficheMedicaleService) {}
+    public function __construct(
+        private QueryBus $queryBus,
+        private CommandBus $commandBus,
+    ) {
+    }
 
     #[Route('/json', methods: ['GET'], name: 'json')]
     public function getJson(int $ficheId): JsonResponse
     {
-        return new JsonResponse($this->ficheMedicaleService->getFicheJson($ficheId));
+        return new JsonResponse($this->queryBus->ask(new GetFicheMedicaleQuery($ficheId)));
     }
 
     #[Route('/entretien', methods: ['POST'], name: 'update_entretien')]
     public function updateEntretien(Request $request, int $ficheId): JsonResponse
     {
         $data = json_decode($request->getContent(), true) ?? [];
-        $this->ficheMedicaleService->updateEntretien($ficheId, $data);
+        $this->commandBus->dispatch(new UpdateFicheEntretienCommand($ficheId, $data));
+
         return new JsonResponse(['success' => true]);
     }
 
@@ -31,7 +44,8 @@ class FicheMedicaleController extends AbstractController
     public function updateExamens(Request $request, int $ficheId): JsonResponse
     {
         $data = json_decode($request->getContent(), true) ?? [];
-        $this->ficheMedicaleService->updateExamens($ficheId, $data);
+        $this->commandBus->dispatch(new UpdateFicheExamensCommand($ficheId, $data));
+
         return new JsonResponse(['success' => true]);
     }
 
@@ -39,7 +53,8 @@ class FicheMedicaleController extends AbstractController
     public function updateBilans(Request $request, int $ficheId): JsonResponse
     {
         $data = json_decode($request->getContent(), true) ?? [];
-        $this->ficheMedicaleService->updateBilans($ficheId, $data);
+        $this->commandBus->dispatch(new UpdateFicheBilansCommand($ficheId, $data));
+
         return new JsonResponse(['success' => true]);
     }
 
@@ -47,7 +62,8 @@ class FicheMedicaleController extends AbstractController
     public function updatePlanTraitement(Request $request, int $ficheId): JsonResponse
     {
         $data = json_decode($request->getContent(), true) ?? [];
-        $this->ficheMedicaleService->updatePlanTraitement($ficheId, $data);
+        $this->commandBus->dispatch(new UpdateFichePlanTraitementCommand($ficheId, $data));
+
         return new JsonResponse(['success' => true]);
     }
 
@@ -57,7 +73,8 @@ class FicheMedicaleController extends AbstractController
         $data = $request->get('data');
         $payload = $data ? json_decode($data, true) : json_decode($request->getContent(), true);
         $files = $request->files->get('documentsFiles', []);
-        $this->ficheMedicaleService->updateDocuments($ficheId, $payload ?? [], $files);
+        $this->commandBus->dispatch(new UpdateFicheDocumentsCommand($ficheId, $payload ?? [], $files));
+
         return new JsonResponse(['success' => true]);
     }
 
@@ -65,9 +82,8 @@ class FicheMedicaleController extends AbstractController
     public function updateDevis(Request $request, int $ficheId): JsonResponse
     {
         $data = json_decode($request->getContent(), true) ?? [];
-        $this->ficheMedicaleService->updateDevis($ficheId, $data);
-        return new JsonResponse(['success' => true]);
-    } 
+        $this->commandBus->dispatch(new UpdateFicheDevisCommand($ficheId, $data));
 
-    
+        return new JsonResponse(['success' => true]);
+    }
 }

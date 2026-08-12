@@ -4,11 +4,11 @@ namespace App\IdentityAccess\Service;
 
 use App\Communication\Service\NotificationRecipientResolver;
 use App\Communication\Service\NotificationService;
-use App\IdentityAccess\Entity\User;
-use App\IdentityAccess\Entity\UserDevice;
-use App\IdentityAccess\Entity\UserDeviceAccessLog;
-use App\IdentityAccess\Repository\UserDeviceAccessLogRepository;
-use App\IdentityAccess\Repository\UserDeviceRepository;
+use App\IdentityAccess\Infrastructure\Persistence\Doctrine\Entity\User;
+use App\IdentityAccess\Infrastructure\Persistence\Doctrine\Entity\UserDevice;
+use App\IdentityAccess\Infrastructure\Persistence\Doctrine\Entity\UserDeviceAccessLog;
+use App\IdentityAccess\Infrastructure\Persistence\Doctrine\Repository\UserDeviceAccessLogRepository;
+use App\IdentityAccess\Infrastructure\Persistence\Doctrine\Repository\UserDeviceRepository;
 use App\Settings\Service\GlobalSettingsService;
 use Doctrine\DBAL\Exception\RetryableException;
 use Doctrine\ORM\EntityManagerInterface;

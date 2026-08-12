@@ -2,12 +2,12 @@
 
 namespace App\Communication\Service;
 
-use App\Communication\Entity\SmsLog;
-use App\Communication\Entity\SmsQueue;
-use App\Communication\Repository\SmsLogRepository;
-use App\Communication\Repository\SmsQueueRepository;
-use App\Patient\Entity\Patient;
-use App\Patient\Repository\PatientRepository;
+use App\Communication\Infrastructure\Persistence\Doctrine\Entity\SmsLog;
+use App\Communication\Infrastructure\Persistence\Doctrine\Entity\SmsQueue;
+use App\Communication\Infrastructure\Persistence\Doctrine\Repository\SmsLogRepository;
+use App\Communication\Infrastructure\Persistence\Doctrine\Repository\SmsQueueRepository;
+use App\Patient\Infrastructure\Persistence\Doctrine\Entity\Patient;
+use App\Patient\Infrastructure\Persistence\Doctrine\Repository\PatientRepository;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 
@@ -472,7 +472,7 @@ final class SmsService
      * @param list<SmsQueue> $items
      * @return array{sent: int, failed: int, remaining: list<SmsQueue>}
      */
-    private function processAfrikSmsBatch(array $items, \App\Communication\Entity\SmsProviderConfig $config): array
+    private function processAfrikSmsBatch(array $items, \App\Communication\Infrastructure\Persistence\Doctrine\Entity\SmsProviderConfig $config): array
     {
         $check = $this->configService->validateReadyConfig($config);
         if (!($check['valid'] ?? false)) {
@@ -565,7 +565,7 @@ final class SmsService
     /**
      * @return array{sent: int, failed: int}
      */
-    private function processQueueItem(SmsQueue $queueItem, \App\Communication\Entity\SmsProviderConfig $config, string $provider): array
+    private function processQueueItem(SmsQueue $queueItem, \App\Communication\Infrastructure\Persistence\Doctrine\Entity\SmsProviderConfig $config, string $provider): array
     {
         $queueItem->setStatus(SmsQueue::STATUS_SENDING);
         $this->entityManager->persist($queueItem);

@@ -2,16 +2,20 @@
 
 namespace App\Scheduling\Service;
 
-use App\Communication\Entity\SmsQueue;
-use App\Communication\Repository\SmsQueueRepository;
-use App\CareDelivery\Entity\Consultation;
+use App\Communication\Infrastructure\Persistence\Doctrine\Entity\SmsQueue;
+use App\Communication\Infrastructure\Persistence\Doctrine\Repository\SmsQueueRepository;
+use App\Communication\Service\SmsService;
+use App\CareDelivery\Domain\Model\Consultation as DomainConsultation;
+use App\CareDelivery\Infrastructure\Persistence\Doctrine\Entity\Consultation;
 use App\CareDelivery\Service\ConsultationNotificationService;
-use App\IdentityAccess\Entity\Employe;
-use App\IdentityAccess\Entity\User;
-use App\Scheduling\Entity\Rdv;
-use App\Scheduling\Repository\RdvRepository;
-use App\IdentityAccess\Repository\EmployeRepository;
-use App\Patient\Service\PatientService;
+use App\IdentityAccess\Infrastructure\Persistence\Doctrine\Entity\Employe;
+use App\IdentityAccess\Infrastructure\Persistence\Doctrine\Entity\User;
+use App\Patient\Infrastructure\Persistence\Doctrine\Entity\Patient;
+use App\Scheduling\Infrastructure\Persistence\Doctrine\Entity\Rdv;
+use App\Scheduling\Infrastructure\Persistence\Doctrine\Repository\RdvRepository;
+use App\IdentityAccess\Infrastructure\Persistence\Doctrine\Repository\EmployeRepository;
+use DateTime;
+use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -32,11 +36,106 @@ class RdvService
         private EntityManagerInterface $em,
         private RdvRepository $rdvRepo,
         private EmployeRepository $employeRepo,
-        private PatientService $patientService,
         private ConsultationNotificationService $consultationNotificationService,
         private RdvNotificationService $rdvNotificationService,
         private SmsQueueRepository $smsQueueRepository,
+        private SmsService $smsService,
     ) {
+    }
+
+    /**
+     * @return list<DateTimeImmutable>
+     */
+    private function buildAppointmentReminderDates(DateTimeImmutable $rdvAt, int $daysBefore, string $recurrence): array
+    {
+        $daysBefore = max(0, $daysBefore);
+        $firstSendAt = $rdvAt->modify(sprintf('-%d days', $daysBefore));
+        if (!$firstSendAt instanceof DateTimeImmutable) {
+            return [];
+        }
+
+        if ($recurrence === 'none') {
+            return [$firstSendAt];
+        }
+
+        $step = match ($recurrence) {
+            'daily' => '+1 day',
+            'every_2_days' => '+2 days',
+            'weekly' => '+1 week',
+            default => null,
+        };
+
+        if ($step === null) {
+            return [$firstSendAt];
+        }
+
+        $dates = [];
+        $cursor = $firstSendAt;
+        $maxOccurrences = 14;
+
+        while ($cursor < $rdvAt && count($dates) < $maxOccurrences) {
+            $dates[] = $cursor;
+            $cursor = $cursor->modify($step);
+        }
+
+        return $dates;
+    }
+
+    /**
+     * @param array<string, mixed> $smsReminder
+     */
+    private function queueAppointmentRemindersForRdv(Rdv $rdv, array $smsReminder, string $cabinetName = 'ORODENT'): int
+    {
+        $enabled = ($smsReminder['enabled'] ?? true) !== false;
+        if (!$enabled) {
+            return 0;
+        }
+
+        $patient = $rdv->getPatient();
+        $rdvAt = $rdv->getDateRdv();
+        if (!$patient instanceof Patient || !$rdvAt instanceof DateTime) {
+            return 0;
+        }
+
+        $daysBefore = max(0, (int) ($smsReminder['daysBefore'] ?? 1));
+        $recurrence = (string) ($smsReminder['recurrence'] ?? 'none');
+        $dates = $this->buildAppointmentReminderDates(DateTimeImmutable::createFromMutable($rdvAt), $daysBefore, $recurrence);
+        $now = new DateTimeImmutable();
+
+        $variables = [
+            'patient_name' => trim(($patient->getPrenom() ?? '') . ' ' . ($patient->getNom() ?? '')),
+            'date' => $rdvAt->format('d/m/Y'),
+            'time' => $rdvAt->format('H:i'),
+            'cabinet_name' => $cabinetName,
+        ];
+
+        $queued = 0;
+        foreach ($dates as $index => $sendAt) {
+            if ($sendAt <= $now) {
+                continue;
+            }
+
+            $result = $this->smsService->queueTemplateForPatient(
+                $patient,
+                'appointment_reminder',
+                $variables,
+                'appointment-auto',
+                $sendAt,
+                [
+                    'rdvId' => $rdv->getId(),
+                    'recurrence' => $recurrence,
+                    'daysBefore' => $daysBefore,
+                    'occurrenceIndex' => $index + 1,
+                    'occurrenceCount' => count($dates),
+                ]
+            );
+
+            if (($result['success'] ?? false) === true) {
+                ++$queued;
+            }
+        }
+
+        return $queued;
     }
 
     private function buildAppointmentSmsSummaries(array $rdvs): array
@@ -121,6 +220,12 @@ class RdvService
         ];
     }
 
+    /**
+     * Scheduling entry (may remap medecin when actor is ROLE_MEDECIN).
+     *
+     * @param array<string, mixed> $data
+     * @return array<string, mixed>
+     */
     public function createRdv(array $data, ?User $actor = null): array
     {
         $payload = [
@@ -132,6 +237,13 @@ class RdvService
             'duration' => $data['duration'] ?? 30,
         ];
 
+        if (isset($data['smsReminder']) && is_array($data['smsReminder'])) {
+            $payload['smsReminder'] = $data['smsReminder'];
+        }
+        if (isset($data['cabinet_name'])) {
+            $payload['cabinet_name'] = $data['cabinet_name'];
+        }
+
         if ($this->isMedecinUser($actor)) {
             $medecin = $this->getMedecinForUser($actor);
             if (!$medecin) {
@@ -140,7 +252,60 @@ class RdvService
             $payload['medecin_id'] = $medecin->getId();
         }
 
-        return $this->patientService->createRdv($payload, $actor);
+        return $this->createRdvFromPatientPayload($payload, $actor);
+    }
+
+    /**
+     * Canonical patient_id/medecin_id/date/time payload (Patient ScheduleAppointmentPort).
+     * Does not apply ROLE_MEDECIN medecin override — caller owns that.
+     *
+     * @param array<string, mixed> $data
+     * @return array<string, mixed>
+     */
+    public function createRdvFromPatientPayload(array $data, ?User $actor = null): array
+    {
+        if (!isset($data['patient_id'], $data['medecin_id'], $data['date'], $data['time'])) {
+            return ['error' => 'Missing required fields', 'status' => 400];
+        }
+
+        $patient = $this->em->find(Patient::class, (int) $data['patient_id']);
+        if (!$patient instanceof Patient || $patient->isDeleted()) {
+            return ['error' => 'Patient not found', 'status' => 404];
+        }
+
+        $medecin = $this->employeRepo->find($data['medecin_id']);
+        if (!$medecin) {
+            return ['error' => 'Medecin not found', 'status' => 404];
+        }
+
+        try {
+            $rdv = new Rdv();
+            $rdv->setPatient($patient)
+                ->setMedecin($medecin)
+                ->setDescription($data['description'] ?? '')
+                ->setStatut(0)
+                ->setDuration($data['duration'] ?? 30)
+                ->setDateCreation(new DateTime())
+                ->setDateRdv(new DateTime($data['date'] . ' ' . $data['time']));
+
+            $this->em->persist($rdv);
+            $this->em->flush();
+
+            $this->rdvNotificationService->notifyCreation($rdv, $actor);
+
+            $smsQueuedCount = 0;
+            if (isset($data['smsReminder']) && is_array($data['smsReminder'])) {
+                $smsQueuedCount = $this->queueAppointmentRemindersForRdv(
+                    $rdv,
+                    $data['smsReminder'],
+                    (string) ($data['cabinet_name'] ?? 'ORODENT')
+                );
+            }
+
+            return ['success' => true, 'status' => 201, 'rdv_id' => $rdv->getId(), 'smsQueuedCount' => $smsQueuedCount];
+        } catch (\Exception $e) {
+            return ['error' => $e->getMessage(), 'status' => 500];
+        }
     }
 
     public function getStatsForRange(\DateTimeInterface $start, \DateTimeInterface $end): array
@@ -292,6 +457,12 @@ class RdvService
 
     private function createConsultationFromRdv(Rdv $rdv, Employe $medecin): Consultation
     {
+        // Domain validation; legacy entity still owns persist.
+        DomainConsultation::create(
+            (int) $rdv->getPatient()->getId(),
+            (int) $medecin->getId(),
+        );
+
         $consultation = new Consultation();
         $consultation->setMedecin($medecin);
         $consultation->setPatient($rdv->getPatient());

@@ -2,9 +2,17 @@
 
 namespace App\Inventory\Controller\Api;
 
-use App\Inventory\Entity\Consommable;
-use App\IdentityAccess\Entity\User;
+use App\IdentityAccess\Infrastructure\Persistence\Doctrine\Entity\User;
+use App\Inventory\Application\Command\AddConsommableStock\AddConsommableStockCommand;
+use App\Inventory\Application\Command\CreateConsommable\CreateConsommableCommand;
+use App\Inventory\Application\Command\DeleteConsommable\DeleteConsommableCommand;
+use App\Inventory\Application\Command\UpdateConsommable\UpdateConsommableCommand;
+use App\Inventory\Application\Command\WithdrawConsommable\WithdrawConsommableCommand;
+use App\Inventory\Application\Query\ListConsumables\ListConsumablesQuery;
+use App\Inventory\Infrastructure\Persistence\Doctrine\Entity\Consommable;
 use App\Inventory\Service\ConsommableService;
+use App\Shared\Application\Bus\CommandBus;
+use App\Shared\Application\Bus\QueryBus;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -16,6 +24,8 @@ class ConsommableController extends AbstractController
     public function __construct(
         private ConsommableService $consommableService,
         private CsrfTokenManagerInterface $csrfTokenManager,
+        private QueryBus $queryBus,
+        private CommandBus $commandBus,
     ) {}
 
     #[Route('/api/consumables', name: 'api_consommable_add', methods: ['POST'])]
@@ -24,10 +34,10 @@ class ConsommableController extends AbstractController
         $actor = $this->getUser();
 
         $data = empty($request->request->all()) ? json_decode($request->getContent(), true) : $request->request->all();
-        $result = $this->consommableService->addConsommable(
-            $data,
+        $result = $this->commandBus->dispatch(new CreateConsommableCommand(
+            is_array($data) ? $data : [],
             $actor instanceof User ? $actor : null,
-        );
+        ));
 
         return $this->json($result['error'] ?? $result, $result['status'] ?? (isset($result['error']) ? 400 : 200));
     }
@@ -37,11 +47,11 @@ class ConsommableController extends AbstractController
     {
         $actor = $this->getUser();
         $data = empty($request->request->all()) ? json_decode($request->getContent(), true) : $request->request->all();
-        $result = $this->consommableService->editConsommable(
-            $consommable,
-            $data,
+        $result = $this->commandBus->dispatch(new UpdateConsommableCommand(
+            (int) $consommable->getId(),
+            is_array($data) ? $data : [],
             $actor instanceof User ? $actor : null,
-        );
+        ));
 
         return $this->json($result, $result['status'] ?? 200);
     }
@@ -51,11 +61,11 @@ class ConsommableController extends AbstractController
     {
         $actor = $this->getUser();
         $data = empty($request->request->all()) ? json_decode($request->getContent(), true) : $request->request->all();
-        $result = $this->consommableService->retrait(
-            $consommable,
-            $data,
+        $result = $this->commandBus->dispatch(new WithdrawConsommableCommand(
+            (int) $consommable->getId(),
+            is_array($data) ? $data : [],
             $actor instanceof User ? $actor : null,
-        );
+        ));
 
         return $this->json($result, $result['status'] ?? (isset($result['error']) ? 400 : 200));
     }
@@ -75,11 +85,11 @@ class ConsommableController extends AbstractController
     {
         $actor = $this->getUser();
         $data = empty($request->request->all()) ? json_decode($request->getContent(), true) : $request->request->all();
-        $result = $this->consommableService->addStock(
-            $consommable,
-            $data,
+        $result = $this->commandBus->dispatch(new AddConsommableStockCommand(
+            (int) $consommable->getId(),
+            is_array($data) ? $data : [],
             $actor instanceof User ? $actor : null,
-        );
+        ));
 
         return $this->json($result, $result['status'] ?? (isset($result['error']) ? 400 : 200));
     }
@@ -93,10 +103,10 @@ class ConsommableController extends AbstractController
         }
 
         $actor = $this->getUser();
-        $result = $this->consommableService->deleteConsommable(
-            $consommable,
+        $result = $this->commandBus->dispatch(new DeleteConsommableCommand(
+            (int) $consommable->getId(),
             $actor instanceof User ? $actor : null,
-        );
+        ));
 
         return $this->json($result, $result['status'] ?? 200);
     }
@@ -104,7 +114,7 @@ class ConsommableController extends AbstractController
     #[Route('/api/consumables', name: 'api_consommables', methods: ['GET'])]
     public function list(): JsonResponse
     {
-        $rows = $this->consommableService->fetchConsommables();
+        $rows = $this->queryBus->ask(new ListConsumablesQuery());
 
         $rowsWithTokens = array_map(function (array $row) {
             $id = $row['id'] ?? null;

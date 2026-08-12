@@ -2,23 +2,35 @@
 
 namespace App\CareDelivery\Controller\Api;
 
-use App\IdentityAccess\Entity\User;
-use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Routing\Attribute\Route;
-use Symfony\Component\HttpFoundation\JsonResponse;
-use App\CareDelivery\Service\ConsultationService;
+use App\CareDelivery\Application\Command\DeleteConsultation\DeleteConsultationCommand;
+use App\CareDelivery\Application\Command\LinkOrCreateFiche\LinkOrCreateFicheCommand;
+use App\CareDelivery\Application\Command\UpdateFactureLines\UpdateFactureLinesCommand;
+use App\CareDelivery\Application\Command\UpdateOrdonnance\UpdateOrdonnanceCommand;
+use App\CareDelivery\Application\Command\VerifyConsultationMedecinPassword\VerifyConsultationMedecinPasswordCommand;
+use App\CareDelivery\Application\Query\GetConsultationDetails\GetConsultationDetailsQuery;
+use App\CareDelivery\Application\Query\GetFactureLines\GetFactureLinesQuery;
+use App\CareDelivery\Application\Query\GetOrdonnance\GetOrdonnanceQuery;
+use App\CareDelivery\Application\Query\ListConsultations\ListConsultationsQuery;
+use App\CareDelivery\Application\Query\ListOrdonnances\ListOrdonnancesQuery;
+use App\CareDelivery\Infrastructure\Persistence\Doctrine\Entity\Consultation;
+use App\IdentityAccess\Infrastructure\Persistence\Doctrine\Entity\User;
 use App\Settings\Service\GlobalSettingsService;
-use App\CareDelivery\Entity\Consultation;
+use App\Shared\Application\Bus\CommandBus;
+use App\Shared\Application\Bus\QueryBus;
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\Routing\Attribute\Route;
 
 final class ConsultationController extends AbstractController{
 
     public function __construct(
-        private ConsultationService $consultationService,
         private GlobalSettingsService $globalSettingsService,
+        private QueryBus $queryBus,
+        private CommandBus $commandBus,
     )
     {
     }
@@ -40,14 +52,14 @@ final class ConsultationController extends AbstractController{
 
         try {
             $restrictToMedecin = $this->isGranted('ROLE_MEDECIN') && !$this->isGranted('ROLE_ADMIN');
-            $result = $this->consultationService->linkOrCreateFiche(
+            $result = $this->commandBus->dispatch(new LinkOrCreateFicheCommand(
                 (int) $consultationId,
                 $ficheId,
                 $this->getUser(),
                 $restrictToMedecin,
                 $forceCreate,
                 $allowDuplicate,
-            );
+            ));
         } catch (NotFoundHttpException $e) {
             return $this->json(['error' => $e->getMessage()], 404);
         } catch (ConflictHttpException $e) {
@@ -63,7 +75,11 @@ final class ConsultationController extends AbstractController{
     public function pendingConsultations(): Response
     {
         $restrictToMedecin = $this->isGranted('ROLE_MEDECIN') && !$this->isGranted('ROLE_ADMIN');
-        $data = $this->consultationService->listPendingConsultationsJsonForUser($this->getUser(), $restrictToMedecin);
+        $data = $this->queryBus->ask(new ListConsultationsQuery(
+            ListConsultationsQuery::SCOPE_PENDING,
+            $this->getUser(),
+            $restrictToMedecin,
+        ));
 
         return $this->json(
             $data
@@ -73,20 +89,32 @@ final class ConsultationController extends AbstractController{
     #[Route('/api/consultations/closed', name: 'api_consultations_closed', methods: ['GET'])]
     public function getClosedConsultations(): JsonResponse
     {
-        return new JsonResponse($this->consultationService->getClosedConsultationsData());
+        return new JsonResponse($this->queryBus->ask(new ListConsultationsQuery(
+            ListConsultationsQuery::SCOPE_CLOSED,
+        )));
     } 
 
     #[Route('/api/consultations/day', name: 'api_consultations_day', methods: ['GET'])]
     public function getConsultationsDay(Request $req): JsonResponse
     {
-        return new JsonResponse($this->consultationService->ConsultationsDuJour($req->get('date'), $this->getUser()));
+        return new JsonResponse($this->queryBus->ask(new ListConsultationsQuery(
+            ListConsultationsQuery::SCOPE_DAY,
+            $this->getUser(),
+            false,
+            $req->get('date'),
+        )));
     }
 
     #[Route('/api/focus/reception', name: 'api_focus_reception', methods: ['GET'])]
     public function getReceptionFocusData(Request $req): JsonResponse
     {
         return $this->json(
-            $this->consultationService->getReceptionFocusData($req->get('date'), $this->getUser())->toArray()
+            $this->queryBus->ask(new ListConsultationsQuery(
+                ListConsultationsQuery::SCOPE_RECEPTION_FOCUS,
+                $this->getUser(),
+                false,
+                $req->get('date'),
+            ))
         );
     }
 
@@ -94,10 +122,10 @@ final class ConsultationController extends AbstractController{
     public function deleteConsultation(int $id): JsonResponse
     {
         $user = $this->getUser();
-        $deleted = $this->consultationService->deleteConsultation(
+        $deleted = $this->commandBus->dispatch(new DeleteConsultationCommand(
             $id,
             $user instanceof User ? $user : null,
-        );
+        ));
  
         if (!$deleted) {
             return $this->json(['error' => 'Consultation introuvable'], 404);
@@ -109,7 +137,9 @@ final class ConsultationController extends AbstractController{
     #[Route('/api/consultations/{consultation}/ordonnances', name: 'api_consultation_ordonnances', methods: ['GET'])]
     public function listOrdonnances(Consultation $consultation): JsonResponse
     {
-        return new JsonResponse($this->consultationService->listOrdonnances($consultation));
+        return new JsonResponse($this->queryBus->ask(new ListOrdonnancesQuery(
+            (int) $consultation->getId(),
+        )));
     }
 
     #[Route('/api/consultations/{consultation}/ordonnances', name: 'api_consultation_ordonnance_add', methods: ['POST'])]
@@ -125,7 +155,7 @@ final class ConsultationController extends AbstractController{
     #[Route('/api/ordonnance/{id}', name: 'api_ordonnance_get', methods: ['GET'])]
     public function getOrdonnance(int $id): JsonResponse
     {
-        $data = $this->consultationService->getOrdonnanceData($id);
+        $data = $this->queryBus->ask(new GetOrdonnanceQuery($id));
         if (!$data) {
             return new JsonResponse(['error' => 'Ordonnance introuvable'], 404);
         }
@@ -141,7 +171,7 @@ final class ConsultationController extends AbstractController{
         }
 
         try {
-            $data = $this->consultationService->updateOrdonnance($id, $payload);
+            $data = $this->commandBus->dispatch(new UpdateOrdonnanceCommand($id, $payload));
         } catch (\InvalidArgumentException $exception) {
             return new JsonResponse(['error' => $exception->getMessage()], 400);
         }
@@ -156,7 +186,7 @@ final class ConsultationController extends AbstractController{
     #[Route('/api/ordonnance/{id}/print', name: 'api_ordonnance_print', methods: ['GET'])]
     public function printOrdonnance(int $id): Response
     {
-        $data = $this->consultationService->getOrdonnanceData($id);
+        $data = $this->queryBus->ask(new GetOrdonnanceQuery($id));
         if (!$data) {
             return new Response('Ordonnance introuvable', 404);
         }
@@ -171,7 +201,7 @@ final class ConsultationController extends AbstractController{
     #[Route('/api/prints/ordonnances/{id}', name: 'api_print_ordonnance_data', methods: ['GET'])]
     public function getOrdonnancePrintData(int $id): JsonResponse
     {
-        $data = $this->consultationService->getOrdonnanceData($id);
+        $data = $this->queryBus->ask(new GetOrdonnanceQuery($id));
         if (!$data) {
             return new JsonResponse(['error' => 'Ordonnance introuvable'], 404);
         }
@@ -184,7 +214,7 @@ final class ConsultationController extends AbstractController{
     #[Route('/api/consultations/{consultation}/facture', name: 'api_consultation_facture', methods: ['GET'])]
     public function getFactureLines(Consultation $consultation): JsonResponse
     {
-        $lignes = $this->consultationService->getFactureLines($consultation);
+        $lignes = $this->queryBus->ask(new GetFactureLinesQuery((int) $consultation->getId()));
 
         if ($lignes === null) {
             return new JsonResponse(['error' => 'Facture non trouvée'], 404);
@@ -205,12 +235,12 @@ final class ConsultationController extends AbstractController{
             return new JsonResponse(['error' => 'Payload invalide'], 400);
         }
 
-        $result = $this->consultationService->updateFactureLines(
-            $consultation,
+        $result = $this->commandBus->dispatch(new UpdateFactureLinesCommand(
+            (int) $consultation->getId(),
             $data['lignes'],
             $data['date'] ?? $data['dateFacture'] ?? null,
             $data['time'] ?? $data['timeFacture'] ?? null,
-        );
+        ));
 
         return new JsonResponse($result, isset($result['error']) ? 400 : 200);
     }
@@ -231,7 +261,10 @@ final class ConsultationController extends AbstractController{
     #[Route('/api/admin/consultation/{id}/details', name: 'api_consultation_details', methods: ['GET'])]
     public function getConsultationDetailsJson(int $id): JsonResponse
     {
-        $context = $this->consultationService->getConsultationDetailsContext($id);
+        $context = $this->queryBus->ask(new GetConsultationDetailsQuery(
+            $id,
+            GetConsultationDetailsQuery::MODE_CONTEXT,
+        ));
 
         return $this->json([
             'consultation' => $context['consultation'],
@@ -242,7 +275,10 @@ final class ConsultationController extends AbstractController{
     #[Route('/api/consultations/{id}/details', name: 'api_consultation_details_public', methods: ['GET'])]
     public function getConsultationDetailsPublic(int $id): JsonResponse
     {
-        $details = $this->consultationService->getConsultationDetailsData($id);
+        $details = $this->queryBus->ask(new GetConsultationDetailsQuery(
+            $id,
+            GetConsultationDetailsQuery::MODE_DATA,
+        ));
 
         return $this->json($details['data']);
     }
@@ -265,7 +301,7 @@ final class ConsultationController extends AbstractController{
         $data = json_decode($request->getContent(), true) ?? [];
         $password = (string) ($data['password'] ?? '');
 
-        $isValid = $this->consultationService->verifyConsultationMedecinPassword($id, $password);
+        $isValid = $this->commandBus->dispatch(new VerifyConsultationMedecinPasswordCommand($id, $password));
 
         return $this->json(['valid' => $isValid]);
     } 

@@ -2,40 +2,33 @@
 
 namespace App\Patient\Service;
 
-use App\Billing\Entity\Assurance;
-use App\Billing\Entity\FactureAssurance;
-use App\Billing\Entity\ModeDePaiement;
-use App\Billing\Entity\Paiement;
-use App\Billing\Entity\Transaction;
-use App\Billing\Repository\AssuranceRepository;
-use App\CareDelivery\Entity\ActeMedical;
-use App\CareDelivery\Entity\Consultation;
-use App\CareDelivery\Entity\Ordonnance;
-use App\CareDelivery\Entity\OrdonnanceLigne;
-use App\CareDelivery\Service\ConsultationNotificationService;
-use App\ClinicalRecord\Entity\FicheMedicale;
+use App\Billing\Infrastructure\Persistence\Doctrine\Repository\AssuranceRepository;
+use App\CareDelivery\Infrastructure\Persistence\Doctrine\Entity\ActeMedical;
+use App\CareDelivery\Infrastructure\Persistence\Doctrine\Entity\Consultation;
+use App\CareDelivery\Infrastructure\Persistence\Doctrine\Entity\Ordonnance;
+use App\CareDelivery\Infrastructure\Persistence\Doctrine\Entity\OrdonnanceLigne;
+use App\ClinicalRecord\Infrastructure\Persistence\Doctrine\Entity\FicheMedicale;
 use App\ClinicalRecord\Service\FicheMedicaleService;
-use App\Communication\Entity\SmsQueue;
-use App\Communication\Repository\SmsQueueRepository;
+use App\Communication\Infrastructure\Persistence\Doctrine\Entity\SmsQueue;
+use App\Communication\Infrastructure\Persistence\Doctrine\Repository\SmsQueueRepository;
 use App\Communication\Service\NotificationRecipientResolver;
 use App\Communication\Service\SmsService;
 use App\Shared\Event\EntityActionEvent;
 use App\Focus\Service\FocusRealtimePublisher;
-use App\IdentityAccess\Entity\Employe;
-use App\IdentityAccess\Entity\User;
-use App\IdentityAccess\Repository\EmployeRepository;
-use App\IdentityAccess\Repository\UserRepository;
-use App\Patient\Entity\Allergy;
-use App\Patient\Entity\Antecedent;
-use App\Patient\Entity\ContactUrgence;
-use App\Patient\Entity\Patient;
-use App\Patient\Entity\PatientAssuranceProfile;
-use App\Patient\Repository\PatientRepository;
-use App\CareDelivery\Repository\ConsultationRepository;
-use App\CareDelivery\Service\ConsultationService;
-use App\Scheduling\Entity\Rdv;
-use App\Scheduling\Repository\SalleRepository;
-use App\Scheduling\Service\RdvNotificationService;
+use App\IdentityAccess\Infrastructure\Persistence\Doctrine\Entity\Employe;
+use App\IdentityAccess\Infrastructure\Persistence\Doctrine\Entity\User;
+use App\IdentityAccess\Infrastructure\Persistence\Doctrine\Repository\EmployeRepository;
+use App\IdentityAccess\Infrastructure\Persistence\Doctrine\Repository\UserRepository;
+use App\Patient\Application\Port\CloseActiveConsultationsPort;
+use App\Patient\Infrastructure\Persistence\Doctrine\Entity\Allergy;
+use App\Patient\Infrastructure\Persistence\Doctrine\Entity\Antecedent;
+use App\Patient\Infrastructure\Persistence\Doctrine\Entity\ContactUrgence;
+use App\Patient\Infrastructure\Persistence\Doctrine\Entity\Patient;
+use App\Patient\Infrastructure\Persistence\Doctrine\Entity\PatientAssuranceProfile;
+use App\Patient\Infrastructure\Persistence\Doctrine\Repository\PatientRepository;
+use App\CareDelivery\Infrastructure\Persistence\Doctrine\Repository\ConsultationRepository;
+use App\Scheduling\Infrastructure\Persistence\Doctrine\Entity\Rdv;
+use App\Scheduling\Infrastructure\Persistence\Doctrine\Repository\SalleRepository;
 use App\Settings\Service\GlobalSettingsService;
 use DateTime;
 use DateTimeImmutable;
@@ -50,109 +43,15 @@ use Psr\Cache\CacheItemPoolInterface;
 
 class PatientService
 {
-    /**
-     * @return list<\DateTimeImmutable>
-     */
-    private function buildAppointmentReminderDates(\DateTimeImmutable $rdvAt, int $daysBefore, string $recurrence): array
-    {
-        $daysBefore = max(0, $daysBefore);
-        $firstSendAt = $rdvAt->modify(sprintf('-%d days', $daysBefore));
-        if (!$firstSendAt instanceof \DateTimeImmutable) {
-            return [];
-        }
-
-        if ($recurrence === 'none') {
-            return [$firstSendAt];
-        }
-
-        $step = match ($recurrence) {
-            'daily' => '+1 day',
-            'every_2_days' => '+2 days',
-            'weekly' => '+1 week',
-            default => null,
-        };
-
-        if ($step === null) {
-            return [$firstSendAt];
-        }
-
-        $dates = [];
-        $cursor = $firstSendAt;
-        $maxOccurrences = 14;
-
-        while ($cursor < $rdvAt && count($dates) < $maxOccurrences) {
-            $dates[] = $cursor;
-            $cursor = $cursor->modify($step);
-        }
-
-        return $dates;
-    }
-
-    private function queueAppointmentRemindersForRdv(Rdv $rdv, array $smsReminder, string $cabinetName = 'ORODENT'): int
-    {
-        $enabled = ($smsReminder['enabled'] ?? true) !== false;
-        if (!$enabled) {
-            return 0;
-        }
-
-        $patient = $rdv->getPatient();
-        $rdvAt = $rdv->getDateRdv();
-        if (!$patient instanceof Patient || !$rdvAt instanceof DateTime) {
-            return 0;
-        }
-
-        $daysBefore = max(0, (int) ($smsReminder['daysBefore'] ?? 1));
-        $recurrence = (string) ($smsReminder['recurrence'] ?? 'none');
-        $dates = $this->buildAppointmentReminderDates(DateTimeImmutable::createFromMutable($rdvAt), $daysBefore, $recurrence);
-        $now = new DateTimeImmutable();
-
-        $variables = [
-            'patient_name' => trim(($patient->getPrenom() ?? '') . ' ' . ($patient->getNom() ?? '')),
-            'date' => $rdvAt->format('d/m/Y'),
-            'time' => $rdvAt->format('H:i'),
-            'cabinet_name' => $cabinetName,
-        ];
-
-        $queued = 0;
-        foreach ($dates as $index => $sendAt) {
-            if ($sendAt <= $now) {
-                continue;
-            }
-
-            $result = $this->smsService->queueTemplateForPatient(
-                $patient,
-                'appointment_reminder',
-                $variables,
-                'appointment-auto',
-                $sendAt,
-                [
-                    'rdvId' => $rdv->getId(),
-                    'recurrence' => $recurrence,
-                    'daysBefore' => $daysBefore,
-                    'occurrenceIndex' => $index + 1,
-                    'occurrenceCount' => count($dates),
-                ]
-            );
-
-            if (($result['success'] ?? false) === true) {
-                ++$queued;
-            }
-        }
-
-        return $queued;
-    }
-
     public function __construct(
         private EntityManagerInterface $em,
         private PatientRepository $patientRepo,
         private AssuranceRepository $assuranceRepo,
         private SalleRepository $salleRepo,
         private ConsultationRepository $consultationRepo,
-        private ConsultationService $consultationService,
+        private CloseActiveConsultationsPort $closeActiveConsultationsPort,
         private EmployeRepository $employeRepo,
-        private ConsultationNotificationService $consultationNotificationService,
         private NotificationRecipientResolver $notificationRecipientResolver,
-        private RdvNotificationService $rdvNotificationService,
         private UserRepository $userRepo,
         private UserPasswordHasherInterface $passwordHasher,
         private CashdeskEntryPointService $cashdeskService,
@@ -187,6 +86,119 @@ class PatientService
         if ($this->cache instanceof CacheItemPoolInterface) {
             $this->cache->clear();
         }
+    }
+
+    /**
+     * Public facade for DDD application ports / adapters.
+     */
+    public function clearPatientsListCache(): void
+    {
+        $this->clearPatientsCache();
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function getFormattedPatientSummary(int $patientId): ?array
+    {
+        $patient = $this->findActivePatient($patientId);
+
+        return $patient ? $this->formatPatientSummary($patient) : null;
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    public function applyInsuranceProfileByPatientId(int $patientId, array $data): void
+    {
+        $patient = $this->patientRepo->find($patientId);
+        if (!$patient instanceof Patient) {
+            throw new \InvalidArgumentException('Patient non trouvé');
+        }
+
+        $this->applyInsuranceProfile($patient, $data);
+        $this->em->flush();
+    }
+
+    /**
+     * Side effects after patient creation (portal, notify, SMS queue).
+     *
+     * @return array{id: int|null, username: string|null, active: bool, roles: list<string>, defaultPassword: string}|null
+     */
+    public function runAfterCreateSideEffects(Patient $patient, ?User $actor = null): ?array
+    {
+        if ($this->globalSettingsService->shouldAutoCreatePortalAccountOnPatientCreation()) {
+            $this->ensurePatientPortalAccount($patient);
+            $this->em->flush();
+        }
+
+        $this->notifyPatientCreation($patient, $actor);
+        $this->smsService->queueTemplateForPatient($patient, 'patient_created', [
+            'patient_name' => trim(($patient->getPrenom() ?? '') . ' ' . ($patient->getNom() ?? '')),
+            'cabinet_name' => 'ORODENT',
+        ], 'patient-created');
+
+        return $this->formatPortalAccount($patient);
+    }
+
+    public function storePatientPhotoFile(
+        UploadedFile $file,
+        string $uploadDir,
+        ?string $currentPhoto,
+        int $patientId,
+    ): string {
+        return $this->uploadPatientPhoto($file, $uploadDir, $currentPhoto, $patientId);
+    }
+
+    /**
+     * @param list<UploadedFile> $uploadedArchiveFiles
+     * @param list<array{nom?: string, url: string}|string> $existingArchiveFiles
+     * @return list<array{nom?: string, url: string}|string>
+     */
+    public function storePatientArchiveFiles(
+        int $patientId,
+        string $uploadDir,
+        array $uploadedArchiveFiles,
+        array $existingArchiveFiles,
+    ): array {
+        $finalArchiveFiles = $existingArchiveFiles;
+
+        if ($uploadedArchiveFiles === []) {
+            return $finalArchiveFiles;
+        }
+
+        $archiveBaseDir = rtrim($uploadDir, '/\\') . DIRECTORY_SEPARATOR . 'patients' . DIRECTORY_SEPARATOR . 'archive';
+        $patientDir = $archiveBaseDir . DIRECTORY_SEPARATOR . $patientId;
+
+        if (!is_dir($patientDir) && !mkdir($patientDir, 0777, true) && !is_dir($patientDir)) {
+            throw new \RuntimeException("Impossible de créer le dossier d'archives pour le patient.");
+        }
+
+        foreach ($uploadedArchiveFiles as $uploadedFile) {
+            if (!$uploadedFile instanceof UploadedFile) {
+                continue;
+            }
+            $allowedMime = [
+                'application/pdf',
+                'image/jpeg',
+                'image/png',
+                'application/msword',
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            ];
+            if (!in_array($uploadedFile->getMimeType(), $allowedMime, true)) {
+                continue;
+            }
+
+            $originalName = pathinfo($uploadedFile->getClientOriginalName(), PATHINFO_FILENAME);
+            $safeName = preg_replace('/[^a-zA-Z0-9-_]/', '_', $originalName);
+            $uniqueName = time() . '_' . bin2hex(random_bytes(4)) . '_' . $safeName . '.' . $uploadedFile->guessExtension();
+            $relativePath = '/uploads/patients/' . $patientId . '/archive/' . $uniqueName;
+
+            $uploadedFile->move($patientDir, $uniqueName);
+            $finalArchiveFiles[] = $relativePath;
+        }
+
+        return $finalArchiveFiles;
     }
 
     private function findActivePatient(int $id): ?Patient
@@ -512,18 +524,11 @@ class PatientService
             return ['error' => 'Patient non trouvé', 'status' => 404];
         }
 
-        $activeConsultations = $this->consultationRepo->findBy([
-            'patient' => $patient,
-            'statut' => 0,
-        ]);
+        $this->closeActiveConsultationsPort->closeActiveConsultations($id, $actor?->getId());
 
-        foreach ($activeConsultations as $consultation) {
-            if ($patient->getDerniereConsultation()?->getId() === $consultation->getId()) {
-                $patient->setDerniereConsultation(null);
-                $this->em->flush();
-            }
-
-            $this->consultationService->deleteConsultation((int) $consultation->getId(), $actor);
+        $patient = $this->findActivePatient($id);
+        if (!$patient) {
+            return ['error' => 'Patient non trouvé', 'status' => 404];
         }
 
         $patient->setDeletedAt(new DateTimeImmutable());
@@ -618,26 +623,18 @@ class PatientService
                 }
             }
 
-            if ($this->globalSettingsService->shouldAutoCreatePortalAccountOnPatientCreation()) {
-                $this->ensurePatientPortalAccount($patient);
-            }
-
             $this->em->persist($patient);
             $this->em->flush();
             $this->clearPatientsCache();
 
-            $this->notifyPatientCreation($patient, $actor);
+            $portalAccount = $this->runAfterCreateSideEffects($patient, $actor);
             $this->focusRealtimePublisher->publishPatientRefresh($patient, 'created');
-            $this->smsService->queueTemplateForPatient($patient, 'patient_created', [
-                'patient_name' => trim(($patient->getPrenom() ?? '') . ' ' . ($patient->getNom() ?? '')),
-                'cabinet_name' => 'ORODENT',
-            ], 'patient-created');
 
             return [
                 'success' => true,
                 'status' => 201,
                 'patientId' => $patient->getId(),
-                'portalAccount' => $this->formatPortalAccount($patient),
+                'portalAccount' => $portalAccount,
             ];
         } catch (\InvalidArgumentException $e) {
             return ['error' => $e->getMessage(), 'status' => 400];
@@ -984,53 +981,6 @@ public function removeArchiveFile(int $patientId, string $fileUrl): array
         return $patient;
     }
 
-    public function createRdv(array $data, ?User $actor = null): array
-    {
-        if (!isset($data['patient_id'], $data['medecin_id'], $data['date'], $data['time'])) {
-            return ['error' => 'Missing required fields', 'status' => 400];
-        }
-
-        $patient = $this->findActivePatient((int) $data['patient_id']);
-        $medecin = $this->employeRepo->find($data['medecin_id']);
-
-        if (!$patient) {
-            return ['error' => 'Patient not found', 'status' => 404];
-        }
-
-        if (!$medecin) {
-            return ['error' => 'Medecin not found', 'status' => 404];
-        }
-
-        try {
-            $rdv = new Rdv();
-            $rdv->setPatient($patient)
-                ->setMedecin($medecin)
-                ->setDescription($data['description'] ?? '')
-                ->setStatut(0)
-                ->setDuration($data['duration'] ?? 30)
-                ->setDateCreation(new DateTime())
-                ->setDateRdv(new DateTime($data['date'] . ' ' . $data['time']));
-
-            $this->em->persist($rdv);
-            $this->em->flush();
-
-            $this->rdvNotificationService->notifyCreation($rdv, $actor);
-
-            $smsQueuedCount = 0;
-            if (isset($data['smsReminder']) && is_array($data['smsReminder'])) {
-                $smsQueuedCount = $this->queueAppointmentRemindersForRdv(
-                    $rdv,
-                    $data['smsReminder'],
-                    (string) ($data['cabinet_name'] ?? 'ORODENT')
-                );
-            }
-
-            return ['success' => true, 'status' => 201, 'rdv_id' => $rdv->getId(), 'smsQueuedCount' => $smsQueuedCount];
-        } catch (\Exception $e) {
-            return ['error' => $e->getMessage(), 'status' => 500];
-        }
-    }
-
     private function notifyPatientCreation(Patient $patient, ?User $actor = null): void
     {
         $recipients = $this->notificationRecipientResolver->adminsAndReceptionists($actor);
@@ -1040,7 +990,7 @@ public function removeArchiveFile(int $patientId, string $fileUrl): array
         }
 
         $patientName = trim($patient->getFullName() ?? '') ?: sprintf('patient #%d', $patient->getId());
-        $author = $actor?->getUsername() ?? 'le systÃ¨me';
+        $author = $actor?->getUsername() ?? 'le système';
         $message = sprintf('Nouveau patient %s ajouté par %s.', $patientName, $author);
 
         $this->eventDispatcher->dispatch(

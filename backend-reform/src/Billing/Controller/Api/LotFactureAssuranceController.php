@@ -2,8 +2,24 @@
 
 namespace App\Billing\Controller\Api;
 
-use App\Billing\Service\InsuranceClaimService;
-use App\Billing\Service\LotFactureAssuranceService;
+use App\Billing\Application\Command\AddClaimToLot\AddClaimToLotCommand;
+use App\Billing\Application\Command\CancelLotRecovery\CancelLotRecoveryCommand;
+use App\Billing\Application\Command\CancelRefund\CancelRefundCommand;
+use App\Billing\Application\Command\ConfirmLot\ConfirmLotCommand;
+use App\Billing\Application\Command\MoveClaimToLot\MoveClaimToLotCommand;
+use App\Billing\Application\Command\OpenLot\OpenLotCommand;
+use App\Billing\Application\Command\RefundLot\RefundLotCommand;
+use App\Billing\Application\Command\RemoveClaimFromLot\RemoveClaimFromLotCommand;
+use App\Billing\Application\Command\ReopenLot\ReopenLotCommand;
+use App\Billing\Application\Command\SendLot\SendLotCommand;
+use App\Billing\Application\Command\UnconfirmLot\UnconfirmLotCommand;
+use App\Billing\Application\Command\UpdateLot\UpdateLotCommand;
+use App\Billing\Application\Query\GetAssuranceDashboard\GetAssuranceDashboardQuery;
+use App\Billing\Application\Query\GetClaimDetail\GetClaimDetailQuery;
+use App\Billing\Application\Query\GetLot\GetLotQuery;
+use App\Billing\Application\Query\ListLots\ListLotsQuery;
+use App\Shared\Application\Bus\CommandBus;
+use App\Shared\Application\Bus\QueryBus;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -12,22 +28,22 @@ use Symfony\Component\Routing\Attribute\Route;
 class LotFactureAssuranceController extends AbstractController
 {
     public function __construct(
-        private LotFactureAssuranceService $lotService,
-        private InsuranceClaimService $insuranceClaimService,
+        private QueryBus $queryBus,
+        private CommandBus $commandBus,
     ) {
     }
 
     #[Route('/api/assurances/dashboard', name: 'api_assurances_dashboard', methods: ['GET'])]
     public function dashboard(): JsonResponse
     {
-        return $this->json(['data' => $this->lotService->getDashboard()]);
+        return $this->json(['data' => $this->queryBus->ask(new GetAssuranceDashboardQuery())]);
     }
 
     #[Route('/api/assurances/{code}/lots', name: 'api_assurances_lots_list', methods: ['GET'])]
     public function listLots(string $code, Request $request): JsonResponse
     {
         $statut = $request->query->get('statut');
-        $result = $this->lotService->listLots($code, is_string($statut) ? $statut : null);
+        $result = $this->queryBus->ask(new ListLotsQuery($code, is_string($statut) ? $statut : null));
 
         if (isset($result['error'])) {
             return $this->json(['error' => $result['error']], $result['status'] ?? 400);
@@ -54,12 +70,12 @@ class LotFactureAssuranceController extends AbstractController
             return $this->json(['error' => 'Dates invalides'], 400);
         }
 
-        $result = $this->lotService->openLot(
+        $result = $this->commandBus->dispatch(new OpenLotCommand(
             $code,
             isset($payload['description']) ? (string) $payload['description'] : null,
             $dateDebut,
             $dateFin,
-        );
+        ));
 
         if (isset($result['error'])) {
             return $this->json(['error' => $result['error'], 'lotId' => $result['lotId'] ?? null], $result['status'] ?? 400);
@@ -71,7 +87,7 @@ class LotFactureAssuranceController extends AbstractController
     #[Route('/api/assurances/lots/{id}', name: 'api_assurances_lots_detail', methods: ['GET'])]
     public function getLot(int $id): JsonResponse
     {
-        $result = $this->lotService->getLot($id);
+        $result = $this->queryBus->ask(new GetLotQuery($id));
 
         if (isset($result['error'])) {
             return $this->json(['error' => $result['error']], $result['status'] ?? 404);
@@ -98,12 +114,12 @@ class LotFactureAssuranceController extends AbstractController
             return $this->json(['error' => 'Dates invalides'], 400);
         }
 
-        $result = $this->lotService->updateLot(
+        $result = $this->commandBus->dispatch(new UpdateLotCommand(
             $id,
             array_key_exists('description', $payload) ? (string) $payload['description'] : null,
             $dateDebut,
             $dateFin,
-        );
+        ));
 
         if (isset($result['error'])) {
             return $this->json(['error' => $result['error']], $result['status'] ?? 400);
@@ -115,7 +131,7 @@ class LotFactureAssuranceController extends AbstractController
     #[Route('/api/assurances/lots/{id}/send', name: 'api_assurances_lots_send', methods: ['POST'])]
     public function sendLot(int $id): JsonResponse
     {
-        $result = $this->lotService->sendLot($id);
+        $result = $this->commandBus->dispatch(new SendLotCommand($id));
 
         if (isset($result['error'])) {
             return $this->json(['error' => $result['error']], $result['status'] ?? 400);
@@ -127,7 +143,7 @@ class LotFactureAssuranceController extends AbstractController
     #[Route('/api/assurances/lots/{id}/reopen', name: 'api_assurances_lots_reopen', methods: ['POST'])]
     public function reopenLot(int $id): JsonResponse
     {
-        $result = $this->lotService->reopenLot($id);
+        $result = $this->commandBus->dispatch(new ReopenLotCommand($id));
 
         if (isset($result['error'])) {
             return $this->json(['error' => $result['error']], $result['status'] ?? 400);
@@ -139,7 +155,7 @@ class LotFactureAssuranceController extends AbstractController
     #[Route('/api/assurances/lots/{id}/confirm', name: 'api_assurances_lots_confirm', methods: ['POST'])]
     public function confirmLot(int $id): JsonResponse
     {
-        $result = $this->lotService->confirmLot($id);
+        $result = $this->commandBus->dispatch(new ConfirmLotCommand($id));
 
         if (isset($result['error'])) {
             return $this->json(['error' => $result['error']], $result['status'] ?? 400);
@@ -151,7 +167,7 @@ class LotFactureAssuranceController extends AbstractController
     #[Route('/api/assurances/lots/{id}/unconfirm', name: 'api_assurances_lots_unconfirm', methods: ['POST'])]
     public function unconfirmLot(int $id): JsonResponse
     {
-        $result = $this->lotService->unconfirmLot($id);
+        $result = $this->commandBus->dispatch(new UnconfirmLotCommand($id));
 
         if (isset($result['error'])) {
             return $this->json(['error' => $result['error']], $result['status'] ?? 400);
@@ -177,7 +193,7 @@ class LotFactureAssuranceController extends AbstractController
             }
         }
 
-        $result = $this->lotService->refundLot($id, $modeId, $amount, $date);
+        $result = $this->commandBus->dispatch(new RefundLotCommand($id, $modeId, $amount, $date));
 
         if (isset($result['error'])) {
             return $this->json(['error' => $result['error']], $result['status'] ?? 400);
@@ -199,7 +215,7 @@ class LotFactureAssuranceController extends AbstractController
         $payload = json_decode($request->getContent(), true) ?: [];
         $comment = isset($payload['comment']) ? (string) $payload['comment'] : null;
 
-        $result = $this->lotService->cancelRefund($id, $transactionId, $comment);
+        $result = $this->commandBus->dispatch(new CancelRefundCommand($id, $transactionId, $comment));
 
         if (isset($result['error'])) {
             return $this->json(['error' => $result['error']], $result['status'] ?? 400);
@@ -215,7 +231,7 @@ class LotFactureAssuranceController extends AbstractController
         $payload = json_decode($request->getContent(), true) ?: [];
         $comment = isset($payload['comment']) ? (string) $payload['comment'] : null;
 
-        $result = $this->lotService->cancelLotRecovery($id, $comment);
+        $result = $this->commandBus->dispatch(new CancelLotRecoveryCommand($id, $comment));
 
         if (isset($result['error'])) {
             return $this->json(['error' => $result['error']], $result['status'] ?? 400);
@@ -230,7 +246,7 @@ class LotFactureAssuranceController extends AbstractController
         $payload = json_decode($request->getContent(), true) ?: [];
         $factureId = (int) ($payload['factureId'] ?? $payload['claimId'] ?? 0);
 
-        $result = $this->lotService->addClaimToLot($id, $factureId);
+        $result = $this->commandBus->dispatch(new AddClaimToLotCommand($id, $factureId));
 
         if (isset($result['error'])) {
             return $this->json(['error' => $result['error']], $result['status'] ?? 400);
@@ -245,7 +261,7 @@ class LotFactureAssuranceController extends AbstractController
         $payload = json_decode($request->getContent(), true) ?: [];
         $lotId = (int) ($payload['lotId'] ?? 0);
 
-        $result = $this->lotService->moveClaimToLot($factureId, $lotId);
+        $result = $this->commandBus->dispatch(new MoveClaimToLotCommand($factureId, $lotId));
 
         if (isset($result['error'])) {
             return $this->json(['error' => $result['error']], $result['status'] ?? 400);
@@ -257,7 +273,7 @@ class LotFactureAssuranceController extends AbstractController
     #[Route('/api/assurances/lots/{id}/claims/{factureId}', name: 'api_assurances_lots_remove_claim', methods: ['DELETE'])]
     public function removeClaimFromLot(int $id, int $factureId): JsonResponse
     {
-        $result = $this->lotService->removeClaimFromLot($id, $factureId);
+        $result = $this->commandBus->dispatch(new RemoveClaimFromLotCommand($id, $factureId));
 
         if (isset($result['error'])) {
             return $this->json(['error' => $result['error']], $result['status'] ?? 400);
@@ -269,7 +285,7 @@ class LotFactureAssuranceController extends AbstractController
     #[Route('/api/assurances/claims/{id}', name: 'api_assurances_claim_detail', methods: ['GET'], requirements: ['id' => '\d+'], priority: -10)]
     public function getClaimDetail(int $id): JsonResponse
     {
-        $result = $this->insuranceClaimService->getClaimDetail($id);
+        $result = $this->queryBus->ask(new GetClaimDetailQuery($id));
 
         if (isset($result['error'])) {
             return $this->json(['error' => $result['error']], $result['status'] ?? 404);

@@ -2,10 +2,10 @@
 
 namespace App\Patient\Service;
 
-use App\CareDelivery\Entity\Consultation;
-use App\Patient\Entity\Appreciation;
-use App\Patient\Entity\Patient;
-use App\Patient\Repository\AppreciationRepository;
+use App\CareDelivery\Infrastructure\Persistence\Doctrine\Entity\Consultation;
+use App\Patient\Infrastructure\Persistence\Doctrine\Entity\Appreciation;
+use App\Patient\Infrastructure\Persistence\Doctrine\Entity\Patient;
+use App\Patient\Infrastructure\Persistence\Doctrine\Repository\AppreciationRepository;
 use Doctrine\ORM\EntityManagerInterface;
 
 class AppreciationService

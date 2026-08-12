@@ -2,9 +2,10 @@
 
 namespace App\Focus\Controller\Api;
 
-use App\IdentityAccess\Entity\Employe;
-use App\IdentityAccess\Repository\EmployeRepository;
-use App\Focus\Service\DashboardService;
+use App\Focus\Application\Query\GetDashboardStats\GetDashboardStatsQuery;
+use App\IdentityAccess\Infrastructure\Persistence\Doctrine\Entity\Employe;
+use App\IdentityAccess\Infrastructure\Persistence\Doctrine\Repository\EmployeRepository;
+use App\Shared\Application\Bus\QueryBus;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -14,7 +15,7 @@ use Symfony\Component\Routing\Attribute\Route;
 class DashboardController extends AbstractController
 {
     public function __construct(
-        private DashboardService $dashboardService,
+        private QueryBus $queryBus,
         private EmployeRepository $employeRepo,
     ) {
     }
@@ -48,11 +49,7 @@ class DashboardController extends AbstractController
             return $this->json(['error' => 'access_denied'], 403);
         }
 
-        $data = match ($type) {
-            'cards' => $this->dashboardService->getAdminCards($from, $to),
-            'carousels' => $this->dashboardService->getAdminCarousels($from, $to),
-            'tabs' => $this->dashboardService->getAdminTabs($from, $to),
-        };
+        $data = $this->queryBus->ask(new GetDashboardStatsQuery('admin', $type, $from, $to));
 
         return $this->json($data);
     }
@@ -70,11 +67,7 @@ class DashboardController extends AbstractController
             return $this->json(['error' => 'medecin_introuvable'], 404);
         }
 
-        $data = match ($type) {
-            'cards' => $this->dashboardService->getMedecinCards($medecin, $from, $to),
-            'carousels' => $this->dashboardService->getMedecinCarousels($medecin, $from, $to),
-            'tabs' => $this->dashboardService->getMedecinTabs($medecin, $from, $to),
-        };
+        $data = $this->queryBus->ask(new GetDashboardStatsQuery('medecin', $type, $from, $to, $medecin));
 
         return $this->json($data);
     }
@@ -85,11 +78,7 @@ class DashboardController extends AbstractController
             return $this->json(['error' => 'access_denied'], 403);
         }
 
-        $data = match ($type) {
-            'cards' => $this->dashboardService->getReceptionCards($from, $to),
-            'carousels' => $this->dashboardService->getReceptionCarousels($from, $to),
-            'tabs' => $this->dashboardService->getReceptionTabs($from, $to),
-        };
+        $data = $this->queryBus->ask(new GetDashboardStatsQuery('reception', $type, $from, $to));
 
         return $this->json($data);
     }

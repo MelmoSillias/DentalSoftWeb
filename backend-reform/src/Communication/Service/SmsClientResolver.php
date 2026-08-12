@@ -3,7 +3,7 @@
 namespace App\Communication\Service;
 
 use App\Communication\Contract\SmsClientInterface;
-use App\Communication\Entity\SmsProviderConfig;
+use App\Communication\Infrastructure\Persistence\Doctrine\Entity\SmsProviderConfig;
 
 final class SmsClientResolver
 {

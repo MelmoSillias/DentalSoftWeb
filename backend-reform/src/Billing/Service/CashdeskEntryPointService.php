@@ -3,12 +3,12 @@
 namespace App\Billing\Service;
 
 use App\Billing\Dto\CashdeskFactureListDto;
-use App\Billing\Entity\Paiement;
-use App\Billing\Repository\ModeDePaiementRepository;
-use App\Billing\Repository\PaiementRepository;
+use App\Billing\Infrastructure\Persistence\Doctrine\Entity\Paiement;
+use App\Billing\Infrastructure\Persistence\Doctrine\Repository\ModeDePaiementRepository;
+use App\Billing\Infrastructure\Persistence\Doctrine\Repository\PaiementRepository;
 use App\Billing\Service\Workflow\ClassicInvoiceWorkflowService;
 use App\Billing\Service\Workflow\InsuredInvoiceWorkflowService;
-use App\Patient\Entity\Patient;
+use App\Patient\Infrastructure\Persistence\Doctrine\Entity\Patient;
 use DateTimeInterface;
 
 class CashdeskEntryPointService

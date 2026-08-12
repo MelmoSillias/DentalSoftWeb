@@ -2,9 +2,12 @@
 
 namespace App\CareDelivery\Controller\Api;
 
-use App\CareDelivery\Service\ConsultationService;
+use App\CareDelivery\Application\Command\ClotureConsultation\ClotureConsultationCommand;
+use App\CareDelivery\Application\Command\UpdateConsultation\UpdateConsultationCommand;
+use App\CareDelivery\Application\Query\GetConsultationJson\GetConsultationJsonQuery;
 use App\ClinicalRecord\Service\FicheMedicaleService;
-use App\ClinicalRecord\Entity\FicheMedicale;
+use App\Shared\Application\Bus\CommandBus;
+use App\Shared\Application\Bus\QueryBus;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -14,7 +17,11 @@ use Symfony\Component\Routing\Attribute\Route;
 #[Route('/api/fiches/{ficheId}', name: 'api_fiche_consultation_')]
 class FicheConsultationController extends AbstractController
 {
-    public function __construct(private ConsultationService $consultationService, private FicheMedicaleService $ficheMedicaleService) {}
+    public function __construct(
+        private QueryBus $queryBus,
+        private CommandBus $commandBus,
+        private FicheMedicaleService $ficheMedicaleService,
+    ) {}
 
     private function restrictToConnectedMedecin(): bool
     {
@@ -24,31 +31,12 @@ class FicheConsultationController extends AbstractController
     #[Route('/consultations/{consultationId}/json', name: 'json', methods: ['GET'])]
     public function getJson(int $ficheId, int $consultationId): JsonResponse
     {
-        [$fiche, $consult] = $this->consultationService->getFicheAndConsultation(
+        return new JsonResponse($this->queryBus->ask(new GetConsultationJsonQuery(
             $ficheId,
             $consultationId,
             $this->getUser(),
             $this->restrictToConnectedMedecin(),
-        );
-
-        if ($fiche instanceof FicheMedicale) {
-            $ficheData = $this->ficheMedicaleService->getFicheJson($ficheId);
-
-            $consultationData = [
-                'id' => $consult->getId(),
-                'date' => $consult->getCreatedAt()?->format('Y-m-d H:i'),
-                'medecin' => $consult->getMedecin()?->getFullName(),
-                'infirmier' => $consult->getInfirmier()?->getFullName(),
-                'salle' => $consult->getSalle()?->getNom(),
-                'noteSeance' => $consult->getNoteSeance() ?? '',
-            ];
-
-            return new JsonResponse(array_merge($ficheData, ['consultation' => $consultationData, 'actes' => array_map(fn($a) => [
-                'dent' => $a->getDent(), 'type' => $a->getType(), 'description' => $a->getDescription(), 'prix' => $a->getPrix(), 'quantite' => $a->getQuantite()
-            ], $consult->getActes()->toArray())]));
-        }
-
-        return new JsonResponse($this->consultationService->getConsultationJson($fiche->getId(), $consult->getId()));
+        )));
     }
 
     #[Route('/motif', methods: ['POST'], name: 'update_motif')]
@@ -93,14 +81,13 @@ class FicheConsultationController extends AbstractController
     {
         $data = json_decode($request->getContent(), true) ?? [];
         try {
-            // updateConsultation now supports both fiche types via service
-            $this->consultationService->updateConsultation(
+            $this->commandBus->dispatch(new UpdateConsultationCommand(
                 $ficheId,
                 $consultationId,
                 $data,
                 $this->getUser(),
                 $this->restrictToConnectedMedecin(),
-            );
+            ));
         } catch (ConflictHttpException $e) {
             return new JsonResponse(['error' => $e->getMessage()], 409);
         } catch (\InvalidArgumentException $e) {
@@ -118,14 +105,13 @@ class FicheConsultationController extends AbstractController
         }
 
         try {
-            // clotureConsultation will handle both fiche types
-            $this->consultationService->clotureConsultation(
+            $this->commandBus->dispatch(new ClotureConsultationCommand(
                 $ficheId,
                 $consultationId,
                 $this->getUser(),
                 $this->restrictToConnectedMedecin(),
                 $payload,
-            );
+            ));
         } catch (ConflictHttpException $e) {
             return new JsonResponse(['error' => $e->getMessage()], 409);
         } catch (\InvalidArgumentException $e) {

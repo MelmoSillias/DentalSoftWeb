@@ -2,12 +2,12 @@
 
 namespace App\IdentityAccess\Service;
 
-use App\Billing\Entity\Transaction;
-use App\Billing\Repository\ModeDePaiementRepository;
-use App\IdentityAccess\Entity\Employe;
-use App\IdentityAccess\Entity\SalaryPayment;
-use App\IdentityAccess\Repository\EmployeRepository;
-use App\IdentityAccess\Repository\SalaryPaymentRepository;
+use App\Billing\Infrastructure\Persistence\Doctrine\Entity\Transaction;
+use App\Billing\Infrastructure\Persistence\Doctrine\Repository\ModeDePaiementRepository;
+use App\IdentityAccess\Infrastructure\Persistence\Doctrine\Entity\Employe;
+use App\IdentityAccess\Infrastructure\Persistence\Doctrine\Entity\SalaryPayment;
+use App\IdentityAccess\Infrastructure\Persistence\Doctrine\Repository\EmployeRepository;
+use App\IdentityAccess\Infrastructure\Persistence\Doctrine\Repository\SalaryPaymentRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use InvalidArgumentException;
 
@@ -488,7 +488,7 @@ class PayrollService
     {
         $result = $this->em->createQueryBuilder()
             ->select('COALESCE(SUM(d.montant), 0)')
-            ->from('App\\Billing\\Entity\\Devis', 'd')
+            ->from('App\\Billing\\Infrastructure\\Persistence\\Doctrine\\Entity\\Devis', 'd')
             ->innerJoin('d.consultation', 'c')
             ->andWhere('c.medecin = :employee')
             ->andWhere('d.type = :factureType')
@@ -582,7 +582,7 @@ class PayrollService
         Employe $employee,
         SalaryPayment $payment,
         float $paidAmount,
-        \App\Billing\Entity\ModeDePaiement $mode,
+        \App\Billing\Infrastructure\Persistence\Doctrine\Entity\ModeDePaiement $mode,
     ): Transaction {
         $description = sprintf(
             'Paiement salaire %s %s (%02d/%04d)',
@@ -608,7 +608,7 @@ class PayrollService
         return $transaction;
     }
 
-    private function resolvePaymentMethod(mixed $paymentMethodId): \App\Billing\Entity\ModeDePaiement
+    private function resolvePaymentMethod(mixed $paymentMethodId): \App\Billing\Infrastructure\Persistence\Doctrine\Entity\ModeDePaiement
     {
         $id = isset($paymentMethodId) ? (int) $paymentMethodId : 0;
         if ($id <= 0) {

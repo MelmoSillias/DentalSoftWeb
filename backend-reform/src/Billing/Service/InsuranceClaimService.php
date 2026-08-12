@@ -3,11 +3,11 @@
 namespace App\Billing\Service;
 
 use App\Billing\Dto\InsuranceClaimLineDto;
-use App\Billing\Entity\FactureAssurance;
-use App\Billing\Entity\Paiement;
-use App\Billing\Entity\Transaction;
-use App\Billing\Repository\FactureAssuranceRepository;
-use App\Billing\Repository\ModeDePaiementRepository;
+use App\Billing\Infrastructure\Persistence\Doctrine\Entity\FactureAssurance;
+use App\Billing\Infrastructure\Persistence\Doctrine\Entity\Paiement;
+use App\Billing\Infrastructure\Persistence\Doctrine\Entity\Transaction;
+use App\Billing\Infrastructure\Persistence\Doctrine\Repository\FactureAssuranceRepository;
+use App\Billing\Infrastructure\Persistence\Doctrine\Repository\ModeDePaiementRepository;
 use Doctrine\ORM\EntityManagerInterface;
 
 class InsuranceClaimService

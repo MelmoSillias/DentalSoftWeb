@@ -2,10 +2,15 @@
 
 namespace App\Scheduling\Controller\Api;
 
-use App\Scheduling\Entity\Rdv;
-use App\IdentityAccess\Entity\User;
-use App\IdentityAccess\Repository\EmployeRepository;
-use App\Scheduling\Service\RdvService;
+use App\IdentityAccess\Infrastructure\Persistence\Doctrine\Entity\User;
+use App\IdentityAccess\Infrastructure\Persistence\Doctrine\Repository\EmployeRepository;
+use App\Scheduling\Application\Command\CreateRdv\CreateRdvCommand;
+use App\Scheduling\Application\Command\HandleRdvAction\HandleRdvActionCommand;
+use App\Scheduling\Application\Query\GetRdvStats\GetRdvStatsQuery;
+use App\Scheduling\Application\Query\ListRdvs\ListRdvsQuery;
+use App\Scheduling\Infrastructure\Persistence\Doctrine\Entity\Rdv;
+use App\Shared\Application\Bus\CommandBus;
+use App\Shared\Application\Bus\QueryBus;
 use DateTime;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -15,7 +20,8 @@ use Symfony\Component\Routing\Attribute\Route;
 class RdvController extends AbstractController
 {
     public function __construct(
-        private RdvService $rdvService,
+        private CommandBus $commandBus,
+        private QueryBus $queryBus,
         private EmployeRepository $employeRepo,
     ) {
     }
@@ -33,14 +39,33 @@ class RdvController extends AbstractController
         return $request->request->all();
     }
 
+    /**
+     * @return array{0: ?int, 1: ?JsonResponse}
+     */
+    private function resolveMedecinScope(): array
+    {
+        $actor = $this->getUser();
+        $isMedecin = in_array('ROLE_MEDECIN', $actor?->getRoles() ?? [], true);
+        if (!$isMedecin) {
+            return [null, null];
+        }
+
+        $actorMedecin = $actor ? $this->employeRepo->findOneBy(['user' => $actor]) : null;
+        if (!$actorMedecin) {
+            return [null, new JsonResponse(['error' => 'Aucun médecin associé'], 403)];
+        }
+
+        return [$actorMedecin->getId(), null];
+    }
+
     #[Route('/api/rdv/create', name: 'api_rdv_create', methods: ['POST'])]
     public function createRdv(Request $request): JsonResponse
     {
         $user = $this->getUser();
-        $result = $this->rdvService->createRdv(
+        $result = $this->commandBus->dispatch(new CreateRdvCommand(
             $this->jsonPayload($request),
             $user instanceof User ? $user : null,
-        );
+        ));
         $status = $result['status'] ?? (isset($result['error']) ? 400 : 200);
 
         return new JsonResponse($result, $status);
@@ -52,12 +77,12 @@ class RdvController extends AbstractController
         $payload = $this->jsonPayload($request);
         $user = $this->getUser();
 
-        $result = $this->rdvService->handleAction(
-            $rdv,
+        $result = $this->commandBus->dispatch(new HandleRdvActionCommand(
+            (int) $rdv->getId(),
             $action,
             $payload,
             $user instanceof User ? $user : null,
-        );
+        ));
         $status = $result['status'] ?? (isset($result['error']) ? 400 : 200);
 
         return new JsonResponse($result, $status);
@@ -66,38 +91,28 @@ class RdvController extends AbstractController
     #[Route('/api/rdv/stats', name: 'api_rdv_stats', methods: ['GET'])]
     public function rdvStats(Request $request): JsonResponse
     {
-        $actor = $this->getUser();
-        $isMedecin = in_array('ROLE_MEDECIN', $actor?->getRoles() ?? [], true);
-        $actorMedecin = $isMedecin ? $this->rdvService->getMedecinForUser($actor) : null;
-        if ($isMedecin && !$actorMedecin) {
-            return new JsonResponse(['error' => 'Aucun médecin associé'], 403);
+        [$actorMedecinId, $denied] = $this->resolveMedecinScope();
+        if ($denied) {
+            return $denied;
         }
 
         $dateStr = $request->query->get('date');
         $startStr = $request->query->get('start');
         $endStr = $request->query->get('end');
-        $medecinId = $isMedecin ? $actorMedecin?->getId() : $request->query->get('medecin');
+        $medecinId = $actorMedecinId ?? ($request->query->get('medecin') !== null
+            ? (int) $request->query->get('medecin')
+            : null);
 
-        try {
-            if ($dateStr) {
-                $date = new DateTime($dateStr);
-                if ($medecinId) {
-                    $medecin = $this->employeRepo->find((int) $medecinId);
-                    $data = $medecin ? $this->rdvService->getStatsForMedecinDate($date, $medecin) : ['error' => 'Médecin introuvable', 'status' => 404];
-                } else {
-                    $data = $this->rdvService->getStatsForDate($date);
-                }
-            } elseif ($startStr && $endStr) {
-                $start = new DateTime($startStr);
-                $end = new DateTime($endStr);
-                $data = $this->rdvService->getStatsForRange($start, $end);
-            } else {
-                $data = $this->rdvService->getStatsForDate(new DateTime());
-            }
-        } catch (\Throwable) {
-            return new JsonResponse(['error' => 'Format de date invalide'], 400);
+        if ($medecinId !== null && $actorMedecinId === null && !$this->employeRepo->find($medecinId)) {
+            return new JsonResponse(['error' => 'Médecin introuvable', 'status' => 404], 404);
         }
 
+        $data = $this->queryBus->ask(new GetRdvStatsQuery(
+            date: is_string($dateStr) ? $dateStr : null,
+            start: is_string($startStr) ? $startStr : null,
+            end: is_string($endStr) ? $endStr : null,
+            medecinId: $medecinId,
+        ));
         $status = $data['status'] ?? 200;
 
         return new JsonResponse($data, $status);
@@ -106,11 +121,9 @@ class RdvController extends AbstractController
     #[Route('/api/rdvs/stats/{date}', name: 'api_rdvs_stats_by_date', methods: ['GET'])]
     public function rdvStatsByDate(string $date, Request $request): JsonResponse
     {
-        $actor = $this->getUser();
-        $isMedecin = in_array('ROLE_MEDECIN', $actor?->getRoles() ?? [], true);
-        $actorMedecin = $isMedecin ? $this->rdvService->getMedecinForUser($actor) : null;
-        if ($isMedecin && !$actorMedecin) {
-            return new JsonResponse(['error' => 'Aucun médecin associé'], 403);
+        [$actorMedecinId, $denied] = $this->resolveMedecinScope();
+        if ($denied) {
+            return $denied;
         }
 
         $dateObj = DateTime::createFromFormat('Y-m-d', $date);
@@ -118,16 +131,17 @@ class RdvController extends AbstractController
             return new JsonResponse(['error' => 'Format de date invalide'], 400);
         }
 
-        $medecinId = $isMedecin ? $actorMedecin?->getId() : $request->query->get('medecin');
-        if ($medecinId) {
-            $medecin = $this->employeRepo->find((int) $medecinId);
-            if (!$medecin) {
-                return new JsonResponse(['error' => 'Médecin introuvable'], 404);
-            }
-            $data = $this->rdvService->getStatsForMedecinDate($dateObj, $medecin);
-        } else {
-            $data = $this->rdvService->getStatsForDate($dateObj);
+        $medecinId = $actorMedecinId ?? ($request->query->get('medecin') !== null
+            ? (int) $request->query->get('medecin')
+            : null);
+        if ($medecinId !== null && $actorMedecinId === null && !$this->employeRepo->find($medecinId)) {
+            return new JsonResponse(['error' => 'Médecin introuvable'], 404);
         }
+
+        $data = $this->queryBus->ask(new GetRdvStatsQuery(
+            date: $date,
+            medecinId: $medecinId,
+        ));
 
         return new JsonResponse($data);
     }
@@ -135,11 +149,9 @@ class RdvController extends AbstractController
     #[Route('/api/rdvs/{date}', name: 'api_rdvs_by_date', methods: ['GET'])]
     public function listRdvsByDate(Request $request, string $date): JsonResponse
     {
-        $actor = $this->getUser();
-        $isMedecin = in_array('ROLE_MEDECIN', $actor?->getRoles() ?? [], true);
-        $actorMedecin = $isMedecin ? $this->rdvService->getMedecinForUser($actor) : null;
-        if ($isMedecin && !$actorMedecin) {
-            return new JsonResponse(['error' => 'Aucun médecin associé'], 403);
+        [$actorMedecinId, $denied] = $this->resolveMedecinScope();
+        if ($denied) {
+            return $denied;
         }
 
         $dateObj = DateTime::createFromFormat('Y-m-d', $date);
@@ -147,14 +159,21 @@ class RdvController extends AbstractController
             return new JsonResponse(['error' => 'Format de date invalide'], 400);
         }
 
-        $medecinId = $isMedecin ? $actorMedecin?->getId() : $request->query->get('medecin');
-        $medecin = $medecinId ? $this->employeRepo->find((int) $medecinId) : null;
-        if ($medecinId && !$medecin) {
+        $medecinId = $actorMedecinId ?? ($request->query->get('medecin') !== null
+            ? (int) $request->query->get('medecin')
+            : null);
+        if ($medecinId !== null && $actorMedecinId === null && !$this->employeRepo->find($medecinId)) {
             return new JsonResponse(['error' => 'Médecin introuvable'], 404);
         }
+
         $excludeCancelled = in_array('ROLE_RECEPTIONNISTE', $this->getUser()?->getRoles() ?? [], true);
 
-        $data = $this->rdvService->listByDate($dateObj, $medecin, $excludeCancelled);
+        $data = $this->queryBus->ask(new ListRdvsQuery(
+            mode: ListRdvsQuery::MODE_DATE,
+            date: $date,
+            medecinId: $medecinId,
+            excludeCancelled: $excludeCancelled,
+        ));
 
         return new JsonResponse($data);
     }
@@ -162,11 +181,9 @@ class RdvController extends AbstractController
     #[Route('/api/rdvs', name: 'api_rdvs_range', methods: ['GET'])]
     public function listRdvsRange(Request $request): JsonResponse
     {
-        $actor = $this->getUser();
-        $isMedecin = in_array('ROLE_MEDECIN', $actor?->getRoles() ?? [], true);
-        $actorMedecin = $isMedecin ? $this->rdvService->getMedecinForUser($actor) : null;
-        if ($isMedecin && !$actorMedecin) {
-            return new JsonResponse(['error' => 'Aucun médecin associé'], 403);
+        [$actorMedecinId, $denied] = $this->resolveMedecinScope();
+        if ($denied) {
+            return $denied;
         }
 
         $startStr = $request->query->get('start');
@@ -183,10 +200,18 @@ class RdvController extends AbstractController
             return new JsonResponse(['error' => 'Format de date invalide'], 400);
         }
 
-        $medecinId = $isMedecin ? $actorMedecin?->getId() : $request->query->get('medecin');
+        $medecinId = $actorMedecinId ?? ($request->query->get('medecin') !== null
+            ? (int) $request->query->get('medecin')
+            : null);
         $excludeCancelled = in_array('ROLE_RECEPTIONNISTE', $this->getUser()?->getRoles() ?? [], true);
 
-        $data = $this->rdvService->listByRange($start, $end, $medecinId ? (int) $medecinId : null, $excludeCancelled);
+        $data = $this->queryBus->ask(new ListRdvsQuery(
+            mode: ListRdvsQuery::MODE_RANGE,
+            start: (string) $startStr,
+            end: (string) $endStr,
+            medecinId: $medecinId,
+            excludeCancelled: $excludeCancelled,
+        ));
 
         return new JsonResponse($data);
     }
@@ -194,11 +219,9 @@ class RdvController extends AbstractController
     #[Route('/api/rdvs_pending', name: 'api_pending_rdvs_range', methods: ['GET'])]
     public function listPendingRdvsRange(Request $request): JsonResponse
     {
-        $actor = $this->getUser();
-        $isMedecin = in_array('ROLE_MEDECIN', $actor?->getRoles() ?? [], true);
-        $actorMedecin = $isMedecin ? $this->rdvService->getMedecinForUser($actor) : null;
-        if ($isMedecin && !$actorMedecin) {
-            return new JsonResponse(['error' => 'Aucun médecin associé'], 403);
+        [$actorMedecinId, $denied] = $this->resolveMedecinScope();
+        if ($denied) {
+            return $denied;
         }
 
         $startStr = $request->query->get('start');
@@ -215,9 +238,16 @@ class RdvController extends AbstractController
             return new JsonResponse(['error' => 'Format de date invalide'], 400);
         }
 
-        $medecinId = $isMedecin ? $actorMedecin?->getId() : $request->query->get('medecin');
+        $medecinId = $actorMedecinId ?? ($request->query->get('medecin') !== null
+            ? (int) $request->query->get('medecin')
+            : null);
 
-        $data = $this->rdvService->listPendingByRange($start, $end, $medecinId ? (int) $medecinId : null);
+        $data = $this->queryBus->ask(new ListRdvsQuery(
+            mode: ListRdvsQuery::MODE_PENDING,
+            start: (string) $startStr,
+            end: (string) $endStr,
+            medecinId: $medecinId,
+        ));
 
         return new JsonResponse($data);
     }
@@ -230,12 +260,18 @@ class RdvController extends AbstractController
             return new JsonResponse(['error' => 'Format de date invalide'], 400);
         }
 
-        $medecin = $this->rdvService->getMedecinForUser($this->getUser());
+        $medecin = $this->getUser()
+            ? $this->employeRepo->findOneBy(['user' => $this->getUser()])
+            : null;
         if (!$medecin) {
             return new JsonResponse(['error' => 'Aucun médecin associé'], 404);
         }
 
-        $data = $this->rdvService->listByDate($dateObj, $medecin);
+        $data = $this->queryBus->ask(new ListRdvsQuery(
+            mode: ListRdvsQuery::MODE_DATE,
+            date: $date,
+            medecinId: $medecin->getId(),
+        ));
 
         return new JsonResponse($data);
     }

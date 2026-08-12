@@ -2,17 +2,27 @@
 
 namespace App\Communication\Controller\Api;
 
-use App\Billing\Entity\Devis;
-use App\Billing\Entity\Paiement;
-use App\Billing\Repository\DevisRepository;
-use App\Billing\Repository\PaiementRepository;
+use App\Billing\Infrastructure\Persistence\Doctrine\Entity\Devis;
+use App\Billing\Infrastructure\Persistence\Doctrine\Entity\Paiement;
+use App\Billing\Infrastructure\Persistence\Doctrine\Repository\DevisRepository;
+use App\Billing\Infrastructure\Persistence\Doctrine\Repository\PaiementRepository;
+use App\Communication\Application\Command\HandleSmsDeliveryReport\HandleSmsDeliveryReportCommand;
+use App\Communication\Application\Command\ProcessQueuedSms\ProcessQueuedSmsCommand;
+use App\Communication\Application\Command\QueueManualSms\QueueManualSmsCommand;
+use App\Communication\Application\Command\QueueTemplateSms\QueueTemplateSmsCommand;
+use App\Communication\Application\Command\SaveSmsTemplates\SaveSmsTemplatesCommand;
+use App\Communication\Application\Command\TestSendSms\TestSendSmsCommand;
+use App\Communication\Application\Command\UpdateSmsQueueItem\UpdateSmsQueueItemCommand;
+use App\Communication\Application\Query\GetSmsStats\GetSmsStatsQuery;
 use App\Communication\Message\ProcessSmsQueueMessage;
-use App\Patient\Entity\Patient;
-use App\Scheduling\Entity\Rdv;
-use App\Scheduling\Repository\RdvRepository;
+use App\Patient\Infrastructure\Persistence\Doctrine\Entity\Patient;
+use App\Scheduling\Infrastructure\Persistence\Doctrine\Entity\Rdv;
+use App\Scheduling\Infrastructure\Persistence\Doctrine\Repository\RdvRepository;
 use App\Communication\Service\SmsClientResolver;
 use App\Communication\Service\SmsConfigService;
 use App\Communication\Service\SmsService;
+use App\Shared\Application\Bus\CommandBus;
+use App\Shared\Application\Bus\QueryBus;
 use DateTimeImmutable;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -56,6 +66,8 @@ final class SmsController extends AbstractController
         private readonly RdvRepository $rdvRepository,
         private readonly DevisRepository $devisRepository,
         private readonly PaiementRepository $paiementRepository,
+        private readonly QueryBus $queryBus,
+        private readonly CommandBus $commandBus,
     ) {
     }
 
@@ -110,7 +122,7 @@ final class SmsController extends AbstractController
             return $this->json(['success' => false, 'error' => 'Numéro requis'], 400);
         }
 
-        $result = $this->smsService->testSend($phone, $message);
+        $result = $this->commandBus->dispatch(new TestSendSmsCommand($phone, $message));
 
         return $this->json($result, ($result['success'] ?? false) ? 200 : 400);
     }
@@ -149,7 +161,10 @@ final class SmsController extends AbstractController
             }
         }
 
-        return $this->json($this->smsService->stats($from, $to));
+        return $this->json($this->queryBus->ask(new GetSmsStatsQuery(
+            $from?->format('Y-m-d'),
+            $to?->format('Y-m-d'),
+        )));
     }
 
     #[Route('/provider-overview', name: 'provider_overview', methods: ['GET'])]
@@ -175,12 +190,12 @@ final class SmsController extends AbstractController
             return $this->json(['success' => false, 'message' => 'Accusé de réception incomplet.'], 400);
         }
 
-        $result = $this->smsService->handleDeliveryReport(
+        $result = $this->commandBus->dispatch(new HandleSmsDeliveryReportCommand(
             SmsClientResolver::PROVIDER_AFRIKSMS,
             $resourceId,
             $code,
-            $message
-        );
+            $message,
+        ));
 
         return $this->json($result, ($result['success'] ?? false) ? 200 : 404);
     }
@@ -230,7 +245,7 @@ final class SmsController extends AbstractController
             }
         }
 
-        $result = $this->smsService->updateQueueItem($id, $action, $sendAt);
+        $result = $this->commandBus->dispatch(new UpdateSmsQueueItemCommand($id, $action, $sendAt));
         $statusCode = (int) ($result['statusCode'] ?? (($result['success'] ?? false) ? 200 : 400));
         unset($result['statusCode']);
 
@@ -249,9 +264,7 @@ final class SmsController extends AbstractController
         $payload = json_decode($request->getContent(), true) ?? [];
         $templates = isset($payload['templates']) && is_array($payload['templates']) ? $payload['templates'] : [];
 
-        $this->smsService->saveTemplates($templates);
-
-        return $this->json(['success' => true]);
+        return $this->json($this->commandBus->dispatch(new SaveSmsTemplatesCommand($templates)));
     }
 
     #[Route('/templates/preview', name: 'templates_preview', methods: ['POST'])]
@@ -285,7 +298,6 @@ final class SmsController extends AbstractController
         $phone = trim((string) ($payload['phone'] ?? ''));
         $message = trim((string) ($payload['message'] ?? ''));
         $patientId = isset($payload['patientId']) ? (int) $payload['patientId'] : null;
-        $patient = $this->smsService->findPatient($patientId);
         $recurrence = (string) ($payload['recurrence'] ?? 'none');
         $sendAtRaw = $payload['sendAt'] ?? null;
         $sendAt = null;
@@ -309,10 +321,10 @@ final class SmsController extends AbstractController
                 continue;
             }
 
-            $result = $this->smsService->queueManual(
+            $result = $this->commandBus->dispatch(new QueueManualSmsCommand(
                 $phone,
                 $message,
-                $patient,
+                $patientId,
                 'manual',
                 'manual',
                 $itemSendAt,
@@ -320,8 +332,8 @@ final class SmsController extends AbstractController
                     'recurrence' => $recurrence,
                     'occurrenceIndex' => $index + 1,
                     'occurrenceCount' => count($dates),
-                ]
-            );
+                ],
+            ));
 
             if (($result['success'] ?? false) !== true) {
                 return $this->json($result, 400);
@@ -356,7 +368,7 @@ final class SmsController extends AbstractController
             return $this->json(['success' => true, 'queued' => true]);
         }
 
-        $result = $this->smsService->processQueue($limit);
+        $result = $this->commandBus->dispatch(new ProcessQueuedSmsCommand($limit));
 
         return $this->json(['success' => true] + $result);
     }
@@ -386,17 +398,24 @@ final class SmsController extends AbstractController
         ];
 
         if (!empty($payload['message']) && is_string($payload['message'])) {
-            $result = $this->smsService->queueManual(
+            $result = $this->commandBus->dispatch(new QueueManualSmsCommand(
                 (string) $patient->getTelephone(),
                 $payload['message'],
-                $patient,
+                $patient->getId(),
                 'rappel de rdv',
                 'appointment',
                 null,
-                ['rdvId' => $rdv->getId()]
-            );
+                ['rdvId' => $rdv->getId()],
+            ));
         } else {
-            $result = $this->smsService->queueTemplateForPatient($patient, 'appointment_reminder', $variables, 'appointment', null, ['rdvId' => $rdv->getId()]);
+            $result = $this->commandBus->dispatch(new QueueTemplateSmsCommand(
+                (int) $patient->getId(),
+                'appointment_reminder',
+                $variables,
+                'appointment',
+                null,
+                ['rdvId' => $rdv->getId()],
+            ));
         }
 
         return $this->json($result, ($result['success'] ?? false) ? 201 : 400);
@@ -431,7 +450,14 @@ final class SmsController extends AbstractController
             'cabinet_name' => (string) ($payload['cabinet_name'] ?? 'ORODENT'),
         ];
 
-        $result = $this->smsService->queueTemplateForPatient($patient, 'appointment_reminder', $variables, 'appointment-auto', $sendAt, ['rdvId' => $rdv->getId()]);
+        $result = $this->commandBus->dispatch(new QueueTemplateSmsCommand(
+            (int) $patient->getId(),
+            'appointment_reminder',
+            $variables,
+            'appointment-auto',
+            $sendAt,
+            ['rdvId' => $rdv->getId()],
+        ));
 
         return $this->json($result, ($result['success'] ?? false) ? 201 : 400);
     }
@@ -457,7 +483,12 @@ final class SmsController extends AbstractController
             'cabinet_name' => (string) ($payload['cabinet_name'] ?? 'ORODENT'),
         ];
 
-        $result = $this->smsService->queueTemplateForPatient($patient, 'invoice', $variables, 'invoice');
+        $result = $this->commandBus->dispatch(new QueueTemplateSmsCommand(
+            (int) $patient->getId(),
+            'invoice',
+            $variables,
+            'invoice',
+        ));
 
         return $this->json($result, ($result['success'] ?? false) ? 201 : 400);
     }
@@ -483,7 +514,12 @@ final class SmsController extends AbstractController
             'cabinet_name' => (string) ($payload['cabinet_name'] ?? 'ORODENT'),
         ];
 
-        $result = $this->smsService->queueTemplateForPatient($patient, 'receipt', $variables, 'receipt');
+        $result = $this->commandBus->dispatch(new QueueTemplateSmsCommand(
+            (int) $patient->getId(),
+            'receipt',
+            $variables,
+            'receipt',
+        ));
 
         return $this->json($result, ($result['success'] ?? false) ? 201 : 400);
     }
@@ -520,4 +556,3 @@ final class SmsController extends AbstractController
             ?? $paiement->getFactureAssurance()?->getPatient();
     }
 }
-

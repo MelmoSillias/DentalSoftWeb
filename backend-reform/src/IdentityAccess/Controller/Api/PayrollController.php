@@ -2,7 +2,11 @@
 
 namespace App\IdentityAccess\Controller\Api;
 
+use App\IdentityAccess\Application\Command\CreatePayroll\CreatePayrollCommand;
+use App\IdentityAccess\Application\Query\ListPayrolls\ListPayrollsQuery;
 use App\IdentityAccess\Service\PayrollService;
+use App\Shared\Application\Bus\CommandBus;
+use App\Shared\Application\Bus\QueryBus;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -11,8 +15,11 @@ use Symfony\Component\Routing\Attribute\Route;
 #[Route('/api/payrolls')]
 class PayrollController extends AbstractController
 {
-    public function __construct(private PayrollService $payrollService)
-    {
+    public function __construct(
+        private PayrollService $payrollService,
+        private QueryBus $queryBus,
+        private CommandBus $commandBus,
+    ) {
     }
 
     #[Route('', name: 'api_payrolls_list', methods: ['GET'])]
@@ -25,13 +32,13 @@ class PayrollController extends AbstractController
             $month = $request->query->get('month');
             $year = $request->query->get('year');
 
-            $result = $this->payrollService->listPayrolls(
+            $result = $this->queryBus->ask(new ListPayrollsQuery(
                 $start,
                 $length,
                 $employeeId !== null && $employeeId !== '' ? (int) $employeeId : null,
                 $month !== null && $month !== '' ? (int) $month : null,
                 $year !== null && $year !== '' ? (int) $year : null,
-            );
+            ));
 
             return $this->json([
                 'draw' => $request->query->getInt('draw', 1),
@@ -68,7 +75,7 @@ class PayrollController extends AbstractController
     {
         try {
             $payload = json_decode($request->getContent(), true) ?? [];
-            $result = $this->payrollService->createSalaryPayment($payload);
+            $result = $this->commandBus->dispatch(new CreatePayrollCommand($payload));
 
             return $this->json($result, 201);
         } catch (\InvalidArgumentException $exception) {

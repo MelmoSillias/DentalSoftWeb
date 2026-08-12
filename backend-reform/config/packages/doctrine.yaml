@@ -21,57 +21,59 @@ doctrine:
             Billing:
                 type: attribute
                 is_bundle: false
-                dir: '%kernel.project_dir%/src/Billing/Entity'
-                prefix: 'App\Billing\Entity'
+                dir: '%kernel.project_dir%/src/Billing/Infrastructure/Persistence/Doctrine/Entity'
+                prefix: 'App\Billing\Infrastructure\Persistence\Doctrine\Entity'
                 alias: Billing
             CareDelivery:
                 type: attribute
                 is_bundle: false
-                dir: '%kernel.project_dir%/src/CareDelivery/Entity'
-                prefix: 'App\CareDelivery\Entity'
+                dir: '%kernel.project_dir%/src/CareDelivery/Infrastructure/Persistence/Doctrine/Entity'
+                prefix: 'App\CareDelivery\Infrastructure\Persistence\Doctrine\Entity'
                 alias: CareDelivery
             ClinicalRecord:
                 type: attribute
                 is_bundle: false
-                dir: '%kernel.project_dir%/src/ClinicalRecord/Entity'
-                prefix: 'App\ClinicalRecord\Entity'
+                dir: '%kernel.project_dir%/src/ClinicalRecord/Infrastructure/Persistence/Doctrine/Entity'
+                prefix: 'App\ClinicalRecord\Infrastructure\Persistence\Doctrine\Entity'
                 alias: ClinicalRecord
             Communication:
                 type: attribute
                 is_bundle: false
-                dir: '%kernel.project_dir%/src/Communication/Entity'
-                prefix: 'App\Communication\Entity'
+                dir: '%kernel.project_dir%/src/Communication/Infrastructure/Persistence/Doctrine/Entity'
+                prefix: 'App\Communication\Infrastructure\Persistence\Doctrine\Entity'
                 alias: Communication
             IdentityAccess:
                 type: attribute
                 is_bundle: false
-                dir: '%kernel.project_dir%/src/IdentityAccess/Entity'
-                prefix: 'App\IdentityAccess\Entity'
+                dir: '%kernel.project_dir%/src/IdentityAccess/Infrastructure/Persistence/Doctrine/Entity'
+                prefix: 'App\IdentityAccess\Infrastructure\Persistence\Doctrine\Entity'
                 alias: IdentityAccess
             Inventory:
                 type: attribute
                 is_bundle: false
-                dir: '%kernel.project_dir%/src/Inventory/Entity'
-                prefix: 'App\Inventory\Entity'
+                dir: '%kernel.project_dir%/src/Inventory/Infrastructure/Persistence/Doctrine/Entity'
+                prefix: 'App\Inventory\Infrastructure\Persistence\Doctrine\Entity'
                 alias: Inventory
             Patient:
                 type: attribute
                 is_bundle: false
-                dir: '%kernel.project_dir%/src/Patient/Entity'
-                prefix: 'App\Patient\Entity'
+                dir: '%kernel.project_dir%/src/Patient/Infrastructure/Persistence/Doctrine/Entity'
+                prefix: 'App\Patient\Infrastructure\Persistence\Doctrine\Entity'
                 alias: Patient
             Scheduling:
                 type: attribute
                 is_bundle: false
-                dir: '%kernel.project_dir%/src/Scheduling/Entity'
-                prefix: 'App\Scheduling\Entity'
+                dir: '%kernel.project_dir%/src/Scheduling/Infrastructure/Persistence/Doctrine/Entity'
+                prefix: 'App\Scheduling\Infrastructure\Persistence\Doctrine\Entity'
                 alias: Scheduling
             Settings:
                 type: attribute
                 is_bundle: false
-                dir: '%kernel.project_dir%/src/Settings/Entity'
-                prefix: 'App\Settings\Entity'
+                dir: '%kernel.project_dir%/src/Settings/Infrastructure/Persistence/Doctrine/Entity'
+                prefix: 'App\Settings\Infrastructure\Persistence\Doctrine\Entity'
                 alias: Settings
+            # When a module relocates ORM entities to Infrastructure/Persistence/Doctrine/Entity,
+            # add a mapping here and remove the legacy Entity mapping for that module (never both).
         controller_resolver:
             auto_mapping: false
 

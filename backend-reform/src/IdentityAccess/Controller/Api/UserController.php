@@ -2,9 +2,16 @@
 
 namespace App\IdentityAccess\Controller\Api;
 
-use App\IdentityAccess\Entity\User;
-use App\IdentityAccess\Service\UserManagementService;
+use App\IdentityAccess\Application\Command\CreateUser\CreateUserCommand;
+use App\IdentityAccess\Application\Command\DeleteUser\DeleteUserCommand;
+use App\IdentityAccess\Application\Command\ResetUserPassword\ResetUserPasswordCommand;
+use App\IdentityAccess\Application\Command\UpdateUser\UpdateUserCommand;
+use App\IdentityAccess\Application\Query\ListUsers\ListUsersQuery;
+use App\IdentityAccess\Infrastructure\Persistence\Doctrine\Entity\User;
 use App\IdentityAccess\Service\EmployeeService;
+use App\IdentityAccess\Service\UserManagementService;
+use App\Shared\Application\Bus\CommandBus;
+use App\Shared\Application\Bus\QueryBus;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -15,6 +22,8 @@ class UserController extends AbstractController
     public function __construct(
         private UserManagementService $userService,
         private EmployeeService $employeeService,
+        private CommandBus $commandBus,
+        private QueryBus $queryBus,
     ) {
     }
 
@@ -35,10 +44,10 @@ class UserController extends AbstractController
     public function createUser(Request $request): JsonResponse
     {
         $actor = $this->getUser();
-        $result = $this->userService->createUser(
+        $result = $this->commandBus->dispatch(new CreateUserCommand(
             $this->jsonPayload($request),
             $actor instanceof User ? $actor : null,
-        );
+        ));
         $status = $result['status'] ?? (isset($result['error']) ? 400 : 200);
 
         return new JsonResponse($result, $status);
@@ -46,8 +55,8 @@ class UserController extends AbstractController
 
     #[Route('/api/users', name: 'api_users_list', methods: ['GET'])]
     public function listUsers(Request $request): JsonResponse
-    { 
-        $result = $this->userService->getUserList();  
+    {
+        $result = $this->queryBus->ask(new ListUsersQuery());
 
         return new JsonResponse([
             'data' => $result,
@@ -70,10 +79,10 @@ class UserController extends AbstractController
 
         $actor = $this->getUser();
 
-        $result = $this->userService->updateUser(
+        $result = $this->commandBus->dispatch(new UpdateUserCommand(
             $payload,
             $actor instanceof User ? $actor : null,
-        );
+        ));
         $status = $result['status'] ?? (isset($result['error']) ? 400 : 200);
 
         return new JsonResponse($result, $status);
@@ -87,10 +96,10 @@ class UserController extends AbstractController
 
         $actor = $this->getUser();
 
-        $result = $this->userService->resetPassword(
+        $result = $this->commandBus->dispatch(new ResetUserPasswordCommand(
             $payload,
             $actor instanceof User ? $actor : null,
-        );
+        ));
         $status = $result['status'] ?? (isset($result['error']) ? 400 : 200);
 
         return new JsonResponse($result, $status);
@@ -104,10 +113,10 @@ class UserController extends AbstractController
 
         $actor = $this->getUser();
 
-        $result = $this->userService->deleteUser(
+        $result = $this->commandBus->dispatch(new DeleteUserCommand(
             $payload,
             $actor instanceof User ? $actor : null,
-        );
+        ));
         $status = $result['status'] ?? (isset($result['error']) ? 400 : 200);
 
         return new JsonResponse($result, $status);

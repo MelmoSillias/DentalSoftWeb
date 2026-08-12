@@ -2,7 +2,9 @@
 
 namespace App\Reporting\Controller\Api\Report;
 
+use App\Reporting\Application\Query\GetGlobalPatients\GetGlobalPatientsQuery;
 use App\Reporting\Service\ReportService;
+use App\Shared\Application\Bus\QueryBus;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -13,12 +15,13 @@ class PatientsController extends AbstractController
 {
     public function __construct(
         private ReportService $reportService,
+        private QueryBus $queryBus,
     ) {}
 
     #[Route('/global/patients', name: 'global_stats_patients', methods: ['GET'])]
     public function globalPatients(): JsonResponse
     {
-        return $this->json($this->reportService->globalPatients());
+        return $this->json($this->queryBus->ask(new GetGlobalPatientsQuery()));
     }
 
     #[Route('/global/patient-referrals', name: 'global_patient_referrals', methods: ['GET'])]

@@ -92,6 +92,13 @@ const grandTotal = computed(() => Number(crossTableData.value?.grandTotal || 0))
 
 const formatFcfa = (value) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF' }).format(Number(value || 0));
 
+const formatCellAmount = (week, weekday, value) => {
+    if (!isClickableDayCell(week, weekday)) {
+        return '--';
+    }
+    return formatFcfa(value);
+};
+
 const formatWeekRange = (week) => {
     if (!week?.startDate || !week?.endDate) {
         return '';
@@ -152,6 +159,21 @@ const toIsoDate = (date) => {
 };
 
 const isClickableDayCell = (week, weekday) => Boolean(getCellDate(week, weekday));
+
+const getCellMonthEdgeTag = (week, weekday) => {
+    const date = getCellDate(week, weekday);
+    if (!date) {
+        return '';
+    }
+    const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+    if (date.getDate() === 1) {
+        return '1er';
+    }
+    if (date.getDate() === lastDay) {
+        return 'Fin';
+    }
+    return '';
+};
 
 const openDayOverview = (week, weekday) => {
     const date = getCellDate(week, weekday);
@@ -240,8 +262,14 @@ const openDayOverview = (week, weekday) => {
                                 @dblclick="openDayOverview(weeks[index], row.weekday)"
                             >
                                 <div class="relative flex min-h-[5.5rem] items-center justify-center">
-                                    <span class="text-center text-base font-medium leading-snug">{{ formatFcfa(value) }}</span>
-                                    <span class="absolute bottom-0 right-0 text-xs font-semibold uppercase tracking-wide text-surface-500 dark:text-surface-400">
+                                    <span
+                                        v-if="getCellMonthEdgeTag(weeks[index], row.weekday)"
+                                        class="absolute left-0 top-0 rounded border border-primary-300 bg-primary-50 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary-700 dark:border-primary-700 dark:bg-primary-950/40 dark:text-primary-300"
+                                    >
+                                        {{ getCellMonthEdgeTag(weeks[index], row.weekday) }}
+                                    </span>
+                                    <span class="text-center text-lg font-bold leading-snug">{{ formatCellAmount(weeks[index], row.weekday, value) }}</span>
+                                    <span class="absolute right-0 top-0 text-xs font-semibold uppercase tracking-wide text-surface-500 dark:text-surface-400">
                                         {{ formatCellDate(weeks[index], row.weekday) }}
                                     </span>
                                 </div>

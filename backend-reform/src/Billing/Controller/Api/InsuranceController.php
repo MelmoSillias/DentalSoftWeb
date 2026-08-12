@@ -2,10 +2,13 @@
 
 namespace App\Billing\Controller\Api;
 
-use App\Billing\Entity\Assurance;
-use App\Billing\Repository\AssuranceRepository;
+use App\Billing\Application\Command\PayPatientShare\PayPatientShareCommand;
+use App\Billing\Application\Query\ListFacturesAssurance\ListFacturesAssuranceQuery;
+use App\Billing\Infrastructure\Persistence\Doctrine\Entity\Assurance;
+use App\Billing\Infrastructure\Persistence\Doctrine\Repository\AssuranceRepository;
 use App\Billing\Service\IntegratedInsuranceCatalog;
-use App\Billing\Service\InsuranceClaimService;
+use App\Shared\Application\Bus\CommandBus;
+use App\Shared\Application\Bus\QueryBus;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -16,9 +19,10 @@ class InsuranceController extends AbstractController
 {
     public function __construct(
         private AssuranceRepository $assuranceRepository,
-        private InsuranceClaimService $insuranceClaimService,
         private IntegratedInsuranceCatalog $catalog,
         private EntityManagerInterface $em,
+        private QueryBus $queryBus,
+        private CommandBus $commandBus,
     ) {
     }
 
@@ -97,7 +101,9 @@ class InsuranceController extends AbstractController
         $status = $request->query->get('status');
 
         return $this->json([
-            'data' => $this->insuranceClaimService->listClaims(is_string($status) ? $status : null),
+            'data' => $this->queryBus->ask(new ListFacturesAssuranceQuery(
+                status: is_string($status) ? $status : null,
+            )),
         ]);
     }
 
@@ -118,7 +124,7 @@ class InsuranceController extends AbstractController
             }
         }
 
-        $result = $this->insuranceClaimService->payPatientShare($id, $modeId, $amount, $date);
+        $result = $this->commandBus->dispatch(new PayPatientShareCommand($id, $modeId, $amount, $date));
 
         if (isset($result['error'])) {
             return $this->json(['error' => $result['error']], $result['status'] ?? 400);

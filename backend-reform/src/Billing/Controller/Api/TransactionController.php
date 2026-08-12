@@ -2,7 +2,13 @@
 
 namespace App\Billing\Controller\Api;
 
-use App\Billing\Service\FinanceService;
+use App\Billing\Application\Command\CreateTransaction\CreateTransactionCommand;
+use App\Billing\Application\Command\DeleteTransaction\DeleteTransactionCommand;
+use App\Billing\Application\Command\TransferInterCompte\TransferInterCompteCommand;
+use App\Billing\Application\Command\UpdateTransactionValidation\UpdateTransactionValidationCommand;
+use App\Billing\Application\Query\GetTransactions\GetTransactionsQuery;
+use App\Shared\Application\Bus\CommandBus;
+use App\Shared\Application\Bus\QueryBus;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -11,7 +17,8 @@ use Symfony\Component\Routing\Attribute\Route;
 class TransactionController extends AbstractController
 {
     public function __construct(
-        private FinanceService $financeService,
+        private QueryBus $queryBus,
+        private CommandBus $commandBus,
     ) {}
 
     #[Route('/api/transactions', name: 'api_transactions_list', methods: ['GET'])]
@@ -31,8 +38,7 @@ class TransactionController extends AbstractController
             return $this->json(['error' => 'Période invalide.'], 400);
         }
 
-
-        $transactions = $this->financeService->getTransactionsByDateRange($startDate, $endDate);
+        $transactions = $this->queryBus->ask(new GetTransactionsQuery($startDate, $endDate));
 
         return $this->json($transactions);
     }
@@ -45,14 +51,14 @@ class TransactionController extends AbstractController
             return $this->json(['error' => 'Données requises'], 400);
         }
 
-        $result = $this->financeService->createTransaction(
+        $result = $this->commandBus->dispatch(new CreateTransactionCommand(
             $data['type'],
             (float) $data['montant'],
             $data['description'] ?? null,
             new \DateTime($data['date']),
             (int) $data['modeId'],
             $data['motif'] ?? null,
-        );
+        ));
 
         if (isset($result['error'])) {
             return $this->json(['error' => $result['error']], $result['status'] ?? 400);
@@ -75,7 +81,12 @@ class TransactionController extends AbstractController
             }
         }
 
-        $result = $this->financeService->updateTransactionValidationStatus($id, 'validated', null, $validatedAt);
+        $result = $this->commandBus->dispatch(new UpdateTransactionValidationCommand(
+            $id,
+            'validated',
+            null,
+            $validatedAt,
+        ));
 
         if (isset($result['error'])) {
             return $this->json(['error' => $result['error']], $result['status'] ?? 400);
@@ -88,7 +99,11 @@ class TransactionController extends AbstractController
     public function rejectTransaction(int $id, Request $request): JsonResponse
     {
         $data = json_decode($request->getContent(), true) ?: [];
-        $result = $this->financeService->updateTransactionValidationStatus($id, 'rejected', $data['comment'] ?? null);
+        $result = $this->commandBus->dispatch(new UpdateTransactionValidationCommand(
+            $id,
+            'rejected',
+            $data['comment'] ?? null,
+        ));
 
         if (isset($result['error'])) {
             return $this->json(['error' => $result['error']], $result['status'] ?? 400);
@@ -100,7 +115,7 @@ class TransactionController extends AbstractController
     #[Route('/api/transactions/{id}', name: 'api_transaction_delete', methods: ['DELETE'])]
     public function deleteTransaction(int $id): JsonResponse
     {
-        $result = $this->financeService->deleteTransaction($id);
+        $result = $this->commandBus->dispatch(new DeleteTransactionCommand($id));
 
         if (isset($result['error'])) {
             return $this->json(['error' => $result['error']], $result['status'] ?? 400);
@@ -108,8 +123,6 @@ class TransactionController extends AbstractController
 
         return $this->json(['message' => 'Transaction supprimée avec succès']);
     }
-
-
 
     #[Route('/api/transactions/intercompte', name: 'api_transactions_intercompte', methods: ['POST'])]
     public function intercompte(Request $request): JsonResponse
@@ -119,13 +132,13 @@ class TransactionController extends AbstractController
             return $this->json(['error' => 'Données requises'], 400);
         }
 
-        $result = $this->financeService->transferInterCompte(
-            $data['fromId'],
-            $data['toId'],
-            $data['montant'],
-            $data['motif'],
-            new \DateTime($data['date'])
-        );
+        $result = $this->commandBus->dispatch(new TransferInterCompteCommand(
+            (int) $data['fromId'],
+            (int) $data['toId'],
+            (float) $data['montant'],
+            (string) $data['motif'],
+            new \DateTime($data['date']),
+        ));
 
         if (isset($result['error'])) {
             return $this->json(['error' => $result['error']], $result['status'] ?? 400);

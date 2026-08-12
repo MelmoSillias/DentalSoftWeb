@@ -2,18 +2,18 @@
 
 namespace App\Focus\Service;
  
-use App\Billing\Entity\Facture;
-use App\Billing\Entity\Paiement;
-use App\Billing\Entity\Transaction;
-use App\Billing\Repository\TransactionRepository;
-use App\CareDelivery\Entity\Consultation;
-use App\CareDelivery\Repository\ActeMedicalRepository;
-use App\CareDelivery\Repository\ConsultationRepository;
-use App\IdentityAccess\Entity\Employe;
-use App\Patient\Repository\PatientRepository;
+use App\Billing\Infrastructure\Persistence\Doctrine\Entity\Facture;
+use App\Billing\Infrastructure\Persistence\Doctrine\Entity\Paiement;
+use App\Billing\Infrastructure\Persistence\Doctrine\Entity\Transaction;
+use App\Billing\Infrastructure\Persistence\Doctrine\Repository\TransactionRepository;
+use App\CareDelivery\Infrastructure\Persistence\Doctrine\Entity\Consultation;
+use App\CareDelivery\Infrastructure\Persistence\Doctrine\Repository\ActeMedicalRepository;
+use App\CareDelivery\Infrastructure\Persistence\Doctrine\Repository\ConsultationRepository;
+use App\IdentityAccess\Infrastructure\Persistence\Doctrine\Entity\Employe;
+use App\Patient\Infrastructure\Persistence\Doctrine\Repository\PatientRepository;
 use App\Reporting\Service\ReportService;
-use App\Scheduling\Entity\Rdv;
-use App\Scheduling\Repository\RdvRepository; 
+use App\Scheduling\Infrastructure\Persistence\Doctrine\Entity\Rdv;
+use App\Scheduling\Infrastructure\Persistence\Doctrine\Repository\RdvRepository; 
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Contracts\Cache\CacheInterface;
 use Symfony\Contracts\Cache\ItemInterface;

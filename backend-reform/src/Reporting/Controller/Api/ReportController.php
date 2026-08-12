@@ -2,7 +2,8 @@
 
 namespace App\Reporting\Controller\Api;
 
-use App\Reporting\Service\ReportService;
+use App\Reporting\Application\Query\GetReport\GetReportQuery;
+use App\Shared\Application\Bus\QueryBus;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -11,7 +12,7 @@ use Symfony\Component\Routing\Attribute\Route;
 class ReportController extends AbstractController
 {
     public function __construct(
-        private ReportService $reportService,
+        private QueryBus $queryBus,
     ) {
     }
 
@@ -23,7 +24,12 @@ class ReportController extends AbstractController
         $customStart = $request->query->get('start');
         $customEnd = $request->query->get('end');
 
-        $data = $this->reportService->getReportsData($period, $customStart, $customEnd, $employeeId);
+        $data = $this->queryBus->ask(new GetReportQuery(
+            period: (string) $period,
+            start: $customStart !== null ? (string) $customStart : null,
+            end: $customEnd !== null ? (string) $customEnd : null,
+            employeeId: $employeeId,
+        ));
 
         return new JsonResponse($data);
     }

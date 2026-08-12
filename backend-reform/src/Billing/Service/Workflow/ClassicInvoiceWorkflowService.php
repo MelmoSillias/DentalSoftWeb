@@ -2,15 +2,15 @@
 
 namespace App\Billing\Service\Workflow;
 
-use App\Billing\Entity\Devis;
-use App\Billing\Entity\Facture;
-use App\Billing\Entity\Paiement;
-use App\Billing\Entity\Transaction;
-use App\Billing\Repository\DevisRepository;
-use App\Billing\Repository\FactureRepository;
-use App\Billing\Repository\ModeDePaiementRepository;
-use App\Billing\Repository\PaiementRepository;
-use App\CareDelivery\Entity\Consultation;
+use App\Billing\Infrastructure\Persistence\Doctrine\Entity\Devis;
+use App\Billing\Infrastructure\Persistence\Doctrine\Entity\Facture;
+use App\Billing\Infrastructure\Persistence\Doctrine\Entity\Paiement;
+use App\Billing\Infrastructure\Persistence\Doctrine\Entity\Transaction;
+use App\Billing\Infrastructure\Persistence\Doctrine\Repository\DevisRepository;
+use App\Billing\Infrastructure\Persistence\Doctrine\Repository\FactureRepository;
+use App\Billing\Infrastructure\Persistence\Doctrine\Repository\ModeDePaiementRepository;
+use App\Billing\Infrastructure\Persistence\Doctrine\Repository\PaiementRepository;
+use App\CareDelivery\Infrastructure\Persistence\Doctrine\Entity\Consultation;
 use DateTimeInterface;
 use Doctrine\ORM\EntityManagerInterface;
 

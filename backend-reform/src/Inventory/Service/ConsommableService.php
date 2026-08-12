@@ -3,14 +3,14 @@
 namespace App\Inventory\Service;
 
 use App\Communication\Service\NotificationRecipientResolver;
-use App\IdentityAccess\Entity\Employe;
-use App\IdentityAccess\Entity\User;
+use App\IdentityAccess\Infrastructure\Persistence\Doctrine\Entity\Employe;
+use App\IdentityAccess\Infrastructure\Persistence\Doctrine\Entity\User;
 use App\Shared\Event\EntityActionEvent;
-use App\Inventory\Entity\Consommable;
-use App\Inventory\Entity\Stock;
-use App\Inventory\Repository\ConsommableRepository;
-use App\Inventory\Repository\StockRepository;
-use App\IdentityAccess\Repository\EmployeRepository;
+use App\Inventory\Infrastructure\Persistence\Doctrine\Entity\Consommable;
+use App\Inventory\Infrastructure\Persistence\Doctrine\Entity\Stock;
+use App\Inventory\Infrastructure\Persistence\Doctrine\Repository\ConsommableRepository;
+use App\Inventory\Infrastructure\Persistence\Doctrine\Repository\StockRepository;
+use App\IdentityAccess\Infrastructure\Persistence\Doctrine\Repository\EmployeRepository;
 use DateTime;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;

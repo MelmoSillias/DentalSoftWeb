@@ -1,0 +1,346 @@
+<?php
+
+namespace App\IdentityAccess\Infrastructure\Persistence\Doctrine\Entity;
+
+use App\Billing\Infrastructure\Persistence\Doctrine\Entity\ModeDePaiement;
+use App\Billing\Infrastructure\Persistence\Doctrine\Entity\Transaction;
+use App\IdentityAccess\Infrastructure\Persistence\Doctrine\Repository\SalaryPaymentRepository;
+use Doctrine\DBAL\Types\Types;
+use Doctrine\ORM\Mapping as ORM;
+
+#[ORM\Entity(repositoryClass: SalaryPaymentRepository::class)]
+class SalaryPayment
+{
+    #[ORM\Id]
+    #[ORM\GeneratedValue]
+    #[ORM\Column(type: Types::INTEGER)]
+    private ?int $id = null;
+
+    #[ORM\ManyToOne(inversedBy: 'salaryPayments')]
+    #[ORM\JoinColumn(nullable: false)]
+    private ?Employe $employe = null;
+
+    #[ORM\Column(type: Types::SMALLINT)]
+    private int $year;
+
+    #[ORM\Column(type: Types::SMALLINT)]
+    private int $month;
+
+    #[ORM\Column(type: Types::DATE_MUTABLE)]
+    private ?\DateTimeInterface $periodStart = null;
+
+    #[ORM\Column(type: Types::DATE_MUTABLE)]
+    private ?\DateTimeInterface $periodEnd = null;
+
+    #[ORM\Column(type: Types::DECIMAL, precision: 12, scale: 2, nullable: true)]
+    private ?string $baseAmount = null;
+
+    #[ORM\Column(length: 32)]
+    private string $salaryTypeSnapshot = 'non_defini';
+
+    #[ORM\Column(type: Types::DECIMAL, precision: 10, scale: 2, nullable: true)]
+    private ?string $salaryValueSnapshot = null;
+
+    #[ORM\Column(length: 32, options: ['default' => 'mensuel'])]
+    private string $frequenceSnapshot = 'mensuel';
+
+    #[ORM\Column(type: Types::DATE_MUTABLE, nullable: true)]
+    private ?\DateTimeInterface $workedDay = null;
+
+    #[ORM\Column(length: 32, options: ['default' => 'aucune'])]
+    private string $primeTypeSnapshot = 'aucune';
+
+    #[ORM\Column(type: Types::DECIMAL, precision: 10, scale: 2, nullable: true)]
+    private ?string $primeValueSnapshot = null;
+
+    #[ORM\Column(type: Types::DECIMAL, precision: 12, scale: 2, options: ['default' => '0'])]
+    private string $baseSalaryAmount = '0';
+
+    #[ORM\Column(type: Types::DECIMAL, precision: 12, scale: 2, options: ['default' => '0'])]
+    private string $primeAmount = '0';
+
+    #[ORM\Column(type: Types::DECIMAL, precision: 12, scale: 2)]
+    private string $calculatedAmount = '0';
+
+    #[ORM\Column(type: Types::DECIMAL, precision: 12, scale: 2)]
+    private string $paidAmount = '0';
+
+    #[ORM\Column(type: Types::DATE_MUTABLE)]
+    private ?\DateTimeInterface $paidAt = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $note = null;
+
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(nullable: true)]
+    private ?ModeDePaiement $modeDePaiement = null;
+
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?Transaction $transaction = null;
+
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
+    private ?\DateTimeImmutable $createdAt = null;
+
+    public function __construct()
+    {
+        $this->createdAt = new \DateTimeImmutable();
+    }
+
+    public function getId(): ?int
+    {
+        return $this->id;
+    }
+
+    public function getEmploye(): ?Employe
+    {
+        return $this->employe;
+    }
+
+    public function setEmploye(?Employe $employe): self
+    {
+        $this->employe = $employe;
+
+        return $this;
+    }
+
+    public function getYear(): int
+    {
+        return $this->year;
+    }
+
+    public function setYear(int $year): self
+    {
+        $this->year = $year;
+
+        return $this;
+    }
+
+    public function getMonth(): int
+    {
+        return $this->month;
+    }
+
+    public function setMonth(int $month): self
+    {
+        $this->month = $month;
+
+        return $this;
+    }
+
+    public function getPeriodStart(): ?\DateTimeInterface
+    {
+        return $this->periodStart;
+    }
+
+    public function setPeriodStart(\DateTimeInterface $periodStart): self
+    {
+        $this->periodStart = $periodStart;
+
+        return $this;
+    }
+
+    public function getPeriodEnd(): ?\DateTimeInterface
+    {
+        return $this->periodEnd;
+    }
+
+    public function setPeriodEnd(\DateTimeInterface $periodEnd): self
+    {
+        $this->periodEnd = $periodEnd;
+
+        return $this;
+    }
+
+    public function getBaseAmount(): ?float
+    {
+        return $this->baseAmount === null ? null : (float) $this->baseAmount;
+    }
+
+    public function setBaseAmount(?float $baseAmount): self
+    {
+        $this->baseAmount = $baseAmount === null ? null : (string) $baseAmount;
+
+        return $this;
+    }
+
+    public function getSalaryTypeSnapshot(): string
+    {
+        return $this->salaryTypeSnapshot;
+    }
+
+    public function setSalaryTypeSnapshot(string $salaryTypeSnapshot): self
+    {
+        $this->salaryTypeSnapshot = $salaryTypeSnapshot;
+
+        return $this;
+    }
+
+    public function getSalaryValueSnapshot(): ?float
+    {
+        return $this->salaryValueSnapshot === null ? null : (float) $this->salaryValueSnapshot;
+    }
+
+    public function setSalaryValueSnapshot(?float $salaryValueSnapshot): self
+    {
+        $this->salaryValueSnapshot = $salaryValueSnapshot === null ? null : (string) $salaryValueSnapshot;
+
+        return $this;
+    }
+
+    public function getCalculatedAmount(): float
+    {
+        return (float) $this->calculatedAmount;
+    }
+
+    public function setCalculatedAmount(float $calculatedAmount): self
+    {
+        $this->calculatedAmount = (string) $calculatedAmount;
+
+        return $this;
+    }
+
+    public function getFrequenceSnapshot(): string
+    {
+        return $this->frequenceSnapshot;
+    }
+
+    public function setFrequenceSnapshot(string $frequenceSnapshot): self
+    {
+        $this->frequenceSnapshot = $frequenceSnapshot;
+
+        return $this;
+    }
+
+    public function getWorkedDay(): ?\DateTimeInterface
+    {
+        return $this->workedDay;
+    }
+
+    public function setWorkedDay(?\DateTimeInterface $workedDay): self
+    {
+        $this->workedDay = $workedDay;
+
+        return $this;
+    }
+
+    public function getPrimeTypeSnapshot(): string
+    {
+        return $this->primeTypeSnapshot;
+    }
+
+    public function setPrimeTypeSnapshot(string $primeTypeSnapshot): self
+    {
+        $this->primeTypeSnapshot = $primeTypeSnapshot;
+
+        return $this;
+    }
+
+    public function getPrimeValueSnapshot(): ?float
+    {
+        return $this->primeValueSnapshot === null ? null : (float) $this->primeValueSnapshot;
+    }
+
+    public function setPrimeValueSnapshot(?float $primeValueSnapshot): self
+    {
+        $this->primeValueSnapshot = $primeValueSnapshot === null ? null : (string) $primeValueSnapshot;
+
+        return $this;
+    }
+
+    public function getBaseSalaryAmount(): float
+    {
+        return (float) $this->baseSalaryAmount;
+    }
+
+    public function setBaseSalaryAmount(float $baseSalaryAmount): self
+    {
+        $this->baseSalaryAmount = (string) $baseSalaryAmount;
+
+        return $this;
+    }
+
+    public function getPrimeAmount(): float
+    {
+        return (float) $this->primeAmount;
+    }
+
+    public function setPrimeAmount(float $primeAmount): self
+    {
+        $this->primeAmount = (string) $primeAmount;
+
+        return $this;
+    }
+
+    public function getPaidAmount(): float
+    {
+        return (float) $this->paidAmount;
+    }
+
+    public function setPaidAmount(float $paidAmount): self
+    {
+        $this->paidAmount = (string) $paidAmount;
+
+        return $this;
+    }
+
+    public function getPaidAt(): ?\DateTimeInterface
+    {
+        return $this->paidAt;
+    }
+
+    public function setPaidAt(\DateTimeInterface $paidAt): self
+    {
+        $this->paidAt = $paidAt;
+
+        return $this;
+    }
+
+    public function getNote(): ?string
+    {
+        return $this->note;
+    }
+
+    public function setNote(?string $note): self
+    {
+        $this->note = $note;
+
+        return $this;
+    }
+
+    public function getModeDePaiement(): ?ModeDePaiement
+    {
+        return $this->modeDePaiement;
+    }
+
+    public function setModeDePaiement(?ModeDePaiement $modeDePaiement): self
+    {
+        $this->modeDePaiement = $modeDePaiement;
+
+        return $this;
+    }
+
+    public function getTransaction(): ?Transaction
+    {
+        return $this->transaction;
+    }
+
+    public function setTransaction(?Transaction $transaction): self
+    {
+        $this->transaction = $transaction;
+
+        return $this;
+    }
+
+    public function getCreatedAt(): ?\DateTimeImmutable
+    {
+        return $this->createdAt;
+    }
+
+    public function setCreatedAt(\DateTimeImmutable $createdAt): self
+    {
+        $this->createdAt = $createdAt;
+
+        return $this;
+    }
+}

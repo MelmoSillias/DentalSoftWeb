@@ -2,9 +2,9 @@
 
 namespace App\Settings\Service;
 
-use App\IdentityAccess\Entity\User;
-use App\Settings\Entity\AppSetting;
-use App\Settings\Repository\AppSettingRepository;
+use App\IdentityAccess\Infrastructure\Persistence\Doctrine\Entity\User;
+use App\Settings\Infrastructure\Persistence\Doctrine\Entity\AppSetting;
+use App\Settings\Infrastructure\Persistence\Doctrine\Repository\AppSettingRepository;
 use Doctrine\ORM\EntityManagerInterface;
 
 class GlobalSettingsService

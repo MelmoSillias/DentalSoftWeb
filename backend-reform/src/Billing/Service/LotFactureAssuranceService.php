@@ -2,14 +2,14 @@
 
 namespace App\Billing\Service;
 
-use App\Billing\Entity\Assurance;
-use App\Billing\Entity\FactureAssurance;
-use App\Billing\Entity\LotFactureAssurance;
-use App\Billing\Entity\Transaction;
-use App\Billing\Repository\AssuranceRepository;
-use App\Billing\Repository\FactureAssuranceRepository;
-use App\Billing\Repository\LotFactureAssuranceRepository;
-use App\Billing\Repository\ModeDePaiementRepository;
+use App\Billing\Infrastructure\Persistence\Doctrine\Entity\Assurance;
+use App\Billing\Infrastructure\Persistence\Doctrine\Entity\FactureAssurance;
+use App\Billing\Infrastructure\Persistence\Doctrine\Entity\LotFactureAssurance;
+use App\Billing\Infrastructure\Persistence\Doctrine\Entity\Transaction;
+use App\Billing\Infrastructure\Persistence\Doctrine\Repository\AssuranceRepository;
+use App\Billing\Infrastructure\Persistence\Doctrine\Repository\FactureAssuranceRepository;
+use App\Billing\Infrastructure\Persistence\Doctrine\Repository\LotFactureAssuranceRepository;
+use App\Billing\Infrastructure\Persistence\Doctrine\Repository\ModeDePaiementRepository;
 use Doctrine\ORM\EntityManagerInterface;
 
 class LotFactureAssuranceService

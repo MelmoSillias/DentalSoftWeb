@@ -2,14 +2,14 @@
 
 namespace App\Focus\Service;
 
-use App\Billing\Entity\Devis;
-use App\Billing\Entity\Facture;
-use App\Billing\Entity\ModeDePaiement;
-use App\CareDelivery\Entity\Consultation;
+use App\Billing\Infrastructure\Persistence\Doctrine\Entity\Devis;
+use App\Billing\Infrastructure\Persistence\Doctrine\Entity\Facture;
+use App\Billing\Infrastructure\Persistence\Doctrine\Entity\ModeDePaiement;
+use App\CareDelivery\Infrastructure\Persistence\Doctrine\Entity\Consultation;
 use App\Communication\Mercure\NotificationTopicGenerator;
-use App\IdentityAccess\Entity\Employe;
-use App\Patient\Entity\Patient;
-use App\IdentityAccess\Repository\UserRepository;
+use App\IdentityAccess\Infrastructure\Persistence\Doctrine\Entity\Employe;
+use App\Patient\Infrastructure\Persistence\Doctrine\Entity\Patient;
+use App\IdentityAccess\Infrastructure\Persistence\Doctrine\Repository\UserRepository;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Mercure\HubInterface;
 use Symfony\Component\Mercure\Update;
