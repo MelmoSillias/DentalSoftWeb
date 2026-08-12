@@ -8,6 +8,7 @@ use App\Communication\Repository\SmsLogRepository;
 use App\Communication\Repository\SmsQueueRepository;
 use App\Patient\Entity\Patient;
 use App\Patient\Repository\PatientRepository;
+use App\Settings\Service\GlobalSettingsService;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 
@@ -23,7 +24,22 @@ final class SmsService
         private readonly SmsClientResolver $smsClientResolver,
         private readonly NotificationService $notificationService,
         private readonly \App\Communication\Service\NotificationRecipientResolver $recipientResolver,
+        private readonly GlobalSettingsService $globalSettingsService,
     ) {
+    }
+
+    /**
+     * @param array<string, mixed> $variables
+     * @return array<string, mixed>
+     */
+    private function mergeCabinetNameVariable(array $variables): array
+    {
+        $existing = trim((string) ($variables['cabinet_name'] ?? ''));
+        if ($existing === '') {
+            $variables['cabinet_name'] = $this->globalSettingsService->getSmsCabinetName();
+        }
+
+        return $variables;
     }
 
     /**
@@ -41,6 +57,7 @@ final class SmsService
             return ['success' => false, 'error' => 'Patient désinscrit ou blacklisté pour les SMS.'];
         }
 
+        $variables = $this->mergeCabinetNameVariable($variables);
         $message = $this->templateService->renderByCode($templateCode, $variables);
         if ($message === null) {
             return ['success' => false, 'error' => 'Template SMS indisponible ou désactivé.'];
@@ -445,7 +462,7 @@ final class SmsService
      */
     public function previewTemplate(string $code, array $variables): ?string
     {
-        return $this->templateService->renderByCode($code, $variables);
+        return $this->templateService->renderByCode($code, $this->mergeCabinetNameVariable($variables));
     }
 
     public function findPatient(?int $patientId): ?Patient

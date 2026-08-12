@@ -102,6 +102,7 @@ const savingStates = reactive({
     portalSettings: false,
     portalBulkCreate: false,
     soinsCatalog: false,
+    cabinetIdentity: false,
     testMode: false,
     databaseExport: false,
     databaseReset: false
@@ -201,6 +202,10 @@ const portalPatientConfig = reactive({
     autoCreatePortalAccountOnPatientCreation: false
 });
 
+const cabinetIdentity = reactive({
+    smsCabinetName: cabinetConfig.smsCabinetName || cabinetConfig.displayName || 'Cabinet dentaire'
+});
+
 const testMode = reactive({
     enabled: false,
     snapshotCreatedAt: null,
@@ -238,6 +243,7 @@ const navigation = {
         label: 'Cabinet',
         icon: 'pi pi-briefcase',
         sections: [
+            { id: 'identity', label: 'Identité & SMS', icon: 'pi pi-building' },
             { id: 'consultations', label: 'Consultations & réception', icon: 'pi pi-calendar' },
             { id: 'opening-hours', label: 'Horaires d\'ouverture', icon: 'pi pi-clock' },
             { id: 'medecin-privacy', label: 'Interface médecin', icon: 'pi pi-user' },
@@ -450,6 +456,7 @@ const loadGeneralSettings = async (force = false) => {
         portalPatientConfig.patientPortalClosedMessage = settings.patientPortalClosedMessage || portalPatientConfig.patientPortalClosedMessage;
         portalPatientConfig.patientPortalBaseUrl = settings.patientPortalBaseUrl || '';
         portalPatientConfig.cabinetShowcaseWebsiteUrl = settings.cabinetShowcaseWebsiteUrl || '';
+        cabinetIdentity.smsCabinetName = settings.smsCabinetName || cabinetConfig.smsCabinetName || cabinetConfig.displayName || 'Cabinet dentaire';
         portalPatientConfig.autoCreatePortalAccountOnPatientCreation = settings.autoCreatePortalAccountOnPatientCreation === true;
         testMode.enabled = settings.testModeEnabled === true;
         persistedTestModeEnabled.value = testMode.enabled;
@@ -635,6 +642,22 @@ const saveOpeningHoursAction = async () => {
         toast.add({ severity: 'error', summary: 'Erreur', detail: extractApiError(error, 'Sauvegarde impossible'), life: 3500 });
     } finally {
         savingStates.openingHours = false;
+    }
+};
+
+const saveCabinetIdentityAction = async () => {
+    if (!canAccessWorkflowSettings.value) return;
+    savingStates.cabinetIdentity = true;
+    try {
+        const saved = await saveGeneralSettings({
+            smsCabinetName: String(cabinetIdentity.smsCabinetName || '').trim()
+        }, token);
+        cabinetIdentity.smsCabinetName = saved.smsCabinetName || cabinetIdentity.smsCabinetName;
+        toast.add({ severity: 'success', summary: 'Identité & SMS', detail: 'Nom du centre enregistré', life: 2500 });
+    } catch (error) {
+        toast.add({ severity: 'error', summary: 'Erreur', detail: extractApiError(error, 'Sauvegarde impossible'), life: 3500 });
+    } finally {
+        savingStates.cabinetIdentity = false;
     }
 };
 
@@ -1378,6 +1401,33 @@ onBeforeUnmount(() => {
                             <div class="settings-category-title">
                                 <i class="pi pi-briefcase"></i>
                                 <h2>Cabinet</h2>
+                            </div>
+                        </div>
+
+                        <!-- Identité & SMS -->
+                        <div v-show="isSectionVisible('cabinet', 'identity')" id="cabinet-identity" class="settings-section" data-tour="settings-cabinet.identity">
+                            <div class="settings-section-header">
+                                <div>
+                                    <h3>Identité & SMS</h3>
+                                    <p class="settings-section-description">Nom affiché dans les SMS automatiques (rappels RDV, reçus, factures, création patient)</p>
+                                </div>
+                                <Button
+                                    label="Enregistrer"
+                                    icon="pi pi-save"
+                                    :loading="savingStates.cabinetIdentity"
+                                    @click="saveCabinetIdentityAction"
+                                />
+                            </div>
+                            <div class="settings-card">
+                                <div class="field-group">
+                                    <label>Nom du centre (SMS)</label>
+                                    <InputText
+                                        v-model="cabinetIdentity.smsCabinetName"
+                                        class="w-full"
+                                        placeholder="Ex: CENTRE DENTAIRE MASSAMAN"
+                                    />
+                                    <span class="field-helper">Utilisé tel quel dans les messages. Incluez « Cabinet », « Centre » ou autre selon votre enseigne.</span>
+                                </div>
                             </div>
                         </div>
 

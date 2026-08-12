@@ -162,7 +162,6 @@ class CaisseController extends AbstractController
                     'patient_name' => trim(($patient->getPrenom() ?? '') . ' ' . ($patient->getNom() ?? '')),
                     'amount' => (string) ((int) round((float) ($payload['montant'] ?? 0))),
                     'date' => (string) ($payload['date'] ?? (new \DateTime())->format('Y-m-d')),
-                    'cabinet_name' => 'ORODENT',
                 ], 'payment');
             }
         }

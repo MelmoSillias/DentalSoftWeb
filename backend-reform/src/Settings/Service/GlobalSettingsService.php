@@ -74,6 +74,7 @@ class GlobalSettingsService
         'Médical',
     ];
     private const DEFAULT_PATIENT_PORTAL_CLOSED_MESSAGE = 'Le portail patient est temporairement indisponible. Merci de contacter le cabinet pour toute assistance.';
+    private const DEFAULT_SMS_CABINET_NAME = 'Cabinet dentaire';
 
     public function __construct(
         private AppSettingRepository $appSettingRepo,
@@ -82,7 +83,7 @@ class GlobalSettingsService
     ) {
     }
 
-    /** @return array{autoApproveDevices: bool, requireMedecinOnConsultationCreation: bool, allowReceptionQuickCloseConsultation: bool, allowReceptionConsultationQuickActions: bool, showReceptionQuickCloseButton: bool, allowReceptionBypassMedecinPasswordOnQuickClose: bool, hidePatientDossierForMedecins: bool, hidePatientPhoneForMedecins: bool, paiementDirectAssurance: bool, ficheFormSimplifie: bool, showDiagnosticPositifInConsultation: bool, consultationPrice: float, transactionMotifs: array{revenue: string[], expense: string[]}, soinsList: string[], examensTypes: string[], traitementTypes: string[], allergyTypes: string[], antecedentTypes: string[], patientPortalEnabled: bool, patientPortalClosedMessage: string, patientPortalBaseUrl: ?string, cabinetShowcaseWebsiteUrl: ?string, autoCreatePortalAccountOnPatientCreation: bool} */
+    /** @return array{autoApproveDevices: bool, requireMedecinOnConsultationCreation: bool, allowReceptionQuickCloseConsultation: bool, allowReceptionConsultationQuickActions: bool, showReceptionQuickCloseButton: bool, allowReceptionBypassMedecinPasswordOnQuickClose: bool, hidePatientDossierForMedecins: bool, hidePatientPhoneForMedecins: bool, paiementDirectAssurance: bool, ficheFormSimplifie: bool, showDiagnosticPositifInConsultation: bool, consultationPrice: float, transactionMotifs: array{revenue: string[], expense: string[]}, soinsList: string[], examensTypes: string[], traitementTypes: string[], allergyTypes: string[], antecedentTypes: string[], patientPortalEnabled: bool, patientPortalClosedMessage: string, patientPortalBaseUrl: ?string, cabinetShowcaseWebsiteUrl: ?string, smsCabinetName: string, autoCreatePortalAccountOnPatientCreation: bool} */
     public function getGeneralSettings(): array
     {
         $entry = $this->appSettingRepo->findOneByKey(self::KEY_GENERAL);
@@ -121,6 +122,7 @@ class GlobalSettingsService
             ),
             'patientPortalBaseUrl' => $this->sanitizeUrl($value['patientPortalBaseUrl'] ?? null),
             'cabinetShowcaseWebsiteUrl' => $this->sanitizeUrl($value['cabinetShowcaseWebsiteUrl'] ?? null),
+            'smsCabinetName' => $this->sanitizeSmsCabinetName($value['smsCabinetName'] ?? null),
             'autoCreatePortalAccountOnPatientCreation' => (bool) ($value['autoCreatePortalAccountOnPatientCreation'] ?? false),
             'testModeEnabled' => (bool) ($value[self::TEST_MODE_ENABLED_KEY] ?? false),
             'testModeSnapshotCreatedAt' => $value[self::TEST_MODE_SNAPSHOT_CREATED_AT_KEY] ?? null,
@@ -185,6 +187,7 @@ class GlobalSettingsService
             ),
             'patientPortalBaseUrl' => $this->sanitizeUrl($payload['patientPortalBaseUrl'] ?? ($current['patientPortalBaseUrl'] ?? null)),
             'cabinetShowcaseWebsiteUrl' => $this->sanitizeUrl($payload['cabinetShowcaseWebsiteUrl'] ?? ($current['cabinetShowcaseWebsiteUrl'] ?? null)),
+            'smsCabinetName' => $this->sanitizeSmsCabinetName($payload['smsCabinetName'] ?? ($current['smsCabinetName'] ?? null)),
             'autoCreatePortalAccountOnPatientCreation' => (bool) ($payload['autoCreatePortalAccountOnPatientCreation'] ?? ($current['autoCreatePortalAccountOnPatientCreation'] ?? false)),
         ]);
 
@@ -413,6 +416,11 @@ class GlobalSettingsService
         return $this->getGeneralSettings()['autoCreatePortalAccountOnPatientCreation'];
     }
 
+    public function getSmsCabinetName(): string
+    {
+        return $this->getGeneralSettings()['smsCabinetName'];
+    }
+
     private const STAFF_ROLES = ['ROLE_ADMIN', 'ROLE_MEDECIN', 'ROLE_RECEPTION', 'ROLE_RECEPTIONNISTE'];
 
     /** @param string[] $roles */
@@ -438,7 +446,7 @@ class GlobalSettingsService
         ];
     }
 
-    /** @return array{requireMedecinOnConsultationCreation: bool, allowReceptionQuickCloseConsultation: bool, allowReceptionConsultationQuickActions: bool, showReceptionQuickCloseButton: bool, allowReceptionBypassMedecinPasswordOnQuickClose: bool, hidePatientDossierForMedecins: bool, hidePatientPhoneForMedecins: bool, paiementDirectAssurance: bool, ficheFormSimplifie: bool, showDiagnosticPositifInConsultation: bool, consultationPrice: float, soinsList: string[], examensTypes: string[], traitementTypes: string[], allergyTypes: string[], antecedentTypes: string[], patientPortalEnabled: bool, patientPortalClosedMessage: string, patientPortalBaseUrl: ?string, cabinetShowcaseWebsiteUrl: ?string} */
+    /** @return array{requireMedecinOnConsultationCreation: bool, allowReceptionQuickCloseConsultation: bool, allowReceptionConsultationQuickActions: bool, showReceptionQuickCloseButton: bool, allowReceptionBypassMedecinPasswordOnQuickClose: bool, hidePatientDossierForMedecins: bool, hidePatientPhoneForMedecins: bool, paiementDirectAssurance: bool, ficheFormSimplifie: bool, showDiagnosticPositifInConsultation: bool, consultationPrice: float, soinsList: string[], examensTypes: string[], traitementTypes: string[], allergyTypes: string[], antecedentTypes: string[], patientPortalEnabled: bool, patientPortalClosedMessage: string, patientPortalBaseUrl: ?string, cabinetShowcaseWebsiteUrl: ?string, smsCabinetName: string} */
     public function getStaffOperationalSettings(): array
     {
         $settings = $this->getGeneralSettings();
@@ -468,6 +476,7 @@ class GlobalSettingsService
             'patientPortalClosedMessage' => $settings['patientPortalClosedMessage'],
             'patientPortalBaseUrl' => $settings['patientPortalBaseUrl'],
             'cabinetShowcaseWebsiteUrl' => $settings['cabinetShowcaseWebsiteUrl'],
+            'smsCabinetName' => $settings['smsCabinetName'],
         ];
     }
 
@@ -606,5 +615,10 @@ class GlobalSettingsService
         }
 
         return $text;
+    }
+
+    private function sanitizeSmsCabinetName(mixed $value): string
+    {
+        return $this->sanitizeFreeText($value, self::DEFAULT_SMS_CABINET_NAME, 120);
     }
 }

@@ -16,6 +16,7 @@ import {
     testSmsConnection,
     updateSmsQueueItem
 } from '@/services/smsService';
+import { fetchPublicGeneralSettings } from '@/services/globalSettingsService';
 import cabinetConfig from '@/cabinetConfig';
 
 export const SMS_PROVIDER_OPTIONS = [
@@ -96,7 +97,7 @@ export function useSmsAdminSettings(token, toast, extractApiError) {
         time: '09:30',
         amount: '25000',
         invoice_number: 'F-000123',
-        cabinet_name: cabinetConfig.smsCabinetName
+        cabinet_name: cabinetConfig.smsCabinetName || cabinetConfig.displayName || 'Cabinet dentaire'
     });
     const previewResult = ref('');
     const manualSms = reactive({ phone: '', message: '' });
@@ -174,7 +175,14 @@ export function useSmsAdminSettings(token, toast, extractApiError) {
 
         smsLoading.value = true;
         try {
-            const smsSettings = await fetchSmsSettings(token);
+            const [smsSettings, publicSettings] = await Promise.all([
+                fetchSmsSettings(token),
+                fetchPublicGeneralSettings(token).catch(() => ({}))
+            ]);
+            previewVariables.cabinet_name = publicSettings.smsCabinetName
+                || cabinetConfig.smsCabinetName
+                || cabinetConfig.displayName
+                || 'Cabinet dentaire';
             smsConfig.provider = smsSettings.provider || 'orange';
             smsConfig.enabled = Boolean(smsSettings.enabled);
             smsConfig.clientId = smsSettings.clientId || '';

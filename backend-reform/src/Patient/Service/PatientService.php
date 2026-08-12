@@ -88,7 +88,7 @@ class PatientService
         return $dates;
     }
 
-    private function queueAppointmentRemindersForRdv(Rdv $rdv, array $smsReminder, string $cabinetName = 'ORODENT'): int
+    private function queueAppointmentRemindersForRdv(Rdv $rdv, array $smsReminder): int
     {
         $enabled = ($smsReminder['enabled'] ?? true) !== false;
         if (!$enabled) {
@@ -110,7 +110,6 @@ class PatientService
             'patient_name' => trim(($patient->getPrenom() ?? '') . ' ' . ($patient->getNom() ?? '')),
             'date' => $rdvAt->format('d/m/Y'),
             'time' => $rdvAt->format('H:i'),
-            'cabinet_name' => $cabinetName,
         ];
 
         $queued = 0;
@@ -630,7 +629,6 @@ class PatientService
             $this->focusRealtimePublisher->publishPatientRefresh($patient, 'created');
             $this->smsService->queueTemplateForPatient($patient, 'patient_created', [
                 'patient_name' => trim(($patient->getPrenom() ?? '') . ' ' . ($patient->getNom() ?? '')),
-                'cabinet_name' => 'ORODENT',
             ], 'patient-created');
 
             return [
@@ -1020,8 +1018,7 @@ public function removeArchiveFile(int $patientId, string $fileUrl): array
             if (isset($data['smsReminder']) && is_array($data['smsReminder'])) {
                 $smsQueuedCount = $this->queueAppointmentRemindersForRdv(
                     $rdv,
-                    $data['smsReminder'],
-                    (string) ($data['cabinet_name'] ?? 'ORODENT')
+                    $data['smsReminder']
                 );
             }
 

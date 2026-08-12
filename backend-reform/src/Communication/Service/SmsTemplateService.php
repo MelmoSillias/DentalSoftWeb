@@ -17,27 +17,27 @@ final class SmsTemplateService
             'patient_created' => [
                 'name' => 'Accusé création patient',
                 'type' => 'receipt',
-                'content' => "Bonjour {patient_name},\nVotre dossier a été créé au cabinet {cabinet_name}.",
+                'content' => "Bonjour {patient_name},\nVotre dossier a été créé chez {cabinet_name}.",
             ],
             'receipt' => [
                 'name' => 'Reçu paiement',
                 'type' => 'receipt',
-                'content' => "Merci {patient_name}.\nPaiement reçu : {amount} FCFA\nCabinet {cabinet_name}.",
+                'content' => "Merci {patient_name}.\nPaiement reçu : {amount} FCFA\n{cabinet_name}.",
             ],
             'invoice' => [
                 'name' => 'Facture',
                 'type' => 'invoice',
-                'content' => "Facture {invoice_number}\nMontant : {amount} FCFA\nCabinet {cabinet_name}",
+                'content' => "Facture {invoice_number}\nMontant : {amount} FCFA\n{cabinet_name}",
             ],
             'appointment_reminder' => [
                 'name' => 'Rappel rendez-vous',
                 'type' => 'appointment reminder',
-                'content' => "Rappel : rendez-vous le {date} à {time}\nCabinet {cabinet_name}",
+                'content' => "Rappel : rendez-vous le {date} à {time}\n{cabinet_name}",
             ],
             'ticket' => [
                 'name' => 'Ticket consultation',
                 'type' => 'ticket',
-                'content' => "Bonjour {patient_name}, ticket de consultation enregistré le {date}.\nCabinet {cabinet_name}",
+                'content' => "Bonjour {patient_name}, ticket de consultation enregistré le {date}.\n{cabinet_name}",
             ],
         ];
     }
