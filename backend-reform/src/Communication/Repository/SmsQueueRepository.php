@@ -41,12 +41,41 @@ class SmsQueueRepository extends ServiceEntityRepository
 
         return $this->createQueryBuilder('q')
             ->andWhere('q.patient IN (:patientIds)')
-            ->andWhere('q.type = :type')
+            ->andWhere('q.type IN (:types)')
             ->setParameter('patientIds', $patientIds)
-            ->setParameter('type', 'appointment reminder')
+            ->setParameter('types', ['appointment reminder', 'rappel de rdv'])
             ->orderBy('q.createdAt', 'DESC')
             ->getQuery()
             ->getResult();
+    }
+
+    /**
+     * @return list<SmsQueue>
+     */
+    public function findByRdvMetadata(int $rdvId, ?array $statuses = null): array
+    {
+        if ($rdvId <= 0) {
+            return [];
+        }
+
+        $qb = $this->createQueryBuilder('q')
+            ->andWhere('q.type IN (:types)')
+            ->setParameter('types', ['appointment reminder', 'rappel de rdv', 'appointment change'])
+            ->orderBy('q.createdAt', 'DESC');
+
+        if (is_array($statuses) && $statuses !== []) {
+            $qb
+                ->andWhere('q.status IN (:statuses)')
+                ->setParameter('statuses', $statuses);
+        }
+
+        $items = $qb->getQuery()->getResult();
+
+        return array_values(array_filter($items, static function (SmsQueue $item) use ($rdvId): bool {
+            $metadata = $item->getMetadata() ?? [];
+
+            return (int) ($metadata['rdvId'] ?? 0) === $rdvId;
+        }));
     }
 
     public function findRecentQueue(int $limit = 100, int $offset = 0, ?string $status = null): array

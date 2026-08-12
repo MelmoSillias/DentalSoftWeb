@@ -9,6 +9,20 @@ use Doctrine\ORM\EntityManagerInterface;
 final class SmsTemplateService
 {
     /**
+     * @return list<string>
+     */
+    private function legacyDefaultContents(): array
+    {
+        return [
+            "Bonjour {patient_name},\nVotre dossier a été créé chez {cabinet_name}.",
+            "Merci {patient_name}.\nPaiement reçu : {amount} FCFA\n{cabinet_name}.",
+            "Facture {invoice_number}\nMontant : {amount} FCFA\n{cabinet_name}",
+            "Rappel : rendez-vous le {date} à {time}\n{cabinet_name}",
+            "Bonjour {patient_name}, ticket de consultation enregistré le {date}.\n{cabinet_name}",
+        ];
+    }
+
+    /**
      * @return array<string, array{name: string, type: string, content: string}>
      */
     private function defaults(): array
@@ -17,27 +31,37 @@ final class SmsTemplateService
             'patient_created' => [
                 'name' => 'Accusé création patient',
                 'type' => 'receipt',
-                'content' => "Bonjour {patient_name},\nVotre dossier a été créé chez {cabinet_name}.",
+                'content' => 'Bonjour {patient_name}, votre dossier patient a été ouvert au {cabinet_name}. Merci de votre confiance.',
             ],
             'receipt' => [
                 'name' => 'Reçu paiement',
                 'type' => 'receipt',
-                'content' => "Merci {patient_name}.\nPaiement reçu : {amount} FCFA\n{cabinet_name}.",
+                'content' => 'Bonjour {patient_name}, nous confirmons la réception de votre paiement de {amount} FCFA. {cabinet_name}',
             ],
             'invoice' => [
                 'name' => 'Facture',
                 'type' => 'invoice',
-                'content' => "Facture {invoice_number}\nMontant : {amount} FCFA\n{cabinet_name}",
+                'content' => '{cabinet_name} - Facture n°{invoice_number} : {amount} FCFA. Merci pour votre confiance.',
             ],
             'appointment_reminder' => [
                 'name' => 'Rappel rendez-vous',
                 'type' => 'appointment reminder',
-                'content' => "Rappel : rendez-vous le {date} à {time}\n{cabinet_name}",
+                'content' => 'Bonjour {patient_name}, rappel de votre RDV le {date} à {time}. {cabinet_name}',
+            ],
+            'appointment_cancelled' => [
+                'name' => 'Annulation rendez-vous',
+                'type' => 'appointment change',
+                'content' => 'Bonjour {patient_name}, votre RDV du {date} à {time} est annulé. {cabinet_name}',
+            ],
+            'appointment_rescheduled' => [
+                'name' => 'Report rendez-vous',
+                'type' => 'appointment change',
+                'content' => 'Bonjour {patient_name}, votre RDV est reporté au {new_date} à {new_time}. {cabinet_name}',
             ],
             'ticket' => [
                 'name' => 'Ticket consultation',
                 'type' => 'ticket',
-                'content' => "Bonjour {patient_name}, ticket de consultation enregistré le {date}.\n{cabinet_name}",
+                'content' => 'Bonjour {patient_name}, votre consultation du {date} a bien été enregistrée. {cabinet_name}',
             ],
         ];
     }
@@ -56,9 +80,21 @@ final class SmsTemplateService
             $index[$template->getCode()] = $template;
         }
 
+        $legacyContents = $this->legacyDefaultContents();
         $changed = false;
         foreach ($this->defaults() as $code => $tpl) {
             if (isset($index[$code])) {
+                $existing = $index[$code];
+                if (in_array($existing->getContent(), $legacyContents, true)) {
+                    $existing
+                        ->setName($tpl['name'])
+                        ->setType($tpl['type'])
+                        ->setContent($tpl['content'])
+                        ->setUpdatedAt(new \DateTimeImmutable());
+                    $this->entityManager->persist($existing);
+                    $changed = true;
+                }
+
                 continue;
             }
 

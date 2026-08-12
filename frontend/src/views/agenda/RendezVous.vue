@@ -29,6 +29,7 @@ import SelectButton from 'primevue/selectbutton';
 import cabinetConfig from '@/cabinetConfig';
 
 const smsCabinetName = ref(cabinetConfig.smsCabinetName || cabinetConfig.displayName || 'Cabinet dentaire');
+const requireMedecinOnConsultationCreation = ref(true);
 
 const toast = useToast();
 const breadcrumbHome = { icon: 'pi pi-home', to: '/dashboard' };
@@ -213,7 +214,7 @@ const openSmsReminder = (rdv) => {
 	const when = rdv?.start ? new Date(rdv.start) : null;
 	const dateStr = when ? when.toLocaleDateString('fr-FR') : '';
 	const timeStr = when ? when.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '';
-	smsDraft.value = `Rappel : rendez-vous le ${dateStr} à ${timeStr}.\n${smsCabinetName.value}.`.trim();
+	smsDraft.value = `Bonjour ${patientName}, rappel de votre RDV le ${dateStr} à ${timeStr}. ${smsCabinetName.value}`.trim();
 	smsDialogVisible.value = true;
 };
 
@@ -323,6 +324,7 @@ onMounted(async () => {
 		if (settings?.smsCabinetName) {
 			smsCabinetName.value = settings.smsCabinetName;
 		}
+		requireMedecinOnConsultationCreation.value = settings?.requireMedecinOnConsultationCreation !== false;
 	} catch (error) {
 		logAppError('RendezVous', error);
 	}
@@ -435,6 +437,7 @@ onBeforeUnmount(() => {
 			:medecins="scopedMedecinsList"
 			:lockedMedecinId="isMedecinUser ? connectedMedecinId : null"
 			:medecinReadonly="isMedecinUser"
+			:requireMedecinOnConsultationCreation="requireMedecinOnConsultationCreation"
 			:loading="actionLoading"
 			@confirm="confirmValidate"
 		/>

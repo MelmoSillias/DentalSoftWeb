@@ -29,6 +29,10 @@ const props = defineProps({
     loading: {
         type: Boolean,
         default: false
+    },
+    requireMedecinOnConsultationCreation: {
+        type: Boolean,
+        default: true
     }
 });
 
@@ -78,7 +82,11 @@ watch(createConsultation, (yes) => {
     medecinId.value = props.lockedMedecinId ?? props.rdv?.medecinId ?? medecinId.value ?? null;
 });
 
-const canSubmit = computed(() => !createConsultation.value || Boolean(medecinId.value));
+const canSubmit = computed(() => (
+    !createConsultation.value
+    || !props.requireMedecinOnConsultationCreation
+    || Boolean(medecinId.value)
+));
 
 const close = () => (localVisible.value = false);
 
@@ -123,7 +131,9 @@ const confirm = () => {
 
             <div v-if="createConsultation" class="flex flex-col gap-2">
                 <label class="text-sm font-medium text-surface-800 dark:text-surface-100">
-                    Médecin <span class="text-red-500">*</span>
+                    Médecin
+                    <span v-if="requireMedecinOnConsultationCreation" class="text-red-500">*</span>
+                    <span v-else class="text-surface-500 dark:text-surface-400 font-normal"> (optionnel)</span>
                 </label>
                 <Select
                     v-model="medecinId"
@@ -133,7 +143,7 @@ const confirm = () => {
                     placeholder="Choisir le médecin"
                     :disabled="medecinReadonly"
                 />
-                <p v-if="!medecinId" class="text-xs text-amber-600 dark:text-amber-400">
+                <p v-if="requireMedecinOnConsultationCreation && !medecinId" class="text-xs text-amber-600 dark:text-amber-400">
                     Un médecin est obligatoire pour créer la consultation.
                 </p>
             </div>

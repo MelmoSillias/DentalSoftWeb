@@ -8,6 +8,7 @@ use App\Communication\Repository\SmsLogRepository;
 use App\Communication\Repository\SmsQueueRepository;
 use App\Patient\Entity\Patient;
 use App\Patient\Repository\PatientRepository;
+use App\Scheduling\Entity\Rdv;
 use App\Settings\Service\GlobalSettingsService;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
@@ -474,6 +475,122 @@ final class SmsService
         return $this->patientRepository->find($patientId);
     }
 
+    /**
+     * Annule les rappels RDV non encore envoyés et notifie le patient si un rappel avait déjà été envoyé.
+     *
+     * @return array{cancelledCount: int, notificationQueued: bool}
+     */
+    public function handleAppointmentModification(Rdv $rdv, string $changeType, ?Rdv $newRdv = null, ?\DateTimeInterface $newDate = null): array
+    {
+        $rdvId = (int) $rdv->getId();
+        if ($rdvId <= 0) {
+            return ['cancelledCount' => 0, 'notificationQueued' => false];
+        }
+
+        $cancelledCount = $this->cancelPendingAppointmentReminders($rdvId);
+        $wasSent = $this->hasSentAppointmentReminder($rdvId);
+
+        if (!$wasSent) {
+            return ['cancelledCount' => $cancelledCount, 'notificationQueued' => false];
+        }
+
+        $patient = $rdv->getPatient();
+        if (!$patient instanceof Patient) {
+            return ['cancelledCount' => $cancelledCount, 'notificationQueued' => false];
+        }
+
+        $rdvDate = $rdv->getDateRdv();
+        $variables = [
+            'patient_name' => trim(($patient->getPrenom() ?? '') . ' ' . ($patient->getNom() ?? '')),
+            'date' => $rdvDate?->format('d/m/Y') ?? '',
+            'time' => $rdvDate?->format('H:i') ?? '',
+        ];
+
+        $metadata = ['rdvId' => $rdvId, 'changeType' => $changeType];
+        $templateCode = null;
+
+        if ($changeType === 'cancelled') {
+            $templateCode = 'appointment_cancelled';
+        } elseif ($changeType === 'rescheduled') {
+            $rescheduledAt = $newRdv?->getDateRdv()
+                ?? $newDate
+                ?? $rdv->getReportedAt();
+
+            if (!$rescheduledAt instanceof \DateTimeInterface) {
+                return ['cancelledCount' => $cancelledCount, 'notificationQueued' => false];
+            }
+
+            $rescheduledAt = DateTimeImmutable::createFromInterface($rescheduledAt);
+            $variables['new_date'] = $rescheduledAt->format('d/m/Y');
+            $variables['new_time'] = $rescheduledAt->format('H:i');
+            $templateCode = 'appointment_rescheduled';
+
+            if ($newRdv instanceof Rdv) {
+                $metadata['newRdvId'] = $newRdv->getId();
+            }
+        }
+
+        if ($templateCode === null) {
+            return ['cancelledCount' => $cancelledCount, 'notificationQueued' => false];
+        }
+
+        $result = $this->queueTemplateForPatient(
+            $patient,
+            $templateCode,
+            $variables,
+            'appointment-change',
+            null,
+            $metadata
+        );
+
+        return [
+            'cancelledCount' => $cancelledCount,
+            'notificationQueued' => ($result['success'] ?? false) === true,
+        ];
+    }
+
+    public function cancelPendingAppointmentReminders(int $rdvId): int
+    {
+        $items = $this->queueRepository->findByRdvMetadata($rdvId, [
+            SmsQueue::STATUS_PENDING,
+            SmsQueue::STATUS_FAILED,
+        ]);
+
+        $cancelled = 0;
+        foreach ($items as $item) {
+            if (!$item instanceof SmsQueue) {
+                continue;
+            }
+
+            if ($item->getStatus() === SmsQueue::STATUS_FAILED && $item->getRetryCount() >= 3) {
+                continue;
+            }
+
+            $item
+                ->setStatus(SmsQueue::STATUS_CANCELLED)
+                ->setLastError(null);
+            $this->entityManager->persist($item);
+            ++$cancelled;
+        }
+
+        if ($cancelled > 0) {
+            $this->entityManager->flush();
+        }
+
+        return $cancelled;
+    }
+
+    public function hasSentAppointmentReminder(int $rdvId): bool
+    {
+        foreach ($this->queueRepository->findByRdvMetadata($rdvId, [SmsQueue::STATUS_SENT]) as $item) {
+            if ($item instanceof SmsQueue) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private function notifyAdminFailure(SmsQueue $queue, string $error): void
     {
         $recipients = $this->recipientResolver->admins();
@@ -669,6 +786,7 @@ final class SmsService
     {
         return match ($templateCode) {
             'appointment_reminder' => 'appointment reminder',
+            'appointment_cancelled', 'appointment_rescheduled' => 'appointment change',
             default => str_replace('_', ' ', $templateCode),
         };
     }
@@ -680,7 +798,7 @@ final class SmsService
             'receipt' => 'receipt',
             'invoice' => 'invoice',
             'ticket' => 'ticket',
-            'appointment_reminder' => 'appointmentReminder',
+            'appointment_reminder', 'appointment_cancelled', 'appointment_rescheduled' => 'appointmentReminder',
             default => null,
         };
     }
@@ -692,7 +810,7 @@ final class SmsService
             'receipt' => $patient->isSmsReceipt(),
             'invoice' => $patient->isSmsInvoice(),
             'ticket' => $patient->isSmsTicket(),
-            'appointment_reminder' => $patient->isSmsAppointmentReminder(),
+            'appointment_reminder', 'appointment_cancelled', 'appointment_rescheduled' => $patient->isSmsAppointmentReminder(),
             default => true,
         };
     }

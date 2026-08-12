@@ -106,6 +106,8 @@ const {
     smsSendingTest,
     smsSaving,
     smsQueueing,
+    queueRefreshing,
+    logsRefreshing,
     smsQueueItemUpdating,
     smsTemplateSaving,
     lastTestResult,
@@ -136,6 +138,8 @@ const {
     loadPeriodStats,
     loadSmsData,
     refreshSmsData,
+    refreshSmsQueue,
+    refreshSmsLogs,
     saveSmsConfigAction,
     testConnectionAction,
     sendSmsTestAction,
@@ -238,6 +242,9 @@ const formatSmsTypeLabel = (type) => {
         ticket: 'Ticket',
         'appointment reminder': 'Rappel RDV',
         appointment_reminder: 'Rappel RDV',
+        appointment_cancelled: 'Annulation RDV',
+        appointment_rescheduled: 'Report RDV',
+        'appointment change': 'Modification RDV',
         reminder: 'Rappel',
         test: 'Test'
     };
@@ -1233,7 +1240,8 @@ const retryLoadSmsSettings = async () => {
                                 </div>
                                 <div class="flex items-center gap-2">
                                     <Tag severity="contrast" :value="`${smsQueue.length} élément(s)`" />
-                                    <Button label="Agrandir" icon="pi pi-external-link" severity="secondary" outlined @click="queueDialogVisible = true" />
+                                    <Button label="Rafraîchir" icon="pi pi-refresh" severity="secondary" outlined size="small" :loading="queueRefreshing" @click="refreshSmsQueue" />
+                                    <Button label="Agrandir" icon="pi pi-external-link" severity="secondary" outlined size="small" @click="queueDialogVisible = true" />
                                 </div>
                             </div>
 
@@ -1414,7 +1422,10 @@ const retryLoadSmsSettings = async () => {
                                 <p class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Historique</p>
                                 <h3 class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">Logs d'envoi</h3>
                             </div>
-                            <Tag severity="contrast" :value="`${logsFiltered.length} résultat(s)`" />
+                            <div class="flex items-center gap-2">
+                                <Tag severity="contrast" :value="`${logsFiltered.length} résultat(s)`" />
+                                <Button label="Rafraîchir" icon="pi pi-refresh" severity="secondary" outlined size="small" :loading="logsRefreshing" @click="refreshSmsLogs" />
+                            </div>
                         </div>
 
                         <div class="mb-6 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1.2fr)] items-center">
@@ -1526,6 +1537,14 @@ const retryLoadSmsSettings = async () => {
                                     <FloatLabel variant="on">
                                         <InputText id="prev-time" v-model="previewVariables.time" class="w-full" />
                                         <label for="prev-time">{time}</label>
+                                    </FloatLabel>
+                                    <FloatLabel variant="on">
+                                        <InputText id="prev-new-date" v-model="previewVariables.new_date" class="w-full" />
+                                        <label for="prev-new-date">{new_date}</label>
+                                    </FloatLabel>
+                                    <FloatLabel variant="on">
+                                        <InputText id="prev-new-time" v-model="previewVariables.new_time" class="w-full" />
+                                        <label for="prev-new-time">{new_time}</label>
                                     </FloatLabel>
                                     <FloatLabel variant="on">
                                         <InputText id="prev-amount" v-model="previewVariables.amount" class="w-full" />

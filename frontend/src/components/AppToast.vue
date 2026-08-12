@@ -1,10 +1,19 @@
 <script setup>
 import Button from 'primevue/button';
 import Toast from 'primevue/toast';
+
+function onToastMouseEnter() {}
+
+function onToastMouseLeave() {}
 </script>
 
 <template>
-    <Toast>
+    <Toast
+        position="top-right"
+        class="app-toast"
+        :onMouseEnter="onToastMouseEnter"
+        :onMouseLeave="onToastMouseLeave"
+    >
         <template #message="slotProps">
             <div class="p-toast-message-text">
                 <span class="p-toast-summary">{{ slotProps.message.summary }}</span>

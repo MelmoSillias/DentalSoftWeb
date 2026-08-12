@@ -4,6 +4,7 @@ namespace App\Scheduling\Service;
 
 use App\Communication\Entity\SmsQueue;
 use App\Communication\Repository\SmsQueueRepository;
+use App\Communication\Service\SmsService;
 use App\CareDelivery\Entity\Consultation;
 use App\CareDelivery\Service\ConsultationNotificationService;
 use App\IdentityAccess\Entity\Employe;
@@ -12,6 +13,7 @@ use App\Scheduling\Entity\Rdv;
 use App\Scheduling\Repository\RdvRepository;
 use App\IdentityAccess\Repository\EmployeRepository;
 use App\Patient\Service\PatientService;
+use App\Settings\Service\GlobalSettingsService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -36,6 +38,8 @@ class RdvService
         private ConsultationNotificationService $consultationNotificationService,
         private RdvNotificationService $rdvNotificationService,
         private SmsQueueRepository $smsQueueRepository,
+        private SmsService $smsService,
+        private GlobalSettingsService $globalSettingsService,
     ) {
     }
 
@@ -274,26 +278,32 @@ class RdvService
     }
 
     /**
-     * @return array{medecin: Employe}|array{error: string, status: int}
+     * @return array{medecin: ?Employe}|array{error: string, status: int}
      */
     private function resolveMedecinForConsultation(Rdv $rdv, array $payload): array
     {
         $medecinId = isset($payload['medecin']) ? (int) $payload['medecin'] : null;
         $medecin = $medecinId ? $this->employeRepo->find($medecinId) : $rdv->getMedecin();
 
-        if (!$medecin instanceof Employe) {
-            return ['error' => 'Un médecin est requis pour créer la consultation.', 'status' => 400];
+        if ($medecin instanceof Employe) {
+            $rdv->setMedecin($medecin);
+
+            return ['medecin' => $medecin];
         }
 
-        $rdv->setMedecin($medecin);
+        if (!$this->globalSettingsService->isMedecinRequiredOnConsultationCreation()) {
+            return ['medecin' => null];
+        }
 
-        return ['medecin' => $medecin];
+        return ['error' => 'Un médecin est requis pour créer la consultation.', 'status' => 400];
     }
 
-    private function createConsultationFromRdv(Rdv $rdv, Employe $medecin): Consultation
+    private function createConsultationFromRdv(Rdv $rdv, ?Employe $medecin): Consultation
     {
         $consultation = new Consultation();
-        $consultation->setMedecin($medecin);
+        if ($medecin instanceof Employe) {
+            $consultation->setMedecin($medecin);
+        }
         $consultation->setPatient($rdv->getPatient());
         $consultation->setCreatedAt(new \DateTime());
         $consultation->setStatut(0);
@@ -331,8 +341,10 @@ class RdvService
             $this->rdvNotificationService->notifyValidation($rdv, $actor);
         } elseif ($newStatus === -2) {
             $this->rdvNotificationService->notifyCancellation($rdv, $actor);
+            $this->smsService->handleAppointmentModification($rdv, 'cancelled');
         } elseif ($newStatus === -1) {
             $this->rdvNotificationService->notifyReport($rdv, $rdv->getReportedAt(), $actor);
+            $this->smsService->handleAppointmentModification($rdv, 'rescheduled');
         }
 
         return ['success' => true];
@@ -410,12 +422,14 @@ class RdvService
                 break;
             case 'cancel':
                 $this->rdvNotificationService->notifyCancellation($rdv, $actor);
+                $this->smsService->handleAppointmentModification($rdv, 'cancelled');
                 break;
             case 'report':
                 $this->rdvNotificationService->notifyReport($rdv, $rdv->getReportedAt(), $actor);
                 if ($newRdv) {
                     $this->rdvNotificationService->notifyCreation($newRdv, $actor, true);
                 }
+                $this->smsService->handleAppointmentModification($rdv, 'rescheduled', $newRdv);
                 break;
         }
 

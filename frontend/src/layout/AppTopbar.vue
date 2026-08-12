@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
 import { useLayout } from '@/layout/composables/layout';
 import { useAuthStore } from '@/stores/auth';
 import AppConfigurator from './AppConfigurator.vue';
@@ -27,6 +27,7 @@ const {
     displayExpiration: smsDisplayExpiration,
     overviewSuccess: smsOverviewSuccess,
     loading: smsCreditsLoading,
+    refresh: refreshSmsCredits,
     startPolling: startSmsCreditsPolling,
     stopPolling: stopSmsCreditsPolling
 } = useSmsTopbarCredits(
@@ -176,6 +177,15 @@ onBeforeUnmount(() => {
     clearInterval(timer);
     stopSmsCreditsPolling();
 });
+
+watch(
+    () => route.name,
+    (name) => {
+        if (name === 'administration-api-sms' && auth.token) {
+            refreshSmsCredits({ silent: true });
+        }
+    }
+);
 
 function openSmsSettings() {
     if (!canOpenSmsSettings.value) {

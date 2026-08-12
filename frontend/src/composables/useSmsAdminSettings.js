@@ -17,6 +17,7 @@ import {
     updateSmsQueueItem
 } from '@/services/smsService';
 import { fetchPublicGeneralSettings } from '@/services/globalSettingsService';
+import { applyProviderOverview } from '@/composables/useSmsTopbarCredits';
 import cabinetConfig from '@/cabinetConfig';
 
 export const SMS_PROVIDER_OPTIONS = [
@@ -36,6 +37,8 @@ export function useSmsAdminSettings(token, toast, extractApiError) {
     const smsSendingTest = ref(false);
     const smsSaving = ref(false);
     const smsQueueing = ref(false);
+    const queueRefreshing = ref(false);
+    const logsRefreshing = ref(false);
     const smsQueueItemUpdating = ref(null);
     const smsTemplateSaving = ref(false);
     const lastTestResult = ref(null);
@@ -95,6 +98,8 @@ export function useSmsAdminSettings(token, toast, extractApiError) {
         patient_name: 'John Doe',
         date: '12/03/2026',
         time: '09:30',
+        new_date: '15/03/2026',
+        new_time: '14:00',
         amount: '25000',
         invoice_number: 'F-000123',
         cabinet_name: cabinetConfig.smsCabinetName || cabinetConfig.displayName || 'Cabinet dentaire'
@@ -223,6 +228,7 @@ export function useSmsAdminSettings(token, toast, extractApiError) {
             providerOverview.value = overview && typeof overview === 'object'
                 ? { success: Boolean(overview.success), message: overview.message || '', contracts: Array.isArray(overview.contracts) ? overview.contracts : [] }
                 : { success: false, message: '', contracts: [] };
+            applyProviderOverview(overview);
             if (templates.length > 0 && !selectedTemplateCode.value) {
                 selectedTemplateCode.value = templates[0].code;
             }
@@ -239,6 +245,30 @@ export function useSmsAdminSettings(token, toast, extractApiError) {
     const refreshSmsData = async () => {
         smsLoaded.value = false;
         await loadSmsData(true);
+    };
+
+    const refreshSmsQueue = async () => {
+        queueRefreshing.value = true;
+        try {
+            smsQueue.value = await fetchSmsQueue({ limit: 100 }, token);
+        } catch (error) {
+            logAppError('useSmsAdminSettings', error);
+            toast.add({ severity: 'error', summary: 'File SMS', detail: extractApiError(error, 'Rafraîchissement de la file impossible.'), life: 3500 });
+        } finally {
+            queueRefreshing.value = false;
+        }
+    };
+
+    const refreshSmsLogs = async () => {
+        logsRefreshing.value = true;
+        try {
+            smsLogs.value = await fetchSmsLogs({ limit: 50 }, token);
+        } catch (error) {
+            logAppError('useSmsAdminSettings', error);
+            toast.add({ severity: 'error', summary: 'Logs SMS', detail: extractApiError(error, 'Rafraîchissement des logs impossible.'), life: 3500 });
+        } finally {
+            logsRefreshing.value = false;
+        }
     };
 
     const saveSmsConfigAction = async () => {
@@ -434,6 +464,8 @@ export function useSmsAdminSettings(token, toast, extractApiError) {
         smsSendingTest,
         smsSaving,
         smsQueueing,
+        queueRefreshing,
+        logsRefreshing,
         smsQueueItemUpdating,
         smsTemplateSaving,
         lastTestResult,
@@ -465,6 +497,8 @@ export function useSmsAdminSettings(token, toast, extractApiError) {
         loadPeriodStats,
         loadSmsData,
         refreshSmsData,
+        refreshSmsQueue,
+        refreshSmsLogs,
         saveSmsConfigAction,
         testConnectionAction,
         sendSmsTestAction,
