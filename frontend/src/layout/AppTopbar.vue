@@ -12,9 +12,12 @@ import { useMercureNotifications } from '@/composables/useMercureNotifications';
 import { useRoute } from 'vue-router';
 import { getTaskMenuItemsForRoute, isGuidedTourRoute, requestGuidedTourStart } from '@/tours';
 import cabinetConfig from '@/cabinetConfig';
+import { useInternetFeatures } from '@/composables/useInternetFeatures';
 import { useSmsTopbarCredits } from '@/composables/useSmsTopbarCredits';
+import Tag from 'primevue/tag';
 
 const { toggleMenu, toggleDarkMode, isDarkTheme } = useLayout();
+const { isLocalDeploymentMode } = useInternetFeatures();
 const auth = useAuthStore();
 const toast = useToast();
 const route = useRoute();
@@ -337,6 +340,13 @@ function handleStartGuidedTourTask(taskId, variantId = null) {
                 <span style="font-weight: 500;">{{ cabinetConfig.brandName }} <br> <small>{{ cabinetConfig.brandSubtitle }}</small></span>
 
             </router-link>
+            <Tag
+                v-if="isLocalDeploymentMode"
+                value="Mode local"
+                severity="warn"
+                class="local-mode-tag"
+                role="status"
+            />
         </div>
         <div class="layout-topbar-actions">
             <div class="layout-config-menu">
@@ -598,6 +608,13 @@ function handleStartGuidedTourTask(taskId, variantId = null) {
 
 .layout-topbar-logo span {
     text-wrap-mode: nowrap;
+}
+
+.local-mode-tag {
+    flex-shrink: 0;
+    margin-left: 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
 }
 
 .layout-topbar-action {

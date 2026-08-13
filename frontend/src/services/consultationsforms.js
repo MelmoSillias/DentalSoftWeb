@@ -95,12 +95,4 @@ export const saveOrdonnance = async (consultId, payload, token) => {
     return res.data;
 };
 
-export const printOrdonnance = async (ordonnanceId, token) => {
-    const res = await axios.get(`${apiPrefix}/ordonnance/${ordonnanceId}/print`, {
-        headers: authHeaders(token),
-        responseType: 'blob'
-    });
-    return res.data;
-};
-
 export const defaultActesList = ['Consultation', 'Détartrage', 'Extraction', 'Remplissage', 'Composite', 'Amalgame', 'Traitement de canal', 'Traumatisme', 'Couronne', 'Blanchiment', 'Radio', 'Prothèse', 'Orthodontie', 'Chirurgie'];

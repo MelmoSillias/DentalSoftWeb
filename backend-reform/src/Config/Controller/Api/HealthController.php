@@ -3,6 +3,7 @@
 namespace App\Config\Controller\Api;
 
 use App\Communication\Service\MercureHealthService;
+use App\Settings\Service\InternetFeaturesGate;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
@@ -11,6 +12,7 @@ final class HealthController extends AbstractController
 {
     public function __construct(
         private readonly MercureHealthService $mercureHealthService,
+        private readonly InternetFeaturesGate $internetFeaturesGate,
     ) {
     }
 
@@ -36,6 +38,14 @@ final class HealthController extends AbstractController
     {
         return $this->json([
             'currentTime' => (new \DateTime())->format(\DateTime::ATOM),
+        ]);
+    }
+
+    #[Route('/api/health/features', name: 'api_health_features', methods: ['GET'])]
+    public function features(): JsonResponse
+    {
+        return $this->json([
+            'internetFeaturesEnabled' => $this->internetFeaturesGate->isEnabled(),
         ]);
     }
 }

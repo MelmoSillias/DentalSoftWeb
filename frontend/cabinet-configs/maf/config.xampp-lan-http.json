@@ -1,0 +1,58 @@
+{
+  "id": "maf",
+  "displayName": "Cabinet Dentaire MAF",
+  "appTitle": "DentalSoft - Cabinet Dentaire MAF",
+  "brandName": "DentalSoft",
+  "brandSubtitle": "Cabinet Dentaire MAF",
+  "settingsTitle": "Configuration du cabinet",
+  "settingsDescription": "Personnalisez l'apparence et les flux metier de DentalSoft",
+  "internetFeaturesEnabled": false,
+  "smsCabinetName": "CABINET DENTAIRE MAF",
+  "smsTestMessage": "Message de test CABINET DENTAIRE MAF.",
+  "reportCabinetName": "CABINET DENTAIRE MAF",
+  "cabinetPhone": "+223 76 66 80 37 / +223 76 56 51 86",
+  "printProfile": {
+    "name": "CABINET DENTAIRE MAF",
+    "addressLines": [
+      "sis à Garantibougou 55ème plaque"
+    ],
+    "phones": [
+      "76 66 80 37",
+      "76 56 51 86"
+    ],
+    "email": "Cabinetdentairemaf@gmail.com"
+  },
+  "viteApiPrefix": "http://apidentalsoft.local/api",
+  "viteFilePrefix": "http://apidentalsoft.local",
+  "brandingAssets": {
+    "logo": "logo.png",
+    "logoAlt": "logo.jpeg",
+    "header": "header.png",
+    "headerAlt": "header.jpeg",
+    "headerLarge": "header-big.jpeg",
+    "profile": "profil.png",
+    "landingIllustration": "landing-illustration.png",
+    "notificationSound": "notification.mp3"
+  },
+  "pwa": {
+    "name": "DENTALSOFT - CABINET DENTAIRE MAF",
+    "shortName": "DENTALSOFT",
+    "description": "Application de gestion de cabinet dentaire - CABINET DENTAIRE MAF",
+    "themeColor": "#5ad6f5",
+    "backgroundColor": "#ffffff",
+    "startUrl": "/",
+    "display": "standalone",
+    "includeAssets": [
+      "favicon.ico",
+      "robots.txt",
+      "icons/*.svg"
+    ],
+    "icons": [
+      {
+        "src": "logo.png",
+        "sizes": "512x512",
+        "type": "image/png"
+      }
+    ]
+  }
+}

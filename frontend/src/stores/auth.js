@@ -83,6 +83,9 @@ export const useAuthStore = defineStore('auth', {
                 this.user = res.data.user;
                 this.mercure = res.data.mercure || null;
                 this.clearDeviceBlock();
+                const { useInternetFeatures } = await import('@/composables/useInternetFeatures');
+                const { syncFromServer } = useInternetFeatures();
+                await syncFromServer(this.token);
                 return res.data;
             } catch (err) {
                 if (isDeviceNotAllowedError(err)) {
@@ -102,6 +105,9 @@ export const useAuthStore = defineStore('auth', {
             this.mercure = null;
             this.clearDeviceBlock();
             localStorage.removeItem('token');
+            import('@/composables/useInternetFeatures').then(({ useInternetFeatures }) => {
+                useInternetFeatures().reset();
+            });
         }
     }
 });

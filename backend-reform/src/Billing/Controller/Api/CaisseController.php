@@ -10,7 +10,6 @@ use App\Patient\Entity\Patient;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
 class CaisseController extends AbstractController
@@ -183,80 +182,6 @@ class CaisseController extends AbstractController
         $result = $this->entryPoint->getInsuredWorkflow()->resetPayments($id);
 
         return new JsonResponse($result, isset($result['error']) ? 400 : 200);
-    }
-
-    #[Route('/api/factures/{id}/print', name: 'api_factures_print', methods: ['GET'])] 
-    public function printFactureFromLegacyRoute(int $id): Response
-    {
-        $data = $this->entryPoint->getClassicWorkflow()->previewFactureDetail($id);
-        if ($data === null) {
-            throw $this->createNotFoundException('Facture introuvable.');
-        }
-
-        return $this->render('devis/print_document.html.twig', [
-            'doc' => $data,
-            'title' => 'Facture',
-        ]);
-    }
-
-    #[Route('/api/invoices/{id}/print', name: 'api_invoice_print', methods: ['GET'])]
-    public function printFacture(int $id): Response
-    {
-        $data = $this->entryPoint->getClassicWorkflow()->previewFacture($id);
-        if ($data === null) {
-            throw $this->createNotFoundException('Facture introuvable.');
-        }
-
-        return $this->render('devis/print_document.html.twig', [
-            'doc' => $data,
-            'title' => 'Facture',
-        ]);
-    }
-
-    #[Route('/api/payments/print', name: 'api_payments_print', methods: ['GET'])]
-    public function printListePaiements(Request $request): Response
-    {
-        $start = new \DateTime($request->query->get('start', 'today'));
-        if ($request->query->has('end') && $request->query->get('end') !== '') {
-            $end = new \DateTime($request->query->get('end'));
-        } else {
-            $end = (clone $start);
-        }
-        $end->setTime(23, 59, 59);
-
-        $paiements = $this->entryPoint->paiementsForPeriod($start, $end);
-
-        return $this->render('devis/print_paiements_liste.html.twig', [
-            'paiements' => $paiements,
-            'start' => $start,
-            'end' => $end
-        ]);
-    }
-
-    #[Route('/api/payments/{id}/print', name: 'api_payment_print', methods: ['GET'])]
-    public function printPaiement(int $id): Response
-    {
-        $paiement = $this->entryPoint->paiementById($id);
-        if (!$paiement) {
-            throw $this->createNotFoundException('Paiement introuvable.');
-        }
-
-        return $this->render('devis/print_paiement.html.twig', [
-            'paiement' => $paiement
-        ]);
-    }
-
-    #[Route('/api/receipts/{id}/print', name: 'api_receipt_print', methods: ['GET'])]
-    public function printTicket(int $id): Response
-    {
-        $paiement = $this->entryPoint->paiementById($id);
-        if (!$paiement) {
-            throw $this->createNotFoundException('Paiement introuvable.');
-        }
-
-        return $this->render('devis/print_Ticket.html.twig', [
-            'paiement' => $paiement
-        ]);
     }
 
     #[Route('/api/prints/devis/{id}', name: 'api_print_devis_data', methods: ['GET'])]

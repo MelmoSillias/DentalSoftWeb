@@ -84,30 +84,12 @@ export const consultationsTableRegistry = createTourRegistry(GROUP, TASKS, {
     'continue-open': (ctx) => {
         const steps = [];
 
-        if (ctx.hasRepriseCase) {
+        if (ctx.hasRepriseCase || ctx.hasLinkedCase || ctx.hasFreshCase) {
             steps.push({
                 group: GROUP,
-                target: '[data-tour="consultations-table.case-last-fiche"]',
-                title: 'Reprise de derniere fiche',
-                content: 'Cette ligne montre une consultation ouverte avec une derniere fiche existante a reprendre.'
-            });
-        }
-
-        if (ctx.hasLinkedCase) {
-            steps.push({
-                group: GROUP,
-                target: '[data-tour="consultations-table.case-linked"]',
-                title: 'Fiche deja liee',
-                content: 'Poursuivez la fiche active plutot que d en ouvrir une nouvelle.'
-            });
-        }
-
-        if (ctx.hasFreshCase) {
-            steps.push({
-                group: GROUP,
-                target: '[data-tour="consultations-table.case-new"]',
-                title: 'Nouvelle fiche',
-                content: 'Ce patient peut recevoir une nouvelle fiche proprement.'
+                target: '[data-tour="consultations-table.actions"]',
+                title: 'Poursuivre une consultation',
+                content: 'Les actions rapides lancent une cloture apres liaison automatique a la derniere fiche medicale du patient.'
             });
         }
 
@@ -115,8 +97,8 @@ export const consultationsTableRegistry = createTourRegistry(GROUP, TASKS, {
             steps.push({
                 group: GROUP,
                 target: '[data-tour="consultations-table.dialog.quick"]',
-                title: 'Actions rapides',
-                content: 'Le dialogue permet de continuer ou creer une fiche selon le contexte de la consultation.',
+                title: 'Cloture rapide',
+                content: 'Le dialogue prepare la cloture en liant automatiquement la derniere fiche medicale.',
                 beforeEnter: async () => openDialogStep(ctx.openQuickDialog, ctx.closeAllDialogs)
             });
         }
@@ -150,13 +132,13 @@ export const consultationsTableRegistry = createTourRegistry(GROUP, TASKS, {
             group: GROUP,
             target: '[data-tour="consultations-table.actions"]',
             title: 'Actions rapides',
-            content: 'Depuis une consultation ouverte, lancez une action rapide pour cloturer sans ouvrir toute la fiche.'
+            content: 'Depuis une consultation ouverte, lancez une cloture rapide. La derniere fiche medicale est liee automatiquement.'
         },
         {
             group: GROUP,
             target: '[data-tour="consultations-table.dialog.quick"]',
-            title: 'Dialogue metier rapide',
-            content: 'Ce dialogue guide la cloturation ou la reprise de fiche selon le contexte.',
+            title: 'Dialogue de cloture',
+            content: 'Ce dialogue prepare la cloture apres liaison automatique a la derniere fiche medicale.',
             beforeEnter: async () => openDialogStep(ctx.openQuickDialog, ctx.closeAllDialogs)
         }
     ]),

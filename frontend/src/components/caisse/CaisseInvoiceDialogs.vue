@@ -150,23 +150,23 @@ const hasPreviewData = computed(() => Boolean(props.previewData));
 
             <div class="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-4 shadow-sm flex flex-col gap-3">
                 <div>
-                    <label class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Mode de paiement patient</label>
+                    <label class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Mode de paiement patient <span class="text-red-500">*</span></label>
                     <Select v-model="payForm.modeId" :options="classicPaymentOptions" optionLabel="label" optionValue="value" optionDisabled="disabled" placeholder="Sélectionner un mode" class="w-full mt-1" />
                 </div>
 
                 <div class="grid grid-cols-2 gap-3">
                     <div>
-                        <label class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Date</label>
+                        <label class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Date <span class="text-red-500">*</span></label>
                         <InputText v-model="payForm.date" type="date" class="w-full mt-1" />
                     </div>
                     <div>
-                        <label class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Heure</label>
+                        <label class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Heure <span class="text-red-500">*</span></label>
                         <InputText v-model="payForm.time" type="time" class="w-full mt-1" />
                     </div>
                 </div>
 
                 <div>
-                    <label class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Montant patient</label>
+                    <label class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Montant patient <span class="text-red-500">*</span></label>
                     <InputNumber v-model="payForm.montant" mode="decimal" locale="fr-FR" :min="0" class="w-full mt-1" :max="maxClientPaymentAmount" />
                     <div class="mt-2 flex items-center justify-between">
                         <p class="text-xs text-gray-400 dark:text-gray-500 flex items-center gap-1">

@@ -36,7 +36,6 @@ const props = defineProps({
 const emit = defineEmits([
     'clear-selection',
     'select-consultation',
-    'select-action-choice',
     'patient-loaded',
     'consultation-closed'
 ]);
@@ -111,24 +110,11 @@ const medecinLabel = (consultation) => {
     return medecin.label || medecin.fullName || medecin.name || `${medecin.prenom ?? ''} ${medecin.nom ?? ''}`.trim() || 'Non assigné';
 };
 
-const selectedEmbeddedMode = computed(() => {
-    // Focus never force-creates: backend links last fiche or creates only if none exist.
-    return 'continue';
-});
-
 const selectedEmbeddedFicheId = computed(() => {
     const consultation = currentConsultation.value;
     if (!consultation) return null;
     if (consultation.ficheId) return consultation.ficheId;
     return consultation.lastFicheId || null;
-});
-
-const selectedChoiceLabel = computed(() => {
-    if (currentConsultation.value?.ficheId) return 'Fiche liée en cours';
-    if (currentConsultation.value?.hasFiche || currentConsultation.value?.lastFicheId) {
-        return 'Reprise de la dernière fiche';
-    }
-    return 'Nouvelle fiche';
 });
 
 const currentConsultation = computed(() =>
@@ -270,8 +256,8 @@ watch(
                 <div v-if="canShowEmbeddedWorkspace"
                     class="flex-1 border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-900 overflow-y-auto">
                     <EmbeddedConsultationFiche ref="embeddedFicheRef" :consultation-id="currentConsultation.id"
-                        :fiche-id="selectedEmbeddedFicheId" :mode="selectedEmbeddedMode"
-                        :readonly="currentConsultationClosed" :choice-label="selectedChoiceLabel"
+                        :fiche-id="selectedEmbeddedFicheId"
+                        :readonly="currentConsultationClosed"
                         @patient-loaded="(payload) => emit('patient-loaded', payload)"
                         @ordonnances-changed="handleOrdonnancesChanged"
                         @closed="() => emit('consultation-closed')" />

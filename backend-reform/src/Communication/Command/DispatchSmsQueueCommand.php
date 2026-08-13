@@ -3,6 +3,7 @@
 namespace App\Communication\Command;
 
 use App\Communication\Message\ProcessSmsQueueMessage;
+use App\Settings\Service\InternetFeaturesGate;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -17,8 +18,10 @@ use Symfony\Component\Messenger\MessageBusInterface;
 )]
 final class DispatchSmsQueueCommand extends Command
 {
-    public function __construct(private readonly MessageBusInterface $messageBus)
-    {
+    public function __construct(
+        private readonly MessageBusInterface $messageBus,
+        private readonly InternetFeaturesGate $internetFeaturesGate,
+    ) {
         parent::__construct();
     }
 
@@ -30,6 +33,13 @@ final class DispatchSmsQueueCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
+
+        if (!$this->internetFeaturesGate->isEnabled()) {
+            $io->writeln('[info] Fonctionnalités Internet désactivées — dispatch SMS ignoré.');
+
+            return Command::SUCCESS;
+        }
+
         $limit = max(1, (int) $input->getOption('limit'));
 
         $this->messageBus->dispatch(new ProcessSmsQueueMessage($limit));

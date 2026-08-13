@@ -79,7 +79,7 @@ async function onFormSubmit({valid, values}) {
         
         <div class="grid grid-cols-1 md:grid-cols-1 gap-6">
             <div class="flex flex-col gap-2 ">
-                <label class="font-semibold mb-1">Nom du consommable</label>
+                <label class="font-semibold mb-1">Nom du consommable <span class="text-red-500">*</span></label>
                 <InputText name="nom" class="w-full" />
                 <Message v-if="$form.nom?.invalid" severity="error" size="small" variant="simple">
                     {{ $form.nom.error?.message }}

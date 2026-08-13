@@ -80,14 +80,18 @@
 - `Billing`: services `CashdeskEntryPointService`, `ClassicInvoiceWorkflowService`, `InsuredInvoiceWorkflowService`, `FinanceService`
 - `CareDelivery`: services `ConsultationService`, `ConsultationNotificationService`
 - `ClinicalRecord`: services `FicheMedicaleService`
-- `Communication`: services `NotificationService`, `NotificationRealtimePublisher`, `NotificationRecipientResolver`, `MercureAuthorizationService`, `SmsService`, `SmsTemplateService`, `SmsConfigService`, `OrangeSmsClient`, `CryptoService`
+- `Communication`: services `NotificationService`, `NotificationRealtimePublisher`, `NotificationRecipientResolver`, `MercureAuthorizationService`, `MercureHealthService`, `SmsService`, `SmsTemplateService`, `SmsConfigService`, `OrangeSmsClient`, `CryptoService` ; Mercure `MercureCircuitBreaker`, `ResilientMercureHub` (publish async via Messenger + circuit breaker)
 - `Focus`: services `FocusRealtimePublisher`, `DashboardService`
 - `IdentityAccess`: services `AuthService`, `EmployeeService`, `UserDeviceService`, `UserManagementService`
 - `Inventory`: services `ConsommableService`
 - `Patient`: services `PatientService`
 - `Reporting`: services `ReportService`
 - `Scheduling`: services `AgendaService`, `CongeService`, `RdvService`, `RdvNotificationService`, `SalleService`
-- `Settings`: services `GlobalSettingsService`
+- `Settings`: services `GlobalSettingsService`, `InternetFeaturesGate`
+
+## Mode local sans Internet
+
+Variable d'environnement `APP_INTERNET_FEATURES_ENABLED=0` (defaut `1`) : desactive les fonctionnalites necessitant Internet (SMS, etc.) via `InternetFeaturesGate`. Expose au frontend via `internetFeaturesEnabled` dans `/api/settings/general/public`. Voir `docs/deploiement-local-sans-internet.md`.
 
 ## Schema support demarre
 

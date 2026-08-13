@@ -2,6 +2,7 @@
 import { logAppError } from '@/utils/appLogger';
 
 import { createRdvForPatient, normalizePatient, searchPatients } from '@/services/patients';
+import { useInternetFeatures } from '@/composables/useInternetFeatures';
 import { useAuthStore } from '@/stores/auth';
 import { useMedecinsStore } from '@/stores/medecins';
 import Button from 'primevue/button';
@@ -47,6 +48,7 @@ const confirmPopup = useConfirm();
 const toast = useToast();
 const token = localStorage.getItem('token');
 const auth = useAuthStore();
+const { isInternetFeaturesEnabled } = useInternetFeatures();
 const medecinsStore = useMedecinsStore();
 const loading = ref(false);
 
@@ -310,11 +312,14 @@ const saveRendezVous = async () => {
             duration,
             description: form.motif,
             notes: form.notes,
-            smsReminder: {
+        };
+
+        if (isInternetFeaturesEnabled.value) {
+            payload.smsReminder = {
                 timing: smsReminder.timing,
                 repeatInterval: canRepeatSmsReminder.value ? smsReminder.repeatInterval : 'none'
-            }
-        };
+            };
+        }
         const saved = await createRdvForPatient(selectedPatientId.value, payload, token);
         toast.add({
             severity: 'success',
@@ -359,7 +364,7 @@ const handleSubmit = (event) => {
         <ConfirmPopup />
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4" data-tour="patients-form-rdv.details">
             <div class="flex flex-col gap-2" v-if="!isPatientPreselected">
-                <label class="font-semibold">Patient</label>
+                <label class="font-semibold">Patient <span class="text-red-500">*</span></label>
                 <Select v-model="selectedPatientId" :options="patientOptions" optionLabel="label" optionValue="value"
                     placeholder="Choisir un patient" class="w-full" filter :loading="patientsLoading"
                     :filterFields="['label', 'phone', 'searchText']"
@@ -374,16 +379,16 @@ const handleSubmit = (event) => {
                 </Select>
             </div>
             <div v-else class="flex flex-col gap-2">
-                <label class="font-semibold">Patient</label>
+                <label class="font-semibold">Patient <span class="text-red-500">*</span></label>
                 <InputText :value="patientDisplayName" disabled />
             </div>
             <div class="flex flex-col gap-2">
-                <label class="font-semibold">Médecin</label>
+                <label class="font-semibold">Médecin <span class="text-red-500">*</span></label>
                 <Select v-model="selectedMedecinId" :options="medecinOptions" optionLabel="label" optionValue="value"
                     placeholder="Choisir un médecin" class="w-full" :disabled="isMedecinLocked" />
             </div>
             <div class="flex flex-col gap-2">
-                <label class="font-semibold">Durée (minutes)</label>
+                <label class="font-semibold">Durée (minutes) <span class="text-red-500">*</span></label>
                 <InputNumber v-model="form.duration" :min="1" showButtons buttonLayout="horizontal"
                     decrementButtonClass="p-button-outlined" incrementButtonClass="p-button-outlined" />
             </div>
@@ -392,14 +397,14 @@ const handleSubmit = (event) => {
                 <InputText v-model="form.motif" placeholder="Motif du rendez-vous" />
             </div>
             <div class="flex flex-col gap-2">
-                <label class="font-semibold">Date et heure</label>
+                <label class="font-semibold">Date et heure <span class="text-red-500">*</span></label>
                 <DatePicker v-model="form.dateRdv" showTime hourFormat="24" dateFormat="dd/mm/yy" class="w-full" />
             </div>
             <div class="md:col-span-2 flex flex-col gap-2">
                 <label class="font-semibold">Notes</label>
                 <Textarea v-model="form.notes" rows="3" auto-resize placeholder="Notes supplémentaires" />
             </div>
-            <div class="md:col-span-2 rounded-xl border border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-800/40" data-tour="patients-form-rdv.sms-reminder">
+            <div v-if="isInternetFeaturesEnabled" class="md:col-span-2 rounded-xl border border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-800/40" data-tour="patients-form-rdv.sms-reminder">
                 <div class="mb-4 flex items-start justify-between gap-3">
                     <div>
                         <label class="font-semibold">Programmation SMS rapide</label>

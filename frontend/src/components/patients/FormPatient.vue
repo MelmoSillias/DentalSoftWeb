@@ -493,7 +493,7 @@ defineExpose({
                 <TabPanel value="personal" data-tour="patients-form.panel-personal">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div class="flex flex-col gap-2">
-                            <label for="nom" class="font-semibold"><span class="text-red-500">*</span> Nom</label>
+                            <label for="nom" class="font-semibold">Nom <span class="text-red-500">*</span></label>
                             <InputText id="nom" v-model="form.nom" placeholder="Nom" />
                         </div>
                         <div class="flex flex-col gap-2">
@@ -501,7 +501,7 @@ defineExpose({
                             <InputText id="prenom" v-model="form.prenom" placeholder="Prénom" />
                         </div>
                         <div class="flex flex-col gap-2">
-                            <label for="telephone" class="font-semibold"><span class="text-red-500">*</span> Téléphone</label>
+                            <label for="telephone" class="font-semibold">Téléphone <span class="text-red-500">*</span></label>
                             <InputText id="telephone" v-model="form.telephone" placeholder="Téléphone" />
                         </div>
                         <div class="flex flex-col gap-2">

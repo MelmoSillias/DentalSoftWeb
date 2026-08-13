@@ -204,7 +204,7 @@ const employeeOptions = computed(() =>
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
             <div class="space-y-4">
                 <div class="space-y-1">
-                    <label class="text-sm font-medium">Employé</label>
+                    <label class="text-sm font-medium">Employé <span class="text-red-500">*</span></label>
                     <Select
                         v-model="form.employeeId"
                         :options="employeeOptions"
@@ -216,17 +216,17 @@ const employeeOptions = computed(() =>
                 </div>
 
                 <div class="space-y-1">
-                    <label class="text-sm font-medium">{{ isJournalier ? 'Mois de référence' : 'Mois de paie' }}</label>
+                    <label class="text-sm font-medium">{{ isJournalier ? 'Mois de référence' : 'Mois de paie' }} <span class="text-red-500">*</span></label>
                     <DatePicker v-model="monthModel" view="month" dateFormat="mm/yy" showIcon class="w-full" />
                 </div>
 
                 <div v-if="isJournalier" class="space-y-1">
-                    <label class="text-sm font-medium">Jour travaillé à payer</label>
+                    <label class="text-sm font-medium">Jour travaillé à payer <span class="text-red-500">*</span></label>
                     <DatePicker v-model="dayModel" dateFormat="yy-mm-dd" showIcon class="w-full" />
                 </div>
 
                 <div class="space-y-1">
-                    <label class="text-sm font-medium">Montant versé</label>
+                    <label class="text-sm font-medium">Montant versé <span class="text-red-500">*</span></label>
                     <InputNumber
                         v-model="form.paidAmount"
                         class="w-full"
@@ -239,7 +239,7 @@ const employeeOptions = computed(() =>
                 </div>
 
                 <div class="space-y-1">
-                    <label class="text-sm font-medium">Mode de règlement</label>
+                    <label class="text-sm font-medium">Mode de règlement <span class="text-red-500">*</span></label>
                     <Select
                         v-model="form.paymentMethodId"
                         :options="paymentMethods"

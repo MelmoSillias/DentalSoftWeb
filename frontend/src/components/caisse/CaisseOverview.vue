@@ -10,6 +10,9 @@ import SelectButton from 'primevue/selectbutton';
 import Tag from 'primevue/tag';
 import { computed, ref } from 'vue';
 import PanelDatePicker from '@/components/common/PanelDatePicker.vue';
+import { useInternetFeatures } from '@/composables/useInternetFeatures';
+
+const { isInternetFeaturesEnabled } = useInternetFeatures();
 
 const props = defineProps({
     factures: { type: Array, default: () => [] },
@@ -514,7 +517,7 @@ const printDetailPayment = (row) => {
                                 @click="handleModify(data)" />
                             <Button v-if="canPreview(data)" size="small" icon="pi pi-eye" severity="info"
                                 class="p-button-outlined" @click="handlePreview(data)" />
-                            <Button v-if="canPreview(data)" size="small" icon="pi pi-send" severity="help"
+                            <Button v-if="canPreview(data) && isInternetFeaturesEnabled" size="small" icon="pi pi-send" severity="help"
                                 @click="emit('send-invoice-sms', data)" />
                         </div>
                     </template>
@@ -597,7 +600,7 @@ const printDetailPayment = (row) => {
                                     icon="pi pi-pencil" @click="handleModify(invoice)" />
                                 <Button v-if="canPreview(invoice)" label="Voir" size="small" icon="pi pi-eye"
                                     severity="info" outlined @click="handlePreview(invoice)" />
-                                <Button v-if="canPreview(invoice)" icon="pi pi-send" size="small" severity="help"
+                                <Button v-if="canPreview(invoice) && isInternetFeaturesEnabled" icon="pi pi-send" size="small" severity="help"
                                     text @click="emit('send-invoice-sms', invoice)" />
                                 <Button size="small" text
                                     :label="isInvoiceExpanded(invoice) ? 'Masquer paiements' : 'Voir paiements'"
@@ -701,7 +704,7 @@ const printDetailPayment = (row) => {
                         <div class="flex gap-2">
                             <Button :icon="isInvoiceStylePayment(data) ? 'pi pi-print' : 'pi pi-ticket'" text
                                 @click="emit(isInvoiceStylePayment(data) ? 'print-payment' : 'print-receipt', data)" />
-                            <Button icon="pi pi-send" text @click="emit('send-receipt-sms', data)" />
+                            <Button v-if="isInternetFeaturesEnabled" icon="pi pi-send" text @click="emit('send-receipt-sms', data)" />
                         </div>
                     </template>
                 </Column>

@@ -2,9 +2,10 @@ import { logAppError } from '@/utils/appLogger';
 import { computed, nextTick, reactive, ref, watch } from 'vue';
 import { fetchInfirmiers } from '@/services/corpsmedical';
 import { fetchSalles } from '@/services/salles';
-import { fetchConsultationDetails, setConsultationFiche } from '@/services/consultations';
+import { fetchConsultationDetails } from '@/services/consultations';
 import { loadOrdonnances, saveConsultation, closeConsultation } from '@/services/consultationsforms';
-import { loadFicheMedicale, saveBilans, saveDevis, saveDocuments, saveEntretien, saveExamens, savePlanTraitement } from '@/services/ficheMedicale';
+import { saveBilans, saveDevis, saveDocuments, saveEntretien, saveExamens, savePlanTraitement } from '@/services/ficheMedicale';
+import { loadFicheWithRecovery } from '@/composables/useFicheMedicaleAccess';
 import { filePrefix } from '@/config';
 import { useMedecinsStore } from '@/stores/medecins';
 
@@ -195,9 +196,7 @@ const defaultConsultation = () => ({
     actes: []
 });
 
-const ficheLinkPromises = new Map();
-
-export const useConsultationsForm = ({ ficheId, consultId, token, mode }) => {
+export const useConsultationsForm = ({ ficheId, consultId, token, mode: _mode }) => {
     const medecinsStore = useMedecinsStore();
     const loading = ref(false);
     const activeSection = ref('infos');
@@ -292,39 +291,6 @@ export const useConsultationsForm = ({ ficheId, consultId, token, mode }) => {
         data.medecins = meds;
         data.infirmiers = infs;
         data.salles = salles;
-    };
-
-    const ensureFicheLinked = async () => {
-        if (!consultId.value) return null;
-
-        const isNewFiche = mode?.value === 'new-fiche';
-        if (!isNewFiche && ficheId.value) {
-            return ficheId.value;
-        }
-
-        const consultKey = String(consultId.value);
-        if (ficheLinkPromises.has(consultKey)) {
-            await ficheLinkPromises.get(consultKey);
-            return ficheId.value;
-        }
-
-        const linkPromise = (async () => {
-            const requestedFicheId = isNewFiche ? null : (ficheId.value || null);
-            const res = await setConsultationFiche(consultId.value, requestedFicheId, token, {
-                createNew: isNewFiche,
-                allowDuplicate: isNewFiche,
-            });
-            const linkedId = res?.ficheId ?? res?.id ?? null;
-            if (linkedId) ficheId.value = linkedId;
-            return ficheId.value;
-        })();
-
-        ficheLinkPromises.set(consultKey, linkPromise);
-        try {
-            return await linkPromise;
-        } finally {
-            ficheLinkPromises.delete(consultKey);
-        }
     };
 
     const hydrateFromFiche = (res) => {
@@ -449,24 +415,8 @@ export const useConsultationsForm = ({ ficheId, consultId, token, mode }) => {
         readyForDirty.value = false;
         try {
             await loadReferenceData();
-            await ensureFicheLinked();
 
-            try {
-                const res = await loadFicheMedicale(ficheId.value, token);
-                hydrateFromFiche(res);
-            } catch (error) {
-                const status = error?.response?.status;
-                if (status === 404 && consultId.value && !ficheId.value) {
-                    await ensureFicheLinked();
-                    if (ficheId.value) {
-                        const res = await loadFicheMedicale(ficheId.value, token);
-                        hydrateFromFiche(res);
-                    }
-                } else {
-                    throw error;
-                }
-            }
-
+            let patientId = data.patient?.id || null;
             if (consultId.value) {
                 try {
                     const consult = await fetchConsultationDetails(consultId.value, token);
@@ -477,6 +427,12 @@ export const useConsultationsForm = ({ ficheId, consultId, token, mode }) => {
                         noteSeance: consult.noteSeance ?? '',
                         actes: Array.isArray(consult.actes) ? consult.actes.map((acte) => normalizeActeEntry(acte)) : []
                     };
+                    patientId = consult?.patientId
+                        ?? consult?.patient?.id
+                        ?? patientId;
+                    if (patientId) {
+                        data.patient.id = patientId;
+                    }
                 } catch (error) {
                     logAppError('Erreur chargement consultation', error);
                 }
@@ -487,6 +443,18 @@ export const useConsultationsForm = ({ ficheId, consultId, token, mode }) => {
                     logAppError('Erreur chargement ordonnances', error);
                 }
             }
+
+            const recovered = await loadFicheWithRecovery({
+                ficheId: ficheId.value,
+                consultId: consultId.value,
+                patientId,
+                token
+            });
+
+            if (recovered?.ficheId) {
+                ficheId.value = recovered.ficheId;
+            }
+            hydrateFromFiche(recovered?.data);
         } finally {
             loading.value = false;
             readyForDirty.value = true;

@@ -153,21 +153,6 @@ final class ConsultationController extends AbstractController{
         return new JsonResponse($data);
     }
 
-    #[Route('/api/ordonnance/{id}/print', name: 'api_ordonnance_print', methods: ['GET'])]
-    public function printOrdonnance(int $id): Response
-    {
-        $data = $this->consultationService->getOrdonnanceData($id);
-        if (!$data) {
-            return new Response('Ordonnance introuvable', 404);
-        }
-
-        $html = $this->renderView('ordonnance/print.html.twig', [
-            'data' => $data,
-        ]);
-
-        return new Response($html);
-    }
-
     #[Route('/api/prints/ordonnances/{id}', name: 'api_print_ordonnance_data', methods: ['GET'])]
     public function getOrdonnancePrintData(int $id): JsonResponse
     {

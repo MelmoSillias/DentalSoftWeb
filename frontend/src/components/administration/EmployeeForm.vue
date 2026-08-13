@@ -143,6 +143,10 @@ const buildFormData = () => {
             (value || []).forEach((day) => formData.append('comingDays[]', day));
             return;
         }
+        if (key === 'fonction') {
+            formData.append(key, value ?? '');
+            return;
+        }
         if (value === null || value === undefined || value === '') return;
         if (value instanceof Date) {
             formData.append(key, value.toISOString().substring(0, 10));
@@ -208,12 +212,12 @@ const closeDialog = () => {
                 </div>
                 <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div class="space-y-1">
-                        <label class="text-sm font-medium">Fonction</label>
+                        <label class="text-sm font-medium">Type de poste</label>
                         <Select v-model="form.type" :options="typeOptions" optionLabel="label" optionValue="value" class="w-full" />
                     </div>
                     <div class="space-y-1">
-                        <label class="text-sm font-medium">Description</label>
-                        <InputText v-model="form.fonction" placeholder="Description" class="w-full" />
+                        <label class="text-sm font-medium">Description de fonction</label>
+                        <InputText v-model="form.fonction" placeholder="Description de fonction (optionnel)" class="w-full" />
                     </div>
                     <div class="space-y-1">
                         <label class="text-sm font-medium">Date d'embauche</label>

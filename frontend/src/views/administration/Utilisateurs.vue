@@ -17,7 +17,7 @@ import { useUsers } from '@/composables/useUsers';
 import UserForm from '@/components/administration/UserForm.vue';
 import { activateAdminTourMock, deactivateAdminTourMock, resetAdminTourMockData } from '@/services/adminTourMock';
 import { useGuidedTour } from '@/composables/useGuidedTour';
-import { formatEmployeeTypeLabel } from '@/utils/employeeTypeUtils';
+import { formatEmployeeTypeLabel, formatStaffRoleLabel } from '@/utils/employeeTypeUtils';
 
 const toast = useToast();
 const confirm = useConfirm();
@@ -66,30 +66,15 @@ const usersAssociationOptions = [
 const usersView = computed(() =>
     (users.value || []).map((user) => {
         const roles = Array.isArray(user?.roles) ? user.roles : user?.role ? [user.role] : [];
-        const fonction = user?.fonction ? String(user.fonction) : '';
-
-        const typeLabel = formatEmployeeTypeLabel(
-            user?.type ||
-            (fonction
-                ? fonction.charAt(0).toUpperCase() + fonction.slice(1)
-                : roles.includes('ROLE_ADMIN')
-                  ? 'Administrateur'
-                  : roles.includes('ROLE_SECRETAIRE')
-                    ? 'Secrétaire'
-                    : roles.includes('ROLE_TOPO')
-                      ? 'Topographe'
-                      : roles.includes('ROLE_AGENT')
-                        ? 'Agent'
-                        : roles.includes('ROLE_COMMERCIAL')
-                          ? 'Commercial'
-                          : 'Utilisateur')
-        );
-
         const employee = user?.employee || user?.employe || null;
         const patient = user?.patient || null;
+
+        const typeLabel = formatEmployeeTypeLabel(user?.type || employee?.type || '-');
+        const roleLabel = formatStaffRoleLabel(user?.role);
+
         const employeeLabel = employee ? `${employee?.nom || ''} ${employee?.prenom || ''}`.trim() : '-';
         const patientLabel = patient ? `${patient?.nom || ''} ${patient?.prenom || ''}`.trim() : '-';
-        const isPatientUser = roles.includes('ROLE_PATIENT');
+        const isPatientUser = roles.includes('ROLE_PATIENT') || user?.role === 'Patient';
         const associationType = isPatientUser ? 'patients' : 'employees';
         const associationLabel = associationType === 'patients' ? patientLabel : employeeLabel;
 
@@ -98,6 +83,7 @@ const usersView = computed(() =>
         return {
             ...user,
             typeLabel,
+            roleLabel,
             associationType,
             associationLabel,
             employeeLabel,
@@ -167,7 +153,8 @@ const confirmFormSubmit = (payload, event) => {
                 await loadUsers();
                 await loadAssociations();
             } catch (err) {
-                toast.add({ severity: 'error', summary: 'Erreur', detail: err?.message || 'Action impossible.', life: 4000 });
+                const detail = err?.response?.data?.error || err?.response?.data?.message || err?.message || 'Action impossible.';
+                toast.add({ severity: 'error', summary: 'Erreur', detail, life: 4000 });
             }
         }
     });
@@ -432,7 +419,7 @@ onBeforeUnmount(() => {
                 :rows="10"
                 :rowsPerPageOptions="[10, 20, 50]"
                 :filters="filters"
-                :globalFilterFields="['username', 'employeeLabel', 'patientLabel', 'associationLabel', 'typeLabel']"
+                :globalFilterFields="['username', 'employeeLabel', 'patientLabel', 'associationLabel', 'typeLabel', 'roleLabel']"
                 :loading="loading"
                 sortMode="multiple"
                 :rowGroupMode="groupByType ? 'subheader' : null"
@@ -462,9 +449,14 @@ onBeforeUnmount(() => {
                     </template>
                 </Column>
                 <Column field="associationLabel" :header="associationColumnHeader" sortable></Column>
-                <Column field="typeLabel" header="Type" sortable>
+                <Column field="typeLabel" header="Type de poste" sortable>
                     <template #body="{ data }">
-                        <Tag :value="data.typeLabel" :severity="data.typeLabel === 'Administrateur' ? 'danger' : 'info'" />
+                        <Tag :value="data.typeLabel" severity="info" />
+                    </template>
+                </Column>
+                <Column field="roleLabel" header="Role" sortable>
+                    <template #body="{ data }">
+                        <Tag :value="data.roleLabel" :severity="data.roleLabel === 'Admin' ? 'danger' : 'info'" />
                     </template>
                 </Column>
                 <Column header="Actions" style="min-width: 200px">
@@ -497,7 +489,7 @@ onBeforeUnmount(() => {
 
             <Dialog header="Réinitialiser le mot de passe" v-model:visible="resetDialogVisible" :style="{ width: '420px' }" :modal="true">
                 <div class="flex flex-col gap-3" data-tour="admin-users.dialog.reset">
-                    <label for="reset-password" class="font-medium">Nouveau mot de passe</label>
+                    <label for="reset-password" class="font-medium">Nouveau mot de passe <span class="text-red-500">*</span></label>
                     <Password
                         inputId="reset-password"
                         v-model="resetPasswordValue"

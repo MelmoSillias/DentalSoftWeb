@@ -10,6 +10,7 @@ use App\Patient\Entity\Patient;
 use App\Patient\Repository\PatientRepository;
 use App\Scheduling\Entity\Rdv;
 use App\Settings\Service\GlobalSettingsService;
+use App\Settings\Service\InternetFeaturesGate;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 
@@ -26,6 +27,7 @@ final class SmsService
         private readonly NotificationService $notificationService,
         private readonly \App\Communication\Service\NotificationRecipientResolver $recipientResolver,
         private readonly GlobalSettingsService $globalSettingsService,
+        private readonly InternetFeaturesGate $internetFeaturesGate,
     ) {
     }
 
@@ -134,6 +136,17 @@ final class SmsService
      */
     public function processQueue(int $limit = 20): array
     {
+        if (!$this->internetFeaturesGate->isEnabled()) {
+            return [
+                'processed' => 0,
+                'sent' => 0,
+                'failed' => 0,
+                'skipped' => true,
+                'message' => $this->internetFeaturesGate->disabledMessage(),
+                'snapshot' => ['before' => []],
+            ];
+        }
+
         $snapshotBefore = $this->queueRepository->getProcessingSnapshot();
         $items = $this->queueRepository->findProcessable($limit);
         $processedCount = count($items);

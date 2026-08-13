@@ -9,6 +9,7 @@ import {
     resolveConsultationsTourMockScenario
 } from '@/services/consultationsTourMock';
 import { useGuidedTour } from '@/composables/useGuidedTour';
+import { openConsultationFiche } from '@/composables/useFicheMedicaleAccess';
 import FormCreateConsultation from '@/components/patients/FormCreateConsultation.vue';
 import { cancelConsultation, fetchPendingConsultations } from '@/services/consultations';
 import { fetchPublicGeneralSettings } from '@/services/globalSettingsService';
@@ -39,7 +40,6 @@ const consultationPatient = ref(null);
 const quickMenus = {};
 const quickDialogVisible = ref(false);
 const quickDialogConsultation = ref(null);
-const quickDialogActionMode = ref('continue');
 const allowReceptionQuickClose = ref(true);
 const hidePatientPhoneForMedecins = ref(false);
 let guidedTourPageState = null;
@@ -116,18 +116,8 @@ const cardTone = (index) => {
     return 'accent-default';
 };
 
-const goToConsultation = (consultation, mode = 'continue') => {
-    const query = { id: consultation.id, mode };
-    const linked = isLinked(consultation);
-    const targetFicheId = linked
-        ? consultation.ficheId
-        : mode === 'continue'
-            ? (consultation.lastFicheId || null)
-            : null;
-
-    if (targetFicheId) query.ficheId = targetFicheId;
-
-    router.push({ name: 'consultations-form', query });
+const goToConsultation = (consultation) => {
+    openConsultationFiche(consultation, router);
 };
 
 const isLinked = (consultation) => Boolean(consultation.ficheId);
@@ -149,12 +139,9 @@ const medecinLabel = (consultation) => {
 };
 
 const showActions = {
-    continue: (c) => isLinked(c) || (!isLinked(c) && patientHasFiche(c)),
-    newFiche: (c) => !isLinked(c),
+    openFiche: (c) => !isClosed(c),
     cancel: (c) => (isLinked(c) ? isAdmin.value : true)
 };
-
-const continueLabel = (c) => (isLinked(c) ? 'Continuer la consultation' : 'Continuer dernière fiche');
 
 const setCanceling = (id, value) => {
     canceling.value = { ...canceling.value, [id]: value };
@@ -186,24 +173,9 @@ const confirmAction = (event, message, accept) => {
     });
 };
 
-const handleContinue = (event, consultation) => {
-    if (!isLinked(consultation) && patientHasFiche(consultation)) {
-        confirmAction(event, 'Une fiche existe déjà pour ce patient. Continuer la dernière fiche ?', () =>
-            goToConsultation(consultation, 'continue')
-        );
-    } else {
-        goToConsultation(consultation, 'continue');
-    }
-};
-
-const handleNewFiche = (event, consultation) => {
-    if (!isLinked(consultation) && patientHasFiche(consultation)) {
-        confirmAction(event, 'Une fiche existe déjà pour ce patient. Créer une nouvelle fiche ?', () =>
-            goToConsultation(consultation, 'new-fiche')
-        );
-    } else {
-        goToConsultation(consultation, 'continue');
-    }
+const handleOpenFiche = (consultation) => {
+    if (!consultation || isClosed(consultation)) return;
+    goToConsultation(consultation);
 };
 
 const handleCancelWithConfirm = (event, consultation) => {
@@ -219,36 +191,21 @@ const setQuickMenuRef = (id, el) => {
     quickMenus[id] = el;
 };
 
-const openQuickDialog = (consultation, mode) => {
+const openQuickDialog = (consultation) => {
     if (!consultation?.id || isClosed(consultation)) return;
     quickDialogConsultation.value = consultation;
-    quickDialogActionMode.value = mode;
     quickDialogVisible.value = true;
 };
 
 const quickActionItems = (consultation) => {
-    const linked = isLinked(consultation);
-    const hasFiche = patientHasFiche(consultation);
     const closed = isClosed(consultation);
 
     return [
         {
-            label: 'Continuer avec la dernière fiche',
-            icon: 'pi pi-history',
-            disabled: closed || linked || !hasFiche,
-            command: () => openQuickDialog(consultation, 'continue-last')
-        },
-        {
-            label: 'Continuer',
-            icon: 'pi pi-forward',
-            disabled: closed || !linked,
-            command: () => openQuickDialog(consultation, 'continue')
-        },
-        {
-            label: 'Nouvelle fiche',
-            icon: 'pi pi-plus-circle',
-            disabled: closed || linked,
-            command: () => openQuickDialog(consultation, 'new-fiche')
+            label: 'Clôture rapide',
+            icon: 'pi pi-bolt',
+            disabled: closed,
+            command: () => openQuickDialog(consultation)
         }
     ];
 };
@@ -285,7 +242,6 @@ const resetTourDialogs = () => {
     consultationPatient.value = null;
     quickDialogVisible.value = false;
     quickDialogConsultation.value = null;
-    quickDialogActionMode.value = 'continue';
 };
 
 const capturePageState = () => ({
@@ -347,13 +303,6 @@ const openTourCreateConsultationDialog = async () => {
     await nextTick();
 };
 
-const resolveTourQuickActionMode = (consultation) => {
-    if (!consultation) return 'continue';
-    if (!isLinked(consultation) && patientHasFiche(consultation)) return 'continue-last';
-    if (isLinked(consultation)) return 'continue';
-    return 'continue';
-};
-
 const openTourQuickDialog = async () => {
     const consultation = firstConsultation.value;
     if (!consultation) return;
@@ -361,7 +310,6 @@ const openTourQuickDialog = async () => {
     await nextTick();
     await waitForTourUi(220);
     quickDialogConsultation.value = consultation;
-    quickDialogActionMode.value = resolveTourQuickActionMode(consultation);
     quickDialogVisible.value = true;
     await nextTick();
     await waitForTourUi(120);
@@ -386,8 +334,7 @@ const { isGuidedTourStarting } = useGuidedTour({
             openCreateConsultationDialog: openTourCreateConsultationDialog,
             openQuickDialog: openTourQuickDialog,
             closeAllDialogs: resetTourDialogs,
-            firstConsultationHasContinueAction: consultation ? showActions.continue(consultation) : false,
-            firstConsultationHasNewFicheAction: consultation ? showActions.newFiche(consultation) : false,
+            firstConsultationHasOpenFicheAction: consultation ? showActions.openFiche(consultation) : false,
             firstConsultationCanCancel: consultation ? showActions.cancel(consultation) : false,
             hasLinkedCase: Boolean(linkedConsultation.value),
             hasFreshCase: Boolean(freshConsultation.value),
@@ -514,11 +461,12 @@ const viewOptions = [
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 w-full" v-if="sortedConsultations.length > 0">
                         <div v-for="(consultation, idx) in sortedConsultations" :key="consultation.id"
                             :data-tour="idx === 0 ? 'consultations-cards.case-last-fiche' : idx === 1 ? 'consultations-cards.case-linked' : idx === 2 ? 'consultations-cards.case-new' : null"
-                            class="relative overflow-hidden rounded-2xl border transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 flex flex-col h-full group"
+                            class="relative overflow-hidden rounded-2xl border transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 flex flex-col h-full group cursor-pointer"
                             :class="[
                                 'border-' + getBorderColor(idx) + '-200/50 dark:border-' + getBorderColor(idx) + '-800/50',
                                 'bg-gradient-to-br from-white to-surface-50/80 dark:from-surface-800 dark:to-surface-900/80'
-                            ]">
+                            ]"
+                            @dblclick="handleOpenFiche(consultation)">
                             <!-- Priority Indicator -->
                             <div class="absolute top-0 left-0 w-2 h-full"
                                 :class="'bg-gradient-to-b to-' + getPriorityColor(idx) + '-500 from-' + getPriorityColor(idx) + '-600'">
@@ -642,23 +590,18 @@ const viewOptions = [
                                         </template>
                                     </Menu>
 
-                                    <Button v-if="showActions.continue(consultation)"
+                                    <Button v-if="showActions.openFiche(consultation)"
                                         :data-tour="idx === 0 ? 'consultations-cards.continue-action' : null"
-                                        :label="continueLabel(consultation)" icon="pi pi-forward" severity="secondary"
+                                        label="Ouvrir fiche médicale du patient" icon="pi pi-folder-open" severity="secondary"
                                         size="small"
                                         class="rounded-xl px-4 py-2 text-sm font-medium transition-all hover:scale-[1.02]"
-                                        @click="(e) => handleContinue(e, consultation)" />
-                                    <Button v-if="showActions.newFiche(consultation)"
-                                        :data-tour="idx === 0 ? 'consultations-cards.new-fiche-action' : null"
-                                        label="Nouvelle fiche" icon="pi pi-plus-circle" severity="success" size="small"
-                                        class="rounded-xl px-4 py-2 text-sm font-medium transition-all hover:scale-[1.02]"
-                                        @click="(e) => handleNewFiche(e, consultation)" />
+                                        @click.stop="handleOpenFiche(consultation)" />
                                     <Button v-if="showActions.cancel(consultation)"
                                         :data-tour="idx === 0 ? 'consultations-cards.cancel-action' : null"
                                         label="Annuler" icon="pi pi-times" severity="danger" size="small" outlined
                                         :loading="canceling[consultation.id] === true"
                                         class="rounded-xl px-4 py-2 text-sm font-medium transition-all hover:scale-[1.02]"
-                                        @click="(e) => handleCancelWithConfirm(e, consultation)" />
+                                        @click.stop="(e) => handleCancelWithConfirm(e, consultation)" />
                                 </div>
                             </div>
 
@@ -675,7 +618,8 @@ const viewOptions = [
                     <div
                         v-for="(consultation, idx) in sortedConsultations"
                         :key="consultation.id"
-                        class="flex items-center justify-between p-4 rounded-xl border bg-white dark:bg-surface-800 shadow-sm hover:shadow-md transition"
+                        class="flex items-center justify-between p-4 rounded-xl border bg-white dark:bg-surface-800 shadow-sm hover:shadow-md transition cursor-pointer"
+                        @dblclick="handleOpenFiche(consultation)"
                     >
                         <!-- Gauche -->
                         <div class="flex items-center gap-4">
@@ -721,22 +665,19 @@ const viewOptions = [
                                         </template>
                                     </Menu>
 
-                                    <Button v-if="showActions.continue(consultation)"
-                                        :data-tour="idx === 0 ? 'consultations-cards.continue-action' : null"  icon="pi pi-forward" severity="secondary"
+                                    <Button v-if="showActions.openFiche(consultation)"
+                                        :data-tour="idx === 0 ? 'consultations-cards.continue-action' : null"
+                                        icon="pi pi-folder-open" severity="secondary"
                                         size="small"
+                                        v-tooltip.top="'Ouvrir fiche médicale du patient'"
                                         class="rounded-xl px-4 py-2 text-sm font-medium transition-all hover:scale-[1.02]"
-                                        @click="(e) => handleContinue(e, consultation)" />
-                                    <Button v-if="showActions.newFiche(consultation)"
-                                        :data-tour="idx === 0 ? 'consultations-cards.new-fiche-action' : null"
-                                          icon="pi pi-plus-circle" severity="success" size="small"
-                                        class="rounded-xl px-4 py-2 text-sm font-medium transition-all hover:scale-[1.02]"
-                                        @click="(e) => handleNewFiche(e, consultation)" />
+                                        @click.stop="handleOpenFiche(consultation)" />
                                     <Button v-if="showActions.cancel(consultation)"
                                         :data-tour="idx === 0 ? 'consultations-cards.cancel-action' : null"
                                          icon="pi pi-times" severity="danger" size="small" outlined
                                         :loading="canceling[consultation.id] === true"
                                         class="rounded-xl px-4 py-2 text-sm font-medium transition-all hover:scale-[1.02]"
-                                        @click="(e) => handleCancelWithConfirm(e, consultation)" />
+                                        @click.stop="(e) => handleCancelWithConfirm(e, consultation)" />
                         </div>
                     </div>
                 </div>
@@ -784,7 +725,7 @@ const viewOptions = [
     <ConfirmPopup />
 
     <QuickClotureConsultationDialog v-if="canUseQuickActions" v-model:visible="quickDialogVisible"
-        :consultation="quickDialogConsultation" :action-mode="quickDialogActionMode"
+        :consultation="quickDialogConsultation"
         tourTarget="consultations-cards.dialog.quick" @saved="handleQuickDialogDone" @closed="handleQuickDialogDone" />
 </template>
 

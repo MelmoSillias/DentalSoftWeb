@@ -75,7 +75,6 @@ const showCreateDialog = ref(false);
 const quickMenus = {};
 const quickDialogVisible = ref(false);
 const quickDialogConsultation = ref(null);
-const quickDialogActionMode = ref('continue');
 const loadErrorMessage = ref('');
 const allowReceptionQuickClose = ref(true);
 const hidePatientDossierForMedecins = ref(false);
@@ -253,36 +252,21 @@ const setQuickMenuRef = (id, el) => {
     quickMenus[id] = el;
 };
 
-const openQuickDialog = (consultation, mode) => {
+const openQuickDialog = (consultation) => {
     if (!consultation?.id || isClosed(consultation)) return;
     quickDialogConsultation.value = consultation;
-    quickDialogActionMode.value = mode;
     quickDialogVisible.value = true;
 };
 
 const quickActionItems = (consultation) => {
-    const linked = isLinked(consultation);
-    const hasFiche = patientHasFiche(consultation);
     const closed = isClosed(consultation);
 
     return [
         {
-            label: 'Continuer avec la dernière fiche',
-            icon: 'pi pi-history',
-            disabled: closed || linked || !hasFiche,
-            command: () => openQuickDialog(consultation, 'continue-last')
-        },
-        {
-            label: 'Continuer',
-            icon: 'pi pi-forward',
-            disabled: closed || !linked,
-            command: () => openQuickDialog(consultation, 'continue')
-        },
-        {
-            label: 'Nouvelle fiche',
-            icon: 'pi pi-plus-circle',
-            disabled: closed || linked,
-            command: () => openQuickDialog(consultation, 'new-fiche')
+            label: 'Clôture rapide',
+            icon: 'pi pi-bolt',
+            disabled: closed,
+            command: () => openQuickDialog(consultation)
         }
     ];
 };
@@ -440,7 +424,6 @@ const resetTourDialogs = () => {
     showCreateDialog.value = false;
     quickDialogVisible.value = false;
     quickDialogConsultation.value = null;
-    quickDialogActionMode.value = 'continue';
     detailsDialogVisible.value = false;
     detailsLoading.value = false;
     detailsLoadingId.value = null;
@@ -523,13 +506,6 @@ const openTourCreateConsultationDialog = async () => {
     await nextTick();
 };
 
-const resolveTourQuickActionMode = (consultation) => {
-    if (!consultation) return 'continue';
-    if (!isLinked(consultation) && patientHasFiche(consultation)) return 'continue-last';
-    if (isLinked(consultation)) return 'continue';
-    return 'continue';
-};
-
 const openTourQuickDialog = async () => {
     const consultation = repriseConsultation.value || linkedConsultation.value || freshConsultation.value || firstOpenConsultation.value;
     if (!consultation) return;
@@ -537,7 +513,6 @@ const openTourQuickDialog = async () => {
     await nextTick();
     await waitForTourUi(220);
     quickDialogConsultation.value = consultation;
-    quickDialogActionMode.value = resolveTourQuickActionMode(consultation);
     quickDialogVisible.value = true;
     await nextTick();
 };
@@ -1123,7 +1098,6 @@ const currentFactureLoading = computed(() => {
             v-if="canUseQuickActions"
             v-model:visible="quickDialogVisible"
             :consultation="quickDialogConsultation"
-            :action-mode="quickDialogActionMode"
             tourTarget="consultations-table.dialog.quick"
             @saved="handleQuickDialogDone"
             @closed="handleQuickDialogDone"

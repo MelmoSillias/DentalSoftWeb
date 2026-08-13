@@ -1,5 +1,12 @@
 <script setup>
 import { computed, reactive, watch } from 'vue';
+import {
+    STAFF_ROLE_OPTIONS,
+    STAFF_ROLE_OPTIONS_WITHOUT_PATIENT,
+    STAFF_ROLE_PATIENT,
+    resolveRoleFromRoles,
+    suggestRoleFromEmployeeType
+} from '@/utils/employeeTypeUtils';
 import Dialog from 'primevue/dialog';
 import InputText from 'primevue/inputtext';
 import Select from 'primevue/select';
@@ -30,15 +37,10 @@ const formState = reactive({
 const dialogTitle = computed(() => (props.mode === 'edit' ? "Modifier l'utilisateur" : 'Ajouter un utilisateur'));
 const submitLabel = computed(() => (props.mode === 'edit' ? 'Enregistrer' : 'Créer'));
 
-const roleOptions = [
-    { label: 'Admin', value: 'Admin' },
-    { label: 'Medecin', value: 'Medecin' },
-    { label: 'Secretaire', value: 'Secretaire' },
-    { label: 'Patient', value: 'Patient' }
-];
+const roleOptions = STAFF_ROLE_OPTIONS;
 
-const staffRoleOptions = computed(() => roleOptions.filter((option) => option.value !== 'Patient'));
-const patientRoleOptions = computed(() => roleOptions.filter((option) => option.value === 'Patient'));
+const staffRoleOptions = computed(() => STAFF_ROLE_OPTIONS_WITHOUT_PATIENT);
+const patientRoleOptions = computed(() => roleOptions.filter((option) => option.value === STAFF_ROLE_PATIENT));
 const displayedRoleOptions = computed(() =>
     formState.associationMode === 'patient' ? patientRoleOptions.value : staffRoleOptions.value
 );
@@ -100,13 +102,12 @@ const displayedPatientOptions = computed(() => {
 });
 
 const resolveRoleFromUser = (user) => {
-    const roles = Array.isArray(user?.roles) ? user.roles : [];
+    const roleLabel = user?.role;
+    if (roleLabel && STAFF_ROLE_OPTIONS.some((option) => option.value === roleLabel)) {
+        return roleLabel;
+    }
 
-    if (roles.includes('ROLE_ADMIN')) return 'Admin';
-    if (roles.includes('ROLE_MEDECIN')) return 'Medecin';
-    if (roles.includes('ROLE_PATIENT')) return 'Patient';
-
-    return 'Secretaire';
+    return resolveRoleFromRoles(user?.roles);
 };
 
 watch(
@@ -116,10 +117,10 @@ watch(
         formState.role = resolveRoleFromUser(value);
         formState.employee_id = value?.employee?.id || value?.employee_id || '';
         formState.patient_id = value?.patient?.id || value?.patient_id || '';
-        formState.associationMode = formState.role === 'Patient' ? 'patient' : 'staff';
+        formState.associationMode = formState.role === STAFF_ROLE_PATIENT ? 'patient' : 'staff';
 
         if (!value && props.mode === 'create') {
-            formState.role = 'Admin';
+            formState.role = STAFF_ROLE_ADMIN;
             formState.employee_id = '';
             formState.patient_id = '';
             formState.associationMode = 'staff';
@@ -133,13 +134,28 @@ watch(
     (mode) => {
         if (mode === 'patient') {
             formState.employee_id = '';
-            formState.role = 'Patient';
+            formState.role = STAFF_ROLE_PATIENT;
             return;
         }
 
         formState.patient_id = '';
-        if (formState.role === 'Patient') {
-            formState.role = 'Admin';
+        if (formState.role === STAFF_ROLE_PATIENT) {
+            formState.role = STAFF_ROLE_ADMIN;
+        }
+    }
+);
+
+watch(
+    () => formState.employee_id,
+    (employeeId) => {
+        if (!employeeId || formState.associationMode === 'patient') return;
+
+        const employee = (props.employees || []).find((item) => item?.id === employeeId)
+            || (props.user?.employee?.id === employeeId ? props.user.employee : null);
+
+        const suggestedRole = suggestRoleFromEmployeeType(employee?.type);
+        if (suggestedRole) {
+            formState.role = suggestedRole;
         }
     }
 );

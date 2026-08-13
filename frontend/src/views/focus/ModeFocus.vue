@@ -98,8 +98,6 @@ const previewDialogTab = ref('services');
 const payLoading = ref(false);
 const quickDialogVisible = ref(false);
 const quickDialogConsultation = ref(null);
-const quickDialogActionMode = ref('continue');
-const actionChoiceByConsultation = ref({});
 const createPatientDialogVisible = ref(false);
 const createConsultationDialogVisible = ref(false);
 const createConsultationPreSelectedPatient = ref(null);
@@ -215,19 +213,6 @@ const currentReceptionInvoiceRow = computed(() => {
             patientRemainingAmount: remaining
         }
     };
-});
-
-const selectedActionChoice = computed(() => {
-    const consultation = currentConsultation.value;
-    if (!consultation) return null;
-    return actionChoiceByConsultation.value[consultation.id] || null;
-});
-
-const requiresChoice = computed(() => {
-    const consultation = currentConsultation.value;
-    if (!consultation) return false;
-    if (consultation.ficheId) return false;
-    return Boolean(consultation.hasFiche || consultation.lastFicheId);
 });
 
 const currentConsultationClosed = computed(() => Number(currentConsultation.value?.state) === 1);
@@ -750,17 +735,9 @@ const handleSaveFacture = async () => {
     }
 };
 
-const resolveQuickActionMode = (consultation) => {
-    if (!consultation) return 'continue';
-    if (consultation.ficheId) return 'continue';
-    if (consultation.hasFiche || consultation.lastFicheId) return 'continue-last';
-    return 'new-fiche';
-};
-
 const openQuickDialog = (consultation) => {
     if (!consultation?.id || Number(consultation.state) === 1) return;
     quickDialogConsultation.value = consultation;
-    quickDialogActionMode.value = resolveQuickActionMode(consultation);
     quickDialogVisible.value = true;
 };
 
@@ -901,17 +878,9 @@ const handleConsultationCreated = async (saved) => {
     }
 };
 
-const openMedicalWorkspace = (consultation, choice = null) => {
+const openMedicalWorkspace = (consultation) => {
     if (!consultation?.id) return;
     selectedConsultationId.value = consultation.id;
-    const resolvedChoice = choice
-        || (consultation.ficheId || consultation.hasFiche || consultation.lastFicheId
-            ? 'continue-last'
-            : 'new-fiche');
-    actionChoiceByConsultation.value = {
-        ...actionChoiceByConsultation.value,
-        [consultation.id]: resolvedChoice
-    };
     selectedMode.value = 'medecin';
 };
 
@@ -997,25 +966,6 @@ watch(
     () => selectedConsultationId.value,
     () => {
         loadSelectedPatient();
-    },
-    { immediate: true }
-);
-
-watch(
-    () => currentConsultation.value?.id,
-    (id) => {
-        if (!id) return;
-        const consultation = currentConsultation.value;
-        if (!consultation) return;
-        if (actionChoiceByConsultation.value[id]) return;
-
-        const autoChoice = (consultation.ficheId || consultation.hasFiche || consultation.lastFicheId)
-            ? 'continue-last'
-            : 'new-fiche';
-        actionChoiceByConsultation.value = {
-            ...actionChoiceByConsultation.value,
-            [id]: autoChoice
-        };
     },
     { immediate: true }
 );
@@ -1137,6 +1087,7 @@ onBeforeUnmount(() => {
                 :allow-reception-quick-close="allowReceptionQuickClose"
                 :allow-reception-invoice-modification="canModifyInvoiceByRole"
                 :is-admin="isAdmin"
+                :is-medecin="isMedecin"
                 :selected-consultation-id="selectedConsultationId"
                 @refresh="loadConsultations"
                 @select-consultation="(consultationId) => { selectedConsultationId = consultationId; }"
@@ -1158,17 +1109,13 @@ onBeforeUnmount(() => {
             <FocusMedecinView
                 v-else-if="selectedMode === 'medecin'"
                 v-model:showCompletedMedecin="showCompletedMedecin"
-                :consultations="consultations.map((consultation) => ({
-                    ...consultation,
-                    focusActionChoice: actionChoiceByConsultation[consultation.id] || null
-                }))"
+                :consultations="consultations"
                 :selected-consultation-id="selectedConsultationId"
                 :selected-patient="selectedPatient"
                 :hide-patient-dossier="shouldHidePatientDossierForMedecin"
                 :hide-patient-phone="shouldHidePatientPhoneForMedecin"
                 @clear-selection="clearSelection"
                 @select-consultation="(consultationId) => { selectedConsultationId = consultationId; }"
-                @select-action-choice="openMedicalWorkspace"
                 @patient-loaded="handlePatientLoaded"
                 @consultation-closed="loadConsultations"
             />
@@ -1180,7 +1127,6 @@ onBeforeUnmount(() => {
             <QuickClotureConsultationDialog
                 v-model:visible="quickDialogVisible"
                 :consultation="quickDialogConsultation"
-                :action-mode="quickDialogActionMode"
                 @saved="handleQuickDialogDone"
                 @closed="handleQuickDialogDone"
             />

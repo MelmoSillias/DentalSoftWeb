@@ -94,7 +94,7 @@ class AppFixtures extends Fixture
             // 8 infirmiers
             [
                 'username' => 'infirmier1',
-                'roles' => ['ROLE_USER'],
+                'roles' => ['ROLE_RECEPTION', 'ROLE_RECEPTIONNISTE', 'ROLE_SECRETAIRE'],
                 'nom' => 'Sarr',
                 'prenom' => 'Cheikh',
                 'telephone' => '770000011',
@@ -109,7 +109,7 @@ class AppFixtures extends Fixture
             ],
             [
                 'username' => 'infirmier2',
-                'roles' => ['ROLE_USER'],
+                'roles' => ['ROLE_RECEPTION', 'ROLE_RECEPTIONNISTE', 'ROLE_SECRETAIRE'],
                 'nom' => 'Ba',
                 'prenom' => 'Mariama',
                 'telephone' => '770000012',
@@ -124,7 +124,7 @@ class AppFixtures extends Fixture
             ],
             [
                 'username' => 'infirmier3',
-                'roles' => ['ROLE_USER'],
+                'roles' => ['ROLE_RECEPTION', 'ROLE_RECEPTIONNISTE', 'ROLE_SECRETAIRE'],
                 'nom' => 'Kane',
                 'prenom' => 'Ibrahima',
                 'telephone' => '770000013',
@@ -139,7 +139,7 @@ class AppFixtures extends Fixture
             ],
             [
                 'username' => 'infirmier4',
-                'roles' => ['ROLE_USER'],
+                'roles' => ['ROLE_RECEPTION', 'ROLE_RECEPTIONNISTE', 'ROLE_SECRETAIRE'],
                 'nom' => 'Gueye',
                 'prenom' => 'Aminata',
                 'telephone' => '770000014',
@@ -154,7 +154,7 @@ class AppFixtures extends Fixture
             ],
             [
                 'username' => 'infirmier5',
-                'roles' => ['ROLE_USER'],
+                'roles' => ['ROLE_RECEPTION', 'ROLE_RECEPTIONNISTE', 'ROLE_SECRETAIRE'],
                 'nom' => 'Diop',
                 'prenom' => 'Abdou',
                 'telephone' => '770000015',
@@ -169,7 +169,7 @@ class AppFixtures extends Fixture
             ],
             [
                 'username' => 'infirmier6',
-                'roles' => ['ROLE_USER'],
+                'roles' => ['ROLE_RECEPTION', 'ROLE_RECEPTIONNISTE', 'ROLE_SECRETAIRE'],
                 'nom' => 'Sow',
                 'prenom' => 'Ndeye',
                 'telephone' => '770000016',
@@ -184,7 +184,7 @@ class AppFixtures extends Fixture
             ],
             [
                 'username' => 'infirmier7',
-                'roles' => ['ROLE_USER'],
+                'roles' => ['ROLE_RECEPTION', 'ROLE_RECEPTIONNISTE', 'ROLE_SECRETAIRE'],
                 'nom' => 'Cisse',
                 'prenom' => 'Mamadou',
                 'telephone' => '770000017',
@@ -199,7 +199,7 @@ class AppFixtures extends Fixture
             ],
             [
                 'username' => 'infirmier8',
-                'roles' => ['ROLE_USER'],
+                'roles' => ['ROLE_RECEPTION', 'ROLE_RECEPTIONNISTE', 'ROLE_SECRETAIRE'],
                 'nom' => 'Thiam',
                 'prenom' => 'Rokhaya',
                 'telephone' => '770000018',

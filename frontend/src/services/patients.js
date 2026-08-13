@@ -302,22 +302,6 @@ export const createRdvForPatient = async (patientId, payload, token) => {
     return res.data;
 };
 
-export const printPatientInfosPerso = async (patientId, token) => {
-    const res = await axios.get(`${apiPrefix}/patient/${patientId}/dossier/print/infosperso`, {
-        headers: authHeaders(token),
-        responseType: 'blob'
-    });
-    return res.data;
-};
-
-export const printPatientFiche = async (patientId, ficheId, token) => {
-    const res = await axios.get(`${apiPrefix}/patient/${patientId}/fiche/${ficheId}/print`, {
-        headers: authHeaders(token),
-        responseType: 'blob'
-    });
-    return res.data;
-};
-
 export const fetchPatientPortalUser = async (patientId, token) => {
     const res = await axios.get(`${apiPrefix}/patient/${patientId}/portal-user`, {
         headers: authHeaders(token)

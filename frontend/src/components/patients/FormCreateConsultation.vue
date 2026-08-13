@@ -366,7 +366,7 @@ const handleSubmit = (event) => {
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div class="flex flex-col gap-2 md:col-span-2" v-if="!isPatientPreselected" data-tour="patients-form-consultation.patient">
-                <label class="font-semibold">Patient</label>
+                <label class="font-semibold">Patient <span class="text-red-500">*</span></label>
                 <Select v-model="selectedPatientId" :options="patientOptions  || []" optionLabel="label" optionValue="value"
                     placeholder="Choisir un patient" class="w-full" filter :loading="patientsLoading"
                     :filterFields="['label', 'phone', 'searchText']"
@@ -381,17 +381,21 @@ const handleSubmit = (event) => {
                 </Select>
             </div>
             <div v-else class="flex flex-col gap-2 md:col-span-2" data-tour="patients-form-consultation.patient">
-                <label class="font-semibold">Patient</label>
+                <label class="font-semibold">Patient <span class="text-red-500">*</span></label>
                 <InputText :value="patientDisplayName" disabled />
             </div>
             <div class="flex flex-col gap-2" data-tour="patients-form-consultation.schedule">
-                <label class="font-semibold">Médecin {{ requireMedecinOnCreation ? '' : '(optionnel)' }}</label>
+                <label class="font-semibold">
+                    Médecin
+                    <span v-if="requireMedecinOnCreation" class="text-red-500">*</span>
+                    <span v-else class="font-normal text-surface-500"> (optionnel)</span>
+                </label>
                 <Select v-model="form.medecinId" :options="medecinOptions  || []" optionLabel="label" optionValue="value"
                     placeholder="Choisir un médecin" class="w-full" />
             </div>
 
             <div class="flex flex-col gap-2">
-                <label class="font-semibold">Date et heure</label>
+                <label class="font-semibold">Date et heure <span class="text-red-500">*</span></label>
                 <DatePicker v-model="form.dateConsultation" showTime hourFormat="24" dateFormat="dd/mm/yy"
                     class="w-full" />
             </div>
@@ -412,7 +416,7 @@ const handleSubmit = (event) => {
                 <InputNumber v-model="consultationAmount" mode="decimal" :min="1" class="w-full" inputClass="w-full" />
             </div>
             <div class="flex flex-col gap-2" v-if="requiresClassicPayment">
-                <label class="font-semibold">Mode de paiement patient</label>
+                <label class="font-semibold">Mode de paiement patient <span class="text-red-500">*</span></label>
                 <Select v-model="form.modePaiementId" :options="paymentMethodOptions  || []" optionLabel="label"
                     optionValue="value" placeholder="Choisir un mode de paiement" class="w-full" />
                 <small class="text-gray-500 dark:text-gray-400">

@@ -45,6 +45,10 @@ const props = defineProps({
         type: Boolean,
         default: false
     },
+    isMedecin: {
+        type: Boolean,
+        default: false
+    },
     selectedConsultationId: {
         type: [Number, String, null],
         default: null
@@ -791,6 +795,7 @@ const handleCancelWithConfirm = (event, consultation) => {
                         <div class="space-y-3">
                             <div v-for="(consultation, index) in secretaryRows" :key="consultation.id"
                                 @click="selectConsultation(consultation.id)"
+                                @dblclick="Number(consultation.state) !== 1 && emit('select-medical-workspace', consultation)"
                                 class="group relative flex gap-3 w-full cursor-pointer rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-primary-400">
 
                                 <div class="relative z-10">
@@ -933,10 +938,10 @@ const handleCancelWithConfirm = (event, consultation) => {
                             class="rounded-xl bg-amber-500 px-3 py-2 text-xs font-medium text-white shadow-md transition-all hover:bg-amber-600">
                             <i class="pi pi-bolt mr-1"></i>Clôture rapide
                         </button>
-                        <button v-if="isAdmin && Number(currentConsultation.state) !== 1"
-                            @click="emit('select-medical-workspace', currentConsultation, currentConsultation.hasFiche || currentConsultation.lastFicheId ? 'continue-last' : 'new-fiche')"
+                        <button v-if="(isAdmin || isMedecin) && Number(currentConsultation.state) !== 1"
+                            @click="emit('select-medical-workspace', currentConsultation)"
                             class="rounded-xl border border-primary-500 bg-primary-50 px-3 py-2 text-xs font-medium text-primary-600 transition-all hover:bg-primary-100 dark:bg-primary-950/30">
-                            <i class="pi pi-arrow-right mr-1"></i>Espace médical
+                            <i class="pi pi-folder-open mr-1"></i>Ouvrir fiche médicale du patient
                         </button>
                     </div>
 

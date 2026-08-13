@@ -1,5 +1,6 @@
 import { computed, ref } from 'vue';
 import { fetchSmsProviderOverview, fetchSmsSettings } from '@/services/smsService';
+import { useInternetFeatures } from '@/composables/useInternetFeatures';
 
 const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 
@@ -73,16 +74,17 @@ function applyProviderOverview(overview) {
 export function useSmsTopbarCredits(getToken, getRoles) {
     tokenGetter = getToken;
     rolesGetter = getRoles;
+    const { isInternetFeaturesEnabled } = useInternetFeatures();
 
     const canViewCredits = computed(() => canViewSmsTopbarCredits(rolesGetter()));
-    const canOpenSmsSettings = computed(() => (rolesGetter() || []).includes('ROLE_ADMIN'));
+    const canOpenSmsSettings = computed(() => (rolesGetter() || []).includes('ROLE_ADMIN') && isInternetFeaturesEnabled.value);
 
     const providerLabel = computed(() => {
         const match = SMS_PROVIDER_OPTIONS.find((item) => item.value === smsProvider.value);
         return match?.label || smsProvider.value || 'SMS';
     });
 
-    const showInTopbar = computed(() => canViewCredits.value && smsEnabled.value);
+    const showInTopbar = computed(() => canViewCredits.value && smsEnabled.value && isInternetFeaturesEnabled.value);
 
     const displayUnits = computed(() => {
         if (loading.value && remainingUnits.value === null) {
@@ -110,7 +112,7 @@ export function useSmsTopbarCredits(getToken, getRoles) {
 
     const refresh = async ({ silent = true } = {}) => {
         const token = tokenGetter();
-        if (!token || !canViewSmsTopbarCredits(rolesGetter())) {
+        if (!token || !canViewSmsTopbarCredits(rolesGetter()) || !isInternetFeaturesEnabled.value) {
             return;
         }
 
@@ -145,7 +147,7 @@ export function useSmsTopbarCredits(getToken, getRoles) {
 
     const startPolling = () => {
         stopPolling();
-        if (!tokenGetter() || !canViewSmsTopbarCredits(rolesGetter())) {
+        if (!tokenGetter() || !canViewSmsTopbarCredits(rolesGetter()) || !isInternetFeaturesEnabled.value) {
             return;
         }
 

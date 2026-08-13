@@ -707,41 +707,6 @@ export function usePatients() {
         }
     };
 
-    const printPatientInfosPerso = async (patientId, token) => {
-        loading.value = true;
-        error.value = null;
-        try {
-            const res = await http.get(`${apiPrefix}/patient/${patientId}/dossier/print/infosperso`, {
-                headers: buildAuthHeaders(true),
-                responseType: 'blob'
-            });
-            return res.data;
-        } catch (err) {
-            error.value = err;
-            return null;
-        } finally {
-            loading.value = false;
-        }
-    };
-
-    const printPatientFiche = async (patientId, ficheId, token) => {
-        loading.value = true;
-        error.value = null;
-        try {
-            const res = await http.get(`${apiPrefix}/patient/${patientId}/fiche/${ficheId}/print`, {
-                headers: buildAuthHeaders(true),
-                responseType: 'blob'
-            });
-            return res.data;
-        } catch (err) {
-            error.value = err;
-            return null;
-        } finally {
-            loading.value = false;
-        }
-    };
-
-
     return {
         patients,
         patientDossier,
@@ -775,8 +740,6 @@ export function usePatients() {
         fetchPortalAccount,
         createPortalAccount,
         resetPortalAccountPassword,
-        togglePortalAccountActive,
-        printPatientInfosPerso,
-        printPatientFiche
+        togglePortalAccountActive
     };
 }

@@ -77,7 +77,7 @@ function onSubmit() {
         <!-- Début -->
         <div class="flex flex-col gap-1">
           <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Date de début
+            Date de début <span class="text-red-500">*</span>
           </label>
           <DatePicker
             v-model="form.beginAt"
@@ -100,7 +100,7 @@ function onSubmit() {
         <!-- Fin -->
         <div class="flex flex-col gap-1">
           <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Date de fin
+            Date de fin <span class="text-red-500">*</span>
           </label>
           <DatePicker
             v-model="form.endAt"
@@ -124,7 +124,7 @@ function onSubmit() {
       <!-- Titre -->
       <div class="flex flex-col gap-1">
         <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
-          Titre
+          Titre <span class="text-red-500">*</span>
         </label>
         <input
           v-model="form.title"

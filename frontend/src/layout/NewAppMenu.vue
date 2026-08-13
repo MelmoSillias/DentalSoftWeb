@@ -1,10 +1,12 @@
 <script setup>
 import router from '@/router';
+import { useInternetFeatures } from '@/composables/useInternetFeatures';
 import { useAuthStore } from '@/stores/auth';
 import { computed, ref } from 'vue';
 import AppMenuItem from './AppMenuItem.vue';
 
 const auth = useAuthStore();
+const { isInternetFeaturesEnabled } = useInternetFeatures();
 const roles = computed(() => auth.user?.roles || []);
 
 // Raccourcis de rôles
@@ -43,7 +45,7 @@ const settingsSection = {
     label: 'Paramètres',
     items: [
         { label: 'Paramètres généraux', icon: 'pi pi-fw pi-cog', to: '/parametres/apparence' },
-        { label: 'API SMS', icon: 'pi pi-fw pi-send', to: '/administration/api-sms', adminOnly: true },
+        { label: 'API SMS', icon: 'pi pi-fw pi-send', to: '/administration/api-sms', adminOnly: true, requiresInternet: true },
         // { label: 'Options des fichiers', icon: 'pi pi-fw pi-file-edit', to: '/parametres/fileOptions' },
 
     ]
@@ -130,7 +132,15 @@ const model = computed(() => {
     if (hasAnyRole(['ROLE_ADMIN', 'ROLE_SECRETAIRE', 'ROLE_TOPO'])) {
         menu.push({
             ...settingsSection,
-            items: settingsSection.items.filter((item) => !item.adminOnly || isAdmin.value)
+            items: settingsSection.items.filter((item) => {
+                if (item.adminOnly && !isAdmin.value) {
+                    return false;
+                }
+                if (item.requiresInternet && !isInternetFeaturesEnabled.value) {
+                    return false;
+                }
+                return true;
+            })
         });
     }
 

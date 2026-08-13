@@ -21,8 +21,8 @@ const cabinetConfig = {
         ],
         "email": "bamogomohamed90@gmail.com"
     },
-    "viteApiPrefix": "https://testapi.mondentiste-mali.com/api",
-    "viteFilePrefix": "https://testapi.mondentiste-mali.com",
+    "viteApiPrefix": "http://localhost:8010/api",
+    "viteFilePrefix": "http://localhost:8010",
     "brandingAssets": {
         "logo": "logo.png",
         "logoAlt": "logo.jpeg",

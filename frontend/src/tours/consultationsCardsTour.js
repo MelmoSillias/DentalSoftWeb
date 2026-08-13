@@ -7,8 +7,7 @@ const TASKS = [
     { id: 'overview', label: 'Presentation de la page', icon: 'pi pi-compass', mockScenario: 'static' },
     { id: 'empty-queue', label: 'File vide', icon: 'pi pi-inbox', mockScenario: 'empty' },
     { id: 'prioritize-queue', label: 'Prioriser la file', icon: 'pi pi-sort-amount-down', mockScenario: 'static' },
-    { id: 'continue-fiche', label: 'Continuer une fiche', icon: 'pi pi-play', mockScenario: 'static' },
-    { id: 'new-fiche', label: 'Nouvelle fiche', icon: 'pi pi-file-plus', mockScenario: 'static' },
+    { id: 'open-fiche', label: 'Ouvrir la fiche medicale', icon: 'pi pi-folder-open', mockScenario: 'static' },
     { id: 'quick-cloture', label: 'Cloture rapide', icon: 'pi pi-check-circle', mockScenario: 'static' },
     { id: 'cancel-consultation', label: 'Annuler une consultation', icon: 'pi pi-times-circle', mockScenario: 'static' },
     { id: 'create-consultation', label: 'Creer une consultation', icon: 'pi pi-plus-circle', roles: ['admin', 'reception'], mockScenario: 'static' }
@@ -26,7 +25,7 @@ function buildOverviewSteps(ctx) {
             group: GROUP,
             target: '[data-tour="consultations-cards.header"]',
             title: 'Vue globale des consultations en cours',
-            content: 'Cette page regroupe toutes les consultations non cloturees pour prioriser les patients et reprendre une fiche existante.'
+            content: 'Cette page regroupe toutes les consultations non cloturees pour prioriser les patients et ouvrir directement la fiche medicale du patient.'
         },
         {
             group: GROUP,
@@ -69,7 +68,13 @@ function buildOverviewSteps(ctx) {
             group: GROUP,
             target: '[data-tour="consultations-cards.quick-actions"]',
             title: 'Actions rapides',
-            content: 'Le menu Actions rapides regroupe les chemins pour reprendre la bonne fiche selon le contexte.'
+            content: 'Le menu Actions rapides permet de lancer une cloture rapide sans quitter la file.'
+        },
+        {
+            group: GROUP,
+            target: '[data-tour="consultations-cards.continue-action"]',
+            title: 'Ouvrir la fiche medicale',
+            content: 'Le bouton ouvre toujours la derniere fiche medicale du patient. Un double-clic sur la carte fait la meme chose.'
         }
     );
 
@@ -128,70 +133,22 @@ export const consultationsCardsRegistry = createTourRegistry(GROUP, TASKS, {
             content: 'La barre de progression aide a reperer rapidement les consultations les plus anciennes dans la file.'
         }
     ]),
-    'continue-fiche': (ctx) => {
+    'open-fiche': (ctx) => {
         const steps = [
             {
                 group: GROUP,
-                target: '[data-tour="consultations-cards.quick-actions"]',
-                title: 'Actions rapides',
-                content: 'Le menu propose de reprendre la derniere fiche, une fiche liee ou une nouvelle fiche selon le contexte.'
+                target: '[data-tour="consultations-cards.case-last-fiche"]',
+                title: 'Acces a la fiche medicale',
+                content: 'Depuis la file d attente, un seul chemin : ouvrir la derniere fiche medicale du patient, sans confirmation.'
             }
         ];
 
-        if (ctx.hasLinkedCase) {
-            steps.unshift({
-                group: GROUP,
-                target: '[data-tour="consultations-cards.case-linked"]',
-                title: 'Fiche deja liee',
-                content: 'Quand une fiche active existe, le bon reflexe est de continuer cette fiche.'
-            });
-        } else if (ctx.hasConsultations) {
-            steps.unshift({
-                group: GROUP,
-                target: '[data-tour="consultations-cards.case-last-fiche"]',
-                title: 'Reprise de derniere fiche',
-                content: 'Cette carte montre une consultation avec une derniere fiche existante a reprendre.'
-            });
-        }
-
-        if (ctx.firstConsultationHasContinueAction) {
+        if (ctx.firstConsultationHasOpenFicheAction) {
             steps.push({
                 group: GROUP,
                 target: '[data-tour="consultations-cards.continue-action"]',
-                title: 'Continuer la prise en charge',
-                content: 'Ce bouton reprend la consultation ou la derniere fiche existante pour eviter une ressaisie inutile.'
-            });
-        }
-
-        return normalizeTourSteps(steps);
-    },
-    'new-fiche': (ctx) => {
-        const steps = [];
-
-        if (ctx.hasFreshCase) {
-            steps.push({
-                group: GROUP,
-                target: '[data-tour="consultations-cards.case-new"]',
-                title: 'Cas nouvelle fiche',
-                content: 'Ce patient n a pas de fiche precedente exploitable. Une nouvelle fiche est le chemin attendu.'
-            });
-        }
-
-        steps.push(
-            {
-                group: GROUP,
-                target: '[data-tour="consultations-cards.quick-actions"]',
-                title: 'Menu Actions rapides',
-                content: 'Ouvrez le menu pour choisir la creation d une nouvelle fiche quand aucune fiche active n existe.'
-            }
-        );
-
-        if (ctx.firstConsultationHasNewFicheAction) {
-            steps.push({
-                group: GROUP,
-                target: '[data-tour="consultations-cards.new-fiche-action"]',
-                title: 'Ouvrir une nouvelle fiche',
-                content: 'Cette action cree une nouvelle fiche pour repartir sur une saisie propre.'
+                title: 'Ouvrir fiche medicale du patient',
+                content: 'Cliquez sur ce bouton ou double-cliquez la carte / la ligne pour ouvrir la fiche medicale.'
             });
         }
 
@@ -207,8 +164,8 @@ export const consultationsCardsRegistry = createTourRegistry(GROUP, TASKS, {
         {
             group: GROUP,
             target: '[data-tour="consultations-cards.dialog.quick"]',
-            title: 'Cloturation rapide',
-            content: 'Le dialogue permet de terminer une consultation en validant les informations cliniques minimales.',
+            title: 'Cloture rapide',
+            content: 'Le dialogue lie automatiquement la derniere fiche medicale puis permet de terminer la consultation.',
             beforeEnter: async () => openDialogStep(ctx.openQuickDialog, ctx.closeAllDialogs)
         }
     ]),

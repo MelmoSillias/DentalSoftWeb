@@ -407,7 +407,7 @@ watch(
         <div class="project-dialog-scroll">
             <div class="grid md:grid-cols-3 gap-3 mb-4">
                 <div class="md:col-span-2">
-                    <label>Type de travail</label>
+                    <label>Type de travail <span class="text-red-500">*</span></label>
                     <InputText v-model="projectTitle" class="w-full" />
                 </div>
                 <div>
@@ -441,7 +441,7 @@ watch(
                     <div class="space-y-2">
                         <label>Créer et sélectionner</label>
                         <div class="grid md:grid-cols-2 gap-2">
-                            <InputText v-model="inlineClientName" placeholder="Nom du client" />
+                            <InputText v-model="inlineClientName" placeholder="Nom du client *" />
                             <InputText v-model="inlineClientAddress" placeholder="Adresse (optionnel)" />
                         </div>
                         <div class="flex gap-2 items-center">

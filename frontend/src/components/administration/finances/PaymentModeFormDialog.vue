@@ -86,7 +86,7 @@ const submitForm = (event) => {
         @update:visible="close">
         <div class="grid gap-4">
             <div class="flex flex-col gap-2">
-                <label class="text-sm font-medium text-surface-700">Libelle</label>
+                <label class="text-sm font-medium text-surface-700">Libelle <span class="text-red-500">*</span></label>
                 <InputText v-model="form.libelle" class="w-full" placeholder="Ex: Orange Money, Banque" />
             </div>
             <div class="flex flex-col gap-2">

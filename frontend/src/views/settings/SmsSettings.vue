@@ -1065,7 +1065,10 @@ const retryLoadSmsSettings = async () => {
                             </div>
 
                             <div class="space-y-3">
-                                <label class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ isAfrikSmsProvider ? 'SenderId' : 'Sender Name' }}</label>
+                                <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    {{ isAfrikSmsProvider ? 'SenderId' : 'Sender Name' }}
+                                    <span v-if="isAfrikSmsProvider" class="text-red-500">*</span>
+                                </label>
                                 <Select
                                     v-if="isOrangeProvider && approvedSenderNameOptions.length"
                                     v-model="smsConfig.senderName"
@@ -1212,7 +1215,7 @@ const retryLoadSmsSettings = async () => {
                             <div class="space-y-4">
                                 <FloatLabel variant="on">
                                     <InputText id="queue-phone" v-model="queuedSms.phone" class="w-full" />
-                                    <label for="queue-phone">Numéro destinataire</label>
+                                    <label for="queue-phone">Numéro destinataire <span class="text-red-500">*</span></label>
                                 </FloatLabel>
 
                                 <FloatLabel variant="on">
@@ -1227,7 +1230,7 @@ const retryLoadSmsSettings = async () => {
 
                                 <FloatLabel variant="on">
                                     <Textarea id="queue-message" v-model="queuedSms.message" rows="6" autoResize class="w-full" />
-                                    <label for="queue-message">Message à programmer</label>
+                                    <label for="queue-message">Message à programmer <span class="text-red-500">*</span></label>
                                 </FloatLabel>
                             </div>
                         </div>
@@ -1590,7 +1593,7 @@ const retryLoadSmsSettings = async () => {
                         <div class="flex flex-col gap-6 md:grid md:grid-cols-2 items-center">
                             <FloatLabel variant="on">
                                 <InputText id="manual-phone" v-model="manualSms.phone" class="w-full" />
-                                <label for="manual-phone">Numéro</label>
+                                <label for="manual-phone">Numéro <span class="text-red-500">*</span></label>
                             </FloatLabel>
 
                             <div class="space-y-2">
@@ -1601,7 +1604,7 @@ const retryLoadSmsSettings = async () => {
                             <div class="md:col-span-2 space-y-2">
                                 <FloatLabel variant="on">
                                     <Textarea id="manual-message" v-model="manualSms.message" rows="5" autoResize class="w-full" />
-                                    <label for="manual-message">Message à envoyer</label>
+                                    <label for="manual-message">Message à envoyer <span class="text-red-500">*</span></label>
                                 </FloatLabel>
                                 <p class="text-xs text-gray-500 dark:text-gray-400">
                                     {{ manualSms.message.length }} caractères · estimation {{ Math.max(1, Math.ceil(Math.max(1, manualSms.message.length) / 160)) }} SMS

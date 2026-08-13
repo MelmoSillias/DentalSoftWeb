@@ -49,7 +49,7 @@ const submit = (event) => {
         <div class="flex flex-col gap-1.5">
             <label class="text-xs font-medium text-surface-600 dark:text-surface-400 flex items-center gap-1.5">
                 <i class="pi pi-lock text-[11px] text-surface-400"></i>
-                Mot de passe actuel
+                Mot de passe actuel <span class="text-red-500">*</span>
             </label>
             <InputText v-model="form.oldPassword" type="password" placeholder="Mot de passe actuel" />
         </div>
@@ -57,7 +57,7 @@ const submit = (event) => {
         <div class="flex flex-col gap-1.5">
             <label class="text-xs font-medium text-surface-600 dark:text-surface-400 flex items-center gap-1.5">
                 <i class="pi pi-lock text-[11px] text-surface-400"></i>
-                Nouveau mot de passe
+                Nouveau mot de passe <span class="text-red-500">*</span>
             </label>
             <InputText v-model="form.newPassword" type="password" placeholder="Nouveau mot de passe" />
             <div class="flex items-center gap-2">
@@ -71,7 +71,7 @@ const submit = (event) => {
         <div class="flex flex-col gap-1.5">
             <label class="text-xs font-medium text-surface-600 dark:text-surface-400 flex items-center gap-1.5">
                 <i class="pi pi-lock text-[11px] text-surface-400"></i>
-                Confirmer le mot de passe
+                Confirmer le mot de passe <span class="text-red-500">*</span>
             </label>
             <InputText v-model="form.confirmPassword" type="password" placeholder="Confirmer le mot de passe" />
             <small v-if="form.confirmPassword && form.newPassword !== form.confirmPassword" class="text-xs text-red-500 flex items-center gap-1">

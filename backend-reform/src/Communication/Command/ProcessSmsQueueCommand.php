@@ -3,6 +3,7 @@
 namespace App\Communication\Command;
 
 use App\Communication\Service\SmsService;
+use App\Settings\Service\InternetFeaturesGate;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -13,8 +14,10 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 #[AsCommand(name: 'app:sms:process-queue', description: 'Traite les SMS en attente dont la date d\'envoi est échue.')]
 final class ProcessSmsQueueCommand extends Command
 {
-    public function __construct(private readonly SmsService $smsService)
-    {
+    public function __construct(
+        private readonly SmsService $smsService,
+        private readonly InternetFeaturesGate $internetFeaturesGate,
+    ) {
         parent::__construct();
     }
 
@@ -26,6 +29,13 @@ final class ProcessSmsQueueCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
+
+        if (!$this->internetFeaturesGate->isEnabled()) {
+            $io->writeln('[info] Fonctionnalités Internet désactivées — traitement SMS ignoré.');
+
+            return Command::SUCCESS;
+        }
+
         $limit = max(1, (int) $input->getOption('limit'));
 
         $result = $this->smsService->processQueue($limit);

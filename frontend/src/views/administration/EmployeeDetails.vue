@@ -137,6 +137,10 @@ const buildFormData = () => {
             (value || []).forEach((day) => formData.append('comingDays[]', day));
             return;
         }
+        if (key === 'fonction') {
+            formData.append(key, value ?? '');
+            return;
+        }
         if (value === null || value === undefined || value === '') return;
         if (value instanceof Date) {
             formData.append(key, value.toISOString().substring(0, 10));
@@ -389,11 +393,11 @@ onMounted(() => {
                                 <InputText v-model="form.matricule" class="w-full" readonly />
                             </div>
                             <div class="space-y-1">
-                                <label class="text-sm font-medium">Fonction</label>
-                                <InputText v-model="form.fonction" class="w-full" placeholder="Fonction" />
+                                <label class="text-sm font-medium">Description de fonction</label>
+                                <InputText v-model="form.fonction" class="w-full" placeholder="Description de fonction (optionnel)" />
                             </div>
                             <div class="space-y-1">
-                                <label class="text-sm font-medium">Type</label>
+                                <label class="text-sm font-medium">Type de poste</label>
                                 <InputText :modelValue="formatEmployeeTypeLabel(form.type)" class="w-full" readonly />
                             </div>
                             <div class="space-y-1">

@@ -6,6 +6,7 @@ import { useAuthStore } from '@/stores/auth';
 import Button from 'primevue/button';
 import ProgressSpinner from 'primevue/progressspinner';
 import cabinetConfig from '@/cabinetConfig';
+import { getHomeRoute } from '@/utils/navigationHome';
 
 const authStore = useAuthStore();
 const router = useRouter();
@@ -30,7 +31,7 @@ const checkAuthorization = async () => {
         if (data?.allowed) {
             await authStore.fetchUser();
             authStore.clearDeviceBlock();
-            router.replace({ name: 'dashboard' });
+            router.replace(getHomeRoute());
             return;
         }
 

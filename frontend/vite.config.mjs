@@ -25,6 +25,7 @@ const pwaIncludeAssets = [...new Set([...staticIncludeAssets, ...manifestIconSrc
 export default defineConfig(({ command }) => ({
     optimizeDeps: {
         noDiscovery: true,
+        include: ['qrcode'],
         esbuildOptions: {
             logOverride: {
                 'missing-source-map': 'silent'

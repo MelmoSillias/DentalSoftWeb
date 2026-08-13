@@ -5,18 +5,21 @@ namespace App\Patient\Controller\Api;
 use App\IdentityAccess\Entity\User;
 use App\Patient\Service\PatientService;
 use App\CareDelivery\Service\ConsultationService;
+use App\ClinicalRecord\Service\FicheMedicaleService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 
 final class PatientController extends AbstractController
 {
-    public function __construct(private PatientService $patientService, private ConsultationService $consultationService)
-    {
-        $this->patientService = $patientService;
-        $this->consultationService = $consultationService;
+    public function __construct(
+        private PatientService $patientService,
+        private ConsultationService $consultationService,
+        private FicheMedicaleService $ficheMedicaleService,
+    ) {
     }
 
     #[Route('/api/patients', name: 'api_patients', methods: ['GET'])]
@@ -313,6 +316,26 @@ public function removeArchiveFile(int $id, Request $request): JsonResponse
         return $this->json($data);
     }
 
+    #[Route('/api/patient/{id}/fiche/latest', name: 'api_patient_fiche_latest', methods: ['GET'])]
+    public function getLatestFiche(int $id): JsonResponse
+    {
+        try {
+            return $this->json($this->ficheMedicaleService->getLatestFichePayload($id));
+        } catch (NotFoundHttpException $e) {
+            return $this->json(['error' => $e->getMessage()], 404);
+        }
+    }
+
+    #[Route('/api/patient/{id}/fiches-medicales', name: 'api_patient_fiches_medicales_create', methods: ['POST'])]
+    public function createFicheMedicale(int $id): JsonResponse
+    {
+        try {
+            return $this->json($this->ficheMedicaleService->createNewFichePayload($id), 201);
+        } catch (NotFoundHttpException $e) {
+            return $this->json(['error' => $e->getMessage()], 404);
+        }
+    }
+
     #[Route('/api/patient/{id}/consultations', name: 'api_patient_consultations', methods: ['GET'])]
     public function getPatientConsultations(int $id): JsonResponse
     {
@@ -437,31 +460,6 @@ public function removeArchiveFile(int $id, Request $request): JsonResponse
         }
 
         return $this->json(['success' => true]);
-    }
-
-    #[Route('/api/patient/{id}/dossier/print/infosperso', name: 'patient_print_infos_perso', methods: ['GET'])]
-    public function print(int $id): Response
-    {
-        $patient = $this->patientService->getPrintInfosPersoContext($id);
-        if (!$patient) {
-            throw $this->createNotFoundException('Patient non trouvé.');
-        }
-
-        return $this->render('admin/printinfosperso.html.twig', [
-            'patient' => $patient,
-        ]);
-    }
-
-    #[Route('/api/patient/{patientId}/fiche/{ficheId}/print', name: 'patient_fiche_print', methods: ['GET'])]
-    public function printFiche(int $patientId, int $ficheId): Response
-    {
-        $context = $this->patientService->getPrintFicheContext($patientId, $ficheId);
-
-        if (!$context) {
-            throw $this->createNotFoundException('Fiche introuvable pour ce patient.');
-        }
-
-        return $this->render('pages_bases/fiche_print.html.twig', $context);
     }
 
     #[Route('/api/prints/patient/{id}/dossier', name: 'api_print_patient_dossier_data', methods: ['GET'])]

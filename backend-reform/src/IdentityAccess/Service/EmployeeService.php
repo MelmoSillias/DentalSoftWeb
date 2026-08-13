@@ -7,6 +7,7 @@ use App\Focus\Service\FocusRealtimePublisher;
 use App\IdentityAccess\Entity\Employe;
 use App\IdentityAccess\Entity\User as EntityUser;
 use App\IdentityAccess\Repository\EmployeRepository;
+use App\IdentityAccess\StaffRoleCatalog;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
 use InvalidArgumentException;
@@ -76,11 +77,13 @@ class EmployeeService
         $this->assertRequiredFields($data, [
             'nom' => 'Nom',
             'prenom' => 'Prénom',
-            'fonction' => 'Fonction',
             'type' => 'Type',
             'dateEmbauche' => "Date d'embauche",
             'typeContrat' => 'Type de contrat',
         ]);
+
+        $employeeType = StaffRoleCatalog::assertAllowedEmployeeType($data['type'] ?? null);
+        $fonction = $this->normalizeNullableString($data['fonction'] ?? null) ?? '';
 
         $email = $this->normalizeNullableString($data['email'] ?? null);
         if ($email && $this->employeRepo->emailExists($email)) {
@@ -102,9 +105,9 @@ class EmployeeService
         $employe->setNom($this->sanitizeString($data['nom']));
         $employe->setPrenom($this->sanitizeString($data['prenom']));
         $employe->setTelephone($this->normalizeNullableString($data['telephone'] ?? null));
-        $employe->setFonction($this->sanitizeString($data['fonction']));
+        $employe->setFonction($fonction);
         $employe->setEmail($email);
-        $employe->setType($this->sanitizeString($data['type']));
+        $employe->setType($employeeType);
         $employe->setDateEmbauche($dateEmbauche);
         $employe->setTypeContrat($typeContrat);
         $employe->setDureeContrat($dureeContrat);
@@ -137,11 +140,15 @@ class EmployeeService
         $this->assertRequiredFields($data, [
             'nom' => 'Nom',
             'prenom' => 'Prénom',
-            'fonction' => 'Fonction',
             'type' => 'Type',
             'dateEmbauche' => "Date d'embauche",
             'typeContrat' => 'Type de contrat',
         ]);
+
+        $employeeType = StaffRoleCatalog::assertAllowedEmployeeType($data['type'] ?? null);
+        $fonction = array_key_exists('fonction', $data)
+            ? ($this->normalizeNullableString($data['fonction']) ?? '')
+            : ($employee->getFonction() ?? '');
 
         $email = $this->normalizeNullableString($data['email'] ?? null);
         if ($email && $this->employeRepo->emailExists($email, $employee->getId())) {
@@ -179,7 +186,8 @@ class EmployeeService
         $employee->setNom($this->sanitizeString($data['nom']));
         $employee->setPrenom($this->sanitizeString($data['prenom']));
         $employee->setMatricule($matricule);
-        $employee->setFonction($this->sanitizeString($data['fonction']));
+        $employee->setFonction($fonction);
+        $employee->setType($employeeType);
         $employee->setTelephone($this->normalizeNullableString($data['telephone'] ?? null));
         $employee->setEmail($email);
         $employee->setDateEmbauche($dateEmbauche);

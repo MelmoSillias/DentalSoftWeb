@@ -26,6 +26,7 @@ import Badge from 'primevue/badge';
 import InputNumber from 'primevue/inputnumber';
 import DatePicker from 'primevue/datepicker';
 import { useAuthStore } from '@/stores/auth';
+import { useInternetFeatures } from '@/composables/useInternetFeatures';
 import { usePrinter } from '@/composables/usePrinter';
 import { useUiSettingsStore } from '@/stores/uiSettings';
 import { useAppearanceSettings } from '@/composables/useAppearanceSettings';
@@ -48,11 +49,13 @@ import {
     toggleTestMode
 } from '@/services/globalSettingsService';
 import { buildPatientPortalQrPrintModel, getPatientPortalQrPrintEntry } from '@/services/printService';
+import { createQrDataUrl } from '@/utils/qrCode';
 import { getHttpErrorMessage } from '@/service/http';
 import cabinetConfig from '@/cabinetConfig';
 
 const router = useRouter();
 const toast = useToast();
+const { isInternetFeaturesEnabled } = useInternetFeatures();
 const confirm = useConfirm();
 const { printComponent } = usePrinter();
 const token = localStorage.getItem('token');
@@ -75,6 +78,9 @@ const {
     presetOptions,
     menuMode,
     menuModeOptions,
+    navigationMode,
+    navigationModeOptions,
+    isClassicNavigation,
     themeOptions,
     fontFamilyOptions,
     fontSizeOptions,
@@ -85,7 +91,8 @@ const {
     fontSize,
     updateColors,
     onPresetChange,
-    onMenuModeChange
+    onMenuModeChange,
+    onNavigationModeChange
 } = useAppearanceSettings();
 
 // Loading states
@@ -1048,31 +1055,41 @@ useGuidedTour({
 const currentThemeLabel = computed(() => themeOptions.value.find((option) => option.value === themeMode.value)?.label || 'Système');
 const currentFontSizeLabel = computed(() => fontSizeOptions.value.find((option) => option.value === fontSize.value)?.label || 'Normal');
 const currentSurfaceName = computed(() => layoutConfig.surface || (isDarkTheme.value ? 'zinc' : 'slate'));
-const canAccessSmsSettings = computed(() => (auth.user?.roles || []).includes('ROLE_ADMIN'));
+const canAccessSmsSettings = computed(() => (auth.user?.roles || []).includes('ROLE_ADMIN') && isInternetFeaturesEnabled.value);
 const normalizedPortalBaseUrl = computed(() => String(portalPatientConfig.patientPortalBaseUrl || '').replace(/\/$/, ''));
 const portalLoginUrl = computed(() => normalizedPortalBaseUrl.value ? `${normalizedPortalBaseUrl.value}/login` : '');
 const anonymousReviewUrl = computed(() => normalizedPortalBaseUrl.value ? `${normalizedPortalBaseUrl.value}/avis-anonyme` : '');
 const normalizedShowcaseWebsiteUrl = computed(() => String(portalPatientConfig.cabinetShowcaseWebsiteUrl || '').trim());
-const qrPortalLoginSrc = computed(() => {
-    if (!portalLoginUrl.value) return '';
-    return `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(portalLoginUrl.value)}`;
-});
-const qrAnonymousReviewSrc = computed(() => {
-    if (!anonymousReviewUrl.value) return '';
-    return `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(anonymousReviewUrl.value)}`;
-});
-const qrShowcaseWebsiteSrc = computed(() => {
-    if (!normalizedShowcaseWebsiteUrl.value) return '';
-    return `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(normalizedShowcaseWebsiteUrl.value)}`;
-});
-const patientPortalQrPrintModel = computed(() => buildPatientPortalQrPrintModel({
-    cabinetName: cabinetConfig.displayName,
-    subtitle: 'Portail patient, avis anonymes et site vitrine',
-    phone: cabinetConfig.cabinetPhone,
-    portalLoginUrl: portalLoginUrl.value,
-    anonymousReviewUrl: anonymousReviewUrl.value,
-    showcaseWebsiteUrl: normalizedShowcaseWebsiteUrl.value
-}));
+const qrPortalLoginSrc = ref('');
+const qrAnonymousReviewSrc = ref('');
+const qrShowcaseWebsiteSrc = ref('');
+const patientPortalQrPrintModel = ref(null);
+
+const refreshPortalQrAssets = async () => {
+    const [portalSrc, reviewSrc, showcaseSrc, printModel] = await Promise.all([
+        createQrDataUrl(portalLoginUrl.value, 260),
+        createQrDataUrl(anonymousReviewUrl.value, 260),
+        createQrDataUrl(normalizedShowcaseWebsiteUrl.value, 260),
+        buildPatientPortalQrPrintModel({
+            cabinetName: cabinetConfig.displayName,
+            subtitle: 'Portail patient, avis anonymes et site vitrine',
+            phone: cabinetConfig.cabinetPhone,
+            portalLoginUrl: portalLoginUrl.value,
+            anonymousReviewUrl: anonymousReviewUrl.value,
+            showcaseWebsiteUrl: normalizedShowcaseWebsiteUrl.value
+        })
+    ]);
+
+    qrPortalLoginSrc.value = portalSrc;
+    qrAnonymousReviewSrc.value = reviewSrc;
+    qrShowcaseWebsiteSrc.value = showcaseSrc;
+    patientPortalQrPrintModel.value = printModel;
+};
+
+watch([portalLoginUrl, anonymousReviewUrl, normalizedShowcaseWebsiteUrl], () => {
+    refreshPortalQrAssets();
+}, { immediate: true });
+
 const hasPrintablePortalQr = computed(() => {
     const entries = patientPortalQrPrintModel.value?.entries || {};
     return Object.values(entries).some((entry) => Boolean(entry?.url));
@@ -1380,17 +1397,31 @@ onBeforeUnmount(() => {
                         <div id="appearance-layout" class="settings-section" data-tour="settings-appearance.layout">
                             <div class="settings-section-header">
                                 <h3>Disposition</h3>
-                                <p class="settings-section-description">Comportement du menu de navigation</p>
+                                <p class="settings-section-description">Mode de navigation et comportement du menu (préférences de ce poste)</p>
                             </div>
-                            <div class="settings-card">
-                                <SelectButton
-                                    v-model="menuMode"
-                                    :options="menuModeOptions"
-                                    optionLabel="label"
-                                    optionValue="value"
-                                    :allowEmpty="false"
-                                    @change="onMenuModeChange"
-                                />
+                            <div class="settings-card flex flex-column gap-4">
+                                <div>
+                                    <p class="settings-section-description mb-2">Navigation</p>
+                                    <SelectButton
+                                        v-model="navigationMode"
+                                        :options="navigationModeOptions"
+                                        optionLabel="label"
+                                        optionValue="value"
+                                        :allowEmpty="false"
+                                        @change="onNavigationModeChange"
+                                    />
+                                </div>
+                                <div v-if="isClassicNavigation">
+                                    <p class="settings-section-description mb-2">Menu latéral (mode classique)</p>
+                                    <SelectButton
+                                        v-model="menuMode"
+                                        :options="menuModeOptions"
+                                        optionLabel="label"
+                                        optionValue="value"
+                                        :allowEmpty="false"
+                                        @change="onMenuModeChange"
+                                    />
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -2263,7 +2294,7 @@ onBeforeUnmount(() => {
                 Choisissez un nom explicite (ex. « Accueil », « Salle 2 », « PC Dr Martin ») pour distinguer cet appareil.
             </p>
             <div class="field-group">
-                <label for="device-rename-input">Nom affiché</label>
+                <label for="device-rename-input">Nom affiché <span class="text-red-500">*</span></label>
                 <InputText
                     id="device-rename-input"
                     v-model="deviceRenameValue"
@@ -2317,6 +2348,7 @@ onBeforeUnmount(() => {
                     <div class="rounded-md bg-surface-0 dark:bg-surface-900 border border-surface-200 dark:border-surface-700 px-3 py-2">
                         <span class="font-mono text-sm tracking-wide select-all">{{ securityDialog.challenge }}</span>
                     </div>
+                    <label class="text-sm font-medium text-red-700 dark:text-red-300">Phrase de sécurité <span class="text-red-500">*</span></label>
                     <InputText
                         v-model="securityDialog.challengeInput"
                         class="w-full"
@@ -2326,7 +2358,7 @@ onBeforeUnmount(() => {
                 </div>
 
                 <div class="space-y-2">
-                    <label for="settings-admin-password" class="text-sm font-medium">Mot de passe admin</label>
+                    <label for="settings-admin-password" class="text-sm font-medium">Mot de passe admin <span class="text-red-500">*</span></label>
                     <Password
                         id="settings-admin-password"
                         v-model="securityDialog.password"

@@ -1,8 +1,10 @@
 import AppLayout from '@/layout/AppLayout.vue';
 import { createRouter, createWebHistory } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
+import { useInternetFeatures } from '@/composables/useInternetFeatures';
 import { isDeviceNotAllowedError } from '@/service/http';
 import { logAppError } from '@/utils/appLogger';
+import { getHomeRoute } from '@/utils/navigationHome';
 
 const router = createRouter({
     history: createWebHistory(),
@@ -10,9 +12,15 @@ const router = createRouter({
         {
             path: '/dashbord',
             component: AppLayout,
-            redirect: '/dashboard',
+            redirect: () => getHomeRoute(),
             meta: { requiresAuth: true },
             children: [
+                {
+                    path: '/accueil',
+                    name: 'navigation-hub',
+                    component: () => import('@/views/NavigationHub.vue'),
+                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN', 'ROLE_RECEPTION', 'ROLE_MEDECIN'], fixedWidth: true }
+                },
                 {
                     path: '/dashboard',
                     name: 'dashboard',
@@ -168,7 +176,7 @@ const router = createRouter({
                     path: '/administration/api-sms',
                     name: 'administration-api-sms',
                     component: () => import('@/views/settings/SmsSettings.vue'),
-                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN'], fixedWidth: true }
+                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN'], fixedWidth: true, requiresInternet: true }
                 }
             ]
         },
@@ -257,9 +265,16 @@ router.beforeEach(async (to, from, next) => {
         }
     }
 
+    if (to.meta.requiresInternet) {
+        const { isInternetFeaturesEnabled } = useInternetFeatures();
+        if (!isInternetFeaturesEnabled.value) {
+            return next(getHomeRoute());
+        }
+    }
+
     // 🔹 4. Empêche un utilisateur déjà connecté d'aller sur /login
     if (to.meta.requiresGuest && token && authStore.user) {
-        return next({ name: 'dashboard' });
+        return next(getHomeRoute());
     }
 
     next();

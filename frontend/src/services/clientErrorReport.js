@@ -1,4 +1,7 @@
 import { apiPrefix } from '@/config';
+import cabinetConfig from '@/cabinetConfig';
+
+const buildTimeInternetEnabled = cabinetConfig.internetFeaturesEnabled !== false;
 
 const DEDUPE_MS = 30_000;
 const MAX_BODY_BYTES = 4096;
@@ -32,7 +35,7 @@ function shouldSend(payload) {
  * @param {Record<string, unknown>} payload
  */
 export function reportClientError(payload) {
-    if (import.meta.env.DEV) {
+    if (import.meta.env.DEV || !buildTimeInternetEnabled) {
         return;
     }
 

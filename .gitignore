@@ -5,6 +5,7 @@
 /orodent-prod
 /cdos_prod
 /mondentiste-prod
+/prod-local-api
 
 /backend-reform/.env.local
 /backend-reform/.env.local.php

@@ -13,6 +13,7 @@ use App\Scheduling\Repository\RdvRepository;
 use App\Communication\Service\SmsClientResolver;
 use App\Communication\Service\SmsConfigService;
 use App\Communication\Service\SmsService;
+use App\Settings\Service\InternetFeaturesGate;
 use DateTimeImmutable;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -56,7 +57,20 @@ final class SmsController extends AbstractController
         private readonly RdvRepository $rdvRepository,
         private readonly DevisRepository $devisRepository,
         private readonly PaiementRepository $paiementRepository,
+        private readonly InternetFeaturesGate $internetFeaturesGate,
     ) {
+    }
+
+    private function denyInternetFeaturesDisabled(): ?JsonResponse
+    {
+        if ($this->internetFeaturesGate->isEnabled()) {
+            return null;
+        }
+
+        return $this->json([
+            'success' => false,
+            'error' => $this->internetFeaturesGate->disabledMessage(),
+        ], 403);
     }
 
     #[Route('/settings', name: 'settings_get', methods: ['GET'])]
@@ -68,6 +82,10 @@ final class SmsController extends AbstractController
     #[Route('/settings', name: 'settings_save', methods: ['PUT'])]
     public function saveSettings(Request $request): JsonResponse
     {
+        if ($denied = $this->denyInternetFeaturesDisabled()) {
+            return $denied;
+        }
+
         $payload = json_decode($request->getContent(), true) ?? [];
         $saved = $this->smsConfigService->saveConfig($payload);
 
@@ -94,6 +112,10 @@ final class SmsController extends AbstractController
     #[Route('/test-connection', name: 'test_connection', methods: ['POST'])]
     public function testConnection(): JsonResponse
     {
+        if ($denied = $this->denyInternetFeaturesDisabled()) {
+            return $denied;
+        }
+
         $result = $this->smsClientResolver->getClient()->testConnection();
 
         return $this->json($result, ($result['success'] ?? false) ? 200 : 400);
@@ -102,6 +124,10 @@ final class SmsController extends AbstractController
     #[Route('/test-send', name: 'test_send', methods: ['POST'])]
     public function testSend(Request $request): JsonResponse
     {
+        if ($denied = $this->denyInternetFeaturesDisabled()) {
+            return $denied;
+        }
+
         $payload = json_decode($request->getContent(), true) ?? [];
         $phone = trim((string) ($payload['phone'] ?? ''));
         $message = trim((string) ($payload['message'] ?? 'Message de test DentalSoft.'));
@@ -155,6 +181,10 @@ final class SmsController extends AbstractController
     #[Route('/provider-overview', name: 'provider_overview', methods: ['GET'])]
     public function providerOverview(): JsonResponse
     {
+        if ($denied = $this->denyInternetFeaturesDisabled()) {
+            return $denied;
+        }
+
         $result = $this->smsClientResolver->getClient()->fetchProviderOverview();
 
         return $this->json($result, ($result['success'] ?? false) ? 200 : 400);
@@ -219,6 +249,13 @@ final class SmsController extends AbstractController
     {
         $payload = json_decode($request->getContent(), true) ?? [];
         $action = (string) ($payload['action'] ?? '');
+
+        if (in_array($action, ['retry', 'reschedule'], true)) {
+            if ($denied = $this->denyInternetFeaturesDisabled()) {
+                return $denied;
+            }
+        }
+
         $sendAtRaw = $payload['sendAt'] ?? null;
         $sendAt = null;
 
@@ -246,6 +283,10 @@ final class SmsController extends AbstractController
     #[Route('/templates', name: 'templates_save', methods: ['PUT'])]
     public function saveTemplates(Request $request): JsonResponse
     {
+        if ($denied = $this->denyInternetFeaturesDisabled()) {
+            return $denied;
+        }
+
         $payload = json_decode($request->getContent(), true) ?? [];
         $templates = isset($payload['templates']) && is_array($payload['templates']) ? $payload['templates'] : [];
 
@@ -281,6 +322,10 @@ final class SmsController extends AbstractController
     #[Route('/send/manual', name: 'send_manual', methods: ['POST'])]
     public function sendManual(Request $request): JsonResponse
     {
+        if ($denied = $this->denyInternetFeaturesDisabled()) {
+            return $denied;
+        }
+
         $payload = json_decode($request->getContent(), true) ?? [];
         $phone = trim((string) ($payload['phone'] ?? ''));
         $message = trim((string) ($payload['message'] ?? ''));
@@ -346,6 +391,10 @@ final class SmsController extends AbstractController
     #[Route('/queue/process', name: 'queue_process', methods: ['POST'])]
     public function processQueue(Request $request): JsonResponse
     {
+        if ($denied = $this->denyInternetFeaturesDisabled()) {
+            return $denied;
+        }
+
         $payload = json_decode($request->getContent(), true) ?? [];
         $limit = (int) ($payload['limit'] ?? 20);
         $async = (bool) ($payload['async'] ?? false);
@@ -364,6 +413,10 @@ final class SmsController extends AbstractController
     #[Route('/appointments/{id}/send-reminder', name: 'appointment_send_reminder', methods: ['POST'])]
     public function sendAppointmentReminder(int $id, Request $request): JsonResponse
     {
+        if ($denied = $this->denyInternetFeaturesDisabled()) {
+            return $denied;
+        }
+
         $rdv = $this->rdvRepository->find($id);
         if (!$rdv instanceof Rdv) {
             return $this->json(['success' => false, 'error' => 'Rendez-vous introuvable'], 404);
@@ -404,6 +457,10 @@ final class SmsController extends AbstractController
     #[Route('/appointments/{id}/schedule-reminder', name: 'appointment_schedule_reminder', methods: ['POST'])]
     public function scheduleReminder(int $id, Request $request): JsonResponse
     {
+        if ($denied = $this->denyInternetFeaturesDisabled()) {
+            return $denied;
+        }
+
         $rdv = $this->rdvRepository->find($id);
         if (!$rdv instanceof Rdv) {
             return $this->json(['success' => false, 'error' => 'Rendez-vous introuvable'], 404);
@@ -437,6 +494,10 @@ final class SmsController extends AbstractController
     #[Route('/invoices/{id}/send', name: 'invoice_send', methods: ['POST'])]
     public function sendInvoice(int $id, Request $request): JsonResponse
     {
+        if ($denied = $this->denyInternetFeaturesDisabled()) {
+            return $denied;
+        }
+
         $devis = $this->devisRepository->find($id);
         if (!$devis instanceof Devis) {
             return $this->json(['success' => false, 'error' => 'Facture introuvable'], 404);
@@ -462,6 +523,10 @@ final class SmsController extends AbstractController
     #[Route('/receipts/{id}/send', name: 'receipt_send', methods: ['POST'])]
     public function sendReceipt(int $id, Request $request): JsonResponse
     {
+        if ($denied = $this->denyInternetFeaturesDisabled()) {
+            return $denied;
+        }
+
         $paiement = $this->paiementRepository->find($id);
         if (!$paiement instanceof Paiement) {
             return $this->json(['success' => false, 'error' => 'ReÃ§u introuvable'], 404);

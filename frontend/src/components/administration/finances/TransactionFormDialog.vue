@@ -141,11 +141,11 @@ const submitForm = (event) => {
                     <Select v-model="form.type" :options="typeOptions" optionLabel="label" optionValue="value" />
                 </div>
                 <div class="flex flex-col gap-2">
-                    <label class="text-sm font-medium text-surface-700">Motif</label>
+                    <label class="text-sm font-medium text-surface-700">Motif <span class="text-red-500">*</span></label>
                     <Select v-model="form.motif" :options="motifOptions" optionLabel="label" optionValue="value" placeholder="Sélectionner" />
                 </div>
                 <div class="flex flex-col gap-2">
-                    <label class="text-sm font-medium text-surface-700">Compte</label>
+                    <label class="text-sm font-medium text-surface-700">Compte <span class="text-red-500">*</span></label>
                     <Select
                         v-model="form.modeId"
                         :options="methodOptions"
@@ -158,11 +158,11 @@ const submitForm = (event) => {
 
             <div class="grid md:grid-cols-2 gap-3">
                 <div class="flex flex-col gap-2">
-                    <label class="text-sm font-medium text-surface-700">Montant</label>
+                    <label class="text-sm font-medium text-surface-700">Montant <span class="text-red-500">*</span></label>
                     <InputNumber v-model="form.montant" mode="decimal" locale="fr-FR" :minFractionDigits="0" class="w-full" />
                 </div>
                 <div class="flex flex-col gap-2">
-                    <label class="text-sm font-medium text-surface-700">Date</label>
+                    <label class="text-sm font-medium text-surface-700">Date <span class="text-red-500">*</span></label>
                     <DatePicker v-model="form.date" dateFormat="yy-mm-dd" showIcon class="w-full" />
                 </div>
             </div>

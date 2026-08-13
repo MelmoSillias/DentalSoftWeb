@@ -2,12 +2,14 @@
 
 namespace App\Communication\Service;
 
+use App\Communication\Mercure\MercureCircuitBreaker;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 final class MercureHealthService
 {
     public function __construct(
         private readonly HttpClientInterface $httpClient,
+        private readonly MercureCircuitBreaker $circuitBreaker,
         private readonly string $mercureUrl,
         private readonly string $mercurePublicUrl,
         private readonly string $mercureJwtSecret,
@@ -50,6 +52,8 @@ final class MercureHealthService
             $status = 'misconfigured';
         } elseif (!$checks['internalPublishReachable']) {
             $status = 'unreachable';
+        } elseif ($this->circuitBreaker->isOpen()) {
+            $status = 'circuit_open';
         } elseif (!$checks['publicUrlUsesHttps']) {
             $status = 'warning';
         }
@@ -58,6 +62,7 @@ final class MercureHealthService
             'status' => $status,
             'mercureUrl' => $this->mercureUrl,
             'mercurePublicUrl' => $this->mercurePublicUrl,
+            'circuit' => $this->circuitBreaker->status(),
         ];
     }
 }

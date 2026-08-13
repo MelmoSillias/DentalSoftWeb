@@ -5,15 +5,22 @@ import ConfirmDialog from 'primevue/confirmdialog';
 import Dialog from 'primevue/dialog';
 import Select from 'primevue/select';
 import { useConfirm } from 'primevue/useconfirm';
+import { useToast } from 'primevue/usetoast';
 import { computed, ref, watch } from 'vue';
 import FicheMedicalEditPanel from '@/components/patients/FicheMedicalEditPanel.vue';
 import FicheMedicalV2 from '@/components/patients/FicheMedicalV2.vue';
+import { createNewFicheForPatient } from '@/composables/useFicheMedicaleAccess';
 import { useAuthStore } from '@/stores/auth';
+import { logAppError } from '@/utils/appLogger';
 
 const props = defineProps({
     fiches: {
         type: Array,
         default: () => []
+    },
+    patientId: {
+        type: [Number, String],
+        default: null
     },
     canCreateConsultation: {
         type: Boolean,
@@ -29,16 +36,19 @@ const props = defineProps({
     }
 });
 
-const emit = defineEmits(['print-fiche', 'new-consultation', 'fiche-updated']);
+const emit = defineEmits(['print-fiche', 'new-consultation', 'fiche-updated', 'fiche-created']);
 
 const confirm = useConfirm();
+const toast = useToast();
 const auth = useAuthStore();
+const token = localStorage.getItem('token');
 
 const currentFicheIndex = ref(0);
 const isExpanded = ref(false);
 const isEditMode = ref(false);
 const editPanelRef = ref(null);
 const editHasDirty = ref(false);
+const creatingFiche = ref(false);
 
 const orderedFiches = computed(() => props.fiches || []);
 const selectedFiche = computed(() => orderedFiches.value[currentFicheIndex.value] || null);
@@ -144,12 +154,60 @@ function handleFicheSaved() {
     emit('fiche-updated');
 }
 
+function askCreateNewFiche() {
+    if (!canEdit.value || !props.patientId || creatingFiche.value) return;
+
+    confirm.require({
+        message: 'Créer une nouvelle fiche médicale pour ce patient ? Les fiches précédentes restent consultables.',
+        header: 'Nouvelle fiche médicale',
+        icon: 'pi pi-exclamation-triangle',
+        rejectLabel: 'Annuler',
+        acceptLabel: 'Créer',
+        accept: () => createNewFiche()
+    });
+}
+
+async function createNewFiche() {
+    if (!props.patientId) return;
+    creatingFiche.value = true;
+    try {
+        const result = await createNewFicheForPatient(props.patientId, token);
+        toast.add({
+            severity: 'success',
+            summary: 'Fiche créée',
+            detail: 'Une nouvelle fiche médicale a été créée.',
+            life: 2500
+        });
+        currentFicheIndex.value = 0;
+        emit('fiche-created', result);
+    } catch (error) {
+        logAppError('Erreur création fiche médicale', error);
+        toast.add({
+            severity: 'error',
+            summary: 'Erreur',
+            detail: 'Impossible de créer une nouvelle fiche médicale.',
+            life: 3000
+        });
+    } finally {
+        creatingFiche.value = false;
+    }
+}
+
 watch(isExpanded, (visible) => {
     if (!visible) {
         isEditMode.value = false;
         editHasDirty.value = false;
     }
 });
+
+watch(
+    () => props.fiches?.length,
+    (length, previousLength) => {
+        if (Number(length) > Number(previousLength || 0)) {
+            currentFicheIndex.value = 0;
+        }
+    }
+);
 </script>
 
 <template>
@@ -191,6 +249,18 @@ watch(isExpanded, (visible) => {
                         :disabled="!orderedFiches.length"
                         @click="openExpanded"
                         data-tour="patients-dossier.fiches-expand"
+                        :pt="{ label: { class: 'hidden sm:inline' } }"
+                    />
+                    <Button
+                        v-if="canEdit"
+                        icon="pi pi-file-plus"
+                        label="Nouvelle fiche"
+                        severity="success"
+                        outlined
+                        :loading="creatingFiche"
+                        :disabled="!patientId"
+                        @click="askCreateNewFiche"
+                        data-tour="patients-dossier.fiches-new"
                         :pt="{ label: { class: 'hidden sm:inline' } }"
                     />
                     <Button

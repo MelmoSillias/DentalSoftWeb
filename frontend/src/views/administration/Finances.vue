@@ -526,7 +526,7 @@
                     <InputText :model-value="assuranceEditForm.code" disabled class="w-full" />
                 </div>
                 <div class="flex flex-col gap-2">
-                    <label class="text-sm font-medium text-surface-700 dark:text-surface-200">Nom</label>
+                    <label class="text-sm font-medium text-surface-700 dark:text-surface-200">Nom <span class="text-red-500">*</span></label>
                     <InputText v-model="assuranceEditForm.nom" class="w-full" />
                 </div>
                 <div class="flex flex-col gap-2">

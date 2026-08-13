@@ -18,6 +18,9 @@ use App\ClinicalRecord\Entity\FicheExamenItem;
 use App\ClinicalRecord\Entity\FicheExamenLabo;
 use App\ClinicalRecord\Entity\FicheMedicale;
 use App\ClinicalRecord\Entity\FichePlanTraitement;
+use App\ClinicalRecord\Repository\FicheMedicaleRepository;
+use App\Patient\Entity\Patient;
+use App\Patient\Repository\PatientRepository;
 use DateTimeImmutable;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\EntityManagerInterface;
@@ -35,6 +38,8 @@ class FicheMedicaleService
         private EntityManagerInterface $em,
         private DevisRepository $devisRepo,
         private ConsultationRepository $consultationRepo,
+        private FicheMedicaleRepository $ficheMedicaleRepo,
+        private PatientRepository $patientRepo,
         ParameterBagInterface $params,
     ) {
         $this->projectDir = $params->get('kernel.project_dir');
@@ -42,11 +47,82 @@ class FicheMedicaleService
 
     private function getFiche(int $ficheId): FicheMedicale
     {
-        $fiche = $this->em->getRepository(FicheMedicale::class)->find($ficheId);
+        $fiche = $this->ficheMedicaleRepo->find($ficheId);
         if (!$fiche) {
             throw new NotFoundHttpException("FicheMedicale {$ficheId} introuvable");
         }
         return $fiche;
+    }
+
+    public function createForPatient(Patient $patient, bool $flush = false): FicheMedicale
+    {
+        $fiche = new FicheMedicale();
+        $fiche->setPatient($patient);
+        $this->em->persist($fiche);
+
+        if ($flush) {
+            $this->em->flush();
+        }
+
+        return $fiche;
+    }
+
+    public function findLatestForPatient(Patient $patient): ?FicheMedicale
+    {
+        return $this->ficheMedicaleRepo->findLatestByPatient($patient);
+    }
+
+    public function getOrCreateLatestForPatient(int $patientId): FicheMedicale
+    {
+        $patient = $this->patientRepo->find($patientId);
+        if (!$patient instanceof Patient || $patient->isDeleted()) {
+            throw new NotFoundHttpException('Patient introuvable');
+        }
+
+        $latest = $this->ficheMedicaleRepo->findLatestByPatient($patient);
+        if ($latest) {
+            return $latest;
+        }
+
+        return $this->createForPatient($patient, true);
+    }
+
+    public function createNewForPatient(int $patientId): FicheMedicale
+    {
+        $patient = $this->patientRepo->find($patientId);
+        if (!$patient instanceof Patient || $patient->isDeleted()) {
+            throw new NotFoundHttpException('Patient introuvable');
+        }
+
+        return $this->createForPatient($patient, true);
+    }
+
+    /**
+     * @return array{ficheId: int, createdAt: string|null, fiche: array}
+     */
+    public function getLatestFichePayload(int $patientId): array
+    {
+        $fiche = $this->getOrCreateLatestForPatient($patientId);
+        $json = $this->getFicheJson($fiche->getId());
+
+        return [
+            'ficheId' => $fiche->getId(),
+            'createdAt' => $fiche->getCreatedAt()?->format('Y-m-d H:i:s'),
+            'fiche' => $json,
+        ];
+    }
+
+    /**
+     * @return array{ficheId: int, createdAt: string|null}
+     */
+    public function createNewFichePayload(int $patientId): array
+    {
+        $fiche = $this->createNewForPatient($patientId);
+
+        return [
+            'ficheId' => $fiche->getId(),
+            'createdAt' => $fiche->getCreatedAt()?->format('Y-m-d H:i:s'),
+        ];
     }
 
     private function toBool(mixed $value): ?bool

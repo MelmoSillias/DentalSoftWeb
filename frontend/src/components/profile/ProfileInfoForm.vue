@@ -50,16 +50,16 @@ const submit = (event) => {
                 <div class="flex flex-col gap-1.5">
                     <label class="text-xs font-medium text-surface-600 dark:text-surface-400 flex items-center gap-1.5">
                         <i class="pi pi-at text-[11px] text-surface-400"></i>
-                        Identifiant
+                        Identifiant <span class="text-red-500">*</span>
                     </label>
                     <InputText v-model="form.username" placeholder="Identifiant" />
                 </div>
                 <div class="flex flex-col gap-1.5">
                     <label class="text-xs font-medium text-surface-600 dark:text-surface-400 flex items-center gap-1.5">
                         <i class="pi pi-briefcase text-[11px] text-surface-400"></i>
-                        Fonction
+                        Description de fonction
                     </label>
-                    <InputText v-model="form.fonction" placeholder="Fonction" />
+                    <InputText v-model="form.fonction" placeholder="Description de fonction (optionnel)" />
                 </div>
             </div>
         </div>

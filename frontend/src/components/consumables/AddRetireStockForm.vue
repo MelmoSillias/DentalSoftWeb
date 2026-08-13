@@ -84,7 +84,7 @@ onMounted(async () => {
                             <span class="pi pi-minus" />
                         </template>
                     </InputNumber>
-                    <label for="quantite">Quantité</label>
+                    <label for="quantite">Quantité <span class="text-red-500">*</span></label>
                     <Message v-if="$form.quantite?.invalid" severity="error" variant="simple">
                         {{ $form.quantite.error?.message }}
                     </Message>

@@ -39,7 +39,7 @@ function onSubmit() {
   <Dialog :visible="visible" modal :header="mode === 'edit' ? 'Modifier la salle' : 'Ajouter une salle'" :style="{ width: '30rem' }" @update:visible="close">
     <form @submit.prevent="onSubmit" class="flex flex-col gap-4">
       <div>
-        <label class="block mb-1">Nom</label>
+        <label class="block mb-1">Nom <span class="text-red-500">*</span></label>
         <InputText v-model="form.nom" required class="w-full" />
       </div>
       <div>

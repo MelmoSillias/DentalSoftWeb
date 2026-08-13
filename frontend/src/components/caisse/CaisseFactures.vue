@@ -6,6 +6,9 @@ import Select from 'primevue/select';
 import Tag from 'primevue/tag';
 import { computed, ref } from 'vue';
 import PanelDatePicker from '@/components/common/PanelDatePicker.vue';
+import { useInternetFeatures } from '@/composables/useInternetFeatures';
+
+const { isInternetFeaturesEnabled } = useInternetFeatures();
 
 const props = defineProps({
     factures: { type: Array, default: () => [] },
@@ -264,7 +267,7 @@ const displayPhone = (value) => (props.hidePatientPhone ? 'Masqué par l\'admini
                                     icon="pi pi-pencil" @click="emit('modify', row)" />
                                 <Button v-if="canPreview(row)" label="Aperçu" size="small" icon="pi pi-eye"
                                     severity="info" outlined @click="emit('preview', row)" />
-                                <Button v-if="canPreview(row)" icon="pi pi-send" size="small" severity="help"
+                                <Button v-if="canPreview(row) && isInternetFeaturesEnabled" icon="pi pi-send" size="small" severity="help"
                                     text title="Envoyer facture par SMS"
                                     @click="emit('send-invoice-sms', row)" />
                             </div>

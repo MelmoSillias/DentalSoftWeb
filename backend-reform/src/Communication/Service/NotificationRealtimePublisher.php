@@ -5,13 +5,13 @@ namespace App\Communication\Service;
 use App\Communication\Entity\Notification;
 use App\Communication\Mercure\NotificationTopicGenerator;
 use Psr\Log\LoggerInterface;
-use Symfony\Component\Mercure\HubInterface;
 use Symfony\Component\Mercure\Update;
+use Symfony\Component\Messenger\MessageBusInterface;
 
 final class NotificationRealtimePublisher
 {
     public function __construct(
-        private readonly HubInterface $hub,
+        private readonly MessageBusInterface $bus,
         private readonly NotificationTopicGenerator $topicGenerator,
         private readonly LoggerInterface $logger,
     ) {
@@ -50,9 +50,10 @@ final class NotificationRealtimePublisher
                 'notification'
             );
 
-            $this->hub->publish($update);
+            // Async via Messenger (UpdateHandler + ResilientMercureHub).
+            $this->bus->dispatch($update);
         } catch (\Throwable $exception) {
-            $this->logger->warning('Impossible de publier la notification sur Mercure.', [
+            $this->logger->warning('Impossible d\'enfiler la notification Mercure.', [
                 'exception' => $exception,
                 'notificationId' => $notification->getId(),
             ]);

@@ -42,17 +42,9 @@ const props = defineProps({
         type: Number,
         default: null
     },
-    mode: {
-        type: String,
-        default: 'continue'
-    },
     readonly: {
         type: Boolean,
         default: false
-    },
-    choiceLabel: {
-        type: String,
-        default: ''
     }
 });
 
@@ -65,7 +57,7 @@ const { printComponent } = usePrinter();
 
 const ficheIdRef = ref(null);
 const consultIdRef = ref(null);
-const modeRef = ref('continue');
+const mode = computed(() => 'continue');
 const pageLoading = ref(false);
 const loadErrorMessage = ref('');
 const savingAntecedent = ref(false);
@@ -111,7 +103,7 @@ const {
     saveDevisSection: saveDevis,
     saveConsultSection: saveConsult,
     closeConsult
-} = useConsultationsForm({ ficheId: ficheIdRef, consultId: consultIdRef, token, mode: computed(() => modeRef.value) });
+} = useConsultationsForm({ ficheId: ficheIdRef, consultId: consultIdRef, token, mode });
 
 switcherMode.value = 'tabs';
 activeSection.value = 'consult';
@@ -836,7 +828,6 @@ const initialize = async () => {
     pageLoading.value = true;
     consultIdRef.value = Number(props.consultationId) || null;
     ficheIdRef.value = Number(props.ficheId) || null;
-    modeRef.value = props.mode === 'new-fiche' ? 'new-fiche' : 'continue';
     activeSection.value = 'consult';
 
     try {
@@ -903,10 +894,9 @@ watch(
 );
 
 watch(
-    () => [props.ficheId, props.mode],
+    () => props.ficheId,
     () => {
         ficheIdRef.value = Number(props.ficheId) || null;
-        modeRef.value = props.mode === 'new-fiche' ? 'new-fiche' : 'continue';
     }
 );
 

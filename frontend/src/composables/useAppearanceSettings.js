@@ -25,6 +25,13 @@ export function useAppearanceSettings() {
         { label: 'Superposé', value: 'overlay' }
     ]);
 
+    const navigationMode = ref(layoutConfig.navigationMode || 'classic');
+    const navigationModeOptions = ref([
+        { label: 'Classique (sidebar)', value: 'classic' },
+        { label: 'Accueil cartes', value: 'hub' }
+    ]);
+    const isClassicNavigation = computed(() => navigationMode.value === 'classic');
+
     const themeOptions = ref([
         { label: 'Clair', value: 'light' },
         { label: 'Sombre', value: 'dark' },
@@ -158,6 +165,10 @@ export function useAppearanceSettings() {
         uiSettings.setMenuMode(menuMode.value);
     };
 
+    const onNavigationModeChange = () => {
+        uiSettings.setNavigationMode(navigationMode.value);
+    };
+
     return {
         layoutConfig,
         isDarkTheme,
@@ -166,6 +177,9 @@ export function useAppearanceSettings() {
         presets,
         menuMode,
         menuModeOptions,
+        navigationMode,
+        navigationModeOptions,
+        isClassicNavigation,
         themeOptions,
         fontFamilyOptions,
         fontSizeOptions,
@@ -176,6 +190,7 @@ export function useAppearanceSettings() {
         fontSize,
         updateColors,
         onPresetChange,
-        onMenuModeChange
+        onMenuModeChange,
+        onNavigationModeChange
     };
 }

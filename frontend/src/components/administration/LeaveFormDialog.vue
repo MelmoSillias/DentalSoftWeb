@@ -92,7 +92,7 @@ const submit = () => {
     <Dialog v-model:visible="localVisible" modal :header="mode === 'edit' ? 'Modifier un conge' : 'Nouveau conge'" :style="{ width: '34rem' }" @hide="close">
         <div class="space-y-4">
             <div class="space-y-1">
-                <label class="text-sm font-medium">Employe</label>
+                <label class="text-sm font-medium">Employe <span class="text-red-500">*</span></label>
                 <Select
                     v-model="form.employeId"
                     :options="employeeOptions"
@@ -104,17 +104,17 @@ const submit = () => {
             </div>
 
             <div class="space-y-1">
-                <label class="text-sm font-medium">Type de conge</label>
+                <label class="text-sm font-medium">Type de conge <span class="text-red-500">*</span></label>
                 <InputText v-model="form.type" class="w-full" placeholder="Ex: vacances, arret" />
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div class="space-y-1">
-                    <label class="text-sm font-medium">Debut</label>
+                    <label class="text-sm font-medium">Debut <span class="text-red-500">*</span></label>
                     <DatePicker v-model="form.startDate" dateFormat="yy-mm-dd" showIcon class="w-full" />
                 </div>
                 <div class="space-y-1">
-                    <label class="text-sm font-medium">Fin</label>
+                    <label class="text-sm font-medium">Fin <span class="text-red-500">*</span></label>
                     <DatePicker v-model="form.endDate" dateFormat="yy-mm-dd" showIcon class="w-full" />
                 </div>
             </div>

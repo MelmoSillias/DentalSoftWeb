@@ -87,6 +87,7 @@
                 @print-fiche="handlePrintFiche"
                 @new-consultation="() => (showConsultationDialog = true)"
                 @fiche-updated="handleFicheUpdated"
+                @fiche-created="handleFicheUpdated"
                 @refresh-archive="loadDossier(props.patientId)"
             />
         </div>
@@ -152,11 +153,13 @@
                     <FichesMedicalesSection
                         v-else
                         :fiches="fiches"
+                        :patient-id="props.patientId"
                         :patient-age="patientAge"
                         :can-create-consultation="!isMedecin"
                         @print-fiche="handlePrintFiche"
                         @new-consultation="() => (showConsultationDialog = true)"
                         @fiche-updated="handleFicheUpdated"
+                        @fiche-created="handleFicheUpdated"
                     />
                 </div>
                 <div data-tour="patients-dossier.finance">

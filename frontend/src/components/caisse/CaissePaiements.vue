@@ -7,6 +7,9 @@ import Select from 'primevue/select';
 import Tag from 'primevue/tag';
 import { computed, ref } from 'vue';
 import PanelDatePicker from '@/components/common/PanelDatePicker.vue';
+import { useInternetFeatures } from '@/composables/useInternetFeatures';
+
+const { isInternetFeaturesEnabled } = useInternetFeatures();
 
 const props = defineProps({
     payments: { type: Array, default: () => [] },
@@ -267,7 +270,7 @@ const miniChart = computed(() => {
                                         size="small" text rounded
                                         :title="isInvoiceStylePayment(row) ? 'Imprimer reçu' : 'Imprimer ticket'"
                                         @click="emit(isInvoiceStylePayment(row) ? 'print-payment' : 'print-receipt', row)" />
-                                    <Button icon="pi pi-send" size="small" text rounded title="Envoyer par SMS"
+                                    <Button v-if="isInternetFeaturesEnabled" icon="pi pi-send" size="small" text rounded title="Envoyer par SMS"
                                         @click="emit('send-receipt-sms', row)" />
                                 </div>
                             </div>

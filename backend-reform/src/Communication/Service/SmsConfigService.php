@@ -22,6 +22,7 @@ final class SmsConfigService
         private readonly SmsProviderConfigRepository $configRepository,
         private readonly EntityManagerInterface $entityManager,
         private readonly CryptoService $cryptoService,
+        private readonly \App\Settings\Service\InternetFeaturesGate $internetFeaturesGate,
     ) {
     }
 
@@ -151,6 +152,10 @@ final class SmsConfigService
      */
     public function validateReadyConfig(?SmsProviderConfig $config = null): array
     {
+        if (!$this->internetFeaturesGate->isEnabled()) {
+            return ['valid' => false, 'message' => $this->internetFeaturesGate->disabledMessage()];
+        }
+
         $config ??= $this->getConfig();
 
         if (!$config->isEnabled()) {

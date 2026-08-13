@@ -11,8 +11,8 @@ use App\IdentityAccess\Entity\Employe;
 use App\Patient\Entity\Patient;
 use App\IdentityAccess\Repository\UserRepository;
 use Psr\Log\LoggerInterface;
-use Symfony\Component\Mercure\HubInterface;
 use Symfony\Component\Mercure\Update;
+use Symfony\Component\Messenger\MessageBusInterface;
 
 final class FocusRealtimePublisher
 {
@@ -25,7 +25,7 @@ final class FocusRealtimePublisher
     ];
 
     public function __construct(
-        private readonly HubInterface $hub,
+        private readonly MessageBusInterface $bus,
         private readonly NotificationTopicGenerator $topicGenerator,
         private readonly UserRepository $userRepository,
         private readonly LoggerInterface $logger,
@@ -188,9 +188,10 @@ final class FocusRealtimePublisher
                     $eventName
                 );
 
-                $this->hub->publish($update);
+                // Async via Messenger (UpdateHandler + ResilientMercureHub).
+                $this->bus->dispatch($update);
             } catch (\Throwable $exception) {
-                $this->logger->warning('Impossible de publier la mise a jour Focus sur Mercure.', [
+                $this->logger->warning('Impossible d\'enfiler la mise a jour Focus Mercure.', [
                     'exception' => $exception,
                     'userId' => $user->getId(),
                 ] + $logContext);

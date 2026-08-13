@@ -1,0 +1,14 @@
+# Exemple d'entrees DNS local pour DentalSoft (LAN)
+# Copier dans C:\Windows\System32\drivers\etc\hosts (editeur admin)
+#
+# Cabinet MAF (frontend + API) :
+127.0.0.1       dentalsoft.local
+127.0.0.1       apidentalsoft.local
+#
+# Cabinet default :
+# 127.0.0.1       dentalsoft.local
+# 127.0.0.1       api.dentalsoft.local
+#
+# Sur chaque poste client du cabinet (remplacer l'IP) :
+# 192.168.1.50    dentalsoft.local
+# 192.168.1.50    apidentalsoft.local

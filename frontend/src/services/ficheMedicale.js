@@ -12,6 +12,26 @@ export const loadFicheMedicale = async (ficheId, token) => {
     return res.data;
 };
 
+export const fetchLatestFiche = async (patientId, token) => {
+    if (!patientId) {
+        throw new Error('patientId requis');
+    }
+    const res = await axios.get(`${apiPrefix}/patient/${patientId}/fiche/latest`, {
+        headers: authHeaders(token)
+    });
+    return res.data;
+};
+
+export const createPatientFiche = async (patientId, token) => {
+    if (!patientId) {
+        throw new Error('patientId requis');
+    }
+    const res = await axios.post(`${apiPrefix}/patient/${patientId}/fiches-medicales`, {}, {
+        headers: authHeaders(token)
+    });
+    return res.data;
+};
+
 export const saveEntretien = async (ficheId, payload, token) => {
     const res = await axios.post(`${apiPrefix}/fiches-medicales/${ficheId}/entretien`, payload, {
         headers: authHeaders(token)

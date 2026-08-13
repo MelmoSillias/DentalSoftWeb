@@ -1,11 +1,16 @@
 <script setup>
 import { useLayout } from '@/layout/composables/layout';
-import { computed, provide, ref, watch } from 'vue';
+import { useInternetFeatures } from '@/composables/useInternetFeatures';
+import { useAuthStore } from '@/stores/auth';
+import { computed, onMounted, provide, ref, watch } from 'vue';
 import AppFooter from './AppFooter.vue';
 import AppSidebar from './AppSidebar.vue';
 import AppTopbar from './AppTopbar.vue';
+import AppRightRail from './AppRightRail.vue';
 
-const { layoutConfig, layoutState, isSidebarActive } = useLayout();
+const { layoutConfig, layoutState, isSidebarActive, isHubNavigation } = useLayout();
+const auth = useAuthStore();
+const { syncFromServer } = useInternetFeatures();
 
 const outsideClickListener = ref(null);
 const pageRouteReady = ref(true);
@@ -26,7 +31,7 @@ function onPageRouteAfterEnter() {
 }
 
 watch(isSidebarActive, (newVal) => {
-    if (newVal) {
+    if (newVal && !isHubNavigation.value) {
         bindOutsideClickListener();
     } else {
         unbindOutsideClickListener();
@@ -34,6 +39,12 @@ watch(isSidebarActive, (newVal) => {
 });
 
 const containerClass = computed(() => {
+    if (isHubNavigation.value) {
+        return {
+            'layout-hub': true
+        };
+    }
+
     return {
         'layout-overlay': layoutConfig.menuMode === 'overlay',
         'layout-static': layoutConfig.menuMode === 'static',
@@ -67,16 +78,24 @@ function isOutsideClicked(event) {
     const sidebarEl = document.querySelector('.layout-sidebar');
     const topbarEl = document.querySelector('.layout-menu-button');
 
-    return !(sidebarEl && (sidebarEl.isSameNode(event.target) || sidebarEl.contains(event.target)) ||
-             topbarEl && (topbarEl.isSameNode(event.target) || topbarEl.contains(event.target)));
+    return !(
+        (sidebarEl && (sidebarEl.isSameNode(event.target) || sidebarEl.contains(event.target))) ||
+        (topbarEl && (topbarEl.isSameNode(event.target) || topbarEl.contains(event.target)))
+    );
 }
+
+onMounted(async () => {
+    if (auth.token) {
+        await syncFromServer(auth.token);
+    }
+});
 </script>
 
 <template>
     <div :class="['layout-wrapper', containerClass]">
-        <AppTopbar />
+        <AppTopbar v-if="!isHubNavigation" />
         <div class="layout-content">
-            <AppSidebar />
+            <AppSidebar v-if="!isHubNavigation" />
             <div class="layout-main-container">
                 <div class="layout-main">
                     <router-view v-slot="{ Component, route: viewRoute }">
@@ -95,9 +114,9 @@ function isOutsideClicked(event) {
                 </div>
                 <AppFooter />
             </div>
+            <AppRightRail v-if="isHubNavigation" />
         </div>
-       
     </div>
 
-        <AppToast />
+    <AppToast />
 </template>

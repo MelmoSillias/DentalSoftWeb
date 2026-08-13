@@ -45,6 +45,8 @@ export function useLayout() {
 
     const isDarkTheme = computed(() => layoutConfig.darkTheme);
 
+    const isHubNavigation = computed(() => layoutConfig.navigationMode === 'hub');
+
     const getPrimary = computed(() => layoutConfig.primary);
 
     const getSurface = computed(() => layoutConfig.surface);
@@ -55,6 +57,7 @@ export function useLayout() {
         toggleMenu,
         isSidebarActive,
         isDarkTheme,
+        isHubNavigation,
         getPrimary,
         getSurface,
         setActiveMenuItem,

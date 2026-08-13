@@ -326,7 +326,7 @@ const consultationTypes = [
                     <div class="flex-1 space-y-2 col-6 md:col-4">
                         <label class="text-sm font-medium text-surface-700 dark:text-surface-300 flex items-center gap-2">
                             <i class="pi pi-user-md text-surface-400"></i>
-                            Médecin
+                            Médecin <span class="text-red-500">*</span>
                         </label>
                         <Select
                             :modelValue="form.medecinId"

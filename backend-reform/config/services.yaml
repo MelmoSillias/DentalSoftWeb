@@ -5,6 +5,10 @@
 # https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
 parameters: 
     upload_files_directory: '%kernel.project_dir%/public/upload_files'
+    # Defaults if env vars are absent
+    env(MERCURE_PUBLISH_TIMEOUT): '0.8'
+    env(MERCURE_PUBLISH_MAX_DURATION): '1.2'
+    env(MERCURE_CIRCUIT_COOLDOWN_SECONDS): '60'
 
 
 services:
@@ -35,6 +39,26 @@ services:
         arguments:
             $publicHubUrl: '%env(MERCURE_PUBLIC_URL)%'
             $topicNamespace: '%env(MERCURE_TOPIC_NAMESPACE)%'
+    App\Communication\Mercure\MercureCircuitBreaker:
+        arguments:
+            $cache: '@cache.app'
+            $cooldownSeconds: '%env(int:MERCURE_CIRCUIT_COOLDOWN_SECONDS)%'
+    # Timeout court sur le hub Mercure (évite les freezes TCP longs).
+    # Branché sur mercure.hub.default via MercureHubHttpClientPass.
+    mercure.http_client:
+        class: Symfony\Component\HttpClient\CurlHttpClient
+        factory: ['Symfony\Component\HttpClient\HttpClient', 'create']
+        arguments:
+            -
+                timeout: '%env(float:MERCURE_PUBLISH_TIMEOUT)%'
+                max_duration: '%env(float:MERCURE_PUBLISH_MAX_DURATION)%'
+    # Hub résilient : circuit breaker autour du hub Mercure (F+B).
+    # Priorité > TraceableHub (debug) pour court-circuiter avant l'appel HTTP.
+    App\Communication\Mercure\ResilientMercureHub:
+        decorates: mercure.hub.default
+        decoration_priority: 16
+        arguments:
+            $inner: '@.inner'
     App\Communication\Service\MercureAuthorizationService:
         arguments:
             $mercureJwtSecret: '%env(MERCURE_JWT_SECRET)%'

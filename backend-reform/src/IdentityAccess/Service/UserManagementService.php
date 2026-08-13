@@ -5,6 +5,7 @@ namespace App\IdentityAccess\Service;
 use App\Communication\Service\NotificationRecipientResolver;
 use App\IdentityAccess\Entity\Employe;
 use App\IdentityAccess\Entity\User;
+use App\IdentityAccess\StaffRoleCatalog;
 use App\Shared\Event\EntityActionEvent;
 use App\Patient\Entity\Patient;
 use App\Patient\Repository\PatientRepository;
@@ -27,32 +28,6 @@ class UserManagementService
         private NotificationRecipientResolver $recipientResolver,
         private EventDispatcherInterface $eventDispatcher,
     ) {
-    }
-
-    private function normalizeRole(?string $role): ?string
-    {
-        $normalized = strtolower(trim((string) $role));
-
-        return match ($normalized) {
-            'admin', 'administrateur', 'role_admin' => 'admin',
-            'medecin', 'docteur', 'role_medecin' => 'medecin',
-            'secretaire', 'secretaire', 'reception', 'receptionniste', 'role_receptionniste', 'role_secretaire' => 'secretaire',
-            'patient', 'role_patient' => 'patient',
-            default => null,
-        };
-    }
-
-    private function resolveRolesFromInput(?string $role): ?array
-    {
-        $normalized = $this->normalizeRole($role);
-
-        return match ($normalized) {
-            'admin' => ['ROLE_ADMIN'],
-            'medecin' => ['ROLE_MEDECIN'], 
-            'secretaire' => ['ROLE_RECEPTION', 'ROLE_RECEPTIONNISTE', 'ROLE_SECRETAIRE'],
-            'patient' => ['ROLE_PATIENT'],
-            default => null,
-        };
     }
 
     private function normalizeOptionalId(mixed $value): ?int
@@ -81,21 +56,6 @@ class UserManagementService
     private function findPatientByUser(User $user): ?Patient
     {
         return $this->patientRepo->findOneBy(['portalUser' => $user]);
-    }
-
-    private function roleLabelFromRoles(array $roles): string
-    {
-        if (in_array('ROLE_ADMIN', $roles, true)) {
-            return 'Admin';
-        }
-        if (in_array('ROLE_MEDECIN', $roles, true)) {
-            return 'Medecin';
-        }
-        if (in_array('ROLE_PATIENT', $roles, true)) {
-            return 'Patient';
-        }
-
-        return 'Secretaire';
     }
 
     public function getAvailableAssociations(): array
@@ -134,12 +94,16 @@ class UserManagementService
                 'id' => $user->getId(),
                 'username' => $user->getUsername(),
                 'roles' => $roles,
-                'role' => $this->roleLabelFromRoles($roles),
+                'role' => StaffRoleCatalog::labelFromRoles($roles),
+                'type' => $employee?->getType(),
+                'fonction' => $employee?->getFonction(),
                 'employee_id' => $employee ? $employee->getId() : null,
                 'employee' => $employee ? [
                     'id' => $employee->getId(),
                     'nom' => $employee->getNom(),
                     'prenom' => $employee->getPrenom(),
+                    'type' => $employee->getType(),
+                    'fonction' => $employee->getFonction(),
                 ] : null,
                 'patient_id' => $patient ? $patient->getId() : null,
                 'patient' => $patient ? [
@@ -163,12 +127,12 @@ class UserManagementService
             return ['error' => "Nom d'utilisateur déjà utilisé", 'status' => 400];
         }
 
-        $roles = $this->resolveRolesFromInput($data['role'] ?? null);
+        $roles = StaffRoleCatalog::rolesForInput($data['role'] ?? null);
         if ($roles === null) {
-            return ['error' => 'Role invalide. Choisissez Admin, Medecin, Secretaire ou Patient.', 'status' => 400];
+            return ['error' => 'Role invalide. Choisissez Admin, Medecin, Receptionniste ou Patient.', 'status' => 400];
         }
 
-        $normalizedRole = $this->normalizeRole($data['role'] ?? null);
+        $normalizedRole = StaffRoleCatalog::normalizeInputRole($data['role'] ?? null);
         $employeeId = $this->normalizeOptionalId($data['employee_id'] ?? null);
         $patientId = $this->normalizeOptionalId($data['patient_id'] ?? null);
 
@@ -216,6 +180,7 @@ class UserManagementService
 
         if ($employee) {
             $employee->setUser($user);
+            StaffRoleCatalog::syncEmployeeTypeFromRole($employee, $data['role'] ?? null);
             $this->em->persist($employee);
         }
 
@@ -260,12 +225,12 @@ class UserManagementService
             return ['error' => "Nom d'utilisateur déjà utilisé", 'status' => 400];
         }
 
-        $roles = $this->resolveRolesFromInput($data['role'] ?? null);
+        $roles = StaffRoleCatalog::rolesForInput($data['role'] ?? null);
         if ($roles === null) {
-            return ['error' => 'Role invalide. Choisissez Admin, Medecin, Secretaire ou Patient.', 'status' => 400];
+            return ['error' => 'Role invalide. Choisissez Admin, Medecin, Receptionniste ou Patient.', 'status' => 400];
         }
 
-        $normalizedRole = $this->normalizeRole($data['role'] ?? null);
+        $normalizedRole = StaffRoleCatalog::normalizeInputRole($data['role'] ?? null);
 
         $currentEmployee = $this->findEmployeeByUser($user);
         $currentPatient = $this->findPatientByUser($user);
@@ -324,8 +289,11 @@ class UserManagementService
             $this->em->persist($currentPatient);
         }
 
-        if ($targetEmployee && $targetEmployee->getUser()?->getId() !== $user->getId()) {
-            $targetEmployee->setUser($user);
+        if ($targetEmployee) {
+            if ($targetEmployee->getUser()?->getId() !== $user->getId()) {
+                $targetEmployee->setUser($user);
+            }
+            StaffRoleCatalog::syncEmployeeTypeFromRole($targetEmployee, $data['role'] ?? null);
             $this->em->persist($targetEmployee);
         }
 

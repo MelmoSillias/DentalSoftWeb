@@ -2,7 +2,8 @@
 import { logAppError } from '@/utils/appLogger';
 
 import ConsultationEnCoursForm from '@/components/consultations/ConsultationEnCoursForm.vue';
-import { fetchConsultationDetails, setConsultationFiche, verifyConsultationMedecinPassword } from '@/services/consultations';
+import { linkConsultationToLatestFiche, resolveLatestFicheId, resolvePatientId } from '@/composables/useFicheMedicaleAccess';
+import { fetchConsultationDetails, verifyConsultationMedecinPassword } from '@/services/consultations';
 import { isConsultationsTourMockEnabled } from '@/services/consultationsTourMock';
 import { closeConsultation, saveConsultation } from '@/services/consultationsforms';
 import { fetchPublicGeneralSettings } from '@/services/globalSettingsService';
@@ -25,10 +26,6 @@ const props = defineProps({
     consultation: {
         type: Object,
         default: null
-    },
-    actionMode: {
-        type: String,
-        default: 'continue'
     },
     tourTarget: {
         type: String,
@@ -99,12 +96,6 @@ const patientLabel = computed(() => {
     return 'Patient';
 });
 
-const actionLabel = computed(() => {
-    if (props.actionMode === 'continue-last') return 'Continuer avec la dernière fiche';
-    if (props.actionMode === 'new-fiche') return 'Nouvelle fiche';
-    return 'Continuer';
-});
-
 const normalizeText = (value) =>
     String(value || '')
         .normalize('NFD')
@@ -144,20 +135,6 @@ const resolveMedecinFallbackId = () => {
     return null;
 };
 
-const isLinked = (consultation) => Boolean(consultation?.ficheId);
-
-const resolveTargetFicheId = (consultation, mode) => {
-    if (!consultation) return null;
-    if (mode === 'new-fiche') return null;
-    if (mode === 'continue-last') {
-        return consultation.lastFicheId || null;
-    }
-    if (mode === 'continue') {
-        return isLinked(consultation) ? consultation.ficheId : null;
-    }
-    return null;
-};
-
 const loadQuickData = async () => {
     const consultation = props.consultation;
     if (!consultation?.id) return;
@@ -182,12 +159,13 @@ const loadQuickData = async () => {
         infirmiers.value = infs || [];
         salles.value = salleItems || [];
 
-        const targetFicheId = resolveTargetFicheId(consultation, props.actionMode);
-        const linked = await setConsultationFiche(consultation.id, targetFicheId, token, {
-            createNew: props.actionMode === 'new-fiche',
-            allowDuplicate: props.actionMode === 'new-fiche',
-        });
-        ficheId.value = linked?.ficheId ?? null;
+        const preferredFicheId = resolveLatestFicheId(consultation);
+        const linkedId = await linkConsultationToLatestFiche(consultation.id, token, preferredFicheId);
+        ficheId.value = linkedId;
+
+        if (!ficheId.value) {
+            throw new Error('Impossible de lier la fiche médicale');
+        }
 
         const details = await fetchConsultationDetails(consultation.id, token);
         const fallbackMedecinId = resolveMedecinFallbackId();
@@ -202,6 +180,11 @@ const loadQuickData = async () => {
             noteSeance: details?.noteSeance ?? '',
             actes: Array.isArray(details?.actes) ? details.actes : []
         };
+
+        // Keep patient id available for recovery paths if needed later.
+        if (!consultation.patientId && resolvePatientId({ patient: details?.patient, patientId: details?.patientId })) {
+            consultation.patientId = resolvePatientId({ patient: details?.patient, patientId: details?.patientId });
+        }
     } catch (error) {
         logAppError('Erreur chargement clôturation rapide', error);
         toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de préparer la clôturation rapide.', life: 3000 });
@@ -319,8 +302,8 @@ watch(
                     <i class="pi pi-bolt text-primary-600 dark:text-primary-400"></i>
                 </div>
                 <div>
-                    <h4 class="m-0 text-surface-900 dark:text-surface-100">Clôturation rapide</h4>
-                    <p class="text-sm text-surface-500 dark:text-surface-400 mt-1">{{ actionLabel }} · {{ patientLabel }}</p>
+                    <h4 class="m-0 text-surface-900 dark:text-surface-100">Clôture rapide</h4>
+                    <p class="text-sm text-surface-500 dark:text-surface-400 mt-1">{{ patientLabel }}</p>
                 </div>
             </div>
         </template>

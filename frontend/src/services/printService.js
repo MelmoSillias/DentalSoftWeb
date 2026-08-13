@@ -1,5 +1,6 @@
 import http from '@/service/http';
 import { apiPrefix } from '@/config';
+import { createQrDataUrl } from '@/utils/qrCode';
 
 const axios = http;
 
@@ -63,13 +64,12 @@ const normalizePrintableUrl = (value) => {
     return `https://${raw}`;
 };
 
-const toQrImageSrc = (url, size) => {
+const toQrImageSrc = async (url, size) => {
     if (!url) return '';
-    const safeSize = Number(size) > 0 ? Number(size) : 260;
-    return `https://api.qrserver.com/v1/create-qr-code/?size=${safeSize}x${safeSize}&data=${encodeURIComponent(url)}`;
+    return createQrDataUrl(url, size);
 };
 
-export const buildPatientPortalQrPrintModel = ({
+export const buildPatientPortalQrPrintModel = async ({
     cabinetName = '',
     subtitle = '',
     phone = '',
@@ -80,6 +80,12 @@ export const buildPatientPortalQrPrintModel = ({
     const portalUrl = normalizePrintableUrl(portalLoginUrl);
     const reviewUrl = normalizePrintableUrl(anonymousReviewUrl);
     const showcaseUrl = normalizePrintableUrl(showcaseWebsiteUrl);
+
+    const [portalImageSrc, reviewImageSrc, showcaseImageSrc] = await Promise.all([
+        toQrImageSrc(portalUrl, 320),
+        toQrImageSrc(reviewUrl, 320),
+        toQrImageSrc(showcaseUrl, 360)
+    ]);
 
     return {
         cabinetName: String(cabinetName || '').trim() || 'Cabinet dentaire',
@@ -93,7 +99,7 @@ export const buildPatientPortalQrPrintModel = ({
                 badge: 'Espace confidentiel',
                 iconClass: 'pi pi-user',
                 url: portalUrl,
-                imageSrc: toQrImageSrc(portalUrl, 320)
+                imageSrc: portalImageSrc
             },
             review: {
                 key: 'review',
@@ -102,7 +108,7 @@ export const buildPatientPortalQrPrintModel = ({
                 badge: 'Donnez votre avis',
                 iconClass: 'pi pi-comments',
                 url: reviewUrl,
-                imageSrc: toQrImageSrc(reviewUrl, 320)
+                imageSrc: reviewImageSrc
             },
             showcase: {
                 key: 'showcase',
@@ -111,7 +117,7 @@ export const buildPatientPortalQrPrintModel = ({
                 badge: 'Explorez en un scan',
                 iconClass: 'pi pi-globe',
                 url: showcaseUrl,
-                imageSrc: toQrImageSrc(showcaseUrl, 360)
+                imageSrc: showcaseImageSrc
             }
         }
     };

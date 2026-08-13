@@ -10,6 +10,7 @@ import Checkbox from 'primevue/checkbox';
 import Button from 'primevue/button';
 import ProgressSpinner from 'primevue/progressspinner';
 import cabinetConfig from '@/cabinetConfig';
+import { getHomeRoute } from '@/utils/navigationHome';
 
 
 const authStore = useAuthStore();
@@ -26,7 +27,7 @@ const onSubmit = async () => {
     loading.value = true;
     try {
         await authStore.login(username.value, password.value);
-        router.push({ name: 'dashboard' });
+        router.push(getHomeRoute());
     } catch (e) {
         if (isDeviceNotAllowedError(e)) {
             router.push({ name: 'devicePending' });
@@ -128,7 +129,7 @@ const onSubmit = async () => {
 
                 <form class="auth_form" @submit.prevent="onSubmit">
                     <div class="field">
-                        <label for="username">Nom d'utilisateur</label>
+                        <label for="username">Nom d'utilisateur <span class="text-red-500">*</span></label>
                         <InputText
                             id="username"
                             v-model="username"
@@ -139,7 +140,7 @@ const onSubmit = async () => {
                     </div>
 
                     <div class="field">
-                        <label for="password">Mot de passe</label>
+                        <label for="password">Mot de passe <span class="text-red-500">*</span></label>
                         <Password
                             id="password"
                             v-model="password"

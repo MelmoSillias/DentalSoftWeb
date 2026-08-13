@@ -6,7 +6,8 @@ const STORAGE_KEYS = {
     themeMode: 'settings.themeMode',
     fontFamily: 'settings.fontFamily',
     fontSize: 'settings.fontSize',
-    menuMode: 'settings.layout.menuMode'
+    menuMode: 'settings.layout.menuMode',
+    navigationMode: 'settings.layout.navigationMode'
 };
 
 const DEFAULT_LAYOUT = {
@@ -14,7 +15,8 @@ const DEFAULT_LAYOUT = {
     primary: 'sky',
     surface: null,
     darkTheme: false,
-    menuMode: 'static'
+    menuMode: 'static',
+    navigationMode: 'classic'
 };
 
 const FONT_FAMILY_MAP = {
@@ -53,6 +55,7 @@ export const useUiSettingsStore = defineStore('uiSettings', () => {
 
     const persistLayout = () => {
         localStorage.setItem(STORAGE_KEYS.menuMode, layoutConfig.menuMode);
+        localStorage.setItem(STORAGE_KEYS.navigationMode, layoutConfig.navigationMode);
     };
 
     const applyThemeMode = (mode = themeMode.value) => {
@@ -101,6 +104,11 @@ export const useUiSettingsStore = defineStore('uiSettings', () => {
         layoutConfig.primary = DEFAULT_LAYOUT.primary;
         layoutConfig.surface = DEFAULT_LAYOUT.surface;
         layoutConfig.menuMode = localStorage.getItem(STORAGE_KEYS.menuMode) || DEFAULT_LAYOUT.menuMode;
+        const storedNavigationMode = localStorage.getItem(STORAGE_KEYS.navigationMode);
+        layoutConfig.navigationMode =
+            storedNavigationMode === 'hub' || storedNavigationMode === 'classic'
+                ? storedNavigationMode
+                : DEFAULT_LAYOUT.navigationMode;
 
         applyThemeMode(themeMode.value);
         applyFontSettings();
@@ -136,6 +144,11 @@ export const useUiSettingsStore = defineStore('uiSettings', () => {
         persistLayout();
     };
 
+    const setNavigationMode = (mode) => {
+        layoutConfig.navigationMode = mode === 'hub' ? 'hub' : 'classic';
+        persistLayout();
+    };
+
     const setLayoutTheme = ({ presetName, presetValue, presetExt, surfacePalette }) => {
         layoutConfig.preset = presetName;
         $t().preset(presetValue).preset(presetExt).surfacePalette(surfacePalette).use({ useDefaultOptions: true });
@@ -165,6 +178,7 @@ export const useUiSettingsStore = defineStore('uiSettings', () => {
         setFontSize,
         toggleDarkMode,
         setMenuMode,
+        setNavigationMode,
         setLayoutTheme,
         setPrimaryName,
         setSurfaceName

@@ -622,6 +622,7 @@ class PatientService
             }
 
             $this->em->persist($patient);
+            $this->ficheMedicaleService->createForPatient($patient);
             $this->em->flush();
             $this->clearPatientsCache();
 
@@ -1311,7 +1312,18 @@ public function removeArchiveFile(int $patientId, string $fileUrl): array
         }
 
         $fiches = [];
-        foreach ($patient->getFichesMedicales() as $ficheMedicale) {
+        $ficheEntities = $patient->getFichesMedicales()->toArray();
+        usort($ficheEntities, static function (FicheMedicale $left, FicheMedicale $right): int {
+            $leftAt = $left->getCreatedAt()?->getTimestamp() ?? 0;
+            $rightAt = $right->getCreatedAt()?->getTimestamp() ?? 0;
+            if ($leftAt === $rightAt) {
+                return ($right->getId() ?? 0) <=> ($left->getId() ?? 0);
+            }
+
+            return $rightAt <=> $leftAt;
+        });
+
+        foreach ($ficheEntities as $ficheMedicale) {
             $ficheData = $this->ficheMedicaleService->getFicheJson($ficheMedicale->getId());
             $ficheData['version'] = 2;
             $ficheData['dateCreation'] = $ficheData['createdAt']

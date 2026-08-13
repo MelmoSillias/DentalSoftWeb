@@ -41,7 +41,7 @@ const submit = (event) => {
         <form class="flex flex-col gap-4" :data-tour="props.tourTarget || null" @submit.prevent>
             <div class="grid grid-cols-1 gap-4">
                 <div class="flex flex-col gap-2">
-                    <label class="text-sm font-medium text-gray-700 dark:text-gray-200">Nom</label>
+                    <label class="text-sm font-medium text-gray-700 dark:text-gray-200">Nom <span class="text-red-500">*</span></label>
                     <InputText v-model="form.nom" placeholder="Ex: Salle A" required
                         class="w-full border border-gray-200 rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-400" />
                 </div>

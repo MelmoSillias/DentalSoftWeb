@@ -43,6 +43,7 @@ const emit = defineEmits([
     'print-fiche',
     'new-consultation',
     'fiche-updated',
+    'fiche-created',
     'refresh-archive'
 ]);
 
@@ -133,11 +134,13 @@ const tabs = computed(() => [
                         <FichesMedicalesSection
                             v-else
                             :fiches="fiches"
+                            :patient-id="patientId"
                             :patient-age="patientAge"
                             :can-create-consultation="!isMedecin"
                             @print-fiche="(fiche) => emit('print-fiche', fiche)"
                             @new-consultation="emit('new-consultation')"
                             @fiche-updated="emit('fiche-updated')"
+                            @fiche-created="emit('fiche-created')"
                         />
                     </div>
                 </TabPanel>

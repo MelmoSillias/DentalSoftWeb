@@ -4,8 +4,12 @@
     "scripts": {
         "select:cabinet": "node ./scripts/select-cabinet.mjs",
         "dev": "node ./scripts/select-cabinet.mjs --cabinet=default --env=dev && vite",
+        "dev:local-offline": "node ./scripts/select-cabinet.mjs --cabinet=default --env=local-offline && vite",
         "dev:cabinet": "node ./scripts/dev-cabinet.mjs",
         "build": "node ./scripts/select-cabinet.mjs --cabinet=default --env=prod && vite build",
+        "build:local-offline": "node ./scripts/select-cabinet.mjs --cabinet=default --env=local-offline && vite build",
+        "build:xampp-lan": "node ./scripts/select-cabinet.mjs --cabinet=default --env=xampp-lan && vite build",
+        "build:xampp-lan-http": "node ./scripts/select-cabinet.mjs --cabinet=default --env=xampp-lan-http && vite build",
         "build:cabinet": "node ./scripts/build-cabinet.mjs",
         "preview": "vite preview",
         "lint": "eslint --fix . --ext .vue,.js,.jsx,.cjs,.mjs --fix --ignore-path .gitignore"
@@ -38,6 +42,7 @@
         "pinia": "^3.0.3",
         "primeicons": "^7.0.0",
         "primevue": "^4.3.1",
+        "qrcode": "^1.5.4",
         "tailwindcss-primeui": "^0.5.0",
         "vue": "^3.4.34",
         "vue-router": "^4.4.0",

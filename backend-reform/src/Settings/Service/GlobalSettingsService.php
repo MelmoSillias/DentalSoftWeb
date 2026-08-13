@@ -80,6 +80,7 @@ class GlobalSettingsService
         private AppSettingRepository $appSettingRepo,
         private EntityManagerInterface $em,
         private DatabaseMaintenanceService $databaseMaintenanceService,
+        private InternetFeaturesGate $internetFeaturesGate,
     ) {
     }
 
@@ -477,6 +478,7 @@ class GlobalSettingsService
             'patientPortalBaseUrl' => $settings['patientPortalBaseUrl'],
             'cabinetShowcaseWebsiteUrl' => $settings['cabinetShowcaseWebsiteUrl'],
             'smsCabinetName' => $settings['smsCabinetName'],
+            'internetFeaturesEnabled' => $this->internetFeaturesGate->isEnabled(),
         ];
     }
 

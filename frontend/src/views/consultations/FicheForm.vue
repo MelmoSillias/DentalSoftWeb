@@ -57,7 +57,7 @@ const { printComponent } = usePrinter();
 
 const ficheId = ref(route.query.ficheId ? Number(route.query.ficheId) : null);
 const consultId = ref(route.query.id ? Number(route.query.id) : null);
-const mode = computed(() => (route.query.mode === 'new-fiche' ? 'new-fiche' : 'continue'));
+const mode = computed(() => 'continue');
 
 const pageLoading = ref(false);
 const loadErrorMessage = ref('');

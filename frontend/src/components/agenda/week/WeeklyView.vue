@@ -16,6 +16,7 @@ import { addMinutes } from '@/utils/dateUtils';
 import { useRdvStatus } from '@/composables/useRdvStatus';
 import { fetchPublicGeneralSettings } from '@/services/globalSettingsService';
 import { useAuthStore } from '@/stores/auth';
+import { useInternetFeatures } from '@/composables/useInternetFeatures';
 
 const props = defineProps({
   medecins: { type: Array, default: () => [] },
@@ -28,6 +29,7 @@ const props = defineProps({
 const emit = defineEmits(['request-create', 'request-validate', 'request-cancel', 'request-report', 'request-sms-reminder', 'request-sms-schedule']);
 
 const auth = useAuthStore();
+const { isInternetFeaturesEnabled } = useInternetFeatures();
 const toSlotTime = (value, fallback) => {
   const raw = String(value || fallback);
   const match = raw.match(/^(\d{1,2}):(\d{2})/);
@@ -91,13 +93,22 @@ const getStatusKey = (rdv) => {
   return 'pending';
 };
 
-const menuItems = [
-  { label: 'Valider', icon: 'pi pi-check', command: () => { if (selectedEvent.value) { emit('request-validate', selectedEvent.value.extendedProps); } } },
-  { label: 'Reporter', icon: 'pi pi-calendar-minus', command: () => { if (selectedEvent.value) { emit('request-report', selectedEvent.value.extendedProps); } } },
-  { label: 'Annuler', icon: 'pi pi-times', command: () => { if (selectedEvent.value) { emit('request-cancel', selectedEvent.value.extendedProps); } } },
-  { label: 'Envoyer rappel SMS', icon: 'pi pi-send', command: () => { if (selectedEvent.value) { emit('request-sms-reminder', selectedEvent.value.extendedProps); } } },
-  { label: 'Programmer rappel auto', icon: 'pi pi-clock', command: () => { if (selectedEvent.value) { emit('request-sms-schedule', selectedEvent.value.extendedProps); } } }
-];
+const menuItems = computed(() => {
+  const items = [
+    { label: 'Valider', icon: 'pi pi-check', command: () => { if (selectedEvent.value) { emit('request-validate', selectedEvent.value.extendedProps); } } },
+    { label: 'Reporter', icon: 'pi pi-calendar-minus', command: () => { if (selectedEvent.value) { emit('request-report', selectedEvent.value.extendedProps); } } },
+    { label: 'Annuler', icon: 'pi pi-times', command: () => { if (selectedEvent.value) { emit('request-cancel', selectedEvent.value.extendedProps); } } },
+  ];
+
+  if (isInternetFeaturesEnabled.value) {
+    items.push(
+      { label: 'Envoyer rappel SMS', icon: 'pi pi-send', command: () => { if (selectedEvent.value) { emit('request-sms-reminder', selectedEvent.value.extendedProps); } } },
+      { label: 'Programmer rappel auto', icon: 'pi pi-clock', command: () => { if (selectedEvent.value) { emit('request-sms-schedule', selectedEvent.value.extendedProps); } } }
+    );
+  }
+
+  return items;
+});
 
 const loadEvents = async (force = false) => {
   if (!props.api?.fetchEvents) return;

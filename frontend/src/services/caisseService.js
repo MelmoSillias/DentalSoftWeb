@@ -24,11 +24,6 @@ const heavyListConfig = (token) => ({
     timeout: HEAVY_REQUEST_TIMEOUT_MS,
 });
 
-const fetchPrintBlob = async (url, token) => {
-    const res = await axios.get(url, { responseType: 'blob', ...withHeaders(token) });
-    return res.data;
-};
-
 export const fetchFactures = async ({ start, end, factureType = 'all', unpaidOnly = false }, token) => {
     const type = factureType || (unpaidOnly ? 'impaye' : 'all');
 
@@ -179,11 +174,6 @@ export const fetchFactureDetail = async (factureId, token) => {
     const res = await axios.get(`${apiPrefix}/factures/${factureId}`, withHeaders(token));
     return res.data;
 };
-
-export const getPaymentPrint = (id, token) => fetchPrintBlob(`${apiPrefix}/payments/${id}/print`, token);
-export const getReceiptPrint = (id, token) => fetchPrintBlob(`${apiPrefix}/receipts/${id}/print`, token);
-export const getPaymentsRangePrint = ({ start, end }, token) => fetchPrintBlob(`${apiPrefix}/payments/print?start=${start}&end=${end}`, token);
-export const getInvoicePrint = (factureId, token) => fetchPrintBlob(`${apiPrefix}/invoices/${factureId}/print`, token);
 
 export const fetchInsuranceClaims = async ({ status, start, end, patient, assuranceCode } = {}, token) => {
     const params = {};

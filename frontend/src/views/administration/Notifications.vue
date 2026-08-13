@@ -460,7 +460,7 @@ onBeforeUnmount(() => {
                         <div>
                             <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2 flex items-center gap-2">
                                 <i class="pi pi-file-edit text-surface-400"></i>
-                                Message
+                                Message <span class="text-red-500">*</span>
                             </label>
                             <TextArea 
                                 v-model="message" 
@@ -529,7 +529,7 @@ onBeforeUnmount(() => {
                     <div class="p-5 border-b border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900/50 dark:to-surface-800">
                         <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-100 flex items-center gap-2">
                             <i class="pi pi-check-circle text-primary-500"></i>
-                            Destinataires sélectionnés
+                            Destinataires sélectionnés <span class="text-red-500">*</span>
                             <span class="ml-2 px-2.5 py-0.5 rounded-full bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 text-sm font-medium">
                                 {{ selectedCount }}
                             </span>

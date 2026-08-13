@@ -36,7 +36,7 @@ function parseArgs(argv) {
     return data;
 }
 
-const SUPPORTED_CONFIG_ENVS = new Set(['dev', 'prod']);
+const SUPPORTED_CONFIG_ENVS = new Set(['dev', 'prod', 'local-offline', 'xampp-lan', 'xampp-lan-http']);
 
 function ensureCabinetId(value) {
     if (!value || typeof value !== 'string') {
@@ -54,7 +54,7 @@ function ensureCabinetId(value) {
 function ensureConfigEnv(value) {
     const safe = String(value || '').trim().toLowerCase();
     if (!SUPPORTED_CONFIG_ENVS.has(safe)) {
-        throw new Error(`Invalid config env "${value}". Use dev or prod.`);
+        throw new Error(`Invalid config env "${value}". Use dev, prod, local-offline, xampp-lan or xampp-lan-http.`);
     }
 
     return safe;
