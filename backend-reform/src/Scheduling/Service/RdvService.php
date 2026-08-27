@@ -6,6 +6,7 @@ use App\Communication\Entity\SmsQueue;
 use App\Communication\Repository\SmsQueueRepository;
 use App\Communication\Service\SmsService;
 use App\CareDelivery\Entity\Consultation;
+use App\CareDelivery\Repository\ConsultationRepository;
 use App\CareDelivery\Service\ConsultationNotificationService;
 use App\IdentityAccess\Entity\Employe;
 use App\IdentityAccess\Entity\User;
@@ -34,6 +35,7 @@ class RdvService
         private EntityManagerInterface $em,
         private RdvRepository $rdvRepo,
         private EmployeRepository $employeRepo,
+        private ConsultationRepository $consultationRepo,
         private PatientService $patientService,
         private ConsultationNotificationService $consultationNotificationService,
         private RdvNotificationService $rdvNotificationService,
@@ -304,8 +306,10 @@ class RdvService
         if ($medecin instanceof Employe) {
             $consultation->setMedecin($medecin);
         }
+        $createdAt = new \DateTime();
         $consultation->setPatient($rdv->getPatient());
-        $consultation->setCreatedAt(new \DateTime());
+        $consultation->setCreatedAt($createdAt);
+        $consultation->setNumeroPassage($this->consultationRepo->nextNumeroPassageForDay($createdAt));
         $consultation->setStatut(0);
 
         $this->em->persist($consultation);

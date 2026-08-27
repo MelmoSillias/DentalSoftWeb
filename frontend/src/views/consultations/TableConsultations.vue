@@ -197,7 +197,7 @@ const loadQuickClosePolicy = async ({ asPageLoad = false } = {}) => {
         soinsList.value = normalizeSoinList(settings?.soinsList);
         return true;
     } catch (error) {
-        logAppError('Erreur chargement politique de clôturation rapide', error);
+        logAppError('Erreur chargement politique de clôture rapide', error);
         allowReceptionQuickClose.value = true;
         hidePatientDossierForMedecins.value = false;
         hidePatientPhoneForMedecins.value = false;

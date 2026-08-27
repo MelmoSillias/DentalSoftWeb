@@ -65,7 +65,7 @@ const loadQuickClosePolicy = async () => {
             && settings?.allowReceptionQuickCloseConsultation !== false;
         hidePatientPhoneForMedecins.value = settings?.hidePatientPhoneForMedecins === true;
     } catch (error) {
-        logAppError('Erreur chargement politique de clôturation rapide', error);
+        logAppError('Erreur chargement politique de clôture rapide', error);
         allowReceptionQuickClose.value = true;
         hidePatientPhoneForMedecins.value = false;
     }

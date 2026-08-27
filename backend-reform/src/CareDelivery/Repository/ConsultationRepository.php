@@ -47,6 +47,7 @@ class ConsultationRepository extends ServiceEntityRepository
         }
 
         $consultation->setCreatedAt($createdAt); 
+        $consultation->setNumeroPassage($this->nextNumeroPassageForDay($createdAt));
         $consultation->setStatut(0); // Statut par défaut
 
         // Enregistrement de la consultation
@@ -56,6 +57,22 @@ class ConsultationRepository extends ServiceEntityRepository
         }
 
         return $consultation;
+    }
+
+    public function nextNumeroPassageForDay(\DateTimeInterface $day): int
+    {
+        $start = \DateTimeImmutable::createFromInterface($day)->setTime(0, 0, 0);
+        $end = \DateTimeImmutable::createFromInterface($day)->setTime(23, 59, 59);
+
+        $max = $this->createQueryBuilder('c')
+            ->select('MAX(c.numeroPassage)')
+            ->where('c.CreatedAt BETWEEN :start AND :end')
+            ->setParameter('start', $start)
+            ->setParameter('end', $end)
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        return ((int) $max) + 1;
     }
 
     /**

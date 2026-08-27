@@ -7,8 +7,12 @@
         <table class="print-ticket-table small">
             <tbody>
                 <tr>
-                    <td>Ticket N°</td>
-                    <td class="right">{{ paiement?.id || '—' }}</td>
+                    <td>N° consultation</td>
+                    <td class="right">{{ paiement?.consultation?.id || '—' }}</td>
+                </tr>
+                <tr>
+                    <td>N° de passage</td>
+                    <td class="right">{{ paiement?.consultation?.numeroPassage || '—' }}</td>
                 </tr>
                 <tr>
                     <td>Date</td>
@@ -39,7 +43,7 @@
             </thead>
             <tbody>
                 <tr>
-                    <td>Ticket de consultation #{{ paiement?.id || '—' }}</td>
+                    <td>Ticket de consultation #{{ paiement?.consultation?.id || '—' }}</td>
                     <td class="right">{{ formatMoney(paiement?.montant) }}</td>
                 </tr>
             </tbody>

@@ -55,6 +55,9 @@ class Consultation
     #[ORM\Column(type: 'datetime', nullable: true)]
     private ?\DateTimeInterface $CreatedAt = null;
 
+    #[ORM\Column(type: 'integer', nullable: true)]
+    private ?int $numeroPassage = null;
+
     #[ORM\OneToOne(mappedBy: 'consultation', targetEntity: Paiement::class, cascade: ['persist', 'remove'])]
     private ?Paiement $paiement = null;
 
@@ -95,6 +98,12 @@ class Consultation
     public function getCreatedAt(): ?\DateTimeInterface { return $this->CreatedAt; }
     public function setCreatedAt(?\DateTimeInterface $CreatedAt): self {
         $this->CreatedAt = $CreatedAt;
+        return $this;
+    }
+
+    public function getNumeroPassage(): ?int { return $this->numeroPassage; }
+    public function setNumeroPassage(?int $numeroPassage): self {
+        $this->numeroPassage = $numeroPassage;
         return $this;
     }
 

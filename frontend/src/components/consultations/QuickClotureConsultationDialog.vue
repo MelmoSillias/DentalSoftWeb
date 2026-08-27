@@ -186,8 +186,8 @@ const loadQuickData = async () => {
             consultation.patientId = resolvePatientId({ patient: details?.patient, patientId: details?.patientId });
         }
     } catch (error) {
-        logAppError('Erreur chargement clôturation rapide', error);
-        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de préparer la clôturation rapide.', life: 3000 });
+        logAppError('Erreur chargement clôture rapide', error);
+        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de préparer la clôture rapide.', life: 3000 });
         visibleProxy.value = false;
     } finally {
         loading.value = false;
@@ -320,7 +320,7 @@ watch(
                         <i class="pi pi-shield text-amber-600 mt-1"></i>
                         <div class="flex-1 space-y-3">
                             <p class="text-sm text-amber-900 dark:text-amber-100 font-medium">
-                                Validation médecin requise avant accès à la clôturation.
+                                Validation médecin requise avant accès à la clôture.
                             </p>
                             <Password
                                 v-model="doctorPassword"

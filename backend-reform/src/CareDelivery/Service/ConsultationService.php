@@ -558,14 +558,14 @@ class ConsultationService
         return $this->resolveFactureDateFromConsultation($consultation);
     }
 
-    private function buildFocusConsultationDto(Consultation $consultation, int $counter): FocusReceptionConsultationDto
+    private function buildFocusConsultationDto(Consultation $consultation): FocusReceptionConsultationDto
     {
         $ficheData = $this->resolvePendingFicheData($consultation);
         $patient = $consultation->getPatient();
 
         return new FocusReceptionConsultationDto([
             'id' => $consultation->getId(),
-            'numero' => $counter,
+            'numero' => $consultation->getNumeroPassage(),
             'patient' => [
                 'id' => $patient->getId(),
                 'nom' => $patient->getNom(),
@@ -773,10 +773,9 @@ class ConsultationService
 
         $consultationDtos = [];
         $billingByConsultation = [];
-        $counter = 1;
 
         foreach ($consultations as $consultation) {
-            $consultationDtos[] = $this->buildFocusConsultationDto($consultation, $counter++);
+            $consultationDtos[] = $this->buildFocusConsultationDto($consultation);
             if ($consultation->getFacture()) {
                 $billingByConsultation[(string) $consultation->getId()] = $this->buildFocusBillingDto($consultation->getFacture());
             }
@@ -1628,13 +1627,12 @@ class ConsultationService
         $consultations = $this->getConsultationsForDay($dateStr, $user);
 
         $data = [];
-        $counter = 1;
         foreach ($consultations as $c) {
             $ficheData = $this->resolvePendingFicheData($c);
             $patient = $c->getPatient();
             $data[] = [
                 'id' => $c->getId(),
-                'numero' => $counter++,
+                'numero' => $c->getNumeroPassage(),
                 'patient' => [
                     'id' => $patient->getId(),
                     'nom' => $patient->getNom(),

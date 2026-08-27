@@ -21,8 +21,8 @@
     ],
     "email": "bamogomohamed90@gmail.com"
   },
-  "viteApiPrefix": "http://localhost:8010/api",
-  "viteFilePrefix": "http://localhost:8010",
+  "viteApiPrefix": "http://localhost:8000/api",
+  "viteFilePrefix": "http://localhost:8000",
   "brandingAssets": {
     "logo": "logo.png",
     "logoAlt": "logo.jpeg",

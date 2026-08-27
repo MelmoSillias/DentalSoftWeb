@@ -236,7 +236,7 @@ final class ConsultationController extends AbstractController{
     public function verifyMedecinPassword(Request $request, int $id): JsonResponse
     {
         if (!$this->globalSettingsService->isReceptionQuickCloseConsultationAllowed()) {
-            return $this->json(['error' => 'La clôturation rapide est désactivée.'], 403);
+            return $this->json(['error' => 'La clôture rapide est désactivée.'], 403);
         }
 
         if (!$this->isGranted('ROLE_RECEPTION') && !$this->isGranted('ROLE_RECEPTIONNISTE')) {

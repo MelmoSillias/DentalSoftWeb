@@ -1496,7 +1496,7 @@ onBeforeUnmount(() => {
                                     <Divider />
                                     <div class="toggle-item">
                                         <div class="toggle-info">
-                                            <label>Afficher la clôturation rapide pour la réception</label>
+                                            <label>Afficher la clôture rapide pour la réception</label>
                                             <span class="toggle-description">Affiche ou masque le bouton de clôture rapide pour les secrétaires dans focus et l'historique</span>
                                         </div>
                                         <ToggleSwitch v-model="consultationPolicy.showReceptionQuickCloseButton" />

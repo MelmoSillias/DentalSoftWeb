@@ -223,6 +223,8 @@ class CashdeskEntryPointService
                 'libelle' => $paiement->getMode()?->getLibelle(),
             ],
             'consultation' => $consultation ? [
+                'id' => $consultation->getId(),
+                'numeroPassage' => $consultation->getNumeroPassage(),
                 'patient' => $patient ? [
                     'nom' => $patient->getNom(),
                     'prenom' => $patient->getPrenom(),
