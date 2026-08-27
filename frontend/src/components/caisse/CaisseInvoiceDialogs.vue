@@ -12,21 +12,14 @@ import { normalizeDentList } from '@/services/consultations';
 const props = defineProps({
     payDialogVisible: { type: Boolean, default: false },
     selectedFacture: { type: Object, default: null },
-    paymentDialogTab: { type: String, default: 'client' },
     payForm: { type: Object, required: true },
     classicPaymentOptions: { type: Array, default: () => [] },
-    assuranceOptions: { type: Array, default: () => [] },
-    selectedAssurance: { type: Object, default: null },
     insuranceCoveredAmount: { type: Number, default: 0 },
+    insuranceRate: { type: Number, default: 0 },
     patientAlreadyPaidAmount: { type: Number, default: 0 },
     patientOutstandingAmount: { type: Number, default: 0 },
     invoiceHasInsurance: { type: Boolean, default: false },
-    insuranceHelperMessage: { type: String, default: '' },
-    insuranceSectionDisabledReason: { type: String, default: '' },
     insuranceStatusLabel: { type: String, default: '' },
-    insuranceStatusSeverity: { type: String, default: 'info' },
-    invoiceAllowsInsurance: { type: Boolean, default: false },
-    requiresClassicPayment: { type: Boolean, default: false },
     maxClientPaymentAmount: { type: Number, default: 0 },
     remainingAfterPay: { type: Number, default: 0 },
     canResetInvoicePayments: { type: Boolean, default: false },
@@ -56,7 +49,6 @@ const props = defineProps({
 
 const emit = defineEmits([
     'update:payDialogVisible',
-    'update:paymentDialogTab',
     'update:resetPaymentDialogVisible',
     'update:validateDialogVisible',
     'update:factureDialogVisible',
@@ -136,11 +128,11 @@ const hasPreviewData = computed(() => Boolean(props.previewData));
             <div v-if="invoiceHasInsurance" class="rounded-2xl border border-sky-200 dark:border-sky-800 bg-sky-50/70 dark:bg-sky-950/20 p-4 grid gap-3 md:grid-cols-3">
                 <div>
                     <p class="text-xs uppercase tracking-wide text-sky-700 dark:text-sky-300">Assurance</p>
-                    <p class="font-semibold">{{ insuranceStatusLabel || selectedAssurance?.nom || '—' }}</p>
+                    <p class="font-semibold">{{ insuranceStatusLabel || '—' }}</p>
                 </div>
                 <div>
                     <p class="text-xs uppercase tracking-wide text-sky-700 dark:text-sky-300">Taux</p>
-                    <p class="font-semibold">{{ Number(payForm?.insuranceRate || 0) }} %</p>
+                    <p class="font-semibold">{{ Number(insuranceRate || 0) }} %</p>
                 </div>
                 <div>
                     <p class="text-xs uppercase tracking-wide text-sky-700 dark:text-sky-300">Part assurance</p>

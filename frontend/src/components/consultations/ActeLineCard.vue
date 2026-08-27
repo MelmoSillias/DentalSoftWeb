@@ -6,6 +6,7 @@ import MultiSelect from 'primevue/multiselect';
 import Select from 'primevue/select';
 import { computed } from 'vue';
 import {
+    findSoinMontant,
     formatActeCurrency,
     normalizeDentList,
     normalizeSoinList,
@@ -41,7 +42,11 @@ const props = defineProps({
 
 const emit = defineEmits(['update', 'remove']);
 
-const soinOptions = computed(() => normalizeSoinList(props.soins).map((item) => ({ label: item, value: item })));
+const soinOptions = computed(() => normalizeSoinList(props.soins).map((item) => ({
+    label: item.description,
+    value: item.description,
+    montant: item.montant
+})));
 
 const dentSelection = computed(() => normalizeDentList(props.acte?.dent));
 
@@ -90,6 +95,20 @@ const toothStateClass = (tooth) => {
 };
 
 const updateField = (patch) => emit('update', patch);
+
+const onSoinTypeChange = (value) => {
+    const type = value || '';
+    if (!type) {
+        updateField({ type: '' });
+        return;
+    }
+    const montant = findSoinMontant(props.soins, type);
+    if (montant === null) {
+        updateField({ type });
+        return;
+    }
+    updateField({ type, prix: montant });
+};
 </script>
 
 <template>
@@ -165,8 +184,26 @@ const updateField = (patch) => emit('update', patch);
                         filterPlaceholder="Rechercher..."
                         showClear
                         class="w-full [&_.p-select]:rounded-lg [&_.p-select]:border-surface-200 [&_.p-select]:dark:border-surface-700 [&_.p-select]:bg-surface-50 [&_.p-select]:dark:bg-surface-800 [&_.p-select]:p-2 [&_.p-select]:text-sm"
-                        @update:modelValue="(value) => updateField({ type: value || '' })"
-                    />
+                        @update:modelValue="onSoinTypeChange"
+                    >
+                        <template #value="slotProps">
+                            <div v-if="slotProps.value" class="flex items-center justify-between gap-2 w-full pr-1">
+                                <span class="truncate">{{ slotProps.value }}</span>
+                                <span class="text-xs text-surface-500 dark:text-surface-400 whitespace-nowrap">
+                                    {{ formatActeCurrency(findSoinMontant(soins, slotProps.value) ?? acte.prix ?? 0) }}
+                                </span>
+                            </div>
+                            <span v-else>&nbsp;</span>
+                        </template>
+                        <template #option="slotProps">
+                            <div class="flex items-center justify-between gap-3 w-full">
+                                <span class="font-medium">{{ slotProps.option.label }}</span>
+                                <span class="text-sm text-surface-500 dark:text-surface-400 whitespace-nowrap">
+                                    {{ formatActeCurrency(slotProps.option.montant) }}
+                                </span>
+                            </div>
+                        </template>
+                    </Select>
                     <label class="text-xs font-medium text-surface-600 dark:text-surface-400">Type d'acte</label>
                 </FloatLabel>
             </div>

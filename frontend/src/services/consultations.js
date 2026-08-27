@@ -353,19 +353,68 @@ export const setConsultationFiche = async (consultationId, ficheId = null, token
     }
 };
 
-export const defaultSoinList = ['Consultation', 'Détartrage', 'Extraction', 'Remplissage', 'Composite', 'Amalgame', 'Traitement de canal', 'Traumatisme', 'Couronne', 'Blanchiment', 'Radio', 'Prothèse', 'Orthodontie', 'Chirurgie'];
+export const defaultSoinList = [
+    { description: 'Consultation', montant: 0 },
+    { description: 'Détartrage', montant: 0 },
+    { description: 'Extraction', montant: 0 },
+    { description: 'Remplissage', montant: 0 },
+    { description: 'Composite', montant: 0 },
+    { description: 'Amalgame', montant: 0 },
+    { description: 'Traitement de canal', montant: 0 },
+    { description: 'Traumatisme', montant: 0 },
+    { description: 'Couronne', montant: 0 },
+    { description: 'Blanchiment', montant: 0 },
+    { description: 'Radio', montant: 0 },
+    { description: 'Prothèse', montant: 0 },
+    { description: 'Orthodontie', montant: 0 },
+    { description: 'Chirurgie', montant: 0 }
+];
+
+const cloneDefaultSoinList = () => defaultSoinList.map((item) => ({ ...item }));
 
 export const normalizeSoinList = (items) => {
     if (!Array.isArray(items)) {
-        return [...defaultSoinList];
+        return cloneDefaultSoinList();
     }
 
     const unique = new Set();
-    const clean = items
-        .map((item) => String(item || '').trim())
-        .filter((item) => item && !unique.has(item) && unique.add(item));
+    const clean = [];
 
-    return clean.length ? clean : [...defaultSoinList];
+    items.forEach((item) => {
+        let description = '';
+        let montant = 0;
+
+        if (typeof item === 'string' || typeof item === 'number') {
+            description = String(item || '').trim();
+        } else if (item && typeof item === 'object') {
+            description = String(item.description ?? item.label ?? item.type ?? '').trim();
+            const rawMontant = item.montant ?? item.prix ?? 0;
+            montant = Number(rawMontant);
+            if (!Number.isFinite(montant) || montant < 0) {
+                montant = 0;
+            }
+        }
+
+        if (!description || unique.has(description)) {
+            return;
+        }
+
+        unique.add(description);
+        clean.push({ description, montant });
+    });
+
+    return clean.length ? clean : cloneDefaultSoinList();
+};
+
+export const soinLabelList = (items) => normalizeSoinList(items).map((item) => item.description);
+
+export const findSoinMontant = (items, description) => {
+    const label = String(description || '').trim();
+    if (!label) {
+        return null;
+    }
+    const match = normalizeSoinList(items).find((item) => item.description === label);
+    return match ? match.montant : null;
 };
 
 export const teethOptions = (() => {

@@ -11,7 +11,7 @@ import {
 import { useGuidedTour } from '@/composables/useGuidedTour';
 import { openConsultationFiche } from '@/composables/useFicheMedicaleAccess';
 import FormCreateConsultation from '@/components/patients/FormCreateConsultation.vue';
-import { cancelConsultation, fetchPendingConsultations } from '@/services/consultations';
+import { cancelConsultation, fetchPendingConsultations, defaultSoinList, normalizeSoinList } from '@/services/consultations';
 import { fetchPublicGeneralSettings } from '@/services/globalSettingsService';
 import { activatePatientsTourMock, deactivatePatientsTourMock, resetPatientsTourMockData } from '@/services/patientsTourMock';
 import { useAuthStore } from '@/stores/auth';
@@ -42,6 +42,7 @@ const quickDialogVisible = ref(false);
 const quickDialogConsultation = ref(null);
 const allowReceptionQuickClose = ref(true);
 const hidePatientPhoneForMedecins = ref(false);
+const soinsList = ref(normalizeSoinList(defaultSoinList));
 let guidedTourPageState = null;
 let guidedTourDemoActive = false;
 let guidedTourCleanupPromise = null;
@@ -64,10 +65,12 @@ const loadQuickClosePolicy = async () => {
         allowReceptionQuickClose.value = settings?.allowReceptionConsultationQuickActions !== false
             && settings?.allowReceptionQuickCloseConsultation !== false;
         hidePatientPhoneForMedecins.value = settings?.hidePatientPhoneForMedecins === true;
+        soinsList.value = normalizeSoinList(settings?.soinsList);
     } catch (error) {
         logAppError('Erreur chargement politique de clôture rapide', error);
         allowReceptionQuickClose.value = true;
         hidePatientPhoneForMedecins.value = false;
+        soinsList.value = normalizeSoinList(defaultSoinList);
     }
 };
 
@@ -726,6 +729,7 @@ const viewOptions = [
 
     <QuickClotureConsultationDialog v-if="canUseQuickActions" v-model:visible="quickDialogVisible"
         :consultation="quickDialogConsultation"
+        :soins="soinsList"
         tourTarget="consultations-cards.dialog.quick" @saved="handleQuickDialogDone" @closed="handleQuickDialogDone" />
 </template>
 

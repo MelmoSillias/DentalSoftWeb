@@ -15,6 +15,7 @@ class GlobalSettingsService
     private const TEST_MODE_SNAPSHOT_CREATED_AT_KEY = 'testModeSnapshotCreatedAt';
     private const TEST_MODE_LAST_PURGE_AT_KEY = 'testModeLastPurgeAt';
     private const DEFAULT_CONSULTATION_PRICE = 5000.0;
+    private const DEFAULT_CONSULTATION_PRICES = [5000.0];
     private const DEFAULT_OPENING_TIME = '08:00';
     private const DEFAULT_CLOSING_TIME = '18:00';
     private const DEFAULT_TRANSACTION_MOTIFS = [
@@ -33,20 +34,20 @@ class GlobalSettingsService
         ],
     ];
     private const DEFAULT_SOINS_LIST = [
-        'Consultation',
-        'Détartrage',
-        'Extraction',
-        'Remplissage',
-        'Composite',
-        'Amalgame',
-        'Traitement de canal',
-        'Traumatisme',
-        'Couronne',
-        'Blanchiment',
-        'Radio',
-        'Prothèse',
-        'Orthodontie',
-        'Chirurgie',
+        ['description' => 'Consultation', 'montant' => 0.0],
+        ['description' => 'Détartrage', 'montant' => 0.0],
+        ['description' => 'Extraction', 'montant' => 0.0],
+        ['description' => 'Remplissage', 'montant' => 0.0],
+        ['description' => 'Composite', 'montant' => 0.0],
+        ['description' => 'Amalgame', 'montant' => 0.0],
+        ['description' => 'Traitement de canal', 'montant' => 0.0],
+        ['description' => 'Traumatisme', 'montant' => 0.0],
+        ['description' => 'Couronne', 'montant' => 0.0],
+        ['description' => 'Blanchiment', 'montant' => 0.0],
+        ['description' => 'Radio', 'montant' => 0.0],
+        ['description' => 'Prothèse', 'montant' => 0.0],
+        ['description' => 'Orthodontie', 'montant' => 0.0],
+        ['description' => 'Chirurgie', 'montant' => 0.0],
     ];
     private const DEFAULT_EXAMENS_TYPES = [
         'Bacteriologique',
@@ -84,7 +85,7 @@ class GlobalSettingsService
     ) {
     }
 
-    /** @return array{autoApproveDevices: bool, requireMedecinOnConsultationCreation: bool, allowReceptionQuickCloseConsultation: bool, allowReceptionConsultationQuickActions: bool, showReceptionQuickCloseButton: bool, allowReceptionBypassMedecinPasswordOnQuickClose: bool, hidePatientDossierForMedecins: bool, hidePatientPhoneForMedecins: bool, paiementDirectAssurance: bool, ficheFormSimplifie: bool, showDiagnosticPositifInConsultation: bool, consultationPrice: float, transactionMotifs: array{revenue: string[], expense: string[]}, soinsList: string[], examensTypes: string[], traitementTypes: string[], allergyTypes: string[], antecedentTypes: string[], patientPortalEnabled: bool, patientPortalClosedMessage: string, patientPortalBaseUrl: ?string, cabinetShowcaseWebsiteUrl: ?string, smsCabinetName: string, autoCreatePortalAccountOnPatientCreation: bool} */
+    /** @return array{autoApproveDevices: bool, requireMedecinOnConsultationCreation: bool, defaultCreateConsultationOnRdvValidation: bool, allowReceptionQuickCloseConsultation: bool, allowReceptionConsultationQuickActions: bool, showReceptionQuickCloseButton: bool, allowReceptionBypassMedecinPasswordOnQuickClose: bool, hidePatientDossierForMedecins: bool, hidePatientPhoneForMedecins: bool, ficheFormSimplifie: bool, showDiagnosticPositifInConsultation: bool, consultationPrice: float, consultationPrices: float[], transactionMotifs: array{revenue: string[], expense: string[]}, soinsList: list<array{description: string, montant: float}>, examensTypes: string[], traitementTypes: string[], allergyTypes: string[], antecedentTypes: string[], patientPortalEnabled: bool, patientPortalClosedMessage: string, patientPortalBaseUrl: ?string, cabinetShowcaseWebsiteUrl: ?string, smsCabinetName: string, autoCreatePortalAccountOnPatientCreation: bool} */
     public function getGeneralSettings(): array
     {
         $entry = $this->appSettingRepo->findOneByKey(self::KEY_GENERAL);
@@ -95,6 +96,7 @@ class GlobalSettingsService
         $result = [
             'autoApproveDevices' => (bool) ($value['autoApproveDevices'] ?? true),
             'requireMedecinOnConsultationCreation' => (bool) ($value['requireMedecinOnConsultationCreation'] ?? true),
+            'defaultCreateConsultationOnRdvValidation' => (bool) ($value['defaultCreateConsultationOnRdvValidation'] ?? false),
             'allowReceptionQuickCloseConsultation' => $allowReceptionConsultationQuickActions,
             'allowReceptionConsultationQuickActions' => $allowReceptionConsultationQuickActions,
             'showReceptionQuickCloseButton' => $showReceptionQuickCloseButton,
@@ -103,14 +105,13 @@ class GlobalSettingsService
             'allowConsultationPriceEditOnCreation' => (bool) ($value['allowConsultationPriceEditOnCreation'] ?? false),
             'hidePatientDossierForMedecins' => (bool) ($value['hidePatientDossierForMedecins'] ?? false),
             'hidePatientPhoneForMedecins' => (bool) ($value['hidePatientPhoneForMedecins'] ?? false),
-            'paiementDirectAssurance' => (bool) ($value['paiementDirectAssurance'] ?? false),
             'ficheFormSimplifie' => (bool) ($value['ficheFormSimplifie'] ?? false),
             'showDiagnosticPositifInConsultation' => (bool) ($value['showDiagnosticPositifInConsultation'] ?? true),
             'consultationPrice' => $this->sanitizePositiveAmount($value['consultationPrice'] ?? null, self::DEFAULT_CONSULTATION_PRICE),
             'openingTime' => $this->sanitizeTimeOfDay($value['openingTime'] ?? null, self::DEFAULT_OPENING_TIME),
             'closingTime' => $this->sanitizeTimeOfDay($value['closingTime'] ?? null, self::DEFAULT_CLOSING_TIME),
             'transactionMotifs' => $this->sanitizeTransactionMotifs($value['transactionMotifs'] ?? null),
-            'soinsList' => $this->sanitizeStringList($value['soinsList'] ?? null, self::DEFAULT_SOINS_LIST),
+            'soinsList' => $this->sanitizeSoinsList($value['soinsList'] ?? null),
             'examensTypes' => $this->sanitizeStringList($value['examensTypes'] ?? null, self::DEFAULT_EXAMENS_TYPES),
             'traitementTypes' => $this->sanitizeStringList($value['traitementTypes'] ?? null, self::DEFAULT_TRAITEMENT_TYPES),
             'allergyTypes' => $this->sanitizeStringList($value['allergyTypes'] ?? null, self::DEFAULT_ALLERGY_TYPES),
@@ -137,6 +138,13 @@ class GlobalSettingsService
         $result['openingTime'] = $openingTime;
         $result['closingTime'] = $closingTime;
 
+        [$consultationPrice, $consultationPrices] = $this->normalizeConsultationPrices(
+            $result['consultationPrice'],
+            $value['consultationPrices'] ?? null
+        );
+        $result['consultationPrice'] = $consultationPrice;
+        $result['consultationPrices'] = $consultationPrices;
+
         return $result;
     }
 
@@ -156,10 +164,12 @@ class GlobalSettingsService
             $this->sanitizeTimeOfDay($payload['openingTime'] ?? ($current['openingTime'] ?? null), self::DEFAULT_OPENING_TIME),
             $this->sanitizeTimeOfDay($payload['closingTime'] ?? ($current['closingTime'] ?? null), self::DEFAULT_CLOSING_TIME)
         );
+        unset($current['paiementDirectAssurance'], $current['paymentDirectInsurance']);
         $entry->setValue([
             ...$current,
             'autoApproveDevices' => (bool) ($payload['autoApproveDevices'] ?? ($current['autoApproveDevices'] ?? true)),
             'requireMedecinOnConsultationCreation' => (bool) ($payload['requireMedecinOnConsultationCreation'] ?? ($current['requireMedecinOnConsultationCreation'] ?? false)),
+            'defaultCreateConsultationOnRdvValidation' => (bool) ($payload['defaultCreateConsultationOnRdvValidation'] ?? ($current['defaultCreateConsultationOnRdvValidation'] ?? false)),
             'allowReceptionQuickCloseConsultation' => $allowReceptionConsultationQuickActions,
             'allowReceptionConsultationQuickActions' => $allowReceptionConsultationQuickActions,
             'showReceptionQuickCloseButton' => $showReceptionQuickCloseButton,
@@ -168,14 +178,13 @@ class GlobalSettingsService
             'allowConsultationPriceEditOnCreation' => (bool) ($payload['allowConsultationPriceEditOnCreation'] ?? ($current['allowConsultationPriceEditOnCreation'] ?? false)),
             'hidePatientDossierForMedecins' => (bool) ($payload['hidePatientDossierForMedecins'] ?? ($current['hidePatientDossierForMedecins'] ?? false)),
             'hidePatientPhoneForMedecins' => (bool) ($payload['hidePatientPhoneForMedecins'] ?? ($current['hidePatientPhoneForMedecins'] ?? false)),
-            'paiementDirectAssurance' => (bool) ($payload['paiementDirectAssurance'] ?? $payload['paymentDirectInsurance'] ?? ($current['paiementDirectAssurance'] ?? false)),
             'ficheFormSimplifie' => (bool) ($payload['ficheFormSimplifie'] ?? ($current['ficheFormSimplifie'] ?? false)),
             'showDiagnosticPositifInConsultation' => (bool) ($payload['showDiagnosticPositifInConsultation'] ?? ($current['showDiagnosticPositifInConsultation'] ?? true)),
             'consultationPrice' => $this->sanitizePositiveAmount($payload['consultationPrice'] ?? ($current['consultationPrice'] ?? null), self::DEFAULT_CONSULTATION_PRICE),
             'openingTime' => $openingTime,
             'closingTime' => $closingTime,
             'transactionMotifs' => $this->sanitizeTransactionMotifs($payload['transactionMotifs'] ?? ($current['transactionMotifs'] ?? null)),
-            'soinsList' => $this->sanitizeStringList($payload['soinsList'] ?? ($current['soinsList'] ?? null), self::DEFAULT_SOINS_LIST),
+            'soinsList' => $this->sanitizeSoinsList($payload['soinsList'] ?? ($current['soinsList'] ?? null)),
             'examensTypes' => $this->sanitizeStringList($payload['examensTypes'] ?? ($current['examensTypes'] ?? null), self::DEFAULT_EXAMENS_TYPES),
             'traitementTypes' => $this->sanitizeStringList($payload['traitementTypes'] ?? ($current['traitementTypes'] ?? null), self::DEFAULT_TRAITEMENT_TYPES),
             'allergyTypes' => $this->sanitizeStringList($payload['allergyTypes'] ?? ($current['allergyTypes'] ?? null), self::DEFAULT_ALLERGY_TYPES),
@@ -192,6 +201,19 @@ class GlobalSettingsService
             'autoCreatePortalAccountOnPatientCreation' => (bool) ($payload['autoCreatePortalAccountOnPatientCreation'] ?? ($current['autoCreatePortalAccountOnPatientCreation'] ?? false)),
         ]);
 
+        $saved = $entry->getValue();
+        [$consultationPrice, $consultationPrices] = $this->normalizeConsultationPrices(
+            $saved['consultationPrice'] ?? self::DEFAULT_CONSULTATION_PRICE,
+            array_key_exists('consultationPrices', $payload)
+                ? $payload['consultationPrices']
+                : ($current['consultationPrices'] ?? null)
+        );
+        $entry->setValue([
+            ...$saved,
+            'consultationPrice' => $consultationPrice,
+            'consultationPrices' => $consultationPrices,
+        ]);
+
         $this->em->flush();
 
         return $this->getGeneralSettings();
@@ -205,6 +227,11 @@ class GlobalSettingsService
     public function isMedecinRequiredOnConsultationCreation(): bool
     {
         return $this->getGeneralSettings()['requireMedecinOnConsultationCreation'];
+    }
+
+    public function isDefaultCreateConsultationOnRdvValidation(): bool
+    {
+        return $this->getGeneralSettings()['defaultCreateConsultationOnRdvValidation'];
     }
 
     public function isReceptionQuickCloseConsultationAllowed(): bool
@@ -237,11 +264,6 @@ class GlobalSettingsService
     public function isPatientPhoneHiddenForMedecins(): bool
     {
         return $this->getGeneralSettings()['hidePatientPhoneForMedecins'];
-    }
-
-    public function isDirectInsurancePaymentEnabled(): bool
-    {
-        return $this->getGeneralSettings()['paiementDirectAssurance'];
     }
 
     public function getTestModeStatus(): array
@@ -390,13 +412,19 @@ class GlobalSettingsService
         return $this->getGeneralSettings()['consultationPrice'];
     }
 
+    /** @return float[] */
+    public function getConsultationPrices(): array
+    {
+        return $this->getGeneralSettings()['consultationPrices'];
+    }
+
     /** @return array{revenue: string[], expense: string[]} */
     public function getTransactionMotifs(): array
     {
         return $this->getGeneralSettings()['transactionMotifs'];
     }
 
-    /** @return string[] */
+    /** @return list<array{description: string, montant: float}> */
     public function getSoinsList(): array
     {
         return $this->getGeneralSettings()['soinsList'];
@@ -447,13 +475,14 @@ class GlobalSettingsService
         ];
     }
 
-    /** @return array{requireMedecinOnConsultationCreation: bool, allowReceptionQuickCloseConsultation: bool, allowReceptionConsultationQuickActions: bool, showReceptionQuickCloseButton: bool, allowReceptionBypassMedecinPasswordOnQuickClose: bool, hidePatientDossierForMedecins: bool, hidePatientPhoneForMedecins: bool, paiementDirectAssurance: bool, ficheFormSimplifie: bool, showDiagnosticPositifInConsultation: bool, consultationPrice: float, soinsList: string[], examensTypes: string[], traitementTypes: string[], allergyTypes: string[], antecedentTypes: string[], patientPortalEnabled: bool, patientPortalClosedMessage: string, patientPortalBaseUrl: ?string, cabinetShowcaseWebsiteUrl: ?string, smsCabinetName: string} */
+    /** @return array{requireMedecinOnConsultationCreation: bool, defaultCreateConsultationOnRdvValidation: bool, allowReceptionQuickCloseConsultation: bool, allowReceptionConsultationQuickActions: bool, showReceptionQuickCloseButton: bool, allowReceptionBypassMedecinPasswordOnQuickClose: bool, hidePatientDossierForMedecins: bool, hidePatientPhoneForMedecins: bool, ficheFormSimplifie: bool, showDiagnosticPositifInConsultation: bool, consultationPrice: float, consultationPrices: float[], soinsList: list<array{description: string, montant: float}>, examensTypes: string[], traitementTypes: string[], allergyTypes: string[], antecedentTypes: string[], patientPortalEnabled: bool, patientPortalClosedMessage: string, patientPortalBaseUrl: ?string, cabinetShowcaseWebsiteUrl: ?string, smsCabinetName: string} */
     public function getStaffOperationalSettings(): array
     {
         $settings = $this->getGeneralSettings();
 
         return [
             'requireMedecinOnConsultationCreation' => $settings['requireMedecinOnConsultationCreation'],
+            'defaultCreateConsultationOnRdvValidation' => $settings['defaultCreateConsultationOnRdvValidation'],
             'allowReceptionQuickCloseConsultation' => $settings['allowReceptionQuickCloseConsultation'] && $settings['showReceptionQuickCloseButton'],
             'allowReceptionConsultationQuickActions' => $settings['allowReceptionConsultationQuickActions'],
             'showReceptionQuickCloseButton' => $settings['showReceptionQuickCloseButton'],
@@ -462,10 +491,10 @@ class GlobalSettingsService
             'allowConsultationPriceEditOnCreation' => $settings['allowConsultationPriceEditOnCreation'],
             'hidePatientDossierForMedecins' => $settings['hidePatientDossierForMedecins'],
             'hidePatientPhoneForMedecins' => $settings['hidePatientPhoneForMedecins'],
-            'paiementDirectAssurance' => $settings['paiementDirectAssurance'],
             'ficheFormSimplifie' => $settings['ficheFormSimplifie'],
             'showDiagnosticPositifInConsultation' => $settings['showDiagnosticPositifInConsultation'],
             'consultationPrice' => $settings['consultationPrice'],
+            'consultationPrices' => $settings['consultationPrices'],
             'openingTime' => $settings['openingTime'],
             'closingTime' => $settings['closingTime'],
             'soinsList' => $settings['soinsList'],
@@ -546,6 +575,44 @@ class GlobalSettingsService
         return array_values($clean ?: array_combine($defaultItems, $defaultItems));
     }
 
+    /**
+     * @return list<array{description: string, montant: float}>
+     */
+    private function sanitizeSoinsList(mixed $value): array
+    {
+        if (!is_array($value)) {
+            return self::DEFAULT_SOINS_LIST;
+        }
+
+        $clean = [];
+        foreach ($value as $item) {
+            $description = '';
+            $montant = 0.0;
+
+            if (is_scalar($item)) {
+                $description = trim((string) $item);
+            } elseif (is_array($item)) {
+                $rawDescription = $item['description'] ?? $item['label'] ?? $item['type'] ?? '';
+                $description = is_scalar($rawDescription) ? trim((string) $rawDescription) : '';
+                $rawMontant = $item['montant'] ?? $item['prix'] ?? 0;
+                $montant = is_numeric($rawMontant) ? max(0.0, (float) $rawMontant) : 0.0;
+            } else {
+                continue;
+            }
+
+            if ($description === '' || isset($clean[$description])) {
+                continue;
+            }
+
+            $clean[$description] = [
+                'description' => $description,
+                'montant' => round($montant, 2),
+            ];
+        }
+
+        return array_values($clean ?: self::DEFAULT_SOINS_LIST);
+    }
+
     private function sanitizePositiveAmount(mixed $value, float $default): float
     {
         if (!is_numeric($value)) {
@@ -558,6 +625,48 @@ class GlobalSettingsService
         }
 
         return round($amount, 2);
+    }
+
+    /**
+     * @return array{0: float, 1: float[]}
+     */
+    private function normalizeConsultationPrices(mixed $defaultPrice, mixed $prices): array
+    {
+        $default = $this->sanitizePositiveAmount($defaultPrice, self::DEFAULT_CONSULTATION_PRICE);
+        $source = is_array($prices) ? $prices : [];
+        $clean = [];
+
+        foreach ($source as $item) {
+            if (!is_numeric($item)) {
+                continue;
+            }
+
+            $amount = round((float) $item, 2);
+            if ($amount <= 0) {
+                continue;
+            }
+
+            $key = number_format($amount, 2, '.', '');
+            $clean[$key] = $amount;
+        }
+
+        if ($clean === []) {
+            foreach (self::DEFAULT_CONSULTATION_PRICES as $fallbackAmount) {
+                $fallbackKey = number_format($fallbackAmount, 2, '.', '');
+                $clean[$fallbackKey] = $fallbackAmount;
+            }
+            $clean[number_format($default, 2, '.', '')] = $default;
+        }
+
+        $defaultKey = number_format($default, 2, '.', '');
+        if (!isset($clean[$defaultKey])) {
+            $clean = [$defaultKey => $default] + $clean;
+        }
+
+        $list = array_values($clean);
+        usort($list, static fn (float $a, float $b): int => $a <=> $b);
+
+        return [$default, $list];
     }
 
     private function sanitizeTimeOfDay(mixed $value, string $default): string

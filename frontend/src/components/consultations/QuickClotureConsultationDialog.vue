@@ -3,7 +3,7 @@ import { logAppError } from '@/utils/appLogger';
 
 import ConsultationEnCoursForm from '@/components/consultations/ConsultationEnCoursForm.vue';
 import { linkConsultationToLatestFiche, resolveLatestFicheId, resolvePatientId } from '@/composables/useFicheMedicaleAccess';
-import { fetchConsultationDetails, verifyConsultationMedecinPassword } from '@/services/consultations';
+import { fetchConsultationDetails, verifyConsultationMedecinPassword, defaultSoinList } from '@/services/consultations';
 import { isConsultationsTourMockEnabled } from '@/services/consultationsTourMock';
 import { closeConsultation, saveConsultation } from '@/services/consultationsforms';
 import { fetchPublicGeneralSettings } from '@/services/globalSettingsService';
@@ -26,6 +26,10 @@ const props = defineProps({
     consultation: {
         type: Object,
         default: null
+    },
+    soins: {
+        type: Array,
+        default: () => defaultSoinList
     },
     tourTarget: {
         type: String,
@@ -352,6 +356,7 @@ watch(
                     :infirmiers="infirmiers"
                     :salles="salles"
                     :ordonnances="[]"
+                    :soins="soins"
                     :saving="saving"
                     :cloture-loading="clotureLoading"
                     :medecin-readonly="!shouldUnlockMedecinSelection"

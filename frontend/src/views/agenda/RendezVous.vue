@@ -30,6 +30,7 @@ import cabinetConfig from '@/cabinetConfig';
 
 const smsCabinetName = ref(cabinetConfig.smsCabinetName || cabinetConfig.displayName || 'Cabinet dentaire');
 const requireMedecinOnConsultationCreation = ref(true);
+const defaultCreateConsultationOnRdvValidation = ref(false);
 
 const toast = useToast();
 const breadcrumbHome = { icon: 'pi pi-home', to: '/dashboard' };
@@ -325,6 +326,7 @@ onMounted(async () => {
 			smsCabinetName.value = settings.smsCabinetName;
 		}
 		requireMedecinOnConsultationCreation.value = settings?.requireMedecinOnConsultationCreation !== false;
+		defaultCreateConsultationOnRdvValidation.value = settings?.defaultCreateConsultationOnRdvValidation === true;
 	} catch (error) {
 		logAppError('RendezVous', error);
 	}
@@ -438,6 +440,7 @@ onBeforeUnmount(() => {
 			:lockedMedecinId="isMedecinUser ? connectedMedecinId : null"
 			:medecinReadonly="isMedecinUser"
 			:requireMedecinOnConsultationCreation="requireMedecinOnConsultationCreation"
+			:defaultCreateConsultation="defaultCreateConsultationOnRdvValidation"
 			:loading="actionLoading"
 			@confirm="confirmValidate"
 		/>

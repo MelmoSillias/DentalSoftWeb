@@ -52,6 +52,7 @@ import { buildPatientPortalQrPrintModel, getPatientPortalQrPrintEntry } from '@/
 import { createQrDataUrl } from '@/utils/qrCode';
 import { getHttpErrorMessage } from '@/service/http';
 import cabinetConfig from '@/cabinetConfig';
+import { defaultSoinList, normalizeSoinList } from '@/services/consultations';
 
 const router = useRouter();
 const toast = useToast();
@@ -132,10 +133,12 @@ const devicesLoading = ref(false);
 
 const consultationPolicy = reactive({
     requireMedecinOnConsultationCreation: true,
+    defaultCreateConsultationOnRdvValidation: false,
     allowReceptionConsultationQuickActions: true,
     showReceptionQuickCloseButton: true,
     allowReceptionBypassMedecinPasswordOnQuickClose: false,
-    consultationPrice: 5000
+    consultationPrice: 5000,
+    consultationPricesText: '5000'
 });
 
 const openingHours = reactive({
@@ -187,7 +190,7 @@ const clinicalForm = reactive({
 });
 
 const billingPolicy = reactive({
-    paiementDirectAssurance: false,
+    allowReceptionInvoiceModification: false,
     allowReceptionInvoiceModification: false,
     allowConsultationPriceEditOnCreation: false
 });
@@ -198,8 +201,10 @@ const transactionMotifs = reactive({
 });
 
 const soinsCatalog = reactive({
-    text: 'Consultation\nDétartrage\nExtraction\nRemplissage\nComposite\nAmalgame\nTraitement de canal\nTraumatisme\nCouronne\nBlanchiment\nRadio\nProthèse\nOrthodontie\nChirurgie'
+    items: defaultSoinList.map((item) => ({ ...item }))
 });
+
+const soinsDragIndex = ref(null);
 
 const portalPatientConfig = reactive({
     patientPortalEnabled: true,
@@ -345,6 +350,20 @@ const normalizeLines = (value) => {
         .filter((item) => item && !unique.has(item) && unique.add(item));
 };
 
+const normalizeAmountLines = (value) => {
+    const unique = new Set();
+    const amounts = [];
+    for (const line of normalizeLines(value)) {
+        const amount = Number(String(line).replace(',', '.'));
+        if (!Number.isFinite(amount) || amount <= 0) continue;
+        const key = amount.toFixed(2);
+        if (unique.has(key)) continue;
+        unique.add(key);
+        amounts.push(Math.round(amount * 100) / 100);
+    }
+    return amounts;
+};
+
 const selectSettingsTab = (tabId) => {
     const selected = tabModeSections.value.find((item) => item.id === tabId);
     if (!selected) return;
@@ -437,24 +456,31 @@ const loadGeneralSettings = async (force = false) => {
         const settings = await fetchGeneralSettings(token);
         devicePolicy.autoApproveDevices = settings.autoApproveDevices !== false;
         consultationPolicy.requireMedecinOnConsultationCreation = settings.requireMedecinOnConsultationCreation !== false;
+        consultationPolicy.defaultCreateConsultationOnRdvValidation = settings.defaultCreateConsultationOnRdvValidation === true;
         consultationPolicy.allowReceptionConsultationQuickActions = settings.allowReceptionConsultationQuickActions !== false
             && settings.allowReceptionQuickCloseConsultation !== false;
         consultationPolicy.showReceptionQuickCloseButton = settings.showReceptionQuickCloseButton !== false;
         consultationPolicy.allowReceptionBypassMedecinPasswordOnQuickClose = consultationPolicy.showReceptionQuickCloseButton
             && settings.allowReceptionBypassMedecinPasswordOnQuickClose === true;
         consultationPolicy.consultationPrice = Number(settings.consultationPrice || 5000);
+        const prices = Array.isArray(settings.consultationPrices) && settings.consultationPrices.length
+            ? settings.consultationPrices
+            : [consultationPolicy.consultationPrice];
+        consultationPolicy.consultationPricesText = prices
+            .map((amount) => Number(amount))
+            .filter((amount) => Number.isFinite(amount) && amount > 0)
+            .join('\n');
         openingHours.openingTime = settings.openingTime || '08:00';
         openingHours.closingTime = settings.closingTime || '18:00';
         medecinPrivacy.hidePatientDossierForMedecins = settings.hidePatientDossierForMedecins === true;
         medecinPrivacy.hidePatientPhoneForMedecins = settings.hidePatientPhoneForMedecins === true;
         clinicalForm.ficheFormSimplifie = settings.ficheFormSimplifie === true;
         clinicalForm.showDiagnosticPositifInConsultation = settings.showDiagnosticPositifInConsultation !== false;
-        billingPolicy.paiementDirectAssurance = settings.paiementDirectAssurance === true;
         billingPolicy.allowReceptionInvoiceModification = settings.allowReceptionInvoiceModification === true;
         billingPolicy.allowConsultationPriceEditOnCreation = settings.allowConsultationPriceEditOnCreation === true;
         transactionMotifs.revenueText = (settings.transactionMotifs?.revenue || []).join('\n');
         transactionMotifs.expenseText = (settings.transactionMotifs?.expense || []).join('\n');
-        soinsCatalog.text = (settings.soinsList || []).join('\n');
+        soinsCatalog.items = normalizeSoinList(settings.soinsList).map((item) => ({ ...item }));
         clinicalForm.examensTypesText = (settings.examensTypes || []).join('\n');
         clinicalForm.traitementTypesText = (settings.traitementTypes || []).join('\n');
         clinicalForm.allergyTypesText = (settings.allergyTypes || []).join('\n');
@@ -620,11 +646,13 @@ const saveConsultationPolicyAction = async () => {
     try {
         await saveGeneralSettings({
             requireMedecinOnConsultationCreation: consultationPolicy.requireMedecinOnConsultationCreation,
+            defaultCreateConsultationOnRdvValidation: consultationPolicy.defaultCreateConsultationOnRdvValidation,
             allowReceptionConsultationQuickActions: consultationPolicy.allowReceptionConsultationQuickActions,
             allowReceptionQuickCloseConsultation: consultationPolicy.allowReceptionConsultationQuickActions,
             showReceptionQuickCloseButton: consultationPolicy.showReceptionQuickCloseButton,
             allowReceptionBypassMedecinPasswordOnQuickClose: consultationPolicy.showReceptionQuickCloseButton && consultationPolicy.allowReceptionBypassMedecinPasswordOnQuickClose,
-            consultationPrice: Number(consultationPolicy.consultationPrice || 5000)
+            consultationPrice: Number(consultationPolicy.consultationPrice || 5000),
+            consultationPrices: normalizeAmountLines(consultationPolicy.consultationPricesText)
         }, token);
         toast.add({ severity: 'success', summary: 'Consultations & réception', detail: 'Paramètres enregistrés', life: 2500 });
     } catch (error) {
@@ -709,7 +737,6 @@ const saveBillingPolicyAction = async () => {
     savingStates.billingPolicy = true;
     try {
         await saveGeneralSettings({
-            paiementDirectAssurance: billingPolicy.paiementDirectAssurance,
             allowReceptionInvoiceModification: billingPolicy.allowReceptionInvoiceModification,
             allowConsultationPriceEditOnCreation: billingPolicy.allowConsultationPriceEditOnCreation,
             transactionMotifs: {
@@ -782,11 +809,75 @@ const copyToClipboard = async (label, value) => {
     }
 };
 
+const addSoinCatalogItem = () => {
+    soinsCatalog.items.push({ description: '', montant: 0 });
+};
+
+const removeSoinCatalogItem = (index) => {
+    soinsCatalog.items.splice(index, 1);
+};
+
+const onSoinDragStart = (index, event) => {
+    soinsDragIndex.value = index;
+    if (event?.dataTransfer) {
+        event.dataTransfer.effectAllowed = 'move';
+        event.dataTransfer.setData('text/plain', String(index));
+    }
+};
+
+const onSoinDragOver = (event) => {
+    event.preventDefault();
+    if (event?.dataTransfer) {
+        event.dataTransfer.dropEffect = 'move';
+    }
+};
+
+const onSoinDrop = (targetIndex, event) => {
+    event.preventDefault();
+    const fromIndex = soinsDragIndex.value;
+    soinsDragIndex.value = null;
+    if (fromIndex === null || fromIndex === undefined || fromIndex === targetIndex) {
+        return;
+    }
+    if (fromIndex < 0 || fromIndex >= soinsCatalog.items.length) {
+        return;
+    }
+    const [moved] = soinsCatalog.items.splice(fromIndex, 1);
+    soinsCatalog.items.splice(targetIndex, 0, moved);
+};
+
+const onSoinDragEnd = () => {
+    soinsDragIndex.value = null;
+};
+
 const saveSoinsCatalogAction = async () => {
     if (!canAccessWorkflowSettings.value) return;
+
+    const normalized = normalizeSoinList(soinsCatalog.items);
+    const hasEmptyDescription = soinsCatalog.items.some((item) => !String(item?.description || '').trim());
+    if (hasEmptyDescription) {
+        toast.add({
+            severity: 'warn',
+            summary: 'Catalogue des soins',
+            detail: 'La description est obligatoire pour chaque acte.',
+            life: 3500
+        });
+        return;
+    }
+    if (!normalized.length) {
+        toast.add({
+            severity: 'warn',
+            summary: 'Catalogue des soins',
+            detail: 'Ajoutez au moins un acte avec une description.',
+            life: 3500
+        });
+        return;
+    }
+
     savingStates.soinsCatalog = true;
     try {
-        await saveGeneralSettings({ soinsList: normalizeLines(soinsCatalog.text) }, token);
+        const saved = await saveGeneralSettings({ soinsList: normalized }, token);
+        soinsCatalog.items = normalizeSoinList(saved?.soinsList ?? normalized).map((item) => ({ ...item }));
         toast.add({ severity: 'success', summary: 'Catalogue des soins', detail: 'Paramètres enregistrés', life: 2500 });
     } catch (error) {
         toast.add({ severity: 'error', summary: 'Erreur', detail: extractApiError(error, 'Sauvegarde impossible'), life: 3500 });
@@ -1488,6 +1579,14 @@ onBeforeUnmount(() => {
                                     <Divider />
                                     <div class="toggle-item">
                                         <div class="toggle-info">
+                                            <label>Créer une consultation par défaut à la validation d’un RDV</label>
+                                            <span class="toggle-description">Pré-sélectionne « Oui » dans le dialogue de validation d’un rendez-vous</span>
+                                        </div>
+                                        <ToggleSwitch v-model="consultationPolicy.defaultCreateConsultationOnRdvValidation" />
+                                    </div>
+                                    <Divider />
+                                    <div class="toggle-item">
+                                        <div class="toggle-info">
                                             <label>Actions rapides pour réceptionniste</label>
                                             <span class="toggle-description">Active ou masque les boutons d'actions rapides de consultation côté réception</span>
                                         </div>
@@ -1513,7 +1612,7 @@ onBeforeUnmount(() => {
                                     <div class="toggle-item">
                                         <div class="toggle-info">
                                             <label>Prix consultation par défaut</label>
-                                            <span class="toggle-description">Montant appliqué aux nouvelles consultations payantes</span>
+                                            <span class="toggle-description">Montant pré-sélectionné pour les nouvelles consultations payantes</span>
                                         </div>
                                         <InputNumber
                                             v-model="consultationPolicy.consultationPrice"
@@ -1523,6 +1622,17 @@ onBeforeUnmount(() => {
                                             :minFractionDigits="0"
                                             :maxFractionDigits="2"
                                             inputClass="w-40" />
+                                    </div>
+                                    <Divider />
+                                    <div class="field-group">
+                                        <label>Prix de consultation proposés</label>
+                                        <Textarea
+                                            v-model="consultationPolicy.consultationPricesText"
+                                            rows="4"
+                                            autoResize
+                                            placeholder="5000&#10;10000&#10;15000"
+                                        />
+                                        <span class="field-helper">Un montant par ligne. Affichés comme boutons radio à la création si le prix est modifiable</span>
                                     </div>
                                 </div>
                             </div>
@@ -1684,7 +1794,7 @@ onBeforeUnmount(() => {
                             <div class="settings-section-header">
                                 <div>
                                     <h3>Caisse & finances</h3>
-                                    <p class="settings-section-description">Comportement assurance côté caisse et motifs de transaction</p>
+                                    <p class="settings-section-description">Règles caisse, modification de factures et motifs de transaction</p>
                                 </div>
                                 <Button
                                     label="Enregistrer"
@@ -1697,14 +1807,6 @@ onBeforeUnmount(() => {
                                 <div class="toggle-group">
                                     <div class="toggle-item">
                                         <div class="toggle-info">
-                                            <label>Paiement direct assurance</label>
-                                            <span class="toggle-description">La part assurance crée un paiement immédiat</span>
-                                        </div>
-                                        <ToggleSwitch v-model="billingPolicy.paiementDirectAssurance" />
-                                    </div>
-                                    <Divider />
-                                    <div class="toggle-item">
-                                        <div class="toggle-info">
                                             <label>Modification de facture par les secrétaires</label>
                                             <span class="toggle-description">Autorise les réceptionnistes à modifier les factures sans paiement dans l'historique, la caisse et le mode focus</span>
                                         </div>
@@ -1714,7 +1816,7 @@ onBeforeUnmount(() => {
                                     <div class="toggle-item">
                                         <div class="toggle-info">
                                             <label>Prix de consultation modifiable à la création</label>
-                                            <span class="toggle-description">Affiche un champ pour modifier le prix de la consultation payante lors de sa création</span>
+                                            <span class="toggle-description">Affiche des prix proposés (radio) et un champ pour ajuster le montant à la création</span>
                                         </div>
                                         <ToggleSwitch v-model="billingPolicy.allowConsultationPriceEditOnCreation" />
                                     </div>
@@ -1761,14 +1863,64 @@ onBeforeUnmount(() => {
                             </div>
                             <div class="settings-card">
                                 <div class="field-group">
-                                    <label>Soins proposés</label>
-                                    <Textarea
-                                        v-model="soinsCatalog.text"
-                                        rows="12"
-                                        autoResize
-                                        placeholder="Saisissez un soin par ligne"
-                                    />
-                                    <span class="field-helper">Un soin par ligne. Utilisé dans les actes posés et la modification de facture.</span>
+                                    <div class="flex items-center justify-between gap-3 mb-3">
+                                        <label class="mb-0">Soins proposés</label>
+                                        <Button
+                                            label="Ajouter"
+                                            icon="pi pi-plus"
+                                            size="small"
+                                            outlined
+                                            @click="addSoinCatalogItem"
+                                        />
+                                    </div>
+                                    <div class="soins-catalog-list flex flex-col gap-2">
+                                        <div
+                                            v-for="(item, index) in soinsCatalog.items"
+                                            :key="`soin-${index}`"
+                                            class="soins-catalog-row flex flex-wrap items-center gap-2 rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900 p-2"
+                                            :class="{ 'opacity-60': soinsDragIndex === index }"
+                                            @dragover="onSoinDragOver"
+                                            @drop="onSoinDrop(index, $event)"
+                                        >
+                                            <button
+                                                type="button"
+                                                class="soins-drag-handle cursor-grab active:cursor-grabbing text-surface-400 hover:text-surface-600 dark:hover:text-surface-200 px-1"
+                                                title="Déplacer"
+                                                aria-label="Déplacer"
+                                                draggable="true"
+                                                @dragstart="onSoinDragStart(index, $event)"
+                                                @dragend="onSoinDragEnd"
+                                                @click.prevent
+                                            >
+                                                <i class="pi pi-bars"></i>
+                                            </button>
+                                            <InputText
+                                                v-model="item.description"
+                                                class="flex-1 min-w-[12rem]"
+                                                placeholder="Description de l'acte *"
+                                            />
+                                            <InputNumber
+                                                v-model="item.montant"
+                                                mode="decimal"
+                                                :min="0"
+                                                :minFractionDigits="0"
+                                                :maxFractionDigits="2"
+                                                class="w-40"
+                                                inputClass="w-full"
+                                                placeholder="Montant"
+                                            />
+                                            <Button
+                                                icon="pi pi-trash"
+                                                severity="danger"
+                                                text
+                                                rounded
+                                                v-tooltip="'Supprimer'"
+                                                :disabled="soinsCatalog.items.length <= 1"
+                                                @click="removeSoinCatalogItem(index)"
+                                            />
+                                        </div>
+                                    </div>
+                                    <span class="field-helper">Description obligatoire. Glissez-déposez pour réordonner. Utilisé dans les actes posés et la modification de facture.</span>
                                 </div>
                             </div>
                         </div>

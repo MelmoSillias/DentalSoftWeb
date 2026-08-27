@@ -1098,6 +1098,7 @@ const currentFactureLoading = computed(() => {
             v-if="canUseQuickActions"
             v-model:visible="quickDialogVisible"
             :consultation="quickDialogConsultation"
+            :soins="soinsList"
             tourTarget="consultations-table.dialog.quick"
             @saved="handleQuickDialogDone"
             @closed="handleQuickDialogDone"

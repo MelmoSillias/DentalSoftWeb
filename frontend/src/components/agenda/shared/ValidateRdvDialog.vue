@@ -33,6 +33,10 @@ const props = defineProps({
     requireMedecinOnConsultationCreation: {
         type: Boolean,
         default: true
+    },
+    defaultCreateConsultation: {
+        type: Boolean,
+        default: false
     }
 });
 
@@ -51,7 +55,7 @@ watch(() => props.visible, (v) => (localVisible.value = v), { immediate: true })
 watch(localVisible, (v) => emit('update:visible', v));
 
 const resetForm = () => {
-    createConsultation.value = false;
+    createConsultation.value = props.defaultCreateConsultation === true;
     medecinId.value = props.lockedMedecinId ?? props.rdv?.medecinId ?? null;
 };
 

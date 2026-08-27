@@ -5,7 +5,7 @@ import Calendar from 'primevue/calendar';
 import InputNumber from 'primevue/inputnumber';
 import InputText from 'primevue/inputtext';
 import { computed, ref } from 'vue';
-import { defaultSoinList, normalizeSoinList } from '@/services/consultations';
+import { defaultSoinList, findSoinMontant, normalizeSoinList, soinLabelList } from '@/services/consultations';
 
 const props = defineProps({
     modelValue: {
@@ -148,8 +148,18 @@ const soinsList = computed(() => normalizeSoinList(props.soins));
 
 const searchSoins = (event) => {
     const query = String(event?.query || '').toLowerCase();
-    const list = soinsList.value;
+    const list = soinLabelList(soinsList.value);
     soinsSuggestions.value = query ? list.filter((item) => item.toLowerCase().includes(query)) : list;
+};
+
+const onSoinItemSelect = (idx, event) => {
+    const designation = String(event?.value ?? '').trim();
+    const montant = findSoinMontant(soinsList.value, designation);
+    if (montant === null) {
+        updateService(idx, { designation });
+        return;
+    }
+    updateService(idx, { designation, montant });
 };
 
 const dateModel = computed({
@@ -492,6 +502,7 @@ function subtotal(service) {
                                 inputClass="w-full rounded-lg border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-800 p-2.5"
                                 placeholder="Description du service"
                                 @complete="searchSoins"
+                                @item-select="(event) => onSoinItemSelect(idx, event)"
                                 @update:modelValue="(v) => updateService(idx, { designation: v || '' })"
                             />
                         </div>

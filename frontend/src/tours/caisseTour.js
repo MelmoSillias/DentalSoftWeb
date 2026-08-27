@@ -67,10 +67,10 @@ function buildRegisterPaymentSteps(ctx, variantId) {
                   ? 'Reglement sans assurance'
                   : 'Enregistrer un paiement',
             content: insuranceActive
-                ? 'La modale permet de saisir la part patient et d activer la prise en charge assurance avec taux et montant couvert.'
+                ? 'La modale affiche le detail assurance (taux, part couverte) et permet de regler uniquement la part patient restante.'
                 : insuranceDisabled
-                  ? 'Lorsque l assurance est indisponible ou desactivee pour la facture, seule la part patient reste editable.'
-                  : 'La modale de reglement gere le montant patient, le mode de paiement, les assurances et le reste a payer.',
+                  ? 'Pour une facture classique, seul le reglement patient est propose : montant, mode de paiement et reste a payer.'
+                  : 'La modale de reglement gere le montant patient, le mode de paiement et le reste a payer.',
             beforeEnter: async () => openDialogStep(
                 () => ctx.openPaymentDialog?.(variantId),
                 ctx.closeAllDialogs

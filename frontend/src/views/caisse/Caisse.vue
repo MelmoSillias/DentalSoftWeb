@@ -162,8 +162,7 @@ const paymentMethods = ref([]);
 const assurances = ref([]);
 const payDialogVisible = ref(false);
 const selectedFacture = ref(null);
-const paymentDialogTab = ref('client');
-const publicGeneralSettings = ref({ paiementDirectAssurance: false, allowReceptionInvoiceModification: false, soinsList: [...defaultSoinList] });
+const publicGeneralSettings = ref({ allowReceptionInvoiceModification: false, soinsList: [...defaultSoinList] });
 const isAdmin = computed(() => Array.isArray(authStore.user?.roles) && authStore.user.roles.includes('ROLE_ADMIN'));
 const isMedecin = computed(() => Array.isArray(authStore.user?.roles) && authStore.user.roles.includes('ROLE_MEDECIN'));
 const canModifyInvoiceByRole = computed(() =>
@@ -174,10 +173,7 @@ const payForm = ref({
 	montant: 0,
 	modeId: null,
 	date: toApiDate(today),
-	time: currentTime(),
-	insuranceEnabled: false,
-	assuranceId: null,
-	insuranceRate: 0
+	time: currentTime()
 });
 
 const validateDialogVisible = ref(false);
@@ -269,50 +265,19 @@ const selectedDevisInsurance = computed(() => activeInvoiceContext.value?.insura
 
 const invoiceHasInsurance = computed(() => selectedDevisInsurance.value?.hasInsurance === true);
 
-const effectiveInsuranceRate = computed(() => {
-	if (invoiceHasInsurance.value) {
-		return Number(selectedDevisInsurance.value?.insuranceRate) || 0;
-	}
+const invoiceInsuranceRate = computed(() => Number(selectedDevisInsurance.value?.insuranceRate) || 0);
 
-	if (payForm.value.insuranceEnabled) {
-		return Number(payForm.value.insuranceRate) || 0;
-	}
-
-	return 0;
-});
-
-const effectiveInsuranceAmount = computed(() => {
-	if (invoiceHasInsurance.value) {
-		return Number(selectedDevisInsurance.value?.insuranceAmount) || 0;
-	}
-
-	if (!selectedFacture.value || !payForm.value.insuranceEnabled) {
+const insuranceCoveredAmount = computed(() => {
+	if (!invoiceHasInsurance.value) {
 		return 0;
 	}
 
-	const baseAmount = Number(selectedFacture.value.reste) || 0;
-	return Math.max(0, (baseAmount * effectiveInsuranceRate.value) / 100);
+	return Number(selectedDevisInsurance.value?.insuranceAmount) || 0;
 });
 
 const patientAlreadyPaidAmount = computed(() => Number(selectedDevisInsurance.value?.patientPaidAmount) || 0);
 
 const hasExistingPayments = computed(() => patientAlreadyPaidAmount.value > 0 || invoiceHasInsurance.value);
-
-const insuranceSectionDisabledReason = computed(() => {
-	if (invoiceHasInsurance.value) {
-		return 'Cette facture a déjà une assurance liée. La prise en charge n’est plus modifiable.';
-	}
-
-	if (patientAlreadyPaidAmount.value > 0) {
-		return 'Des paiements sont déjà enregistrés sur cette facture. L’assurance ne peut plus être activée.';
-	}
-
-	if (!selectedFacture.value || (Number(selectedFacture.value.montant) || 0) <= 0 || (Number(selectedFacture.value.reste) || 0) <= 0) {
-		return 'La prise en charge assurance n’est pas disponible pour cette facture.';
-	}
-
-	return null;
-});
 
 const insuranceStatusLabel = computed(() => {
 	if (!invoiceHasInsurance.value) {
@@ -322,14 +287,6 @@ const insuranceStatusLabel = computed(() => {
 	return selectedDevisInsurance.value?.assuranceNom
 		|| selectedDevisInsurance.value?.insuranceModeLabel
 		|| 'Assurance enregistrée';
-});
-
-const insuranceStatusSeverity = computed(() => {
-	if (!invoiceHasInsurance.value) {
-		return 'secondary';
-	}
-
-	return 'info';
 });
 
 const previewPayments = computed(() => Array.isArray(previewData.value?.paiements) ? previewData.value.paiements : []);
@@ -368,27 +325,15 @@ const patientOutstandingAmount = computed(() => {
 		return 0;
 	}
 
-	if (invoiceHasInsurance.value) {
-		return Number(selectedFacture.value.reste) || 0;
-	}
-
-	const total = Number(selectedFacture.value.montant) || 0;
-	return Math.max(0, total - patientAlreadyPaidAmount.value - effectiveInsuranceAmount.value);
+	return Number(selectedFacture.value.reste) || 0;
 });
-
-const insuranceHelperMessage = computed(() => publicGeneralSettings.value?.paiementDirectAssurance
-	? 'Le paiement assurance sera créé automatiquement avec une transaction en attente.'
-	: 'Une transaction assurance en attente sera créée. Le paiement assurance sera ajouté après validation.'
-);
 
 const maxClientPaymentAmount = computed(() => {
 	if (!selectedFacture.value) {
 		return 0;
 	}
 
-	const base = Number(selectedFacture.value.reste) || 0;
-	const reservedInsurance = invoiceHasInsurance.value ? 0 : effectiveInsuranceAmount.value;
-	return Math.max(0, base - reservedInsurance);
+	return Math.max(0, Number(selectedFacture.value.reste) || 0);
 });
 
 const canResetInvoicePayments = computed(() => {
@@ -403,8 +348,7 @@ const remainingAfterPay = computed(() => {
 	if (!selectedFacture.value) return 0;
 	const reste = Number(selectedFacture.value.reste) || 0;
 	const montantPatient = Number(payForm.value.montant) || 0;
-	const insuranceAmount = invoiceHasInsurance.value ? 0 : effectiveInsuranceAmount.value;
-	return Math.max(0, reste - montantPatient - insuranceAmount);
+	return Math.max(0, reste - montantPatient);
 });
 
 const classicPaymentOptions = computed(() =>
@@ -415,51 +359,6 @@ const classicPaymentOptions = computed(() =>
 			value: method.id
 		}))
 );
-
-const assuranceOptions = computed(() =>
-	(assurances.value || [])
-		.filter((item) => item?.actif !== false)
-		.map((item) => ({
-			label: item?.nom || item?.libelle || 'Assurance',
-			value: item?.id
-		}))
-);
-
-const selectedAssurance = computed(() =>
-	(assurances.value || []).find((item) => Number(item?.id) === Number(payForm.value.assuranceId)) || null
-);
-
-const insuranceCoveredAmount = computed(() => {
-	if (invoiceHasInsurance.value) {
-		return Number(selectedDevisInsurance.value?.insuranceAmount) || 0;
-	}
-
-	return effectiveInsuranceAmount.value;
-});
-
-const patientPortionAmount = computed(() => {
-	if (!selectedFacture.value) {
-		return 0;
-	}
-
-	if (invoiceHasInsurance.value) {
-		return Number(selectedFacture.value.reste) || 0;
-	}
-
-	return patientOutstandingAmount.value;
-});
-
-const invoiceAllowsInsurance = computed(() => {
-	if (!selectedFacture.value) {
-		return false;
-	}
-
-	const total = Number(selectedFacture.value.montant) || 0;
-	const reste = Number(selectedFacture.value.reste) || 0;
-	return total > 0 && reste > 0 && !invoiceHasInsurance.value && patientAlreadyPaidAmount.value <= 0;
-});
-
-const requiresClassicPayment = computed(() => (Number(payForm.value.montant) || 0) > 0);
 
 const setActiveView = (view) => {
 	const allowed = ['overview', 'factures', 'paiements', 'assurances'];
@@ -906,7 +805,6 @@ const loadPublicGeneralSettings = async () => {
 	try {
 		const settings = await fetchPublicGeneralSettings(token);
 		publicGeneralSettings.value = {
-			paiementDirectAssurance: settings?.paiementDirectAssurance === true,
 			allowReceptionInvoiceModification: settings?.allowReceptionInvoiceModification === true,
 			hidePatientPhoneForMedecins: settings?.hidePatientPhoneForMedecins === true,
 			soinsList: normalizeSoinList(settings?.soinsList)
@@ -917,7 +815,6 @@ const loadPublicGeneralSettings = async () => {
 	} catch (error) {
 		logAppError('Caisse', error);
 		publicGeneralSettings.value = {
-			paiementDirectAssurance: false,
 			allowReceptionInvoiceModification: false,
 			hidePatientPhoneForMedecins: false,
 			soinsList: [...defaultSoinList]
@@ -939,17 +836,13 @@ const retryLoadPage = async () => {
 
 const openPayDialog = async (row) => {
 	selectedFacture.value = row;
-	await Promise.all([loadPaymentMethods(), loadAssurances()]);
+	await loadPaymentMethods();
 	const defaultClassicMethod = getDefaultClassicMethod(paymentMethods.value);
-	const existingInsurance = row?.insurance || null;
 	payForm.value = {
 		montant: Number(row.reste) || 0,
 		modeId: defaultClassicMethod?.id ?? null,
 		date: toApiDate(new Date()),
-		time: currentTime(),
-		insuranceEnabled: false,
-		assuranceId: existingInsurance?.assuranceId ?? null,
-		insuranceRate: Number(existingInsurance?.insuranceRate) || 0
+		time: currentTime()
 	};
 	payDialogVisible.value = true;
 };
@@ -966,47 +859,6 @@ const openTourPaymentDialogStable = async () => {
 	await openTourPaymentDialog();
 	await nextTick();
 };
-
-watch(
-	() => payForm.value.insuranceEnabled,
-	(enabled) => {
-		if (!enabled) {
-			if (!invoiceHasInsurance.value) {
-				payForm.value.assuranceId = null;
-				payForm.value.insuranceRate = 0;
-			}
-			payForm.value.montant = Number(selectedFacture.value?.reste) || 0;
-			return;
-		}
-
-		if (!invoiceAllowsInsurance.value) {
-			payForm.value.insuranceEnabled = false;
-			return;
-		}
-
-		const defaultAssurance = (assurances.value || []).find((item) => item?.actif !== false) || null;
-		payForm.value.assuranceId = payForm.value.assuranceId || defaultAssurance?.id || null;
-		payForm.value.montant = 0;
-	}
-);
-
-watch(
-	() => payForm.value.assuranceId,
-	() => {
-		if ((Number(payForm.value.montant) || 0) > maxClientPaymentAmount.value) {
-			payForm.value.montant = maxClientPaymentAmount.value;
-		}
-	}
-);
-
-watch(
-	() => payForm.value.insuranceRate,
-	() => {
-		if (payForm.value.insuranceEnabled && (Number(payForm.value.montant) || 0) > maxClientPaymentAmount.value) {
-			payForm.value.montant = maxClientPaymentAmount.value;
-		}
-	}
-);
 
 const submitPayment = async () => {
 
@@ -1660,21 +1512,14 @@ onBeforeUnmount(() => {
 		<CaisseInvoiceDialogs
 			:pay-dialog-visible="payDialogVisible"
 			:selected-facture="selectedFacture"
-			:payment-dialog-tab="paymentDialogTab"
 			:pay-form="payForm"
 			:classic-payment-options="classicPaymentOptions"
-			:assurance-options="assuranceOptions"
-			:selected-assurance="selectedAssurance"
 			:insurance-covered-amount="insuranceCoveredAmount"
+			:insurance-rate="invoiceInsuranceRate"
 			:patient-already-paid-amount="patientAlreadyPaidAmount"
 			:patient-outstanding-amount="patientOutstandingAmount"
 			:invoice-has-insurance="invoiceHasInsurance"
-			:insurance-helper-message="insuranceHelperMessage"
-			:insurance-section-disabled-reason="insuranceSectionDisabledReason"
 			:insurance-status-label="insuranceStatusLabel"
-			:insurance-status-severity="insuranceStatusSeverity"
-			:invoice-allows-insurance="invoiceAllowsInsurance"
-			:requires-classic-payment="requiresClassicPayment"
 			:max-client-payment-amount="maxClientPaymentAmount"
 			:remaining-after-pay="remainingAfterPay"
 			:can-reset-invoice-payments="canResetInvoicePayments"
@@ -1700,7 +1545,6 @@ onBeforeUnmount(() => {
 			:preview-payment-mode-tag="previewPaymentModeTag"
 			:preview-payment-role-tag="previewPaymentRoleTag"
 			@update:payDialogVisible="payDialogVisible = $event"
-			@update:paymentDialogTab="paymentDialogTab = $event"
 			@update:resetPaymentDialogVisible="resetPaymentDialogVisible = $event"
 			@update:validateDialogVisible="validateDialogVisible = $event"
 			@update:factureDialogVisible="factureDialogVisible = $event"

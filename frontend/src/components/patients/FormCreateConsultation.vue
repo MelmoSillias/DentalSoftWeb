@@ -22,6 +22,7 @@ import ConfirmPopup from 'primevue/confirmpopup';
 import DatePicker from 'primevue/datepicker';
 import InputNumber from 'primevue/inputnumber';
 import InputText from 'primevue/inputtext';
+import RadioButton from 'primevue/radiobutton';
 import Textarea from 'primevue/textarea';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
@@ -48,6 +49,7 @@ const { printComponent } = usePrinter();
 const medecinsStore = useMedecinsStore();
 const paymentMethodsStore = usePaymentMethodsStore();
 const consultationAmount = ref(5000);
+const consultationPrices = ref([5000]);
 
 const patients = ref([]);
 const patientsLoading = ref(false);
@@ -69,6 +71,16 @@ const checkingActive = ref(false);
 const requireMedecinOnCreation = ref(true);
 const allowConsultationPriceEditOnCreation = ref(false);
 let patientSearchTimeout = null;
+
+const amountsMatch = (a, b) => Math.abs(Number(a) - Number(b)) < 0.005;
+
+const selectedConsultationPrice = computed({
+    get: () => consultationPrices.value.find((price) => amountsMatch(price, consultationAmount.value)) ?? null,
+    set: (price) => {
+        if (price == null) return;
+        consultationAmount.value = Number(price);
+    }
+});
 
 const isPatientPreselected = computed(() => Boolean(props.patient?.id || props.patientId));
 const patientDisplayName = computed(() => {
@@ -123,12 +135,23 @@ const loadConsultationCreationPolicy = async () => {
     try {
         const settings = await fetchPublicGeneralSettings(token);
         requireMedecinOnCreation.value = settings?.requireMedecinOnConsultationCreation !== false;
-        consultationAmount.value = Math.max(1, Number(settings?.consultationPrice || 5000));
+        const defaultPrice = Math.max(1, Number(settings?.consultationPrice || 5000));
+        const prices = Array.isArray(settings?.consultationPrices)
+            ? settings.consultationPrices
+                .map((amount) => Number(amount))
+                .filter((amount) => Number.isFinite(amount) && amount > 0)
+            : [];
+        consultationPrices.value = prices.length ? prices : [defaultPrice];
+        if (!consultationPrices.value.some((price) => amountsMatch(price, defaultPrice))) {
+            consultationPrices.value = [defaultPrice, ...consultationPrices.value];
+        }
+        consultationAmount.value = defaultPrice;
         allowConsultationPriceEditOnCreation.value = settings?.allowConsultationPriceEditOnCreation === true;
     } catch (error) {
         logAppError('Erreur lors du chargement de la politique consultation', error);
         requireMedecinOnCreation.value = true;
         consultationAmount.value = 5000;
+        consultationPrices.value = [5000];
         allowConsultationPriceEditOnCreation.value = false;
     }
 };
@@ -402,18 +425,40 @@ const handleSubmit = (event) => {
             <div v-if="isPatientInsured" class="md:col-span-2 p-3 rounded border border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200" data-tour="patients-form-consultation.insurance">
                 <div class="font-semibold">Patient assuré — {{ patientInsurance.nom }} (couverture {{ patientInsurance.coverageRate }} %)</div>
             </div>
-            <div class="flex flex-col gap-2" data-tour="patients-form-consultation.payment">
-                <label class="font-semibold">Consultation payante</label>
-                <div class="flex items-center gap-2">
-                    <ToggleSwitch v-model="form.payant" />
-                    <span v-if="!form.payant || !allowConsultationPriceEditOnCreation" class="text-sm text-gray-600 dark:text-gray-400">
-                        {{ form.payant ? `Payante (${consultationAmount.toLocaleString('fr-FR')})` : 'Gratuite' }}
-                    </span>
+            <div class="flex flex-col gap-3" data-tour="patients-form-consultation.payment">
+                <div class="flex flex-col gap-2">
+                    <label class="font-semibold">Consultation payante</label>
+                    <div class="flex items-center gap-2">
+                        <ToggleSwitch v-model="form.payant" />
+                        <span v-if="!form.payant || !allowConsultationPriceEditOnCreation" class="text-sm text-gray-600 dark:text-gray-400">
+                            {{ form.payant ? `Payante (${consultationAmount.toLocaleString('fr-FR')})` : 'Gratuite' }}
+                        </span>
+                    </div>
                 </div>
-            </div>
-            <div class="flex flex-col gap-2" v-if="form.payant && allowConsultationPriceEditOnCreation">
-                <label class="font-semibold">Prix de la consultation</label>
-                <InputNumber v-model="consultationAmount" mode="decimal" :min="1" class="w-full" inputClass="w-full" />
+                <div class="flex flex-col gap-2 mt-2" v-if="form.payant && allowConsultationPriceEditOnCreation">
+                    <label class="font-semibold">Prix de la consultation</label>
+                    <div v-if="consultationPrices.length" class="flex flex-wrap gap-3">
+                        <div
+                            v-for="price in consultationPrices"
+                            :key="price"
+                            class="flex items-center gap-2"
+                        >
+                            <RadioButton
+                                :inputId="`consultation-price-${price}`"
+                                name="consultationPrice"
+                                :value="price"
+                                v-model="selectedConsultationPrice"
+                            />
+                            <label :for="`consultation-price-${price}`" class="cursor-pointer text-sm">
+                                {{ Number(price).toLocaleString('fr-FR') }}
+                            </label>
+                        </div>
+                    </div>
+                    <InputNumber v-model="consultationAmount" mode="decimal" :min="1" class="w-full" inputClass="w-full" />
+                    <small class="text-gray-500 dark:text-gray-400">
+                        Sélectionnez un tarif proposé ou saisissez un montant personnalisé.
+                    </small>
+                </div>
             </div>
             <div class="flex flex-col gap-2" v-if="requiresClassicPayment">
                 <label class="font-semibold">Mode de paiement patient <span class="text-red-500">*</span></label>
@@ -423,6 +468,7 @@ const handleSubmit = (event) => {
                     Le mode de paiement reste requis pour les consultations payantes non assurées.
                 </small>
             </div>
+            <div v-else class="hidden md:block" aria-hidden="true" />
             <!-- <div class="md:col-span-2 flex flex-col gap-2">
                 <label class="font-semibold">Notes</label>
                 <Textarea v-model="form.notes" rows="3" auto-resize placeholder="Notes supplémentaires" />
