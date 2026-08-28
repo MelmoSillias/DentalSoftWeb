@@ -55,6 +55,27 @@ export const fetchFactures = async ({ start, end, factureType = 'all', unpaidOnl
     return Array.isArray(data) ? data : [];
 };
 
+export const fetchUnpaidFacturesByPatient = async (patientId, token) => {
+    const id = Number(patientId) || 0;
+    if (id <= 0) {
+        return [];
+    }
+
+    if (isCaisseTourMockEnabled()) {
+        return [];
+    }
+
+    const res = await axios.get(
+        `${apiPrefix}/factures/unpaid-by-patient/${id}`,
+        heavyListConfig(token),
+    );
+    const data = res.data;
+    if (data && Array.isArray(data.data)) {
+        return data.data;
+    }
+    return Array.isArray(data) ? data : [];
+};
+
 export const fetchPayments = async ({ start, end }, token) => {
     if (isCaisseTourMockEnabled()) {
         return fetchPaymentsTourMock({ start, end: end === '' ? start : end });

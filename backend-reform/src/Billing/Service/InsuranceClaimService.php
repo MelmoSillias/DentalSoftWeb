@@ -250,6 +250,7 @@ class InsuranceClaimService
             'consultationId' => $consultation?->getId(),
             'factureId' => $facture->getId(),
             'dateFacture' => $facture->getDateFacture()?->format('Y-m-d H:i:s'),
+            'patientId' => $patient?->getId(),
             'patient' => $patient?->getFullName(),
             'telephone' => $patient?->getTelephone(),
             'assurance' => [

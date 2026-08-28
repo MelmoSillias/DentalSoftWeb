@@ -47,6 +47,7 @@ import {
 	removeClaimFromAssuranceLot,
 	fetchInsuranceClaimDetail,
 	fetchPayments,
+	fetchUnpaidFacturesByPatient,
 	payFacture,
 	payInsurancePatientShare,
 	resetFacturePayments,
@@ -57,6 +58,13 @@ import {
 import { fetchPublicGeneralSettings } from '@/services/globalSettingsService';
 import { canUserModifyInvoice } from '@/utils/invoiceModificationAccess';
 import { defaultSoinList, normalizeSoinList } from '@/services/consultations';
+import {
+	advanceAfterSettledTab,
+	applyPartialPaymentToTab,
+	buildPayTabs,
+	resolveFacturePatientId,
+	sumPriorReliquatFromTabs
+} from '@/composables/usePayTabsDialog';
 import {
 	fetchInvoicePrintData,
 	fetchFactureAssurancePrintData,
@@ -180,6 +188,8 @@ const validateDialogVisible = ref(false);
 const pendingFacture = ref(null);
 const resetPaymentDialogVisible = ref(false);
 const resetPaymentsLoading = ref(false);
+const payTabs = ref([]);
+const activePayTabId = ref(null);
 
 const factureDialogVisible = ref(false);
 const factureConsultId = ref(null);
@@ -327,6 +337,18 @@ const patientOutstandingAmount = computed(() => {
 
 	return Number(selectedFacture.value.reste) || 0;
 });
+
+const activePayTab = computed(() =>
+	(payTabs.value || []).find((tab) => String(tab.id) === String(activePayTabId.value)) || null
+);
+
+const activePayTabMode = computed(() => activePayTab.value?.mode || 'pay');
+
+const priorReliquatTotal = computed(() =>
+	sumPriorReliquatFromTabs(payTabs.value, activePayTabId.value)
+);
+
+const hasPayReliquatTabs = computed(() => (payTabs.value || []).length > 1);
 
 const maxClientPaymentAmount = computed(() => {
 	if (!selectedFacture.value) {
@@ -834,16 +856,90 @@ const retryLoadPage = async () => {
 	isInitialLoadPhase.value = false;
 };
 
-const openPayDialog = async (row) => {
-	selectedFacture.value = row;
-	await loadPaymentMethods();
+const syncPayFormForFacture = (row) => {
 	const defaultClassicMethod = getDefaultClassicMethod(paymentMethods.value);
 	payForm.value = {
-		montant: Number(row.reste) || 0,
-		modeId: defaultClassicMethod?.id ?? null,
+		montant: Number(row?.reste) || 0,
+		modeId: defaultClassicMethod?.id ?? payForm.value.modeId ?? null,
 		date: toApiDate(new Date()),
 		time: currentTime()
 	};
+};
+
+const selectPayTab = (tabId) => {
+	activePayTabId.value = tabId == null ? null : String(tabId);
+	const tab = (payTabs.value || []).find((item) => String(item.id) === String(activePayTabId.value));
+	if (!tab) return;
+	selectedFacture.value = tab.facture;
+	pendingFacture.value = tab.mode === 'validate' ? tab.facture : pendingFacture.value;
+	if (tab.mode === 'pay') {
+		syncPayFormForFacture(tab.facture);
+	}
+};
+
+const refreshListsAfterPayment = async (isInsured = false) => {
+	const tasks = [loadFactures(), loadPayments()];
+	if (isInsured) {
+		tasks.push(refreshInsuranceViews({ includePayments: false }));
+	}
+	await Promise.all(tasks);
+};
+
+const closePayDialog = () => {
+	payDialogVisible.value = false;
+	payTabs.value = [];
+	activePayTabId.value = null;
+};
+
+const onPayDialogVisibleUpdate = (visible) => {
+	if (!visible) {
+		closePayDialog();
+		return;
+	}
+	payDialogVisible.value = true;
+};
+
+const handleAfterInvoiceSettled = async ({ isInsured = false } = {}) => {
+	const settledId = activePayTabId.value ?? String(selectedFacture.value?.id ?? '');
+	const hadReliquatTabs = hasPayReliquatTabs.value;
+
+	await refreshListsAfterPayment(isInsured);
+
+	if (!hadReliquatTabs) {
+		closePayDialog();
+		return;
+	}
+
+	const advanced = advanceAfterSettledTab(payTabs.value, settledId);
+	payTabs.value = advanced.tabs;
+	if (advanced.shouldClose || !advanced.nextTabId) {
+		closePayDialog();
+		return;
+	}
+	selectPayTab(advanced.nextTabId);
+};
+
+const openPayDialog = async (row, { primaryMode = null } = {}) => {
+	selectedFacture.value = row;
+	await loadPaymentMethods();
+
+	const patientId = resolveFacturePatientId(row);
+	let unpaidRows = [];
+	if (patientId) {
+		try {
+			unpaidRows = await fetchUnpaidFacturesByPatient(patientId, token);
+		} catch (error) {
+			logAppError('Caisse', error);
+			unpaidRows = [];
+		}
+	}
+
+	const mode = primaryMode
+		|| ((Number(row?.reste) || 0) === 0 && !row?.isRegle ? 'validate' : 'pay');
+	payTabs.value = buildPayTabs(row, unpaidRows, { primaryMode: mode });
+	activePayTabId.value = String(row.id);
+	pendingFacture.value = mode === 'validate' ? row : null;
+	syncPayFormForFacture(row);
 	payDialogVisible.value = true;
 };
 
@@ -887,6 +983,7 @@ const submitPayment = async () => {
 		const canPrintClientReceipt = montant > 0;
 		const isInsured = isInsuranceFacture(selectedFacture.value);
 		const claimId = selectedFacture.value.factureAssuranceId || selectedFacture.value.insurance?.factureAssuranceId || selectedFacture.value.id;
+		const settledFully = montant >= max;
 
 		let res;
 		if (isInsured) {
@@ -932,12 +1029,14 @@ const submitPayment = async () => {
 		};
 
 		toast.add(toastPayload);
-		payDialogVisible.value = false;
-		const tasks = [loadFactures(), loadPayments()];
-		if (isInsured) {
-			tasks.push(refreshInsuranceViews({ includePayments: false }));
+
+		if (settledFully) {
+			await handleAfterInvoiceSettled({ isInsured });
+		} else {
+			payTabs.value = applyPartialPaymentToTab(payTabs.value, activePayTabId.value, montant);
+			selectPayTab(activePayTabId.value);
+			await refreshListsAfterPayment(isInsured);
 		}
-		await Promise.all(tasks);
 	} catch (error) {
 		logAppError('Caisse', error);
 		toast.add({ severity: 'error', summary: 'Paiement', detail: error?.response?.data?.error || 'Enregistrement impossible', life: 3500 });
@@ -1022,18 +1121,40 @@ const resetSelectedDevisPayments = async () => {
 	}
 };
 
-const openValidateDialog = (row) => {
+const openValidateDialog = async (row) => {
+	if (Number(row?.priorReliquat || 0) > 0) {
+		await openPayDialog(row, { primaryMode: 'validate' });
+		return;
+	}
+
+	const patientId = resolveFacturePatientId(row);
+	if (patientId) {
+		try {
+			const unpaidRows = await fetchUnpaidFacturesByPatient(patientId, token);
+			const tabs = buildPayTabs(row, unpaidRows, { primaryMode: 'validate' });
+			if (tabs.length > 1) {
+				await openPayDialog(row, { primaryMode: 'validate' });
+				return;
+			}
+		} catch (error) {
+			logAppError('Caisse', error);
+		}
+	}
+
 	pendingFacture.value = row;
 	validateDialogVisible.value = true;
 };
 
 const confirmValidate = async () => {
-	if (!pendingFacture.value) return;
+	const target = pendingFacture.value || selectedFacture.value;
+	if (!target) return;
 	validateLoading.value = true;
+	const fromPayDialog = payDialogVisible.value;
 	try {
-		const isInsured = isInsuranceFacture(pendingFacture.value);
+		const isInsured = isInsuranceFacture(target);
 		if (isInsured) {
-			const claimId = pendingFacture.value.factureAssuranceId || pendingFacture.value.insurance?.factureAssuranceId || pendingFacture.value.id;
+			await loadPaymentMethods();
+			const claimId = target.factureAssuranceId || target.insurance?.factureAssuranceId || target.id;
 			const classicMethod = getDefaultClassicMethod(paymentMethods.value);
 			await payInsurancePatientShare(claimId, {
 				modeId: classicMethod?.id,
@@ -1041,15 +1162,16 @@ const confirmValidate = async () => {
 				amount: 0
 			}, token);
 		} else {
-			await validateEmptyFacture(pendingFacture.value.id, token);
+			await validateEmptyFacture(target.id, token);
 		}
 		toast.add({ severity: 'success', summary: 'Validation', detail: 'Facture vide validée', life: 2500 });
 		validateDialogVisible.value = false;
-		const tasks = [loadFactures(), loadPayments()];
-		if (isInsured) {
-			tasks.push(refreshInsuranceViews({ includePayments: false }));
+
+		if (fromPayDialog) {
+			await handleAfterInvoiceSettled({ isInsured });
+		} else {
+			await refreshListsAfterPayment(isInsured);
 		}
-		await Promise.all(tasks);
 	} catch (error) {
 		logAppError('Caisse', error);
 		toast.add({ severity: 'error', summary: 'Validation', detail: 'Échec de la validation', life: 3500 });
@@ -1524,6 +1646,10 @@ onBeforeUnmount(() => {
 			:remaining-after-pay="remainingAfterPay"
 			:can-reset-invoice-payments="canResetInvoicePayments"
 			:pay-loading="payLoading"
+			:pay-tabs="payTabs"
+			:active-pay-tab-id="activePayTabId"
+			:prior-reliquat-total="priorReliquatTotal"
+			:active-pay-tab-mode="activePayTabMode"
 			:reset-payment-dialog-visible="resetPaymentDialogVisible"
 			:reset-payments-loading="resetPaymentsLoading"
 			:validate-dialog-visible="validateDialogVisible"
@@ -1544,7 +1670,8 @@ onBeforeUnmount(() => {
 			:format-fcfa="formatFcfa"
 			:preview-payment-mode-tag="previewPaymentModeTag"
 			:preview-payment-role-tag="previewPaymentRoleTag"
-			@update:payDialogVisible="payDialogVisible = $event"
+			@update:payDialogVisible="onPayDialogVisibleUpdate"
+			@update:activePayTabId="selectPayTab"
 			@update:resetPaymentDialogVisible="resetPaymentDialogVisible = $event"
 			@update:validateDialogVisible="validateDialogVisible = $event"
 			@update:factureDialogVisible="factureDialogVisible = $event"

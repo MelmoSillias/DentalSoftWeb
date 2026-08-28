@@ -39,66 +39,85 @@ class InsuredInvoiceWorkflowService
     {
         $claims = $this->insuranceClaimService->listClaims(null, $start, $end);
 
-        return array_map(static function (array $claim): array {
-            $montantPatient = (float) ($claim['montantPatient'] ?? 0.0);
-            $patientPaid = (float) ($claim['patientPaidAmount'] ?? 0.0);
-            $restePatient = (float) ($claim['restePatient'] ?? max(0.0, $montantPatient - $patientPaid));
-            $montantTotal = (float) ($claim['montantTotal'] ?? 0.0);
-            $insuranceStatus = $claim['insuranceStatus'] ?? 'pending';
-            $isRegle = $insuranceStatus === 'validated_empty'
-                || ($montantTotal > 0.0 && $restePatient <= 0.0);
+        return array_map(fn (array $claim): array => $this->mapClaimToCashdeskRow($claim), $claims);
+    }
 
-            $patientName = $claim['patient'] ?? '';
-            $telephone = $claim['telephone'] ?? '';
+    /**
+     * @param array<string, mixed> $claim
+     * @return array<string, mixed>
+     */
+    public function mapClaimToCashdeskRow(array $claim): array
+    {
+        $montantPatient = (float) ($claim['montantPatient'] ?? 0.0);
+        $patientPaid = (float) ($claim['patientPaidAmount'] ?? 0.0);
+        $restePatient = (float) ($claim['restePatient'] ?? max(0.0, $montantPatient - $patientPaid));
+        $montantTotal = (float) ($claim['montantTotal'] ?? 0.0);
+        $insuranceStatus = $claim['insuranceStatus'] ?? 'pending';
+        $isRegle = $insuranceStatus === 'validated_empty'
+            || ($montantTotal > 0.0 && $restePatient <= 0.0);
 
-            return [
-                'id' => $claim['id'],
-                'factureAssuranceId' => $claim['factureId'] ?? $claim['id'],
-                'date' => isset($claim['dateFacture']) ? (new \DateTime($claim['dateFacture']))->format('Y-m-d') : null,
-                'consultation' => $claim['consultationId'] ?? null,
-                'montant' => $montantPatient,
+        $patientName = $claim['patient'] ?? '';
+        $telephone = $claim['telephone'] ?? '';
+        $patientId = isset($claim['patientId']) ? (int) $claim['patientId'] : null;
+
+        return [
+            'id' => $claim['id'],
+            'factureAssuranceId' => $claim['factureId'] ?? $claim['id'],
+            'date' => isset($claim['dateFacture']) ? (new \DateTime($claim['dateFacture']))->format('Y-m-d') : null,
+            'consultation' => $claim['consultationId'] ?? null,
+            'montant' => $montantPatient,
+            'montantTotal' => $montantTotal,
+            'montantPatient' => $montantPatient,
+            'montantAssureur' => (float) ($claim['montantAssurance'] ?? 0.0),
+            'reste' => $restePatient,
+            'statut' => $isRegle ? 1 : 0,
+            'isRegle' => $isRegle,
+            'hasPayments' => $patientPaid > 0,
+            'patient' => is_string($patientName)
+                ? ['id' => $patientId, 'nom' => $patientName, 'prenom' => '']
+                : ['id' => $patientId, 'nom' => '', 'prenom' => ''],
+            'patientId' => $patientId,
+            'telephone' => $telephone,
+            'contenus' => [],
+            'paiements' => [],
+            'type' => 'FactureAssurance',
+            'insurance' => [
+                'hasInsurance' => true,
+                'assuranceId' => $claim['assurance']['id'] ?? null,
+                'assuranceNom' => $claim['assurance']['nom'] ?? null,
+                'assuranceCode' => $claim['assurance']['code'] ?? null,
+                'logoPath' => $claim['assurance']['logoPath'] ?? null,
+                'tauxCouverture' => $claim['tauxCouverture'] ?? 0,
+                'insuranceRate' => $claim['tauxCouverture'] ?? 0,
                 'montantTotal' => $montantTotal,
+                'montantAssurance' => (float) ($claim['montantAssurance'] ?? 0.0),
+                'insuranceAmount' => (float) ($claim['montantAssurance'] ?? 0.0),
                 'montantPatient' => $montantPatient,
-                'montantAssureur' => (float) ($claim['montantAssurance'] ?? 0.0),
-                'reste' => $restePatient,
-                'statut' => $isRegle ? 1 : 0,
-                'isRegle' => $isRegle,
-                'hasPayments' => $patientPaid > 0,
-                'patient' => is_string($patientName)
-                    ? $patientName
-                    : ['nom' => '', 'prenom' => ''],
-                'telephone' => $telephone,
-                'contenus' => [],
-                'paiements' => [],
-                'type' => 'FactureAssurance',
-                'insurance' => [
-                    'hasInsurance' => true,
-                    'assuranceId' => $claim['assurance']['id'] ?? null,
-                    'assuranceNom' => $claim['assurance']['nom'] ?? null,
-                    'assuranceCode' => $claim['assurance']['code'] ?? null,
-                    'logoPath' => $claim['assurance']['logoPath'] ?? null,
-                    'tauxCouverture' => $claim['tauxCouverture'] ?? 0,
-                    'insuranceRate' => $claim['tauxCouverture'] ?? 0,
-                    'montantTotal' => $montantTotal,
-                    'montantAssurance' => (float) ($claim['montantAssurance'] ?? 0.0),
-                    'insuranceAmount' => (float) ($claim['montantAssurance'] ?? 0.0),
-                    'montantPatient' => $montantPatient,
-                    'patientPaidAmount' => $patientPaid,
-                    'patientRemainingAmount' => $restePatient,
-                    'restePatient' => $restePatient,
-                    'insuranceStatus' => $claim['insuranceStatus'] ?? 'pending',
-                    'factureAssuranceId' => $claim['factureId'] ?? $claim['id'],
-                    'lotId' => $claim['lotId'] ?? null,
-                    'lotStatut' => $claim['lotStatut'] ?? null,
-                    'consultationAmount' => (float) ($claim['consultationAmount'] ?? 0.0),
-                ],
-            ];
-        }, $claims);
+                'patientPaidAmount' => $patientPaid,
+                'patientRemainingAmount' => $restePatient,
+                'restePatient' => $restePatient,
+                'insuranceStatus' => $claim['insuranceStatus'] ?? 'pending',
+                'factureAssuranceId' => $claim['factureId'] ?? $claim['id'],
+                'lotId' => $claim['lotId'] ?? null,
+                'lotStatut' => $claim['lotStatut'] ?? null,
+                'consultationAmount' => (float) ($claim['consultationAmount'] ?? 0.0),
+            ],
+        ];
     }
 
     public function getClaimDetail(int $factureId): array
     {
         return $this->insuranceClaimService->getClaimDetail($factureId);
+    }
+
+    public function mapFactureAssuranceToCashdeskRow(int $factureAssuranceId): ?array
+    {
+        $detail = $this->insuranceClaimService->getClaimDetail($factureAssuranceId);
+        if (isset($detail['error']) || !isset($detail['data']) || !is_array($detail['data'])) {
+            return null;
+        }
+
+        return $this->mapClaimToCashdeskRow($detail['data']);
     }
 
     public function payPatientShare(int $factureId, int $modeId, ?float $amount = null, ?DateTimeInterface $date = null): array

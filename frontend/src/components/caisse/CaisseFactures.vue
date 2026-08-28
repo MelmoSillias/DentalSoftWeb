@@ -224,6 +224,11 @@ const displayPhone = (value) => (props.hidePatientPhone ? 'Masqué par l\'admini
                                     <p class="fct-patient-name">
                                         <i class="pi pi-user"></i>
                                         {{ formatPatient(row) }}
+                                        <i
+                                            v-if="Number(row.priorReliquat || 0) > 0"
+                                            v-tooltip.top="`Reliquat : ${Number(row.priorReliquat || 0).toLocaleString('fr-FR')} FCFA`"
+                                            class="pi pi-wallet fct-reliquat-icon"
+                                        ></i>
                                     </p>
                                     <p class="fct-patient-detail">
                                         <i class="pi pi-phone"></i>
@@ -606,6 +611,12 @@ const displayPhone = (value) => (props.hidePatientPhone ? 'Masqué par l\'admini
 }
 
 .fct-patient-name .pi { color: #6366f1; font-size: 0.9rem; }
+
+.fct-patient-name .fct-reliquat-icon {
+    color: #ef4444;
+    font-size: 0.85rem;
+    margin-left: 0.15rem;
+}
 
 .fct-patient-detail {
     margin: 0;

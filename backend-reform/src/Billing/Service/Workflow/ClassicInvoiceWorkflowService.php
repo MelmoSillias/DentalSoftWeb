@@ -272,10 +272,12 @@ class ClassicInvoiceWorkflowService
             'isRegle' => $isRegle,
             'hasPayments' => $facture->getPaiements()->count() > 0,
             'patient' => [
+                'id' => $patient?->getId(),
                 'nom' => $patient?->getNom() ?? '',
                 'prenom' => $patient?->getPrenom() ?? '',
                 'telephone' => $patient?->getTelephone() ?? '',
             ],
+            'patientId' => $patient?->getId(),
             'telephone' => $patient?->getTelephone(),
             'contenus' => $contenus,
             'paiements' => $includeDetails ? $this->buildFacturePaymentDetails($facture) : [],

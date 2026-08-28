@@ -75,6 +75,8 @@ const {
     savingCount,
     dirtySectionsList,
     loadData,
+    armDirtyTracking,
+    runWithoutDirtyTracking,
     watchSection,
     saveEntretienSection: saveEntretien,
     saveExamensSection: saveExamens,
@@ -923,6 +925,8 @@ onMounted(async () => {
         toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de charger la fiche médicale.', life: 3000 });
     } finally {
         pageLoading.value = false;
+        // pageLoading masque le formulaire : rebaseliner après montage réel des sections.
+        await armDirtyTracking();
     }
     handleScroll();
     window.addEventListener('scroll', handleScroll, { passive: true });
@@ -937,7 +941,9 @@ watch(
         if (data.consultation?.medecinId) return;
         const fallbackMedecinId = resolveConnectedMedecinId();
         if (!fallbackMedecinId) return;
-        data.consultation = { ...data.consultation, medecinId: fallbackMedecinId };
+        void runWithoutDirtyTracking(() => {
+            data.consultation = { ...data.consultation, medecinId: fallbackMedecinId };
+        });
     },
     { immediate: true }
 );
@@ -975,6 +981,7 @@ const retryLoad = async () => {
         toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de charger la fiche médicale.', life: 3000 });
     } finally {
         pageLoading.value = false;
+        await armDirtyTracking();
     }
 };
 

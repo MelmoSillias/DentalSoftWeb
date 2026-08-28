@@ -6,11 +6,20 @@ import FocusMedecinView from '@/components/focus/FocusMedecinView.vue';
 import FocusReceptionView from '@/components/focus/FocusReceptionView.vue';
 import FormCreateConsultation from '@/components/patients/FormCreateConsultation.vue';
 import FormPatient from '@/components/patients/FormPatient.vue';
+import FormRendezVous from '@/components/patients/FormRendezVous.vue';
 import { usePrinter } from '@/composables/usePrinter';
 import { useFocusRealtime } from '@/composables/useFocusRealtime';
 import { defaultSoinList, fetchConsultationDetails, fetchConsultationInvoice, fetchConsultationsByDate, fetchFocusReceptionData, normalizeSoinList, updateConsultationInvoice, cancelConsultation } from '@/services/consultations';
 import {  getDefaultClassicMethod } from '@/utils/paymentMethodUtils';
-import { fetchFactureDetail, payFacture, resetFacturePayments, validateEmptyFacture } from '@/services/caisseService';
+import { fetchFactureDetail, fetchUnpaidFacturesByPatient, payFacture, payInsurancePatientShare, resetFacturePayments, validateEmptyFacture } from '@/services/caisseService';
+import {
+    advanceAfterSettledTab,
+    applyPartialPaymentToTab,
+    buildPayTabs,
+    isInsuranceFactureRow,
+    resolveFacturePatientId,
+    sumPriorReliquatFromTabs
+} from '@/composables/usePayTabsDialog';
 import { fetchPublicGeneralSettings } from '@/services/globalSettingsService';
 import { canUserModifyInvoice } from '@/utils/invoiceModificationAccess';
 import { fetchInvoicePrintData, fetchReceiptPrintData } from '@/services/printService';
@@ -21,18 +30,21 @@ import PrintReceiptBody from '@/components/print/PrintReceiptBody.vue';
 import { sendInvoiceSms } from '@/services/smsService';
 import { useAuthStore } from '@/stores/auth';
 import { usePaymentMethodsStore } from '@/stores/paymentMethods';
+import Button from 'primevue/button';
 import ConfirmPopup from 'primevue/confirmpopup';
 import Dialog from 'primevue/dialog';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
 import { computed, defineAsyncComponent, onMounted,  onBeforeUnmount, ref, watch } from 'vue';
 import { useLayout } from '@/layout/composables/layout';
+import { useRouter } from 'vue-router';
 
 const FocusRendezVousView = defineAsyncComponent(() => import('@/views/agenda/RendezVous.vue'));
 
 const auth = useAuthStore();
 const toast = useToast();
 const confirm = useConfirm();
+const router = useRouter();
 const token = localStorage.getItem('token');
 const { printComponent } = usePrinter();
 const paymentMethodsStore = usePaymentMethodsStore();
@@ -51,6 +63,7 @@ const selectedConsultationId = ref(null);
 const selectedPatient = ref(null);
 const receptionRecentPatients = ref([]);
 const receptionBillingByConsultation = ref({});
+const receptionUnpaidByPatientId = ref({});
 const detailsDialogVisible = ref(false);
 const detailsLoading = ref(false);
 const detailData = ref(null);
@@ -63,6 +76,8 @@ const factureConsultation = ref(null);
 const paymentMethods = ref([]);
 const payDialogVisible = ref(false);
 const selectedFacture = ref(null);
+const payTabs = ref([]);
+const activePayTabId = ref(null);
 
 const todayApiDate = () => {
     const now = new Date();
@@ -101,6 +116,8 @@ const activeConsultWarnPatient = ref(null);
 const activeConsultInfo = ref({ hasActive: false, consultationId: null, hasFiche: false });
 const editPatientDialogVisible = ref(false);
 const patientToEdit = ref(null);
+const showRdvDialog = ref(false);
+const rdvPatient = ref(null);
 const initialized = ref(false);
 const isRealtimeRefreshing = ref(false);
 const hasInitialLoadCompleted = ref(false);
@@ -187,9 +204,15 @@ const currentReceptionInvoiceRow = computed(() => {
         date: currentConsultation.value.createdAt,
         montant: total,
         reste: remaining,
-        statut: remaining === 0 ? 1 : 0,
-        isRegle: remaining === 0,
+        statut: remaining === 0 && total > 0 ? 1 : 0,
+        isRegle: (total > 0 && remaining === 0)
+            || (total === 0 && remaining === 0 && currentReceptionBilling.value?.state?.severity === 'success'),
         patient: currentConsultation.value.patient,
+        patientId: Number(
+            currentConsultation.value.patientId
+            ?? currentConsultation.value.patient?.id
+            ?? 0
+        ) || null,
         telephone: currentConsultation.value.patient?.telephone || currentConsultation.value.patientPhone || '',
         insurance: {
             hasInsurance: insurancePayments.length > 0,
@@ -283,6 +306,15 @@ const patientOutstandingAmount = computed(() => {
     if (!selectedFacture.value) return 0;
     return Math.max(0, Number(selectedFacture.value.reste) || 0);
 });
+
+const activePayTab = computed(() =>
+    (payTabs.value || []).find((tab) => String(tab.id) === String(activePayTabId.value)) || null
+);
+const activePayTabMode = computed(() => activePayTab.value?.mode || 'pay');
+const priorReliquatTotal = computed(() =>
+    sumPriorReliquatFromTabs(payTabs.value, activePayTabId.value)
+);
+const hasPayReliquatTabs = computed(() => (payTabs.value || []).length > 1);
 const maxClientPaymentAmount = computed(() => {
     if (!selectedFacture.value) return 0;
     return Math.max(0, Number(selectedFacture.value.reste) || 0);
@@ -376,6 +408,7 @@ const clearSelection = () => {
 const resetReceptionFocusData = () => {
     receptionRecentPatients.value = [];
     receptionBillingByConsultation.value = {};
+    receptionUnpaidByPatientId.value = {};
 };
 
 const setCreateConsultationLoading = (patientId, value) => {
@@ -409,6 +442,7 @@ const loadConsultations = async ({ silent = false, realtime = false } = {}) => {
             consultations.value = payload.consultations;
             receptionRecentPatients.value = payload.recentPatients;
             receptionBillingByConsultation.value = payload.billingByConsultation;
+            receptionUnpaidByPatientId.value = payload.unpaidByPatientId || {};
         } else {
             consultations.value = await fetchConsultationsByDate(todayApiDate(), token);
             resetReceptionFocusData();
@@ -464,22 +498,113 @@ const loadPaymentMethods = async () => {
     paymentMethods.value = await paymentMethodsStore.load(token);
 };
 
-const openPayDialog = async () => {
-    if (!currentReceptionInvoiceRow.value) return;
-    selectedFacture.value = currentReceptionInvoiceRow.value;
-    await loadPaymentMethods();
+const syncPayFormForFacture = (row) => {
     const defaultClassicMethod = getDefaultClassicMethod(paymentMethods.value);
     payForm.value = {
-        montant: currentReceptionInvoiceRow.value.reste || 0,
-        modeId: defaultClassicMethod?.id ?? null,
+        montant: Number(row?.reste) || 0,
+        modeId: defaultClassicMethod?.id ?? payForm.value.modeId ?? null,
         date: todayApiDate(),
         time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', hour12: false })
     };
+};
+
+const selectPayTab = (tabId) => {
+    activePayTabId.value = tabId == null ? null : String(tabId);
+    const tab = (payTabs.value || []).find((item) => String(item.id) === String(activePayTabId.value));
+    if (!tab) return;
+    selectedFacture.value = tab.facture;
+    if (tab.mode === 'validate') {
+        pendingFacture.value = tab.facture;
+    }
+    if (tab.mode === 'pay') {
+        syncPayFormForFacture(tab.facture);
+    }
+};
+
+const closePayDialog = () => {
+    payDialogVisible.value = false;
+    payTabs.value = [];
+    activePayTabId.value = null;
+};
+
+const onPayDialogVisibleUpdate = (visible) => {
+    if (!visible) {
+        closePayDialog();
+        return;
+    }
     payDialogVisible.value = true;
 };
 
-const openValidateDialog = () => {
+const handleAfterInvoiceSettled = async () => {
+    const settledId = activePayTabId.value ?? String(selectedFacture.value?.id ?? '');
+    const hadReliquatTabs = hasPayReliquatTabs.value;
+
+    await loadConsultations();
+
+    if (!hadReliquatTabs) {
+        closePayDialog();
+        return;
+    }
+
+    const advanced = advanceAfterSettledTab(payTabs.value, settledId);
+    payTabs.value = advanced.tabs;
+    if (advanced.shouldClose || !advanced.nextTabId) {
+        closePayDialog();
+        return;
+    }
+    selectPayTab(advanced.nextTabId);
+};
+
+const openPayDialog = async ({ primaryMode = null } = {}) => {
     if (!currentReceptionInvoiceRow.value) return;
+    const row = {
+        ...currentReceptionInvoiceRow.value,
+        patientId: resolveFacturePatientId(currentReceptionInvoiceRow.value)
+            || Number(currentConsultation.value?.patientId ?? currentConsultation.value?.patient?.id ?? 0)
+            || null,
+    };
+    selectedFacture.value = row;
+    await loadPaymentMethods();
+
+    const patientId = resolveFacturePatientId(row);
+    let unpaidRows = [];
+    if (patientId) {
+        try {
+            unpaidRows = await fetchUnpaidFacturesByPatient(patientId, token);
+        } catch (_) {
+            unpaidRows = [];
+        }
+    }
+
+    const mode = primaryMode
+        || ((Number(row?.reste) || 0) === 0 && !row?.isRegle ? 'validate' : 'pay');
+    payTabs.value = buildPayTabs(row, unpaidRows, { primaryMode: mode });
+    activePayTabId.value = String(row.id);
+    pendingFacture.value = mode === 'validate' ? row : null;
+    syncPayFormForFacture(row);
+    payDialogVisible.value = true;
+};
+
+const openValidateDialog = async () => {
+    if (!currentReceptionInvoiceRow.value) return;
+
+    const patientId = resolveFacturePatientId(currentReceptionInvoiceRow.value)
+        || Number(currentConsultation.value?.patientId ?? currentConsultation.value?.patient?.id ?? 0)
+        || null;
+
+    if (patientId) {
+        try {
+            const unpaidRows = await fetchUnpaidFacturesByPatient(patientId, token);
+            const tabs = buildPayTabs(currentReceptionInvoiceRow.value, unpaidRows, { primaryMode: 'validate' });
+            if (tabs.length > 1) {
+                await openPayDialog({ primaryMode: 'validate' });
+                return;
+            }
+        } catch (_) {
+            // fall through to simple validate dialog
+        }
+    }
+
     pendingFacture.value = currentReceptionInvoiceRow.value;
     validateDialogVisible.value = true;
 };
@@ -530,13 +655,28 @@ const submitPayment = async () => {
     payLoading.value = true;
     try {
         const canPrintClientReceipt = montant > 0;
-        const res = await payFacture(selectedFacture.value.id, {
-            montant,
-            modeId: payForm.value.modeId,
-            date: payForm.value.date,
-            time: payForm.value.time
-        }, token);
-        payDialogVisible.value = false;
+        const isInsured = isInsuranceFactureRow(selectedFacture.value);
+        const settledFully = montant >= max;
+        let res;
+
+        if (isInsured) {
+            const claimId = selectedFacture.value.factureAssuranceId
+                || selectedFacture.value.insurance?.factureAssuranceId
+                || selectedFacture.value.id;
+            res = await payInsurancePatientShare(claimId, {
+                modeId: payForm.value.modeId,
+                date: `${payForm.value.date}T${payForm.value.time}`,
+                amount: montant
+            }, token);
+        } else {
+            res = await payFacture(selectedFacture.value.id, {
+                montant,
+                modeId: payForm.value.modeId,
+                date: payForm.value.date,
+                time: payForm.value.time
+            }, token);
+        }
+
         const paymentId = res?.paiement_id ?? res?.paiementId ?? null;
         toast.add({
             severity: 'success',
@@ -550,7 +690,14 @@ const submitPayment = async () => {
                 }
                 : undefined
         });
-        await loadConsultations();
+
+        if (settledFully) {
+            await handleAfterInvoiceSettled();
+        } else {
+            payTabs.value = applyPartialPaymentToTab(payTabs.value, activePayTabId.value, montant);
+            selectPayTab(activePayTabId.value);
+            await loadConsultations();
+        }
     } catch (_) {
         toast.add({ severity: 'error', summary: 'Paiement', detail: 'Enregistrement impossible', life: 3500 });
     } finally {
@@ -581,7 +728,7 @@ const resetSelectedDevisPayments = async () => {
     try {
         await resetFacturePayments(factureId, token);
         resetPaymentDialogVisible.value = false;
-        payDialogVisible.value = false;
+        closePayDialog();
         toast.add({ severity: 'success', summary: 'Facture', detail: 'Facture réinitialisée.', life: 3000 });
         await loadConsultations();
         await reloadFacturePreview(factureId);
@@ -597,13 +744,32 @@ const resetSelectedDevisPayments = async () => {
 };
 
 const confirmValidate = async () => {
-    if (!pendingFacture.value) return;
+    const target = pendingFacture.value || selectedFacture.value;
+    if (!target) return;
     validateLoading.value = true;
+    const fromPayDialog = payDialogVisible.value;
     try {
-        await validateEmptyFacture(pendingFacture.value.id, token);
+        const isInsured = isInsuranceFactureRow(target);
+        if (isInsured) {
+            await loadPaymentMethods();
+            const claimId = target.factureAssuranceId || target.insurance?.factureAssuranceId || target.id;
+            const classicMethod = getDefaultClassicMethod(paymentMethods.value);
+            await payInsurancePatientShare(claimId, {
+                modeId: classicMethod?.id,
+                date: new Date().toISOString(),
+                amount: 0
+            }, token);
+        } else {
+            await validateEmptyFacture(target.id, token);
+        }
         validateDialogVisible.value = false;
         toast.add({ severity: 'success', summary: 'Validation', detail: 'Facture vide validée.', life: 3000 });
-        await loadConsultations();
+
+        if (fromPayDialog) {
+            await handleAfterInvoiceSettled();
+        } else {
+            await loadConsultations();
+        }
     } catch (_) {
         toast.add({ severity: 'error', summary: 'Validation', detail: 'Échec de la validation', life: 3500 });
     } finally {
@@ -689,6 +855,23 @@ const handlePatientSaved = async (patient) => {
         selectedPatient.value = mergePatientForCard(patient);
     }
     await loadConsultations();
+};
+
+const openCreateRdvForPatient = (patient) => {
+    rdvPatient.value = patient || null;
+    showRdvDialog.value = true;
+};
+
+const handleRdvSaved = () => {
+    showRdvDialog.value = false;
+    rdvPatient.value = null;
+    toast.add({ severity: 'success', summary: 'Rendez-vous', detail: 'Rendez-vous créé avec succès.', life: 2500 });
+};
+
+const openPatientDossier = (patient) => {
+    const patientId = Number(patient?.id);
+    if (!patientId) return;
+    router.push({ name: 'patients-dossier', params: { patientId } });
 };
 
 const openCreateConsultationDialog = () => {
@@ -984,6 +1167,7 @@ onBeforeUnmount(() => {
                 :consultations="consultations"
                 :recent-patients="receptionRecentPatients"
                 :billing-by-consultation="receptionBillingByConsultation"
+                :unpaid-by-patient-id="receptionUnpaidByPatientId"
                 :loading="showFocusSkeleton"
                 :consultation-toolbar-loading="consultationToolbarLoading"
                 :consultation-loading-by-patient="createConsultationLoading"
@@ -998,6 +1182,8 @@ onBeforeUnmount(() => {
                 @open-create-consultation="openCreateConsultationDialog"
                 @open-create-consultation-for-patient="openCreateConsultationDialogForPatient"
                 @open-edit-patient="(patient) => { patientToEdit = patient; editPatientDialogVisible = true; }"
+                @open-create-rdv-for-patient="openCreateRdvForPatient"
+                @open-patient-dossier="openPatientDossier"
                 @open-caisse-pay="openPayDialog"
                 @open-caisse-validate="openValidateDialog"
                 @open-caisse-modify="openModifyDialog"
@@ -1049,6 +1235,10 @@ onBeforeUnmount(() => {
                 :remaining-after-pay="remainingAfterPay"
                 :can-reset-invoice-payments="canResetInvoicePayments"
                 :pay-loading="payLoading"
+                :pay-tabs="payTabs"
+                :active-pay-tab-id="activePayTabId"
+                :prior-reliquat-total="priorReliquatTotal"
+                :active-pay-tab-mode="activePayTabMode"
                 :reset-payment-dialog-visible="resetPaymentDialogVisible"
                 :reset-payments-loading="resetPaymentsLoading"
                 :validate-dialog-visible="validateDialogVisible"
@@ -1069,7 +1259,8 @@ onBeforeUnmount(() => {
                 :format-fcfa="formatFcfa"
                 :preview-payment-mode-tag="previewPaymentModeTag"
                 :preview-payment-role-tag="previewPaymentRoleTag"
-                @update:payDialogVisible="payDialogVisible = $event"
+                @update:payDialogVisible="onPayDialogVisibleUpdate"
+                @update:activePayTabId="selectPayTab"
                 @update:resetPaymentDialogVisible="resetPaymentDialogVisible = $event"
                 @update:validateDialogVisible="validateDialogVisible = $event"
                 @update:factureDialogVisible="factureDialogVisible = $event"
@@ -1156,6 +1347,27 @@ onBeforeUnmount(() => {
                     </div>
                 </template>
                 <FormPatient :patient="patientToEdit" @saved="handlePatientSaved" @cancel="editPatientDialogVisible = false; patientToEdit = null" />
+            </Dialog>
+            <Dialog v-model:visible="showRdvDialog" modal :style="{ width: '50rem' }">
+                <template #header>
+                    <div class="flex items-center gap-3">
+                        <div class="rounded-lg bg-blue-100 p-2 dark:bg-blue-900/30">
+                            <i class="fas fa-calendar-plus text-blue-600 dark:text-blue-400"></i>
+                        </div>
+                        <div>
+                            <h4 class="m-0 text-surface-900 dark:text-surface-100">Nouveau rendez-vous</h4>
+                            <p class="mt-1 text-sm text-surface-500 dark:text-surface-400">
+                                {{ rdvPatient?.fullname || `${rdvPatient?.prenom ?? ''} ${rdvPatient?.nom ?? ''}`.trim() || 'Patient' }}
+                            </p>
+                        </div>
+                    </div>
+                </template>
+                <FormRendezVous
+                    :patient="rdvPatient"
+                    :patient-id="rdvPatient?.id"
+                    @saved="handleRdvSaved"
+                    @cancel="showRdvDialog = false; rdvPatient = null"
+                />
             </Dialog>
         </div>
     </section>

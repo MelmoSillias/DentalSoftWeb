@@ -40,6 +40,7 @@ use App\Settings\Service\GlobalSettingsService;
 use DateTime;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
+use App\Billing\Repository\FactureRepository;
 use App\Billing\Service\CashdeskEntryPointService;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
@@ -155,6 +156,7 @@ class PatientService
         private UserRepository $userRepo,
         private UserPasswordHasherInterface $passwordHasher,
         private CashdeskEntryPointService $cashdeskService,
+        private FactureRepository $factureRepo,
         private FicheMedicaleService $ficheMedicaleService,
         private SmsService $smsService,
         private SmsQueueRepository $smsQueueRepository,
@@ -199,11 +201,18 @@ class PatientService
         return $patient;
     }
 
-    private function formatPatientSummary(Patient $patient): array
+    /**
+     * @param array<int, int>|null $impayeesByPatientId
+     */
+    private function formatPatientSummary(Patient $patient, ?array $impayeesByPatientId = null): array
     {
         $contact = $patient->getContactUrgence();
         $consultation = $this->resolveLatestConsultation($patient);
         $photo = $this->resolvePatientPhoto($patient);
+        $patientId = (int) $patient->getId();
+        $impayees = $impayeesByPatientId !== null
+            ? (int) ($impayeesByPatientId[$patientId] ?? 0)
+            : $this->getPatientImpayees($patientId);
 
         return [
             'id' => $patient->getId(),
@@ -235,12 +244,31 @@ class PatientService
                 'motif' => $consultation->getNoteSeance(),
                 'statut' => $consultation->getStatut(),
             ] : null,
-            'impayees' => $this->getPatientImpayees($patient->getId()),
+            'impayees' => $impayees,
             'archiveFiles' => $patient->getArchiveFiles() ? array_map(fn (array $file) => [
                 'nom' => $file['nom'] ?? 'Fichier',
                 'url' => $file['url'] ?? null,
             ], $patient->getArchiveFiles()) : [],
         ];
+    }
+
+    /**
+     * @param list<Patient> $patients
+     * @return list<array>
+     */
+    private function formatPatientSummaries(array $patients): array
+    {
+        if ($patients === []) {
+            return [];
+        }
+
+        $ids = array_map(static fn (Patient $patient): int => (int) $patient->getId(), $patients);
+        $impayeesByPatientId = $this->factureRepo->sumUnpaidResteByPatientIds($ids);
+
+        return array_map(
+            fn (Patient $patient) => $this->formatPatientSummary($patient, $impayeesByPatientId),
+            $patients,
+        );
     }
 
     private function resolvePatientPhoto(Patient $patient): ?string
@@ -283,12 +311,9 @@ class PatientService
 
     public function getPatientImpayees(int $id): int
     {
-        $factures = $this->cashdeskService->getClassicWorkflow()->listFacturesImpayeesByPatient($id);
-        $impayees = 0;
-        foreach ($factures as $facture) {
-            $impayees += $facture['reste'];
-        }
-        return $impayees;
+        $sums = $this->factureRepo->sumUnpaidResteByPatientIds([$id]);
+
+        return (int) ($sums[$id] ?? 0);
     }
 
     private function resolveMedecinFromUser(?object $user): array
@@ -333,7 +358,7 @@ class PatientService
                 ? $this->patientRepo->findPatientsByMedecin($medecin, $query, $sortField, $resolvedSortOrder)
                 : $this->patientRepo->findBy(['deletedAt' => null], ['nom' => 'ASC']);
 
-            return array_values(array_map(fn (Patient $patient) => $this->formatPatientSummary($patient), $patients));
+            return array_values($this->formatPatientSummaries($patients));
         }
 
         $cacheScope = $medecinOnly ? sprintf('medecin.%d', $medecin->getId()) : 'global';
@@ -354,7 +379,7 @@ class PatientService
                 ? $this->patientRepo->paginatePatientsByMedecin($medecin, $resolvedPage, $resolvedLimit, $query, $sortField, $resolvedSortOrder)
                 : $this->patientRepo->paginatePatients($resolvedPage, $resolvedLimit, $query, $sortField, $resolvedSortOrder);
 
-            $items = array_map(fn (Patient $patient) => $this->formatPatientSummary($patient), $result['items']);
+            $items = $this->formatPatientSummaries($result['items']);
 
             return [
                 'items' => $items,
@@ -412,10 +437,15 @@ class PatientService
         $resolvedLimit = max(1, min($limit, 100));
 
         $result = $this->patientRepo->paginateDeletedPatients($resolvedPage, $resolvedLimit, $query);
-        $items = array_map(fn (Patient $patient) => [
-            ...$this->formatPatientSummary($patient),
-            'deletedAt' => $patient->getDeletedAt()?->format('Y-m-d H:i:s'),
-        ], $result['items']);
+        $summaries = $this->formatPatientSummaries($result['items']);
+        $items = [];
+        foreach ($summaries as $index => $summary) {
+            $patient = $result['items'][$index] ?? null;
+            $items[] = [
+                ...$summary,
+                'deletedAt' => $patient?->getDeletedAt()?->format('Y-m-d H:i:s'),
+            ];
+        }
 
         return [
             'items' => $items,
@@ -898,15 +928,20 @@ public function removeArchiveFile(int $patientId, string $fileUrl): array
             ->getQuery()
             ->getArrayResult();
 
-        return array_map(function (array $row) {
+        $ids = array_map(static fn (array $row): int => (int) $row['id'], $rows);
+        $impayeesByPatientId = $this->factureRepo->sumUnpaidResteByPatientIds($ids);
+
+        return array_map(function (array $row) use ($impayeesByPatientId) {
             $fullname = trim(($row['prenom'] ?? '') . ' ' . ($row['nom'] ?? ''));
+            $id = (int) $row['id'];
 
             return [
-                'id' => $row['id'],
+                'id' => $id,
                 'nom' => $row['nom'] ?? '',
                 'prenom' => $row['prenom'] ?? '',
                 'fullname' => $fullname,
                 'telephone' => $row['telephone'] ?? '',
+                'impayees' => (int) ($impayeesByPatientId[$id] ?? 0),
             ];
         }, $rows);
     });

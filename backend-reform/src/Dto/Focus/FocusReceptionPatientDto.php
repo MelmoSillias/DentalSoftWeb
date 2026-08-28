@@ -11,6 +11,7 @@ final class FocusReceptionPatientDto
         private string $fullname,
         private ?string $telephone,
         private ?string $createdAt,
+        private int $impayees = 0,
     ) {
     }
 
@@ -23,6 +24,7 @@ final class FocusReceptionPatientDto
             'fullname' => $this->fullname,
             'telephone' => $this->telephone,
             'createdAt' => $this->createdAt,
+            'impayees' => $this->impayees,
         ];
     }
 }

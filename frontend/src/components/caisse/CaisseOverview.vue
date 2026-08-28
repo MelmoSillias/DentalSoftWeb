@@ -547,9 +547,14 @@ const printDetailPayment = (row) => {
                                 <!-- Info patient -->
                                 <div class="inv-patient-block">
                                     <p class="inv-patient-name">
-                                        {{ (invoice.patient && typeof invoice.patient === 'object'
+                                        <span>{{ (invoice.patient && typeof invoice.patient === 'object'
                                             ? `${invoice.patient.nom || ''} ${invoice.patient.prenom || ''}`.trim()
-                                            : invoice.patient) || '—' }}
+                                            : invoice.patient) || '—' }}</span>
+                                        <i
+                                            v-if="Number(invoice.priorReliquat || 0) > 0"
+                                            v-tooltip.top="`Reliquat : ${Number(invoice.priorReliquat || 0).toLocaleString('fr-FR')} FCFA`"
+                                            class="pi pi-wallet inv-reliquat-icon"
+                                        ></i>
                                     </p>
                                     <div class="inv-patient-meta">
                                         <span><i class="pi pi-phone"></i> {{ displayPhone(invoice.telephone) }}</span>
@@ -1299,6 +1304,14 @@ const printDetailPayment = (row) => {
     font-size: 1.15rem;
     font-weight: 700;
     color: var(--text-color);
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.inv-patient-name .inv-reliquat-icon {
+    color: #ef4444;
+    font-size: 0.85rem;
 }
 
 .inv-patient-meta {

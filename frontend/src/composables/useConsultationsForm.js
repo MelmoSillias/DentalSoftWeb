@@ -255,11 +255,39 @@ export const useConsultationsForm = ({ ficheId, consultId, token, mode: _mode })
         saving[key] = value;
     };
 
+    const ALL_DIRTY_KEYS = ['entretien', 'examens', 'documents', 'bilans', 'planTraitement', 'devis', 'consult', 'ordonnances'];
+
     const clearDirty = (keys) => {
         keys.forEach((k) => {
             if (dirty[k] !== undefined) dirty[k] = false;
         });
         lastSavedAt.value = new Date();
+    };
+
+    /**
+     * Attend que les watchers profonds et les effets de montage des sections
+     * (normalisations UI) se terminent avant d'activer la détection dirty.
+     * Sans ça, un simple chargement marque la fiche comme "Modifié".
+     */
+    const armDirtyTracking = async () => {
+        ignoreNextDirty = true;
+        readyForDirty.value = false;
+        await nextTick();
+        await nextTick();
+        clearDirty(ALL_DIRTY_KEYS);
+        ignoreNextDirty = false;
+        readyForDirty.value = true;
+    };
+
+    /** Exécute une mutation programmatique sans la compter comme dirty. */
+    const runWithoutDirtyTracking = async (fn) => {
+        ignoreNextDirty = true;
+        try {
+            await fn();
+            await nextTick();
+        } finally {
+            ignoreNextDirty = false;
+        }
     };
 
     const scheduleAutosave = (saveAll) => {
@@ -404,8 +432,9 @@ export const useConsultationsForm = ({ ficheId, consultId, token, mode: _mode })
             actes: s.actes ?? []
         })) : [];
 
-        ignoreNextDirty = false;
-        clearDirty(['entretien', 'examens', 'documents', 'bilans', 'planTraitement', 'devis', 'consult', 'ordonnances']);
+        // ignoreNextDirty reste true jusqu'à armDirtyTracking() pour absorber
+        // les flushes asynchrones des watchers profonds après réassignation.
+        clearDirty(ALL_DIRTY_KEYS);
         sectionInitKey.value += 1;
     };
 
@@ -413,6 +442,7 @@ export const useConsultationsForm = ({ ficheId, consultId, token, mode: _mode })
         if (!ficheId.value && !consultId.value) return;
         loading.value = true;
         readyForDirty.value = false;
+        ignoreNextDirty = true;
         try {
             await loadReferenceData();
 
@@ -424,6 +454,10 @@ export const useConsultationsForm = ({ ficheId, consultId, token, mode: _mode })
                         ...defaultConsultation(),
                         type: consult.type ?? '',
                         medecinId: consult.medecinId ?? null,
+                        infirmierIds: Array.isArray(consult.infirmierIds)
+                            ? consult.infirmierIds
+                            : (consult.infirmierId != null ? [consult.infirmierId] : []),
+                        salleId: consult.salleId ?? null,
                         noteSeance: consult.noteSeance ?? '',
                         actes: Array.isArray(consult.actes) ? consult.actes.map((acte) => normalizeActeEntry(acte)) : []
                     };
@@ -457,7 +491,9 @@ export const useConsultationsForm = ({ ficheId, consultId, token, mode: _mode })
             hydrateFromFiche(recovered?.data);
         } finally {
             loading.value = false;
-            readyForDirty.value = true;
+            // Laisse le temps aux sections (v-if sur loading) de monter et de
+            // normaliser leurs modèles sans marquer dirty.
+            await armDirtyTracking();
         }
     };
 
@@ -578,14 +614,23 @@ export const useConsultationsForm = ({ ficheId, consultId, token, mode: _mode })
             await saveDevis(ficheId.value, payload, token);
 
             // Refresh devis identifiers from server so newly saved entries become printable immediately.
-            const refreshed = await loadFicheMedicale(ficheId.value, token);
+            const recovered = await loadFicheWithRecovery({
+                ficheId: ficheId.value,
+                consultId: consultId.value,
+                patientId: data.patient?.id || null,
+                token
+            });
+            if (recovered?.ficheId) {
+                ficheId.value = recovered.ficheId;
+            }
             const requestedActiveIndex = Number(data.devis?.activeDevisIndex) || 0;
 
             // La réassignation de data.devis déclenche le watcher profond de façon asynchrone.
             // Sans ce garde-fou, markDirty() repasserait dirty.devis à true APRÈS clearDirty(),
             // laissant la section marquée "Modifié" malgré la sauvegarde réussie.
             ignoreNextDirty = true;
-            data.devis = hydrateDevisModelFromFiche(refreshed, requestedActiveIndex);
+            data.devis = hydrateDevisModelFromFiche(recovered?.data, requestedActiveIndex);
+            await nextTick();
             await nextTick();
             ignoreNextDirty = false;
 
@@ -673,6 +718,8 @@ export const useConsultationsForm = ({ ficheId, consultId, token, mode: _mode })
         savingCount,
         dirtySectionsList,
         loadData,
+        armDirtyTracking,
+        runWithoutDirtyTracking,
         watchSection,
         setSaving,
         clearDirty,

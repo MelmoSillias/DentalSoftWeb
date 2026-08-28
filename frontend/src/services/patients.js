@@ -57,6 +57,7 @@ export const normalizePatient = (raw = {}) => ({
     insuranceProfile: raw.insuranceProfile ?? raw.assuranceProfile ?? null,
     portalAccount: raw.portalAccount ?? null,
     derniereConsultation: raw.derniereConsultation ?? raw.derniere_consultation ?? null,
+    impayees: Number(raw.impayees ?? raw.reliquat ?? 0) || 0,
     archiveFiles: Array.isArray(raw.archiveFiles) ? raw.archiveFiles : []
 });
 

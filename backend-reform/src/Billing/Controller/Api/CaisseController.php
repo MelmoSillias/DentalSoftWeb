@@ -116,7 +116,17 @@ class CaisseController extends AbstractController
             $end = (clone $start)->setTime(23, 59, 59);
         }
 
-        return new JsonResponse($this->entryPoint->getClassicWorkflow()->listFacturesImpayees($start, $end));
+        $rows = $this->entryPoint->getClassicWorkflow()->listFacturesImpayees($start, $end);
+
+        return new JsonResponse($this->entryPoint->enrichFacturesWithPatientReliquat($rows));
+    }
+
+    #[Route('/api/factures/unpaid-by-patient/{patientId}', name: 'api_factures_unpaid_by_patient', methods: ['GET'], requirements: ['patientId' => '\d+'])]
+    public function getFacturesImpayeesByPatient(int $patientId): JsonResponse
+    {
+        return new JsonResponse([
+            'data' => $this->entryPoint->listUnpaidFacturesByPatient($patientId),
+        ]);
     }
 
     #[Route('/api/factures/payments', name: 'api_factures_payments', methods: ['GET'])]

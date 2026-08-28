@@ -4,6 +4,7 @@ namespace App\Billing\Service;
 
 use App\Billing\Dto\CashdeskFactureListDto;
 use App\Billing\Entity\Paiement;
+use App\Billing\Repository\FactureRepository;
 use App\Billing\Repository\ModeDePaiementRepository;
 use App\Billing\Repository\PaiementRepository;
 use App\Billing\Service\Workflow\ClassicInvoiceWorkflowService;
@@ -18,6 +19,7 @@ class CashdeskEntryPointService
         private InsuredInvoiceWorkflowService $insuredWorkflow,
         private PaiementRepository $paiementRepo,
         private ModeDePaiementRepository $modeRepo,
+        private FactureRepository $factureRepo,
     ) {
     }
 
@@ -38,7 +40,102 @@ class CashdeskEntryPointService
         $classiques = $this->classicWorkflow->listFacturesByPeriod($start, $end);
         $assurances = $this->insuredWorkflow->listFacturesAssuranceForCashdesk($start, $end);
 
-        return new CashdeskFactureListDto($classiques, $assurances);
+        return new CashdeskFactureListDto(
+            $this->enrichFacturesWithPatientReliquat($classiques),
+            $this->enrichFacturesWithPatientReliquat($assurances),
+        );
+    }
+
+    /**
+     * Factures impayées pay-ready pour un patient (classiques + assurance).
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function listUnpaidFacturesByPatient(int $patientId): array
+    {
+        if ($patientId <= 0) {
+            return [];
+        }
+
+        $summaries = $this->factureRepo->listUnpaidSummariesByPatientIds([$patientId])[$patientId] ?? [];
+        $rows = [];
+
+        foreach ($summaries as $summary) {
+            $type = (string) ($summary['type'] ?? 'classic');
+            if ($type === 'assurance') {
+                $faId = (int) ($summary['factureAssuranceId'] ?? 0);
+                if ($faId <= 0) {
+                    continue;
+                }
+                $row = $this->insuredWorkflow->mapFactureAssuranceToCashdeskRow($faId);
+                if ($row !== null) {
+                    $rows[] = $row;
+                }
+                continue;
+            }
+
+            $factureId = (int) ($summary['id'] ?? 0);
+            if ($factureId <= 0) {
+                continue;
+            }
+            $detail = $this->classicWorkflow->previewFactureDetail($factureId);
+            if ($detail !== null) {
+                // List shape without heavy details
+                $detail['contenus'] = [];
+                $detail['paiements'] = [];
+                $rows[] = $detail;
+            }
+        }
+
+        return $this->enrichFacturesWithPatientReliquat($rows);
+    }
+
+    /**
+     * @param list<array<string, mixed>> $rows
+     * @return list<array<string, mixed>>
+     */
+    public function enrichFacturesWithPatientReliquat(array $rows): array
+    {
+        $patientIds = [];
+        foreach ($rows as $row) {
+            $patientId = $this->resolveRowPatientId($row);
+            if ($patientId > 0) {
+                $patientIds[] = $patientId;
+            }
+        }
+
+        $sums = $this->factureRepo->sumUnpaidResteByPatientIds($patientIds);
+
+        foreach ($rows as &$row) {
+            $patientId = $this->resolveRowPatientId($row);
+            $total = (int) ($sums[$patientId] ?? 0);
+            $reste = (float) ($row['reste'] ?? 0);
+            $row['patientId'] = $patientId > 0 ? $patientId : null;
+            $row['patientImpayees'] = $total;
+            $row['priorReliquat'] = max(0, $total - (int) round($reste));
+
+            if (is_array($row['patient'] ?? null) && $patientId > 0) {
+                $row['patient']['id'] = $row['patient']['id'] ?? $patientId;
+            }
+        }
+        unset($row);
+
+        return $rows;
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     */
+    private function resolveRowPatientId(array $row): int
+    {
+        if (isset($row['patientId']) && (int) $row['patientId'] > 0) {
+            return (int) $row['patientId'];
+        }
+        if (is_array($row['patient'] ?? null) && isset($row['patient']['id'])) {
+            return (int) $row['patient']['id'];
+        }
+
+        return 0;
     }
 
     // ── Cross-workflow payment listings ────────────────────────────────

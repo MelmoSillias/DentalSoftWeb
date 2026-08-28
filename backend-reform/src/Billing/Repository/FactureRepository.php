@@ -6,6 +6,7 @@ use App\Billing\Entity\Facture;
 use App\Patient\Entity\Patient;
 use DateTimeInterface;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\Persistence\ManagerRegistry;
 
 /**
@@ -155,5 +156,239 @@ class FactureRepository extends ServiceEntityRepository
             ->addOrderBy('f.id', 'DESC')
             ->getQuery()
             ->getResult();
+    }
+
+    /**
+     * Totaux de reliquat (reste > 0) par patient, une seule requête.
+     *
+     * @param list<int> $patientIds
+     * @return array<int, int> patientId => somme des restes
+     */
+    public function sumUnpaidResteByPatientIds(array $patientIds): array
+    {
+        $patientIds = array_values(array_unique(array_filter(
+            array_map(static fn ($id): int => (int) $id, $patientIds),
+            static fn (int $id): bool => $id > 0,
+        )));
+
+        if ($patientIds === []) {
+            return [];
+        }
+
+        $conn = $this->getEntityManager()->getConnection();
+        $resteExpr = $this->unpaidResteSqlExpression();
+
+        $sql = <<<SQL
+            SELECT c.patient_id AS patient_id,
+                   SUM({$resteExpr}) AS reliquat
+            FROM facture f
+            INNER JOIN consultation c ON c.id = f.consultation_id
+            LEFT JOIN facture_assurance fa ON fa.consultation_id = c.id
+            LEFT JOIN (
+                SELECT a.consultation_id,
+                       SUM(GREATEST(COALESCE(a.quantite, 1), 1) * COALESCE(a.prix, 0)) AS actes_total
+                FROM acte_medical a
+                GROUP BY a.consultation_id
+            ) actes ON actes.consultation_id = c.id
+            WHERE c.patient_id IN (:patientIds)
+              AND ({$resteExpr}) > 0
+            GROUP BY c.patient_id
+        SQL;
+
+        $rows = $conn->fetchAllAssociative(
+            $sql,
+            [
+                'validated' => 'validated',
+                'patientIds' => $patientIds,
+            ],
+            [
+                'patientIds' => ArrayParameterType::INTEGER,
+            ],
+        );
+
+        $result = [];
+        foreach ($rows as $row) {
+            $result[(int) $row['patient_id']] = (int) round((float) $row['reliquat']);
+        }
+
+        return $result;
+    }
+
+    /**
+     * Résumés des factures impayées groupés par patient.
+     *
+     * @param list<int> $patientIds
+     * @return array<int, list<array{id: int, date: ?string, consultationId: int, montantPatient: float, reste: float, type: string, factureAssuranceId: ?int}>>
+     */
+    public function listUnpaidSummariesByPatientIds(array $patientIds): array
+    {
+        $patientIds = array_values(array_unique(array_filter(
+            array_map(static fn ($id): int => (int) $id, $patientIds),
+            static fn (int $id): bool => $id > 0,
+        )));
+
+        if ($patientIds === []) {
+            return [];
+        }
+
+        $conn = $this->getEntityManager()->getConnection();
+        $resteExpr = $this->unpaidResteSqlExpression();
+        $montantPatientExpr = $this->unpaidMontantPatientSqlExpression();
+
+        $sql = <<<SQL
+            SELECT f.id AS id,
+                   f.date_facture AS date_facture,
+                   c.id AS consultation_id,
+                   c.patient_id AS patient_id,
+                   fa.id AS facture_assurance_id,
+                   ({$montantPatientExpr}) AS montant_patient,
+                   ({$resteExpr}) AS reste,
+                   CASE WHEN fa.id IS NOT NULL THEN 'assurance' ELSE 'classic' END AS type
+            FROM facture f
+            INNER JOIN consultation c ON c.id = f.consultation_id
+            LEFT JOIN facture_assurance fa ON fa.consultation_id = c.id
+            LEFT JOIN (
+                SELECT a.consultation_id,
+                       SUM(GREATEST(COALESCE(a.quantite, 1), 1) * COALESCE(a.prix, 0)) AS actes_total
+                FROM acte_medical a
+                GROUP BY a.consultation_id
+            ) actes ON actes.consultation_id = c.id
+            WHERE c.patient_id IN (:patientIds)
+              AND ({$resteExpr}) > 0
+            ORDER BY f.date_facture ASC, f.id ASC
+        SQL;
+
+        $rows = $conn->fetchAllAssociative(
+            $sql,
+            [
+                'validated' => 'validated',
+                'patientIds' => $patientIds,
+            ],
+            [
+                'patientIds' => ArrayParameterType::INTEGER,
+            ],
+        );
+
+        $grouped = [];
+        foreach ($rows as $row) {
+            $patientId = (int) $row['patient_id'];
+            $dateRaw = $row['date_facture'] ?? null;
+            $date = null;
+            if ($dateRaw instanceof \DateTimeInterface) {
+                $date = $dateRaw->format(DATE_ATOM);
+            } elseif (is_string($dateRaw) && $dateRaw !== '') {
+                try {
+                    $date = (new \DateTimeImmutable($dateRaw))->format(DATE_ATOM);
+                } catch (\Exception) {
+                    $date = $dateRaw;
+                }
+            }
+
+            $faId = isset($row['facture_assurance_id']) && $row['facture_assurance_id'] !== null
+                ? (int) $row['facture_assurance_id']
+                : null;
+
+            $grouped[$patientId][] = [
+                'id' => (int) $row['id'],
+                'date' => $date,
+                'consultationId' => (int) $row['consultation_id'],
+                'montantPatient' => (float) $row['montant_patient'],
+                'reste' => (float) $row['reste'],
+                'type' => (string) ($row['type'] ?? 'classic'),
+                'factureAssuranceId' => $faId,
+            ];
+        }
+
+        return $grouped;
+    }
+
+    private function unpaidResteSqlExpression(): string
+    {
+        return <<<'SQL'
+            CASE
+                WHEN fa.id IS NOT NULL THEN
+                    GREATEST(0,
+                        (
+                            COALESCE(actes.actes_total, 0)
+                            + CASE
+                                WHEN fa.is_consultation_payante = 1 THEN COALESCE(fa.consultation_amount, 0)
+                                ELSE 0
+                              END
+                        )
+                        - CASE
+                            WHEN fa.coverage_rate IS NULL THEN 0
+                            ELSE LEAST(
+                                COALESCE(actes.actes_total, 0)
+                                + CASE
+                                    WHEN fa.is_consultation_payante = 1 THEN COALESCE(fa.consultation_amount, 0)
+                                    ELSE 0
+                                  END,
+                                (
+                                    COALESCE(actes.actes_total, 0)
+                                    + CASE
+                                        WHEN fa.is_consultation_payante = 1 THEN COALESCE(fa.consultation_amount, 0)
+                                        ELSE 0
+                                      END
+                                ) * GREATEST(0, LEAST(100, fa.coverage_rate)) / 100
+                            )
+                          END
+                        - COALESCE((
+                            SELECT SUM(p2.montant)
+                            FROM paiement p2
+                            LEFT JOIN transaction t ON t.paiement_id = p2.id
+                            WHERE p2.facture_assurance_id = fa.id
+                              AND (t.id IS NULL OR t.validation_status = :validated)
+                        ), 0)
+                    )
+                ELSE
+                    GREATEST(0,
+                        COALESCE(actes.actes_total, 0)
+                        - COALESCE((
+                            SELECT SUM(p.montant)
+                            FROM paiement p
+                            LEFT JOIN transaction t ON t.paiement_id = p.id
+                            WHERE p.facture_id = f.id
+                              AND (t.id IS NULL OR t.validation_status = :validated)
+                        ), 0)
+                    )
+            END
+        SQL;
+    }
+
+    private function unpaidMontantPatientSqlExpression(): string
+    {
+        return <<<'SQL'
+            CASE
+                WHEN fa.id IS NOT NULL THEN
+                    GREATEST(0,
+                        (
+                            COALESCE(actes.actes_total, 0)
+                            + CASE
+                                WHEN fa.is_consultation_payante = 1 THEN COALESCE(fa.consultation_amount, 0)
+                                ELSE 0
+                              END
+                        )
+                        - CASE
+                            WHEN fa.coverage_rate IS NULL THEN 0
+                            ELSE LEAST(
+                                COALESCE(actes.actes_total, 0)
+                                + CASE
+                                    WHEN fa.is_consultation_payante = 1 THEN COALESCE(fa.consultation_amount, 0)
+                                    ELSE 0
+                                  END,
+                                (
+                                    COALESCE(actes.actes_total, 0)
+                                    + CASE
+                                        WHEN fa.is_consultation_payante = 1 THEN COALESCE(fa.consultation_amount, 0)
+                                        ELSE 0
+                                      END
+                                ) * GREATEST(0, LEAST(100, fa.coverage_rate)) / 100
+                            )
+                          END
+                    )
+                ELSE
+                    COALESCE(actes.actes_total, 0)
+            END
+        SQL;
     }
 }

@@ -5,6 +5,9 @@ import Dialog from 'primevue/dialog';
 import InputNumber from 'primevue/inputnumber';
 import InputText from 'primevue/inputtext';
 import Select from 'primevue/select';
+import Tab from 'primevue/tab';
+import TabList from 'primevue/tablist';
+import Tabs from 'primevue/tabs';
 import Tag from 'primevue/tag';
 import { computed } from 'vue';
 import { normalizeDentList } from '@/services/consultations';
@@ -24,6 +27,10 @@ const props = defineProps({
     remainingAfterPay: { type: Number, default: 0 },
     canResetInvoicePayments: { type: Boolean, default: false },
     payLoading: { type: Boolean, default: false },
+    payTabs: { type: Array, default: () => [] },
+    activePayTabId: { type: [String, Number], default: null },
+    priorReliquatTotal: { type: Number, default: 0 },
+    activePayTabMode: { type: String, default: 'pay' },
     resetPaymentDialogVisible: { type: Boolean, default: false },
     resetPaymentsLoading: { type: Boolean, default: false },
     validateDialogVisible: { type: Boolean, default: false },
@@ -56,6 +63,7 @@ const emit = defineEmits([
     'update:factureTime',
     'update:previewDialogVisible',
     'update:previewDialogTab',
+    'update:activePayTabId',
     'submit-payment',
     'confirm-reset',
     'confirm-validate',
@@ -94,13 +102,48 @@ const updateFactureLine = (index, patch) => {
 };
 
 const hasPreviewData = computed(() => Boolean(props.previewData));
+const showPayTabs = computed(() => (props.payTabs || []).length > 1);
+const isValidateMode = computed(() => props.activePayTabMode === 'validate');
+const payDialogHeader = computed(() => {
+    if (isValidateMode.value) {
+        return showPayTabs.value ? 'Valider / régler les factures' : 'Valider la facture vide';
+    }
+    return showPayTabs.value ? 'Régler les factures' : 'Régler la facture';
+});
 </script>
 
 <template>
     <div>
-    <Dialog :visible="payDialogVisible" header="Régler la facture" :modal="true" :style="{ width: '760px' }" @update:visible="emit('update:payDialogVisible', $event)">
+    <Dialog :visible="payDialogVisible" :header="payDialogHeader" :modal="true" :style="{ width: '760px' }" @update:visible="emit('update:payDialogVisible', $event)">
         <div class="flex flex-col gap-5">
+            <Tabs
+                v-if="showPayTabs"
+                :value="String(activePayTabId ?? '')"
+                @update:value="emit('update:activePayTabId', $event)"
+            >
+                <TabList>
+                    <Tab
+                        v-for="tab in payTabs"
+                        :key="tab.id"
+                        :value="String(tab.id)"
+                    >
+                        {{ tab.label }}
+                    </Tab>
+                </TabList>
+            </Tabs>
 
+            <template v-if="isValidateMode">
+                <div class="rounded-2xl border border-blue-200 bg-blue-50/70 p-4 dark:border-blue-800 dark:bg-blue-950/20">
+                    <p class="text-sm text-surface-700 dark:text-surface-200">
+                        Confirmer que cette facture est vide et doit être marquée comme validée.
+                    </p>
+                    <p v-if="selectedFacture?.id" class="mt-2 text-xs text-surface-500">
+                        Facture #{{ selectedFacture.id }}
+                    </p>
+                </div>
+            </template>
+
+            <template v-else>
             <div class="grid gap-3 grid-cols-1 md:grid-cols-3">
                 <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/20 border border-blue-200 dark:border-blue-700/50 p-4 shadow-sm">
                     <div class="flex items-center gap-2 mb-1">
@@ -168,14 +211,41 @@ const hasPreviewData = computed(() => Boolean(props.previewData));
                     </div>
                 </div>
             </div>
+            </template>
         </div>
 
         <template #footer>
-            <div class="flex items-center justify-between w-full gap-2 pt-1">
-                <Button v-if="canResetInvoicePayments" label="Réinitialiser" severity="danger" outlined icon="pi pi-refresh" @click="emit('confirm-reset')" class="text-sm" />
+            <div class="flex items-center justify-between w-full gap-2 pt-1 flex-wrap">
+                <div class="flex items-center gap-3 min-w-0">
+                    <span
+                        v-if="Number(priorReliquatTotal) > 0"
+                        class="inline-flex items-center gap-1.5 rounded-lg bg-red-50 px-2.5 py-1.5 text-xs font-semibold text-red-700 dark:bg-red-950/40 dark:text-red-300"
+                    >
+                        <i class="pi pi-wallet text-[11px]"></i>
+                        Reliquat total : {{ formatFcfa(priorReliquatTotal) }}
+                    </span>
+                    <Button v-if="canResetInvoicePayments && !isValidateMode" label="Réinitialiser" severity="danger" outlined icon="pi pi-refresh" @click="emit('confirm-reset')" class="text-sm" />
+                </div>
                 <div class="flex items-center gap-2 ml-auto">
                     <Button label="Annuler" text icon="pi pi-times" @click="emit('update:payDialogVisible', false)" class="text-sm" />
-                    <Button label="Confirmer le paiement" severity="success" icon="pi pi-check" @click="emit('submit-payment')" :loading="payLoading" class="text-sm font-semibold" />
+                    <Button
+                        v-if="isValidateMode"
+                        label="Valider"
+                        severity="success"
+                        icon="pi pi-check"
+                        @click="emit('confirm-validate')"
+                        :loading="validateLoading || payLoading"
+                        class="text-sm font-semibold"
+                    />
+                    <Button
+                        v-else
+                        label="Confirmer le paiement"
+                        severity="success"
+                        icon="pi pi-check"
+                        @click="emit('submit-payment')"
+                        :loading="payLoading"
+                        class="text-sm font-semibold"
+                    />
                 </div>
             </div>
         </template>

@@ -5,6 +5,7 @@ import PrintTicketBody from '@/components/print/PrintTicketBody.vue';
 import { usePrinter } from '@/composables/usePrinter';
 import { fetchInvoicePrintData, fetchReceiptPrintData, fetchTicketPrintData } from '@/services/printService';
 import { searchPatients } from '@/services/patients';
+import ContextMenu from 'primevue/contextmenu';
 import Dialog from 'primevue/dialog';
 import { computed, ref, toRefs } from 'vue';
 
@@ -18,6 +19,10 @@ const props = defineProps({
         default: () => []
     },
     billingByConsultation: {
+        type: Object,
+        default: () => ({})
+    },
+    unpaidByPatientId: {
         type: Object,
         default: () => ({})
     },
@@ -62,6 +67,8 @@ const emit = defineEmits([
     'open-create-consultation',
     'open-create-consultation-for-patient',
     'open-edit-patient',
+    'open-create-rdv-for-patient',
+    'open-patient-dossier',
     'open-caisse-pay',
     'open-caisse-validate',
     'open-caisse-modify',
@@ -145,6 +152,76 @@ const formatDateTime = (value) => {
 };
 
 const formatFcfa = (value) => `${Number(value || 0).toLocaleString('fr-FR')} FCFA`;
+
+const patientImpayeesAmount = (patientOrConsultation) => {
+    if (!patientOrConsultation) return 0;
+    const direct = Number(
+        patientOrConsultation.impayees
+        ?? patientOrConsultation.patientImpayees
+        ?? patientOrConsultation.reliquat
+        ?? 0
+    );
+    if (direct > 0) return direct;
+    const nested = patientOrConsultation.patient;
+    if (nested && typeof nested === 'object') {
+        return Number(nested.impayees ?? nested.reliquat ?? 0) || 0;
+    }
+    return 0;
+};
+
+const hasPatientReliquat = (patientOrConsultation) => patientImpayeesAmount(patientOrConsultation) > 0;
+
+const reliquatTooltip = (patientOrConsultation) => {
+    const amount = patientImpayeesAmount(patientOrConsultation);
+    return amount > 0 ? `Reliquat : ${formatFcfa(amount)}` : '';
+};
+
+const contextMenu = ref(null);
+const contextMenuPatient = ref(null);
+const patientContextMenuItems = computed(() => [
+    {
+        label: 'Nouvelle consultation',
+        icon: 'fas fa-stethoscope',
+        command: () => {
+            if (contextMenuPatient.value) {
+                emit('open-create-consultation-for-patient', contextMenuPatient.value);
+            }
+        }
+    },
+    {
+        label: 'Nouveau RDV',
+        icon: 'fas fa-calendar',
+        command: () => {
+            if (contextMenuPatient.value) {
+                emit('open-create-rdv-for-patient', contextMenuPatient.value);
+            }
+        }
+    },
+    {
+        label: 'Ouvrir dossier',
+        icon: 'fas fa-folder-open',
+        command: () => {
+            if (contextMenuPatient.value) {
+                emit('open-patient-dossier', contextMenuPatient.value);
+            }
+        }
+    },
+    {
+        label: 'Modifier',
+        icon: 'fas fa-pencil-alt',
+        command: () => {
+            if (contextMenuPatient.value) {
+                emit('open-edit-patient', contextMenuPatient.value);
+            }
+        }
+    }
+]);
+
+const openPatientContextMenu = (event, patient) => {
+    contextMenuPatient.value = patient;
+    contextMenu.value?.show(event);
+};
+
 const isInsurancePayment = (payment) => {
     const role = String(payment?.rolePaiement || payment?.role || '').toLowerCase();
     return role === 'patient_insurance';
@@ -259,6 +336,49 @@ const currentBilling = computed(() => {
     if (!currentConsultation.value?.id) return null;
     return props.billingByConsultation?.[currentConsultation.value.id] || null;
 });
+
+const selectedPatientId = computed(() => {
+    const consultation = currentConsultation.value;
+    if (!consultation) return null;
+    return Number(
+        consultation.patientId
+        ?? consultation.patient?.id
+        ?? 0
+    ) || null;
+});
+
+const selectedPatientUnpaidInvoices = computed(() => {
+    const patientId = selectedPatientId.value;
+    if (!patientId) return [];
+    const rows = props.unpaidByPatientId?.[patientId]
+        ?? props.unpaidByPatientId?.[String(patientId)]
+        ?? [];
+    return Array.isArray(rows) ? rows : [];
+});
+
+/** Factures impayées antérieures (hors consultation / facture sélectionnée). */
+const selectedPriorUnpaidInvoices = computed(() => {
+    const consultationId = Number(currentConsultation.value?.id ?? 0);
+    const currentInvoiceId = Number(currentBilling.value?.invoiceId ?? 0);
+
+    return selectedPatientUnpaidInvoices.value.filter((invoice) => {
+        const invoiceConsultationId = Number(invoice?.consultationId ?? 0);
+        const invoiceId = Number(invoice?.id ?? 0);
+        if (consultationId > 0 && invoiceConsultationId === consultationId) {
+            return false;
+        }
+        if (currentInvoiceId > 0 && invoiceId === currentInvoiceId) {
+            return false;
+        }
+        return Number(invoice?.reste ?? 0) > 0;
+    });
+});
+
+const hasPriorReliquat = computed(() => selectedPriorUnpaidInvoices.value.length > 0);
+
+const selectedPriorReliquatTotal = computed(() =>
+    selectedPriorUnpaidInvoices.value.reduce((sum, invoice) => sum + (Number(invoice?.reste ?? 0) || 0), 0)
+);
 
 const todayConsultations = computed(() => {
     const now = new Date();
@@ -480,6 +600,7 @@ const handleCancelWithConfirm = (event, consultation) => {
 
 <template>
     <div class="grid gap-5 xl:grid-cols-[360px_minmax(0,1fr)_420px]">
+        <ContextMenu ref="contextMenu" :model="patientContextMenuItems" />
         <!-- Colonne Gauche - Nouveaux patients -->
         <aside class="space-y-3 max-h-[calc(100vh-180px)] overflow-y-auto scrollbar-thin">
             <div class="rounded-2xl border border-surface-200/60 bg-white/90 backdrop-blur-sm shadow-lg dark:border-surface-700/60 dark:bg-surface-900/90">
@@ -556,7 +677,8 @@ const handleCancelWithConfirm = (event, consultation) => {
                         <!-- Résultats -->
                         <div v-else-if="patientSearchResults.length" class="space-y-2">
                             <div v-for="patient in patientSearchResults" :key="`search-${patient.id}`"
-                                class="group flex items-center gap-3 rounded-xl bg-surface-50/50 p-3 transition-all hover:bg-purple-50/30 hover:shadow-md dark:bg-surface-800/30 dark:hover:bg-purple-900/20">
+                                class="group flex items-center gap-3 rounded-xl bg-surface-50/50 p-3 transition-all hover:bg-purple-50/30 hover:shadow-md dark:bg-surface-800/30 dark:hover:bg-purple-900/20"
+                                @contextmenu.prevent="openPatientContextMenu($event, patient)">
                                 <div class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-purple-600 font-bold text-white shadow-md">
                                     {{ ((patient.prenom?.[0] ?? '') + (patient.nom?.[0] ?? 'P')).toUpperCase() }}
                                 </div>
@@ -569,27 +691,35 @@ const handleCancelWithConfirm = (event, consultation) => {
                                         {{ patient.telephone || 'Non renseigné' }}
                                     </div>
                                 </div>
-                                <div class="flex items-center gap-2 opacity-0 transition-opacity group-hover:opacity-100">
-                                    <button
-                                        :disabled="isConsultationCreateLoading(patient?.id)"
-                                        :class="[
-                                            'flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600 transition-colors dark:bg-emerald-900/30 dark:text-emerald-400',
-                                            isConsultationCreateLoading(patient?.id)
-                                                ? 'cursor-not-allowed opacity-60'
-                                                : 'hover:bg-emerald-200'
-                                        ]"
-                                        title="Nouvelle consultation"
-                                        @click="emit('open-create-consultation-for-patient', patient)"
-                                    >
-                                        <i :class="isConsultationCreateLoading(patient?.id) ? 'pi pi-spin pi-spinner text-xs' : 'fas fa-stethoscope text-xs'"></i>
-                                    </button>
-                                    <button
-                                        class="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100 text-blue-600 transition-colors hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400"
-                                        title="Modifier le patient"
-                                        @click="emit('open-edit-patient', patient)"
-                                    >
-                                        <i class="pi pi-user-edit text-xs"></i>
-                                    </button>
+                                <div class="flex flex-col items-end justify-between gap-1 self-stretch flex-shrink-0">
+                                    <i
+                                        v-if="hasPatientReliquat(patient)"
+                                        v-tooltip.top="reliquatTooltip(patient)"
+                                        class="pi pi-wallet text-xs text-red-500"
+                                    ></i>
+                                    <span v-else class="h-3"></span>
+                                    <div class="flex items-center gap-2 opacity-0 transition-opacity group-hover:opacity-100">
+                                        <button
+                                            :disabled="isConsultationCreateLoading(patient?.id)"
+                                            :class="[
+                                                'flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600 transition-colors dark:bg-emerald-900/30 dark:text-emerald-400',
+                                                isConsultationCreateLoading(patient?.id)
+                                                    ? 'cursor-not-allowed opacity-60'
+                                                    : 'hover:bg-emerald-200'
+                                            ]"
+                                            title="Nouvelle consultation"
+                                            @click="emit('open-create-consultation-for-patient', patient)"
+                                        >
+                                            <i :class="isConsultationCreateLoading(patient?.id) ? 'pi pi-spin pi-spinner text-xs' : 'fas fa-stethoscope text-xs'"></i>
+                                        </button>
+                                        <button
+                                            class="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100 text-blue-600 transition-colors hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400"
+                                            title="Modifier le patient"
+                                            @click="emit('open-edit-patient', patient)"
+                                        >
+                                            <i class="pi pi-user-edit text-xs"></i>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -621,7 +751,8 @@ const handleCancelWithConfirm = (event, consultation) => {
                     <!-- Liste -->
                     <div v-else-if="newPatients.length" class="space-y-2">
                         <div v-for="patient in newPatients" :key="patient.id"
-                            class="group flex items-center gap-3 rounded-xl bg-gradient-to-r from-transparent to-transparent p-3 transition-all hover:bg-purple-50/30 hover:shadow-md dark:hover:bg-purple-900/10">
+                            class="group flex items-center gap-3 rounded-xl bg-gradient-to-r from-transparent to-transparent p-3 transition-all hover:bg-purple-50/30 hover:shadow-md dark:hover:bg-purple-900/10"
+                            @contextmenu.prevent="openPatientContextMenu($event, patient)">
                             <div class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-fuchsia-500 font-bold text-white shadow-md">
                                 {{ (patient.prenom?.[0] ?? '') + (patient.nom?.[0] ?? 'P') }}
                             </div>
@@ -640,27 +771,35 @@ const handleCancelWithConfirm = (event, consultation) => {
                                     </div>
                                 </div>
                             </div>
-                            <div class="flex items-center gap-2 opacity-0 transition-opacity group-hover:opacity-100">
-                                <button
-                                    :disabled="isConsultationCreateLoading(patient?.id)"
-                                    :class="[
-                                        'flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600 transition-colors dark:bg-emerald-900/30 dark:text-emerald-400',
-                                        isConsultationCreateLoading(patient?.id)
-                                            ? 'cursor-not-allowed opacity-60'
-                                            : 'hover:bg-emerald-200'
-                                    ]"
-                                    title="Nouvelle consultation"
-                                    @click="emit('open-create-consultation-for-patient', patient)"
-                                >
-                                    <i :class="isConsultationCreateLoading(patient?.id) ? 'pi pi-spin pi-spinner text-xs' : 'fas fa-stethoscope text-xs'"></i>
-                                </button>
-                                <button
-                                    class="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100 text-blue-600 transition-colors hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400"
-                                    title="Modifier le patient"
-                                    @click="emit('open-edit-patient', patient)"
-                                >
-                                    <i class="pi pi-user-edit text-xs"></i>
-                                </button>
+                            <div class="flex flex-col items-end justify-between gap-1 self-stretch flex-shrink-0">
+                                <i
+                                    v-if="hasPatientReliquat(patient)"
+                                    v-tooltip.top="reliquatTooltip(patient)"
+                                    class="pi pi-wallet text-xs text-red-500"
+                                ></i>
+                                <span v-else class="h-3"></span>
+                                <div class="flex items-center gap-2 opacity-0 transition-opacity group-hover:opacity-100">
+                                    <button
+                                        :disabled="isConsultationCreateLoading(patient?.id)"
+                                        :class="[
+                                            'flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600 transition-colors dark:bg-emerald-900/30 dark:text-emerald-400',
+                                            isConsultationCreateLoading(patient?.id)
+                                                ? 'cursor-not-allowed opacity-60'
+                                                : 'hover:bg-emerald-200'
+                                        ]"
+                                        title="Nouvelle consultation"
+                                        @click="emit('open-create-consultation-for-patient', patient)"
+                                    >
+                                        <i :class="isConsultationCreateLoading(patient?.id) ? 'pi pi-spin pi-spinner text-xs' : 'fas fa-stethoscope text-xs'"></i>
+                                    </button>
+                                    <button
+                                        class="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100 text-blue-600 transition-colors hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400"
+                                        title="Modifier le patient"
+                                        @click="emit('open-edit-patient', patient)"
+                                    >
+                                        <i class="pi pi-user-edit text-xs"></i>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -823,14 +962,24 @@ const handleCancelWithConfirm = (event, consultation) => {
                                         <span class="font-mono text-[11px] text-surface-400">
                                             {{ formatTime(consultation.createdAt) }}
                                         </span>
-                                        <span :class="[
-                                            'rounded-full px-2 py-0.5 text-[10px] font-medium',
-                                            Number(consultation.state) === 1
-                                                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400'
-                                                : 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400'
-                                        ]">
-                                            {{ Number(consultation.state) === 1 ? 'Terminé' : 'En attente' }}
-                                        </span>
+                                        <div class="flex items-center gap-1.5">
+                                            <span
+                                                v-if="hasPatientReliquat(consultation)"
+                                                v-tooltip.top="reliquatTooltip(consultation)"
+                                                class="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-semibold text-red-700 dark:bg-red-900/40 dark:text-red-300"
+                                            >
+                                                <i class="pi pi-wallet text-[9px]"></i>
+                                                {{ formatFcfa(patientImpayeesAmount(consultation)) }}
+                                            </span>
+                                            <span :class="[
+                                                'rounded-full px-2 py-0.5 text-[10px] font-medium',
+                                                Number(consultation.state) === 1
+                                                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400'
+                                                    : 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400'
+                                            ]">
+                                                {{ Number(consultation.state) === 1 ? 'Terminé' : 'En attente' }}
+                                            </span>
+                                        </div>
                                     </div>
                                     <p class="text-sm font-semibold text-surface-900 truncate dark:text-surface-50">
                                         {{ patientLabel(consultation) }}
@@ -881,12 +1030,21 @@ const handleCancelWithConfirm = (event, consultation) => {
         <aside class="max-h-[calc(100vh-180px)] overflow-y-auto scrollbar-thin">
             <div class="rounded-2xl border border-surface-200/60 bg-white/90 backdrop-blur-sm shadow-lg dark:border-surface-700/60 dark:bg-surface-900/90">
                 <div class="border-b border-surface-200/60 px-4 py-3 dark:border-surface-700/60">
-                    <div class="flex items-center justify-between">
+                    <div class="flex items-center justify-between gap-2">
                         <h3 class="text-base font-semibold text-surface-900 dark:text-surface-50">Détails</h3>
-                        <span v-if="currentConsultation" class="relative flex h-2 w-2">
-                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-400 opacity-75"></span>
-                            <span class="relative inline-flex rounded-full h-2 w-2 bg-primary-500"></span>
-                        </span>
+                        <div class="flex items-center gap-2">
+                            <span
+                                v-if="currentConsultation && hasPriorReliquat"
+                                class="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-1 text-[10px] font-semibold text-red-700 dark:bg-red-900/50 dark:text-red-300"
+                            >
+                                <i class="pi pi-wallet text-[10px]"></i>
+                                Reliquat {{ formatFcfa(selectedPriorReliquatTotal) }}
+                            </span>
+                            <span v-if="currentConsultation" class="relative flex h-2 w-2">
+                                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-400 opacity-75"></span>
+                                <span class="relative inline-flex rounded-full h-2 w-2 bg-primary-500"></span>
+                            </span>
+                        </div>
                     </div>
                 </div>
 
@@ -914,6 +1072,13 @@ const handleCancelWithConfirm = (event, consultation) => {
                                 </p>
                                 <p class="text-[11px] text-surface-400 mt-1">
                                     <i class="pi pi-clock mr-1"></i>{{ formatTime(currentConsultation.createdAt) }}
+                                </p>
+                                <p
+                                    v-if="hasPriorReliquat"
+                                    class="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-red-50 px-2 py-1 text-xs font-semibold text-red-700 dark:bg-red-950/40 dark:text-red-300"
+                                >
+                                    <i class="pi pi-exclamation-circle text-[11px]"></i>
+                                    Reliquats antérieurs : {{ formatFcfa(selectedPriorReliquatTotal) }}
                                 </p>
                             </div>
                             <span :class="[
@@ -948,12 +1113,12 @@ const handleCancelWithConfirm = (event, consultation) => {
                     <!-- Facture -->
                     <div v-if="hasInvoiceContext" class="rounded-xl border border-surface-200 bg-surface-50/50 p-4 dark:border-surface-700 dark:bg-surface-800/30">
                         <div class="flex items-center justify-between mb-3">
-                            <span class="text-sm font-semibold text-surface-700">Facture</span>
+                            <span class="text-sm font-semibold text-surface-700 dark:text-surface-300">Facture</span>
                             <span :class="[
                                 'rounded-full px-2 py-1 text-[10px] font-medium',
-                                isPaidInvoice ? 'bg-emerald-100 text-emerald-700' :
-                                isValidatedFreeInvoice ? 'bg-emerald-100 text-emerald-700' :
-                                isFreeInvoice ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'
+                                isPaidInvoice ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400' :
+                                isValidatedFreeInvoice ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400' :
+                                isFreeInvoice ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400'
                             ]">
                                 {{ isPaidInvoice ? 'Réglée' : isValidatedFreeInvoice ? 'Validée' : isFreeInvoice ? 'Gratuite' : 'En attente' }}
                             </span>
@@ -1025,6 +1190,50 @@ const handleCancelWithConfirm = (event, consultation) => {
                                             class="text-primary-500 hover:text-primary-600">
                                             <i class="pi pi-receipt text-xs"></i>
                                         </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Reliquats antérieurs (hors facture de la consultation sélectionnée) -->
+                    <div
+                        v-if="hasPriorReliquat"
+                        class="rounded-xl border-2 border-red-200 bg-red-50/70 p-4 dark:border-red-800 dark:bg-red-950/30"
+                    >
+                        <div class="mb-3 flex items-center justify-between gap-2">
+                            <div class="flex items-center gap-2">
+                                <i class="pi pi-exclamation-circle text-red-600 dark:text-red-400"></i>
+                                <p class="text-sm font-semibold text-red-800 dark:text-red-200">Reliquats antérieurs</p>
+                            </div>
+                            <span class="text-xs font-bold text-red-700 dark:text-red-300">
+                                {{ formatFcfa(selectedPriorReliquatTotal) }}
+                            </span>
+                        </div>
+                        <div class="space-y-2">
+                            <div
+                                v-for="invoice in selectedPriorUnpaidInvoices"
+                                :key="`unpaid-${invoice.id}`"
+                                class="rounded-lg border border-red-200/80 bg-white/80 p-3 dark:border-red-800/60 dark:bg-surface-900/40"
+                            >
+                                <div class="flex items-start justify-between gap-3">
+                                    <div class="min-w-0">
+                                        <p class="text-xs font-medium text-surface-600 dark:text-surface-300">
+                                            Facture #{{ invoice.id }}
+                                            <span v-if="invoice.type === 'assurance'" class="text-surface-400">· Assurance</span>
+                                        </p>
+                                        <p class="mt-0.5 text-[11px] text-surface-400">
+                                            {{ formatDateTime(invoice.date) }}
+                                        </p>
+                                        <p class="mt-1 text-[11px] text-surface-500">
+                                            Montant patient : {{ formatFcfa(invoice.montantPatient) }}
+                                        </p>
+                                    </div>
+                                    <div class="text-right flex-shrink-0">
+                                        <p class="text-[10px] uppercase tracking-wide text-red-500">Reste</p>
+                                        <p class="text-sm font-bold text-red-700 dark:text-red-300">
+                                            {{ formatFcfa(invoice.reste) }}
+                                        </p>
                                     </div>
                                 </div>
                             </div>

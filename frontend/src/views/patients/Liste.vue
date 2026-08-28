@@ -827,9 +827,16 @@ onBeforeUnmount(() => {
                             <div class="flex items-center gap-3">
                                 <PatientAvatar :patient="data" size-class="w-10 h-10" text-class="font-semibold" />
                                 <div>
-                                    <span class="font-semibold text-surface-900 dark:text-surface-100">
-                                        {{ data.fullname || `${data.prenom ?? ''} ${data.nom ?? ''}`.trim() || data.nom }}
-                                    </span>
+                                    <div class="flex items-center gap-2">
+                                        <span class="font-semibold text-surface-900 dark:text-surface-100">
+                                            {{ data.fullname || `${data.prenom ?? ''} ${data.nom ?? ''}`.trim() || data.nom }}
+                                        </span>
+                                        <i
+                                            v-if="Number(data.impayees || 0) > 0"
+                                            v-tooltip.top="`Reliquat : ${Number(data.impayees || 0).toLocaleString('fr-FR')} FCFA`"
+                                            class="pi pi-wallet text-sm text-red-500"
+                                        ></i>
+                                    </div>
                                     <div class="flex items-center gap-2 mt-1">
                                         <Tag :value="data.sexe" :severity="data.sexe === 'M' ? 'info' : 'secondary'"
                                             class="px-2 py-0.5 text-xs rounded-full" />

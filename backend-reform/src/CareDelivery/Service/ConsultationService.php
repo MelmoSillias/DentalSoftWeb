@@ -14,6 +14,7 @@ use App\Billing\Entity\FactureAssurance;
 use App\Billing\Entity\Paiement;
 use App\Billing\Entity\Transaction;
 use App\Billing\Repository\DevisRepository;
+use App\Billing\Repository\FactureRepository;
 use App\CareDelivery\Entity\ActeMedical;
 use App\CareDelivery\Entity\Consultation;
 use App\CareDelivery\Entity\Ordonnance;
@@ -68,6 +69,7 @@ class ConsultationService
         private PatientRepository $patientRepo,
         private ConsultationNotificationService $consultationNotificationService,
         private FicheMedicaleRepository $ficheMedicaleRepo,
+        private FactureRepository $factureRepo,
     ) {
         $this->projectDir = $params->get('kernel.project_dir');
     }
@@ -558,7 +560,7 @@ class ConsultationService
         return $this->resolveFactureDateFromConsultation($consultation);
     }
 
-    private function buildFocusConsultationDto(Consultation $consultation): FocusReceptionConsultationDto
+    private function buildFocusConsultationDto(Consultation $consultation, int $patientImpayees = 0): FocusReceptionConsultationDto
     {
         $ficheData = $this->resolvePendingFicheData($consultation);
         $patient = $consultation->getPatient();
@@ -574,11 +576,13 @@ class ConsultationService
                 'photo' => $patient->getPhoto(),
                 'createdAt' => $patient->getDateInscription()?->format(DATE_ATOM),
                 'insuranceProfile' => $this->resolvePatientInsuranceProfile($patient),
+                'impayees' => $patientImpayees,
             ],
             'patientName' => $patient->getFullName(),
             'patientPhoto' => $patient->getPhoto(),
             'patientId' => $patient->getId(),
             'patientCreatedAt' => $patient->getDateInscription()?->format(DATE_ATOM),
+            'patientImpayees' => $patientImpayees,
             'medecin' => $consultation->getMedecin()?->getFullName(),
             'isPaid' => $consultation->getPaiement() ? true : false,
             'paiementId' => $consultation->getPaiement()?->getId(),
@@ -693,7 +697,7 @@ class ConsultationService
         return $factureAssurance;
     }
 
-    private function buildFocusPatientDto(Patient $patient): FocusReceptionPatientDto
+    private function buildFocusPatientDto(Patient $patient, int $impayees = 0): FocusReceptionPatientDto
     {
         return new FocusReceptionPatientDto(
             $patient->getId(),
@@ -702,6 +706,7 @@ class ConsultationService
             $patient->getFullName(),
             $patient->getTelephone(),
             $patient->getDateInscription()?->format(DATE_ATOM),
+            $impayees,
         );
     }
 
@@ -771,16 +776,6 @@ class ConsultationService
         [$start, $end] = $this->resolveDayBounds($dateStr);
         $consultations = $this->getConsultationsForDay($dateStr, $user);
 
-        $consultationDtos = [];
-        $billingByConsultation = [];
-
-        foreach ($consultations as $consultation) {
-            $consultationDtos[] = $this->buildFocusConsultationDto($consultation);
-            if ($consultation->getFacture()) {
-                $billingByConsultation[(string) $consultation->getId()] = $this->buildFocusBillingDto($consultation->getFacture());
-            }
-        }
-
         $recentPatients = $this->em->getRepository(Patient::class)->createQueryBuilder('p')
             ->where('p.dateInscription BETWEEN :start AND :end')
             ->andWhere('p.deletedAt IS NULL')
@@ -790,9 +785,43 @@ class ConsultationService
             ->getQuery()
             ->getResult();
 
-        $patientDtos = array_map(fn (Patient $patient) => $this->buildFocusPatientDto($patient), $recentPatients);
+        $patientIds = [];
+        foreach ($consultations as $consultation) {
+            $patientId = $consultation->getPatient()?->getId();
+            if ($patientId) {
+                $patientIds[] = (int) $patientId;
+            }
+        }
+        foreach ($recentPatients as $patient) {
+            $patientIds[] = (int) $patient->getId();
+        }
 
-        return new FocusReceptionPayloadDto($consultationDtos, $patientDtos, $billingByConsultation);
+        $impayeesByPatientId = $this->factureRepo->sumUnpaidResteByPatientIds($patientIds);
+        $unpaidByPatientId = $this->factureRepo->listUnpaidSummariesByPatientIds($patientIds);
+
+        $consultationDtos = [];
+        $billingByConsultation = [];
+
+        foreach ($consultations as $consultation) {
+            $patientId = (int) ($consultation->getPatient()?->getId() ?? 0);
+            $consultationDtos[] = $this->buildFocusConsultationDto(
+                $consultation,
+                (int) ($impayeesByPatientId[$patientId] ?? 0),
+            );
+            if ($consultation->getFacture()) {
+                $billingByConsultation[(string) $consultation->getId()] = $this->buildFocusBillingDto($consultation->getFacture());
+            }
+        }
+
+        $patientDtos = array_map(
+            fn (Patient $patient) => $this->buildFocusPatientDto(
+                $patient,
+                (int) ($impayeesByPatientId[(int) $patient->getId()] ?? 0),
+            ),
+            $recentPatients,
+        );
+
+        return new FocusReceptionPayloadDto($consultationDtos, $patientDtos, $billingByConsultation, $unpaidByPatientId);
     }
 
     public function getPendingConsultationsContextForUser(?object $user, bool $restrictToMedecin): array

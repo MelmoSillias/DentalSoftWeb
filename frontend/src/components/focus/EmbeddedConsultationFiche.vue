@@ -32,6 +32,7 @@ import Toast from 'primevue/toast';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
 import { computed, ref, watch } from 'vue';
+import { IconField } from 'primevue';
 
 const props = defineProps({
     consultationId: {
@@ -93,6 +94,8 @@ const {
     savingCount,
     dirtySectionsList,
     loadData,
+    armDirtyTracking,
+    runWithoutDirtyTracking,
     watchSection,
     saveEntretienSection: saveEntretien,
     saveExamensSection: saveExamens,
@@ -843,6 +846,8 @@ const initialize = async () => {
         toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de charger la fiche de consultation.', life: 3000 });
     } finally {
         pageLoading.value = false;
+        // pageLoading masque le formulaire : rebaseliner après montage réel des sections.
+        await armDirtyTracking();
     }
 };
 
@@ -908,7 +913,9 @@ watch(
         if (data.consultation?.medecinId) return;
         const fallbackMedecinId = resolveConnectedMedecinId();
         if (!fallbackMedecinId) return;
-        data.consultation = { ...data.consultation, medecinId: fallbackMedecinId };
+        void runWithoutDirtyTracking(() => {
+            data.consultation = { ...data.consultation, medecinId: fallbackMedecinId };
+        });
     },
     { immediate: true }
 );
@@ -998,9 +1005,9 @@ defineExpose({
                 </div>
             </div>
 
-            <div class="border border-surface-200/60 dark:border-surface-700/60 bg-surface-0 dark:bg-surface-800/70 shadow-sm" :class="isClotureProcessing ? 'pointer-events-none opacity-80' : ''">
+            <div class="border border-surface-200/60 dark:border-surface-700/60 bg-surface-0 dark:bg-surface-800/70 shadow-sm space-y-0" :class="isClotureProcessing ? 'pointer-events-none opacity-80' : ''" style="margin-top: 0px !important;">
                 <div v-if="isReadonly" class="border-b border-amber-200/80 bg-amber-50/90 px-5 py-4 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">
-                    Cette consultation est terminee. La fiche reste visible en lecture seule. Vous pouvez consulter les devis, derouler les seances passees et gerer les ordonnances.
+                    <i class="pi pi-lock text-amber-600 dark:text-amber-400" /> Cette consultation a été cloturée.
                 </div>
                 <div :class="isReadonly ? 'opacity-95' : ''">
                     <SectionSwitcher v-model="activeSection" :sections="sections" :mode="switcherMode" :init-key="sectionInitKey">

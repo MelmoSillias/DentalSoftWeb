@@ -42,6 +42,17 @@ const normalizeFocusPatient = (raw = {}) => ({
     photo: raw.photo ?? raw.photoUrl ?? raw.photo_url ?? null,
     telephone: raw.telephone ?? '',
     createdAt: raw.createdAt ?? raw.created_at ?? raw.dateInscription ?? raw.date_inscription ?? null,
+    impayees: Number(raw.impayees ?? raw.reliquat ?? 0) || 0,
+});
+
+const normalizeUnpaidSummary = (raw = {}) => ({
+    id: raw.id ?? null,
+    date: raw.date ?? raw.dateFacture ?? null,
+    consultationId: raw.consultationId ?? raw.consultation_id ?? null,
+    montantPatient: Number(raw.montantPatient ?? raw.montant_patient ?? raw.montant ?? 0) || 0,
+    reste: Number(raw.reste ?? 0) || 0,
+    type: raw.type ?? 'classic',
+    factureAssuranceId: raw.factureAssuranceId ?? raw.facture_assurance_id ?? null,
 });
 
 const normalizeFocusBilling = (raw = {}) => ({
@@ -127,8 +138,15 @@ export const normalizeConsultation = (raw = {}) => {
         lastFicheId,
         hasInsurance,
         assuranceNom: raw.assuranceNom ?? patient?.insuranceProfile?.assurance?.nom ?? null,
+        patientImpayees: Number(
+            raw.patientImpayees
+            ?? raw.patient_impayees
+            ?? (typeof patient === 'object' ? patient?.impayees : null)
+            ?? 0
+        ) || 0,
     }
 };
+
 
 export const fetchPendingConsultations = async (token) => {
     if (isConsultationsTourMockEnabled()) {
@@ -168,6 +186,7 @@ export const fetchFocusReceptionData = async (date, token) => {
             consultations: fetchConsultationsByDateTourMock(date).map((c) => normalizeConsultation(c)),
             recentPatients: [],
             billingByConsultation: {},
+            unpaidByPatientId: {},
         };
     }
 
@@ -182,11 +201,18 @@ export const fetchFocusReceptionData = async (date, token) => {
     const billingByConsultation = Object.fromEntries(
         Object.entries(payload.billingByConsultation ?? {}).map(([consultationId, billing]) => [Number(consultationId), normalizeFocusBilling(billing)])
     );
+    const unpaidByPatientId = Object.fromEntries(
+        Object.entries(payload.unpaidByPatientId ?? {}).map(([patientId, rows]) => [
+            Number(patientId),
+            Array.isArray(rows) ? rows.map((row) => normalizeUnpaidSummary(row)) : [],
+        ])
+    );
 
     return {
         consultations,
         recentPatients,
         billingByConsultation,
+        unpaidByPatientId,
     };
 };
 
