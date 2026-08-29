@@ -31,7 +31,7 @@ const soinsList = ref(defaultSoinList);
 
 const sections = [
     { key: 'entretien', title: 'Questionnaire médical', icon: 'pi pi-file-edit' },
-    { key: 'examens', title: 'Examen', icon: 'pi pi-stethoscope' },
+    { key: 'examens', title: 'Examen', icon: 'pi pi-search' },
     { key: 'documents', title: 'Images et Docs', icon: 'pi pi-images' },
     { key: 'plan', title: 'Plan de traitement', icon: 'pi pi-sitemap' },
     { key: 'bilans', title: 'Bilan', icon: 'pi pi-clipboard' },

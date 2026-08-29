@@ -11,6 +11,12 @@ import Tag from 'primevue/tag';
 import { computed, ref } from 'vue';
 import PanelDatePicker from '@/components/common/PanelDatePicker.vue';
 import { useInternetFeatures } from '@/composables/useInternetFeatures';
+import {
+    canPreviewFacture,
+    computeFactureStatus,
+    isInsuranceFactureRow,
+    targetIsFreeFacture
+} from '@/utils/factureRow';
 
 const { isInternetFeaturesEnabled } = useInternetFeatures();
 
@@ -96,6 +102,30 @@ const isInsurancePayment = (payment) => {
     if (payment?.type === 'facture_assurance') return true;
     const role = String(payment?.rolePaiement || payment?.role || '').toLowerCase();
     return role === 'patient_insurance';
+};
+
+const formatPatientName = (row) => {
+    if (!row) return '—';
+    if (row.patient && typeof row.patient === 'object') {
+        return `${row.patient.nom || ''} ${row.patient.prenom || ''}`.trim() || '—';
+    }
+    if (typeof row.patient === 'string' && row.patient.trim()) {
+        return row.patient.trim();
+    }
+    return '—';
+};
+
+const priorReliquatAmount = (row) => {
+    const prior = Number(row?.priorReliquat);
+    if (Number.isFinite(prior) && prior > 0) {
+        return prior;
+    }
+    const total = Number(row?.patientImpayees);
+    const reste = Number(row?.reste) || 0;
+    if (Number.isFinite(total) && total > 0) {
+        return Math.max(0, total - Math.round(reste));
+    }
+    return 0;
 };
 
 const isInvoiceStylePayment = (payment) =>
@@ -303,17 +333,9 @@ const formatDate = (value, withTime = false) => {
 
 const displayPhone = (value) => (props.hidePatientPhone ? 'Masqué par l\'administrateur' : (value || '—'));
 
-const computeStatus = (row) => {
-    const montant = Number(row.montant) || 0;
-    const reste = Number(row.reste) || 0;
+const computeStatus = (row) => computeFactureStatus(row);
 
-    if (row.isRegle && reste === 0) return { label: 'Payé', severity: 'success' };
-    if (!row.isRegle && reste === 0) return { label: 'Vide non validé', severity: 'secondary' };
-    if (reste === montant) return { label: 'Impayé', severity: 'danger' };
-    return { label: 'Partiellement payé', severity: 'warning' };
-};
-
-const isInsuranceRow = (row) => row?.type === 'FactureAssurance' || row?.insurance?.hasInsurance === true;
+const isInsuranceRow = (row) => isInsuranceFactureRow(row);
 
 const computeInsuranceBadge = (row) => {
     if (!isInsuranceRow(row)) {
@@ -325,8 +347,8 @@ const computeInsuranceBadge = (row) => {
 };
 
 const canModify = (row) => !isInsuranceRow(row) && props.allowInvoiceModification && !row?.hasPayments && (Number(row.montant) === Number(row.reste)) && !row.isRegle;
-const canPreview = (row) => row?.insurance?.hasInsurance || !(Number(row.montant) === 0 && Number(row.reste) === 0);
-const targetIsFree = (row) => !row.isRegle && Number(row.reste) === 0;
+const canPreview = (row) => canPreviewFacture(row);
+const targetIsFree = (row) => targetIsFreeFacture(row);
 
 const handlePay = (row) => emit('pay', row);
 const handleValidate = (row) => emit('validate-free', row);
@@ -475,8 +497,14 @@ const printDetailPayment = (row) => {
                 </Column>
                 <Column header="Patient" sortable>
                     <template #body="{ data }">
-                        {{ (data.patient && `${data.patient.nom || ''} ${data.patient.prenom || ''}`.trim()) ||
-                            data.patient || '—' }}
+                        <div class="flex items-center gap-2">
+                            <span>{{ formatPatientName(data) }}</span>
+                            <i
+                                v-if="priorReliquatAmount(data) > 0"
+                                v-tooltip.top="`Reliquat : ${priorReliquatAmount(data).toLocaleString('fr-FR')} FCFA`"
+                                class="pi pi-wallet inv-reliquat-icon"
+                            ></i>
+                        </div>
                     </template>
                 </Column>
                 <Column field="telephone" header="Téléphone" sortable>
@@ -536,7 +564,7 @@ const printDetailPayment = (row) => {
                             <!-- ── DOCUMENT HEADER ── -->
                             <div class="inv-doc-header">
                                 <div class="inv-doc-badge" :class="{ 'inv-doc-badge--insurance': isInsuranceRow(invoice) }">
-                                    <i :class="isInsuranceRow(invoice) ? 'pi pi-shield' : 'pi pi-file-invoice'"></i>
+                                    <i :class="isInsuranceRow(invoice) ? 'pi pi-shield' : 'pi pi-receipt'"></i>
                                     <span>{{ isInsuranceRow(invoice) ? 'FACTURE ASSURANCE' : 'FACTURE' }}</span>
                                 </div>
                                 <span class="inv-doc-id">#{{ invoice.id }}</span>
@@ -547,12 +575,10 @@ const printDetailPayment = (row) => {
                                 <!-- Info patient -->
                                 <div class="inv-patient-block">
                                     <p class="inv-patient-name">
-                                        <span>{{ (invoice.patient && typeof invoice.patient === 'object'
-                                            ? `${invoice.patient.nom || ''} ${invoice.patient.prenom || ''}`.trim()
-                                            : invoice.patient) || '—' }}</span>
+                                        <span>{{ formatPatientName(invoice) }}</span>
                                         <i
-                                            v-if="Number(invoice.priorReliquat || 0) > 0"
-                                            v-tooltip.top="`Reliquat : ${Number(invoice.priorReliquat || 0).toLocaleString('fr-FR')} FCFA`"
+                                            v-if="priorReliquatAmount(invoice) > 0"
+                                            v-tooltip.top="`Reliquat : ${priorReliquatAmount(invoice).toLocaleString('fr-FR')} FCFA`"
                                             class="pi pi-wallet inv-reliquat-icon"
                                         ></i>
                                     </p>

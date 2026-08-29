@@ -9,6 +9,7 @@ use App\Billing\Repository\ModeDePaiementRepository;
 use App\Billing\Repository\PaiementRepository;
 use App\Billing\Service\Workflow\ClassicInvoiceWorkflowService;
 use App\Billing\Service\Workflow\InsuredInvoiceWorkflowService;
+use App\CareDelivery\Entity\Consultation;
 use App\Patient\Entity\Patient;
 use DateTimeInterface;
 
@@ -246,6 +247,71 @@ class CashdeskEntryPointService
         return $this->paiementRepo->find($id);
     }
 
+    /**
+     * Resolve a consultation ticket payment from either a paiement id or a consultation id.
+     */
+    public function resolveTicketPaiement(int $id): ?Paiement
+    {
+        $paiement = $this->paiementRepo->createQueryBuilder('p')
+            ->leftJoin('p.consultation', 'c')->addSelect('c')
+            ->leftJoin('c.patient', 'pat')->addSelect('pat')
+            ->leftJoin('p.mode', 'm')->addSelect('m')
+            ->leftJoin('p.facture', 'f')->addSelect('f')
+            ->leftJoin('f.consultation', 'fc')->addSelect('fc')
+            ->leftJoin('fc.patient', 'fpat')->addSelect('fpat')
+            ->leftJoin('p.factureAssurance', 'fa')->addSelect('fa')
+            ->leftJoin('fa.consultation', 'fac')->addSelect('fac')
+            ->leftJoin('fac.patient', 'fapat')->addSelect('fapat')
+            ->where('p.id = :id')
+            ->setParameter('id', $id)
+            ->getQuery()
+            ->getOneOrNullResult();
+
+        if (
+            $paiement instanceof Paiement
+            && $paiement->getConsultation()
+            && !$paiement->getFacture()
+            && !$paiement->getFactureAssurance()
+        ) {
+            return $paiement;
+        }
+
+        // Callers sometimes pass consultation id instead of ticket paiement id.
+        $ticketByConsultation = $this->paiementRepo->createQueryBuilder('p')
+            ->leftJoin('p.consultation', 'c')->addSelect('c')
+            ->leftJoin('c.patient', 'pat')->addSelect('pat')
+            ->leftJoin('p.mode', 'm')->addSelect('m')
+            ->where('c.id = :consultationId')
+            ->andWhere('p.facture IS NULL')
+            ->andWhere('p.factureAssurance IS NULL')
+            ->setParameter('consultationId', $id)
+            ->orderBy('p.id', 'DESC')
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+
+        if ($ticketByConsultation instanceof Paiement) {
+            return $ticketByConsultation;
+        }
+
+        if ($paiement instanceof Paiement && $this->resolveConsultationFromPaiement($paiement)) {
+            return $paiement;
+        }
+
+        return $paiement instanceof Paiement ? $paiement : null;
+    }
+
+    public function resolveConsultationFromPaiement(?Paiement $paiement): ?Consultation
+    {
+        if (!$paiement instanceof Paiement) {
+            return null;
+        }
+
+        return $paiement->getConsultation()
+            ?? $paiement->getFacture()?->getConsultation()
+            ?? $paiement->getFactureAssurance()?->getConsultation();
+    }
+
     public function getCaissePageContext(): array
     {
         return [
@@ -309,8 +375,12 @@ class CashdeskEntryPointService
 
     public function mapPaiementTicket(Paiement $paiement): array
     {
-        $consultation = $paiement->getConsultation();
-        $patient = $consultation?->getPatient();
+        $consultation = $this->resolveConsultationFromPaiement($paiement);
+        $patient = $consultation?->getPatient()
+            ?? $this->resolvePatientFromPaiement($paiement);
+
+        $consultationId = $consultation?->getId();
+        $numeroPassage = $consultation?->getNumeroPassage();
 
         return [
             'id' => $paiement->getId(),
@@ -319,14 +389,24 @@ class CashdeskEntryPointService
             'mode' => [
                 'libelle' => $paiement->getMode()?->getLibelle(),
             ],
+            // Top-level aliases keep the ticket printable even if nested access fails.
+            'consultationId' => $consultationId,
+            'numeroPassage' => $numeroPassage,
             'consultation' => $consultation ? [
-                'id' => $consultation->getId(),
-                'numeroPassage' => $consultation->getNumeroPassage(),
+                'id' => $consultationId,
+                'numeroPassage' => $numeroPassage,
                 'patient' => $patient ? [
                     'nom' => $patient->getNom(),
                     'prenom' => $patient->getPrenom(),
                 ] : null,
-            ] : null,
+            ] : ($patient ? [
+                'id' => null,
+                'numeroPassage' => null,
+                'patient' => [
+                    'nom' => $patient->getNom(),
+                    'prenom' => $patient->getPrenom(),
+                ],
+            ] : null),
         ];
     }
 

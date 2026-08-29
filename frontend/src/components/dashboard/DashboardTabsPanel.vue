@@ -75,7 +75,7 @@ const formatAmount = (value) => `${new Intl.NumberFormat('fr-FR').format(Number(
 
                         <template v-else-if="pendingConsultations.length">
                             <div v-for="c in pendingConsultations" :key="c.id" class="item">
-                                <div class="icon bg-amber-100 text-amber-600 dark:bg-amber-900 dark:text-amber-300"><i class="pi pi-heartbeat" /></div>
+                                <div class="icon bg-amber-100 text-amber-600 dark:bg-amber-900 dark:text-amber-300"><i class="pi pi-wave-pulse" /></div>
                                 <div class="content">
                                     <div class="title">{{ c.patient }}</div>
                                     <div class="meta">{{ c.date }} • {{ c.waitingTime || '--' }}</div>

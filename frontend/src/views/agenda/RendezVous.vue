@@ -80,6 +80,7 @@ const scopedMedecinsList = computed(() => {
 const activeIndex = ref('week');
 const refreshKey = ref(0);
 const weeklyViewRef = ref();
+const dailyViewRef = ref();
 const actionLoading = ref(false);
 const smsDialogVisible = ref(false);
 const smsScheduleDialogVisible = ref(false);
@@ -128,6 +129,10 @@ const notify = (detail, severity = 'success') => {
 	toast.add({ severity, summary: 'Agenda', detail, life: 2500 });
 };
 
+const refreshAgenda = () => {
+	refreshKey.value += 1;
+};
+
 const openCreate = (payload = {}) => {
 	const start = payload.start ? new Date(payload.start) : new Date();
 	createDefaults.start = start;
@@ -140,10 +145,7 @@ const openCreate = (payload = {}) => {
 const submitCreate = async () => {
 	try {
 		dialogState.create = false;
-		refreshKey.value += 1;
-		nextTick(() => {
-			weeklyViewRef.value?.reloadOnAction?.();
-		});
+		refreshAgenda();
 	} catch (err) {
 		logAppError('RendezVous', err);
 	}
@@ -166,10 +168,7 @@ const confirmValidate = async ({ id, medecinId, createConsultation }) => {
 			: null;
 		await api.validateRdv(id, effectiveMedecinId, { createConsultation: wantsConsultation });
 		notify('Rendez-vous validé');
-		refreshKey.value += 1;
-		nextTick(() => {
-			weeklyViewRef.value?.reloadOnAction?.();
-		});
+		refreshAgenda();
 	} catch (err) {
 		const detail = err?.response?.data?.error || 'Validation impossible';
 		notify(detail, 'error');
@@ -189,10 +188,7 @@ const confirmCancel = async ({ id }) => {
 	try {
 		await api.cancelRdv(id);
 		notify('Rendez-vous annulé');
-		refreshKey.value += 1;
-		nextTick(() => {
-			weeklyViewRef.value?.reloadOnAction?.();
-		});
+		refreshAgenda();
 	} catch (err) {
 		notify('Annulation impossible', 'error');
 		logAppError('RendezVous', err);
@@ -227,6 +223,7 @@ const sendSmsReminder = async () => {
 		if (!result?.success) throw new Error(result?.error || 'Erreur envoi SMS');
 		notify('Rappel SMS ajouté à la file');
 		smsDialogVisible.value = false;
+		refreshAgenda();
 	} catch (err) {
 		notify('Envoi SMS impossible', 'error');
 		logAppError('RendezVous', err);
@@ -249,6 +246,7 @@ const scheduleSmsReminder = async () => {
 		if (!result?.success) throw new Error(result?.error || 'Erreur programmation');
 		notify(`Rappel SMS programmé (${smsScheduleHours.value}h avant)`);
 		smsScheduleDialogVisible.value = false;
+		refreshAgenda();
 	} catch (err) {
 		notify('Programmation SMS impossible', 'error');
 		logAppError('RendezVous', err);
@@ -265,10 +263,7 @@ const submitReport = async (payload) => {
 			: payload;
 		await api.reportRdv(payload.id, patchedPayload);
 		notify('Rendez-vous reporté');
-		refreshKey.value += 1;
-		nextTick(() => {
-			weeklyViewRef.value?.reloadOnAction?.();
-		});
+		refreshAgenda();
 	} catch (err) {
 		notify('Report impossible', 'error');
 		logAppError('RendezVous', err);
@@ -315,7 +310,7 @@ useGuidedTour({
 });
 
 const retryLoadAgenda = async () => {
-	refreshKey.value += 1;
+	refreshAgenda();
 };
 
 onMounted(async () => {
@@ -390,6 +385,7 @@ onBeforeUnmount(() => {
 				<TabPanel value="day" class="h-full">
 					<div data-tour="agenda-rdv.calendar" class="flex h-full min-h-0 flex-col">
 					<DailyView
+						ref="dailyViewRef"
 						:medecins="scopedMedecinsList"
 						:api="api"
 						:refreshKey="refreshKey"
@@ -406,7 +402,7 @@ onBeforeUnmount(() => {
 
 		<div data-tour="agenda-rdv.dialogs">
 		<Dialog v-model:visible="dialogState.create" modal :style="{ width: '45rem' }" :pt="{
-			root: 'rounded-2xl',
+			root: 'rounded-2xl overflow-hidden',
 			header: 'bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900 dark:to-surface-800 px-6 py-4 border-b',
 			content: 'p-0 mt-4'
 		}">

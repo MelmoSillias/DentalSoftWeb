@@ -222,7 +222,7 @@ const clearEtatLabel = computed(() => {
             :draggable="false"
             class="w-full max-w-lg formule-dentaire-detail-dialog"
             :pt="{
-                root: 'rounded-2xl border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900 shadow-xl',
+                root: 'rounded-2xl overflow-hidden border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900 shadow-xl',
                 header: 'border-b border-surface-200/50 dark:border-surface-700/50 bg-surface-50 dark:bg-surface-900 px-5 py-4',
                 content: 'px-5 py-4 bg-surface-0 dark:bg-surface-900 text-surface-900 dark:text-surface-100',
                 footer: 'border-t border-surface-200/50 dark:border-surface-700/50 bg-surface-50 dark:bg-surface-900 px-5 py-4'
@@ -232,7 +232,7 @@ const clearEtatLabel = computed(() => {
             <template #header>
                 <div class="flex items-center gap-3">
                     <div class="p-2 rounded-xl bg-primary-500/10 dark:bg-primary-500/25">
-                        <i class="pi pi-tooth text-primary-600 dark:text-primary-400"></i>
+                        <i class="pi pi-th-large text-primary-600 dark:text-primary-400"></i>
                     </div>
                     <div>
                         <h4 class="text-lg font-semibold text-surface-900 dark:text-surface-50 m-0">

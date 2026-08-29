@@ -44,7 +44,8 @@ const emit = defineEmits([
     'new-consultation',
     'fiche-updated',
     'fiche-created',
-    'refresh-archive'
+    'refresh-archive',
+    'refresh'
 ]);
 
 const activeTab = ref('identite');
@@ -61,7 +62,7 @@ const tabs = computed(() => [
     {
         id: 'clinique',
         label: 'Dossier clinique',
-        icon: 'pi pi-file-medical',
+        icon: 'pi pi-folder-open',
         badge: props.isReception ? props.consultations?.length : props.fiches?.length
     },
     {
@@ -153,6 +154,7 @@ const tabs = computed(() => [
                             :factures="factures"
                             :consultations="consultations"
                             :show-consultations="showConsultationsTab"
+                            @refresh="emit('refresh')"
                         />
                     </div>
                 </TabPanel>

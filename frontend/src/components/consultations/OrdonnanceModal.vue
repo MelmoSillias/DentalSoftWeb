@@ -155,7 +155,7 @@ const dialogSubtitle = computed(() => {
                 </div>
                 <div class="space-y-2">
                     <label class="text-sm font-medium text-surface-700 dark:text-surface-300 flex items-center gap-2">
-                        <i class="pi pi-user-md text-surface-400"></i>
+                        <i class="pi pi-id-card text-surface-400"></i>
                         Médecin
                     </label>
                     <InputText 

@@ -528,18 +528,24 @@ const isConsultationCreateLoading = (patientId) => {
 const getConsultationPaymentId = (consultation) => {
     if (!consultation) return null;
 
-    if (consultation.paymentId ?? consultation.paiementId) {
-        return consultation.paymentId ?? consultation.paiementId;
-    }
+    const directId = consultation.paymentId ?? consultation.paiementId;
+    if (directId) return directId;
 
     const billing = getConsultationBilling(consultation);
     const payments = Array.isArray(billing?.payments) ? billing.payments : [];
-    return payments[0]?.id ?? null;
+    const ticketPayment = payments.find((payment) => {
+        const type = String(payment?.type || '').toLowerCase();
+        return type === 'ticket' || (!payment?.invoiceId && !payment?.factureId && !type.includes('facture'));
+    });
+
+    // Prefer the consultation ticket payment; never fall back to an invoice payment id.
+    return ticketPayment?.id ?? consultation.id ?? null;
 };
 
 const printConsultationTicket = async (consultation) => {
     if (!consultation) return;
-    await printPaymentTicket(getConsultationPaymentId(consultation));
+    const paymentOrConsultationId = getConsultationPaymentId(consultation);
+    await printPaymentTicket(paymentOrConsultationId);
 };
 
 const printInvoice = async () => {
@@ -599,13 +605,13 @@ const handleCancelWithConfirm = (event, consultation) => {
 </script>
 
 <template>
-    <div class="grid gap-5 xl:grid-cols-[360px_minmax(0,1fr)_420px]">
+    <div class="grid min-h-0 gap-5 xl:h-full xl:grid-cols-[360px_minmax(0,1fr)_420px] xl:overflow-hidden">
         <ContextMenu ref="contextMenu" :model="patientContextMenuItems" />
         <!-- Colonne Gauche - Nouveaux patients -->
-        <aside class="space-y-3 max-h-[calc(100vh-180px)] overflow-y-auto scrollbar-thin">
-            <div class="rounded-2xl border border-surface-200/60 bg-white/90 backdrop-blur-sm shadow-lg dark:border-surface-700/60 dark:bg-surface-900/90">
+        <aside class="flex max-h-[70vh] min-h-0 flex-col overflow-hidden xl:h-full xl:max-h-none">
+            <div class="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-surface-200/60 bg-white/90 backdrop-blur-sm dark:border-surface-700/60 dark:bg-surface-900/90">
                 <!-- En-tête -->
-                <div class="border-b border-surface-200/60 px-4 py-3 dark:border-surface-700/60">
+                <div class="shrink-0 border-b border-surface-200/60 px-4 py-3 dark:border-surface-700/60">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center gap-3">
                             <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 shadow-md">
@@ -641,8 +647,8 @@ const handleCancelWithConfirm = (event, consultation) => {
                 </div>
 
                 <!-- Recherche -->
-                <div v-if="searchMode" class="p-4 space-y-3 border-b border-surface-200/60 dark:border-surface-700/60">
-                    <div class="relative">
+                <div v-if="searchMode" class="flex min-h-0 flex-1 flex-col space-y-3 overflow-hidden border-b border-surface-200/60 p-4 dark:border-surface-700/60">
+                    <div class="relative shrink-0">
                         <i class="pi pi-search absolute left-3 top-1/2 -translate-y-1/2 text-surface-400 text-sm"></i>
                         <input
                             v-model="patientSearchQuery"
@@ -662,7 +668,7 @@ const handleCancelWithConfirm = (event, consultation) => {
                     </div>
 
                     <!-- Résultats recherche -->
-                    <div class="space-y-2 max-h-[400px] overflow-y-auto">
+                    <div class="min-h-0 flex-1 space-y-2 overflow-y-auto scrollbar-thin">
                         <!-- Loading skeleton -->
                         <div v-if="patientSearchLoading" class="space-y-2">
                             <div v-for="i in 3" :key="`search-skeleton-${i}`" class="flex items-center gap-3 rounded-xl bg-surface-100/50 p-3 animate-pulse dark:bg-surface-800/30">
@@ -736,7 +742,7 @@ const handleCancelWithConfirm = (event, consultation) => {
                 </div>
 
                 <!-- Liste patients -->
-                <div v-else class="p-3 space-y-2">
+                <div v-else class="min-h-0 flex-1 space-y-2 overflow-y-auto p-3 scrollbar-thin">
                     <!-- Skeleton loading -->
                     <div v-if="loading" class="space-y-2">
                         <div v-for="i in 3" :key="i" class="flex items-center gap-3 rounded-xl bg-surface-100/50 p-3 dark:bg-surface-800/30">
@@ -817,10 +823,10 @@ const handleCancelWithConfirm = (event, consultation) => {
         </aside>
 
         <!-- Colonne Centre - File d'attente -->
-        <section class="max-h-[calc(100vh-180px)] overflow-y-auto scrollbar-thin">
-            <div class="rounded-2xl border border-surface-200/60 bg-white/90 backdrop-blur-sm shadow-lg dark:border-surface-700/60 dark:bg-surface-900/90">
+        <section class="flex max-h-[70vh] min-h-0 flex-col overflow-hidden xl:h-full xl:max-h-none">
+            <div class="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-surface-200/60 bg-white/90 backdrop-blur-sm dark:border-surface-700/60 dark:bg-surface-900/90">
                 <!-- Header -->
-                <div class="border-b border-surface-200/60 px-4 py-3 dark:border-surface-700/60">
+                <div class="shrink-0 border-b border-surface-200/60 px-4 py-3 dark:border-surface-700/60">
                     <div class="flex items-center justify-between">
                         <div>
                             <h3 class="text-base font-semibold text-surface-900 dark:text-surface-50">File d'attente</h3>
@@ -914,7 +920,7 @@ const handleCancelWithConfirm = (event, consultation) => {
                 </Dialog>
 
                 <!-- Contenu consultations -->
-                <div class="p-4">
+                <div class="min-h-0 flex-1 overflow-y-auto p-4 scrollbar-thin">
                     <div v-if="loading" class="space-y-3">
                         <div v-for="i in 4" :key="i" class="rounded-xl bg-surface-100/50 p-3 animate-pulse dark:bg-surface-800/30">
                             <div class="flex gap-3">
@@ -1027,9 +1033,9 @@ const handleCancelWithConfirm = (event, consultation) => {
         </section>
 
         <!-- Colonne Droite - Détails -->
-        <aside class="max-h-[calc(100vh-180px)] overflow-y-auto scrollbar-thin">
-            <div class="rounded-2xl border border-surface-200/60 bg-white/90 backdrop-blur-sm shadow-lg dark:border-surface-700/60 dark:bg-surface-900/90">
-                <div class="border-b border-surface-200/60 px-4 py-3 dark:border-surface-700/60">
+        <aside class="flex max-h-[70vh] min-h-0 flex-col overflow-hidden xl:h-full xl:max-h-none">
+            <div class="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-surface-200/60 bg-white/90 backdrop-blur-sm dark:border-surface-700/60 dark:bg-surface-900/90">
+                <div class="shrink-0 border-b border-surface-200/60 px-4 py-3 dark:border-surface-700/60">
                     <div class="flex items-center justify-between gap-2">
                         <h3 class="text-base font-semibold text-surface-900 dark:text-surface-50">Détails</h3>
                         <div class="flex items-center gap-2">
@@ -1048,7 +1054,7 @@ const handleCancelWithConfirm = (event, consultation) => {
                     </div>
                 </div>
 
-                <div v-if="currentConsultation" class="p-4 space-y-4">
+                <div v-if="currentConsultation" class="min-h-0 flex-1 space-y-4 overflow-y-auto p-4 scrollbar-thin">
                     <!-- Carte patient -->
                     <div :class="[
                         'rounded-xl border p-4 transition-all',
@@ -1097,6 +1103,13 @@ const handleCancelWithConfirm = (event, consultation) => {
                         <button @click="emit('open-details', currentConsultation)"
                             class="rounded-xl border border-surface-200 bg-surface-50 px-3 py-2 text-xs font-medium text-surface-600 transition-all hover:bg-surface-100 hover:shadow-sm dark:border-surface-700 dark:bg-surface-800/50">
                             <i class="pi pi-eye mr-1"></i>Détails
+                        </button>
+                        <button
+                            v-if="selectedPatientId"
+                            @click="emit('open-patient-dossier', currentConsultation.patient || { id: selectedPatientId })"
+                            class="rounded-xl border border-primary-200 bg-primary-50 px-3 py-2 text-xs font-medium text-primary-700 transition-all hover:bg-primary-100 dark:border-primary-800 dark:bg-primary-950/30 dark:text-primary-300"
+                        >
+                            <i class="pi pi-address-book mr-1"></i>Ouvrir dossier
                         </button>
                         <button v-if="allowReceptionQuickClose && Number(currentConsultation.state) !== 1"
                             @click="emit('open-quick-dialog', currentConsultation)"
@@ -1241,9 +1254,9 @@ const handleCancelWithConfirm = (event, consultation) => {
                     </div>
                 </div>
 
-                <div v-else class="flex flex-col items-center justify-center py-20 text-center">
+                <div v-else class="flex min-h-0 flex-1 flex-col items-center py-20 text-center">
                     <div class="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-surface-100 to-surface-200 dark:from-surface-800 dark:to-surface-700">
-                        <i class="pi pi-click text-3xl text-surface-400"></i>
+                        <i class="pi pi-inbox text-3xl text-surface-400"></i>
                     </div>
                     <p class="text-sm font-medium text-surface-600">Aucune consultation sélectionnée</p>
                     <p class="mt-1 text-xs text-surface-400">Cliquez sur une consultation pour voir les détails</p>

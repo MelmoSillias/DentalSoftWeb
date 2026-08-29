@@ -7,6 +7,12 @@ import Tag from 'primevue/tag';
 import { computed, ref } from 'vue';
 import PanelDatePicker from '@/components/common/PanelDatePicker.vue';
 import { useInternetFeatures } from '@/composables/useInternetFeatures';
+import {
+    canPreviewFacture,
+    computeFactureStatus,
+    isInsuranceFactureRow,
+    targetIsFreeFacture
+} from '@/utils/factureRow';
 
 const { isInternetFeaturesEnabled } = useInternetFeatures();
 
@@ -66,7 +72,7 @@ const factureRangeModel = computed({
 
 const formatFcfa = (value) => `${Number(value || 0).toLocaleString('fr-FR')} FCFA`;
 
-const isInsuranceRow = (row) => row?.type === 'FactureAssurance' || row?.insurance?.hasInsurance === true;
+const isInsuranceRow = (row) => isInsuranceFactureRow(row);
 
 const computeInsuranceBadge = (row) => {
     if (!isInsuranceRow(row)) {
@@ -77,19 +83,11 @@ const computeInsuranceBadge = (row) => {
     return { label: nom ? `Assurance · ${nom}` : 'Assurance', severity: 'info' };
 };
 
-const computeStatus = (row) => {
-    const montant = Number(row.montant) || 0;
-    const reste = Number(row.reste) || 0;
-
-    if (row.isRegle && reste === 0) return { label: 'Payé', severity: 'success' };
-    if (!row.isRegle && reste === 0) return { label: 'Vide non validé', severity: 'secondary' };
-    if (reste === montant) return { label: 'Impayé', severity: 'danger' };
-    return { label: 'Partiellement payé', severity: 'warning' };
-};
+const computeStatus = (row) => computeFactureStatus(row);
 
 const canModify = (row) => !isInsuranceRow(row) && props.allowInvoiceModification && !row?.hasPayments && (Number(row.montant) === Number(row.reste)) && !row.isRegle;
-const canPreview = (row) => row?.insurance?.hasInsurance || !(Number(row.montant) === 0 && Number(row.reste) === 0);
-const targetIsFree = (row) => !row.isRegle && Number(row.reste) === 0;
+const canPreview = (row) => canPreviewFacture(row);
+const targetIsFree = (row) => targetIsFreeFacture(row);
 
 const filteredFactures = computed(() => {
     const query = factureSearchQuery.value;
@@ -135,6 +133,19 @@ const formatPatient = (row) => {
         return `${row.patient.nom || ''} ${row.patient.prenom || ''}`.trim();
     }
     return row.patient || '—';
+};
+
+const priorReliquatAmount = (row) => {
+    const prior = Number(row?.priorReliquat);
+    if (Number.isFinite(prior) && prior > 0) {
+        return prior;
+    }
+    const total = Number(row?.patientImpayees);
+    const reste = Number(row?.reste) || 0;
+    if (Number.isFinite(total) && total > 0) {
+        return Math.max(0, total - Math.round(reste));
+    }
+    return 0;
 };
 
 const displayPhone = (value) => (props.hidePatientPhone ? 'Masqué par l\'administrateur' : (value || '—'));
@@ -205,7 +216,7 @@ const displayPhone = (value) => (props.hidePatientPhone ? 'Masqué par l\'admini
                             <!-- En-tête document -->
                             <div class="fct-header">
                                 <div class="fct-doc-badge" :class="{ 'fct-doc-badge--insurance': isInsuranceRow(row) }">
-                                    <i :class="isInsuranceRow(row) ? 'pi pi-shield' : 'pi pi-file-invoice'"></i>
+                                    <i :class="isInsuranceRow(row) ? 'pi pi-shield' : 'pi pi-receipt'"></i>
                                     <span>{{ isInsuranceRow(row) ? 'FACTURE ASSURANCE' : 'FACTURE' }} #{{ row.id }}</span>
                                 </div>
                                 <div class="fct-status-badges">
@@ -225,8 +236,8 @@ const displayPhone = (value) => (props.hidePatientPhone ? 'Masqué par l\'admini
                                         <i class="pi pi-user"></i>
                                         {{ formatPatient(row) }}
                                         <i
-                                            v-if="Number(row.priorReliquat || 0) > 0"
-                                            v-tooltip.top="`Reliquat : ${Number(row.priorReliquat || 0).toLocaleString('fr-FR')} FCFA`"
+                                            v-if="priorReliquatAmount(row) > 0"
+                                            v-tooltip.top="`Reliquat : ${priorReliquatAmount(row).toLocaleString('fr-FR')} FCFA`"
                                             class="pi pi-wallet fct-reliquat-icon"
                                         ></i>
                                     </p>

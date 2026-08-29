@@ -1047,7 +1047,7 @@ onBeforeUnmount(() => {
 
         <!-- Dialogs -->
         <Dialog v-model:visible="showPatientDialog" modal :style="{ width: '45rem' }" :pt="{
-            root: 'rounded-2xl',
+            root: 'rounded-2xl overflow-hidden',
             header: ({ props }) => ({
                 class: [
                     'px-6 py-4 border-b border-surface-200 dark:border-surface-700',
@@ -1080,7 +1080,7 @@ onBeforeUnmount(() => {
         </Dialog>
 
         <Dialog v-model:visible="showConsultationDialog" modal :style="{ width: '50rem' }" :pt="{
-            root: 'rounded-2xl',
+            root: 'rounded-2xl overflow-hidden',
             header: 'bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900 dark:to-surface-800 px-6 py-4 border-b',
             content: 'p-0 mt-4'
         }">
@@ -1106,7 +1106,7 @@ onBeforeUnmount(() => {
         </Dialog>
 
         <Dialog v-model:visible="showActiveConsultWarn" modal :style="{ width: '35rem' }" :pt="{
-            root: 'rounded-2xl',
+            root: 'rounded-2xl overflow-hidden',
             header: 'bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900 dark:to-surface-800 px-6 py-4 border-b',
             content: 'p-0 mt-4'
         }">
@@ -1145,7 +1145,7 @@ onBeforeUnmount(() => {
         </Dialog>
 
         <Dialog v-model:visible="showRdvDialog" modal :style="{ width: '45rem' }" :pt="{
-            root: 'rounded-2xl',
+            root: 'rounded-2xl overflow-hidden',
             header: 'bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900 dark:to-surface-800 px-6 py-4 border-b',
             content: 'p-0 mt-4'
         }">
@@ -1171,7 +1171,7 @@ onBeforeUnmount(() => {
         </Dialog>
 
         <Dialog v-model:visible="showDeletePatientDialog" modal :style="{ width: '34rem' }" :pt="{
-            root: 'rounded-2xl',
+            root: 'rounded-2xl overflow-hidden',
             header: 'bg-gradient-to-r from-red-50 to-surface-0 dark:from-red-900/20 dark:to-surface-800 px-6 py-4 border-b',
             content: 'p-0 mt-2'
         }">
@@ -1204,7 +1204,7 @@ onBeforeUnmount(() => {
         </Dialog>
 
         <Dialog v-model:visible="showTrashDialog" modal maximizable :style="{ width: '62rem' }" :pt="{
-            root: 'rounded-2xl',
+            root: 'rounded-2xl overflow-hidden',
             header: 'bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900 dark:to-surface-800 px-6 py-4 border-b',
             content: 'p-0 mt-2'
         }">

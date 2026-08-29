@@ -1,4 +1,4 @@
-import { createApp, h, nextTick, ref } from 'vue';
+import { createApp, nextTick, ref } from 'vue';
 
 const copyStyles = (sourceDocument, targetDocument) => {
     const styles = Array.from(sourceDocument.querySelectorAll('style, link[rel="stylesheet"]'));
@@ -23,7 +23,7 @@ const injectPrintBaseStyles = (targetDocument) => {
         @media print {
             @page {
                 size: A4;
-                margin: 10mm;
+                margin: 14mm 14mm 22mm 14mm;
             }
 
             @page ticket {
@@ -172,9 +172,8 @@ export const usePrinter = () => {
         container.style.background = '#fff';
         target.document.body.appendChild(container);
 
-        const app = createApp({
-            render: () => h(Component, props)
-        });
+        // Root props must be passed to createApp for reliable SFC prop binding in the print window.
+        const app = createApp(Component, props);
 
         try {
             app.mount(container);

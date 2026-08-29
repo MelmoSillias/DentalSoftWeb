@@ -850,7 +850,7 @@ useGuidedTour({
         header="Nouveau consommable" 
         style="width: 40rem"
         :pt="{
-            root: 'rounded-2xl',
+            root: 'rounded-2xl overflow-hidden',
             header: 'bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900 dark:to-surface-800 px-6 py-4 border-b',
             content: 'p-0 mt-4'
         }"
@@ -865,7 +865,7 @@ useGuidedTour({
         modal 
         style="width: 35rem"
         :pt="{
-            root: 'rounded-2xl',
+            root: 'rounded-2xl overflow-hidden',
             header: 'bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900 dark:to-surface-800 px-6 py-4 border-b',
             content: 'p-0 mt-4'
         }"
@@ -909,7 +909,7 @@ useGuidedTour({
         header="Détails du consommable"
         style="width: 32rem"
         :pt="{
-            root: 'rounded-2xl',
+            root: 'rounded-2xl overflow-hidden',
             header: 'bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900 dark:to-surface-800 px-6 py-4 border-b',
             content: 'p-6'
         }"

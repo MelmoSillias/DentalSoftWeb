@@ -22,7 +22,7 @@ const buildItems = (stats) => [
         key: 'today',
         label: 'Rendez-vous du jour',
         value: stats.rdvJour ?? 0,
-        icon: 'pi pi-calendar-check'
+        icon: 'pi pi-calendar'
     }
 ];
 

@@ -145,7 +145,7 @@ const getDocumentIcon = (extension) => {
             return 'pi-file-excel';
         case 'ppt':
         case 'pptx':
-            return 'pi-file-powerpoint';
+            return 'pi-file';
         default:
             return 'pi-file';
     }

@@ -113,7 +113,7 @@ const formatDate = (value) => {
 
 const iconMap = {
     Urgence: { icon: 'pi pi-bolt', color: '#ef4444' },
-    Dentaires: { icon: 'pi pi-tooth', color: '#0ea5e9' },
+    Dentaires: { icon: 'pi pi-th-large', color: '#0ea5e9' },
     Parodontaux: { icon: 'pi pi-heart', color: '#22c55e' },
     Orthodontiques: { icon: 'pi pi-sliders-h', color: '#f59e0b' },
     Autres: { icon: 'pi pi-briefcase', color: '#64748b' }

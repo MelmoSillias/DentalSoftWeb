@@ -1,35 +1,51 @@
-@media screen and (min-width: 1960px) {
-    .layout-main,
-    .landing-wrapper {
-        width: 1504px;
-        margin-left: auto !important;
-        margin-right: auto !important;
+/* Layout modes: static / overlay / mobile */
+
+$layout-sidebar-motion: 0.4s cubic-bezier(0.05, 0.74, 0.2, 0.99);
+
+@mixin sidebar-overlay-panel {
+    position: fixed;
+    top: var(--layout-topbar-height);
+    left: 0;
+    bottom: 0;
+    width: var(--layout-sidebar-width);
+    height: auto;
+    z-index: var(--layout-z-sidebar);
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    border-right: 1px solid var(--surface-border);
+    transform: translateX(-100%);
+    transition: transform $layout-sidebar-motion;
+    box-shadow:
+        0px 3px 5px rgba(0, 0, 0, 0.02),
+        0px 0px 2px rgba(0, 0, 0, 0.05),
+        0px 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+/* Overlay/mobile: content already full-width; sidebar slides over it. */
+@mixin main-column-full-width {
+    .layout-body {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .layout-main-column {
+        grid-column: 1;
+        width: 100%;
+        min-width: 0;
     }
 }
 
 @media (min-width: 992px) {
+    .layout-shell,
     .layout-wrapper {
         &.layout-overlay {
-            .layout-main-container {
-                margin-left: 0;
+            @include main-column-full-width;
+
+            .layout-main {
                 padding-left: 2rem;
             }
 
             .layout-sidebar {
-                transform: translateX(-100%);
-                left: 0;
-                top: 0;
-                height: calc(100vh - 4rem);
-                border-top-left-radius: 0;
-                border-bottom-left-radius: 0;
-                border-right: 1px solid var(--surface-border);
-                transition:
-                    transform 0.4s cubic-bezier(0.05, 0.74, 0.2, 0.99),
-                    left 0.4s cubic-bezier(0.05, 0.74, 0.2, 0.99);
-                box-shadow:
-                    0px 3px 5px rgba(0, 0, 0, 0.02),
-                    0px 0px 2px rgba(0, 0, 0, 0.05),
-                    0px 1px 4px rgba(0, 0, 0, 0.08);
+                @include sidebar-overlay-panel;
             }
 
             &.layout-overlay-active {
@@ -39,27 +55,41 @@
             }
         }
 
+        /* Static: keep sidebar in grid and animate column width with content. */
         &.layout-static {
-            .layout-content {
-                grid-template-columns: 300px 1fr;
+            .layout-body {
+                grid-template-columns: var(--layout-sidebar-width) minmax(0, 1fr);
+                transition: grid-template-columns $layout-sidebar-motion;
             }
 
-            
+            .layout-sidebar {
+                min-width: 0;
+                overflow-x: hidden;
+                overflow-y: auto;
+                transition:
+                    padding $layout-sidebar-motion,
+                    opacity $layout-sidebar-motion;
+            }
+
+            .layout-main-column {
+                grid-column: 2;
+                min-width: 0;
+            }
 
             &.layout-static-inactive {
-                .layout-sidebar {
-                    transform: translateX(-100%);
-                    left: 0;
+                .layout-body {
+                    grid-template-columns: 0rem minmax(0, 1fr);
                 }
 
-                .layout-content {
-                    grid-template-columns: 0 1fr;
-                } 
+                .layout-sidebar {
+                    overflow: hidden;
+                    padding-left: 0;
+                    padding-right: 0;
+                    opacity: 0;
+                    pointer-events: none;
+                    border: none;
+                }
             }
-        }
-
-        .layout-mask {
-            display: none;
         }
     }
 }
@@ -69,52 +99,31 @@
         overflow: hidden;
     }
 
+    .layout-shell,
     .layout-wrapper {
-        .layout-main-container {
-            margin-left: 0;
+        @include main-column-full-width;
+
+        .layout-main {
             padding-left: 2rem;
         }
 
-        .layout-content {
-            grid-template-columns: 0 1fr;
-        }
-
         .layout-sidebar {
-            transform: translateX(-100%);
-            left: 0;
-            top: 0;
-            height: calc(100vh - 4rem);
-            border-top-left-radius: 0;
-            border-bottom-left-radius: 0;
-            transition:
-                transform 0.4s cubic-bezier(0.05, 0.74, 0.2, 0.99),
-                left 0.4s cubic-bezier(0.05, 0.74, 0.2, 0.99);
-        }
-
-        .layout-mask {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            z-index: 998;
-            width: 100%;
-            height: 100%;
-            background-color: var(--maskbg);
+            @include sidebar-overlay-panel;
         }
 
         &.layout-mobile-active {
             .layout-sidebar {
-                height: calc(100vh - 4rem);
                 transform: translateX(0);
-                box-shadow: 0px 3px 5px rgba(0, 0, 0, 0.02),
-                    0px 0px 2px rgba(0, 0, 0, 0.05),
-                    0px 1px 4px rgba(0, 0, 0, 0.08); 
-                
-            }
-
-            .layout-mask {
-                display: block;
+                pointer-events: auto;
             }
         }
+    }
+}
+
+@media (max-width: 520px) {
+    .layout-shell .layout-main,
+    .layout-wrapper .layout-main {
+        padding-left: 0.5rem;
+        padding-right: 0.5rem;
     }
 }

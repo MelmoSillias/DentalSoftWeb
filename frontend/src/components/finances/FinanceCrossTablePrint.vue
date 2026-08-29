@@ -50,7 +50,7 @@ const formatCellDate = (week, weekday) => {
 
 <script>
 export const printStyles = `
-    @page { size: A4 landscape; margin: 10mm; }
+    @page { size: A4 landscape; margin: 14mm 14mm 22mm 14mm; }
     .print-cross-table { font-size: 9.5pt; }
     .print-cross-table th, .print-cross-table td { padding: 5px 7px; }
     .muted, .cell-date { font-size: 8pt; color: #6b7280 !important; }

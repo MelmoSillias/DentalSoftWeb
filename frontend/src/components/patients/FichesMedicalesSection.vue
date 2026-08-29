@@ -216,7 +216,7 @@ watch(
         <div class="p-5 border-b border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900/50 dark:to-surface-800" data-tour="patients-dossier.fiches-toolbar">
             <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-100 flex items-center gap-2">
-                    <i class="pi pi-file-medical text-primary-500"></i>
+                    <i class="pi pi-folder-open text-primary-500"></i>
                     Fiches médicales
                     <span class="ml-2 px-2.5 py-0.5 rounded-full bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 text-sm font-medium">
                         {{ orderedFiches.length }}
@@ -346,7 +346,7 @@ watch(
             <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between w-full pr-8">
                 <div>
                     <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-100 flex items-center gap-2">
-                        <i class="pi pi-file-medical text-primary-500"></i>
+                        <i class="pi pi-folder-open text-primary-500"></i>
                         Fiche médicale {{ formatPosition(currentFicheIndex) }}
                         <span
                             v-if="isEditMode"

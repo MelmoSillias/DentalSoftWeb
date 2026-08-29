@@ -1366,7 +1366,7 @@ public function removeArchiveFile(int $patientId, string $fileUrl): array
             $fiches[] = $ficheData;
         }
 
-        $factures = $this->cashdeskService->getClassicWorkflow()->listFacturesImpayeesByPatient($patient->getId());
+        $factures = $this->cashdeskService->getClassicWorkflow()->listFacturesByPatient($patient->getId());
         $paiements = $this->cashdeskService->listPaiementsByPatients($patient);
         
 

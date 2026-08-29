@@ -65,7 +65,7 @@ function getSexeSeverity(sexe) {
 
                 <div class="flex items-center gap-3 p-3 rounded-xl bg-surface-50 dark:bg-surface-700/30 hover:bg-surface-100 dark:hover:bg-surface-700/50 transition-colors">
                     <div class="flex items-center justify-center w-10 h-10 rounded-lg bg-purple-500/10 dark:bg-purple-500/20">
-                        <i class="pi pi-venus-mars text-purple-500"></i>
+                        <i class="pi pi-users text-purple-500"></i>
                     </div>
                     <div>
                         <p class="text-sm text-surface-500 dark:text-surface-400">Sexe</p>

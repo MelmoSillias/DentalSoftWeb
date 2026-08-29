@@ -1,8 +1,17 @@
 .layout-footer {
+    flex: 0 0 auto;
     display: flex;
     align-items: center;
-    justify-content: center;
-    padding: 1rem 0 1rem 0;
-    gap: 0.5rem;
+    justify-content: flex-end;
+    padding: 0.1rem var(--layout-body-padding-x);
+    font-size: 0.625rem;
+    line-height: 1.2;
+    gap: 0.25rem;
     border-top: 1px solid var(--surface-border);
+    color: var(--text-color-secondary);
+}
+
+.layout-footer a {
+    font-weight: 600;
+    font-size: inherit;
 }

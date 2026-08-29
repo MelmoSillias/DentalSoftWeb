@@ -1,5 +1,7 @@
 <script setup>
 import Accordion from 'primevue/accordion';
+import AccordionContent from 'primevue/accordioncontent';
+import AccordionHeader from 'primevue/accordionheader';
 import AccordionPanel from 'primevue/accordionpanel';
 import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
@@ -221,9 +223,9 @@ const miniChart = computed(() => {
                 </div> -->
             </div>
 
-            <Accordion v-if="Object.keys(paymentsByMode).length" data-tour="caisse-paiements.accordion">
-                <AccordionPanel v-for="(list, mode) in paymentsByMode" :key="mode">
-                    <template #header>
+            <Accordion v-if="Object.keys(paymentsByMode).length" multiple data-tour="caisse-paiements.accordion">
+                <AccordionPanel v-for="(list, mode) in paymentsByMode" :key="mode" :value="String(mode)">
+                    <AccordionHeader>
                         <div class="pay-accordion-header">
                             <div class="pay-mode-badge">
                                 <i :class="mode.toLowerCase().includes('assur') ? 'pi pi-shield' : 'pi pi-receipt'"></i>
@@ -234,48 +236,50 @@ const miniChart = computed(() => {
                                 {{ formatFcfa(list.reduce((s, p) => s + (Number(p.montant) || 0), 0)) }}
                             </span>
                         </div>
-                    </template>
-                    <div class="pay-list">
-                        <div v-for="row in list" :key="row.pId" class="pay-row"
-                            :class="isInsurancePayment(row) ? 'pay-row--insurance' : 'pay-row--client'">
-                            <div class="pay-role-icon">
-                                <i :class="isInsurancePayment(row) ? 'pi pi-shield' : 'pi pi-wallet'"></i>
-                            </div>
+                    </AccordionHeader>
+                    <AccordionContent>
+                        <div class="pay-list">
+                            <div v-for="row in list" :key="row.pId" class="pay-row"
+                                :class="isInsurancePayment(row) ? 'pay-row--insurance' : 'pay-row--client'">
+                                <div class="pay-role-icon">
+                                    <i :class="isInsurancePayment(row) ? 'pi pi-shield' : 'pi pi-wallet'"></i>
+                                </div>
 
-                            <div class="pay-info">
-                                <span class="pay-patient">{{ row.patient || '—' }}</span>
-                                <span class="pay-meta">
-                                    <i class="pi pi-clock"></i> {{ formatDate(row.date, true) }}
-                                    <span v-if="!props.hidePatientPhone && row.telephone">
-                                        · <i class="pi pi-phone"></i> {{ row.telephone }}
+                                <div class="pay-info">
+                                    <span class="pay-patient">{{ row.patient || '—' }}</span>
+                                    <span class="pay-meta">
+                                        <i class="pi pi-clock"></i> {{ formatDate(row.date, true) }}
+                                        <span v-if="!props.hidePatientPhone && row.telephone">
+                                            · <i class="pi pi-phone"></i> {{ row.telephone }}
+                                        </span>
                                     </span>
-                                </span>
-                            </div>
+                                </div>
 
-                            <div class="pay-tags">
-                                <Tag :value="computeModeTag(row).label" :severity="computeModeTag(row).severity" />
-                                <Tag v-if="isInsurancePayment(row)" value="Assurance" severity="info" icon="pi pi-shield" />
-                                <Tag v-if="row.insuranceStatus === 'pending'"
-                                    value="En attente" severity="warning" icon="pi pi-clock" />
-                            </div>
+                                <div class="pay-tags">
+                                    <Tag :value="computeModeTag(row).label" :severity="computeModeTag(row).severity" />
+                                    <Tag v-if="isInsurancePayment(row)" value="Assurance" severity="info" icon="pi pi-shield" />
+                                    <Tag v-if="row.insuranceStatus === 'pending'"
+                                        value="En attente" severity="warning" icon="pi pi-clock" />
+                                </div>
 
-                            <div class="pay-right">
-                                <strong class="pay-amount"
-                                    :class="isInsurancePayment(row) ? 'pay-amount--insurance' : 'pay-amount--client'">
-                                    {{ formatFcfa(row.montant) }}
-                                </strong>
-                                <div class="pay-actions" data-tour="caisse-paiements.row-actions">
-                                    <Button
-                                        :icon="isInvoiceStylePayment(row) ? 'pi pi-print' : 'pi pi-ticket'"
-                                        size="small" text rounded
-                                        :title="isInvoiceStylePayment(row) ? 'Imprimer reçu' : 'Imprimer ticket'"
-                                        @click="emit(isInvoiceStylePayment(row) ? 'print-payment' : 'print-receipt', row)" />
-                                    <Button v-if="isInternetFeaturesEnabled" icon="pi pi-send" size="small" text rounded title="Envoyer par SMS"
-                                        @click="emit('send-receipt-sms', row)" />
+                                <div class="pay-right">
+                                    <strong class="pay-amount"
+                                        :class="isInsurancePayment(row) ? 'pay-amount--insurance' : 'pay-amount--client'">
+                                        {{ formatFcfa(row.montant) }}
+                                    </strong>
+                                    <div class="pay-actions" data-tour="caisse-paiements.row-actions">
+                                        <Button
+                                            :icon="isInvoiceStylePayment(row) ? 'pi pi-print' : 'pi pi-ticket'"
+                                            size="small" text rounded
+                                            :title="isInvoiceStylePayment(row) ? 'Imprimer reçu' : 'Imprimer ticket'"
+                                            @click="emit(isInvoiceStylePayment(row) ? 'print-payment' : 'print-receipt', row)" />
+                                        <Button v-if="isInternetFeaturesEnabled" icon="pi pi-send" size="small" text rounded title="Envoyer par SMS"
+                                            @click="emit('send-receipt-sms', row)" />
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    </AccordionContent>
                 </AccordionPanel>
             </Accordion>
             <div v-else class="hint">Aucun paiement à afficher pour cette période.</div>

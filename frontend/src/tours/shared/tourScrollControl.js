@@ -1,6 +1,6 @@
 import { getTourGuideClient } from '../tourGuideClient';
 
-const SCROLL_CONTAINER_SELECTOR = '.layout-main-container';
+const SCROLL_CONTAINER_SELECTOR = '.layout-main';
 
 let scrollLockState = null;
 let syncListenersAttached = false;

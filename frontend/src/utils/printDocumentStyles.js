@@ -23,7 +23,7 @@ function buildPrintProfile() {
 }
 
 export const PRINT_DOCUMENT_BASE_CSS = `
-    @page { size: A4 landscape; margin: 10mm; }
+    @page { size: A4 landscape; margin: 14mm 14mm 22mm 14mm; }
     * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; box-sizing: border-box; }
     body {
         font-family: Arial, Helvetica, sans-serif;
@@ -46,7 +46,7 @@ export const PRINT_DOCUMENT_BASE_CSS = `
         background: transparent;
         vertical-align: top;
     }
-    .print-footer-space { height: 20mm; }
+    .print-footer-space { height: 22mm; }
     .print-page::before {
         content: '';
         position: fixed;
@@ -138,7 +138,7 @@ export const PRINT_DOCUMENT_BASE_CSS = `
         bottom: 0;
         left: 0;
         right: 0;
-        padding: 6px 10mm;
+        padding: 6px 14mm;
         border-top: 2px solid #1d6fbf;
         font-size: 8.5pt;
         color: #586574;

@@ -13,7 +13,7 @@ const props = defineProps({
 </script>
 
 <template>
-    <Card class="rounded-2xl border border-surface-200/60 bg-gradient-to-br from-surface-0 via-surface-0 to-surface-50/70 shadow-sm dark:border-surface-700 dark:from-surface-900 dark:to-surface-800">
+    <Card class="overflow-hidden rounded-2xl border border-surface-200/60 bg-gradient-to-br from-surface-0 via-surface-0 to-surface-50/70 shadow-sm dark:border-surface-700 dark:from-surface-900 dark:to-surface-800">
         <template #title>
             <div class="flex items-center justify-between gap-3 border-b border-surface-200/60 pb-3 dark:border-surface-700/60">
                 <span class="text-base font-semibold text-surface-900 dark:text-surface-0">{{ title }}</span>

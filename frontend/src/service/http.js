@@ -2,8 +2,6 @@
 // Client Axios centralisé avec intercepteurs pour gestion automatique du token et du logout sur 401
 import axios from 'axios';
 import { apiPrefix } from '@/config';
-import { useAuthStore } from '@/stores/auth';
-import router from '@/router';
 import { getDeviceMetadata } from '@/utils/deviceFingerprint';
 
 /** Timeout par défaut pour la plupart des requêtes API (20 s). */
@@ -101,6 +99,10 @@ const normalizeHttpError = (error) => {
     return error;
 };
 
+/** Lazy imports to avoid circular deps: http ↔ auth ↔ router ↔ AppLayout ↔ smsService */
+const loadAuthStore = () => import('@/stores/auth').then((m) => m.useAuthStore());
+const loadRouter = () => import('@/router').then((m) => m.default);
+
 const http = axios.create({
     baseURL: apiPrefix,
     timeout: REQUEST_TIMEOUT_MS
@@ -112,8 +114,7 @@ http.interceptors.request.use(
         config.headers = config.headers || {};
 
         try {
-            const auth = useAuthStore();
-            const token = auth?.token || localStorage.getItem('token');
+            const token = localStorage.getItem('token');
             if (token) {
                 config.headers.Authorization = `Bearer ${token}`;
             }
@@ -123,7 +124,7 @@ http.interceptors.request.use(
             config.headers['X-Device-Name'] = device.name;
             config.headers['X-Device-Type'] = device.type;
         } catch (_) {
-            // Pinia pas initialisé encore, fallback localStorage déjà géré
+            // localStorage / device metadata indisponible
         }
 
         if (isUploadRequest(config)) {
@@ -142,32 +143,40 @@ http.interceptors.response.use(
         normalizeHttpError(error);
 
         if (isDeviceNotAllowedError(error)) {
-            try {
-                const auth = useAuthStore();
-                auth?.setDeviceBlock(
-                    error.response?.data?.message,
-                    error.response?.data?.status
-                );
-            } catch (_) {
-                // Pinia pas initialisé
-            }
-            if (router.currentRoute.value.name !== 'devicePending') {
-                router.replace({ name: 'devicePending' });
-            }
+            Promise.all([loadAuthStore(), loadRouter()])
+                .then(([useAuthStore, router]) => {
+                    try {
+                        useAuthStore()?.setDeviceBlock(
+                            error.response?.data?.message,
+                            error.response?.data?.status
+                        );
+                    } catch (_) {
+                        // Pinia pas initialisé
+                    }
+                    if (router.currentRoute.value.name !== 'devicePending') {
+                        router.replace({ name: 'devicePending' });
+                    }
+                })
+                .catch(() => {});
             return Promise.reject(error);
         }
 
         // Si réponse HTTP et statut 401 => token invalide/expiré
         if (error.response && error.response.status === 401) {
-            try {
-                const auth = useAuthStore();
-                auth?.logout();
-            } catch (_) {
-                localStorage.removeItem('token');
-            }
-            if (router.currentRoute.value.name !== 'login') {
-                router.replace({ name: 'login' });
-            }
+            Promise.all([loadAuthStore(), loadRouter()])
+                .then(([useAuthStore, router]) => {
+                    try {
+                        useAuthStore()?.logout();
+                    } catch (_) {
+                        localStorage.removeItem('token');
+                    }
+                    if (router.currentRoute.value.name !== 'login') {
+                        router.replace({ name: 'login' });
+                    }
+                })
+                .catch(() => {
+                    localStorage.removeItem('token');
+                });
         }
         return Promise.reject(error);
     }

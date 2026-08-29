@@ -26,7 +26,7 @@ const props = defineProps({
             <Card
                 v-for="item in items"
                 :key="item.key || item.label"
-                class="rounded-2xl border border-surface-200/60 bg-gradient-to-br from-surface-0 via-surface-0 to-surface-50/80 shadow-sm transition hover:shadow-md dark:border-surface-700 dark:from-surface-900 dark:to-surface-800"
+                class="overflow-hidden rounded-2xl border border-surface-200/60 bg-gradient-to-br from-surface-0 via-surface-0 to-surface-50/80 shadow-sm transition hover:shadow-md dark:border-surface-700 dark:from-surface-900 dark:to-surface-800"
             >
                 <template #content>
                     <div class="flex min-h-[110px] items-start justify-between gap-3">

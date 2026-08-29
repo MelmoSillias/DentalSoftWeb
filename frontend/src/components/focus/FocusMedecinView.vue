@@ -208,7 +208,7 @@ watch(
 </script>
 
 <template>
-    <div class="max-h-[80vh] h-[80vh] bg-surface-50 dark:bg-surface-950 shadow-sm overflow-hidden">
+    <div class="h-full min-h-0 bg-surface-50 dark:bg-surface-950 shadow-sm overflow-hidden">
         <Splitter class="h-full border border-surface-200 dark:border-surface-700 rounded-2xl overflow-hidden shadow-sm"
             :min-size="[220, 400, 240]">
             <!-- ==================== PANNEAU GAUCHE : DOSSIER PATIENT ==================== -->

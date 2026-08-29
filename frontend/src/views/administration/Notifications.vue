@@ -401,7 +401,7 @@ onBeforeUnmount(() => {
                             </span>
                             <Button 
                                 label="Sélectionner tous" 
-                                icon="pi pi-check-double" 
+                                icon="pi pi-verified" 
                                 severity="secondary" 
                                 text
                                 size="small"

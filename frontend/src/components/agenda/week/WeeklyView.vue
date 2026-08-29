@@ -110,6 +110,29 @@ const menuItems = computed(() => {
   return items;
 });
 
+const mapRdvsToEvents = (payload) => {
+  const selectedStatusSet = new Set(filters.statuses || []);
+  const filteredPayload = (Array.isArray(payload) ? payload : []).filter((rdv) => selectedStatusSet.has(getStatusKey(rdv)));
+
+  return filteredPayload.map((rdv) => ({
+    id: String(rdv.id),
+    title: `${rdv.patientName || 'Patient'} — ${rdv.medecinName || 'Médecin'}`,
+    start: rdv.start,
+    end: rdv.end,
+    classNames: [getStatusCssClass(rdv)],
+    extendedProps: { ...rdv, __eventId: rdv.id }
+  }));
+};
+
+const syncCalendarEvents = (list) => {
+  calendarOptions.events = list;
+  const api = calendarRef.value?.getApi?.();
+  if (!api) return;
+  // FullCalendar ne recalcule pas toujours classNames/extendedProps si l'id reste identique
+  api.removeAllEvents();
+  list.forEach((event) => api.addEvent(event));
+};
+
 const loadEvents = async (force = false) => {
   if (!props.api?.fetchEvents) return;
   const start = currentRange.value?.start;
@@ -129,18 +152,9 @@ const loadEvents = async (force = false) => {
       patientQuery: filters.patient
     });
 
-    const selectedStatusSet = new Set(filters.statuses || []);
-    const filteredPayload = (Array.isArray(payload) ? payload : []).filter((rdv) => selectedStatusSet.has(getStatusKey(rdv)));
-
-    events.value = filteredPayload.map(rdv => ({
-      id: rdv.id,
-      title: `${rdv.patientName || 'Patient'} — ${rdv.medecinName || 'Médecin'}`,
-      start: rdv.start,
-      end: rdv.end,
-      extendedProps: rdv,
-      classNames: [getStatusCssClass(rdv)],
-      extendedProps: { ...rdv, __eventId: rdv.id } // si besoin
-    }));
+    const nextEvents = mapRdvsToEvents(payload);
+    events.value = nextEvents;
+    syncCalendarEvents(nextEvents);
   } finally {
     loading.value = false;
     isFetching.value = false;
@@ -249,10 +263,6 @@ onMounted(() => {
   applyOpeningHours();
 });
 
-watch(events, (next) => {
-  calendarOptions.events = next;
-});
-
 watch(
   () => [filters.medecinId, filters.patient, [...(filters.statuses || [])].sort().join(',')],
   () => {
@@ -270,16 +280,14 @@ watch(
   { immediate: true }
 );
 
-// Refresh events when parent signals via `refreshKey`
+// Force le rechargement quand le parent signale une modification (création / validation / report / annulation)
 watch(() => props.refreshKey, (newVal, oldVal) => {
   if (newVal === oldVal) return;
-  loadEvents();
+  loadEvents(true);
 });
 
-// Recharge le calendrier après chaque action (création, validation, annulation, report)
 const reloadOnAction = () => loadEvents(true);
 
-// Écoute les événements émis par le parent
 defineExpose({ reloadOnAction });
 </script>
 

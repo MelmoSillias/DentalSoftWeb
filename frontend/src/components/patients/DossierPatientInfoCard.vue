@@ -353,7 +353,7 @@ const handlePhotoChange = (event) => {
                             @click="emit('reset-portal-password')"
                         />
                         <Button
-                            :icon="patient.portalAccount.active ? 'pi pi-user-minus' : 'pi pi-user-check'"
+                            :icon="patient.portalAccount.active ? 'pi pi-user-minus' : 'pi pi-user-plus'"
                             :label="patient.portalAccount.active ? 'Désactiver' : 'Activer'"
                             size="small"
                             :severity="patient.portalAccount.active ? 'danger' : 'success'"

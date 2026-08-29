@@ -41,7 +41,19 @@ export function useLayout() {
         }
     };
 
+    const closeMenu = () => {
+        layoutState.overlayMenuActive = false;
+        layoutState.staticMenuMobileActive = false;
+        layoutState.menuHoverActive = false;
+    };
+
     const isSidebarActive = computed(() => layoutState.overlayMenuActive || layoutState.staticMenuMobileActive);
+
+    const showLayoutMask = computed(
+        () =>
+            layoutState.staticMenuMobileActive ||
+            (layoutConfig.menuMode === 'overlay' && layoutState.overlayMenuActive)
+    );
 
     const isDarkTheme = computed(() => layoutConfig.darkTheme);
 
@@ -55,7 +67,9 @@ export function useLayout() {
         layoutConfig,
         layoutState,
         toggleMenu,
+        closeMenu,
         isSidebarActive,
+        showLayoutMask,
         isDarkTheme,
         isHubNavigation,
         getPrimary,

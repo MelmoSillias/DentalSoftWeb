@@ -13,7 +13,7 @@
                 <template #body="{ data }">
                     <div class="flex items-center gap-2">
                         <i class="pi pi-file-pdf" v-if="isPdf(data.url)"></i>
-                        <i class="pi pi-file-image" v-else-if="isImage(data.url)"></i>
+                        <i class="pi pi-image" v-else-if="isImage(data.url)"></i>
                         <i class="pi pi-file" v-else></i>
                         <span>{{ data.nom }}</span>
                     </div>
@@ -34,7 +34,7 @@
         </DataTable>
     </div>
 
-    <Dialog v-model:visible="showAddDialog" modal header="Ajouter un fichier" :style="{ width: '30rem' }" :pt="{ root: 'rounded-2xl' }">
+    <Dialog v-model:visible="showAddDialog" modal header="Ajouter un fichier" :style="{ width: '30rem' }" :pt="{ root: 'rounded-2xl overflow-hidden' }">
         <div class="flex flex-col gap-4 p-2">
             <div>
                 <label class="block text-sm font-medium mb-1">Nom du fichier</label>

@@ -146,7 +146,7 @@ class ConsultationService
                     $paiement->setMode($modePaiement);
                     $paiement->setMontant($patientAmount);
                     $paiement->setDate($timestamp);
-                    $paiement->setConsultation($consultation);
+                    $consultation->setPaiement($paiement);
                     $this->em->persist($paiement);
                     $patientPayment = $paiement;
 

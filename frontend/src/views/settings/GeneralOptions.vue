@@ -242,7 +242,7 @@ const ADMIN_CATEGORIES = ['cabinet', 'portal', 'administration'];
 const navigation = {
     appearance: {
         label: 'Apparence',
-        icon: 'pi pi-display',
+        icon: 'pi pi-desktop',
         sections: [
             { id: 'overview', label: 'Aperçu', icon: 'pi pi-eye' },
             { id: 'theme', label: 'Thème', icon: 'pi pi-sun' },
@@ -1367,14 +1367,14 @@ onBeforeUnmount(() => {
                                     </div>
                                 </div>
                                 <div class="stat-card">
-                                    <div class="stat-icon"><i class="pi-palette"></i></div>
+                                    <div class="stat-icon"><i class="pi pi-palette"></i></div>
                                     <div class="stat-info">
                                         <span class="stat-label">Preset</span>
                                         <strong class="stat-value">{{ preset }}</strong>
                                     </div>
                                 </div>
                                 <div class="stat-card">
-                                    <div class="stat-icon"><i class="pi pi-font"></i></div>
+                                    <div class="stat-icon"><i class="pi pi-align-left"></i></div>
                                     <div class="stat-info">
                                         <span class="stat-label">Typographie</span>
                                         <strong class="stat-value">{{ fontFamily }} • {{ currentFontSizeLabel }}</strong>

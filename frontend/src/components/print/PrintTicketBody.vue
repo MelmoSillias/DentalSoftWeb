@@ -8,11 +8,11 @@
             <tbody>
                 <tr>
                     <td>N° consultation</td>
-                    <td class="right">{{ paiement?.consultation?.id || '—' }}</td>
+                    <td class="right">{{ consultationIdLabel }}</td>
                 </tr>
                 <tr>
                     <td>N° de passage</td>
-                    <td class="right">{{ paiement?.consultation?.numeroPassage || '—' }}</td>
+                    <td class="right">{{ numeroPassageLabel }}</td>
                 </tr>
                 <tr>
                     <td>Date</td>
@@ -20,14 +20,11 @@
                 </tr>
                 <tr>
                     <td>Patient</td>
-                    <td class="right">
-                        {{ paiement?.consultation?.patient?.nom || '—' }}
-                        {{ paiement?.consultation?.patient?.prenom || '' }}
-                    </td>
+                    <td class="right">{{ patientLabel }}</td>
                 </tr>
                 <tr>
                     <td>Mode</td>
-                    <td class="right">{{ paiement?.mode?.libelle || '—' }}</td>
+                    <td class="right">{{ modeLabel }}</td>
                 </tr>
             </tbody>
         </table>
@@ -43,14 +40,14 @@
             </thead>
             <tbody>
                 <tr>
-                    <td>Ticket de consultation #{{ paiement?.consultation?.id || '—' }}</td>
-                    <td class="right">{{ formatMoney(paiement?.montant) }}</td>
+                    <td>Ticket de consultation #{{ consultationIdLabel }}</td>
+                    <td class="right">{{ formatMoney(props.paiement?.montant) }}</td>
                 </tr>
             </tbody>
             <tfoot>
                 <tr>
                     <td class="bold">Total payé</td>
-                    <td class="right bold">{{ formatMoney(paiement?.montant) }}</td>
+                    <td class="right bold">{{ formatMoney(props.paiement?.montant) }}</td>
                 </tr>
             </tfoot>
         </table>
@@ -67,6 +64,42 @@ const props = defineProps({
     paiement: { type: Object, default: () => ({}) },
     logoSrc: { type: String, default: logoImg }
 });
+
+const consultation = computed(() => props.paiement?.consultation || null);
+
+const consultationId = computed(() => {
+    const value =
+        consultation.value?.id ??
+        props.paiement?.consultationId ??
+        props.paiement?.consultation_id ??
+        null;
+    const numeric = Number(value);
+    return Number.isFinite(numeric) && numeric > 0 ? numeric : null;
+});
+
+const numeroPassage = computed(() => {
+    const value =
+        consultation.value?.numeroPassage ??
+        consultation.value?.numero_passage ??
+        props.paiement?.numeroPassage ??
+        props.paiement?.numero_passage ??
+        null;
+    const numeric = Number(value);
+    return Number.isFinite(numeric) && numeric > 0 ? numeric : null;
+});
+
+const consultationIdLabel = computed(() => consultationId.value ?? '—');
+const numeroPassageLabel = computed(() => numeroPassage.value ?? '—');
+
+const patientLabel = computed(() => {
+    const patient = consultation.value?.patient;
+    const nom = String(patient?.nom || '').trim();
+    const prenom = String(patient?.prenom || '').trim();
+    const full = `${nom} ${prenom}`.trim();
+    return full || '—';
+});
+
+const modeLabel = computed(() => props.paiement?.mode?.libelle || '—');
 
 const dateLabel = computed(() => {
     const raw = props.paiement?.date ? new Date(props.paiement.date) : null;

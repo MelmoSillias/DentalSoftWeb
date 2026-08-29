@@ -6,7 +6,7 @@ const GROUP = 'rapports';
 const TASKS = [
     { id: 'overview', label: 'Presentation de la page', icon: 'pi pi-compass', mockScenario: 'static' },
     { id: 'financial-report', label: 'Rapport financier', icon: 'pi pi-chart-line', mockScenario: 'static', roles: ['admin'] },
-    { id: 'clinical-report', label: 'Rapport clinique', icon: 'pi pi-user-md', mockScenario: 'static', roles: ['medecin'] },
+    { id: 'clinical-report', label: 'Rapport clinique', icon: 'pi pi-id-card', mockScenario: 'static', roles: ['medecin'] },
     { id: 'reception-report', label: 'Rapport reception', icon: 'pi pi-users', mockScenario: 'static', roles: ['reception'] },
     { id: 'export-report', label: 'Exporter le rapport', icon: 'pi pi-download', mockScenario: 'static' }
 ];

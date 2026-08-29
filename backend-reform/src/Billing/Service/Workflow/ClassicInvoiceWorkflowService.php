@@ -68,12 +68,12 @@ class ClassicInvoiceWorkflowService
             ->andWhere('p.id = :patientId')
             ->andWhere('c.statut = 1')
             ->setParameter('patientId', $patientId)
-            ->orderBy('f.dateFacture', 'ASC')
-            ->addOrderBy('f.id', 'ASC')
+            ->orderBy('f.dateFacture', 'DESC')
+            ->addOrderBy('f.id', 'DESC')
             ->getQuery()
             ->getResult();
 
-        return array_map(fn (Facture $facture): array => $this->mapFactureToArray($facture), $factures);
+        return array_map(fn (Facture $facture): array => $this->mapFactureToArray($facture, true, false), $factures);
     }
 
     public function previewDevis(int $id): ?array

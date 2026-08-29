@@ -1,20 +1,20 @@
 @use 'mixins' as *;
 
-.layout-topbar { 
+.layout-topbar {
+    flex: 0 0 var(--layout-topbar-height);
+    height: var(--layout-topbar-height);
+    z-index: var(--layout-z-topbar);
+    width: 100%;
+    padding: 0 2rem;
+    background-color: var(--primary-color);
     -webkit-backdrop-filter: blur(10px);
     backdrop-filter: blur(10px);
-    height: 4rem;
-    z-index: 997; 
-    width: 100%;
-    grid-column: 1 / span 2;
-    padding: 0 2rem; 
-    background-color: var(--primary-color);
-    transition: left var(--layout-section-transition-duration);
     display: flex;
     align-items: center;
+    position: relative;
 
     .layout-topbar-logo-container {
-        width: 20rem;
+        width: var(--layout-sidebar-width);
         display: flex;
         align-items: center;
     }
@@ -124,7 +124,7 @@
             border-radius: var(--content-border-radius);
             padding: 1rem;
             right: 2rem;
-            top: 4rem;
+            top: var(--layout-topbar-height);
             min-width: 15rem;
             border: 1px solid var(--surface-border);
 

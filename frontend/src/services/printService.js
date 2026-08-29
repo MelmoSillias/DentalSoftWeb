@@ -27,8 +27,9 @@ export const fetchReceiptPrintData = async (paiementId, token) => {
     return res.data;
 };
 
-export const fetchTicketPrintData = async (consultationId, token) => {
-    const res = await axios.get(`${apiPrefix}/prints/tickets/${consultationId}`, withHeaders(token));
+/** @param {number|string} paymentOrConsultationId paiement id (preferred) or consultation id */
+export const fetchTicketPrintData = async (paymentOrConsultationId, token) => {
+    const res = await axios.get(`${apiPrefix}/prints/tickets/${paymentOrConsultationId}`, withHeaders(token));
     return res.data;
 };
 

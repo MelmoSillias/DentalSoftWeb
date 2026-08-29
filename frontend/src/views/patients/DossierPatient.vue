@@ -26,9 +26,10 @@
                         optionValue="value"
                         placeholder="Sélectionner un patient"
                         filter
+                        showClear
                         :filterFields="['label', 'phone', 'searchText']"
                         class="w-72"
-                        :loading="patientOptionsLoading"
+                        :loading="patientOptionsLoading || dossierLoading"
                         @filter="handlePatientFilter"
                         @update:modelValue="handlePatientSelect"
                     >
@@ -43,7 +44,22 @@
             </div>
         </div>
 
-        <div v-if="loadErrorMessage" class="rounded-2xl border border-amber-200/70 bg-amber-50/70 p-8 text-center dark:border-amber-800/70 dark:bg-amber-950/20">
+        <div v-if="dossierLoading" class="rounded-2xl border border-surface-200/50 dark:border-surface-700/50 bg-surface-0 dark:bg-surface-800/80 p-12 flex flex-col items-center justify-center gap-3">
+            <ProgressSpinner style="width: 48px; height: 48px" />
+            <p class="text-sm text-surface-500 dark:text-surface-400">Chargement du dossier…</p>
+        </div>
+
+        <div v-else-if="!hasPatientSelection" class="rounded-2xl border border-dashed border-surface-200/70 dark:border-surface-700/70 bg-surface-0 dark:bg-surface-800/80 p-12 text-center">
+            <div class="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-surface-100 to-surface-200 dark:from-surface-800 dark:to-surface-700">
+                <i class="pi pi-user text-3xl text-surface-400"></i>
+            </div>
+            <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-100">Aucune sélection</h3>
+            <p class="mt-2 text-sm text-surface-600 dark:text-surface-400">
+                Sélectionnez un patient dans la liste ci-dessus pour afficher son dossier.
+            </p>
+        </div>
+
+        <div v-else-if="loadErrorMessage" class="rounded-2xl border border-amber-200/70 bg-amber-50/70 p-8 text-center dark:border-amber-800/70 dark:bg-amber-950/20">
             <div class="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
                 <i class="pi pi-exclamation-triangle text-2xl"></i>
             </div>
@@ -89,6 +105,7 @@
                 @fiche-updated="handleFicheUpdated"
                 @fiche-created="handleFicheUpdated"
                 @refresh-archive="loadDossier(props.patientId)"
+                @refresh="loadDossier(props.patientId)"
             />
         </div>
 
@@ -169,6 +186,7 @@
                         :factures="factures"
                         :consultations="consultations"
                         :show-consultations="showConsultationsTab"
+                        @refresh="loadDossier(props.patientId)"
                     />
                 </div>
                     <!-- Colonne de gauche, après DossierPatientInfoCard -->
@@ -183,7 +201,7 @@
         </div>
 
         <Button
-            v-if="!loadErrorMessage && !dossierHiddenForMedecin"
+            v-if="hasPatientSelection && !dossierLoading && !loadErrorMessage && !dossierHiddenForMedecin"
             data-tour="patients-dossier.layout-toggle"
             :icon="layoutMode === 'tabs' ? 'pi pi-list' : 'pi pi-th-large'"
             rounded
@@ -194,7 +212,7 @@
         />
 
         <Dialog v-model:visible="showActiveConsultWarn" modal :style="{ width: '35rem' }" :pt="{
-            root: 'rounded-2xl',
+            root: 'rounded-2xl overflow-hidden',
             header: 'bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900 dark:to-surface-800 px-6 py-4 border-b',
             content: 'p-0 mt-4'
         }">
@@ -231,7 +249,7 @@
         </Dialog>
 
         <Dialog v-if="!isMedecin" v-model:visible="showConsultationDialog" modal :style="{ width: '50rem' }" :pt="{
-            root: 'rounded-2xl',
+            root: 'rounded-2xl overflow-hidden',
             header: 'bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900 dark:to-surface-800 px-6 py-4 border-b',
             content: 'p-0 mt-4'
         }">
@@ -254,7 +272,7 @@
         </Dialog>
 
         <Dialog v-model:visible="showRdvDialog" modal :style="{ width: '45rem' }" :pt="{
-            root: 'rounded-2xl',
+            root: 'rounded-2xl overflow-hidden',
             header: 'bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900 dark:to-surface-800 px-6 py-4 border-b',
             content: 'p-0 mt-4'
         }">
@@ -277,7 +295,7 @@
         </Dialog>
 
         <Dialog v-model:visible="showEditDialog" modal :style="{ width: '45rem' }" :pt="{
-            root: 'rounded-2xl',
+            root: 'rounded-2xl overflow-hidden',
             header: ({ props }) => ({
                 class: [
                     'px-6 py-4 border-b border-surface-200 dark:border-surface-700',
@@ -315,7 +333,7 @@
         />
 
         <Dialog v-model:visible="showPrintDialog" modal :style="{ width: '32rem' }" :pt="{
-            root: 'rounded-2xl',
+            root: 'rounded-2xl overflow-hidden',
             header: 'bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900 dark:to-surface-800 px-6 py-4 border-b',
             content: 'p-0'
         }">
@@ -365,20 +383,18 @@ import { logAppError } from '@/utils/appLogger';
 
 import AllergyDialogForm from '@/components/patients/AllergyDialogForm.vue';
 import AntecedentDialogForm from '@/components/patients/AntecedentDialogForm.vue';
+import ArchiveFilesSection from '@/components/patients/ArchiveFilesSection.vue';
 import DossierPatientInfoCard from '@/components/patients/DossierPatientInfoCard.vue';
+import DossierPatientTabsView from '@/components/patients/DossierPatientTabsView.vue';
 import FichesMedicalesSection from '@/components/patients/FichesMedicalesSection.vue';
 import FormCreateConsultation from '@/components/patients/FormCreateConsultation.vue';
 import FormPatient from '@/components/patients/FormPatient.vue';
 import FormRendezVous from '@/components/patients/FormRendezVous.vue';
 import ListePatientConsultations from '@/components/patients/ListePatientConsultations.vue';
 import RdvPaiementsSection from '@/components/patients/RdvPaiementsSection.vue';
-import PrintDossierBody from '@/components/print/PrintDossierBody.vue';
-import PrintFicheV2Body from '@/components/print/PrintFicheV2Body.vue';
-import { usePrinter } from '@/composables/usePrinter';
 import { useDossierLayout } from '@/composables/useDossierLayout';
-import { usePatients } from '@/composables/usePatients';
-import { computeAgeYears } from '@/utils/formuleDentaireLayout';
-import { fetchPublicGeneralSettings } from '@/services/globalSettingsService';
+import { useGuidedTour } from '@/composables/useGuidedTour';
+import { usePatientDossier } from '@/composables/usePatientDossier';
 import {
     activatePatientsTourMock,
     deactivatePatientsTourMock,
@@ -386,20 +402,15 @@ import {
     resetPatientsTourMockData,
     resolvePatientsTourMockScenario
 } from '@/services/patientsTourMock';
-import { useGuidedTour } from '@/composables/useGuidedTour';
-import { addPatientAllergy, addPatientAntecedent, deletePatientAllergy, deletePatientAntecedent } from '@/services/patients';
-import { fetchPatientDossierPrintData, fetchPatientFichePrintData } from '@/services/printService';
-import { useAuthStore } from '@/stores/auth';
 import { useAssurancesStore } from '@/stores/assurances';
 import Button from 'primevue/button';
 import Checkbox from 'primevue/checkbox';
 import Dialog from 'primevue/dialog';
+import ProgressSpinner from 'primevue/progressspinner';
 import Select from 'primevue/select';
 import { useToast } from 'primevue/usetoast';
-import { computed, ref, onBeforeUnmount, onMounted, nextTick, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import ArchiveFilesSection from '@/components/patients/ArchiveFilesSection.vue';
-import DossierPatientTabsView from '@/components/patients/DossierPatientTabsView.vue';
 
 const props = defineProps({
     patientId: {
@@ -409,84 +420,98 @@ const props = defineProps({
         validator: (value) => value === null || typeof value === 'number'
     }
 });
-// Breadcrumbs
+
 const breadcrumbHome = { icon: 'pi pi-home', to: '/' };
 const breadcrumbItems = [
     { label: 'Patients', to: '/patients' },
     { label: 'Dossier médical', to: '/dossier' }
 ];
 
-const patientStore = usePatients();
 const { layoutMode, toggleLayoutMode } = useDossierLayout();
 const toast = useToast();
-const { printComponent } = usePrinter();
 const router = useRouter();
-const auth = useAuthStore();
 const assurancesStore = useAssurancesStore();
-const token = localStorage.getItem('token');
 
-// Patient data
-const patient = ref(patientStore.normalizePatientDossier());
-const consultations = ref([]);
-const consultationsLoading = ref(false);
+let patientSearchTimeout = null;
+let guidedTourPageState = null;
+let guidedTourCleanupPromise = null;
+const guidedTourDemoActive = ref(false);
 const patientOptions = ref([]);
 const patientOptionsLoading = ref(false);
 const selectedPatientId = ref(null);
+const ignorePatientSelectEvents = ref(false);
 
-const showRdvDialog = ref(false);
-const showConsultationDialog = ref(false);
-const showEditDialog = ref(false);
-const showAntecedentDialog = ref(false);
-const showAllergyDialog = ref(false);
-const savingAntecedent = ref(false);
-const savingAllergy = ref(false);
-const showPrintDialog = ref(false);
-const selectedFicheForPrint = ref(null);
-const printIncludeEmpty = ref(false);
-const printSections = ref([]);
-const showActiveConsultWarn = ref(false);
-const activeConsultInfo = ref({ hasActive: false, consultationId: null, hasFiche: false });
-const patientEditFormRef = ref(null);
-const loadErrorMessage = ref('');
-let patientSearchTimeout = null;
-let guidedTourPageState = null;
-let guidedTourDemoActive = false;
-let guidedTourCleanupPromise = null;
+const {
+    patientStore,
+    token,
+    patient,
+    consultations,
+    consultationsLoading,
+    dossierLoading,
+    loadErrorMessage,
+    fiches,
+    patientAge,
+    rdvs,
+    archiveFiles,
+    paiements,
+    factures,
+    isReception,
+    isMedecin,
+    showConsultationsTab,
+    dossierHiddenForMedecin,
+    shouldHidePatientPhoneForMedecin,
+    hasOpenDialogs,
+    showRdvDialog,
+    showConsultationDialog,
+    showEditDialog,
+    showAntecedentDialog,
+    showAllergyDialog,
+    savingAntecedent,
+    savingAllergy,
+    showPrintDialog,
+    selectedFicheForPrint,
+    printIncludeEmpty,
+    printSections,
+    printSectionOptions,
+    showActiveConsultWarn,
+    activeConsultInfo,
+    patientEditFormRef,
+    loadDossier,
+    clearDossier,
+    loadAll,
+    retryLoadPage,
+    loadVisibilityPolicy,
+    resetDialogs: resetTourDialogs,
+    handleSaveAntecedent,
+    handleSaveAllergy,
+    handleDeleteAntecedent,
+    handleDeleteAllergy,
+    handleCreatePortalAccount,
+    handleResetPortalPassword,
+    handleTogglePortalActive,
+    handlePhotoSelected,
+    handleRdvSaved,
+    handleConsultationSaved,
+    handlePatientSaved,
+    handleFicheUpdated,
+    handlePrintDossier,
+    handlePrintFiche,
+    submitPrint
+} = usePatientDossier({
+    patientId: computed(() => props.patientId),
+    getPatientId: () => (
+        guidedTourDemoActive.value
+            ? selectedPatientId.value ?? props.patientId ?? null
+            : null
+    )
+});
 
-const printSectionOptions = [
-    { key: 'entretien', label: 'Questionnaire médical' },
-    { key: 'examens', label: 'Examen' },
-    { key: 'images', label: 'Images et documents' },
-    { key: 'plan', label: 'Plan de traitement' },
-    { key: 'bilan', label: 'Bilan dentaire' },
-    { key: 'seances', label: 'Seances passees' }
-];
-
-const fiches = computed(() => patient.value.fiches || []);
-const patientAge = computed(() => computeAgeYears(patient.value?.dateNaissance || patient.value?.age));
-const rdvs = computed(() => patient.value.rdvs || []);
-const archiveFiles = computed(() => patient.value.archiveFiles || []);
-const paiements = computed(() => patient.value.paiements || []);
-const factures = computed(() => patient.value.factures || []);
-const isReception = computed(() => Boolean(auth.user?.roles?.includes('ROLE_RECEPTION')));
-const isMedecin = computed(() => Boolean(auth.user?.roles?.includes('ROLE_MEDECIN')));
-const isAdmin = computed(() => Boolean(auth.user?.roles?.includes('ROLE_ADMIN')));
-const showConsultationsTab = computed(() => isAdmin.value || isMedecin.value);
-const currentPatientId = computed(() => props.patientId ?? patient.value?.id ?? null);
-const hidePatientDossierForMedecins = ref(false);
-const hidePatientPhoneForMedecins = ref(false);
-const isRestrictedMedecin = computed(() => isMedecin.value && !isAdmin.value);
-const dossierHiddenForMedecin = computed(() => isRestrictedMedecin.value && hidePatientDossierForMedecins.value);
-const shouldHidePatientPhoneForMedecin = computed(() => isRestrictedMedecin.value && hidePatientPhoneForMedecins.value);
-const hasOpenDialogs = computed(() => (
-    showRdvDialog.value
-    || showConsultationDialog.value
-    || showEditDialog.value
-    || showAntecedentDialog.value
-    || showAllergyDialog.value
-    || showPrintDialog.value
-    || showActiveConsultWarn.value
+const currentPatientId = computed(() => (
+    guidedTourDemoActive.value
+        ? selectedPatientId.value ?? props.patientId ?? patient.value?.id ?? null
+        : props.patientId ?? null
 ));
+const hasPatientSelection = computed(() => currentPatientId.value != null);
 
 const cloneValue = (value) => {
     if (value === undefined) return undefined;
@@ -498,160 +523,6 @@ const waitForTourUi = (ms = 180) => new Promise((resolve) => {
     window.setTimeout(resolve, ms);
 });
 
-const getDisplayedPatientId = () => (guidedTourDemoActive ? patient.value?.id ?? null : props.patientId ?? patient.value?.id ?? null);
-
-const ensurePatientLists = () => {
-    if (!Array.isArray(patient.value.antecedents)) patient.value.antecedents = [];
-    if (!Array.isArray(patient.value.allergies)) patient.value.allergies = [];
-    if (!Array.isArray(patient.value.archiveFiles)) patient.value.archiveFiles = [];
-};
-
-const handleSaveAntecedent = async (payload) => {
-    if (!patient.value?.id) return;
-    savingAntecedent.value = true;
-    try {
-        const res = await addPatientAntecedent(patient.value.id, payload, token);
-        if (res?.antecedent) {
-            ensurePatientLists();
-            patient.value.antecedents = [res.antecedent, ...patient.value.antecedents];
-        }
-        toast.add({ severity: 'success', summary: 'Antécédent ajouté', life: 2500 });
-        showAntecedentDialog.value = false;
-    } catch (error) {
-        logAppError('Erreur ajout antécédent', error);
-        toast.add({ severity: 'error', summary: 'Erreur', detail: "Impossible d'ajouter l'antécédent. si le problème persiste, contactez le support.", life: 3000 });
-    } finally {
-        savingAntecedent.value = false;
-    }
-};
-
-const handleSaveAllergy = async (payload) => {
-    if (!patient.value?.id) return;
-    savingAllergy.value = true;
-    try {
-        const res = await addPatientAllergy(patient.value.id, payload, token);
-        if (res?.allergy) {
-            ensurePatientLists();
-            patient.value.allergies = [res.allergy, ...patient.value.allergies];
-        }
-        toast.add({ severity: 'success', summary: 'Allergie ajoutée', life: 2500 });
-        showAllergyDialog.value = false;
-    } catch (error) {
-        logAppError('Erreur ajout allergie', error);
-        toast.add({ severity: 'error', summary: 'Erreur', detail: "Impossible d'ajouter l'allergie. si le problème persiste, contactez le support.", life: 3000 });
-    } finally {
-        savingAllergy.value = false;
-    }
-};
-
-const handleDeleteAntecedent = async (item) => {
-    if (!patient.value?.id || !item?.id) return;
-    try {
-        await deletePatientAntecedent(patient.value.id, item.id, token);
-        ensurePatientLists();
-        patient.value.antecedents = patient.value.antecedents.filter((a) => a.id !== item.id);
-        toast.add({ severity: 'success', summary: 'Antécédent supprimé', life: 2000 });
-    } catch (error) {
-        logAppError('Erreur suppression antécédent', error);
-        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Suppression impossible. si le problème persiste, contactez le support.', life: 3000 });
-    }
-};
-
-const handleDeleteAllergy = async (item) => {
-    if (!patient.value?.id || !item?.id) return;
-    try {
-        await deletePatientAllergy(patient.value.id, item.id, token);
-        ensurePatientLists();
-        patient.value.allergies = patient.value.allergies.filter((a) => a.id !== item.id);
-        toast.add({ severity: 'success', summary: 'Allergie supprimée', life: 2000 });
-    } catch (error) {
-        logAppError('Erreur suppression allergie', error);
-        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Suppression impossible. si le problème persiste, contactez le support.', life: 3000 });
-    }
-};
-
-const handleCreatePortalAccount = async () => {
-    if (!patient.value?.id) return;
-
-    const account = await patientStore.createPortalAccount(patient.value.id, token);
-    if (!account) {
-        toast.add({ severity: 'error', summary: 'Compte patient', detail: 'Création impossible.', life: 3000 });
-        return;
-    }
-
-    patient.value.portalAccount = account;
-    toast.add({
-        severity: 'success',
-        summary: 'Compte patient',
-        detail: `Compte créé (${account.username}) - mot de passe par défaut: 123`,
-        life: 4500
-    });
-};
-
-const handleResetPortalPassword = async () => {
-    if (!patient.value?.id || !patient.value?.portalAccount) return;
-
-    const account = await patientStore.resetPortalAccountPassword(patient.value.id, token);
-    if (!account) {
-        toast.add({ severity: 'error', summary: 'Compte patient', detail: 'Réinitialisation impossible.', life: 3000 });
-        return;
-    }
-
-    patient.value.portalAccount = account;
-    toast.add({ severity: 'success', summary: 'Compte patient', detail: 'Mot de passe réinitialisé à 123.', life: 3500 });
-};
-
-const handleTogglePortalActive = async (active) => {
-    if (!patient.value?.id || !patient.value?.portalAccount) return;
-
-    const account = await patientStore.togglePortalAccountActive(patient.value.id, Boolean(active), token);
-    if (!account) {
-        toast.add({ severity: 'error', summary: 'Compte patient', detail: 'Mise à jour du statut impossible.', life: 3000 });
-        return;
-    }
-
-    patient.value.portalAccount = account;
-    toast.add({
-        severity: 'success',
-        summary: 'Compte patient',
-        detail: account.active ? 'Compte activé.' : 'Compte désactivé.',
-        life: 3000
-    });
-};
-
-const handlePhotoSelected = async (file) => {
-    if (!patient.value?.id || !file) return;
-
-    const formData = new FormData();
-    formData.append('photo', file);
-    const loadingToast = {
-        severity: 'info',
-        summary: 'Photo patient',
-        detail: 'Upload en cours...',
-        life: 0
-    };
-
-    try {
-        toast.add(loadingToast);
-        const updated = await patientStore.updatePatient(patient.value.id, formData, token);
-        if (!updated) {
-            throw new Error('patient_photo_update_failed');
-        }
-
-        patient.value = {
-            ...patient.value,
-            photo: updated.photo ?? patient.value.photo
-        };
-
-        toast.remove(loadingToast);
-        toast.add({ severity: 'success', summary: 'Photo patient', detail: 'Photo mise à jour.', life: 2500 });
-    } catch (error) {
-        toast.remove(loadingToast);
-        logAppError('Erreur mise à jour photo patient', error);
-        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de mettre à jour la photo du patient.', life: 3000 });
-    }
-};
-
 const loadPatientOptions = async (query = '') => {
     patientOptionsLoading.value = true;
     try {
@@ -660,12 +531,17 @@ const loadPatientOptions = async (query = '') => {
             ? await patientStore.fetchPatientsByMedecin(token, params)
             : await patientStore.fetchPatients(token, params);
         const items = response?.items ?? [];
-        patientOptions.value = items.map((p) => ({
+        const mapped = items.map((p) => ({
             label: p.fullname || `${p.prenom ?? ''} ${p.nom ?? ''}`.trim() || p.nom,
             value: p.id,
             phone: p.telephone || p.phone || '',
             searchText: [p.fullname, `${p.prenom ?? ''} ${p.nom ?? ''}`.trim(), p.nom, p.telephone, p.phone].filter(Boolean).join(' ')
         }));
+        const keepId = selectedPatientId.value ?? props.patientId ?? null;
+        patientOptions.value = mapped;
+        if (keepId != null) {
+            await ensureSelectedPatientOption(keepId);
+        }
     } catch (error) {
         logAppError('Erreur lors du chargement des patients', error);
         toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de charger la liste des patients. si le problème persiste, contactez le support.', life: 3000 });
@@ -696,6 +572,19 @@ const ensureSelectedPatientOption = async (patientId) => {
     }
 };
 
+const applySelectedPatientId = async (patientId) => {
+    ignorePatientSelectEvents.value = true;
+    try {
+        if (patientId != null) {
+            await ensureSelectedPatientOption(patientId);
+        }
+        selectedPatientId.value = patientId;
+        await nextTick();
+    } finally {
+        ignorePatientSelectEvents.value = false;
+    }
+};
+
 const handlePatientFilter = (event) => {
     const query = event?.value ?? event?.query ?? '';
     if (patientSearchTimeout) clearTimeout(patientSearchTimeout);
@@ -704,79 +593,18 @@ const handlePatientFilter = (event) => {
     }, 250);
 };
 
-const loadDossier = async (patientId, { asPageLoad = false } = {}) => {
-    if (!patientId) return;
-    try {
-        const data = await patientStore.fetchPatientDossier(patientId);
-        if (data) {
-            patient.value = patientStore.normalizePatientDossier(data);
-        }
-        if (asPageLoad) {
-            loadErrorMessage.value = '';
-        }
-        return true;
-    } catch (error) {
-        logAppError('Erreur lors du chargement du dossier patient', error);
-        if (asPageLoad) {
-            loadErrorMessage.value = 'Impossible de charger le dossier du patient.';
-        }
-        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de charger le dossier du patient. si le problème persiste, contactez le support.', life: 3000 });
-        return false;
-    }
-};
-
-const loadConsultations = async (patientId, { asPageLoad = false } = {}) => {
-    if (!patientId) return;
-    consultationsLoading.value = true;
-    try {
-        consultations.value = await patientStore.fetchPatientConsultations(patientId);
-        if (asPageLoad) {
-            loadErrorMessage.value = '';
-        }
-        return true;
-    } catch (error) {
-        logAppError('Erreur lors du chargement des consultations', error);
-        consultations.value = [];
-        if (asPageLoad) {
-            loadErrorMessage.value = 'Impossible de charger les consultations du patient.';
-        }
-        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de charger les consultations du patient. si le problème persiste, contactez le support.', life: 3000 });
-        return false;
-    } finally {
-        consultationsLoading.value = false;
-    }
-};
-
-const retryLoadPage = async () => {
-    loadErrorMessage.value = '';
-    const patientId = getDisplayedPatientId();
-    if (!patientId) return;
-    await loadDossier(patientId, { asPageLoad: true });
-    await loadConsultations(patientId, { asPageLoad: true });
-};
-
-const loadVisibilityPolicy = async () => {
-    try {
-        const settings = await fetchPublicGeneralSettings(token);
-        hidePatientDossierForMedecins.value = settings?.hidePatientDossierForMedecins === true;
-        hidePatientPhoneForMedecins.value = settings?.hidePatientPhoneForMedecins === true;
-    } catch (error) {
-        logAppError('Erreur chargement politique visibilité dossier', error);
-        hidePatientDossierForMedecins.value = false;
-        hidePatientPhoneForMedecins.value = false;
-    }
-};
-
 onMounted(async () => {
     await loadVisibilityPolicy();
     await assurancesStore.load(token).catch(() => []);
-    if (props.patientId != null) {
-        await loadDossier(props.patientId, { asPageLoad: true });
-        await loadConsultations(props.patientId, { asPageLoad: true });
-        selectedPatientId.value = props.patientId;
-    }
+    const initialId = props.patientId;
+    const dossierPromise = initialId != null
+        ? loadAll(initialId, { asPageLoad: true })
+        : null;
     await loadPatientOptions();
-    await ensureSelectedPatientOption(selectedPatientId.value);
+    if (initialId != null) {
+        await applySelectedPatientId(initialId);
+        await dossierPromise;
+    }
 });
 
 onBeforeUnmount(() => {
@@ -784,56 +612,56 @@ onBeforeUnmount(() => {
         clearTimeout(patientSearchTimeout);
     }
     deactivatePatientsTourMock();
-    guidedTourDemoActive = false;
+    guidedTourDemoActive.value = false;
     resetTourDialogs();
 });
 
 watch(
     () => props.patientId,
-    async (newId) => {
-        if (guidedTourDemoActive) return;
-        if (newId == null) return;
-        await loadDossier(newId);
-        await loadConsultations(newId);
-        selectedPatientId.value = newId;
-        await ensureSelectedPatientOption(newId);
+    async (newId, oldId) => {
+        if (guidedTourDemoActive.value) return;
+        if (newId === oldId) return;
+        if (newId == null) {
+            await applySelectedPatientId(null);
+            clearDossier();
+            return;
+        }
+        await applySelectedPatientId(newId);
+        await loadAll(newId, { asPageLoad: true });
     }
 );
 
-const handlePatientSelect = (value) => {
-    if (!value) return;
-    if (guidedTourDemoActive) {
-        selectedPatientId.value = value;
-        loadDossier(value);
-        loadConsultations(value);
+const handlePatientSelect = async (value) => {
+    if (ignorePatientSelectEvents.value) return;
+
+    if (guidedTourDemoActive.value) {
+        if (!value) {
+            await applySelectedPatientId(null);
+            clearDossier();
+            return;
+        }
+        await applySelectedPatientId(value);
+        loadAll(value);
         return;
     }
+
+    if (!value) {
+        // Select peut émettre null si l'option n'est pas encore dans la liste : ne pas vider la route.
+        if (props.patientId != null) {
+            const optionPresent = patientOptions.value.some((opt) => opt.value === props.patientId);
+            if (!optionPresent || patientOptionsLoading.value) {
+                await applySelectedPatientId(props.patientId);
+                return;
+            }
+            router.push({ name: 'patients-dossier' });
+            return;
+        }
+        selectedPatientId.value = null;
+        return;
+    }
+
+    if (value === props.patientId) return;
     router.push({ name: 'patients-dossier', params: { patientId: value } });
-};
-
-const handleRdvSaved = async () => {
-    showRdvDialog.value = false;
-    await loadDossier(getDisplayedPatientId());
-};
-
-const handleConsultationSaved = async () => {
-    showConsultationDialog.value = false;
-    await loadConsultations(getDisplayedPatientId());
-};
-
-const handlePatientSaved = async () => {
-    showEditDialog.value = false;
-    await loadDossier(getDisplayedPatientId());
-};
-
-const resetTourDialogs = () => {
-    showRdvDialog.value = false;
-    showConsultationDialog.value = false;
-    showEditDialog.value = false;
-    showAntecedentDialog.value = false;
-    showAllergyDialog.value = false;
-    showPrintDialog.value = false;
-    showActiveConsultWarn.value = false;
 };
 
 const capturePageState = () => ({
@@ -866,18 +694,16 @@ const prepareGuidedTourDemo = async ({ taskId = 'overview', variantId = null } =
 
     activatePatientsTourMock(scenario);
     resetPatientsTourMockData(scenario);
-    guidedTourDemoActive = true;
+    guidedTourDemoActive.value = true;
 
     await loadPatientOptions();
-    selectedPatientId.value = demoPatientId;
-    await ensureSelectedPatientOption(demoPatientId);
-    await loadDossier(demoPatientId);
-    await loadConsultations(demoPatientId);
+    await applySelectedPatientId(demoPatientId);
+    await loadAll(demoPatientId);
     await nextTick();
 };
 
 const cleanupGuidedTourDemo = async () => {
-    if (!guidedTourDemoActive) {
+    if (!guidedTourDemoActive.value) {
         resetTourDialogs();
         return;
     }
@@ -889,7 +715,7 @@ const cleanupGuidedTourDemo = async () => {
     guidedTourCleanupPromise = (async () => {
         resetTourDialogs();
         deactivatePatientsTourMock();
-        guidedTourDemoActive = false;
+        guidedTourDemoActive.value = false;
         const stateToRestore = guidedTourPageState;
         guidedTourPageState = null;
         await restorePageState(stateToRestore);
@@ -971,7 +797,7 @@ const openTourDuplicateConsultationDialog = async (variantId = 'blocked-no-fiche
     await waitForTourUi();
 };
 
-const { isGuidedTourStarting } = useGuidedTour({
+useGuidedTour({
     routeName: 'patients-dossier',
     hasOpenDialogs: () => hasOpenDialogs.value,
     prepareDemo: prepareGuidedTourDemo,
@@ -997,51 +823,5 @@ const { isGuidedTourStarting } = useGuidedTour({
 
 const goBackToList = () => {
     router.push({ name: 'patients-liste' });
-};
-
-const handlePrintDossier = async () => {
-    const patientId = getDisplayedPatientId();
-    if (!patientId) return;
-    try {
-        const res = await fetchPatientDossierPrintData(patientId, localStorage.getItem('token'));
-        await printComponent(PrintDossierBody, { patient: res.patient });
-    } catch (error) {
-        logAppError('DossierPatient', error);
-        toast.add({ severity: 'error', summary: 'Dossier', detail: 'Impression indisponible', life: 3500 });
-    }
-};
-
-const handleFicheUpdated = async () => {
-    const patientId = getDisplayedPatientId();
-    if (!patientId) return;
-    await loadDossier(patientId);
-};
-
-const handlePrintFiche = async (fiche) => {
-    const ficheId = fiche?.id ?? null;
-    if (!ficheId) return;
-    selectedFicheForPrint.value = fiche;
-    printSections.value = printSectionOptions.map((item) => item.key);
-    printIncludeEmpty.value = false;
-    showPrintDialog.value = true;
-};
-
-const submitPrint = async () => {
-    const patientId = getDisplayedPatientId();
-    const ficheId = selectedFicheForPrint.value?.id ?? null;
-    if (!patientId || !ficheId) return;
-    try {
-        const res = await fetchPatientFichePrintData(patientId, ficheId, localStorage.getItem('token'));
-        await printComponent(PrintFicheV2Body, {
-            patient: res.patient,
-            fiche: res.fiche,
-            sections: printSections.value,
-            printEmpty: printIncludeEmpty.value
-        });
-        showPrintDialog.value = false;
-    } catch (error) {
-        logAppError('DossierPatient', error);
-        toast.add({ severity: 'error', summary: 'Fiche', detail: 'Impression indisponible', life: 3500 });
-    }
 };
 </script>

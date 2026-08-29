@@ -1,4 +1,3 @@
-import AppLayout from '@/layout/AppLayout.vue';
 import { createRouter, createWebHistory } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { useInternetFeatures } from '@/composables/useInternetFeatures';
@@ -11,7 +10,7 @@ const router = createRouter({
     routes: [
         {
             path: '/dashbord',
-            component: AppLayout,
+            component: () => import('@/layout/AppLayout.vue'),
             redirect: () => getHomeRoute(),
             meta: { requiresAuth: true },
             children: [

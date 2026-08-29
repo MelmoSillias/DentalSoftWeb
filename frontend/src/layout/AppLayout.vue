@@ -2,13 +2,20 @@
 import { useLayout } from '@/layout/composables/layout';
 import { useInternetFeatures } from '@/composables/useInternetFeatures';
 import { useAuthStore } from '@/stores/auth';
-import { computed, onMounted, provide, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, provide, ref, watch } from 'vue';
 import AppFooter from './AppFooter.vue';
 import AppSidebar from './AppSidebar.vue';
 import AppTopbar from './AppTopbar.vue';
 import AppRightRail from './AppRightRail.vue';
 
-const { layoutConfig, layoutState, isSidebarActive, isHubNavigation } = useLayout();
+const {
+    layoutConfig,
+    layoutState,
+    isSidebarActive,
+    isHubNavigation,
+    showLayoutMask,
+    closeMenu
+} = useLayout();
 const auth = useAuthStore();
 const { syncFromServer } = useInternetFeatures();
 
@@ -38,7 +45,7 @@ watch(isSidebarActive, (newVal) => {
     }
 });
 
-const containerClass = computed(() => {
+const shellClass = computed(() => {
     if (isHubNavigation.value) {
         return {
             'layout-hub': true
@@ -58,9 +65,7 @@ function bindOutsideClickListener() {
     if (!outsideClickListener.value) {
         outsideClickListener.value = (event) => {
             if (isOutsideClicked(event)) {
-                layoutState.overlayMenuActive = false;
-                layoutState.staticMenuMobileActive = false;
-                layoutState.menuHoverActive = false;
+                closeMenu();
             }
         };
         document.addEventListener('click', outsideClickListener.value);
@@ -89,15 +94,21 @@ onMounted(async () => {
         await syncFromServer(auth.token);
     }
 });
+
+onBeforeUnmount(() => {
+    unbindOutsideClickListener();
+});
 </script>
 
 <template>
-    <div :class="['layout-wrapper', containerClass]">
+    <div class="layout-shell layout-wrapper" :class="shellClass">
         <AppTopbar v-if="!isHubNavigation" />
-        <div class="layout-content">
+
+        <div class="layout-body">
             <AppSidebar v-if="!isHubNavigation" />
-            <div class="layout-main-container">
-                <div class="layout-main">
+
+            <div class="layout-main-column">
+                <main class="layout-main">
                     <router-view v-slot="{ Component, route: viewRoute }">
                         <Transition
                             name="page-route"
@@ -106,17 +117,24 @@ onMounted(async () => {
                             @before-enter="onPageRouteBeforeEnter"
                             @after-enter="onPageRouteAfterEnter"
                         >
-                            <div v-if="Component" :key="viewRoute.fullPath" class="page-route-root">
+                            <div v-if="Component" :key="viewRoute.name || viewRoute.path" class="page-route-root">
                                 <component :is="Component" />
                             </div>
                         </Transition>
                     </router-view>
-                </div>
-                <AppFooter />
+                </main>
+                <AppFooter v-if="!isHubNavigation" />
             </div>
+
             <AppRightRail v-if="isHubNavigation" />
         </div>
-    </div>
 
-    <AppToast />
+        <div
+            v-if="showLayoutMask && !isHubNavigation"
+            class="layout-mask"
+            @click="closeMenu"
+        />
+
+        <AppToast />
+    </div>
 </template>

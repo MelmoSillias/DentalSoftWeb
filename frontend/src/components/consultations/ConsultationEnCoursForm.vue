@@ -325,7 +325,7 @@ const consultationTypes = [
                 <div class="flex flex-wrap gap-4">
                     <div class="flex-1 space-y-2 col-6 md:col-4">
                         <label class="text-sm font-medium text-surface-700 dark:text-surface-300 flex items-center gap-2">
-                            <i class="pi pi-user-md text-surface-400"></i>
+                            <i class="pi pi-id-card text-surface-400"></i>
                             Médecin <span class="text-red-500">*</span>
                         </label>
                         <Select
@@ -534,7 +534,7 @@ const consultationTypes = [
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
                     <div class="flex items-center gap-3">
                         <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-purple-500/10">
-                            <i class="pi pi-prescription text-purple-500"></i>
+                            <i class="pi pi-clipboard text-purple-500"></i>
                         </div>
                         <div>
                             <h4 class="text-lg font-semibold text-surface-900 dark:text-surface-100">Ordonnances</h4>
@@ -564,7 +564,7 @@ const consultationTypes = [
                          class="flex items-center justify-between p-3 rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-800 hover:bg-surface-50 dark:hover:bg-surface-700 transition-colors">
                         <div class="flex items-center gap-3 min-w-0">
                             <div class="flex items-center justify-center w-10 h-10 rounded-lg bg-purple-500/10 shrink-0">
-                                <i class="pi pi-prescription text-purple-500"></i>
+                                <i class="pi pi-clipboard text-purple-500"></i>
                             </div>
                             <div class="min-w-0">
                                 <div class="font-medium text-surface-900 dark:text-surface-100 truncate">

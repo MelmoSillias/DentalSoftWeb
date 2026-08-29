@@ -7,6 +7,7 @@ import FocusReceptionView from '@/components/focus/FocusReceptionView.vue';
 import FormCreateConsultation from '@/components/patients/FormCreateConsultation.vue';
 import FormPatient from '@/components/patients/FormPatient.vue';
 import FormRendezVous from '@/components/patients/FormRendezVous.vue';
+import DossierPatientDialog from '@/components/patients/DossierPatientDialog.vue';
 import { usePrinter } from '@/composables/usePrinter';
 import { useFocusRealtime } from '@/composables/useFocusRealtime';
 import { defaultSoinList, fetchConsultationDetails, fetchConsultationInvoice, fetchConsultationsByDate, fetchFocusReceptionData, normalizeSoinList, updateConsultationInvoice, cancelConsultation } from '@/services/consultations';
@@ -37,14 +38,12 @@ import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
 import { computed, defineAsyncComponent, onMounted,  onBeforeUnmount, ref, watch } from 'vue';
 import { useLayout } from '@/layout/composables/layout';
-import { useRouter } from 'vue-router';
 
 const FocusRendezVousView = defineAsyncComponent(() => import('@/views/agenda/RendezVous.vue'));
 
 const auth = useAuthStore();
 const toast = useToast();
 const confirm = useConfirm();
-const router = useRouter();
 const token = localStorage.getItem('token');
 const { printComponent } = usePrinter();
 const paymentMethodsStore = usePaymentMethodsStore();
@@ -868,10 +867,18 @@ const handleRdvSaved = () => {
     toast.add({ severity: 'success', summary: 'Rendez-vous', detail: 'Rendez-vous créé avec succès.', life: 2500 });
 };
 
+const dossierDialogVisible = ref(false);
+const dossierDialogPatientId = ref(null);
+
 const openPatientDossier = (patient) => {
-    const patientId = Number(patient?.id);
+    const patientId = Number(patient?.id ?? patient?.patientId ?? 0);
     if (!patientId) return;
-    router.push({ name: 'patients-dossier', params: { patientId } });
+    dossierDialogPatientId.value = patientId;
+    dossierDialogVisible.value = true;
+};
+
+const handleDossierUpdated = () => {
+    loadConsultations({ silent: true });
 };
 
 const openCreateConsultationDialog = () => {
@@ -1087,12 +1094,12 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-     <section class="max-h-[80vh] bg-surface-50 dark:bg-surface-950 transition-colors duration-300">
+     <section class="flex h-[calc(100dvh-var(--layout-topbar-height)-1.5rem)] flex-col bg-surface-50 dark:bg-surface-950 transition-colors duration-300">
         <AppToast />
         <ConfirmPopup group="focus-cancel-consultation" />
 
         <!-- Header ultra-mince (h-12 = 48px) avec bordure inférieure colorée selon le mode -->
-        <header class="sticky top-0 z-30 h-12 border-b-2 bg-white/90 backdrop-blur-xl dark:bg-surface-900/90"
+        <header class="sticky top-0 z-30 h-12 shrink-0 border-b-2 bg-white/90 backdrop-blur-xl dark:bg-surface-900/90"
             :class="selectedModeBorderClass">
             <div class="mx-auto flex h-full max-w-[1920px] items-center justify-between px-6">
                 <div class="flex items-center gap-3">
@@ -1160,9 +1167,10 @@ onBeforeUnmount(() => {
         </header>
 
         <!-- Contenu Principal -->
-        <div class="mx-auto max-w-[1920px] p-6">
+        <div class="mx-auto flex min-h-0 w-full max-w-[1920px] flex-1 flex-col p-4 sm:p-6">
             <FocusReceptionView
                 v-if="selectedMode === 'reception'"
+                class="min-h-0 flex-1"
                 v-model:showCompletedSecretary="showCompletedSecretary"
                 :consultations="consultations"
                 :recent-patients="receptionRecentPatients"
@@ -1197,6 +1205,7 @@ onBeforeUnmount(() => {
 
             <FocusMedecinView
                 v-else-if="selectedMode === 'medecin'"
+                class="min-h-0 flex-1"
                 v-model:showCompletedMedecin="showCompletedMedecin"
                 :consultations="consultations"
                 :selected-consultation-id="selectedConsultationId"
@@ -1210,6 +1219,12 @@ onBeforeUnmount(() => {
             />
 
             <FocusRendezVousView v-else-if="selectedMode === 'rdv'" />
+
+            <DossierPatientDialog
+                v-model:visible="dossierDialogVisible"
+                :patient-id="dossierDialogPatientId"
+                @updated="handleDossierUpdated"
+            />
 
             <!-- Dialogs restent inchangés -->
             <ConsultationDetailsDialog v-model:visible="detailsDialogVisible" :details="detailData" :loading="detailsLoading" />

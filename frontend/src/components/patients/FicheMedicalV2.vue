@@ -50,7 +50,7 @@ watch(
 
 const sections = [
     { key: 'entretien', title: 'Questionnaire médical', icon: 'pi pi-file-edit' },
-    { key: 'examens', title: 'Examen', icon: 'pi pi-stethoscope' },
+    { key: 'examens', title: 'Examen', icon: 'pi pi-search' },
     { key: 'documents', title: 'Images et Docs', icon: 'pi pi-images' },
     { key: 'plan', title: 'Plan de traitement', icon: 'pi pi-sitemap' },
     { key: 'bilan', title: 'Bilan', icon: 'pi pi-clipboard' },
@@ -223,7 +223,7 @@ const getDocumentIcon = (extension) => {
             return 'pi-file-excel';
         case 'ppt':
         case 'pptx':
-            return 'pi-file-powerpoint';
+            return 'pi-file';
         default:
             return 'pi-file';
     }
@@ -330,7 +330,7 @@ const formatPlanDate = (value) => {
 
 const iconMap = {
     Urgence: { icon: 'pi pi-bolt', color: '#ef4444' },
-    Dentaires: { icon: 'pi pi-tooth', color: '#0ea5e9' },
+    Dentaires: { icon: 'pi pi-th-large', color: '#0ea5e9' },
     Parodontaux: { icon: 'pi pi-heart', color: '#22c55e' },
     Orthodontiques: { icon: 'pi pi-sliders-h', color: '#f59e0b' },
     Autres: { icon: 'pi pi-briefcase', color: '#64748b' }
@@ -393,7 +393,7 @@ const sessions = computed(() =>
             <div class="flex items-center justify-between">
                 <div>
                     <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-100 flex items-center gap-2">
-                        <i class="pi pi-file-medical text-primary-500"></i>
+                        <i class="pi pi-folder-open text-primary-500"></i>
                         Fiche médicale {{ positionLabel || '' }}
                     </h3>
                     <p class="text-sm text-surface-600 dark:text-surface-300 mt-1">
@@ -533,7 +533,7 @@ const sessions = computed(() =>
                     <div class="rounded-2xl border border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-br from-surface-0 to-surface-50/80 dark:from-surface-800 dark:to-surface-900/80 p-6 shadow-sm">
                         <div class="flex items-center gap-3 mb-6 pb-4 border-b border-surface-100 dark:border-surface-700">
                             <div class="p-2.5 rounded-xl bg-primary-500/10 dark:bg-primary-500/20">
-                                <i class="pi pi-stethoscope text-primary-600 dark:text-primary-400 text-xl"></i>
+                                <i class="pi pi-search text-primary-600 dark:text-primary-400 text-xl"></i>
                             </div>
                             <div>
                                 <h3 class="text-xl font-bold text-surface-900 dark:text-surface-50">Examens cliniques</h3>

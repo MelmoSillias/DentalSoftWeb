@@ -1,5 +1,8 @@
 <script setup>
 import Accordion from 'primevue/accordion';
+import AccordionContent from 'primevue/accordioncontent';
+import AccordionHeader from 'primevue/accordionheader';
+import AccordionPanel from 'primevue/accordionpanel';
 import Tag from 'primevue/tag';
 import { computed } from 'vue';
 import Fieldset from 'primevue/fieldset';
@@ -53,7 +56,7 @@ const getSessionOrdonnances = (session) => {
 
 <!-- PastSessions.vue -->
 <template>
-    <div class="rounded-2xl border border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-br from-surface-0 to-surface-50/80 dark:from-surface-800 dark:to-surface-900/80 p-6 shadow-sm">
+    <div class="overflow-hidden rounded-2xl border border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-br from-surface-0 to-surface-50/80 dark:from-surface-800 dark:to-surface-900/80 p-6 shadow-sm">
         <div class="flex items-center justify-between mb-6 pb-4 border-b border-surface-100 dark:border-surface-700">
             <div class="flex items-center gap-3">
                 <div class="p-2.5 rounded-xl bg-primary-500/10 dark:bg-primary-500/20">
@@ -73,23 +76,14 @@ const getSessionOrdonnances = (session) => {
         </div>
 
         <div v-if="sessions.length" class="space-y-4">
-            <Accordion :multiple="true" :pt="{
-                root: 'space-y-4',
-                panel: {
-                    root: 'rounded-2xl border border-surface-200/50 dark:border-surface-700/50 bg-surface-0 dark:bg-surface-800/60 overflow-hidden',
-                    header: ({ context }) => ({
-                        class: [
-                            'px-5 py-4 bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900/50 dark:to-surface-800 transition-colors',
-                            context.active && 'border-b border-surface-200 dark:border-surface-700'
-                        ]
-                    }),
-                    headerAction: 'hover:bg-surface-100 dark:hover:bg-surface-700',
-                    toggleIcon: 'text-surface-400',
-                    content: 'px-5 py-4'
-                }
-            }">
-                <AccordionTab v-for="(session, index) in sessions" :key="session.id">
-                    <template #header>
+            <Accordion multiple :pt="{ root: 'space-y-4' }">
+                <AccordionPanel
+                    v-for="(session, index) in sessions"
+                    :key="session.id ?? index"
+                    :value="String(session.id ?? index)"
+                    class="rounded-2xl border border-surface-200/50 dark:border-surface-700/50 bg-surface-0 dark:bg-surface-800/60 overflow-hidden"
+                >
+                    <AccordionHeader class="px-5 py-4 bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900/50 dark:to-surface-800 hover:bg-surface-100 dark:hover:bg-surface-700 transition-colors">
                         <div class="flex items-center justify-between w-full">
                             <div class="flex items-center gap-4">
                                 <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-primary-500/10 dark:bg-primary-500/20">
@@ -102,7 +96,7 @@ const getSessionOrdonnances = (session) => {
                                         Séance du {{ session.date || '' }}
                                     </div>
                                     <div class="flex items-center gap-2 mt-1">
-                                        <Tag :value="session.medecin || '—'" severity="info" 
+                                        <Tag :value="session.medecin || '—'" severity="info"
                                             class="px-2 py-1 text-xs rounded-full" />
                                         <span class="text-xs text-surface-500 dark:text-surface-400">
                                             {{ session.duration || '1h' }}
@@ -110,168 +104,170 @@ const getSessionOrdonnances = (session) => {
                                     </div>
                                 </div>
                             </div>
-                            <Badge v-if="session.statut" :value="session.statut" 
+                            <Badge v-if="session.statut" :value="session.statut"
                                 :severity="getSessionSeverity(session.statut)"
                                 class="px-3 py-1 rounded-full font-medium" />
                         </div>
-                    </template>
+                    </AccordionHeader>
 
-                    <div class="space-y-4">
-                        <!-- Session Details -->
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div class="p-3 rounded-xl bg-surface-50 dark:bg-surface-700/30">
-                                <div class="flex items-center gap-2 mb-2">
-                                    <i class="pi pi-user-md text-surface-400"></i>
-                                    <span class="text-sm font-medium text-surface-700 dark:text-surface-300">Médecin</span>
+                    <AccordionContent>
+                        <div class="space-y-4 px-5 py-4">
+                            <!-- Session Details -->
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div class="p-3 rounded-xl bg-surface-50 dark:bg-surface-700/30">
+                                    <div class="flex items-center gap-2 mb-2">
+                                        <i class="pi pi-id-card text-surface-400"></i>
+                                        <span class="text-sm font-medium text-surface-700 dark:text-surface-300">Médecin</span>
+                                    </div>
+                                    <p class="font-semibold text-surface-900 dark:text-surface-100">{{ session.medecin || '—' }}</p>
                                 </div>
-                                <p class="font-semibold text-surface-900 dark:text-surface-100">{{ session.medecin || '—' }}</p>
-                            </div>
-                            
-                            <div class="p-3 rounded-xl bg-surface-50 dark:bg-surface-700/30">
-                                <div class="flex items-center gap-2 mb-2">
-                                    <i class="pi pi-user text-surface-400"></i>
-                                    <span class="text-sm font-medium text-surface-700 dark:text-surface-300">Aide soignant(e)</span>
-                                </div>
-                                <p class="font-semibold text-surface-900 dark:text-surface-100">{{ session.infirmier || '—' }}</p>
-                            </div>
-                            
-                            <div class="p-3 rounded-xl bg-surface-50 dark:bg-surface-700/30">
-                                <div class="flex items-center gap-2 mb-2">
-                                    <i class="pi pi-building text-surface-400"></i>
-                                    <span class="text-sm font-medium text-surface-700 dark:text-surface-300">Salle</span>
-                                </div>
-                                <p class="font-semibold text-surface-900 dark:text-surface-100">{{ session.salle || '—' }}</p>
-                            </div>
-                        </div>
 
-                        <!-- Notes -->
-                        <div>
-                            <Fieldset v-if="session.noteSeance" legend="Notes de la séance" class="mb-4">
-                                <p class="text-sm text-surface-700 dark:text-surface-300 whitespace-pre-wrap">
-                                    {{ session.noteSeance || 'Aucune note pour cette séance.' }}
-                                </p>
-                            </Fieldset>
-                        </div>
-
-                        <!-- Actes Table -->
-                        <div v-if="session.actes && session.actes.length">
-                            <div class="flex items-center justify-between mb-1">
-                                <div class="flex items-center gap-2"> 
-                                    <h6 class="font-semibold text-surface-900 dark:text-surface-100"><i class="pi pi-list-check text-primary-500"></i> Actes réalisés</h6>
+                                <div class="p-3 rounded-xl bg-surface-50 dark:bg-surface-700/30">
+                                    <div class="flex items-center gap-2 mb-2">
+                                        <i class="pi pi-user text-surface-400"></i>
+                                        <span class="text-sm font-medium text-surface-700 dark:text-surface-300">Aide soignant(e)</span>
+                                    </div>
+                                    <p class="font-semibold text-surface-900 dark:text-surface-100">{{ session.infirmier || '—' }}</p>
                                 </div>
-                                <Badge :value="session.actes.length" severity="info" class="px-3 py-1 rounded-full" />
-                            </div>
-                            
-                            <div class="rounded-xl overflow-hidden border border-surface-200 dark:border-surface-700">
-                                <table class="w-full">
-                                    <thead class="bg-surface-50 dark:bg-surface-800">
-                                        <tr>
-                                            <th class="p-3 text-left font-semibold text-surface-700 dark:text-surface-300 text-sm">Type</th>
-                                            <th class="p-3 text-left font-semibold text-surface-700 dark:text-surface-300 text-sm">Dent</th>
-                                            <th class="p-3 text-left font-semibold text-surface-700 dark:text-surface-300 text-sm">Description</th>
-                                            <th class="p-3 text-left font-semibold text-surface-700 dark:text-surface-300 text-sm">Qté</th>
-                                            <th class="p-3 text-left font-semibold text-surface-700 dark:text-surface-300 text-sm">Prix unit.</th>
-                                            <th class="p-3 text-left font-semibold text-surface-700 dark:text-surface-300 text-sm">Total</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="divide-y divide-surface-100 dark:divide-surface-800">
-                                        <tr v-for="(acte, idx) in session.actes" :key="idx" 
-                                            class="hover:bg-surface-50/50 dark:hover:bg-surface-700/30 transition-colors">
-                                            <td class="p-3">
-                                                <Tag :value="acte.type" severity="secondary" 
-                                                    class="px-2 py-1 text-xs rounded-full" /> 
-                                            </td>
-                                            <td class="p-3 font-medium text-surface-900 dark:text-surface-100">
-                                                {{ acte.dent || '—' }}
-                                            </td>
-                                            <td class="p-3 text-surface-700 dark:text-surface-300">
-                                                {{ acte.description || '—' }}
-                                            </td>
-                                            <td class="p-3 text-right font-medium text-surface-900 dark:text-surface-100">
-                                                {{ acte.quantite || 0 }}
-                                            </td>
-                                            <td class="p-3 text-right font-medium text-surface-900 dark:text-surface-100">
-                                                {{ formatCurrency(acte.prix || 0) }}
-                                            </td>
-                                            <td class="p-3 text-right font-bold text-primary-600 dark:text-primary-400">
-                                                {{ formatCurrency((acte.quantite || 0) * (acte.prix || 0)) }}
-                                            </td> 
-                                        </tr>
-                                    </tbody>
-                                    <tfoot v-if="session.total" class="bg-surface-50 dark:bg-surface-800">
-                                        <tr>
-                                            <td colspan="5" class="p-3 text-right font-semibold text-surface-700 dark:text-surface-300">
-                                                Total de la séance
-                                            </td>
-                                            <td class="p-3 text-right font-bold text-lg text-primary-600 dark:text-primary-400">
-                                                {{ formatCurrency(session.total) }}
-                                            </td>
-                                        </tr>
-                                    </tfoot>
-                                </table>
-                            </div>
-                        </div>
 
-                        <!-- Ordonnances -->
-                        <div v-if="getSessionOrdonnances(session).length">
-                            <div class="flex items-center justify-between mb-3">
-                                <div class="flex items-center gap-2">
-                                    <i class="pi pi-prescription text-purple-500"></i>
-                                    <h4 class="font-semibold text-surface-900 dark:text-surface-100">Prescriptions</h4>
+                                <div class="p-3 rounded-xl bg-surface-50 dark:bg-surface-700/30">
+                                    <div class="flex items-center gap-2 mb-2">
+                                        <i class="pi pi-building text-surface-400"></i>
+                                        <span class="text-sm font-medium text-surface-700 dark:text-surface-300">Salle</span>
+                                    </div>
+                                    <p class="font-semibold text-surface-900 dark:text-surface-100">{{ session.salle || '—' }}</p>
                                 </div>
-                                <Badge :value="getSessionOrdonnances(session).length" severity="info" class="px-3 py-1 rounded-full" />
                             </div>
 
-                            <div class="space-y-3">
-                                <div
-                                    v-for="ordo in getSessionOrdonnances(session)"
-                                    :key="ordo.id || ordo.date"
-                                    class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-800 p-4"
-                                >
-                                    <div class="flex flex-wrap items-center justify-between gap-2">
-                                        <div class="font-medium text-surface-900 dark:text-surface-100">
-                                            Ordonnance du {{ ordo.date || '—' }}
+                            <!-- Notes -->
+                            <div>
+                                <Fieldset v-if="session.noteSeance" legend="Notes de la séance" class="mb-4">
+                                    <p class="text-sm text-surface-700 dark:text-surface-300 whitespace-pre-wrap">
+                                        {{ session.noteSeance || 'Aucune note pour cette séance.' }}
+                                    </p>
+                                </Fieldset>
+                            </div>
+
+                            <!-- Actes Table -->
+                            <div v-if="session.actes && session.actes.length">
+                                <div class="flex items-center justify-between mb-1">
+                                    <div class="flex items-center gap-2">
+                                        <h6 class="font-semibold text-surface-900 dark:text-surface-100"><i class="pi pi-list-check text-primary-500"></i> Actes réalisés</h6>
+                                    </div>
+                                    <Badge :value="session.actes.length" severity="info" class="px-3 py-1 rounded-full" />
+                                </div>
+
+                                <div class="rounded-xl overflow-hidden border border-surface-200 dark:border-surface-700">
+                                    <table class="w-full">
+                                        <thead class="bg-surface-50 dark:bg-surface-800">
+                                            <tr>
+                                                <th class="p-3 text-left font-semibold text-surface-700 dark:text-surface-300 text-sm">Type</th>
+                                                <th class="p-3 text-left font-semibold text-surface-700 dark:text-surface-300 text-sm">Dent</th>
+                                                <th class="p-3 text-left font-semibold text-surface-700 dark:text-surface-300 text-sm">Description</th>
+                                                <th class="p-3 text-left font-semibold text-surface-700 dark:text-surface-300 text-sm">Qté</th>
+                                                <th class="p-3 text-left font-semibold text-surface-700 dark:text-surface-300 text-sm">Prix unit.</th>
+                                                <th class="p-3 text-left font-semibold text-surface-700 dark:text-surface-300 text-sm">Total</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-surface-100 dark:divide-surface-800">
+                                            <tr v-for="(acte, idx) in session.actes" :key="idx"
+                                                class="hover:bg-surface-50/50 dark:hover:bg-surface-700/30 transition-colors">
+                                                <td class="p-3">
+                                                    <Tag :value="acte.type" severity="secondary"
+                                                        class="px-2 py-1 text-xs rounded-full" />
+                                                </td>
+                                                <td class="p-3 font-medium text-surface-900 dark:text-surface-100">
+                                                    {{ acte.dent || '—' }}
+                                                </td>
+                                                <td class="p-3 text-surface-700 dark:text-surface-300">
+                                                    {{ acte.description || '—' }}
+                                                </td>
+                                                <td class="p-3 text-right font-medium text-surface-900 dark:text-surface-100">
+                                                    {{ acte.quantite || 0 }}
+                                                </td>
+                                                <td class="p-3 text-right font-medium text-surface-900 dark:text-surface-100">
+                                                    {{ formatCurrency(acte.prix || 0) }}
+                                                </td>
+                                                <td class="p-3 text-right font-bold text-primary-600 dark:text-primary-400">
+                                                    {{ formatCurrency((acte.quantite || 0) * (acte.prix || 0)) }}
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                        <tfoot v-if="session.total" class="bg-surface-50 dark:bg-surface-800">
+                                            <tr>
+                                                <td colspan="5" class="p-3 text-right font-semibold text-surface-700 dark:text-surface-300">
+                                                    Total de la séance
+                                                </td>
+                                                <td class="p-3 text-right font-bold text-lg text-primary-600 dark:text-primary-400">
+                                                    {{ formatCurrency(session.total) }}
+                                                </td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- Ordonnances -->
+                            <div v-if="getSessionOrdonnances(session).length">
+                                <div class="flex items-center justify-between mb-3">
+                                    <div class="flex items-center gap-2">
+                                        <i class="pi pi-clipboard text-purple-500"></i>
+                                        <h4 class="font-semibold text-surface-900 dark:text-surface-100">Prescriptions</h4>
+                                    </div>
+                                    <Badge :value="getSessionOrdonnances(session).length" severity="info" class="px-3 py-1 rounded-full" />
+                                </div>
+
+                                <div class="space-y-3">
+                                    <div
+                                        v-for="ordo in getSessionOrdonnances(session)"
+                                        :key="ordo.id || ordo.date"
+                                        class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-800 p-4"
+                                    >
+                                        <div class="flex flex-wrap items-center justify-between gap-2">
+                                            <div class="font-medium text-surface-900 dark:text-surface-100">
+                                                Ordonnance du {{ ordo.date || '—' }}
+                                            </div>
+                                            <Tag
+                                                :value="ordo.medecinNom || ordo.medecin || '—'"
+                                                severity="info"
+                                                class="px-2 py-1 text-xs rounded-full"
+                                            />
                                         </div>
-                                        <Tag
-                                            :value="ordo.medecinNom || ordo.medecin || '—'"
-                                            severity="info"
-                                            class="px-2 py-1 text-xs rounded-full"
-                                        />
-                                    </div>
 
-                                    <div v-if="ordo.note" class="mt-2 text-sm text-surface-600 dark:text-surface-300">
-                                        {{ ordo.note }}
-                                    </div>
+                                        <div v-if="ordo.note" class="mt-2 text-sm text-surface-600 dark:text-surface-300">
+                                            {{ ordo.note }}
+                                        </div>
 
-                                    <div v-if="ordo.lignes && ordo.lignes.length" class="mt-3 rounded-lg border border-surface-200 dark:border-surface-700 overflow-hidden">
-                                        <table class="w-full">
-                                            <thead class="bg-surface-50 dark:bg-surface-800">
-                                                <tr>
-                                                    <th class="p-2 text-left text-xs font-semibold text-surface-700 dark:text-surface-300">Médicament</th>
-                                                    <th class="p-2 text-left text-xs font-semibold text-surface-700 dark:text-surface-300">Posologie</th>
-                                                    <th class="p-2 text-left text-xs font-semibold text-surface-700 dark:text-surface-300">Fréquence</th>
-                                                    <th class="p-2 text-left text-xs font-semibold text-surface-700 dark:text-surface-300">Durée</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody class="divide-y divide-surface-100 dark:divide-surface-800">
-                                                <tr v-for="(ligne, lidx) in ordo.lignes" :key="lidx">
-                                                    <td class="p-2 text-sm text-surface-900 dark:text-surface-100">{{ ligne.medicament || '—' }}</td>
-                                                    <td class="p-2 text-sm text-surface-700 dark:text-surface-300">{{ ligne.posologie || '—' }}</td>
-                                                    <td class="p-2 text-sm text-surface-700 dark:text-surface-300">{{ ligne.frequence || '—' }}</td>
-                                                    <td class="p-2 text-sm text-surface-700 dark:text-surface-300">{{ ligne.duree || '—' }}</td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                    </div>
+                                        <div v-if="ordo.lignes && ordo.lignes.length" class="mt-3 rounded-lg border border-surface-200 dark:border-surface-700 overflow-hidden">
+                                            <table class="w-full">
+                                                <thead class="bg-surface-50 dark:bg-surface-800">
+                                                    <tr>
+                                                        <th class="p-2 text-left text-xs font-semibold text-surface-700 dark:text-surface-300">Médicament</th>
+                                                        <th class="p-2 text-left text-xs font-semibold text-surface-700 dark:text-surface-300">Posologie</th>
+                                                        <th class="p-2 text-left text-xs font-semibold text-surface-700 dark:text-surface-300">Fréquence</th>
+                                                        <th class="p-2 text-left text-xs font-semibold text-surface-700 dark:text-surface-300">Durée</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody class="divide-y divide-surface-100 dark:divide-surface-800">
+                                                    <tr v-for="(ligne, lidx) in ordo.lignes" :key="lidx">
+                                                        <td class="p-2 text-sm text-surface-900 dark:text-surface-100">{{ ligne.medicament || '—' }}</td>
+                                                        <td class="p-2 text-sm text-surface-700 dark:text-surface-300">{{ ligne.posologie || '—' }}</td>
+                                                        <td class="p-2 text-sm text-surface-700 dark:text-surface-300">{{ ligne.frequence || '—' }}</td>
+                                                        <td class="p-2 text-sm text-surface-700 dark:text-surface-300">{{ ligne.duree || '—' }}</td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
 
-                                    <div v-else class="mt-3 text-sm text-surface-500 dark:text-surface-400">
-                                        Aucune ligne de prescription.
+                                        <div v-else class="mt-3 text-sm text-surface-500 dark:text-surface-400">
+                                            Aucune ligne de prescription.
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                </AccordionTab>
+                    </AccordionContent>
+                </AccordionPanel>
             </Accordion>
         </div>
         
@@ -310,6 +306,3 @@ const getSessionOrdonnances = (session) => {
         </div>
     </div>
 </template>
-
-<script> 
-</script>

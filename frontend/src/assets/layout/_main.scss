@@ -1,49 +1,10 @@
-.layout-main-container {
-    display: flex;
-    flex-direction: column;
-    overflow-y: auto;
-    justify-content: space-between;
-    padding: 0.65rem 1rem 0 1rem !important;
-    // transition: margin-left var(--layout-section-transition-duration);
-    max-width: 100%;  
-    grid-column: 2;
-    height: calc(100vh - 4rem);
+/* Page content region — sizing/scroll owned by _shell.scss */
 
-}
-
-
-.layout-content {
-    display: grid;
-    grid-template-columns: 300px 1fr;
-    transition: grid-template-columns var(--layout-section-transition-duration);
-    max-height: 100%;
- }
-
-.layout-main {
-    flex: 1 1 auto;
-    padding-bottom: 2rem;
-}  
-
-.layout-wrapper  {
-    max-width: 100%;
-    display: grid;
-    grid-template-columns: 1fr;
-    grid-template-rows: auto 1fr;
-}
-
-.layout-wrapper.force-desktop {
-  min-width: 800px; /* ou 1024px */
-}
-
-@media (max-width: 768px) {
-  .layout-wrapper.force-desktop {
-    overflow-x: auto;
-  }
-}
-
-
-@media (max-width: 520px) {
-    .layout-main-container {
-        padding: 6rem 0.5rem 0 0.5rem !important;
+@media screen and (min-width: 1960px) {
+    .layout-main > .page-route-root,
+    .landing-wrapper {
+        width: 1504px;
+        margin-left: auto;
+        margin-right: auto;
     }
 }

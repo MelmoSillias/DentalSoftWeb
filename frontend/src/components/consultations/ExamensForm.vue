@@ -129,7 +129,7 @@ const examensCount = computed(() => {
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-surface-100 dark:border-surface-700">
             <div class="flex items-center gap-3">
                 <div class="p-2.5 rounded-xl bg-primary-500/10 dark:bg-primary-500/20">
-                    <i class="pi pi-stethoscope text-primary-600 dark:text-primary-400 text-xl"></i>
+                    <i class="pi pi-search text-primary-600 dark:text-primary-400 text-xl"></i>
                 </div>
                 <div>
                     <h3 class="text-xl font-bold text-surface-900 dark:text-surface-50">Examen clinique</h3>

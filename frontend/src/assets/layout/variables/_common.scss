@@ -17,5 +17,16 @@
     --focus-ring-color: var(--p-focus-ring-color);
     --focus-ring-offset: var(--p-focus-ring-offset);
     --focus-ring-shadow: var(--p-focus-ring-shadow);
-    --top-bar-height: 4rem;
+
+    /* Layout shell tokens */
+    --layout-topbar-height: 4rem;
+    --layout-sidebar-width: 20rem;
+    --layout-body-padding-x: 1rem;
+    --layout-body-padding-top: 0.65rem;
+    --layout-z-topbar: 997;
+    --layout-z-mask: 998;
+    --layout-z-sidebar: 999;
+
+    /* Backward-compatible alias */
+    --top-bar-height: var(--layout-topbar-height);
 }

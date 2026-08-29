@@ -5,7 +5,7 @@
             <div class="flex items-center justify-between">
                 <div>
                     <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-100 flex items-center gap-2">
-                        <i class="pi pi-file-medical text-primary-500"></i>
+                        <i class="pi pi-folder-open text-primary-500"></i>
                         Fiche Médicale {{ positionLabel || '' }}
                     </h3>
                     <p class="text-sm text-surface-600 dark:text-surface-300 mt-1">
@@ -126,7 +126,7 @@
                 <!-- Section 3: Traitements -->
                 <div v-if="activeSection === 2" class="animate-fadeIn">
                     <h4 class="text-md font-semibold text-surface-900 dark:text-surface-100 mb-4 flex items-center gap-2">
-                        <i class="pi pi-pills text-primary-500"></i>
+                        <i class="pi pi-box text-primary-500"></i>
                         Traitements
                     </h4>
                     <div class="space-y-4">

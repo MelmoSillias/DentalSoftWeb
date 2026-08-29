@@ -133,6 +133,13 @@ watch(
     },
     { immediate: true }
 );
+
+const reloadOnAction = () => {
+    refreshDay();
+    refreshStats();
+};
+
+defineExpose({ reloadOnAction });
 </script>
 
 <template>

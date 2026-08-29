@@ -624,7 +624,7 @@ const currentFactureLoading = computed(() => {
                         </div>
                         <div>
                             <h1 class="text-3xl lg:text-4xl font-bold text-surface-900 dark:text-surface-50 tracking-tight">
-                                Gestion des Consultations
+                                Historique des Consultations
                             </h1>
                             <p class="text-surface-600 dark:text-surface-300 text-sm md:text-base mt-1">
                                 {{ headerTitle }}
@@ -1015,7 +1015,7 @@ const currentFactureLoading = computed(() => {
         </template>
 
         <Dialog v-model:visible="showCreateDialog" modal :style="{ width: '50rem' }" :pt="{
-            root: 'rounded-2xl',
+            root: 'rounded-2xl overflow-hidden',
             header: 'bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900 dark:to-surface-800 px-6 py-4 border-b',
             content: 'p-0 mt-4'
         }">

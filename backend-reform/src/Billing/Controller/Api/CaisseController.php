@@ -275,7 +275,7 @@ class CaisseController extends AbstractController
     #[Route('/api/prints/tickets/{id}', name: 'api_print_ticket_data', methods: ['GET'])]
     public function getTicketPrintData(int $id): JsonResponse
     {
-        $paiement = $this->entryPoint->paiementById($id);
+        $paiement = $this->entryPoint->resolveTicketPaiement($id);
         if (!$paiement) {
             return new JsonResponse(['error' => 'Paiement introuvable'], 404);
         }

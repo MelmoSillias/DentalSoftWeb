@@ -71,7 +71,7 @@ const TASKS = [
     { id: 'switch-patient', label: 'Changer de patient', icon: 'pi pi-users', mockScenario: 'static' },
     { id: 'manage-antecedents', label: 'Gerer antecedents/allergies', icon: 'pi pi-heart', mockScenario: 'static' },
     { id: 'portal-account', label: 'Compte espace patient', icon: 'pi pi-globe', mockScenario: 'static' },
-    { id: 'view-fiches', label: 'Consulter fiches medicales', icon: 'pi pi-file-medical', mockScenario: 'static', roles: ['admin', 'medecin'] },
+    { id: 'view-fiches', label: 'Consulter fiches medicales', icon: 'pi pi-folder-open', mockScenario: 'static', roles: ['admin', 'medecin'] },
     { id: 'consultations-history', label: 'Historique consultations', icon: 'pi pi-history', mockScenario: 'static', roles: ['reception'] },
     {
         id: 'create-consultation',
@@ -173,7 +173,7 @@ function buildOverviewSteps(ctx) {
             group: GROUP,
             target: '[data-tour="patients-dossier.finance-tabs"]',
             title: 'Historique administratif',
-            content: 'Onglets RDV, Paiements, Factures impayees et eventuellement Consultations pour le suivi financier et administratif du patient.'
+            content: 'Onglets RDV, Paiements, Factures (avec filtre impayees) et eventuellement Consultations pour le suivi financier et administratif du patient.'
         },
         {
             group: GROUP,

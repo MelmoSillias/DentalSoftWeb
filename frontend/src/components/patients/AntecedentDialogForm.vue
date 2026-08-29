@@ -57,7 +57,7 @@ const submit = () => {
 
 <template>
     <Dialog v-model:visible="visible" modal header="Ajouter un antécédent" :style="{ width: '32rem' }" :pt="{
-        root: 'rounded-2xl',
+        root: 'rounded-2xl overflow-hidden',
         header: 'px-6 py-4 border-b border-surface-200 dark:border-surface-700',
         content: 'p-6'
     }">

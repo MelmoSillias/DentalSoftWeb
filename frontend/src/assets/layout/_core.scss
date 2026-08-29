@@ -16,16 +16,12 @@ body {
     background-color: var(--surface-ground);
     margin: 0;
     padding: 0;
-    max-height: 100%; 
-    overflow-y: hidden;
+    height: 100%;
+    overflow: hidden;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
 }
 
 a {
     text-decoration: none;
-}
-
-.layout-wrapper {
-    min-height: 100vh;
 }
