@@ -3,7 +3,7 @@ import ArchiveFilesSection from '@/components/patients/ArchiveFilesSection.vue';
 import DossierPatientInfoCard from '@/components/patients/DossierPatientInfoCard.vue';
 import FichesMedicalesSection from '@/components/patients/FichesMedicalesSection.vue';
 import ListePatientConsultations from '@/components/patients/ListePatientConsultations.vue';
-import RdvPaiementsSection from '@/components/patients/RdvPaiementsSection.vue';
+import PatientActiviteFinancesSection from '@/components/patients/PatientActiviteFinancesSection.vue';
 import Tab from 'primevue/tab';
 import TabList from 'primevue/tablist';
 import TabPanel from 'primevue/tabpanel';
@@ -148,7 +148,7 @@ const tabs = computed(() => [
 
                 <TabPanel value="activite">
                     <div data-tour="patients-dossier.finance">
-                        <RdvPaiementsSection
+                        <PatientActiviteFinancesSection
                             :rdvs="rdvs"
                             :paiements="paiements"
                             :factures="factures"

@@ -165,24 +165,22 @@ const handleCancel = async (consultation) => {
     }
 };
 
-const confirmAction = (event, message, accept) => {
-    confirmPopup.require({
-        target: event.currentTarget || event.target,
-        message,
-        icon: 'pi pi-exclamation-triangle',
-        acceptLabel: 'Confirmer',
-        rejectLabel: 'Annuler',
-        accept
-    });
-};
-
 const handleOpenFiche = (consultation) => {
     if (!consultation || isClosed(consultation)) return;
     goToConsultation(consultation);
 };
 
 const handleCancelWithConfirm = (event, consultation) => {
-    confirmAction(event, 'Annuler cette consultation en cours ?', () => handleCancel(consultation));
+    confirmPopup.require({
+        group: 'cards-cancel-consultation',
+        target: event.currentTarget,
+        message: 'Annuler cette consultation en cours ?',
+        icon: 'pi pi-exclamation-triangle',
+        acceptLabel: 'Confirmer',
+        rejectLabel: 'Annuler',
+        acceptClass: 'p-button-danger',
+        accept: () => handleCancel(consultation)
+    });
 };
 
 const setQuickMenuRef = (id, el) => {
@@ -604,7 +602,7 @@ const viewOptions = [
                                         label="Annuler" icon="pi pi-times" severity="danger" size="small" outlined
                                         :loading="canceling[consultation.id] === true"
                                         class="rounded-xl px-4 py-2 text-sm font-medium transition-all hover:scale-[1.02]"
-                                        @click.stop="(e) => handleCancelWithConfirm(e, consultation)" />
+                                        @click="handleCancelWithConfirm($event, consultation)" />
                                 </div>
                             </div>
 
@@ -680,7 +678,7 @@ const viewOptions = [
                                          icon="pi pi-times" severity="danger" size="small" outlined
                                         :loading="canceling[consultation.id] === true"
                                         class="rounded-xl px-4 py-2 text-sm font-medium transition-all hover:scale-[1.02]"
-                                        @click.stop="(e) => handleCancelWithConfirm(e, consultation)" />
+                                        @click="handleCancelWithConfirm($event, consultation)" />
                         </div>
                     </div>
                 </div>
@@ -725,7 +723,7 @@ const viewOptions = [
         </div>
     </Dialog>
 
-    <ConfirmPopup />
+    <ConfirmPopup group="cards-cancel-consultation" />
 
     <QuickClotureConsultationDialog v-if="canUseQuickActions" v-model:visible="quickDialogVisible"
         :consultation="quickDialogConsultation"

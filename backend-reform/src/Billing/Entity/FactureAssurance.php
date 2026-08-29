@@ -265,6 +265,7 @@ class FactureAssurance
                 'prix' => $prix,
                 'total' => $quantite * $prix,
                 'virtual' => false,
+                'attribution' => $acte->getAttribution(),
             ];
         }
 

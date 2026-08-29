@@ -1,13 +1,29 @@
 <script setup>
 import CaisseInvoiceDialogs from '@/components/caisse/CaisseInvoiceDialogs.vue';
+import ConsultationDetailsDialog from '@/components/consultations/ConsultationDetailsDialog.vue';
+import FactureModal from '@/components/consultations/FactureModal.vue';
 import { useInvoiceBillingActions } from '@/composables/useInvoiceBillingActions';
+import {
+    cancelConsultation,
+    fetchConsultationDetails,
+    fetchConsultationInvoice,
+    updateConsultationInvoice
+} from '@/services/consultations';
+import { fetchPublicGeneralSettings } from '@/services/globalSettingsService';
+import { useAuthStore } from '@/stores/auth';
+import { logAppError } from '@/utils/appLogger';
+import { buildConsultationContextMenuItems } from '@/utils/consultationRow';
 import {
     buildFactureContextMenuItems,
     computeFactureStatus,
     formatFactureFcfa,
     isUnpaidFacture
 } from '@/utils/factureRow';
+import { canUserModifyInvoice } from '@/utils/invoiceModificationAccess';
+import Column from 'primevue/column';
+import ConfirmPopup from 'primevue/confirmpopup';
 import ContextMenu from 'primevue/contextmenu';
+import DataTable from 'primevue/datatable';
 import Tab from 'primevue/tab';
 import TabList from 'primevue/tablist';
 import TabPanel from 'primevue/tabpanel';
@@ -15,7 +31,9 @@ import TabPanels from 'primevue/tabpanels';
 import Tag from 'primevue/tag';
 import Tabs from 'primevue/tabs';
 import ToggleButton from 'primevue/togglebutton';
-import { computed, ref } from 'vue';
+import { useConfirm } from 'primevue/useconfirm';
+import { useToast } from 'primevue/usetoast';
+import { computed, onMounted, ref } from 'vue';
 
 const props = defineProps({
     rdvs: {
@@ -42,11 +60,19 @@ const props = defineProps({
 
 const emit = defineEmits(['refresh']);
 
+const auth = useAuthStore();
+const confirm = useConfirm();
+const toast = useToast();
+const token = localStorage.getItem('token');
+
+const allowReceptionInvoiceModification = ref(false);
+
 const tabs = computed(() => {
     const base = [
         { id: 'rdv', label: 'Rendez-vous', icon: 'pi pi-calendar' },
         { id: 'paiements', label: 'Paiements', icon: 'pi pi-credit-card' },
-        { id: 'factures', label: 'Factures', icon: 'pi pi-file' }
+        { id: 'factures', label: 'Factures', icon: 'pi pi-file' },
+        { id: 'actes', label: 'Actes médicaux', icon: 'pi pi-list-check' }
     ];
 
     if (props.showConsultations) {
@@ -55,8 +81,13 @@ const tabs = computed(() => {
 
     return base;
 });
+
 const activeTab = ref('rdv');
 const showUnpaidOnly = ref(false);
+
+const canModifyInvoiceByRole = computed(() =>
+    canUserModifyInvoice(auth.user, { allowReceptionInvoiceModification: allowReceptionInvoiceModification.value })
+);
 
 const {
     payDialogVisible,
@@ -109,10 +140,27 @@ const {
     onSettled: () => emit('refresh')
 });
 
-const contextMenu = ref(null);
+const factureContextMenu = ref(null);
 const contextMenuFacture = ref(null);
 
-const contextMenuItems = computed(() =>
+const consultationContextMenu = ref(null);
+const contextMenuConsultation = ref(null);
+
+const detailsDialogVisible = ref(false);
+const detailsLoading = ref(false);
+const detailData = ref(null);
+
+const editFactureDialogVisible = ref(false);
+const editFactureConsultation = ref(null);
+const editFactureLoading = ref(false);
+const editFactureSaving = ref(false);
+const editFactureLines = ref([]);
+const editFactureDate = ref('');
+const editFactureTime = ref('');
+
+const cancelingConsultationId = ref(null);
+
+const factureContextMenuItems = computed(() =>
     buildFactureContextMenuItems(contextMenuFacture.value, {
         onPay: (row) => handlePayAction(row),
         onPreview: (row) => openPreviewDialog(row),
@@ -120,9 +168,28 @@ const contextMenuItems = computed(() =>
     })
 );
 
+const consultationContextMenuItems = computed(() =>
+    buildConsultationContextMenuItems(contextMenuConsultation.value, {
+        onDetails: (consultation) => openConsultationDetails(consultation),
+        onCancel: (consultation) => askCancelConsultation(consultation),
+        onEditInvoice: (consultation) => openEditFacture(consultation),
+        onPayFacture: (facture) => handlePayAction(facture),
+        onPreviewFacture: (facture) => openPreviewDialog(facture),
+        onPrintFacture: (facture) => printInvoice(facture)
+    }, {
+        canModifyInvoice: canModifyInvoiceByRole.value,
+        factures: props.factures
+    })
+);
+
 const openFactureContextMenu = (event, facture) => {
     contextMenuFacture.value = facture;
-    contextMenu.value?.show(event);
+    factureContextMenu.value?.show(event);
+};
+
+const openConsultationContextMenu = (event, consultation) => {
+    contextMenuConsultation.value = consultation;
+    consultationContextMenu.value?.show(event);
 };
 
 const displayedFactures = computed(() => {
@@ -131,9 +198,30 @@ const displayedFactures = computed(() => {
     return list.filter((facture) => isUnpaidFacture(facture));
 });
 
+const medicalActs = computed(() => {
+    const rows = (props.consultations || []).flatMap((consultation) =>
+        (consultation.actes || []).map((acte) => ({
+            ...acte,
+            date: consultation.date,
+            medecin: consultation.medecin,
+            consultationId: consultation.id,
+            label: acte.description || acte.type || 'Acte médical'
+        }))
+    );
+
+    return rows.sort((left, right) => {
+        const leftTime = new Date(left.date || 0).getTime();
+        const rightTime = new Date(right.date || 0).getTime();
+        return rightTime - leftTime;
+    });
+});
+
+const medicalActsTotal = computed(() =>
+    medicalActs.value.reduce((sum, acte) => sum + Number(acte.montant ?? 0), 0)
+);
+
 const totalPaye = computed(() =>
-    props.paiements
-        .reduce((sum, p) => sum + getPaiementMontant(p), 0)
+    props.paiements.reduce((sum, p) => sum + getPaiementMontant(p), 0)
 );
 
 const totalImpaye = computed(() =>
@@ -141,6 +229,104 @@ const totalImpaye = computed(() =>
         .filter((f) => isUnpaidFacture(f))
         .reduce((sum, f) => sum + (Number(f.reste ?? f.montant ?? 0) || 0), 0)
 );
+
+const openConsultationDetails = async (consultation) => {
+    if (!consultation?.id) return;
+    detailsDialogVisible.value = true;
+    detailsLoading.value = true;
+    detailData.value = null;
+    try {
+        detailData.value = await fetchConsultationDetails(consultation.id, token);
+    } catch (error) {
+        logAppError('Erreur lors du chargement des détails de consultation', error);
+        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de charger les détails.', life: 3000 });
+        detailsDialogVisible.value = false;
+    } finally {
+        detailsLoading.value = false;
+    }
+};
+
+const askCancelConsultation = (consultation) => {
+    confirm.require({
+        group: 'cancel-consultation-dossier',
+        message: 'Annuler cette consultation ? Cette action est irréversible.',
+        icon: 'pi pi-exclamation-triangle',
+        acceptLabel: 'Oui, annuler',
+        rejectLabel: 'Non',
+        acceptClass: 'p-button-danger',
+        accept: () => handleCancelConsultation(consultation)
+    });
+};
+
+const handleCancelConsultation = async (consultation) => {
+    if (!consultation?.id) return;
+    cancelingConsultationId.value = consultation.id;
+    try {
+        await cancelConsultation(consultation.id, token);
+        toast.add({ severity: 'success', summary: 'Consultation annulée', detail: 'Consultation supprimée.', life: 2500 });
+        emit('refresh');
+    } catch (error) {
+        logAppError('Annulation impossible', error);
+        toast.add({ severity: 'error', summary: 'Erreur', detail: "Impossible d'annuler la consultation.", life: 3000 });
+    } finally {
+        cancelingConsultationId.value = null;
+    }
+};
+
+const openEditFacture = async (consultation) => {
+    if (!consultation?.id || !consultation.factModifiable) return;
+    editFactureConsultation.value = consultation;
+    editFactureDialogVisible.value = true;
+    editFactureLoading.value = true;
+    try {
+        const invoice = await fetchConsultationInvoice(consultation.id, token);
+        editFactureLines.value = invoice.lines;
+        editFactureDate.value = invoice.date || '';
+        editFactureTime.value = invoice.time || '';
+    } catch (error) {
+        logAppError('Erreur lors du chargement de la facture', error);
+        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de charger la facture.', life: 3000 });
+        editFactureDialogVisible.value = false;
+    } finally {
+        editFactureLoading.value = false;
+    }
+};
+
+const closeEditFactureModal = (visible) => {
+    editFactureDialogVisible.value = visible;
+    if (!visible) {
+        editFactureConsultation.value = null;
+        editFactureLines.value = [];
+        editFactureDate.value = '';
+        editFactureTime.value = '';
+    }
+};
+
+const handleSaveEditFacture = async (payload) => {
+    if (!editFactureConsultation.value?.id) return;
+    editFactureSaving.value = true;
+    try {
+        await updateConsultationInvoice(editFactureConsultation.value.id, payload, token);
+        toast.add({ severity: 'success', summary: 'Facture mise à jour', detail: 'La facture a été enregistrée.', life: 2500 });
+        editFactureDialogVisible.value = false;
+        emit('refresh');
+    } catch (error) {
+        logAppError('Erreur lors de la sauvegarde de la facture', error);
+        toast.add({ severity: 'error', summary: 'Erreur', detail: "Impossible d'enregistrer la facture.", life: 3000 });
+    } finally {
+        editFactureSaving.value = false;
+    }
+};
+
+onMounted(async () => {
+    try {
+        const settings = await fetchPublicGeneralSettings(token);
+        allowReceptionInvoiceModification.value = settings?.allowReceptionInvoiceModification === true;
+    } catch (error) {
+        logAppError('Erreur chargement paramètres facture', error);
+        allowReceptionInvoiceModification.value = false;
+    }
+});
 
 function formatDate(date) {
     if (!date) return '--';
@@ -272,7 +458,9 @@ function getRDVStatusColor(status) {
 
 <template>
     <div class="bg-surface-0 dark:bg-surface-800/80 rounded-2xl shadow-lg border border-surface-200/50 dark:border-surface-700/50 overflow-hidden backdrop-blur-sm">
-        <ContextMenu ref="contextMenu" :model="contextMenuItems" />
+        <ConfirmPopup group="cancel-consultation-dossier" />
+        <ContextMenu ref="factureContextMenu" :model="factureContextMenuItems" />
+        <ContextMenu ref="consultationContextMenu" :model="consultationContextMenuItems" />
 
         <Tabs :value="activeTab" @update:value="activeTab = $event">
             <TabList class="flex flex-wrap gap-2 border-b border-surface-200/50 dark:border-surface-700/50" data-tour="patients-dossier.finance-tabs">
@@ -483,12 +671,72 @@ function getRDVStatusColor(status) {
                     </div>
                 </TabPanel>
 
+                <TabPanel value="actes">
+                    <div v-if="medicalActs.length" class="space-y-4">
+                        <p class="text-sm text-surface-500 dark:text-surface-400">
+                            {{ medicalActs.length }} acte(s) · Total {{ formatFactureFcfa(medicalActsTotal) }}
+                        </p>
+                        <DataTable
+                            :value="medicalActs"
+                            dataKey="id"
+                            paginator
+                            :rows="8"
+                            responsiveLayout="scroll"
+                            stripedRows
+                            class="text-sm"
+                        >
+                            <Column field="date" header="Date" sortable>
+                                <template #body="{ data }">
+                                    {{ formatDateTime(data.date) }}
+                                </template>
+                            </Column>
+                            <Column field="label" header="Description" sortable>
+                                <template #body="{ data }">
+                                    <div class="font-medium text-surface-900 dark:text-surface-100">{{ data.label }}</div>
+                                    <div v-if="data.type && data.type !== data.label" class="text-xs text-surface-500 dark:text-surface-400">
+                                        {{ data.type }}
+                                    </div>
+                                </template>
+                            </Column>
+                            <Column field="dent" header="Dent" sortable>
+                                <template #body="{ data }">
+                                    {{ data.dent || '—' }}
+                                </template>
+                            </Column>
+                            <Column field="medecin" header="Médecin" sortable>
+                                <template #body="{ data }">
+                                    {{ data.medecin || '—' }}
+                                </template>
+                            </Column>
+                            <Column field="quantite" header="Quantité" sortable />
+                            <Column field="montant" header="Montant" sortable>
+                                <template #body="{ data }">
+                                    {{ formatFactureFcfa(data.montant) }}
+                                </template>
+                            </Column>
+                        </DataTable>
+                    </div>
+                    <div v-else class="flex flex-col items-center justify-center py-12 text-center">
+                        <div class="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full bg-surface-100 dark:bg-surface-800">
+                            <i class="pi pi-list-check text-3xl text-surface-400"></i>
+                        </div>
+                        <h4 class="text-lg font-semibold text-surface-700 dark:text-surface-300">Aucun acte médical</h4>
+                        <p class="mt-1 max-w-md text-sm text-surface-500 dark:text-surface-400">
+                            Aucun acte médical n’a encore été enregistré pour ce patient.
+                        </p>
+                    </div>
+                </TabPanel>
+
                 <TabPanel v-if="showConsultations" value="consultations">
                     <div v-if="consultations.length" class="space-y-4">
+                        <p class="text-sm text-surface-500 dark:text-surface-400">
+                            Clic droit sur une consultation pour les actions disponibles.
+                        </p>
                         <div
                             v-for="consultation in consultations"
                             :key="consultation.id"
-                            class="rounded-xl border border-surface-200/50 p-4 transition-colors hover:border-surface-300/50 dark:border-surface-700/50 dark:hover:border-surface-600/50"
+                            class="cursor-context-menu rounded-xl border border-surface-200/50 p-4 transition-colors hover:border-surface-300/50 dark:border-surface-700/50 dark:hover:border-surface-600/50"
+                            @contextmenu.prevent="openConsultationContextMenu($event, consultation)"
                         >
                             <div class="flex items-center justify-between">
                                 <div class="flex items-center gap-3">
@@ -532,6 +780,25 @@ function getRDVStatusColor(status) {
                 </TabPanel>
             </TabPanels>
         </Tabs>
+
+        <ConsultationDetailsDialog
+            :visible="detailsDialogVisible"
+            :details="detailData"
+            :loading="detailsLoading"
+            @update:visible="(val) => (detailsDialogVisible = val)"
+        />
+
+        <FactureModal
+            :visible="editFactureDialogVisible"
+            :lines="editFactureLines"
+            :date="editFactureDate"
+            :time="editFactureTime"
+            :soins="soinsList"
+            :loading="editFactureLoading"
+            :saving="editFactureSaving"
+            @update:visible="closeEditFactureModal"
+            @save="handleSaveEditFacture"
+        />
 
         <CaisseInvoiceDialogs
             :pay-dialog-visible="payDialogVisible"

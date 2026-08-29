@@ -70,6 +70,7 @@ class ConsultationService
         private ConsultationNotificationService $consultationNotificationService,
         private FicheMedicaleRepository $ficheMedicaleRepo,
         private FactureRepository $factureRepo,
+        private ActAttributionResolver $actAttributionResolver,
     ) {
         $this->projectDir = $params->get('kernel.project_dir');
     }
@@ -320,7 +321,8 @@ class ConsultationService
                     ->setType($a['type'] ?? ($a['designation'] ?? ''))
                     ->setDescription($a['description'] ?? ($a['designation'] ?? ''))
                     ->setPrix((float) ($a['prix'] ?? $a['montant'] ?? 0))
-                    ->setQuantite((int) ($a['quantite'] ?? $a['qte'] ?? 1));
+                    ->setQuantite((int) ($a['quantite'] ?? $a['qte'] ?? 1))
+                    ->setAttribution($this->actAttributionResolver->resolveFromPayload(is_array($a) ? $a : []));
                 $consultation->addActe($act);
                 $this->em->persist($act);
             }
@@ -506,6 +508,41 @@ class ConsultationService
         }
 
         return 0;
+    }
+
+    public function formatPatientConsultationSummary(Consultation $consultation): array
+    {
+        $facture = $consultation->getFacture();
+        $statut = $consultation->getStatut();
+
+        $actes = [];
+        foreach ($consultation->getActes() as $acte) {
+            $quantite = max(1, (int) ($acte->getQuantite() ?? 1));
+            $prix = (float) ($acte->getPrix() ?? 0);
+            $actes[] = [
+                'id' => $acte->getId(),
+                'type' => $acte->getType(),
+                'description' => $acte->getDescription(),
+                'dent' => $acte->getDent(),
+                'prix' => $prix,
+                'quantite' => $quantite,
+                'montant' => $prix * $quantite,
+                'attribution' => $acte->getAttribution(),
+            ];
+        }
+
+        return [
+            'id' => $consultation->getId(),
+            'date' => $consultation->getCreatedAt()?->format('Y-m-d H:i'),
+            'statut' => $statut,
+            'state' => $statut,
+            'medecin' => $consultation->getMedecin()?->getFullName(),
+            'factureMontant' => $facture?->getMontantTotal(),
+            'factureStatut' => $facture?->isReglee() ? 1 : 0,
+            'factureId' => $facture?->getId(),
+            'factModifiable' => $statut === 1 && $this->isFactureModifiable($facture),
+            'actes' => $actes,
+        ];
     }
 
     private function isFactureModifiable(?Facture $facture): bool
@@ -860,6 +897,7 @@ class ConsultationService
                 'description' => $a->getDescription(),
                 'prix' => $a->getPrix(),
                 'quantite' => $a->getQuantite(),
+                'attribution' => $a->getAttribution(),
             ];
         }
 
@@ -1043,6 +1081,7 @@ class ConsultationService
                 'description' => $a->getDescription(),
                 'prix'        => $a->getPrix(),
                 'quantite'    => $a->getQuantite(),
+                'attribution' => $a->getAttribution(),
             ];
         }
 
@@ -1572,6 +1611,7 @@ class ConsultationService
                 'prix' => $acte->getPrix(),
                 'dent' => $dentValue,
                 'dents' => $this->normalizeDentList($dentValue),
+                'attribution' => $acte->getAttribution(),
             ];
         }
 
@@ -1626,7 +1666,8 @@ class ConsultationService
                 ->setType($designation)
                 ->setDescription($description)
                 ->setPrix($prix)
-                ->setQuantite($quantite);
+                ->setQuantite($quantite)
+                ->setAttribution($this->actAttributionResolver->resolveFromPayload(is_array($ligneData) ? $ligneData : []));
             $this->em->persist($acte);
         }
 

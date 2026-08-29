@@ -173,7 +173,7 @@ function buildOverviewSteps(ctx) {
             group: GROUP,
             target: '[data-tour="patients-dossier.finance-tabs"]',
             title: 'Historique administratif',
-            content: 'Onglets RDV, Paiements, Factures (avec filtre impayees) et eventuellement Consultations pour le suivi financier et administratif du patient.'
+            content: 'Onglets RDV, Paiements, Factures (avec filtre impayees), Actes medicaux et eventuellement Consultations pour le suivi financier et administratif du patient.'
         },
         {
             group: GROUP,

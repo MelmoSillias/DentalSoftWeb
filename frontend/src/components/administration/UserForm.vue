@@ -1,6 +1,7 @@
 <script setup>
 import { computed, reactive, watch } from 'vue';
 import {
+    STAFF_ROLE_ADMIN,
     STAFF_ROLE_OPTIONS,
     STAFF_ROLE_OPTIONS_WITHOUT_PATIENT,
     STAFF_ROLE_PATIENT,

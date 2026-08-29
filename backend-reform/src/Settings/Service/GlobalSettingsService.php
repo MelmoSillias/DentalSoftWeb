@@ -34,20 +34,20 @@ class GlobalSettingsService
         ],
     ];
     private const DEFAULT_SOINS_LIST = [
-        ['description' => 'Consultation', 'montant' => 0.0],
-        ['description' => 'Détartrage', 'montant' => 0.0],
-        ['description' => 'Extraction', 'montant' => 0.0],
-        ['description' => 'Remplissage', 'montant' => 0.0],
-        ['description' => 'Composite', 'montant' => 0.0],
-        ['description' => 'Amalgame', 'montant' => 0.0],
-        ['description' => 'Traitement de canal', 'montant' => 0.0],
-        ['description' => 'Traumatisme', 'montant' => 0.0],
-        ['description' => 'Couronne', 'montant' => 0.0],
-        ['description' => 'Blanchiment', 'montant' => 0.0],
-        ['description' => 'Radio', 'montant' => 0.0],
-        ['description' => 'Prothèse', 'montant' => 0.0],
-        ['description' => 'Orthodontie', 'montant' => 0.0],
-        ['description' => 'Chirurgie', 'montant' => 0.0],
+        ['description' => 'Consultation', 'montant' => 0.0, 'attribution' => 'medecin'],
+        ['description' => 'Détartrage', 'montant' => 0.0, 'attribution' => 'medecin'],
+        ['description' => 'Extraction', 'montant' => 0.0, 'attribution' => 'medecin'],
+        ['description' => 'Remplissage', 'montant' => 0.0, 'attribution' => 'medecin'],
+        ['description' => 'Composite', 'montant' => 0.0, 'attribution' => 'medecin'],
+        ['description' => 'Amalgame', 'montant' => 0.0, 'attribution' => 'medecin'],
+        ['description' => 'Traitement de canal', 'montant' => 0.0, 'attribution' => 'medecin'],
+        ['description' => 'Traumatisme', 'montant' => 0.0, 'attribution' => 'medecin'],
+        ['description' => 'Couronne', 'montant' => 0.0, 'attribution' => 'medecin'],
+        ['description' => 'Blanchiment', 'montant' => 0.0, 'attribution' => 'medecin'],
+        ['description' => 'Radio', 'montant' => 0.0, 'attribution' => 'cabinet'],
+        ['description' => 'Prothèse', 'montant' => 0.0, 'attribution' => 'medecin'],
+        ['description' => 'Orthodontie', 'montant' => 0.0, 'attribution' => 'medecin'],
+        ['description' => 'Chirurgie', 'montant' => 0.0, 'attribution' => 'medecin'],
     ];
     private const DEFAULT_EXAMENS_TYPES = [
         'Bacteriologique',
@@ -576,7 +576,7 @@ class GlobalSettingsService
     }
 
     /**
-     * @return list<array{description: string, montant: float}>
+     * @return list<array{description: string, montant: float, attribution: string}>
      */
     private function sanitizeSoinsList(mixed $value): array
     {
@@ -588,6 +588,7 @@ class GlobalSettingsService
         foreach ($value as $item) {
             $description = '';
             $montant = 0.0;
+            $attribution = 'medecin';
 
             if (is_scalar($item)) {
                 $description = trim((string) $item);
@@ -596,6 +597,10 @@ class GlobalSettingsService
                 $description = is_scalar($rawDescription) ? trim((string) $rawDescription) : '';
                 $rawMontant = $item['montant'] ?? $item['prix'] ?? 0;
                 $montant = is_numeric($rawMontant) ? max(0.0, (float) $rawMontant) : 0.0;
+                $rawAttribution = $item['attribution'] ?? 'medecin';
+                $attribution = is_scalar($rawAttribution) && (string) $rawAttribution === 'cabinet'
+                    ? 'cabinet'
+                    : 'medecin';
             } else {
                 continue;
             }
@@ -607,6 +612,7 @@ class GlobalSettingsService
             $clean[$description] = [
                 'description' => $description,
                 'montant' => round($montant, 2),
+                'attribution' => $attribution,
             ];
         }
 

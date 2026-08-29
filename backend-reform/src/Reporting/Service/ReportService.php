@@ -11,6 +11,7 @@ use App\Billing\Repository\TransactionRepository;
 use App\CareDelivery\Entity\Consultation;
 use App\CareDelivery\Repository\ActeMedicalRepository;
 use App\CareDelivery\Repository\ConsultationRepository;
+use App\CareDelivery\Service\ActAttributionService;
 use App\IdentityAccess\Entity\Employe;
 use App\Inventory\Entity\Consommable;
 use App\Inventory\Repository\ConsommableRepository; 
@@ -41,6 +42,7 @@ class ReportService
         private ActeMedicalRepository $acteRepo,
         private ConsultationRepository $consultRepo,
         private CacheInterface $cache,
+        private ActAttributionService $actAttributionService,
     ) {}
 
     // ====================== HELPERS ======================
@@ -461,6 +463,7 @@ class ReportService
 
         $doctorStats = [];
         $totalApport = $totalPartAssurance = $totalPaidCash = $totalRemuneration = $totalSalaries = 0.0;
+        $totalCabinetApport = $totalCabinetRevenue = 0.0;
 
         foreach ($doctors as $doctor) {
             $doctorId = $doctor->getId();
@@ -473,6 +476,8 @@ class ReportService
             $totalPaidCash += $stats['revenue_cash'];
             $totalRemuneration += $stats['revenue_total'];
             $totalSalaries += $stats['salary'];
+            $totalCabinetApport += $stats['apport_cabinet_exclu'];
+            $totalCabinetRevenue += $stats['revenue_cabinet_exclu'];
 
             $doctorStats[] = $stats;
         }
@@ -488,50 +493,64 @@ class ReportService
                 'afterFees' => $totalRemuneration - $totalSalaries,
                 'totalSalaries' => $totalSalaries,
                 'totalConsultations' => $consultationCount,
+                'totalCabinetApport' => $totalCabinetApport,
+                'totalCabinetRevenue' => $totalCabinetRevenue,
+                'revenusServicesCabinet' => $totalCabinetRevenue,
             ],
             'doctors' => $doctorStats,
         ];
     }
 
     /**
-     * @return array{amount: float, labels: string[]}
+     * @return array{amount: float, labels: string[], medecinAmount: float, cabinetAmount: float, medecinLabels: string[], cabinetLabels: string[]}
      */
     private function computeConsultationActs(Consultation $consultation, bool $includeActs): array
     {
         if (!$includeActs) {
-            return ['amount' => 0.0, 'labels' => []];
+            return [
+                'amount' => 0.0,
+                'labels' => [],
+                'medecinAmount' => 0.0,
+                'cabinetAmount' => 0.0,
+                'medecinLabels' => [],
+                'cabinetLabels' => [],
+            ];
         }
 
-        $amount = 0.0;
-        $labels = [];
+        $split = $this->actAttributionService->splitConsultationAmounts($consultation, true, 0.0);
+        $labels = array_merge($split['medecinLabels'], $split['cabinetLabels']);
 
-        foreach ($consultation->getActes() as $acte) {
-            $amount += (float) (($acte->getPrix() ?? 0) * max(1, (int) ($acte->getQuantite() ?? 1)));
-
-            $label = trim((string) ($acte->getType() ?? ''));
-            if ($label === '') {
-                $label = trim((string) ($acte->getDescription() ?? ''));
-            }
-            if ($label !== '') {
-                $labels[] = $label;
-            }
-        }
-
-        return ['amount' => $amount, 'labels' => $labels];
+        return [
+            'amount' => $split['medecinActs'] + $split['cabinetActs'],
+            'labels' => $labels,
+            'medecinAmount' => $split['medecinActs'],
+            'cabinetAmount' => $split['cabinetActs'],
+            'medecinLabels' => $split['medecinLabels'],
+            'cabinetLabels' => $split['cabinetLabels'],
+        ];
     }
 
     /**
      * @return array{
      *     consultationAmount: float,
      *     actsAmount: float,
+     *     actsAmountMedecin: float,
+     *     actsAmountCabinet: float,
      *     totalAmount: float,
+     *     apportMedecin: float,
+     *     apportCabinet: float,
      *     apportPatient: float,
+     *     apportPatientMedecin: float,
      *     apportAssurance: float,
+     *     apportAssuranceMedecin: float,
      *     patientPaid: float,
      *     reliquat: float,
      *     isPaidConsultation: bool,
      *     isInsurance: bool,
-     *     actLabels: string[]
+     *     actLabels: string[],
+     *     actLabelsMedecin: string[],
+     *     actLabelsCabinet: string[],
+     *     split: array<string, mixed>
      * }
      */
     private function resolveConsultationBilling(Consultation $consultation): array
@@ -567,17 +586,41 @@ class ReportService
                 ? (float) $factureAssurance->getConsultationAmount()
                 : 0.0;
 
+            $split = $this->actAttributionService->splitConsultationAmounts(
+                $consultation,
+                $isClosed,
+                $consultationAmount,
+            );
+            $attribution = $this->buildAttributionApport(
+                $totalAmount,
+                $apportPatient,
+                $apportAssurance,
+                $consultationAmount,
+                $acts,
+                $split,
+                true,
+            );
+
             return [
                 'consultationAmount' => $consultationAmount,
                 'actsAmount' => $isClosed ? $actsAmount : 0.0,
+                'actsAmountMedecin' => $isClosed ? $acts['medecinAmount'] : 0.0,
+                'actsAmountCabinet' => $isClosed ? $acts['cabinetAmount'] : 0.0,
                 'totalAmount' => $totalAmount,
+                'apportMedecin' => $attribution['apportMedecin'],
+                'apportCabinet' => $attribution['apportCabinet'],
                 'apportPatient' => $apportPatient,
+                'apportPatientMedecin' => $attribution['apportPatientMedecin'],
                 'apportAssurance' => $apportAssurance,
+                'apportAssuranceMedecin' => $attribution['apportAssuranceMedecin'],
                 'patientPaid' => $patientPaid,
                 'reliquat' => max(0.0, $apportPatient - $patientPaid),
                 'isPaidConsultation' => $apportPatient > 0.0,
                 'isInsurance' => true,
                 'actLabels' => $isClosed ? $actLabels : [],
+                'actLabelsMedecin' => $isClosed ? $acts['medecinLabels'] : [],
+                'actLabelsCabinet' => $isClosed ? $acts['cabinetLabels'] : [],
+                'split' => $split,
             ];
         }
 
@@ -585,17 +628,82 @@ class ReportService
         $totalAmount = $consultationAmount + $actsAmount;
         $patientPaid = $consultationAmount + $this->sumValidatedFacturePayments($consultation);
 
+        $split = $this->actAttributionService->splitConsultationAmounts(
+            $consultation,
+            true,
+            $consultationAmount,
+        );
+        $attribution = $this->buildAttributionApport(
+            $totalAmount,
+            $totalAmount,
+            0.0,
+            $consultationAmount,
+            $acts,
+            $split,
+            false,
+        );
+
         return [
             'consultationAmount' => $consultationAmount,
             'actsAmount' => $actsAmount,
+            'actsAmountMedecin' => $acts['medecinAmount'],
+            'actsAmountCabinet' => $acts['cabinetAmount'],
             'totalAmount' => $totalAmount,
+            'apportMedecin' => $attribution['apportMedecin'],
+            'apportCabinet' => $attribution['apportCabinet'],
             'apportPatient' => $totalAmount,
+            'apportPatientMedecin' => $attribution['apportPatientMedecin'],
             'apportAssurance' => 0.0,
+            'apportAssuranceMedecin' => 0.0,
             'patientPaid' => $patientPaid,
             'reliquat' => max(0.0, $totalAmount - $patientPaid),
             'isPaidConsultation' => $consultationAmount > 0.0,
             'isInsurance' => false,
             'actLabels' => $actLabels,
+            'actLabelsMedecin' => $acts['medecinLabels'],
+            'actLabelsCabinet' => $acts['cabinetLabels'],
+            'split' => $split,
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $acts
+     * @param array<string, mixed> $split
+     * @return array{
+     *     apportMedecin: float,
+     *     apportCabinet: float,
+     *     apportPatientMedecin: float,
+     *     apportAssuranceMedecin: float
+     * }
+     */
+    private function buildAttributionApport(
+        float $totalAmount,
+        float $apportPatient,
+        float $apportAssurance,
+        float $consultationAmount,
+        array $acts,
+        array $split,
+        bool $isInsurance,
+    ): array {
+        if ($isInsurance) {
+            $medecinRatio = (float) ($split['medecinRatio'] ?? 0.0);
+            if ($totalAmount <= 0.0) {
+                $medecinRatio = 1.0;
+            }
+
+            return [
+                'apportMedecin' => round($totalAmount * $medecinRatio, 2),
+                'apportCabinet' => round(max(0.0, $totalAmount - ($totalAmount * $medecinRatio)), 2),
+                'apportPatientMedecin' => round($apportPatient * $medecinRatio, 2),
+                'apportAssuranceMedecin' => round($apportAssurance * $medecinRatio, 2),
+            ];
+        }
+
+        return [
+            'apportMedecin' => round($consultationAmount + (float) ($acts['medecinAmount'] ?? 0.0), 2),
+            'apportCabinet' => round((float) ($acts['cabinetAmount'] ?? 0.0), 2),
+            'apportPatientMedecin' => round($consultationAmount + (float) ($acts['medecinAmount'] ?? 0.0), 2),
+            'apportAssuranceMedecin' => 0.0,
         ];
     }
 
@@ -632,6 +740,7 @@ class ReportService
         $apport = $revenue = $reliquat = $revenueAssurance = 0.0;
         $apportPatient = $apportAssurance = 0.0;
         $apportConsultations = $apportActes = 0.0;
+        $apportCabinetExclu = $revenueCabinetExclu = 0.0;
         $revenueConsultations = $revenueActes = 0.0;
         $newPatients = $returningPatients = 0;
         $seenPatientIds = [];
@@ -644,22 +753,25 @@ class ReportService
                 $paidConsultations++;
             }
 
-            $apport += $billing['totalAmount'];
-            $apportPatient += $billing['apportPatient'];
-            $apportAssurance += $billing['apportAssurance'];
+            $apport += $billing['apportMedecin'];
+            $apportPatient += $billing['apportPatientMedecin'];
+            $apportAssurance += $billing['apportAssuranceMedecin'];
             $apportConsultations += $billing['consultationAmount'];
-            $apportActes += $billing['actsAmount'];
-            $revenueAssurance += $billing['apportAssurance'];
+            $apportActes += $billing['actsAmountMedecin'];
+            $apportCabinetExclu += $billing['apportCabinet'];
+            $revenueAssurance += $billing['apportAssuranceMedecin'];
 
             $paymentBreakdown = $this->sumConsultationPaymentsInPeriodBreakdown($consultation, $from, $to);
-            $revenue += $paymentBreakdown['total'];
+            $paymentAllocation = $this->allocatePeriodPaymentsForMedecin($consultation, $paymentBreakdown, $billing);
+            $revenue += $paymentAllocation['medecin'];
+            $revenueCabinetExclu += $paymentAllocation['cabinet'];
             if ($billing['isInsurance']) {
-                $revenueConsultations += $paymentBreakdown['total'];
+                $revenueConsultations += $paymentAllocation['medecin'];
             } else {
                 $revenueConsultations += $paymentBreakdown['ticket'];
-                $revenueActes += $paymentBreakdown['facture'];
+                $revenueActes += $paymentAllocation['medecin'] - $paymentBreakdown['ticket'];
             }
-            $reliquat += $billing['reliquat'];
+            $reliquat += max(0.0, $billing['apportPatientMedecin'] - $paymentAllocation['medecin']);
 
             $patientId = $consultation->getPatient()?->getId();
             if ($patientId !== null) {
@@ -671,31 +783,44 @@ class ReportService
                 }
             }
 
-            $hasConsultationFee = $billing['isInsurance']
-                ? $billing['consultationAmount'] > 0.0
-                : $billing['consultationAmount'] > 0.0;
+            $hasConsultationFee = $billing['consultationAmount'] > 0.0;
 
             $actesList[] = [
                 'date' => $consultation->getCreatedAt()?->format('d/m/Y'),
                 'patient' => $consultation->getPatient()?->getFullName() ?? 'Inconnu',
                 'description' => $this->buildConsultationActLineDescription(
                     $hasConsultationFee,
-                    $billing['actLabels']
+                    $billing['actLabelsMedecin']
                 ),
-                'montant' => $billing['totalAmount'],
+                'montant' => $billing['apportMedecin'],
                 'montantPaye' => $billing['patientPaid'],
-                'montantPatient' => $billing['apportPatient'],
-                'montantAssurance' => $billing['apportAssurance'],
+                'montantPatient' => $billing['apportPatientMedecin'],
+                'montantAssurance' => $billing['apportAssuranceMedecin'],
                 'isInsurance' => $billing['isInsurance'],
+                'cabinetServicesAmount' => $billing['apportCabinet'],
             ];
         }
 
-        $revenueReliquats = array_sum(array_map(
-            static fn(array $payment): float => (float) ($payment['montant'] ?? 0.0),
-            $reliquatPayments
-        ));
-        $revenueCash = $revenue + $revenueReliquats;
+        $revenueReliquatsMedecin = 0.0;
+        $revenueReliquatsCabinet = 0.0;
+        foreach ($reliquatPayments as $payment) {
+            $consultation = $payment['consultation'] ?? null;
+            $amount = (float) ($payment['montant'] ?? 0.0);
+            if (!$consultation instanceof Consultation || $amount <= 0.0) {
+                $revenueReliquatsMedecin += $amount;
+                continue;
+            }
+
+            $billing = $this->resolveConsultationBilling($consultation);
+            $allocation = $this->allocateReliquatPaymentForMedecin($amount, $billing);
+            $revenueReliquatsMedecin += $allocation['medecin'];
+            $revenueReliquatsCabinet += $allocation['cabinet'];
+        }
+
+        $revenueReliquats = $revenueReliquatsMedecin + $revenueReliquatsCabinet;
+        $revenueCash = $revenue + $revenueReliquatsMedecin;
         $revenueTotal = $revenueCash + $revenueAssurance;
+        $revenueCabinetExclu += $revenueReliquatsCabinet;
 
         return [
             'id' => $doctor->getId(),
@@ -706,7 +831,7 @@ class ReportService
             'revenue' => $revenue,
             'revenue_consultations' => $revenueConsultations,
             'revenue_actes' => $revenueActes,
-            'revenue_reliquats' => $revenueReliquats,
+            'revenue_reliquats' => $revenueReliquatsMedecin,
             'revenue_assurance' => $revenueAssurance,
             'revenue_cash' => $revenueCash,
             'revenue_total' => $revenueTotal,
@@ -715,13 +840,140 @@ class ReportService
             'apport_assurance' => $apportAssurance,
             'apport_consultations' => $apportConsultations,
             'apport_actes' => $apportActes,
+            'apport_cabinet_exclu' => $apportCabinetExclu,
+            'revenue_cabinet_exclu' => $revenueCabinetExclu,
             'reliquat' => $reliquat,
             'consultations_paid' => $paidConsultations,
             'salary' => $this->computeDoctorSalary($doctor, $revenueTotal),
             'actes' => $actesList,
             'paiements_reliquats' => $reliquatPayments,
-            'paiements_reliquats_total' => $revenueReliquats,
+            'paiements_reliquats_total' => $revenueReliquatsMedecin,
         ];
+    }
+
+    /**
+     * @param array{ticket: float, facture: float, total: float} $paymentBreakdown
+     * @param array<string, mixed> $billing
+     * @return array{medecin: float, cabinet: float}
+     */
+    private function allocatePeriodPaymentsForMedecin(
+        Consultation $consultation,
+        array $paymentBreakdown,
+        array $billing,
+    ): array {
+        $split = $billing['split'] ?? [];
+
+        if ($billing['isInsurance'] ?? false) {
+            return $this->actAttributionService->allocateAmount(
+                (float) ($paymentBreakdown['total'] ?? 0.0),
+                (float) ($split['medecinBillable'] ?? 0.0),
+                (float) ($split['totalBillable'] ?? 0.0),
+            );
+        }
+
+        $medecin = (float) ($paymentBreakdown['ticket'] ?? 0.0);
+        $actsTotal = (float) (($split['medecinActs'] ?? 0.0) + ($split['cabinetActs'] ?? 0.0));
+        $cabinet = 0.0;
+        $facturePaid = (float) ($paymentBreakdown['facture'] ?? 0.0);
+        if ($facturePaid > 0.0 && $actsTotal > 0.0) {
+            $factureSplit = $this->actAttributionService->allocateAmount(
+                $facturePaid,
+                (float) ($split['medecinActs'] ?? 0.0),
+                $actsTotal,
+            );
+            $medecin += $factureSplit['medecin'];
+            $cabinet = $factureSplit['cabinet'];
+        }
+
+        return ['medecin' => $medecin, 'cabinet' => $cabinet];
+    }
+
+    /**
+     * @param array<string, mixed> $billing
+     * @return array{medecin: float, cabinet: float}
+     */
+    private function allocateReliquatPaymentForMedecin(float $amount, array $billing): array
+    {
+        $split = $billing['split'] ?? [];
+
+        if ($billing['isInsurance'] ?? false) {
+            return $this->actAttributionService->allocateAmount(
+                $amount,
+                (float) ($split['medecinBillable'] ?? 0.0),
+                (float) ($split['totalBillable'] ?? 0.0),
+            );
+        }
+
+        return $this->actAttributionService->allocateAmount(
+            $amount,
+            (float) ($split['medecinBillable'] ?? 0.0),
+            (float) ($split['totalBillable'] ?? 0.0),
+        );
+    }
+
+    public function computeCabinetPaymentsShareForPeriod(DateTimeImmutable $from, DateTimeImmutable $to): float
+    {
+        $cabinetShare = 0.0;
+
+        /** @var Paiement[] $paiements */
+        $paiements = $this->em->createQueryBuilder()
+            ->select('p', 'f', 'cf', 'ct', 'faf', 'fac', 'pfa', 'pfac')
+            ->from(Paiement::class, 'p')
+            ->leftJoin('p.facture', 'f')
+            ->leftJoin('f.consultation', 'cf')
+            ->leftJoin('p.consultation', 'ct')
+            ->leftJoin('ct.factureAssurance', 'faf')
+            ->leftJoin('p.factureAssurance', 'pfa')
+            ->leftJoin('pfa.consultation', 'pfac')
+            ->leftJoin('pfa.consultation', 'fac')
+            ->where('p.date BETWEEN :from AND :to')
+            ->setParameter('from', $from)
+            ->setParameter('to', $to)
+            ->getQuery()
+            ->getResult();
+
+        foreach ($paiements as $payment) {
+            if (!$this->isValidatedPayment($payment)) {
+                continue;
+            }
+
+            $consultation = $this->resolvePaymentConsultation($payment);
+            if ($consultation === null) {
+                continue;
+            }
+
+            $billing = $this->resolveConsultationBilling($consultation);
+            $amount = (float) ($payment->getMontant() ?? 0.0);
+            if ($amount <= 0.0) {
+                continue;
+            }
+
+            if ($billing['isInsurance']) {
+                $allocation = $this->actAttributionService->allocateAmount(
+                    $amount,
+                    (float) ($billing['split']['medecinBillable'] ?? 0.0),
+                    (float) ($billing['split']['totalBillable'] ?? 0.0),
+                );
+            } else {
+                $isTicket = $payment->getConsultation() !== null && $payment->getFacture() === null;
+                if ($isTicket) {
+                    $allocation = ['medecin' => $amount, 'cabinet' => 0.0];
+                } else {
+                    $actsTotal = (float) (($billing['split']['medecinActs'] ?? 0.0) + ($billing['split']['cabinetActs'] ?? 0.0));
+                    $allocation = $actsTotal > 0.0
+                        ? $this->actAttributionService->allocateAmount(
+                            $amount,
+                            (float) ($billing['split']['medecinActs'] ?? 0.0),
+                            $actsTotal,
+                        )
+                        : ['medecin' => $amount, 'cabinet' => 0.0];
+                }
+            }
+
+            $cabinetShare += (float) ($allocation['cabinet'] ?? 0.0);
+        }
+
+        return round($cabinetShare, 2);
     }
 
     private function sumValidatedTicketPayment(Consultation $consultation): float
@@ -960,10 +1212,11 @@ class ReportService
                 'patient' => $consultation->getPatient()?->getFullName() ?? 'Inconnu',
                 'description' => $this->buildConsultationActLineDescription(
                     $billing['consultationAmount'] > 0.0,
-                    $billing['actLabels']
+                    $billing['actLabelsMedecin']
                 ),
                 'montant' => (float) $payment->getMontant(),
                 'isInsurance' => $isInsurancePayment || $billing['isInsurance'],
+                'consultation' => $consultation,
             ];
 
             if ($transactionId !== null) {
@@ -1014,7 +1267,7 @@ class ReportService
                 'patient' => $consultation->getPatient()?->getFullName() ?? 'Inconnu',
                 'description' => $this->buildConsultationActLineDescription(
                     $billing['consultationAmount'] > 0.0,
-                    $billing['actLabels']
+                    $billing['actLabelsMedecin']
                 ),
                 'montant' => (float) $transaction->getMontant(),
                 'isInsurance' => true,

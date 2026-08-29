@@ -259,6 +259,14 @@ class ClassicInvoiceWorkflowService
             $contenus = $facture->buildLignesFromConsultation();
         }
 
+        $hasCabinetServices = false;
+        foreach ($contenus as $line) {
+            if (($line['attribution'] ?? 'medecin') === 'cabinet') {
+                $hasCabinetServices = true;
+                break;
+            }
+        }
+
         return [
             'id' => $facture->getId(),
             'date' => $facture->getDateFacture()?->format('Y-m-d') ?? (new \DateTime())->format('Y-m-d'),
@@ -280,6 +288,10 @@ class ClassicInvoiceWorkflowService
             'patientId' => $patient?->getId(),
             'telephone' => $patient?->getTelephone(),
             'contenus' => $contenus,
+            'hasCabinetServices' => $hasCabinetServices,
+            'cabinetServicesFootnote' => $hasCabinetServices
+                ? 'Les services marqués « Service cabinet » sont facturés par le cabinet et ne relèvent pas de l\'honoraire du praticien.'
+                : null,
             'paiements' => $includeDetails ? $this->buildFacturePaymentDetails($facture) : [],
             'type' => 'Facture',
             'insurance' => ['hasInsurance' => false, 'insuranceStatus' => 'none'],

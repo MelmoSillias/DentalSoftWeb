@@ -23,7 +23,10 @@
             </thead>
             <tbody>
                 <tr v-for="(ligne, idx) in doc?.contenus || []" :key="idx">
-                    <td>{{ ligne.designation }}</td>
+                    <td>
+                        {{ ligne.designation }}
+                        <span v-if="ligne.attribution === 'cabinet'" class="cabinet-tag">(Service cabinet)</span>
+                    </td>
                     <td>{{ ligne.qte }}</td>
                     <td>{{ formatMoney(ligne.montant) }}</td>
                     <td>{{ formatMoney(ligne.total) }}</td>
@@ -43,6 +46,10 @@
                 </tr>
             </tfoot>
         </table>
+
+        <p v-if="doc?.cabinetServicesFootnote || doc?.hasCabinetServices" class="cabinet-footnote">
+            {{ doc?.cabinetServicesFootnote || 'Les services marqués « Service cabinet » sont facturés par le cabinet et ne relèvent pas de l\'honoraire du praticien.' }}
+        </p>
 
         <div class="sign-row">
             <div class="sign-col">
@@ -94,5 +101,19 @@ const formatMoney = (value) => {
     width: 85%;
     margin: 24px auto 0;
     height: 1px;
+}
+
+.cabinet-tag {
+    margin-left: 0.35rem;
+    font-size: 9pt;
+    color: #b45309;
+    font-weight: 600;
+}
+
+.cabinet-footnote {
+    margin-top: 12px;
+    font-size: 9pt;
+    color: #92400e;
+    line-height: 1.4;
 }
 </style>

@@ -511,9 +511,11 @@ class PayrollService
             ->innerJoin('a.consultation', 'c')
             ->andWhere('c.medecin = :employee')
             ->andWhere('c.CreatedAt BETWEEN :periodStart AND :periodEnd')
+            ->andWhere('a.attribution = :attribution')
             ->setParameter('employee', $employee)
             ->setParameter('periodStart', $periodStart->setTime(0, 0, 0))
             ->setParameter('periodEnd', $periodEnd->setTime(23, 59, 59))
+            ->setParameter('attribution', 'medecin')
             ->getQuery()
             ->getSingleScalarResult();
 

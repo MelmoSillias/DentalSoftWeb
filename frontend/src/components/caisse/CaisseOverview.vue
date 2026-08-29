@@ -25,6 +25,7 @@ const props = defineProps({
     facturesLoading: { type: Boolean, default: false },
     payments: { type: Array, default: () => [] },
     paymentsLoading: { type: Boolean, default: false },
+    cabinetPaymentsShare: { type: Number, default: 0 },
     factureType: { type: String, default: 'all' },
     factureRange: { type: Array, default: () => [] },
     paymentRange: { type: Array, default: () => [] },
@@ -319,6 +320,7 @@ const detailedStats = computed(() => {
 });
 
 const totalRevenueLabel = computed(() => formatFcfa(detailedStats.value.totalPaid));
+const cabinetShareLabel = computed(() => formatFcfa(Number(props.cabinetPaymentsShare) || 0));
 
 const formatFcfa = (value) => `${Number(value || 0).toLocaleString('fr-FR')} FCFA`;
 
@@ -395,6 +397,9 @@ const printDetailPayment = (row) => {
                 <div class="top-bar-metric">
                     <span class="top-bar-metric__label">Recette totale</span>
                     <strong class="top-bar-metric__value">{{ totalRevenueLabel }}</strong>
+                    <span v-if="cabinetPaymentsShare > 0" class="top-bar-metric__hint">
+                        Dont services cabinet : {{ cabinetShareLabel }}
+                    </span>
                 </div>
                 <Button label="Statistiques" icon="pi pi-chart-bar" severity="secondary" outlined
                     @click="showStatsModal = true" />
@@ -415,6 +420,9 @@ const printDetailPayment = (row) => {
                     <div class="kpi-card success">
                         <span>Recette totale</span>
                         <strong>{{ formatFcfa(detailedStats.totalPaid) }}</strong>
+                        <small v-if="cabinetPaymentsShare > 0" class="kpi-card__hint">
+                            Dont services cabinet : {{ cabinetShareLabel }}
+                        </small>
                     </div>
                     <div class="kpi-card danger">
                         <span>Restant</span>
@@ -1139,6 +1147,20 @@ const printDetailPayment = (row) => {
 
 .kpi-card strong {
     font-size: 1.1rem;
+}
+
+.kpi-card__hint,
+.top-bar-metric__hint {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #b45309;
+}
+
+.app-dark .kpi-card__hint,
+.app-dark .top-bar-metric__hint {
+    color: #fbbf24;
 }
 
 .kpi-card.success {

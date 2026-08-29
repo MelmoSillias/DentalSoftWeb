@@ -114,7 +114,8 @@ class ConsultationRepository extends ServiceEntityRepository
         return $this->createQueryBuilder('c')
             ->andWhere('c.patient = :patientId')
             ->setParameter('patientId', $patientId)
-            ->orderBy('c.id', 'ASC')
+            ->orderBy('c.CreatedAt', 'DESC')
+            ->addOrderBy('c.id', 'DESC')
             ->getQuery()
             ->getResult();
     }

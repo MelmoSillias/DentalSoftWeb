@@ -58,9 +58,13 @@ const router = createRouter({
                     component: () => import('@/views/patients/DossierPatient.vue'),
                     props: (route) => {
                         const rawId = route.params.patientId;
+                        // Path `/patients/dossier` yields patientId: '' — Number('') === 0, not a real id.
+                        if (rawId == null || rawId === '') {
+                            return { patientId: null };
+                        }
                         const parsedId = Number(rawId);
                         return {
-                            patientId: Number.isNaN(parsedId) ? null : parsedId
+                            patientId: Number.isFinite(parsedId) && parsedId > 0 ? parsedId : null
                         };
                     },
                     meta: { requiresAuth: true, roles: ['ROLE_ADMIN', 'ROLE_RECEPTION', 'ROLE_MEDECIN'] , fixedWidth: true}

@@ -140,7 +140,15 @@ class CaisseController extends AbstractController
         }
         $end->setTime(23, 59, 59);
 
-        return new JsonResponse(['data' => $this->entryPoint->listPaiementsFactures($start, $end)]);
+        $payments = $this->entryPoint->listPaiementsFactures($start, $end);
+        $cabinetShare = $this->entryPoint->computeCabinetPaymentsShare($start, $end);
+
+        return new JsonResponse([
+            'data' => $payments,
+            'summary' => [
+                'cabinetShare' => $cabinetShare,
+            ],
+        ]);
     }
 
     #[Route('/api/factures/{id}', name: 'api_factures_preview', methods: ['GET'])] 

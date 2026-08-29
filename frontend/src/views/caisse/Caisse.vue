@@ -143,6 +143,7 @@ if(authStore.user.roles.includes('ROLE_RECEPTION')) {
 
 const factures = ref([]);
 const payments = ref([]);
+const paymentsCabinetShare = ref(0);
 const insuranceDashboard = ref([]);
 const insuranceLotsAssurance = ref(null);
 const insuranceLots = ref([]);
@@ -453,6 +454,7 @@ const loadPayments = async () => {
 		const [start, end] = paymentRange.value;
 		const res = await fetchPayments({ start: toApiDate(start), end: toApiDate(end) }, token);
 		payments.value = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
+		paymentsCabinetShare.value = Number(res?.summary?.cabinetShare ?? 0);
 		if (isInitialLoadPhase.value) {
 			loadErrorMessage.value = '';
 		}
@@ -1562,6 +1564,7 @@ onBeforeUnmount(() => {
 			<TabPanels class="mt-4">
 				<TabPanel value="overview">
 					<CaisseOverview :factures="factures" :factures-loading="facturesLoading" :payments="payments"
+						:cabinet-payments-share="paymentsCabinetShare"
 						:hide-patient-phone="shouldHidePatientPhoneForMedecin"
 						:allow-invoice-modification="canModifyInvoiceByRole"
 						:payments-loading="paymentsLoading" :facture-type="factureType" :facture-range="factureRange"

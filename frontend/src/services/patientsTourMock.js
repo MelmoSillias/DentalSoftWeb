@@ -438,7 +438,21 @@ function buildStaticConsultationHistory() {
                 date: '2026-03-28T09:30:00',
                 medecin: 'Dr Aissatou Fall',
                 statut: 1,
-                factureMontant: 10000
+                state: 1,
+                factureMontant: 10000,
+                factureId: 8101,
+                factModifiable: false,
+                actes: [
+                    {
+                        id: 1,
+                        type: 'Consultation',
+                        description: 'Consultation de contrôle',
+                        dent: '11',
+                        prix: 10000,
+                        quantite: 1,
+                        montant: 10000
+                    }
+                ]
             }
         ],
         1002: [
@@ -447,14 +461,41 @@ function buildStaticConsultationHistory() {
                 date: '2026-04-01T10:15:00',
                 medecin: 'Dr Mamadou Seck',
                 statut: 0,
-                factureMontant: 30000
+                state: 0,
+                factureMontant: 30000,
+                factureId: null,
+                factModifiable: false,
+                actes: []
             },
             {
                 id: 4102,
                 date: '2026-03-25T14:15:00',
                 medecin: 'Dr Mamadou Seck',
                 statut: 1,
-                factureMontant: 25000
+                state: 1,
+                factureMontant: 25000,
+                factureId: 8102,
+                factModifiable: true,
+                actes: [
+                    {
+                        id: 2,
+                        type: 'Détartrage',
+                        description: 'Détartrage complet',
+                        dent: '',
+                        prix: 15000,
+                        quantite: 1,
+                        montant: 15000
+                    },
+                    {
+                        id: 3,
+                        type: 'Extraction',
+                        description: 'Extraction simple',
+                        dent: '36',
+                        prix: 10000,
+                        quantite: 1,
+                        montant: 10000
+                    }
+                ]
             }
         ],
         1003: []

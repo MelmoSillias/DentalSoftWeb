@@ -810,8 +810,13 @@ const copyToClipboard = async (label, value) => {
 };
 
 const addSoinCatalogItem = () => {
-    soinsCatalog.items.push({ description: '', montant: 0 });
+    soinsCatalog.items.push({ description: '', montant: 0, attribution: 'medecin' });
 };
+
+const soinAttributionOptions = [
+    { label: 'Médecin', value: 'medecin' },
+    { label: 'Cabinet', value: 'cabinet' }
+];
 
 const removeSoinCatalogItem = (index) => {
     soinsCatalog.items.splice(index, 1);
@@ -1852,7 +1857,7 @@ onBeforeUnmount(() => {
                             <div class="settings-section-header">
                                 <div>
                                     <h3>Catalogue des soins</h3>
-                                    <p class="settings-section-description">Liste des actes proposés dans les consultations et la facturation</p>
+                                    <p class="settings-section-description">Liste des actes proposés dans les consultations et la facturation. Les services « Cabinet » sont facturés au patient mais exclus des apports médecins.</p>
                                 </div>
                                 <Button
                                     label="Enregistrer"
@@ -1909,6 +1914,14 @@ onBeforeUnmount(() => {
                                                 inputClass="w-full"
                                                 placeholder="Montant"
                                             />
+                                            <Select
+                                                v-model="item.attribution"
+                                                :options="soinAttributionOptions"
+                                                optionLabel="label"
+                                                optionValue="value"
+                                                class="w-44"
+                                                placeholder="Attribution"
+                                            />
                                             <Button
                                                 icon="pi pi-trash"
                                                 severity="danger"
@@ -1920,7 +1933,7 @@ onBeforeUnmount(() => {
                                             />
                                         </div>
                                     </div>
-                                    <span class="field-helper">Description obligatoire. Glissez-déposez pour réordonner. Utilisé dans les actes posés et la modification de facture.</span>
+                                    <span class="field-helper">Description obligatoire. Attribution « Cabinet » pour les services (ex. radio) non comptés chez le médecin. Glissez-déposez pour réordonner.</span>
                                 </div>
                             </div>
                         </div>

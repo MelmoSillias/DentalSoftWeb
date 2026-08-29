@@ -595,18 +595,10 @@ class PatientService
 
         $consultations = $this->consultationRepo->findConsultationsByPatient($patientId);
 
-        return array_map(function (Consultation $consultation) {
-            $facture = $consultation->getFacture();
-
-            return [
-                'id' => $consultation->getId(),
-                'date' => $consultation->getCreatedAt()?->format('Y-m-d H:i'),
-                'statut' => $consultation->getStatut(),
-                'medecin' => $consultation->getMedecin()?->getFullName(),
-                'factureMontant' => $facture?->getMontantTotal(),
-                'factureStatut' => $facture?->isReglee() ? 1 : 0,
-            ];
-        }, $consultations);
+        return array_map(
+            fn (Consultation $consultation) => $this->consultationService->formatPatientConsultationSummary($consultation),
+            $consultations
+        );
     }
 
     public function addPatient(array $data, ?User $actor = null): array

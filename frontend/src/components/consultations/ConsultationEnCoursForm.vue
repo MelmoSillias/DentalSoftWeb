@@ -105,7 +105,7 @@ const addActe = (dent = '') => {
     const actes = form.value.actes || [];
     form.value = {
         ...form.value,
-        actes: [...actes, { dent: normalizeDentSelection(dent), type: '', description: '', quantite: 1, prix: 0 }]
+        actes: [...actes, { dent: normalizeDentSelection(dent), type: '', description: '', quantite: 1, prix: 0, attribution: 'medecin' }]
     };
 };
 
@@ -203,7 +203,8 @@ const confirmAddActes = () => {
         type: '',
         description: '',
         quantite: 1,
-        prix: 0
+        prix: 0,
+        attribution: 'medecin'
     }));
     form.value = { ...form.value, actes: [...actes, ...newActes] };
     selectedTeeth.value = [];

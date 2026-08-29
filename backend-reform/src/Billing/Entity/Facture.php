@@ -207,6 +207,7 @@ class Facture
                 'prix' => $prix,
                 'dent' => (string) ($acte->getDent() ?? ''),
                 'total' => $quantite * $prix,
+                'attribution' => $acte->getAttribution(),
             ];
         }, $consultation->getActes()->toArray());
     }

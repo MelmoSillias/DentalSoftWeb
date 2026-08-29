@@ -7,6 +7,7 @@ import Select from 'primevue/select';
 import { computed } from 'vue';
 import {
     findSoinMontant,
+    findSoinAttribution,
     formatActeCurrency,
     normalizeDentList,
     normalizeSoinList,
@@ -45,8 +46,17 @@ const emit = defineEmits(['update', 'remove']);
 const soinOptions = computed(() => normalizeSoinList(props.soins).map((item) => ({
     label: item.description,
     value: item.description,
-    montant: item.montant
+    montant: item.montant,
+    attribution: item.attribution === 'cabinet' ? 'cabinet' : 'medecin'
 })));
+
+const isCabinetActe = computed(() => (props.acte?.attribution === 'cabinet'));
+
+const cardClasses = computed(() => (
+    isCabinetActe.value
+        ? 'border-amber-300 dark:border-amber-600 bg-amber-50/60 dark:bg-amber-950/20'
+        : 'border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-800'
+));
 
 const dentSelection = computed(() => normalizeDentList(props.acte?.dent));
 
@@ -99,26 +109,37 @@ const updateField = (patch) => emit('update', patch);
 const onSoinTypeChange = (value) => {
     const type = value || '';
     if (!type) {
-        updateField({ type: '' });
+        updateField({ type: '', attribution: 'medecin' });
         return;
     }
     const montant = findSoinMontant(props.soins, type);
+    const attribution = findSoinAttribution(props.soins, type);
     if (montant === null) {
-        updateField({ type });
+        updateField({ type, attribution });
         return;
     }
-    updateField({ type, prix: montant });
+    updateField({ type, prix: montant, attribution });
 };
 </script>
 
 <template>
-    <div class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-800 p-4 shadow-sm hover:shadow-md transition-all">
+    <div class="rounded-xl border p-4 shadow-sm hover:shadow-md transition-all" :class="cardClasses">
         <div v-if="showHeader" class="flex items-center justify-between mb-4">
-            <div class="flex items-center gap-2">
-                <span class="flex items-center justify-center w-6 h-6 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 text-sm font-bold">
+            <div class="flex items-center gap-2 flex-wrap">
+                <span
+                    class="flex items-center justify-center w-6 h-6 rounded-md text-sm font-bold"
+                    :class="isCabinetActe ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300' : 'bg-blue-500/10 text-blue-600 dark:text-blue-400'"
+                >
                     {{ index + 1 }}
                 </span>
                 <span class="font-medium text-surface-900 dark:text-surface-100">Acte {{ index + 1 }}</span>
+                <span
+                    v-if="isCabinetActe"
+                    class="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-100 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-amber-800 dark:border-amber-700 dark:bg-amber-900/40 dark:text-amber-200"
+                >
+                    <i class="pi pi-building text-[10px]" />
+                    Service cabinet
+                </span>
             </div>
             <Button
                 icon="pi pi-trash"
@@ -197,7 +218,19 @@ const onSoinTypeChange = (value) => {
                         </template>
                         <template #option="slotProps">
                             <div class="flex items-center justify-between gap-3 w-full">
-                                <span class="font-medium">{{ slotProps.option.label }}</span>
+                                <div class="flex items-center gap-2 min-w-0">
+                                    <i
+                                        v-if="slotProps.option.attribution === 'cabinet'"
+                                        class="pi pi-building text-amber-600 dark:text-amber-400 shrink-0"
+                                    />
+                                    <span class="font-medium truncate">{{ slotProps.option.label }}</span>
+                                    <span
+                                        v-if="slotProps.option.attribution === 'cabinet'"
+                                        class="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-amber-800 dark:bg-amber-900/50 dark:text-amber-200"
+                                    >
+                                        Cabinet
+                                    </span>
+                                </div>
                                 <span class="text-sm text-surface-500 dark:text-surface-400 whitespace-nowrap">
                                     {{ formatActeCurrency(slotProps.option.montant) }}
                                 </span>

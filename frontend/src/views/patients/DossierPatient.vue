@@ -180,7 +180,7 @@
                     />
                 </div>
                 <div data-tour="patients-dossier.finance">
-                    <RdvPaiementsSection
+                    <PatientActiviteFinancesSection
                         :rdvs="rdvs"
                         :paiements="paiements"
                         :factures="factures"
@@ -391,7 +391,7 @@ import FormCreateConsultation from '@/components/patients/FormCreateConsultation
 import FormPatient from '@/components/patients/FormPatient.vue';
 import FormRendezVous from '@/components/patients/FormRendezVous.vue';
 import ListePatientConsultations from '@/components/patients/ListePatientConsultations.vue';
-import RdvPaiementsSection from '@/components/patients/RdvPaiementsSection.vue';
+import PatientActiviteFinancesSection from '@/components/patients/PatientActiviteFinancesSection.vue';
 import { useDossierLayout } from '@/composables/useDossierLayout';
 import { useGuidedTour } from '@/composables/useGuidedTour';
 import { usePatientDossier } from '@/composables/usePatientDossier';
@@ -506,11 +506,14 @@ const {
     )
 });
 
-const currentPatientId = computed(() => (
-    guidedTourDemoActive.value
+const isValidPatientId = (id) => id != null && Number.isFinite(Number(id)) && Number(id) > 0;
+
+const currentPatientId = computed(() => {
+    const candidate = guidedTourDemoActive.value
         ? selectedPatientId.value ?? props.patientId ?? patient.value?.id ?? null
-        : props.patientId ?? null
-));
+        : props.patientId ?? null;
+    return isValidPatientId(candidate) ? Number(candidate) : null;
+});
 const hasPatientSelection = computed(() => currentPatientId.value != null);
 
 const cloneValue = (value) => {
@@ -537,7 +540,9 @@ const loadPatientOptions = async (query = '') => {
             phone: p.telephone || p.phone || '',
             searchText: [p.fullname, `${p.prenom ?? ''} ${p.nom ?? ''}`.trim(), p.nom, p.telephone, p.phone].filter(Boolean).join(' ')
         }));
-        const keepId = selectedPatientId.value ?? props.patientId ?? null;
+        const keepId = isValidPatientId(selectedPatientId.value)
+            ? selectedPatientId.value
+            : (isValidPatientId(props.patientId) ? props.patientId : null);
         patientOptions.value = mapped;
         if (keepId != null) {
             await ensureSelectedPatientOption(keepId);
@@ -551,7 +556,7 @@ const loadPatientOptions = async (query = '') => {
 };
 
 const ensureSelectedPatientOption = async (patientId) => {
-    if (!patientId) return;
+    if (!isValidPatientId(patientId)) return;
     const exists = patientOptions.value.some((opt) => opt.value === patientId);
     if (exists) return;
     try {
@@ -575,10 +580,11 @@ const ensureSelectedPatientOption = async (patientId) => {
 const applySelectedPatientId = async (patientId) => {
     ignorePatientSelectEvents.value = true;
     try {
-        if (patientId != null) {
-            await ensureSelectedPatientOption(patientId);
+        const normalizedId = isValidPatientId(patientId) ? Number(patientId) : null;
+        if (normalizedId != null) {
+            await ensureSelectedPatientOption(normalizedId);
         }
-        selectedPatientId.value = patientId;
+        selectedPatientId.value = normalizedId;
         await nextTick();
     } finally {
         ignorePatientSelectEvents.value = false;
@@ -596,7 +602,7 @@ const handlePatientFilter = (event) => {
 onMounted(async () => {
     await loadVisibilityPolicy();
     await assurancesStore.load(token).catch(() => []);
-    const initialId = props.patientId;
+    const initialId = isValidPatientId(props.patientId) ? props.patientId : null;
     const dossierPromise = initialId != null
         ? loadAll(initialId, { asPageLoad: true })
         : null;
@@ -604,6 +610,9 @@ onMounted(async () => {
     if (initialId != null) {
         await applySelectedPatientId(initialId);
         await dossierPromise;
+    } else {
+        await applySelectedPatientId(null);
+        clearDossier();
     }
 });
 
@@ -621,7 +630,7 @@ watch(
     async (newId, oldId) => {
         if (guidedTourDemoActive.value) return;
         if (newId === oldId) return;
-        if (newId == null) {
+        if (!isValidPatientId(newId)) {
             await applySelectedPatientId(null);
             clearDossier();
             return;
@@ -635,7 +644,7 @@ const handlePatientSelect = async (value) => {
     if (ignorePatientSelectEvents.value) return;
 
     if (guidedTourDemoActive.value) {
-        if (!value) {
+        if (!isValidPatientId(value)) {
             await applySelectedPatientId(null);
             clearDossier();
             return;
@@ -645,9 +654,9 @@ const handlePatientSelect = async (value) => {
         return;
     }
 
-    if (!value) {
+    if (!isValidPatientId(value)) {
         // Select peut émettre null si l'option n'est pas encore dans la liste : ne pas vider la route.
-        if (props.patientId != null) {
+        if (isValidPatientId(props.patientId)) {
             const optionPresent = patientOptions.value.some((opt) => opt.value === props.patientId);
             if (!optionPresent || patientOptionsLoading.value) {
                 await applySelectedPatientId(props.patientId);
@@ -656,7 +665,8 @@ const handlePatientSelect = async (value) => {
             router.push({ name: 'patients-dossier' });
             return;
         }
-        selectedPatientId.value = null;
+        await applySelectedPatientId(null);
+        clearDossier();
         return;
     }
 

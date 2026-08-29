@@ -11,6 +11,8 @@ use App\Billing\Service\Workflow\ClassicInvoiceWorkflowService;
 use App\Billing\Service\Workflow\InsuredInvoiceWorkflowService;
 use App\CareDelivery\Entity\Consultation;
 use App\Patient\Entity\Patient;
+use App\Reporting\Service\ReportService;
+use DateTimeImmutable;
 use DateTimeInterface;
 
 class CashdeskEntryPointService
@@ -21,6 +23,7 @@ class CashdeskEntryPointService
         private PaiementRepository $paiementRepo,
         private ModeDePaiementRepository $modeRepo,
         private FactureRepository $factureRepo,
+        private ReportService $reportService,
     ) {
     }
 
@@ -185,6 +188,14 @@ class CashdeskEntryPointService
         }, $paiements);
     }
 
+    public function computeCabinetPaymentsShare(DateTimeInterface $start, DateTimeInterface $end): float
+    {
+        $from = DateTimeImmutable::createFromInterface($start);
+        $to = DateTimeImmutable::createFromInterface($end);
+
+        return $this->reportService->computeCabinetPaymentsShareForPeriod($from, $to);
+    }
+
     public function listPaiementsByPatients(Patient $patient): array
     {
         $paiements = $this->paiementRepo->createQueryBuilder('p')
@@ -325,6 +336,16 @@ class CashdeskEntryPointService
         $facture = $paiement->getFacture();
         $factureAssurance = $paiement->getFactureAssurance();
         $factureId = $facture?->getId() ?? $factureAssurance?->getId();
+        $consultation = $this->resolveConsultationFromPaiement($paiement);
+        $hasCabinetServices = false;
+        if ($consultation !== null) {
+            foreach ($consultation->getActes() as $acte) {
+                if ($acte->isCabinetService()) {
+                    $hasCabinetServices = true;
+                    break;
+                }
+            }
+        }
 
         $total = 0.0;
         $reste = 0.0;
@@ -370,6 +391,10 @@ class CashdeskEntryPointService
                 ],
             ] : null,
             'assurance' => $assuranceBlock,
+            'hasCabinetServices' => $hasCabinetServices,
+            'cabinetPaymentNote' => $hasCabinetServices
+                ? 'Ce règlement peut inclure des services cabinet.'
+                : null,
         ];
     }
 
