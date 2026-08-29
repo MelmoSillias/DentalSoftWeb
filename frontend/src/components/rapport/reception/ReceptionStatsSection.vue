@@ -26,8 +26,8 @@ const buildItems = (stats) => [
     { key: 'appointments', label: 'Rendez-vous planifiés', value: stats.totalAppointments ?? 0, icon: 'pi pi-calendar' },
     { key: 'absent', label: 'Absences patients', value: stats.absentAppointments ?? 0, icon: 'pi pi-user-minus' },
     { key: 'paid', label: 'Factures payées', value: stats.paidInvoices ?? 0, icon: 'pi pi-receipt' },
-    { key: 'cash', label: 'Revenus encaissés', value: formatFcfa(stats.cashRevenue), icon: 'pi pi-money-bill' },
-    { key: 'total', label: 'Total revenus', value: formatFcfa(stats.totalRevenue), icon: 'pi pi-chart-bar' }
+    { key: 'cash', label: 'Encaissé', value: formatFcfa(stats.cashRevenue), icon: 'pi pi-money-bill' },
+    { key: 'total', label: 'Montant encaissé (total)', value: formatFcfa(stats.totalRevenue), icon: 'pi pi-chart-bar' }
 ];
 
 const chartData = computed(() => {
@@ -40,8 +40,8 @@ const chartData = computed(() => {
             'Rendez-vous planifiés',
             'Absences',
             'Factures payées',
-            'Revenus encaissés',
-            'Total revenus'
+            'Encaissé',
+            'Montant encaissé (total)'
         ],
         datasets: [
             {

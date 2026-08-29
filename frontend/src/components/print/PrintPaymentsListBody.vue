@@ -2,7 +2,7 @@
     <PrintA4Page :logo-src="logoSrc">
         <template #header>
             <PrintDocumentHeader
-                title="Recettes paiements devis"
+                title="Encaissements paiements devis"
                 :date="end"
                 :doc-id="periodId"
             />
@@ -34,7 +34,7 @@
             </tbody>
             <tfoot>
                 <tr>
-                    <th colspan="2" style="text-align: right">Total des recettes</th>
+                    <th colspan="2" style="text-align: right">Total des encaissements</th>
                     <th style="text-align: right">{{ formatMoney(total) }}</th>
                     <th colspan="2" />
                 </tr>

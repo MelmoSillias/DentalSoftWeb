@@ -1857,7 +1857,7 @@ onBeforeUnmount(() => {
                             <div class="settings-section-header">
                                 <div>
                                     <h3>Catalogue des soins</h3>
-                                    <p class="settings-section-description">Liste des actes proposés dans les consultations et la facturation. Les services « Cabinet » sont facturés au patient mais exclus des apports médecins.</p>
+                                    <p class="settings-section-description">Liste des actes proposés dans les consultations et la facturation. Les services « Cabinet » sont facturés au patient mais exclus de la facturation médecins.</p>
                                 </div>
                                 <Button
                                     label="Enregistrer"

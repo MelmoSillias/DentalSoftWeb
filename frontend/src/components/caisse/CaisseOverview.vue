@@ -395,7 +395,7 @@ const printDetailPayment = (row) => {
             </div>
             <div class="top-bar-actions">
                 <div class="top-bar-metric">
-                    <span class="top-bar-metric__label">Recette totale</span>
+                    <span class="top-bar-metric__label">Encaissements du jour</span>
                     <strong class="top-bar-metric__value">{{ totalRevenueLabel }}</strong>
                     <span v-if="cabinetPaymentsShare > 0" class="top-bar-metric__hint">
                         Dont services cabinet : {{ cabinetShareLabel }}
@@ -418,7 +418,7 @@ const printDetailPayment = (row) => {
                         <strong>{{ detailedStats.totalInvoices }}</strong>
                     </div>
                     <div class="kpi-card success">
-                        <span>Recette totale</span>
+                        <span>Encaissements du jour</span>
                         <strong>{{ formatFcfa(detailedStats.totalPaid) }}</strong>
                         <small v-if="cabinetPaymentsShare > 0" class="kpi-card__hint">
                             Dont services cabinet : {{ cabinetShareLabel }}
@@ -452,7 +452,7 @@ const printDetailPayment = (row) => {
                 </div>
 
                 <div class="stats-section">
-                    <h4>Recette par mode de paiement</h4>
+                    <h4>Encaissements par mode de paiement</h4>
                     <div v-if="detailedStats.paymentModeRows.length" class="payment-breakdown-grid">
                         <div v-for="item in detailedStats.paymentModeRows" :key="item.mode" class="payment-breakdown-card">
                             <span class="payment-breakdown-card__mode">{{ item.mode }}</span>

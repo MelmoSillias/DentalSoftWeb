@@ -126,7 +126,7 @@ function doctorSummaryCards(row) {
     return [
         {
             key: 'apport',
-            label: 'Apport (hors cabinet)',
+            label: 'Facturé (hors cabinet)',
             value: formatFcfa(row?.apport),
             icon: 'pi pi-briefcase',
             tone: 'text-indigo-600 dark:text-indigo-300',
@@ -134,7 +134,7 @@ function doctorSummaryCards(row) {
         },
         {
             key: 'cash',
-            label: 'Encaissé patient',
+            label: 'Encaissé',
             value: formatFcfa(doctorRevenueCash(row)),
             icon: 'pi pi-wallet',
             tone: 'text-emerald-600 dark:text-emerald-300',
@@ -244,8 +244,8 @@ function formatDoctorDetails(row) {
                     <th>Date</th>
                     <th>Patient</th>
                     <th>Description</th>
-                    <th>Montant apport</th>
-                    <th>Montant payé</th>
+                    <th>Montant facturé</th>
+                    <th>Montant encaissé</th>
                 </tr>
             </thead>
             <tbody>
@@ -258,8 +258,8 @@ function formatDoctorDetails(row) {
     const recap = `
         <div class="print-section-title" style="margin-top: 16px;">Récapitulatif</div>
         <p style="margin-top: 8px; font-weight: 600;">
-            Total apport = ${formatFcfa(apportTotal)} ·
-            Total payé = ${formatFcfa(paidTotal)} ·
+            Total facturé = ${formatFcfa(apportTotal)} ·
+            Total encaissé = ${formatFcfa(paidTotal)} ·
             Total Paiements de reliquats = ${formatFcfa(reliquatTotal)}
         </p>
     `;
@@ -315,7 +315,7 @@ function formatDoctorTable(row) {
                     <td>${row.acts_amount ? formatFcfa(row.acts_amount) : formatFcfa(0)}</td>
                 </tr>
                 <tr>
-                    <td colspan="2"><strong>Apport total</strong></td>
+                    <td colspan="2"><strong>Total facturé</strong></td>
                     <td>${formatFcfa(row.apport)}</td>
                 </tr>
                 <tr>
@@ -358,7 +358,7 @@ function printSummary() {
                 <tr>
                     <th>Médecin</th>
                     <th>Consultations</th>
-                    <th>Apport (Fcfa)</th>
+                    <th>Facturé (Fcfa)</th>
                     <th>Total encaissé</th>
                     <th>Réliquat patient</th>
                     <th>Salaire</th>
@@ -457,8 +457,8 @@ function printAllActs() {
                     <th>Médecin</th>
                     <th>Patient</th>
                     <th>Description</th>
-                    <th>Montant apport</th>
-                    <th>Montant payé</th>
+                    <th>Montant facturé</th>
+                    <th>Montant encaissé</th>
                 </tr>
             </thead>
             <tbody>
@@ -485,11 +485,11 @@ function printAllActs() {
         <table class="print-table">
             <tbody>
                 <tr>
-                    <td><strong>Total apport</strong></td>
+                    <td><strong>Total facturé</strong></td>
                     <td>${formatFcfa(apportTotal)}</td>
                 </tr>
                 <tr>
-                    <td><strong>Total payé</strong></td>
+                    <td><strong>Total encaissé</strong></td>
                     <td>${formatFcfa(paidTotal)}</td>
                 </tr>
                 <tr>
@@ -523,7 +523,7 @@ function printAllActs() {
         <template #content>
             <div v-if="showKpi" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 mb-6">
                 <div class="rounded-2xl border border-surface-200/60 bg-surface-50/80 p-3 sm:p-4 text-center shadow-sm dark:border-surface-700/60 dark:bg-surface-800/70">
-                    <p class="text-xs font-semibold uppercase text-surface-500">Apports total</p>
+                    <p class="text-xs font-semibold uppercase text-surface-500">Total facturé</p>
                     <p class="text-lg sm:text-xl font-semibold text-surface-900 dark:text-surface-0">{{ formatFcfa(kpi.totalApport ?? 0) }}</p>
                 </div>
                 <div class="rounded-2xl border border-surface-200/60 bg-surface-50/80 p-3 sm:p-4 text-center shadow-sm dark:border-surface-700/60 dark:bg-surface-800/70">
@@ -531,17 +531,17 @@ function printAllActs() {
                     <p class="text-lg sm:text-xl font-semibold text-surface-900 dark:text-surface-0">{{ formatFcfa(kpi.totalPartAssurance ?? 0) }}</p>
                 </div>
                 <div class="rounded-2xl border border-surface-200/60 bg-surface-50/80 p-3 sm:p-4 text-center shadow-sm dark:border-surface-700/60 dark:bg-surface-800/70">
-                    <p class="text-xs font-semibold uppercase text-surface-500">Encaissement réel</p>
+                    <p class="text-xs font-semibold uppercase text-surface-500">Encaissé</p>
                     <p class="text-lg sm:text-xl font-semibold text-surface-900 dark:text-surface-0">{{ formatFcfa(kpi.totalPaidCash ?? kpi.totalPaid ?? 0) }}</p>
                 </div>
-                <div class="rounded-2xl border border-surface-200/60 bg-surface-50/80 p-3 sm:p-4 text-center shadow-sm dark:border-surface-700/60 dark:bg-surface-800/70">
+                <!-- <div class="rounded-2xl border border-surface-200/60 bg-surface-50/80 p-3 sm:p-4 text-center shadow-sm dark:border-surface-700/60 dark:bg-surface-800/70">
                     <p class="text-xs font-semibold uppercase text-surface-500">Après retrait des %</p>
                     <p class="text-lg sm:text-xl font-semibold text-surface-900 dark:text-surface-0">{{ formatFcfa(kpi.afterFees) }}</p>
                 </div>
                 <div class="rounded-2xl border border-surface-200/60 bg-surface-50/80 p-3 sm:p-4 text-center shadow-sm dark:border-surface-700/60 dark:bg-surface-800/70">
                     <p class="text-xs font-semibold uppercase text-surface-500">Salaires totaux</p>
                     <p class="text-lg sm:text-xl font-semibold text-surface-900 dark:text-surface-0">{{ formatFcfa(kpi.totalSalaries) }}</p>
-                </div>
+                </div> -->
             </div>
 
             <div class="overflow-x-auto">
@@ -563,14 +563,14 @@ function printAllActs() {
                             <span class="text-[11px] sm:text-xs text-surface-500"> ({{ data.consultations_paid || 0 }} payantes)</span>
                         </template>
                     </Column>
-                    <Column v-if="variant === 'admin'" header="Montant généré">
+                    <Column v-if="variant === 'admin'" header="Montant facturé">
                         <template #body="{ data }">{{ formatFcfa(data.apport) }}</template>
                     </Column>
-                    <Column v-if="variant === 'admin'" header="Montant payé">
+                    <Column v-if="variant === 'admin'" header="Montant encaissé">
                         <template #body="{ data }">
                             <div>{{ formatFcfa(doctorRevenueTotal(data)) }}</div>
                             <div class="text-[11px] text-surface-500">
-                                encaissé : {{ formatFcfa(doctorRevenueCash(data)) }}
+                                dont espèces : {{ formatFcfa(doctorRevenueCash(data)) }}
                                 <span v-if="Number(data.revenue_assurance || 0) > 0">
                                     · assurance : {{ formatFcfa(data.revenue_assurance) }}
                                 </span>
@@ -703,7 +703,7 @@ function printAllActs() {
                                                 </div>
                                                 <div class="grid shrink-0 gap-2 text-right" :class="row.isInsurance ? 'grid-cols-2 sm:min-w-[280px] sm:grid-cols-4' : 'grid-cols-2 sm:min-w-[210px]'">
                                                     <div class="rounded-lg bg-surface-0 px-2 py-1 dark:bg-surface-900/50">
-                                                        <p class="text-[10px] uppercase text-surface-500">Apport</p>
+                                                        <p class="text-[10px] uppercase text-surface-500">Facturé</p>
                                                         <p class="text-xs font-semibold text-surface-900 dark:text-surface-0">{{ formatFcfa(row.montant) }}</p>
                                                     </div>
                                                     <div v-if="row.isInsurance" class="rounded-lg bg-violet-50 px-2 py-1 dark:bg-violet-950/30">
@@ -715,7 +715,7 @@ function printAllActs() {
                                                         <p class="text-xs font-semibold text-surface-900 dark:text-surface-0">{{ formatFcfa(row.montantPatient) }}</p>
                                                     </div>
                                                     <div class="rounded-lg bg-emerald-50 px-2 py-1 dark:bg-emerald-950/30">
-                                                        <p class="text-[10px] uppercase text-emerald-700 dark:text-emerald-300">Payé</p>
+                                                        <p class="text-[10px] uppercase text-emerald-700 dark:text-emerald-300">Encaissé</p>
                                                         <p class="text-xs font-semibold text-emerald-700 dark:text-emerald-200">{{ formatFcfa(row.montantPaye) }}</p>
                                                     </div>
                                                 </div>
@@ -740,22 +740,22 @@ function printAllActs() {
                                         class="mt-4 grid gap-2 rounded-xl border border-surface-200/70 bg-surface-50/70 p-3 text-xs dark:border-surface-700/70 dark:bg-surface-800/50 sm:grid-cols-2"
                                     >
                                         <div class="flex items-center justify-between gap-2">
-                                            <span class="text-surface-500">Total apport</span>
+                                            <span class="text-surface-500">Total facturé</span>
                                             <strong class="text-surface-900 dark:text-surface-0">{{ formatFcfa(sumActesField(data, 'montant')) }}</strong>
                                         </div>
                                         <div class="flex items-center justify-between gap-2">
-                                            <span class="text-surface-500">Total payé (soins)</span>
+                                            <span class="text-surface-500">Total encaissé (soins)</span>
                                             <strong class="text-emerald-600 dark:text-emerald-300">{{ formatFcfa(sumActesField(data, 'montantPaye')) }}</strong>
                                         </div>
                                         <div class="flex items-center justify-between gap-2 sm:col-span-2">
-                                            <span class="text-surface-500">Montant réellement encaissé</span>
+                                            <span class="text-surface-500">Encaissé (espèces)</span>
                                             <strong class="text-sky-700 dark:text-sky-300">{{ formatFcfa(doctorCashCollected(data)) }}</strong>
                                         </div>
                                         <div
                                             v-if="Number(data?.apport_cabinet_exclu) > 0"
                                             class="flex items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50 px-2 py-2 text-amber-900 sm:col-span-2 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100"
                                         >
-                                            <span>Services cabinet sur vos consultations (non inclus dans vos apports)</span>
+                                            <span>Services cabinet sur vos consultations (non inclus dans votre facturation)</span>
                                             <strong>{{ formatFcfa(data.apport_cabinet_exclu) }}</strong>
                                         </div>
                                     </div>

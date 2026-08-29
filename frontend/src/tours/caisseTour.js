@@ -37,7 +37,7 @@ async function switchViewStep(ctx, view) {
 function buildOverviewSteps(ctx) {
     return normalizeTourSteps([
         { group: GROUP, target: '[data-tour="caisse.tabs"]', title: 'Choisir la sous-vue', content: 'Les onglets separent la vue d ensemble, les factures, les paiements et les assurances.' },
-        { group: GROUP, target: '[data-tour="caisse-overview.stats"]', title: 'Lire les chiffres du jour', content: 'Les cartes de synthese donnent le volume visible de factures, le restant du et la recette sur la periode.' },
+        { group: GROUP, target: '[data-tour="caisse-overview.stats"]', title: 'Lire les chiffres du jour', content: 'Les cartes de synthese donnent le volume visible de factures, le restant du et les encaissements sur la periode.' },
         { group: GROUP, target: '[data-tour="caisse-overview.factures"]', title: 'Gerer les factures impayees', content: 'Ce bloc permet de filtrer les factures, de les regler, de les modifier ou de les previsualiser.' },
         { group: GROUP, target: '[data-tour="caisse-overview.payments"]', title: 'Suivre les encaissements', content: 'La seconde zone resume les paiements deja enregistres et permet d imprimer ou d envoyer les recus.' }
     ]);

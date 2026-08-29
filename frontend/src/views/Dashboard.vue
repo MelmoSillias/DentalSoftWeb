@@ -176,7 +176,7 @@ const quickCards = computed(() => {
             },
             {
                 id: 'revenue',
-                title: 'Montant genere',
+                title: 'Montant facturé',
                 value: formatAmount(cards.value.revenue?.total ?? 0),
                 subValue: `Impayes: ${formatAmount(cards.value.revenue?.unpaid ?? 0)}`,
                 icon: 'pi pi-euro',
@@ -237,7 +237,7 @@ const quickCards = computed(() => {
             },
             {
                 id: 'cash',
-                title: 'Montant en caisse',
+                title: 'Encaissé du jour',
                 value: formatAmount(cards.value.cash?.total ?? 0),
                 subValue: `Impayes: ${formatAmount(cards.value.cash?.unpaid ?? 0)}`,
                 icon: 'pi pi-wallet',
@@ -297,7 +297,7 @@ const quickCards = computed(() => {
         },
         {
             id: 'cash',
-            title: 'Montant en caisse',
+            title: 'Encaissé du jour',
             value: formatAmount(cards.value.cash?.total ?? 0),
             subValue: `Impayes: ${formatAmount(cards.value.cash?.unpaid ?? 0)}`,
             icon: 'pi pi-wallet',
@@ -478,11 +478,11 @@ const medecinSlides = computed(() => {
 
     return [
         {
-            title: 'Montants generes par jour',
+            title: 'Montants facturés par jour',
             stats: revenues.slice(0, 3).map((row) => ({
                 label: row.label,
                 value: formatAmount(row.total),
-                description: 'Recettes',
+                description: 'Encaissements',
                 icon: 'pi pi-wallet',
                 color: 'bg-purple-100 dark:bg-purple-900/30'
             })),

@@ -14,7 +14,7 @@ export const DAY_PRINT_SECTIONS = [
     { key: 'newPatients', label: 'Nouveaux patients' },
     { key: 'appointments', label: 'Rendez-vous' },
     { key: 'consultations', label: 'Consultations' },
-    { key: 'revenues', label: 'Revenus (transactions validées)' },
+    { key: 'revenues', label: 'Encaissements validés' },
     { key: 'expenses', label: 'Dépenses (transactions validées)' },
     { key: 'actsDetail', label: 'Actes posés (liste détaillée)' },
     { key: 'actsByType', label: 'Totaux par actes posés (nombre)' },
@@ -152,15 +152,15 @@ export function buildDayReportSections(data, selection = DEFAULT_DAY_PRINT_SELEC
     if (selection.revenues) {
         const revenueTransactions = (data.transactions || []).filter((row) => row.typeKey === 'revenue');
         sections.push({
-            title: 'Revenus (transactions validées)',
-            items: [{ label: 'Total revenus', value: formatFcfa(data.totals?.revenue) }],
+            title: 'Encaissements validés',
+            items: [{ label: 'Total encaissements validés', value: formatFcfa(data.totals?.revenue) }],
             note: revenueTransactions.length
                 ? `${revenueTransactions.length} transaction(s) validée(s).`
                 : 'Aucune transaction de revenu validée.'
         });
         if (revenueTransactions.length) {
             sections.push({
-                title: 'Détail des revenus',
+                title: 'Détail des encaissements validés',
                 columns: [
                     { key: 'date', label: 'Date' },
                     { key: 'description', label: 'Description' },
@@ -239,8 +239,8 @@ export function buildDayReportSections(data, selection = DEFAULT_DAY_PRINT_SELEC
             columns: [
                 { key: 'name', label: 'Médecin' },
                 { key: 'consultations', label: 'Consultations' },
-                { key: 'apport', label: 'Montant généré', align: 'right' },
-                { key: 'revenue', label: 'Montant payé', align: 'right' }
+                { key: 'apport', label: 'Montant facturé', align: 'right' },
+                { key: 'revenue', label: 'Montant encaissé', align: 'right' }
             ],
             rows: (data.doctors || []).map((doctor) => ({
                 name: doctor.name || '--',

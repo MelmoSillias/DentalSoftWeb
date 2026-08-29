@@ -33,7 +33,7 @@ const items = (stats) => [
     },
     {
         key: 'revenue',
-        label: "Chiffre d'affaires",
+        label: 'Total facturé (cabinet)',
         value: formatFcfa(stats.revenueTotal),
         icon: 'pi pi-chart-line'
     },
@@ -78,7 +78,7 @@ const chartData = computed(() => {
         labels: [
             'Patients',
             'Capital',
-            "Chiffre d'affaires",
+            'Total facturé (cabinet)',
             'Employés',
             'Masse salariale',
             'Salles',

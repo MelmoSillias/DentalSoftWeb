@@ -96,12 +96,12 @@ const synthesisItems = computed(() => [
     { key: 'appointments', label: 'Rendez-vous planifiés', value: overview.value.appointments?.scheduled ?? 0, icon: 'pi pi-calendar' },
     { key: 'appointmentsConfirmed', label: 'Rendez-vous confirmés', value: overview.value.appointments?.confirmed ?? 0, icon: 'pi pi-calendar-plus' },
     { key: 'appointmentsCancelled', label: 'Annulations / absences', value: overview.value.appointments?.cancelled ?? 0, icon: 'pi pi-user-minus' },
-    { key: 'revenue', label: 'Revenus validés', value: formatFcfa(overview.value.totals?.revenue), icon: 'pi pi-arrow-down-left', iconBg: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-300' },
+    { key: 'revenue', label: 'Encaissements validés', value: formatFcfa(overview.value.totals?.revenue), icon: 'pi pi-arrow-down-left', iconBg: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-300' },
     { key: 'expense', label: 'Dépenses validées', value: formatFcfa(overview.value.totals?.expense), icon: 'pi pi-arrow-up-right', iconBg: 'bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-300' },
     { key: 'doctors', label: 'Médecins actifs', value: (overview.value.doctors || []).length, icon: 'pi pi-id-card' },
-    { key: 'doctorRevenue', label: 'Apport total médecins', value: formatFcfa(overview.value.doctorsKpi?.totalApport ?? overview.value.doctorsKpi?.totalRevenue), icon: 'pi pi-chart-bar' },
+    { key: 'doctorRevenue', label: 'Total facturé médecins', value: formatFcfa(overview.value.doctorsKpi?.totalApport ?? overview.value.doctorsKpi?.totalRevenue), icon: 'pi pi-chart-bar' },
     { key: 'doctorInsurance', label: 'Parts assurance', value: formatFcfa(overview.value.doctorsKpi?.totalPartAssurance), icon: 'pi pi-shield' },
-    { key: 'doctorCash', label: 'Encaissement réel médecins', value: formatFcfa(overview.value.doctorsKpi?.totalPaidCash ?? overview.value.doctorsKpi?.totalPaid), icon: 'pi pi-wallet' },
+    { key: 'doctorCash', label: 'Encaissé médecins', value: formatFcfa(overview.value.doctorsKpi?.totalPaidCash ?? overview.value.doctorsKpi?.totalPaid), icon: 'pi pi-wallet' },
     { key: 'cabinetRevenue', label: 'Revenus services cabinet', value: formatFcfa(overview.value.doctorsKpi?.revenusServicesCabinet ?? overview.value.doctorsKpi?.totalCabinetRevenue ?? 0), icon: 'pi pi-building' }
 ]);
 

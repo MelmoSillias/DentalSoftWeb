@@ -203,7 +203,7 @@ const miniChart = computed(() => {
                 <div class="stat-card stat-success">
                     <div class="icon pi pi-chart-line"></div>
                     <div>
-                        <p class="label">Recette (période)</p>
+                        <p class="label">Encaissements (période)</p>
                         <p class="value">{{ formatFcfa(totals.montant) }}</p>
                     </div>
                 </div>

@@ -34,7 +34,7 @@ const appointmentsItems = (period) => [
 ];
 
 const apportItems = (period) => [
-    { label: 'Montant total (apport)', value: formatFcfa(period.apportTotal || 0), severity: 'success' }
+    { label: 'Montant facturé', value: formatFcfa(period.apportTotal || 0), severity: 'success' }
 ];
 
 const revenueItems = (period) => [
@@ -126,7 +126,7 @@ const apportChartData = computed(() => {
     const documentStyle = getComputedStyle(document.documentElement);
     const period = props.period || {};
     return {
-        labels: ['Apport total'],
+        labels: ['Total facturé'],
         datasets: [
             {
                 data: [period.apportTotal || 0],
@@ -182,7 +182,7 @@ const revenueChartData = computed(() => {
                     </div>
                 </template>
             </ValueListCard>
-            <ValueListCard title="Apport durant la période" :items="apportItems(period)" :loading="loading" :show-chart="showRevenueChart">
+            <ValueListCard title="Facturé durant la période" :items="apportItems(period)" :loading="loading" :show-chart="showRevenueChart">
                 <template #actions>
                     <ToggleButton v-model="showRevenueChart" onLabel="Graphique" offLabel="Données" onIcon="pi pi-chart-pie" offIcon="pi pi-list" />
                 </template>
@@ -192,7 +192,7 @@ const revenueChartData = computed(() => {
                     </div>
                 </template>
             </ValueListCard>
-            <ValueListCard title="Encaissements et rémunération" :items="revenueItems(period)" :loading="loading" :show-chart="showReliquatsChart">
+            <ValueListCard title="Encaissements" :items="revenueItems(period)" :loading="loading" :show-chart="showReliquatsChart">
                 <template #actions>
                     <ToggleButton v-model="showReliquatsChart" onLabel="Graphique" offLabel="Données" onIcon="pi pi-chart-pie" offIcon="pi pi-list" />
                 </template>

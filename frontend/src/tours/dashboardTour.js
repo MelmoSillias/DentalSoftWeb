@@ -30,7 +30,7 @@ function getQuickStatsContent(roleLabel) {
         return 'Chaque carte resume un axe du cabinet : nouveaux patients, volume de consultations, rendez-vous du jour, encaissements et consultations encore en attente. Cliquez sur le lien en bas de carte pour ouvrir la page detaillee correspondante.';
     }
     if (roleLabel === 'medecin') {
-        return 'Les cartes affichent vos patients consultes, les consultations en attente avec leur duree moyenne, vos rendez-vous, vos consultations payantes et le montant genere sur la periode. Utilisez les liens pour acceder directement a l agenda, a la file ou a la caisse.';
+        return 'Les cartes affichent vos patients consultes, les consultations en attente avec leur duree moyenne, vos rendez-vous, vos consultations payantes et le montant facture sur la periode. Utilisez les liens pour acceder directement a l agenda, a la file ou a la caisse.';
     }
     return 'Les cartes suivent l activite reception : nouveaux patients, consultations du jour, rendez-vous en attente ou annules, et montants encaisses ou impayes. Chaque carte propose un raccourci vers la page metier concernee.';
 }

@@ -476,7 +476,7 @@ const dailyRevenueStats = computed(() => {
     };
 });
 
-const revenueButtonLabel = computed(() => `Recette · ${formatFcfa(dailyRevenueStats.value.totalRevenue)}`);
+const revenueButtonLabel = computed(() => `Encaissements · ${formatFcfa(dailyRevenueStats.value.totalRevenue)}`);
 
 const selectedInvoicePayments = computed(() => {
     const payments = currentBilling.value?.payments || [];
@@ -864,7 +864,7 @@ const handleCancelWithConfirm = (event, consultation) => {
                     </div>
                 </div>
 
-                <Dialog v-model:visible="showRevenueStatsModal" modal header="Statistiques de recette du jour" :style="{ width: 'min(960px, 96vw)' }">
+                <Dialog v-model:visible="showRevenueStatsModal" modal header="Statistiques d'encaissements du jour" :style="{ width: 'min(960px, 96vw)' }">
                     <div class="space-y-6">
                         <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
                             <div class="rounded-2xl border border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-800/40">
@@ -872,7 +872,7 @@ const handleCancelWithConfirm = (event, consultation) => {
                                 <strong class="mt-2 block text-2xl text-surface-900 dark:text-surface-50">{{ dailyRevenueStats.totalConsultations }}</strong>
                             </div>
                             <div class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-800/60 dark:bg-emerald-950/20">
-                                <span class="text-xs uppercase tracking-wide text-emerald-600 dark:text-emerald-300">Recette totale</span>
+                                <span class="text-xs uppercase tracking-wide text-emerald-600 dark:text-emerald-300">Encaissements du jour</span>
                                 <strong class="mt-2 block text-2xl text-emerald-700 dark:text-emerald-200">{{ formatFcfa(dailyRevenueStats.totalRevenue) }}</strong>
                             </div>
                             <div class="rounded-2xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-800/60 dark:bg-amber-950/20">
@@ -905,7 +905,7 @@ const handleCancelWithConfirm = (event, consultation) => {
                         </div>
 
                         <div class="rounded-2xl border border-surface-200 bg-white p-4 dark:border-surface-700 dark:bg-surface-900/50">
-                            <h4 class="text-sm font-semibold text-surface-900 dark:text-surface-50">Recette par mode de paiement</h4>
+                            <h4 class="text-sm font-semibold text-surface-900 dark:text-surface-50">Encaissements par mode de paiement</h4>
                             <div v-if="dailyRevenueStats.paymentModeRows.length" class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                                 <div v-for="item in dailyRevenueStats.paymentModeRows" :key="item.mode" class="rounded-xl border border-surface-200 bg-surface-50 px-4 py-3 dark:border-surface-700 dark:bg-surface-800/40">
                                     <span class="text-xs uppercase tracking-wide text-surface-500">{{ item.mode }}</span>

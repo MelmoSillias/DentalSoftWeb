@@ -29,12 +29,12 @@ const chartData = computed(() => {
         labels: props.acts.map((row) => row.description || 'Acte'),
         datasets: [
             {
-                label: 'Montant apport',
+                label: 'Montant facturé',
                 backgroundColor: documentStyle.getPropertyValue('--p-primary-500'),
                 data: props.acts.map((row) => Number(row.montant || 0))
             },
             {
-                label: 'Montant payé',
+                label: 'Montant encaissé',
                 backgroundColor: documentStyle.getPropertyValue('--p-emerald-500'),
                 data: props.acts.map((row) => actPaidIncludingInsurance(row))
             }
@@ -94,8 +94,8 @@ const realEncashed = computed(() => totalPayeSoins.value + Number(props.reliquat
                                         <Tag v-if="act.isInsurance" value="Assurance" severity="info" />
                                     </div>
                                     <div class="flex flex-wrap gap-2">
-                                        <Tag :value="`Apport ${formatFcfa(act.montant)}`" severity="secondary" />
-                                        <Tag :value="`Payé ${formatFcfa(actPaidIncludingInsurance(act))}`" severity="success" />
+                                        <Tag :value="`Facturé ${formatFcfa(act.montant)}`" severity="secondary" />
+                                        <Tag :value="`Encaissé ${formatFcfa(actPaidIncludingInsurance(act))}`" severity="success" />
                                     </div>
                                 </div>
                                 <p class="text-surface-500">{{ act.patient }} • {{ act.date }}</p>
@@ -104,15 +104,15 @@ const realEncashed = computed(() => totalPayeSoins.value + Number(props.reliquat
                         <p v-else class="text-sm text-surface-500">Aucun soin posé durant cette période.</p>
                         <div v-if="acts.length" class="mt-3 grid gap-2 rounded-xl border border-surface-200/70 bg-surface-50/70 p-3 text-xs dark:border-surface-700/70 dark:bg-surface-800/50 sm:grid-cols-3">
                             <div class="flex items-center justify-between gap-2">
-                                <span class="text-surface-500">Total apport</span>
+                                <span class="text-surface-500">Total facturé</span>
                                 <strong>{{ formatFcfa(totalApport) }}</strong>
                             </div>
                             <div class="flex items-center justify-between gap-2">
-                                <span class="text-surface-500">Total payé</span>
+                                <span class="text-surface-500">Total encaissé</span>
                                 <strong class="text-emerald-600">{{ formatFcfa(totalPayeSoins) }}</strong>
                             </div>
                             <div class="flex items-center justify-between gap-2">
-                                <span class="text-surface-500">Réellement encaissé</span>
+                                <span class="text-surface-500">Encaissé (espèces)</span>
                                 <strong class="text-sky-700">{{ formatFcfa(realEncashed) }}</strong>
                             </div>
                         </div>
