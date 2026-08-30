@@ -14,6 +14,7 @@ import {
     buildPayTabs,
     isInsuranceFactureRow,
     resolveFacturePatientId,
+    resolveOpenPayDialogMode,
     sumPriorReliquatFromTabs
 } from '@/composables/usePayTabsDialog';
 import {
@@ -276,12 +277,13 @@ export function useInvoiceBillingActions(options = {}) {
             }
         }
 
-        const mode = primaryMode
-            || ((Number(normalized?.reste) || 0) === 0 && !normalized?.isRegle ? 'validate' : 'pay');
+        const mode = resolveOpenPayDialogMode(normalized, primaryMode);
         payTabs.value = buildPayTabs(normalized, unpaidRows, { primaryMode: mode });
         activePayTabId.value = String(normalized.id);
         pendingFacture.value = mode === 'validate' ? normalized : null;
-        syncPayFormForFacture(normalized);
+        if (mode === 'pay') {
+            syncPayFormForFacture(normalized);
+        }
         payDialogVisible.value = true;
     };
 

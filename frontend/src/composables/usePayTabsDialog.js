@@ -43,6 +43,25 @@ export const isEmptyUnvalidatedFacture = (row) => {
     return Number(row.reste ?? 0) === 0;
 };
 
+export const isSettledFacture = (row) =>
+    Boolean(row?.isRegle) && Number(row?.reste ?? 0) === 0;
+
+const resolvePrimaryPayTabMode = (primaryRow, options = {}) => {
+    if (options.primaryMode) {
+        return options.primaryMode;
+    }
+    if (isEmptyUnvalidatedFacture(primaryRow)) {
+        return 'validate';
+    }
+    if (isSettledFacture(primaryRow)) {
+        return 'settled';
+    }
+    return 'pay';
+};
+
+export const resolveOpenPayDialogMode = (row, primaryMode = null) =>
+    resolvePrimaryPayTabMode(row, { primaryMode });
+
 export const formatPayTabLabel = (row, { isPrimary = false } = {}) => {
     const id = row?.id ?? '—';
     const date = row?.date ? String(row.date).slice(0, 10) : '';
@@ -54,13 +73,12 @@ export const formatPayTabLabel = (row, { isPrimary = false } = {}) => {
  * Build pay tabs: primary invoice first, then other unpaid invoices.
  * @param {object} primaryRow
  * @param {object[]} unpaidRows
- * @param {{ primaryMode?: 'pay'|'validate' }} options
+ * @param {{ primaryMode?: 'pay'|'validate'|'settled' }} options
  */
 export const buildPayTabs = (primaryRow, unpaidRows = [], options = {}) => {
     if (!primaryRow) return [];
 
-    const primaryMode = options.primaryMode
-        || (isEmptyUnvalidatedFacture(primaryRow) ? 'validate' : 'pay');
+    const primaryMode = resolvePrimaryPayTabMode(primaryRow, options);
 
     const tabs = [
         {

@@ -8,8 +8,11 @@ import { computed, ref } from 'vue';
 import PanelDatePicker from '@/components/common/PanelDatePicker.vue';
 import { useInternetFeatures } from '@/composables/useInternetFeatures';
 import {
+    canModifyFacture,
     canPreviewFacture,
+    canSettleFacture,
     computeFactureStatus,
+    computePriorReliquat,
     isInsuranceFactureRow,
     targetIsFreeFacture
 } from '@/utils/factureRow';
@@ -80,12 +83,13 @@ const computeInsuranceBadge = (row) => {
     }
 
     const nom = row?.insurance?.assuranceNom;
-    return { label: nom ? `Assurance · ${nom}` : 'Assurance', severity: 'info' };
+    return { label: nom ? `${nom}` : 'Assurance', severity: 'info' };
 };
 
 const computeStatus = (row) => computeFactureStatus(row);
 
-const canModify = (row) => !isInsuranceRow(row) && props.allowInvoiceModification && !row?.hasPayments && (Number(row.montant) === Number(row.reste)) && !row.isRegle;
+const canModify = (row) => canModifyFacture(row, { allowInvoiceModification: props.allowInvoiceModification });
+const canSettle = (row) => canSettleFacture(row);
 const canPreview = (row) => canPreviewFacture(row);
 const targetIsFree = (row) => targetIsFreeFacture(row);
 
@@ -114,7 +118,7 @@ const groups = computed(() => {
         const status = computeStatus(row);
         if (status.label === 'Impayé') buckets.impaye.push(row);
         else if (status.label === 'Partiellement payé') buckets.partiel.push(row);
-        else buckets.paye.push(row);
+        else if (status.label === 'Payé') buckets.paye.push(row);
     });
     return buckets;
 });
@@ -135,18 +139,7 @@ const formatPatient = (row) => {
     return row.patient || '—';
 };
 
-const priorReliquatAmount = (row) => {
-    const prior = Number(row?.priorReliquat);
-    if (Number.isFinite(prior) && prior > 0) {
-        return prior;
-    }
-    const total = Number(row?.patientImpayees);
-    const reste = Number(row?.reste) || 0;
-    if (Number.isFinite(total) && total > 0) {
-        return Math.max(0, total - Math.round(reste));
-    }
-    return 0;
-};
+const priorReliquatAmount = (row) => computePriorReliquat(row);
 
 const displayPhone = (value) => (props.hidePatientPhone ? 'Masqué par l\'administrateur' : (value || '—'));
 </script>
@@ -198,7 +191,7 @@ const displayPhone = (value) => (props.hidePatientPhone ? 'Masqué par l\'admini
                     <div>
                         <p class="label">Répartition</p>
                         <p class="value">{{ stats.breakdown }}</p>
-                        <p class="hint">Impayées / Partiellement payées / Payées</p>
+                        <p class="hint">Impayées / Partiellement payées / Payées (hors vides et validées)</p>
                     </div>
                 </div>
             </div>
@@ -238,7 +231,8 @@ const displayPhone = (value) => (props.hidePatientPhone ? 'Masqué par l\'admini
                                         <i
                                             v-if="priorReliquatAmount(row) > 0"
                                             v-tooltip.top="`Reliquat : ${priorReliquatAmount(row).toLocaleString('fr-FR')} FCFA`"
-                                            class="pi pi-wallet fct-reliquat-icon"
+                                            class="pi pi-wallet fct-reliquat-icon text-orange-500 dark:text-orange-400"
+                                            aria-label="Reliquat patient"
                                         ></i>
                                     </p>
                                     <p class="fct-patient-detail">
@@ -273,7 +267,7 @@ const displayPhone = (value) => (props.hidePatientPhone ? 'Masqué par l\'admini
 
                             <!-- Actions -->
                             <div class="fct-actions" data-tour="caisse-factures.actions">
-                                <Button v-if="!row.isRegle"
+                                <Button v-if="canSettle(row)"
                                     :label="targetIsFree(row) ? 'Valider' : 'Régler'"
                                     size="small"
                                     :severity="targetIsFree(row) ? 'secondary' : 'success'"
@@ -624,7 +618,6 @@ const displayPhone = (value) => (props.hidePatientPhone ? 'Masqué par l\'admini
 .fct-patient-name .pi { color: #6366f1; font-size: 0.9rem; }
 
 .fct-patient-name .fct-reliquat-icon {
-    color: #ef4444;
     font-size: 0.85rem;
     margin-left: 0.15rem;
 }

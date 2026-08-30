@@ -104,9 +104,13 @@ const updateFactureLine = (index, patch) => {
 const hasPreviewData = computed(() => Boolean(props.previewData));
 const showPayTabs = computed(() => (props.payTabs || []).length > 1);
 const isValidateMode = computed(() => props.activePayTabMode === 'validate');
+const isSettledMode = computed(() => props.activePayTabMode === 'settled');
 const payDialogHeader = computed(() => {
     if (isValidateMode.value) {
         return showPayTabs.value ? 'Valider / régler les factures' : 'Valider la facture vide';
+    }
+    if (isSettledMode.value) {
+        return showPayTabs.value ? 'Régler le reliquat patient' : 'Régler la facture';
     }
     return showPayTabs.value ? 'Régler les factures' : 'Régler la facture';
 });
@@ -136,6 +140,17 @@ const payDialogHeader = computed(() => {
                 <div class="rounded-2xl border border-blue-200 bg-blue-50/70 p-4 dark:border-blue-800 dark:bg-blue-950/20">
                     <p class="text-sm text-surface-700 dark:text-surface-200">
                         Confirmer que cette facture est vide et doit être marquée comme validée.
+                    </p>
+                    <p v-if="selectedFacture?.id" class="mt-2 text-xs text-surface-500">
+                        Facture #{{ selectedFacture.id }}
+                    </p>
+                </div>
+            </template>
+
+            <template v-else-if="isSettledMode">
+                <div class="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 dark:border-emerald-800 dark:bg-emerald-950/20">
+                    <p class="text-sm text-surface-700 dark:text-surface-200">
+                        Cette facture est réglée. Sélectionnez une autre facture pour régler le reliquat.
                     </p>
                     <p v-if="selectedFacture?.id" class="mt-2 text-xs text-surface-500">
                         Facture #{{ selectedFacture.id }}
@@ -224,7 +239,7 @@ const payDialogHeader = computed(() => {
                         <i class="pi pi-wallet text-[11px]"></i>
                         Reliquat total : {{ formatFcfa(priorReliquatTotal) }}
                     </span>
-                    <Button v-if="canResetInvoicePayments && !isValidateMode" label="Réinitialiser" severity="danger" outlined icon="pi pi-refresh" @click="emit('confirm-reset')" class="text-sm" />
+                    <Button v-if="canResetInvoicePayments && !isValidateMode && !isSettledMode" label="Réinitialiser" severity="danger" outlined icon="pi pi-refresh" @click="emit('confirm-reset')" class="text-sm" />
                 </div>
                 <div class="flex items-center gap-2 ml-auto">
                     <Button label="Annuler" text icon="pi pi-times" @click="emit('update:payDialogVisible', false)" class="text-sm" />
@@ -238,7 +253,7 @@ const payDialogHeader = computed(() => {
                         class="text-sm font-semibold"
                     />
                     <Button
-                        v-else
+                        v-else-if="!isSettledMode"
                         label="Confirmer le paiement"
                         severity="success"
                         icon="pi pi-check"

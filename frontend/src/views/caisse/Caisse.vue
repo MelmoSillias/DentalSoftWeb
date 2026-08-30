@@ -63,8 +63,10 @@ import {
 	applyPartialPaymentToTab,
 	buildPayTabs,
 	resolveFacturePatientId,
+	resolveOpenPayDialogMode,
 	sumPriorReliquatFromTabs
 } from '@/composables/usePayTabsDialog';
+import { canModifyFacture } from '@/utils/factureRow';
 import {
 	fetchInvoicePrintData,
 	fetchFactureAssurancePrintData,
@@ -411,7 +413,7 @@ const firstPayableFacture = computed(() => factures.value.find((row) => !row?.is
 const firstPreviewableFacture = computed(() => factures.value.find((row) => !(Number(row?.montant) === 0 && Number(row?.reste) === 0)) || null);
 const firstModifiableFacture = computed(() => {
 	if (!canModifyInvoiceByRole.value) return null;
-	return factures.value.find((row) => !row?.hasPayments && (Number(row?.montant) === Number(row?.reste)) && !row?.isRegle) || null;
+	return factures.value.find((row) => canModifyFacture(row, { allowInvoiceModification: true })) || null;
 });
 
 const loadFactures = async () => {
@@ -936,12 +938,13 @@ const openPayDialog = async (row, { primaryMode = null } = {}) => {
 		}
 	}
 
-	const mode = primaryMode
-		|| ((Number(row?.reste) || 0) === 0 && !row?.isRegle ? 'validate' : 'pay');
+	const mode = resolveOpenPayDialogMode(row, primaryMode);
 	payTabs.value = buildPayTabs(row, unpaidRows, { primaryMode: mode });
 	activePayTabId.value = String(row.id);
 	pendingFacture.value = mode === 'validate' ? row : null;
-	syncPayFormForFacture(row);
+	if (mode === 'pay') {
+		syncPayFormForFacture(row);
+	}
 	payDialogVisible.value = true;
 };
 

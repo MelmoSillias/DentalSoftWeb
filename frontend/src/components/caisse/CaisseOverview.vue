@@ -12,9 +12,13 @@ import { computed, ref } from 'vue';
 import PanelDatePicker from '@/components/common/PanelDatePicker.vue';
 import { useInternetFeatures } from '@/composables/useInternetFeatures';
 import {
+    canModifyFacture,
     canPreviewFacture,
+    canSettleFacture,
     computeFactureStatus,
+    computePriorReliquat,
     isInsuranceFactureRow,
+    isValidatedEmptyFacture,
     targetIsFreeFacture
 } from '@/utils/factureRow';
 
@@ -116,18 +120,7 @@ const formatPatientName = (row) => {
     return '—';
 };
 
-const priorReliquatAmount = (row) => {
-    const prior = Number(row?.priorReliquat);
-    if (Number.isFinite(prior) && prior > 0) {
-        return prior;
-    }
-    const total = Number(row?.patientImpayees);
-    const reste = Number(row?.reste) || 0;
-    if (Number.isFinite(total) && total > 0) {
-        return Math.max(0, total - Math.round(reste));
-    }
-    return 0;
-};
+const priorReliquatAmount = (row) => computePriorReliquat(row);
 
 const isInvoiceStylePayment = (payment) =>
     ['devis', 'facture', 'facture_assurance'].includes(payment?.type);
@@ -283,12 +276,15 @@ const detailedStats = computed(() => {
         paid: 0,
         partial: 0,
         unpaid: 0,
-        freeNotValidated: 0
+        freeNotValidated: 0,
+        validatedEmpty: 0
     };
     allInvoices.forEach(inv => {
         const reste = Number(inv.reste) || 0;
         const montant = Number(inv.montant) || 0;
-        if (inv.isRegle && reste === 0) statusCounts.paid++;
+        if (isValidatedEmptyFacture(inv) || inv.insuranceStatus === 'validated_empty') {
+            statusCounts.validatedEmpty++;
+        } else if (inv.isRegle && reste === 0) statusCounts.paid++;
         else if (!inv.isRegle && reste === 0) statusCounts.freeNotValidated++;
         else if (reste === montant) statusCounts.unpaid++;
         else statusCounts.partial++;
@@ -345,10 +341,11 @@ const computeInsuranceBadge = (row) => {
     }
 
     const nom = row?.insurance?.assuranceNom;
-    return { label: nom ? `Assurance · ${nom}` : 'Assurance', severity: 'info' };
+    return { label: nom ? `${nom}` : 'Assurance', severity: 'info' };
 };
 
-const canModify = (row) => !isInsuranceRow(row) && props.allowInvoiceModification && !row?.hasPayments && (Number(row.montant) === Number(row.reste)) && !row.isRegle;
+const canModify = (row) => canModifyFacture(row, { allowInvoiceModification: props.allowInvoiceModification });
+const canSettle = (row) => canSettleFacture(row);
 const canPreview = (row) => canPreviewFacture(row);
 const targetIsFree = (row) => targetIsFreeFacture(row);
 
@@ -438,6 +435,7 @@ const printDetailPayment = (row) => {
                         <div class="status-item partial">Partiel: {{ detailedStats.statusCounts.partial }}</div>
                         <div class="status-item unpaid">Impayé: {{ detailedStats.statusCounts.unpaid }}</div>
                         <div class="status-item free">Gratuit: {{ detailedStats.statusCounts.freeNotValidated }}</div>
+                        <div class="status-item validated">Validée: {{ detailedStats.statusCounts.validatedEmpty }}</div>
                     </div>
                 </div>
 
@@ -510,7 +508,8 @@ const printDetailPayment = (row) => {
                             <i
                                 v-if="priorReliquatAmount(data) > 0"
                                 v-tooltip.top="`Reliquat : ${priorReliquatAmount(data).toLocaleString('fr-FR')} FCFA`"
-                                class="pi pi-wallet inv-reliquat-icon"
+                                class="pi pi-wallet inv-reliquat-icon text-orange-500 dark:text-orange-400"
+                                aria-label="Reliquat patient"
                             ></i>
                         </div>
                     </template>
@@ -546,7 +545,7 @@ const printDetailPayment = (row) => {
                 <Column header="Actions" style="width: 240px">
                     <template #body="{ data }">
                         <div class="flex gap-2 flex-wrap">
-                            <Button v-if="!data.isRegle" :label="targetIsFree(data) ? 'Valider' : 'Régler'" size="small"
+                            <Button v-if="canSettle(data)" :label="targetIsFree(data) ? 'Valider' : 'Régler'" size="small"
                                 :severity="targetIsFree(data) ? 'secondary' : 'success'" icon="pi pi-wallet"
                                 @click="targetIsFree(data) ? handleValidate(data) : handlePay(data)" />
                             <Button v-if="canModify(data)" size="small" severity="secondary" icon="pi pi-pencil"
@@ -587,7 +586,8 @@ const printDetailPayment = (row) => {
                                         <i
                                             v-if="priorReliquatAmount(invoice) > 0"
                                             v-tooltip.top="`Reliquat : ${priorReliquatAmount(invoice).toLocaleString('fr-FR')} FCFA`"
-                                            class="pi pi-wallet inv-reliquat-icon"
+                                            class="pi pi-wallet inv-reliquat-icon text-orange-500 dark:text-orange-400"
+                                            aria-label="Reliquat patient"
                                         ></i>
                                     </p>
                                     <div class="inv-patient-meta">
@@ -629,7 +629,7 @@ const printDetailPayment = (row) => {
 
                             <!-- ── ACTIONS ── -->
                             <div class="inv-actions">
-                                <Button v-if="!invoice.isRegle"
+                                <Button v-if="canSettle(invoice)"
                                     :label="targetIsFree(invoice) ? 'Valider' : 'Régler'"
                                     size="small"
                                     :severity="targetIsFree(invoice) ? 'secondary' : 'success'"
@@ -1208,11 +1208,13 @@ const printDetailPayment = (row) => {
 .status-item.partial { background: #fef9c3; }
 .status-item.unpaid { background: #fee2e2; }
 .status-item.free { background: #e2e8f0; }
+.status-item.validated { background: #dbeafe; }
 
 .app-dark .status-item.paid { background: #064e3b; }
 .app-dark .status-item.partial { background: #f59e0b; }
 .app-dark .status-item.unpaid { background: #7f1d1d; }
 .app-dark .status-item.free { background: #1e293b; }
+.app-dark .status-item.validated { background: #1e3a5f; }
 
 /* Dark mode */
 .app-dark .section-header {
@@ -1358,7 +1360,6 @@ const printDetailPayment = (row) => {
 }
 
 .inv-patient-name .inv-reliquat-icon {
-    color: #ef4444;
     font-size: 0.85rem;
 }
 
