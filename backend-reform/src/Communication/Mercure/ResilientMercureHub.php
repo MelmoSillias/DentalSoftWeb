@@ -7,10 +7,10 @@ use Symfony\Component\Mercure\HubInterface;
 use Symfony\Component\Mercure\Jwt\TokenFactoryInterface;
 use Symfony\Component\Mercure\Jwt\TokenProviderInterface;
 use Symfony\Component\Mercure\Update;
+use Symfony\Contracts\HttpClient\Exception\HttpExceptionInterface;
 
 /**
- * Décorateur HubInterface : circuit breaker + publication best-effort.
- * Utilisé par le handler Messenger (et les appels sync explicites).
+ * Decorateur HubInterface : circuit breaker + publication best-effort.
  */
 final class ResilientMercureHub implements HubInterface
 {
@@ -44,6 +44,7 @@ final class ResilientMercureHub implements HubInterface
     public function publish(Update $update): string
     {
         if ($this->circuitBreaker->isOpen()) {
+            $this->circuitBreaker->recordDropped();
             $this->logger->notice('Publication Mercure ignoree : circuit ouvert.', [
                 'topics' => $update->getTopics(),
                 'type' => $update->getType(),
@@ -59,16 +60,31 @@ final class ResilientMercureHub implements HubInterface
 
             return $result;
         } catch (\Throwable $exception) {
-            $this->circuitBreaker->recordFailure();
-            $this->logger->warning('Echec de publication Mercure : circuit ouvert temporairement.', [
+            if ($this->shouldOpenCircuit($exception)) {
+                $this->circuitBreaker->recordFailure();
+            }
+
+            $this->circuitBreaker->recordDropped();
+            $this->logger->warning('Echec de publication Mercure.', [
                 'exception' => $exception,
                 'topics' => $update->getTopics(),
                 'type' => $update->getType(),
                 'circuit' => $this->circuitBreaker->status(),
+                'opensCircuit' => $this->shouldOpenCircuit($exception),
             ]);
 
-            // Best-effort : ne fait pas echouer la requete / le message Messenger.
             return '';
         }
+    }
+
+    private function shouldOpenCircuit(\Throwable $exception): bool
+    {
+        if ($exception instanceof HttpExceptionInterface) {
+            $statusCode = $exception->getResponse()->getStatusCode();
+
+            return $statusCode >= 500 || $statusCode === 429;
+        }
+
+        return true;
     }
 }

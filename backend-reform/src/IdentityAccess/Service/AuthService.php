@@ -4,7 +4,6 @@ namespace App\IdentityAccess\Service;
 
 use App\Communication\Entity\Notification;
 use App\Communication\Repository\NotificationRepository;
-use App\Communication\Service\MercureAuthorizationService;
 use App\IdentityAccess\Entity\User;
 use App\IdentityAccess\Repository\EmployeRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -24,7 +23,6 @@ final class AuthService
         private NotificationRepository $notificationRepository,
         private EmployeRepository $employeRepository,
         private RequestStack $requestStack,
-        private MercureAuthorizationService $mercureAuthorizationService,
     ) {
     }
 
@@ -70,7 +68,6 @@ final class AuthService
             $unreadCount = 0;
         }
         $activity = $this->getActivityFeed($user);
-        $mercure = $this->mercureAuthorizationService->buildSubscription($user);
 
         return [
             'user' => [
@@ -100,7 +97,6 @@ final class AuthService
                 'activityCount' => count($activity),
                 'lastAccess' => $activity[0]['time'] ?? null,
             ],
-            'mercure' => $mercure,
         ];
     }
 

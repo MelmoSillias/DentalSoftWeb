@@ -21,7 +21,7 @@ const {
     employee,
     notifications,
     unreadCount,
-    loading: notificationsLoading,
+    notificationsLoading,
     fetchProfile,
     fetchNotifications,
     markNotificationsRead,

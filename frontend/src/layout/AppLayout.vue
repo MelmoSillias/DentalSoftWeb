@@ -2,6 +2,8 @@
 import { useLayout } from '@/layout/composables/layout';
 import { useInternetFeatures } from '@/composables/useInternetFeatures';
 import { useAuthStore } from '@/stores/auth';
+import { useMercureClient } from '@/composables/realtime/useMercureClient';
+import { useNotificationPresentation } from '@/composables/useNotificationPresentation';
 import { computed, onBeforeUnmount, onMounted, provide, ref, watch } from 'vue';
 import AppFooter from './AppFooter.vue';
 import AppSidebar from './AppSidebar.vue';
@@ -18,6 +20,8 @@ const {
 } = useLayout();
 const auth = useAuthStore();
 const { syncFromServer } = useInternetFeatures();
+const mercureClient = useMercureClient();
+useNotificationPresentation();
 
 const outsideClickListener = ref(null);
 const pageRouteReady = ref(true);
@@ -92,8 +96,21 @@ function isOutsideClicked(event) {
 onMounted(async () => {
     if (auth.token) {
         await syncFromServer(auth.token);
+        await mercureClient.start();
     }
 });
+
+watch(
+    () => [auth.token, auth.user?.notificationsEnabled],
+    async ([token]) => {
+        if (token) {
+            await mercureClient.start();
+            return;
+        }
+
+        mercureClient.disconnect();
+    }
+);
 
 onBeforeUnmount(() => {
     unbindOutsideClickListener();

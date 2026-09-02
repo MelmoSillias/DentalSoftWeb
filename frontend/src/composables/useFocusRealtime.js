@@ -1,33 +1,33 @@
-import { fetchEventSource } from '@microsoft/fetch-event-source';
 import { computed, onUnmounted, ref, watch } from 'vue';
 import { useAuthStore } from '@/stores/auth';
 import { useMedecinsStore } from '@/stores/medecins';
 import { usePaymentMethodsStore } from '@/stores/paymentMethods';
+import { useMercureClient } from '@/composables/realtime/useMercureClient';
+
+const FOCUS_ENTITIES = new Set([
+    'consultation',
+    'patient',
+    'devis',
+    'payment',
+    'medecin',
+    'payment_method',
+    'facture'
+]);
 
 export function useFocusRealtime(onEvent) {
     const auth = useAuthStore();
     const medecinsStore = useMedecinsStore();
     const paymentMethodsStore = usePaymentMethodsStore();
+    const mercureClient = useMercureClient();
     const realtimeEnabled = ref(true);
 
-    let controller = null;
-    let reconnectTimer = null;
     let refreshInFlight = null;
     let refreshQueued = false;
-    const recentEventIds = new Set();
 
-    const mercureConfig = computed(() => auth.mercure || null);
+    const connectionState = mercureClient.connectionState;
 
-    const isFocusRealtimePayload = (payload, event) => {
-        if (event?.event === 'focus-consultation') {
-            return true;
-        }
-
-        if (typeof event?.id === 'string' && event.id.startsWith('focus-consultation-')) {
-            return true;
-        }
-
-        return ['consultation', 'patient', 'devis', 'payment', 'medecin', 'payment_method'].includes(payload?.entity) && typeof payload?.action === 'string';
+    const isFocusPayload = (payload) => {
+        return FOCUS_ENTITIES.has(payload?.entity) && typeof payload?.action === 'string';
     };
 
     const refreshReferenceStores = async (payload) => {
@@ -45,28 +45,6 @@ export function useFocusRealtime(onEvent) {
             paymentMethodsStore.invalidate();
             await paymentMethodsStore.load(auth.token, { force: true });
         }
-    };
-
-    const markEventAsSeen = (event) => {
-        const eventId = event?.id || event?.lastEventId || null;
-        if (!eventId) {
-            return false;
-        }
-
-        const key = String(eventId);
-        if (recentEventIds.has(key)) {
-            return true;
-        }
-
-        recentEventIds.add(key);
-        if (recentEventIds.size > 200) {
-            const firstKey = recentEventIds.values().next().value;
-            if (firstKey) {
-                recentEventIds.delete(firstKey);
-            }
-        }
-
-        return false;
     };
 
     const runRefresh = async (payload) => {
@@ -88,133 +66,44 @@ export function useFocusRealtime(onEvent) {
         return refreshInFlight;
     };
 
-    const disconnect = () => {
-        if (controller) {
-            try {
-                controller.abort();
-            } catch (_) {
-                // ignore
-            }
-            controller = null;
-        }
-
-        if (reconnectTimer) {
-            window.clearTimeout(reconnectTimer);
-            reconnectTimer = null;
-        }
-
-        refreshQueued = false;
-    };
-
-    const scheduleReconnect = () => {
-        if (reconnectTimer || !realtimeEnabled.value || !auth.token) {
+    const handleFocusEvent = (payload) => {
+        if (!realtimeEnabled.value) {
             return;
         }
 
-        reconnectTimer = window.setTimeout(() => {
-            reconnectTimer = null;
-            connect();
-        }, 5000);
-    };
-
-    const connect = async () => {
-        if (!realtimeEnabled.value || !auth.token) {
-            disconnect();
+        if (!isFocusPayload(payload)) {
             return;
         }
 
-        const config = mercureConfig.value;
-        if (!config?.publicUrl || !config?.topic || !config?.token) {
-            disconnect();
-            return;
-        }
-
-        disconnect();
-
-        const url = new URL(config.publicUrl);
-        url.searchParams.append('topic', config.topic);
-
-        controller = new AbortController();
-
-        fetchEventSource(url.toString(), {
-            method: 'GET',
-            headers: {
-                Authorization: `Bearer ${config.token}`
-            },
-            openWhenHidden: true,
-            signal: controller.signal,
-            onopen(response) {
-                if (response.ok && (response.headers.get('content-type') || '').includes('text/event-stream')) {
-                    runRefresh({ reason: 'focus-realtime-connected' });
-                    return;
-                }
-                throw new Error('Mercure focus connection failed');
-            },
-            onmessage(event) {
-                try {
-                    const payload = JSON.parse(event.data || '{}');
-                    if (!isFocusRealtimePayload(payload, event)) {
-                        return;
-                    }
-
-                    if (markEventAsSeen(event)) {
-                        return;
-                    }
-
-                    refreshReferenceStores(payload).catch(() => {
-                        // ignore reference refresh errors from realtime events
-                    });
-
-                    runRefresh(payload);
-                } catch (_) {
-                    // ignore malformed focus payloads
-                }
-            },
-            onclose() {
-                scheduleReconnect();
-            },
-            onerror() {
-                scheduleReconnect();
-            }
-        }).catch(() => {
-            scheduleReconnect();
+        refreshReferenceStores(payload).catch(() => {
+            // ignore reference refresh errors from realtime events
         });
+
+        runRefresh(payload);
     };
+
+    const unsubscribeFocus = mercureClient.on('focus-*', handleFocusEvent);
 
     watch(
-        () => [auth.token, mercureConfig.value?.publicUrl, mercureConfig.value?.topic, mercureConfig.value?.token, realtimeEnabled.value],
-        () => {
-            if (realtimeEnabled.value) {
-                connect();
-                return;
+        () => realtimeEnabled.value,
+        (enabled) => {
+            if (!enabled) {
+                refreshQueued = false;
             }
-            disconnect();
-        },
-        { immediate: true }
+        }
     );
 
-    const handleVisibilityChange = () => {
-        if (document.visibilityState !== 'visible' || !realtimeEnabled.value || !auth.token) {
-            return;
-        }
-
-        connect();
-    };
-
-    if (typeof document !== 'undefined') {
-        document.addEventListener('visibilitychange', handleVisibilityChange);
-    }
-
     onUnmounted(() => {
-        disconnect();
-        if (typeof document !== 'undefined') {
-            document.removeEventListener('visibilitychange', handleVisibilityChange);
-        }
+        unsubscribeFocus();
+        refreshQueued = false;
     });
 
     return {
         realtimeEnabled,
-        connect,
-        disconnect
+        connectionState,
+        connect: () => mercureClient.connect(true),
+        disconnect: () => {
+            realtimeEnabled.value = false;
+        }
     };
 }

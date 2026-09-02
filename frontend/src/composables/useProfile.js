@@ -1,6 +1,8 @@
 import { computed, ref } from 'vue';
 import { apiPrefix } from '@/config';
 import { useAuthStore } from '@/stores/auth';
+import { useNotificationsStore } from '@/stores/notifications';
+import { useMercureNotifications } from '@/composables/useMercureNotifications';
 import http from '@/service/http';
 
 const buildAuthHeaders = (token, isJson = true) => {
@@ -12,16 +14,20 @@ const buildAuthHeaders = (token, isJson = true) => {
 
 export function useProfile() {
     const auth = useAuthStore();
+    const notificationsStore = useNotificationsStore();
+    const { markAsRead, markAllAsRead } = useMercureNotifications();
+
     const profile = ref(null);
     const loading = ref(false);
     const error = ref(null);
+    const notificationsLoading = ref(false);
 
-    const notifications = computed(() => profile.value?.notifications || []);
+    const notifications = computed(() => notificationsStore.notifications);
     const activity = computed(() => profile.value?.activity || []);
     const stats = computed(() => profile.value?.stats || {});
-    const user = computed(() => profile.value?.user || {});
+    const user = computed(() => profile.value?.user || auth.user || {});
     const employee = computed(() => profile.value?.employee || null);
-    const unreadCount = computed(() => profile.value?.notificationsUnreadCount || 0);
+    const unreadCount = computed(() => notificationsStore.unreadCount);
 
     const fetchProfile = async () => {
         loading.value = true;
@@ -34,6 +40,11 @@ export function useProfile() {
             if (auth.user && profile.value?.user) {
                 auth.user = { ...auth.user, ...profile.value.user };
             }
+
+            if (profile.value?.notifications?.length) {
+                notificationsStore.setNotifications(profile.value.notifications);
+            }
+
             return profile.value;
         } catch (err) {
             error.value = err;
@@ -78,37 +89,27 @@ export function useProfile() {
     };
 
     const fetchNotifications = async (filter = 'all') => {
-        const res = await http.get(`${apiPrefix}/me/notifications?filter=${filter}`, {
-            headers: buildAuthHeaders(auth.token, false)
-        });
-        const data = res.data;
-        profile.value = {
-            ...profile.value,
-            notifications: data.items || []
-        };
-        return data.items || [];
+        notificationsLoading.value = true;
+        try {
+            const res = await http.get(`${apiPrefix}/me/notifications?filter=${filter}`, {
+                headers: buildAuthHeaders(auth.token, false)
+            });
+            const items = res.data?.items || [];
+            notificationsStore.setNotifications(items);
+            return items;
+        } finally {
+            notificationsLoading.value = false;
+        }
     };
 
     const markNotificationsRead = async (ids = []) => {
-        const res = await http.post(
-            `${apiPrefix}/me/notifications/mark-read`,
-            { ids },
-            { headers: buildAuthHeaders(auth.token) }
-        );
-        const data = res.data;
-        await fetchProfile();
-        return data;
+        await markAsRead(ids);
+        return { updated: ids.length };
     };
 
     const markAllNotificationsRead = async () => {
-        const res = await http.post(
-            `${apiPrefix}/me/notifications/mark-all`,
-            {},
-            { headers: buildAuthHeaders(auth.token, false) }
-        );
-        const data = res.data;
-        await fetchProfile();
-        return data;
+        await markAllAsRead();
+        return { updated: notificationsStore.notifications.length };
     };
 
     const setNotificationsEnabled = async (enabled) => {
@@ -142,6 +143,7 @@ export function useProfile() {
         stats,
         unreadCount,
         loading,
+        notificationsLoading,
         error,
         fetchProfile,
         updateProfile,

@@ -4,6 +4,7 @@ namespace App\Communication\Service;
 
 use App\Communication\Entity\Notification;
 use App\Communication\Mercure\NotificationTopicGenerator;
+use App\Communication\Mercure\RealtimeEnvelope;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Mercure\Update;
 use Symfony\Component\Messenger\MessageBusInterface;
@@ -24,11 +25,12 @@ final class NotificationRealtimePublisher
             return;
         }
 
-        $topic = $this->topicGenerator->forUser($user);
+        $topic = $this->topicGenerator->forUserNotifications($user);
         if ($topic === null) {
             return;
         }
 
+        $eventId = $notification->getId() ? (string) $notification->getId() : uniqid('notification-', true);
         $payload = [
             'id' => $notification->getId(),
             'title' => 'Notification',
@@ -44,13 +46,12 @@ final class NotificationRealtimePublisher
         try {
             $update = new Update(
                 $topic,
-                json_encode($payload, JSON_THROW_ON_ERROR),
-                false,
-                $notification->getId() ? (string) $notification->getId() : null,
+                RealtimeEnvelope::notification($payload, $eventId),
+                true,
+                $eventId,
                 'notification'
             );
 
-            // Async via Messenger (UpdateHandler + ResilientMercureHub).
             $this->bus->dispatch($update);
         } catch (\Throwable $exception) {
             $this->logger->warning('Impossible d\'enfiler la notification Mercure.', [

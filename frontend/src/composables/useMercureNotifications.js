@@ -1,25 +1,19 @@
 import { computed, onUnmounted, watch } from 'vue';
 import { useAuthStore } from '@/stores/auth';
-import { useNotificationsStore } from '@/stores/notifications'; 
+import { useNotificationsStore } from '@/stores/notifications';
+import { useMercureClient } from '@/composables/realtime/useMercureClient';
 import http from '@/service/http';
-import { fetchEventSource } from '@microsoft/fetch-event-source';
- 
+
+const notificationHandlers = new Set();
 
 export function useMercureNotifications() {
     const auth = useAuthStore();
     const notificationsStore = useNotificationsStore();
-
-    let eventSource = null; // will hold an AbortController for fetchEventSource
-    let reconnectTimer = null;
-    const recentEventIds = new Set();
+    const mercureClient = useMercureClient();
 
     const notifications = computed(() => notificationsStore.notifications);
     const unreadCount = computed(() => notificationsStore.unreadCount);
-
-    let notificationReceivedCb = null;
-    function onNotificationReceived(cb) {
-        notificationReceivedCb = cb;
-    }
+    const connectionState = mercureClient.connectionState;
 
     const normalizeNotification = (item) => ({
         id: item?.id,
@@ -32,141 +26,55 @@ export function useMercureNotifications() {
         link: item?.link || null
     });
 
-    const isFocusRealtimePayload = (payload, event) => {
-        if (event?.event === 'focus-consultation') {
-            return true;
-        }
-
-        if (typeof event?.id === 'string' && event.id.startsWith('focus-consultation-')) {
-            return true;
-        }
-
-        return ['consultation', 'patient', 'devis', 'payment'].includes(payload?.entity) && typeof payload?.action === 'string';
+    const handleRealtimeNotification = (payload) => {
+        const notif = normalizeNotification(payload);
+        notificationsStore.addNotification(notif);
+        notificationHandlers.forEach((handler) => handler(notif));
     };
 
-    const markEventAsSeen = (notificationId) => {
-        if (!notificationId) return false;
-
-        const key = String(notificationId);
-        if (recentEventIds.has(key)) {
-            return true;
-        }
-
-        recentEventIds.add(key);
-        if (recentEventIds.size > 200) {
-            const firstKey = recentEventIds.values().next().value;
-            if (firstKey) recentEventIds.delete(firstKey);
-        }
-
-        return false;
-    };
-
-    const disconnect = () => {
-        if (eventSource) {
-            try {
-                eventSource.abort();
-            } catch (e) {
-                // ignore
-            }
-            eventSource = null;
-        }
-        if (reconnectTimer) {
-            clearTimeout(reconnectTimer);
-            reconnectTimer = null;
-        }
-    };
-
-    const scheduleReconnect = () => {
-        if (reconnectTimer || !auth.token) return;
-        disconnect();
-        reconnectTimer = setTimeout(() => {
-            reconnectTimer = null;
-            connect();
-        }, 5000);
-    };
+    const unsubscribeNotification = mercureClient.on('notification', handleRealtimeNotification);
 
     const loadInitialNotifications = async () => {
-        if (!auth.token) return;
-
-        const res = await http.get('me/notifications?filter=all&limit=20');
-        const items = (res?.data?.items || []).map(normalizeNotification);
-        notificationsStore.setNotifications(items);
-    };
-
-    const connect = async () => {
-        if (!auth.token) return;
-
-        disconnect();
-
-        try {
-            const res = await http.get('me/notifications/mercure');
-            const { publicUrl, topic, token } = res?.data || {};
-            if (!publicUrl || !topic || !token) return;
-
-            const url = new URL(publicUrl);
-            url.searchParams.append('topic', topic);
-
-            const controller = new AbortController();
-            eventSource = controller;
-
-            fetchEventSource(url.toString(), {
-                method: 'GET',
-                headers: {
-                    Authorization: `Bearer ${token}`
-                },
-                signal: controller.signal,
-                onopen(response) {
-                    if (response.ok && (response.headers.get('content-type') || '').includes('text/event-stream')) {
-                        return;
-                    }
-                    throw new Error('Connection failed');
-                },
-                onmessage(event) {
-                    try {
-                        const payload = JSON.parse(event.data);
-                        if (isFocusRealtimePayload(payload, event)) {
-                            return;
-                        }
-
-                        if (event?.event && event.event !== 'notification') {
-                            return;
-                        }
-
-                        const notif = normalizeNotification(payload);
-                        if (markEventAsSeen(notif.id)) return;
-                        notificationsStore.addNotification(notif);
-                        if (notificationReceivedCb) notificationReceivedCb(notif);
-                    } catch (_) {
-                        // ignore malformed events
-                    }
-                },
-                onerror() {
-                    scheduleReconnect();
-                },
-                onclose() {
-                    scheduleReconnect();
-                }
-            }).catch(() => {
-                scheduleReconnect();
-            });
-        } catch (_) {
-            scheduleReconnect();
+        if (!auth.token) {
+            return;
         }
-    };
 
-    const start = async () => {
-        if (!auth.token) return;
-        if (auth.user && auth.user.notificationsEnabled === false) {
-            disconnect();
+        if (auth.user?.notificationsEnabled === false) {
             notificationsStore.setNotifications([]);
             return;
         }
+
+        const response = await http.get('me/notifications?filter=all&limit=20');
+        const items = (response?.data?.items || []).map(normalizeNotification);
+        notificationsStore.setNotifications(items);
+    };
+
+    const start = async () => {
+        if (!auth.token) {
+            return;
+        }
+
+        if (auth.user?.notificationsEnabled === false) {
+            notificationsStore.setNotifications([]);
+            return;
+        }
+
         await loadInitialNotifications();
-        await connect();
+    };
+
+    const refreshFromRest = async () => {
+        try {
+            await loadInitialNotifications();
+        } catch (_) {
+            // ignore transient REST failures during degraded polling
+        }
     };
 
     const markAsRead = async (ids = []) => {
-        if (!ids.length) return;
+        if (!ids.length) {
+            return;
+        }
+
         await http.post('me/notifications/mark-read', { ids });
         notificationsStore.markAsRead(ids);
     };
@@ -176,19 +84,40 @@ export function useMercureNotifications() {
         notificationsStore.markAllAsRead();
     };
 
+    function onNotificationReceived(callback) {
+        if (typeof callback !== 'function') {
+            return () => {};
+        }
+
+        notificationHandlers.add(callback);
+
+        return () => {
+            notificationHandlers.delete(callback);
+        };
+    }
+
+    const handleDegradedPoll = () => {
+        if (auth.user?.notificationsEnabled !== false) {
+            refreshFromRest();
+        }
+    };
+
+    if (typeof window !== 'undefined') {
+        window.addEventListener('mercure:degraded-poll', handleDegradedPoll);
+    }
+
     watch(
         () => auth.token,
         async (token) => {
-            if (token) {
-                try {
-                    await start();
-                } catch (_) {
-                    // Ignore transient failures during auth transitions
-                }
-            } else {
-                disconnect();
+            if (!token) {
                 notificationsStore.setNotifications([]);
-                recentEventIds.clear();
+                return;
+            }
+
+            try {
+                await start();
+            } catch (_) {
+                // ignore transient failures during auth transitions
             }
         }
     );
@@ -197,7 +126,6 @@ export function useMercureNotifications() {
         () => auth.user?.notificationsEnabled,
         async (enabled) => {
             if (enabled === false) {
-                disconnect();
                 notificationsStore.setNotifications([]);
                 return;
             }
@@ -213,15 +141,20 @@ export function useMercureNotifications() {
     );
 
     onUnmounted(() => {
-        disconnect();
+        unsubscribeNotification();
+        notificationHandlers.clear();
+
+        if (typeof window !== 'undefined') {
+            window.removeEventListener('mercure:degraded-poll', handleDegradedPoll);
+        }
     });
 
     return {
         notifications,
         unreadCount,
+        connectionState,
         start,
-        connect,
-        disconnect,
+        refreshFromRest,
         markAsRead,
         markAllAsRead,
         onNotificationReceived

@@ -17,14 +17,18 @@ const props = defineProps({
   unreadCount: { type: Number, default: 0 },
   loading: { type: Boolean, default: false },
   filter: { type: String, default: 'all' },
-  notificationsEnabled: { type: Boolean, default: true }
+  notificationsEnabled: { type: Boolean, default: true },
+  desktopNotificationsEnabled: { type: Boolean, default: false },
+  desktopNotificationsSupported: { type: Boolean, default: false },
+  desktopPermission: { type: String, default: 'default' }
 })
 
 const emit = defineEmits([
   'filter-change',
   'mark-read',
   'mark-all',
-  'notifications-enabled-change'
+  'notifications-enabled-change',
+  'desktop-notifications-change'
 ])
 
 const confirm = useConfirm()
@@ -150,6 +154,33 @@ const markAll = (event) => {
           :allowEmpty="false"
           @update:modelValue="emit('notifications-enabled-change', $event)"
         />
+      </div>
+
+      <div
+        v-if="desktopNotificationsSupported"
+        class="flex flex-col gap-3 rounded-xl border border-surface-100 dark:border-surface-700/50 bg-surface-50/60 dark:bg-surface-700/20 px-4 py-3"
+      >
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div class="flex items-center gap-2.5 text-sm text-surface-700 dark:text-surface-300">
+            <i class="pi pi-desktop text-primary-500"></i>
+            <span>Notifications systeme</span>
+          </div>
+          <SelectButton
+            :modelValue="desktopNotificationsEnabled"
+            :options="[{ label: 'Activees', value: true }, { label: 'Desactivees', value: false }]"
+            optionLabel="label"
+            optionValue="value"
+            :allowEmpty="false"
+            :disabled="!notificationsEnabled || desktopPermission === 'denied'"
+            @update:modelValue="emit('desktop-notifications-change', $event)"
+          />
+        </div>
+        <p v-if="desktopPermission === 'denied'" class="text-xs text-amber-600 dark:text-amber-400">
+          Autorisez les notifications dans les parametres de votre navigateur pour activer cette option.
+        </p>
+        <p v-else class="text-xs text-surface-400">
+          Affiche une alerte OS quand l'onglet est en arriere-plan ou l'application est minimisee.
+        </p>
       </div>
 
       <SelectButton

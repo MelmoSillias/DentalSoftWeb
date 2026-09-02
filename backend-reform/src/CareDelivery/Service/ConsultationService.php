@@ -1687,6 +1687,7 @@ class ConsultationService
         $this->em->persist($facture);
         $this->em->flush();
 
+        $this->focusRealtimePublisher->publishFactureRefresh($facture, 'updated');
         $this->focusRealtimePublisher->publishConsultationRefresh($consultation, 'invoice-updated');
 
         return ['success' => true];

@@ -1,14 +1,15 @@
 // src/stores/auth.js
 import { defineStore } from 'pinia';
 import http, { isDeviceNotAllowedError } from '@/service/http';
+import { resetMercureClient } from '@/composables/realtime/useMercureClient';
+import { useRealtimeStore } from '@/stores/realtime';
+import { useNotificationsStore } from '@/stores/notifications';
 
 export const useAuthStore = defineStore('auth', {
     state: () => ({
         user: null,
         token: localStorage.getItem('token') || null,
-        mercure: null,
-        loading: false,
-        error: null,
+        loading: false,        error: null,
         deviceBlockMessage: null,
         deviceBlockStatus: null,
     }),
@@ -81,7 +82,6 @@ export const useAuthStore = defineStore('auth', {
             try {
                 const res = await http.get('me');
                 this.user = res.data.user;
-                this.mercure = res.data.mercure || null;
                 this.clearDeviceBlock();
                 const { useInternetFeatures } = await import('@/composables/useInternetFeatures');
                 const { syncFromServer } = useInternetFeatures();
@@ -102,9 +102,11 @@ export const useAuthStore = defineStore('auth', {
         logout() {
             this.user = null;
             this.token = null;
-            this.mercure = null;
             this.clearDeviceBlock();
             localStorage.removeItem('token');
+            resetMercureClient();
+            useRealtimeStore().reset();
+            useNotificationsStore().setNotifications([]);
             import('@/composables/useInternetFeatures').then(({ useInternetFeatures }) => {
                 useInternetFeatures().reset();
             });

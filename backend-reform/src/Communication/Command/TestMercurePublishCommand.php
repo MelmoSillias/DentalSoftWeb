@@ -130,7 +130,7 @@ final class TestMercurePublishCommand extends Command
                 return null;
             }
 
-            return $this->topicGenerator->forUser($user);
+            return $this->topicGenerator->forUserNotifications($user);
         }
 
         $namespace = trim($this->topicNamespace, "/ \t\n\r\0\x0B") ?: 'default';

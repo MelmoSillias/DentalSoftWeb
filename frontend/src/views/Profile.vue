@@ -4,6 +4,7 @@ import Toast from 'primevue/toast';
 import { useToast } from 'primevue/usetoast';
 import { computed, onMounted, ref } from 'vue';
 import { useProfile } from '@/composables/useProfile';
+import { useBrowserNotifications } from '@/composables/useBrowserNotifications';
 import ProfileStatsSection from '@/components/profile/ProfileStatsSection.vue';
 import ProfileInfoSection from '@/components/profile/ProfileInfoSection.vue';
 import ProfileActivitySection from '@/components/profile/ProfileActivitySection.vue';
@@ -29,6 +30,13 @@ const {
 	markAllNotificationsRead,
 	setNotificationsEnabled
 } = useProfile();
+
+const {
+	isSupported: desktopNotificationsSupported,
+	enabled: desktopNotificationsEnabled,
+	permission: desktopPermission,
+	setEnabled: setDesktopNotificationsEnabled
+} = useBrowserNotifications();
 
 const breadcrumbHome = { icon: 'pi pi-home', to: '/' };
 const breadcrumbItems = [{ label: 'Profil' }];
@@ -110,9 +118,37 @@ const notificationsEnabled = computed(() => user.value?.notificationsEnabled !==
 const handleNotificationsEnabledChange = async (enabled) => {
 	try {
 		await setNotificationsEnabled(Boolean(enabled));
+		if (!enabled) {
+			await setDesktopNotificationsEnabled(false);
+		}
 		toast.add({ severity: 'success', summary: 'Notifications', detail: enabled ? 'Notifications activées.' : 'Notifications désactivées.', life: 2200 });
 	} catch (err) {
 		toast.add({ severity: 'error', summary: 'Notifications', detail: 'Impossible de mettre à jour ce paramètre.' });
+	}
+};
+
+const handleDesktopNotificationsChange = async (enabled) => {
+	const success = await setDesktopNotificationsEnabled(Boolean(enabled));
+
+	if (success) {
+		toast.add({
+			severity: 'success',
+			summary: 'Notifications système',
+			detail: enabled ? 'Notifications système activées.' : 'Notifications système désactivées.',
+			life: 2200
+		});
+		return;
+	}
+
+	if (enabled) {
+		toast.add({
+			severity: 'warn',
+			summary: 'Notifications système',
+			detail: desktopPermission.value === 'denied'
+				? 'Autorisez les notifications dans les paramètres de votre navigateur.'
+				: 'Autorisation refusée ou navigateur non compatible.',
+			life: 3500
+		});
 	}
 };
 
@@ -155,10 +191,14 @@ onMounted(async () => {
 					:loading="loading"
 					:filter="notificationsFilter"
 					:notifications-enabled="notificationsEnabled"
+					:desktop-notifications-enabled="desktopNotificationsEnabled"
+					:desktop-notifications-supported="desktopNotificationsSupported"
+					:desktop-permission="desktopPermission"
 					@filter-change="handleFilterChange"
 					@mark-read="handleMarkRead"
 					@mark-all="handleMarkAll"
 					@notifications-enabled-change="handleNotificationsEnabledChange"
+					@desktop-notifications-change="handleDesktopNotificationsChange"
 				/>
 			</div>
 		</div>

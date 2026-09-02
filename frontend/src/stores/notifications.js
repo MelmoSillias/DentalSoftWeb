@@ -29,9 +29,9 @@ export const useNotificationsStore = defineStore('notifications', {
 
         markAsRead(ids = []) {
             if (!Array.isArray(ids) || !ids.length) return;
-            const bucket = new Set(ids.map((id) => Number(id)));
+            const bucket = new Set(ids.map((id) => String(id)));
             this.notifications = this.notifications.map((item) => (
-                bucket.has(Number(item.id))
+                bucket.has(String(item.id))
                     ? { ...item, status: 'vu' }
                     : item
             ));

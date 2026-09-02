@@ -5,12 +5,12 @@ namespace App\Communication\Mercure;
 use Psr\Cache\CacheItemPoolInterface;
 
 /**
- * Ouvre un circuit temporaire après un échec de publish Mercure
- * pour éviter une rafale de timeouts HTTP.
+ * Ouvre un circuit temporaire apres des echecs reseau/serveur Mercure.
  */
 final class MercureCircuitBreaker
 {
-    private const CACHE_KEY = 'mercure.publish.circuit_open_until';
+    private const CACHE_KEY_OPEN_UNTIL = 'mercure.publish.circuit_open_until';
+    private const CACHE_KEY_DROPPED_COUNT = 'mercure.publish.dropped_count';
 
     public function __construct(
         private readonly CacheItemPoolInterface $cache,
@@ -20,7 +20,7 @@ final class MercureCircuitBreaker
 
     public function isOpen(): bool
     {
-        $item = $this->cache->getItem(self::CACHE_KEY);
+        $item = $this->cache->getItem(self::CACHE_KEY_OPEN_UNTIL);
         if (!$item->isHit()) {
             return false;
         }
@@ -37,7 +37,7 @@ final class MercureCircuitBreaker
 
     public function recordSuccess(): void
     {
-        $this->cache->deleteItem(self::CACHE_KEY);
+        $this->cache->deleteItem(self::CACHE_KEY_OPEN_UNTIL);
     }
 
     public function recordFailure(): void
@@ -45,18 +45,34 @@ final class MercureCircuitBreaker
         $cooldown = max(1, $this->cooldownSeconds);
         $openUntil = time() + $cooldown;
 
-        $item = $this->cache->getItem(self::CACHE_KEY);
+        $item = $this->cache->getItem(self::CACHE_KEY_OPEN_UNTIL);
         $item->set($openUntil);
         $item->expiresAfter($cooldown);
         $this->cache->save($item);
     }
 
+    public function recordDropped(): void
+    {
+        $item = $this->cache->getItem(self::CACHE_KEY_DROPPED_COUNT);
+        $count = $item->isHit() ? (int) $item->get() : 0;
+        $item->set($count + 1);
+        $item->expiresAfter(86400);
+        $this->cache->save($item);
+    }
+
+    public function droppedCount(): int
+    {
+        $item = $this->cache->getItem(self::CACHE_KEY_DROPPED_COUNT);
+
+        return $item->isHit() ? (int) $item->get() : 0;
+    }
+
     /**
-     * @return array{open: bool, openUntil: int|null, cooldownSeconds: int}
+     * @return array{open: bool, openUntil: int|null, cooldownSeconds: int, droppedCount: int}
      */
     public function status(): array
     {
-        $item = $this->cache->getItem(self::CACHE_KEY);
+        $item = $this->cache->getItem(self::CACHE_KEY_OPEN_UNTIL);
         $openUntil = $item->isHit() ? (int) $item->get() : null;
         $open = $openUntil !== null && $openUntil > time();
 
@@ -64,6 +80,7 @@ final class MercureCircuitBreaker
             'open' => $open,
             'openUntil' => $open ? $openUntil : null,
             'cooldownSeconds' => max(1, $this->cooldownSeconds),
+            'droppedCount' => $this->droppedCount(),
         ];
     }
 }

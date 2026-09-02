@@ -4,13 +4,12 @@ import { useLayout } from '@/layout/composables/layout';
 import { useAuthStore } from '@/stores/auth';
 import Popover from 'primevue/popover';
 import Button from 'primevue/button';
-import OverlayBadge from 'primevue/overlaybadge';
 import { useToast } from 'primevue/usetoast';
 import router from '@/router';
-import { useMercureNotifications } from '@/composables/useMercureNotifications';
 import { useRoute } from 'vue-router';
 import { useInternetFeatures } from '@/composables/useInternetFeatures';
 import { useSmsTopbarCredits } from '@/composables/useSmsTopbarCredits';
+import NotificationBell from '@/components/notifications/NotificationBell.vue';
 import cabinetConfig from '@/cabinetConfig';
 
 const { toggleDarkMode, isDarkTheme } = useLayout();
@@ -33,93 +32,12 @@ const {
     () => auth.user?.roles || []
 );
 
-const showNotificationsPopover = ref(false);
 const showProfilePopover = ref(false);
-const notificationsButton = ref(null);
 const profileButton = ref(null);
-const notificationsPopover = ref(null);
 const profilePopover = ref(null);
 const isLoggingOut = ref(false);
-const isNotificationsLoading = ref(false);
 
-const {
-    notifications,
-    unreadCount,
-    start: startNotifications,
-    markAsRead,
-    markAllAsRead,
-    onNotificationReceived
-} = useMercureNotifications();
-
-let notificationAudio = null;
-let audioEnabled = false;
-function enableNotificationAudio() {
-    if (!notificationAudio) notificationAudio = new Audio('/notification.mp3');
-    audioEnabled = true;
-}
-function playNotificationSound() {
-    if (!audioEnabled) return;
-    try {
-        notificationAudio.currentTime = 0;
-        notificationAudio.play();
-    } catch (_) { /* ignore */ }
-}
-
-if (typeof window !== 'undefined') {
-    const enableAudioOnce = () => {
-        enableNotificationAudio();
-        window.removeEventListener('click', enableAudioOnce, true);
-    };
-    window.addEventListener('click', enableAudioOnce, true);
-}
-
-function resolveNotificationSeverity(type) {
-    switch (type) {
-        case 'success':
-            return 'success';
-        case 'error':
-            return 'error';
-        case 'warning':
-            return 'warn';
-        default:
-            return 'info';
-    }
-}
-
-function showNotificationToast(notification) {
-    toast.add({
-        severity: resolveNotificationSeverity(notification.type),
-        summary: notification.title || 'Notification',
-        detail: notification.message,
-        life: 3000
-    });
-}
-
-if (onNotificationReceived) {
-    onNotificationReceived((notif) => {
-        playNotificationSound();
-        showNotificationToast(notif);
-    });
-}
-
-const topbarNotifications = computed(() => notifications.value.slice(0, 5));
 const isOnHub = computed(() => route.name === 'navigation-hub');
-
-function getNotificationIcon(notification) {
-    const type = notification?.type;
-    if (type === 'success') return 'pi pi-check-circle';
-    if (type === 'error') return 'pi pi-times-circle';
-    if (type === 'warning') return 'pi pi-exclamation-triangle';
-    return 'pi pi-info-circle';
-}
-
-function getNotificationIconClass(notification) {
-    const type = notification?.type;
-    if (type === 'success') return 'text-green-500';
-    if (type === 'error') return 'text-red-500';
-    if (type === 'warning') return 'text-orange-500';
-    return 'text-primary-500';
-}
 
 onMounted(async () => {
     if (auth.token && !auth.user) {
@@ -131,19 +49,6 @@ onMounted(async () => {
     }
     if (auth.token) {
         startSmsCreditsPolling();
-        isNotificationsLoading.value = true;
-        startNotifications()
-            .catch(() => {
-                toast.add({
-                    severity: 'warn',
-                    summary: 'Notifications',
-                    detail: 'Impossible de charger les notifications.',
-                    life: 3000
-                });
-            })
-            .finally(() => {
-                isNotificationsLoading.value = false;
-            });
     }
 });
 
@@ -169,15 +74,6 @@ function openSmsSettings() {
         return;
     }
     router.push({ name: 'administration-api-sms' });
-}
-
-function toggleNotificationsPopover(event) {
-    if (showNotificationsPopover.value) {
-        notificationsPopover.value.hide();
-    } else {
-        notificationsPopover.value.show(event);
-    }
-    showNotificationsPopover.value = !showNotificationsPopover.value;
 }
 
 function toggleProfilePopover(event) {
@@ -222,48 +118,6 @@ function openProfile() {
         // ignore
     }
     router.push({ name: 'profile' });
-}
-
-async function markNotificationRead(notification) {
-    if (!notification?.id || notification.status === 'vu') {
-        return;
-    }
-    try {
-        await markAsRead([notification.id]);
-    } catch (_) {
-        // ignore
-    }
-}
-
-async function markAllNotificationsRead() {
-    try {
-        await markAllAsRead();
-    } catch (_) {
-        // ignore
-    }
-}
-
-function formatNotificationDate(value) {
-    if (!value) return '';
-    const parsed = new Date(value);
-    if (Number.isNaN(parsed.getTime())) {
-        return value;
-    }
-    return parsed.toLocaleString();
-}
-
-async function handleNotificationClick(notification) {
-    await markNotificationRead(notification);
-    if (notification?.link) {
-        router.push(notification.link);
-    }
-    try {
-        if (notificationsPopover?.value?.hide) {
-            notificationsPopover.value.hide();
-        }
-    } catch (_) {
-        // ignore
-    }
 }
 </script>
 
@@ -325,88 +179,7 @@ async function handleNotificationClick(notification) {
                 <i :class="['pi', isDarkTheme ? 'pi-sun' : 'pi-moon']"></i>
             </button>
 
-            <button
-                type="button"
-                class="layout-right-rail__btn layout-right-rail__notif"
-                :class="{ 'has-unread': unreadCount > 0 }"
-                title="Notifications"
-                aria-label="Notifications"
-                ref="notificationsButton"
-                @click="toggleNotificationsPopover($event)"
-            >
-                <OverlayBadge
-                    v-if="unreadCount && unreadCount !== 0"
-                    :value="unreadCount"
-                    severity="danger"
-                    class="inline-flex"
-                >
-                    <i class="pi pi-bell" />
-                </OverlayBadge>
-                <i v-else class="pi pi-bell" />
-            </button>
-            <Popover
-                ref="notificationsPopover"
-                v-model:visible="showNotificationsPopover"
-                :autoHide="true"
-                :dismissable="true"
-                :target="notificationsButton"
-                position="left"
-                class="w-[24rem] max-w-[90vw] bg-surface-0 dark:bg-surface-900 shadow-xl rounded-2xl border border-surface-200/70 dark:border-surface-700/70 p-0 overflow-hidden"
-                style="z-index: 1000"
-            >
-                <div
-                    class="px-4 py-3 border-b border-surface-200/70 dark:border-surface-700/70 bg-surface-50/80 dark:bg-surface-800/80"
-                >
-                    <div class="flex items-center justify-between gap-3">
-                        <div class="flex items-center gap-2">
-                            <i class="pi pi-bell text-primary-500"></i>
-                            <span class="font-semibold text-surface-900 dark:text-surface-50">Notifications</span>
-                        </div>
-                        <button
-                            type="button"
-                            class="text-xs font-medium text-primary-600 dark:text-primary-400 hover:underline"
-                            @click="markAllNotificationsRead"
-                        >
-                            Tout lire
-                        </button>
-                    </div>
-                </div>
-                <div v-if="isNotificationsLoading" class="p-6 text-sm text-surface-600 dark:text-surface-300 text-center">
-                    <i class="pi pi-spin pi-spinner mr-2"></i>
-                    Chargement...
-                </div>
-                <div v-else-if="!notifications.length" class="p-6 text-center">
-                    <p class="text-sm font-medium text-surface-700 dark:text-surface-200">Aucune notification</p>
-                </div>
-                <div v-else class="p-2 space-y-1 max-h-[22rem] overflow-y-auto">
-                    <button
-                        v-for="notification in topbarNotifications"
-                        :key="notification.id"
-                        type="button"
-                        class="group w-full text-left p-3 rounded-xl border border-transparent hover:border-surface-200 dark:hover:border-surface-700 hover:bg-surface-50 dark:hover:bg-surface-800 transition-colors"
-                        :class="{
-                            'bg-primary-50/50 dark:bg-primary-900/20 border-primary-200/60 dark:border-primary-800/60':
-                                notification.status !== 'vu'
-                        }"
-                        @click="handleNotificationClick(notification)"
-                    >
-                        <div class="flex items-start gap-3">
-                            <i :class="[getNotificationIcon(notification), getNotificationIconClass(notification)]"></i>
-                            <div class="min-w-0 flex-1">
-                                <p
-                                    class="text-sm text-surface-800 dark:text-surface-100 leading-5"
-                                    :class="{ 'font-semibold': notification.status !== 'vu' }"
-                                >
-                                    {{ notification.message }}
-                                </p>
-                                <span class="text-xs text-surface-500 dark:text-surface-400">
-                                    {{ formatNotificationDate(notification.createdAt) }}
-                                </span>
-                            </div>
-                        </div>
-                    </button>
-                </div>
-            </Popover>
+            <NotificationBell variant="rail" popover-position="left" />
         </div>
 
         <div class="layout-right-rail__bottom">

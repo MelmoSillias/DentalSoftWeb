@@ -84,20 +84,16 @@ final class NotificationController extends AbstractController
     }
 
     #[Route('/api/me/notifications/mercure', name: 'api_me_notifications_mercure', methods: ['GET'])]
-    public function mercure(\App\Communication\Service\MercureAuthorizationService $mercureAuthorizationService): JsonResponse
+    public function mercure(MercureAuthorizationService $mercureAuthorizationService): JsonResponse
     {
         $user = $this->getUser();
         if (!$user instanceof User) {
             return $this->json(['error' => 'Unauthenticated'], 401);
         }
 
-        if (!$user->isNotificationsEnabled()) {
-            return $this->json([]);
-        }
-
         $subscription = $mercureAuthorizationService->buildSubscription($user);
         if ($subscription === null) {
-            return $this->json(['error' => 'Unable to create Mercure subscription'], 400);
+            return $this->json([]);
         }
 
         return $this->json($subscription);

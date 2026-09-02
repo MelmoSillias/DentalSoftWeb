@@ -4,58 +4,75 @@ namespace App\Communication\Service;
 
 use App\Communication\Mercure\NotificationTopicGenerator;
 use App\IdentityAccess\Entity\User;
+use Symfony\Component\Mercure\Jwt\TokenFactoryInterface;
 
 final class MercureAuthorizationService
 {
+    private const STAFF_ROLES = [
+        'ROLE_ADMIN',
+        'ROLE_RECEPTION',
+        'ROLE_RECEPTIONNISTE',
+        'ROLE_SECRETAIRE',
+        'ROLE_MEDECIN',
+    ];
+
+    private const TOKEN_TTL_SECONDS = 3600;
+
     public function __construct(
         private readonly NotificationTopicGenerator $topicGenerator,
-        private readonly string $mercureJwtSecret,
         private readonly string $mercurePublicUrl,
+        private readonly TokenFactoryInterface $tokenFactory,
     ) {
     }
 
     /**
-     * @return array{publicUrl: string, topic: string, token: string}|null
+     * @return array{publicUrl: string, topics: list<string>, topic: string|null, token: string, expiresAt: string}|null
      */
     public function buildSubscription(User $user): ?array
     {
-        $topic = $this->topicGenerator->forUser($user);
-        if ($topic === null) {
+        $topics = $this->resolveTopics($user);
+        if ($topics === []) {
             return null;
         }
 
-        $now = time();
-        $payload = [
-            'mercure' => [
-                'subscribe' => [$topic],
-            ],
-            'iat' => $now,
-            'exp' => $now + 3600,
-        ];
+        $expiresAt = (new \DateTimeImmutable())->modify(sprintf('+%d seconds', self::TOKEN_TTL_SECONDS));
+        $token = $this->tokenFactory->create(
+            subscribe: $topics,
+            additionalClaims: ['exp' => $expiresAt],
+        );
 
         return [
             'publicUrl' => $this->mercurePublicUrl,
-            'topic' => $topic,
-            'token' => $this->buildJwt($payload),
+            'topics' => $topics,
+            'topic' => $topics[0] ?? null,
+            'token' => $token,
+            'expiresAt' => $expiresAt->format(DATE_ATOM),
         ];
     }
 
     /**
-     * @param array<string, mixed> $payload
+     * @return list<string>
      */
-    private function buildJwt(array $payload): string
+    private function resolveTopics(User $user): array
     {
-        $header = ['alg' => 'HS256', 'typ' => 'JWT'];
+        $topics = [];
 
-        $encodedHeader = $this->base64UrlEncode((string) json_encode($header, JSON_THROW_ON_ERROR));
-        $encodedPayload = $this->base64UrlEncode((string) json_encode($payload, JSON_THROW_ON_ERROR));
-        $signature = hash_hmac('sha256', $encodedHeader . '.' . $encodedPayload, $this->mercureJwtSecret, true);
+        if ($user->isNotificationsEnabled()) {
+            $notificationsTopic = $this->topicGenerator->forUserNotifications($user);
+            if ($notificationsTopic !== null) {
+                $topics[] = $notificationsTopic;
+            }
+        }
 
-        return sprintf('%s.%s.%s', $encodedHeader, $encodedPayload, $this->base64UrlEncode($signature));
+        if ($this->canAccessFocus($user)) {
+            $topics[] = $this->topicGenerator->forFocusChannel();
+        }
+
+        return $topics;
     }
 
-    private function base64UrlEncode(string $value): string
+    private function canAccessFocus(User $user): bool
     {
-        return rtrim(strtr(base64_encode($value), '+/', '-_'), '=');
+        return array_intersect(self::STAFF_ROLES, $user->getRoles()) !== [];
     }
 }

@@ -7,27 +7,18 @@ use App\Billing\Entity\Facture;
 use App\Billing\Entity\ModeDePaiement;
 use App\CareDelivery\Entity\Consultation;
 use App\Communication\Mercure\NotificationTopicGenerator;
+use App\Communication\Mercure\RealtimeEnvelope;
 use App\IdentityAccess\Entity\Employe;
 use App\Patient\Entity\Patient;
-use App\IdentityAccess\Repository\UserRepository;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Mercure\Update;
 use Symfony\Component\Messenger\MessageBusInterface;
 
 final class FocusRealtimePublisher
 {
-    private const TARGET_ROLES = [
-        'ROLE_ADMIN',
-        'ROLE_RECEPTION',
-        'ROLE_RECEPTIONNISTE',
-        'ROLE_SECRETAIRE',
-        'ROLE_MEDECIN',
-    ];
-
     public function __construct(
         private readonly MessageBusInterface $bus,
         private readonly NotificationTopicGenerator $topicGenerator,
-        private readonly UserRepository $userRepository,
         private readonly LoggerInterface $logger,
     ) {
     }
@@ -93,7 +84,7 @@ final class FocusRealtimePublisher
         }
 
         $consultation = $facture->getConsultation();
-        $patient = $consultation?->getPatient() ?? $facture->getConsultation()?->getPatient() ?? $facture->getConsultation()?->getPatient();
+        $patient = $consultation?->getPatient();
 
         $payload = [
             'entity' => 'facture',
@@ -165,37 +156,28 @@ final class FocusRealtimePublisher
         );
     }
 
+  /**
+   * @param array<string, mixed> $payload
+   * @param array<string, mixed> $logContext
+   */
     private function publishPayload(array $payload, string $updateId, string $eventName, array $logContext = []): void
     {
-        $users = [];
-        foreach ($this->userRepository->findByRoles(self::TARGET_ROLES) as $user) {
-            $userId = $user->getId() ?? spl_object_id($user);
-            $users[$userId] = $user;
-        }
+        $topic = $this->topicGenerator->forFocusChannel();
 
-        foreach ($users as $user) {
-            $topic = $this->topicGenerator->forUser($user);
-            if ($topic === null) {
-                continue;
-            }
+        try {
+            $update = new Update(
+                $topic,
+                RealtimeEnvelope::focus($payload, $updateId, $eventName),
+                true,
+                $updateId,
+                $eventName
+            );
 
-            try {
-                $update = new Update(
-                    $topic,
-                    json_encode($payload, JSON_THROW_ON_ERROR),
-                    false,
-                    $updateId,
-                    $eventName
-                );
-
-                // Async via Messenger (UpdateHandler + ResilientMercureHub).
-                $this->bus->dispatch($update);
-            } catch (\Throwable $exception) {
-                $this->logger->warning('Impossible d\'enfiler la mise a jour Focus Mercure.', [
-                    'exception' => $exception,
-                    'userId' => $user->getId(),
-                ] + $logContext);
-            }
+            $this->bus->dispatch($update);
+        } catch (\Throwable $exception) {
+            $this->logger->warning('Impossible d\'enfiler la mise a jour Focus Mercure.', [
+                'exception' => $exception,
+            ] + $logContext);
         }
     }
 }

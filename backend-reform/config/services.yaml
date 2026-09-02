@@ -61,8 +61,8 @@ services:
             $inner: '@.inner'
     App\Communication\Service\MercureAuthorizationService:
         arguments:
-            $mercureJwtSecret: '%env(MERCURE_JWT_SECRET)%'
             $mercurePublicUrl: '%env(MERCURE_PUBLIC_URL)%'
+            $tokenFactory: '@mercure.hub.default.jwt.factory'
     App\Communication\Service\MercureHealthService:
         arguments:
             $mercureUrl: '%env(MERCURE_URL)%'
