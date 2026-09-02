@@ -3,6 +3,7 @@ import { useAuthStore } from '@/stores/auth';
 import { useNotificationsStore } from '@/stores/notifications';
 import { useMercureClient } from '@/composables/realtime/useMercureClient';
 import { normalizeNotificationItem } from '@/utils/notificationLinks';
+import http from '@/service/http';
 
 const notificationHandlers = new Set();
 const BACKGROUND_POLL_MS = 30000;
