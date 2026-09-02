@@ -56,7 +56,8 @@ export default defineConfig(({ command }) => ({
                 clientsClaim: true,
                 skipWaiting: true,
                 navigateFallback: 'index.html',
-                navigateFallbackDenylist: [/^\/api/]
+                navigateFallbackDenylist: [/^\/api/],
+                importScripts: ['notification-handler.js']
             },
             manifest: {
                 name: cabinetPwa.name || 'DENTALSOFT',

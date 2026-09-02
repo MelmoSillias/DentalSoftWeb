@@ -37,6 +37,47 @@ function readPermission() {
     return Notification.permission;
 }
 
+function buildNotificationOptions(notification) {
+    const body = notification.message || '';
+    const tag = notification.id != null ? `notif-${notification.id}` : `notif-${Date.now()}`;
+
+    return {
+        body,
+        icon: '/logo.png',
+        tag,
+        data: { link: notification.link || null }
+    };
+}
+
+async function showViaServiceWorker(title, options) {
+    if (!('serviceWorker' in navigator)) {
+        return false;
+    }
+
+    const registration = await navigator.serviceWorker.getRegistration();
+    if (!registration) {
+        return false;
+    }
+
+    await registration.showNotification(title, options);
+    return true;
+}
+
+function showViaNotificationApi(title, options, link) {
+    const systemNotification = new Notification(title, options);
+
+    systemNotification.onclick = () => {
+        window.focus();
+        systemNotification.close();
+
+        if (link) {
+            router.push(link).catch(() => {
+                // ignore navigation duplicates
+            });
+        }
+    };
+}
+
 export function useBrowserNotifications() {
     if (browserNotificationsInstance) {
         return browserNotificationsInstance;
@@ -48,10 +89,21 @@ export function useBrowserNotifications() {
     const isSupported = computed(() => typeof window !== 'undefined' && 'Notification' in window);
     const canShowSystemNotifications = computed(() => isSupported.value && enabled.value && permission.value === 'granted');
 
+    function syncPermissionFromBrowser() {
+        permission.value = readPermission();
+
+        if (permission.value !== 'granted' && enabled.value) {
+            enabled.value = false;
+            writeEnabledPreference(false);
+        }
+    }
+
     async function requestPermission() {
         if (!isSupported.value) {
             return 'denied';
         }
+
+        syncPermissionFromBrowser();
 
         if (permission.value === 'granted') {
             return 'granted';
@@ -93,34 +145,26 @@ export function useBrowserNotifications() {
         return true;
     }
 
-    function showSystemNotification(notification) {
+    async function showSystemNotification(notification) {
         if (!canShowSystemNotifications.value || !notification) {
             return;
         }
 
         const title = notification.title || 'Notification';
-        const body = notification.message || '';
-        const tag = notification.id != null ? `notif-${notification.id}` : `notif-${Date.now()}`;
+        const options = buildNotificationOptions(notification);
         const link = notification.link || null;
 
         try {
-            const systemNotification = new Notification(title, {
-                body,
-                icon: '/logo.png',
-                tag,
-                data: { link }
-            });
+            const shown = await showViaServiceWorker(title, options);
+            if (shown) {
+                return;
+            }
+        } catch (_) {
+            // fallback below
+        }
 
-            systemNotification.onclick = () => {
-                window.focus();
-                systemNotification.close();
-
-                if (link) {
-                    router.push(link).catch(() => {
-                        // ignore navigation duplicates
-                    });
-                }
-            };
+        try {
+            showViaNotificationApi(title, options, link);
         } catch (_) {
             // ignore notification display failures
         }
@@ -131,6 +175,10 @@ export function useBrowserNotifications() {
         writeEnabledPreference(false);
     }
 
+    if (typeof document !== 'undefined') {
+        document.addEventListener('visibilitychange', syncPermissionFromBrowser);
+    }
+
     browserNotificationsInstance = {
         isSupported,
         permission,
@@ -138,7 +186,8 @@ export function useBrowserNotifications() {
         canShowSystemNotifications,
         requestPermission,
         setEnabled,
-        showSystemNotification
+        showSystemNotification,
+        syncPermissionFromBrowser
     };
 
     return browserNotificationsInstance;

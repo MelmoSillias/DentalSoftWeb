@@ -10,7 +10,7 @@ function isTabActiveForInAppPresentation() {
         return true;
     }
 
-    return !document.hidden && document.hasFocus();
+    return document.visibilityState === 'visible' && document.hasFocus();
 }
 
 export function useNotificationPresentation() {

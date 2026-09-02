@@ -218,4 +218,14 @@ const updateSW = registerSW({
     }
 });
 
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.addEventListener('message', (event) => {
+        if (event.data?.type === 'notification-click' && event.data.link) {
+            router.push(event.data.link).catch(() => {
+                // ignore navigation duplicates
+            });
+        }
+    });
+}
+
 app.mount('#app');
