@@ -35,6 +35,12 @@ function buildOverviewSteps(ctx) {
             },
             {
                 group: stepGroup,
+                target: '[data-tour="rapports-medecin.tabs"]',
+                title: 'Naviguer entre les sections',
+                content: 'Utilisez les onglets pour acceder rapidement a la synthese, l activite, les actes ou votre profil.'
+            },
+            {
+                group: stepGroup,
                 target: '[data-tour="rapports-medecin.global"]',
                 title: 'Vue d ensemble personnelle',
                 content: 'Cette synthese resume votre volume d activite et vos principaux indicateurs cliniques.'
@@ -49,6 +55,12 @@ function buildOverviewSteps(ctx) {
                 target: '[data-tour="rapports-reception.date"]',
                 title: 'Choisir la journee',
                 content: 'Le rapport reception est journalier. Changez de date pour revoir une autre journee d accueil.'
+            },
+            {
+                group: stepGroup,
+                target: '[data-tour="rapports-reception.tabs"]',
+                title: 'Naviguer entre les sections',
+                content: 'Basculez entre les stats du jour et le tableau par medecin selon votre besoin.'
             },
             {
                 group: stepGroup,
@@ -68,6 +80,12 @@ function buildOverviewSteps(ctx) {
         },
         {
             group: stepGroup,
+            target: '[data-tour="rapports-admin.tabs"]',
+            title: 'Naviguer entre les sections',
+            content: 'Les onglets regroupent la vue d ensemble, l activite, les finances, les soins et les medecins.'
+        },
+        {
+            group: stepGroup,
             target: '[data-tour="rapports-admin.global"]',
             title: 'Lire la synthese globale',
             content: 'Cette section resume l activite generale du cabinet sur la periode.'
@@ -84,6 +102,12 @@ function buildFinancialReportSteps(ctx) {
             target: '[data-tour="rapports-admin.range"]',
             title: 'Choisir la periode',
             content: 'Selectionnez une plage de dates pour recalculer l ensemble des statistiques du cabinet.'
+        },
+        {
+            group: stepGroup,
+            target: '[data-tour="rapports-admin.tabs"]',
+            title: 'Naviguer entre les sections',
+            content: 'Les onglets regroupent la vue d ensemble, l activite, les finances, les soins et les medecins.'
         },
         {
             group: stepGroup,
@@ -130,6 +154,12 @@ function buildClinicalReportSteps(ctx) {
         },
         {
             group: stepGroup,
+            target: '[data-tour="rapports-medecin.tabs"]',
+            title: 'Naviguer entre les sections',
+            content: 'Utilisez les onglets pour acceder rapidement a la synthese, l activite, les actes ou votre profil.'
+        },
+        {
+            group: stepGroup,
             target: '[data-tour="rapports-medecin.global"]',
             title: 'Vue d ensemble personnelle',
             content: 'Cette synthese resume votre volume d activite et vos principaux indicateurs cliniques.'
@@ -170,6 +200,12 @@ function buildReceptionReportSteps(ctx) {
             target: '[data-tour="rapports-reception.date"]',
             title: 'Choisir la journee',
             content: 'Le rapport reception est journalier. Changez de date pour revoir une autre journee d accueil.'
+        },
+        {
+            group: stepGroup,
+            target: '[data-tour="rapports-reception.tabs"]',
+            title: 'Naviguer entre les sections',
+            content: 'Basculez entre les stats du jour et le tableau par medecin selon votre besoin.'
         },
         {
             group: stepGroup,

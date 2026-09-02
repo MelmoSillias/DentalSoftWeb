@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, watch, createApp, nextTick } from 'vue';
 import FinanceCrossTablePrint, { printStyles } from './FinanceCrossTablePrint.vue';
 import FinanceCrossTableDayDialog from './FinanceCrossTableDayDialog.vue';
+import FinanceCrossTablePeriodDetails from './FinanceCrossTablePeriodDetails.vue';
 import Button from 'primevue/button';
 import DatePicker from 'primevue/datepicker';
 import SelectButton from 'primevue/selectbutton';
@@ -11,10 +12,11 @@ const props = defineProps({
     title: { type: String, default: 'Tableau croisé' },
     subtitle: { type: String, default: 'Répartition hebdomadaire des transactions validées par date de validation.' },
     className: { type: String, default: '' },
-    printerHeader: { type: String, default: '' }
+    printerHeader: { type: String, default: '' },
+    showPeriodDetails: { type: Boolean, default: false }
 });
 
-const { crossTableData, loading, fetchCrossTable } = useFinances();
+const { crossTableData, crossTablePeriodOverview, loading, fetchCrossTable, fetchCrossTablePeriodOverview } = useFinances();
 
 const printRef = ref(null);
 const dayDialogVisible = ref(false);
@@ -75,7 +77,31 @@ const loadCrossTable = async () => {
         month: sourceDate.getMonth() + 1,
         type: selectedType.value
     });
+
+    if (props.showPeriodDetails) {
+        await loadPeriodOverview(sourceDate);
+    }
 };
+
+const getMonthBounds = (sourceDate) => {
+    const year = sourceDate.getFullYear();
+    const month = sourceDate.getMonth();
+    const from = new Date(year, month, 1);
+    const to = new Date(year, month + 1, 0);
+    return { from, to };
+};
+
+const loadPeriodOverview = async (sourceDate) => {
+    const date = sourceDate instanceof Date ? sourceDate : new Date();
+    const { from, to } = getMonthBounds(date);
+    await fetchCrossTablePeriodOverview(toIsoDate(from), toIsoDate(to));
+};
+
+const periodOverviewLabel = computed(() =>
+    crossTablePeriodOverview.value?.dateLabel
+    || crossTableData.value?.monthLabel
+    || 'Période courante'
+);
 
 watch([monthPicker, selectedType], () => {
     loadCrossTable();
@@ -268,6 +294,15 @@ const openDayOverview = (week, weekday) => {
 
         <FinanceCrossTableDayDialog v-model:visible="dayDialogVisible" :date="selectedDay" />
     </section>
+
+    <FinanceCrossTablePeriodDetails
+        v-if="showPeriodDetails"
+        class="mt-4"
+        :overview="crossTablePeriodOverview"
+        :loading="loading.periodOverview"
+        :period-label="periodOverviewLabel"
+        scope-label="mois"
+    />
 </template>
 
 <style scoped>  

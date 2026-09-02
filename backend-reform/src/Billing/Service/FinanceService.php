@@ -393,10 +393,18 @@ class FinanceService
 
     public function getCrossTableDayOverview(string $date): array
     {
-        $from = DateTimeImmutable::createFromFormat('Y-m-d', $date)?->setTime(0, 0, 0);
-        $to = DateTimeImmutable::createFromFormat('Y-m-d', $date)?->setTime(23, 59, 59);
+        return $this->getCrossTablePeriodOverview($date, $date);
+    }
+
+    public function getCrossTablePeriodOverview(string $fromDate, string $toDate): array
+    {
+        $from = DateTimeImmutable::createFromFormat('Y-m-d', $fromDate)?->setTime(0, 0, 0);
+        $to = DateTimeImmutable::createFromFormat('Y-m-d', $toDate)?->setTime(23, 59, 59);
         if (!$from instanceof DateTimeImmutable || !$to instanceof DateTimeImmutable) {
             throw new \InvalidArgumentException('Date invalide.');
+        }
+        if ($from > $to) {
+            throw new \InvalidArgumentException('La date de début doit être antérieure ou égale à la date de fin.');
         }
 
         $fromMutable = DateTime::createFromImmutable($from);
@@ -452,9 +460,14 @@ class FinanceService
         $consultStats = $this->reportService->periodicConsultations($fromMutable, $toMutable);
         $receptionStats = $this->reportService->getReceptionStats($from, $to);
 
+        $dateLabel = $fromDate === $toDate
+            ? $from->format('d/m/Y')
+            : sprintf('%s - %s', $from->format('d/m/Y'), $to->format('d/m/Y'));
+
         return [
-            'date' => $date,
-            'dateLabel' => $from->format('d/m/Y'),
+            'date' => $fromDate,
+            'toDate' => $toDate,
+            'dateLabel' => $dateLabel,
             'transactions' => $mappedTransactions,
             'totals' => [
                 'revenue' => round($revenueTotal, 2),

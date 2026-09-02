@@ -186,6 +186,7 @@ export function useFinances() {
     const chartData = ref(defaultChartState());
     const crossTableData = ref(defaultCrossTableState());
     const crossTableDayOverview = ref(defaultDayOverviewState());
+    const crossTablePeriodOverview = ref(defaultDayOverviewState());
     const fixedCharges = ref([]);
     const fixedChargesTotal = ref(0);
     const paymentMethods = ref([]);
@@ -196,6 +197,7 @@ export function useFinances() {
         charts: false,
         crossTable: false,
         dayOverview: false,
+        periodOverview: false,
         fixedCharges: false,
         methods: false,
         assurances: false,
@@ -524,6 +526,42 @@ export function useFinances() {
         }
     };
 
+    const fetchCrossTablePeriodOverview = async (from, to) => {
+        loading.value.periodOverview = true;
+        error.value = null;
+        try {
+            if (!from || !to) {
+                throw new Error('Les dates from et to sont requises.');
+            }
+            if (isFinancesTourMockEnabled()) {
+                const base = buildMockDayOverview(from);
+                if (from !== to) {
+                    const fromDate = new Date(`${from}T12:00:00`);
+                    const toDate = new Date(`${to}T12:00:00`);
+                    base.dateLabel = `${fromDate.toLocaleDateString('fr-FR')} - ${toDate.toLocaleDateString('fr-FR')}`;
+                    base.toDate = to;
+                }
+                crossTablePeriodOverview.value = base;
+                return crossTablePeriodOverview.value;
+            }
+
+            const params = new URLSearchParams({ from: String(from), to: String(to) });
+            const res = await http.get(`${apiPrefix}/finances/cross-table/period-overview?${params.toString()}`, {
+                headers: buildHeaders(false)
+            });
+            crossTablePeriodOverview.value = {
+                ...defaultDayOverviewState(),
+                ...(res.data || {})
+            };
+            return crossTablePeriodOverview.value;
+        } catch (err) {
+            handleError(err);
+            crossTablePeriodOverview.value = defaultDayOverviewState();
+        } finally {
+            loading.value.periodOverview = false;
+        }
+    };
+
     const createPaymentMethod = async (payload) => {
         loading.value.action = true;
         error.value = null;
@@ -751,6 +789,7 @@ export function useFinances() {
         chartData,
         crossTableData,
         crossTableDayOverview,
+        crossTablePeriodOverview,
         fixedCharges,
         fixedChargesTotal,
         paymentMethods,
@@ -761,6 +800,7 @@ export function useFinances() {
         fetchChartData,
         fetchCrossTable,
         fetchCrossTableDayOverview,
+        fetchCrossTablePeriodOverview,
         fetchFixedCharges,
         fetchPaymentMethods,
         fetchAssurances,
