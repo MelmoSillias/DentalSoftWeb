@@ -4,6 +4,7 @@ namespace App\Scheduling\Service;
 
 use App\Scheduling\Entity\Rdv;
 use App\IdentityAccess\Entity\User;
+use App\Communication\Service\NotificationLinkBuilder;
 use App\Shared\Event\EntityActionEvent;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
@@ -82,7 +83,7 @@ final class RdvNotificationService
                     'message' => $message,
                     'priority' => $priority,
                     'type' => $type,
-                    'link' => '/medecin/agenda',
+                    'link' => NotificationLinkBuilder::AGENDA_RDV,
                 ],
             )
         );

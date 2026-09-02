@@ -3,6 +3,7 @@ import { apiPrefix } from '@/config';
 import { useAuthStore } from '@/stores/auth';
 import { useNotificationsStore } from '@/stores/notifications';
 import { useMercureNotifications } from '@/composables/useMercureNotifications';
+import { normalizeNotificationItem } from '@/utils/notificationLinks';
 import http from '@/service/http';
 
 const buildAuthHeaders = (token, isJson = true) => {
@@ -42,7 +43,7 @@ export function useProfile() {
             }
 
             if (profile.value?.notifications?.length) {
-                notificationsStore.setNotifications(profile.value.notifications);
+                notificationsStore.setNotifications(profile.value.notifications.map(normalizeNotificationItem));
             }
 
             return profile.value;
@@ -94,7 +95,7 @@ export function useProfile() {
             const res = await http.get(`${apiPrefix}/me/notifications?filter=${filter}`, {
                 headers: buildAuthHeaders(auth.token, false)
             });
-            const items = res.data?.items || [];
+            const items = (res.data?.items || []).map(normalizeNotificationItem);
             notificationsStore.setNotifications(items);
             return items;
         } finally {

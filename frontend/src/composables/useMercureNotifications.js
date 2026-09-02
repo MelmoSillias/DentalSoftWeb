@@ -2,7 +2,7 @@ import { computed, watch } from 'vue';
 import { useAuthStore } from '@/stores/auth';
 import { useNotificationsStore } from '@/stores/notifications';
 import { useMercureClient } from '@/composables/realtime/useMercureClient';
-import http from '@/service/http';
+import { normalizeNotificationItem } from '@/utils/notificationLinks';
 
 const notificationHandlers = new Set();
 const BACKGROUND_POLL_MS = 30000;
@@ -29,7 +29,7 @@ async function refreshNotificationsFromRest({ emitNew = false } = {}) {
     }
 
     const response = await http.get('me/notifications?filter=all&limit=20');
-    const items = (response?.data?.items || []).map((item) => normalizeNotification(item));
+    const items = (response?.data?.items || []).map((item) => normalizeNotificationItem(item));
 
     if (emitNew) {
         emitNewNotifications(items);
@@ -39,16 +39,7 @@ async function refreshNotificationsFromRest({ emitNew = false } = {}) {
 }
 
 function normalizeNotification(item) {
-    return {
-        id: item?.id,
-        title: item?.title || 'Notification',
-        message: item?.message || '',
-        status: item?.status || (item?.read ? 'vu' : 'non_vu'),
-        type: item?.type || 'info',
-        priority: item?.priority || 'info',
-        createdAt: item?.createdAt || item?.date || null,
-        link: item?.link || null
-    };
+    return normalizeNotificationItem(item);
 }
 
 function emitNewNotifications(items = []) {

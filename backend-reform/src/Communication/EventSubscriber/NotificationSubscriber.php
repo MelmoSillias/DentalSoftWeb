@@ -9,6 +9,7 @@ use App\Shared\Event\EntityActionEvent;
 use App\Inventory\Entity\Consommable;
 use App\Patient\Entity\Patient;
 use App\Scheduling\Entity\Rdv;
+use App\Communication\Service\NotificationLinkBuilder;
 use App\Communication\Service\NotificationService;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 
@@ -80,7 +81,7 @@ final class NotificationSubscriber implements EventSubscriberInterface
                 'message' => sprintf('Nouveau patient ajouté : %s.', $patientName),
                 'priority' => $priority,
                 'type' => $type,
-                'link' => $link ?? '/reception/patients',
+                'link' => $link ?? NotificationLinkBuilder::patient($entity->getId()),
             ];
         }
 
@@ -94,7 +95,7 @@ final class NotificationSubscriber implements EventSubscriberInterface
                 'message' => $message,
                 'priority' => $priority,
                 'type' => $type,
-                'link' => $link ?? ($entity->getId() ? sprintf('/consultations/%d', $entity->getId()) : '/consultations'),
+                'link' => $link ?? NotificationLinkBuilder::consultation($entity->getId()),
             ];
         }
 
@@ -113,7 +114,7 @@ final class NotificationSubscriber implements EventSubscriberInterface
                 'message' => $message,
                 'priority' => $priority,
                 'type' => $type,
-                'link' => $link ?? '/agenda/rendez-vous',
+                'link' => $link ?? NotificationLinkBuilder::AGENDA_RDV,
             ];
         }
 
@@ -126,7 +127,7 @@ final class NotificationSubscriber implements EventSubscriberInterface
                 'message' => sprintf('Congé %s pour %s du %s au %s.', $action, $employeeName, $start, $end),
                 'priority' => $priority,
                 'type' => $type,
-                'link' => $link ?? '/admin/agenda/jours-conges',
+                'link' => $link ?? NotificationLinkBuilder::ADMIN_RH,
             ];
         }
 
@@ -138,7 +139,7 @@ final class NotificationSubscriber implements EventSubscriberInterface
                 'message' => sprintf('Consommable %s (%s) — stock %d, seuil %d.', $action, $entity->getNom(), $quantity, $threshold),
                 'priority' => $priority,
                 'type' => $type,
-                'link' => $link ?? '/admin/consommables',
+                'link' => $link ?? NotificationLinkBuilder::ADMIN_CONSUMABLES,
             ];
         }
 
@@ -147,7 +148,7 @@ final class NotificationSubscriber implements EventSubscriberInterface
                 'message' => sprintf('Compte utilisateur %s : %s.', $entity->getUsername(), $action),
                 'priority' => $priority,
                 'type' => $type,
-                'link' => $link ?? '/admin/users',
+                'link' => $link ?? NotificationLinkBuilder::ADMIN_USERS,
             ];
         }
 

@@ -2,6 +2,7 @@
 
 namespace App\Inventory\Service;
 
+use App\Communication\Service\NotificationLinkBuilder;
 use App\Communication\Service\NotificationRecipientResolver;
 use App\IdentityAccess\Entity\Employe;
 use App\IdentityAccess\Entity\User;
@@ -17,7 +18,7 @@ use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
 class ConsommableService
 {
-    private const CONSUMABLES_LINK = '/admin/consommables';
+    private const CONSUMABLES_LINK = NotificationLinkBuilder::ADMIN_CONSUMABLES;
 
     public function __construct(
         private EntityManagerInterface $em,

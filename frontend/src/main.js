@@ -12,7 +12,7 @@ import router from './router';
 import { useUiSettingsStore } from '@/stores/uiSettings';
 import cabinetConfig from '@/cabinetConfig';
 import { frLocale } from '@/locales/primevue-fr';
-import { devDebug, logAppError, setAppLoggerRouteResolver } from '@/utils/appLogger';
+import { navigateToNotificationLink } from '@/utils/notificationLinks';
 
 // Défensive: wrappe l'ajout/suppression de listeners sur matchMedia
 // pour éviter que des listeners tiers (ex: PrimeVue) lèvent des exceptions
@@ -221,9 +221,7 @@ const updateSW = registerSW({
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.addEventListener('message', (event) => {
         if (event.data?.type === 'notification-click' && event.data.link) {
-            router.push(event.data.link).catch(() => {
-                // ignore navigation duplicates
-            });
+            navigateToNotificationLink(router, event.data.link);
         }
     });
 }

@@ -17,6 +17,7 @@ use App\ClinicalRecord\Entity\FicheMedicale;
 use App\ClinicalRecord\Service\FicheMedicaleService;
 use App\Communication\Entity\SmsQueue;
 use App\Communication\Repository\SmsQueueRepository;
+use App\Communication\Service\NotificationLinkBuilder;
 use App\Communication\Service\NotificationRecipientResolver;
 use App\Communication\Service\SmsService;
 use App\Shared\Event\EntityActionEvent;
@@ -1078,7 +1079,7 @@ public function removeArchiveFile(int $patientId, string $fileUrl): array
                     'message' => $message,
                     'priority' => 'info',
                     'type' => 'success',
-                    'link' => '/reception/patients',
+                    'link' => NotificationLinkBuilder::patient($patient->getId()),
                 ],
             )
         );

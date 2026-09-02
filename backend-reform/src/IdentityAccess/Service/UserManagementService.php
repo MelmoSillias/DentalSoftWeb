@@ -2,6 +2,7 @@
 
 namespace App\IdentityAccess\Service;
 
+use App\Communication\Service\NotificationLinkBuilder;
 use App\Communication\Service\NotificationRecipientResolver;
 use App\IdentityAccess\Entity\Employe;
 use App\IdentityAccess\Entity\User;
@@ -17,7 +18,7 @@ use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
 class UserManagementService
 {
-    private const USERS_LINK = '/admin/utilisateurs';
+    private const USERS_LINK = NotificationLinkBuilder::ADMIN_USERS;
 
     public function __construct(
         private UserRepository $userRepo,

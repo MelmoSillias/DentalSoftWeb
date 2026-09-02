@@ -7,6 +7,7 @@ use App\IdentityAccess\Entity\User;
 use App\Shared\Event\EntityActionEvent;
 use App\Scheduling\Repository\CongeRepository;
 use App\IdentityAccess\Repository\EmployeRepository;
+use App\Communication\Service\NotificationLinkBuilder;
 use App\Communication\Service\NotificationRecipientResolver;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
@@ -249,7 +250,7 @@ class CongeService
                     'message' => $message,
                     'priority' => 'info',
                     'type' => 'info',
-                    'link' => '/admin/agenda/jours-conges',
+                    'link' => NotificationLinkBuilder::ADMIN_RH,
                 ],
             )
         );

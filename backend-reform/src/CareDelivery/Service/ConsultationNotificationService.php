@@ -4,6 +4,7 @@ namespace App\CareDelivery\Service;
 
 use App\CareDelivery\Entity\Consultation;
 use App\IdentityAccess\Entity\User;
+use App\Communication\Service\NotificationLinkBuilder;
 use App\Shared\Event\EntityActionEvent;
 use App\Focus\Service\FocusRealtimePublisher;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
@@ -52,9 +53,7 @@ final class ConsultationNotificationService
             $type = 'warning';
         }
 
-        $link = $consultation->getId()
-            ? sprintf('/medecin/consultation/%d/details', $consultation->getId())
-            : '/medecin/consultation/en-attente';
+        $link = NotificationLinkBuilder::consultation($consultation->getId(), true);
 
         $this->eventDispatcher->dispatch(
             new EntityActionEvent(

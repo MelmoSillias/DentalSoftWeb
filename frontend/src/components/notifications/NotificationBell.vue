@@ -6,6 +6,7 @@ import Popover from 'primevue/popover';
 import OverlayBadge from 'primevue/overlaybadge';
 import { useMercureNotifications } from '@/composables/useMercureNotifications';
 import { useNotificationPresentation } from '@/composables/useNotificationPresentation';
+import { navigateToNotificationLink } from '@/utils/notificationLinks';
 
 const props = defineProps({
     variant: {
@@ -205,7 +206,7 @@ function formatNotificationDate(value) {
 async function handleNotificationClick(notification) {
     await markNotificationRead(notification);
     if (notification?.link) {
-        router.push(notification.link);
+        await navigateToNotificationLink(router, notification.link);
     }
 
     try {

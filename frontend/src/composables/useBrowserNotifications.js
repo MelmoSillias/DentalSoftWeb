@@ -1,4 +1,5 @@
 import { ref, computed } from 'vue';
+import { navigateToNotificationLink, resolveNotificationLink } from '@/utils/notificationLinks';
 import router from '@/router';
 
 const STORAGE_KEY = 'dentalsoft:desktop-notifications';
@@ -45,7 +46,7 @@ function buildNotificationOptions(notification) {
         body,
         icon: '/logo.png',
         tag,
-        data: { link: notification.link || null }
+        data: { link: resolveNotificationLink(notification.link) || null }
     };
 }
 
@@ -71,9 +72,7 @@ function showViaNotificationApi(title, options, link) {
         systemNotification.close();
 
         if (link) {
-            router.push(link).catch(() => {
-                // ignore navigation duplicates
-            });
+            navigateToNotificationLink(router, link);
         }
     };
 }
@@ -152,7 +151,7 @@ export function useBrowserNotifications() {
 
         const title = notification.title || 'Notification';
         const options = buildNotificationOptions(notification);
-        const link = notification.link || null;
+        const link = resolveNotificationLink(notification.link);
 
         try {
             const shown = await showViaServiceWorker(title, options);

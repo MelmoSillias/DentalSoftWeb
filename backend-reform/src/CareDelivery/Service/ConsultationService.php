@@ -22,6 +22,7 @@ use App\CareDelivery\Entity\OrdonnanceLigne;
 use App\CareDelivery\Repository\ConsultationRepository; 
 use App\ClinicalRecord\Entity\FicheMedicale;
 use App\ClinicalRecord\Repository\FicheMedicaleRepository;
+use App\Communication\Service\NotificationLinkBuilder;
 use App\Communication\Service\NotificationRecipientResolver;
 use App\Shared\Event\EntityActionEvent;
 use App\Focus\Service\FocusRealtimePublisher;
@@ -1192,7 +1193,7 @@ class ConsultationService
                     'message' => $message,
                     'priority' => 'info',
                     'type' => 'success',
-                    'link' => '/reception/caisse',
+                    'link' => NotificationLinkBuilder::CAISSE,
                 ],
             )
         );
@@ -1579,7 +1580,7 @@ class ConsultationService
                 [
                     'priority' => 'warning',
                     'type' => 'warning',
-                    'link' => '/consultations',
+                    'link' => NotificationLinkBuilder::consultation(null, true),
                 ],
             )
         );
