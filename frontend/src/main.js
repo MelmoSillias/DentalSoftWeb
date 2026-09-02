@@ -13,6 +13,7 @@ import { useUiSettingsStore } from '@/stores/uiSettings';
 import cabinetConfig from '@/cabinetConfig';
 import { frLocale } from '@/locales/primevue-fr';
 import { navigateToNotificationLink } from '@/utils/notificationLinks';
+import { logAppError, devDebug, setAppLoggerRouteResolver } from '@/utils/appLogger';
 
 // Défensive: wrappe l'ajout/suppression de listeners sur matchMedia
 // pour éviter que des listeners tiers (ex: PrimeVue) lèvent des exceptions
