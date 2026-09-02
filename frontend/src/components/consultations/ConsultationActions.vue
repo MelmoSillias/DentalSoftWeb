@@ -33,12 +33,7 @@ const emit = defineEmits(['cancel', 'open-dossier', 'edit-facture', 'view-detail
 
 const canCancel = computed(() => props.consultation?.state === 0);
 const canOpenDossier = computed(() => props.consultation?.state !== 0 && Boolean(props.consultation?.patientId));
-const canEditFacture = computed(
-    () =>
-        props.canModifyInvoiceByRole &&
-        props.consultation?.state === 1 &&
-        props.consultation?.factModifiable === true
-);
+const canEditFacture = computed(() => props.canModifyInvoiceByRole && props.consultation?.state === 1 && props.consultation?.factModifiable === true);
 
 const actions = computed(() => {
     const base = [];
@@ -89,6 +84,5 @@ const actions = computed(() => {
 </script>
 
 <template>
-    <ActionsComposants :actions="actions" :show-labels="false" dropdown-label="Actions" dropdown-icon="pi pi-ellipsis-v"
-        dropdown-severity="secondary" size="small" />
+    <ActionsComposants :actions="actions" :show-labels="false" dropdown-label="Actions" dropdown-icon="pi pi-ellipsis-v" dropdown-severity="secondary" size="small" />
 </template>

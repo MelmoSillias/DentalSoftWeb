@@ -13,11 +13,7 @@ export const fetchAdminAppreciations = async (token, { limit = 200 } = {}) => {
 };
 
 export const setAdminAppreciationPublished = async (token, id, isPublished) => {
-    const res = await http.patch(
-        `${apiPrefix}/administration/appreciations/${id}/publish`,
-        { isPublished },
-        { headers: authHeaders(token) }
-    );
+    const res = await http.patch(`${apiPrefix}/administration/appreciations/${id}/publish`, { isPublished }, { headers: authHeaders(token) });
 
     return res.data;
 };

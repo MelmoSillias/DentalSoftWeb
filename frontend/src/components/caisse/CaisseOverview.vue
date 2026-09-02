@@ -11,16 +11,7 @@ import Tag from 'primevue/tag';
 import { computed, ref } from 'vue';
 import PanelDatePicker from '@/components/common/PanelDatePicker.vue';
 import { useInternetFeatures } from '@/composables/useInternetFeatures';
-import {
-    canModifyFacture,
-    canPreviewFacture,
-    canSettleFacture,
-    computeFactureStatus,
-    computePriorReliquat,
-    isInsuranceFactureRow,
-    isValidatedEmptyFacture,
-    targetIsFreeFacture
-} from '@/utils/factureRow';
+import { canModifyFacture, canPreviewFacture, canSettleFacture, computeFactureStatus, computePriorReliquat, isInsuranceFactureRow, isValidatedEmptyFacture, targetIsFreeFacture } from '@/utils/factureRow';
 
 const { isInternetFeaturesEnabled } = useInternetFeatures();
 
@@ -90,10 +81,11 @@ const overviewDisplayOptions = [
     { label: 'Affichage regroupé', value: 'grouped' }
 ];
 
-const normalizeText = (value) => String(value ?? '')
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '');
+const normalizeText = (value) =>
+    String(value ?? '')
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
 
 const matchesQuery = (parts, query) => {
     if (!query) return true;
@@ -122,26 +114,15 @@ const formatPatientName = (row) => {
 
 const priorReliquatAmount = (row) => computePriorReliquat(row);
 
-const isInvoiceStylePayment = (payment) =>
-    ['devis', 'facture', 'facture_assurance'].includes(payment?.type);
+const isInvoiceStylePayment = (payment) => ['devis', 'facture', 'facture_assurance'].includes(payment?.type);
 
 const filteredFactures = computed(() => {
     const list = Array.isArray(props.factures) ? props.factures : [];
     const query = factureSearchQuery.value;
     return list.filter((row) => {
-        const patient = (row.patient && typeof row.patient === 'object')
-            ? `${row.patient.nom || ''} ${row.patient.prenom || ''}`.trim()
-            : (row.patient || '');
+        const patient = row.patient && typeof row.patient === 'object' ? `${row.patient.nom || ''} ${row.patient.prenom || ''}`.trim() : row.patient || '';
         const status = computeStatus(row).label;
-        return matchesQuery([
-            patient,
-            row.telephone,
-            row.date,
-            formatDate(row.date),
-            row.montant,
-            row.reste,
-            status
-        ], query);
+        return matchesQuery([patient, row.telephone, row.date, formatDate(row.date), row.montant, row.reste, status], query);
     });
 });
 
@@ -155,9 +136,7 @@ const filteredFacturesR = computed(() => {
 
         const invoicePayments = payments
             .filter((payment) => {
-                const isInvoicePay = payment?.type === 'facture'
-                    || payment?.type === 'facture_assurance'
-                    || payment?.type === 'devis';
+                const isInvoicePay = payment?.type === 'facture' || payment?.type === 'facture_assurance' || payment?.type === 'devis';
                 return isInvoicePay && Number(payment?.factureId) === invoiceId;
             })
             .map((payment) => ({
@@ -166,17 +145,19 @@ const filteredFacturesR = computed(() => {
                 detailLabel: payment?.type === 'facture_assurance' ? 'Paiement assurance' : 'Paiement facture'
             }));
 
-        const consultationTicket = consultationId > 0
-            ? payments.find((payment) => payment?.type === 'ticket' && Number(payment?.consultationId) === consultationId)
-            : null;
+        const consultationTicket = consultationId > 0 ? payments.find((payment) => payment?.type === 'ticket' && Number(payment?.consultationId) === consultationId) : null;
 
         const detailRows = [
             ...invoicePayments,
-            ...(consultationTicket ? [{
-                ...consultationTicket,
-                detailType: 'consultation_ticket',
-                detailLabel: 'Ticket consultation'
-            }] : [])
+            ...(consultationTicket
+                ? [
+                      {
+                          ...consultationTicket,
+                          detailType: 'consultation_ticket',
+                          detailLabel: 'Ticket consultation'
+                      }
+                  ]
+                : [])
         ];
 
         return {
@@ -203,18 +184,21 @@ const computePaymentModeTag = (payment) => {
 };
 
 const paymentModeOptions = computed(() => {
-    const options = (Array.isArray(props.payments) ? props.payments : []).reduce((acc, payment) => {
-        const modeId = Number(payment?.modeId);
-        if (!Number.isFinite(modeId) || modeId <= 0) {
+    const options = (Array.isArray(props.payments) ? props.payments : []).reduce(
+        (acc, payment) => {
+            const modeId = Number(payment?.modeId);
+            if (!Number.isFinite(modeId) || modeId <= 0) {
+                return acc;
+            }
+
+            if (!acc.some((option) => option.value === modeId)) {
+                acc.push({ label: payment?.mode || 'Autre', value: modeId });
+            }
+
             return acc;
-        }
-
-        if (!acc.some((option) => option.value === modeId)) {
-            acc.push({ label: payment?.mode || 'Autre', value: modeId });
-        }
-
-        return acc;
-    }, [{ label: 'Tous les modes', value: 'all' }]);
+        },
+        [{ label: 'Tous les modes', value: 'all' }]
+    );
 
     return options.sort((left, right) => {
         if (left.value === 'all') return -1;
@@ -231,17 +215,7 @@ const filteredPayments = computed(() => {
             return false;
         }
 
-        return matchesQuery([
-            row.patient,
-            row.telephone,
-            row.date,
-            formatDate(row.date, true),
-            row.montant,
-            row.mode,
-            row.type,
-            row.insuranceStatus,
-            computePaymentModeTag(row).label
-        ], query);
+        return matchesQuery([row.patient, row.telephone, row.date, formatDate(row.date, true), row.montant, row.mode, row.type, row.insuranceStatus, computePaymentModeTag(row).label], query);
     });
 });
 
@@ -279,7 +253,7 @@ const detailedStats = computed(() => {
         freeNotValidated: 0,
         validatedEmpty: 0
     };
-    allInvoices.forEach(inv => {
+    allInvoices.forEach((inv) => {
         const reste = Number(inv.reste) || 0;
         const montant = Number(inv.montant) || 0;
         if (isValidatedEmptyFacture(inv) || inv.insuranceStatus === 'validated_empty') {
@@ -291,7 +265,7 @@ const detailedStats = computed(() => {
     });
 
     const paymentModeBreakdown = {};
-    allPayments.forEach(p => {
+    allPayments.forEach((p) => {
         const mode = p.mode || 'Autre';
         paymentModeBreakdown[mode] = (paymentModeBreakdown[mode] || 0) + (Number(p.montant) || 0);
     });
@@ -329,7 +303,7 @@ const formatDate = (value, withTime = false) => {
     return `${datePart} ${timePart}`;
 };
 
-const displayPhone = (value) => (props.hidePatientPhone ? 'Masqué par l\'administrateur' : (value || '—'));
+const displayPhone = (value) => (props.hidePatientPhone ? "Masqué par l'administrateur" : value || '—');
 
 const computeStatus = (row) => computeFactureStatus(row);
 
@@ -354,7 +328,7 @@ const handleValidate = (row) => emit('validate-free', row);
 const handleModify = (row) => emit('modify', row);
 const handlePreview = (row) => emit('preview', row);
 
-const detailRowClass = (row) => row?.detailType === 'consultation_ticket' ? 'ticket-row' : '';
+const detailRowClass = (row) => (row?.detailType === 'consultation_ticket' ? 'ticket-row' : '');
 
 const isInvoiceExpanded = (invoice) => expandedInvoiceCards.value[String(invoice?.id)] === true;
 
@@ -378,7 +352,6 @@ const printDetailPayment = (row) => {
 
     emit('print-payment', row);
 };
-
 </script>
 
 <template>
@@ -387,27 +360,21 @@ const printDetailPayment = (row) => {
         <div class="top-bar">
             <div class="display-mode-selector">
                 <span class="label">Mode d'affichage</span>
-                <SelectButton v-model="overviewDisplayMode" :options="overviewDisplayOptions" optionLabel="label"
-                    optionValue="value" />
+                <SelectButton v-model="overviewDisplayMode" :options="overviewDisplayOptions" optionLabel="label" optionValue="value" />
             </div>
             <div class="top-bar-actions">
                 <div class="top-bar-metric">
                     <span class="top-bar-metric__label">Encaissements du jour</span>
                     <strong class="top-bar-metric__value">{{ totalRevenueLabel }}</strong>
-                    <span v-if="cabinetPaymentsShare > 0" class="top-bar-metric__hint">
-                        Dont services cabinet : {{ cabinetShareLabel }}
-                    </span>
+                    <span v-if="cabinetPaymentsShare > 0" class="top-bar-metric__hint"> Dont services cabinet : {{ cabinetShareLabel }} </span>
                 </div>
-                <Button label="Statistiques" icon="pi pi-chart-bar" severity="secondary" outlined
-                    @click="showStatsModal = true" />
+                <Button label="Statistiques" icon="pi pi-chart-bar" severity="secondary" outlined @click="showStatsModal = true" />
             </div>
         </div>
 
         <!-- Modal statistiques détaillées -->
-        <Dialog v-model:visible="showStatsModal" header="Statistiques détaillées" :modal="true"
-            :style="{ width: '600px' }" class="stats-dialog">
+        <Dialog v-model:visible="showStatsModal" header="Statistiques détaillées" :modal="true" :style="{ width: '600px' }" class="stats-dialog">
             <div class="stats-dashboard">
-
                 <!-- KPI principaux -->
                 <div class="stats-kpis">
                     <div class="kpi-card">
@@ -417,9 +384,7 @@ const printDetailPayment = (row) => {
                     <div class="kpi-card success">
                         <span>Encaissements du jour</span>
                         <strong>{{ formatFcfa(detailedStats.totalPaid) }}</strong>
-                        <small v-if="cabinetPaymentsShare > 0" class="kpi-card__hint">
-                            Dont services cabinet : {{ cabinetShareLabel }}
-                        </small>
+                        <small v-if="cabinetPaymentsShare > 0" class="kpi-card__hint"> Dont services cabinet : {{ cabinetShareLabel }} </small>
                     </div>
                     <div class="kpi-card danger">
                         <span>Restant</span>
@@ -457,11 +422,8 @@ const printDetailPayment = (row) => {
                             <strong class="payment-breakdown-card__amount">{{ formatFcfa(item.amount) }}</strong>
                         </div>
                     </div>
-                    <div v-else class="rounded-xl border border-dashed border-surface-300 px-4 py-5 text-sm text-surface-500 dark:border-surface-600 dark:text-surface-400">
-                        Aucun paiement enregistré sur la période.
-                    </div>
+                    <div v-else class="rounded-xl border border-dashed border-surface-300 px-4 py-5 text-sm text-surface-500 dark:border-surface-600 dark:text-surface-400">Aucun paiement enregistré sur la période.</div>
                 </div>
-
             </div>
         </Dialog>
 
@@ -482,22 +444,18 @@ const printDetailPayment = (row) => {
                     </div>
                     <div class="filter-item">
                         <label>Affichage</label>
-                        <Select v-model="factureTypeModel" :options="factureTypeOptions" optionLabel="label"
-                            optionValue="value" />
+                        <Select v-model="factureTypeModel" :options="factureTypeOptions" optionLabel="label" optionValue="value" />
                     </div>
                     <div class="filter-item">
                         <label>Période</label>
-                        <PanelDatePicker v-model="factureRangeModel" dateFormat="yy-mm-dd" showIcon
-                            fluid :disabled="periodFilterDisabled" />
+                        <PanelDatePicker v-model="factureRangeModel" dateFormat="yy-mm-dd" showIcon fluid :disabled="periodFilterDisabled" />
                     </div>
                     <Button label="Rafraîchir" icon="pi pi-refresh" text @click="emit('refresh-factures')" />
                 </div>
             </div>
 
             <!-- Vue standard -->
-            <DataTable v-if="overviewDisplayMode === 'standard'" class="rounded-xl overflow-hidden"
-                :value="filteredFactures" dataKey="id" :loading="facturesLoading" paginator :rows="10"
-                :rowsPerPageOptions="[5, 10, 20]" responsiveLayout="scroll">
+            <DataTable v-if="overviewDisplayMode === 'standard'" class="rounded-xl overflow-hidden" :value="filteredFactures" dataKey="id" :loading="facturesLoading" paginator :rows="10" :rowsPerPageOptions="[5, 10, 20]" responsiveLayout="scroll">
                 <Column field="date" header="Date" sortable>
                     <template #body="{ data }">{{ formatDate(data.date) }}</template>
                 </Column>
@@ -537,37 +495,34 @@ const printDetailPayment = (row) => {
                     <template #body="{ data }">
                         <div class="flex flex-wrap gap-2">
                             <Tag :value="computeStatus(data).label" :severity="computeStatus(data).severity" />
-                            <Tag v-if="computeInsuranceBadge(data)" :value="computeInsuranceBadge(data).label"
-                                :severity="computeInsuranceBadge(data).severity" icon="pi pi-shield" />
+                            <Tag v-if="computeInsuranceBadge(data)" :value="computeInsuranceBadge(data).label" :severity="computeInsuranceBadge(data).severity" icon="pi pi-shield" />
                         </div>
                     </template>
                 </Column>
                 <Column header="Actions" style="width: 240px">
                     <template #body="{ data }">
                         <div class="flex gap-2 flex-wrap">
-                            <Button v-if="canSettle(data)" :label="targetIsFree(data) ? 'Valider' : 'Régler'" size="small"
-                                :severity="targetIsFree(data) ? 'secondary' : 'success'" icon="pi pi-wallet"
-                                @click="targetIsFree(data) ? handleValidate(data) : handlePay(data)" />
-                            <Button v-if="canModify(data)" size="small" severity="secondary" icon="pi pi-pencil"
-                                @click="handleModify(data)" />
-                            <Button v-if="canPreview(data)" size="small" icon="pi pi-eye" severity="info"
-                                class="p-button-outlined" @click="handlePreview(data)" />
-                            <Button v-if="canPreview(data) && isInternetFeaturesEnabled" size="small" icon="pi pi-send" severity="help"
-                                @click="emit('send-invoice-sms', data)" />
+                            <Button
+                                v-if="canSettle(data)"
+                                :label="targetIsFree(data) ? 'Valider' : 'Régler'"
+                                size="small"
+                                :severity="targetIsFree(data) ? 'secondary' : 'success'"
+                                icon="pi pi-wallet"
+                                @click="targetIsFree(data) ? handleValidate(data) : handlePay(data)"
+                            />
+                            <Button v-if="canModify(data)" size="small" severity="secondary" icon="pi pi-pencil" @click="handleModify(data)" />
+                            <Button v-if="canPreview(data)" size="small" icon="pi pi-eye" severity="info" class="p-button-outlined" @click="handlePreview(data)" />
+                            <Button v-if="canPreview(data) && isInternetFeaturesEnabled" size="small" icon="pi pi-send" severity="help" @click="emit('send-invoice-sms', data)" />
                         </div>
                     </template>
                 </Column>
             </DataTable>
 
             <!-- Vue regroupée améliorée -->
-            <DataView v-else class="grouped-invoices-view" :value="filteredFacturesR" :loading="facturesLoading" paginator
-                :rows="10" :rowsPerPageOptions="[5, 10, 20]">
+            <DataView v-else class="grouped-invoices-view" :value="filteredFacturesR" :loading="facturesLoading" paginator :rows="10" :rowsPerPageOptions="[5, 10, 20]">
                 <template #list="slotProps">
                     <div class="flex flex-col gap-4 p-2">
-                        <article v-for="invoice in slotProps.items" :key="invoice.id"
-                            class="inv-card"
-                            :class="`inv-card--${computeStatus(invoice).severity}`">
-
+                        <article v-for="invoice in slotProps.items" :key="invoice.id" class="inv-card" :class="`inv-card--${computeStatus(invoice).severity}`">
                             <!-- ── DOCUMENT HEADER ── -->
                             <div class="inv-doc-header">
                                 <div class="inv-doc-badge" :class="{ 'inv-doc-badge--insurance': isInsuranceRow(invoice) }">
@@ -596,18 +551,15 @@ const printDetailPayment = (row) => {
                                     </div>
                                     <div class="inv-tags">
                                         <Tag :value="computeStatus(invoice).label" :severity="computeStatus(invoice).severity" />
-                                        <Tag v-if="computeInsuranceBadge(invoice)"
-                                            :value="computeInsuranceBadge(invoice).label"
-                                            :severity="computeInsuranceBadge(invoice).severity"
-                                            icon="pi pi-shield" />
+                                        <Tag v-if="computeInsuranceBadge(invoice)" :value="computeInsuranceBadge(invoice).label" :severity="computeInsuranceBadge(invoice).severity" icon="pi pi-shield" />
                                     </div>
                                 </div>
 
                                 <!-- Montants -->
                                 <div class="inv-amounts-block">
-                                    <div v-if="isInsuranceRow(invoice)" class="inv-amount-row" style="margin-bottom:0.2rem">
+                                    <div v-if="isInsuranceRow(invoice)" class="inv-amount-row" style="margin-bottom: 0.2rem">
                                         <span class="inv-amount-label">Total facture</span>
-                                        <span class="inv-amount-value" style="font-size:0.82rem;opacity:0.7">{{ formatFcfa(invoice.insurance?.montantTotal ?? invoice.montantTotal) }}</span>
+                                        <span class="inv-amount-value" style="font-size: 0.82rem; opacity: 0.7">{{ formatFcfa(invoice.insurance?.montantTotal ?? invoice.montantTotal) }}</span>
                                     </div>
                                     <div class="inv-amount-row">
                                         <span class="inv-amount-label">{{ isInsuranceRow(invoice) ? 'Part patient' : 'Total facture' }}</span>
@@ -615,8 +567,7 @@ const printDetailPayment = (row) => {
                                     </div>
                                     <div class="inv-amount-row inv-amount-row--reste">
                                         <span class="inv-amount-label">Reste à payer</span>
-                                        <span class="inv-amount-value inv-amount-reste"
-                                            :class="`inv-amount-reste--${computeStatus(invoice).severity}`">
+                                        <span class="inv-amount-value inv-amount-reste" :class="`inv-amount-reste--${computeStatus(invoice).severity}`">
                                             {{ formatFcfa(invoice.reste) }}
                                         </span>
                                     </div>
@@ -629,24 +580,26 @@ const printDetailPayment = (row) => {
 
                             <!-- ── ACTIONS ── -->
                             <div class="inv-actions">
-                                <Button v-if="canSettle(invoice)"
+                                <Button
+                                    v-if="canSettle(invoice)"
                                     :label="targetIsFree(invoice) ? 'Valider' : 'Régler'"
                                     size="small"
                                     :severity="targetIsFree(invoice) ? 'secondary' : 'success'"
                                     icon="pi pi-wallet"
-                                    @click="targetIsFree(invoice) ? handleValidate(invoice) : handlePay(invoice)" />
-                                <Button v-if="canModify(invoice)" label="Modifier" size="small" severity="secondary"
-                                    icon="pi pi-pencil" @click="handleModify(invoice)" />
-                                <Button v-if="canPreview(invoice)" label="Voir" size="small" icon="pi pi-eye"
-                                    severity="info" outlined @click="handlePreview(invoice)" />
-                                <Button v-if="canPreview(invoice) && isInternetFeaturesEnabled" icon="pi pi-send" size="small" severity="help"
-                                    text @click="emit('send-invoice-sms', invoice)" />
-                                <Button size="small" text
+                                    @click="targetIsFree(invoice) ? handleValidate(invoice) : handlePay(invoice)"
+                                />
+                                <Button v-if="canModify(invoice)" label="Modifier" size="small" severity="secondary" icon="pi pi-pencil" @click="handleModify(invoice)" />
+                                <Button v-if="canPreview(invoice)" label="Voir" size="small" icon="pi pi-eye" severity="info" outlined @click="handlePreview(invoice)" />
+                                <Button v-if="canPreview(invoice) && isInternetFeaturesEnabled" icon="pi pi-send" size="small" severity="help" text @click="emit('send-invoice-sms', invoice)" />
+                                <Button
+                                    size="small"
+                                    text
                                     :label="isInvoiceExpanded(invoice) ? 'Masquer paiements' : 'Voir paiements'"
                                     :icon="isInvoiceExpanded(invoice) ? 'pi pi-chevron-up' : 'pi pi-chevron-down'"
                                     :badge="invoice.detailCount > 0 ? String(invoice.detailCount) : undefined"
                                     badgeSeverity="info"
-                                    @click="toggleInvoiceExpansion(invoice)" />
+                                    @click="toggleInvoiceExpansion(invoice)"
+                                />
                             </div>
 
                             <!-- ── PAIEMENTS LIÉS (dépliants) ── -->
@@ -661,12 +614,14 @@ const printDetailPayment = (row) => {
                                         Aucun paiement enregistré pour cette facture.
                                     </div>
                                     <div v-else class="inv-payments-list">
-                                        <div v-for="(detail, idx) in invoice.detailRows"
+                                        <div
+                                            v-for="(detail, idx) in invoice.detailRows"
                                             :key="`${invoice.id}-${detail.pId || idx}`"
                                             class="inv-payment-row"
-                                            :class="detail.detailType === 'consultation_ticket' ? 'inv-payment-row--ticket' : 'inv-payment-row--facture'">
+                                            :class="detail.detailType === 'consultation_ticket' ? 'inv-payment-row--ticket' : 'inv-payment-row--facture'"
+                                        >
                                             <div class="inv-payment-icon-wrap">
-                                                <i :class="detail.detailType === 'consultation_ticket' ? 'pi pi-ticket' : (detail.detailType === 'assurance_payment' ? 'pi pi-shield' : 'pi pi-wallet')"></i>
+                                                <i :class="detail.detailType === 'consultation_ticket' ? 'pi pi-ticket' : detail.detailType === 'assurance_payment' ? 'pi pi-shield' : 'pi pi-wallet'"></i>
                                             </div>
                                             <div class="inv-payment-info">
                                                 <span class="inv-payment-type">
@@ -680,8 +635,7 @@ const printDetailPayment = (row) => {
                                             </div>
                                             <div class="inv-payment-right">
                                                 <strong class="inv-payment-amount">{{ formatFcfa(detail.montant) }}</strong>
-                                                <Button icon="pi pi-print" size="small" text rounded
-                                                    @click="printDetailPayment(detail)" />
+                                                <Button icon="pi pi-print" size="small" text rounded @click="printDetailPayment(detail)" />
                                             </div>
                                         </div>
                                     </div>
@@ -707,18 +661,14 @@ const printDetailPayment = (row) => {
                     </div>
                     <div class="filter-item">
                         <label>Période</label>
-                        <PanelDatePicker v-model="paymentRangeModel" dateFormat="yy-mm-dd" showIcon
-                            fluid />
+                        <PanelDatePicker v-model="paymentRangeModel" dateFormat="yy-mm-dd" showIcon fluid />
                     </div>
-                    <Button label="Imprimer la période" icon="pi pi-print" severity="primary"
-                        @click="emit('print-payments')" />
+                    <Button label="Imprimer la période" icon="pi pi-print" severity="primary" @click="emit('print-payments')" />
                     <Button label="Rafraîchir" icon="pi pi-refresh" text @click="emit('refresh-payments')" />
                 </div>
             </div>
 
-            <DataTable class="rounded-xl overflow-hidden" :value="filteredPayments" dataKey="pId"
-                :loading="paymentsLoading" paginator :rows="10" :rowsPerPageOptions="[5, 10, 20]"
-                responsiveLayout="scroll">
+            <DataTable class="rounded-xl overflow-hidden" :value="filteredPayments" dataKey="pId" :loading="paymentsLoading" paginator :rows="10" :rowsPerPageOptions="[5, 10, 20]" responsiveLayout="scroll">
                 <Column field="date" header="Date" sortable>
                     <template #body="{ data }">{{ formatDate(data.date, true) }}</template>
                 </Column>
@@ -732,8 +682,7 @@ const printDetailPayment = (row) => {
                 <Column field="mode" header="Mode" sortable>
                     <template #body="{ data }">
                         <div class="flex flex-wrap gap-2">
-                            <Tag :value="computePaymentModeTag(data).label"
-                                :severity="computePaymentModeTag(data).severity" />
+                            <Tag :value="computePaymentModeTag(data).label" :severity="computePaymentModeTag(data).severity" />
                             <Tag v-if="isInsurancePayment(data)" value="Assurance" severity="info" icon="pi pi-shield" />
                         </div>
                     </template>
@@ -741,16 +690,14 @@ const printDetailPayment = (row) => {
                 <Column header="Actions" style="width: 140px">
                     <template #body="{ data }">
                         <div class="flex gap-2">
-                            <Button :icon="isInvoiceStylePayment(data) ? 'pi pi-print' : 'pi pi-ticket'" text
-                                @click="emit(isInvoiceStylePayment(data) ? 'print-payment' : 'print-receipt', data)" />
+                            <Button :icon="isInvoiceStylePayment(data) ? 'pi pi-print' : 'pi pi-ticket'" text @click="emit(isInvoiceStylePayment(data) ? 'print-payment' : 'print-receipt', data)" />
                             <Button v-if="isInternetFeaturesEnabled" icon="pi pi-send" text @click="emit('send-receipt-sms', data)" />
                         </div>
                     </template>
                 </Column>
                 <template #paginatorend>
                     <div class="payment-paginator-filters">
-                        <Select v-model="paymentModeFilter" :options="paymentModeOptions" optionLabel="label"
-                            optionValue="value" />
+                        <Select v-model="paymentModeFilter" :options="paymentModeOptions" optionLabel="label" optionValue="value" />
                     </div>
                 </template>
             </DataTable>
@@ -959,7 +906,6 @@ const printDetailPayment = (row) => {
     flex-wrap: wrap;
     gap: 0.6rem;
 }
-
 
 .invoice-amounts {
     display: flex;
@@ -1204,17 +1150,37 @@ const printDetailPayment = (row) => {
     font-size: 0.85rem;
 }
 
-.status-item.paid { background: #dcfce7; }
-.status-item.partial { background: #fef9c3; }
-.status-item.unpaid { background: #fee2e2; }
-.status-item.free { background: #e2e8f0; }
-.status-item.validated { background: #dbeafe; }
+.status-item.paid {
+    background: #dcfce7;
+}
+.status-item.partial {
+    background: #fef9c3;
+}
+.status-item.unpaid {
+    background: #fee2e2;
+}
+.status-item.free {
+    background: #e2e8f0;
+}
+.status-item.validated {
+    background: #dbeafe;
+}
 
-.app-dark .status-item.paid { background: #064e3b; }
-.app-dark .status-item.partial { background: #f59e0b; }
-.app-dark .status-item.unpaid { background: #7f1d1d; }
-.app-dark .status-item.free { background: #1e293b; }
-.app-dark .status-item.validated { background: #1e3a5f; }
+.app-dark .status-item.paid {
+    background: #064e3b;
+}
+.app-dark .status-item.partial {
+    background: #f59e0b;
+}
+.app-dark .status-item.unpaid {
+    background: #7f1d1d;
+}
+.app-dark .status-item.free {
+    background: #1e293b;
+}
+.app-dark .status-item.validated {
+    background: #1e3a5f;
+}
 
 /* Dark mode */
 .app-dark .section-header {
@@ -1275,7 +1241,9 @@ const printDetailPayment = (row) => {
     border-left: 5px solid #94a3b8;
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
     overflow: hidden;
-    transition: box-shadow 0.2s ease, transform 0.2s ease;
+    transition:
+        box-shadow 0.2s ease,
+        transform 0.2s ease;
 }
 
 .inv-card:hover {
@@ -1284,10 +1252,18 @@ const printDetailPayment = (row) => {
 }
 
 /* Couleur de la bordure gauche selon statut */
-.inv-card--success  { border-left-color: #22c55e; }
-.inv-card--danger   { border-left-color: #ef4444; }
-.inv-card--warning  { border-left-color: #f59e0b; }
-.inv-card--secondary { border-left-color: #94a3b8; }
+.inv-card--success {
+    border-left-color: #22c55e;
+}
+.inv-card--danger {
+    border-left-color: #ef4444;
+}
+.inv-card--warning {
+    border-left-color: #f59e0b;
+}
+.inv-card--secondary {
+    border-left-color: #94a3b8;
+}
 
 /* En-tête document */
 .inv-doc-header {
@@ -1313,7 +1289,9 @@ const printDetailPayment = (row) => {
     padding: 0.2rem 0.55rem;
 }
 
-.inv-doc-badge .pi { font-size: 0.8rem; }
+.inv-doc-badge .pi {
+    font-size: 0.8rem;
+}
 
 .inv-doc-badge--insurance {
     background: #e0f2fe;
@@ -1420,10 +1398,18 @@ const printDetailPayment = (row) => {
     color: #0f172a;
 }
 
-.inv-amount-reste--success  { color: #16a34a; }
-.inv-amount-reste--danger   { color: #dc2626; }
-.inv-amount-reste--warning  { color: #d97706; }
-.inv-amount-reste--secondary { color: #64748b; }
+.inv-amount-reste--success {
+    color: #16a34a;
+}
+.inv-amount-reste--danger {
+    color: #dc2626;
+}
+.inv-amount-reste--warning {
+    color: #d97706;
+}
+.inv-amount-reste--secondary {
+    color: #64748b;
+}
 
 .inv-payment-count {
     margin-top: 0.4rem;
@@ -1434,7 +1420,9 @@ const printDetailPayment = (row) => {
     gap: 0.3rem;
 }
 
-.inv-payment-count .pi { font-size: 0.78rem; }
+.inv-payment-count .pi {
+    font-size: 0.78rem;
+}
 
 /* Barre d'actions */
 .inv-actions {
@@ -1465,7 +1453,9 @@ const printDetailPayment = (row) => {
     margin-bottom: 0.7rem;
 }
 
-.inv-payments-header .pi { color: #6366f1; }
+.inv-payments-header .pi {
+    color: #6366f1;
+}
 
 .inv-payments-empty {
     display: flex;
@@ -1494,8 +1484,13 @@ const printDetailPayment = (row) => {
     border-left: 4px solid transparent;
 }
 
-.inv-payment-row--facture { border-left-color: #10b981; }
-.inv-payment-row--ticket  { border-left-color: #f59e0b; background: rgba(245, 158, 11, 0.05); }
+.inv-payment-row--facture {
+    border-left-color: #10b981;
+}
+.inv-payment-row--ticket {
+    border-left-color: #f59e0b;
+    background: rgba(245, 158, 11, 0.05);
+}
 
 .inv-payment-icon-wrap {
     width: 30px;
@@ -1517,7 +1512,9 @@ const printDetailPayment = (row) => {
     color: #d97706;
 }
 
-.inv-payment-icon-wrap .pi { font-size: 0.9rem; }
+.inv-payment-icon-wrap .pi {
+    font-size: 0.9rem;
+}
 
 .inv-payment-info {
     flex: 1;
@@ -1567,13 +1564,19 @@ const printDetailPayment = (row) => {
     background: rgba(30, 41, 59, 0.6);
 }
 
-.app-dark .inv-amount-value { color: #e2e8f0; }
-.app-dark .inv-payment-amount { color: #e2e8f0; }
+.app-dark .inv-amount-value {
+    color: #e2e8f0;
+}
+.app-dark .inv-payment-amount {
+    color: #e2e8f0;
+}
 .app-dark .inv-amount-label,
 .app-dark .inv-patient-meta,
 .app-dark .inv-payment-meta,
 .app-dark .inv-payment-count,
-.app-dark .inv-doc-id { color: #94a3b8; }
+.app-dark .inv-doc-id {
+    color: #94a3b8;
+}
 
 .app-dark .inv-actions {
     background: rgba(15, 23, 42, 0.4);

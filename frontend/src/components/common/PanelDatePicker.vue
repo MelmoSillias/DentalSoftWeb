@@ -2,11 +2,7 @@
 import { computed, ref, watch } from 'vue';
 import DatePicker from 'primevue/datepicker';
 import Popover from 'primevue/popover';
-import {
-    buildDefaultDatePeriods,
-    DEFAULT_PERIOD_LABELS,
-    sameDayRange
-} from '@/utils/dateUtils';
+import { buildDefaultDatePeriods, DEFAULT_PERIOD_LABELS, sameDayRange } from '@/utils/dateUtils';
 
 const props = defineProps({
     modelValue: {
@@ -63,9 +59,7 @@ const activeKey = ref('custom');
 const draftRange = ref(normalizeRange(props.modelValue));
 
 const resolvedPeriods = computed(() => {
-    const base = props.periods && typeof props.periods === 'object'
-        ? { ...props.periods }
-        : buildDefaultDatePeriods();
+    const base = props.periods && typeof props.periods === 'object' ? { ...props.periods } : buildDefaultDatePeriods();
     if (!Object.prototype.hasOwnProperty.call(base, 'custom')) {
         base.custom = null;
     }
@@ -180,11 +174,7 @@ watch(
 
 <template>
     <div class="panel-date-picker" :class="{ 'w-full': fluid, 'opacity-60 pointer-events-none': disabled }">
-        <div
-            class="panel-date-picker__trigger relative flex items-center"
-            :class="fluid ? 'w-full' : ''"
-            @click="togglePanel"
-        >
+        <div class="panel-date-picker__trigger relative flex items-center" :class="fluid ? 'w-full' : ''" @click="togglePanel">
             <input
                 type="text"
                 readonly
@@ -192,11 +182,7 @@ watch(
                 :placeholder="placeholder"
                 :disabled="disabled"
                 class="p-inputtext p-component w-full cursor-pointer"
-                :class="[
-                    inputClass,
-                    showIcon ? 'pr-10' : '',
-                    showClear && displayValue ? 'pr-16' : ''
-                ]"
+                :class="[inputClass, showIcon ? 'pr-10' : '', showClear && displayValue ? 'pr-16' : '']"
             />
             <button
                 v-if="showClear && displayValue"
@@ -207,10 +193,7 @@ watch(
             >
                 <i class="pi pi-times text-xs" />
             </button>
-            <i
-                v-if="showIcon"
-                class="pi pi-calendar absolute right-3 top-1/2 -translate-y-1/2 text-surface-400 pointer-events-none"
-            />
+            <i v-if="showIcon" class="pi pi-calendar absolute right-3 top-1/2 -translate-y-1/2 text-surface-400 pointer-events-none" />
         </div>
 
         <Popover ref="panelRef" class="panel-date-picker__popover">
@@ -221,11 +204,7 @@ watch(
                         :key="entry.key"
                         type="button"
                         class="whitespace-nowrap rounded-lg px-3 py-2 text-left text-sm transition-colors"
-                        :class="
-                            activeKey === entry.key
-                                ? 'bg-primary-500 font-medium text-white'
-                                : 'text-surface-700 hover:bg-surface-100 dark:text-surface-200 dark:hover:bg-surface-800'
-                        "
+                        :class="activeKey === entry.key ? 'bg-primary-500 font-medium text-white' : 'text-surface-700 hover:bg-surface-100 dark:text-surface-200 dark:hover:bg-surface-800'"
                         @click="selectPeriod(entry.key)"
                     >
                         {{ entry.label }}
@@ -233,14 +212,7 @@ watch(
                 </aside>
 
                 <div class="sm:pl-3">
-                    <DatePicker
-                        :modelValue="draftRange"
-                        selectionMode="range"
-                        inline
-                        :manualInput="manualInput"
-                        :dateFormat="dateFormat"
-                        @update:modelValue="onCalendarUpdate"
-                    />
+                    <DatePicker :modelValue="draftRange" selectionMode="range" inline :manualInput="manualInput" :dateFormat="dateFormat" @update:modelValue="onCalendarUpdate" />
                 </div>
             </div>
         </Popover>

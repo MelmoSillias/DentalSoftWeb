@@ -77,18 +77,12 @@ const tabs = computed(() => [
 <template>
     <div class="bg-surface-0 dark:bg-surface-800/80 rounded-2xl shadow-lg border border-surface-200/50 dark:border-surface-700/50 overflow-hidden backdrop-blur-sm">
         <Tabs :value="activeTab" @update:value="activeTab = $event" class="dossier-tabs">
-            <TabList
-                class="flex flex-wrap gap-1 border-b border-surface-200/50 dark:border-surface-700/50 px-4 pt-4"
-                data-tour="patients-dossier.main-tabs"
-            >
+            <TabList class="flex flex-wrap gap-1 border-b border-surface-200/50 dark:border-surface-700/50 px-4 pt-4" data-tour="patients-dossier.main-tabs">
                 <Tab v-for="tab in tabs" :key="tab.id" :value="tab.id" class="flex-1 sm:flex-none">
                     <span class="flex items-center justify-center gap-2 px-2 py-1">
                         <i :class="tab.icon"></i>
                         <span class="hidden sm:inline">{{ tab.label }}</span>
-                        <span
-                            v-if="tab.badge"
-                            class="inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-primary-100 dark:bg-primary-900/40 px-1.5 py-0.5 text-[10px] font-semibold text-primary-700 dark:text-primary-300"
-                        >
+                        <span v-if="tab.badge" class="inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-primary-100 dark:bg-primary-900/40 px-1.5 py-0.5 text-[10px] font-semibold text-primary-700 dark:text-primary-300">
                             {{ tab.badge }}
                         </span>
                     </span>
@@ -116,22 +110,14 @@ const tabs = computed(() => [
                             />
                         </div>
                         <div data-tour="patients-dossier.archive-files">
-                            <ArchiveFilesSection
-                                :patient-id="patientId"
-                                :files="archiveFiles"
-                                @refresh="emit('refresh-archive')"
-                            />
+                            <ArchiveFilesSection :patient-id="patientId" :files="archiveFiles" @refresh="emit('refresh-archive')" />
                         </div>
                     </div>
                 </TabPanel>
 
                 <TabPanel value="clinique">
                     <div data-tour="patients-dossier.medical">
-                        <ListePatientConsultations
-                            v-if="isReception"
-                            :consultations="consultations"
-                            :loading="consultationsLoading"
-                        />
+                        <ListePatientConsultations v-if="isReception" :consultations="consultations" :loading="consultationsLoading" />
                         <FichesMedicalesSection
                             v-else
                             :fiches="fiches"
@@ -148,14 +134,7 @@ const tabs = computed(() => [
 
                 <TabPanel value="activite">
                     <div data-tour="patients-dossier.finance">
-                        <PatientActiviteFinancesSection
-                            :rdvs="rdvs"
-                            :paiements="paiements"
-                            :factures="factures"
-                            :consultations="consultations"
-                            :show-consultations="showConsultationsTab"
-                            @refresh="emit('refresh')"
-                        />
+                        <PatientActiviteFinancesSection :rdvs="rdvs" :paiements="paiements" :factures="factures" :consultations="consultations" :show-consultations="showConsultationsTab" @refresh="emit('refresh')" />
                     </div>
                 </TabPanel>
             </TabPanels>

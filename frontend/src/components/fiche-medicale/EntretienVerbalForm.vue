@@ -79,13 +79,7 @@ const affectionList = [
     'Autres'
 ];
 
-const questionsList = [
-    'Avez-vous deja ete hospitalise',
-    'Avez-vous ete opere sous anesthesie generale',
-    'Supportez-vous les anesthesies locales',
-    'Avez-vous deja subi une evaluation dentaire',
-    'Etes-vous sujet aux hemorragies'
-];
+const questionsList = ['Avez-vous deja ete hospitalise', 'Avez-vous ete opere sous anesthesie generale', 'Supportez-vous les anesthesies locales', 'Avez-vous deja subi une evaluation dentaire', 'Etes-vous sujet aux hemorragies'];
 
 const habitudesList = ['Tabac', 'Alcool', 'Autres'];
 
@@ -257,13 +251,7 @@ const deleteAntecedent = (row) => {
                         </div>
                         <h5 class="font-semibold text-surface-900 dark:text-surface-100">Anamnese</h5>
                     </div>
-                    <Textarea
-                        v-model="form.motifConsultation"
-                        rows="6"
-                        placeholder="Evolution de la maladie..."
-                        class="w-full rounded-xl border-surface-200 dark:border-surface-700 "
-                        @update:modelValue="(v) => updateField('motifConsultation', v)"
-                    />
+                    <Textarea v-model="form.motifConsultation" rows="6" placeholder="Evolution de la maladie..." class="w-full rounded-xl border-surface-200 dark:border-surface-700" @update:modelValue="(v) => updateField('motifConsultation', v)" />
                 </div>
 
                 <div v-if="isFemalePatient" class="p-4 rounded-xl bg-surface-50 dark:bg-surface-700/30 border border-surface-200 dark:border-surface-700 lg:col-span-4">
@@ -313,12 +301,7 @@ const deleteAntecedent = (row) => {
                             <h4 class="font-semibold text-surface-900 dark:text-surface-100">Prochain rendez-vous</h4>
                             <p class="text-sm text-surface-500 dark:text-surface-400 mt-1">Créer rapidement un nouveau rendez-vous pour ce patient.</p>
                         </div>
-                        <Button
-                            icon="pi pi-calendar-plus"
-                            label="Créer"
-                            size="small"
-                            @click="emit('open-rdv')"
-                        />
+                        <Button icon="pi pi-calendar-plus" label="Créer" size="small" @click="emit('open-rdv')" />
                     </div>
                 </div>
             </div>
@@ -424,18 +407,18 @@ const deleteAntecedent = (row) => {
                             optionLabel="label"
                             optionValue="value"
                             class="w-full"
-                            @update:modelValue="() => { antecedentDraft.option = null; antecedentDraft.customName = ''; }"
+                            @update:modelValue="
+                                () => {
+                                    antecedentDraft.option = null;
+                                    antecedentDraft.customName = '';
+                                }
+                            "
                         />
                     </div>
 
                     <div class="space-y-2">
                         <label class="text-sm font-medium text-surface-700 dark:text-surface-300">Element</label>
-                        <Select
-                            v-model="antecedentDraft.option"
-                            :options="antecedentOptionList"
-                            placeholder="Selectionnez une option"
-                            class="w-full"
-                        />
+                        <Select v-model="antecedentDraft.option" :options="antecedentOptionList" placeholder="Selectionnez une option" class="w-full" />
                     </div>
 
                     <div v-if="antecedentDraft.option === 'Autres'" class="space-y-2">
@@ -457,12 +440,7 @@ const deleteAntecedent = (row) => {
                 <template #footer>
                     <div class="flex items-center justify-end gap-2">
                         <Button label="Annuler" severity="secondary" outlined @click="showAntecedentDialog = false" />
-                        <Button
-                            label="Ajouter"
-                            icon="pi pi-check"
-                            :disabled="!antecedentDraft.option || (antecedentDraft.option === 'Autres' && !antecedentDraft.customName.trim())"
-                            @click="saveAntecedentDraft"
-                        />
+                        <Button label="Ajouter" icon="pi pi-check" :disabled="!antecedentDraft.option || (antecedentDraft.option === 'Autres' && !antecedentDraft.customName.trim())" @click="saveAntecedentDraft" />
                     </div>
                 </template>
             </Dialog>

@@ -1,9 +1,5 @@
 import { TourGuideClient } from '@sjmc11/tourguidejs/src/Tour';
-import {
-    activateTourScrollControls,
-    deactivateTourScrollControls,
-    enhanceTourStepsForLayout
-} from './shared/tourScrollControl';
+import { activateTourScrollControls, deactivateTourScrollControls, enhanceTourStepsForLayout } from './shared/tourScrollControl';
 
 const baseOptions = {
     autoScroll: true,
@@ -75,12 +71,14 @@ export async function startTourGuide({ group, steps, options = {}, onAfterExit, 
 
     const enhancedSteps = enhanceTourStepsForLayout(steps);
 
-    tg.onFinish(wrapTourLifecycleCallback(async () => {
-        if (typeof onFinish === 'function') {
-            await onFinish();
-        }
-        return true;
-    }));
+    tg.onFinish(
+        wrapTourLifecycleCallback(async () => {
+            if (typeof onFinish === 'function') {
+                await onFinish();
+            }
+            return true;
+        })
+    );
 
     tg.onAfterExit(wrapTourLifecycleCallback(onAfterExit));
 

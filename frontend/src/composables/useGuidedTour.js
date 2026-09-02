@@ -24,11 +24,7 @@ export function useGuidedTour({
     const isGuidedTourStarting = ref(false);
 
     const handleGuidedTourRequest = async (event) => {
-        const {
-            routeName: eventRouteName,
-            taskId = 'overview',
-            variantId = null
-        } = event?.detail ?? {};
+        const { routeName: eventRouteName, taskId = 'overview', variantId = null } = event?.detail ?? {};
 
         if (eventRouteName !== routeName || isGuidedTourStarting.value) {
             return;

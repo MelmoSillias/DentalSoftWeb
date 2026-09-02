@@ -1,11 +1,51 @@
+<script setup>
+import { computed } from 'vue';
+import PrintA4Page from './PrintA4Page.vue';
+import PrintDocumentHeader from './PrintDocumentHeader.vue';
+import logoImg from '@/assets/logo.png';
+
+const props = defineProps({
+    doc: { type: Object, default: () => ({}) },
+    title: { type: String, default: 'Facture assurance' },
+    logoSrc: { type: String, default: logoImg }
+});
+
+const assureFields = computed(() => (Array.isArray(props.doc?.assureFields) ? props.doc.assureFields : []));
+
+const lignes = computed(() => {
+    if (Array.isArray(props.doc?.contenus) && props.doc.contenus.length) {
+        return props.doc.contenus;
+    }
+    return (props.doc?.lignes || []).map((line) => ({
+        designation: line.designation,
+        qte: line.quantite ?? line.qte ?? 1,
+        montant: line.prix ?? line.montant ?? 0,
+        total: line.total ?? 0,
+        attribution: line.attribution ?? 'medecin'
+    }));
+});
+
+const tauxCouvertureLabel = computed(() => {
+    const rate = props.doc?.tauxCouverture ?? props.doc?.assurance?.tauxCouverture;
+    return rate == null || rate === '' ? '—' : `${rate}%`;
+});
+
+const restePatient = computed(() => {
+    if (props.doc?.restePatient != null) return props.doc.restePatient;
+    if (props.doc?.assurance?.restePatient != null) return props.doc.assurance.restePatient;
+    return null;
+});
+
+const formatMoney = (value) => {
+    const num = Number(value || 0);
+    return `${num.toLocaleString('fr-FR')} FCFA`;
+};
+</script>
+
 <template>
     <PrintA4Page :logo-src="logoSrc">
         <template #header>
-            <PrintDocumentHeader
-                :title="title || 'Facture assurance'"
-                :doc-id="doc?.id"
-                :date="doc?.date || doc?.dateFacture"
-            />
+            <PrintDocumentHeader :title="title || 'Facture assurance'" :doc-id="doc?.id" :date="doc?.date || doc?.dateFacture" />
         </template>
 
         <div class="print-info-card">
@@ -20,9 +60,7 @@
             <div class="assurance-title">
                 <strong>Assurance :</strong>
                 {{ doc?.assurance?.nom || doc?.assuranceSnapshot?.nom || '—' }}
-                <span v-if="doc?.assurance?.code || doc?.assuranceSnapshot?.code" class="muted">
-                    ({{ doc?.assurance?.code || doc?.assuranceSnapshot?.code }})
-                </span>
+                <span v-if="doc?.assurance?.code || doc?.assuranceSnapshot?.code" class="muted"> ({{ doc?.assurance?.code || doc?.assuranceSnapshot?.code }}) </span>
             </div>
 
             <div v-if="assureFields.length" class="assure-grid">
@@ -82,7 +120,7 @@
         </table>
 
         <p v-if="doc?.cabinetServicesFootnote || doc?.hasCabinetServices" class="cabinet-footnote">
-            {{ doc?.cabinetServicesFootnote || 'Les services marqués « Service cabinet » sont facturés par le cabinet et ne relèvent pas de l\'honoraire du praticien.' }}
+            {{ doc?.cabinetServicesFootnote || "Les services marqués « Service cabinet » sont facturés par le cabinet et ne relèvent pas de l'honoraire du praticien." }}
         </p>
 
         <div class="sign-row">
@@ -97,52 +135,6 @@
         </div>
     </PrintA4Page>
 </template>
-
-<script setup>
-import { computed } from 'vue';
-import PrintA4Page from './PrintA4Page.vue';
-import PrintDocumentHeader from './PrintDocumentHeader.vue';
-import logoImg from '@/assets/logo.png';
-
-const props = defineProps({
-    doc: { type: Object, default: () => ({}) },
-    title: { type: String, default: 'Facture assurance' },
-    logoSrc: { type: String, default: logoImg }
-});
-
-const assureFields = computed(() =>
-    Array.isArray(props.doc?.assureFields) ? props.doc.assureFields : []
-);
-
-const lignes = computed(() => {
-    if (Array.isArray(props.doc?.contenus) && props.doc.contenus.length) {
-        return props.doc.contenus;
-    }
-    return (props.doc?.lignes || []).map((line) => ({
-        designation: line.designation,
-        qte: line.quantite ?? line.qte ?? 1,
-        montant: line.prix ?? line.montant ?? 0,
-        total: line.total ?? 0,
-        attribution: line.attribution ?? 'medecin'
-    }));
-});
-
-const tauxCouvertureLabel = computed(() => {
-    const rate = props.doc?.tauxCouverture ?? props.doc?.assurance?.tauxCouverture;
-    return rate == null || rate === '' ? '—' : `${rate}%`;
-});
-
-const restePatient = computed(() => {
-    if (props.doc?.restePatient != null) return props.doc.restePatient;
-    if (props.doc?.assurance?.restePatient != null) return props.doc.assurance.restePatient;
-    return null;
-});
-
-const formatMoney = (value) => {
-    const num = Number(value || 0);
-    return `${num.toLocaleString('fr-FR')} FCFA`;
-};
-</script>
 
 <style scoped>
 .assurance-card {

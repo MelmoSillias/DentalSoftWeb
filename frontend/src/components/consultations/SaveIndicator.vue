@@ -24,7 +24,8 @@ const props = defineProps({
     floating: {
         type: Boolean,
         default: false
-    },minimalDesign: {
+    },
+    minimalDesign: {
         type: Boolean,
         default: false
     }
@@ -58,13 +59,9 @@ const wrapperClass = computed(() => {
 <!-- SaveIndicator.vue -->
 <template>
     <div v-if="minimalDesign" class="flex items-center gap-3">
-
         <!-- Status dot -->
         <div class="flex items-center gap-2 text-sm">
-            <span 
-                class="w-2.5 h-2.5 rounded-full"
-                :style="{ backgroundColor: status.tone }"
-            ></span>
+            <span class="w-2.5 h-2.5 rounded-full" :style="{ backgroundColor: status.tone }"></span>
 
             <span class="text-surface-700 dark:text-surface-300 font-medium">
                 {{ status.text }}
@@ -80,14 +77,7 @@ const wrapperClass = computed(() => {
         </span>
 
         <!-- Save button (icon only) -->
-        <Button 
-            icon="pi pi-save"
-            text
-            rounded
-            size="small"
-            :disabled="savingCount > 0 || !dirtySections.length"
-            @click="emit('save-all')"
-        />
+        <Button icon="pi pi-save" text rounded size="small" :disabled="savingCount > 0 || !dirtySections.length" @click="emit('save-all')" />
     </div>
 
     <div v-else class="rounded-2xl border border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-r from-surface-0 to-surface-50/80 dark:from-surface-800 dark:to-surface-900/80 p-5 shadow-sm" :class="wrapperClass">
@@ -102,12 +92,11 @@ const wrapperClass = computed(() => {
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="space-y-1">
                     <div class="flex items-center gap-2">
                         <span class="font-semibold text-surface-900 dark:text-surface-100">{{ status.text }}</span>
-                        <Badge v-if="savingCount > 0" :value="savingCount" severity="info" 
-                            class="px-2 py-0.5 text-xs animate-pulse" />
+                        <Badge v-if="savingCount > 0" :value="savingCount" severity="info" class="px-2 py-0.5 text-xs animate-pulse" />
                     </div>
                     <div class="flex items-center gap-2 text-sm text-surface-600 dark:text-surface-400">
                         <i class="pi pi-clock"></i>
@@ -121,8 +110,11 @@ const wrapperClass = computed(() => {
                 <div v-if="dirtySections.length" class="flex flex-wrap items-center gap-2">
                     <span class="text-sm font-medium text-surface-700 dark:text-surface-300">Modifications en attente :</span>
                     <div class="flex flex-wrap gap-1">
-                        <span v-for="section in dirtySections" :key="section"
-                            class="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 text-sm font-medium border border-amber-200 dark:border-amber-800">
+                        <span
+                            v-for="section in dirtySections"
+                            :key="section"
+                            class="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 text-sm font-medium border border-amber-200 dark:border-amber-800"
+                        >
                             <i class="pi pi-exclamation-circle text-xs"></i>
                             {{ section }}
                         </span>
@@ -140,11 +132,11 @@ const wrapperClass = computed(() => {
                     <span class="text-sm text-surface-600 dark:text-surface-300">Auto-sauvegarde</span>
                     <ToggleSwitch :modelValue="autoSaveEnabled" @update:modelValue="(value) => emit('update:autoSaveEnabled', value)" />
                 </div>
-                <Button 
-                    label="Enregistrer tout" 
-                    icon="pi pi-save" 
+                <Button
+                    label="Enregistrer tout"
+                    icon="pi pi-save"
                     size="small"
-                    :disabled="savingCount > 0 || !dirtySections.length" 
+                    :disabled="savingCount > 0 || !dirtySections.length"
                     @click="emit('save-all')"
                     class="rounded-xl px-5 py-2.5 font-medium shadow-sm hover:shadow-md transition-all bg-gradient-to-r from-primary-500 to-primary-600 border-0 text-white disabled:opacity-50 disabled:cursor-not-allowed"
                 />
@@ -158,11 +150,8 @@ const wrapperClass = computed(() => {
                 <span>{{ savingCount }} section(s)</span>
             </div>
             <div class="w-full h-2 bg-surface-100 dark:bg-surface-700 rounded-full overflow-hidden">
-                <div class="h-full bg-gradient-to-r from-primary-500 to-primary-600 rounded-full animate-pulse" 
-                    style="width: 80%" />
+                <div class="h-full bg-gradient-to-r from-primary-500 to-primary-600 rounded-full animate-pulse" style="width: 80%" />
             </div>
         </div>
     </div>
 </template>
- 
- 

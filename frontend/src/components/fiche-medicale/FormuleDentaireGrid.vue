@@ -59,8 +59,8 @@ const wrapperClass = (tooth) => {
             state === 'causale'
                 ? 'ring-2 ring-red-400 ring-offset-1 dark:ring-offset-surface-900'
                 : state === 'data'
-                    ? 'ring-2 ring-emerald-400 ring-offset-1 dark:ring-offset-surface-900'
-                    : 'ring-2 ring-primary-400 ring-offset-1 dark:ring-offset-surface-900';
+                  ? 'ring-2 ring-emerald-400 ring-offset-1 dark:ring-offset-surface-900'
+                  : 'ring-2 ring-primary-400 ring-offset-1 dark:ring-offset-surface-900';
     }
     return `group relative flex items-center justify-center rounded-xl p-0.5 cursor-pointer transition-all duration-200 ${hover} ${ring}`;
 };
@@ -144,18 +144,8 @@ const gridItems = computed(() => {
                 </div>
 
                 <!-- Dent -->
-                <div
-                    v-else-if="item.kind === 'tooth'"
-                    class="flex h-full"
-                    :class="item.role === 'upper' ? 'items-end' : 'items-start'"
-                >
-                    <button
-                        type="button"
-                        class="mx-auto"
-                        :class="wrapperClass(item.tooth)"
-                        :title="`Dent ${item.tooth}${toothSummary(formData, item.tooth) ? ' — ' + toothSummary(formData, item.tooth) : ''}`"
-                        @click="onToothClick(item.tooth)"
-                    >
+                <div v-else-if="item.kind === 'tooth'" class="flex h-full" :class="item.role === 'upper' ? 'items-end' : 'items-start'">
+                    <button type="button" class="mx-auto" :class="wrapperClass(item.tooth)" :title="`Dent ${item.tooth}${toothSummary(formData, item.tooth) ? ' — ' + toothSummary(formData, item.tooth) : ''}`" @click="onToothClick(item.tooth)">
                         <span class="block h-14 w-9 sm:h-[4.25rem] sm:w-11" :class="toothColorClass(item.tooth)">
                             <ToothSvg :tooth="item.tooth" />
                         </span>
@@ -165,10 +155,7 @@ const gridItems = computed(() => {
                 <!-- Numéro -->
                 <div v-else class="flex flex-col items-center justify-center leading-none py-0.5">
                     <span class="text-[11px] sm:text-xs" :class="labelClass(item.tooth)">{{ item.tooth }}</span>
-                    <span
-                        v-if="toothSummary(formData, item.tooth)"
-                        class="text-[8px] sm:text-[9px] text-surface-400 dark:text-surface-500 truncate max-w-full px-0.5"
-                    >
+                    <span v-if="toothSummary(formData, item.tooth)" class="text-[8px] sm:text-[9px] text-surface-400 dark:text-surface-500 truncate max-w-full px-0.5">
                         {{ toothSummary(formData, item.tooth) }}
                     </span>
                 </div>
@@ -185,13 +172,7 @@ const gridItems = computed(() => {
                     <div>
                         <div class="text-[9px] text-center text-surface-400 mb-1 uppercase">Droit</div>
                         <div class="flex flex-wrap justify-center gap-1">
-                            <button
-                                v-for="cell in rightCells(row)"
-                                :key="'mob-r-' + row.role + '-' + cell.tooth"
-                                type="button"
-                                :class="wrapperClass(cell.tooth)"
-                                @click="onToothClick(cell.tooth)"
-                            >
+                            <button v-for="cell in rightCells(row)" :key="'mob-r-' + row.role + '-' + cell.tooth" type="button" :class="wrapperClass(cell.tooth)" @click="onToothClick(cell.tooth)">
                                 <span class="flex flex-col items-center">
                                     <span class="block h-10 w-7" :class="toothColorClass(cell.tooth)">
                                         <ToothSvg :tooth="cell.tooth" />
@@ -204,13 +185,7 @@ const gridItems = computed(() => {
                     <div>
                         <div class="text-[9px] text-center text-surface-400 mb-1 uppercase">Gauche</div>
                         <div class="flex flex-wrap justify-center gap-1">
-                            <button
-                                v-for="cell in leftCells(row)"
-                                :key="'mob-l-' + row.role + '-' + cell.tooth"
-                                type="button"
-                                :class="wrapperClass(cell.tooth)"
-                                @click="onToothClick(cell.tooth)"
-                            >
+                            <button v-for="cell in leftCells(row)" :key="'mob-l-' + row.role + '-' + cell.tooth" type="button" :class="wrapperClass(cell.tooth)" @click="onToothClick(cell.tooth)">
                                 <span class="flex flex-col items-center">
                                     <span class="block h-10 w-7" :class="toothColorClass(cell.tooth)">
                                         <ToothSvg :tooth="cell.tooth" />

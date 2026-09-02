@@ -112,36 +112,36 @@ switcherMode.value = 'tabs';
 activeSection.value = 'consult';
 
 const toFullName = (employee = {}) => {
-    return employee.label
-        || employee.fullName
-        || employee.fullname
-        || employee.FullName
-        || employee.Fullname
-        || `${employee.prenom ?? ''} ${employee.nom ?? ''}`.trim()
-        || employee.nom
-        || '';
+    return employee.label || employee.fullName || employee.fullname || employee.FullName || employee.Fullname || `${employee.prenom ?? ''} ${employee.nom ?? ''}`.trim() || employee.nom || '';
 };
 
-const medecinsOptions = computed(() => (data.medecins || []).map((item) => ({
-    id: item.id,
-    label: toFullName(item)
-})));
+const medecinsOptions = computed(() =>
+    (data.medecins || []).map((item) => ({
+        id: item.id,
+        label: toFullName(item)
+    }))
+);
 
-const infirmiersOptions = computed(() => (data.infirmiers || []).map((item) => ({
-    id: item.id,
-    label: toFullName(item)
-})));
+const infirmiersOptions = computed(() =>
+    (data.infirmiers || []).map((item) => ({
+        id: item.id,
+        label: toFullName(item)
+    }))
+);
 
-const sallesOptions = computed(() => (data.salles || []).map((item) => ({
-    id: item.id,
-    label: item.label || item.nom || item.name || ''
-})));
+const sallesOptions = computed(() =>
+    (data.salles || []).map((item) => ({
+        id: item.id,
+        label: item.label || item.nom || item.name || ''
+    }))
+);
 
-const normalizeText = (value) => String(value || '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .trim();
+const normalizeText = (value) =>
+    String(value || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim();
 
 const resolveConnectedMedecinId = () => {
     const user = auth.user || {};
@@ -370,7 +370,7 @@ const sections = computed(() => {
             saveDisabled: planTraitementStatus.saveDisabled,
             saving: saving.planTraitement,
             onSave: () => savePlanTraitementSection()
-        },
+        }
     ];
 
     if (isSimplifiedFicheFormEnabled.value) {
@@ -394,13 +394,7 @@ const sections = computed(() => {
 });
 
 const saveSyntheseSection = async ({ silent = false } = {}) => {
-    await Promise.all([
-        saveEntretienSection({ silent }),
-        saveExamensSection({ silent }),
-        saveDocumentsSection({ silent }),
-        saveBilansSection({ silent }),
-        savePlanTraitementSection({ silent })
-    ]);
+    await Promise.all([saveEntretienSection({ silent }), saveExamensSection({ silent }), saveDocumentsSection({ silent }), saveBilansSection({ silent }), savePlanTraitementSection({ silent })]);
 };
 
 const handleRdvSaved = () => {
@@ -601,7 +595,7 @@ const handleSaveAntecedent = async (payload) => {
         showAntecedentDialog.value = false;
         emit('patient-loaded', { ...data.patient });
     } catch (_) {
-        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible d\'ajouter l\'antecedent.', life: 3000 });
+        toast.add({ severity: 'error', summary: 'Erreur', detail: "Impossible d'ajouter l'antecedent.", life: 3000 });
     } finally {
         savingAntecedent.value = false;
     }
@@ -741,9 +735,7 @@ const handlePrintFiche = async () => {
 
     try {
         const res = await fetchPatientFichePrintData(patientId, ficheIdRef.value, token);
-        const sectionsToPrint = isSimplifiedFicheFormEnabled.value
-            ? ['synthese']
-            : ['entretien', 'examens', 'images', 'plan', 'bilan', 'seances'];
+        const sectionsToPrint = isSimplifiedFicheFormEnabled.value ? ['synthese'] : ['entretien', 'examens', 'images', 'plan', 'bilan', 'seances'];
         await printComponent(PrintFicheV2Body, {
             patient: res.patient,
             fiche: res.fiche,
@@ -777,13 +769,13 @@ const normalizeOrdonnanceDraft = (ordo = {}) => ({
     note: ordo.note || '',
     lignes: Array.isArray(ordo.lignes)
         ? ordo.lignes.map((line) => ({
-            designation: line.designation || line.medicament || '',
-            posologie: line.posologie || '',
-            frequence: line.frequence || '',
-            duree: line.duree || '',
-            quantite: Number(line.quantite) || 1,
-            instructions: line.instructions || ''
-        }))
+              designation: line.designation || line.medicament || '',
+              posologie: line.posologie || '',
+              frequence: line.frequence || '',
+              duree: line.duree || '',
+              quantite: Number(line.quantite) || 1,
+              instructions: line.instructions || ''
+          }))
         : []
 });
 
@@ -963,33 +955,17 @@ defineExpose({
                     </div>
 
                     <div class="leading-tight">
-                        <h3 class="text-base font-semibold text-surface-900 dark:text-surface-50">
-                            Fiche médicale
-                        </h3>
-                        <span class="text-xs text-surface-500 dark:text-surface-400">
-                            Mode focus
-                        </span>
+                        <h3 class="text-base font-semibold text-surface-900 dark:text-surface-50">Fiche médicale</h3>
+                        <span class="text-xs text-surface-500 dark:text-surface-400"> Mode focus </span>
                     </div>
 
                     <!-- Status -->
-                    <Tag
-                        :value="isReadonly ? 'Terminée' : 'En cours'"
-                        :severity="isReadonly ? 'success' : 'info'"
-                        class="ml-2"
-                    />
+                    <Tag :value="isReadonly ? 'Terminée' : 'En cours'" :severity="isReadonly ? 'success' : 'info'" class="ml-2" />
                 </div>
 
                 <!-- Right -->
                 <div class="flex items-center gap-2">
-                    <Button
-                        icon="pi pi-print"
-                        severity="secondary"
-                        text
-                        rounded
-                        size="small"
-                        :disabled="isClotureProcessing"
-                        @click="handlePrintFiche"
-                    />
+                    <Button icon="pi pi-print" severity="secondary" text rounded size="small" :disabled="isClotureProcessing" @click="handlePrintFiche" />
 
                     <div v-if="!isReadonly">
                         <SaveIndicator
@@ -1005,121 +981,108 @@ defineExpose({
                 </div>
             </div>
 
-            <div class="border border-surface-200/60 dark:border-surface-700/60 bg-surface-0 dark:bg-surface-800/70 shadow-sm space-y-0" :class="isClotureProcessing ? 'pointer-events-none opacity-80' : ''" style="margin-top: 0px !important;">
+            <div class="border border-surface-200/60 dark:border-surface-700/60 bg-surface-0 dark:bg-surface-800/70 shadow-sm space-y-0" :class="isClotureProcessing ? 'pointer-events-none opacity-80' : ''" style="margin-top: 0px !important">
                 <div v-if="isReadonly" class="border-b border-amber-200/80 bg-amber-50/90 px-5 py-4 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">
                     <i class="pi pi-lock text-amber-600 dark:text-amber-400" /> Cette consultation a été cloturée.
                 </div>
                 <div :class="isReadonly ? 'opacity-95' : ''">
                     <SectionSwitcher v-model="activeSection" :sections="sections" :mode="switcherMode" :init-key="sectionInitKey">
-                    <template #consult>
-                        <div :class="isSectionInteractionLocked('consult') ? 'pointer-events-none select-none' : ''">
-                            <ConsultationEnCoursForm
-                                v-model="data.consultation"
-                                v-model:diagnostic-positif="data.bilans.diagnosticPositif"
-                                :show-diagnostic-positif="showDiagnosticPositifInConsultation"
-                                :soins="soinsList"
-                                :formule-dentaire="data.bilans?.bilanDentaire?.formuleDentaire"
-                                :medecins="data.medecins"
-                                :medecins-options="medecinsOptions"
-                                :infirmiers="data.infirmiers"
-                                :infirmiers-options="infirmiersOptions"
-                                :salles="data.salles"
-                                :salles-options="sallesOptions"
-                                :ordonnances="data.ordonnances"
-                                :medecin-readonly="isMedecinUser || isReadonly"
-                                :readonly="isReadonly"
-                                :loading="loading || isClotureProcessing"
-                                :saving="Boolean(saving.consult || (showDiagnosticPositifInConsultation && saving.bilans))"
-                                :cloture-loading="isClotureProcessing"
-                                @save="saveConsultSection"
-                                @cloture="handleCloture"
-                                @open-ordonnance="openOrdonnanceModal"
-                                @view-ordonnance="openViewOrdonnance"
-                                @edit-ordonnance="openEditOrdonnance"
-                                @print-ordonnance="handlePrintOrdonnance"
-                            />
-                        </div>
-                    </template>
+                        <template #consult>
+                            <div :class="isSectionInteractionLocked('consult') ? 'pointer-events-none select-none' : ''">
+                                <ConsultationEnCoursForm
+                                    v-model="data.consultation"
+                                    v-model:diagnostic-positif="data.bilans.diagnosticPositif"
+                                    :show-diagnostic-positif="showDiagnosticPositifInConsultation"
+                                    :soins="soinsList"
+                                    :formule-dentaire="data.bilans?.bilanDentaire?.formuleDentaire"
+                                    :medecins="data.medecins"
+                                    :medecins-options="medecinsOptions"
+                                    :infirmiers="data.infirmiers"
+                                    :infirmiers-options="infirmiersOptions"
+                                    :salles="data.salles"
+                                    :salles-options="sallesOptions"
+                                    :ordonnances="data.ordonnances"
+                                    :medecin-readonly="isMedecinUser || isReadonly"
+                                    :readonly="isReadonly"
+                                    :loading="loading || isClotureProcessing"
+                                    :saving="Boolean(saving.consult || (showDiagnosticPositifInConsultation && saving.bilans))"
+                                    :cloture-loading="isClotureProcessing"
+                                    @save="saveConsultSection"
+                                    @cloture="handleCloture"
+                                    @open-ordonnance="openOrdonnanceModal"
+                                    @view-ordonnance="openViewOrdonnance"
+                                    @edit-ordonnance="openEditOrdonnance"
+                                    @print-ordonnance="handlePrintOrdonnance"
+                                />
+                            </div>
+                        </template>
 
-                    <template #synthese>
-                        <div :class="isSectionInteractionLocked('synthese') ? 'pointer-events-none select-none' : ''">
-                            <FicheSyntheseForm
-                                v-model:entretien="data.entretien"
-                                :patient="data.patient"
-                                v-model:documents="data.documents"
-                                v-model:examens="data.examens"
-                                v-model:bilans="data.bilans"
-                                v-model:planTraitement="data.planTraitement"
-                                :saving="saving"
-                                :documents-upload-progress="documentsUploadProgress"
-                                :is-cloture-processing="isClotureProcessing"
-                                :examens-type-options="examensTypeOptions"
-                                :traitement-type-options="traitementTypeOptions"
-                                @save="saveSyntheseSection"
-                                @save-documents="saveDocumentsSection"
-                                @add-antecedent="showAntecedentDialog = true"
-                                @add-allergy="showAllergyDialog = true"
-                                @delete-antecedent="handleDeleteAntecedent"
-                                @delete-allergy="handleDeleteAllergy"
-                                @open-rdv="showRdvDialog = true"
-                            />
-                        </div>
-                    </template>
+                        <template #synthese>
+                            <div :class="isSectionInteractionLocked('synthese') ? 'pointer-events-none select-none' : ''">
+                                <FicheSyntheseForm
+                                    v-model:entretien="data.entretien"
+                                    :patient="data.patient"
+                                    v-model:documents="data.documents"
+                                    v-model:examens="data.examens"
+                                    v-model:bilans="data.bilans"
+                                    v-model:planTraitement="data.planTraitement"
+                                    :saving="saving"
+                                    :documents-upload-progress="documentsUploadProgress"
+                                    :is-cloture-processing="isClotureProcessing"
+                                    :examens-type-options="examensTypeOptions"
+                                    :traitement-type-options="traitementTypeOptions"
+                                    @save="saveSyntheseSection"
+                                    @save-documents="saveDocumentsSection"
+                                    @add-antecedent="showAntecedentDialog = true"
+                                    @add-allergy="showAllergyDialog = true"
+                                    @delete-antecedent="handleDeleteAntecedent"
+                                    @delete-allergy="handleDeleteAllergy"
+                                    @open-rdv="showRdvDialog = true"
+                                />
+                            </div>
+                        </template>
 
-                    <template #entretien>
-                        <div :class="isSectionInteractionLocked('entretien') ? 'pointer-events-none select-none' : ''">
-                            <EntretienVerbalForm
-                                v-model="data.entretien"
-                                :saving="saving.entretien"
-                                :patient-sex="data.patient?.sexe"
-                                @save="saveEntretienSection"
-                                @open-rdv="showRdvDialog = true"
-                            />
-                        </div>
-                    </template>
+                        <template #entretien>
+                            <div :class="isSectionInteractionLocked('entretien') ? 'pointer-events-none select-none' : ''">
+                                <EntretienVerbalForm v-model="data.entretien" :saving="saving.entretien" :patient-sex="data.patient?.sexe" @save="saveEntretienSection" @open-rdv="showRdvDialog = true" />
+                            </div>
+                        </template>
 
-                    <template #examens>
-                        <div :class="isSectionInteractionLocked('examens') ? 'pointer-events-none select-none' : ''">
-                            <ExamensFicheForm v-model="data.examens" :saving="saving.examens" @save="saveExamensSection" />
-                        </div>
-                    </template>
+                        <template #examens>
+                            <div :class="isSectionInteractionLocked('examens') ? 'pointer-events-none select-none' : ''">
+                                <ExamensFicheForm v-model="data.examens" :saving="saving.examens" @save="saveExamensSection" />
+                            </div>
+                        </template>
 
-                    <template #documents>
-                        <div :class="isSectionInteractionLocked('documents') ? 'pointer-events-none select-none' : ''">
-                            <FicheDocumentsForm v-model="data.documents" :saving="saving.documents" :upload-progress="documentsUploadProgress" @save="saveDocumentsSection" />
-                        </div>
-                    </template>
+                        <template #documents>
+                            <div :class="isSectionInteractionLocked('documents') ? 'pointer-events-none select-none' : ''">
+                                <FicheDocumentsForm v-model="data.documents" :saving="saving.documents" :upload-progress="documentsUploadProgress" @save="saveDocumentsSection" />
+                            </div>
+                        </template>
 
-                    <template #bilans>
-                        <div :class="isSectionInteractionLocked('bilans') ? 'pointer-events-none select-none' : ''">
-                            <FicheBilansForm v-model="data.bilans" :saving="saving.bilans" :patient-age="ageNumber" @save="saveBilansSection" />
-                        </div>
-                    </template>
+                        <template #bilans>
+                            <div :class="isSectionInteractionLocked('bilans') ? 'pointer-events-none select-none' : ''">
+                                <FicheBilansForm v-model="data.bilans" :saving="saving.bilans" :patient-age="ageNumber" @save="saveBilansSection" />
+                            </div>
+                        </template>
 
-                    <template #plan-traitement>
-                        <div :class="isSectionInteractionLocked('plan-traitement') ? 'pointer-events-none select-none' : ''">
-                            <FichePlanTraitementForm v-model="data.planTraitement" :saving="saving.planTraitement" @save="savePlanTraitementSection" />
-                        </div>
-                    </template>
+                        <template #plan-traitement>
+                            <div :class="isSectionInteractionLocked('plan-traitement') ? 'pointer-events-none select-none' : ''">
+                                <FichePlanTraitementForm v-model="data.planTraitement" :saving="saving.planTraitement" @save="savePlanTraitementSection" />
+                            </div>
+                        </template>
 
-                    <template #devis>
-                        <div :class="isSectionInteractionLocked('devis') ? 'pointer-events-none select-none' : ''">
-                            <DevisForm
-                                v-model="data.devis"
-                                :saving="saving.devis"
-                                :soins="soinsList"
-                                :readonly="isReadonly"
-                                @save="saveDevisSection"
-                                @print-devis="handlePrintDevis"
-                            />
-                        </div>
-                    </template>
+                        <template #devis>
+                            <div :class="isSectionInteractionLocked('devis') ? 'pointer-events-none select-none' : ''">
+                                <DevisForm v-model="data.devis" :saving="saving.devis" :soins="soinsList" :readonly="isReadonly" @save="saveDevisSection" @print-devis="handlePrintDevis" />
+                            </div>
+                        </template>
 
-                    <template #seances>
-                        <div :class="isSectionInteractionLocked('seances') ? 'pointer-events-none select-none' : ''">
-                            <SeancesSection :sessions="data.sessions" />
-                        </div>
-                    </template>
+                        <template #seances>
+                            <div :class="isSectionInteractionLocked('seances') ? 'pointer-events-none select-none' : ''">
+                                <SeancesSection :sessions="data.sessions" />
+                            </div>
+                        </template>
                     </SectionSwitcher>
                 </div>
             </div>
@@ -1160,14 +1123,7 @@ defineExpose({
                     @cancel="showRdvDialog = false"
                 />
             </Dialog>
-            <OrdonnanceModal
-                v-model="ordonnanceDraft"
-                v-model:visible="ordonnanceModalVisible"
-                :mode="ordonnanceModalMode"
-                :medecin-readonly="true"
-                :saving="saving.consult"
-                @save="saveOrdonnanceSection"
-            />
+            <OrdonnanceModal v-model="ordonnanceDraft" v-model:visible="ordonnanceModalVisible" :mode="ordonnanceModalMode" :medecin-readonly="true" :saving="saving.consult" @save="saveOrdonnanceSection" />
         </div>
 
         <div v-else-if="loadErrorMessage" class="flex min-h-[28rem] flex-col items-center justify-center gap-4 rounded-2xl border border-amber-200/70 bg-amber-50/70 p-8 dark:border-amber-800/70 dark:bg-amber-950/20">

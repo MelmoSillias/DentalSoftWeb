@@ -27,11 +27,7 @@ const toast = useToast();
 const confirm = useConfirm();
 
 const breadcrumbHome = { icon: 'pi pi-home', to: '/' };
-const breadcrumbItems = [
-    { label: 'Administration' },
-    { label: 'Gestion RH', to: '/administration/gestionrh' },
-    { label: 'Détails employé' }
-];
+const breadcrumbItems = [{ label: 'Administration' }, { label: 'Gestion RH', to: '/administration/gestionrh' }, { label: 'Détails employé' }];
 
 const typeContratOptions = [
     { label: 'CDI', value: 'CDI' },
@@ -96,9 +92,7 @@ const hydrateForm = (data) => {
         valeurPrime: data?.valeurPrime ?? null,
         typeContrat: (data?.typeContrat === 'Freelance' ? 'Prestataire' : data?.typeContrat) || 'CDI',
         dureeContrat: data?.dureeContrat ?? null,
-        comingDays: Array.isArray(data?.comingDays)
-            ? data.comingDays.filter((day) => day !== 'Dimanche')
-            : []
+        comingDays: Array.isArray(data?.comingDays) ? data.comingDays.filter((day) => day !== 'Dimanche') : []
     };
     files.value = [];
 };
@@ -233,9 +227,7 @@ const salaryPayments = computed(() => {
 const monthYearLabel = (month, year) => {
     if (!month || !year) return '-';
     const date = new Date(Number(year), Number(month) - 1, 1);
-    return Number.isNaN(date.getTime())
-        ? `${month}/${year}`
-        : date.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+    return Number.isNaN(date.getTime()) ? `${month}/${year}` : date.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
 };
 
 const paymentPeriodLabel = (payment) => {
@@ -267,9 +259,7 @@ const salaireCard = computed(() => {
     const valeurSalaire = employee.value?.valeurSalaire ?? null;
     const salaireCalcule = employee.value?.salaireCalcule ?? null;
     const frequence = employee.value?.frequencePaiement === 'journalier' ? 'Journalier' : 'Mensuel';
-    const prime = employee.value?.typePrime && employee.value.typePrime !== 'aucune'
-        ? primeTypeLabel(employee.value.typePrime)
-        : null;
+    const prime = employee.value?.typePrime && employee.value.typePrime !== 'aucune' ? primeTypeLabel(employee.value.typePrime) : null;
 
     if (typeSalaire === 'non_defini') {
         return {
@@ -343,12 +333,8 @@ onMounted(() => {
                             <i class="pi pi-id-card text-primary-600 dark:text-primary-400 text-xl"></i>
                         </div>
                         <div>
-                            <h1 class="text-3xl lg:text-4xl font-bold text-surface-900 dark:text-surface-50 tracking-tight">
-                                Détails employé
-                            </h1>
-                            <p class="text-surface-600 dark:text-surface-300 text-sm md:text-base">
-                                Consultez et mettez a jour les informations RH.
-                            </p>
+                            <h1 class="text-3xl lg:text-4xl font-bold text-surface-900 dark:text-surface-50 tracking-tight">Détails employé</h1>
+                            <p class="text-surface-600 dark:text-surface-300 text-sm md:text-base">Consultez et mettez a jour les informations RH.</p>
                         </div>
                     </div>
                 </div>
@@ -431,13 +417,7 @@ onMounted(() => {
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div class="space-y-1">
                                 <label class="text-sm font-medium">Type de contrat</label>
-                                <Select
-                                    v-model="form.typeContrat"
-                                    :options="typeContratOptions"
-                                    optionLabel="label"
-                                    optionValue="value"
-                                    class="w-full"
-                                />
+                                <Select v-model="form.typeContrat" :options="typeContratOptions" optionLabel="label" optionValue="value" class="w-full" />
                             </div>
                             <div class="space-y-1">
                                 <label class="text-sm font-medium">Duree de contrat (mois)</label>
@@ -449,14 +429,7 @@ onMounted(() => {
 
                         <div class="space-y-2">
                             <label class="text-sm font-medium">Jours travailles</label>
-                            <SelectButton
-                                v-model="form.comingDays"
-                                :options="daysOptions"
-                                optionLabel="label"
-                                optionValue="value"
-                                multiple
-                                class="w-full flex flex-wrap gap-2"
-                            />
+                            <SelectButton v-model="form.comingDays" :options="daysOptions" optionLabel="label" optionValue="value" multiple class="w-full flex flex-wrap gap-2" />
                         </div>
                     </div>
                 </div>
@@ -471,23 +444,11 @@ onMounted(() => {
                     <div class="p-6 space-y-4">
                         <div class="space-y-2">
                             <label class="text-sm font-medium">Ajouter des fichiers</label>
-                            <FileUpload
-                                name="administrativeFiles[]"
-                                :multiple="true"
-                                :customUpload="true"
-                                :auto="false"
-                                @select="onFilesSelect"
-                                @clear="onFilesClear"
-                                chooseLabel="Choisir"
-                                uploadLabel="Ajouter"
-                                cancelLabel="Vider"
-                            />
+                            <FileUpload name="administrativeFiles[]" :multiple="true" :customUpload="true" :auto="false" @select="onFilesSelect" @clear="onFilesClear" chooseLabel="Choisir" uploadLabel="Ajouter" cancelLabel="Vider" />
                         </div>
 
                         <div>
-                            <h4 class="text-sm font-semibold text-surface-800 dark:text-surface-200 mb-2">
-                                Fichiers existants
-                            </h4>
+                            <h4 class="text-sm font-semibold text-surface-800 dark:text-surface-200 mb-2">Fichiers existants</h4>
                             <div v-if="(employee?.administrativeFiles || []).length" class="flex flex-wrap gap-2">
                                 <Button
                                     v-for="file in employee.administrativeFiles"
@@ -500,15 +461,13 @@ onMounted(() => {
                                     @click="() => window.open(resolveFileUrl(file), '_blank')"
                                 />
                             </div>
-                            <div v-else class="text-sm text-surface-500 dark:text-surface-400">
-                                Aucun fichier administratif.
-                            </div>
+                            <div v-else class="text-sm text-surface-500 dark:text-surface-400">Aucun fichier administratif.</div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="space-y-6"> 
+            <div class="space-y-6">
                 <div data-tour="admin-employee-details.summary">
                     <div class="bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-900/20 dark:to-blue-800/20 rounded-2xl p-5 border border-blue-200/50 dark:border-blue-800/50">
                         <div class="flex items-center justify-between">
@@ -573,11 +532,7 @@ onMounted(() => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr
-                                        v-for="payment in salaryPayments"
-                                        :key="payment.id"
-                                        class="odd:bg-surface-0 even:bg-surface-50/50 dark:odd:bg-surface-800 dark:even:bg-surface-900/40"
-                                    >
+                                    <tr v-for="payment in salaryPayments" :key="payment.id" class="odd:bg-surface-0 even:bg-surface-50/50 dark:odd:bg-surface-800 dark:even:bg-surface-900/40">
                                         <td class="px-3 py-2 border-b border-surface-100 dark:border-surface-800">
                                             {{ paymentPeriodLabel(payment) }}
                                         </td>
@@ -624,40 +579,26 @@ onMounted(() => {
                                     <div class="text-sm font-semibold text-surface-900 dark:text-surface-100">
                                         {{ group.year }}
                                     </div>
-                                    <div class="text-xs text-surface-500 dark:text-surface-400">
-                                        {{ group.totalDays }} jour(s)
-                                    </div>
+                                    <div class="text-xs text-surface-500 dark:text-surface-400">{{ group.totalDays }} jour(s)</div>
                                 </div>
                                 <div class="space-y-2">
-                                    <div
-                                        v-for="conge in group.items"
-                                        :key="conge.id"
-                                        class="flex items-center justify-between gap-3 rounded-xl border border-surface-200/50 dark:border-surface-700/50 p-3"
-                                    >
+                                    <div v-for="conge in group.items" :key="conge.id" class="flex items-center justify-between gap-3 rounded-xl border border-surface-200/50 dark:border-surface-700/50 p-3">
                                         <div>
                                             <div class="flex items-center gap-2">
                                                 <Tag :value="conge.type" :severity="congeSeverity(conge.type)" />
-                                                <span class="text-sm font-medium text-surface-800 dark:text-surface-200">
-                                                    {{ formatDate(conge.startDate) }} - {{ formatDate(conge.endDate) }}
-                                                </span>
+                                                <span class="text-sm font-medium text-surface-800 dark:text-surface-200"> {{ formatDate(conge.startDate) }} - {{ formatDate(conge.endDate) }} </span>
                                             </div>
                                         </div>
                                         <div class="text-xs text-surface-500 dark:text-surface-400">
-                                            {{ conge.startDate && conge.endDate
-                                                ? `${Math.max(1, Math.floor((new Date(conge.endDate) - new Date(conge.startDate)) / (1000 * 60 * 60 * 24)) + 1)} jour(s)`
-                                                : '-' }}
+                                            {{ conge.startDate && conge.endDate ? `${Math.max(1, Math.floor((new Date(conge.endDate) - new Date(conge.startDate)) / (1000 * 60 * 60 * 24)) + 1)} jour(s)` : '-' }}
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        <div v-else class="text-sm text-surface-500 dark:text-surface-400">
-                            Aucun conge enregistre pour cet employe.
-                        </div>
+                        <div v-else class="text-sm text-surface-500 dark:text-surface-400">Aucun conge enregistre pour cet employe.</div>
                     </div>
                 </div>
-
-                
             </div>
         </div>
     </section>

@@ -1,3 +1,57 @@
+<script setup>
+import { computed } from 'vue';
+import PrintA4Page from './PrintA4Page.vue';
+import PrintDocumentHeader from './PrintDocumentHeader.vue';
+import logoImg from '@/assets/logo.png';
+import { formatPrimeTypeLabel, formatSalaryTypeLabel } from '@/utils/payrollUtils';
+
+const props = defineProps({
+    title: { type: String, default: 'Bulletin de paie' },
+    date: { type: [String, Date], default: '' },
+    docId: { type: [String, Number], default: '' },
+    periodLabel: { type: String, default: '' },
+    employeeName: { type: String, default: '' },
+    employeeFonction: { type: String, default: '' },
+    matricule: { type: String, default: '' },
+    frequenceSnapshot: { type: String, default: 'mensuel' },
+    salaryType: { type: String, default: '' },
+    salaryValue: { type: Number, default: null },
+    primeType: { type: String, default: 'aucune' },
+    primeValue: { type: Number, default: null },
+    primeBaseAmount: { type: Number, default: null },
+    baseAmount: { type: Number, default: null },
+    baseSalaryAmount: { type: Number, default: null },
+    primeAmount: { type: Number, default: 0 },
+    calculatedAmount: { type: Number, default: 0 },
+    paidAmount: { type: Number, default: 0 },
+    paidAt: { type: String, default: '' },
+    paymentMethodLabel: { type: String, default: '' },
+    note: { type: String, default: '' },
+    logoSrc: { type: String, default: logoImg }
+});
+
+const frequenceLabel = computed(() => (props.frequenceSnapshot === 'journalier' ? 'JOURNALIER' : 'MENSUEL'));
+const salaryTypeLabel = computed(() => formatSalaryTypeLabel(props.salaryType));
+const primeTypeDisplay = computed(() => formatPrimeTypeLabel(props.primeType));
+
+const formatAmount = (value) => {
+    if (value === null || value === undefined) return '—';
+    return `${Number(value).toLocaleString('fr-FR')} F CFA`;
+};
+
+const formatSalaryValue = (value, type) => {
+    if (value === null || value === undefined) return '—';
+    if (type === 'pourcentage') return `${value}%`;
+    return formatAmount(value);
+};
+
+const formatPrimeValue = (value, type) => {
+    if (value === null || value === undefined) return '—';
+    if (type === 'actes') return `${value}%`;
+    return formatAmount(value);
+};
+</script>
+
 <template>
     <PrintA4Page :logo-src="logoSrc">
         <template #header>
@@ -77,11 +131,15 @@
                     <tfoot>
                         <tr>
                             <td colspan="2"><strong>Total calculé</strong></td>
-                            <td class="right"><strong>{{ formatAmount(calculatedAmount) }}</strong></td>
+                            <td class="right">
+                                <strong>{{ formatAmount(calculatedAmount) }}</strong>
+                            </td>
                         </tr>
                         <tr>
                             <td colspan="2"><strong>Net versé</strong></td>
-                            <td class="right"><strong>{{ formatAmount(paidAmount) }}</strong></td>
+                            <td class="right">
+                                <strong>{{ formatAmount(paidAmount) }}</strong>
+                            </td>
                         </tr>
                     </tfoot>
                 </table>
@@ -118,60 +176,6 @@
         </div>
     </PrintA4Page>
 </template>
-
-<script setup>
-import { computed } from 'vue';
-import PrintA4Page from './PrintA4Page.vue';
-import PrintDocumentHeader from './PrintDocumentHeader.vue';
-import logoImg from '@/assets/logo.png';
-import { formatPrimeTypeLabel, formatSalaryTypeLabel } from '@/utils/payrollUtils';
-
-const props = defineProps({
-    title: { type: String, default: 'Bulletin de paie' },
-    date: { type: [String, Date], default: '' },
-    docId: { type: [String, Number], default: '' },
-    periodLabel: { type: String, default: '' },
-    employeeName: { type: String, default: '' },
-    employeeFonction: { type: String, default: '' },
-    matricule: { type: String, default: '' },
-    frequenceSnapshot: { type: String, default: 'mensuel' },
-    salaryType: { type: String, default: '' },
-    salaryValue: { type: Number, default: null },
-    primeType: { type: String, default: 'aucune' },
-    primeValue: { type: Number, default: null },
-    primeBaseAmount: { type: Number, default: null },
-    baseAmount: { type: Number, default: null },
-    baseSalaryAmount: { type: Number, default: null },
-    primeAmount: { type: Number, default: 0 },
-    calculatedAmount: { type: Number, default: 0 },
-    paidAmount: { type: Number, default: 0 },
-    paidAt: { type: String, default: '' },
-    paymentMethodLabel: { type: String, default: '' },
-    note: { type: String, default: '' },
-    logoSrc: { type: String, default: logoImg }
-});
-
-const frequenceLabel = computed(() => (props.frequenceSnapshot === 'journalier' ? 'JOURNALIER' : 'MENSUEL'));
-const salaryTypeLabel = computed(() => formatSalaryTypeLabel(props.salaryType));
-const primeTypeDisplay = computed(() => formatPrimeTypeLabel(props.primeType));
-
-const formatAmount = (value) => {
-    if (value === null || value === undefined) return '—';
-    return `${Number(value).toLocaleString('fr-FR')} F CFA`;
-};
-
-const formatSalaryValue = (value, type) => {
-    if (value === null || value === undefined) return '—';
-    if (type === 'pourcentage') return `${value}%`;
-    return formatAmount(value);
-};
-
-const formatPrimeValue = (value, type) => {
-    if (value === null || value === undefined) return '—';
-    if (type === 'actes') return `${value}%`;
-    return formatAmount(value);
-};
-</script>
 
 <style scoped>
 .payroll-slip__title {

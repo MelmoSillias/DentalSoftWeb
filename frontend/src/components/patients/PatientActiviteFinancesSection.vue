@@ -3,22 +3,12 @@ import CaisseInvoiceDialogs from '@/components/caisse/CaisseInvoiceDialogs.vue';
 import ConsultationDetailsDialog from '@/components/consultations/ConsultationDetailsDialog.vue';
 import FactureModal from '@/components/consultations/FactureModal.vue';
 import { useInvoiceBillingActions } from '@/composables/useInvoiceBillingActions';
-import {
-    cancelConsultation,
-    fetchConsultationDetails,
-    fetchConsultationInvoice,
-    updateConsultationInvoice
-} from '@/services/consultations';
+import { cancelConsultation, fetchConsultationDetails, fetchConsultationInvoice, updateConsultationInvoice } from '@/services/consultations';
 import { fetchPublicGeneralSettings } from '@/services/globalSettingsService';
 import { useAuthStore } from '@/stores/auth';
 import { logAppError } from '@/utils/appLogger';
 import { buildConsultationContextMenuItems } from '@/utils/consultationRow';
-import {
-    buildFactureContextMenuItems,
-    computeFactureStatus,
-    formatFactureFcfa,
-    isUnpaidFacture
-} from '@/utils/factureRow';
+import { buildFactureContextMenuItems, computeFactureStatus, formatFactureFcfa, isUnpaidFacture } from '@/utils/factureRow';
 import { canUserModifyInvoice } from '@/utils/invoiceModificationAccess';
 import Column from 'primevue/column';
 import ConfirmPopup from 'primevue/confirmpopup';
@@ -85,9 +75,7 @@ const tabs = computed(() => {
 const activeTab = ref('rdv');
 const showUnpaidOnly = ref(false);
 
-const canModifyInvoiceByRole = computed(() =>
-    canUserModifyInvoice(auth.user, { allowReceptionInvoiceModification: allowReceptionInvoiceModification.value })
-);
+const canModifyInvoiceByRole = computed(() => canUserModifyInvoice(auth.user, { allowReceptionInvoiceModification: allowReceptionInvoiceModification.value }));
 
 const {
     payDialogVisible,
@@ -169,17 +157,21 @@ const factureContextMenuItems = computed(() =>
 );
 
 const consultationContextMenuItems = computed(() =>
-    buildConsultationContextMenuItems(contextMenuConsultation.value, {
-        onDetails: (consultation) => openConsultationDetails(consultation),
-        onCancel: (consultation) => askCancelConsultation(consultation),
-        onEditInvoice: (consultation) => openEditFacture(consultation),
-        onPayFacture: (facture) => handlePayAction(facture),
-        onPreviewFacture: (facture) => openPreviewDialog(facture),
-        onPrintFacture: (facture) => printInvoice(facture)
-    }, {
-        canModifyInvoice: canModifyInvoiceByRole.value,
-        factures: props.factures
-    })
+    buildConsultationContextMenuItems(
+        contextMenuConsultation.value,
+        {
+            onDetails: (consultation) => openConsultationDetails(consultation),
+            onCancel: (consultation) => askCancelConsultation(consultation),
+            onEditInvoice: (consultation) => openEditFacture(consultation),
+            onPayFacture: (facture) => handlePayAction(facture),
+            onPreviewFacture: (facture) => openPreviewDialog(facture),
+            onPrintFacture: (facture) => printInvoice(facture)
+        },
+        {
+            canModifyInvoice: canModifyInvoiceByRole.value,
+            factures: props.factures
+        }
+    )
 );
 
 const openFactureContextMenu = (event, facture) => {
@@ -216,19 +208,11 @@ const medicalActs = computed(() => {
     });
 });
 
-const medicalActsTotal = computed(() =>
-    medicalActs.value.reduce((sum, acte) => sum + Number(acte.montant ?? 0), 0)
-);
+const medicalActsTotal = computed(() => medicalActs.value.reduce((sum, acte) => sum + Number(acte.montant ?? 0), 0));
 
-const totalPaye = computed(() =>
-    props.paiements.reduce((sum, p) => sum + getPaiementMontant(p), 0)
-);
+const totalPaye = computed(() => props.paiements.reduce((sum, p) => sum + getPaiementMontant(p), 0));
 
-const totalImpaye = computed(() =>
-    (Array.isArray(props.factures) ? props.factures : [])
-        .filter((f) => isUnpaidFacture(f))
-        .reduce((sum, f) => sum + (Number(f.reste ?? f.montant ?? 0) || 0), 0)
-);
+const totalImpaye = computed(() => (Array.isArray(props.factures) ? props.factures : []).filter((f) => isUnpaidFacture(f)).reduce((sum, f) => sum + (Number(f.reste ?? f.montant ?? 0) || 0), 0));
 
 const openConsultationDetails = async (consultation) => {
     if (!consultation?.id) return;
@@ -424,33 +408,33 @@ function getConsultationStatusSeverity(stat) {
 
 function getRDVStatusSeverity(status) {
     const severities = {
-        'Terminé': 'success',
-        'Confirmé': 'info',
-        'Planifié': 'warning',
-        'Annulé': 'danger',
-        'Reporté': 'secondary'
+        Terminé: 'success',
+        Confirmé: 'info',
+        Planifié: 'warning',
+        Annulé: 'danger',
+        Reporté: 'secondary'
     };
     return severities[status] || 'info';
 }
 
 function getRDVStatusIcon(status) {
     const icons = {
-        'Terminé': 'pi pi-check-circle',
-        'Confirmé': 'pi pi-verified',
-        'Planifié': 'pi pi-calendar-plus',
-        'Annulé': 'pi pi-times-circle',
-        'Reporté': 'pi pi-calendar-times'
+        Terminé: 'pi pi-check-circle',
+        Confirmé: 'pi pi-verified',
+        Planifié: 'pi pi-calendar-plus',
+        Annulé: 'pi pi-times-circle',
+        Reporté: 'pi pi-calendar-times'
     };
     return icons[status] || 'pi pi-calendar';
 }
 
 function getRDVStatusColor(status) {
     const colors = {
-        'Terminé': { bg: 'bg-emerald-100 dark:bg-emerald-900/30', text: 'text-emerald-600 dark:text-emerald-400' },
-        'Confirmé': { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-600 dark:text-blue-400' },
-        'Planifié': { bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-600 dark:text-amber-400' },
-        'Annulé': { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-600 dark:text-red-400' },
-        'Reporté': { bg: 'bg-surface-100 dark:bg-surface-700', text: 'text-surface-600 dark:text-surface-400' }
+        Terminé: { bg: 'bg-emerald-100 dark:bg-emerald-900/30', text: 'text-emerald-600 dark:text-emerald-400' },
+        Confirmé: { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-600 dark:text-blue-400' },
+        Planifié: { bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-600 dark:text-amber-400' },
+        Annulé: { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-600 dark:text-red-400' },
+        Reporté: { bg: 'bg-surface-100 dark:bg-surface-700', text: 'text-surface-600 dark:text-surface-400' }
     };
     return colors[status] || { bg: 'bg-surface-100', text: 'text-surface-600' };
 }
@@ -474,21 +458,11 @@ function getRDVStatusColor(status) {
             <TabPanels class="p-5" data-tour="patients-dossier.finance-content">
                 <TabPanel value="rdv">
                     <div v-if="rdvs.length" class="space-y-4">
-                        <div
-                            v-for="rdv in rdvs"
-                            :key="rdv.id"
-                            class="p-4 rounded-xl border border-surface-200/50 dark:border-surface-700/50 hover:border-primary-300/50 dark:hover:border-primary-700/50 transition-colors"
-                        >
+                        <div v-for="rdv in rdvs" :key="rdv.id" class="p-4 rounded-xl border border-surface-200/50 dark:border-surface-700/50 hover:border-primary-300/50 dark:hover:border-primary-700/50 transition-colors">
                             <div class="flex items-center justify-between">
                                 <div class="flex items-center gap-3">
-                                    <div :class="[
-                                        'p-2 rounded-lg',
-                                        getRDVStatusColor(getRdvStatus(rdv)).bg
-                                    ]">
-                                        <i :class="[
-                                            getRDVStatusIcon(getRdvStatus(rdv)),
-                                            getRDVStatusColor(getRdvStatus(rdv)).text
-                                        ]"></i>
+                                    <div :class="['p-2 rounded-lg', getRDVStatusColor(getRdvStatus(rdv)).bg]">
+                                        <i :class="[getRDVStatusIcon(getRdvStatus(rdv)), getRDVStatusColor(getRdvStatus(rdv)).text]"></i>
                                     </div>
                                     <div>
                                         <div class="font-semibold text-surface-900 dark:text-surface-100">{{ getRdvLabel(rdv) }}</div>
@@ -503,30 +477,14 @@ function getRDVStatusColor(status) {
                                 </div>
                             </div>
                             <div class="mt-3 flex flex-wrap items-center gap-2">
-                                <Tag
-                                    v-if="getRdvSmsReminder(rdv)"
-                                    :value="`SMS: ${getRdvSmsReminder(rdv).label}`"
-                                    :severity="getSmsSeverity(getRdvSmsReminder(rdv))"
-                                    class="px-3 py-1 rounded-full"
-                                />
-                                <span v-if="getRdvSmsReminder(rdv)?.sendAt" class="text-xs text-surface-500 dark:text-surface-400">
-                                    Programmation: {{ formatDateTime(getRdvSmsReminder(rdv).sendAt) }}
-                                </span>
-                                <span v-if="getRdvSmsReminder(rdv)?.sentAt" class="text-xs text-surface-500 dark:text-surface-400">
-                                    Envoi: {{ formatDateTime(getRdvSmsReminder(rdv).sentAt) }}
-                                </span>
+                                <Tag v-if="getRdvSmsReminder(rdv)" :value="`SMS: ${getRdvSmsReminder(rdv).label}`" :severity="getSmsSeverity(getRdvSmsReminder(rdv))" class="px-3 py-1 rounded-full" />
+                                <span v-if="getRdvSmsReminder(rdv)?.sendAt" class="text-xs text-surface-500 dark:text-surface-400"> Programmation: {{ formatDateTime(getRdvSmsReminder(rdv).sendAt) }} </span>
+                                <span v-if="getRdvSmsReminder(rdv)?.sentAt" class="text-xs text-surface-500 dark:text-surface-400"> Envoi: {{ formatDateTime(getRdvSmsReminder(rdv).sentAt) }} </span>
                             </div>
-                            <div
-                                v-if="rdv.notes || getRdvSmsReminder(rdv)?.message || getRdvSmsReminder(rdv)?.lastError"
-                                class="mt-3 pt-3 border-t border-surface-200/50 dark:border-surface-700/50 space-y-2"
-                            >
+                            <div v-if="rdv.notes || getRdvSmsReminder(rdv)?.message || getRdvSmsReminder(rdv)?.lastError" class="mt-3 pt-3 border-t border-surface-200/50 dark:border-surface-700/50 space-y-2">
                                 <p class="text-sm text-surface-700 dark:text-surface-300">{{ rdv.notes }}</p>
-                                <p v-if="getRdvSmsReminder(rdv)?.message" class="text-sm text-surface-700 dark:text-surface-300">
-                                    SMS: {{ getRdvSmsReminder(rdv).message }}
-                                </p>
-                                <p v-if="getRdvSmsReminder(rdv)?.lastError" class="text-sm text-red-600 dark:text-red-400">
-                                    Erreur SMS: {{ getRdvSmsReminder(rdv).lastError }}
-                                </p>
+                                <p v-if="getRdvSmsReminder(rdv)?.message" class="text-sm text-surface-700 dark:text-surface-300">SMS: {{ getRdvSmsReminder(rdv).message }}</p>
+                                <p v-if="getRdvSmsReminder(rdv)?.lastError" class="text-sm text-red-600 dark:text-red-400">Erreur SMS: {{ getRdvSmsReminder(rdv).lastError }}</p>
                             </div>
                         </div>
                     </div>
@@ -535,19 +493,13 @@ function getRDVStatusColor(status) {
                             <i class="pi pi-calendar text-3xl text-surface-400"></i>
                         </div>
                         <h4 class="text-lg font-semibold text-surface-700 dark:text-surface-300">Aucun rendez-vous</h4>
-                        <p class="mt-1 max-w-md text-sm text-surface-500 dark:text-surface-400">
-                            Ce patient n’a pas encore de rendez-vous enregistré.
-                        </p>
+                        <p class="mt-1 max-w-md text-sm text-surface-500 dark:text-surface-400">Ce patient n’a pas encore de rendez-vous enregistré.</p>
                     </div>
                 </TabPanel>
 
                 <TabPanel value="paiements">
                     <div v-if="paiements.length" class="space-y-4">
-                        <div
-                            v-for="paiement in paiements"
-                            :key="paiement.id"
-                            class="p-4 rounded-xl border border-surface-200/50 dark:border-surface-700/50 hover:border-surface-300/50 dark:hover:border-surface-600/50 transition-colors"
-                        >
+                        <div v-for="paiement in paiements" :key="paiement.id" class="p-4 rounded-xl border border-surface-200/50 dark:border-surface-700/50 hover:border-surface-300/50 dark:hover:border-surface-600/50 transition-colors">
                             <div class="flex items-center justify-between">
                                 <div class="flex items-center gap-3">
                                     <div class="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-900/30">
@@ -561,9 +513,7 @@ function getRDVStatusColor(status) {
                                     </div>
                                 </div>
                                 <div class="text-right">
-                                    <div class="text-lg font-bold text-emerald-600 dark:text-emerald-400">
-                                        {{ getPaiementMontant(paiement) }} F CFA
-                                    </div>
+                                    <div class="text-lg font-bold text-emerald-600 dark:text-emerald-400">{{ getPaiementMontant(paiement) }} F CFA</div>
                                     <div class="text-sm text-surface-600 dark:text-surface-400">{{ getPaiementMode(paiement) }}</div>
                                 </div>
                             </div>
@@ -590,27 +540,15 @@ function getRDVStatusColor(status) {
                             <i class="pi pi-credit-card text-3xl text-surface-400"></i>
                         </div>
                         <h4 class="text-lg font-semibold text-surface-700 dark:text-surface-300">Aucun paiement</h4>
-                        <p class="mt-1 max-w-md text-sm text-surface-500 dark:text-surface-400">
-                            Aucun paiement n’a encore été enregistré pour ce patient.
-                        </p>
+                        <p class="mt-1 max-w-md text-sm text-surface-500 dark:text-surface-400">Aucun paiement n’a encore été enregistré pour ce patient.</p>
                     </div>
                 </TabPanel>
 
                 <TabPanel value="factures">
                     <div v-if="factures.length" class="space-y-4">
                         <div class="flex flex-wrap items-center justify-between gap-3">
-                            <p class="text-sm text-surface-500 dark:text-surface-400">
-                                Clic droit sur une facture pour Payer, Voir ou Imprimer.
-                            </p>
-                            <ToggleButton
-                                v-model="showUnpaidOnly"
-                                onLabel="Impayées uniquement"
-                                offLabel="Toutes les factures"
-                                onIcon="pi pi-filter"
-                                offIcon="pi pi-list"
-                                class="w-56"
-                                data-tour="patients-dossier.factures-unpaid-toggle"
-                            />
+                            <p class="text-sm text-surface-500 dark:text-surface-400">Clic droit sur une facture pour Payer, Voir ou Imprimer.</p>
+                            <ToggleButton v-model="showUnpaidOnly" onLabel="Impayées uniquement" offLabel="Toutes les factures" onIcon="pi pi-filter" offIcon="pi pi-list" class="w-56" data-tour="patients-dossier.factures-unpaid-toggle" />
                         </div>
 
                         <template v-if="displayedFactures.length">
@@ -636,14 +574,8 @@ function getRDVStatusColor(status) {
                                         <div class="text-lg font-bold text-surface-900 dark:text-surface-100">
                                             {{ formatFactureFcfa(facture.montant) }}
                                         </div>
-                                        <div class="text-sm text-surface-600 dark:text-surface-400">
-                                            Reste {{ formatFactureFcfa(facture.reste) }}
-                                        </div>
-                                        <Tag
-                                            class="mt-1"
-                                            :value="computeFactureStatus(facture).label"
-                                            :severity="computeFactureStatus(facture).severity"
-                                        />
+                                        <div class="text-sm text-surface-600 dark:text-surface-400">Reste {{ formatFactureFcfa(facture.reste) }}</div>
+                                        <Tag class="mt-1" :value="computeFactureStatus(facture).label" :severity="computeFactureStatus(facture).severity" />
                                     </div>
                                 </div>
                             </div>
@@ -652,12 +584,8 @@ function getRDVStatusColor(status) {
                             <div class="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full bg-surface-100 dark:bg-surface-800">
                                 <i class="pi pi-filter text-3xl text-surface-400"></i>
                             </div>
-                            <h4 class="text-lg font-semibold text-surface-700 dark:text-surface-300">
-                                Aucune facture impayée
-                            </h4>
-                            <p class="mt-1 max-w-md text-sm text-surface-500 dark:text-surface-400">
-                                Ce patient n’a pas de facture en attente de règlement.
-                            </p>
+                            <h4 class="text-lg font-semibold text-surface-700 dark:text-surface-300">Aucune facture impayée</h4>
+                            <p class="mt-1 max-w-md text-sm text-surface-500 dark:text-surface-400">Ce patient n’a pas de facture en attente de règlement.</p>
                         </div>
                     </div>
                     <div v-else class="flex flex-col items-center justify-center py-12 text-center">
@@ -665,26 +593,14 @@ function getRDVStatusColor(status) {
                             <i class="pi pi-file text-3xl text-surface-400"></i>
                         </div>
                         <h4 class="text-lg font-semibold text-surface-700 dark:text-surface-300">Aucune facture</h4>
-                        <p class="mt-1 max-w-md text-sm text-surface-500 dark:text-surface-400">
-                            Aucune facture n’est encore associée à ce patient.
-                        </p>
+                        <p class="mt-1 max-w-md text-sm text-surface-500 dark:text-surface-400">Aucune facture n’est encore associée à ce patient.</p>
                     </div>
                 </TabPanel>
 
                 <TabPanel value="actes">
                     <div v-if="medicalActs.length" class="space-y-4">
-                        <p class="text-sm text-surface-500 dark:text-surface-400">
-                            {{ medicalActs.length }} acte(s) · Total {{ formatFactureFcfa(medicalActsTotal) }}
-                        </p>
-                        <DataTable
-                            :value="medicalActs"
-                            dataKey="id"
-                            paginator
-                            :rows="8"
-                            responsiveLayout="scroll"
-                            stripedRows
-                            class="text-sm"
-                        >
+                        <p class="text-sm text-surface-500 dark:text-surface-400">{{ medicalActs.length }} acte(s) · Total {{ formatFactureFcfa(medicalActsTotal) }}</p>
+                        <DataTable :value="medicalActs" dataKey="id" paginator :rows="8" responsiveLayout="scroll" stripedRows class="text-sm">
                             <Column field="date" header="Date" sortable>
                                 <template #body="{ data }">
                                     {{ formatDateTime(data.date) }}
@@ -721,17 +637,13 @@ function getRDVStatusColor(status) {
                             <i class="pi pi-list-check text-3xl text-surface-400"></i>
                         </div>
                         <h4 class="text-lg font-semibold text-surface-700 dark:text-surface-300">Aucun acte médical</h4>
-                        <p class="mt-1 max-w-md text-sm text-surface-500 dark:text-surface-400">
-                            Aucun acte médical n’a encore été enregistré pour ce patient.
-                        </p>
+                        <p class="mt-1 max-w-md text-sm text-surface-500 dark:text-surface-400">Aucun acte médical n’a encore été enregistré pour ce patient.</p>
                     </div>
                 </TabPanel>
 
                 <TabPanel v-if="showConsultations" value="consultations">
                     <div v-if="consultations.length" class="space-y-4">
-                        <p class="text-sm text-surface-500 dark:text-surface-400">
-                            Clic droit sur une consultation pour les actions disponibles.
-                        </p>
+                        <p class="text-sm text-surface-500 dark:text-surface-400">Clic droit sur une consultation pour les actions disponibles.</p>
                         <div
                             v-for="consultation in consultations"
                             :key="consultation.id"
@@ -744,9 +656,7 @@ function getRDVStatusColor(status) {
                                         <i class="pi pi-folder-open text-surface-600 dark:text-surface-300"></i>
                                     </div>
                                     <div>
-                                        <div class="font-semibold text-surface-900 dark:text-surface-100">
-                                            Consultation #{{ consultation.id }}
-                                        </div>
+                                        <div class="font-semibold text-surface-900 dark:text-surface-100">Consultation #{{ consultation.id }}</div>
                                         <div class="text-sm text-surface-600 dark:text-surface-400">
                                             {{ formatDate(getConsultationDate(consultation)) }}
                                         </div>
@@ -756,14 +666,8 @@ function getRDVStatusColor(status) {
                                     </div>
                                 </div>
                                 <div class="text-right">
-                                    <Tag
-                                        :value="getConsultationStatut(consultation)"
-                                        :severity="getConsultationStatusSeverity(getConsultationStatut(consultation))"
-                                        class="rounded-full px-3 py-1"
-                                    />
-                                    <div class="mt-2 text-lg font-bold text-surface-900 dark:text-surface-100">
-                                        {{ getConsultationMontant(consultation) }} F CFA
-                                    </div>
+                                    <Tag :value="getConsultationStatut(consultation)" :severity="getConsultationStatusSeverity(getConsultationStatut(consultation))" class="rounded-full px-3 py-1" />
+                                    <div class="mt-2 text-lg font-bold text-surface-900 dark:text-surface-100">{{ getConsultationMontant(consultation) }} F CFA</div>
                                 </div>
                             </div>
                         </div>
@@ -773,20 +677,13 @@ function getRDVStatusColor(status) {
                             <i class="pi pi-folder-open text-3xl text-surface-400"></i>
                         </div>
                         <h4 class="text-lg font-semibold text-surface-700 dark:text-surface-300">Aucune consultation</h4>
-                        <p class="mt-1 max-w-md text-sm text-surface-500 dark:text-surface-400">
-                            Aucune consultation n’est encore associée à ce patient.
-                        </p>
+                        <p class="mt-1 max-w-md text-sm text-surface-500 dark:text-surface-400">Aucune consultation n’est encore associée à ce patient.</p>
                     </div>
                 </TabPanel>
             </TabPanels>
         </Tabs>
 
-        <ConsultationDetailsDialog
-            :visible="detailsDialogVisible"
-            :details="detailData"
-            :loading="detailsLoading"
-            @update:visible="(val) => (detailsDialogVisible = val)"
-        />
+        <ConsultationDetailsDialog :visible="detailsDialogVisible" :details="detailData" :loading="detailsLoading" @update:visible="(val) => (detailsDialogVisible = val)" />
 
         <FactureModal
             :visible="editFactureDialogVisible"

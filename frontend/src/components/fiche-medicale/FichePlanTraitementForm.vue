@@ -127,7 +127,9 @@ const availableTypeOptions = computed(() => {
 });
 
 const searchTypeOptions = (event) => {
-    const query = String(event?.query || '').toLowerCase().trim();
+    const query = String(event?.query || '')
+        .toLowerCase()
+        .trim();
     const options = availableTypeOptions.value;
     typeSuggestions.value = query ? options.filter((item) => item.toLowerCase().includes(query)) : options;
 };
@@ -196,36 +198,19 @@ const tablePlans = computed(() =>
         </div>
 
         <div class="space-y-4">
-            <div v-if="!(plans && plans.length)" class="text-sm text-surface-500 dark:text-surface-400">
-                Aucun plan de traitement ajoute.
-            </div>
+            <div v-if="!(plans && plans.length)" class="text-sm text-surface-500 dark:text-surface-400">Aucun plan de traitement ajoute.</div>
 
             <div v-else class="space-y-6">
                 <div class="flex items-center justify-end">
                     <div class="inline-flex rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/40 p-1">
-                        <Button
-                            label="Timeline"
-                            size="small"
-                            :severity="viewMode === 'timeline' ? 'primary' : 'secondary'"
-                            :outlined="viewMode !== 'timeline'"
-                            @click="viewMode = 'timeline'"
-                        />
-                        <Button
-                            label="Table"
-                            size="small"
-                            :severity="viewMode === 'table' ? 'primary' : 'secondary'"
-                            :outlined="viewMode !== 'table'"
-                            @click="viewMode = 'table'"
-                        />
+                        <Button label="Timeline" size="small" :severity="viewMode === 'timeline' ? 'primary' : 'secondary'" :outlined="viewMode !== 'timeline'" @click="viewMode = 'timeline'" />
+                        <Button label="Table" size="small" :severity="viewMode === 'table' ? 'primary' : 'secondary'" :outlined="viewMode !== 'table'" @click="viewMode = 'table'" />
                     </div>
                 </div>
 
                 <Timeline v-if="viewMode === 'timeline'" :value="timelineEvents" align="alternate" class="customized-timeline">
                     <template #marker="slotProps">
-                        <span
-                            class="flex w-8 h-8 items-center justify-center text-white rounded-full z-10 shadow-sm"
-                            :style="{ backgroundColor: slotProps.item.color }"
-                        >
+                        <span class="flex w-8 h-8 items-center justify-center text-white rounded-full z-10 shadow-sm" :style="{ backgroundColor: slotProps.item.color }">
                             <i :class="slotProps.item.icon"></i>
                         </span>
                     </template>
@@ -243,12 +228,7 @@ const tablePlans = computed(() =>
                                 </p>
                                 <div class="mt-4 flex items-center gap-2">
                                     <Button label="Modifier" text @click="openEditDialog(sortedPlans[slotProps.index], slotProps.item.originalIndex)" />
-                                    <Button
-                                        label="Supprimer"
-                                        text
-                                        severity="danger"
-                                        @click="removePlan(slotProps.item.originalIndex)"
-                                    />
+                                    <Button label="Supprimer" text severity="danger" @click="removePlan(slotProps.item.originalIndex)" />
                                 </div>
                             </template>
                         </Card>
@@ -280,15 +260,7 @@ const tablePlans = computed(() =>
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <div class="space-y-2">
                     <label class="text-sm font-medium text-surface-700 dark:text-surface-300">Type</label>
-                    <AutoComplete
-                        :modelValue="draftPlan.type"
-                        :suggestions="typeSuggestions"
-                        dropdown
-                        placeholder="Saisir ou choisir un type"
-                        @complete="searchTypeOptions"
-                        @update:modelValue="(v) => (draftPlan.type = v)"
-                        class="w-full"
-                    />
+                    <AutoComplete :modelValue="draftPlan.type" :suggestions="typeSuggestions" dropdown placeholder="Saisir ou choisir un type" @complete="searchTypeOptions" @update:modelValue="(v) => (draftPlan.type = v)" class="w-full" />
                 </div>
                 <div class="space-y-2">
                     <label class="text-sm font-medium text-surface-700 dark:text-surface-300">Date prevue</label>
@@ -303,12 +275,7 @@ const tablePlans = computed(() =>
             </div>
             <div class="mt-4 space-y-2">
                 <label class="text-sm font-medium text-surface-700 dark:text-surface-300">Description</label>
-                <Textarea
-                    :modelValue="draftPlan.description"
-                    rows="4"
-                    class="w-full"
-                    @update:modelValue="(v) => (draftPlan.description = v)"
-                />
+                <Textarea :modelValue="draftPlan.description" rows="4" class="w-full" @update:modelValue="(v) => (draftPlan.description = v)" />
             </div>
             <template #footer>
                 <div class="flex items-center justify-end gap-2">

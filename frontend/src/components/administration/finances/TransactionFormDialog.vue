@@ -128,12 +128,7 @@ const submitForm = (event) => {
 </script>
 
 <template>
-    <Dialog
-        :visible="visible"
-        modal
-        :style="{ width: '640px' }"
-        :header="mode === 'edit' ? 'Modifier une transaction' : 'Nouvelle transaction'"
-        @update:visible="close">
+    <Dialog :visible="visible" modal :style="{ width: '640px' }" :header="mode === 'edit' ? 'Modifier une transaction' : 'Nouvelle transaction'" @update:visible="close">
         <div class="grid gap-4">
             <div class="grid md:grid-cols-2 gap-3">
                 <div class="flex flex-col gap-2">
@@ -146,13 +141,7 @@ const submitForm = (event) => {
                 </div>
                 <div class="flex flex-col gap-2">
                     <label class="text-sm font-medium text-surface-700">Compte <span class="text-red-500">*</span></label>
-                    <Select
-                        v-model="form.modeId"
-                        :options="methodOptions"
-                        optionLabel="label"
-                        optionValue="value"
-                        placeholder="Selectionner"
-                        :loading="loading" />
+                    <Select v-model="form.modeId" :options="methodOptions" optionLabel="label" optionValue="value" placeholder="Selectionner" :loading="loading" />
                 </div>
             </div>
 
@@ -175,11 +164,7 @@ const submitForm = (event) => {
 
         <template #footer>
             <Button label="Annuler" text @click="close" />
-            <Button
-                :label="mode === 'edit' ? 'Mettre a jour' : 'Enregistrer'"
-                icon="pi pi-check"
-                :loading="loading"
-                @click="submitForm" />
+            <Button :label="mode === 'edit' ? 'Mettre a jour' : 'Enregistrer'" icon="pi pi-check" :loading="loading" @click="submitForm" />
         </template>
     </Dialog>
 </template>

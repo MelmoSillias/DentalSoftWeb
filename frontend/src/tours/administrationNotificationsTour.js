@@ -52,58 +52,60 @@ function buildOverviewSteps(ctx) {
 
 export const administrationNotificationsRegistry = createTourRegistry(GROUP, TASKS, {
     overview: buildOverviewSteps,
-    'create-notification': (ctx) => normalizeTourSteps([
-        {
-            group: GROUP,
-            target: '[data-tour="admin-notifications.users"]',
-            title: 'Choisir les destinataires',
-            content: 'Recherchez et selectionnez les utilisateurs qui recevront la notification.'
-        },
-        {
-            group: GROUP,
-            target: '[data-tour="admin-notifications.message"]',
-            title: 'Composer le message',
-            content: 'Definissez la priorite, le texte et le lien eventuel du message a diffuser.'
-        },
-        {
-            group: GROUP,
-            target: '[data-tour="admin-notifications.preview"]',
-            title: 'Verifier l apercu',
-            content: 'L apercu permet de controler le ton, la priorite et le lien avant confirmation.'
-        },
-        {
-            group: GROUP,
-            target: '[data-tour="admin-notifications.send"]',
-            title: 'Declencher l envoi',
-            content: 'Une fois le message et les destinataires verifies, le bouton Envoyer ouvre la confirmation d envoi.'
-        }
-    ]),
-    'schedule-reminder': (ctx) => normalizeTourSteps([
-        {
-            group: GROUP,
-            target: '[data-tour="admin-notifications.types"]',
-            title: 'Cibler un groupe',
-            content: 'Preselectionnez un type de profil pour adresser un rappel a un service precis.'
-        },
-        {
-            group: GROUP,
-            target: '[data-tour="admin-notifications.message"]',
-            title: 'Rediger le rappel',
-            content: 'Utilisez une priorite elevee et un message concis pour un rappel efficace.'
-        },
-        {
-            group: GROUP,
-            target: '[data-tour="admin-notifications.recipients"]',
-            title: 'Valider les destinataires',
-            content: 'Verifiez la liste finale avant d envoyer le rappel aux personnes concernees.'
-        },
-        {
-            group: GROUP,
-            target: '[data-tour="admin-notifications.send"]',
-            title: 'Envoyer le rappel',
-            content: 'Confirmez l envoi pour diffuser le rappel aux destinataires selectionnes.'
-        }
-    ])
+    'create-notification': (ctx) =>
+        normalizeTourSteps([
+            {
+                group: GROUP,
+                target: '[data-tour="admin-notifications.users"]',
+                title: 'Choisir les destinataires',
+                content: 'Recherchez et selectionnez les utilisateurs qui recevront la notification.'
+            },
+            {
+                group: GROUP,
+                target: '[data-tour="admin-notifications.message"]',
+                title: 'Composer le message',
+                content: 'Definissez la priorite, le texte et le lien eventuel du message a diffuser.'
+            },
+            {
+                group: GROUP,
+                target: '[data-tour="admin-notifications.preview"]',
+                title: 'Verifier l apercu',
+                content: 'L apercu permet de controler le ton, la priorite et le lien avant confirmation.'
+            },
+            {
+                group: GROUP,
+                target: '[data-tour="admin-notifications.send"]',
+                title: 'Declencher l envoi',
+                content: 'Une fois le message et les destinataires verifies, le bouton Envoyer ouvre la confirmation d envoi.'
+            }
+        ]),
+    'schedule-reminder': (ctx) =>
+        normalizeTourSteps([
+            {
+                group: GROUP,
+                target: '[data-tour="admin-notifications.types"]',
+                title: 'Cibler un groupe',
+                content: 'Preselectionnez un type de profil pour adresser un rappel a un service precis.'
+            },
+            {
+                group: GROUP,
+                target: '[data-tour="admin-notifications.message"]',
+                title: 'Rediger le rappel',
+                content: 'Utilisez une priorite elevee et un message concis pour un rappel efficace.'
+            },
+            {
+                group: GROUP,
+                target: '[data-tour="admin-notifications.recipients"]',
+                title: 'Valider les destinataires',
+                content: 'Verifiez la liste finale avant d envoyer le rappel aux personnes concernees.'
+            },
+            {
+                group: GROUP,
+                target: '[data-tour="admin-notifications.send"]',
+                title: 'Envoyer le rappel',
+                content: 'Confirmez l envoi pour diffuser le rappel aux destinataires selectionnes.'
+            }
+        ])
 });
 
 export function buildAdministrationNotificationsTourSteps(taskId, variantId, ctx) {

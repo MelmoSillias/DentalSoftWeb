@@ -1,21 +1,3 @@
-<template>
-    <header class="print-doc-header">
-        <PrintCabinetHeader variant="a4" class="print-doc-header__cabinet" />
-
-        <div class="print-doc-header__title-band">
-            <span class="print-doc-header__ornament" aria-hidden="true" />
-            <div class="print-doc-header__title-block">
-                <h1 class="print-doc-header__title">{{ title }}</h1>
-                <div v-if="hasMeta" class="print-doc-header__meta">
-                    <span v-if="formattedNumber !== '—'" class="print-doc-header__badge">N° {{ formattedNumber }}</span>
-                    <span v-if="dateLabel !== '—'" class="print-doc-header__date">Date : {{ dateLabel }}</span>
-                </div>
-            </div>
-            <span class="print-doc-header__ornament" aria-hidden="true" />
-        </div>
-    </header>
-</template>
-
 <script setup>
 import { computed } from 'vue';
 import PrintCabinetHeader from './PrintCabinetHeader.vue';
@@ -41,6 +23,24 @@ const dateLabel = computed(() => {
 
 const hasMeta = computed(() => formattedNumber.value !== '—' || dateLabel.value !== '—');
 </script>
+
+<template>
+    <header class="print-doc-header">
+        <PrintCabinetHeader variant="a4" class="print-doc-header__cabinet" />
+
+        <div class="print-doc-header__title-band">
+            <span class="print-doc-header__ornament" aria-hidden="true" />
+            <div class="print-doc-header__title-block">
+                <h1 class="print-doc-header__title">{{ title }}</h1>
+                <div v-if="hasMeta" class="print-doc-header__meta">
+                    <span v-if="formattedNumber !== '—'" class="print-doc-header__badge">N° {{ formattedNumber }}</span>
+                    <span v-if="dateLabel !== '—'" class="print-doc-header__date">Date : {{ dateLabel }}</span>
+                </div>
+            </div>
+            <span class="print-doc-header__ornament" aria-hidden="true" />
+        </div>
+    </header>
+</template>
 
 <style scoped>
 .print-doc-header {

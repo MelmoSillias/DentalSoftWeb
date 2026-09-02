@@ -42,20 +42,16 @@ const submit = (event) => {
             <div class="grid grid-cols-1 gap-4">
                 <div class="flex flex-col gap-2">
                     <label class="text-sm font-medium text-gray-700 dark:text-gray-200">Nom <span class="text-red-500">*</span></label>
-                    <InputText v-model="form.nom" placeholder="Ex: Salle A" required
-                        class="w-full border border-gray-200 rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-400" />
+                    <InputText v-model="form.nom" placeholder="Ex: Salle A" required class="w-full border border-gray-200 rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-400" />
                 </div>
                 <div class="flex flex-col gap-2">
                     <label class="text-sm font-medium text-gray-700 dark:text-gray-200">Description</label>
-                    <Textarea v-model="form.description" autoResize rows="3" placeholder="Description ou usage"
-                        class="w-full border border-gray-200 rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-400" />
+                    <Textarea v-model="form.description" autoResize rows="3" placeholder="Description ou usage" class="w-full border border-gray-200 rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-400" />
                 </div>
             </div>
             <div class="flex justify-end gap-3 pt-2">
-                <Button type="button" class="bg-gray-200 text-gray-700 hover:bg-gray-300 rounded-md px-4 py-2"
-                    @click="close" label="Annuler" />
-                <Button type="button" class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-md px-4 py-2"
-                    icon="pi pi-check" :loading="loading" @click="submit" label="Ajouter" />
+                <Button type="button" class="bg-gray-200 text-gray-700 hover:bg-gray-300 rounded-md px-4 py-2" @click="close" label="Annuler" />
+                <Button type="button" class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-md px-4 py-2" icon="pi pi-check" :loading="loading" @click="submit" label="Ajouter" />
             </div>
         </form>
     </Dialog>

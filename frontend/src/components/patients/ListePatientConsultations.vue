@@ -45,14 +45,11 @@ const formatDate = (value) => {
     return d.toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' });
 };
 
-const consultationStatus = (consultation) =>
-    consultation?.statut === 1 || consultation?.state === 1 ? 'Clôturée' : 'En cours';
+const consultationStatus = (consultation) => (consultation?.statut === 1 || consultation?.state === 1 ? 'Clôturée' : 'En cours');
 
-const consultationSeverity = (consultation) =>
-    consultationStatus(consultation) === 'Clôturée' ? 'success' : 'warning';
+const consultationSeverity = (consultation) => (consultationStatus(consultation) === 'Clôturée' ? 'success' : 'warning');
 
-const consultationMontant = (consultation) =>
-    Number(consultation?.factureMontant ?? consultation?.montant ?? 0);
+const consultationMontant = (consultation) => Number(consultation?.factureMontant ?? consultation?.montant ?? 0);
 </script>
 
 <template>
@@ -60,9 +57,7 @@ const consultationMontant = (consultation) =>
         <div class="px-5 md:px-6 py-4 border-b border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900/50 dark:to-surface-800" data-tour="patients-dossier.consultations-toolbar">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div class="space-y-1">
-                    <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-100">
-                        Consultations du patient
-                    </h3>
+                    <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-100">Consultations du patient</h3>
                     <Tag :value="totalCountLabel" severity="info" class="px-3 py-1 rounded-full font-medium" />
                 </div>
                 <div class="flex items-center gap-2">
@@ -72,27 +67,19 @@ const consultationMontant = (consultation) =>
         </div>
 
         <div class="px-5 md:px-6 py-4 border-b border-surface-200/50 dark:border-surface-700/50 bg-surface-0/50 dark:bg-surface-800/30" data-tour="patients-dossier.consultations-filter">
-            <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">
-                Rechercher une consultation
-            </label>
+            <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2"> Rechercher une consultation </label>
             <span class="p-input-icon-left w-full">
                 <i class="pi pi-search text-surface-400" />
-                <InputText v-model="filterValue" placeholder="Date, statut, médecin..." class="w-full p-3.5 rounded-xl border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-700/50 focus:ring-2 focus:ring-primary-500/20 transition-all" />
+                <InputText
+                    v-model="filterValue"
+                    placeholder="Date, statut, médecin..."
+                    class="w-full p-3.5 rounded-xl border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-700/50 focus:ring-2 focus:ring-primary-500/20 transition-all"
+                />
             </span>
         </div>
 
         <div class="p-2" data-tour="patients-dossier.consultations-table">
-            <DataTable
-                ref="dt"
-                :value="consultations"
-                dataKey="id"
-                :loading="loading"
-                :filters="filters"
-                :paginator="true"
-                :rows="8"
-                :rowsPerPageOptions="[5, 8, 15, 30]"
-                class="rounded-none border-0"
-            >
+            <DataTable ref="dt" :value="consultations" dataKey="id" :loading="loading" :filters="filters" :paginator="true" :rows="8" :rowsPerPageOptions="[5, 8, 15, 30]" class="rounded-none border-0">
                 <Column field="date" header="Date" sortable>
                     <template #body="{ data }">
                         <span class="text-surface-900 dark:text-surface-100">{{ formatDate(data.date) }}</span>

@@ -40,36 +40,38 @@ function buildOverviewSteps(ctx) {
 
 export const administrationSallesRegistry = createTourRegistry(GROUP, TASKS, {
     overview: buildOverviewSteps,
-    'add-salle': (ctx) => normalizeTourSteps([
-        {
-            group: GROUP,
-            target: '[data-tour="admin-salles.header"]',
-            title: 'Ajouter une salle',
-            content: 'Depuis la page de gestion, ouvrez le formulaire pour creer un nouvel espace.'
-        },
-        {
-            group: GROUP,
-            target: '[data-tour="admin-salles.dialog.add"]',
-            title: 'Formulaire de creation',
-            content: 'Le dialogue permet de renseigner le nom, le type et la description de la nouvelle salle.',
-            beforeEnter: async () => openDialogStep(ctx.openAddDialog, ctx.closeAllDialogs)
-        }
-    ]),
-    'edit-salle': (ctx) => normalizeTourSteps([
-        {
-            group: GROUP,
-            target: '[data-tour="admin-salles.actions"]',
-            title: 'Modifier une salle',
-            content: 'Utilisez l action edition sur une ligne pour ajuster les informations d une salle existante.'
-        },
-        {
-            group: GROUP,
-            target: '[data-tour="admin-salles.dialog.edit"]',
-            title: 'Formulaire d edition',
-            content: 'Le dialogue d edition permet d ajuster le nom ou la description sans quitter le tableau.',
-            beforeEnter: async () => openDialogStep(ctx.openEditDialog, ctx.closeAllDialogs)
-        }
-    ])
+    'add-salle': (ctx) =>
+        normalizeTourSteps([
+            {
+                group: GROUP,
+                target: '[data-tour="admin-salles.header"]',
+                title: 'Ajouter une salle',
+                content: 'Depuis la page de gestion, ouvrez le formulaire pour creer un nouvel espace.'
+            },
+            {
+                group: GROUP,
+                target: '[data-tour="admin-salles.dialog.add"]',
+                title: 'Formulaire de creation',
+                content: 'Le dialogue permet de renseigner le nom, le type et la description de la nouvelle salle.',
+                beforeEnter: async () => openDialogStep(ctx.openAddDialog, ctx.closeAllDialogs)
+            }
+        ]),
+    'edit-salle': (ctx) =>
+        normalizeTourSteps([
+            {
+                group: GROUP,
+                target: '[data-tour="admin-salles.actions"]',
+                title: 'Modifier une salle',
+                content: 'Utilisez l action edition sur une ligne pour ajuster les informations d une salle existante.'
+            },
+            {
+                group: GROUP,
+                target: '[data-tour="admin-salles.dialog.edit"]',
+                title: 'Formulaire d edition',
+                content: 'Le dialogue d edition permet d ajuster le nom ou la description sans quitter le tableau.',
+                beforeEnter: async () => openDialogStep(ctx.openEditDialog, ctx.closeAllDialogs)
+            }
+        ])
 });
 
 export function buildAdministrationSallesTourSteps(taskId, variantId, ctx) {

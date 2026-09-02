@@ -21,13 +21,7 @@ const props = defineProps({
 
 const emit = defineEmits(['update:visible', 'submit', 'cancel']);
 
-const typeOptions = [
-    { label: 'Médecin', value: 'Medecin' },
-    employeeTypeInfirmierOption,
-    { label: 'Réceptionniste', value: 'Receptionniste' },
-    { label: 'Admin', value: 'Admin' },
-    { label: 'Autre', value: 'Autre' }
-];
+const typeOptions = [{ label: 'Médecin', value: 'Medecin' }, employeeTypeInfirmierOption, { label: 'Réceptionniste', value: 'Receptionniste' }, { label: 'Admin', value: 'Admin' }, { label: 'Autre', value: 'Autre' }];
 
 const typeContratOptions = [
     { label: 'CDI', value: 'CDI' },
@@ -83,9 +77,7 @@ const hydrateForm = (employee) => {
         frequencePaiement: employee?.frequencePaiement || 'mensuel',
         typePrime: employee?.typePrime || 'aucune',
         valeurPrime: employee?.valeurPrime ?? null,
-        comingDays: Array.isArray(employee?.comingDays)
-            ? employee.comingDays.filter((day) => day !== 'Dimanche')
-            : []
+        comingDays: Array.isArray(employee?.comingDays) ? employee.comingDays.filter((day) => day !== 'Dimanche') : []
     };
     files.value = [];
 };
@@ -174,13 +166,7 @@ const closeDialog = () => {
 </script>
 
 <template>
-    <Dialog
-        :visible="visible"
-        modal
-        :style="{ width: '75vw', maxWidth: '980px' }"
-        :header="dialogTitle"
-        @update:visible="emit('update:visible', $event)"
-    >
+    <Dialog :visible="visible" modal :style="{ width: '75vw', maxWidth: '980px' }" :header="dialogTitle" @update:visible="emit('update:visible', $event)">
         <div class="space-y-5 max-h-[70vh] overflow-y-auto pr-1" :data-tour="props.tourTarget || null">
             <section class="rounded-xl border border-surface-200 dark:border-surface-700 overflow-hidden">
                 <div class="px-4 py-3 border-b border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-900/40">
@@ -249,34 +235,16 @@ const closeDialog = () => {
                 </div>
                 <div class="p-4 space-y-1">
                     <label class="text-sm font-medium">Jours travaillés</label>
-                    <MultiSelect
-                        v-model="form.comingDays"
-                        :options="daysOptions"
-                        optionLabel="label"
-                        optionValue="value"
-                        display="chip"
-                        class="w-full"
-                        placeholder="Sélectionner les jours"
-                    />
+                    <MultiSelect v-model="form.comingDays" :options="daysOptions" optionLabel="label" optionValue="value" display="chip" class="w-full" placeholder="Sélectionner les jours" />
                 </div>
             </section>
 
             <section class="rounded-xl border border-surface-200 dark:border-surface-700 overflow-hidden">
                 <div class="px-4 py-3 border-b border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-900/40">
-                    <h5  class="font-semibold flex items-center gap-2"><i class="pi pi-file text-primary-500"></i> Documents</h5>
+                    <h5 class="font-semibold flex items-center gap-2"><i class="pi pi-file text-primary-500"></i> Documents</h5>
                 </div>
                 <div class="p-4">
-                    <FileUpload
-                        name="administrativeFiles[]"
-                        :multiple="true"
-                        :customUpload="true"
-                        :auto="false"
-                        @select="onFilesSelect"
-                        @clear="onFilesClear"
-                        chooseLabel="Choisir"
-                        uploadLabel="Ajouter"
-                        cancelLabel="Vider"
-                    />
+                    <FileUpload name="administrativeFiles[]" :multiple="true" :customUpload="true" :auto="false" @select="onFilesSelect" @clear="onFilesClear" chooseLabel="Choisir" uploadLabel="Ajouter" cancelLabel="Vider" />
                 </div>
             </section>
         </div>
@@ -291,7 +259,6 @@ const closeDialog = () => {
 </template>
 
 <style scoped>
-
 h5 {
     font-size: 1.25rem;
     font-weight: 600;

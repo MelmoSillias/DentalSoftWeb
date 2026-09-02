@@ -9,11 +9,7 @@ import TabPanel from 'primevue/tabpanel';
 import { useRapports } from '@/composables/useRapports';
 import ReceptionStatsSection from '@/components/rapport/reception/ReceptionStatsSection.vue';
 import DoctorReportsTable from '@/components/rapport/common/DoctorReportsTable.vue';
-import {
-    loadRapportsPageState,
-    saveRapportsPageState,
-    RAPPORTS_RECEPTION_TABS
-} from '@/composables/useRapportsPageState';
+import { loadRapportsPageState, saveRapportsPageState, RAPPORTS_RECEPTION_TABS } from '@/composables/useRapportsPageState';
 
 const { receptionLoading, receptionStats, receptionDoctorReports, fetchReceptionRapport, toIsoDate } = useRapports();
 
@@ -75,13 +71,7 @@ onMounted(() => {
                 <p class="text-xs text-surface-500 dark:text-surface-400">{{ periodLabel }}</p>
             </div>
             <div class="flex flex-wrap items-center gap-2" data-tour="rapports-reception.print">
-                <DatePicker
-                    v-model="selectedDate"
-                    showIcon
-                    dateFormat="dd/mm/yy"
-                    class="w-56"
-                    placeholder="Choisir une date"
-                />
+                <DatePicker v-model="selectedDate" showIcon dateFormat="dd/mm/yy" class="w-56" placeholder="Choisir une date" />
             </div>
         </div>
 
@@ -93,22 +83,12 @@ onMounted(() => {
             <TabPanels class="mt-3">
                 <TabPanel value="daily">
                     <div data-tour="rapports-reception.daily">
-                        <ReceptionStatsSection
-                            :stats="receptionStats"
-                            :loading="receptionLoading"
-                            :period-label="periodLabel"
-                        />
+                        <ReceptionStatsSection :stats="receptionStats" :loading="receptionLoading" :period-label="periodLabel" />
                     </div>
                 </TabPanel>
                 <TabPanel value="doctors">
                     <div data-tour="rapports-reception.doctors">
-                        <DoctorReportsTable
-                            title="Rapports périodiques par médecin"
-                            :data="receptionDoctorReports"
-                            :loading="receptionLoading"
-                            :period-label="periodLabel"
-                            variant="reception"
-                        />
+                        <DoctorReportsTable title="Rapports périodiques par médecin" :data="receptionDoctorReports" :loading="receptionLoading" :period-label="periodLabel" variant="reception" />
                     </div>
                 </TabPanel>
             </TabPanels>

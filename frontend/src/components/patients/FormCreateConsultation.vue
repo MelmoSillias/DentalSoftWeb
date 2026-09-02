@@ -1,22 +1,14 @@
 <script setup>
 import { logAppError } from '@/utils/appLogger';
 
-import {
-    checkConsultationActive,
-    createConsultationForPatient,
-    searchPatients,
-    normalizePatient
-} from '@/services/patients';
+import { checkConsultationActive, createConsultationForPatient, searchPatients, normalizePatient } from '@/services/patients';
 import { fetchPublicGeneralSettings } from '@/services/globalSettingsService';
 import { fetchTicketPrintData } from '@/services/printService';
 import PrintTicketBody from '@/components/print/PrintTicketBody.vue';
 import { usePrinter } from '@/composables/usePrinter';
 import { useMedecinsStore } from '@/stores/medecins';
 import { usePaymentMethodsStore } from '@/stores/paymentMethods';
-import {
-    getPaymentMethodDefinition,
-    getDefaultClassicMethod
-} from '@/utils/paymentMethodUtils';
+import { getPaymentMethodDefinition, getDefaultClassicMethod } from '@/utils/paymentMethodUtils';
 import Button from 'primevue/button';
 import ConfirmPopup from 'primevue/confirmpopup';
 import DatePicker from 'primevue/datepicker';
@@ -136,11 +128,7 @@ const loadConsultationCreationPolicy = async () => {
         const settings = await fetchPublicGeneralSettings(token);
         requireMedecinOnCreation.value = settings?.requireMedecinOnConsultationCreation !== false;
         const defaultPrice = Math.max(1, Number(settings?.consultationPrice || 5000));
-        const prices = Array.isArray(settings?.consultationPrices)
-            ? settings.consultationPrices
-                .map((amount) => Number(amount))
-                .filter((amount) => Number.isFinite(amount) && amount > 0)
-            : [];
+        const prices = Array.isArray(settings?.consultationPrices) ? settings.consultationPrices.map((amount) => Number(amount)).filter((amount) => Number.isFinite(amount) && amount > 0) : [];
         consultationPrices.value = prices.length ? prices : [defaultPrice];
         if (!consultationPrices.value.some((price) => amountsMatch(price, defaultPrice))) {
             consultationPrices.value = [defaultPrice, ...consultationPrices.value];
@@ -204,17 +192,12 @@ const patientInsurance = computed(() => {
     if (!profile) return null;
     const enabled = profile.enabled !== false;
     const assurance = profile.assurance ?? null;
-    const hasAssurance = Boolean(
-        assurance?.id
-        || assurance?.code
-        || profile.assuranceCode
-        || profile.assuranceId
-    );
+    const hasAssurance = Boolean(assurance?.id || assurance?.code || profile.assuranceCode || profile.assuranceId);
     if (!enabled || !hasAssurance) return null;
     if (assurance?.actif === false) return null;
     return {
         nom: assurance?.nom || assurance?.code || profile.assuranceCode || 'Assurance',
-        coverageRate: Number(profile.coverageRate ?? 0) || 0,
+        coverageRate: Number(profile.coverageRate ?? 0) || 0
     };
 });
 const isPatientInsured = computed(() => patientInsurance.value !== null);
@@ -282,13 +265,9 @@ const printConsultationTicket = async (paiementId) => {
     if (!paiementId) return;
     try {
         const res = await fetchTicketPrintData(paiementId, token);
-        await printComponent(
-            PrintTicketBody,
-            { paiement: res.paiement },
-            { format: [226.77, 255.12], width: '80mm' }
-        );
+        await printComponent(PrintTicketBody, { paiement: res.paiement }, { format: [226.77, 255.12], width: '80mm' });
     } catch (error) {
-        logAppError('Erreur lors de l\'impression du ticket', error);
+        logAppError("Erreur lors de l'impression du ticket", error);
         toast.add({ severity: 'error', summary: 'Ticket', detail: 'Impression indisponible.', life: 3500 });
     }
 };
@@ -321,7 +300,7 @@ const saveConsultation = async () => {
     const consultationTime = formatTimePart(form.dateConsultation);
 
     if (!consultationDate || !consultationTime) {
-        toast.add({ severity: 'warn', summary: 'Date/heure requises', detail: 'Indiquez la date et l\'heure de consultation.', life: 2500 });
+        toast.add({ severity: 'warn', summary: 'Date/heure requises', detail: "Indiquez la date et l'heure de consultation.", life: 2500 });
         return;
     }
     loading.value = true;
@@ -347,9 +326,9 @@ const saveConsultation = async () => {
                 life: 10000,
                 data: paiementId
                     ? {
-                        actionLabel: 'Imprimer le ticket',
-                        action: () => printConsultationTicket(paiementId)
-                    }
+                          actionLabel: 'Imprimer le ticket',
+                          action: () => printConsultationTicket(paiementId)
+                      }
                     : undefined
             });
         } else {
@@ -381,17 +360,20 @@ const handleSubmit = (event) => {
 <template>
     <div class="flex flex-col gap-4">
         <ConfirmPopup group="create-consultation" />
-        <div v-if="checkingActive && !hasActiveConsultation" class="text-xs text-gray-500">
-            Vérification des consultations en cours...
-        </div>
-        <div v-if="hasActiveConsultation" class="p-3 border border-amber-400 bg-amber-50 text-amber-800 rounded">
-            Une consultation est déjà en cours pour ce patient. Clôturez-la avant d'en créer une nouvelle.
-        </div>
+        <div v-if="checkingActive && !hasActiveConsultation" class="text-xs text-gray-500">Vérification des consultations en cours...</div>
+        <div v-if="hasActiveConsultation" class="p-3 border border-amber-400 bg-amber-50 text-amber-800 rounded">Une consultation est déjà en cours pour ce patient. Clôturez-la avant d'en créer une nouvelle.</div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div class="flex flex-col gap-2 md:col-span-2" v-if="!isPatientPreselected" data-tour="patients-form-consultation.patient">
                 <label class="font-semibold">Patient <span class="text-red-500">*</span></label>
-                <Select v-model="selectedPatientId" :options="patientOptions  || []" optionLabel="label" optionValue="value"
-                    placeholder="Choisir un patient" class="w-full" filter :loading="patientsLoading"
+                <Select
+                    v-model="selectedPatientId"
+                    :options="patientOptions || []"
+                    optionLabel="label"
+                    optionValue="value"
+                    placeholder="Choisir un patient"
+                    class="w-full"
+                    filter
+                    :loading="patientsLoading"
                     :filterFields="['label', 'phone', 'searchText']"
                     @filter="handlePatientFilter"
                 >
@@ -413,14 +395,12 @@ const handleSubmit = (event) => {
                     <span v-if="requireMedecinOnCreation" class="text-red-500">*</span>
                     <span v-else class="font-normal text-surface-500"> (optionnel)</span>
                 </label>
-                <Select v-model="form.medecinId" :options="medecinOptions  || []" optionLabel="label" optionValue="value"
-                    placeholder="Choisir un médecin" class="w-full" />
+                <Select v-model="form.medecinId" :options="medecinOptions || []" optionLabel="label" optionValue="value" placeholder="Choisir un médecin" class="w-full" />
             </div>
 
             <div class="flex flex-col gap-2">
                 <label class="font-semibold">Date et heure <span class="text-red-500">*</span></label>
-                <DatePicker v-model="form.dateConsultation" showTime hourFormat="24" dateFormat="dd/mm/yy"
-                    class="w-full" />
+                <DatePicker v-model="form.dateConsultation" showTime hourFormat="24" dateFormat="dd/mm/yy" class="w-full" />
             </div>
             <div v-if="isPatientInsured" class="md:col-span-2 p-3 rounded border border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200" data-tour="patients-form-consultation.insurance">
                 <div class="font-semibold">Patient assuré — {{ patientInsurance.nom }} (couverture {{ patientInsurance.coverageRate }} %)</div>
@@ -438,35 +418,21 @@ const handleSubmit = (event) => {
                 <div class="flex flex-col gap-2 mt-2" v-if="form.payant && allowConsultationPriceEditOnCreation">
                     <label class="font-semibold">Prix de la consultation</label>
                     <div v-if="consultationPrices.length" class="flex flex-wrap gap-3">
-                        <div
-                            v-for="price in consultationPrices"
-                            :key="price"
-                            class="flex items-center gap-2"
-                        >
-                            <RadioButton
-                                :inputId="`consultation-price-${price}`"
-                                name="consultationPrice"
-                                :value="price"
-                                v-model="selectedConsultationPrice"
-                            />
+                        <div v-for="price in consultationPrices" :key="price" class="flex items-center gap-2">
+                            <RadioButton :inputId="`consultation-price-${price}`" name="consultationPrice" :value="price" v-model="selectedConsultationPrice" />
                             <label :for="`consultation-price-${price}`" class="cursor-pointer text-sm">
                                 {{ Number(price).toLocaleString('fr-FR') }}
                             </label>
                         </div>
                     </div>
                     <InputNumber v-model="consultationAmount" mode="decimal" :min="1" class="w-full" inputClass="w-full" />
-                    <small class="text-gray-500 dark:text-gray-400">
-                        Sélectionnez un tarif proposé ou saisissez un montant personnalisé.
-                    </small>
+                    <small class="text-gray-500 dark:text-gray-400"> Sélectionnez un tarif proposé ou saisissez un montant personnalisé. </small>
                 </div>
             </div>
             <div class="flex flex-col gap-2" v-if="requiresClassicPayment">
                 <label class="font-semibold">Mode de paiement patient <span class="text-red-500">*</span></label>
-                <Select v-model="form.modePaiementId" :options="paymentMethodOptions  || []" optionLabel="label"
-                    optionValue="value" placeholder="Choisir un mode de paiement" class="w-full" />
-                <small class="text-gray-500 dark:text-gray-400">
-                    Le mode de paiement reste requis pour les consultations payantes non assurées.
-                </small>
+                <Select v-model="form.modePaiementId" :options="paymentMethodOptions || []" optionLabel="label" optionValue="value" placeholder="Choisir un mode de paiement" class="w-full" />
+                <small class="text-gray-500 dark:text-gray-400"> Le mode de paiement reste requis pour les consultations payantes non assurées. </small>
             </div>
             <div v-else class="hidden md:block" aria-hidden="true" />
             <!-- <div class="md:col-span-2 flex flex-col gap-2">

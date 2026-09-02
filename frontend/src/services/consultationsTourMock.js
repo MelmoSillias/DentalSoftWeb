@@ -122,12 +122,8 @@ function buildStaticConsultationInvoices() {
             { id: 1, dent: '46', type: 'Consultation', prix: 5000, quantite: 1, description: 'Reprise clinique' },
             { id: 2, dent: '46', type: 'Radio', prix: 5000, quantite: 1, description: 'Controle radiographique' }
         ],
-        9202: [
-            { id: 1, dent: '16', type: 'Détartrage', prix: 10000, quantite: 1, description: 'Suivi de traitement' }
-        ],
-        9203: [
-            { id: 1, dent: '', type: 'Consultation', prix: 5000, quantite: 1, description: 'Premiere consultation' }
-        ],
+        9202: [{ id: 1, dent: '16', type: 'Détartrage', prix: 10000, quantite: 1, description: 'Suivi de traitement' }],
+        9203: [{ id: 1, dent: '', type: 'Consultation', prix: 5000, quantite: 1, description: 'Premiere consultation' }],
         9204: [
             { id: 1, dent: '24', type: 'Composite', prix: 15000, quantite: 1, description: 'Restauration definitive' },
             { id: 2, dent: '24', type: 'Radio', prix: 5000, quantite: 1, description: 'Controle final' }
@@ -150,89 +146,92 @@ function buildSeedState(scenario = 'queue-mixed') {
     return {
         dayConsultations,
         pendingConsultations,
-        consultationDetails: normalizedScenario === 'queue-empty' ? {} : {
-            9201: {
-                id: 9201,
-                date: hoursAgo(5.2),
-                patient: 'Ibrahima Ndiaye',
-                type: 'controle',
-                medecin: 'Dr Mamadou Seck',
-                medecinId: 2,
-                infirmierId: 11,
-                salleId: 22,
-                noteSeance: 'Controle post urgence avec reprise de la fiche precedente.',
-                actes: [
-                    { dent: '46', type: 'Consultation', description: 'Reprise clinique', quantite: 1, prix: 5000 },
-                    { dent: '46', type: 'Radio', description: 'Controle radiographique', quantite: 1, prix: 5000 }
-                ]
-            },
-            9202: {
-                id: 9202,
-                date: hoursAgo(2.4),
-                patient: 'Aminata Diallo',
-                type: 'traitement',
-                medecin: 'Dr Aissatou Fall',
-                medecinId: 1,
-                infirmierId: 12,
-                salleId: 21,
-                noteSeance: 'Traitement deja entame avec fiche liee.',
-                actes: [
-                    { dent: '16', type: 'Détartrage', description: 'Suivi de traitement', quantite: 1, prix: 10000 }
-                ]
-            },
-            9203: {
-                id: 9203,
-                date: hoursAgo(1.1),
-                patient: 'Mariam Sarr',
-                type: 'initiale',
-                medecin: 'Dr Khadija Ndiaye',
-                medecinId: 3,
-                infirmierId: 11,
-                salleId: 21,
-                noteSeance: 'Premiere consultation, aucune fiche precedente.',
-                actes: []
-            },
-            9204: {
-                id: 9204,
-                date: hoursAgo(8.7),
-                patient: 'Aminata Diallo',
-                type: 'controle',
-                medecin: 'Dr Aissatou Fall',
-                medecinId: 1,
-                infirmierId: 12,
-                salleId: 21,
-                noteSeance: 'Consultation cloturee et facture prete a etre revue.',
-                actes: [
-                    { dent: '24', type: 'Composite', description: 'Restauration definitive', quantite: 1, prix: 15000 },
-                    { dent: '24', type: 'Radio', description: 'Controle final', quantite: 1, prix: 5000 }
-                ]
-            }
-        },
+        consultationDetails:
+            normalizedScenario === 'queue-empty'
+                ? {}
+                : {
+                      9201: {
+                          id: 9201,
+                          date: hoursAgo(5.2),
+                          patient: 'Ibrahima Ndiaye',
+                          type: 'controle',
+                          medecin: 'Dr Mamadou Seck',
+                          medecinId: 2,
+                          infirmierId: 11,
+                          salleId: 22,
+                          noteSeance: 'Controle post urgence avec reprise de la fiche precedente.',
+                          actes: [
+                              { dent: '46', type: 'Consultation', description: 'Reprise clinique', quantite: 1, prix: 5000 },
+                              { dent: '46', type: 'Radio', description: 'Controle radiographique', quantite: 1, prix: 5000 }
+                          ]
+                      },
+                      9202: {
+                          id: 9202,
+                          date: hoursAgo(2.4),
+                          patient: 'Aminata Diallo',
+                          type: 'traitement',
+                          medecin: 'Dr Aissatou Fall',
+                          medecinId: 1,
+                          infirmierId: 12,
+                          salleId: 21,
+                          noteSeance: 'Traitement deja entame avec fiche liee.',
+                          actes: [{ dent: '16', type: 'Détartrage', description: 'Suivi de traitement', quantite: 1, prix: 10000 }]
+                      },
+                      9203: {
+                          id: 9203,
+                          date: hoursAgo(1.1),
+                          patient: 'Mariam Sarr',
+                          type: 'initiale',
+                          medecin: 'Dr Khadija Ndiaye',
+                          medecinId: 3,
+                          infirmierId: 11,
+                          salleId: 21,
+                          noteSeance: 'Premiere consultation, aucune fiche precedente.',
+                          actes: []
+                      },
+                      9204: {
+                          id: 9204,
+                          date: hoursAgo(8.7),
+                          patient: 'Aminata Diallo',
+                          type: 'controle',
+                          medecin: 'Dr Aissatou Fall',
+                          medecinId: 1,
+                          infirmierId: 12,
+                          salleId: 21,
+                          noteSeance: 'Consultation cloturee et facture prete a etre revue.',
+                          actes: [
+                              { dent: '24', type: 'Composite', description: 'Restauration definitive', quantite: 1, prix: 15000 },
+                              { dent: '24', type: 'Radio', description: 'Controle final', quantite: 1, prix: 5000 }
+                          ]
+                      }
+                  },
         consultationInvoices: normalizedScenario === 'queue-empty' ? {} : buildStaticConsultationInvoices(),
-        activeFicheLinks: normalizedScenario === 'queue-empty' ? {} : {
-            9201: 8101,
-            9202: 8201,
-            9203: null,
-            9204: 8301
-        },
+        activeFicheLinks:
+            normalizedScenario === 'queue-empty'
+                ? {}
+                : {
+                      9201: 8101,
+                      9202: 8201,
+                      9203: null,
+                      9204: 8301
+                  },
         nextConsultationId: 9300,
         nextFicheId: 8400,
-        draftFiche: normalizedScenario === 'fiche-draft'
-            ? {
-                id: 8401,
-                consultationId: 9202,
-                entretien: { motifConsultation: 'Douleur persistante molaire 16.' },
-                examens: { observations: 'Sensibilite au froid.' },
-                status: 'draft'
-            }
-            : null
+        draftFiche:
+            normalizedScenario === 'fiche-draft'
+                ? {
+                      id: 8401,
+                      consultationId: 9202,
+                      entretien: { motifConsultation: 'Douleur persistante molaire 16.' },
+                      examens: { observations: 'Sensibilite au froid.' },
+                      status: 'draft'
+                  }
+                : null
     };
 }
 
 function findPendingConsultation(consultationId) {
-    return consultationsTourMockState.pendingConsultations.find(
-        (consultation) => Number(consultation.id) === Number(consultationId)
-    ) || null;
+    return consultationsTourMockState.pendingConsultations.find((consultation) => Number(consultation.id) === Number(consultationId)) || null;
 }
 
 function resolveMedecinLabel(medecinId) {
@@ -279,12 +278,8 @@ export function fetchPendingConsultationsTourMock() {
 }
 
 export function cancelConsultationTourMock(consultationId) {
-    consultationsTourMockState.pendingConsultations = consultationsTourMockState.pendingConsultations.filter(
-        (consultation) => Number(consultation.id) !== Number(consultationId)
-    );
-    consultationsTourMockState.dayConsultations = consultationsTourMockState.dayConsultations.filter(
-        (consultation) => Number(consultation.id) !== Number(consultationId)
-    );
+    consultationsTourMockState.pendingConsultations = consultationsTourMockState.pendingConsultations.filter((consultation) => Number(consultation.id) !== Number(consultationId));
+    consultationsTourMockState.dayConsultations = consultationsTourMockState.dayConsultations.filter((consultation) => Number(consultation.id) !== Number(consultationId));
     delete consultationsTourMockState.consultationDetails[consultationId];
     delete consultationsTourMockState.consultationInvoices[consultationId];
     delete consultationsTourMockState.activeFicheLinks[consultationId];
@@ -299,9 +294,7 @@ export function fetchConsultationsByDateTourMock(date) {
         return cloneValue(consultations);
     }
 
-    return cloneValue(
-        consultations.filter((consultation) => String(consultation.createdAt || '').slice(0, 10) === targetDate)
-    );
+    return cloneValue(consultations.filter((consultation) => String(consultation.createdAt || '').slice(0, 10) === targetDate));
 }
 
 export function fetchConsultationDetailsTourMock(consultationId) {
@@ -336,7 +329,7 @@ export function setConsultationFicheTourMock(consultationId, ficheId = null, opt
     consultationsTourMockState.activeFicheLinks[consultationId] = resolvedFicheId;
     return {
         ficheId: resolvedFicheId,
-        created: createNew || (!ficheId && !consultation.ficheId && !consultation.lastFicheId),
+        created: createNew || (!ficheId && !consultation.ficheId && !consultation.lastFicheId)
     };
 }
 
@@ -355,9 +348,7 @@ export function saveConsultationTourMock(ficheId, consultationId, payload = {}) 
         ...consultationsTourMockState.consultationDetails[consultationId],
         medecin: medecinLabel,
         medecinId: payload.medecinId ?? consultationsTourMockState.consultationDetails[consultationId]?.medecinId ?? null,
-        infirmierId: Array.isArray(payload.infirmierId)
-            ? payload.infirmierId[0] ?? null
-            : payload.infirmierId ?? consultationsTourMockState.consultationDetails[consultationId]?.infirmierId ?? null,
+        infirmierId: Array.isArray(payload.infirmierId) ? (payload.infirmierId[0] ?? null) : (payload.infirmierId ?? consultationsTourMockState.consultationDetails[consultationId]?.infirmierId ?? null),
         salleId: payload.salleId ?? consultationsTourMockState.consultationDetails[consultationId]?.salleId ?? null,
         noteSeance: payload.noteSeance ?? consultationsTourMockState.consultationDetails[consultationId]?.noteSeance ?? '',
         actes: Array.isArray(payload.actes) ? cloneValue(payload.actes) : []
@@ -374,9 +365,7 @@ export function closeConsultationTourMock(ficheId, consultationId) {
 
     consultation.state = 1;
     consultation.statut = 'TERMINEE';
-    consultationsTourMockState.pendingConsultations = consultationsTourMockState.pendingConsultations.filter(
-        (item) => Number(item.id) !== Number(consultationId)
-    );
+    consultationsTourMockState.pendingConsultations = consultationsTourMockState.pendingConsultations.filter((item) => Number(item.id) !== Number(consultationId));
     return { success: true };
 }
 
@@ -391,7 +380,7 @@ export function fetchConsultationInvoiceTourMock(consultationId) {
 }
 
 export function updateConsultationInvoiceTourMock(consultationId, lignes = [], options = {}) {
-    const lines = Array.isArray(lignes) ? lignes : lignes?.lines ?? lignes?.lignes ?? [];
+    const lines = Array.isArray(lignes) ? lignes : (lignes?.lines ?? lignes?.lignes ?? []);
     consultationsTourMockState.consultationInvoices[consultationId] = (lines || []).map((line, index) => ({
         id: line.id ?? index + 1,
         dent: line.dent ?? '',
@@ -421,9 +410,7 @@ export function registerCreatedPendingConsultationTourMock(patient, payload = {}
     }
 
     const consultationId = result?.consultation_id ?? consultationsTourMockState.nextConsultationId++;
-    const createdAt = payload?.consultation_date && payload?.consultation_time
-        ? `${payload.consultation_date}T${payload.consultation_time}:00`
-        : new Date().toISOString();
+    const createdAt = payload?.consultation_date && payload?.consultation_time ? `${payload.consultation_date}T${payload.consultation_time}:00` : new Date().toISOString();
     const medecinId = Number(payload?.medecin_id || 1);
     const consultation = {
         id: consultationId,
@@ -445,14 +432,8 @@ export function registerCreatedPendingConsultationTourMock(patient, payload = {}
         factState: 0
     };
 
-    consultationsTourMockState.pendingConsultations = [
-        ...consultationsTourMockState.pendingConsultations,
-        consultation
-    ];
-    consultationsTourMockState.dayConsultations = [
-        ...consultationsTourMockState.dayConsultations,
-        consultation
-    ];
+    consultationsTourMockState.pendingConsultations = [...consultationsTourMockState.pendingConsultations, consultation];
+    consultationsTourMockState.dayConsultations = [...consultationsTourMockState.dayConsultations, consultation];
     consultationsTourMockState.consultationDetails[consultationId] = {
         id: consultationId,
         date: createdAt,

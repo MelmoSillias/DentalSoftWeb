@@ -87,10 +87,12 @@ export function fetchFinancesPaymentMethodsTourMock() {
 export function fetchFinancesTransactionsTourMock({ startDate, endDate }) {
     const start = String(startDate || '').slice(0, 10);
     const end = String(endDate || '').slice(0, 10);
-    return cloneValue(financesTourMockState.transactions.filter((row) => {
-        const date = String(row.dateTransaction || row.date || '').slice(0, 10);
-        return (!start || date >= start) && (!end || date <= end);
-    }));
+    return cloneValue(
+        financesTourMockState.transactions.filter((row) => {
+            const date = String(row.dateTransaction || row.date || '').slice(0, 10);
+            return (!start || date >= start) && (!end || date <= end);
+        })
+    );
 }
 
 export function createFinancesTransactionTourMock(payload = {}) {
@@ -129,9 +131,7 @@ export function updateFinancesPaymentMethodTourMock(id, payload = {}) {
     financesTourMockState.paymentMethods[index] = {
         ...financesTourMockState.paymentMethods[index],
         ...payload,
-        coverageRate: payload.family === 'insurance' || financesTourMockState.paymentMethods[index].family === 'insurance'
-            ? Number(payload.coverageRate ?? financesTourMockState.paymentMethods[index].coverageRate ?? 0)
-            : null
+        coverageRate: payload.family === 'insurance' || financesTourMockState.paymentMethods[index].family === 'insurance' ? Number(payload.coverageRate ?? financesTourMockState.paymentMethods[index].coverageRate ?? 0) : null
     };
     return cloneValue(financesTourMockState.paymentMethods[index]);
 }

@@ -5,13 +5,7 @@ import { useAuthStore } from '@/stores/auth';
 import { useRealtimeStore } from '@/stores/realtime';
 import * as mercureEventRouter from './mercureEventRouter';
 
-const STAFF_ROLES = new Set([
-    'ROLE_ADMIN',
-    'ROLE_RECEPTION',
-    'ROLE_RECEPTIONNISTE',
-    'ROLE_SECRETAIRE',
-    'ROLE_MEDECIN'
-]);
+const STAFF_ROLES = new Set(['ROLE_ADMIN', 'ROLE_RECEPTION', 'ROLE_RECEPTIONNISTE', 'ROLE_SECRETAIRE', 'ROLE_MEDECIN']);
 
 const TOKEN_REFRESH_BUFFER_MS = 5 * 60 * 1000;
 const POLL_INTERVAL_MS = 60 * 1000;
@@ -85,7 +79,7 @@ function markEventSeen(eventId) {
 }
 
 function getReconnectDelay() {
-    const base = Math.min(30000, 1000 * (2 ** reconnectAttempts));
+    const base = Math.min(30000, 1000 * 2 ** reconnectAttempts);
     const jitter = Math.random() * 500;
     return base + jitter;
 }
@@ -222,9 +216,7 @@ function createMercureClient() {
                 return;
             }
 
-            const topics = Array.isArray(subscription.topics) && subscription.topics.length
-                ? subscription.topics
-                : (subscription.topic ? [subscription.topic] : []);
+            const topics = Array.isArray(subscription.topics) && subscription.topics.length ? subscription.topics : subscription.topic ? [subscription.topic] : [];
 
             if (!topics.length) {
                 realtimeStore.setConnectionState('disconnected');

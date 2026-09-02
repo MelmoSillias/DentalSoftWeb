@@ -47,13 +47,7 @@ const handleHide = () => emit('update:visible', false);
 </script>
 
 <template>
-    <Dialog
-        :visible="visible"
-        modal
-        :style="{ width: '52rem', maxWidth: '98vw' }"
-        class="consultation-details-dialog"
-        @update:visible="handleHide"
-    >
+    <Dialog :visible="visible" modal :style="{ width: '52rem', maxWidth: '98vw' }" class="consultation-details-dialog" @update:visible="handleHide">
         <template #header>
             <div class="flex items-center gap-3">
                 <span class="flex items-center justify-center w-9 h-9 rounded-xl bg-primary-500/10 text-primary-600 dark:text-primary-400">
@@ -127,9 +121,7 @@ const handleHide = () => emit('update:visible', false);
                     </div>
                     <div
                         class="rounded-xl border border-surface-200 dark:border-surface-700 p-4 min-h-[72px] text-sm leading-relaxed whitespace-pre-wrap"
-                        :class="details.noteSeance
-                            ? 'bg-surface-0 dark:bg-surface-900 text-surface-800 dark:text-surface-200'
-                            : 'bg-surface-50 dark:bg-surface-800/60 text-surface-400 dark:text-surface-500 italic'"
+                        :class="details.noteSeance ? 'bg-surface-0 dark:bg-surface-900 text-surface-800 dark:text-surface-200' : 'bg-surface-50 dark:bg-surface-800/60 text-surface-400 dark:text-surface-500 italic'"
                     >
                         {{ details.noteSeance || 'Aucune note enregistrée.' }}
                     </div>
@@ -141,9 +133,7 @@ const handleHide = () => emit('update:visible', false);
                             <i class="pi pi-list-check text-primary-500"></i>
                             <h4 class="text-sm font-semibold text-surface-800 dark:text-surface-200">Soins réalisés</h4>
                         </div>
-                        <span v-if="actes.length" class="text-xs font-medium text-surface-500 dark:text-surface-400">
-                            {{ actes.length }} acte{{ actes.length > 1 ? 's' : '' }}
-                        </span>
+                        <span v-if="actes.length" class="text-xs font-medium text-surface-500 dark:text-surface-400"> {{ actes.length }} acte{{ actes.length > 1 ? 's' : '' }} </span>
                     </div>
 
                     <DataTable

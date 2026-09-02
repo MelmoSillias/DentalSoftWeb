@@ -17,16 +17,7 @@ import DoctorReportsTable from '@/components/rapport/common/DoctorReportsTable.v
 
 const auth = useAuthStore();
 const { cards, carousels, tabs, fetchDashboard, toIsoDate, loading } = useDashboards();
-const {
-    employee,
-    notifications,
-    unreadCount,
-    notificationsLoading,
-    fetchProfile,
-    fetchNotifications,
-    markNotificationsRead,
-    markAllNotificationsRead
-} = useProfile();
+const { employee, notifications, unreadCount, notificationsLoading, fetchProfile, fetchNotifications, markNotificationsRead, markAllNotificationsRead } = useProfile();
 
 const notificationsFilter = ref('all');
 
@@ -591,11 +582,10 @@ onMounted(async () => {
         loadErrorMessage.value = 'Impossible de charger les données utilisateur du dashboard.';
     }
 });
-
 </script>
 
 <template>
-    <section class="min-h-screen  p-3 sm:p-4 md:p-6 lg:p-8 transition-colors duration-300 ">
+    <section class="min-h-screen p-3 sm:p-4 md:p-6 lg:p-8 transition-colors duration-300">
         <div class="mb-6 md:mb-8" data-tour="dashboard.header">
             <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
                 <div class="space-y-2 flex-1">
@@ -604,25 +594,14 @@ onMounted(async () => {
                             <i class="pi pi-home text-primary-600 dark:text-primary-400 text-lg sm:text-xl"></i>
                         </div>
                         <div>
-                            <h1 class="text-xl sm:text-2xl lg:text-3xl font-bold text-surface-900 dark:text-surface-50 tracking-tight">
-                                Bonjour, {{ userLabel }} 👋
-                            </h1>
-                            <p class="text-surface-600 dark:text-surface-300 text-xs sm:text-sm md:text-base mt-1">
-                                Voici votre tableau de bord pour aujourd'hui
-                            </p>
+                            <h1 class="text-xl sm:text-2xl lg:text-3xl font-bold text-surface-900 dark:text-surface-50 tracking-tight">Bonjour, {{ userLabel }} 👋</h1>
+                            <p class="text-surface-600 dark:text-surface-300 text-xs sm:text-sm md:text-base mt-1">Voici votre tableau de bord pour aujourd'hui</p>
                         </div>
                     </div>
                 </div>
 
                 <div class="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-2 sm:gap-3 w-full lg:w-auto" data-tour="dashboard.filters">
-                    <SelectButton
-                        v-if="showRangeFilters"
-                        v-model="filterMode"
-                        :options="filterOptions"
-                        optionLabel="label"
-                        optionValue="value"
-                        class="w-full sm:w-auto"
-                    />
+                    <SelectButton v-if="showRangeFilters" v-model="filterMode" :options="filterOptions" optionLabel="label" optionValue="value" class="w-full sm:w-auto" />
                     <div class="relative w-full sm:w-auto" v-if="filterMode === 'date'">
                         <DatePicker
                             v-model="selectedDate"
@@ -632,7 +611,7 @@ onMounted(async () => {
                             placeholder="Selectionner une date"
                             class="rounded-xl border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-800 [&_.p-datepicker]:p-3.5 w-full sm:w-56 lg:w-64"
                             :pt="{ input: 'pl-10 py-2.5 sm:py-3', icon: 'left-3 top-3 text-surface-400' }"
-                        /> 
+                        />
                     </div>
                     <div class="relative w-full sm:w-auto" v-else-if="showRangeFilters">
                         <PanelDatePicker
@@ -664,49 +643,36 @@ onMounted(async () => {
         </div>
 
         <template v-else>
+            <div data-tour="dashboard.quick-stats">
+                <DashboardQuickStats :cards="quickCards" :loading="loading" />
+            </div>
 
-        <div data-tour="dashboard.quick-stats">
-            <DashboardQuickStats :cards="quickCards" :loading="loading" />
-        </div>
-
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 md:mb-8 items-start">
-            <div class="lg:col-span-2 self-start" data-tour="dashboard.main-report">
-                <div v-if="showReceptionReports">
-                    <DoctorReportsTable
-                        title="Rapports periodiques par medecin"
-                        :data="receptionReports"
-                        :loading="loading"
-                        :period-label="periodLabel"
-                        variant="reception"
-                    />
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 md:mb-8 items-start">
+                <div class="lg:col-span-2 self-start" data-tour="dashboard.main-report">
+                    <div v-if="showReceptionReports">
+                        <DoctorReportsTable title="Rapports periodiques par medecin" :data="receptionReports" :loading="loading" :period-label="periodLabel" variant="reception" />
+                    </div>
+                    <div v-else>
+                        <DashboardCarouselSection :slides="carouselSlides" :selected-period="selectedPeriod" :period-options="periodOptions" :loading="loading" @update:selectedPeriod="selectedPeriod = $event" />
+                    </div>
                 </div>
-                <div v-else>
-                    <DashboardCarouselSection
-                        :slides="carouselSlides"
-                        :selected-period="selectedPeriod"
-                        :period-options="periodOptions"
-                        :loading="loading"
-                        @update:selectedPeriod="selectedPeriod = $event"
-                    />
+
+                <div class="lg:col-span-1" data-tour="dashboard.tabs-panel">
+                    <DashboardTabsPanel :role="role" :tabs="tabs" :loading="loading" />
                 </div>
             </div>
 
-            <div class="lg:col-span-1" data-tour="dashboard.tabs-panel">
-                <DashboardTabsPanel :role="role" :tabs="tabs" :loading="loading" />
+            <div data-tour="dashboard.notifications">
+                <ProfileNotificationsSection
+                    :notifications="notifications"
+                    :unread-count="unreadCount"
+                    :loading="notificationsLoading"
+                    :filter="notificationsFilter"
+                    @filter-change="handleFilterChange"
+                    @mark-read="handleMarkRead"
+                    @mark-all="handleMarkAll"
+                />
             </div>
-        </div>
-
-        <div data-tour="dashboard.notifications">
-            <ProfileNotificationsSection
-                :notifications="notifications"
-                :unread-count="unreadCount"
-                :loading="notificationsLoading"
-                :filter="notificationsFilter"
-                @filter-change="handleFilterChange"
-                @mark-read="handleMarkRead"
-                @mark-all="handleMarkAll"
-            />
-        </div>
         </template>
     </section>
 </template>

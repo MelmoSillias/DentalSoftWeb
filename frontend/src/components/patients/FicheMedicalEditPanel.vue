@@ -39,22 +39,8 @@ const sections = [
     { key: 'seances', title: 'Séances passées', icon: 'pi pi-history' }
 ];
 
-const {
-    loading,
-    data,
-    saving,
-    dirty,
-    dirtySectionsList,
-    documentsUploadProgress,
-    loadData,
-    watchSection,
-    saveEntretienSection,
-    saveExamensSection,
-    saveBilansSection,
-    savePlanTraitementSection,
-    saveDocumentsSection,
-    saveDevisSection
-} = useConsultationsForm({ ficheId: ficheIdRef, consultId: consultIdRef, token, mode });
+const { loading, data, saving, dirty, dirtySectionsList, documentsUploadProgress, loadData, watchSection, saveEntretienSection, saveExamensSection, saveBilansSection, savePlanTraitementSection, saveDocumentsSection, saveDevisSection } =
+    useConsultationsForm({ ficheId: ficheIdRef, consultId: consultIdRef, token, mode });
 
 const ageNumber = computed(() => {
     const age = Number(data.patient?.age);
@@ -71,27 +57,12 @@ const ageNumber = computed(() => {
 });
 
 const saveAll = async () => {
-    await Promise.all([
-        saveEntretienSection(),
-        saveExamensSection(),
-        saveBilansSection(),
-        savePlanTraitementSection(),
-        saveDocumentsSection(),
-        saveDevisSection()
-    ]);
+    await Promise.all([saveEntretienSection(), saveExamensSection(), saveBilansSection(), savePlanTraitementSection(), saveDocumentsSection(), saveDevisSection()]);
     emit('saved');
 };
 
 const saveCurrentSection = async () => {
-    const handlers = [
-        saveEntretienSection,
-        saveExamensSection,
-        saveDocumentsSection,
-        savePlanTraitementSection,
-        saveBilansSection,
-        saveDevisSection,
-        null
-    ];
+    const handlers = [saveEntretienSection, saveExamensSection, saveDocumentsSection, savePlanTraitementSection, saveBilansSection, saveDevisSection, null];
     const handler = handlers[activeSection.value];
     if (handler) {
         await handler();
@@ -99,14 +70,21 @@ const saveCurrentSection = async () => {
     }
 };
 
-watch(dirtySectionsList, (list) => {
-    emit('dirty-change', list.length > 0);
-}, { immediate: true });
+watch(
+    dirtySectionsList,
+    (list) => {
+        emit('dirty-change', list.length > 0);
+    },
+    { immediate: true }
+);
 
-watch(() => props.ficheId, (next) => {
-    ficheIdRef.value = next;
-    loadData();
-});
+watch(
+    () => props.ficheId,
+    (next) => {
+        ficheIdRef.value = next;
+        loadData();
+    }
+);
 
 onMounted(async () => {
     watchSection(() => data.entretien, 'entretien', saveAll);
@@ -148,9 +126,7 @@ defineExpose({
                         @click="activeSection = index"
                         :class="[
                             'px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300',
-                            activeSection === index
-                                ? 'bg-primary-500 text-white shadow-sm'
-                                : 'text-surface-600 dark:text-surface-400 hover:text-surface-900 dark:hover:text-surface-100 hover:bg-surface-100 dark:hover:bg-surface-700'
+                            activeSection === index ? 'bg-primary-500 text-white shadow-sm' : 'text-surface-600 dark:text-surface-400 hover:text-surface-900 dark:hover:text-surface-100 hover:bg-surface-100 dark:hover:bg-surface-700'
                         ]"
                     >
                         <div class="flex items-center gap-2">
@@ -162,57 +138,21 @@ defineExpose({
             </div>
 
             <div class="space-y-4">
-                <EntretienVerbalForm
-                    v-if="activeSection === 0"
-                    v-model="data.entretien"
-                    :saving="saving.entretien"
-                    :patient-sex="data.patient?.sexe"
-                    @save="saveCurrentSection"
-                />
+                <EntretienVerbalForm v-if="activeSection === 0" v-model="data.entretien" :saving="saving.entretien" :patient-sex="data.patient?.sexe" @save="saveCurrentSection" />
 
-                <ExamensFicheForm
-                    v-if="activeSection === 1"
-                    v-model="data.examens"
-                    :saving="saving.examens"
-                    @save="saveCurrentSection"
-                />
+                <ExamensFicheForm v-if="activeSection === 1" v-model="data.examens" :saving="saving.examens" @save="saveCurrentSection" />
 
-                <FicheDocumentsForm
-                    v-if="activeSection === 2"
-                    v-model="data.documents"
-                    :saving="saving.documents"
-                    :upload-progress="documentsUploadProgress"
-                    @save="saveCurrentSection"
-                />
+                <FicheDocumentsForm v-if="activeSection === 2" v-model="data.documents" :saving="saving.documents" :upload-progress="documentsUploadProgress" @save="saveCurrentSection" />
 
-                <FichePlanTraitementForm
-                    v-if="activeSection === 3"
-                    v-model="data.planTraitement"
-                    :saving="saving.planTraitement"
-                    @save="saveCurrentSection"
-                />
+                <FichePlanTraitementForm v-if="activeSection === 3" v-model="data.planTraitement" :saving="saving.planTraitement" @save="saveCurrentSection" />
 
-                <FicheBilansForm
-                    v-if="activeSection === 4"
-                    v-model="data.bilans"
-                    :saving="saving.bilans"
-                    :patient-age="ageNumber"
-                    @save="saveCurrentSection"
-                />
+                <FicheBilansForm v-if="activeSection === 4" v-model="data.bilans" :saving="saving.bilans" :patient-age="ageNumber" @save="saveCurrentSection" />
 
-                <DevisForm
-                    v-if="activeSection === 5"
-                    v-model="data.devis"
-                    :saving="saving.devis"
-                    :soins="soinsList"
-                    @save="saveCurrentSection"
-                />
+                <DevisForm v-if="activeSection === 5" v-model="data.devis" :saving="saving.devis" :soins="soinsList" @save="saveCurrentSection" />
 
                 <div v-if="activeSection === 6">
                     <PastSessions :sessions="data.sessions" />
-                    <p v-if="!data.sessions?.length" class="text-sm text-surface-500 dark:text-surface-400 mt-4 text-center">
-                        Aucune séance précédente.
-                    </p>
+                    <p v-if="!data.sessions?.length" class="text-sm text-surface-500 dark:text-surface-400 mt-4 text-center">Aucune séance précédente.</p>
                 </div>
             </div>
         </template>

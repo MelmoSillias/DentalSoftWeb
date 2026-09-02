@@ -1,3 +1,59 @@
+<script>
+export default {
+    name: 'FicheMedical',
+    emits: ['print'],
+    props: {
+        fiche: {
+            type: Object,
+            required: true
+        },
+        positionLabel: {
+            type: String,
+            default: ''
+        }
+    },
+    data() {
+        return {
+            activeSection: 0,
+            sections: [
+                { title: 'Motif', icon: 'pi pi-info-circle' },
+                { title: 'Examens', icon: 'pi pi-search' },
+                { title: 'Traitements', icon: 'pi pi-cog' },
+                { title: 'Devis', icon: 'pi pi-file' },
+                { title: 'Séances passées', icon: 'pi pi-history' }
+            ]
+        };
+    },
+    computed: {
+        examensEntries() {
+            return Object.entries(this.fiche.examens || {});
+        }
+    },
+    methods: {
+        formatDate(date) {
+            if (!date) return '--';
+            return new Date(date).toLocaleDateString('fr-FR', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        },
+        getTypeSeverity(type) {
+            const severities = {
+                Consultation: 'info',
+                Urgence: 'danger',
+                Suivi: 'success',
+                Spécialiste: 'warning',
+                Hospitalisation: 'help'
+            };
+            return severities[type] || 'info';
+        }
+    }
+};
+</script>
+
 <template>
     <div class="bg-surface-0 dark:bg-surface-800/80 rounded-2xl shadow-lg border border-surface-200/50 dark:border-surface-700/50 overflow-hidden backdrop-blur-sm">
         <!-- Header de la fiche -->
@@ -8,9 +64,7 @@
                         <i class="pi pi-folder-open text-primary-500"></i>
                         Fiche Médicale {{ positionLabel || '' }}
                     </h3>
-                    <p class="text-sm text-surface-600 dark:text-surface-300 mt-1">
-                        Créée le {{ formatDate(fiche.date || fiche.dateCreation) }}
-                    </p>
+                    <p class="text-sm text-surface-600 dark:text-surface-300 mt-1">Créée le {{ formatDate(fiche.date || fiche.dateCreation) }}</p>
                 </div>
                 <div class="flex items-center gap-2">
                     <Tag value="V1" severity="info" class="px-3 py-1.5 rounded-full font-medium" />
@@ -30,9 +84,7 @@
                         @click="activeSection = index"
                         :class="[
                             'px-4 py-2 rounded-lg text-sm button-sm font-medium transition-all duration-300',
-                            activeSection === index
-                                ? 'bg-primary-500 text-white shadow-sm'
-                                : 'text-surface-600 dark:text-surface-400 hover:text-surface-900 dark:hover:text-surface-100 hover:bg-surface-100 dark:hover:bg-surface-700'
+                            activeSection === index ? 'bg-primary-500 text-white shadow-sm' : 'text-surface-600 dark:text-surface-400 hover:text-surface-900 dark:hover:text-surface-100 hover:bg-surface-100 dark:hover:bg-surface-700'
                         ]"
                     >
                         <div class="flex items-center gap-2">
@@ -114,8 +166,7 @@
                     <div v-if="examensEntries.length" class="mt-4">
                         <div class="text-sm text-surface-600 dark:text-surface-400 font-medium mb-2">Tooths check</div>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-                            <div v-for="([key, value], idx) in examensEntries" :key="idx"
-                                class="flex items-center justify-between p-3 rounded-xl bg-surface-50 dark:bg-surface-700/50">
+                            <div v-for="([key, value], idx) in examensEntries" :key="idx" class="flex items-center justify-between p-3 rounded-xl bg-surface-50 dark:bg-surface-700/50">
                                 <span class="text-surface-600 dark:text-surface-400">{{ key }}</span>
                                 <span class="font-medium text-surface-900 dark:text-surface-100">{{ value }}</span>
                             </div>
@@ -154,8 +205,7 @@
                         </div>
                         <div v-if="fiche.documents?.length" class="space-y-2">
                             <div class="text-sm text-surface-600 dark:text-surface-400 font-medium">Documents médicaux</div>
-                            <div v-for="(doc, idx) in fiche.documents" :key="idx"
-                                class="p-3 rounded-xl border border-surface-200/50 dark:border-surface-700/50">
+                            <div v-for="(doc, idx) in fiche.documents" :key="idx" class="p-3 rounded-xl border border-surface-200/50 dark:border-surface-700/50">
                                 <div class="font-medium text-surface-900 dark:text-surface-100">{{ doc.libelle || 'Document' }}</div>
                                 <div class="text-sm text-surface-600 dark:text-surface-400">{{ doc.description || '—' }}</div>
                                 <div class="text-xs text-surface-500 dark:text-surface-400 mt-1">{{ doc.dateDossier || '--' }}</div>
@@ -177,8 +227,7 @@
                         </div>
                         <div class="space-y-2">
                             <div class="text-sm text-surface-600 dark:text-surface-400 font-medium">Contenus</div>
-                            <div v-for="(item, idx) in (fiche.devis.contenus || [])" :key="idx"
-                                class="flex items-center justify-between p-3 rounded-xl border border-surface-200/50 dark:border-surface-700/50">
+                            <div v-for="(item, idx) in fiche.devis.contenus || []" :key="idx" class="flex items-center justify-between p-3 rounded-xl border border-surface-200/50 dark:border-surface-700/50">
                                 <div class="font-medium text-surface-900 dark:text-surface-100">{{ item.designation || 'Service' }}</div>
                                 <div class="text-sm text-surface-600 dark:text-surface-400">{{ item.qte || 1 }} x {{ item.montant || 0 }}</div>
                             </div>
@@ -194,24 +243,18 @@
                         Séances passées
                     </h4>
                     <div v-if="fiche.consultations?.length" class="space-y-4">
-                        <div v-for="(seance, idx) in fiche.consultations" :key="idx"
-                            class="p-4 rounded-xl border border-surface-200/50 dark:border-surface-700/50">
+                        <div v-for="(seance, idx) in fiche.consultations" :key="idx" class="p-4 rounded-xl border border-surface-200/50 dark:border-surface-700/50">
                             <div class="flex items-start justify-between gap-3">
                                 <div>
-                                    <div class="font-semibold text-surface-900 dark:text-surface-100">
-                                        Séance du {{ formatDate(seance.date) }}
-                                    </div>
-                                    <div class="text-sm text-surface-600 dark:text-surface-400">
-                                        {{ seance.medecin || '—' }} • {{ seance.infirmier || '—' }} • {{ seance.salle || '—' }}
-                                    </div>
+                                    <div class="font-semibold text-surface-900 dark:text-surface-100">Séance du {{ formatDate(seance.date) }}</div>
+                                    <div class="text-sm text-surface-600 dark:text-surface-400">{{ seance.medecin || '—' }} • {{ seance.infirmier || '—' }} • {{ seance.salle || '—' }}</div>
                                 </div>
                                 <Tag :value="seance.noteSeance || '—'" severity="info" class="px-3 py-1 rounded-full" />
                             </div>
                             <div v-if="seance.actes?.length" class="mt-3 pt-3 border-t border-surface-200/50 dark:border-surface-700/50">
                                 <div class="text-sm text-surface-600 dark:text-surface-400 font-medium mb-2">Actes</div>
                                 <div class="space-y-2">
-                                    <div v-for="(acte, aidx) in seance.actes" :key="aidx"
-                                        class="flex items-center justify-between text-sm text-surface-700 dark:text-surface-300">
+                                    <div v-for="(acte, aidx) in seance.actes" :key="aidx" class="flex items-center justify-between text-sm text-surface-700 dark:text-surface-300">
                                         <span>{{ acte.dent }} • {{ acte.type }} • {{ acte.description || '—' }}</span>
                                         <span>{{ acte.quantite || 1 }} x {{ acte.prix || 0 }}</span>
                                     </div>
@@ -228,76 +271,24 @@
         <div class="px-5 py-4 border-t border-surface-200/50 dark:border-surface-700/50 bg-surface-50/50 dark:bg-surface-900/50">
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-4">
-                    <Button icon="pi pi-print" label="Imprimer" severity="secondary" outlined size="small" @click="$emit('print')" :pt="{ label: { class: 'hidden sm:inline' } }" /> 
+                    <Button icon="pi pi-print" label="Imprimer" severity="secondary" outlined size="small" @click="$emit('print')" :pt="{ label: { class: 'hidden sm:inline' } }" />
                 </div>
-                <div class="text-sm text-surface-600 dark:text-surface-400">
-                    Dernière modification : {{ formatDate(fiche.lastModified || fiche.date || fiche.dateCreation) }}
-                </div>
+                <div class="text-sm text-surface-600 dark:text-surface-400">Dernière modification : {{ formatDate(fiche.lastModified || fiche.date || fiche.dateCreation) }}</div>
             </div>
         </div>
     </div>
 </template>
 
-<script>
-export default {
-    name: 'FicheMedical',
-    emits: ['print'],
-    props: {
-        fiche: {
-            type: Object,
-            required: true
-        },
-        positionLabel: {
-            type: String,
-            default: ''
-        }
-    },
-    data() {
-        return {
-            activeSection: 0,
-            sections: [
-                { title: 'Motif', icon: 'pi pi-info-circle' },
-                { title: 'Examens', icon: 'pi pi-search' },
-                { title: 'Traitements', icon: 'pi pi-cog' },
-                { title: 'Devis', icon: 'pi pi-file' },
-                { title: 'Séances passées', icon: 'pi pi-history' }
-            ]
-        };
-    },
-    computed: {
-        examensEntries() {
-            return Object.entries(this.fiche.examens || {});
-        }
-    },
-    methods: {
-        formatDate(date) {
-            if (!date) return '--';
-            return new Date(date).toLocaleDateString('fr-FR', {
-                day: '2-digit',
-                month: '2-digit',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-        },
-        getTypeSeverity(type) {
-            const severities = {
-                'Consultation': 'info',
-                'Urgence': 'danger',
-                'Suivi': 'success',
-                'Spécialiste': 'warning',
-                'Hospitalisation': 'help'
-            };
-            return severities[type] || 'info';
-        }
-    }
-};
-</script>
-
 <style scoped>
 @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .animate-fadeIn {

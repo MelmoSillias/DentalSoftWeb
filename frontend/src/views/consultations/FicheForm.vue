@@ -28,12 +28,7 @@ import { fetchOrdonnanceById, loadOrdonnances, updateOrdonnance } from '@/servic
 import { fetchPublicGeneralSettings } from '@/services/globalSettingsService';
 import { addPatientAllergy, addPatientAntecedent, deletePatientAllergy, deletePatientAntecedent } from '@/services/patients';
 import { fetchDevisPrintData, fetchOrdonnancePrintData, fetchPatientFichePrintData } from '@/services/printService';
-import {
-    activateConsultationsTourMock,
-    deactivateConsultationsTourMock,
-    resetConsultationsTourMockData,
-    resolveConsultationsTourMockScenario
-} from '@/services/consultationsTourMock';
+import { activateConsultationsTourMock, deactivateConsultationsTourMock, resetConsultationsTourMockData, resolveConsultationsTourMockScenario } from '@/services/consultationsTourMock';
 import { useGuidedTour } from '@/composables/useGuidedTour';
 import { useAuthStore } from '@/stores/auth';
 import Button from 'primevue/button';
@@ -110,7 +105,7 @@ const examensTypeOptions = ref(['Bacteriologique', 'Serologique', 'Histologique'
 const traitementTypeOptions = ref(['Urgence', 'Dentaires', 'Parodontaux', 'Orthodontiques', 'Autres']);
 const allergyTypeOptions = ref(['Médicamenteuses', 'Alimentaires', 'Environnementales', 'Autres']);
 const antecedentTypeOptions = ref(['Personnel', 'Familial', 'Médical']);
-const shouldHidePatientPhoneForMedecin = computed(() => Boolean(auth.user?.roles?.includes('ROLE_MEDECIN')) && !Boolean(auth.user?.roles?.includes('ROLE_ADMIN')) && hidePatientPhoneForMedecins.value);
+const shouldHidePatientPhoneForMedecin = computed(() => Boolean(auth.user?.roles?.includes('ROLE_MEDECIN')) && !auth.user?.roles?.includes('ROLE_ADMIN') && hidePatientPhoneForMedecins.value);
 const isSimplifiedFicheFormEnabled = computed(() => ficheFormSimplifie.value === true);
 
 const displayModeOptions = [
@@ -119,26 +114,22 @@ const displayModeOptions = [
 ];
 
 const toFullName = (employee = {}) => {
-    return employee.label
-        || employee.fullName
-        || employee.fullname
-        || employee.name
-        || employee.FullName
-        || employee.Fullname
-        || `${employee.prenom ?? ''} ${employee.nom ?? ''}`.trim()
-        || employee.nom
-        || '';
+    return employee.label || employee.fullName || employee.fullname || employee.name || employee.FullName || employee.Fullname || `${employee.prenom ?? ''} ${employee.nom ?? ''}`.trim() || employee.nom || '';
 };
 
-const medecinsOptions = computed(() => (data.medecins || []).map((m) => ({
-    id: m.id,
-    label: toFullName(m)
-})));
+const medecinsOptions = computed(() =>
+    (data.medecins || []).map((m) => ({
+        id: m.id,
+        label: toFullName(m)
+    }))
+);
 
-const infirmiersOptions = computed(() => (data.infirmiers || []).map((i) => ({
-    id: i.id,
-    label: toFullName(i)
-})));
+const infirmiersOptions = computed(() =>
+    (data.infirmiers || []).map((i) => ({
+        id: i.id,
+        label: toFullName(i)
+    }))
+);
 
 const sallesOptions = computed(() => (data.salles || []).map((s) => ({ id: s.id, label: s.label || s.nom || s.name || '' })));
 const selectedMedecinLabel = computed(() => {
@@ -150,11 +141,12 @@ const selectedMedecinLabel = computed(() => {
     return fullName || user.name || user.username || '';
 });
 
-const normalizeText = (value) => String(value || '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .trim();
+const normalizeText = (value) =>
+    String(value || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim();
 
 const resolveConnectedMedecinId = () => {
     const user = auth.user || {};
@@ -425,13 +417,7 @@ const sections = computed(() => {
 });
 
 const saveSyntheseSection = async ({ silent = false } = {}) => {
-    await Promise.all([
-        saveEntretienSection({ silent }),
-        saveExamensSection({ silent }),
-        saveDocumentsSection({ silent }),
-        saveBilansSection({ silent }),
-        savePlanTraitementSection({ silent })
-    ]);
+    await Promise.all([saveEntretienSection({ silent }), saveExamensSection({ silent }), saveDocumentsSection({ silent }), saveBilansSection({ silent }), savePlanTraitementSection({ silent })]);
 };
 
 const createGroupKey = () => {
@@ -626,7 +612,7 @@ const handleSaveAntecedent = async (payload) => {
         showAntecedentDialog.value = false;
     } catch (error) {
         logAppError('Erreur ajout antecedent', error);
-        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible d\'ajouter l\'antecedent.' });
+        toast.add({ severity: 'error', summary: 'Erreur', detail: "Impossible d'ajouter l'antecedent." });
     } finally {
         savingAntecedent.value = false;
     }
@@ -782,13 +768,13 @@ const normalizeOrdonnanceDraft = (ordo = {}) => ({
     note: ordo.note || '',
     lignes: Array.isArray(ordo.lignes)
         ? ordo.lignes.map((line) => ({
-            designation: line.designation || line.medicament || '',
-            posologie: line.posologie || '',
-            frequence: line.frequence || '',
-            duree: line.duree || '',
-            quantite: Number(line.quantite) || 1,
-            instructions: line.instructions || ''
-        }))
+              designation: line.designation || line.medicament || '',
+              posologie: line.posologie || '',
+              frequence: line.frequence || '',
+              duree: line.duree || '',
+              quantite: Number(line.quantite) || 1,
+              instructions: line.instructions || ''
+          }))
         : []
 });
 
@@ -891,17 +877,18 @@ const { isGuidedTourStarting } = useGuidedTour({
     errorMessage: 'Impossible de lancer le tour de la fiche medicale.'
 });
 
-const confirmLeave = () => new Promise((resolve) => {
-    confirm.require({
-        message: 'Des modifications ne sont pas enregistrees. Quitter le formulaire ?',
-        header: 'Confirmation',
-        icon: 'pi pi-exclamation-triangle',
-        acceptLabel: 'Quitter',
-        rejectLabel: 'Rester',
-        accept: () => resolve(true),
-        reject: () => resolve(false)
+const confirmLeave = () =>
+    new Promise((resolve) => {
+        confirm.require({
+            message: 'Des modifications ne sont pas enregistrees. Quitter le formulaire ?',
+            header: 'Confirmation',
+            icon: 'pi pi-exclamation-triangle',
+            acceptLabel: 'Quitter',
+            rejectLabel: 'Rester',
+            accept: () => resolve(true),
+            reject: () => resolve(false)
+        });
     });
-});
 
 onBeforeRouteLeave(async () => {
     if (allowRouteLeaveAfterCloture.value) return true;
@@ -984,11 +971,9 @@ const retryLoad = async () => {
         await armDirtyTracking();
     }
 };
-
 </script>
 
 <template>
-
     <div class="min-h-screen p-4 md:p-6 lg:p-8 transition-colors duration-300">
         <ConfirmDialog />
         <AppToast />
@@ -1001,7 +986,7 @@ const retryLoad = async () => {
                 </div>
             </div>
             <div data-tour="consultations-form.header" class="mb-6 md:mb-8 gap-4 flex flex-row justify-items-strech rounded-2xl bg-surface-0/80 dark:bg-surface-800/80 backdrop-blur-sm border border-surface-200/50 dark:border-surface-700/50">
-                <div class="inline-flex items-center gap-3 mb-4 p-3 ">
+                <div class="inline-flex items-center gap-3 mb-4 p-3">
                     <div class="p-2.5 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600">
                         <i class="pi pi-file text-white text-xl"></i>
                     </div>
@@ -1036,124 +1021,112 @@ const retryLoad = async () => {
 
                 <div data-tour="consultations-form.switcher">
                     <SectionSwitcher v-model="activeSection" :sections="sections" :mode="switcherMode" :init-key="sectionInitKey">
-                    <template #infos>
-                        <div data-tour="consultations-form.section.infos">
-                            <FichePatientInfoSection
+                        <template #infos>
+                            <div data-tour="consultations-form.section.infos">
+                                <FichePatientInfoSection
+                                    :patient="data.patient"
+                                    :hide-phone="shouldHidePatientPhoneForMedecin"
+                                    @add-antecedent="() => (showAntecedentDialog = true)"
+                                    @add-allergy="() => (showAllergyDialog = true)"
+                                    @delete-antecedent="handleDeleteAntecedent"
+                                    @delete-allergy="handleDeleteAllergy"
+                                />
+                            </div>
+                        </template>
+
+                        <template #synthese>
+                            <FicheSyntheseForm
+                                v-model:entretien="data.entretien"
                                 :patient="data.patient"
-                                :hide-phone="shouldHidePatientPhoneForMedecin"
-                                @add-antecedent="() => (showAntecedentDialog = true)"
-                                @add-allergy="() => (showAllergyDialog = true)"
+                                v-model:documents="data.documents"
+                                v-model:examens="data.examens"
+                                v-model:bilans="data.bilans"
+                                v-model:planTraitement="data.planTraitement"
+                                :saving="saving"
+                                :documents-upload-progress="documentsUploadProgress"
+                                :is-cloture-processing="isClotureProcessing"
+                                :examens-type-options="examensTypeOptions"
+                                :traitement-type-options="traitementTypeOptions"
+                                @save="saveSyntheseSection"
+                                @save-documents="saveDocumentsSection"
+                                @add-antecedent="showAntecedentDialog = true"
+                                @add-allergy="showAllergyDialog = true"
                                 @delete-antecedent="handleDeleteAntecedent"
                                 @delete-allergy="handleDeleteAllergy"
-                            />
-                        </div>
-                    </template>
-
-                    <template #synthese>
-                        <FicheSyntheseForm
-                            v-model:entretien="data.entretien"
-                            :patient="data.patient"
-                            v-model:documents="data.documents"
-                            v-model:examens="data.examens"
-                            v-model:bilans="data.bilans"
-                            v-model:planTraitement="data.planTraitement"
-                            :saving="saving"
-                            :documents-upload-progress="documentsUploadProgress"
-                            :is-cloture-processing="isClotureProcessing"
-                            :examens-type-options="examensTypeOptions"
-                            :traitement-type-options="traitementTypeOptions"
-                            @save="saveSyntheseSection"
-                            @save-documents="saveDocumentsSection"
-                            @add-antecedent="showAntecedentDialog = true"
-                            @add-allergy="showAllergyDialog = true"
-                            @delete-antecedent="handleDeleteAntecedent"
-                            @delete-allergy="handleDeleteAllergy"
-                            @open-rdv="showRdvDialog = true"
-                        />
-                    </template>
-
-                    <template #entretien>
-                        <div data-tour="consultations-form.section.entretien">
-                            <EntretienVerbalForm
-                                v-model="data.entretien"
-                                :saving="saving.entretien"
-                                :patient-sex="data.patient?.sexe"
-                                @save="saveEntretienSection"
                                 @open-rdv="showRdvDialog = true"
                             />
-                        </div>
-                    </template>
+                        </template>
 
-                    <template #examens>
-                        <div data-tour="consultations-form.section.examens">
-                            <ExamensFicheForm v-model="data.examens" :saving="saving.examens" @save="saveExamensSection" />
-                        </div>
-                    </template>
+                        <template #entretien>
+                            <div data-tour="consultations-form.section.entretien">
+                                <EntretienVerbalForm v-model="data.entretien" :saving="saving.entretien" :patient-sex="data.patient?.sexe" @save="saveEntretienSection" @open-rdv="showRdvDialog = true" />
+                            </div>
+                        </template>
 
-                    <template #documents>
-                        <div data-tour="consultations-form.section.documents">
-                            <FicheDocumentsForm v-model="data.documents" :saving="saving.documents" :upload-progress="documentsUploadProgress" @save="saveDocumentsSection" />
-                        </div>
-                    </template>
+                        <template #examens>
+                            <div data-tour="consultations-form.section.examens">
+                                <ExamensFicheForm v-model="data.examens" :saving="saving.examens" @save="saveExamensSection" />
+                            </div>
+                        </template>
 
-                    <template #bilans>
-                        <div data-tour="consultations-form.section.bilans">
-                            <FicheBilansForm v-model="data.bilans" :saving="saving.bilans" :patient-age="ageNumber" @save="saveBilansSection" />
-                        </div>
-                    </template>
+                        <template #documents>
+                            <div data-tour="consultations-form.section.documents">
+                                <FicheDocumentsForm v-model="data.documents" :saving="saving.documents" :upload-progress="documentsUploadProgress" @save="saveDocumentsSection" />
+                            </div>
+                        </template>
 
-                    <template #plan-traitement>
-                        <div data-tour="consultations-form.section.plan-traitement">
-                            <FichePlanTraitementForm v-model="data.planTraitement" :saving="saving.planTraitement" @save="savePlanTraitementSection" />
-                        </div>
-                    </template>
+                        <template #bilans>
+                            <div data-tour="consultations-form.section.bilans">
+                                <FicheBilansForm v-model="data.bilans" :saving="saving.bilans" :patient-age="ageNumber" @save="saveBilansSection" />
+                            </div>
+                        </template>
 
-                    <template #devis>
-                        <div data-tour="consultations-form.section.devis">
-                            <DevisForm
-                                v-model="data.devis"
-                                :saving="saving.devis"
-                                :soins="soinsList"
-                                @save="saveDevisSection"
-                                @print-devis="handlePrintDevis"
-                            />
-                        </div>
-                    </template>
+                        <template #plan-traitement>
+                            <div data-tour="consultations-form.section.plan-traitement">
+                                <FichePlanTraitementForm v-model="data.planTraitement" :saving="saving.planTraitement" @save="savePlanTraitementSection" />
+                            </div>
+                        </template>
 
-                    <template #seances>
-                        <div data-tour="consultations-form.section.seances">
-                            <PastSessions :sessions="data.sessions" />
-                        </div>
-                    </template>
+                        <template #devis>
+                            <div data-tour="consultations-form.section.devis">
+                                <DevisForm v-model="data.devis" :saving="saving.devis" :soins="soinsList" @save="saveDevisSection" @print-devis="handlePrintDevis" />
+                            </div>
+                        </template>
 
-                    <template #consult>
-                        <div data-tour="consultations-form.section.consult">
-                            <ConsultationEnCoursForm
-                                v-model="data.consultation"
-                                v-model:diagnostic-positif="data.bilans.diagnosticPositif"
-                                :show-diagnostic-positif="showDiagnosticPositifInConsultation"
-                                :soins="soinsList"
-                                :formule-dentaire="data.bilans?.bilanDentaire?.formuleDentaire"
-                                :medecins="data.medecins"
-                                :medecins-options="medecinsOptions"
-                                :infirmiers="data.infirmiers"
-                                :infirmiers-options="infirmiersOptions"
-                                :salles="data.salles"
-                                :salles-options="sallesOptions"
-                                :ordonnances="data.ordonnances"
-                                :medecin-readonly="isMedecinUser"
-                                :loading="loading || isClotureProcessing"
-                                :saving="Boolean(saving.consult || (showDiagnosticPositifInConsultation && saving.bilans))"
-                                :cloture-loading="isClotureProcessing"
-                                @save="saveConsultSection"
-                                @cloture="handleCloture"
-                                @open-ordonnance="openOrdonnanceModal"
-                                @view-ordonnance="openViewOrdonnance"
-                                @edit-ordonnance="openEditOrdonnance"
-                                @print-ordonnance="handlePrintOrdonnance"
-                            />
-                        </div>
-                    </template>
+                        <template #seances>
+                            <div data-tour="consultations-form.section.seances">
+                                <PastSessions :sessions="data.sessions" />
+                            </div>
+                        </template>
+
+                        <template #consult>
+                            <div data-tour="consultations-form.section.consult">
+                                <ConsultationEnCoursForm
+                                    v-model="data.consultation"
+                                    v-model:diagnostic-positif="data.bilans.diagnosticPositif"
+                                    :show-diagnostic-positif="showDiagnosticPositifInConsultation"
+                                    :soins="soinsList"
+                                    :formule-dentaire="data.bilans?.bilanDentaire?.formuleDentaire"
+                                    :medecins="data.medecins"
+                                    :medecins-options="medecinsOptions"
+                                    :infirmiers="data.infirmiers"
+                                    :infirmiers-options="infirmiersOptions"
+                                    :salles="data.salles"
+                                    :salles-options="sallesOptions"
+                                    :ordonnances="data.ordonnances"
+                                    :medecin-readonly="isMedecinUser"
+                                    :loading="loading || isClotureProcessing"
+                                    :saving="Boolean(saving.consult || (showDiagnosticPositifInConsultation && saving.bilans))"
+                                    :cloture-loading="isClotureProcessing"
+                                    @save="saveConsultSection"
+                                    @cloture="handleCloture"
+                                    @open-ordonnance="openOrdonnanceModal"
+                                    @view-ordonnance="openViewOrdonnance"
+                                    @edit-ordonnance="openEditOrdonnance"
+                                    @print-ordonnance="handlePrintOrdonnance"
+                                />
+                            </div>
+                        </template>
                     </SectionSwitcher>
                 </div>
             </div>
@@ -1195,14 +1168,7 @@ const retryLoad = async () => {
                         @cancel="showRdvDialog = false"
                     />
                 </Dialog>
-                <OrdonnanceModal
-                    v-model="ordonnanceDraft"
-                    v-model:visible="ordonnanceModalVisible"
-                    :mode="ordonnanceModalMode"
-                    :medecin-readonly="true"
-                    :saving="saving.consult"
-                    @save="saveOrdonnanceSection"
-                />
+                <OrdonnanceModal v-model="ordonnanceDraft" v-model:visible="ordonnanceModalVisible" :mode="ordonnanceModalMode" :medecin-readonly="true" :saving="saving.consult" @save="saveOrdonnanceSection" />
             </div>
         </div>
         <div v-else-if="loadErrorMessage" class="flex min-h-[320px] flex-col items-center justify-center gap-4 rounded-2xl border border-amber-200/70 bg-amber-50/70 p-8 dark:border-amber-800/70 dark:bg-amber-950/20">
@@ -1218,7 +1184,7 @@ const retryLoad = async () => {
 
         <div v-else class="flex flex-col items-center justify-center min-h-[300px]">
             <div class="relative mb-4">
-            <span class="block w-16 h-16 rounded-full border-4 border-primary-500 border-t-transparent pi-spin"></span>
+                <span class="block w-16 h-16 rounded-full border-4 border-primary-500 border-t-transparent pi-spin"></span>
                 <i class="pi pi-file text-primary-500 text-2xl absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"></i>
             </div>
             <span class="text-lg font-semibold text-primary-600">Chargement de la fiche médicale...</span>

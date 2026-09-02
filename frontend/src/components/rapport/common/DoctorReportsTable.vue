@@ -6,10 +6,7 @@ import Column from 'primevue/column';
 import DataTable from 'primevue/datatable';
 import Dialog from 'primevue/dialog';
 import Tag from 'primevue/tag';
-import {
-    buildPrintHtmlDocument,
-    buildPrintTitleBandHtml
-} from '@/utils/printDocumentStyles';
+import { buildPrintHtmlDocument, buildPrintTitleBandHtml } from '@/utils/printDocumentStyles';
 import { openPrintWindow } from '@/utils/reportPrint';
 
 const props = defineProps({
@@ -69,7 +66,7 @@ function doctorRevenueTotal(row) {
 }
 
 function doctorRevenueCash(row) {
-    return Number(row?.revenue_cash ?? (Number(row?.revenue || 0) + Number(row?.revenue_reliquats || 0)));
+    return Number(row?.revenue_cash ?? Number(row?.revenue || 0) + Number(row?.revenue_reliquats || 0));
 }
 
 function doctorCashCollected(row) {
@@ -294,10 +291,12 @@ function printDoctorRow(row) {
         </table>
     `;
 
-    openPrintWindow(buildPrintHtmlDocument({
-        title: `Rapport ${row.name || ''}`,
-        body
-    }));
+    openPrintWindow(
+        buildPrintHtmlDocument({
+            title: `Rapport ${row.name || ''}`,
+            body
+        })
+    );
 }
 
 function formatDoctorTable(row) {
@@ -571,9 +570,7 @@ function printAllActs() {
                             <div>{{ formatFcfa(doctorRevenueTotal(data)) }}</div>
                             <div class="text-[11px] text-surface-500">
                                 dont espèces : {{ formatFcfa(doctorRevenueCash(data)) }}
-                                <span v-if="Number(data.revenue_assurance || 0) > 0">
-                                    · assurance : {{ formatFcfa(data.revenue_assurance) }}
-                                </span>
+                                <span v-if="Number(data.revenue_assurance || 0) > 0"> · assurance : {{ formatFcfa(data.revenue_assurance) }} </span>
                             </div>
                         </template>
                     </Column>
@@ -616,34 +613,16 @@ function printAllActs() {
                                     </p>
                                 </div>
                                 <div class="flex flex-wrap gap-2">
-                                    <Tag
-                                        :value="`${data.consultations || 0} consultation${(data.consultations || 0) > 1 ? 's' : ''}`"
-                                        severity="secondary"
-                                    />
-                                    <Tag
-                                        :value="`${(data.actes || []).length} soin${(data.actes || []).length > 1 ? 's' : ''}`"
-                                        severity="info"
-                                    />
-                                    <Tag
-                                        v-if="(data.paiements_reliquats || []).length"
-                                        :value="`${data.paiements_reliquats.length} reliquat${data.paiements_reliquats.length > 1 ? 's' : ''}`"
-                                        severity="warn"
-                                    />
+                                    <Tag :value="`${data.consultations || 0} consultation${(data.consultations || 0) > 1 ? 's' : ''}`" severity="secondary" />
+                                    <Tag :value="`${(data.actes || []).length} soin${(data.actes || []).length > 1 ? 's' : ''}`" severity="info" />
+                                    <Tag v-if="(data.paiements_reliquats || []).length" :value="`${data.paiements_reliquats.length} reliquat${data.paiements_reliquats.length > 1 ? 's' : ''}`" severity="warn" />
                                 </div>
                             </div>
 
                             <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-                                <div
-                                    v-for="card in doctorSummaryCards(data)"
-                                    :key="card.key"
-                                    class="rounded-xl border border-surface-200/70 p-3 shadow-sm dark:border-surface-700/70"
-                                    :class="card.bg"
-                                >
+                                <div v-for="card in doctorSummaryCards(data)" :key="card.key" class="rounded-xl border border-surface-200/70 p-3 shadow-sm dark:border-surface-700/70" :class="card.bg">
                                     <div class="mb-2 flex items-center gap-2">
-                                        <span
-                                            class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-white/70 dark:bg-surface-900/40"
-                                            :class="card.tone"
-                                        >
+                                        <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-white/70 dark:bg-surface-900/40" :class="card.tone">
                                             <i :class="card.icon" />
                                         </span>
                                         <p class="text-[11px] font-semibold uppercase tracking-wide text-surface-500">{{ card.label }}</p>
@@ -667,20 +646,13 @@ function printAllActs() {
                                         <Tag :value="`${(data.actes || []).length} ligne${(data.actes || []).length > 1 ? 's' : ''}`" severity="secondary" />
                                     </div>
 
-                                    <div
-                                        v-if="!data?.actes?.length"
-                                        class="flex flex-col items-center justify-center rounded-xl border border-dashed border-surface-300/80 px-4 py-8 text-center dark:border-surface-600/80"
-                                    >
+                                    <div v-if="!data?.actes?.length" class="flex flex-col items-center justify-center rounded-xl border border-dashed border-surface-300/80 px-4 py-8 text-center dark:border-surface-600/80">
                                         <i class="pi pi-inbox mb-2 text-2xl text-surface-400" />
                                         <p class="text-sm text-surface-500">Aucun soin enregistré sur cette période.</p>
                                     </div>
 
                                     <ul v-else class="max-h-[320px] space-y-3 overflow-y-auto pr-1">
-                                        <li
-                                            v-for="(row, idx) in data.actes"
-                                            :key="`acte-${idx}`"
-                                            class="rounded-xl border border-surface-200/70 bg-surface-50/80 p-3 dark:border-surface-700/70 dark:bg-surface-800/60"
-                                        >
+                                        <li v-for="(row, idx) in data.actes" :key="`acte-${idx}`" class="rounded-xl border border-surface-200/70 bg-surface-50/80 p-3 dark:border-surface-700/70 dark:bg-surface-800/60">
                                             <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                                                 <div class="min-w-0 flex-1">
                                                     <div class="mb-1 flex flex-wrap items-center gap-2">
@@ -688,10 +660,7 @@ function printAllActs() {
                                                             {{ row.description }}
                                                         </strong>
                                                         <Tag v-if="row.isInsurance" value="Assurance" severity="info" />
-                                                        <Tag
-                                                            :value="paymentStatus(actPaymentBasis(row).due, actPaymentBasis(row).paid).label"
-                                                            :severity="paymentStatus(actPaymentBasis(row).due, actPaymentBasis(row).paid).severity"
-                                                        />
+                                                        <Tag :value="paymentStatus(actPaymentBasis(row).due, actPaymentBasis(row).paid).label" :severity="paymentStatus(actPaymentBasis(row).due, actPaymentBasis(row).paid).severity" />
                                                     </div>
                                                     <p class="text-xs text-surface-500">
                                                         <i class="pi pi-user mr-1 text-[10px]" />
@@ -726,19 +695,13 @@ function printAllActs() {
                                                     <span>{{ paymentProgress(actPaymentBasis(row).due, actPaymentBasis(row).paid) }}%</span>
                                                 </div>
                                                 <div class="h-1.5 overflow-hidden rounded-full bg-surface-200 dark:bg-surface-700">
-                                                    <div
-                                                        class="h-full rounded-full bg-emerald-500 transition-all"
-                                                        :style="{ width: `${paymentProgress(actPaymentBasis(row).due, actPaymentBasis(row).paid)}%` }"
-                                                    />
+                                                    <div class="h-full rounded-full bg-emerald-500 transition-all" :style="{ width: `${paymentProgress(actPaymentBasis(row).due, actPaymentBasis(row).paid)}%` }" />
                                                 </div>
                                             </div>
                                         </li>
                                     </ul>
 
-                                    <div
-                                        v-if="data?.actes?.length"
-                                        class="mt-4 grid gap-2 rounded-xl border border-surface-200/70 bg-surface-50/70 p-3 text-xs dark:border-surface-700/70 dark:bg-surface-800/50 sm:grid-cols-2"
-                                    >
+                                    <div v-if="data?.actes?.length" class="mt-4 grid gap-2 rounded-xl border border-surface-200/70 bg-surface-50/70 p-3 text-xs dark:border-surface-700/70 dark:bg-surface-800/50 sm:grid-cols-2">
                                         <div class="flex items-center justify-between gap-2">
                                             <span class="text-surface-500">Total facturé</span>
                                             <strong class="text-surface-900 dark:text-surface-0">{{ formatFcfa(sumActesField(data, 'montant')) }}</strong>
@@ -775,20 +738,13 @@ function printAllActs() {
                                         <Tag :value="formatFcfa(data.paiements_reliquats_total)" severity="info" />
                                     </div>
 
-                                    <div
-                                        v-if="!data?.paiements_reliquats?.length"
-                                        class="flex flex-col items-center justify-center rounded-xl border border-dashed border-surface-300/80 px-4 py-8 text-center dark:border-surface-600/80"
-                                    >
+                                    <div v-if="!data?.paiements_reliquats?.length" class="flex flex-col items-center justify-center rounded-xl border border-dashed border-surface-300/80 px-4 py-8 text-center dark:border-surface-600/80">
                                         <i class="pi pi-check-circle mb-2 text-2xl text-surface-400" />
                                         <p class="text-sm text-surface-500">Aucun paiement de reliquat sur cette période.</p>
                                     </div>
 
                                     <ul v-else class="max-h-[320px] space-y-3 overflow-y-auto pr-1">
-                                        <li
-                                            v-for="(row, idx) in data.paiements_reliquats"
-                                            :key="`reliquat-${idx}`"
-                                            class="rounded-xl border border-sky-200/70 bg-sky-50/50 p-3 dark:border-sky-900/40 dark:bg-sky-950/20"
-                                        >
+                                        <li v-for="(row, idx) in data.paiements_reliquats" :key="`reliquat-${idx}`" class="rounded-xl border border-sky-200/70 bg-sky-50/50 p-3 dark:border-sky-900/40 dark:bg-sky-950/20">
                                             <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                                                 <div class="min-w-0 flex-1">
                                                     <strong class="block truncate text-sm text-surface-900 dark:text-surface-0">
@@ -814,10 +770,7 @@ function printAllActs() {
                                         </li>
                                     </ul>
 
-                                    <div
-                                        v-if="data?.paiements_reliquats?.length"
-                                        class="mt-4 flex items-center justify-between rounded-xl border border-sky-200/70 bg-sky-50/70 px-3 py-2 text-sm dark:border-sky-900/40 dark:bg-sky-950/20"
-                                    >
+                                    <div v-if="data?.paiements_reliquats?.length" class="mt-4 flex items-center justify-between rounded-xl border border-sky-200/70 bg-sky-50/70 px-3 py-2 text-sm dark:border-sky-900/40 dark:bg-sky-950/20">
                                         <span class="font-medium text-surface-700 dark:text-surface-200">Total Paiements de reliquats</span>
                                         <strong class="text-sky-700 dark:text-sky-300">{{ formatFcfa(data.paiements_reliquats_total) }}</strong>
                                     </div>

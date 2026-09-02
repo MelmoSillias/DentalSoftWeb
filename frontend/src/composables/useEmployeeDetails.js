@@ -37,7 +37,7 @@ export function useEmployeeDetails() {
     }
 
     async function updateEmployee(id, formData) {
-        if (!id) throw new Error("Identifiant manquant.");
+        if (!id) throw new Error('Identifiant manquant.');
         try {
             const response = await http.post(`${apiPrefix}/employees/${id}`, formData, {
                 headers: buildAuthHeaders(false)

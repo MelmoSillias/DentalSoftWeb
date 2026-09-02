@@ -43,28 +43,12 @@ function goTo(to) {
         </header>
 
         <div class="navigation-hub__board">
-            <section
-                v-for="section in sections"
-                :key="section.label"
-                class="navigation-hub__section"
-                :class="{ 'navigation-hub__section--wide': section.items.length >= 4 }"
-            >
+            <section v-for="section in sections" :key="section.label" class="navigation-hub__section" :class="{ 'navigation-hub__section--wide': section.items.length >= 4 }">
                 <h2 class="navigation-hub__section-title">{{ section.label }}</h2>
                 <div class="navigation-hub__grid">
-                    <button
-                        v-for="item in section.items"
-                        :key="`${section.label}-${item.label}`"
-                        type="button"
-                        class="navigation-hub__card"
-                        @click="goTo(item.to)"
-                    >
+                    <button v-for="item in section.items" :key="`${section.label}-${item.label}`" type="button" class="navigation-hub__card" @click="goTo(item.to)">
                         <span class="navigation-hub__card-icon" aria-hidden="true">
-                            <img
-                                v-if="item.iconSrc"
-                                :src="item.iconSrc"
-                                :alt="item.label"
-                                class="navigation-hub__card-img"
-                            />
+                            <img v-if="item.iconSrc" :src="item.iconSrc" :alt="item.label" class="navigation-hub__card-img" />
                             <i v-else :class="item.icon || 'pi pi-circle'"></i>
                         </span>
                         <span class="navigation-hub__card-label">{{ item.label }}</span>

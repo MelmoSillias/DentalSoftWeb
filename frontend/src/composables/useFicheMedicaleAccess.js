@@ -48,12 +48,7 @@ export const linkConsultationToLatestFiche = async (consultationId, token, prefe
     }
 };
 
-export const loadFicheWithRecovery = async ({
-    ficheId = null,
-    consultId = null,
-    patientId = null,
-    token
-} = {}) => {
+export const loadFicheWithRecovery = async ({ ficheId = null, consultId = null, patientId = null, token } = {}) => {
     let resolvedFicheId = Number(ficheId) > 0 ? Number(ficheId) : null;
 
     const tryLoad = async (id) => {
@@ -89,8 +84,7 @@ export const loadFicheWithRecovery = async ({
         const latest = await fetchLatestFiche(patientId, token);
         resolvedFicheId = latest?.ficheId ?? latest?.fiche?.id ?? null;
         if (resolvedFicheId && consultId) {
-            resolvedFicheId = await linkConsultationToLatestFiche(consultId, token, resolvedFicheId)
-                || resolvedFicheId;
+            resolvedFicheId = (await linkConsultationToLatestFiche(consultId, token, resolvedFicheId)) || resolvedFicheId;
         }
         if (resolvedFicheId) {
             if (latest?.fiche && Number(latest.ficheId) === Number(resolvedFicheId)) {

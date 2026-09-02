@@ -1,14 +1,5 @@
-import {
-    buildDataTableHtml,
-    buildKeyValueTableHtml,
-    formatPeriodSubtitle,
-    openPrintWindow,
-    printReport
-} from '@/utils/reportPrint';
-import {
-    buildPrintHtmlDocument,
-    buildPrintTitleBandHtml
-} from '@/utils/printDocumentStyles';
+import { buildDataTableHtml, buildKeyValueTableHtml, formatPeriodSubtitle, openPrintWindow, printReport } from '@/utils/reportPrint';
+import { buildPrintHtmlDocument, buildPrintTitleBandHtml } from '@/utils/printDocumentStyles';
 
 export const DAY_PRINT_SECTIONS = [
     { key: 'newPatients', label: 'Nouveaux patients' },
@@ -21,9 +12,7 @@ export const DAY_PRINT_SECTIONS = [
     { key: 'doctorsTotals', label: 'Totaux par médecins (montant)' }
 ];
 
-export const DEFAULT_DAY_PRINT_SELECTION = Object.fromEntries(
-    DAY_PRINT_SECTIONS.map((section) => [section.key, true])
-);
+export const DEFAULT_DAY_PRINT_SELECTION = Object.fromEntries(DAY_PRINT_SECTIONS.map((section) => [section.key, true]));
 
 function formatFcfa(amount) {
     const value = Number(amount || 0);
@@ -154,9 +143,7 @@ export function buildDayReportSections(data, selection = DEFAULT_DAY_PRINT_SELEC
         sections.push({
             title: 'Encaissements validés',
             items: [{ label: 'Total encaissements validés', value: formatFcfa(data.totals?.revenue) }],
-            note: revenueTransactions.length
-                ? `${revenueTransactions.length} transaction(s) validée(s).`
-                : 'Aucune transaction de revenu validée.'
+            note: revenueTransactions.length ? `${revenueTransactions.length} transaction(s) validée(s).` : 'Aucune transaction de revenu validée.'
         });
         if (revenueTransactions.length) {
             sections.push({
@@ -183,9 +170,7 @@ export function buildDayReportSections(data, selection = DEFAULT_DAY_PRINT_SELEC
         sections.push({
             title: 'Dépenses (transactions validées)',
             items: [{ label: 'Total dépenses', value: formatFcfa(data.totals?.expense) }],
-            note: expenseTransactions.length
-                ? `${expenseTransactions.length} transaction(s) validée(s).`
-                : 'Aucune transaction de dépense validée.'
+            note: expenseTransactions.length ? `${expenseTransactions.length} transaction(s) validée(s).` : 'Aucune transaction de dépense validée.'
         });
         if (expenseTransactions.length) {
             sections.push({

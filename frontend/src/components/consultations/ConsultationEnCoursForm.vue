@@ -274,7 +274,6 @@ const consultationTypes = [
     { label: 'Urgence Dentaire', value: 'urgence' },
     { label: 'Autre', value: 'autre' }
 ];
-
 </script>
 
 <!-- ConsultationEnCours.vue -->
@@ -285,350 +284,303 @@ const consultationTypes = [
             <p class="text-sm text-surface-500 dark:text-surface-400">Chargement des données de consultation...</p>
         </div>
         <template v-else>
-        <!-- Header -->
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-surface-100 dark:border-surface-700">
-            <div class="flex items-center gap-3">
-                <div class="p-2.5 rounded-xl bg-primary-500/10 dark:bg-primary-500/20">
-                    <i class="pi pi-calendar-clock text-primary-600 dark:text-primary-400 text-xl"></i>
-                </div>
-                <div>
-                    <h3 class="text-xl font-bold text-surface-900 dark:text-surface-50">Consultation en cours</h3>
-                    <p class="text-sm text-surface-500 dark:text-surface-400 mt-1">
-                        Informations de la séance actuelle
-                    </p>
-                </div>
-            </div>
-            <div class="flex flex-wrap gap-2">
-                <Button
-                    v-if="!readonly"
-                    label="Sauvegarder"
-                    icon="pi pi-save"
-                    :loading="saving"
-                    class="rounded-xl px-4 py-2.5 font-medium shadow-sm hover:shadow-md transition-all bg-gradient-to-r from-primary-500 to-primary-600 border-0 text-white"
-                    @click="emit('save')"
-                />
-                <Button
-                    v-if="!readonly"
-                    label="Clôturer"
-                    icon="pi pi-lock"
-                    severity="danger"
-                    :loading="clotureLoading"
-                    class="rounded-xl px-4 py-2.5 font-medium shadow-sm hover:shadow-md transition-all bg-gradient-to-r from-red-500 to-red-600 border-0 text-white"
-                    @click="emit('cloture')"
-                />
-            </div>
-        </div>
-
-        <!-- Content -->
-        <div class="space-y-6" :class="readonly ? 'pointer-events-none select-none opacity-80' : ''">
-            <!-- Personnel & Salle -->
-            <div class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/30 p-5">
-                <div class="flex flex-wrap gap-4">
-                    <div class="flex-1 space-y-2 col-6 md:col-4">
-                        <label class="text-sm font-medium text-surface-700 dark:text-surface-300 flex items-center gap-2">
-                            <i class="pi pi-id-card text-surface-400"></i>
-                            Médecin <span class="text-red-500">*</span>
-                        </label>
-                        <Select
-                            :modelValue="form.medecinId"
-                            :options="medecinsList"
-                            optionLabel="label"
-                            optionValue="id"
-                            placeholder="Choisir un médecin"
-                            :filter="true"
-                            filterPlaceholder="Rechercher..."
-                            showClear
-                            :disabled="medecinReadonly"
-                            class="w-full [&_.p-select]:rounded-xl [&_.p-select]:border-surface-200 [&_.p-select]:dark:border-surface-700 [&_.p-select]:p-3"
-                            @update:modelValue="(v) => updateField('medecinId', v)"
-                        />
+            <!-- Header -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-surface-100 dark:border-surface-700">
+                <div class="flex items-center gap-3">
+                    <div class="p-2.5 rounded-xl bg-primary-500/10 dark:bg-primary-500/20">
+                        <i class="pi pi-calendar-clock text-primary-600 dark:text-primary-400 text-xl"></i>
                     </div>
-                    <div class="flex-1 space-y-2 col-6 md:col-4">
-                        <label class="text-sm font-medium text-surface-700 dark:text-surface-300 flex items-center gap-2">
-                            <i class="pi pi-users text-surface-400"></i>
-                            Aide(s) soignant(e)s
-                        </label>
-                        <MultiSelect
-                            v-model="form.infirmierIds"
-                            :options="infirmiersList"
-                            optionLabel="label"
-                            optionValue="id"
-                            placeholder="Sélectionner"
-                            display="chip"
-                            :filter="true"
-                            class="w-full [&_.p-multiselect]:rounded-xl [&_.p-multiselect]:border-surface-200 [&_.p-multiselect]:dark:border-surface-700 [&_.p-multiselect]:p-3"
-                            @update:modelValue="(v) => updateField('infirmierIds', v || [])"
-                        />
-                    </div>
-                    <div class="flex-1 space-y-2 col-6 md:col-4">
-                        <label class="text-sm font-medium text-surface-700 dark:text-surface-300 flex items-center gap-2">
-                            <i class="pi pi-building text-surface-400"></i>
-                            Salle
-                        </label>
-                        <Select
-                            v-model="form.salleId"
-                            :options="sallesList"
-                            optionLabel="label"
-                            optionValue="id"
-                            placeholder="Choisir une salle"
-                            class="w-full [&_.p-dropdown]:rounded-xl [&_.p-dropdown]:border-surface-200 [&_.p-dropdown]:dark:border-surface-700 [&_.p-dropdown]:p-3"
-                            @update:modelValue="(v) => updateField('salleId', v)"
-                        />
-                    </div>
-                    <div class="flex-1 space-y-2 col-6 md:col-4">
-                        <label class="text-sm font-medium text-surface-700 dark:text-surface-300 flex items-center gap-2">
-                            <i class="pi pi-tag text-surface-400"></i>
-                            Type de consultation
-                        </label>
-                        <Select
-                            v-model="form.type"
-                            :options="consultationTypes"
-                            optionLabel="label"
-                            optionValue="value"
-                            placeholder="Choisir un type"
-                            class="w-full [&_.p-dropdown]:rounded-xl [&_.p-dropdown]:border-surface-200 [&_.p-dropdown]:dark:border-surface-700 [&_.p-dropdown]:p-3"
-                            @update:modelValue="(v) => updateField('type', v)"
-                        />
+                    <div>
+                        <h3 class="text-xl font-bold text-surface-900 dark:text-surface-50">Consultation en cours</h3>
+                        <p class="text-sm text-surface-500 dark:text-surface-400 mt-1">Informations de la séance actuelle</p>
                     </div>
                 </div>
-            </div>
-
-            <!-- Note de séance & diagnostic positif -->
-            <div :class="showDiagnosticPositif ? 'grid grid-cols-1 lg:grid-cols-2 gap-4' : 'space-y-2'">
-                <div class="space-y-2">
-                    <label class="text-sm font-medium text-surface-700 dark:text-surface-300 flex items-center gap-2">
-                        <i class="pi pi-file-edit text-surface-400"></i>
-                        Note de séance
-                    </label>
-                    <Textarea
-                        v-model="form.noteSeance"
-                        rows="4"
-                        placeholder="Notes et observations de la séance..."
-                        class="w-full rounded-xl border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-800/50 focus:ring-2 focus:ring-primary-500/20 transition-all"
-                        @update:modelValue="(v) => updateField('noteSeance', v)"
-                    />
-                </div>
-
-                <div v-if="showDiagnosticPositif" class="space-y-2">
-                    <label class="text-sm font-medium text-surface-700 dark:text-surface-300 flex items-center gap-2">
-                        <i class="pi pi-clipboard text-indigo-400"></i>
-                        Diagnostic positif
-                    </label>
-                    <Textarea
-                        :modelValue="diagnosticPositif"
-                        rows="4"
-                        placeholder="Diagnostic positif, constatations cliniques..."
-                        class="w-full rounded-xl border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-800/50 focus:ring-2 focus:ring-primary-500/20 transition-all"
-                        @update:modelValue="(v) => emit('update:diagnosticPositif', v)"
-                    />
-                </div>
-            </div>
-
-            <!-- Soins -->
-            <div class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/30 p-5">
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-                    <div class="flex items-center gap-3">
-                        <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-500/10">
-                            <i class="pi pi-heart text-blue-500"></i>
-                        </div>
-                        <div>
-                            <h4 class="text-lg font-semibold text-surface-900 dark:text-surface-100">Soins réalisés</h4>
-                            <p class="text-sm text-surface-500 dark:text-surface-400">Actes médicaux effectués</p>
-                        </div>
-                    </div>
-                    <Button
-                        icon="pi pi-plus"
-                        label="Ajouter un soin"
-                        size="small"
-                        class="rounded-xl px-4 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 border-0 text-white shadow-sm hover:shadow-md transition-all"
-                        @click="addActe('')"
-                    />
-                    <Button
-                        icon="pi pi-list-check"
-                        label="Ajouter plusieurs"
-                        size="small"
-                        severity="secondary"
-                        class="rounded-xl px-4 py-2.5"
-                        @click="openAddActeDialog"
-                    />
-                </div>
-
-                <!-- Soins List -->
-                <div class="space-y-4">
-                    <div v-if="!(form.actes && form.actes.length)" class="text-center py-6">
-                        <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-surface-100 dark:bg-surface-800 mb-3">
-                            <i class="pi pi-inbox text-2xl text-surface-400"></i>
-                        </div>
-                        <p class="text-surface-600 dark:text-surface-400">Aucun acte ajouté. Commencez par ajouter votre premier soin.</p>
-                    </div>
-
-                    <div v-for="(acte, idx) in form.actes" :key="idx">
-                        <ActeLineCard
-                            :acte="acte"
-                            :index="idx"
-                            :soins="soinsList"
-                            :formule-dentaire="formuleDentaire"
-                            :subtotal="acteSubtotals[idx] ?? acteTotal(acte)"
-                            @update="(patch) => updateActe(idx, patch)"
-                            @remove="removeActe(idx)"
-                        />
-                    </div>
-                </div>
-
-                <!-- Total Soins -->
-                <div v-if="form.actes?.length" class="mt-4 pt-4 border-t border-surface-200 dark:border-surface-700">
-                    <div class="flex items-center justify-between">
-                        <div class="text-lg font-semibold text-surface-900 dark:text-surface-100">
-                            Total des soins
-                        </div>
-                        <div class="text-2xl font-bold text-primary-600 dark:text-primary-400">
-                            {{ formatCurrency(totalActesValue) }}
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <Dialog v-model:visible="addActeDialogVisible" header="Ajouter plusieurs soins" modal class="w-full max-w-3xl">
-                <div class="space-y-4">
-                    <p class="text-sm text-surface-600 dark:text-surface-300">Sélectionnez une ou plusieurs dents.</p>
-                    <div class="space-y-4">
-                        <div v-for="(row, rowIndex) in formuleRows" :key="'dialog-' + rowIndex" class="space-y-2">
-                            <div class="flex flex-wrap justify-center gap-2">
-                                <button
-                                    v-for="tooth in row.left"
-                                    :key="'dialog-left-' + tooth"
-                                    type="button"
-                                    class="h-12 w-12 rounded-xl border text-[10px] font-semibold tracking-tight transition-all duration-200"
-                                    :class="[toothStateClass(tooth), isToothSelected(tooth) ? 'ring-2 ring-primary-400 ring-offset-2' : '']"
-                                    @click="toggleToothSelection(tooth)"
-                                >
-                                    <div class="text-[9px] leading-tight">Dent</div>
-                                    <div class="text-xs font-bold">{{ tooth }}</div>
-                                    <div class="text-[9px] leading-tight opacity-80">{{ toothSummary(tooth) || '---' }}</div>
-                                </button>
-                            </div>
-                            <div class="flex flex-wrap justify-center gap-2">
-                                <button
-                                    v-for="tooth in row.right"
-                                    :key="'dialog-right-' + tooth"
-                                    type="button"
-                                    class="h-12 w-12 rounded-xl border text-[10px] font-semibold tracking-tight transition-all duration-200"
-                                    :class="[toothStateClass(tooth), isToothSelected(tooth) ? 'ring-2 ring-primary-400 ring-offset-2' : '']"
-                                    @click="toggleToothSelection(tooth)"
-                                >
-                                    <div class="text-[9px] leading-tight">Dent</div>
-                                    <div class="text-xs font-bold">{{ tooth }}</div>
-                                    <div class="text-[9px] leading-tight opacity-80">{{ toothSummary(tooth) || '---' }}</div>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <template #footer>
-                    <Button label="Annuler" severity="secondary" text @click="addActeDialogVisible = false" />
-                    <Button label="Ajouter" icon="pi pi-check" :disabled="!selectedTeeth.length" @click="confirmAddActes" />
-                </template>
-            </Dialog>
-
-            <!-- Ordonnances -->
-            <div v-if="!hideOrdonnances" class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/30 p-5" :class="readonly ? 'pointer-events-auto select-auto opacity-100' : ''">
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-                    <div class="flex items-center gap-3">
-                        <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-purple-500/10">
-                            <i class="pi pi-clipboard text-purple-500"></i>
-                        </div>
-                        <div>
-                            <h4 class="text-lg font-semibold text-surface-900 dark:text-surface-100">Ordonnances</h4>
-                            <p class="text-sm text-surface-500 dark:text-surface-400">Prescriptions médicamenteuses</p>
-                        </div>
-                    </div>
+                <div class="flex flex-wrap gap-2">
                     <Button
                         v-if="!readonly"
-                        icon="pi pi-plus"
-                        label="Nouvelle ordonnance"
-                        size="small"
-                        class="rounded-xl px-4 py-2.5 bg-gradient-to-r from-purple-500 to-purple-600 border-0 text-white shadow-sm hover:shadow-md transition-all"
-                        @click="emit('open-ordonnance')"
+                        label="Sauvegarder"
+                        icon="pi pi-save"
+                        :loading="saving"
+                        class="rounded-xl px-4 py-2.5 font-medium shadow-sm hover:shadow-md transition-all bg-gradient-to-r from-primary-500 to-primary-600 border-0 text-white"
+                        @click="emit('save')"
+                    />
+                    <Button
+                        v-if="!readonly"
+                        label="Clôturer"
+                        icon="pi pi-lock"
+                        severity="danger"
+                        :loading="clotureLoading"
+                        class="rounded-xl px-4 py-2.5 font-medium shadow-sm hover:shadow-md transition-all bg-gradient-to-r from-red-500 to-red-600 border-0 text-white"
+                        @click="emit('cloture')"
                     />
                 </div>
+            </div>
 
-                <!-- Ordonnances List -->
-                <div class="space-y-3">
-                    <div v-if="!(ordonnances && ordonnances.length)" class="text-center py-6">
-                        <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-surface-100 dark:bg-surface-800 mb-3">
-                            <i class="pi pi-file text-2xl text-surface-400"></i>
+            <!-- Content -->
+            <div class="space-y-6" :class="readonly ? 'pointer-events-none select-none opacity-80' : ''">
+                <!-- Personnel & Salle -->
+                <div class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/30 p-5">
+                    <div class="flex flex-wrap gap-4">
+                        <div class="flex-1 space-y-2 col-6 md:col-4">
+                            <label class="text-sm font-medium text-surface-700 dark:text-surface-300 flex items-center gap-2">
+                                <i class="pi pi-id-card text-surface-400"></i>
+                                Médecin <span class="text-red-500">*</span>
+                            </label>
+                            <Select
+                                :modelValue="form.medecinId"
+                                :options="medecinsList"
+                                optionLabel="label"
+                                optionValue="id"
+                                placeholder="Choisir un médecin"
+                                :filter="true"
+                                filterPlaceholder="Rechercher..."
+                                showClear
+                                :disabled="medecinReadonly"
+                                class="w-full [&_.p-select]:rounded-xl [&_.p-select]:border-surface-200 [&_.p-select]:dark:border-surface-700 [&_.p-select]:p-3"
+                                @update:modelValue="(v) => updateField('medecinId', v)"
+                            />
                         </div>
-                        <p class="text-surface-600 dark:text-surface-400">Aucune ordonnance. Créez une nouvelle ordonnance.</p>
+                        <div class="flex-1 space-y-2 col-6 md:col-4">
+                            <label class="text-sm font-medium text-surface-700 dark:text-surface-300 flex items-center gap-2">
+                                <i class="pi pi-users text-surface-400"></i>
+                                Aide(s) soignant(e)s
+                            </label>
+                            <MultiSelect
+                                v-model="form.infirmierIds"
+                                :options="infirmiersList"
+                                optionLabel="label"
+                                optionValue="id"
+                                placeholder="Sélectionner"
+                                display="chip"
+                                :filter="true"
+                                class="w-full [&_.p-multiselect]:rounded-xl [&_.p-multiselect]:border-surface-200 [&_.p-multiselect]:dark:border-surface-700 [&_.p-multiselect]:p-3"
+                                @update:modelValue="(v) => updateField('infirmierIds', v || [])"
+                            />
+                        </div>
+                        <div class="flex-1 space-y-2 col-6 md:col-4">
+                            <label class="text-sm font-medium text-surface-700 dark:text-surface-300 flex items-center gap-2">
+                                <i class="pi pi-building text-surface-400"></i>
+                                Salle
+                            </label>
+                            <Select
+                                v-model="form.salleId"
+                                :options="sallesList"
+                                optionLabel="label"
+                                optionValue="id"
+                                placeholder="Choisir une salle"
+                                class="w-full [&_.p-dropdown]:rounded-xl [&_.p-dropdown]:border-surface-200 [&_.p-dropdown]:dark:border-surface-700 [&_.p-dropdown]:p-3"
+                                @update:modelValue="(v) => updateField('salleId', v)"
+                            />
+                        </div>
+                        <div class="flex-1 space-y-2 col-6 md:col-4">
+                            <label class="text-sm font-medium text-surface-700 dark:text-surface-300 flex items-center gap-2">
+                                <i class="pi pi-tag text-surface-400"></i>
+                                Type de consultation
+                            </label>
+                            <Select
+                                v-model="form.type"
+                                :options="consultationTypes"
+                                optionLabel="label"
+                                optionValue="value"
+                                placeholder="Choisir un type"
+                                class="w-full [&_.p-dropdown]:rounded-xl [&_.p-dropdown]:border-surface-200 [&_.p-dropdown]:dark:border-surface-700 [&_.p-dropdown]:p-3"
+                                @update:modelValue="(v) => updateField('type', v)"
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Note de séance & diagnostic positif -->
+                <div :class="showDiagnosticPositif ? 'grid grid-cols-1 lg:grid-cols-2 gap-4' : 'space-y-2'">
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium text-surface-700 dark:text-surface-300 flex items-center gap-2">
+                            <i class="pi pi-file-edit text-surface-400"></i>
+                            Note de séance
+                        </label>
+                        <Textarea
+                            v-model="form.noteSeance"
+                            rows="4"
+                            placeholder="Notes et observations de la séance..."
+                            class="w-full rounded-xl border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-800/50 focus:ring-2 focus:ring-primary-500/20 transition-all"
+                            @update:modelValue="(v) => updateField('noteSeance', v)"
+                        />
                     </div>
 
-                    <div v-for="ordo in ordonnances" :key="ordo.id"
-                         class="flex items-center justify-between p-3 rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-800 hover:bg-surface-50 dark:hover:bg-surface-700 transition-colors">
-                        <div class="flex items-center gap-3 min-w-0">
-                            <div class="flex items-center justify-center w-10 h-10 rounded-lg bg-purple-500/10 shrink-0">
+                    <div v-if="showDiagnosticPositif" class="space-y-2">
+                        <label class="text-sm font-medium text-surface-700 dark:text-surface-300 flex items-center gap-2">
+                            <i class="pi pi-clipboard text-indigo-400"></i>
+                            Diagnostic positif
+                        </label>
+                        <Textarea
+                            :modelValue="diagnosticPositif"
+                            rows="4"
+                            placeholder="Diagnostic positif, constatations cliniques..."
+                            class="w-full rounded-xl border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-800/50 focus:ring-2 focus:ring-primary-500/20 transition-all"
+                            @update:modelValue="(v) => emit('update:diagnosticPositif', v)"
+                        />
+                    </div>
+                </div>
+
+                <!-- Soins -->
+                <div class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/30 p-5">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+                        <div class="flex items-center gap-3">
+                            <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-500/10">
+                                <i class="pi pi-heart text-blue-500"></i>
+                            </div>
+                            <div>
+                                <h4 class="text-lg font-semibold text-surface-900 dark:text-surface-100">Soins réalisés</h4>
+                                <p class="text-sm text-surface-500 dark:text-surface-400">Actes médicaux effectués</p>
+                            </div>
+                        </div>
+                        <Button icon="pi pi-plus" label="Ajouter un soin" size="small" class="rounded-xl px-4 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 border-0 text-white shadow-sm hover:shadow-md transition-all" @click="addActe('')" />
+                        <Button icon="pi pi-list-check" label="Ajouter plusieurs" size="small" severity="secondary" class="rounded-xl px-4 py-2.5" @click="openAddActeDialog" />
+                    </div>
+
+                    <!-- Soins List -->
+                    <div class="space-y-4">
+                        <div v-if="!(form.actes && form.actes.length)" class="text-center py-6">
+                            <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-surface-100 dark:bg-surface-800 mb-3">
+                                <i class="pi pi-inbox text-2xl text-surface-400"></i>
+                            </div>
+                            <p class="text-surface-600 dark:text-surface-400">Aucun acte ajouté. Commencez par ajouter votre premier soin.</p>
+                        </div>
+
+                        <div v-for="(acte, idx) in form.actes" :key="idx">
+                            <ActeLineCard :acte="acte" :index="idx" :soins="soinsList" :formule-dentaire="formuleDentaire" :subtotal="acteSubtotals[idx] ?? acteTotal(acte)" @update="(patch) => updateActe(idx, patch)" @remove="removeActe(idx)" />
+                        </div>
+                    </div>
+
+                    <!-- Total Soins -->
+                    <div v-if="form.actes?.length" class="mt-4 pt-4 border-t border-surface-200 dark:border-surface-700">
+                        <div class="flex items-center justify-between">
+                            <div class="text-lg font-semibold text-surface-900 dark:text-surface-100">Total des soins</div>
+                            <div class="text-2xl font-bold text-primary-600 dark:text-primary-400">
+                                {{ formatCurrency(totalActesValue) }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <Dialog v-model:visible="addActeDialogVisible" header="Ajouter plusieurs soins" modal class="w-full max-w-3xl">
+                    <div class="space-y-4">
+                        <p class="text-sm text-surface-600 dark:text-surface-300">Sélectionnez une ou plusieurs dents.</p>
+                        <div class="space-y-4">
+                            <div v-for="(row, rowIndex) in formuleRows" :key="'dialog-' + rowIndex" class="space-y-2">
+                                <div class="flex flex-wrap justify-center gap-2">
+                                    <button
+                                        v-for="tooth in row.left"
+                                        :key="'dialog-left-' + tooth"
+                                        type="button"
+                                        class="h-12 w-12 rounded-xl border text-[10px] font-semibold tracking-tight transition-all duration-200"
+                                        :class="[toothStateClass(tooth), isToothSelected(tooth) ? 'ring-2 ring-primary-400 ring-offset-2' : '']"
+                                        @click="toggleToothSelection(tooth)"
+                                    >
+                                        <div class="text-[9px] leading-tight">Dent</div>
+                                        <div class="text-xs font-bold">{{ tooth }}</div>
+                                        <div class="text-[9px] leading-tight opacity-80">{{ toothSummary(tooth) || '---' }}</div>
+                                    </button>
+                                </div>
+                                <div class="flex flex-wrap justify-center gap-2">
+                                    <button
+                                        v-for="tooth in row.right"
+                                        :key="'dialog-right-' + tooth"
+                                        type="button"
+                                        class="h-12 w-12 rounded-xl border text-[10px] font-semibold tracking-tight transition-all duration-200"
+                                        :class="[toothStateClass(tooth), isToothSelected(tooth) ? 'ring-2 ring-primary-400 ring-offset-2' : '']"
+                                        @click="toggleToothSelection(tooth)"
+                                    >
+                                        <div class="text-[9px] leading-tight">Dent</div>
+                                        <div class="text-xs font-bold">{{ tooth }}</div>
+                                        <div class="text-[9px] leading-tight opacity-80">{{ toothSummary(tooth) || '---' }}</div>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <template #footer>
+                        <Button label="Annuler" severity="secondary" text @click="addActeDialogVisible = false" />
+                        <Button label="Ajouter" icon="pi pi-check" :disabled="!selectedTeeth.length" @click="confirmAddActes" />
+                    </template>
+                </Dialog>
+
+                <!-- Ordonnances -->
+                <div v-if="!hideOrdonnances" class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/30 p-5" :class="readonly ? 'pointer-events-auto select-auto opacity-100' : ''">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+                        <div class="flex items-center gap-3">
+                            <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-purple-500/10">
                                 <i class="pi pi-clipboard text-purple-500"></i>
                             </div>
-                            <div class="min-w-0">
-                                <div class="font-medium text-surface-900 dark:text-surface-100 truncate">
-                                    Ordonnance du {{ ordo.date || '—' }}
-                                </div>
-                                <div class="text-sm text-surface-600 dark:text-surface-400 truncate">
-                                    Par {{ ordo.medecinNom || ordo.medecin || '—' }}
-                                </div>
+                            <div>
+                                <h4 class="text-lg font-semibold text-surface-900 dark:text-surface-100">Ordonnances</h4>
+                                <p class="text-sm text-surface-500 dark:text-surface-400">Prescriptions médicamenteuses</p>
                             </div>
                         </div>
-                        <div class="flex items-center gap-1 shrink-0">
-                            <Badge :value="ordo.lignes?.length || 0" severity="info" class="px-2 py-1 text-xs hidden sm:inline-flex" />
-                            <Button
-                                icon="pi pi-eye"
-                                label="Voir"
-                                size="small"
-                                text
-                                class="rounded-lg px-2 py-1.5"
-                                @click="emit('view-ordonnance', ordo)"
-                            />
-                            <Button
-                                icon="pi pi-pencil"
-                                label="Modifier"
-                                size="small"
-                                text
-                                class="rounded-lg px-2 py-1.5"
-                                @click="emit('edit-ordonnance', ordo)"
-                            />
-                            <Button
-                                icon="pi pi-print"
-                                label="Imprimer"
-                                size="small"
-                                outlined
-                                class="rounded-lg px-2 py-1.5"
-                                @click="emit('print-ordonnance', ordo)"
-                            />
+                        <Button
+                            v-if="!readonly"
+                            icon="pi pi-plus"
+                            label="Nouvelle ordonnance"
+                            size="small"
+                            class="rounded-xl px-4 py-2.5 bg-gradient-to-r from-purple-500 to-purple-600 border-0 text-white shadow-sm hover:shadow-md transition-all"
+                            @click="emit('open-ordonnance')"
+                        />
+                    </div>
+
+                    <!-- Ordonnances List -->
+                    <div class="space-y-3">
+                        <div v-if="!(ordonnances && ordonnances.length)" class="text-center py-6">
+                            <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-surface-100 dark:bg-surface-800 mb-3">
+                                <i class="pi pi-file text-2xl text-surface-400"></i>
+                            </div>
+                            <p class="text-surface-600 dark:text-surface-400">Aucune ordonnance. Créez une nouvelle ordonnance.</p>
+                        </div>
+
+                        <div
+                            v-for="ordo in ordonnances"
+                            :key="ordo.id"
+                            class="flex items-center justify-between p-3 rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-800 hover:bg-surface-50 dark:hover:bg-surface-700 transition-colors"
+                        >
+                            <div class="flex items-center gap-3 min-w-0">
+                                <div class="flex items-center justify-center w-10 h-10 rounded-lg bg-purple-500/10 shrink-0">
+                                    <i class="pi pi-clipboard text-purple-500"></i>
+                                </div>
+                                <div class="min-w-0">
+                                    <div class="font-medium text-surface-900 dark:text-surface-100 truncate">Ordonnance du {{ ordo.date || '—' }}</div>
+                                    <div class="text-sm text-surface-600 dark:text-surface-400 truncate">Par {{ ordo.medecinNom || ordo.medecin || '—' }}</div>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-1 shrink-0">
+                                <Badge :value="ordo.lignes?.length || 0" severity="info" class="px-2 py-1 text-xs hidden sm:inline-flex" />
+                                <Button icon="pi pi-eye" label="Voir" size="small" text class="rounded-lg px-2 py-1.5" @click="emit('view-ordonnance', ordo)" />
+                                <Button icon="pi pi-pencil" label="Modifier" size="small" text class="rounded-lg px-2 py-1.5" @click="emit('edit-ordonnance', ordo)" />
+                                <Button icon="pi pi-print" label="Imprimer" size="small" outlined class="rounded-lg px-2 py-1.5" @click="emit('print-ordonnance', ordo)" />
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Session Summary -->
-            <div class="grid grid-cols-1 gap-4" :class="hideOrdonnances ? 'md:grid-cols-2' : 'md:grid-cols-3'">
-                <div class="p-4 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-900/20 dark:to-blue-800/20 border border-blue-200/50 dark:border-blue-800/50">
-                    <div class="text-sm font-medium text-blue-700 dark:text-blue-300">Actes réalisés</div>
-                    <div class="text-2xl font-bold text-blue-900 dark:text-blue-100 mt-1">{{ form.actes?.length || 0 }}</div>
-                </div>
-                <div v-if="!hideOrdonnances" class="p-4 rounded-xl bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-emerald-900/20 dark:to-emerald-800/20 border border-emerald-200/50 dark:border-emerald-800/50">
-                    <div class="text-sm font-medium text-emerald-700 dark:text-emerald-300">Ordonnances</div>
-                    <div class="text-2xl font-bold text-emerald-900 dark:text-emerald-100 mt-1">{{ ordonnances?.length || 0 }}</div>
-                </div>
-                <div class="p-4 rounded-xl bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-900/20 dark:to-amber-800/20 border border-amber-200/50 dark:border-amber-800/50">
-                    <div class="text-sm font-medium text-amber-700 dark:text-amber-300">Coût total</div>
-                    <div class="text-2xl font-bold text-amber-900 dark:text-amber-100 mt-1">{{ formatCurrency(totalActesValue) }}</div>
+                <!-- Session Summary -->
+                <div class="grid grid-cols-1 gap-4" :class="hideOrdonnances ? 'md:grid-cols-2' : 'md:grid-cols-3'">
+                    <div class="p-4 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-900/20 dark:to-blue-800/20 border border-blue-200/50 dark:border-blue-800/50">
+                        <div class="text-sm font-medium text-blue-700 dark:text-blue-300">Actes réalisés</div>
+                        <div class="text-2xl font-bold text-blue-900 dark:text-blue-100 mt-1">{{ form.actes?.length || 0 }}</div>
+                    </div>
+                    <div v-if="!hideOrdonnances" class="p-4 rounded-xl bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-emerald-900/20 dark:to-emerald-800/20 border border-emerald-200/50 dark:border-emerald-800/50">
+                        <div class="text-sm font-medium text-emerald-700 dark:text-emerald-300">Ordonnances</div>
+                        <div class="text-2xl font-bold text-emerald-900 dark:text-emerald-100 mt-1">{{ ordonnances?.length || 0 }}</div>
+                    </div>
+                    <div class="p-4 rounded-xl bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-900/20 dark:to-amber-800/20 border border-amber-200/50 dark:border-amber-800/50">
+                        <div class="text-sm font-medium text-amber-700 dark:text-amber-300">Coût total</div>
+                        <div class="text-2xl font-bold text-amber-900 dark:text-amber-100 mt-1">{{ formatCurrency(totalActesValue) }}</div>
+                    </div>
                 </div>
             </div>
-        </div>
         </template>
     </div>
 </template>
 
 <style scoped>
-    :deep(.p-inputnumber ) {
-        width: 100%;
-    }
+:deep(.p-inputnumber) {
+    width: 100%;
+}
 </style>

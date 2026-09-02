@@ -9,7 +9,7 @@ import { Form } from '@primevue/forms';
 import { useConfirm } from 'primevue/useconfirm';
 import { useConsumables } from '@/composables/useConsumables';
 import { computed } from 'vue';
-import { zodResolver } from '@primevue/forms/resolvers/zod'; 
+import { zodResolver } from '@primevue/forms/resolvers/zod';
 import { z } from 'zod';
 
 const consommablesStore = useConsumables();
@@ -24,8 +24,8 @@ const props = defineProps({
 });
 
 const emit = defineEmits([
-    'saved',        // retourne le consommable sauvegardé
-    'close'         // permet au parent de fermer le dialog
+    'saved', // retourne le consommable sauvegardé
+    'close' // permet au parent de fermer le dialog
 ]);
 
 const isEditMode = computed(() => !!props.consumable?.id);
@@ -37,7 +37,7 @@ const initialValues = computed(() => ({
     lowValue: props.consumable?.lowValue ?? 0
 }));
 
-const resolver =  zodResolver(
+const resolver = zodResolver(
     z.object({
         nom: z.string().min(3, 'Le nom du consommable est requis. 3 caractères minimum.'),
         fournisseur: z.string().optional(),
@@ -48,37 +48,30 @@ const resolver =  zodResolver(
 
 async function saveConsumable(values) {
     if (isEditMode.value) {
-        return await consommablesStore.editConsumable(
-            props.consumable.id,
-            values
-        );
+        return await consommablesStore.editConsumable(props.consumable.id, values);
     }
 
     return await consommablesStore.addConsumable(values);
 }
 
-async function onFormSubmit({valid, values}) {
+async function onFormSubmit({ valid, values }) {
     if (!valid) return;
-    
+
     const result = await saveConsumable(values);
 
     if (result?.ok) {
         emit('saved'); // informer le parent
-        toast.add({ severity: 'success', summary: 'Succès', detail: `Consommable ${isEditMode.value ? 'mis à jour' : 'ajouté'} avec succès.` }); 
+        toast.add({ severity: 'success', summary: 'Succès', detail: `Consommable ${isEditMode.value ? 'mis à jour' : 'ajouté'} avec succès.` });
     } else {
         toast.add({ severity: 'error', summary: 'Erreur', detail: `Échec lors de ${isEditMode.value ? 'la mise à jour' : "l'ajout"} du consommable. <br> ${consommablesStore.error.value || ''}` });
     }
 }
-
 </script>
 
-
 <template>
-    <Form v-slot="$form" :initialValues="initialValues" :resolver="resolver" @submit="onFormSubmit"
-        class="flex flex-col gap-4 w-full">
-        
+    <Form v-slot="$form" :initialValues="initialValues" :resolver="resolver" @submit="onFormSubmit" class="flex flex-col gap-4 w-full">
         <div class="grid grid-cols-1 md:grid-cols-1 gap-6">
-            <div class="flex flex-col gap-2 ">
+            <div class="flex flex-col gap-2">
                 <label class="font-semibold mb-1">Nom du consommable <span class="text-red-500">*</span></label>
                 <InputText name="nom" class="w-full" />
                 <Message v-if="$form.nom?.invalid" severity="error" size="small" variant="simple">
@@ -88,7 +81,7 @@ async function onFormSubmit({valid, values}) {
 
             <div class="flex flex-col gap-2">
                 <label class="font-semibold mb-1">Fournisseur</label>
-                <InputText name="fournisseur"  />
+                <InputText name="fournisseur" />
             </div>
 
             <div v-if="!isEditMode" class="flex flex-col gap-2">
@@ -109,14 +102,13 @@ async function onFormSubmit({valid, values}) {
                         <span class="pi pi-minus" />
                     </template>
                 </InputNumber>
-                <Message v-if="$form.lowValue?.invalid" severity="error" size="small" variant="simple" >
+                <Message v-if="$form.lowValue?.invalid" severity="error" size="small" variant="simple">
                     {{ $form.lowValue.error?.message }}
                 </Message>
             </div>
         </div>
 
-        <Button type="submit" :label="isEditMode ? 'Mettre à jour' : 'Enregistrer'"
-            :severity="isEditMode ? 'success' : 'primary'" />
+        <Button type="submit" :label="isEditMode ? 'Mettre à jour' : 'Enregistrer'" :severity="isEditMode ? 'success' : 'primary'" />
     </Form>
 
     <ConfirmPopup />

@@ -56,8 +56,7 @@ const isConnectionIssue = (error) => {
     return ['ECONNABORTED', 'ERR_NETWORK', 'ETIMEDOUT'].includes(error.code);
 };
 
-export const isDeviceNotAllowedError = (error) =>
-    error?.response?.status === 403 && error?.response?.data?.error === 'device_not_allowed';
+export const isDeviceNotAllowedError = (error) => error?.response?.status === 403 && error?.response?.data?.error === 'device_not_allowed';
 
 export const getHttpErrorMessage = (error, fallback = userFacingMessages.generic) => {
     const status = error?.response?.status;
@@ -146,10 +145,7 @@ http.interceptors.response.use(
             Promise.all([loadAuthStore(), loadRouter()])
                 .then(([useAuthStore, router]) => {
                     try {
-                        useAuthStore()?.setDeviceBlock(
-                            error.response?.data?.message,
-                            error.response?.data?.status
-                        );
+                        useAuthStore()?.setDeviceBlock(error.response?.data?.message, error.response?.data?.status);
                     } catch (_) {
                         // Pinia pas initialisé
                     }

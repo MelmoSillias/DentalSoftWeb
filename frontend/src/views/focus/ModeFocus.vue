@@ -11,16 +11,9 @@ import DossierPatientDialog from '@/components/patients/DossierPatientDialog.vue
 import { usePrinter } from '@/composables/usePrinter';
 import { useFocusRealtime } from '@/composables/useFocusRealtime';
 import { defaultSoinList, fetchConsultationDetails, fetchConsultationInvoice, fetchConsultationsByDate, fetchFocusReceptionData, normalizeSoinList, updateConsultationInvoice, cancelConsultation } from '@/services/consultations';
-import {  getDefaultClassicMethod } from '@/utils/paymentMethodUtils';
+import { getDefaultClassicMethod } from '@/utils/paymentMethodUtils';
 import { fetchFactureDetail, fetchUnpaidFacturesByPatient, payFacture, payInsurancePatientShare, resetFacturePayments, validateEmptyFacture } from '@/services/caisseService';
-import {
-    advanceAfterSettledTab,
-    applyPartialPaymentToTab,
-    buildPayTabs,
-    isInsuranceFactureRow,
-    resolveFacturePatientId,
-    sumPriorReliquatFromTabs
-} from '@/composables/usePayTabsDialog';
+import { advanceAfterSettledTab, applyPartialPaymentToTab, buildPayTabs, isInsuranceFactureRow, resolveFacturePatientId, sumPriorReliquatFromTabs } from '@/composables/usePayTabsDialog';
 import { fetchPublicGeneralSettings } from '@/services/globalSettingsService';
 import { canUserModifyInvoice } from '@/utils/invoiceModificationAccess';
 import { fetchInvoicePrintData, fetchReceiptPrintData } from '@/services/printService';
@@ -36,7 +29,7 @@ import ConfirmPopup from 'primevue/confirmpopup';
 import Dialog from 'primevue/dialog';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
-import { computed, defineAsyncComponent, onMounted,  onBeforeUnmount, ref, watch } from 'vue';
+import { computed, defineAsyncComponent, onMounted, onBeforeUnmount, ref, watch } from 'vue';
 import { useLayout } from '@/layout/composables/layout';
 
 const FocusRendezVousView = defineAsyncComponent(() => import('@/views/agenda/RendezVous.vue'));
@@ -86,7 +79,6 @@ const todayApiDate = () => {
     return `${year}-${month}-${day}`;
 };
 
-
 const payForm = ref({
     montant: 0,
     modeId: null,
@@ -123,9 +115,7 @@ const hasInitialLoadCompleted = ref(false);
 
 const roles = computed(() => auth.user?.roles || []);
 const isAdmin = computed(() => roles.value.includes('ROLE_ADMIN'));
-const canModifyInvoiceByRole = computed(() =>
-    canUserModifyInvoice(auth.user, { allowReceptionInvoiceModification: allowReceptionInvoiceModification.value })
-);
+const canModifyInvoiceByRole = computed(() => canUserModifyInvoice(auth.user, { allowReceptionInvoiceModification: allowReceptionInvoiceModification.value }));
 const isMedecin = computed(() => roles.value.includes('ROLE_MEDECIN'));
 const isReception = computed(() => roles.value.includes('ROLE_RECEPTION') || roles.value.includes('ROLE_RECEPTIONNISTE') || roles.value.includes('ROLE_SECRETAIRE'));
 const isRestrictedMedecin = computed(() => isMedecin.value && !isAdmin.value);
@@ -135,11 +125,7 @@ const availableModes = computed(() => {
     const rdvMode = { label: 'Rendez-vous', value: 'rdv' };
 
     if (isAdmin.value) {
-        return [
-            { label: 'Reception', value: 'reception' },
-            { label: 'Dentiste', value: 'medecin' },
-            rdvMode
-        ];
+        return [{ label: 'Reception', value: 'reception' }, { label: 'Dentiste', value: 'medecin' }, rdvMode];
     }
     if (isMedecin.value) {
         return [{ label: 'Dentiste', value: 'medecin' }, rdvMode];
@@ -157,29 +143,22 @@ if (isMedecin.value && !isAdmin.value) {
     selectedMode.value = 'medecin';
 }
 
+const initialsFromName = (value) =>
+    String(value || '')
+        .split(' ')
+        .filter(Boolean)
+        .map((item) => item.charAt(0))
+        .join('')
+        .slice(0, 2)
+        .toUpperCase();
 
-const initialsFromName = (value) => String(value || '')
-    .split(' ')
-    .filter(Boolean)
-    .map((item) => item.charAt(0))
-    .join('')
-    .slice(0, 2)
-    .toUpperCase();
-
-const resolvePatientPhoto = (value = {}) => (
-    value.photo
-    || value.photoUrl
-    || value.photo_url
-    || value.patientPhoto
-    || value.patient_photo
-    || null
-);
+const resolvePatientPhoto = (value = {}) => value.photo || value.photoUrl || value.photo_url || value.patientPhoto || value.patient_photo || null;
 
 const currentConsultation = computed(() => consultations.value.find((item) => item.id === selectedConsultationId.value) || null);
-    const isInsurancePayment = (payment) => {
-        const role = String(payment?.rolePaiement || payment?.role || '').toLowerCase();
-        return role === 'patient_insurance';
-    };
+const isInsurancePayment = (payment) => {
+    const role = String(payment?.rolePaiement || payment?.role || '').toLowerCase();
+    return role === 'patient_insurance';
+};
 
 const currentReceptionBilling = computed(() => {
     if (!currentConsultation.value?.id) return null;
@@ -204,14 +183,9 @@ const currentReceptionInvoiceRow = computed(() => {
         montant: total,
         reste: remaining,
         statut: remaining === 0 && total > 0 ? 1 : 0,
-        isRegle: (total > 0 && remaining === 0)
-            || (total === 0 && remaining === 0 && currentReceptionBilling.value?.state?.severity === 'success'),
+        isRegle: (total > 0 && remaining === 0) || (total === 0 && remaining === 0 && currentReceptionBilling.value?.state?.severity === 'success'),
         patient: currentConsultation.value.patient,
-        patientId: Number(
-            currentConsultation.value.patientId
-            ?? currentConsultation.value.patient?.id
-            ?? 0
-        ) || null,
+        patientId: Number(currentConsultation.value.patientId ?? currentConsultation.value.patient?.id ?? 0) || null,
         telephone: currentConsultation.value.patient?.telephone || currentConsultation.value.patientPhone || '',
         insurance: {
             hasInsurance: insurancePayments.length > 0,
@@ -265,38 +239,34 @@ const insuranceCoveredAmount = computed(() => {
 const patientAlreadyPaidAmount = computed(() => Number(selectedFactureInsurance.value?.patientPaidAmount) || 0);
 const insuranceStatusLabel = computed(() => {
     if (!invoiceHasInsurance.value) return 'Aucune assurance';
-    return selectedFactureInsurance.value?.assuranceNom
-        || selectedFactureInsurance.value?.insuranceModeLabel
-        || (selectedFactureInsurance.value?.insuranceStatus === 'pending' ? 'Assurance en attente' : 'Assurance enregistrée');
+    return selectedFactureInsurance.value?.assuranceNom || selectedFactureInsurance.value?.insuranceModeLabel || (selectedFactureInsurance.value?.insuranceStatus === 'pending' ? 'Assurance en attente' : 'Assurance enregistrée');
 });
-const previewPayments = computed(() => Array.isArray(previewData.value?.paiements) ? previewData.value.paiements : []);
+const previewPayments = computed(() => (Array.isArray(previewData.value?.paiements) ? previewData.value.paiements : []));
 const previewPaymentRoleTag = (payment) => {
-        if (payment?.status === 'pending' && isInsurancePayment(payment)) {
-        return payment?.status === 'pending'
-            ? { label: 'Assurance en attente', severity: 'warning' }
-            : { label: 'Assurance', severity: 'info' };
+    if (payment?.status === 'pending' && isInsurancePayment(payment)) {
+        return payment?.status === 'pending' ? { label: 'Assurance en attente', severity: 'warning' } : { label: 'Assurance', severity: 'info' };
     }
 
-        if (isInsurancePayment(payment)) {
-            return { label: 'Assurance', severity: 'info' };
-        }
+    if (isInsurancePayment(payment)) {
+        return { label: 'Assurance', severity: 'info' };
+    }
 
     return { label: 'Client', severity: 'success' };
 };
 const previewPaymentModeTag = (payment) => {
-        if (payment?.status === 'pending' && isInsurancePayment(payment)) {
+    if (payment?.status === 'pending' && isInsurancePayment(payment)) {
         return {
             label: payment?.mode || 'Assurance',
             severity: payment?.status === 'pending' ? 'warning' : 'info'
         };
     }
 
-        if (isInsurancePayment(payment)) {
-            return {
-                label: payment?.mode || 'Assurance',
-                severity: 'info'
-            };
-        }
+    if (isInsurancePayment(payment)) {
+        return {
+            label: payment?.mode || 'Assurance',
+            severity: 'info'
+        };
+    }
 
     return { label: payment?.mode || '—', severity: 'success' };
 };
@@ -306,13 +276,9 @@ const patientOutstandingAmount = computed(() => {
     return Math.max(0, Number(selectedFacture.value.reste) || 0);
 });
 
-const activePayTab = computed(() =>
-    (payTabs.value || []).find((tab) => String(tab.id) === String(activePayTabId.value)) || null
-);
+const activePayTab = computed(() => (payTabs.value || []).find((tab) => String(tab.id) === String(activePayTabId.value)) || null);
 const activePayTabMode = computed(() => activePayTab.value?.mode || 'pay');
-const priorReliquatTotal = computed(() =>
-    sumPriorReliquatFromTabs(payTabs.value, activePayTabId.value)
-);
+const priorReliquatTotal = computed(() => sumPriorReliquatFromTabs(payTabs.value, activePayTabId.value));
 const hasPayReliquatTabs = computed(() => (payTabs.value || []).length > 1);
 const maxClientPaymentAmount = computed(() => {
     if (!selectedFacture.value) return 0;
@@ -328,17 +294,13 @@ const remainingAfterPay = computed(() => {
     const montantPatient = Number(payForm.value.montant) || 0;
     return Math.max(0, reste - montantPatient);
 });
-const classicPaymentOptions = computed(() =>
-    (paymentMethods.value || [])
-        .filter((method) => method?.actif !== false)
-        .map((method) => ({ label: method.libelle, value: method.id, disabled: false }))
-);
+const classicPaymentOptions = computed(() => (paymentMethods.value || []).filter((method) => method?.actif !== false).map((method) => ({ label: method.libelle, value: method.id, disabled: false })));
 const factureTotal = computed(() => factureLines.value.reduce((sum, line) => sum + (Number(line.prix) || 0) * (Number(line.quantite) || 0), 0));
 
 const normalizePatientForCard = (payload = {}) => {
     const normalized = normalizePatient(payload || {});
     const fullName = `${normalized.nom || ''} ${normalized.prenom || ''}`.trim();
-    const maskedPhone = shouldHidePatientPhoneForMedecin.value ? 'Masqué par l\'administrateur' : (normalized.telephone || '--');
+    const maskedPhone = shouldHidePatientPhoneForMedecin.value ? "Masqué par l'administrateur" : normalized.telephone || '--';
     const resolvedPhoto = resolvePatientPhoto(payload) || resolvePatientPhoto(normalized);
     return {
         ...payload,
@@ -375,8 +337,7 @@ const handlePatientLoaded = (payload) => {
 const loadSettings = async () => {
     try {
         const settings = await fetchPublicGeneralSettings(token);
-        allowReceptionQuickClose.value = settings?.allowReceptionConsultationQuickActions !== false
-            && settings?.allowReceptionQuickCloseConsultation !== false;
+        allowReceptionQuickClose.value = settings?.allowReceptionConsultationQuickActions !== false && settings?.allowReceptionQuickCloseConsultation !== false;
         allowReceptionInvoiceModification.value = settings?.allowReceptionInvoiceModification === true;
         hidePatientDossierForMedecins.value = settings?.hidePatientDossierForMedecins === true;
         hidePatientPhoneForMedecins.value = settings?.hidePatientPhoneForMedecins === true;
@@ -558,9 +519,7 @@ const openPayDialog = async ({ primaryMode = null } = {}) => {
     if (!currentReceptionInvoiceRow.value) return;
     const row = {
         ...currentReceptionInvoiceRow.value,
-        patientId: resolveFacturePatientId(currentReceptionInvoiceRow.value)
-            || Number(currentConsultation.value?.patientId ?? currentConsultation.value?.patient?.id ?? 0)
-            || null,
+        patientId: resolveFacturePatientId(currentReceptionInvoiceRow.value) || Number(currentConsultation.value?.patientId ?? currentConsultation.value?.patient?.id ?? 0) || null
     };
     selectedFacture.value = row;
     await loadPaymentMethods();
@@ -575,8 +534,7 @@ const openPayDialog = async ({ primaryMode = null } = {}) => {
         }
     }
 
-    const mode = primaryMode
-        || ((Number(row?.reste) || 0) === 0 && !row?.isRegle ? 'validate' : 'pay');
+    const mode = primaryMode || ((Number(row?.reste) || 0) === 0 && !row?.isRegle ? 'validate' : 'pay');
     payTabs.value = buildPayTabs(row, unpaidRows, { primaryMode: mode });
     activePayTabId.value = String(row.id);
     pendingFacture.value = mode === 'validate' ? row : null;
@@ -587,9 +545,7 @@ const openPayDialog = async ({ primaryMode = null } = {}) => {
 const openValidateDialog = async () => {
     if (!currentReceptionInvoiceRow.value) return;
 
-    const patientId = resolveFacturePatientId(currentReceptionInvoiceRow.value)
-        || Number(currentConsultation.value?.patientId ?? currentConsultation.value?.patient?.id ?? 0)
-        || null;
+    const patientId = resolveFacturePatientId(currentReceptionInvoiceRow.value) || Number(currentConsultation.value?.patientId ?? currentConsultation.value?.patient?.id ?? 0) || null;
 
     if (patientId) {
         try {
@@ -659,21 +615,27 @@ const submitPayment = async () => {
         let res;
 
         if (isInsured) {
-            const claimId = selectedFacture.value.factureAssuranceId
-                || selectedFacture.value.insurance?.factureAssuranceId
-                || selectedFacture.value.id;
-            res = await payInsurancePatientShare(claimId, {
-                modeId: payForm.value.modeId,
-                date: `${payForm.value.date}T${payForm.value.time}`,
-                amount: montant
-            }, token);
+            const claimId = selectedFacture.value.factureAssuranceId || selectedFacture.value.insurance?.factureAssuranceId || selectedFacture.value.id;
+            res = await payInsurancePatientShare(
+                claimId,
+                {
+                    modeId: payForm.value.modeId,
+                    date: `${payForm.value.date}T${payForm.value.time}`,
+                    amount: montant
+                },
+                token
+            );
         } else {
-            res = await payFacture(selectedFacture.value.id, {
-                montant,
-                modeId: payForm.value.modeId,
-                date: payForm.value.date,
-                time: payForm.value.time
-            }, token);
+            res = await payFacture(
+                selectedFacture.value.id,
+                {
+                    montant,
+                    modeId: payForm.value.modeId,
+                    date: payForm.value.date,
+                    time: payForm.value.time
+                },
+                token
+            );
         }
 
         const paymentId = res?.paiement_id ?? res?.paiementId ?? null;
@@ -682,12 +644,13 @@ const submitPayment = async () => {
             summary: 'Paiement',
             detail: 'Paiement enregistré.',
             life: canPrintClientReceipt ? 10000 : 3000,
-            data: canPrintClientReceipt && paymentId
-                ? {
-                    actionLabel: 'Imprimer le reçu',
-                    action: () => printReceiptById(paymentId)
-                }
-                : undefined
+            data:
+                canPrintClientReceipt && paymentId
+                    ? {
+                          actionLabel: 'Imprimer le reçu',
+                          action: () => printReceiptById(paymentId)
+                      }
+                    : undefined
         });
 
         if (settledFully) {
@@ -753,11 +716,15 @@ const confirmValidate = async () => {
             await loadPaymentMethods();
             const claimId = target.factureAssuranceId || target.insurance?.factureAssuranceId || target.id;
             const classicMethod = getDefaultClassicMethod(paymentMethods.value);
-            await payInsurancePatientShare(claimId, {
-                modeId: classicMethod?.id,
-                date: new Date().toISOString(),
-                amount: 0
-            }, token);
+            await payInsurancePatientShare(
+                claimId,
+                {
+                    modeId: classicMethod?.id,
+                    date: new Date().toISOString(),
+                    amount: 0
+                },
+                token
+            );
         } else {
             await validateEmptyFacture(target.id, token);
         }
@@ -791,11 +758,7 @@ const printReceiptById = async (paymentId) => {
     if (!paymentId) return;
     try {
         const res = await fetchReceiptPrintData(paymentId, token);
-        await printComponent(
-            PrintReceiptBody,
-            { paiement: res.paiement },
-            { format: [226.77, 255.12], width: '80mm' }
-        );
+        await printComponent(PrintReceiptBody, { paiement: res.paiement }, { format: [226.77, 255.12], width: '80mm' });
     } catch (_) {
         toast.add({ severity: 'error', summary: 'Reçu', detail: 'Impression indisponible', life: 3500 });
     }
@@ -808,7 +771,7 @@ const sendInvoiceBySms = async () => {
         toast.add({
             severity: res?.success ? 'success' : 'warn',
             summary: 'SMS Facture',
-            detail: res?.success ? 'Facture ajoutée à la file SMS.' : (res?.error || 'Échec de l\'envoi.'),
+            detail: res?.success ? 'Facture ajoutée à la file SMS.' : res?.error || "Échec de l'envoi.",
             life: 3500
         });
     } catch (_) {
@@ -820,11 +783,15 @@ const handleSaveFacture = async () => {
     if (!factureConsultation.value?.id) return;
     factureSaving.value = true;
     try {
-        await updateConsultationInvoice(factureConsultation.value.id, {
-            lines: factureLines.value,
-            date: factureDate.value,
-            time: factureTime.value
-        }, token);
+        await updateConsultationInvoice(
+            factureConsultation.value.id,
+            {
+                lines: factureLines.value,
+                date: factureDate.value,
+                time: factureTime.value
+            },
+            token
+        );
         toast.add({ severity: 'success', summary: 'Facture mise a jour', life: 2200 });
         factureDialogVisible.value = false;
         await loadConsultations();
@@ -917,7 +884,7 @@ const openCreateConsultationDialogForPatient = async (patient) => {
             hasFiche: Boolean(res?.hasFiche)
         };
 
-        if (Boolean(res?.hasActive)) {
+        if (res?.hasActive) {
             activeConsultWarnPatient.value = patient;
             showActiveConsultWarn.value = true;
 
@@ -987,15 +954,15 @@ const handleConsultationCreated = async (saved) => {
 
     if (consultationId) {
         selectedConsultationId.value = consultationId;
-        consultations.value = consultations.value.map((consultation) => (
+        consultations.value = consultations.value.map((consultation) =>
             consultation.id === consultationId
                 ? {
-                    ...consultation,
-                    paymentId: paymentId ?? consultation.paymentId ?? null,
-                    isPaid: Boolean(paymentId ?? consultation.paymentId ?? consultation.isPaid)
-                }
+                      ...consultation,
+                      paymentId: paymentId ?? consultation.paymentId ?? null,
+                      isPaid: Boolean(paymentId ?? consultation.paymentId ?? consultation.isPaid)
+                  }
                 : consultation
-        ));
+        );
     }
 
     if (!realtimeEnabled.value) {
@@ -1021,16 +988,9 @@ const handleCancel = async (consultation) => {
 };
 
 const askCancel = (eventOrTarget, consultation) => {
-    const fallbackTarget = typeof document !== 'undefined' && consultation?.id
-        ? document.querySelector(`[data-cancel-consultation-id="${consultation.id}"]`)
-        : null;
+    const fallbackTarget = typeof document !== 'undefined' && consultation?.id ? document.querySelector(`[data-cancel-consultation-id="${consultation.id}"]`) : null;
     const activeElement = typeof document !== 'undefined' ? document.activeElement : null;
-    const target = eventOrTarget?.currentTarget
-        || eventOrTarget?.target?.closest?.('button')
-        || eventOrTarget?.target
-        || eventOrTarget
-        || fallbackTarget
-        || (activeElement instanceof HTMLElement ? activeElement : null);
+    const target = eventOrTarget?.currentTarget || eventOrTarget?.target?.closest?.('button') || eventOrTarget?.target || eventOrTarget || fallbackTarget || (activeElement instanceof HTMLElement ? activeElement : null);
 
     confirm.require({
         group: 'focus-cancel-consultation',
@@ -1088,33 +1048,25 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
-     if (!useLayout().isSidebarActive) useLayout().toggleMenu();
+    if (!useLayout().isSidebarActive) useLayout().toggleMenu();
 });
-
 </script>
 
 <template>
-     <section class="flex h-[calc(100dvh-var(--layout-topbar-height)-1.5rem)] flex-col bg-surface-50 dark:bg-surface-950 transition-colors duration-300">
+    <section class="flex h-[calc(100dvh-var(--layout-topbar-height)-1.5rem)] flex-col bg-surface-50 dark:bg-surface-950 transition-colors duration-300">
         <AppToast />
         <ConfirmPopup group="focus-cancel-consultation" />
 
         <!-- Header ultra-mince (h-12 = 48px) avec bordure inférieure colorée selon le mode -->
-        <header class="sticky top-0 z-30 h-12 shrink-0 border-b-2 bg-white/90 backdrop-blur-xl dark:bg-surface-900/90"
-            :class="selectedModeBorderClass">
+        <header class="sticky top-0 z-30 h-12 shrink-0 border-b-2 bg-white/90 backdrop-blur-xl dark:bg-surface-900/90" :class="selectedModeBorderClass">
             <div class="mx-auto flex h-full max-w-[1920px] items-center justify-between px-6">
                 <div class="flex items-center gap-3">
                     <div class="flex h-7 w-7 items-center justify-center rounded-md bg-primary-500 text-white">
                         <i class="pi pi-bolt text-xs"></i>
                     </div>
-                    <h1 class="text-sm font-bold tracking-tight text-surface-900 dark:text-surface-50">
-                        Mode Focus
-                    </h1>
-                    <span class="hidden sm:inline text-xs text-surface-500">
-                        {{ focusStats.pending }} en attente · {{ focusStats.closed }} terminées
-                    </span>
-                    <span v-if="isRealtimeRefreshing" class="hidden lg:inline text-xs text-primary-600 dark:text-primary-300">
-                        <i class="pi pi-spin pi-spinner mr-1"></i>Sync en cours
-                    </span>
+                    <h1 class="text-sm font-bold tracking-tight text-surface-900 dark:text-surface-50">Mode Focus</h1>
+                    <span class="hidden sm:inline text-xs text-surface-500"> {{ focusStats.pending }} en attente · {{ focusStats.closed }} terminées </span>
+                    <span v-if="isRealtimeRefreshing" class="hidden lg:inline text-xs text-primary-600 dark:text-primary-300"> <i class="pi pi-spin pi-spinner mr-1"></i>Sync en cours </span>
                 </div>
 
                 <div class="flex items-center gap-2">
@@ -1142,9 +1094,7 @@ onBeforeUnmount(() => {
                         @click="realtimeEnabled = !realtimeEnabled"
                         :class="[
                             'flex items-center gap-1.5 rounded px-2 py-1 text-xs font-medium transition-all',
-                            realtimeEnabled
-                                ? 'bg-green-50 text-green-700 ring-1 ring-green-300 dark:bg-green-900/20 dark:text-green-400 dark:ring-green-700'
-                                : 'text-surface-500 hover:bg-surface-100 dark:text-surface-400 dark:hover:bg-surface-800'
+                            realtimeEnabled ? 'bg-green-50 text-green-700 ring-1 ring-green-300 dark:bg-green-900/20 dark:text-green-400 dark:ring-green-700' : 'text-surface-500 hover:bg-surface-100 dark:text-surface-400 dark:hover:bg-surface-800'
                         ]"
                     >
                         <span class="relative flex h-1.5 w-1.5">
@@ -1155,11 +1105,7 @@ onBeforeUnmount(() => {
                     </button>
 
                     <!-- Rafraîchir -->
-                    <button
-                        @click="loadConsultations"
-                        :disabled="loading"
-                        class="rounded p-1.5 text-sm text-surface-500 transition hover:bg-surface-100 disabled:opacity-50 dark:text-surface-400 dark:hover:bg-surface-800"
-                    >
+                    <button @click="loadConsultations" :disabled="loading" class="rounded p-1.5 text-sm text-surface-500 transition hover:bg-surface-100 disabled:opacity-50 dark:text-surface-400 dark:hover:bg-surface-800">
                         <i :class="loading ? 'pi pi-spin pi-spinner' : 'pi pi-refresh'"></i>
                     </button>
                 </div>
@@ -1185,11 +1131,20 @@ onBeforeUnmount(() => {
                 :is-medecin="isMedecin"
                 :selected-consultation-id="selectedConsultationId"
                 @refresh="loadConsultations"
-                @select-consultation="(consultationId) => { selectedConsultationId = consultationId; }"
+                @select-consultation="
+                    (consultationId) => {
+                        selectedConsultationId = consultationId;
+                    }
+                "
                 @open-create-patient="createPatientDialogVisible = true"
                 @open-create-consultation="openCreateConsultationDialog"
                 @open-create-consultation-for-patient="openCreateConsultationDialogForPatient"
-                @open-edit-patient="(patient) => { patientToEdit = patient; editPatientDialogVisible = true; }"
+                @open-edit-patient="
+                    (patient) => {
+                        patientToEdit = patient;
+                        editPatientDialogVisible = true;
+                    }
+                "
                 @open-create-rdv-for-patient="openCreateRdvForPatient"
                 @open-patient-dossier="openPatientDossier"
                 @open-caisse-pay="openPayDialog"
@@ -1213,28 +1168,22 @@ onBeforeUnmount(() => {
                 :hide-patient-dossier="shouldHidePatientDossierForMedecin"
                 :hide-patient-phone="shouldHidePatientPhoneForMedecin"
                 @clear-selection="clearSelection"
-                @select-consultation="(consultationId) => { selectedConsultationId = consultationId; }"
+                @select-consultation="
+                    (consultationId) => {
+                        selectedConsultationId = consultationId;
+                    }
+                "
                 @patient-loaded="handlePatientLoaded"
                 @consultation-closed="loadConsultations"
             />
 
             <FocusRendezVousView v-else-if="selectedMode === 'rdv'" />
 
-            <DossierPatientDialog
-                v-model:visible="dossierDialogVisible"
-                :patient-id="dossierDialogPatientId"
-                @updated="handleDossierUpdated"
-            />
+            <DossierPatientDialog v-model:visible="dossierDialogVisible" :patient-id="dossierDialogPatientId" @updated="handleDossierUpdated" />
 
             <!-- Dialogs restent inchangés -->
             <ConsultationDetailsDialog v-model:visible="detailsDialogVisible" :details="detailData" :loading="detailsLoading" />
-            <QuickClotureConsultationDialog
-                v-model:visible="quickDialogVisible"
-                :consultation="quickDialogConsultation"
-                :soins="soinsList"
-                @saved="handleQuickDialogDone"
-                @closed="handleQuickDialogDone"
-            />
+            <QuickClotureConsultationDialog v-model:visible="quickDialogVisible" :consultation="quickDialogConsultation" :soins="soinsList" @saved="handleQuickDialogDone" @closed="handleQuickDialogDone" />
             <CaisseInvoiceDialogs
                 :pay-dialog-visible="payDialogVisible"
                 :selected-facture="selectedFacture"
@@ -1315,7 +1264,14 @@ onBeforeUnmount(() => {
                         </div>
                     </div>
                 </template>
-                <FormCreateConsultation :patient="createConsultationPreSelectedPatient" @saved="handleConsultationCreated" @cancel="createConsultationDialogVisible = false; createConsultationPreSelectedPatient = null" />
+                <FormCreateConsultation
+                    :patient="createConsultationPreSelectedPatient"
+                    @saved="handleConsultationCreated"
+                    @cancel="
+                        createConsultationDialogVisible = false;
+                        createConsultationPreSelectedPatient = null;
+                    "
+                />
             </Dialog>
             <Dialog v-model:visible="showActiveConsultWarn" modal :style="{ width: '35rem' }">
                 <div class="p-6">
@@ -1326,26 +1282,18 @@ onBeforeUnmount(() => {
                         <h4 class="m-0 text-surface-900 dark:text-surface-100">Consultation en cours</h4>
                     </div>
 
-                    <p class="mb-4 text-surface-700 dark:text-surface-300">
-                        Une consultation est déjà ouverte pour ce patient. Clôturez-la ou continuez-la avant d'en créer une nouvelle.
-                    </p>
+                    <p class="mb-4 text-surface-700 dark:text-surface-300">Une consultation est déjà ouverte pour ce patient. Clôturez-la ou continuez-la avant d'en créer une nouvelle.</p>
 
-                    <p v-if="!activeConsultInfo.hasFiche" class="mb-4 text-sm text-surface-600 dark:text-surface-400">
-                        Si cette consultation a été ouverte par erreur, vous pouvez l'annuler directement depuis ce dialogue.
-                    </p>
+                    <p v-if="!activeConsultInfo.hasFiche" class="mb-4 text-sm text-surface-600 dark:text-surface-400">Si cette consultation a été ouverte par erreur, vous pouvez l'annuler directement depuis ce dialogue.</p>
 
-                    <div v-if="activeConsultInfo.hasFiche"
-                        class="mb-4 flex items-center gap-2 rounded-lg bg-surface-50 p-3 dark:bg-surface-800/50">
+                    <div v-if="activeConsultInfo.hasFiche" class="mb-4 flex items-center gap-2 rounded-lg bg-surface-50 p-3 dark:bg-surface-800/50">
                         <i class="pi pi-info-circle text-surface-500"></i>
-                        <span class="text-sm text-surface-600 dark:text-surface-400">
-                            Cette consultation est liée à une fiche : elle ne peut pas être supprimée.
-                        </span>
+                        <span class="text-sm text-surface-600 dark:text-surface-400"> Cette consultation est liée à une fiche : elle ne peut pas être supprimée. </span>
                     </div>
 
                     <div class="flex justify-end gap-2">
                         <Button label="Compris" severity="secondary" @click="closeActiveConsultWarn" class="rounded-xl px-5" />
-                        <Button v-if="!activeConsultInfo.hasFiche" label="Annuler la consultation" icon="pi pi-times"
-                            severity="danger" @click="cancelActiveConsultation" class="rounded-xl px-5" />
+                        <Button v-if="!activeConsultInfo.hasFiche" label="Annuler la consultation" icon="pi pi-times" severity="danger" @click="cancelActiveConsultation" class="rounded-xl px-5" />
                     </div>
                 </div>
             </Dialog>
@@ -1361,7 +1309,14 @@ onBeforeUnmount(() => {
                         </div>
                     </div>
                 </template>
-                <FormPatient :patient="patientToEdit" @saved="handlePatientSaved" @cancel="editPatientDialogVisible = false; patientToEdit = null" />
+                <FormPatient
+                    :patient="patientToEdit"
+                    @saved="handlePatientSaved"
+                    @cancel="
+                        editPatientDialogVisible = false;
+                        patientToEdit = null;
+                    "
+                />
             </Dialog>
             <Dialog v-model:visible="showRdvDialog" modal :style="{ width: '50rem' }">
                 <template #header>
@@ -1381,11 +1336,12 @@ onBeforeUnmount(() => {
                     :patient="rdvPatient"
                     :patient-id="rdvPatient?.id"
                     @saved="handleRdvSaved"
-                    @cancel="showRdvDialog = false; rdvPatient = null"
+                    @cancel="
+                        showRdvDialog = false;
+                        rdvPatient = null;
+                    "
                 />
             </Dialog>
         </div>
     </section>
-
-
 </template>

@@ -83,11 +83,7 @@ const realEncashed = computed(() => totalPayeSoins.value + Number(props.reliquat
                     <div>
                         <h4 class="mb-2 text-sm font-semibold text-surface-900 dark:text-surface-0">Soins de la période</h4>
                         <ul v-if="acts.length" class="space-y-2">
-                            <li
-                                v-for="(act, idx) in acts"
-                                :key="idx"
-                                class="flex flex-col gap-2 rounded-xl border border-surface-200/60 bg-surface-50 p-3 text-sm dark:border-surface-700 dark:bg-surface-800"
-                            >
+                            <li v-for="(act, idx) in acts" :key="idx" class="flex flex-col gap-2 rounded-xl border border-surface-200/60 bg-surface-50 p-3 text-sm dark:border-surface-700 dark:bg-surface-800">
                                 <div class="flex flex-wrap items-center justify-between gap-2">
                                     <div class="flex flex-wrap items-center gap-2">
                                         <strong class="text-surface-900 dark:text-surface-0">{{ act.description }}</strong>
@@ -124,11 +120,7 @@ const realEncashed = computed(() => totalPayeSoins.value + Number(props.reliquat
                             <Tag :value="`Total ${formatFcfa(reliquatTotal)}`" severity="info" />
                         </div>
                         <ul v-if="reliquatPayments.length" class="space-y-2">
-                            <li
-                                v-for="(payment, idx) in reliquatPayments"
-                                :key="`reliquat-${idx}`"
-                                class="flex flex-col gap-1 rounded-xl border border-surface-200/60 bg-surface-50 p-3 text-sm dark:border-surface-700 dark:bg-surface-800"
-                            >
+                            <li v-for="(payment, idx) in reliquatPayments" :key="`reliquat-${idx}`" class="flex flex-col gap-1 rounded-xl border border-surface-200/60 bg-surface-50 p-3 text-sm dark:border-surface-700 dark:bg-surface-800">
                                 <div class="flex flex-wrap items-center justify-between gap-2">
                                     <div class="flex flex-wrap items-center gap-2">
                                         <strong class="text-surface-900 dark:text-surface-0">{{ payment.description }}</strong>
@@ -136,9 +128,7 @@ const realEncashed = computed(() => totalPayeSoins.value + Number(props.reliquat
                                     </div>
                                     <Tag :value="formatFcfa(payment.montant)" severity="info" />
                                 </div>
-                                <p class="text-surface-500">
-                                    {{ payment.patient }} • Paiement {{ payment.date }} • Consultation {{ payment.consultation_date }}
-                                </p>
+                                <p class="text-surface-500">{{ payment.patient }} • Paiement {{ payment.date }} • Consultation {{ payment.consultation_date }}</p>
                             </li>
                         </ul>
                         <p v-else class="text-sm text-surface-500">Aucun paiement de reliquat sur cette période.</p>

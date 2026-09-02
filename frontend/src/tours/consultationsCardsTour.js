@@ -113,26 +113,27 @@ export const consultationsCardsRegistry = createTourRegistry(GROUP, TASKS, {
 
         return normalizeTourSteps(steps);
     },
-    'prioritize-queue': (ctx) => normalizeTourSteps([
-        {
-            group: GROUP,
-            target: '[data-tour="consultations-cards.stats"]',
-            title: 'Volume en attente',
-            content: 'Commencez par le nombre total de consultations ouvertes pour evaluer la charge immediate.'
-        },
-        {
-            group: GROUP,
-            target: '[data-tour="consultations-cards.timeline"]',
-            title: 'Anciennete',
-            content: 'Comparez l heure d ouverture et l anciennete pour identifier les consultations les plus urgentes.'
-        },
-        {
-            group: GROUP,
-            target: '[data-tour="consultations-cards.progress"]',
-            title: 'Repere visuel',
-            content: 'La barre de progression aide a reperer rapidement les consultations les plus anciennes dans la file.'
-        }
-    ]),
+    'prioritize-queue': (ctx) =>
+        normalizeTourSteps([
+            {
+                group: GROUP,
+                target: '[data-tour="consultations-cards.stats"]',
+                title: 'Volume en attente',
+                content: 'Commencez par le nombre total de consultations ouvertes pour evaluer la charge immediate.'
+            },
+            {
+                group: GROUP,
+                target: '[data-tour="consultations-cards.timeline"]',
+                title: 'Anciennete',
+                content: 'Comparez l heure d ouverture et l anciennete pour identifier les consultations les plus urgentes.'
+            },
+            {
+                group: GROUP,
+                target: '[data-tour="consultations-cards.progress"]',
+                title: 'Repere visuel',
+                content: 'La barre de progression aide a reperer rapidement les consultations les plus anciennes dans la file.'
+            }
+        ]),
     'open-fiche': (ctx) => {
         const steps = [
             {
@@ -154,50 +155,57 @@ export const consultationsCardsRegistry = createTourRegistry(GROUP, TASKS, {
 
         return normalizeTourSteps(steps);
     },
-    'quick-cloture': (ctx) => normalizeTourSteps([
-        {
-            group: GROUP,
-            target: '[data-tour="consultations-cards.quick-actions"]',
-            title: 'Actions rapides',
-            content: 'Depuis le menu, vous pouvez lancer une cloturation sans passer par toute la fiche.'
-        },
-        {
-            group: GROUP,
-            target: '[data-tour="consultations-cards.dialog.quick"]',
-            title: 'Cloture rapide',
-            content: 'Le dialogue lie automatiquement la derniere fiche medicale puis permet de terminer la consultation.',
-            beforeEnter: async () => openDialogStep(ctx.openQuickDialog, ctx.closeAllDialogs)
-        }
-    ]),
-    'cancel-consultation': (ctx) => normalizeTourSteps([
-        {
-            group: GROUP,
-            target: '[data-tour="consultations-cards.patient-block"]',
-            title: 'Identifier la consultation',
-            content: 'Reperez la consultation a annuler grace aux informations patient affichees sur la carte.'
-        },
-        ...(ctx.firstConsultationCanCancel ? [{
-            group: GROUP,
-            target: '[data-tour="consultations-cards.cancel-action"]',
-            title: 'Annuler une consultation ouverte',
-            content: 'L annulation retire la consultation de la file. Reservez-la aux ouvertures erronees ou sans suite.'
-        }] : [])
-    ]),
-    'create-consultation': (ctx) => normalizeTourSteps([
-        {
-            group: GROUP,
-            target: '[data-tour="consultations-cards.header"]',
-            title: 'Creer une consultation',
-            content: 'Depuis la file d attente, vous pouvez ouvrir une nouvelle prise en charge sans changer de page.'
-        },
-        {
-            group: GROUP,
-            target: '[data-tour="consultations-cards.dialog.create"]',
-            title: 'Dialogue de creation',
-            content: 'Ce formulaire enregistre une nouvelle consultation qui apparaitra ensuite dans la file.',
-            beforeEnter: async () => openDialogStep(ctx.openCreateConsultationDialog, ctx.closeAllDialogs)
-        }
-    ])
+    'quick-cloture': (ctx) =>
+        normalizeTourSteps([
+            {
+                group: GROUP,
+                target: '[data-tour="consultations-cards.quick-actions"]',
+                title: 'Actions rapides',
+                content: 'Depuis le menu, vous pouvez lancer une cloturation sans passer par toute la fiche.'
+            },
+            {
+                group: GROUP,
+                target: '[data-tour="consultations-cards.dialog.quick"]',
+                title: 'Cloture rapide',
+                content: 'Le dialogue lie automatiquement la derniere fiche medicale puis permet de terminer la consultation.',
+                beforeEnter: async () => openDialogStep(ctx.openQuickDialog, ctx.closeAllDialogs)
+            }
+        ]),
+    'cancel-consultation': (ctx) =>
+        normalizeTourSteps([
+            {
+                group: GROUP,
+                target: '[data-tour="consultations-cards.patient-block"]',
+                title: 'Identifier la consultation',
+                content: 'Reperez la consultation a annuler grace aux informations patient affichees sur la carte.'
+            },
+            ...(ctx.firstConsultationCanCancel
+                ? [
+                      {
+                          group: GROUP,
+                          target: '[data-tour="consultations-cards.cancel-action"]',
+                          title: 'Annuler une consultation ouverte',
+                          content: 'L annulation retire la consultation de la file. Reservez-la aux ouvertures erronees ou sans suite.'
+                      }
+                  ]
+                : [])
+        ]),
+    'create-consultation': (ctx) =>
+        normalizeTourSteps([
+            {
+                group: GROUP,
+                target: '[data-tour="consultations-cards.header"]',
+                title: 'Creer une consultation',
+                content: 'Depuis la file d attente, vous pouvez ouvrir une nouvelle prise en charge sans changer de page.'
+            },
+            {
+                group: GROUP,
+                target: '[data-tour="consultations-cards.dialog.create"]',
+                title: 'Dialogue de creation',
+                content: 'Ce formulaire enregistre une nouvelle consultation qui apparaitra ensuite dans la file.',
+                beforeEnter: async () => openDialogStep(ctx.openCreateConsultationDialog, ctx.closeAllDialogs)
+            }
+        ])
 });
 
 export function buildConsultationsCardsTourSteps(taskId, variantId, ctx) {

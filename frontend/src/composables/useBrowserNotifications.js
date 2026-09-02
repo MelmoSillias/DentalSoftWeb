@@ -46,9 +46,7 @@ export function useBrowserNotifications() {
     const enabled = ref(readEnabledPreference() && permission.value === 'granted');
 
     const isSupported = computed(() => typeof window !== 'undefined' && 'Notification' in window);
-    const canShowSystemNotifications = computed(
-        () => isSupported.value && enabled.value && permission.value === 'granted'
-    );
+    const canShowSystemNotifications = computed(() => isSupported.value && enabled.value && permission.value === 'granted');
 
     async function requestPermission() {
         if (!isSupported.value) {

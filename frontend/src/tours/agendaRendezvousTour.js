@@ -52,42 +52,38 @@ function buildOverviewSteps(ctx) {
 
 export const agendaRendezvousRegistry = createTourRegistry(GROUP, TASKS, {
     overview: buildOverviewSteps,
-    'create-rdv': (ctx) => normalizeTourSteps([
-        {
-            group: GROUP,
-            target: '[data-tour="agenda-rdv.calendar"]',
-            title: 'Choisir un creneau',
-            content: 'Cliquez sur un creneau libre du calendrier pour demarrer la creation d un rendez-vous.'
-        },
-        {
-            group: GROUP,
-            target: '[data-tour="agenda-rdv.dialogs"]',
-            title: 'Formulaire de creation',
-            content: 'Le dialogue permet de renseigner le patient, le medecin, la date et les options de rappel SMS.',
-            beforeEnter: async () => openDialogStep(
-                () => ctx.openCreateDialog?.(),
-                ctx.closeAllDialogs
-            )
-        }
-    ]),
-    'edit-rdv': (ctx) => normalizeTourSteps([
-        {
-            group: GROUP,
-            target: '[data-tour="agenda-rdv.calendar"]',
-            title: 'Selectionner un rendez-vous',
-            content: 'Cliquez sur un rendez-vous existant pour ouvrir les actions de modification, validation ou report.'
-        },
-        {
-            group: GROUP,
-            target: '[data-tour="agenda-rdv.dialogs"]',
-            title: 'Actions sur le rendez-vous',
-            content: 'Depuis le dialogue, vous pouvez valider, reporter, annuler ou reprogrammer le rendez-vous selectionne.',
-            beforeEnter: async () => openDialogStep(
-                () => ctx.openEditDialog?.(),
-                ctx.closeAllDialogs
-            )
-        }
-    ]),
+    'create-rdv': (ctx) =>
+        normalizeTourSteps([
+            {
+                group: GROUP,
+                target: '[data-tour="agenda-rdv.calendar"]',
+                title: 'Choisir un creneau',
+                content: 'Cliquez sur un creneau libre du calendrier pour demarrer la creation d un rendez-vous.'
+            },
+            {
+                group: GROUP,
+                target: '[data-tour="agenda-rdv.dialogs"]',
+                title: 'Formulaire de creation',
+                content: 'Le dialogue permet de renseigner le patient, le medecin, la date et les options de rappel SMS.',
+                beforeEnter: async () => openDialogStep(() => ctx.openCreateDialog?.(), ctx.closeAllDialogs)
+            }
+        ]),
+    'edit-rdv': (ctx) =>
+        normalizeTourSteps([
+            {
+                group: GROUP,
+                target: '[data-tour="agenda-rdv.calendar"]',
+                title: 'Selectionner un rendez-vous',
+                content: 'Cliquez sur un rendez-vous existant pour ouvrir les actions de modification, validation ou report.'
+            },
+            {
+                group: GROUP,
+                target: '[data-tour="agenda-rdv.dialogs"]',
+                title: 'Actions sur le rendez-vous',
+                content: 'Depuis le dialogue, vous pouvez valider, reporter, annuler ou reprogrammer le rendez-vous selectionne.',
+                beforeEnter: async () => openDialogStep(() => ctx.openEditDialog?.(), ctx.closeAllDialogs)
+            }
+        ]),
     'filter-calendar': (ctx) => {
         const steps = [
             {

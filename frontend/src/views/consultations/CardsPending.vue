@@ -2,12 +2,7 @@
 import { logAppError } from '@/utils/appLogger';
 
 import QuickClotureConsultationDialog from '@/components/consultations/QuickClotureConsultationDialog.vue';
-import {
-    activateConsultationsTourMock,
-    deactivateConsultationsTourMock,
-    resetConsultationsTourMockData,
-    resolveConsultationsTourMockScenario
-} from '@/services/consultationsTourMock';
+import { activateConsultationsTourMock, deactivateConsultationsTourMock, resetConsultationsTourMockData, resolveConsultationsTourMockScenario } from '@/services/consultationsTourMock';
 import { useGuidedTour } from '@/composables/useGuidedTour';
 import { openConsultationFiche } from '@/composables/useFicheMedicaleAccess';
 import FormCreateConsultation from '@/components/patients/FormCreateConsultation.vue';
@@ -62,8 +57,7 @@ const loadPending = async () => {
 const loadQuickClosePolicy = async () => {
     try {
         const settings = await fetchPublicGeneralSettings(token);
-        allowReceptionQuickClose.value = settings?.allowReceptionConsultationQuickActions !== false
-            && settings?.allowReceptionQuickCloseConsultation !== false;
+        allowReceptionQuickClose.value = settings?.allowReceptionConsultationQuickActions !== false && settings?.allowReceptionQuickCloseConsultation !== false;
         hidePatientPhoneForMedecins.value = settings?.hidePatientPhoneForMedecins === true;
         soinsList.value = normalizeSoinList(settings?.soinsList);
     } catch (error) {
@@ -159,7 +153,7 @@ const handleCancel = async (consultation) => {
         await loadPending();
     } catch (error) {
         logAppError('Annulation impossible', error);
-        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible d\'annuler la consultation.', life: 3000 });
+        toast.add({ severity: 'error', summary: 'Erreur', detail: "Impossible d'annuler la consultation.", life: 3000 });
     } finally {
         setCanceling(consultation.id, false);
     }
@@ -234,9 +228,10 @@ const cloneValue = (value) => {
     return JSON.parse(JSON.stringify(value));
 };
 
-const waitForTourUi = (ms = 180) => new Promise((resolve) => {
-    window.setTimeout(resolve, ms);
-});
+const waitForTourUi = (ms = 180) =>
+    new Promise((resolve) => {
+        window.setTimeout(resolve, ms);
+    });
 
 const resetTourDialogs = () => {
     openCreateConsultationDialog.value = false;
@@ -348,32 +343,32 @@ const { isGuidedTourStarting } = useGuidedTour({
 });
 
 function getBorderColor(index) {
-    if (index === 0) return 'emerald' // Plus ancien
-    if (index < 3) return 'amber'    // Ancien
-    return 'surface'                  // Récent
+    if (index === 0) return 'emerald'; // Plus ancien
+    if (index < 3) return 'amber'; // Ancien
+    return 'surface'; // Récent
 }
 
 function getPriorityColor(index) {
-    if (index === 0) return 'red'    // Plus ancien - urgent
-    if (index < 3) return 'amber'    // Ancien - attention
-    return 'green'                    // Récent - normal
+    if (index === 0) return 'red'; // Plus ancien - urgent
+    if (index < 3) return 'amber'; // Ancien - attention
+    return 'green'; // Récent - normal
 }
 
 function getProgressBarClass(index) {
-    if (index === 0) return 'bg-gradient-to-r from-red-500 to-red-600'
-    if (index < 3) return 'bg-gradient-to-r from-amber-500 to-amber-600'
-    return 'bg-gradient-to-r from-green-500 to-green-600'
+    if (index === 0) return 'bg-gradient-to-r from-red-500 to-red-600';
+    if (index < 3) return 'bg-gradient-to-r from-amber-500 to-amber-600';
+    return 'bg-gradient-to-r from-green-500 to-green-600';
 }
 
 function getWaitTimePercentage(createdAt) {
-    const created = new Date(createdAt)
-    const now = new Date()
-    const diffHours = (now - created) / (1000 * 60 * 60)
+    const created = new Date(createdAt);
+    const now = new Date();
+    const diffHours = (now - created) / (1000 * 60 * 60);
 
     // Plus de 1 heure = 100%
-    if (diffHours >= 1) return 100
+    if (diffHours >= 1) return 100;
     // Entre 0 et 1 heure = proportionnel
-    return Math.min(100, Math.round((diffHours / 1) * 100))
+    return Math.min(100, Math.round((diffHours / 1) * 100));
 }
 
 const viewMode = ref('queue');
@@ -387,8 +382,7 @@ const viewOptions = [
 <template>
     <div class="m-6 md:mb-8">
         <!-- Stats Card -->
-        <div data-tour="consultations-cards.stats"
-            class="bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-900/20 dark:to-amber-800/20 rounded-2xl p-5 border border-amber-200/50 dark:border-amber-800/50 mb-6">
+        <div data-tour="consultations-cards.stats" class="bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-900/20 dark:to-amber-800/20 rounded-2xl p-5 border border-amber-200/50 dark:border-amber-800/50 mb-6">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-sm text-amber-700 dark:text-amber-300 font-medium">File D'attente</p>
@@ -402,8 +396,7 @@ const viewOptions = [
         </div>
 
         <!-- Main Card -->
-        <div data-tour="consultations-cards.header"
-            class="card p-5 md:p-6 border-0 rounded-2xl bg-gradient-to-r from-surface-0 to-surface-50/80 dark:from-surface-800 dark:to-surface-900/80 shadow-xl backdrop-blur-sm">
+        <div data-tour="consultations-cards.header" class="card p-5 md:p-6 border-0 rounded-2xl bg-gradient-to-r from-surface-0 to-surface-50/80 dark:from-surface-800 dark:to-surface-900/80 shadow-xl backdrop-blur-sm">
             <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
                 <div class="space-y-2">
                     <div class="flex items-center gap-3">
@@ -411,18 +404,13 @@ const viewOptions = [
                             <i class="fas fa-stethoscope text-primary-600 dark:text-primary-400 text-xl"></i>
                         </div>
                         <div>
-                            <h2 class="text-2xl lg:text-3xl font-bold text-surface-900 dark:text-surface-50">
-                                Consultations en cours
-                            </h2>
-                            <p class="text-surface-600 dark:text-surface-300 text-sm md:text-base">
-                                Gestion des consultations ouvertes et en attente
-                            </p>
+                            <h2 class="text-2xl lg:text-3xl font-bold text-surface-900 dark:text-surface-50">Consultations en cours</h2>
+                            <p class="text-surface-600 dark:text-surface-300 text-sm md:text-base">Gestion des consultations ouvertes et en attente</p>
                         </div>
                     </div>
                 </div>
                 <div class="flex items-center gap-2">
-                    <SelectButton v-model="viewMode" :options="viewOptions" optionLabel="label" optionValue="value"
-                        class="rounded-xl">
+                    <SelectButton v-model="viewMode" :options="viewOptions" optionLabel="label" optionValue="value" class="rounded-xl">
                         <template #option="slotProps">
                             <div class="flex items-center gap-2 px-2">
                                 <i :class="slotProps.option.icon"></i>
@@ -430,84 +418,68 @@ const viewOptions = [
                             </div>
                         </template>
                     </SelectButton>
-                    <Button data-tour="consultations-cards.refresh" icon="pi pi-refresh" label="Rafraîchir"
-                        :loading="loading" outlined
+                    <Button
+                        data-tour="consultations-cards.refresh"
+                        icon="pi pi-refresh"
+                        label="Rafraîchir"
+                        :loading="loading"
+                        outlined
                         class="rounded-xl px-5 py-2.5 border-surface-300 dark:border-surface-600 hover:bg-surface-100 dark:hover:bg-surface-700 transition-colors"
-                        @click="loadPending" />
+                        @click="loadPending"
+                    />
                 </div>
             </div>
 
             <!-- Empty State -->
-            <div v-if="!loading && !sortedConsultations.length" data-tour="consultations-cards.empty-state"
-                class="text-center py-16 rounded-xl border-2 border-dashed border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-br from-surface-50/50 to-surface-0/30 dark:from-surface-800/30 dark:to-surface-900/20">
-                <div
-                    class="inline-flex items-center justify-center w-20 h-20 rounded-full bg-surface-100 dark:bg-surface-800 mb-6">
+            <div
+                v-if="!loading && !sortedConsultations.length"
+                data-tour="consultations-cards.empty-state"
+                class="text-center py-16 rounded-xl border-2 border-dashed border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-br from-surface-50/50 to-surface-0/30 dark:from-surface-800/30 dark:to-surface-900/20"
+            >
+                <div class="inline-flex items-center justify-center w-20 h-20 rounded-full bg-surface-100 dark:bg-surface-800 mb-6">
                     <i class="fas fa-check-circle text-4xl text-surface-400"></i>
                 </div>
-                <h4 class="text-xl font-semibold text-surface-700 dark:text-surface-300 mb-3">
-                    Aucune consultation en cours
-                </h4>
-                <p class="text-surface-600 dark:text-surface-400 mb-8 max-w-md mx-auto">
-                    Toutes les consultations ont été traitées ou clôturées.
-                </p>
-                <Button v-if="!isMedecin" data-tour="consultations-cards.empty-create-button" icon="fas fa-plus"
-                    label="Créer une consultation" severity="secondary" @click="openCreateConsultationDialog = true"
-                    outlined class="rounded-xl" />
+                <h4 class="text-xl font-semibold text-surface-700 dark:text-surface-300 mb-3">Aucune consultation en cours</h4>
+                <p class="text-surface-600 dark:text-surface-400 mb-8 max-w-md mx-auto">Toutes les consultations ont été traitées ou clôturées.</p>
+                <Button v-if="!isMedecin" data-tour="consultations-cards.empty-create-button" icon="fas fa-plus" label="Créer une consultation" severity="secondary" @click="openCreateConsultationDialog = true" outlined class="rounded-xl" />
             </div>
-
 
             <!-- Consultations Grid -->
             <div v-else>
-                <div v-if="viewMode === 'cards'" >
+                <div v-if="viewMode === 'cards'">
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 w-full" v-if="sortedConsultations.length > 0">
-                        <div v-for="(consultation, idx) in sortedConsultations" :key="consultation.id"
+                        <div
+                            v-for="(consultation, idx) in sortedConsultations"
+                            :key="consultation.id"
                             :data-tour="idx === 0 ? 'consultations-cards.case-last-fiche' : idx === 1 ? 'consultations-cards.case-linked' : idx === 2 ? 'consultations-cards.case-new' : null"
                             class="relative overflow-hidden rounded-2xl border transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 flex flex-col h-full group cursor-pointer"
-                            :class="[
-                                'border-' + getBorderColor(idx) + '-200/50 dark:border-' + getBorderColor(idx) + '-800/50',
-                                'bg-gradient-to-br from-white to-surface-50/80 dark:from-surface-800 dark:to-surface-900/80'
-                            ]"
-                            @dblclick="handleOpenFiche(consultation)">
+                            :class="['border-' + getBorderColor(idx) + '-200/50 dark:border-' + getBorderColor(idx) + '-800/50', 'bg-gradient-to-br from-white to-surface-50/80 dark:from-surface-800 dark:to-surface-900/80']"
+                            @dblclick="handleOpenFiche(consultation)"
+                        >
                             <!-- Priority Indicator -->
-                            <div class="absolute top-0 left-0 w-2 h-full"
-                                :class="'bg-gradient-to-b to-' + getPriorityColor(idx) + '-500 from-' + getPriorityColor(idx) + '-600'">
-                            </div>
+                            <div class="absolute top-0 left-0 w-2 h-full" :class="'bg-gradient-to-b to-' + getPriorityColor(idx) + '-500 from-' + getPriorityColor(idx) + '-600'"></div>
 
                             <!-- Card Header -->
                             <div class="p-5 pt-6">
                                 <div class="flex items-start justify-between gap-3 mb-4">
                                     <div class="flex-1">
-                                        <div class="flex items-center gap-3 mb-3"
-                                            :data-tour="idx === 0 ? 'consultations-cards.patient-block' : null">
-                                            <div
-                                                class="w-12 h-12 rounded-full bg-gradient-to-br from-primary-100 to-primary-200 dark:from-primary-900/30 dark:to-primary-800/30 flex items-center justify-center">
+                                        <div class="flex items-center gap-3 mb-3" :data-tour="idx === 0 ? 'consultations-cards.patient-block' : null">
+                                            <div class="w-12 h-12 rounded-full bg-gradient-to-br from-primary-100 to-primary-200 dark:from-primary-900/30 dark:to-primary-800/30 flex items-center justify-center">
                                                 <i class="fas fa-user-md text-primary-600 dark:text-primary-400"></i>
                                             </div>
                                             <div class="flex-1">
                                                 <div class="flex items-center gap-2 mb-1">
-                                                    <h3
-                                                        class="text-lg font-bold text-surface-900 dark:text-surface-100 truncate">
+                                                    <h3 class="text-lg font-bold text-surface-900 dark:text-surface-100 truncate">
                                                         {{ consultation.patientName || consultation.patient || 'Patientinconnu' }}
                                                     </h3>
-                                                    <Tag v-if="consultation.statut" :value="consultation.statut"
-                                                        severity="info" class="px-3 py-1 rounded-full font-medium" />
-                                                    <Tag
-                                                        v-if="consultation.hasInsurance"
-                                                        value="Assuré"
-                                                        severity="success"
-                                                        icon="pi pi-shield"
-                                                        class="px-3 py-1 rounded-full font-medium"
-                                                    />
+                                                    <Tag v-if="consultation.statut" :value="consultation.statut" severity="info" class="px-3 py-1 rounded-full font-medium" />
+                                                    <Tag v-if="consultation.hasInsurance" value="Assuré" severity="success" icon="pi pi-shield" class="px-3 py-1 rounded-full font-medium" />
                                                 </div>
-                                                <div
-                                                    class="flex items-center gap-2 text-sm text-surface-500 dark:text-surface-400">
+                                                <div class="flex items-center gap-2 text-sm text-surface-500 dark:text-surface-400">
                                                     <i class="pi pi-phone"></i>
-                                                    <span>{{ shouldHidePatientPhoneForMedecin ? 'Masqué par l\'administrateur' :
-                                                        (consultation.patientPhone || 'Téléphone non renseigné')
-                                                        }}</span>
+                                                    <span>{{ shouldHidePatientPhoneForMedecin ? "Masqué par l'administrateur" : consultation.patientPhone || 'Téléphone non renseigné' }}</span>
                                                 </div>
-                                                <div
-                                                    class="flex items-center gap-2 text-sm text-surface-500 dark:text-surface-400 mt-1">
+                                                <div class="flex items-center gap-2 text-sm text-surface-500 dark:text-surface-400 mt-1">
                                                     <i class="fas fa-user-md"></i>
                                                     <span>{{ medecinLabel(consultation) }}</span>
                                                 </div>
@@ -515,37 +487,25 @@ const viewOptions = [
                                         </div>
 
                                         <!-- Timeline Info -->
-                                        <div class="space-y-3 mt-4"
-                                            :data-tour="idx === 0 ? 'consultations-cards.timeline' : null">
+                                        <div class="space-y-3 mt-4" :data-tour="idx === 0 ? 'consultations-cards.timeline' : null">
                                             <div class="flex items-center justify-between">
                                                 <div class="flex items-center gap-2">
-                                                    <div
-                                                        class="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                                                        <i
-                                                            class="pi pi-calendar text-blue-600 dark:text-blue-400 text-sm"></i>
+                                                    <div class="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                                                        <i class="pi pi-calendar text-blue-600 dark:text-blue-400 text-sm"></i>
                                                     </div>
-                                                    <span
-                                                        class="text-sm font-medium text-surface-700 dark:text-surface-300">
-                                                        Ouverte le
-                                                    </span>
+                                                    <span class="text-sm font-medium text-surface-700 dark:text-surface-300"> Ouverte le </span>
                                                 </div>
-                                                <span
-                                                    class="text-sm font-semibold text-surface-900 dark:text-surface-100">
+                                                <span class="text-sm font-semibold text-surface-900 dark:text-surface-100">
                                                     {{ formatDateTime(consultation.createdAt) }}
                                                 </span>
                                             </div>
 
                                             <div class="flex items-center justify-between">
                                                 <div class="flex items-center gap-2">
-                                                    <div
-                                                        class="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
-                                                        <i
-                                                            class="pi pi-clock text-amber-600 dark:text-amber-400 text-sm"></i>
+                                                    <div class="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                                                        <i class="pi pi-clock text-amber-600 dark:text-amber-400 text-sm"></i>
                                                     </div>
-                                                    <span
-                                                        class="text-sm font-medium text-surface-700 dark:text-surface-300">
-                                                        Ancienneté
-                                                    </span>
+                                                    <span class="text-sm font-medium text-surface-700 dark:text-surface-300"> Ancienneté </span>
                                                 </div>
                                                 <span class="text-sm font-bold text-amber-600 dark:text-amber-400">
                                                     {{ formatSince(consultation.createdAt) }}
@@ -557,59 +517,64 @@ const viewOptions = [
 
                                 <!-- Progress Indicator -->
                                 <div class="mt-4" :data-tour="idx === 0 ? 'consultations-cards.progress' : null">
-                                    <div
-                                        class="flex justify-between text-xs text-surface-500 dark:text-surface-400 mb-1">
+                                    <div class="flex justify-between text-xs text-surface-500 dark:text-surface-400 mb-1">
                                         <span>Temps d'attente</span>
                                         <span>{{ getWaitTimePercentage(consultation.createdAt) }}%</span>
                                     </div>
                                     <div class="h-2 bg-surface-200 dark:bg-surface-700 rounded-full overflow-hidden">
-                                        <div class="h-full rounded-full transition-all duration-1000"
-                                            :class="getProgressBarClass(idx)"
-                                            :style="{ width: getWaitTimePercentage(consultation.createdAt) + '%' }">
-                                        </div>
+                                        <div class="h-full rounded-full transition-all duration-1000" :class="getProgressBarClass(idx)" :style="{ width: getWaitTimePercentage(consultation.createdAt) + '%' }"></div>
                                     </div>
                                 </div>
                             </div>
 
                             <!-- Card Footer - Actions -->
-                            <div
-                                class="mt-auto p-4 border-t border-surface-100 dark:border-surface-700/50 bg-surface-50/50 dark:bg-surface-800/30">
+                            <div class="mt-auto p-4 border-t border-surface-100 dark:border-surface-700/50 bg-surface-50/50 dark:bg-surface-800/30">
                                 <div class="flex flex-wrap gap-2">
-                                    <Button v-if="canUseQuickActions"
+                                    <Button
+                                        v-if="canUseQuickActions"
                                         :data-tour="idx === 0 ? 'consultations-cards.quick-actions' : null"
-                                        icon="pi pi-bolt" label="Actions rapides" severity="contrast" size="small"
-                                        outlined class="rounded-xl px-4 py-2 text-sm font-medium"
+                                        icon="pi pi-bolt"
+                                        label="Actions rapides"
+                                        severity="contrast"
+                                        size="small"
+                                        outlined
+                                        class="rounded-xl px-4 py-2 text-sm font-medium"
                                         :disabled="isClosed(consultation)"
-                                        @click="toggleQuickActions($event, consultation)" />
-                                    <Menu v-if="canUseQuickActions" :ref="(el) => setQuickMenuRef(consultation.id, el)"
-                                        :model="quickActionItems(consultation)" popup>
+                                        @click="toggleQuickActions($event, consultation)"
+                                    />
+                                    <Menu v-if="canUseQuickActions" :ref="(el) => setQuickMenuRef(consultation.id, el)" :model="quickActionItems(consultation)" popup>
                                         <template #start>
-                                            <div
-                                                class="px-3 pt-3 pb-2 text-xs font-semibold uppercase tracking-wide text-surface-500">
-                                                Actions rapides
-                                            </div>
+                                            <div class="px-3 pt-3 pb-2 text-xs font-semibold uppercase tracking-wide text-surface-500">Actions rapides</div>
                                         </template>
                                     </Menu>
 
-                                    <Button v-if="showActions.openFiche(consultation)"
+                                    <Button
+                                        v-if="showActions.openFiche(consultation)"
                                         :data-tour="idx === 0 ? 'consultations-cards.continue-action' : null"
-                                        label="Ouvrir fiche médicale du patient" icon="pi pi-folder-open" severity="secondary"
+                                        label="Ouvrir fiche médicale du patient"
+                                        icon="pi pi-folder-open"
+                                        severity="secondary"
                                         size="small"
                                         class="rounded-xl px-4 py-2 text-sm font-medium transition-all hover:scale-[1.02]"
-                                        @click.stop="handleOpenFiche(consultation)" />
-                                    <Button v-if="showActions.cancel(consultation)"
+                                        @click.stop="handleOpenFiche(consultation)"
+                                    />
+                                    <Button
+                                        v-if="showActions.cancel(consultation)"
                                         :data-tour="idx === 0 ? 'consultations-cards.cancel-action' : null"
-                                        label="Annuler" icon="pi pi-times" severity="danger" size="small" outlined
+                                        label="Annuler"
+                                        icon="pi pi-times"
+                                        severity="danger"
+                                        size="small"
+                                        outlined
                                         :loading="canceling[consultation.id] === true"
                                         class="rounded-xl px-4 py-2 text-sm font-medium transition-all hover:scale-[1.02]"
-                                        @click="handleCancelWithConfirm($event, consultation)" />
+                                        @click="handleCancelWithConfirm($event, consultation)"
+                                    />
                                 </div>
                             </div>
 
                             <!-- Hover Overlay -->
-                            <div
-                                class="absolute inset-0 bg-gradient-to-t from-primary-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
-                            </div>
+                            <div class="absolute inset-0 bg-gradient-to-t from-primary-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
                         </div>
                     </div>
                 </div>
@@ -625,12 +590,14 @@ const viewOptions = [
                         <!-- Gauche -->
                         <div class="flex items-center gap-4">
                             <!-- Position -->
-                            <div class="w-10 h-10 flex items-center justify-center rounded-full font-bold text-white"
+                            <div
+                                class="w-10 h-10 flex items-center justify-center rounded-full font-bold text-white"
                                 :class="{
                                     'bg-red-500': idx === 0,
                                     'bg-amber-500': idx < 3,
                                     'bg-green-500': idx >= 3
-                                }">
+                                }"
+                            >
                                 {{ idx + 1 }}
                             </div>
 
@@ -650,35 +617,44 @@ const viewOptions = [
 
                         <!-- Droite -->
                         <div class="flex items-center gap-2">
-                            <Button v-if="canUseQuickActions"
-                                        :data-tour="idx === 0 ? 'consultations-cards.quick-actions' : null"
-                                        icon="pi pi-bolt"   severity="contrast" size="small"
-                                        outlined class="rounded-xl px-4 py-2 text-sm font-medium"
-                                        :disabled="isClosed(consultation)"
-                                        @click="toggleQuickActions($event, consultation)" />
-                                    <Menu v-if="canUseQuickActions" :ref="(el) => setQuickMenuRef(consultation.id, el)"
-                                        :model="quickActionItems(consultation)" popup>
-                                        <template #start>
-                                            <div
-                                                class="px-3 pt-3 pb-2 text-xs font-semibold uppercase tracking-wide text-surface-500">
-                                                Actions rapides
-                                            </div>
-                                        </template>
-                                    </Menu>
+                            <Button
+                                v-if="canUseQuickActions"
+                                :data-tour="idx === 0 ? 'consultations-cards.quick-actions' : null"
+                                icon="pi pi-bolt"
+                                severity="contrast"
+                                size="small"
+                                outlined
+                                class="rounded-xl px-4 py-2 text-sm font-medium"
+                                :disabled="isClosed(consultation)"
+                                @click="toggleQuickActions($event, consultation)"
+                            />
+                            <Menu v-if="canUseQuickActions" :ref="(el) => setQuickMenuRef(consultation.id, el)" :model="quickActionItems(consultation)" popup>
+                                <template #start>
+                                    <div class="px-3 pt-3 pb-2 text-xs font-semibold uppercase tracking-wide text-surface-500">Actions rapides</div>
+                                </template>
+                            </Menu>
 
-                                    <Button v-if="showActions.openFiche(consultation)"
-                                        :data-tour="idx === 0 ? 'consultations-cards.continue-action' : null"
-                                        icon="pi pi-folder-open" severity="secondary"
-                                        size="small"
-                                        v-tooltip.top="'Ouvrir fiche médicale du patient'"
-                                        class="rounded-xl px-4 py-2 text-sm font-medium transition-all hover:scale-[1.02]"
-                                        @click.stop="handleOpenFiche(consultation)" />
-                                    <Button v-if="showActions.cancel(consultation)"
-                                        :data-tour="idx === 0 ? 'consultations-cards.cancel-action' : null"
-                                         icon="pi pi-times" severity="danger" size="small" outlined
-                                        :loading="canceling[consultation.id] === true"
-                                        class="rounded-xl px-4 py-2 text-sm font-medium transition-all hover:scale-[1.02]"
-                                        @click="handleCancelWithConfirm($event, consultation)" />
+                            <Button
+                                v-if="showActions.openFiche(consultation)"
+                                :data-tour="idx === 0 ? 'consultations-cards.continue-action' : null"
+                                icon="pi pi-folder-open"
+                                severity="secondary"
+                                size="small"
+                                v-tooltip.top="'Ouvrir fiche médicale du patient'"
+                                class="rounded-xl px-4 py-2 text-sm font-medium transition-all hover:scale-[1.02]"
+                                @click.stop="handleOpenFiche(consultation)"
+                            />
+                            <Button
+                                v-if="showActions.cancel(consultation)"
+                                :data-tour="idx === 0 ? 'consultations-cards.cancel-action' : null"
+                                icon="pi pi-times"
+                                severity="danger"
+                                size="small"
+                                outlined
+                                :loading="canceling[consultation.id] === true"
+                                class="rounded-xl px-4 py-2 text-sm font-medium transition-all hover:scale-[1.02]"
+                                @click="handleCancelWithConfirm($event, consultation)"
+                            />
                         </div>
                     </div>
                 </div>
@@ -694,22 +670,28 @@ const viewOptions = [
         </div>
     </div>
 
-    <Dialog v-if="!isMedecin" v-model:visible="openCreateConsultationDialog"
-        data-tour="consultations-cards.create-dialog" header="Créer une nouvelle consultation" :modal="true"
-        :closable="true" :dismissable-mask="true" :style="{ width: '50rem' }" :pt="{
+    <Dialog
+        v-if="!isMedecin"
+        v-model:visible="openCreateConsultationDialog"
+        data-tour="consultations-cards.create-dialog"
+        header="Créer une nouvelle consultation"
+        :modal="true"
+        :closable="true"
+        :dismissable-mask="true"
+        :style="{ width: '50rem' }"
+        :pt="{
             root: 'rounded-2xl overflow-hidden',
             header: 'bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900 dark:to-surface-800 px-6 py-4 border-b',
             content: 'p-0 mt-4'
-        }">
+        }"
+    >
         <template #header>
             <div class="flex items-center gap-3">
                 <div class="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
                     <i class="fas fa-stethoscope text-green-600 dark:text-green-400"></i>
                 </div>
                 <div>
-                    <h4 class="m-0 text-surface-900 dark:text-surface-100">
-                        Nouvelle consultation
-                    </h4>
+                    <h4 class="m-0 text-surface-900 dark:text-surface-100">Nouvelle consultation</h4>
                     <p class="text-sm text-surface-500 dark:text-surface-400 mt-1">
                         {{ consultationPatient?.fullname || consultationPatient?.nom || 'Nouveau patient' }}
                     </p>
@@ -718,23 +700,34 @@ const viewOptions = [
         </template>
 
         <div data-tour="consultations-cards.dialog.create">
-            <FormCreateConsultation @cancel="openCreateConsultationDialog = false"
-                @saved="() => { openCreateConsultationDialog = false; loadPending(); }" />
+            <FormCreateConsultation
+                @cancel="openCreateConsultationDialog = false"
+                @saved="
+                    () => {
+                        openCreateConsultationDialog = false;
+                        loadPending();
+                    }
+                "
+            />
         </div>
     </Dialog>
 
     <ConfirmPopup group="cards-cancel-consultation" />
 
-    <QuickClotureConsultationDialog v-if="canUseQuickActions" v-model:visible="quickDialogVisible"
+    <QuickClotureConsultationDialog
+        v-if="canUseQuickActions"
+        v-model:visible="quickDialogVisible"
         :consultation="quickDialogConsultation"
         :soins="soinsList"
-        tourTarget="consultations-cards.dialog.quick" @saved="handleQuickDialogDone" @closed="handleQuickDialogDone" />
+        tourTarget="consultations-cards.dialog.quick"
+        @saved="handleQuickDialogDone"
+        @closed="handleQuickDialogDone"
+    />
 </template>
 
 <style scoped>
 /* Animation pour les cartes */
 @keyframes pulse-glow {
-
     0%,
     100% {
         box-shadow: 0 0 20px -10px rgba(16, 185, 129, 0.5);
@@ -746,9 +739,9 @@ const viewOptions = [
 }
 
 /* Priorité haute - animation de pulsation */
-.grid-cols-1>div:first-child,
-.grid-cols-2>div:nth-child(-n+1),
-.grid-cols-3>div:nth-child(-n+1) {
+.grid-cols-1 > div:first-child,
+.grid-cols-2 > div:nth-child(-n + 1),
+.grid-cols-3 > div:nth-child(-n + 1) {
     animation: pulse-glow 2s ease-in-out infinite;
 }
 

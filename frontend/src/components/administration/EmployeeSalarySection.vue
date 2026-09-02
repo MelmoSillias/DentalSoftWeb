@@ -115,40 +115,18 @@ watch(
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div class="space-y-1">
                 <label class="text-sm font-medium">Fréquence de paiement</label>
-                <Select
-                    v-model="form.frequencePaiement"
-                    :options="frequenceOptions"
-                    optionLabel="label"
-                    optionValue="value"
-                    class="w-full"
-                />
+                <Select v-model="form.frequencePaiement" :options="frequenceOptions" optionLabel="label" optionValue="value" class="w-full" />
                 <p class="text-xs text-surface-500">
-                    {{ form.frequencePaiement === 'journalier'
-                        ? 'Paiement par jour travaillé, au choix de l\'administrateur.'
-                        : 'Paiement une fois par mois sur la période sélectionnée.' }}
+                    {{ form.frequencePaiement === 'journalier' ? "Paiement par jour travaillé, au choix de l'administrateur." : 'Paiement une fois par mois sur la période sélectionnée.' }}
                 </p>
             </div>
             <div class="space-y-1">
                 <label class="text-sm font-medium">Type de salaire</label>
-                <Select
-                    v-model="form.typeSalaire"
-                    :options="typeSalaireOptions"
-                    optionLabel="label"
-                    optionValue="value"
-                    class="w-full"
-                />
+                <Select v-model="form.typeSalaire" :options="typeSalaireOptions" optionLabel="label" optionValue="value" class="w-full" />
             </div>
             <div class="space-y-1">
                 <label class="text-sm font-medium">{{ salaryValueLabel }}</label>
-                <InputNumber
-                    v-model="form.valeurSalaire"
-                    class="w-full"
-                    :min="0"
-                    :max="salaryMax"
-                    :step="0.01"
-                    :suffix="` ${salarySuffix}`"
-                    :disabled="isSalaireDisabled"
-                />
+                <InputNumber v-model="form.valeurSalaire" class="w-full" :min="0" :max="salaryMax" :step="0.01" :suffix="` ${salarySuffix}`" :disabled="isSalaireDisabled" />
             </div>
         </div>
 
@@ -160,33 +138,15 @@ watch(
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div class="space-y-1">
                     <label class="text-sm font-medium">Type de prime</label>
-                    <Select
-                        v-model="form.typePrime"
-                        :options="typePrimeOptions"
-                        optionLabel="label"
-                        optionValue="value"
-                        class="w-full"
-                    />
+                    <Select v-model="form.typePrime" :options="typePrimeOptions" optionLabel="label" optionValue="value" class="w-full" />
                 </div>
                 <div class="space-y-1">
                     <label class="text-sm font-medium">Valeur de la prime</label>
-                    <InputNumber
-                        v-model="form.valeurPrime"
-                        class="w-full"
-                        :min="0"
-                        :max="primeMax"
-                        :step="0.01"
-                        :suffix="` ${primeSuffix}`"
-                        :disabled="isPrimeDisabled"
-                    />
+                    <InputNumber v-model="form.valeurPrime" class="w-full" :min="0" :max="primeMax" :step="0.01" :suffix="` ${primeSuffix}`" :disabled="isPrimeDisabled" />
                 </div>
             </div>
-            <p v-if="form.typePrime === 'actes'" class="text-xs text-surface-500 mt-2">
-                Calculée en pourcentage sur le montant des actes posés (médecins uniquement).
-            </p>
-            <p v-else-if="form.typePrime === 'fixe'" class="text-xs text-surface-500 mt-2">
-                Montant par défaut, modifiable lors de chaque paiement.
-            </p>
+            <p v-if="form.typePrime === 'actes'" class="text-xs text-surface-500 mt-2">Calculée en pourcentage sur le montant des actes posés (médecins uniquement).</p>
+            <p v-else-if="form.typePrime === 'fixe'" class="text-xs text-surface-500 mt-2">Montant par défaut, modifiable lors de chaque paiement.</p>
         </div>
     </div>
 </template>

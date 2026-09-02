@@ -46,96 +46,100 @@ function buildOverviewSteps(ctx) {
 
 export const administrationConsumablesRegistry = createTourRegistry(GROUP, TASKS, {
     overview: buildOverviewSteps,
-    'manage-list': (ctx) => normalizeTourSteps([
-        {
-            group: GROUP,
-            target: '[data-tour="admin-consumables.mode"]',
-            title: 'Mode liste',
-            content: 'Assurez-vous d etre en mode liste pour gerer les articles du stock.'
-        },
-        {
-            group: GROUP,
-            target: '[data-tour="admin-consumables.list"]',
-            title: 'Gerer les articles',
-            content: 'La liste permet de consulter, modifier, supprimer et ouvrir les actions d ajout ou retrait de stock.',
-            beforeEnter: async () => {
-                ctx.setMode('list');
-                await flushUi();
+    'manage-list': (ctx) =>
+        normalizeTourSteps([
+            {
+                group: GROUP,
+                target: '[data-tour="admin-consumables.mode"]',
+                title: 'Mode liste',
+                content: 'Assurez-vous d etre en mode liste pour gerer les articles du stock.'
+            },
+            {
+                group: GROUP,
+                target: '[data-tour="admin-consumables.list"]',
+                title: 'Gerer les articles',
+                content: 'La liste permet de consulter, modifier, supprimer et ouvrir les actions d ajout ou retrait de stock.',
+                beforeEnter: async () => {
+                    ctx.setMode('list');
+                    await flushUi();
+                }
+            },
+            {
+                group: GROUP,
+                target: '[data-tour="admin-consumables.dialog.details"]',
+                title: 'Detail d un article',
+                content: 'Le dialogue de details permet de verifier fournisseur, stock courant et seuil bas.',
+                beforeEnter: async () => {
+                    ctx.setMode('list');
+                    await openDialogStep(ctx.openDetailsDialog, ctx.closeAllDialogs);
+                }
             }
-        },
-        {
-            group: GROUP,
-            target: '[data-tour="admin-consumables.dialog.details"]',
-            title: 'Detail d un article',
-            content: 'Le dialogue de details permet de verifier fournisseur, stock courant et seuil bas.',
-            beforeEnter: async () => {
-                ctx.setMode('list');
-                await openDialogStep(ctx.openDetailsDialog, ctx.closeAllDialogs);
+        ]),
+    'audit-variations': (ctx) =>
+        normalizeTourSteps([
+            {
+                group: GROUP,
+                target: '[data-tour="admin-consumables.mode"]',
+                title: 'Mode variations',
+                content: 'Basculez vers le mode Variations pour auditer les mouvements de stock.'
+            },
+            {
+                group: GROUP,
+                target: '[data-tour="admin-consumables.variations"]',
+                title: 'Historique des mouvements',
+                content: 'Suivez les entrees et sorties de stock sur une periode donnee.',
+                beforeEnter: async () => {
+                    ctx.setMode('vars');
+                    await flushUi();
+                }
             }
-        }
-    ]),
-    'audit-variations': (ctx) => normalizeTourSteps([
-        {
-            group: GROUP,
-            target: '[data-tour="admin-consumables.mode"]',
-            title: 'Mode variations',
-            content: 'Basculez vers le mode Variations pour auditer les mouvements de stock.'
-        },
-        {
-            group: GROUP,
-            target: '[data-tour="admin-consumables.variations"]',
-            title: 'Historique des mouvements',
-            content: 'Suivez les entrees et sorties de stock sur une periode donnee.',
-            beforeEnter: async () => {
-                ctx.setMode('vars');
-                await flushUi();
+        ]),
+    'add-consumable': (ctx) =>
+        normalizeTourSteps([
+            {
+                group: GROUP,
+                target: '[data-tour="admin-consumables.list"]',
+                title: 'Liste des consommables',
+                content: 'Depuis la liste, ouvrez le formulaire pour ajouter un nouvel article.',
+                beforeEnter: async () => {
+                    ctx.setMode('list');
+                    await flushUi();
+                }
+            },
+            {
+                group: GROUP,
+                target: '[data-tour="admin-consumables.dialog.create"]',
+                title: 'Ajouter un consommable',
+                content: 'Le dialogue permet de creer ou modifier un consommable sans quitter la page.',
+                beforeEnter: async () => {
+                    ctx.setMode('list');
+                    await openDialogStep(ctx.openCreateDialog, ctx.closeAllDialogs);
+                }
             }
-        }
-    ]),
-    'add-consumable': (ctx) => normalizeTourSteps([
-        {
-            group: GROUP,
-            target: '[data-tour="admin-consumables.list"]',
-            title: 'Liste des consommables',
-            content: 'Depuis la liste, ouvrez le formulaire pour ajouter un nouvel article.',
-            beforeEnter: async () => {
-                ctx.setMode('list');
-                await flushUi();
+        ]),
+    'stock-movement': (ctx) =>
+        normalizeTourSteps([
+            {
+                group: GROUP,
+                target: '[data-tour="admin-consumables.list"]',
+                title: 'Selectionner un article',
+                content: 'Choisissez un consommable dans la liste pour enregistrer un mouvement de stock.',
+                beforeEnter: async () => {
+                    ctx.setMode('list');
+                    await flushUi();
+                }
+            },
+            {
+                group: GROUP,
+                target: '[data-tour="admin-consumables.dialog.stock"]',
+                title: 'Ajouter ou retirer du stock',
+                content: 'Enregistrez une entree ou une sortie avec quantite, employe et description.',
+                beforeEnter: async () => {
+                    ctx.setMode('list');
+                    await openDialogStep(() => ctx.openStockDialog('withdraw'), ctx.closeAllDialogs);
+                }
             }
-        },
-        {
-            group: GROUP,
-            target: '[data-tour="admin-consumables.dialog.create"]',
-            title: 'Ajouter un consommable',
-            content: 'Le dialogue permet de creer ou modifier un consommable sans quitter la page.',
-            beforeEnter: async () => {
-                ctx.setMode('list');
-                await openDialogStep(ctx.openCreateDialog, ctx.closeAllDialogs);
-            }
-        }
-    ]),
-    'stock-movement': (ctx) => normalizeTourSteps([
-        {
-            group: GROUP,
-            target: '[data-tour="admin-consumables.list"]',
-            title: 'Selectionner un article',
-            content: 'Choisissez un consommable dans la liste pour enregistrer un mouvement de stock.',
-            beforeEnter: async () => {
-                ctx.setMode('list');
-                await flushUi();
-            }
-        },
-        {
-            group: GROUP,
-            target: '[data-tour="admin-consumables.dialog.stock"]',
-            title: 'Ajouter ou retirer du stock',
-            content: 'Enregistrez une entree ou une sortie avec quantite, employe et description.',
-            beforeEnter: async () => {
-                ctx.setMode('list');
-                await openDialogStep(() => ctx.openStockDialog('withdraw'), ctx.closeAllDialogs);
-            }
-        }
-    ])
+        ])
 });
 
 export function buildAdministrationConsumablesTourSteps(taskId, variantId, ctx) {

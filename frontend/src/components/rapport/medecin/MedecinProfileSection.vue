@@ -111,15 +111,8 @@ const salaryOptions = [
                         <AccordionHeader>Jours travaillés</AccordionHeader>
                         <AccordionContent>
                             <div class="flex flex-wrap gap-2">
-                                <Tag
-                                    v-for="jour in data.joursTravailles || []"
-                                    :key="jour"
-                                    :value="jour"
-                                    severity="info"
-                                />
-                                <p v-if="!(data.joursTravailles || []).length" class="text-sm text-surface-500">
-                                    Aucun jour renseigné.
-                                </p>
+                                <Tag v-for="jour in data.joursTravailles || []" :key="jour" :value="jour" severity="info" />
+                                <p v-if="!(data.joursTravailles || []).length" class="text-sm text-surface-500">Aucun jour renseigné.</p>
                             </div>
                         </AccordionContent>
                     </AccordionPanel>

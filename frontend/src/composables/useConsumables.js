@@ -1,16 +1,7 @@
 import { ref, computed } from 'vue';
-import {
-    addConsumableTourMock,
-    addStockTourMock,
-    deleteConsumableTourMock,
-    editConsumableTourMock,
-    fetchConsumablesTourMock,
-    getConsumableTourMock,
-    isAdminTourMockEnabled,
-    withdrawStockTourMock
-} from '@/services/adminTourMock';
+import { addConsumableTourMock, addStockTourMock, deleteConsumableTourMock, editConsumableTourMock, fetchConsumablesTourMock, getConsumableTourMock, isAdminTourMockEnabled, withdrawStockTourMock } from '@/services/adminTourMock';
 import { useAuthStore } from '@/stores/auth';
-import { apiPrefix } from '@/config'; 
+import { apiPrefix } from '@/config';
 import http from '@/service/http';
 
 const consumables = ref([]);
@@ -86,7 +77,7 @@ export function useConsumables() {
     }
 
     async function addConsumable(consumable) {
-        loading.value = true; 
+        loading.value = true;
         try {
             if (isAdminTourMockEnabled()) {
                 const result = addConsumableTourMock(consumable);
@@ -125,7 +116,6 @@ export function useConsumables() {
         }
     }
 
-
     async function addStock(consumableId, values) {
         try {
             if (isAdminTourMockEnabled()) {
@@ -136,13 +126,12 @@ export function useConsumables() {
                 headers: getHeaders(true)
             });
             const updated = response.data ?? null;
-            const index = consumables.value.findIndex(c => c.id === consumableId);
+            const index = consumables.value.findIndex((c) => c.id === consumableId);
             if (index !== -1) {
                 const delta = Number(values?.quantite ?? 0);
                 consumables.value[index].quantity += Number.isFinite(delta) ? delta : 0;
             }
             return { ok: true, data: updated };
-        
         } catch (err) {
             error.value = err.message;
         } finally {
@@ -151,7 +140,7 @@ export function useConsumables() {
     }
 
     async function withdrawStock(consumableId, values) {
-         const payload = {
+        const payload = {
             ...values,
             employe: values?.employe ?? values?.employee ?? null
         };
@@ -164,13 +153,12 @@ export function useConsumables() {
                 headers: getHeaders(true)
             });
             const updated = response.data ?? null;
-            const index = consumables.value.findIndex(c => c.id === consumableId);
+            const index = consumables.value.findIndex((c) => c.id === consumableId);
             if (index !== -1) {
                 const delta = Number(values?.quantite ?? 0);
                 consumables.value[index].quantity -= Number.isFinite(delta) ? delta : 0;
             }
             return { ok: true, data: updated };
-            
         } catch (err) {
             error.value = err.message;
         } finally {
@@ -211,7 +199,7 @@ export function useConsumables() {
                 },
                 data: body
             });
-            const index = consumables.value.findIndex(c => c.id === consumableId);
+            const index = consumables.value.findIndex((c) => c.id === consumableId);
             if (index !== -1) consumables.value.splice(index, 1);
             return { ok: true };
         } catch (err) {

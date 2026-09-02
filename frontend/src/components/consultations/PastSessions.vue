@@ -25,17 +25,15 @@ const formatCurrency = (value) => {
 
 const getSessionSeverity = (statut) => {
     const severities = {
-        'Terminé': 'success',
-        'Annulé': 'danger',
-        'Reporté': 'warning',
+        Terminé: 'success',
+        Annulé: 'danger',
+        Reporté: 'warning',
         'En cours': 'info'
     };
     return severities[statut] || 'info';
 };
 
-const totalActes = computed(() =>
-    (props.sessions || []).reduce((sum, session) => sum + (session.actes?.length || 0), 0)
-);
+const totalActes = computed(() => (props.sessions || []).reduce((sum, session) => sum + (session.actes?.length || 0), 0));
 
 const totalMontant = computed(() =>
     (props.sessions || []).reduce((sum, session) => {
@@ -64,9 +62,7 @@ const getSessionOrdonnances = (session) => {
                 </div>
                 <div>
                     <h3 class="text-xl font-bold text-surface-900 dark:text-surface-50">Séances passées</h3>
-                    <p class="text-sm text-surface-500 dark:text-surface-400 mt-1">
-                        Historique des consultations précédentes
-                    </p>
+                    <p class="text-sm text-surface-500 dark:text-surface-400 mt-1">Historique des consultations précédentes</p>
                 </div>
             </div>
             <div class="flex items-center gap-2">
@@ -92,21 +88,16 @@ const getSessionOrdonnances = (session) => {
                                     </span>
                                 </div>
                                 <div class="text-left">
-                                    <div class="font-semibold text-surface-900 dark:text-surface-100">
-                                        Séance du {{ session.date || '' }}
-                                    </div>
+                                    <div class="font-semibold text-surface-900 dark:text-surface-100">Séance du {{ session.date || '' }}</div>
                                     <div class="flex items-center gap-2 mt-1">
-                                        <Tag :value="session.medecin || '—'" severity="info"
-                                            class="px-2 py-1 text-xs rounded-full" />
+                                        <Tag :value="session.medecin || '—'" severity="info" class="px-2 py-1 text-xs rounded-full" />
                                         <span class="text-xs text-surface-500 dark:text-surface-400">
                                             {{ session.duration || '1h' }}
                                         </span>
                                     </div>
                                 </div>
                             </div>
-                            <Badge v-if="session.statut" :value="session.statut"
-                                :severity="getSessionSeverity(session.statut)"
-                                class="px-3 py-1 rounded-full font-medium" />
+                            <Badge v-if="session.statut" :value="session.statut" :severity="getSessionSeverity(session.statut)" class="px-3 py-1 rounded-full font-medium" />
                         </div>
                     </AccordionHeader>
 
@@ -170,11 +161,9 @@ const getSessionOrdonnances = (session) => {
                                             </tr>
                                         </thead>
                                         <tbody class="divide-y divide-surface-100 dark:divide-surface-800">
-                                            <tr v-for="(acte, idx) in session.actes" :key="idx"
-                                                class="hover:bg-surface-50/50 dark:hover:bg-surface-700/30 transition-colors">
+                                            <tr v-for="(acte, idx) in session.actes" :key="idx" class="hover:bg-surface-50/50 dark:hover:bg-surface-700/30 transition-colors">
                                                 <td class="p-3">
-                                                    <Tag :value="acte.type" severity="secondary"
-                                                        class="px-2 py-1 text-xs rounded-full" />
+                                                    <Tag :value="acte.type" severity="secondary" class="px-2 py-1 text-xs rounded-full" />
                                                 </td>
                                                 <td class="p-3 font-medium text-surface-900 dark:text-surface-100">
                                                     {{ acte.dent || '—' }}
@@ -195,9 +184,7 @@ const getSessionOrdonnances = (session) => {
                                         </tbody>
                                         <tfoot v-if="session.total" class="bg-surface-50 dark:bg-surface-800">
                                             <tr>
-                                                <td colspan="5" class="p-3 text-right font-semibold text-surface-700 dark:text-surface-300">
-                                                    Total de la séance
-                                                </td>
+                                                <td colspan="5" class="p-3 text-right font-semibold text-surface-700 dark:text-surface-300">Total de la séance</td>
                                                 <td class="p-3 text-right font-bold text-lg text-primary-600 dark:text-primary-400">
                                                     {{ formatCurrency(session.total) }}
                                                 </td>
@@ -218,20 +205,10 @@ const getSessionOrdonnances = (session) => {
                                 </div>
 
                                 <div class="space-y-3">
-                                    <div
-                                        v-for="ordo in getSessionOrdonnances(session)"
-                                        :key="ordo.id || ordo.date"
-                                        class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-800 p-4"
-                                    >
+                                    <div v-for="ordo in getSessionOrdonnances(session)" :key="ordo.id || ordo.date" class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-800 p-4">
                                         <div class="flex flex-wrap items-center justify-between gap-2">
-                                            <div class="font-medium text-surface-900 dark:text-surface-100">
-                                                Ordonnance du {{ ordo.date || '—' }}
-                                            </div>
-                                            <Tag
-                                                :value="ordo.medecinNom || ordo.medecin || '—'"
-                                                severity="info"
-                                                class="px-2 py-1 text-xs rounded-full"
-                                            />
+                                            <div class="font-medium text-surface-900 dark:text-surface-100">Ordonnance du {{ ordo.date || '—' }}</div>
+                                            <Tag :value="ordo.medecinNom || ordo.medecin || '—'" severity="info" class="px-2 py-1 text-xs rounded-full" />
                                         </div>
 
                                         <div v-if="ordo.note" class="mt-2 text-sm text-surface-600 dark:text-surface-300">
@@ -259,9 +236,7 @@ const getSessionOrdonnances = (session) => {
                                             </table>
                                         </div>
 
-                                        <div v-else class="mt-3 text-sm text-surface-500 dark:text-surface-400">
-                                            Aucune ligne de prescription.
-                                        </div>
+                                        <div v-else class="mt-3 text-sm text-surface-500 dark:text-surface-400">Aucune ligne de prescription.</div>
                                     </div>
                                 </div>
                             </div>
@@ -270,17 +245,13 @@ const getSessionOrdonnances = (session) => {
                 </AccordionPanel>
             </Accordion>
         </div>
-        
+
         <div v-else class="text-center py-12">
             <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-surface-100 dark:bg-surface-800 mb-4">
                 <i class="pi pi-inbox text-3xl text-surface-400"></i>
             </div>
-            <h4 class="text-lg font-semibold text-surface-700 dark:text-surface-300 mb-2">
-                Aucune séance passée
-            </h4>
-            <p class="text-surface-600 dark:text-surface-400 mb-6 max-w-md mx-auto">
-                Aucune séance n'a été clôturée pour ce patient.
-            </p>
+            <h4 class="text-lg font-semibold text-surface-700 dark:text-surface-300 mb-2">Aucune séance passée</h4>
+            <p class="text-surface-600 dark:text-surface-400 mb-6 max-w-md mx-auto">Aucune séance n'a été clôturée pour ce patient.</p>
         </div>
 
         <!-- Summary -->

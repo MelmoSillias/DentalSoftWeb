@@ -57,11 +57,7 @@ const normalizeDevisEntry = (entry = {}) => ({
     type: parseDevisType(entry?.type),
     date: entry?.date ?? null,
     description: entry?.description || '',
-    services: Array.isArray(entry?.services)
-        ? entry.services.map((service) => normalizeService(service))
-        : Array.isArray(entry?.contenus)
-            ? entry.contenus.map((service) => normalizeService(service))
-            : []
+    services: Array.isArray(entry?.services) ? entry.services.map((service) => normalizeService(service)) : Array.isArray(entry?.contenus) ? entry.contenus.map((service) => normalizeService(service)) : []
 });
 
 const getDevisState = (value) => {
@@ -83,14 +79,10 @@ const getDevisState = (value) => {
         services: source?.services || source?.contenus || []
     });
 
-    const parsedList = Array.isArray(source?.devisList)
-        ? source.devisList.map((entry) => normalizeDevisEntry(entry))
-        : (source?.id || source?.services?.length || source?.contenus?.length ? [fallbackEntry] : [createEmptyDevis()]);
+    const parsedList = Array.isArray(source?.devisList) ? source.devisList.map((entry) => normalizeDevisEntry(entry)) : source?.id || source?.services?.length || source?.contenus?.length ? [fallbackEntry] : [createEmptyDevis()];
 
     const parsedIndex = Number(source?.activeDevisIndex);
-    const activeIndex = Number.isInteger(parsedIndex)
-        ? Math.min(Math.max(parsedIndex, 0), parsedList.length - 1)
-        : 0;
+    const activeIndex = Number.isInteger(parsedIndex) ? Math.min(Math.max(parsedIndex, 0), parsedList.length - 1) : 0;
 
     return { list: parsedList, activeIndex };
 };
@@ -244,11 +236,7 @@ const removeService = (idx) => {
 
 const addDevisTab = () => {
     updateDevisState((state) => {
-        const usedTypes = new Set(
-            state.list
-                .map((entry) => parseDevisType(entry?.type))
-                .filter((type) => type !== null)
-        );
+        const usedTypes = new Set(state.list.map((entry) => parseDevisType(entry?.type)).filter((type) => type !== null));
         let nextType = state.list.length;
         while (usedTypes.has(nextType)) {
             nextType += 1;
@@ -299,12 +287,7 @@ const emitPrintActiveDevis = () => {
     emitPrintDevisAtIndex(activeDevisIndex.value);
 };
 
-const total = computed(() =>
-    (activeDevis.value.services || []).reduce(
-        (sum, s) => sum + (Number(s.qte) || 0) * (Number(s.montant) || 0),
-        0
-    )
-);
+const total = computed(() => (activeDevis.value.services || []).reduce((sum, s) => sum + (Number(s.qte) || 0) * (Number(s.montant) || 0), 0));
 
 const totalQuantity = computed(() => {
     return (activeDevis.value.services || []).reduce((sum, service) => sum + (service.qte || 0), 0);
@@ -335,9 +318,7 @@ function subtotal(service) {
                 </div>
                 <div>
                     <h3 class="text-xl font-bold text-surface-900 dark:text-surface-50">Devis & Facturation</h3>
-                    <p class="text-sm text-surface-500 dark:text-surface-400 mt-1">
-                        Estimation des coûts et services proposés
-                    </p>
+                    <p class="text-sm text-surface-500 dark:text-surface-400 mt-1">Estimation des coûts et services proposés</p>
                 </div>
             </div>
             <div class="flex flex-wrap gap-2">
@@ -370,38 +351,16 @@ function subtotal(service) {
                         ]"
                     >
                         <span class="truncate max-w-[12rem]">{{ devisTabLabel(entry, idx) }}</span>
-                        <i
-                            class="pi pi-print text-xs cursor-pointer"
-                            v-tooltip="'Imprimer ce devis'"
-                            @click.stop="emitPrintDevisAtIndex(idx)"
-                        ></i>
-                        <i
-                            v-if="!readonly && devisTabs.length > 1"
-                            class="pi pi-times text-xs cursor-pointer"
-                            @click.stop="removeDevisTab(idx)"
-                        ></i>
+                        <i class="pi pi-print text-xs cursor-pointer" v-tooltip="'Imprimer ce devis'" @click.stop="emitPrintDevisAtIndex(idx)"></i>
+                        <i v-if="!readonly && devisTabs.length > 1" class="pi pi-times text-xs cursor-pointer" @click.stop="removeDevisTab(idx)"></i>
                     </button>
-                    <Button
-                        v-if="!readonly"
-                        icon="pi pi-plus"
-                        label="Nouveau devis"
-                        size="small"
-                        outlined
-                        class="rounded-lg"
-                        @click="addDevisTab"
-                    />
+                    <Button v-if="!readonly" icon="pi pi-plus" label="Nouveau devis" size="small" outlined class="rounded-lg" @click="addDevisTab" />
                 </div>
             </div>
 
             <div class="space-y-2">
                 <label class="text-sm font-medium text-surface-700 dark:text-surface-300">Description du devis</label>
-                <InputText
-                    :modelValue="activeDevis.description"
-                    placeholder="Ex: Devis implanto-prothétique"
-                    class="w-full"
-                    :disabled="readonly"
-                    @update:modelValue="(value) => updateField('description', value || '')"
-                />
+                <InputText :modelValue="activeDevis.description" placeholder="Ex: Devis implanto-prothétique" class="w-full" :disabled="readonly" @update:modelValue="(value) => updateField('description', value || '')" />
             </div>
 
             <!-- Date & Total -->
@@ -431,9 +390,7 @@ function subtotal(service) {
                             <i class="pi pi-wallet text-2xl text-emerald-500"></i>
                         </div>
                     </div>
-                    <div class="mt-3 text-sm text-emerald-600 dark:text-emerald-400">
-                        {{ activeDevis.services?.length || 0 }} service(s) | {{ totalQuantity }} unité(s)
-                    </div>
+                    <div class="mt-3 text-sm text-emerald-600 dark:text-emerald-400">{{ activeDevis.services?.length || 0 }} service(s) | {{ totalQuantity }} unité(s)</div>
                 </div>
             </div>
 
@@ -467,9 +424,12 @@ function subtotal(service) {
                     <p class="text-surface-600 dark:text-surface-400">Aucun service ajouté. Commencez par ajouter votre premier service.</p>
                 </div>
 
-                <div v-for="(service, idx) in activeDevis.services" :key="idx"
-                     class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/30 p-5 shadow-sm hover:shadow-md transition-all"
-                     :class="readonly ? 'pointer-events-none opacity-90' : ''">
+                <div
+                    v-for="(service, idx) in activeDevis.services"
+                    :key="idx"
+                    class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/30 p-5 shadow-sm hover:shadow-md transition-all"
+                    :class="readonly ? 'pointer-events-none opacity-90' : ''"
+                >
                     <!-- Service Header -->
                     <div class="flex items-center justify-between mb-4">
                         <div class="flex items-center gap-2">
@@ -478,16 +438,7 @@ function subtotal(service) {
                             </Tag>
                             <span class="font-medium text-surface-900 dark:text-surface-100">Service {{ idx + 1 }}</span>
                         </div>
-                        <Button
-                            v-if="!readonly"
-                            icon="pi pi-trash"
-                            severity="danger"
-                            text
-                            rounded
-                            v-tooltip="'Supprimer ce service'"
-                            class="hover:bg-red-50 dark:hover:bg-red-900/20"
-                            @click="removeService(idx)"
-                        />
+                        <Button v-if="!readonly" icon="pi pi-trash" severity="danger" text rounded v-tooltip="'Supprimer ce service'" class="hover:bg-red-50 dark:hover:bg-red-900/20" @click="removeService(idx)" />
                     </div>
 
                     <!-- Service Content -->

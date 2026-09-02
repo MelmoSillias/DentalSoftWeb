@@ -95,10 +95,7 @@ const patientsChartData = computed(() => {
         datasets: [
             {
                 data: [props.patients.newPatients || 0, props.patients.returningPatients || 0],
-                backgroundColor: [
-                    documentStyle.getPropertyValue('--p-primary-500'),
-                    documentStyle.getPropertyValue('--p-emerald-500')
-                ]
+                backgroundColor: [documentStyle.getPropertyValue('--p-primary-500'), documentStyle.getPropertyValue('--p-emerald-500')]
             }
         ]
     };
@@ -126,13 +123,7 @@ const appointmentsChartData = computed(() => {
             {
                 label: 'Rendez-vous',
                 backgroundColor: documentStyle.getPropertyValue('--p-orange-500'),
-                data: [
-                    props.appointments.scheduled || 0,
-                    props.appointments.confirmed || 0,
-                    props.appointments.pending || 0,
-                    props.appointments.postponed || 0,
-                    props.appointments.cancelled || 0
-                ]
+                data: [props.appointments.scheduled || 0, props.appointments.confirmed || 0, props.appointments.pending || 0, props.appointments.postponed || 0, props.appointments.cancelled || 0]
             }
         ]
     };
@@ -233,13 +224,7 @@ function printSection() {
         </div>
 
         <div class="grid gap-4 lg:grid-cols-3">
-            <ValueListCard
-                id="admin-periodic-patients"
-                title="Patients"
-                :items="patientsItems(patients)"
-                :loading="loading"
-                :show-chart="showPatientsChart"
-            >
+            <ValueListCard id="admin-periodic-patients" title="Patients" :items="patientsItems(patients)" :loading="loading" :show-chart="showPatientsChart">
                 <template #actions>
                     <ToggleButton v-model="showPatientsChart" onLabel="Graphique" offLabel="Données" onIcon="pi pi-chart-pie" offIcon="pi pi-list" />
                 </template>
@@ -250,13 +235,7 @@ function printSection() {
                 </template>
             </ValueListCard>
 
-            <ValueListCard
-                id="admin-periodic-consults"
-                title="Consultations"
-                :items="consultationsItems(consultations)"
-                :loading="loading"
-                :show-chart="showConsultationsChart"
-            >
+            <ValueListCard id="admin-periodic-consults" title="Consultations" :items="consultationsItems(consultations)" :loading="loading" :show-chart="showConsultationsChart">
                 <template #actions>
                     <ToggleButton v-model="showConsultationsChart" onLabel="Graphique" offLabel="Données" onIcon="pi pi-chart-bar" offIcon="pi pi-list" />
                 </template>
@@ -267,13 +246,7 @@ function printSection() {
                 </template>
             </ValueListCard>
 
-            <ValueListCard
-                id="admin-periodic-appointments"
-                title="Rendez-vous"
-                :items="appointmentsItems(appointments)"
-                :loading="loading"
-                :show-chart="showAppointmentsChart"
-            >
+            <ValueListCard id="admin-periodic-appointments" title="Rendez-vous" :items="appointmentsItems(appointments)" :loading="loading" :show-chart="showAppointmentsChart">
                 <template #actions>
                     <ToggleButton v-model="showAppointmentsChart" onLabel="Graphique" offLabel="Données" onIcon="pi pi-chart-bar" offIcon="pi pi-list" />
                 </template>
@@ -284,14 +257,7 @@ function printSection() {
                 </template>
             </ValueListCard>
 
-            <ValueListCard
-                id="admin-room-usage"
-                title="Utilisation des salles"
-                :items="roomUsageItems(roomUsage)"
-                :loading="loading"
-                :show-chart="showRoomUsageChart"
-                empty-label="Aucune salle utilisée."
-            >
+            <ValueListCard id="admin-room-usage" title="Utilisation des salles" :items="roomUsageItems(roomUsage)" :loading="loading" :show-chart="showRoomUsageChart" empty-label="Aucune salle utilisée.">
                 <template #actions>
                     <ToggleButton v-model="showRoomUsageChart" onLabel="Graphique" offLabel="Données" onIcon="pi pi-chart-bar" offIcon="pi pi-list" />
                 </template>
@@ -307,14 +273,7 @@ function printSection() {
                 </template>
             </ValueListCard>
 
-            <ValueListCard
-                id="admin-payment-balances"
-                title="Solde des comptes de paiement"
-                :items="paymentBalances"
-                :loading="loading"
-                :show-chart="showPaymentBalancesChart"
-                empty-label="Aucune donnée de solde."
-            >
+            <ValueListCard id="admin-payment-balances" title="Solde des comptes de paiement" :items="paymentBalances" :loading="loading" :show-chart="showPaymentBalancesChart" empty-label="Aucune donnée de solde.">
                 <template #actions>
                     <ToggleButton v-model="showPaymentBalancesChart" onLabel="Graphique" offLabel="Données" onIcon="pi pi-chart-bar" offIcon="pi pi-list" />
                 </template>
@@ -325,14 +284,7 @@ function printSection() {
                 </template>
             </ValueListCard>
 
-            <ValueListCard
-                id="admin-payment-frequency"
-                title="Utilisation des modes de paiement"
-                :items="paymentFrequency.frequency || []"
-                :loading="loading"
-                :show-chart="showPaymentFrequencyChart"
-                empty-label="Aucune donnée de fréquence."
-            >
+            <ValueListCard id="admin-payment-frequency" title="Utilisation des modes de paiement" :items="paymentFrequency.frequency || []" :loading="loading" :show-chart="showPaymentFrequencyChart" empty-label="Aucune donnée de fréquence.">
                 <template #actions>
                     <ToggleButton v-model="showPaymentFrequencyChart" onLabel="Graphique" offLabel="Données" onIcon="pi pi-chart-bar" offIcon="pi pi-list" />
                 </template>

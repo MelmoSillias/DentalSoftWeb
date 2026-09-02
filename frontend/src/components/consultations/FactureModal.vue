@@ -5,12 +5,7 @@ import Dialog from 'primevue/dialog';
 import InputText from 'primevue/inputtext';
 import ProgressSpinner from 'primevue/progressspinner';
 import { computed, ref, watch } from 'vue';
-import {
-    defaultSoinList,
-    formatActeCurrency,
-    normalizeDentList,
-    normalizeSoinList
-} from '@/services/consultations';
+import { defaultSoinList, formatActeCurrency, normalizeDentList, normalizeSoinList } from '@/services/consultations';
 
 const props = defineProps({
     visible: {
@@ -111,9 +106,7 @@ watch(
 
 const soinsList = computed(() => normalizeSoinList(props.soins));
 
-const totalTtc = computed(() =>
-    localLines.value.reduce((sum, line) => sum + lineTotal(line), 0)
-);
+const totalTtc = computed(() => localLines.value.reduce((sum, line) => sum + lineTotal(line), 0));
 
 const addLine = () => {
     localLines.value = [...localLines.value, normalizeLine({}, localLines.value.length)];
@@ -153,13 +146,7 @@ const handleHide = () => emit('update:visible', false);
 </script>
 
 <template>
-    <Dialog
-        :visible="visible"
-        modal
-        header="Modifier la facture"
-        :style="{ width: '52rem', maxWidth: '98vw' }"
-        @update:visible="handleHide"
-    >
+    <Dialog :visible="visible" modal header="Modifier la facture" :style="{ width: '52rem', maxWidth: '98vw' }" @update:visible="handleHide">
         <div :data-tour="props.tourTarget || null">
             <div v-if="loading" class="flex min-h-[12rem] flex-col items-center justify-center gap-3 p-6 text-surface-600 dark:text-surface-300">
                 <ProgressSpinner strokeWidth="4" style="width: 42px; height: 42px" />
@@ -192,13 +179,7 @@ const handleHide = () => emit('update:visible', false);
                                 <p class="text-sm text-surface-500 dark:text-surface-400">Modifiez les soins facturés pour cette consultation</p>
                             </div>
                         </div>
-                        <Button
-                            icon="pi pi-plus"
-                            label="Ajouter un soin"
-                            size="small"
-                            class="rounded-xl border-0 bg-gradient-to-r from-blue-500 to-blue-600 px-4 py-2.5 text-white shadow-sm transition-all hover:shadow-md"
-                            @click="addLine"
-                        />
+                        <Button icon="pi pi-plus" label="Ajouter un soin" size="small" class="rounded-xl border-0 bg-gradient-to-r from-blue-500 to-blue-600 px-4 py-2.5 text-white shadow-sm transition-all hover:shadow-md" @click="addLine" />
                     </div>
                 </div>
 
@@ -236,14 +217,7 @@ const handleHide = () => emit('update:visible', false);
 
         <template #footer>
             <div class="flex w-full flex-wrap items-center justify-end gap-2">
-                <Button
-                    label="Fermer"
-                    icon="pi pi-times"
-                    severity="secondary"
-                    text
-                    class="rounded-xl px-4"
-                    @click="handleHide"
-                />
+                <Button label="Fermer" icon="pi pi-times" severity="secondary" text class="rounded-xl px-4" @click="handleHide" />
                 <Button
                     label="Enregistrer"
                     icon="pi pi-save"

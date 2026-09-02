@@ -70,23 +70,12 @@ const toQrImageSrc = async (url, size) => {
     return createQrDataUrl(url, size);
 };
 
-export const buildPatientPortalQrPrintModel = async ({
-    cabinetName = '',
-    subtitle = '',
-    phone = '',
-    portalLoginUrl = '',
-    anonymousReviewUrl = '',
-    showcaseWebsiteUrl = ''
-} = {}) => {
+export const buildPatientPortalQrPrintModel = async ({ cabinetName = '', subtitle = '', phone = '', portalLoginUrl = '', anonymousReviewUrl = '', showcaseWebsiteUrl = '' } = {}) => {
     const portalUrl = normalizePrintableUrl(portalLoginUrl);
     const reviewUrl = normalizePrintableUrl(anonymousReviewUrl);
     const showcaseUrl = normalizePrintableUrl(showcaseWebsiteUrl);
 
-    const [portalImageSrc, reviewImageSrc, showcaseImageSrc] = await Promise.all([
-        toQrImageSrc(portalUrl, 320),
-        toQrImageSrc(reviewUrl, 320),
-        toQrImageSrc(showcaseUrl, 360)
-    ]);
+    const [portalImageSrc, reviewImageSrc, showcaseImageSrc] = await Promise.all([toQrImageSrc(portalUrl, 320), toQrImageSrc(reviewUrl, 320), toQrImageSrc(showcaseUrl, 360)]);
 
     return {
         cabinetName: String(cabinetName || '').trim() || 'Cabinet dentaire',

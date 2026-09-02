@@ -2,8 +2,7 @@ export const SECRETARY_ROLES = ['ROLE_RECEPTION', 'ROLE_RECEPTIONNISTE', 'ROLE_S
 
 export const isAdminUser = (roles = []) => Array.isArray(roles) && roles.includes('ROLE_ADMIN');
 
-export const isSecretaryUser = (roles = []) =>
-    Array.isArray(roles) && SECRETARY_ROLES.some((role) => roles.includes(role));
+export const isSecretaryUser = (roles = []) => Array.isArray(roles) && SECRETARY_ROLES.some((role) => roles.includes(role));
 
 export const canUserModifyInvoice = (user, settings = {}) => {
     const roles = user?.roles ?? [];

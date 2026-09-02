@@ -43,14 +43,14 @@ const router = createRouter({
                     path: '/agenda/evenements',
                     name: 'agenda-evenements',
                     component: () => import('@/views/agenda/Evenements.vue'),
-                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN'] , fixedWidth: true}
+                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN'], fixedWidth: true }
                 },
                 // patients
                 {
                     path: '/patients/liste',
                     name: 'patients-liste',
                     component: () => import('@/views/patients/Liste.vue'),
-                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN', 'ROLE_RECEPTION', 'ROLE_MEDECIN'] , fixedWidth: true}
+                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN', 'ROLE_RECEPTION', 'ROLE_MEDECIN'], fixedWidth: true }
                 },
                 {
                     path: '/patients/dossier/:patientId?',
@@ -67,7 +67,7 @@ const router = createRouter({
                             patientId: Number.isFinite(parsedId) && parsedId > 0 ? parsedId : null
                         };
                     },
-                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN', 'ROLE_RECEPTION', 'ROLE_MEDECIN'] , fixedWidth: true}
+                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN', 'ROLE_RECEPTION', 'ROLE_MEDECIN'], fixedWidth: true }
                 },
                 // Consultations
                 {
@@ -107,13 +107,13 @@ const router = createRouter({
                     path: '/administration/consommables',
                     name: 'administration-consommables',
                     component: () => import('@/views/administration/Consommables.vue'),
-                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN'] , fixedWidth: true}
+                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN'], fixedWidth: true }
                 },
                 {
                     path: '/administration/salles',
                     name: 'administration-salles',
                     component: () => import('@/views/administration/Salles.vue'),
-                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN'] , fixedWidth: true}
+                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN'], fixedWidth: true }
                 },
                 {
                     path: '/administration/finances',
@@ -125,7 +125,7 @@ const router = createRouter({
                     path: '/administration/utilisateurs',
                     name: 'administration-utilisateurs',
                     component: () => import('@/views/administration/Utilisateurs.vue'),
-                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN'] , fixedWidth: true}
+                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN'], fixedWidth: true }
                 },
                 {
                     path: '/administration/gestionrh',
@@ -155,7 +155,7 @@ const router = createRouter({
                     path: '/profile',
                     name: 'profile',
                     component: () => import('@/views/Profile.vue'),
-                    meta: { requiresAuth: true , fixedWidth: true}
+                    meta: { requiresAuth: true, fixedWidth: true }
                 },
                 {
                     path: '/manual',
@@ -173,7 +173,7 @@ const router = createRouter({
                     path: '/parametres/general-options',
                     name: 'settings-general-options',
                     component: () => import('@/views/settings/GeneralOptions.vue'),
-                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN', "ROLE_SECRETAIRE", "ROLE_TOPO"], fixedWidth: true }
+                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN', 'ROLE_SECRETAIRE', 'ROLE_TOPO'], fixedWidth: true }
                 },
                 {
                     path: '/administration/api-sms',

@@ -1,20 +1,3 @@
-<template>
-    <div
-        class="print-a4-page"
-        :class="[`print-a4-page--${orientation}`]"
-        :style="watermarkStyle"
-    >
-        <div v-if="watermark" class="print-a4-page__watermark" aria-hidden="true" />
-        <div class="print-a4-page__inner">
-            <slot name="header" />
-            <main class="print-a4-page__body">
-                <slot />
-            </main>
-            <PrintDocumentFooter v-if="showFooter" class="print-a4-page__footer" />
-        </div>
-    </div>
-</template>
-
 <script setup>
 import { computed } from 'vue';
 import PrintDocumentFooter from './PrintDocumentFooter.vue';
@@ -35,5 +18,18 @@ const watermarkStyle = computed(() => ({
     '--print-watermark': props.watermark ? `url(${props.logoSrc})` : 'none'
 }));
 </script>
+
+<template>
+    <div class="print-a4-page" :class="[`print-a4-page--${orientation}`]" :style="watermarkStyle">
+        <div v-if="watermark" class="print-a4-page__watermark" aria-hidden="true" />
+        <div class="print-a4-page__inner">
+            <slot name="header" />
+            <main class="print-a4-page__body">
+                <slot />
+            </main>
+            <PrintDocumentFooter v-if="showFooter" class="print-a4-page__footer" />
+        </div>
+    </div>
+</template>
 
 <style src="@/styles/print-layout.css"></style>

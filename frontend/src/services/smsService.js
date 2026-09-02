@@ -14,10 +14,14 @@ export const saveSmsSettings = async (payload, token) => {
 };
 
 export const testSmsConnection = async (token) => {
-    const res = await http.post(`${apiPrefix}/sms/test-connection`, {}, {
-        headers: authHeaders(token),
-        validateStatus: () => true
-    });
+    const res = await http.post(
+        `${apiPrefix}/sms/test-connection`,
+        {},
+        {
+            headers: authHeaders(token),
+            validateStatus: () => true
+        }
+    );
     return res.data;
 };
 

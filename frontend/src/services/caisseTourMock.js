@@ -112,9 +112,7 @@ function buildSeedState(scenario = 'static') {
                 patient: { nom: 'Ba', prenom: 'Cheikh' },
                 montant: 30000,
                 reste: 0,
-                contenus: [
-                    { designation: 'Extraction', qte: 1, montant: 30000, total: 30000 }
-                ]
+                contenus: [{ designation: 'Extraction', qte: 1, montant: 30000, total: 30000 }]
             }
         },
         factureLines: {
@@ -172,9 +170,7 @@ function buildSeedState(scenario = 'static') {
                 totalAmount: 530000
             }
         ],
-        insuranceDisabledReason: normalizedScenario === 'insurance-disabled'
-            ? 'Assurance deja liee a cette facture.'
-            : null,
+        insuranceDisabledReason: normalizedScenario === 'insurance-disabled' ? 'Assurance deja liee a cette facture.' : null,
         nextPaymentId: 9900
     };
 }
@@ -305,7 +301,7 @@ export function fetchFactureLinesTourMock(consultationId) {
 }
 
 export function updateFactureLinesTourMock(consultationId, lignes = [], options = {}) {
-    const lines = Array.isArray(lignes) ? lignes : lignes?.lines ?? lignes?.lignes ?? [];
+    const lines = Array.isArray(lignes) ? lignes : (lignes?.lines ?? lignes?.lignes ?? []);
     caisseTourMockState.factureLines[consultationId] = cloneValue(lines);
     return { success: true, date: options?.date ?? null, time: options?.time ?? null };
 }

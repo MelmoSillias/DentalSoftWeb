@@ -4,12 +4,7 @@ import { usePrinter } from '@/composables/usePrinter';
 import { usePatients } from '@/composables/usePatients';
 import { computeAgeYears } from '@/utils/formuleDentaireLayout';
 import { fetchPublicGeneralSettings } from '@/services/globalSettingsService';
-import {
-    addPatientAllergy,
-    addPatientAntecedent,
-    deletePatientAllergy,
-    deletePatientAntecedent
-} from '@/services/patients';
+import { addPatientAllergy, addPatientAntecedent, deletePatientAllergy, deletePatientAntecedent } from '@/services/patients';
 import { fetchPatientDossierPrintData, fetchPatientFichePrintData } from '@/services/printService';
 import { useAuthStore } from '@/stores/auth';
 import { logAppError } from '@/utils/appLogger';
@@ -80,15 +75,7 @@ export function usePatientDossier(options = {}) {
     const dossierHiddenForMedecin = computed(() => isRestrictedMedecin.value && hidePatientDossierForMedecins.value);
     const shouldHidePatientPhoneForMedecin = computed(() => isRestrictedMedecin.value && hidePatientPhoneForMedecins.value);
 
-    const hasOpenDialogs = computed(() => (
-        showRdvDialog.value
-        || showConsultationDialog.value
-        || showEditDialog.value
-        || showAntecedentDialog.value
-        || showAllergyDialog.value
-        || showPrintDialog.value
-        || showActiveConsultWarn.value
-    ));
+    const hasOpenDialogs = computed(() => showRdvDialog.value || showConsultationDialog.value || showEditDialog.value || showAntecedentDialog.value || showAllergyDialog.value || showPrintDialog.value || showActiveConsultWarn.value);
 
     const resolvePatientId = () => {
         if (typeof options.getPatientId === 'function') {

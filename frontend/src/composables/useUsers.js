@@ -79,11 +79,7 @@ export function useUsers() {
 
     async function resetPassword(id, password) {
         try {
-            const response = await http.post(
-                `${apiPrefix}/users/${id}/reset-password`,
-                { password },
-                { headers: buildAuthHeaders(true) }
-            );
+            const response = await http.post(`${apiPrefix}/users/${id}/reset-password`, { password }, { headers: buildAuthHeaders(true) });
             return response.data;
         } catch (err) {
             error.value = err.message;
@@ -106,11 +102,7 @@ export function useUsers() {
 
     async function toggleUserStatus(id, action) {
         try {
-            const response = await http.patch(
-                `${apiPrefix}/users/${id}/toggle/${action}`,
-                {},
-                { headers: buildAuthHeaders(true) }
-            );
+            const response = await http.patch(`${apiPrefix}/users/${id}/toggle/${action}`, {}, { headers: buildAuthHeaders(true) });
             return response.data;
         } catch (err) {
             error.value = err.message;

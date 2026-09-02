@@ -18,7 +18,11 @@ const props = defineProps({
 const emit = defineEmits(['update:visible', 'confirm']);
 
 const localVisible = ref(props.visible);
-watch(() => props.visible, (v) => (localVisible.value = v), { immediate: true });
+watch(
+    () => props.visible,
+    (v) => (localVisible.value = v),
+    { immediate: true }
+);
 watch(localVisible, (v) => emit('update:visible', v));
 
 const close = () => (localVisible.value = false);
@@ -29,7 +33,7 @@ const confirm = () => {
 </script>
 
 <template>
-    <Dialog v-model:visible="localVisible" modal header="Annuler le rendez-vous" style="width: 380px" >
+    <Dialog v-model:visible="localVisible" modal header="Annuler le rendez-vous" style="width: 380px">
         <div class="flex flex-col gap-3">
             <p class="text-sm text-surface-700">Confirmer l'annulation de ce rendez-vous ?</p>
         </div>
@@ -42,4 +46,3 @@ const confirm = () => {
         </template>
     </Dialog>
 </template>
-

@@ -1,3 +1,50 @@
+<script setup>
+import { computed } from 'vue';
+import PrintTicketPage from './PrintTicketPage.vue';
+import PrintTicketHeader from './PrintTicketHeader.vue';
+import logoImg from '@/assets/logo.png';
+
+const props = defineProps({
+    paiement: { type: Object, default: () => ({}) },
+    logoSrc: { type: String, default: logoImg }
+});
+
+const consultation = computed(() => props.paiement?.consultation || null);
+
+const consultationId = computed(() => {
+    const value = consultation.value?.id ?? props.paiement?.consultationId ?? props.paiement?.consultation_id ?? null;
+    const numeric = Number(value);
+    return Number.isFinite(numeric) && numeric > 0 ? numeric : null;
+});
+
+const numeroPassage = computed(() => {
+    const value = consultation.value?.numeroPassage ?? consultation.value?.numero_passage ?? props.paiement?.numeroPassage ?? props.paiement?.numero_passage ?? null;
+    const numeric = Number(value);
+    return Number.isFinite(numeric) && numeric > 0 ? numeric : null;
+});
+
+const consultationIdLabel = computed(() => consultationId.value ?? '—');
+const numeroPassageLabel = computed(() => numeroPassage.value ?? '—');
+
+const patientLabel = computed(() => {
+    const patient = consultation.value?.patient;
+    const nom = String(patient?.nom || '').trim();
+    const prenom = String(patient?.prenom || '').trim();
+    const full = `${nom} ${prenom}`.trim();
+    return full || '—';
+});
+
+const modeLabel = computed(() => props.paiement?.mode?.libelle || '—');
+
+const dateLabel = computed(() => {
+    const raw = props.paiement?.date ? new Date(props.paiement.date) : null;
+    if (!raw || Number.isNaN(raw.getTime())) return props.paiement?.date || '—';
+    return `${raw.toLocaleDateString('fr-FR')} ${raw.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`;
+});
+
+const formatMoney = (value) => `${Number(value || 0).toLocaleString('fr-FR')} FCFA`;
+</script>
+
 <template>
     <PrintTicketPage :logo-src="logoSrc">
         <PrintTicketHeader title="Ticket de consultation" />
@@ -53,62 +100,6 @@
         </table>
     </PrintTicketPage>
 </template>
-
-<script setup>
-import { computed } from 'vue';
-import PrintTicketPage from './PrintTicketPage.vue';
-import PrintTicketHeader from './PrintTicketHeader.vue';
-import logoImg from '@/assets/logo.png';
-
-const props = defineProps({
-    paiement: { type: Object, default: () => ({}) },
-    logoSrc: { type: String, default: logoImg }
-});
-
-const consultation = computed(() => props.paiement?.consultation || null);
-
-const consultationId = computed(() => {
-    const value =
-        consultation.value?.id ??
-        props.paiement?.consultationId ??
-        props.paiement?.consultation_id ??
-        null;
-    const numeric = Number(value);
-    return Number.isFinite(numeric) && numeric > 0 ? numeric : null;
-});
-
-const numeroPassage = computed(() => {
-    const value =
-        consultation.value?.numeroPassage ??
-        consultation.value?.numero_passage ??
-        props.paiement?.numeroPassage ??
-        props.paiement?.numero_passage ??
-        null;
-    const numeric = Number(value);
-    return Number.isFinite(numeric) && numeric > 0 ? numeric : null;
-});
-
-const consultationIdLabel = computed(() => consultationId.value ?? '—');
-const numeroPassageLabel = computed(() => numeroPassage.value ?? '—');
-
-const patientLabel = computed(() => {
-    const patient = consultation.value?.patient;
-    const nom = String(patient?.nom || '').trim();
-    const prenom = String(patient?.prenom || '').trim();
-    const full = `${nom} ${prenom}`.trim();
-    return full || '—';
-});
-
-const modeLabel = computed(() => props.paiement?.mode?.libelle || '—');
-
-const dateLabel = computed(() => {
-    const raw = props.paiement?.date ? new Date(props.paiement.date) : null;
-    if (!raw || Number.isNaN(raw.getTime())) return props.paiement?.date || '—';
-    return `${raw.toLocaleDateString('fr-FR')} ${raw.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`;
-});
-
-const formatMoney = (value) => `${Number(value || 0).toLocaleString('fr-FR')} FCFA`;
-</script>
 
 <style scoped>
 .small {

@@ -54,55 +54,33 @@ const props = defineProps({
     }
 });
 
-const emit = defineEmits([
-    'update:entretien',
-    'update:documents',
-    'update:examens',
-    'update:bilans',
-    'update:planTraitement',
-    'save',
-    'save-documents',
-    'add-antecedent',
-    'add-allergy',
-    'delete-antecedent',
-    'delete-allergy',
-    'open-rdv'
-]);
+const emit = defineEmits(['update:entretien', 'update:documents', 'update:examens', 'update:bilans', 'update:planTraitement', 'save', 'save-documents', 'add-antecedent', 'add-allergy', 'delete-antecedent', 'delete-allergy', 'open-rdv']);
 
 const examensTypeSuggestions = ref([]);
 const traitementTypeSuggestions = ref([]);
 
-const isSaving = computed(() => Boolean(
-    props.saving?.entretien
-    || props.saving?.examens
-    || props.saving?.documents
-    || props.saving?.bilans
-    || props.saving?.planTraitement
-));
+const isSaving = computed(() => Boolean(props.saving?.entretien || props.saving?.examens || props.saving?.documents || props.saving?.bilans || props.saving?.planTraitement));
 
 const antecedentsCount = computed(() => props.patient?.antecedents?.length || 0);
 const allergiesCount = computed(() => props.patient?.allergies?.length || 0);
 const examensCount = computed(() => props.examens?.examensLabo?.length || 0);
 const plansCount = computed(() => props.planTraitement?.length || 0);
 
-const normalizeText = (value) => String(value || '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .trim();
+const normalizeText = (value) =>
+    String(value || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim();
 
 const searchExamensTypes = (event) => {
     const query = normalizeText(event?.query);
-    examensTypeSuggestions.value = query
-        ? props.examensTypeOptions.filter((item) => normalizeText(item).includes(query))
-        : [...props.examensTypeOptions];
+    examensTypeSuggestions.value = query ? props.examensTypeOptions.filter((item) => normalizeText(item).includes(query)) : [...props.examensTypeOptions];
 };
 
 const searchTraitementTypes = (event) => {
     const query = normalizeText(event?.query);
-    traitementTypeSuggestions.value = query
-        ? props.traitementTypeOptions.filter((item) => normalizeText(item).includes(query))
-        : [...props.traitementTypeOptions];
+    traitementTypeSuggestions.value = query ? props.traitementTypeOptions.filter((item) => normalizeText(item).includes(query)) : [...props.traitementTypeOptions];
 };
 
 const updateEntretienField = (key, value) => {
@@ -144,10 +122,15 @@ const addPlanRow = () => {
 
 const removePlanRow = (index) => {
     const plans = Array.isArray(props.planTraitement) ? props.planTraitement : [];
-    emit('update:planTraitement', plans.filter((_, idx) => idx !== index).map((item, idx) => ({
-        ...item,
-        planIndex: idx + 1
-    })));
+    emit(
+        'update:planTraitement',
+        plans
+            .filter((_, idx) => idx !== index)
+            .map((item, idx) => ({
+                ...item,
+                planIndex: idx + 1
+            }))
+    );
 };
 </script>
 
@@ -192,13 +175,7 @@ const removePlanRow = (index) => {
                             <p class="text-xs text-surface-500 dark:text-surface-400">Résumé clinique du patient</p>
                         </div>
                     </div>
-                    <Textarea
-                        :modelValue="entretien.anamnese"
-                        rows="4"
-                        placeholder="Motif, évolution, symptômes rapportés..."
-                        class="w-full rounded-xl"
-                        @update:modelValue="(v) => updateEntretienField('anamnese', v)"
-                    />
+                    <Textarea :modelValue="entretien.anamnese" rows="4" placeholder="Motif, évolution, symptômes rapportés..." class="w-full rounded-xl" @update:modelValue="(v) => updateEntretienField('anamnese', v)" />
                 </div>
 
                 <div class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50/80 dark:bg-surface-800/30 p-4">
@@ -228,7 +205,9 @@ const removePlanRow = (index) => {
                                     class="group flex items-start justify-between gap-2 rounded-lg border border-surface-200/80 dark:border-surface-700/80 bg-surface-50/80 dark:bg-surface-800/40 px-2.5 py-2 transition-colors hover:border-emerald-300/60 dark:hover:border-emerald-700/40"
                                 >
                                     <div class="text-sm text-surface-700 dark:text-surface-300 leading-5 min-w-0">
-                                        <span class="inline-flex items-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 px-2 py-0.5 text-xs font-medium mr-1.5 shrink-0">{{ item.type || 'Antécédent' }}</span>
+                                        <span class="inline-flex items-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 px-2 py-0.5 text-xs font-medium mr-1.5 shrink-0">{{
+                                            item.type || 'Antécédent'
+                                        }}</span>
                                         <span class="break-words">{{ item.description || '—' }}</span>
                                     </div>
                                     <Button icon="pi pi-trash" text severity="danger" size="small" class="opacity-60 group-hover:opacity-100 shrink-0" @click="emit('delete-antecedent', item)" />
@@ -294,14 +273,7 @@ const removePlanRow = (index) => {
                             <p class="text-xs text-surface-500 dark:text-surface-400">Radios, analyses, comptes rendus</p>
                         </div>
                     </div>
-                    <FicheDocumentsForm
-                        :modelValue="documents"
-                        :saving="saving.documents"
-                        :upload-progress="documentsUploadProgress"
-                        :compact="true"
-                        @update:modelValue="(v) => emit('update:documents', v)"
-                        @save="emit('save-documents')"
-                    />
+                    <FicheDocumentsForm :modelValue="documents" :saving="saving.documents" :upload-progress="documentsUploadProgress" :compact="true" @update:modelValue="(v) => emit('update:documents', v)" @save="emit('save-documents')" />
                 </div>
             </div>
 
@@ -327,11 +299,7 @@ const removePlanRow = (index) => {
                         <Button icon="pi pi-plus" label="Ajouter" text size="small" class="!px-2" @click="addExamComplementaireRow" />
                     </div>
                     <div class="space-y-3 max-h-80 overflow-auto pr-1 custom-scrollbar">
-                        <div
-                            v-for="(item, examIndex) in examens.examensLabo"
-                            :key="examIndex"
-                            class="relative rounded-xl border border-surface-200/90 dark:border-surface-700/90 bg-white/80 dark:bg-surface-900/50 p-3 pt-4 shadow-sm"
-                        >
+                        <div v-for="(item, examIndex) in examens.examensLabo" :key="examIndex" class="relative rounded-xl border border-surface-200/90 dark:border-surface-700/90 bg-white/80 dark:bg-surface-900/50 p-3 pt-4 shadow-sm">
                             <span class="absolute -top-2.5 left-3 inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full bg-cyan-500 text-white text-[0.65rem] font-bold leading-none">
                                 {{ examIndex + 1 }}
                             </span>
@@ -345,11 +313,7 @@ const removePlanRow = (index) => {
                                     placeholder="Type d'examen"
                                     @complete="searchExamensTypes"
                                 />
-                                <InputText
-                                    v-model="item.description"
-                                    class="col-span-12 sm:col-span-8 rounded-lg border border-surface-300 dark:border-surface-600 bg-surface-0 dark:bg-surface-900 px-2.5 py-1.5 text-sm"
-                                    placeholder="Description"
-                                />
+                                <InputText v-model="item.description" class="col-span-12 sm:col-span-8 rounded-lg border border-surface-300 dark:border-surface-600 bg-surface-0 dark:bg-surface-900 px-2.5 py-1.5 text-sm" placeholder="Description" />
                                 <Textarea
                                     v-model="item.resultat"
                                     class="col-span-12 sm:col-span-8 rounded-lg border border-surface-300 dark:border-surface-600 bg-surface-0 dark:bg-surface-900 px-2.5 py-1.5 text-sm"
@@ -357,22 +321,8 @@ const removePlanRow = (index) => {
                                     rows="2"
                                     autoResize
                                 />
-                                <DatePicker
-                                    v-model="item.date"
-                                    showIcon
-                                    fluid
-                                    iconDisplay="input"
-                                    class="col-span-11 sm:col-span-3 rounded-lg text-sm"
-                                    placeholder="Date"
-                                />
-                                <Button
-                                    icon="pi pi-trash"
-                                    text
-                                    severity="danger"
-                                    size="small"
-                                    class="col-span-1 justify-self-end self-start"
-                                    @click="removeExamComplementaireRow(examIndex)"
-                                />
+                                <DatePicker v-model="item.date" showIcon fluid iconDisplay="input" class="col-span-11 sm:col-span-3 rounded-lg text-sm" placeholder="Date" />
+                                <Button icon="pi pi-trash" text severity="danger" size="small" class="col-span-1 justify-self-end self-start" @click="removeExamComplementaireRow(examIndex)" />
                             </div>
                         </div>
                         <div v-if="!examens.examensLabo?.length" class="flex flex-col items-center justify-center py-8 text-center rounded-xl border border-dashed border-surface-200 dark:border-surface-700">
@@ -396,23 +346,11 @@ const removePlanRow = (index) => {
                     <div class="space-y-4">
                         <div>
                             <label class="text-sm font-medium text-surface-700 dark:text-surface-300 mb-1.5 block">Bilan</label>
-                            <Textarea
-                                :modelValue="bilans.diagnosticPositif"
-                                rows="3"
-                                placeholder="Diagnostic positif, constatations cliniques..."
-                                class="w-full rounded-xl"
-                                @update:modelValue="(v) => updateBilanField('diagnosticPositif', v)"
-                            />
+                            <Textarea :modelValue="bilans.diagnosticPositif" rows="3" placeholder="Diagnostic positif, constatations cliniques..." class="w-full rounded-xl" @update:modelValue="(v) => updateBilanField('diagnosticPositif', v)" />
                         </div>
                         <div>
                             <label class="text-sm font-medium text-surface-700 dark:text-surface-300 mb-1.5 block">Avis médicaux</label>
-                            <Textarea
-                                :modelValue="bilans.avisMedicales"
-                                rows="3"
-                                placeholder="Avis, recommandations, orientation..."
-                                class="w-full rounded-xl"
-                                @update:modelValue="(v) => updateBilanField('avisMedicales', v)"
-                            />
+                            <Textarea :modelValue="bilans.avisMedicales" rows="3" placeholder="Avis, recommandations, orientation..." class="w-full rounded-xl" @update:modelValue="(v) => updateBilanField('avisMedicales', v)" />
                         </div>
                     </div>
                 </div>
@@ -431,11 +369,7 @@ const removePlanRow = (index) => {
                         <Button icon="pi pi-plus" label="Ajout rapide" text size="small" class="!px-2" @click="addPlanRow" />
                     </div>
                     <div class="space-y-3 max-h-80 overflow-auto pr-1 custom-scrollbar">
-                        <div
-                            v-for="(plan, planIndex) in planTraitement"
-                            :key="plan.id || planIndex"
-                            class="relative rounded-xl border border-surface-200/90 dark:border-surface-700/90 bg-white/80 dark:bg-surface-900/50 p-3 pt-4 shadow-sm"
-                        >
+                        <div v-for="(plan, planIndex) in planTraitement" :key="plan.id || planIndex" class="relative rounded-xl border border-surface-200/90 dark:border-surface-700/90 bg-white/80 dark:bg-surface-900/50 p-3 pt-4 shadow-sm">
                             <span class="absolute -top-2.5 left-3 inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full bg-teal-500 text-white text-[0.65rem] font-bold leading-none">
                                 {{ planIndex + 1 }}
                             </span>
@@ -449,21 +383,8 @@ const removePlanRow = (index) => {
                                     placeholder="Type de traitement"
                                     @complete="searchTraitementTypes"
                                 />
-                                <DatePicker
-                                    v-model="plan.dateSupposed"
-                                    showIcon
-                                    fluid
-                                    class="col-span-11 sm:col-span-4 rounded-lg text-sm"
-                                    placeholder="Date prévue"
-                                />
-                                <Button
-                                    icon="pi pi-trash"
-                                    text
-                                    severity="danger"
-                                    size="small"
-                                    class="col-span-1 justify-self-end self-start"
-                                    @click="removePlanRow(planIndex)"
-                                />
+                                <DatePicker v-model="plan.dateSupposed" showIcon fluid class="col-span-11 sm:col-span-4 rounded-lg text-sm" placeholder="Date prévue" />
+                                <Button icon="pi pi-trash" text severity="danger" size="small" class="col-span-1 justify-self-end self-start" @click="removePlanRow(planIndex)" />
                                 <Textarea
                                     v-model="plan.description"
                                     class="col-span-12 rounded-lg border border-surface-300 dark:border-surface-600 bg-surface-0 dark:bg-surface-900 px-2.5 py-1.5 text-sm"

@@ -43,10 +43,7 @@ export function sanitizeError(error) {
 
     const err = /** @type {Record<string, unknown> & { response?: { status?: number }; config?: { url?: string; method?: string }; userMessage?: string }} */ (error);
 
-    const message =
-        truncate(err.userMessage, MSG_MAX)
-        ?? truncate(err.message, MSG_MAX)
-        ?? 'Error';
+    const message = truncate(err.userMessage, MSG_MAX) ?? truncate(err.message, MSG_MAX) ?? 'Error';
 
     const out = {
         name: truncate(err.name, 128),

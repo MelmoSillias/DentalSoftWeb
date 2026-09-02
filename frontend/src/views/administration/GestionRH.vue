@@ -46,16 +46,7 @@ const typeOptions = [
     { label: 'Autre', value: 'Autre' }
 ];
 
-const {
-    employees,
-    totalRecords,
-    loading: employeesLoading,
-    error: employeesError,
-    fetchEmployees,
-    addEmployee,
-    updateEmployee,
-    deleteEmployee
-} = useEmployees();
+const { employees, totalRecords, loading: employeesLoading, error: employeesError, fetchEmployees, addEmployee, updateEmployee, deleteEmployee } = useEmployees();
 
 const {
     payrolls,
@@ -75,15 +66,7 @@ const {
     fetchPrintPayload: fetchPayrollPrintPayload
 } = usePayrolls();
 
-const {
-    leaves,
-    loading: leavesLoading,
-    error: leavesError,
-    fetchData: fetchLeaves,
-    add: addLeave,
-    edit: editLeave,
-    remove: removeLeave
-} = useLeaves();
+const { leaves, loading: leavesLoading, error: leavesError, fetchData: fetchLeaves, add: addLeave, edit: editLeave, remove: removeLeave } = useLeaves();
 
 const search = ref('');
 const typeFilter = ref(null);
@@ -144,7 +127,11 @@ const leavesFiltered = computed(() => {
 
     if (leaveTypeFilter.value) {
         const target = String(leaveTypeFilter.value).toLowerCase();
-        rows = rows.filter((row) => String(row.type || '').toLowerCase().includes(target));
+        rows = rows.filter((row) =>
+            String(row.type || '')
+                .toLowerCase()
+                .includes(target)
+        );
     }
 
     const [start, end] = leaveRange.value || [];
@@ -510,10 +497,14 @@ watch([payrollEmployeeId, payrollMonthModel], () => {
     loadPayrolls({ page: 0, rows: payrollRows.value });
 });
 
-watch([leaveEmployeeId, leaveTypeFilter, leaveRange], () => {
-    if (activeTab.value !== 'leaves') return;
-    loadLeaves();
-}, { deep: true });
+watch(
+    [leaveEmployeeId, leaveTypeFilter, leaveRange],
+    () => {
+        if (activeTab.value !== 'leaves') return;
+        loadLeaves();
+    },
+    { deep: true }
+);
 
 watch(activeTab, (tab) => {
     if (tab === 'payroll') {
@@ -605,7 +596,12 @@ onBeforeUnmount(() => {
                             groupRowsBy="type"
                             sortField="type"
                             :sortOrder="1"
-                            @page="(e) => { employeePage = e.page; employeeRows = e.rows; }"
+                            @page="
+                                (e) => {
+                                    employeePage = e.page;
+                                    employeeRows = e.rows;
+                                }
+                            "
                         >
                             <template #groupheader="{ data }">
                                 <div class="flex items-center justify-between py-1">
@@ -680,15 +676,7 @@ onBeforeUnmount(() => {
                                 </div>
                                 <div class="md:col-span-5">
                                     <label class="block text-sm font-medium mb-2">Employe</label>
-                                    <Select
-                                        v-model="payrollEmployeeId"
-                                        :options="employeeOptions"
-                                        optionLabel="fullname"
-                                        optionValue="id"
-                                        class="w-full"
-                                        showClear
-                                        placeholder="Tous les employes"
-                                    >
+                                    <Select v-model="payrollEmployeeId" :options="employeeOptions" optionLabel="fullname" optionValue="id" class="w-full" showClear placeholder="Tous les employes">
                                         <template #option="slotProps">
                                             {{ `${slotProps.option.prenom || ''} ${slotProps.option.nom || ''}`.trim() }}
                                         </template>
@@ -716,7 +704,9 @@ onBeforeUnmount(() => {
                                 <template #body="{ data }">{{ payrollPeriodLabel(data) }}</template>
                             </Column>
                             <Column field="paidAmount" header="Montant verse">
-                                <template #body="{ data }"><span class="font-semibold">{{ formatAmount(data.paidAmount) }}</span></template>
+                                <template #body="{ data }"
+                                    ><span class="font-semibold">{{ formatAmount(data.paidAmount) }}</span></template
+                                >
                             </Column>
                             <Column header="Mode">
                                 <template #body="{ data }">{{ data.paymentMethod?.libelle || '—' }}</template>
@@ -743,15 +733,7 @@ onBeforeUnmount(() => {
                             <div class="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
                                 <div class="md:col-span-4">
                                     <label class="block text-sm font-medium mb-2">Employe</label>
-                                    <Select
-                                        v-model="leaveEmployeeId"
-                                        :options="employeeOptions"
-                                        optionLabel="fullname"
-                                        optionValue="id"
-                                        class="w-full"
-                                        showClear
-                                        placeholder="Tous les employes"
-                                    >
+                                    <Select v-model="leaveEmployeeId" :options="employeeOptions" optionLabel="fullname" optionValue="id" class="w-full" showClear placeholder="Tous les employes">
                                         <template #option="slotProps">
                                             {{ `${slotProps.option.prenom || ''} ${slotProps.option.nom || ''}`.trim() }}
                                         </template>
@@ -799,14 +781,7 @@ onBeforeUnmount(() => {
             </TabPanels>
         </Tabs>
 
-        <EmployeeForm
-            v-model:visible="formVisible"
-            :mode="formMode"
-            :employee="currentEmployee"
-            :loading="employeesLoading"
-            tourTarget="admin-rh.dialog.form"
-            @submit="confirmEmployeeSave"
-        />
+        <EmployeeForm v-model:visible="formVisible" :mode="formMode" :employee="currentEmployee" :loading="employeesLoading" tourTarget="admin-rh.dialog.form" @submit="confirmEmployeeSave" />
 
         <PayrollPaymentDialog
             v-model:visible="payrollDialogVisible"
@@ -819,22 +794,8 @@ onBeforeUnmount(() => {
             @submit="submitPayroll"
         />
 
-        <PayrollDetailDialog
-            v-model:visible="payrollDetailVisible"
-            :payment="selectedPayroll"
-            :payment-methods="paymentMethods"
-            :loading="payrollDetailSaving"
-            @submit="submitPayrollEdit"
-            @print="printPayrollSlip"
-        />
+        <PayrollDetailDialog v-model:visible="payrollDetailVisible" :payment="selectedPayroll" :payment-methods="paymentMethods" :loading="payrollDetailSaving" @submit="submitPayrollEdit" @print="printPayrollSlip" />
 
-        <LeaveFormDialog
-            v-model:visible="leaveDialogVisible"
-            :mode="leaveMode"
-            :leave="selectedLeave"
-            :employees="employeeOptions"
-            :loading="leaveSaving"
-            @submit="submitLeave"
-        />
+        <LeaveFormDialog v-model:visible="leaveDialogVisible" :mode="leaveMode" :leave="selectedLeave" :employees="employeeOptions" :loading="leaveSaving" @submit="submitLeave" />
     </section>
 </template>

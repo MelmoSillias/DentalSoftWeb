@@ -75,10 +75,22 @@ const adjustedTotal = computed(() => {
 
         <div v-if="context" class="p-4 space-y-4">
             <div class="grid grid-cols-2 gap-2 text-sm">
-                <div><span class="text-surface-500">Employé</span><p class="font-medium">{{ context.employee?.fullname || '-' }}</p></div>
-                <div><span class="text-surface-500">Rôle</span><p class="font-medium">{{ formatEmployeeTypeLabel(context.employee?.type) || '-' }}</p></div>
-                <div><span class="text-surface-500">Fréquence</span><p class="font-medium">{{ frequenceLabel }}</p></div>
-                <div><span class="text-surface-500">Dernier paiement</span><p class="font-medium">{{ context.employee?.dateDernierPaiement || '-' }}</p></div>
+                <div>
+                    <span class="text-surface-500">Employé</span>
+                    <p class="font-medium">{{ context.employee?.fullname || '-' }}</p>
+                </div>
+                <div>
+                    <span class="text-surface-500">Rôle</span>
+                    <p class="font-medium">{{ formatEmployeeTypeLabel(context.employee?.type) || '-' }}</p>
+                </div>
+                <div>
+                    <span class="text-surface-500">Fréquence</span>
+                    <p class="font-medium">{{ frequenceLabel }}</p>
+                </div>
+                <div>
+                    <span class="text-surface-500">Dernier paiement</span>
+                    <p class="font-medium">{{ context.employee?.dateDernierPaiement || '-' }}</p>
+                </div>
             </div>
 
             <div class="rounded-lg bg-surface-50 dark:bg-surface-900/40 p-3 space-y-2">
@@ -102,9 +114,7 @@ const adjustedTotal = computed(() => {
                 <div class="flex justify-between text-sm">
                     <span>Valeur configurée</span>
                     <span class="font-medium">
-                        {{ context.employee?.typePrime === 'actes' || context.typePrime === 'actes'
-                            ? `${context.employee?.valeurPrime ?? context.valeurPrime ?? 0}%`
-                            : formatCurrency(context.employee?.valeurPrime ?? context.valeurPrime) }}
+                        {{ context.employee?.typePrime === 'actes' || context.typePrime === 'actes' ? `${context.employee?.valeurPrime ?? context.valeurPrime ?? 0}%` : formatCurrency(context.employee?.valeurPrime ?? context.valeurPrime) }}
                     </span>
                 </div>
                 <div v-if="context.employee?.typePrime === 'actes' || context.typePrime === 'actes'" class="flex justify-between text-sm">
@@ -113,15 +123,7 @@ const adjustedTotal = computed(() => {
                 </div>
                 <div v-if="editablePrime" class="space-y-1">
                     <label class="text-sm font-medium">Montant prime (modifiable)</label>
-                    <InputNumber
-                        v-model="localPrimeAmount"
-                        class="w-full"
-                        :min="0"
-                        mode="decimal"
-                        :minFractionDigits="0"
-                        :maxFractionDigits="2"
-                        suffix=" F CFA"
-                    />
+                    <InputNumber v-model="localPrimeAmount" class="w-full" :min="0" mode="decimal" :minFractionDigits="0" :maxFractionDigits="2" suffix=" F CFA" />
                 </div>
                 <div class="flex justify-between text-sm font-semibold text-amber-700 dark:text-amber-300">
                     <span>Montant prime</span>
@@ -147,8 +149,6 @@ const adjustedTotal = computed(() => {
             <Message v-if="!canPay" severity="warn" :closable="false">{{ blockReason }}</Message>
         </div>
 
-        <p v-else class="p-4 text-sm text-surface-500">
-            Sélectionnez un employé et une période pour calculer automatiquement le salaire.
-        </p>
+        <p v-else class="p-4 text-sm text-surface-500">Sélectionnez un employé et une période pour calculer automatiquement le salaire.</p>
     </div>
 </template>

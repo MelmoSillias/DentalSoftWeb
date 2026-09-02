@@ -32,7 +32,11 @@ const props = defineProps({
 const emit = defineEmits(['update:visible', 'submit']);
 
 const localVisible = ref(props.visible);
-watch(() => props.visible, (v) => (localVisible.value = v), { immediate: true });
+watch(
+    () => props.visible,
+    (v) => (localVisible.value = v),
+    { immediate: true }
+);
 watch(localVisible, (v) => emit('update:visible', v));
 
 const form = reactive({
@@ -81,14 +85,7 @@ const submit = () => {
         <div class="flex flex-col gap-3">
             <div class="flex flex-col gap-1">
                 <label class="text-sm font-semibold text-surface-700 dark:text-surface-50">Médecin</label>
-                <Select
-                    v-model="form.medecinId"
-                    :options="medecins"
-                    optionLabel="name"
-                    optionValue="id"
-                    placeholder="Médecin"
-                    :disabled="medecinReadonly"
-                />
+                <Select v-model="form.medecinId" :options="medecins" optionLabel="name" optionValue="id" placeholder="Médecin" :disabled="medecinReadonly" />
             </div>
             <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div class="flex flex-col gap-1">
@@ -110,4 +107,3 @@ const submit = () => {
         </template>
     </Dialog>
 </template>
-

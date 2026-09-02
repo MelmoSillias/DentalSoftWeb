@@ -1,3 +1,23 @@
+<script setup>
+import { computed } from 'vue';
+import PrintTicketPage from './PrintTicketPage.vue';
+import PrintTicketHeader from './PrintTicketHeader.vue';
+import logoImg from '@/assets/logo.png';
+
+const props = defineProps({
+    paiement: { type: Object, default: () => ({}) },
+    logoSrc: { type: String, default: logoImg }
+});
+
+const dateLabel = computed(() => {
+    const raw = props.paiement?.date ? new Date(props.paiement.date) : null;
+    if (!raw || Number.isNaN(raw.getTime())) return props.paiement?.date || '—';
+    return `${raw.toLocaleDateString('fr-FR')} ${raw.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`;
+});
+
+const formatMoney = (value) => `${Number(value || 0).toLocaleString('fr-FR')} FCFA`;
+</script>
+
 <template>
     <PrintTicketPage :logo-src="logoSrc">
         <PrintTicketHeader title="Reçu de paiement" />
@@ -98,26 +118,6 @@
         </table>
     </PrintTicketPage>
 </template>
-
-<script setup>
-import { computed } from 'vue';
-import PrintTicketPage from './PrintTicketPage.vue';
-import PrintTicketHeader from './PrintTicketHeader.vue';
-import logoImg from '@/assets/logo.png';
-
-const props = defineProps({
-    paiement: { type: Object, default: () => ({}) },
-    logoSrc: { type: String, default: logoImg }
-});
-
-const dateLabel = computed(() => {
-    const raw = props.paiement?.date ? new Date(props.paiement.date) : null;
-    if (!raw || Number.isNaN(raw.getTime())) return props.paiement?.date || '—';
-    return `${raw.toLocaleDateString('fr-FR')} ${raw.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`;
-});
-
-const formatMoney = (value) => `${Number(value || 0).toLocaleString('fr-FR')} FCFA`;
-</script>
 
 <style scoped>
 .small {

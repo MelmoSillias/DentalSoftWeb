@@ -1,11 +1,297 @@
+<script setup>
+import { computed } from 'vue';
+import PrintA4Page from './PrintA4Page.vue';
+import PrintDocumentHeader from './PrintDocumentHeader.vue';
+import logoImg from '@/assets/logo.png';
+import { filePrefix } from '@/config';
+
+const props = defineProps({
+    fiche: { type: Object, default: () => ({}) },
+    patient: { type: Object, default: () => ({}) },
+    sections: { type: Array, default: () => [] },
+    printEmpty: { type: Boolean, default: false },
+    logoSrc: { type: String, default: logoImg }
+});
+
+const entretien = computed(() => props.fiche?.entretien || {});
+const examens = computed(() => props.fiche?.examens || {});
+const bilans = computed(() => props.fiche?.bilans || {});
+const documents = computed(() => props.fiche?.documents || []);
+const plans = computed(() => props.fiche?.planTraitement || []);
+const patientAntecedents = computed(() => (Array.isArray(props.patient?.antecedents) ? props.patient.antecedents : []));
+const patientAllergies = computed(() => (Array.isArray(props.patient?.allergies) ? props.patient.allergies : []));
+const patientSex = computed(() => props.patient?.sexe || props.fiche?.patient?.sexe || props.fiche?.sexe || '');
+const isFemalePatient = computed(() => {
+    const normalized = String(patientSex.value || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim();
+    return ['f', 'femme', 'feminin', 'female', 'woman'].includes(normalized);
+});
+
+const dentalRows = [
+    { left: [55, 54, 53, 52, 51], right: [61, 62, 63, 64, 65] },
+    { left: [18, 17, 16, 15, 14, 13, 12, 11], right: [21, 22, 23, 24, 25, 26, 27, 28] },
+    { left: [48, 47, 46, 45, 44, 43, 42, 41], right: [31, 32, 33, 34, 35, 36, 37, 38] },
+    { left: [85, 84, 83, 82, 81], right: [71, 72, 73, 74, 75] }
+];
+
+const formatDate = (value) => {
+    if (!value) return '—';
+    const date = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(date.getTime())) return String(value);
+    return date.toLocaleDateString('fr-FR');
+};
+
+const formatDateTime = (value) => {
+    if (!value) return '—';
+    const date = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(date.getTime())) return String(value);
+    return `${date.toLocaleDateString('fr-FR')} ${date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`;
+};
+
+const formatBool = (value) => (value === true ? 'Oui' : value === false ? 'Non' : '—');
+
+const hasValue = (value) => {
+    if (props.printEmpty) return true;
+    if (value === null || value === undefined) return false;
+    if (typeof value === 'boolean') return true;
+    if (Array.isArray(value)) return value.length > 0;
+    return String(value).trim() !== '';
+};
+
+const showArray = (value) => (props.printEmpty ? true : Array.isArray(value) && value.length > 0);
+
+const entretienAntecedents = computed(() => {
+    const medicaments = Array.isArray(entretien.value?.medicaments) ? entretien.value.medicaments : [];
+    const affections = Array.isArray(entretien.value?.affections) ? entretien.value.affections : [];
+    return [
+        ...medicaments.map((item, idx) => ({
+            key: `medicament-${item.id ?? item.nom ?? idx}`,
+            type: 'Medicament en cours',
+            nom: item.nom || '—',
+            etat: item.estUtilise,
+            details: item.details || ''
+        })),
+        ...affections.map((item, idx) => ({
+            key: `affection-${item.id ?? item.nom ?? idx}`,
+            type: 'Affection',
+            nom: item.nom || '—',
+            etat: item.estPresente,
+            details: item.details || ''
+        }))
+    ];
+});
+
+const shouldPrint = (key) => {
+    if (!props.sections || props.sections.length === 0) return true;
+    return props.sections.includes(key);
+};
+
+const mapToRows = (map, prefix) =>
+    Object.entries(map || {})
+        .map(([label, value]) => ({
+            key: `${prefix}-${label}`,
+            label,
+            value: typeof value === 'boolean' ? formatBool(value) : value || '—'
+        }))
+        .filter((row) => hasValue(row.value));
+
+const entretienGroups = computed(() => {
+    const groups = [
+        {
+            key: 'entretien',
+            title: 'Anamnese',
+            rows: [{ key: 'anamnese', label: 'Anamnese', value: entretien.value?.motifConsultation || '—' }]
+        },
+        ...(isFemalePatient.value
+            ? [
+                  {
+                      key: 'etat-gynecologique',
+                      title: 'Etat gynecologique',
+                      rows: [
+                          { key: 'allaitement', label: 'Allaitement', value: formatBool(entretien.value?.etatGynecologique?.allaitement) },
+                          { key: 'grossesse', label: 'Grossesse en cours', value: formatBool(entretien.value?.etatGynecologique?.grossesseEnCours) },
+                          { key: 'menstrues', label: 'Menstrues', value: formatBool(entretien.value?.etatGynecologique?.menstrues) }
+                      ]
+                  }
+              ]
+            : [])
+    ];
+
+    return groups
+        .map((group) => ({
+            ...group,
+            rows: group.rows.filter((row) => hasValue(row.value))
+        }))
+        .filter((group) => group.rows.length > 0);
+});
+
+const entretienHasRows = computed(() => entretienGroups.value.length > 0);
+const entretienQuestionsRows = computed(() => {
+    const questions = Array.isArray(entretien.value?.questions) ? entretien.value.questions : [];
+    const habitudes = Array.isArray(entretien.value?.habitudes) ? entretien.value.habitudes : [];
+    return questions.length + habitudes.length;
+});
+
+const examensGroups = computed(() => {
+    const groups = [
+        {
+            key: 'exobuccal-inspection',
+            title: 'Exobuccal - Inspection',
+            rows: mapToRows(examens.value?.exobuccalInspection, 'exobuccalInspection')
+        },
+        {
+            key: 'exobuccal-palpation',
+            title: 'Exobuccal - Palpation',
+            rows: mapToRows(examens.value?.exobuccalPalpation, 'exobuccalPalpation')
+        },
+        {
+            key: 'chaines-ganglionnaires',
+            title: 'Chaines ganglionnaires',
+            rows: mapToRows(examens.value?.chainesGanglionnaires, 'chainesGanglionnaires')
+        },
+        {
+            key: 'endobuccal-fermee',
+            title: 'Endobuccal - Bouche fermee',
+            rows: [
+                { key: 'occlusion', label: 'Occlusion', value: examens.value?.endobuccalBoucheFermee?.occlusion || '—' },
+                { key: 'mediane', label: 'Mediane', value: examens.value?.endobuccalBoucheFermee?.mediane || '—' },
+                { key: 'classesAngle', label: "Classes d'Angle", value: examens.value?.endobuccalBoucheFermee?.classesAngle || '—' },
+                { key: 'vestibules', label: 'Vestibules', value: examens.value?.endobuccalBoucheFermee?.vestibules || '—' }
+            ].filter((row) => hasValue(row.value))
+        },
+        {
+            key: 'endobuccal-ouverte',
+            title: 'Endobuccal - Bouche ouverte',
+            rows: [
+                { key: 'hbd', label: 'HBD', value: examens.value?.endobuccalBoucheOuverte?.hbd || '—' },
+                { key: 'brossage', label: 'Brossage', value: examens.value?.endobuccalBoucheOuverte?.brossage || '—' },
+                { key: 'soccu', label: 'Soccu', value: examens.value?.endobuccalBoucheOuverte?.soccu || '—' },
+                { key: 'cinematique', label: 'Cinematique mandibulaire', value: examens.value?.endobuccalBoucheOuverte?.cinematiqueMandibulaire || '—' },
+                { key: 'ouverture', label: 'Ouverture buccale', value: examens.value?.endobuccalBoucheOuverte?.ouvertureBuccale || '—' },
+                { key: 'temperature', label: 'Temperature buccale', value: examens.value?.endobuccalBoucheOuverte?.temperatureBuccale || '—' },
+                { key: 'amplitude', label: "Amplitude d'ouverture", value: examens.value?.endobuccalBoucheOuverte?.amplitudeOuverture || '—' },
+                { key: 'bruits', label: 'Bruits articulaires', value: examens.value?.endobuccalBoucheOuverte?.bruitsArticulaires || '—' }
+            ].filter((row) => hasValue(row.value))
+        },
+        {
+            key: 'endobuccal-canaux',
+            title: 'Endobuccal - Canaux excreteurs',
+            rows: [{ key: 'canaux', label: 'Examens des canaux excreteurs', value: examens.value?.examenCanauxExcreteurs || '—' }].filter((row) => hasValue(row.value))
+        }
+    ];
+
+    return groups.filter((group) => group.rows.length > 0);
+});
+
+const examensHasRows = computed(() => examensGroups.value.length > 0);
+
+const tissusMousColumns = ['Levres', 'Joues', 'Langue', 'Gencive', 'Plancher', 'Voile', 'Freins'];
+const tissusMousRows = ['Couleur', 'Consistance', 'Volume', 'Lesions', 'Tumeurs', 'Inflammation'];
+const tissusDursColumns = ['Rempart alveolaire interne et externe', 'Palais'];
+const tissusDursRows = ['Forme', 'Lesions', 'Excroissance osseuse'];
+
+const getCrossValue = (table, row, col) => {
+    const value = table?.[row]?.[col];
+    if (hasValue(value)) return value;
+    return props.printEmpty ? '—' : '';
+};
+
+const getExtension = (value) => {
+    if (!value) return '';
+    const cleaned = value.split('?')[0].split('#')[0];
+    const parts = cleaned.split('.');
+    return parts.length > 1 ? parts.pop().toLowerCase() : '';
+};
+
+const isImageExtension = (extension) => ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg'].includes(extension);
+
+const resolveUrl = (url) => {
+    if (!url || typeof url !== 'string') return '';
+    if (/^https?:\/\//i.test(url) || url.startsWith('blob:') || url.startsWith('data:')) return url;
+    const prefix = filePrefix.replace(/\/$/, '');
+    return `${prefix}/${url.replace(/^\//, '')}`;
+};
+
+const buildEntries = (doc, docIndex) => {
+    const urls = Array.isArray(doc?.urls) ? doc.urls : doc?.url ? [doc.url] : [];
+    return urls
+        .map((url, fileIndex) => {
+            const extension = getExtension(url);
+            return {
+                entryKey: `${docIndex}-url-${fileIndex}`,
+                isImage: isImageExtension(extension),
+                previewSrc: resolveUrl(url),
+                fileName: url?.split('/').pop() || 'fichier'
+            };
+        })
+        .filter((entry) => props.printEmpty || entry.previewSrc);
+};
+
+const documentsView = computed(() =>
+    (documents.value || [])
+        .map((doc, index) => ({
+            title: doc?.libelle || doc?.type || `Document ${index + 1}`,
+            type: doc?.type || 'Document',
+            entries: buildEntries(doc, index)
+        }))
+        .filter((doc) => props.printEmpty || doc.entries.length > 0)
+);
+
+const sortedPlans = computed(() => {
+    const list = plans.value || [];
+    return [...list].sort((a, b) => {
+        const da = a?.dateSupposed ? new Date(a.dateSupposed).getTime() : null;
+        const db = b?.dateSupposed ? new Date(b.dateSupposed).getTime() : null;
+        if (!da && !db) return 0;
+        if (!da) return 1;
+        if (!db) return -1;
+        return da - db;
+    });
+});
+
+const toothEtat = (tooth) => {
+    const entry = bilans.value?.bilanDentaire?.formuleDentaire?.[tooth];
+    if (!entry?.etat || entry.etat.length === 0) return '';
+    return Array.isArray(entry.etat) ? entry.etat.join('-') : String(entry.etat);
+};
+
+const resolveToothState = (tooth) => {
+    const entry = bilans.value?.bilanDentaire?.formuleDentaire?.[tooth];
+    if (!entry) return null;
+    if (entry.estCausale) return 'CAUSALE';
+    const etats = Array.isArray(entry.etat) ? entry.etat : [];
+    const order = ['C', 'O', 'MP', 'E', 'A', 'M', 'I', 'P', 'BONNE'];
+    for (const code of order) {
+        if (etats.includes(code)) return code;
+    }
+    return etats[0] || null;
+};
+
+const toothClass = (tooth) => {
+    const state = resolveToothState(tooth);
+    return state ? `tooth-${state.toLowerCase()}` : 'tooth-empty';
+};
+
+const etatLegend = [
+    { code: 'BONNE', label: 'Bonne' },
+    { code: 'C', label: 'Carie' },
+    { code: 'O', label: 'Obturee' },
+    { code: 'MP', label: 'Malposition' },
+    { code: 'E', label: 'Enclavee' },
+    { code: 'A', label: 'Absente' },
+    { code: 'M', label: 'Mobile' },
+    { code: 'I', label: 'Incluse' },
+    { code: 'P', label: 'Prothese' }
+];
+</script>
+
 <template>
     <PrintA4Page :logo-src="logoSrc">
         <template #header>
-            <PrintDocumentHeader
-                title="Fiche médicale"
-                :doc-id="fiche?.id"
-                :date="fiche?.createdAt || fiche?.dateCreation"
-            />
+            <PrintDocumentHeader title="Fiche médicale" :doc-id="fiche?.id" :date="fiche?.createdAt || fiche?.dateCreation" />
         </template>
 
         <h2 class="print-section-title">Résumé</h2>
@@ -420,9 +706,7 @@
                                         {{ ordo.date || '—' }} - {{ ordo.medecinNom || '—' }}
                                         <template v-if="ordo.note"> : {{ ordo.note }}</template>
                                         <ul v-if="ordo.lignes?.length">
-                                            <li v-for="(ligne, lidx) in ordo.lignes" :key="lidx">
-                                                {{ ligne.designation || '—' }} | {{ ligne.posologie || '—' }} | {{ ligne.frequence || '—' }} | {{ ligne.duree || '—' }}
-                                            </li>
+                                            <li v-for="(ligne, lidx) in ordo.lignes" :key="lidx">{{ ligne.designation || '—' }} | {{ ligne.posologie || '—' }} | {{ ligne.frequence || '—' }} | {{ ligne.duree || '—' }}</li>
                                         </ul>
                                     </li>
                                 </ul>
@@ -435,300 +719,6 @@
         </template>
     </PrintA4Page>
 </template>
-
-<script setup>
-import { computed } from 'vue';
-import PrintA4Page from './PrintA4Page.vue';
-import PrintDocumentHeader from './PrintDocumentHeader.vue';
-import logoImg from '@/assets/logo.png';
-import { filePrefix } from '@/config';
-
-const props = defineProps({
-    fiche: { type: Object, default: () => ({}) },
-    patient: { type: Object, default: () => ({}) },
-    sections: { type: Array, default: () => [] },
-    printEmpty: { type: Boolean, default: false },
-    logoSrc: { type: String, default: logoImg }
-});
-
-const entretien = computed(() => props.fiche?.entretien || {});
-const examens = computed(() => props.fiche?.examens || {});
-const bilans = computed(() => props.fiche?.bilans || {});
-const documents = computed(() => props.fiche?.documents || []);
-const plans = computed(() => props.fiche?.planTraitement || []);
-const patientAntecedents = computed(() => Array.isArray(props.patient?.antecedents) ? props.patient.antecedents : []);
-const patientAllergies = computed(() => Array.isArray(props.patient?.allergies) ? props.patient.allergies : []);
-const patientSex = computed(() => props.patient?.sexe || props.fiche?.patient?.sexe || props.fiche?.sexe || '');
-const isFemalePatient = computed(() => {
-    const normalized = String(patientSex.value || '')
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .toLowerCase()
-        .trim();
-    return ['f', 'femme', 'feminin', 'female', 'woman'].includes(normalized);
-});
-
-const dentalRows = [
-    { left: [55, 54, 53, 52, 51], right: [61, 62, 63, 64, 65] },
-    { left: [18, 17, 16, 15, 14, 13, 12, 11], right: [21, 22, 23, 24, 25, 26, 27, 28] },
-    { left: [48, 47, 46, 45, 44, 43, 42, 41], right: [31, 32, 33, 34, 35, 36, 37, 38] },
-    { left: [85, 84, 83, 82, 81], right: [71, 72, 73, 74, 75] }
-];
-
-const formatDate = (value) => {
-    if (!value) return '—';
-    const date = value instanceof Date ? value : new Date(value);
-    if (Number.isNaN(date.getTime())) return String(value);
-    return date.toLocaleDateString('fr-FR');
-};
-
-const formatDateTime = (value) => {
-    if (!value) return '—';
-    const date = value instanceof Date ? value : new Date(value);
-    if (Number.isNaN(date.getTime())) return String(value);
-    return `${date.toLocaleDateString('fr-FR')} ${date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`;
-};
-
-const formatBool = (value) => (value === true ? 'Oui' : value === false ? 'Non' : '—');
-
-const hasValue = (value) => {
-    if (props.printEmpty) return true;
-    if (value === null || value === undefined) return false;
-    if (typeof value === 'boolean') return true;
-    if (Array.isArray(value)) return value.length > 0;
-    return String(value).trim() !== '';
-};
-
-const showArray = (value) => (props.printEmpty ? true : Array.isArray(value) && value.length > 0);
-
-const entretienAntecedents = computed(() => {
-    const medicaments = Array.isArray(entretien.value?.medicaments) ? entretien.value.medicaments : [];
-    const affections = Array.isArray(entretien.value?.affections) ? entretien.value.affections : [];
-    return [
-        ...medicaments.map((item, idx) => ({
-            key: `medicament-${item.id ?? item.nom ?? idx}`,
-            type: 'Medicament en cours',
-            nom: item.nom || '—',
-            etat: item.estUtilise,
-            details: item.details || ''
-        })),
-        ...affections.map((item, idx) => ({
-            key: `affection-${item.id ?? item.nom ?? idx}`,
-            type: 'Affection',
-            nom: item.nom || '—',
-            etat: item.estPresente,
-            details: item.details || ''
-        }))
-    ];
-});
-
-const shouldPrint = (key) => {
-    if (!props.sections || props.sections.length === 0) return true;
-    return props.sections.includes(key);
-};
-
-const mapToRows = (map, prefix) =>
-    Object.entries(map || {})
-        .map(([label, value]) => ({
-            key: `${prefix}-${label}`,
-            label,
-            value: typeof value === 'boolean' ? formatBool(value) : value || '—'
-        }))
-        .filter((row) => hasValue(row.value));
-
-const entretienGroups = computed(() => {
-    const groups = [
-        {
-            key: 'entretien',
-            title: 'Anamnese',
-            rows: [
-                { key: 'anamnese', label: 'Anamnese', value: entretien.value?.motifConsultation || '—' }
-            ]
-        },
-        ...(isFemalePatient.value
-            ? [
-                  {
-                      key: 'etat-gynecologique',
-                      title: 'Etat gynecologique',
-                      rows: [
-                          { key: 'allaitement', label: 'Allaitement', value: formatBool(entretien.value?.etatGynecologique?.allaitement) },
-                          { key: 'grossesse', label: 'Grossesse en cours', value: formatBool(entretien.value?.etatGynecologique?.grossesseEnCours) },
-                          { key: 'menstrues', label: 'Menstrues', value: formatBool(entretien.value?.etatGynecologique?.menstrues) }
-                      ]
-                  }
-              ]
-            : [])
-    ];
-
-    return groups
-        .map((group) => ({
-            ...group,
-            rows: group.rows.filter((row) => hasValue(row.value))
-        }))
-        .filter((group) => group.rows.length > 0);
-});
-
-const entretienHasRows = computed(() => entretienGroups.value.length > 0);
-const entretienQuestionsRows = computed(() => {
-    const questions = Array.isArray(entretien.value?.questions) ? entretien.value.questions : [];
-    const habitudes = Array.isArray(entretien.value?.habitudes) ? entretien.value.habitudes : [];
-    return questions.length + habitudes.length;
-});
-
-const examensGroups = computed(() => {
-    const groups = [
-        {
-            key: 'exobuccal-inspection',
-            title: 'Exobuccal - Inspection',
-            rows: mapToRows(examens.value?.exobuccalInspection, 'exobuccalInspection')
-        },
-        {
-            key: 'exobuccal-palpation',
-            title: 'Exobuccal - Palpation',
-            rows: mapToRows(examens.value?.exobuccalPalpation, 'exobuccalPalpation')
-        },
-        {
-            key: 'chaines-ganglionnaires',
-            title: 'Chaines ganglionnaires',
-            rows: mapToRows(examens.value?.chainesGanglionnaires, 'chainesGanglionnaires')
-        },
-        {
-            key: 'endobuccal-fermee',
-            title: 'Endobuccal - Bouche fermee',
-            rows: [
-                { key: 'occlusion', label: 'Occlusion', value: examens.value?.endobuccalBoucheFermee?.occlusion || '—' },
-                { key: 'mediane', label: 'Mediane', value: examens.value?.endobuccalBoucheFermee?.mediane || '—' },
-                { key: 'classesAngle', label: "Classes d'Angle", value: examens.value?.endobuccalBoucheFermee?.classesAngle || '—' },
-                { key: 'vestibules', label: 'Vestibules', value: examens.value?.endobuccalBoucheFermee?.vestibules || '—' }
-            ].filter((row) => hasValue(row.value))
-        },
-        {
-            key: 'endobuccal-ouverte',
-            title: 'Endobuccal - Bouche ouverte',
-            rows: [
-                { key: 'hbd', label: 'HBD', value: examens.value?.endobuccalBoucheOuverte?.hbd || '—' },
-                { key: 'brossage', label: 'Brossage', value: examens.value?.endobuccalBoucheOuverte?.brossage || '—' },
-                { key: 'soccu', label: 'Soccu', value: examens.value?.endobuccalBoucheOuverte?.soccu || '—' },
-                { key: 'cinematique', label: 'Cinematique mandibulaire', value: examens.value?.endobuccalBoucheOuverte?.cinematiqueMandibulaire || '—' },
-                { key: 'ouverture', label: 'Ouverture buccale', value: examens.value?.endobuccalBoucheOuverte?.ouvertureBuccale || '—' },
-                { key: 'temperature', label: 'Temperature buccale', value: examens.value?.endobuccalBoucheOuverte?.temperatureBuccale || '—' },
-                { key: 'amplitude', label: "Amplitude d'ouverture", value: examens.value?.endobuccalBoucheOuverte?.amplitudeOuverture || '—' },
-                { key: 'bruits', label: 'Bruits articulaires', value: examens.value?.endobuccalBoucheOuverte?.bruitsArticulaires || '—' }
-            ].filter((row) => hasValue(row.value))
-        },
-        {
-            key: 'endobuccal-canaux',
-            title: 'Endobuccal - Canaux excreteurs',
-            rows: [
-                { key: 'canaux', label: 'Examens des canaux excreteurs', value: examens.value?.examenCanauxExcreteurs || '—' }
-            ].filter((row) => hasValue(row.value))
-        }
-    ];
-
-    return groups.filter((group) => group.rows.length > 0);
-});
-
-const examensHasRows = computed(() => examensGroups.value.length > 0);
-
-const tissusMousColumns = ['Levres', 'Joues', 'Langue', 'Gencive', 'Plancher', 'Voile', 'Freins'];
-const tissusMousRows = ['Couleur', 'Consistance', 'Volume', 'Lesions', 'Tumeurs', 'Inflammation'];
-const tissusDursColumns = ['Rempart alveolaire interne et externe', 'Palais'];
-const tissusDursRows = ['Forme', 'Lesions', 'Excroissance osseuse'];
-
-const getCrossValue = (table, row, col) => {
-    const value = table?.[row]?.[col];
-    if (hasValue(value)) return value;
-    return props.printEmpty ? '—' : '';
-};
-
-const getExtension = (value) => {
-    if (!value) return '';
-    const cleaned = value.split('?')[0].split('#')[0];
-    const parts = cleaned.split('.');
-    return parts.length > 1 ? parts.pop().toLowerCase() : '';
-};
-
-const isImageExtension = (extension) => ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg'].includes(extension);
-
-const resolveUrl = (url) => {
-    if (!url || typeof url !== 'string') return '';
-    if (/^https?:\/\//i.test(url) || url.startsWith('blob:') || url.startsWith('data:')) return url;
-    const prefix = filePrefix.replace(/\/$/, '');
-    return `${prefix}/${url.replace(/^\//, '')}`;
-};
-
-const buildEntries = (doc, docIndex) => {
-    const urls = Array.isArray(doc?.urls) ? doc.urls : doc?.url ? [doc.url] : [];
-    return urls
-        .map((url, fileIndex) => {
-            const extension = getExtension(url);
-            return {
-                entryKey: `${docIndex}-url-${fileIndex}`,
-                isImage: isImageExtension(extension),
-                previewSrc: resolveUrl(url),
-                fileName: url?.split('/').pop() || 'fichier'
-            };
-        })
-        .filter((entry) => props.printEmpty || entry.previewSrc);
-};
-
-const documentsView = computed(() =>
-    (documents.value || [])
-        .map((doc, index) => ({
-            title: doc?.libelle || doc?.type || `Document ${index + 1}`,
-            type: doc?.type || 'Document',
-            entries: buildEntries(doc, index)
-        }))
-        .filter((doc) => props.printEmpty || doc.entries.length > 0)
-);
-
-const sortedPlans = computed(() => {
-    const list = plans.value || [];
-    return [...list].sort((a, b) => {
-        const da = a?.dateSupposed ? new Date(a.dateSupposed).getTime() : null;
-        const db = b?.dateSupposed ? new Date(b.dateSupposed).getTime() : null;
-        if (!da && !db) return 0;
-        if (!da) return 1;
-        if (!db) return -1;
-        return da - db;
-    });
-});
-
-const toothEtat = (tooth) => {
-    const entry = bilans.value?.bilanDentaire?.formuleDentaire?.[tooth];
-    if (!entry?.etat || entry.etat.length === 0) return '';
-    return Array.isArray(entry.etat) ? entry.etat.join('-') : String(entry.etat);
-};
-
-const resolveToothState = (tooth) => {
-    const entry = bilans.value?.bilanDentaire?.formuleDentaire?.[tooth];
-    if (!entry) return null;
-    if (entry.estCausale) return 'CAUSALE';
-    const etats = Array.isArray(entry.etat) ? entry.etat : [];
-    const order = ['C', 'O', 'MP', 'E', 'A', 'M', 'I', 'P', 'BONNE'];
-    for (const code of order) {
-        if (etats.includes(code)) return code;
-    }
-    return etats[0] || null;
-};
-
-const toothClass = (tooth) => {
-    const state = resolveToothState(tooth);
-    return state ? `tooth-${state.toLowerCase()}` : 'tooth-empty';
-};
-
-const etatLegend = [
-    { code: 'BONNE', label: 'Bonne' },
-    { code: 'C', label: 'Carie' },
-    { code: 'O', label: 'Obturee' },
-    { code: 'MP', label: 'Malposition' },
-    { code: 'E', label: 'Enclavee' },
-    { code: 'A', label: 'Absente' },
-    { code: 'M', label: 'Mobile' },
-    { code: 'I', label: 'Incluse' },
-    { code: 'P', label: 'Prothese' }
-];
-</script>
 
 <style scoped>
 h2 {
@@ -754,7 +744,7 @@ table {
 }
 
 th,
- td {
+td {
     border: 1px solid #cfd8e3;
     padding: 8px 10px;
     text-align: left;

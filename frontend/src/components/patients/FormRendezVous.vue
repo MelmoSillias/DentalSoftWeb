@@ -179,33 +179,28 @@ const handlePatientFilter = (event) => {
     }, 250);
 };
 
-const medecinOptions = computed(() =>
-    {
-        const options = medecins.value.map((m) => ({
-            label: m.label || m.fullName || m.fullname || m.name || `${m.prenom ?? ''} ${m.nom ?? ''}`.trim() || m.nom || 'Médecin',
-            value: m.id
-        }));
+const medecinOptions = computed(() => {
+    const options = medecins.value.map((m) => ({
+        label: m.label || m.fullName || m.fullname || m.name || `${m.prenom ?? ''} ${m.nom ?? ''}`.trim() || m.nom || 'Médecin',
+        value: m.id
+    }));
 
-        if (
-            isMedecinUser.value
-            && selectedMedecinId.value
-            && !options.some((opt) => Number(opt.value) === Number(selectedMedecinId.value))
-        ) {
-            options.unshift({
-                label: connectedMedecinDisplayName.value || `Médecin #${selectedMedecinId.value}`,
-                value: selectedMedecinId.value
-            });
-        }
-
-        return options;
+    if (isMedecinUser.value && selectedMedecinId.value && !options.some((opt) => Number(opt.value) === Number(selectedMedecinId.value))) {
+        options.unshift({
+            label: connectedMedecinDisplayName.value || `Médecin #${selectedMedecinId.value}`,
+            value: selectedMedecinId.value
+        });
     }
-);
 
-const normalizeText = (value) => String(value || '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .trim();
+    return options;
+});
+
+const normalizeText = (value) =>
+    String(value || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim();
 
 const resolveConnectedMedecinId = () => {
     const user = auth.user || {};
@@ -232,11 +227,7 @@ const connectedMedecinDisplayName = computed(() => {
     return fullName || user.fullName || user.name || user.username || '';
 });
 
-watch(
-    () => [props.initialMedecinId, props.lockedMedecinId, isMedecinUser.value, medecins.value.length],
-    applyMedecinSelection,
-    { immediate: true }
-);
+watch(() => [props.initialMedecinId, props.lockedMedecinId, isMedecinUser.value, medecins.value.length], applyMedecinSelection, { immediate: true });
 
 const isMedecinLocked = computed(() => isMedecinUser.value || props.medecinReadonly);
 
@@ -250,13 +241,14 @@ const smsReminderFirstAt = computed(() => {
         return null;
     }
 
-    const daysBefore = {
-        '7d': 7,
-        '5d': 5,
-        '3d': 3,
-        '2d': 2,
-        '1d': 1
-    }[smsReminder.timing] ?? 1;
+    const daysBefore =
+        {
+            '7d': 7,
+            '5d': 5,
+            '3d': 3,
+            '2d': 2,
+            '1d': 1
+        }[smsReminder.timing] ?? 1;
 
     const sendAt = new Date(dateObj);
     sendAt.setDate(sendAt.getDate() - daysBefore);
@@ -271,11 +263,15 @@ const canRepeatSmsReminder = computed(() => {
     return smsReminderFirstAt.value instanceof Date && smsReminderFirstAt.value.getTime() > Date.now();
 });
 
-watch(canRepeatSmsReminder, (allowed) => {
-    if (!allowed) {
-        smsReminder.repeatInterval = 'none';
-    }
-}, { immediate: true });
+watch(
+    canRepeatSmsReminder,
+    (allowed) => {
+        if (!allowed) {
+            smsReminder.repeatInterval = 'none';
+        }
+    },
+    { immediate: true }
+);
 
 const saveRendezVous = async () => {
     if (!selectedPatientId.value) {
@@ -311,7 +307,7 @@ const saveRendezVous = async () => {
             time: timeStr,
             duration,
             description: form.motif,
-            notes: form.notes,
+            notes: form.notes
         };
 
         if (isInternetFeaturesEnabled.value) {
@@ -324,9 +320,7 @@ const saveRendezVous = async () => {
         toast.add({
             severity: 'success',
             summary: 'Succès',
-            detail: saved?.sms_queued_count > 0
-                ? `Rendez-vous créé. ${saved.sms_queued_count} SMS programmé(s).`
-                : 'Rendez-vous créé.',
+            detail: saved?.sms_queued_count > 0 ? `Rendez-vous créé. ${saved.sms_queued_count} SMS programmé(s).` : 'Rendez-vous créé.',
             life: 3000
         });
         emit('saved', saved);
@@ -341,7 +335,7 @@ const saveRendezVous = async () => {
         }
     } catch (error) {
         logAppError('Erreur lors de la création du rendez-vous', error);
-        toast.add({ severity: 'error', summary: 'Erreur', detail: "Impossible de créer le rendez-vous.", life: 3000 });
+        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de créer le rendez-vous.', life: 3000 });
     } finally {
         loading.value = false;
     }
@@ -365,8 +359,15 @@ const handleSubmit = (event) => {
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4" data-tour="patients-form-rdv.details">
             <div class="flex flex-col gap-2" v-if="!isPatientPreselected">
                 <label class="font-semibold">Patient <span class="text-red-500">*</span></label>
-                <Select v-model="selectedPatientId" :options="patientOptions" optionLabel="label" optionValue="value"
-                    placeholder="Choisir un patient" class="w-full" filter :loading="patientsLoading"
+                <Select
+                    v-model="selectedPatientId"
+                    :options="patientOptions"
+                    optionLabel="label"
+                    optionValue="value"
+                    placeholder="Choisir un patient"
+                    class="w-full"
+                    filter
+                    :loading="patientsLoading"
                     :filterFields="['label', 'phone', 'searchText']"
                     @filter="handlePatientFilter"
                 >
@@ -384,13 +385,11 @@ const handleSubmit = (event) => {
             </div>
             <div class="flex flex-col gap-2">
                 <label class="font-semibold">Médecin <span class="text-red-500">*</span></label>
-                <Select v-model="selectedMedecinId" :options="medecinOptions" optionLabel="label" optionValue="value"
-                    placeholder="Choisir un médecin" class="w-full" :disabled="isMedecinLocked" />
+                <Select v-model="selectedMedecinId" :options="medecinOptions" optionLabel="label" optionValue="value" placeholder="Choisir un médecin" class="w-full" :disabled="isMedecinLocked" />
             </div>
             <div class="flex flex-col gap-2">
                 <label class="font-semibold">Durée (minutes) <span class="text-red-500">*</span></label>
-                <InputNumber v-model="form.duration" :min="1" showButtons buttonLayout="horizontal"
-                    decrementButtonClass="p-button-outlined" incrementButtonClass="p-button-outlined" />
+                <InputNumber v-model="form.duration" :min="1" showButtons buttonLayout="horizontal" decrementButtonClass="p-button-outlined" incrementButtonClass="p-button-outlined" />
             </div>
             <div class="flex flex-col gap-2">
                 <label class="font-semibold">Motif</label>

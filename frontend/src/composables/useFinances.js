@@ -68,9 +68,7 @@ const defaultDayOverviewState = () => ({
 const buildMockDayOverview = (date) => {
     const safeDate = date || new Date().toISOString().slice(0, 10);
     const parsed = new Date(`${safeDate}T12:00:00`);
-    const dateLabel = Number.isNaN(parsed.getTime())
-        ? safeDate
-        : parsed.toLocaleDateString('fr-FR');
+    const dateLabel = Number.isNaN(parsed.getTime()) ? safeDate : parsed.toLocaleDateString('fr-FR');
 
     return {
         ...defaultDayOverviewState(),
@@ -138,7 +136,7 @@ const buildMockCrossTable = ({ year, month, type }) => {
     const lastDay = new Date(safeYear, safeMonth, 0).getDate();
     const weeksCount = Math.ceil(lastDay / 7);
     const weeks = Array.from({ length: weeksCount }, (_, index) => {
-        const startDay = (index * 7) + 1;
+        const startDay = index * 7 + 1;
         const endDay = Math.min((index + 1) * 7, lastDay);
         return {
             index: index + 1,
@@ -162,9 +160,7 @@ const buildMockCrossTable = ({ year, month, type }) => {
         };
     });
 
-    const columnTotals = Array.from({ length: weeksCount }, (_, columnIndex) =>
-        rows.reduce((sum, row) => sum + Number(row.values[columnIndex] || 0), 0)
-    );
+    const columnTotals = Array.from({ length: weeksCount }, (_, columnIndex) => rows.reduce((sum, row) => sum + Number(row.values[columnIndex] || 0), 0));
 
     return {
         ...defaultCrossTableState(),
@@ -300,10 +296,11 @@ export function useFinances() {
         error.value = null;
         try {
             if (isFinancesTourMockEnabled()) {
-                const nextId = (assurances.value || []).reduce((maxId, item) => {
-                    const id = Number(item?.id || 0);
-                    return id > maxId ? id : maxId;
-                }, 0) + 1;
+                const nextId =
+                    (assurances.value || []).reduce((maxId, item) => {
+                        const id = Number(item?.id || 0);
+                        return id > maxId ? id : maxId;
+                    }, 0) + 1;
 
                 const item = {
                     id: nextId,
@@ -340,9 +337,13 @@ export function useFinances() {
                 return assurances.value.find((item) => (item?.code || '') === code) || null;
             }
 
-            const res = await http.patch(`${apiPrefix}/assurances/${encodeURIComponent(code)}/toggle`, {}, {
-                headers: buildHeaders(true)
-            });
+            const res = await http.patch(
+                `${apiPrefix}/assurances/${encodeURIComponent(code)}/toggle`,
+                {},
+                {
+                    headers: buildHeaders(true)
+                }
+            );
 
             return res.data ?? null;
         } catch (err) {
@@ -365,12 +366,8 @@ export function useFinances() {
                     return {
                         ...item,
                         nom: payload?.nom !== undefined ? String(payload.nom || '').trim() : item.nom,
-                        website: payload?.website !== undefined
-                            ? (String(payload.website || '').trim() || null)
-                            : item.website,
-                        email: payload?.email !== undefined
-                            ? (String(payload.email || '').trim() || null)
-                            : item.email
+                        website: payload?.website !== undefined ? String(payload.website || '').trim() || null : item.website,
+                        email: payload?.email !== undefined ? String(payload.email || '').trim() || null : item.email
                     };
                 });
 
@@ -383,9 +380,7 @@ export function useFinances() {
 
             const updated = res.data ?? null;
             if (updated?.code) {
-                assurances.value = (assurances.value || []).map((item) => (
-                    (item?.code || '') === updated.code ? { ...item, ...updated } : item
-                ));
+                assurances.value = (assurances.value || []).map((item) => ((item?.code || '') === updated.code ? { ...item, ...updated } : item));
             }
 
             return updated;
@@ -421,12 +416,16 @@ export function useFinances() {
         loading.value.action = true;
         error.value = null;
         try {
-            const res = await http.post(`${apiPrefix}/finances/fixed-charges`, {
-                designation: payload?.designation || '',
-                montant: Number(payload?.montant || 0)
-            }, {
-                headers: buildHeaders(true)
-            });
+            const res = await http.post(
+                `${apiPrefix}/finances/fixed-charges`,
+                {
+                    designation: payload?.designation || '',
+                    montant: Number(payload?.montant || 0)
+                },
+                {
+                    headers: buildHeaders(true)
+                }
+            );
             return res.data ?? null;
         } catch (err) {
             handleError(err);
@@ -439,12 +438,16 @@ export function useFinances() {
         loading.value.action = true;
         error.value = null;
         try {
-            const res = await http.put(`${apiPrefix}/finances/fixed-charges/${id}`, {
-                designation: payload?.designation || '',
-                montant: Number(payload?.montant || 0)
-            }, {
-                headers: buildHeaders(true)
-            });
+            const res = await http.put(
+                `${apiPrefix}/finances/fixed-charges/${id}`,
+                {
+                    designation: payload?.designation || '',
+                    montant: Number(payload?.montant || 0)
+                },
+                {
+                    headers: buildHeaders(true)
+                }
+            );
             return res.data ?? null;
         } catch (err) {
             handleError(err);
@@ -640,11 +643,7 @@ export function useFinances() {
                 return toggleFinancesPaymentMethodTourMock(id);
             }
 
-            const res = await http.patch(
-                `${apiPrefix}/payment-methods/${id}/toggle`,
-                {},
-                { headers: buildHeaders(false) }
-            );
+            const res = await http.patch(`${apiPrefix}/payment-methods/${id}/toggle`, {}, { headers: buildHeaders(false) });
             return res.data ?? null;
         } catch (err) {
             handleError(err);

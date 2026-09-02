@@ -51,7 +51,11 @@ const consultationOptions = [
 ];
 
 const localVisible = ref(props.visible);
-watch(() => props.visible, (v) => (localVisible.value = v), { immediate: true });
+watch(
+    () => props.visible,
+    (v) => (localVisible.value = v),
+    { immediate: true }
+);
 watch(localVisible, (v) => emit('update:visible', v));
 
 const resetForm = () => {
@@ -86,11 +90,7 @@ watch(createConsultation, (yes) => {
     medecinId.value = props.lockedMedecinId ?? props.rdv?.medecinId ?? medecinId.value ?? null;
 });
 
-const canSubmit = computed(() => (
-    !createConsultation.value
-    || !props.requireMedecinOnConsultationCreation
-    || Boolean(medecinId.value)
-));
+const canSubmit = computed(() => !createConsultation.value || !props.requireMedecinOnConsultationCreation || Boolean(medecinId.value));
 
 const close = () => (localVisible.value = false);
 
@@ -102,9 +102,7 @@ const confirm = () => {
     emit('confirm', {
         id: props.rdv?.id,
         createConsultation: createConsultation.value,
-        medecinId: createConsultation.value
-            ? (props.medecinReadonly ? (props.lockedMedecinId ?? medecinId.value) : medecinId.value)
-            : null
+        medecinId: createConsultation.value ? (props.medecinReadonly ? (props.lockedMedecinId ?? medecinId.value) : medecinId.value) : null
     });
     close();
 };
@@ -113,24 +111,12 @@ const confirm = () => {
 <template>
     <Dialog v-model:visible="localVisible" modal header="Valider le rendez-vous" style="width: 440px" @hide="close">
         <div class="flex flex-col gap-4">
-            <p class="text-sm text-surface-700 dark:text-surface-300">
-                Confirmer la validation de ce rendez-vous ?
-            </p>
+            <p class="text-sm text-surface-700 dark:text-surface-300">Confirmer la validation de ce rendez-vous ?</p>
 
             <div class="flex flex-col gap-2">
-                <label class="text-sm font-medium text-surface-800 dark:text-surface-100">
-                    Créer une consultation maintenant ?
-                </label>
-                <SelectButton
-                    v-model="createConsultation"
-                    :options="consultationOptions"
-                    option-label="label"
-                    option-value="value"
-                    aria-labelledby="validate-rdv-create-consultation"
-                />
-                <p v-if="!createConsultation" class="text-xs text-surface-500 dark:text-surface-400">
-                    Le rendez-vous sera validé sans consultation ni attribution de médecin.
-                </p>
+                <label class="text-sm font-medium text-surface-800 dark:text-surface-100"> Créer une consultation maintenant ? </label>
+                <SelectButton v-model="createConsultation" :options="consultationOptions" option-label="label" option-value="value" aria-labelledby="validate-rdv-create-consultation" />
+                <p v-if="!createConsultation" class="text-xs text-surface-500 dark:text-surface-400">Le rendez-vous sera validé sans consultation ni attribution de médecin.</p>
             </div>
 
             <div v-if="createConsultation" class="flex flex-col gap-2">
@@ -139,30 +125,15 @@ const confirm = () => {
                     <span v-if="requireMedecinOnConsultationCreation" class="text-red-500">*</span>
                     <span v-else class="text-surface-500 dark:text-surface-400 font-normal"> (optionnel)</span>
                 </label>
-                <Select
-                    v-model="medecinId"
-                    :options="medecins"
-                    option-label="name"
-                    option-value="id"
-                    placeholder="Choisir le médecin"
-                    :disabled="medecinReadonly"
-                />
-                <p v-if="requireMedecinOnConsultationCreation && !medecinId" class="text-xs text-amber-600 dark:text-amber-400">
-                    Un médecin est obligatoire pour créer la consultation.
-                </p>
+                <Select v-model="medecinId" :options="medecins" option-label="name" option-value="id" placeholder="Choisir le médecin" :disabled="medecinReadonly" />
+                <p v-if="requireMedecinOnConsultationCreation && !medecinId" class="text-xs text-amber-600 dark:text-amber-400">Un médecin est obligatoire pour créer la consultation.</p>
             </div>
         </div>
 
         <template #footer>
             <div class="flex justify-end gap-2">
                 <Button label="Annuler" text severity="secondary" @click="close" />
-                <Button
-                    label="Valider"
-                    icon="pi pi-check"
-                    :loading="loading"
-                    :disabled="!canSubmit"
-                    @click="confirm"
-                />
+                <Button label="Valider" icon="pi pi-check" :loading="loading" :disabled="!canSubmit" @click="confirm" />
             </div>
         </template>
     </Dialog>

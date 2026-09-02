@@ -217,13 +217,15 @@ export function deleteConsumableTourMock(consumableId) {
 export function fetchStockVariationsTourMock(consumableId = null, start = '', end = '') {
     const startDate = start instanceof Date ? start.toISOString().slice(0, 10) : String(start || '').slice(0, 10);
     const endDate = end instanceof Date ? end.toISOString().slice(0, 10) : String(end || '').slice(0, 10);
-    return cloneValue(adminTourMockState.stockVariations.filter((item) => {
-        const itemDate = String(item.date || '').slice(0, 10);
-        const consumableOk = consumableId ? Number(item.consumableId) === Number(consumableId) : true;
-        const startOk = startDate ? itemDate >= startDate : true;
-        const endOk = endDate ? itemDate <= endDate : true;
-        return consumableOk && startOk && endOk;
-    }));
+    return cloneValue(
+        adminTourMockState.stockVariations.filter((item) => {
+            const itemDate = String(item.date || '').slice(0, 10);
+            const consumableOk = consumableId ? Number(item.consumableId) === Number(consumableId) : true;
+            const startOk = startDate ? itemDate >= startDate : true;
+            const endOk = endDate ? itemDate <= endDate : true;
+            return consumableOk && startOk && endOk;
+        })
+    );
 }
 
 export function fetchEmployeesTourMock() {

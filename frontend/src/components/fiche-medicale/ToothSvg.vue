@@ -21,12 +21,7 @@ const flipTransform = computed(() => (upper.value ? undefined : 'translate(0 160
 </script>
 
 <template>
-    <svg
-        viewBox="0 0 100 160"
-        xmlns="http://www.w3.org/2000/svg"
-        class="formule-tooth-svg block h-full w-full"
-        aria-hidden="true"
-    >
+    <svg viewBox="0 0 100 160" xmlns="http://www.w3.org/2000/svg" class="formule-tooth-svg block h-full w-full" aria-hidden="true">
         <defs>
             <!-- Ombrage émail : plus clair vers l'apex radiculaire, plus dense vers la couronne -->
             <linearGradient :id="`${uid}-enamel`" x1="0" y1="0" x2="0" y2="160" gradientUnits="userSpaceOnUse">
@@ -43,14 +38,7 @@ const flipTransform = computed(() => (upper.value ? undefined : 'translate(0 160
             </linearGradient>
         </defs>
 
-        <g
-            :transform="flipTransform"
-            :fill="`url(#${uid}-enamel)`"
-            stroke="currentColor"
-            stroke-width="3"
-            stroke-linejoin="round"
-            stroke-linecap="round"
-        >
+        <g :transform="flipTransform" :fill="`url(#${uid}-enamel)`" stroke="currentColor" stroke-width="3" stroke-linejoin="round" stroke-linecap="round">
             <!-- ================= INCISIVE CENTRALE ================= -->
             <template v-if="model === 'incisor-central'">
                 <path d="M50 12 C45.5 30 44.5 46 46 74 L54 74 C55.5 46 54.5 30 50 12 Z" />

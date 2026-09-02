@@ -1,14 +1,5 @@
 import { ref } from 'vue';
-import {
-    createPayroll,
-    deletePayroll,
-    fetchPayroll,
-    fetchPayrollContext,
-    fetchPayrollPaymentMethods,
-    fetchPayrollPrintPayload,
-    fetchPayrolls,
-    updatePayroll
-} from '@/services/rhManagementService';
+import { createPayroll, deletePayroll, fetchPayroll, fetchPayrollContext, fetchPayrollPaymentMethods, fetchPayrollPrintPayload, fetchPayrolls, updatePayroll } from '@/services/rhManagementService';
 
 const payrolls = ref([]);
 const totalRecords = ref(0);
@@ -25,13 +16,16 @@ export function usePayrolls() {
         loading.value = true;
         error.value = null;
         try {
-            const data = await fetchPayrolls({
-                start: page * rows,
-                length: rows,
-                employeeId,
-                month,
-                year
-            }, getToken());
+            const data = await fetchPayrolls(
+                {
+                    start: page * rows,
+                    length: rows,
+                    employeeId,
+                    month,
+                    year
+                },
+                getToken()
+            );
 
             payrolls.value = Array.isArray(data.data) ? data.data : [];
             totalRecords.value = data.recordsFiltered ?? data.recordsTotal ?? payrolls.value.length;

@@ -48,46 +48,48 @@ function buildOverviewSteps(ctx) {
 
 export const administrationGestionrhRegistry = createTourRegistry(GROUP, TASKS, {
     overview: buildOverviewSteps,
-    'add-employee': (ctx) => normalizeTourSteps([
-        {
-            group: GROUP,
-            target: '[data-tour="admin-rh.header"]',
-            title: 'Ajouter un employe',
-            content: 'Depuis la page RH, ouvrez le formulaire pour creer un nouveau collaborateur.'
-        },
-        {
-            group: GROUP,
-            target: '[data-tour="admin-rh.dialog.form"]',
-            title: 'Formulaire RH',
-            content: 'Renseignez donnees personnelles, informations contractuelles, salaire et documents administratifs.',
-            beforeEnter: async () => {
-                await ctx.expandGroups?.();
-                await openDialogStep(ctx.openCreateDialog, ctx.closeAllDialogs);
+    'add-employee': (ctx) =>
+        normalizeTourSteps([
+            {
+                group: GROUP,
+                target: '[data-tour="admin-rh.header"]',
+                title: 'Ajouter un employe',
+                content: 'Depuis la page RH, ouvrez le formulaire pour creer un nouveau collaborateur.'
+            },
+            {
+                group: GROUP,
+                target: '[data-tour="admin-rh.dialog.form"]',
+                title: 'Formulaire RH',
+                content: 'Renseignez donnees personnelles, informations contractuelles, salaire et documents administratifs.',
+                beforeEnter: async () => {
+                    await ctx.expandGroups?.();
+                    await openDialogStep(ctx.openCreateDialog, ctx.closeAllDialogs);
+                }
             }
-        }
-    ]),
-    'manage-contracts': (ctx) => normalizeTourSteps([
-        {
-            group: GROUP,
-            target: '[data-tour="admin-rh.actions"]',
-            title: 'Modifier un employe',
-            content: 'Utilisez l action edition sur une ligne pour mettre a jour le contrat ou le salaire.',
-            beforeEnter: async () => {
-                await ctx.expandGroups?.();
-                await flushUi();
+        ]),
+    'manage-contracts': (ctx) =>
+        normalizeTourSteps([
+            {
+                group: GROUP,
+                target: '[data-tour="admin-rh.actions"]',
+                title: 'Modifier un employe',
+                content: 'Utilisez l action edition sur une ligne pour mettre a jour le contrat ou le salaire.',
+                beforeEnter: async () => {
+                    await ctx.expandGroups?.();
+                    await flushUi();
+                }
+            },
+            {
+                group: GROUP,
+                target: '[data-tour="admin-rh.dialog.form"]',
+                title: 'Formulaire de modification',
+                content: 'La modale permet de corriger un contrat, ajuster un salaire ou completer les informations RH.',
+                beforeEnter: async () => {
+                    await ctx.expandGroups?.();
+                    await openDialogStep(ctx.openEditDialog, ctx.closeAllDialogs);
+                }
             }
-        },
-        {
-            group: GROUP,
-            target: '[data-tour="admin-rh.dialog.form"]',
-            title: 'Formulaire de modification',
-            content: 'La modale permet de corriger un contrat, ajuster un salaire ou completer les informations RH.',
-            beforeEnter: async () => {
-                await ctx.expandGroups?.();
-                await openDialogStep(ctx.openEditDialog, ctx.closeAllDialogs);
-            }
-        }
-    ])
+        ])
 });
 
 export function buildAdministrationGestionRHTourSteps(taskId, variantId, ctx) {

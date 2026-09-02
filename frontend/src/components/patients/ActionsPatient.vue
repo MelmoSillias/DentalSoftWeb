@@ -71,6 +71,5 @@ const actions = computed(() => {
 </script>
 
 <template>
-    <ActionsComposants :actions="actions" :show-labels="!compact" dropdown-label="Actions"
-        dropdown-icon="pi pi-ellipsis-v" dropdown-severity="info" />
+    <ActionsComposants :actions="actions" :show-labels="!compact" dropdown-label="Actions" dropdown-icon="pi pi-ellipsis-v" dropdown-severity="info" />
 </template>

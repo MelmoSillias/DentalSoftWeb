@@ -1,552 +1,3 @@
-<template>
-    <section class="min-h-screen bg-gradient-to-br from-surface-50 via-surface-50/80 to-surface-100/60 p-4 transition-colors duration-300 dark:from-surface-900 dark:via-surface-900/80 dark:to-surface-800/90 md:p-6 lg:p-8">
-        <AppToast />
-        <ConfirmPopup />
-
-        <div class="mb-6 md:mb-8">
-            <div class="mb-6 flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
-                <div class="space-y-3" data-tour="admin-finances.header">
-                    <div class="flex items-center gap-4">
-                        <div class="rounded-2xl bg-gradient-to-br from-primary-500 to-primary-600 p-3 shadow-lg">
-                            <i class="pi pi-wallet text-2xl text-white"></i>
-                        </div>
-                        <div>
-                            <h1 class="text-3xl font-bold tracking-tight text-surface-900 dark:text-surface-50 lg:text-4xl">
-                                Tableau de bord financier
-                            </h1>
-                            <p class="mt-1 text-sm text-surface-600 dark:text-surface-300 md:text-base">
-                                Transactions, validations manuelles, modes de paiement et assurances séparés
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="flex flex-wrap items-center gap-3">
-                    <Button
-                        label="Nouvelle transaction"
-                        icon="pi pi-plus"
-                        class="rounded-xl border-0 bg-gradient-to-r from-primary-500 to-primary-600 px-5 py-3 font-medium text-white shadow-lg transition-all duration-300 hover:from-primary-600 hover:to-primary-700 hover:shadow-xl"
-                        @click="openTransactionDialog" />
-                </div>
-            </div>
-
-            <div class="rounded-2xl border border-surface-200/70 bg-surface-0/80 p-4 shadow-sm backdrop-blur-sm dark:border-surface-700/50 dark:bg-surface-800/80">
-                <Breadcrumb :home="breadcrumbHome" :model="breadcrumbItems" class="text-sm" />
-            </div>
-        </div>
-
-        <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4" data-tour="admin-finances.kpi">
-            <article class="rounded-2xl border border-primary-200/70 bg-gradient-to-br from-primary-50/80 to-primary-100/50 p-5 shadow-md backdrop-blur-sm dark:border-primary-800/40 dark:from-primary-900/30 dark:to-primary-800/20">
-                <div class="flex items-center justify-between gap-4">
-                    <div class="min-w-0 flex-1">
-                        <p class="text-xs font-medium text-primary-700 dark:text-primary-300 sm:text-sm">Capital total</p>
-                        <p class="mt-2 truncate text-lg font-bold tracking-tight text-primary-900 dark:text-primary-100 sm:text-xl lg:text-2xl">
-                            {{ formatFcfa(capitalTotal) }}
-                        </p>
-                        <p class="mt-1 truncate text-xs text-primary-600/70 dark:text-primary-400/70">Tous comptes confondus</p>
-                    </div>
-                    <div class="flex-shrink-0 rounded-lg bg-primary-500/10 p-2 dark:bg-primary-500/20">
-                        <i class="pi pi-database text-lg text-primary-500 sm:text-xl"></i>
-                    </div>
-                </div>
-            </article>
-
-
-            <article class="rounded-2xl border border-amber-200/70 bg-gradient-to-br from-amber-50/80 to-amber-100/50 p-5 shadow-md backdrop-blur-sm dark:border-amber-800/40 dark:from-amber-900/20 dark:to-amber-800/20">
-                <div class="flex items-center justify-between gap-4">
-                    <div class="min-w-0 flex-1">
-                        <p class="text-xs font-medium text-amber-700 dark:text-amber-300 sm:text-sm">En attente</p>
-                        <p class="mt-2 truncate text-lg font-bold tracking-tight text-amber-900 dark:text-amber-100 sm:text-xl lg:text-2xl">
-                            {{ pendingTransactionsCount }}
-                        </p>
-                        <p class="mt-1 truncate text-xs text-amber-600/70 dark:text-amber-400/70">{{ formatFcfa(pendingTransactionsAmount) }} à valider</p>
-                    </div>
-                    <div class="flex-shrink-0 rounded-lg bg-amber-500/10 p-2 dark:bg-amber-500/20">
-                        <i class="pi pi-hourglass text-lg text-amber-500 sm:text-xl"></i>
-                    </div>
-                </div>
-            </article>
-
-            <article class="rounded-2xl border border-slate-200/70 bg-gradient-to-br from-slate-50/80 to-slate-100/50 p-5 shadow-md backdrop-blur-sm dark:border-slate-800/40 dark:from-slate-900/20 dark:to-slate-800/20">
-                <div class="flex items-center justify-between gap-4">
-                    <div class="min-w-0 flex-1">
-                        <p class="text-xs font-medium text-slate-600 dark:text-slate-300 sm:text-sm">Modes actifs</p>
-                        <p class="mt-2 truncate text-lg font-bold tracking-tight text-slate-900 dark:text-surface-100 sm:text-xl lg:text-2xl">
-                            {{ comptesActifsCount }}
-                        </p>
-                        <p class="mt-1 truncate text-xs text-slate-500/70 dark:text-slate-400/70">{{ assurancesCount }} assurance(s) configurée(s)</p>
-                    </div>
-                    <div class="flex-shrink-0 rounded-lg bg-slate-500/10 p-2 dark:bg-slate-500/20">
-                        <i class="pi pi-credit-card text-lg text-slate-500 sm:text-xl"></i>
-                    </div>
-                </div>
-            </article>
-
-            <article class="rounded-2xl border border-rose-200/70 bg-gradient-to-br from-rose-50/80 to-rose-100/50 p-5 shadow-md backdrop-blur-sm dark:border-rose-800/40 dark:from-rose-900/20 dark:to-rose-800/20">
-                <div class="flex items-center justify-between gap-4">
-                    <div class="min-w-0 flex-1">
-                        <p class="text-xs font-medium text-rose-700 dark:text-rose-300 sm:text-sm">Charges fixes</p>
-                        <p class="mt-2 truncate text-lg font-bold tracking-tight text-rose-900 dark:text-rose-100 sm:text-xl lg:text-2xl">
-                            {{ formatFcfa(fixedChargesTotal) }}
-                        </p>
-                        <p class="mt-1 truncate text-xs text-rose-600/70 dark:text-rose-400/70">{{ fixedCharges.length }} charge(s) configurée(s)</p>
-                    </div>
-                    <div class="flex-shrink-0 rounded-lg bg-rose-500/10 p-2 dark:bg-rose-500/20">
-                        <i class="pi pi-building-columns text-lg text-rose-500 sm:text-xl"></i>
-                    </div>
-                </div>
-            </article>
-        </div>
-
-        <Tabs :value="activeTab" @update:value="setActiveTab">
-            <TabList data-tour="admin-finances.tabs">
-                <Tab value="transactions">Transactions</Tab>
-                <Tab value="payment-methods">Mode de paiement</Tab>
-                <Tab value="insurances">Assurances</Tab>
-                <Tab value="fixed-charges">Charges fixes</Tab>
-                <Tab value="charts">Graphiques</Tab>
-            </TabList>
-
-            <TabPanels class="mt-4">
-                <TabPanel value="transactions">
-                    <div class="space-y-6">
-                        <FinanceCrossTable
-                            title="Tableau croisé Revenus / Dépenses"
-                            subtitle="Synthèse hebdomadaire des transactions validées à partir de leur date de validation."
-                            data-tour="admin-finances.cross-table" />
-
-                        <section data-tour="admin-finances.transactions" class="overflow-hidden rounded-2xl border border-surface-200/70 bg-surface-0/80 shadow-xl backdrop-blur-sm dark:border-surface-700/50 dark:bg-surface-800/80">
-                            <div class="border-b border-surface-200/50 bg-gradient-to-r from-surface-50/50 to-surface-0/30 px-5 py-4 dark:border-surface-700/50 dark:from-surface-900/50 dark:to-surface-800/30 md:px-6">
-                                <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-                                    <div>
-                                        <h2 class="text-lg font-semibold text-surface-900 dark:text-surface-100 md:text-xl">Historique des transactions</h2>
-                                        <p class="text-sm text-surface-500 dark:text-surface-400">Filtre par période, type, recherche libre et statut en pied de tableau.</p>
-                                    </div>
-
-                                    <div class="grid w-full gap-3 md:grid-cols-2 xl:w-auto xl:grid-cols-[minmax(16rem,1fr)_auto_minmax(18rem,1fr)_auto]">
-                                        <PanelDatePicker
-                                            v-model="transactionRange"
-                                            dateFormat="dd/mm/yy"
-                                            showIcon
-                                            class="w-full min-w-0"
-                                            inputClass="w-full" />
-                                        <SelectButton
-                                            v-model="transactionTypeFilter"
-                                            :options="transactionTypeOptions"
-                                            optionLabel="label"
-                                            optionValue="value"
-                                            class="w-full min-w-0" />
-                                        <InputText
-                                            v-model="transactionSearch"
-                                            placeholder="Rechercher une transaction"
-                                            class="w-full min-w-0" />
-                                        <div class="flex gap-2">
-                                            <Button icon="pi pi-print" severity="secondary" outlined @click="printTransactions" />
-                                            <Button icon="pi pi-refresh" severity="secondary" outlined @click="loadTransactions" />
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <DataTable
-                                :value="filteredTransactionsView"
-                                dataKey="id"
-                                :loading="loading.transactions"
-                                paginator
-                                :rows="10"
-                                :rowsPerPageOptions="[5, 10, 20, 50]"
-                                responsiveLayout="scroll"
-                                stripedRows>
-                                <Column field="dateLabel" header="Date" sortable>
-                                    <template #body="{ data }">
-                                        <div class="flex items-center gap-2">
-                                            <i class="pi pi-calendar text-surface-400"></i>
-                                            <span class="font-medium text-surface-900 dark:text-surface-100">{{ data.dateLabel }}</span>
-                                        </div>
-                                    </template>
-                                </Column>
-                                <Column field="description" header="Description" sortable>
-                                    <template #body="{ data }">
-                                        <div class="max-w-md truncate" :title="data.description">
-                                            {{ data.description || 'Sans description' }}
-                                        </div>
-                                    </template>
-                                </Column>
-                                <Column field="typeLabel" header="Type" sortable>
-                                    <template #body="{ data }">
-                                        <div class="flex flex-col gap-1">
-                                            <Tag :value="data.typeLabel" :severity="data.typeSeverity" />
-                                            <small class="text-surface-500 dark:text-surface-400">{{ data.motif || 'Sans motif' }}</small>
-                                        </div>
-                                    </template>
-                                </Column>
-                                <Column field="amountValue" header="Montant" sortable>
-                                    <template #body="{ data }">
-                                        <span class="font-semibold" :class="data.typeKey === 'revenue' ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'">
-                                            {{ formatFcfa(data.amountValue) }}
-                                        </span>
-                                    </template>
-                                </Column>
-                                <Column field="modeLabel" header="Mode" sortable></Column>
-                                <Column field="statusLabel" header="Statut" sortable>
-                                    <template #body="{ data }">
-                                        <Tag :value="data.statusLabel" :severity="data.statusSeverity" />
-                                    </template>
-                                    <template #footer>
-                                        <Select
-                                            v-model="transactionStatusFilter"
-                                            :options="transactionStatusOptions"
-                                            optionLabel="label"
-                                            optionValue="value"
-                                            placeholder="Tous les statuts"
-                                            class="w-full min-w-0" />
-                                    </template>
-                                </Column>
-                                <Column header="Actions" style="width: 220px">
-                                    <template #body="{ data }">
-                                        <div class="flex gap-1" data-tour="admin-finances.validation">
-                                            <Button v-if="data.statusKey === 'pending'" icon="pi pi-check" text severity="success" title="Valider" @click="handleValidateTransaction(data)" />
-                                            <Button v-if="data.statusKey === 'pending'" icon="pi pi-times" text severity="danger" title="Rejeter" @click="handleRejectTransaction(data)" />
-                                            <Button icon="pi pi-trash" text severity="danger" title="Supprimer" @click="handleDeleteTransaction(data)" />
-                                        </div>
-                                    </template>
-                                </Column>
-                            </DataTable>
-                        </section>
-                    </div>
-                </TabPanel>
-
-                <TabPanel value="payment-methods">
-                    <section data-tour="admin-finances.methods" class="overflow-hidden rounded-2xl border border-surface-200/70 bg-surface-0/80 shadow-xl backdrop-blur-sm dark:border-surface-700/50 dark:bg-surface-800/80">
-                        <div class="border-b border-surface-200/50 bg-gradient-to-r from-surface-50/50 to-surface-0/30 px-5 py-4 dark:border-surface-700/50 dark:from-surface-900/50 dark:to-surface-800/30 md:px-6">
-                            <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                                <div>
-                                    <h2 class="text-lg font-semibold text-surface-900 dark:text-surface-100 md:text-xl">Modes de paiement</h2>
-                                    <p class="text-sm text-surface-500 dark:text-surface-400">Seuls les modes de paiement classiques sont gérés ici.</p>
-                                </div>
-
-                                <div class="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
-                                    <InputText v-model="modeSearch" placeholder="Rechercher un mode" class="w-full sm:w-72" />
-                                    <Button icon="pi pi-plus" label="Ajouter" @click="openAddMode" />
-                                </div>
-                            </div>
-                        </div>
-
-                        <DataTable
-                            :value="filteredPaymentMethodsView"
-                            dataKey="id"
-                            :loading="loading.methods"
-                            paginator
-                            :rows="8"
-                            :rowsPerPageOptions="[8, 16, 24]"
-                            responsiveLayout="scroll"
-                            sortField="libelle"
-                            :sortOrder="1">
-
-                            <Column field="libelle" header="Libellé" sortable>
-                                <template #body="{ data }">
-                                    <span class="font-medium text-surface-900 dark:text-surface-100">{{ data.libelle }}</span>
-                                </template>
-                            </Column>
-                            <Column field="typeLabel" header="Type" sortable>
-                                <template #body="{ data }">
-                                    <Tag :value="data.typeLabel" severity="secondary" />
-                                </template>
-                            </Column>
-                            <Column field="notes" header="Notes">
-                                <template #body="{ data }">
-                                    <span class="text-sm text-surface-600 dark:text-surface-300">{{ data.notes || '-' }}</span>
-                                </template>
-                            </Column>
-                            <Column field="statusLabel" header="Statut" sortable>
-                                <template #body="{ data }">
-                                    <Tag :value="data.statusLabel" :severity="data.actif ? 'success' : 'secondary'" />
-                                </template>
-                            </Column>
-                            <Column header="Actions" style="width: 140px">
-                                <template #body="{ data }">
-                                    <div class="flex gap-1" data-tour="admin-finances.method-actions">
-                                        <Button icon="pi pi-pencil" text severity="info" title="Modifier" @click="openEditMode(data)" />
-                                        <Button
-                                            :icon="data.actif ? 'pi pi-power-off' : 'pi pi-check'"
-                                            text
-                                            :severity="data.actif ? 'warning' : 'success'"
-                                            :title="data.actif ? 'Désactiver' : 'Activer'"
-                                            @click="handleToggleMode({ mode: data })" />
-                                        <Button icon="pi pi-trash" text severity="danger" title="Supprimer" @click="handleDeleteMode({ mode: data })" />
-                                    </div>
-                                </template>
-                            </Column>
-                        </DataTable>
-                    </section>
-                </TabPanel>
-
-                <TabPanel value="insurances">
-                    <section class="overflow-hidden rounded-2xl border border-surface-200/70 bg-surface-0/80 shadow-xl backdrop-blur-sm dark:border-surface-700/50 dark:bg-surface-800/80">
-                        <div class="border-b border-surface-200/50 bg-gradient-to-r from-surface-50/50 to-surface-0/30 px-5 py-4 dark:border-surface-700/50 dark:from-surface-900/50 dark:to-surface-800/30 md:px-6">
-                            <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                                <div>
-                                    <h2 class="text-lg font-semibold text-surface-900 dark:text-surface-100 md:text-xl">Assurances</h2>
-                                    <p class="text-sm text-surface-500 dark:text-surface-400">Assurances intégrées en dur avec activation/désactivation par cabinet.</p>
-                                </div>
-
-                                <InputText v-model="assuranceSearch" placeholder="Rechercher une assurance" class="w-full lg:w-72" />
-                            </div>
-                        </div>
-
-                        <DataTable
-                            :value="filteredAssurancesView"
-                            dataKey="id"
-                            :loading="loading.assurances"
-                            paginator
-                            :rows="8"
-                            :rowsPerPageOptions="[8, 16, 24]"
-                            responsiveLayout="scroll"
-                            sortField="nom"
-                            :sortOrder="1">
-                            <Column header="Logo" style="width: 5.5rem">
-                                <template #body="{ data }">
-                                    <div class="assurance-table-logo">
-                                        <img
-                                            v-if="resolveAssuranceLogoUrl(data.logoPath)"
-                                            :src="resolveAssuranceLogoUrl(data.logoPath)"
-                                            :alt="data.nom"
-                                            class="assurance-table-logo-img"
-                                        />
-                                        <i v-else class="pi pi-shield text-primary text-xl"></i>
-                                    </div>
-                                </template>
-                            </Column>
-                            <Column field="nom" header="Nom" sortable>
-                                <template #body="{ data }">
-                                    <span class="font-medium text-surface-900 dark:text-surface-100">{{ data.nom || '-' }}</span>
-                                </template>
-                            </Column>
-                            <Column field="code" header="Code" sortable>
-                                <template #body="{ data }">
-                                    <span class="text-sm text-surface-600 dark:text-surface-300">{{ data.code || '-' }}</span>
-                                </template>
-                            </Column>
-                            <Column field="statusLabel" header="Statut" sortable>
-                                <template #body="{ data }">
-                                    <Tag :value="data.statusLabel" :severity="data.actif ? 'success' : 'secondary'" />
-                                </template>
-                            </Column>
-                            <Column header="Actions" style="width: 11rem">
-                                <template #body="{ data }">
-                                    <div class="flex items-center gap-1">
-                                        <Button
-                                            icon="pi pi-eye"
-                                            text
-                                            rounded
-                                            severity="secondary"
-                                            title="Voir les champs"
-                                            @click="openAssuranceFieldsDialog(data)" />
-                                        <Button
-                                            icon="pi pi-pencil"
-                                            text
-                                            rounded
-                                            severity="info"
-                                            title="Modifier"
-                                            @click="openAssuranceEditDialog(data)" />
-                                        <Button
-                                            :icon="data.actif ? 'pi pi-power-off' : 'pi pi-check'"
-                                            text
-                                            rounded
-                                            :severity="data.actif ? 'warning' : 'success'"
-                                            :title="data.actif ? 'Désactiver' : 'Activer'"
-                                            @click="handleToggleAssurance(data)" />
-                                    </div>
-                                </template>
-                            </Column>
-                        </DataTable>
-                    </section>
-                </TabPanel>
-
-                <TabPanel value="fixed-charges">
-                    <FixedChargesTab
-                        :items="fixedCharges"
-                        :total="fixedChargesTotal"
-                        :loading="loading.fixedCharges"
-                        :action-loading="loading.action"
-                        @create="handleCreateFixedCharge"
-                        @update="handleUpdateFixedCharge"
-                        @delete="handleDeleteFixedCharge"
-                        @create-expense="handleCreateExpenseFromFixedCharge"
-                        @create-global-expense="handleCreateGlobalExpenseFromFixedCharges" />
-                </TabPanel>
-
-                <TabPanel value="charts">
-                    <div class="space-y-6">
-                        <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
-                            <section data-tour="admin-finances.monthly-flow" class="rounded-2xl border border-surface-200/70 bg-surface-0/80 p-5 shadow-xl backdrop-blur-sm dark:border-surface-700/50 dark:bg-surface-800/80 xl:col-span-2 md:p-6">
-                                <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                                    <div>
-                                        <h2 class="text-lg font-semibold text-surface-900 dark:text-surface-100 md:text-xl">Flux mensuel global</h2>
-                                        <p class="text-sm text-surface-500 dark:text-surface-400">Revenus, dépenses et résultat net sur l'année sélectionnée.</p>
-                                    </div>
-                                    <div class="flex items-center gap-2">
-                                        <Select v-model="selectedYear" :options="yearOptions" optionLabel="label" optionValue="value" class="w-40" />
-                                        <Button icon="pi pi-refresh" text rounded severity="secondary" @click="refreshAll" />
-                                    </div>
-                                </div>
-
-                                <div class="h-80">
-                                    <AppChart type="bar" :data="monthlyFlowData" :options="monthlyFlowOptions" class="h-full w-full" />
-                                </div>
-                            </section>
-
-                            <section data-tour="admin-finances.distribution" class="rounded-2xl border border-surface-200/70 bg-surface-0/80 p-5 shadow-xl backdrop-blur-sm dark:border-surface-700/50 dark:bg-surface-800/80 md:p-6">
-                                <div class="mb-6">
-                                    <h2 class="text-lg font-semibold text-surface-900 dark:text-surface-100 md:text-xl">Répartition des encaissements</h2>
-                                    <p class="text-sm text-surface-500 dark:text-surface-400">Transactions de revenu regroupées par mode sur la période affichée.</p>
-                                </div>
-
-                                <div class="h-80">
-                                    <AppChart type="doughnut" :data="paymentDistributionData" :options="paymentDistributionOptions" class="h-full w-full" />
-                                </div>
-                            </section>
-                        </div>
-
-                        <div class="grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
-                            <section data-tour="admin-finances.accounts" class="rounded-2xl border border-surface-200/70 bg-surface-0/80 p-5 shadow-xl backdrop-blur-sm dark:border-surface-700/50 dark:bg-surface-800/80 md:p-6">
-                                <div class="mb-6">
-                                    <h2 class="text-lg font-semibold text-surface-900 dark:text-surface-100 md:text-xl">Solde par compte</h2>
-                                    <p class="text-sm text-surface-500 dark:text-surface-400">Revenus, dépenses et solde courant par compte actif.</p>
-                                </div>
-
-                                <div class="h-80">
-                                    <AppChart type="bar" :data="accountFlowData" :options="accountFlowOptions" class="h-full w-full" />
-                                </div>
-                            </section>
-
-                            <section data-tour="admin-finances.capital-share" class="rounded-2xl border border-surface-200/70 bg-surface-0/80 p-5 shadow-xl backdrop-blur-sm dark:border-surface-700/50 dark:bg-surface-800/80 md:p-6">
-                                <div class="mb-6">
-                                    <h2 class="text-lg font-semibold text-surface-900 dark:text-surface-100 md:text-xl">Capital par compte</h2>
-                                    <p class="text-sm text-surface-500 dark:text-surface-400">Répartition du capital disponible sur tous les comptes.</p>
-                                </div>
-
-                                <div class="h-80">
-                                    <AppChart type="doughnut" :data="capitalShareData" :options="capitalShareOptions" class="h-full w-full" />
-                                </div>
-                            </section>
-
-                            <section data-tour="admin-finances.status" class="rounded-2xl border border-surface-200/70 bg-surface-0/80 p-5 shadow-xl backdrop-blur-sm dark:border-surface-700/50 dark:bg-surface-800/80 md:p-6">
-                                <div class="mb-6">
-                                    <h2 class="text-lg font-semibold text-surface-900 dark:text-surface-100 md:text-xl">Statuts de validation</h2>
-                                    <p class="text-sm text-surface-500 dark:text-surface-400">Visibilité immédiate sur les flux en attente, validés et rejetés.</p>
-                                </div>
-
-                                <div class="h-80">
-                                    <AppChart type="doughnut" :data="validationStatusData" :options="validationStatusOptions" class="h-full w-full" />
-                                </div>
-                            </section>
-                        </div>
-
-                        <section data-tour="admin-finances.evolution" class="rounded-2xl border border-surface-200/70 bg-surface-0/80 p-5 shadow-xl backdrop-blur-sm dark:border-surface-700/50 dark:bg-surface-800/80 md:p-6">
-                            <div class="mb-6">
-                                <h2 class="text-lg font-semibold text-surface-900 dark:text-surface-100 md:text-xl">Évolution du capital</h2>
-                                <p class="text-sm text-surface-500 dark:text-surface-400">Croissance cumulée du capital sur l'année sélectionnée.</p>
-                            </div>
-
-                            <div class="h-80">
-                                <AppChart type="line" :data="capitalEvolutionData" :options="capitalEvolutionOptions" class="h-full w-full" />
-                            </div>
-                        </section>
-                    </div>
-                </TabPanel>
-            </TabPanels>
-        </Tabs>
-
-        <TransactionFormDialog
-            v-model:visible="transactionDialogVisible"
-            :payment-methods="paymentMethodsView"
-            :transaction-motifs="transactionMotifs"
-            :transaction="draftTransaction"
-            :loading="loading.action"
-            tourTarget="admin-finances.dialog.transaction"
-            @submit="handleTransactionSubmit" />
-
-        <Dialog
-            v-model:visible="validationDialogVisible"
-            modal
-            header="Confirmer la validation"
-            :style="{ width: '420px' }">
-            <div class="space-y-4">
-                <p class="text-sm text-surface-600 dark:text-surface-300">
-                    Choisissez la date de validation qui servira aux rapports et au tableau croisé.
-                </p>
-                <div class="flex flex-col gap-2">
-                    <label class="text-sm font-medium text-surface-700 dark:text-surface-200">Date de validation</label>
-                    <DatePicker v-model="transactionValidationDate" dateFormat="yy-mm-dd" showIcon class="w-full" />
-                </div>
-            </div>
-
-            <template #footer>
-                <Button label="Annuler" text @click="closeValidationDialog" />
-                <Button label="Valider" icon="pi pi-check" :loading="loading.action" @click="confirmTransactionValidation" />
-            </template>
-        </Dialog>
-
-        <PaymentModeFormDialog
-            v-model:visible="modeDialogVisible"
-            :mode="editingMode"
-            :loading="loading.action"
-            tourTarget="admin-finances.dialog.mode"
-            @submit="handleModeSubmit" />
-
-        <Dialog
-            v-model:visible="assuranceFieldsDialogVisible"
-            modal
-            :header="assuranceFieldsDialogTitle"
-            :style="{ width: '560px' }">
-            <div v-if="assuranceFieldsList.length" class="space-y-2">
-                <div
-                    v-for="field in assuranceFieldsList"
-                    :key="field.key"
-                    class="flex items-start justify-between gap-3 rounded-xl border border-surface-200/70 px-3 py-2.5 dark:border-surface-700/60">
-                    <div class="min-w-0">
-                        <p class="font-medium text-surface-900 dark:text-surface-100">{{ field.label }}</p>
-                        <p class="text-xs text-surface-500 dark:text-surface-400">{{ field.key }} · {{ field.type }}</p>
-                    </div>
-                    <Tag :value="field.required ? 'Obligatoire' : 'Optionnel'" :severity="field.required ? 'warn' : 'secondary'" />
-                </div>
-            </div>
-            <p v-else class="text-sm text-surface-500 dark:text-surface-400">Aucun champ configuré pour cette assurance.</p>
-        </Dialog>
-
-        <Dialog
-            v-model:visible="assuranceEditDialogVisible"
-            modal
-            header="Modifier l'assurance"
-            :style="{ width: '480px' }">
-            <div class="space-y-4">
-                <div class="flex flex-col gap-2">
-                    <label class="text-sm font-medium text-surface-700 dark:text-surface-200">Code</label>
-                    <InputText :model-value="assuranceEditForm.code" disabled class="w-full" />
-                </div>
-                <div class="flex flex-col gap-2">
-                    <label class="text-sm font-medium text-surface-700 dark:text-surface-200">Nom <span class="text-red-500">*</span></label>
-                    <InputText v-model="assuranceEditForm.nom" class="w-full" />
-                </div>
-                <div class="flex flex-col gap-2">
-                    <label class="text-sm font-medium text-surface-700 dark:text-surface-200">Site web</label>
-                    <InputText v-model="assuranceEditForm.website" class="w-full" placeholder="https://..." />
-                </div>
-                <div class="flex flex-col gap-2">
-                    <label class="text-sm font-medium text-surface-700 dark:text-surface-200">Email</label>
-                    <InputText v-model="assuranceEditForm.email" class="w-full" placeholder="contact@..." />
-                </div>
-            </div>
-            <template #footer>
-                <Button label="Annuler" text @click="assuranceEditDialogVisible = false" />
-                <Button label="Enregistrer" icon="pi pi-check" :loading="loading.action" @click="handleUpdateAssurance" />
-            </template>
-        </Dialog>
-
-    </section>
-</template>
-
 <script setup>
 import { logAppError } from '@/utils/appLogger';
 
@@ -576,12 +27,7 @@ import TransactionFormDialog from '@/components/administration/finances/Transact
 import { fetchGeneralSettings } from '@/services/globalSettingsService';
 import { useGuidedTour } from '@/composables/useGuidedTour';
 import { useFinances } from '@/composables/useFinances';
-import {
-    getPaymentMethodDefinition,
-    normalizePaymentString,
-    resolvePaymentMethodTypeKey,
-    sortPaymentMethods
-} from '@/utils/paymentMethodUtils';
+import { getPaymentMethodDefinition, normalizePaymentString, resolvePaymentMethodTypeKey, sortPaymentMethods } from '@/utils/paymentMethodUtils';
 import { resolveAssuranceLogoUrl } from '@/utils/assuranceUtils';
 
 const toast = useToast();
@@ -664,17 +110,12 @@ const cloneValue = (value) => {
     return JSON.parse(JSON.stringify(value));
 };
 
-const waitForTourUi = (ms = 180) => new Promise((resolve) => {
-    window.setTimeout(resolve, ms);
-});
+const waitForTourUi = (ms = 180) =>
+    new Promise((resolve) => {
+        window.setTimeout(resolve, ms);
+    });
 
-const hasOpenDialogs = computed(() => (
-    transactionDialogVisible.value
-    || modeDialogVisible.value
-    || validationDialogVisible.value
-    || assuranceFieldsDialogVisible.value
-    || assuranceEditDialogVisible.value
-));
+const hasOpenDialogs = computed(() => transactionDialogVisible.value || modeDialogVisible.value || validationDialogVisible.value || assuranceFieldsDialogVisible.value || assuranceEditDialogVisible.value);
 
 const transactionStatusOptions = [
     { label: 'Tous les statuts', value: 'all' },
@@ -691,8 +132,7 @@ const transactionTypeOptions = [
 
 const normalizeText = (value) => normalizePaymentString(value).replace(/_/g, ' ');
 
-const formatFcfa = (value) =>
-    new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF' }).format(Number(value || 0));
+const formatFcfa = (value) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF' }).format(Number(value || 0));
 
 const formatDateTime = (value) => {
     if (!value) {
@@ -761,7 +201,7 @@ const transactionsView = computed(() =>
         const dateValue = row?.dateTransaction || row?.date;
         const mode = row?.modeDePaiement || {};
         const modeLabel = mode?.libelle || mode?.label || row?.mode || '--';
-        const typeLabel = typeKey === 'expense' ? 'Dépense' : typeKey === 'revenue' ? 'Revenu' : (row?.typeLabel || row?.type || '--');
+        const typeLabel = typeKey === 'expense' ? 'Dépense' : typeKey === 'revenue' ? 'Revenu' : row?.typeLabel || row?.type || '--';
 
         return {
             ...row,
@@ -774,16 +214,7 @@ const transactionsView = computed(() =>
             statusKey: status.key,
             statusLabel: status.label,
             statusSeverity: status.severity,
-            searchBlob: normalizeText([
-                formatDateTime(dateValue),
-                row?.description,
-                row?.motif,
-                typeLabel,
-                modeLabel,
-                status.label,
-                row?.amount,
-                row?.montant
-            ].join(' '))
+            searchBlob: normalizeText([formatDateTime(dateValue), row?.description, row?.motif, typeLabel, modeLabel, status.label, row?.amount, row?.montant].join(' '))
         };
     })
 );
@@ -839,11 +270,7 @@ const paymentMethodsView = computed(() =>
             typeLabel: definition.label,
             statusLabel: mode?.actif ? 'Actif' : 'Inactif',
             isLocked,
-            searchBlob: normalizeText([
-                mode?.libelle,
-                definition.label,
-                mode?.notes
-            ].join(' '))
+            searchBlob: normalizeText([mode?.libelle, definition.label, mode?.notes].join(' '))
         };
     })
 );
@@ -857,13 +284,7 @@ const assurancesView = computed(() =>
     (assurances.value || []).map((item) => ({
         ...item,
         statusLabel: item?.actif ? 'Actif' : 'Inactif',
-        searchBlob: normalizeText([
-            item?.nom,
-            item?.code,
-            item?.website,
-            item?.email,
-            item?.actif ? 'actif' : 'inactif'
-        ].join(' '))
+        searchBlob: normalizeText([item?.nom, item?.code, item?.website, item?.email, item?.actif ? 'actif' : 'inactif'].join(' '))
     }))
 );
 
@@ -914,16 +335,12 @@ const pendingTransactionsCount = computed(() => transactionsView.value.filter((r
 const pendingTransactionsAmount = computed(() => transactionsView.value.filter((row) => row.statusKey === 'pending').reduce((sum, row) => sum + row.amountValue, 0));
 
 const yearOptions = computed(() => {
-    const years = Array.isArray(chartData.value?.availableYears) && chartData.value.availableYears.length
-        ? chartData.value.availableYears
-        : [today.getFullYear()];
+    const years = Array.isArray(chartData.value?.availableYears) && chartData.value.availableYears.length ? chartData.value.availableYears : [today.getFullYear()];
     return years.map((year) => ({ label: String(year), value: Number(year) }));
 });
 
 const monthlyFlowData = computed(() => {
-    const months = chartData.value?.months?.length
-        ? chartData.value.months
-        : ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
+    const months = chartData.value?.months?.length ? chartData.value.months : ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
     const revenues = Array(months.length).fill(0);
     const expenses = Array(months.length).fill(0);
 
@@ -1013,9 +430,7 @@ const accountFlowData = computed(() => {
 });
 
 const capitalEvolutionData = computed(() => {
-    const months = chartData.value?.months?.length
-        ? chartData.value.months
-        : ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
+    const months = chartData.value?.months?.length ? chartData.value.months : ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
     const documentStyle = getComputedStyle(document.documentElement);
     return {
         labels: months,
@@ -1672,6 +1087,453 @@ onBeforeUnmount(() => {
     resetTourDialogs();
 });
 </script>
+
+<template>
+    <section class="min-h-screen bg-gradient-to-br from-surface-50 via-surface-50/80 to-surface-100/60 p-4 transition-colors duration-300 dark:from-surface-900 dark:via-surface-900/80 dark:to-surface-800/90 md:p-6 lg:p-8">
+        <AppToast />
+        <ConfirmPopup />
+
+        <div class="mb-6 md:mb-8">
+            <div class="mb-6 flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
+                <div class="space-y-3" data-tour="admin-finances.header">
+                    <div class="flex items-center gap-4">
+                        <div class="rounded-2xl bg-gradient-to-br from-primary-500 to-primary-600 p-3 shadow-lg">
+                            <i class="pi pi-wallet text-2xl text-white"></i>
+                        </div>
+                        <div>
+                            <h1 class="text-3xl font-bold tracking-tight text-surface-900 dark:text-surface-50 lg:text-4xl">Tableau de bord financier</h1>
+                            <p class="mt-1 text-sm text-surface-600 dark:text-surface-300 md:text-base">Transactions, validations manuelles, modes de paiement et assurances séparés</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-3">
+                    <Button
+                        label="Nouvelle transaction"
+                        icon="pi pi-plus"
+                        class="rounded-xl border-0 bg-gradient-to-r from-primary-500 to-primary-600 px-5 py-3 font-medium text-white shadow-lg transition-all duration-300 hover:from-primary-600 hover:to-primary-700 hover:shadow-xl"
+                        @click="openTransactionDialog"
+                    />
+                </div>
+            </div>
+
+            <div class="rounded-2xl border border-surface-200/70 bg-surface-0/80 p-4 shadow-sm backdrop-blur-sm dark:border-surface-700/50 dark:bg-surface-800/80">
+                <Breadcrumb :home="breadcrumbHome" :model="breadcrumbItems" class="text-sm" />
+            </div>
+        </div>
+
+        <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4" data-tour="admin-finances.kpi">
+            <article class="rounded-2xl border border-primary-200/70 bg-gradient-to-br from-primary-50/80 to-primary-100/50 p-5 shadow-md backdrop-blur-sm dark:border-primary-800/40 dark:from-primary-900/30 dark:to-primary-800/20">
+                <div class="flex items-center justify-between gap-4">
+                    <div class="min-w-0 flex-1">
+                        <p class="text-xs font-medium text-primary-700 dark:text-primary-300 sm:text-sm">Capital total</p>
+                        <p class="mt-2 truncate text-lg font-bold tracking-tight text-primary-900 dark:text-primary-100 sm:text-xl lg:text-2xl">
+                            {{ formatFcfa(capitalTotal) }}
+                        </p>
+                        <p class="mt-1 truncate text-xs text-primary-600/70 dark:text-primary-400/70">Tous comptes confondus</p>
+                    </div>
+                    <div class="flex-shrink-0 rounded-lg bg-primary-500/10 p-2 dark:bg-primary-500/20">
+                        <i class="pi pi-database text-lg text-primary-500 sm:text-xl"></i>
+                    </div>
+                </div>
+            </article>
+
+            <article class="rounded-2xl border border-amber-200/70 bg-gradient-to-br from-amber-50/80 to-amber-100/50 p-5 shadow-md backdrop-blur-sm dark:border-amber-800/40 dark:from-amber-900/20 dark:to-amber-800/20">
+                <div class="flex items-center justify-between gap-4">
+                    <div class="min-w-0 flex-1">
+                        <p class="text-xs font-medium text-amber-700 dark:text-amber-300 sm:text-sm">En attente</p>
+                        <p class="mt-2 truncate text-lg font-bold tracking-tight text-amber-900 dark:text-amber-100 sm:text-xl lg:text-2xl">
+                            {{ pendingTransactionsCount }}
+                        </p>
+                        <p class="mt-1 truncate text-xs text-amber-600/70 dark:text-amber-400/70">{{ formatFcfa(pendingTransactionsAmount) }} à valider</p>
+                    </div>
+                    <div class="flex-shrink-0 rounded-lg bg-amber-500/10 p-2 dark:bg-amber-500/20">
+                        <i class="pi pi-hourglass text-lg text-amber-500 sm:text-xl"></i>
+                    </div>
+                </div>
+            </article>
+
+            <article class="rounded-2xl border border-slate-200/70 bg-gradient-to-br from-slate-50/80 to-slate-100/50 p-5 shadow-md backdrop-blur-sm dark:border-slate-800/40 dark:from-slate-900/20 dark:to-slate-800/20">
+                <div class="flex items-center justify-between gap-4">
+                    <div class="min-w-0 flex-1">
+                        <p class="text-xs font-medium text-slate-600 dark:text-slate-300 sm:text-sm">Modes actifs</p>
+                        <p class="mt-2 truncate text-lg font-bold tracking-tight text-slate-900 dark:text-surface-100 sm:text-xl lg:text-2xl">
+                            {{ comptesActifsCount }}
+                        </p>
+                        <p class="mt-1 truncate text-xs text-slate-500/70 dark:text-slate-400/70">{{ assurancesCount }} assurance(s) configurée(s)</p>
+                    </div>
+                    <div class="flex-shrink-0 rounded-lg bg-slate-500/10 p-2 dark:bg-slate-500/20">
+                        <i class="pi pi-credit-card text-lg text-slate-500 sm:text-xl"></i>
+                    </div>
+                </div>
+            </article>
+
+            <article class="rounded-2xl border border-rose-200/70 bg-gradient-to-br from-rose-50/80 to-rose-100/50 p-5 shadow-md backdrop-blur-sm dark:border-rose-800/40 dark:from-rose-900/20 dark:to-rose-800/20">
+                <div class="flex items-center justify-between gap-4">
+                    <div class="min-w-0 flex-1">
+                        <p class="text-xs font-medium text-rose-700 dark:text-rose-300 sm:text-sm">Charges fixes</p>
+                        <p class="mt-2 truncate text-lg font-bold tracking-tight text-rose-900 dark:text-rose-100 sm:text-xl lg:text-2xl">
+                            {{ formatFcfa(fixedChargesTotal) }}
+                        </p>
+                        <p class="mt-1 truncate text-xs text-rose-600/70 dark:text-rose-400/70">{{ fixedCharges.length }} charge(s) configurée(s)</p>
+                    </div>
+                    <div class="flex-shrink-0 rounded-lg bg-rose-500/10 p-2 dark:bg-rose-500/20">
+                        <i class="pi pi-building-columns text-lg text-rose-500 sm:text-xl"></i>
+                    </div>
+                </div>
+            </article>
+        </div>
+
+        <Tabs :value="activeTab" @update:value="setActiveTab">
+            <TabList data-tour="admin-finances.tabs">
+                <Tab value="transactions">Transactions</Tab>
+                <Tab value="payment-methods">Mode de paiement</Tab>
+                <Tab value="insurances">Assurances</Tab>
+                <Tab value="fixed-charges">Charges fixes</Tab>
+                <Tab value="charts">Graphiques</Tab>
+            </TabList>
+
+            <TabPanels class="mt-4">
+                <TabPanel value="transactions">
+                    <div class="space-y-6">
+                        <FinanceCrossTable title="Tableau croisé Revenus / Dépenses" subtitle="Synthèse hebdomadaire des transactions validées à partir de leur date de validation." data-tour="admin-finances.cross-table" />
+
+                        <section data-tour="admin-finances.transactions" class="overflow-hidden rounded-2xl border border-surface-200/70 bg-surface-0/80 shadow-xl backdrop-blur-sm dark:border-surface-700/50 dark:bg-surface-800/80">
+                            <div class="border-b border-surface-200/50 bg-gradient-to-r from-surface-50/50 to-surface-0/30 px-5 py-4 dark:border-surface-700/50 dark:from-surface-900/50 dark:to-surface-800/30 md:px-6">
+                                <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+                                    <div>
+                                        <h2 class="text-lg font-semibold text-surface-900 dark:text-surface-100 md:text-xl">Historique des transactions</h2>
+                                        <p class="text-sm text-surface-500 dark:text-surface-400">Filtre par période, type, recherche libre et statut en pied de tableau.</p>
+                                    </div>
+
+                                    <div class="grid w-full gap-3 md:grid-cols-2 xl:w-auto xl:grid-cols-[minmax(16rem,1fr)_auto_minmax(18rem,1fr)_auto]">
+                                        <PanelDatePicker v-model="transactionRange" dateFormat="dd/mm/yy" showIcon class="w-full min-w-0" inputClass="w-full" />
+                                        <SelectButton v-model="transactionTypeFilter" :options="transactionTypeOptions" optionLabel="label" optionValue="value" class="w-full min-w-0" />
+                                        <InputText v-model="transactionSearch" placeholder="Rechercher une transaction" class="w-full min-w-0" />
+                                        <div class="flex gap-2">
+                                            <Button icon="pi pi-print" severity="secondary" outlined @click="printTransactions" />
+                                            <Button icon="pi pi-refresh" severity="secondary" outlined @click="loadTransactions" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <DataTable :value="filteredTransactionsView" dataKey="id" :loading="loading.transactions" paginator :rows="10" :rowsPerPageOptions="[5, 10, 20, 50]" responsiveLayout="scroll" stripedRows>
+                                <Column field="dateLabel" header="Date" sortable>
+                                    <template #body="{ data }">
+                                        <div class="flex items-center gap-2">
+                                            <i class="pi pi-calendar text-surface-400"></i>
+                                            <span class="font-medium text-surface-900 dark:text-surface-100">{{ data.dateLabel }}</span>
+                                        </div>
+                                    </template>
+                                </Column>
+                                <Column field="description" header="Description" sortable>
+                                    <template #body="{ data }">
+                                        <div class="max-w-md truncate" :title="data.description">
+                                            {{ data.description || 'Sans description' }}
+                                        </div>
+                                    </template>
+                                </Column>
+                                <Column field="typeLabel" header="Type" sortable>
+                                    <template #body="{ data }">
+                                        <div class="flex flex-col gap-1">
+                                            <Tag :value="data.typeLabel" :severity="data.typeSeverity" />
+                                            <small class="text-surface-500 dark:text-surface-400">{{ data.motif || 'Sans motif' }}</small>
+                                        </div>
+                                    </template>
+                                </Column>
+                                <Column field="amountValue" header="Montant" sortable>
+                                    <template #body="{ data }">
+                                        <span class="font-semibold" :class="data.typeKey === 'revenue' ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'">
+                                            {{ formatFcfa(data.amountValue) }}
+                                        </span>
+                                    </template>
+                                </Column>
+                                <Column field="modeLabel" header="Mode" sortable></Column>
+                                <Column field="statusLabel" header="Statut" sortable>
+                                    <template #body="{ data }">
+                                        <Tag :value="data.statusLabel" :severity="data.statusSeverity" />
+                                    </template>
+                                    <template #footer>
+                                        <Select v-model="transactionStatusFilter" :options="transactionStatusOptions" optionLabel="label" optionValue="value" placeholder="Tous les statuts" class="w-full min-w-0" />
+                                    </template>
+                                </Column>
+                                <Column header="Actions" style="width: 220px">
+                                    <template #body="{ data }">
+                                        <div class="flex gap-1" data-tour="admin-finances.validation">
+                                            <Button v-if="data.statusKey === 'pending'" icon="pi pi-check" text severity="success" title="Valider" @click="handleValidateTransaction(data)" />
+                                            <Button v-if="data.statusKey === 'pending'" icon="pi pi-times" text severity="danger" title="Rejeter" @click="handleRejectTransaction(data)" />
+                                            <Button icon="pi pi-trash" text severity="danger" title="Supprimer" @click="handleDeleteTransaction(data)" />
+                                        </div>
+                                    </template>
+                                </Column>
+                            </DataTable>
+                        </section>
+                    </div>
+                </TabPanel>
+
+                <TabPanel value="payment-methods">
+                    <section data-tour="admin-finances.methods" class="overflow-hidden rounded-2xl border border-surface-200/70 bg-surface-0/80 shadow-xl backdrop-blur-sm dark:border-surface-700/50 dark:bg-surface-800/80">
+                        <div class="border-b border-surface-200/50 bg-gradient-to-r from-surface-50/50 to-surface-0/30 px-5 py-4 dark:border-surface-700/50 dark:from-surface-900/50 dark:to-surface-800/30 md:px-6">
+                            <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                                <div>
+                                    <h2 class="text-lg font-semibold text-surface-900 dark:text-surface-100 md:text-xl">Modes de paiement</h2>
+                                    <p class="text-sm text-surface-500 dark:text-surface-400">Seuls les modes de paiement classiques sont gérés ici.</p>
+                                </div>
+
+                                <div class="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
+                                    <InputText v-model="modeSearch" placeholder="Rechercher un mode" class="w-full sm:w-72" />
+                                    <Button icon="pi pi-plus" label="Ajouter" @click="openAddMode" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <DataTable :value="filteredPaymentMethodsView" dataKey="id" :loading="loading.methods" paginator :rows="8" :rowsPerPageOptions="[8, 16, 24]" responsiveLayout="scroll" sortField="libelle" :sortOrder="1">
+                            <Column field="libelle" header="Libellé" sortable>
+                                <template #body="{ data }">
+                                    <span class="font-medium text-surface-900 dark:text-surface-100">{{ data.libelle }}</span>
+                                </template>
+                            </Column>
+                            <Column field="typeLabel" header="Type" sortable>
+                                <template #body="{ data }">
+                                    <Tag :value="data.typeLabel" severity="secondary" />
+                                </template>
+                            </Column>
+                            <Column field="notes" header="Notes">
+                                <template #body="{ data }">
+                                    <span class="text-sm text-surface-600 dark:text-surface-300">{{ data.notes || '-' }}</span>
+                                </template>
+                            </Column>
+                            <Column field="statusLabel" header="Statut" sortable>
+                                <template #body="{ data }">
+                                    <Tag :value="data.statusLabel" :severity="data.actif ? 'success' : 'secondary'" />
+                                </template>
+                            </Column>
+                            <Column header="Actions" style="width: 140px">
+                                <template #body="{ data }">
+                                    <div class="flex gap-1" data-tour="admin-finances.method-actions">
+                                        <Button icon="pi pi-pencil" text severity="info" title="Modifier" @click="openEditMode(data)" />
+                                        <Button :icon="data.actif ? 'pi pi-power-off' : 'pi pi-check'" text :severity="data.actif ? 'warning' : 'success'" :title="data.actif ? 'Désactiver' : 'Activer'" @click="handleToggleMode({ mode: data })" />
+                                        <Button icon="pi pi-trash" text severity="danger" title="Supprimer" @click="handleDeleteMode({ mode: data })" />
+                                    </div>
+                                </template>
+                            </Column>
+                        </DataTable>
+                    </section>
+                </TabPanel>
+
+                <TabPanel value="insurances">
+                    <section class="overflow-hidden rounded-2xl border border-surface-200/70 bg-surface-0/80 shadow-xl backdrop-blur-sm dark:border-surface-700/50 dark:bg-surface-800/80">
+                        <div class="border-b border-surface-200/50 bg-gradient-to-r from-surface-50/50 to-surface-0/30 px-5 py-4 dark:border-surface-700/50 dark:from-surface-900/50 dark:to-surface-800/30 md:px-6">
+                            <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                                <div>
+                                    <h2 class="text-lg font-semibold text-surface-900 dark:text-surface-100 md:text-xl">Assurances</h2>
+                                    <p class="text-sm text-surface-500 dark:text-surface-400">Assurances intégrées en dur avec activation/désactivation par cabinet.</p>
+                                </div>
+
+                                <InputText v-model="assuranceSearch" placeholder="Rechercher une assurance" class="w-full lg:w-72" />
+                            </div>
+                        </div>
+
+                        <DataTable :value="filteredAssurancesView" dataKey="id" :loading="loading.assurances" paginator :rows="8" :rowsPerPageOptions="[8, 16, 24]" responsiveLayout="scroll" sortField="nom" :sortOrder="1">
+                            <Column header="Logo" style="width: 5.5rem">
+                                <template #body="{ data }">
+                                    <div class="assurance-table-logo">
+                                        <img v-if="resolveAssuranceLogoUrl(data.logoPath)" :src="resolveAssuranceLogoUrl(data.logoPath)" :alt="data.nom" class="assurance-table-logo-img" />
+                                        <i v-else class="pi pi-shield text-primary text-xl"></i>
+                                    </div>
+                                </template>
+                            </Column>
+                            <Column field="nom" header="Nom" sortable>
+                                <template #body="{ data }">
+                                    <span class="font-medium text-surface-900 dark:text-surface-100">{{ data.nom || '-' }}</span>
+                                </template>
+                            </Column>
+                            <Column field="code" header="Code" sortable>
+                                <template #body="{ data }">
+                                    <span class="text-sm text-surface-600 dark:text-surface-300">{{ data.code || '-' }}</span>
+                                </template>
+                            </Column>
+                            <Column field="statusLabel" header="Statut" sortable>
+                                <template #body="{ data }">
+                                    <Tag :value="data.statusLabel" :severity="data.actif ? 'success' : 'secondary'" />
+                                </template>
+                            </Column>
+                            <Column header="Actions" style="width: 11rem">
+                                <template #body="{ data }">
+                                    <div class="flex items-center gap-1">
+                                        <Button icon="pi pi-eye" text rounded severity="secondary" title="Voir les champs" @click="openAssuranceFieldsDialog(data)" />
+                                        <Button icon="pi pi-pencil" text rounded severity="info" title="Modifier" @click="openAssuranceEditDialog(data)" />
+                                        <Button :icon="data.actif ? 'pi pi-power-off' : 'pi pi-check'" text rounded :severity="data.actif ? 'warning' : 'success'" :title="data.actif ? 'Désactiver' : 'Activer'" @click="handleToggleAssurance(data)" />
+                                    </div>
+                                </template>
+                            </Column>
+                        </DataTable>
+                    </section>
+                </TabPanel>
+
+                <TabPanel value="fixed-charges">
+                    <FixedChargesTab
+                        :items="fixedCharges"
+                        :total="fixedChargesTotal"
+                        :loading="loading.fixedCharges"
+                        :action-loading="loading.action"
+                        @create="handleCreateFixedCharge"
+                        @update="handleUpdateFixedCharge"
+                        @delete="handleDeleteFixedCharge"
+                        @create-expense="handleCreateExpenseFromFixedCharge"
+                        @create-global-expense="handleCreateGlobalExpenseFromFixedCharges"
+                    />
+                </TabPanel>
+
+                <TabPanel value="charts">
+                    <div class="space-y-6">
+                        <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+                            <section data-tour="admin-finances.monthly-flow" class="rounded-2xl border border-surface-200/70 bg-surface-0/80 p-5 shadow-xl backdrop-blur-sm dark:border-surface-700/50 dark:bg-surface-800/80 xl:col-span-2 md:p-6">
+                                <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                                    <div>
+                                        <h2 class="text-lg font-semibold text-surface-900 dark:text-surface-100 md:text-xl">Flux mensuel global</h2>
+                                        <p class="text-sm text-surface-500 dark:text-surface-400">Revenus, dépenses et résultat net sur l'année sélectionnée.</p>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <Select v-model="selectedYear" :options="yearOptions" optionLabel="label" optionValue="value" class="w-40" />
+                                        <Button icon="pi pi-refresh" text rounded severity="secondary" @click="refreshAll" />
+                                    </div>
+                                </div>
+
+                                <div class="h-80">
+                                    <AppChart type="bar" :data="monthlyFlowData" :options="monthlyFlowOptions" class="h-full w-full" />
+                                </div>
+                            </section>
+
+                            <section data-tour="admin-finances.distribution" class="rounded-2xl border border-surface-200/70 bg-surface-0/80 p-5 shadow-xl backdrop-blur-sm dark:border-surface-700/50 dark:bg-surface-800/80 md:p-6">
+                                <div class="mb-6">
+                                    <h2 class="text-lg font-semibold text-surface-900 dark:text-surface-100 md:text-xl">Répartition des encaissements</h2>
+                                    <p class="text-sm text-surface-500 dark:text-surface-400">Transactions de revenu regroupées par mode sur la période affichée.</p>
+                                </div>
+
+                                <div class="h-80">
+                                    <AppChart type="doughnut" :data="paymentDistributionData" :options="paymentDistributionOptions" class="h-full w-full" />
+                                </div>
+                            </section>
+                        </div>
+
+                        <div class="grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
+                            <section data-tour="admin-finances.accounts" class="rounded-2xl border border-surface-200/70 bg-surface-0/80 p-5 shadow-xl backdrop-blur-sm dark:border-surface-700/50 dark:bg-surface-800/80 md:p-6">
+                                <div class="mb-6">
+                                    <h2 class="text-lg font-semibold text-surface-900 dark:text-surface-100 md:text-xl">Solde par compte</h2>
+                                    <p class="text-sm text-surface-500 dark:text-surface-400">Revenus, dépenses et solde courant par compte actif.</p>
+                                </div>
+
+                                <div class="h-80">
+                                    <AppChart type="bar" :data="accountFlowData" :options="accountFlowOptions" class="h-full w-full" />
+                                </div>
+                            </section>
+
+                            <section data-tour="admin-finances.capital-share" class="rounded-2xl border border-surface-200/70 bg-surface-0/80 p-5 shadow-xl backdrop-blur-sm dark:border-surface-700/50 dark:bg-surface-800/80 md:p-6">
+                                <div class="mb-6">
+                                    <h2 class="text-lg font-semibold text-surface-900 dark:text-surface-100 md:text-xl">Capital par compte</h2>
+                                    <p class="text-sm text-surface-500 dark:text-surface-400">Répartition du capital disponible sur tous les comptes.</p>
+                                </div>
+
+                                <div class="h-80">
+                                    <AppChart type="doughnut" :data="capitalShareData" :options="capitalShareOptions" class="h-full w-full" />
+                                </div>
+                            </section>
+
+                            <section data-tour="admin-finances.status" class="rounded-2xl border border-surface-200/70 bg-surface-0/80 p-5 shadow-xl backdrop-blur-sm dark:border-surface-700/50 dark:bg-surface-800/80 md:p-6">
+                                <div class="mb-6">
+                                    <h2 class="text-lg font-semibold text-surface-900 dark:text-surface-100 md:text-xl">Statuts de validation</h2>
+                                    <p class="text-sm text-surface-500 dark:text-surface-400">Visibilité immédiate sur les flux en attente, validés et rejetés.</p>
+                                </div>
+
+                                <div class="h-80">
+                                    <AppChart type="doughnut" :data="validationStatusData" :options="validationStatusOptions" class="h-full w-full" />
+                                </div>
+                            </section>
+                        </div>
+
+                        <section data-tour="admin-finances.evolution" class="rounded-2xl border border-surface-200/70 bg-surface-0/80 p-5 shadow-xl backdrop-blur-sm dark:border-surface-700/50 dark:bg-surface-800/80 md:p-6">
+                            <div class="mb-6">
+                                <h2 class="text-lg font-semibold text-surface-900 dark:text-surface-100 md:text-xl">Évolution du capital</h2>
+                                <p class="text-sm text-surface-500 dark:text-surface-400">Croissance cumulée du capital sur l'année sélectionnée.</p>
+                            </div>
+
+                            <div class="h-80">
+                                <AppChart type="line" :data="capitalEvolutionData" :options="capitalEvolutionOptions" class="h-full w-full" />
+                            </div>
+                        </section>
+                    </div>
+                </TabPanel>
+            </TabPanels>
+        </Tabs>
+
+        <TransactionFormDialog
+            v-model:visible="transactionDialogVisible"
+            :payment-methods="paymentMethodsView"
+            :transaction-motifs="transactionMotifs"
+            :transaction="draftTransaction"
+            :loading="loading.action"
+            tourTarget="admin-finances.dialog.transaction"
+            @submit="handleTransactionSubmit"
+        />
+
+        <Dialog v-model:visible="validationDialogVisible" modal header="Confirmer la validation" :style="{ width: '420px' }">
+            <div class="space-y-4">
+                <p class="text-sm text-surface-600 dark:text-surface-300">Choisissez la date de validation qui servira aux rapports et au tableau croisé.</p>
+                <div class="flex flex-col gap-2">
+                    <label class="text-sm font-medium text-surface-700 dark:text-surface-200">Date de validation</label>
+                    <DatePicker v-model="transactionValidationDate" dateFormat="yy-mm-dd" showIcon class="w-full" />
+                </div>
+            </div>
+
+            <template #footer>
+                <Button label="Annuler" text @click="closeValidationDialog" />
+                <Button label="Valider" icon="pi pi-check" :loading="loading.action" @click="confirmTransactionValidation" />
+            </template>
+        </Dialog>
+
+        <PaymentModeFormDialog v-model:visible="modeDialogVisible" :mode="editingMode" :loading="loading.action" tourTarget="admin-finances.dialog.mode" @submit="handleModeSubmit" />
+
+        <Dialog v-model:visible="assuranceFieldsDialogVisible" modal :header="assuranceFieldsDialogTitle" :style="{ width: '560px' }">
+            <div v-if="assuranceFieldsList.length" class="space-y-2">
+                <div v-for="field in assuranceFieldsList" :key="field.key" class="flex items-start justify-between gap-3 rounded-xl border border-surface-200/70 px-3 py-2.5 dark:border-surface-700/60">
+                    <div class="min-w-0">
+                        <p class="font-medium text-surface-900 dark:text-surface-100">{{ field.label }}</p>
+                        <p class="text-xs text-surface-500 dark:text-surface-400">{{ field.key }} · {{ field.type }}</p>
+                    </div>
+                    <Tag :value="field.required ? 'Obligatoire' : 'Optionnel'" :severity="field.required ? 'warn' : 'secondary'" />
+                </div>
+            </div>
+            <p v-else class="text-sm text-surface-500 dark:text-surface-400">Aucun champ configuré pour cette assurance.</p>
+        </Dialog>
+
+        <Dialog v-model:visible="assuranceEditDialogVisible" modal header="Modifier l'assurance" :style="{ width: '480px' }">
+            <div class="space-y-4">
+                <div class="flex flex-col gap-2">
+                    <label class="text-sm font-medium text-surface-700 dark:text-surface-200">Code</label>
+                    <InputText :model-value="assuranceEditForm.code" disabled class="w-full" />
+                </div>
+                <div class="flex flex-col gap-2">
+                    <label class="text-sm font-medium text-surface-700 dark:text-surface-200">Nom <span class="text-red-500">*</span></label>
+                    <InputText v-model="assuranceEditForm.nom" class="w-full" />
+                </div>
+                <div class="flex flex-col gap-2">
+                    <label class="text-sm font-medium text-surface-700 dark:text-surface-200">Site web</label>
+                    <InputText v-model="assuranceEditForm.website" class="w-full" placeholder="https://..." />
+                </div>
+                <div class="flex flex-col gap-2">
+                    <label class="text-sm font-medium text-surface-700 dark:text-surface-200">Email</label>
+                    <InputText v-model="assuranceEditForm.email" class="w-full" placeholder="contact@..." />
+                </div>
+            </div>
+            <template #footer>
+                <Button label="Annuler" text @click="assuranceEditDialogVisible = false" />
+                <Button label="Enregistrer" icon="pi pi-check" :loading="loading.action" @click="handleUpdateAssurance" />
+            </template>
+        </Dialog>
+    </section>
+</template>
 
 <style scoped>
 .assurance-table-logo {

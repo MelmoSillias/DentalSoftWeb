@@ -1,3 +1,11 @@
+<script setup>
+import PrintCabinetHeader from './PrintCabinetHeader.vue';
+
+defineProps({
+    title: { type: String, default: '' }
+});
+</script>
+
 <template>
     <header class="ticket-header">
         <PrintCabinetHeader variant="ticket" />
@@ -8,14 +16,6 @@
         </div>
     </header>
 </template>
-
-<script setup>
-import PrintCabinetHeader from './PrintCabinetHeader.vue';
-
-defineProps({
-    title: { type: String, default: '' }
-});
-</script>
 
 <style scoped>
 .ticket-header {

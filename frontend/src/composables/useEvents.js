@@ -54,11 +54,7 @@ export function useEvents() {
     }
 
     async function validateEvent(id) {
-        const res = await http.post(
-            `${apiPrefix}/events/${id}/validate`,
-            {},
-            { headers: getHeaders(false) }
-        );
+        const res = await http.post(`${apiPrefix}/events/${id}/validate`, {}, { headers: getHeaders(false) });
         return res.data;
     }
 

@@ -22,18 +22,8 @@ const toIsoString = (value) => {
 
 const normalizeRdv = (raw = {}) => {
     const patientData = raw.patientData ?? (raw.patient && typeof raw.patient === 'object' ? raw.patient : null);
-    const patientName =
-        raw.patientName ||
-        raw.patient ||
-        patientData?.fullname ||
-        patientData?.name ||
-        `${patientData?.prenom ?? ''} ${patientData?.nom ?? ''}`.trim();
-    const medecinName =
-        raw.medecinName ||
-        raw.medecin ||
-        raw.medecin?.fullname ||
-        raw.medecin?.name ||
-        `${raw.medecin?.prenom ?? ''} ${raw.medecin?.nom ?? ''}`.trim();
+    const patientName = raw.patientName || raw.patient || patientData?.fullname || patientData?.name || `${patientData?.prenom ?? ''} ${patientData?.nom ?? ''}`.trim();
+    const medecinName = raw.medecinName || raw.medecin || raw.medecin?.fullname || raw.medecin?.name || `${raw.medecin?.prenom ?? ''} ${raw.medecin?.nom ?? ''}`.trim();
 
     return {
         id: raw.id,
@@ -174,10 +164,7 @@ export function useRdvApi() {
         try {
             const auth = useAuthStore();
             const token = auth?.token || localStorage.getItem('token');
-            const [meds, pts] = await Promise.all([
-                fetchMedecins(token),
-                fetchPatients(token, { page: 1, limit: 20 })
-            ]);
+            const [meds, pts] = await Promise.all([fetchMedecins(token), fetchPatients(token, { page: 1, limit: 20 })]);
             medecins.value = Array.isArray(meds)
                 ? meds.map((m) => ({
                       id: m.id,

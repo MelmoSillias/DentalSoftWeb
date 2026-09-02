@@ -61,20 +61,13 @@ function buildRegisterPaymentSteps(ctx, variantId) {
         steps.push({
             group: GROUP,
             target: '[data-tour="caisse-overview.payment-dialog"]',
-            title: insuranceActive
-                ? 'Regler avec assurance'
-                : insuranceDisabled
-                  ? 'Reglement sans assurance'
-                  : 'Enregistrer un paiement',
+            title: insuranceActive ? 'Regler avec assurance' : insuranceDisabled ? 'Reglement sans assurance' : 'Enregistrer un paiement',
             content: insuranceActive
                 ? 'La modale affiche le detail assurance (taux, part couverte) et permet de regler uniquement la part patient restante.'
                 : insuranceDisabled
                   ? 'Pour une facture classique, seul le reglement patient est propose : montant, mode de paiement et reste a payer.'
                   : 'La modale de reglement gere le montant patient, le mode de paiement et le reste a payer.',
-            beforeEnter: async () => openDialogStep(
-                () => ctx.openPaymentDialog?.(variantId),
-                ctx.closeAllDialogs
-            )
+            beforeEnter: async () => openDialogStep(() => ctx.openPaymentDialog?.(variantId), ctx.closeAllDialogs)
         });
     }
 
@@ -107,10 +100,7 @@ function buildValidateEmptyInvoiceSteps(ctx) {
             target: '[data-tour="caisse-factures.validate"]',
             title: 'Confirmer la facture vide',
             content: 'Le dialogue de validation confirme qu aucun reglement n est attendu pour cette facture.',
-            beforeEnter: async () => openDialogStep(
-                () => ctx.openValidateDialog?.(),
-                ctx.closeAllDialogs
-            )
+            beforeEnter: async () => openDialogStep(() => ctx.openValidateDialog?.(), ctx.closeAllDialogs)
         }
     ]);
 }
@@ -162,10 +152,7 @@ function buildPreviewFactureSteps(ctx) {
             target: '[data-tour="caisse-factures.preview"]',
             title: 'Verifier avant impression',
             content: 'L apercu detaille la facture, les lignes de soins et l historique des paiements.',
-            beforeEnter: async () => openDialogStep(
-                () => ctx.openPreviewDialog?.(),
-                ctx.closeAllDialogs
-            )
+            beforeEnter: async () => openDialogStep(() => ctx.openPreviewDialog?.(), ctx.closeAllDialogs)
         });
     }
 
@@ -189,10 +176,7 @@ function buildModifyFactureSteps(ctx) {
             target: '[data-tour="caisse-factures.modify"]',
             title: 'Corriger les lignes facture',
             content: 'La modale de modification sert a ajuster les soins, quantites et montants avant validation.',
-            beforeEnter: async () => openDialogStep(
-                () => ctx.openModifyDialog?.(),
-                ctx.closeAllDialogs
-            )
+            beforeEnter: async () => openDialogStep(() => ctx.openModifyDialog?.(), ctx.closeAllDialogs)
         });
     }
 

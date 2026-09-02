@@ -1,7 +1,6 @@
 import { buildFactureContextMenuItems } from '@/utils/factureRow';
 
-export const isConsultationClosed = (consultation) =>
-    Number(consultation?.state ?? consultation?.statut) === 1;
+export const isConsultationClosed = (consultation) => Number(consultation?.state ?? consultation?.statut) === 1;
 
 export const findFactureForConsultation = (consultation, factures = []) => {
     const consultationId = consultation?.id;
@@ -25,11 +24,13 @@ export const findFactureForConsultation = (consultation, factures = []) => {
  */
 export const buildConsultationContextMenuItems = (consultation, handlers = {}, options = {}) => {
     if (!consultation) {
-        return [{
-            label: 'Aucune consultation',
-            icon: 'pi pi-inbox',
-            disabled: true
-        }];
+        return [
+            {
+                label: 'Aucune consultation',
+                icon: 'pi pi-inbox',
+                disabled: true
+            }
+        ];
     }
 
     const items = [];
@@ -72,11 +73,13 @@ export const buildConsultationContextMenuItems = (consultation, handlers = {}, o
     }
 
     if (!items.length) {
-        return [{
-            label: 'Aucune action disponible',
-            icon: 'pi pi-info-circle',
-            disabled: true
-        }];
+        return [
+            {
+                label: 'Aucune action disponible',
+                icon: 'pi pi-info-circle',
+                disabled: true
+            }
+        ];
     }
 
     return items;

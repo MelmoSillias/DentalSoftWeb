@@ -135,7 +135,7 @@ async function handleLogout() {
 function openProfile() {
     // hide popover if available, then navigate
     try {
-        if (profilePopover && profilePopover.value && typeof profilePopover.value.hide === 'function') {
+        if (profilePopover.value && profilePopover.value && typeof profilePopover.value.hide === 'function') {
             profilePopover.value.hide();
         }
     } catch (e) {
@@ -185,26 +185,16 @@ function handleStartGuidedTourTask(taskId, variantId = null) {
                     <img src="/logo.png" class="app-logo" width="54" height="40" :alt="cabinetConfig.brandName" />
                 </div>
 
-                <span style="font-weight: 500;">{{ cabinetConfig.brandName }} <br> <small>{{ cabinetConfig.brandSubtitle }}</small></span>
-
+                <span style="font-weight: 500"
+                    >{{ cabinetConfig.brandName }} <br />
+                    <small>{{ cabinetConfig.brandSubtitle }}</small></span
+                >
             </router-link>
-            <Tag
-                v-if="isLocalDeploymentMode"
-                value="Mode local"
-                severity="warn"
-                class="local-mode-tag"
-                role="status"
-            />
+            <Tag v-if="isLocalDeploymentMode" value="Mode local" severity="warn" class="local-mode-tag" role="status" />
         </div>
         <div class="layout-topbar-actions">
             <div class="layout-config-menu">
-                <button
-                    v-if="showSmsCredits && canOpenSmsSettings"
-                    type="button"
-                    class="sms-credits-widget sms-credits-widget--clickable"
-                    :class="{ 'sms-credits-widget--warn': !smsOverviewSuccess && !smsCreditsLoading }"
-                    @click="openSmsSettings"
-                >
+                <button v-if="showSmsCredits && canOpenSmsSettings" type="button" class="sms-credits-widget sms-credits-widget--clickable" :class="{ 'sms-credits-widget--warn': !smsOverviewSuccess && !smsCreditsLoading }" @click="openSmsSettings">
                     <div class="sms-credits-widget__icon" aria-hidden="true">
                         <i class="pi pi-comment"></i>
                     </div>
@@ -222,13 +212,7 @@ function handleStartGuidedTourTask(taskId, variantId = null) {
                         </div>
                     </div>
                 </button>
-                <div
-                    v-else-if="showSmsCredits"
-                    class="sms-credits-widget"
-                    :class="{ 'sms-credits-widget--warn': !smsOverviewSuccess && !smsCreditsLoading }"
-                    role="status"
-                    aria-live="polite"
-                >
+                <div v-else-if="showSmsCredits" class="sms-credits-widget" :class="{ 'sms-credits-widget--warn': !smsOverviewSuccess && !smsCreditsLoading }" role="status" aria-live="polite">
                     <div class="sms-credits-widget__icon" aria-hidden="true">
                         <i class="pi pi-comment"></i>
                     </div>
@@ -249,15 +233,7 @@ function handleStartGuidedTourTask(taskId, variantId = null) {
                 <button type="button" class="layout-topbar-action" @click="toggleDarkMode">
                     <i :class="['pi', { 'pi-moon': isDarkTheme, 'pi-sun': !isDarkTheme }]"></i>
                 </button>
-                <button
-                    type="button"
-                    class="layout-topbar-action"
-                    :class="{ 'layout-topbar-action-disabled': !isGuidedTourAvailable }"
-                    @click="toggleHelpPopover($event)"
-                    ref="helpButton"
-                    :aria-disabled="!isGuidedTourAvailable"
-                    title="Aide guidee"
-                >
+                <button type="button" class="layout-topbar-action" :class="{ 'layout-topbar-action-disabled': !isGuidedTourAvailable }" @click="toggleHelpPopover($event)" ref="helpButton" :aria-disabled="!isGuidedTourAvailable" title="Aide guidee">
                     <i class="pi pi-question-circle"></i>
                 </button>
                 <Popover
@@ -275,9 +251,7 @@ function handleStartGuidedTourTask(taskId, variantId = null) {
                             <i class="pi pi-question-circle text-primary-500"></i>
                             <span class="font-semibold text-surface-900 dark:text-surface-50">Aide guidee</span>
                         </div>
-                        <p class="text-xs text-surface-500 dark:text-surface-400 mt-1">
-                            Choisissez une action a decouvrir sur cette page.
-                        </p>
+                        <p class="text-xs text-surface-500 dark:text-surface-400 mt-1">Choisissez une action a decouvrir sur cette page.</p>
                     </div>
                     <div class="p-2 space-y-1 max-h-[24rem] overflow-y-auto">
                         <button
@@ -313,8 +287,10 @@ function handleStartGuidedTourTask(taskId, variantId = null) {
                 </div> -->
                 <NotificationBell variant="topbar" popover-position="bottom" />
             </div>
-            <button class="layout-topbar-menu-button layout-topbar-action"
-                v-styleclass="{ selector: '@next', enterFromClass: 'hidden', enterActiveClass: 'animate-scalein', leaveToClass: 'hidden', leaveActiveClass: 'animate-fadeout', hideOnOutsideClick: true }">
+            <button
+                class="layout-topbar-menu-button layout-topbar-action"
+                v-styleclass="{ selector: '@next', enterFromClass: 'hidden', enterActiveClass: 'animate-scalein', leaveToClass: 'hidden', leaveActiveClass: 'animate-fadeout', hideOnOutsideClick: true }"
+            >
                 <i class="pi pi-ellipsis-v"></i>
             </button>
             <div class="layout-topbar-menu hidden lg:block">
@@ -328,22 +304,25 @@ function handleStartGuidedTourTask(taskId, variantId = null) {
                         </div>
                     </div> -->
                     <!-- ======= NOTIFICATIONS avec POPOVER ======= -->
-                    <div class="relative">
-
-                    </div>
+                    <div class="relative"></div>
                     <!-- ======= PROFIL avec POPOVER ======= -->
                     <div class="relative">
-                        <button type="button" class="layout-topbar-action flex items-center gap-1"
-                            @click="toggleProfilePopover" ref="profileButton">
+                        <button type="button" class="layout-topbar-action flex items-center gap-1" @click="toggleProfilePopover" ref="profileButton">
                             <i class="pi pi-user"></i>
                             <span>Profil</span>
                         </button>
-                        <Popover ref="profilePopover" v-model:visible="showProfilePopover" :autoHide="true"
-                            :dismissable="true" :target="profileButton" position="bottom"
-                            class="w-64 bg-white dark:bg-gray-800 shadow-lg rounded-lg p-4" style="z-index: 1000">
+                        <Popover
+                            ref="profilePopover"
+                            v-model:visible="showProfilePopover"
+                            :autoHide="true"
+                            :dismissable="true"
+                            :target="profileButton"
+                            position="bottom"
+                            class="w-64 bg-white dark:bg-gray-800 shadow-lg rounded-lg p-4"
+                            style="z-index: 1000"
+                        >
                             <div class="flex items-center gap-3 border-b pb-3 mb-3">
-                                <img src="https://cdn-icons-png.flaticon.com/512/149/149071.png" alt="User Avatar"
-                                    class="w-12 h-12 rounded-full border border-gray-300 dark:border-gray-600" />
+                                <img src="https://cdn-icons-png.flaticon.com/512/149/149071.png" alt="User Avatar" class="w-12 h-12 rounded-full border border-gray-300 dark:border-gray-600" />
                                 <div>
                                     <p class="font-semibold text-lg text-gray-800 dark:text-gray-100">
                                         {{ auth.user?.username || 'Utilisateur' }}
@@ -354,10 +333,8 @@ function handleStartGuidedTourTask(taskId, variantId = null) {
                                 </div>
                             </div>
                             <div class="mt-4 space-y-2">
-                                <Button class="p-button-secondary p-button-sm w-full" label="Mon profil"
-                                    icon="pi pi-user" iconPos="left" @click="openProfile" />
-                                <Button :loading="isLoggingOut" class="p-button-danger p-button-sm w-full"
-                                    label="Déconnexion" icon="pi pi-sign-out" iconPos="left" @click="handleLogout" />
+                                <Button class="p-button-secondary p-button-sm w-full" label="Mon profil" icon="pi pi-user" iconPos="left" @click="openProfile" />
+                                <Button :loading="isLoggingOut" class="p-button-danger p-button-sm w-full" label="Déconnexion" icon="pi pi-sign-out" iconPos="left" @click="handleLogout" />
                             </div>
                         </Popover>
                     </div>
@@ -455,7 +432,9 @@ function handleStartGuidedTourTask(taskId, variantId = null) {
     cursor: pointer;
     font: inherit;
     appearance: none;
-    transition: box-shadow 0.15s ease, transform 0.15s ease;
+    transition:
+        box-shadow 0.15s ease,
+        transform 0.15s ease;
 }
 
 .sms-credits-widget--clickable:hover {

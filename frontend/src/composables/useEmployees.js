@@ -8,7 +8,7 @@ const employees = ref([]);
 const totalRecords = ref(0);
 const loading = ref(false);
 const error = ref(null);
-const auth = useAuthStore(); 
+const auth = useAuthStore();
 
 export function useEmployees() {
     function buildAuthHeaders(includeJson = false) {
@@ -44,11 +44,10 @@ export function useEmployees() {
             totalRecords.value = data.recordsFiltered ?? data.recordsTotal ?? employees.value.length;
         } catch (err) {
             error.value = err.message;
-        }   
-        finally {
+        } finally {
             loading.value = false;
-        }    
-    }   
+        }
+    }
 
     async function fetchUserlessEmployee() {
         loading.value = true;

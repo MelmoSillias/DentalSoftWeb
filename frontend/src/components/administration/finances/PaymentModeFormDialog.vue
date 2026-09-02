@@ -5,10 +5,7 @@ import Dialog from 'primevue/dialog';
 import InputText from 'primevue/inputtext';
 import Select from 'primevue/select';
 import Textarea from 'primevue/textarea';
-import {
-    getPaymentMethodDefinition,
-    resolvePaymentMethodTypeKey
-} from '@/utils/paymentMethodUtils';
+import { getPaymentMethodDefinition, resolvePaymentMethodTypeKey } from '@/utils/paymentMethodUtils';
 
 const props = defineProps({
     visible: { type: Boolean, default: false },
@@ -78,12 +75,7 @@ const submitForm = (event) => {
 </script>
 
 <template>
-    <Dialog
-        :visible="visible"
-        modal
-        :style="{ width: '560px' }"
-        :header="isEdit ? 'Modifier un mode de paiement' : 'Ajouter un mode de paiement'"
-        @update:visible="close">
+    <Dialog :visible="visible" modal :style="{ width: '560px' }" :header="isEdit ? 'Modifier un mode de paiement' : 'Ajouter un mode de paiement'" @update:visible="close">
         <div class="grid gap-4">
             <div class="flex flex-col gap-2">
                 <label class="text-sm font-medium text-surface-700">Libelle <span class="text-red-500">*</span></label>

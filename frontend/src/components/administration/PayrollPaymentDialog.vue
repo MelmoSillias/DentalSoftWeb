@@ -46,9 +46,7 @@ const form = ref({
     note: ''
 });
 
-const selectedEmployee = computed(() =>
-    (props.employees || []).find((employee) => employee.id === form.value.employeeId) || null
-);
+const selectedEmployee = computed(() => (props.employees || []).find((employee) => employee.id === form.value.employeeId) || null);
 
 const isJournalier = computed(() => {
     const freq = props.context?.employee?.frequencePaiement || selectedEmployee.value?.frequencePaiement;
@@ -98,22 +96,26 @@ const effectiveRemaining = computed(() => {
     return Math.max(0, base + prime - alreadyPaid);
 });
 
-watch(() => props.visible, (val) => {
-    localVisible.value = val;
-    if (val) {
-        const now = new Date();
-        monthModel.value = now;
-        dayModel.value = now;
-        primeAmountModel.value = null;
-        form.value = {
-            employeeId: null,
-            paidAmount: null,
-            paidAt: now,
-            paymentMethodId: props.paymentMethods?.[0]?.id ?? null,
-            note: ''
-        };
-    }
-}, { immediate: true });
+watch(
+    () => props.visible,
+    (val) => {
+        localVisible.value = val;
+        if (val) {
+            const now = new Date();
+            monthModel.value = now;
+            dayModel.value = now;
+            primeAmountModel.value = null;
+            form.value = {
+                employeeId: null,
+                paidAmount: null,
+                paidAt: now,
+                paymentMethodId: props.paymentMethods?.[0]?.id ?? null,
+                note: ''
+            };
+        }
+    },
+    { immediate: true }
+);
 
 watch(localVisible, (val) => emit('update:visible', val));
 
@@ -160,9 +162,7 @@ const close = () => {
 const submit = () => {
     if (!canSubmit.value) return;
 
-    const paidAt = form.value.paidAt instanceof Date
-        ? form.value.paidAt.toISOString().slice(0, 10)
-        : '';
+    const paidAt = form.value.paidAt instanceof Date ? form.value.paidAt.toISOString().slice(0, 10) : '';
 
     const payload = {
         employeeId: form.value.employeeId,
@@ -194,25 +194,12 @@ const employeeOptions = computed(() =>
 </script>
 
 <template>
-    <Dialog
-        v-model:visible="localVisible"
-        modal
-        header="Paiement de salaire"
-        :style="{ width: '52rem', maxWidth: '95vw' }"
-        @hide="close"
-    >
+    <Dialog v-model:visible="localVisible" modal header="Paiement de salaire" :style="{ width: '52rem', maxWidth: '95vw' }" @hide="close">
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
             <div class="space-y-4">
                 <div class="space-y-1">
                     <label class="text-sm font-medium">Employé <span class="text-red-500">*</span></label>
-                    <Select
-                        v-model="form.employeeId"
-                        :options="employeeOptions"
-                        optionLabel="label"
-                        optionValue="value"
-                        class="w-full"
-                        placeholder="Sélectionnez un employé"
-                    />
+                    <Select v-model="form.employeeId" :options="employeeOptions" optionLabel="label" optionValue="value" class="w-full" placeholder="Sélectionnez un employé" />
                 </div>
 
                 <div class="space-y-1">
@@ -227,27 +214,12 @@ const employeeOptions = computed(() =>
 
                 <div class="space-y-1">
                     <label class="text-sm font-medium">Montant versé <span class="text-red-500">*</span></label>
-                    <InputNumber
-                        v-model="form.paidAmount"
-                        class="w-full"
-                        :min="0"
-                        mode="decimal"
-                        :minFractionDigits="0"
-                        :maxFractionDigits="2"
-                        suffix=" F CFA"
-                    />
+                    <InputNumber v-model="form.paidAmount" class="w-full" :min="0" mode="decimal" :minFractionDigits="0" :maxFractionDigits="2" suffix=" F CFA" />
                 </div>
 
                 <div class="space-y-1">
                     <label class="text-sm font-medium">Mode de règlement <span class="text-red-500">*</span></label>
-                    <Select
-                        v-model="form.paymentMethodId"
-                        :options="paymentMethods"
-                        optionLabel="libelle"
-                        optionValue="id"
-                        class="w-full"
-                        placeholder="Sélectionnez un mode"
-                    />
+                    <Select v-model="form.paymentMethodId" :options="paymentMethods" optionLabel="libelle" optionValue="id" class="w-full" placeholder="Sélectionnez un mode" />
                 </div>
 
                 <div class="space-y-1">
@@ -261,25 +233,14 @@ const employeeOptions = computed(() =>
                 </div>
             </div>
 
-            <SalaryPreviewPanel
-                :context="context"
-                :loading="contextLoading"
-                v-model:prime-amount="primeAmountModel"
-                :editable-prime="hasFixedPrime"
-            />
+            <SalaryPreviewPanel :context="context" :loading="contextLoading" v-model:prime-amount="primeAmountModel" :editable-prime="hasFixedPrime" />
         </div>
 
         <template #footer>
             <div class="flex justify-end gap-2">
                 <Button label="Annuler" text severity="secondary" @click="close" />
                 <span v-tooltip.top="submitTooltip">
-                    <Button
-                        label="Enregistrer"
-                        icon="pi pi-check"
-                        :loading="loading"
-                        :disabled="!canSubmit"
-                        @click="submit"
-                    />
+                    <Button label="Enregistrer" icon="pi pi-check" :loading="loading" :disabled="!canSubmit" @click="submit" />
                 </span>
             </div>
         </template>

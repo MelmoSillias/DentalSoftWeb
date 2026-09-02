@@ -1,11 +1,44 @@
+<script setup>
+import { computed } from 'vue';
+import PrintA4Page from './PrintA4Page.vue';
+import PrintDocumentHeader from './PrintDocumentHeader.vue';
+import logoImg from '@/assets/logo.png';
+
+const props = defineProps({
+    doc: { type: Object, default: () => ({}) },
+    title: { type: String, default: 'Devis assurance' },
+    logoSrc: { type: String, default: logoImg }
+});
+
+const assureFields = computed(() => (Array.isArray(props.doc?.assureFields) ? props.doc.assureFields : []));
+
+const lignes = computed(() => {
+    if (Array.isArray(props.doc?.contenus) && props.doc.contenus.length) {
+        return props.doc.contenus;
+    }
+    return (props.doc?.lignes || []).map((line) => ({
+        designation: line.designation,
+        qte: line.quantite ?? line.qte ?? 1,
+        montant: line.prix ?? line.montant ?? 0,
+        total: line.total ?? 0
+    }));
+});
+
+const tauxCouvertureLabel = computed(() => {
+    const rate = props.doc?.tauxCouverture ?? props.doc?.assurance?.tauxCouverture;
+    return rate == null || rate === '' ? '—' : `${rate}%`;
+});
+
+const formatMoney = (value) => {
+    const num = Number(value || 0);
+    return `${num.toLocaleString('fr-FR')} FCFA`;
+};
+</script>
+
 <template>
     <PrintA4Page :logo-src="logoSrc">
         <template #header>
-            <PrintDocumentHeader
-                :title="title || 'Devis assurance'"
-                :doc-id="doc?.id"
-                :date="doc?.date || doc?.dateFacture"
-            />
+            <PrintDocumentHeader :title="title || 'Devis assurance'" :doc-id="doc?.id" :date="doc?.date || doc?.dateFacture" />
         </template>
 
         <div class="print-info-card">
@@ -20,9 +53,7 @@
             <div class="assurance-title">
                 <strong>Assurance :</strong>
                 {{ doc?.assurance?.nom || doc?.assuranceSnapshot?.nom || '—' }}
-                <span v-if="doc?.assurance?.code || doc?.assuranceSnapshot?.code" class="muted">
-                    ({{ doc?.assurance?.code || doc?.assuranceSnapshot?.code }})
-                </span>
+                <span v-if="doc?.assurance?.code || doc?.assuranceSnapshot?.code" class="muted"> ({{ doc?.assurance?.code || doc?.assuranceSnapshot?.code }}) </span>
             </div>
 
             <div v-if="assureFields.length" class="assure-grid">
@@ -82,45 +113,6 @@
         </div>
     </PrintA4Page>
 </template>
-
-<script setup>
-import { computed } from 'vue';
-import PrintA4Page from './PrintA4Page.vue';
-import PrintDocumentHeader from './PrintDocumentHeader.vue';
-import logoImg from '@/assets/logo.png';
-
-const props = defineProps({
-    doc: { type: Object, default: () => ({}) },
-    title: { type: String, default: 'Devis assurance' },
-    logoSrc: { type: String, default: logoImg }
-});
-
-const assureFields = computed(() =>
-    Array.isArray(props.doc?.assureFields) ? props.doc.assureFields : []
-);
-
-const lignes = computed(() => {
-    if (Array.isArray(props.doc?.contenus) && props.doc.contenus.length) {
-        return props.doc.contenus;
-    }
-    return (props.doc?.lignes || []).map((line) => ({
-        designation: line.designation,
-        qte: line.quantite ?? line.qte ?? 1,
-        montant: line.prix ?? line.montant ?? 0,
-        total: line.total ?? 0
-    }));
-});
-
-const tauxCouvertureLabel = computed(() => {
-    const rate = props.doc?.tauxCouverture ?? props.doc?.assurance?.tauxCouverture;
-    return rate == null || rate === '' ? '—' : `${rate}%`;
-});
-
-const formatMoney = (value) => {
-    const num = Number(value || 0);
-    return `${num.toLocaleString('fr-FR')} FCFA`;
-};
-</script>
 
 <style scoped>
 .assurance-card {

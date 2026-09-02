@@ -1,3 +1,12 @@
+<script setup>
+defineProps({
+    data: {
+        type: Object,
+        required: true
+    }
+});
+</script>
+
 <template>
     <div class="print-root">
         <div class="poster" id="posterA4">
@@ -20,17 +29,10 @@
                             {{ data.entries.portal.description }}
                         </div>
                         <div class="canvas-wrapper">
-                            <img
-                                v-if="data.entries.portal.imageSrc"
-                                :src="data.entries.portal.imageSrc"
-                                :alt="data.entries.portal.title"
-                                class="qr-canvas"
-                            />
+                            <img v-if="data.entries.portal.imageSrc" :src="data.entries.portal.imageSrc" :alt="data.entries.portal.title" class="qr-canvas" />
                             <div v-else class="qr-canvas qr-placeholder">URL invalide</div>
                         </div>
-                        <div class="badge-qr">
-                            <i class="pi pi-qrcode"></i> {{ data.entries.portal.badge }}
-                        </div>
+                        <div class="badge-qr"><i class="pi pi-qrcode"></i> {{ data.entries.portal.badge }}</div>
                     </div>
 
                     <div class="qr-card">
@@ -40,17 +42,10 @@
                             {{ data.entries.review.description }}
                         </div>
                         <div class="canvas-wrapper">
-                            <img
-                                v-if="data.entries.review.imageSrc"
-                                :src="data.entries.review.imageSrc"
-                                :alt="data.entries.review.title"
-                                class="qr-canvas"
-                            />
+                            <img v-if="data.entries.review.imageSrc" :src="data.entries.review.imageSrc" :alt="data.entries.review.title" class="qr-canvas" />
                             <div v-else class="qr-canvas qr-placeholder">URL invalide</div>
                         </div>
-                        <div class="badge-qr">
-                            <i class="pi pi-comment"></i> {{ data.entries.review.badge }}
-                        </div>
+                        <div class="badge-qr"><i class="pi pi-comment"></i> {{ data.entries.review.badge }}</div>
                     </div>
                 </div>
 
@@ -61,17 +56,10 @@
                         {{ data.entries.showcase.description }}
                     </div>
                     <div class="big-canvas-wrapper">
-                        <img
-                            v-if="data.entries.showcase.imageSrc"
-                            :src="data.entries.showcase.imageSrc"
-                            :alt="data.entries.showcase.title"
-                            class="big-qr-canvas"
-                        />
+                        <img v-if="data.entries.showcase.imageSrc" :src="data.entries.showcase.imageSrc" :alt="data.entries.showcase.title" class="big-qr-canvas" />
                         <div v-else class="big-qr-canvas qr-placeholder">URL invalide</div>
                     </div>
-                    <div class="big-badge">
-                        <i class="pi pi-globe"></i> {{ data.entries.showcase.badge }}
-                    </div>
+                    <div class="big-badge"><i class="pi pi-globe"></i> {{ data.entries.showcase.badge }}</div>
                 </div>
             </div>
 
@@ -84,15 +72,6 @@
         </div>
     </div>
 </template>
-
-<script setup>
-defineProps({
-    data: {
-        type: Object,
-        required: true
-    }
-});
-</script>
 
 <style scoped>
 * {
@@ -125,13 +104,13 @@ defineProps({
 }
 
 .poster::after {
-    content: "";
+    content: '';
     position: absolute;
     top: 0;
     right: 0;
     width: 260px;
     height: 260px;
-    background: radial-gradient(circle, rgba(44,155,143,0.03) 0%, rgba(255,255,255,0) 70%);
+    background: radial-gradient(circle, rgba(44, 155, 143, 0.03) 0%, rgba(255, 255, 255, 0) 70%);
     pointer-events: none;
     border-radius: 50%;
 }
@@ -149,7 +128,7 @@ defineProps({
 .title-section h1 {
     font-size: 2.4rem;
     font-weight: 800;
-    background: linear-gradient(125deg, #1F6E8C 0%, #2C9B8F 100%);
+    background: linear-gradient(125deg, #1f6e8c 0%, #2c9b8f 100%);
     background-clip: text;
     -webkit-background-clip: text;
     color: transparent;
@@ -162,7 +141,7 @@ defineProps({
     font-weight: 500;
     margin-top: 8px;
     font-size: 0.95rem;
-    border-left: 3px solid #2C9B8F;
+    border-left: 3px solid #2c9b8f;
     padding-left: 14px;
 }
 
@@ -175,8 +154,8 @@ defineProps({
     justify-content: center;
     border-radius: 30px;
     font-size: 32px;
-    color: #2C9B8F;
-    box-shadow: 0 8px 18px rgba(0,0,0,0.05);
+    color: #2c9b8f;
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.05);
 }
 
 .asymmetric-layout {
@@ -213,7 +192,7 @@ defineProps({
     justify-content: center;
     border-radius: 35px;
     margin: 0 auto 18px;
-    color: #1F6E8C;
+    color: #1f6e8c;
 }
 
 .qr-card h3 {
@@ -253,7 +232,7 @@ defineProps({
     display: inline-block;
     padding: 5px 14px;
     border-radius: 40px;
-    color: #2C9B8F;
+    color: #2c9b8f;
     font-weight: 600;
     margin-top: 14px;
 }
@@ -273,7 +252,7 @@ defineProps({
 
 .feature-icon {
     font-size: 3.2rem;
-    background: linear-gradient(135deg, #1F6E8C, #2C9B8F);
+    background: linear-gradient(135deg, #1f6e8c, #2c9b8f);
     width: 100px;
     height: 100px;
     display: flex;
@@ -282,13 +261,13 @@ defineProps({
     border-radius: 60px;
     margin: 0 auto 20px;
     color: white;
-    box-shadow: 0 15px 25px -8px rgba(31,110,140,0.4);
+    box-shadow: 0 15px 25px -8px rgba(31, 110, 140, 0.4);
 }
 
 .feature-card h3 {
     font-size: 1.9rem;
     font-weight: 800;
-    color: #1F3B43;
+    color: #1f3b43;
     margin-bottom: 12px;
 }
 
@@ -315,7 +294,7 @@ defineProps({
     background: #e0f0ed;
     padding: 6px 18px;
     border-radius: 60px;
-    color: #1F6E8C;
+    color: #1f6e8c;
     display: inline-block;
     margin-top: 18px;
 }
@@ -335,7 +314,7 @@ defineProps({
 
 .footer-note span i {
     margin-right: 8px;
-    color: #2C9B8F;
+    color: #2c9b8f;
 }
 
 .qr-placeholder {

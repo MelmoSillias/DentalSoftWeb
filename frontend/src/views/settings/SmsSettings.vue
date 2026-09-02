@@ -1,15 +1,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useGuidedTour } from '@/composables/useGuidedTour';
-import {
-    activateSmsTourMock,
-    deactivateSmsTourMock,
-    fetchSmsOverviewTourMock,
-    fetchSmsQueueTourMock,
-    fetchSmsTemplatesTourMock,
-    resetSmsTourMockData,
-    resolveSmsTourMockScenario
-} from '@/services/smsTourMock';
+import { activateSmsTourMock, deactivateSmsTourMock, fetchSmsOverviewTourMock, fetchSmsQueueTourMock, fetchSmsTemplatesTourMock, resetSmsTourMockData, resolveSmsTourMockScenario } from '@/services/smsTourMock';
 import { useToast } from 'primevue/usetoast';
 import Button from 'primevue/button';
 import Chip from 'primevue/chip';
@@ -61,11 +53,7 @@ const queueDetailsLogs = ref([]);
 let guidedTourDemoActive = false;
 let guidedTourPageState = null;
 
-const hasOpenDialogs = computed(() => (
-    queueDialogVisible.value
-    || queueActionDialogVisible.value
-    || queueDetailsDialogVisible.value
-));
+const hasOpenDialogs = computed(() => queueDialogVisible.value || queueActionDialogVisible.value || queueDetailsDialogVisible.value);
 
 const switchTab = async (tab) => {
     activeTab.value = tab;
@@ -265,21 +253,31 @@ const queueRecurrenceOptions = [
 
 const queueStatusLabel = (status) => {
     switch (status) {
-    case 'sent': return 'Envoyé';
-    case 'failed': return 'Échec';
-    case 'sending': return 'Envoi';
-    case 'cancelled': return 'Annulé';
-    default: return 'En attente';
+        case 'sent':
+            return 'Envoyé';
+        case 'failed':
+            return 'Échec';
+        case 'sending':
+            return 'Envoi';
+        case 'cancelled':
+            return 'Annulé';
+        default:
+            return 'En attente';
     }
 };
 
 const queueStatusSeverity = (status) => {
     switch (status) {
-    case 'sent': return 'success';
-    case 'failed': return 'danger';
-    case 'sending': return 'info';
-    case 'cancelled': return 'secondary';
-    default: return 'warning';
+        case 'sent':
+            return 'success';
+        case 'failed':
+            return 'danger';
+        case 'sending':
+            return 'info';
+        case 'cancelled':
+            return 'secondary';
+        default:
+            return 'warning';
     }
 };
 
@@ -300,9 +298,7 @@ const queueActionDescription = computed(() => {
 const openQueueActionDialog = (mode, item) => {
     queueActionMode.value = mode;
     queueActionItem.value = item;
-    queueActionSendAt.value = mode === 'reschedule'
-        ? (item?.sendAt ? new Date(item.sendAt) : new Date())
-        : null;
+    queueActionSendAt.value = mode === 'reschedule' ? (item?.sendAt ? new Date(item.sendAt) : new Date()) : null;
     queueActionDialogVisible.value = true;
 };
 
@@ -343,11 +339,7 @@ const submitQueueAction = async () => {
             return;
         }
 
-        await updateQueueItemAction(
-            queueActionItem.value.id,
-            { action: 'reschedule', sendAt: queueActionSendAt.value.toISOString() },
-            'SMS reprogrammé.'
-        );
+        await updateQueueItemAction(queueActionItem.value.id, { action: 'reschedule', sendAt: queueActionSendAt.value.toISOString() }, 'SMS reprogrammé.');
         closeQueueActionDialog();
         return;
     }
@@ -364,19 +356,15 @@ const submitQueueAction = async () => {
     }
 };
 
-const totalCharacters = computed(() =>
-    smsTemplates.value.reduce((sum, template) => sum + String(template?.content || '').length, 0)
-);
+const totalCharacters = computed(() => smsTemplates.value.reduce((sum, template) => sum + String(template?.content || '').length, 0));
 const recommendedContract = computed(() => providerOverview.value.contracts.find((item) => item.isRecommended) || providerOverview.value.contracts[0] || null);
 const isOrangeProvider = computed(() => smsConfig.provider === 'orange');
 const isAfrikSmsProvider = computed(() => smsConfig.provider === 'afriksms');
 const providerLabel = computed(() => SMS_PROVIDER_OPTIONS.find((item) => item.value === smsConfig.provider)?.label || smsConfig.provider || '—');
 const providerOverviewTitle = computed(() => (isAfrikSmsProvider.value ? 'Solde AfrikSms' : 'Contrat Orange'));
-const providerOverviewEmptyMessage = computed(() => (
-    isAfrikSmsProvider.value
-        ? (providerOverview.value.message || 'Aucun solde AfrikSms disponible pour le moment.')
-        : (providerOverview.value.message || 'Aucun contrat Orange disponible pour le moment.')
-));
+const providerOverviewEmptyMessage = computed(() =>
+    isAfrikSmsProvider.value ? providerOverview.value.message || 'Aucun solde AfrikSms disponible pour le moment.' : providerOverview.value.message || 'Aucun contrat Orange disponible pour le moment.'
+);
 const approvedSenderNameOptions = computed(() => smsConfig.approvedSenderNames.map((item) => ({ label: item, value: item })));
 const patientPreferenceBypassOptions = [
     { key: 'patientCreated', label: 'Création patient', description: 'Ignore la préférence patient de SMS après création.' },
@@ -426,9 +414,7 @@ const applyProviderDefaults = (provider) => {
 const formatPeriodDayLabel = (day, { short = true } = {}) => {
     const date = new Date(`${day}T00:00:00`);
     if (Number.isNaN(date.getTime())) return day;
-    return date.toLocaleDateString('fr-FR', short
-        ? { day: '2-digit', month: 'short' }
-        : { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
+    return date.toLocaleDateString('fr-FR', short ? { day: '2-digit', month: 'short' } : { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
 };
 
 const periodDailyChartData = computed(() => {
@@ -520,10 +506,7 @@ const logsFiltered = computed(() => {
         }
 
         if (query) {
-            const haystack = [log.patient, log.phone, log.message, log.status, log.type, log.source]
-                .filter(Boolean)
-                .join(' ')
-                .toLowerCase();
+            const haystack = [log.patient, log.phone, log.message, log.status, log.type, log.source].filter(Boolean).join(' ').toLowerCase();
 
             if (!haystack.includes(query)) {
                 return false;
@@ -661,598 +644,585 @@ const retryLoadSmsSettings = async () => {
         </div>
 
         <template v-else>
-        <!-- Header Section -->
-        <div class="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900/50" data-tour="sms-settings.overview">
-            <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                <div class="space-y-2">
-                    <p class="text-sm font-semibold uppercase tracking-wider text-blue-600 dark:text-blue-400">
-                        Administration
-                    </p>
-                    <div class="space-y-1">
-                        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">
-                            API SMS
-                        </h1>
-                        <p class="max-w-3xl text-sm leading-relaxed text-gray-600 dark:text-gray-400">
-                            Configuration du fournisseur, supervision du trafic, templates et file d'envoi.
-                        </p>
-                        <div
-                            class="mt-3 inline-flex max-w-3xl items-start gap-3 rounded-2xl border px-4 py-3"
-                            data-tour="sms-settings.status"
-                            :class="smsAutomationOperational
-                                ? 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-800/60 dark:bg-emerald-950/20 dark:text-emerald-200'
-                                : 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-800/60 dark:bg-amber-950/20 dark:text-amber-200'"
-                        >
-                            <i :class="smsAutomationOperational ? 'pi pi-check-circle' : 'pi pi-exclamation-triangle'" class="mt-0.5 text-base"></i>
-                            <div>
-                                <div class="flex flex-wrap items-center gap-2">
-                                    <span class="text-sm font-semibold">{{ smsAutomationStatusLabel }}</span>
-                                    <Tag :severity="smsAutomationStatusSeverity" :value="smsConfig.enabled ? 'Activé' : 'Désactivé'" />
+            <!-- Header Section -->
+            <div class="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900/50" data-tour="sms-settings.overview">
+                <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div class="space-y-2">
+                        <p class="text-sm font-semibold uppercase tracking-wider text-blue-600 dark:text-blue-400">Administration</p>
+                        <div class="space-y-1">
+                            <h1 class="text-3xl font-bold text-gray-900 dark:text-white">API SMS</h1>
+                            <p class="max-w-3xl text-sm leading-relaxed text-gray-600 dark:text-gray-400">Configuration du fournisseur, supervision du trafic, templates et file d'envoi.</p>
+                            <div
+                                class="mt-3 inline-flex max-w-3xl items-start gap-3 rounded-2xl border px-4 py-3"
+                                data-tour="sms-settings.status"
+                                :class="
+                                    smsAutomationOperational
+                                        ? 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-800/60 dark:bg-emerald-950/20 dark:text-emerald-200'
+                                        : 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-800/60 dark:bg-amber-950/20 dark:text-amber-200'
+                                "
+                            >
+                                <i :class="smsAutomationOperational ? 'pi pi-check-circle' : 'pi pi-exclamation-triangle'" class="mt-0.5 text-base"></i>
+                                <div>
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <span class="text-sm font-semibold">{{ smsAutomationStatusLabel }}</span>
+                                        <Tag :severity="smsAutomationStatusSeverity" :value="smsConfig.enabled ? 'Activé' : 'Désactivé'" />
+                                    </div>
+                                    <p class="mt-1 text-xs leading-relaxed opacity-90">{{ smsAutomationStatusDetail }}</p>
                                 </div>
-                                <p class="mt-1 text-xs leading-relaxed opacity-90">{{ smsAutomationStatusDetail }}</p>
                             </div>
                         </div>
                     </div>
-                </div>
-                <div class="flex flex-wrap gap-3">
-                    <Button
-                        label="Rafraîchir"
-                        icon="pi pi-refresh"
-                        severity="secondary"
-                        outlined
-                        :loading="smsLoading"
-                        @click="refreshSmsData"
-                    />
-                    <Button
-                        label="Traiter file"
-                        icon="pi pi-play"
-                        :loading="smsQueueing"
-                        @click="processQueueAction"
-                    />
+                    <div class="flex flex-wrap gap-3">
+                        <Button label="Rafraîchir" icon="pi pi-refresh" severity="secondary" outlined :loading="smsLoading" @click="refreshSmsData" />
+                        <Button label="Traiter file" icon="pi pi-play" :loading="smsQueueing" @click="processQueueAction" />
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Tabs Navigation -->
-        <Tabs :value="activeTab" @update:value="activeTab = $event">
-            <TabList class="flex flex-wrap gap-2 border-b border-gray-200 dark:border-gray-800" data-tour="sms-settings.tabs">
-                <Tab
-                    v-for="item in tabItems"
-                    :key="item.value"
-                    :value="item.value"
-                    class="rounded-t-xl px-4 py-2.5 font-medium transition-all data-[selected]:bg-white data-[selected]:text-blue-600 dark:data-[selected]:bg-gray-900 dark:data-[selected]:text-blue-400"
-                >
-                    <span class="flex items-center gap-2">
-                        <i :class="item.icon" class="text-sm"></i>
-                        <span class="text-sm">{{ item.label }}</span>
-                    </span>
-                </Tab>
-            </TabList>
+            <!-- Tabs Navigation -->
+            <Tabs :value="activeTab" @update:value="activeTab = $event">
+                <TabList class="flex flex-wrap gap-2 border-b border-gray-200 dark:border-gray-800" data-tour="sms-settings.tabs">
+                    <Tab
+                        v-for="item in tabItems"
+                        :key="item.value"
+                        :value="item.value"
+                        class="rounded-t-xl px-4 py-2.5 font-medium transition-all data-[selected]:bg-white data-[selected]:text-blue-600 dark:data-[selected]:bg-gray-900 dark:data-[selected]:text-blue-400"
+                    >
+                        <span class="flex items-center gap-2">
+                            <i :class="item.icon" class="text-sm"></i>
+                            <span class="text-sm">{{ item.label }}</span>
+                        </span>
+                    </Tab>
+                </TabList>
 
-            <TabPanels class="mt-6">
-                <!-- Overview Tab -->
-                <TabPanel value="overview">
-                    <div class="space-y-6">
-                        <!-- Loading State -->
-                        <div v-if="smsLoading && !smsLoaded" class="grid grid-cols-1 gap-4 xl:grid-cols-2">
-                            <div class="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900/50">
-                                <Skeleton height="8rem" />
-                            </div>
-                            <div class="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900/50">
-                                <Skeleton height="8rem" />
-                            </div>
-                        </div>
-
-                        <!-- Content -->
-                        <template v-else>
-                            <!-- Stats Grid -->
-                            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                                <div class="group rounded-2xl border border-gray-200 bg-white p-5 transition-all hover:shadow-lg dark:border-gray-700 dark:bg-gray-900/50">
-                                    <div class="flex items-start justify-between">
-                                        <div>
-                                            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Provider</p>
-                                            <p class="mt-2 text-2xl font-bold text-gray-900 dark:text-white">{{ providerLabel }}</p>
-                                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ smsConfig.enabled ? 'Actif' : 'Désactivé' }}</p>
-                                        </div>
-                                        <div class="rounded-xl bg-blue-50 p-2 dark:bg-blue-900/20">
-                                            <i class="pi pi-megaphone text-blue-600 dark:text-blue-400"></i>
-                                        </div>
-                                    </div>
+                <TabPanels class="mt-6">
+                    <!-- Overview Tab -->
+                    <TabPanel value="overview">
+                        <div class="space-y-6">
+                            <!-- Loading State -->
+                            <div v-if="smsLoading && !smsLoaded" class="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                                <div class="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900/50">
+                                    <Skeleton height="8rem" />
                                 </div>
-
-                                <div class="group rounded-2xl border border-gray-200 bg-white p-5 transition-all hover:shadow-lg dark:border-gray-700 dark:bg-gray-900/50">
-                                    <div class="flex items-start justify-between">
-                                        <div>
-                                            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">SMS envoyés aujourd'hui</p>
-                                            <p class="mt-2 text-2xl font-bold text-gray-900 dark:text-white">{{ smsStats.balance.sentToday }}</p>
-                                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Dernières 24h</p>
-                                        </div>
-                                        <div class="rounded-xl bg-green-50 p-2 dark:bg-green-900/20">
-                                            <i class="pi pi-send text-green-600 dark:text-green-400"></i>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="group rounded-2xl border border-gray-200 bg-white p-5 transition-all hover:shadow-lg dark:border-gray-700 dark:bg-gray-900/50">
-                                    <div class="flex items-start justify-between">
-                                        <div>
-                                            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">SMS envoyés ce mois</p>
-                                            <p class="mt-2 text-2xl font-bold text-gray-900 dark:text-white">{{ smsStats.balance.sentMonth }}</p>
-                                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                                {{ trafficTrend >= 0 ? '+' : '' }}{{ trafficTrend }} vs jour précédent
-                                            </p>
-                                        </div>
-                                        <div class="rounded-xl bg-purple-50 p-2 dark:bg-purple-900/20">
-                                            <i class="pi pi-chart-line text-purple-600 dark:text-purple-400"></i>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="group rounded-2xl border border-gray-200 bg-white p-5 transition-all hover:shadow-lg dark:border-gray-700 dark:bg-gray-900/50">
-                                    <div class="flex items-start justify-between">
-                                        <div>
-                                            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Templates actifs</p>
-                                            <p class="mt-2 text-2xl font-bold text-gray-900 dark:text-white">{{ smsTemplates.length }}</p>
-                                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ totalCharacters }} caractères cumulés</p>
-                                        </div>
-                                        <div class="rounded-xl bg-orange-50 p-2 dark:bg-orange-900/20">
-                                            <i class="pi pi-file text-orange-600 dark:text-orange-400"></i>
-                                        </div>
-                                    </div>
+                                <div class="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900/50">
+                                    <Skeleton height="8rem" />
                                 </div>
                             </div>
 
-                            <!-- Period detailed stats -->
-                            <div class="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900/50">
-                                <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                                    <div>
-                                        <p class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Période</p>
-                                        <h3 class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">Statistiques détaillées</h3>
-                                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ statsPeriodLabel }}</p>
-                                    </div>
-                                    <div class="flex flex-wrap items-center gap-3">
-                                        <PanelDatePicker
-                                            v-model="statsPeriodRange"
-                                            showIcon
-                                            dateFormat="dd/mm/yy"
-                                            class="w-72"
-                                            placeholder="Choisir période"
-                                        />
-                                        <Button
-                                            label="Rafraîchir"
-                                            icon="pi pi-refresh"
-                                            outlined
-                                            :loading="smsPeriodLoading"
-                                            @click="refreshPeriodStats(false)"
-                                        />
-                                    </div>
-                                </div>
-
+                            <!-- Content -->
+                            <template v-else>
+                                <!-- Stats Grid -->
                                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                                    <div class="rounded-xl border border-gray-100 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/30">
-                                        <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Envoyés</p>
-                                        <p class="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{{ smsStats.period.sent }}</p>
-                                    </div>
-                                    <div class="rounded-xl border border-gray-100 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/30">
-                                        <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Échecs</p>
-                                        <p class="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{{ smsStats.period.failed }}</p>
-                                    </div>
-                                    <div class="rounded-xl border border-gray-100 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/30">
-                                        <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Total tentatives</p>
-                                        <p class="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{{ smsStats.period.total }}</p>
-                                    </div>
-                                    <div class="rounded-xl border border-gray-100 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/30">
-                                        <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Taux de succès</p>
-                                        <p class="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{{ smsStats.period.successRate }}%</p>
-                                    </div>
-                                </div>
-
-                                <div class="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
-                                    <div>
-                                        <div class="mb-4 flex items-center justify-between gap-3">
-                                            <h4 class="text-sm font-semibold text-gray-900 dark:text-white">Trafic journalier (période)</h4>
-                                            <Tag severity="info" :value="`${periodDailySeries.length} jour(s)`" />
-                                        </div>
-                                        <div v-if="periodDailySeries.length" class="rounded-xl border border-gray-100 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/30">
-                                            <div class="h-72">
-                                                <AppChart type="line" :data="periodDailyChartData" :options="periodDailyChartOptions" class="h-full w-full" />
+                                    <div class="group rounded-2xl border border-gray-200 bg-white p-5 transition-all hover:shadow-lg dark:border-gray-700 dark:bg-gray-900/50">
+                                        <div class="flex items-start justify-between">
+                                            <div>
+                                                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Provider</p>
+                                                <p class="mt-2 text-2xl font-bold text-gray-900 dark:text-white">{{ providerLabel }}</p>
+                                                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ smsConfig.enabled ? 'Actif' : 'Désactivé' }}</p>
+                                            </div>
+                                            <div class="rounded-xl bg-blue-50 p-2 dark:bg-blue-900/20">
+                                                <i class="pi pi-megaphone text-blue-600 dark:text-blue-400"></i>
                                             </div>
                                         </div>
-                                        <div
-                                            v-else
-                                            class="rounded-xl border border-dashed border-gray-300 px-4 py-8 text-center text-sm text-gray-500 dark:border-gray-600 dark:text-gray-400"
-                                        >
-                                            Aucun envoi sur cette période.
+                                    </div>
+
+                                    <div class="group rounded-2xl border border-gray-200 bg-white p-5 transition-all hover:shadow-lg dark:border-gray-700 dark:bg-gray-900/50">
+                                        <div class="flex items-start justify-between">
+                                            <div>
+                                                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">SMS envoyés aujourd'hui</p>
+                                                <p class="mt-2 text-2xl font-bold text-gray-900 dark:text-white">{{ smsStats.balance.sentToday }}</p>
+                                                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Dernières 24h</p>
+                                            </div>
+                                            <div class="rounded-xl bg-green-50 p-2 dark:bg-green-900/20">
+                                                <i class="pi pi-send text-green-600 dark:text-green-400"></i>
+                                            </div>
                                         </div>
                                     </div>
 
-                                    <div>
-                                        <div class="mb-4 flex items-center justify-between gap-3">
-                                            <h4 class="text-sm font-semibold text-gray-900 dark:text-white">Répartition par type</h4>
-                                            <Tag severity="secondary" :value="`${periodByType.length} type(s)`" />
+                                    <div class="group rounded-2xl border border-gray-200 bg-white p-5 transition-all hover:shadow-lg dark:border-gray-700 dark:bg-gray-900/50">
+                                        <div class="flex items-start justify-between">
+                                            <div>
+                                                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">SMS envoyés ce mois</p>
+                                                <p class="mt-2 text-2xl font-bold text-gray-900 dark:text-white">{{ smsStats.balance.sentMonth }}</p>
+                                                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ trafficTrend >= 0 ? '+' : '' }}{{ trafficTrend }} vs jour précédent</p>
+                                            </div>
+                                            <div class="rounded-xl bg-purple-50 p-2 dark:bg-purple-900/20">
+                                                <i class="pi pi-chart-line text-purple-600 dark:text-purple-400"></i>
+                                            </div>
                                         </div>
-                                        <div v-if="periodByType.length" class="space-y-3">
-                                            <div
-                                                v-for="([type, count]) in periodByType"
-                                                :key="type"
-                                                class="flex items-center gap-3 text-sm"
-                                            >
-                                                <span class="w-28 shrink-0 text-gray-600 dark:text-gray-400">{{ formatSmsTypeLabel(type) }}</span>
-                                                <div class="h-2 flex-1 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
-                                                    <div
-                                                        class="h-2 rounded-full bg-gradient-to-r from-indigo-500 to-indigo-600"
-                                                        :style="{ width: `${Math.round((Number(count) / maxPeriodByType) * 100)}%` }"
-                                                    />
+                                    </div>
+
+                                    <div class="group rounded-2xl border border-gray-200 bg-white p-5 transition-all hover:shadow-lg dark:border-gray-700 dark:bg-gray-900/50">
+                                        <div class="flex items-start justify-between">
+                                            <div>
+                                                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Templates actifs</p>
+                                                <p class="mt-2 text-2xl font-bold text-gray-900 dark:text-white">{{ smsTemplates.length }}</p>
+                                                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ totalCharacters }} caractères cumulés</p>
+                                            </div>
+                                            <div class="rounded-xl bg-orange-50 p-2 dark:bg-orange-900/20">
+                                                <i class="pi pi-file text-orange-600 dark:text-orange-400"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Period detailed stats -->
+                                <div class="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900/50">
+                                    <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                                        <div>
+                                            <p class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Période</p>
+                                            <h3 class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">Statistiques détaillées</h3>
+                                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ statsPeriodLabel }}</p>
+                                        </div>
+                                        <div class="flex flex-wrap items-center gap-3">
+                                            <PanelDatePicker v-model="statsPeriodRange" showIcon dateFormat="dd/mm/yy" class="w-72" placeholder="Choisir période" />
+                                            <Button label="Rafraîchir" icon="pi pi-refresh" outlined :loading="smsPeriodLoading" @click="refreshPeriodStats(false)" />
+                                        </div>
+                                    </div>
+
+                                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                                        <div class="rounded-xl border border-gray-100 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/30">
+                                            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Envoyés</p>
+                                            <p class="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{{ smsStats.period.sent }}</p>
+                                        </div>
+                                        <div class="rounded-xl border border-gray-100 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/30">
+                                            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Échecs</p>
+                                            <p class="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{{ smsStats.period.failed }}</p>
+                                        </div>
+                                        <div class="rounded-xl border border-gray-100 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/30">
+                                            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Total tentatives</p>
+                                            <p class="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{{ smsStats.period.total }}</p>
+                                        </div>
+                                        <div class="rounded-xl border border-gray-100 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/30">
+                                            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Taux de succès</p>
+                                            <p class="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{{ smsStats.period.successRate }}%</p>
+                                        </div>
+                                    </div>
+
+                                    <div class="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
+                                        <div>
+                                            <div class="mb-4 flex items-center justify-between gap-3">
+                                                <h4 class="text-sm font-semibold text-gray-900 dark:text-white">Trafic journalier (période)</h4>
+                                                <Tag severity="info" :value="`${periodDailySeries.length} jour(s)`" />
+                                            </div>
+                                            <div v-if="periodDailySeries.length" class="rounded-xl border border-gray-100 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/30">
+                                                <div class="h-72">
+                                                    <AppChart type="line" :data="periodDailyChartData" :options="periodDailyChartOptions" class="h-full w-full" />
+                                                </div>
+                                            </div>
+                                            <div v-else class="rounded-xl border border-dashed border-gray-300 px-4 py-8 text-center text-sm text-gray-500 dark:border-gray-600 dark:text-gray-400">Aucun envoi sur cette période.</div>
+                                        </div>
+
+                                        <div>
+                                            <div class="mb-4 flex items-center justify-between gap-3">
+                                                <h4 class="text-sm font-semibold text-gray-900 dark:text-white">Répartition par type</h4>
+                                                <Tag severity="secondary" :value="`${periodByType.length} type(s)`" />
+                                            </div>
+                                            <div v-if="periodByType.length" class="space-y-3">
+                                                <div v-for="[type, count] in periodByType" :key="type" class="flex items-center gap-3 text-sm">
+                                                    <span class="w-28 shrink-0 text-gray-600 dark:text-gray-400">{{ formatSmsTypeLabel(type) }}</span>
+                                                    <div class="h-2 flex-1 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+                                                        <div class="h-2 rounded-full bg-gradient-to-r from-indigo-500 to-indigo-600" :style="{ width: `${Math.round((Number(count) / maxPeriodByType) * 100)}%` }" />
+                                                    </div>
+                                                    <span class="w-12 text-right font-medium text-gray-700 dark:text-gray-300">{{ count }}</span>
+                                                </div>
+                                            </div>
+                                            <div v-else class="rounded-xl border border-dashed border-gray-300 px-4 py-8 text-center text-sm text-gray-500 dark:border-gray-600 dark:text-gray-400">
+                                                Aucune répartition disponible pour cette période.
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Traffic and Test Results -->
+                                <div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
+                                    <!-- Daily Traffic -->
+                                    <div class="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900/50">
+                                        <div class="mb-4 flex items-start justify-between">
+                                            <div>
+                                                <p class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Tendance</p>
+                                                <h3 class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">Trafic journalier</h3>
+                                            </div>
+                                            <Tag severity="success" :value="`${smsStats.balance.totalSent} total`" />
+                                        </div>
+
+                                        <div v-if="dailySeries.length" class="space-y-3">
+                                            <div v-for="[day, count] in dailySeries" :key="day" class="flex items-center gap-3 text-sm">
+                                                <span class="w-20 text-gray-600 dark:text-gray-400">{{ day }}</span>
+                                                <div class="flex-1 h-2 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+                                                    <div class="h-2 rounded-full bg-gradient-to-r from-blue-500 to-blue-600" :style="{ width: `${Math.round((Number(count) / maxDaily) * 100)}%` }" />
                                                 </div>
                                                 <span class="w-12 text-right font-medium text-gray-700 dark:text-gray-300">{{ count }}</span>
                                             </div>
                                         </div>
-                                        <div
-                                            v-else
-                                            class="rounded-xl border border-dashed border-gray-300 px-4 py-8 text-center text-sm text-gray-500 dark:border-gray-600 dark:text-gray-400"
-                                        >
-                                            Aucune répartition disponible pour cette période.
+                                        <div v-else class="rounded-xl border border-dashed border-gray-300 px-4 py-8 text-center text-sm text-gray-500 dark:border-gray-600 dark:text-gray-400">Aucune consommation journalière disponible.</div>
+                                    </div>
+
+                                    <!-- Last Test -->
+                                    <div class="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900/50">
+                                        <div class="mb-4">
+                                            <p class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">État</p>
+                                            <h3 class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">Dernier test</h3>
                                         </div>
-                                    </div>
-                                </div>
-                            </div>
 
-                            <!-- Traffic and Test Results -->
-                            <div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
-                                <!-- Daily Traffic -->
-                                <div class="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900/50">
-                                    <div class="mb-4 flex items-start justify-between">
-                                        <div>
-                                            <p class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Tendance</p>
-                                            <h3 class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">Trafic journalier</h3>
+                                        <div class="rounded-xl bg-gray-50 p-4 dark:bg-gray-800/50">
+                                            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Dernière vérification</p>
+                                            <p class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">{{ formatDateTime(lastTestAt) }}</p>
+                                            <p class="mt-2 text-sm leading-relaxed text-gray-600 dark:text-gray-400">
+                                                {{ lastTestResult?.message || 'Aucun test effectué pour le moment.' }}
+                                            </p>
                                         </div>
-                                        <Tag severity="success" :value="`${smsStats.balance.totalSent} total`" />
-                                    </div>
 
-                                    <div v-if="dailySeries.length" class="space-y-3">
-                                        <div v-for="([day, count]) in dailySeries" :key="day" class="flex items-center gap-3 text-sm">
-                                            <span class="w-20 text-gray-600 dark:text-gray-400">{{ day }}</span>
-                                            <div class="flex-1 h-2 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
-                                                <div
-                                                    class="h-2 rounded-full bg-gradient-to-r from-blue-500 to-blue-600"
-                                                    :style="{ width: `${Math.round((Number(count) / maxDaily) * 100)}%` }"
-                                                />
-                                            </div>
-                                            <span class="w-12 text-right font-medium text-gray-700 dark:text-gray-300">{{ count }}</span>
+                                        <div class="mt-4">
+                                            <Tag v-if="lastTestResult" :severity="lastTestResult.success ? 'success' : 'danger'" :value="lastTestResult.kind === 'send' ? 'Envoi de test' : 'Connexion API'" />
                                         </div>
-                                    </div>
-                                    <div v-else class="rounded-xl border border-dashed border-gray-300 px-4 py-8 text-center text-sm text-gray-500 dark:border-gray-600 dark:text-gray-400">
-                                        Aucune consommation journalière disponible.
-                                    </div>
-                                </div>
 
-                                <!-- Last Test -->
-                                <div class="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900/50">
-                                    <div class="mb-4">
-                                        <p class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">État</p>
-                                        <h3 class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">Dernier test</h3>
-                                    </div>
-
-                                    <div class="rounded-xl bg-gray-50 p-4 dark:bg-gray-800/50">
-                                        <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Dernière vérification</p>
-                                        <p class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">{{ formatDateTime(lastTestAt) }}</p>
-                                        <p class="mt-2 text-sm leading-relaxed text-gray-600 dark:text-gray-400">
-                                            {{ lastTestResult?.message || 'Aucun test effectué pour le moment.' }}
+                                        <p class="mt-4 text-xs leading-relaxed text-gray-500 dark:text-gray-400">
+                                            Les détails de forfait et de crédits restants ne sont pas exposés par votre backend actuel. La page affiche donc le trafic réellement historisé dans DentalSoft.
                                         </p>
                                     </div>
+                                </div>
 
-                                    <div class="mt-4">
-                                        <Tag
-                                            v-if="lastTestResult"
-                                            :severity="lastTestResult.success ? 'success' : 'danger'"
-                                            :value="lastTestResult.kind === 'send' ? 'Envoi de test' : 'Connexion API'"
-                                        />
+                                <!-- Provider Overview -->
+                                <div class="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900/50">
+                                    <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                        <div>
+                                            <p class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">{{ providerOverviewTitle }}</p>
+                                            <h3 class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">{{ isAfrikSmsProvider ? 'Crédits par pays' : 'Forfait et disponibilité' }}</h3>
+                                        </div>
+                                        <Tag :severity="providerOverview.success ? 'success' : 'warn'" :value="providerOverview.success ? 'Synchronisé' : 'Indisponible'" />
                                     </div>
 
-                                    <p class="mt-4 text-xs leading-relaxed text-gray-500 dark:text-gray-400">
-                                        Les détails de forfait et de crédits restants ne sont pas exposés par votre backend actuel.
-                                        La page affiche donc le trafic réellement historisé dans DentalSoft.
-                                    </p>
+                                    <div v-if="recommendedContract" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                                        <div class="rounded-xl border border-gray-100 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/30">
+                                            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Offre</p>
+                                            <p class="mt-1 text-xl font-bold text-gray-900 dark:text-white">{{ recommendedContract.offerName || '—' }}</p>
+                                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ recommendedContract.country || '—' }}</p>
+                                        </div>
+
+                                        <div class="rounded-xl border border-gray-100 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/30">
+                                            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ isAfrikSmsProvider ? 'SMS restants' : 'Unités restantes' }}</p>
+                                            <p class="mt-1 text-xl font-bold text-gray-900 dark:text-white">{{ recommendedContract.availableUnits ?? '—' }}</p>
+                                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ isAfrikSmsProvider ? 'Solde recommandé' : 'Contrat recommandé' }}</p>
+                                        </div>
+
+                                        <div v-if="!isAfrikSmsProvider" class="rounded-xl border border-gray-100 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/30">
+                                            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Statut</p>
+                                            <p class="mt-1 text-xl font-bold text-gray-900 dark:text-white">{{ recommendedContract.status || '—' }}</p>
+                                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Type {{ recommendedContract.type || '—' }}</p>
+                                        </div>
+
+                                        <div v-if="!isAfrikSmsProvider" class="rounded-xl border border-gray-100 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/30">
+                                            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Expiration</p>
+                                            <p class="mt-1 text-xl font-bold text-gray-900 dark:text-white">{{ formatDateTime(recommendedContract.expirationDate) }}</p>
+                                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ providerOverview.message || 'Données Orange' }}</p>
+                                        </div>
+                                    </div>
+
+                                    <div v-else class="rounded-xl border border-dashed border-gray-300 px-4 py-8 text-center text-sm text-gray-500 dark:border-gray-600 dark:text-gray-400">
+                                        {{ providerOverviewEmptyMessage }}
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </TabPanel>
+
+                    <!-- Configuration Tab -->
+                    <TabPanel value="config">
+                        <div class="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900/50" data-tour="sms-settings.config">
+                            <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                                <div>
+                                    <p class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Configuration</p>
+                                    <h3 class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">Configuration & test</h3>
+                                </div>
+                                <div class="flex flex-wrap gap-3">
+                                    <Button label="Test connexion" icon="pi pi-bolt" severity="secondary" :loading="smsTesting" data-tour="sms-settings.test-connection" @click="testConnectionAction" />
+                                    <Button label="Envoyer SMS test" icon="pi pi-send" severity="info" :loading="smsSendingTest" @click="sendSmsTestAction" />
+                                    <Button label="Sauvegarder" icon="pi pi-save" :loading="smsSaving" data-tour="sms-settings.save-config" @click="saveSmsConfigAction" />
                                 </div>
                             </div>
 
-                            <!-- Provider Overview -->
-                            <div class="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900/50">
-                                <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                                    <div>
-                                        <p class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">{{ providerOverviewTitle }}</p>
-                                        <h3 class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">{{ isAfrikSmsProvider ? 'Crédits par pays' : 'Forfait et disponibilité' }}</h3>
-                                    </div>
-                                    <Tag
-                                        :severity="providerOverview.success ? 'success' : 'warn'"
-                                        :value="providerOverview.success ? 'Synchronisé' : 'Indisponible'"
+                            <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+                                <div class="space-y-2">
+                                    <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Provider</label>
+                                    <Select id="sms-provider" v-model="smsConfig.provider" :options="SMS_PROVIDER_OPTIONS" optionLabel="label" optionValue="value" class="w-full" @update:modelValue="applyProviderDefaults" />
+                                </div>
+
+                                <div class="space-y-2">
+                                    <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Activation</label>
+                                    <SelectButton
+                                        v-model="smsConfig.enabled"
+                                        :options="[
+                                            { label: 'Activé', value: true },
+                                            { label: 'Désactivé', value: false }
+                                        ]"
+                                        optionLabel="label"
+                                        optionValue="value"
+                                        :allowEmpty="false"
                                     />
                                 </div>
 
-                                <div v-if="recommendedContract" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                                    <div class="rounded-xl border border-gray-100 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/30">
-                                        <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Offre</p>
-                                        <p class="mt-1 text-xl font-bold text-gray-900 dark:text-white">{{ recommendedContract.offerName || '—' }}</p>
-                                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ recommendedContract.country || '—' }}</p>
-                                    </div>
-
-                                    <div class="rounded-xl border border-gray-100 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/30">
-                                        <p class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ isAfrikSmsProvider ? 'SMS restants' : 'Unités restantes' }}</p>
-                                        <p class="mt-1 text-xl font-bold text-gray-900 dark:text-white">{{ recommendedContract.availableUnits ?? '—' }}</p>
-                                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ isAfrikSmsProvider ? 'Solde recommandé' : 'Contrat recommandé' }}</p>
-                                    </div>
-
-                                    <div v-if="!isAfrikSmsProvider" class="rounded-xl border border-gray-100 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/30">
-                                        <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Statut</p>
-                                        <p class="mt-1 text-xl font-bold text-gray-900 dark:text-white">{{ recommendedContract.status || '—' }}</p>
-                                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Type {{ recommendedContract.type || '—' }}</p>
-                                    </div>
-
-                                    <div v-if="!isAfrikSmsProvider" class="rounded-xl border border-gray-100 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/30">
-                                        <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Expiration</p>
-                                        <p class="mt-1 text-xl font-bold text-gray-900 dark:text-white">{{ formatDateTime(recommendedContract.expirationDate) }}</p>
-                                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ providerOverview.message || 'Données Orange' }}</p>
-                                    </div>
-                                </div>
-
-                                <div v-else class="rounded-xl border border-dashed border-gray-300 px-4 py-8 text-center text-sm text-gray-500 dark:border-gray-600 dark:text-gray-400">
-                                    {{ providerOverviewEmptyMessage }}
-                                </div>
-                            </div>
-                        </template>
-                    </div>
-                </TabPanel>
-
-                <!-- Configuration Tab -->
-                <TabPanel value="config">
-                    <div class="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900/50" data-tour="sms-settings.config">
-                        <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                            <div>
-                                <p class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Configuration</p>
-                                <h3 class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">Configuration & test</h3>
-                            </div>
-                            <div class="flex flex-wrap gap-3">
-                                <Button label="Test connexion" icon="pi pi-bolt" severity="secondary" :loading="smsTesting" data-tour="sms-settings.test-connection" @click="testConnectionAction" />
-                                <Button label="Envoyer SMS test" icon="pi pi-send" severity="info" :loading="smsSendingTest" @click="sendSmsTestAction" />
-                                <Button label="Sauvegarder" icon="pi pi-save" :loading="smsSaving" data-tour="sms-settings.save-config" @click="saveSmsConfigAction" />
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
-                            <div class="space-y-2">
-                                <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Provider</label>
-                                <Select
-                                    id="sms-provider"
-                                    v-model="smsConfig.provider"
-                                    :options="SMS_PROVIDER_OPTIONS"
-                                    optionLabel="label"
-                                    optionValue="value"
-                                    class="w-full"
-                                    @update:modelValue="applyProviderDefaults"
-                                />
-                            </div>
-
-                            <div class="space-y-2">
-                                <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Activation</label>
-                                <SelectButton
-                                    v-model="smsConfig.enabled"
-                                    :options="[{ label: 'Activé', value: true }, { label: 'Désactivé', value: false }]"
-                                    optionLabel="label"
-                                    optionValue="value"
-                                    :allowEmpty="false"
-                                />
-                            </div>
-
-                            <div>
-                                <FloatLabel variant="on">
-                                    <InputText id="sms-client-id" v-model="smsConfig.clientId" class="w-full" />
-                                    <label for="sms-client-id">{{ isAfrikSmsProvider ? 'Identifiant API (ClientId)' : 'Client ID' }}</label>
-                                </FloatLabel>
-                            </div>
-
-                            <div>
-                                <FloatLabel variant="on">
-                                    <InputText id="sms-client-secret" v-model="smsConfig.clientSecret" type="password" class="w-full" />
-                                    <label for="sms-client-secret">{{ isAfrikSmsProvider ? 'Clé API (ApiKey)' : 'Client Secret' }}</label>
-                                </FloatLabel>
-                            </div>
-
-                            <div v-if="isOrangeProvider" class="space-y-2">
-                                <FloatLabel variant="on">
-                                    <InputText id="sms-sender-address" v-model="smsConfig.senderAddress" class="w-full" />
-                                    <label for="sms-sender-address">Sender Address</label>
-                                </FloatLabel>
-                                <p class="text-xs text-gray-500 dark:text-gray-400">Pour Orange Mali, utilisez d'abord le sender technique standard tel:+2230000.</p>
-                            </div>
-
-                            <div class="space-y-3">
-                                <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                    {{ isAfrikSmsProvider ? 'SenderId' : 'Sender Name' }}
-                                    <span v-if="isAfrikSmsProvider" class="text-red-500">*</span>
-                                </label>
-                                <Select
-                                    v-if="isOrangeProvider && approvedSenderNameOptions.length"
-                                    v-model="smsConfig.senderName"
-                                    :options="approvedSenderNameOptions"
-                                    optionLabel="label"
-                                    optionValue="value"
-                                    placeholder="Choisir un Sender Name approuvé"
-                                    class="w-full"
-                                    @update:modelValue="applyApprovedSenderName"
-                                />
-                                <FloatLabel variant="on">
-                                    <InputText id="sms-sender-name" v-model="smsConfig.senderName" class="w-full" />
-                                    <label for="sms-sender-name">{{ isAfrikSmsProvider ? 'SenderId (11 caractères max)' : 'Saisie manuelle' }}</label>
-                                </FloatLabel>
-                                <p class="text-xs text-gray-500 dark:text-gray-400">
-                                    {{ isAfrikSmsProvider ? 'Obligatoire pour AfrikSms. 11 caractères maximum.' : 'Optionnel. Doit être whitelisté par Orange et limité à 11 caractères alphanumériques ou espaces.' }}
-                                </p>
-                            </div>
-
-                            <div v-if="isAfrikSmsProvider" class="space-y-2">
-                                <FloatLabel variant="on">
-                                    <InputText id="sms-webhook-base-url" v-model="smsConfig.webhookBaseUrl" class="w-full" />
-                                    <label for="sms-webhook-base-url">URL publique du backend</label>
-                                </FloatLabel>
-                                <p class="text-xs text-gray-500 dark:text-gray-400">Ex: https://cabinet.example.com — utilisée pour enregistrer /api/sms/webhooks/afriksms chez AfrikSms.</p>
-                            </div>
-
-                            <div v-if="isAfrikSmsProvider" class="space-y-2">
-                                <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Méthode callback DLR</label>
-                                <Select
-                                    v-model="smsConfig.callbackNotifyType"
-                                    :options="SMS_CALLBACK_NOTIFY_OPTIONS"
-                                    optionLabel="label"
-                                    optionValue="value"
-                                    class="w-full"
-                                />
-                            </div>
-
-                            <div>
-                                <FloatLabel variant="on">
-                                    <InputText id="sms-base-url" v-model="smsConfig.baseUrl" class="w-full" />
-                                    <label for="sms-base-url">Base URL</label>
-                                </FloatLabel>
-                            </div>
-
-                            <div v-if="isOrangeProvider">
-                                <FloatLabel variant="on">
-                                    <InputText id="sms-oauth-url" v-model="smsConfig.oauthUrl" class="w-full" />
-                                    <label for="sms-oauth-url">OAuth URL</label>
-                                </FloatLabel>
-                            </div>
-                        </div>
-
-                        <Divider class="my-6" />
-
-                        <div class="rounded-xl border border-gray-200 bg-gray-50 p-5 dark:border-gray-700 dark:bg-gray-800/30">
-                            <div class="mb-4">
-                                <h4 class="text-base font-semibold text-gray-900 dark:text-white">Bypass des préférences SMS patient</h4>
-                                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                                    Activez les cas où l'API SMS doit ignorer les préférences portées sur la fiche patient.
-                                </p>
-                            </div>
-
-                            <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
-                                <div v-for="item in patientPreferenceBypassOptions" :key="item.key" class="rounded-xl border border-gray-200 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-900/70">
-                                    <div class="flex items-start justify-between gap-4">
-                                        <div>
-                                            <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ item.label }}</p>
-                                            <p class="mt-1 text-xs leading-5 text-gray-500 dark:text-gray-400">{{ item.description }}</p>
-                                        </div>
-                                        <ToggleSwitch v-model="smsConfig.patientPreferenceBypass[item.key]" />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <Divider class="my-6" />
-
-                        <div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
-                            <!-- Approved Sender Names -->
-                            <div v-if="isOrangeProvider" class="rounded-xl border border-gray-200 bg-gray-50 p-5 dark:border-gray-700 dark:bg-gray-800/30">
-                                <div class="mb-4">
-                                    <h4 class="text-base font-semibold text-gray-900 dark:text-white">Sender Names approuvés</h4>
-                                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Ajoutez ici les Sender Names déjà whitelistés dans votre portail Orange Developer.</p>
-                                </div>
-
-                                <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end">
-                                    <FloatLabel variant="on" class="flex-1">
-                                        <InputText id="approved-sender-name" v-model="newApprovedSenderName" class="w-full" />
-                                        <label for="approved-sender-name">Ajouter un Sender Name whitelisté</label>
+                                <div>
+                                    <FloatLabel variant="on">
+                                        <InputText id="sms-client-id" v-model="smsConfig.clientId" class="w-full" />
+                                        <label for="sms-client-id">{{ isAfrikSmsProvider ? 'Identifiant API (ClientId)' : 'Client ID' }}</label>
                                     </FloatLabel>
-                                    <Button label="Ajouter" icon="pi pi-plus" severity="secondary" @click="addApprovedSenderName" />
                                 </div>
 
-                                <div v-if="smsConfig.approvedSenderNames.length" class="flex flex-wrap gap-2">
-                                    <div v-for="item in smsConfig.approvedSenderNames" :key="item" class="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-2 py-1 dark:border-gray-700 dark:bg-gray-900">
-                                        <button type="button" class="flex items-center" @click="applyApprovedSenderName(item)">
-                                            <Chip :label="item" />
-                                        </button>
-                                        <Button icon="pi pi-times" text rounded severity="secondary" size="small" aria-label="Supprimer" @click="removeApprovedSenderName(item)" />
-                                    </div>
+                                <div>
+                                    <FloatLabel variant="on">
+                                        <InputText id="sms-client-secret" v-model="smsConfig.clientSecret" type="password" class="w-full" />
+                                        <label for="sms-client-secret">{{ isAfrikSmsProvider ? 'Clé API (ApiKey)' : 'Client Secret' }}</label>
+                                    </FloatLabel>
                                 </div>
-                                <div v-else class="rounded-lg border border-dashed border-gray-300 px-4 py-6 text-center text-sm text-gray-500 dark:border-gray-600 dark:text-gray-400">
-                                    Aucun Sender Name enregistré pour le moment.
-                                </div>
-                            </div>
 
-                            <!-- Quick Test -->
-                            <div class="rounded-xl border border-gray-200 bg-gray-50 p-5 dark:border-gray-700 dark:bg-gray-800/30">
-                                <div class="mb-4">
-                                    <h4 class="text-base font-semibold text-gray-900 dark:text-white">Test rapide</h4>
-                                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                                        Saisissez ici un Sender Name déjà validé dans votre portail Orange Developer.
+                                <div v-if="isOrangeProvider" class="space-y-2">
+                                    <FloatLabel variant="on">
+                                        <InputText id="sms-sender-address" v-model="smsConfig.senderAddress" class="w-full" />
+                                        <label for="sms-sender-address">Sender Address</label>
+                                    </FloatLabel>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400">Pour Orange Mali, utilisez d'abord le sender technique standard tel:+2230000.</p>
+                                </div>
+
+                                <div class="space-y-3">
+                                    <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                        {{ isAfrikSmsProvider ? 'SenderId' : 'Sender Name' }}
+                                        <span v-if="isAfrikSmsProvider" class="text-red-500">*</span>
+                                    </label>
+                                    <Select
+                                        v-if="isOrangeProvider && approvedSenderNameOptions.length"
+                                        v-model="smsConfig.senderName"
+                                        :options="approvedSenderNameOptions"
+                                        optionLabel="label"
+                                        optionValue="value"
+                                        placeholder="Choisir un Sender Name approuvé"
+                                        class="w-full"
+                                        @update:modelValue="applyApprovedSenderName"
+                                    />
+                                    <FloatLabel variant="on">
+                                        <InputText id="sms-sender-name" v-model="smsConfig.senderName" class="w-full" />
+                                        <label for="sms-sender-name">{{ isAfrikSmsProvider ? 'SenderId (11 caractères max)' : 'Saisie manuelle' }}</label>
+                                    </FloatLabel>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400">
+                                        {{ isAfrikSmsProvider ? 'Obligatoire pour AfrikSms. 11 caractères maximum.' : 'Optionnel. Doit être whitelisté par Orange et limité à 11 caractères alphanumériques ou espaces.' }}
                                     </p>
                                 </div>
 
-                                <div class="grid grid-cols-1 gap-4">
+                                <div v-if="isAfrikSmsProvider" class="space-y-2">
                                     <FloatLabel variant="on">
-                                        <InputText id="sms-test-phone" v-model="testSms.phone" class="w-full" />
-                                        <label for="sms-test-phone">Numéro de test</label>
+                                        <InputText id="sms-webhook-base-url" v-model="smsConfig.webhookBaseUrl" class="w-full" />
+                                        <label for="sms-webhook-base-url">URL publique du backend</label>
                                     </FloatLabel>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400">Ex: https://cabinet.example.com — utilisée pour enregistrer /api/sms/webhooks/afriksms chez AfrikSms.</p>
+                                </div>
+
+                                <div v-if="isAfrikSmsProvider" class="space-y-2">
+                                    <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Méthode callback DLR</label>
+                                    <Select v-model="smsConfig.callbackNotifyType" :options="SMS_CALLBACK_NOTIFY_OPTIONS" optionLabel="label" optionValue="value" class="w-full" />
+                                </div>
+
+                                <div>
                                     <FloatLabel variant="on">
-                                        <InputText id="sms-test-message" v-model="testSms.message" class="w-full" />
-                                        <label for="sms-test-message">Message de test</label>
+                                        <InputText id="sms-base-url" v-model="smsConfig.baseUrl" class="w-full" />
+                                        <label for="sms-base-url">Base URL</label>
+                                    </FloatLabel>
+                                </div>
+
+                                <div v-if="isOrangeProvider">
+                                    <FloatLabel variant="on">
+                                        <InputText id="sms-oauth-url" v-model="smsConfig.oauthUrl" class="w-full" />
+                                        <label for="sms-oauth-url">OAuth URL</label>
                                     </FloatLabel>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-                </TabPanel>
 
-                <TabPanel value="queue">
-                    <div class="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,1.6fr)]" data-tour="sms-settings.queue">
-                        <div class="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900/50">
-                            <div class="mb-6 flex items-start justify-between gap-3">
-                                <div>
-                                    <p class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Programmation</p>
-                                    <h3 class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">Planifier un SMS</h3>
-                                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Ajoute un message directement dans la file avec une date d’envoi et une répétition bornée.</p>
-                                </div>
-                                <Button label="Programmer" icon="pi pi-clock" @click="scheduleQueuedSmsAction" />
-                            </div>
+                            <Divider class="my-6" />
 
-                            <div class="space-y-4">
-                                <FloatLabel variant="on">
-                                    <InputText id="queue-phone" v-model="queuedSms.phone" class="w-full" />
-                                    <label for="queue-phone">Numéro destinataire <span class="text-red-500">*</span></label>
-                                </FloatLabel>
-
-                                <FloatLabel variant="on">
-                                    <DatePicker id="queue-send-at" v-model="queuedSms.sendAt" showTime hourFormat="24" dateFormat="dd/mm/yy" class="w-full" />
-                                    <label for="queue-send-at">Date et heure d’envoi</label>
-                                </FloatLabel>
-
-                                <div class="space-y-2">
-                                    <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Répétition</label>
-                                    <Select v-model="queuedSms.recurrence" :options="queueRecurrenceOptions" optionLabel="label" optionValue="value" class="w-full" />
+                            <div class="rounded-xl border border-gray-200 bg-gray-50 p-5 dark:border-gray-700 dark:bg-gray-800/30">
+                                <div class="mb-4">
+                                    <h4 class="text-base font-semibold text-gray-900 dark:text-white">Bypass des préférences SMS patient</h4>
+                                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Activez les cas où l'API SMS doit ignorer les préférences portées sur la fiche patient.</p>
                                 </div>
 
-                                <FloatLabel variant="on">
-                                    <Textarea id="queue-message" v-model="queuedSms.message" rows="6" autoResize class="w-full" />
-                                    <label for="queue-message">Message à programmer <span class="text-red-500">*</span></label>
-                                </FloatLabel>
-                            </div>
-                        </div>
-
-                        <div class="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900/50">
-                            <div class="mb-6 flex items-start justify-between gap-3">
-                                <div>
-                                    <p class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Suivi</p>
-                                    <h3 class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">File d’attente SMS</h3>
-                                </div>
-                                <div class="flex items-center gap-2">
-                                    <Tag severity="contrast" :value="`${smsQueue.length} élément(s)`" />
-                                    <Button label="Rafraîchir" icon="pi pi-refresh" severity="secondary" outlined size="small" :loading="queueRefreshing" @click="refreshSmsQueue" />
-                                    <Button label="Agrandir" icon="pi pi-external-link" severity="secondary" outlined size="small" @click="queueDialogVisible = true" />
-                                </div>
-                            </div>
-
-                            <DataTable :value="smsQueue" paginator :rows="10" :rowsPerPageOptions="[10, 20, 50]" dataKey="id" responsiveLayout="scroll" stripedRows showGridlines class="text-sm" data-tour="sms-settings.queue-actions">
-                                <template #empty>
-                                    <div class="py-10 text-center text-sm text-gray-500 dark:text-gray-400">
-                                        Aucun SMS en file pour le moment.
+                                <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+                                    <div v-for="item in patientPreferenceBypassOptions" :key="item.key" class="rounded-xl border border-gray-200 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-900/70">
+                                        <div class="flex items-start justify-between gap-4">
+                                            <div>
+                                                <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ item.label }}</p>
+                                                <p class="mt-1 text-xs leading-5 text-gray-500 dark:text-gray-400">{{ item.description }}</p>
+                                            </div>
+                                            <ToggleSwitch v-model="smsConfig.patientPreferenceBypass[item.key]" />
+                                        </div>
                                     </div>
+                                </div>
+                            </div>
+
+                            <Divider class="my-6" />
+
+                            <div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
+                                <!-- Approved Sender Names -->
+                                <div v-if="isOrangeProvider" class="rounded-xl border border-gray-200 bg-gray-50 p-5 dark:border-gray-700 dark:bg-gray-800/30">
+                                    <div class="mb-4">
+                                        <h4 class="text-base font-semibold text-gray-900 dark:text-white">Sender Names approuvés</h4>
+                                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Ajoutez ici les Sender Names déjà whitelistés dans votre portail Orange Developer.</p>
+                                    </div>
+
+                                    <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end">
+                                        <FloatLabel variant="on" class="flex-1">
+                                            <InputText id="approved-sender-name" v-model="newApprovedSenderName" class="w-full" />
+                                            <label for="approved-sender-name">Ajouter un Sender Name whitelisté</label>
+                                        </FloatLabel>
+                                        <Button label="Ajouter" icon="pi pi-plus" severity="secondary" @click="addApprovedSenderName" />
+                                    </div>
+
+                                    <div v-if="smsConfig.approvedSenderNames.length" class="flex flex-wrap gap-2">
+                                        <div v-for="item in smsConfig.approvedSenderNames" :key="item" class="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-2 py-1 dark:border-gray-700 dark:bg-gray-900">
+                                            <button type="button" class="flex items-center" @click="applyApprovedSenderName(item)">
+                                                <Chip :label="item" />
+                                            </button>
+                                            <Button icon="pi pi-times" text rounded severity="secondary" size="small" aria-label="Supprimer" @click="removeApprovedSenderName(item)" />
+                                        </div>
+                                    </div>
+                                    <div v-else class="rounded-lg border border-dashed border-gray-300 px-4 py-6 text-center text-sm text-gray-500 dark:border-gray-600 dark:text-gray-400">Aucun Sender Name enregistré pour le moment.</div>
+                                </div>
+
+                                <!-- Quick Test -->
+                                <div class="rounded-xl border border-gray-200 bg-gray-50 p-5 dark:border-gray-700 dark:bg-gray-800/30">
+                                    <div class="mb-4">
+                                        <h4 class="text-base font-semibold text-gray-900 dark:text-white">Test rapide</h4>
+                                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Saisissez ici un Sender Name déjà validé dans votre portail Orange Developer.</p>
+                                    </div>
+
+                                    <div class="grid grid-cols-1 gap-4">
+                                        <FloatLabel variant="on">
+                                            <InputText id="sms-test-phone" v-model="testSms.phone" class="w-full" />
+                                            <label for="sms-test-phone">Numéro de test</label>
+                                        </FloatLabel>
+                                        <FloatLabel variant="on">
+                                            <InputText id="sms-test-message" v-model="testSms.message" class="w-full" />
+                                            <label for="sms-test-message">Message de test</label>
+                                        </FloatLabel>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </TabPanel>
+
+                    <TabPanel value="queue">
+                        <div class="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,1.6fr)]" data-tour="sms-settings.queue">
+                            <div class="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900/50">
+                                <div class="mb-6 flex items-start justify-between gap-3">
+                                    <div>
+                                        <p class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Programmation</p>
+                                        <h3 class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">Planifier un SMS</h3>
+                                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Ajoute un message directement dans la file avec une date d’envoi et une répétition bornée.</p>
+                                    </div>
+                                    <Button label="Programmer" icon="pi pi-clock" @click="scheduleQueuedSmsAction" />
+                                </div>
+
+                                <div class="space-y-4">
+                                    <FloatLabel variant="on">
+                                        <InputText id="queue-phone" v-model="queuedSms.phone" class="w-full" />
+                                        <label for="queue-phone">Numéro destinataire <span class="text-red-500">*</span></label>
+                                    </FloatLabel>
+
+                                    <FloatLabel variant="on">
+                                        <DatePicker id="queue-send-at" v-model="queuedSms.sendAt" showTime hourFormat="24" dateFormat="dd/mm/yy" class="w-full" />
+                                        <label for="queue-send-at">Date et heure d’envoi</label>
+                                    </FloatLabel>
+
+                                    <div class="space-y-2">
+                                        <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Répétition</label>
+                                        <Select v-model="queuedSms.recurrence" :options="queueRecurrenceOptions" optionLabel="label" optionValue="value" class="w-full" />
+                                    </div>
+
+                                    <FloatLabel variant="on">
+                                        <Textarea id="queue-message" v-model="queuedSms.message" rows="6" autoResize class="w-full" />
+                                        <label for="queue-message">Message à programmer <span class="text-red-500">*</span></label>
+                                    </FloatLabel>
+                                </div>
+                            </div>
+
+                            <div class="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900/50">
+                                <div class="mb-6 flex items-start justify-between gap-3">
+                                    <div>
+                                        <p class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Suivi</p>
+                                        <h3 class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">File d’attente SMS</h3>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <Tag severity="contrast" :value="`${smsQueue.length} élément(s)`" />
+                                        <Button label="Rafraîchir" icon="pi pi-refresh" severity="secondary" outlined size="small" :loading="queueRefreshing" @click="refreshSmsQueue" />
+                                        <Button label="Agrandir" icon="pi pi-external-link" severity="secondary" outlined size="small" @click="queueDialogVisible = true" />
+                                    </div>
+                                </div>
+
+                                <DataTable :value="smsQueue" paginator :rows="10" :rowsPerPageOptions="[10, 20, 50]" dataKey="id" responsiveLayout="scroll" stripedRows showGridlines class="text-sm" data-tour="sms-settings.queue-actions">
+                                    <template #empty>
+                                        <div class="py-10 text-center text-sm text-gray-500 dark:text-gray-400">Aucun SMS en file pour le moment.</div>
+                                    </template>
+                                    <Column field="createdAt" header="Créé le" class="whitespace-nowrap" />
+                                    <Column field="sendAt" header="Prévu le" class="whitespace-nowrap">
+                                        <template #body="{ data }">{{ formatDateTime(data.sendAt) }}</template>
+                                    </Column>
+                                    <Column field="patient" header="Patient">
+                                        <template #body="{ data }">{{ data.patient || '—' }}</template>
+                                    </Column>
+                                    <Column field="phone" header="Numéro" class="whitespace-nowrap" />
+                                    <Column field="message" header="Message">
+                                        <template #body="{ data }">
+                                            <span class="block max-w-md whitespace-normal break-words">{{ data.message }}</span>
+                                        </template>
+                                    </Column>
+                                    <Column field="status" header="Statut" class="whitespace-nowrap">
+                                        <template #body="{ data }">
+                                            <Tag :severity="queueStatusSeverity(data.status)" :value="queueStatusLabel(data.status)" />
+                                        </template>
+                                    </Column>
+                                    <Column field="source" header="Source" class="whitespace-nowrap" />
+                                    <Column header="Actions" class="whitespace-nowrap">
+                                        <template #body="{ data }">
+                                            <div class="flex flex-wrap gap-2">
+                                                <Button
+                                                    v-if="data.status === 'pending'"
+                                                    icon="pi pi-calendar"
+                                                    label="Reprogrammer"
+                                                    size="small"
+                                                    severity="secondary"
+                                                    outlined
+                                                    :loading="smsQueueItemUpdating === data.id && queueActionMode === 'reschedule'"
+                                                    @click="openQueueActionDialog('reschedule', data)"
+                                                />
+                                                <Button
+                                                    v-if="data.status === 'pending'"
+                                                    icon="pi pi-times"
+                                                    label="Annuler"
+                                                    size="small"
+                                                    severity="danger"
+                                                    outlined
+                                                    :loading="smsQueueItemUpdating === data.id && queueActionMode === 'cancel'"
+                                                    @click="openQueueActionDialog('cancel', data)"
+                                                />
+                                                <Button
+                                                    v-if="data.status === 'failed'"
+                                                    icon="pi pi-refresh"
+                                                    label="Renvoyer"
+                                                    size="small"
+                                                    severity="warning"
+                                                    outlined
+                                                    :loading="smsQueueItemUpdating === data.id && queueActionMode === 'retry'"
+                                                    @click="openQueueActionDialog('retry', data)"
+                                                />
+                                            </div>
+                                        </template>
+                                    </Column>
+                                </DataTable>
+                            </div>
+                        </div>
+
+                        <Dialog v-model:visible="queueDialogVisible" modal header="File SMS étendue" :style="{ width: 'min(1400px, 98vw)' }">
+                            <DataTable :value="smsQueue" paginator :rows="20" :rowsPerPageOptions="[20, 50, 100]" dataKey="id" responsiveLayout="scroll" stripedRows showGridlines class="text-sm">
+                                <template #empty>
+                                    <div class="py-10 text-center text-sm text-gray-500 dark:text-gray-400">Aucun SMS en file pour le moment.</div>
                                 </template>
                                 <Column field="createdAt" header="Créé le" class="whitespace-nowrap" />
                                 <Column field="sendAt" header="Prévu le" class="whitespace-nowrap">
@@ -1264,7 +1234,7 @@ const retryLoadSmsSettings = async () => {
                                 <Column field="phone" header="Numéro" class="whitespace-nowrap" />
                                 <Column field="message" header="Message">
                                     <template #body="{ data }">
-                                        <span class="block max-w-md whitespace-normal break-words">{{ data.message }}</span>
+                                        <span class="block max-w-xl whitespace-normal break-words">{{ data.message }}</span>
                                     </template>
                                 </Column>
                                 <Column field="status" header="Statut" class="whitespace-nowrap">
@@ -1273,348 +1243,270 @@ const retryLoadSmsSettings = async () => {
                                     </template>
                                 </Column>
                                 <Column field="source" header="Source" class="whitespace-nowrap" />
+                                <Column field="lastError" header="Dernière erreur">
+                                    <template #body="{ data }">
+                                        <span class="block max-w-md whitespace-normal break-words text-xs text-red-600 dark:text-red-300">{{ data.lastError || '—' }}</span>
+                                    </template>
+                                </Column>
                                 <Column header="Actions" class="whitespace-nowrap">
                                     <template #body="{ data }">
                                         <div class="flex flex-wrap gap-2">
-                                            <Button
-                                                v-if="data.status === 'pending'"
-                                                icon="pi pi-calendar"
-                                                label="Reprogrammer"
-                                                size="small"
-                                                severity="secondary"
-                                                outlined
-                                                :loading="smsQueueItemUpdating === data.id && queueActionMode === 'reschedule'"
-                                                @click="openQueueActionDialog('reschedule', data)"
-                                            />
-                                            <Button
-                                                v-if="data.status === 'pending'"
-                                                icon="pi pi-times"
-                                                label="Annuler"
-                                                size="small"
-                                                severity="danger"
-                                                outlined
-                                                :loading="smsQueueItemUpdating === data.id && queueActionMode === 'cancel'"
-                                                @click="openQueueActionDialog('cancel', data)"
-                                            />
-                                            <Button
-                                                v-if="data.status === 'failed'"
-                                                icon="pi pi-refresh"
-                                                label="Renvoyer"
-                                                size="small"
-                                                severity="warning"
-                                                outlined
-                                                :loading="smsQueueItemUpdating === data.id && queueActionMode === 'retry'"
-                                                @click="openQueueActionDialog('retry', data)"
-                                            />
+                                            <Button icon="pi pi-eye" label="Détails" size="small" severity="secondary" outlined @click="openQueueDetails(data)" />
+                                            <Button v-if="data.status === 'pending'" icon="pi pi-calendar" label="Reprogrammer" size="small" severity="secondary" outlined @click="openQueueActionDialog('reschedule', data)" />
+                                            <Button v-if="data.status === 'pending'" icon="pi pi-times" label="Annuler" size="small" severity="danger" outlined @click="openQueueActionDialog('cancel', data)" />
+                                            <Button v-if="data.status === 'failed'" icon="pi pi-refresh" label="Renvoyer" size="small" severity="warning" outlined @click="openQueueActionDialog('retry', data)" />
                                         </div>
                                     </template>
                                 </Column>
                             </DataTable>
-                        </div>
-                    </div>
+                        </Dialog>
 
-                    <Dialog v-model:visible="queueDialogVisible" modal header="File SMS étendue" :style="{ width: 'min(1400px, 98vw)' }">
-                        <DataTable :value="smsQueue" paginator :rows="20" :rowsPerPageOptions="[20, 50, 100]" dataKey="id" responsiveLayout="scroll" stripedRows showGridlines class="text-sm">
-                            <template #empty>
-                                <div class="py-10 text-center text-sm text-gray-500 dark:text-gray-400">
-                                    Aucun SMS en file pour le moment.
-                                </div>
-                            </template>
-                            <Column field="createdAt" header="Créé le" class="whitespace-nowrap" />
-                            <Column field="sendAt" header="Prévu le" class="whitespace-nowrap">
-                                <template #body="{ data }">{{ formatDateTime(data.sendAt) }}</template>
-                            </Column>
-                            <Column field="patient" header="Patient">
-                                <template #body="{ data }">{{ data.patient || '—' }}</template>
-                            </Column>
-                            <Column field="phone" header="Numéro" class="whitespace-nowrap" />
-                            <Column field="message" header="Message">
-                                <template #body="{ data }">
-                                    <span class="block max-w-xl whitespace-normal break-words">{{ data.message }}</span>
-                                </template>
-                            </Column>
-                            <Column field="status" header="Statut" class="whitespace-nowrap">
-                                <template #body="{ data }">
-                                    <Tag :severity="queueStatusSeverity(data.status)" :value="queueStatusLabel(data.status)" />
-                                </template>
-                            </Column>
-                            <Column field="source" header="Source" class="whitespace-nowrap" />
-                            <Column field="lastError" header="Dernière erreur">
-                                <template #body="{ data }">
-                                    <span class="block max-w-md whitespace-normal break-words text-xs text-red-600 dark:text-red-300">{{ data.lastError || '—' }}</span>
-                                </template>
-                            </Column>
-                            <Column header="Actions" class="whitespace-nowrap">
-                                <template #body="{ data }">
-                                    <div class="flex flex-wrap gap-2">
-                                        <Button icon="pi pi-eye" label="Détails" size="small" severity="secondary" outlined @click="openQueueDetails(data)" />
-                                        <Button v-if="data.status === 'pending'" icon="pi pi-calendar" label="Reprogrammer" size="small" severity="secondary" outlined @click="openQueueActionDialog('reschedule', data)" />
-                                        <Button v-if="data.status === 'pending'" icon="pi pi-times" label="Annuler" size="small" severity="danger" outlined @click="openQueueActionDialog('cancel', data)" />
-                                        <Button v-if="data.status === 'failed'" icon="pi pi-refresh" label="Renvoyer" size="small" severity="warning" outlined @click="openQueueActionDialog('retry', data)" />
+                        <Dialog v-model:visible="queueDetailsDialogVisible" modal header="Détails SMS" :style="{ width: 'min(900px, 96vw)' }">
+                            <div v-if="queueDetailsLoading" class="py-8 text-center">Chargement…</div>
+                            <div v-else class="space-y-4">
+                                <div class="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/30">
+                                    <p><strong>ID:</strong> {{ queueDetailsItem?.id || '—' }}</p>
+                                    <p><strong>Patient:</strong> {{ queueDetailsItem?.patient || '—' }}</p>
+                                    <p><strong>Numéro:</strong> {{ queueDetailsItem?.phone || '—' }}</p>
+                                    <p><strong>Envoyé le:</strong> {{ formatDateTime(queueDetailsItem?.sentAt) }}</p>
+                                    <p><strong>Planifié le:</strong> {{ formatDateTime(queueDetailsItem?.sendAt) }}</p>
+                                    <p><strong>Statut:</strong> {{ queueStatusLabel(queueDetailsItem?.status) }}</p>
+                                    <p><strong>Message:</strong></p>
+                                    <div class="p-3 rounded bg-white dark:bg-gray-900/50">
+                                        <pre class="whitespace-pre-wrap">{{ queueDetailsItem?.message }}</pre>
                                     </div>
-                                </template>
-                            </Column>
-                        </DataTable>
-                    </Dialog>
+                                    <p v-if="queueDetailsItem?.lastError">
+                                        <strong>Dernière erreur:</strong> <span class="text-red-600 dark:text-red-300">{{ queueDetailsItem.lastError }}</span>
+                                    </p>
+                                </div>
 
-                    <Dialog v-model:visible="queueDetailsDialogVisible" modal header="Détails SMS" :style="{ width: 'min(900px, 96vw)' }">
-                        <div v-if="queueDetailsLoading" class="py-8 text-center">Chargement…</div>
-                        <div v-else class="space-y-4">
-                            <div class="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/30">
-                                <p><strong>ID:</strong> {{ queueDetailsItem?.id || '—' }}</p>
-                                <p><strong>Patient:</strong> {{ queueDetailsItem?.patient || '—' }}</p>
-                                <p><strong>Numéro:</strong> {{ queueDetailsItem?.phone || '—' }}</p>
-                                <p><strong>Envoyé le:</strong> {{ formatDateTime(queueDetailsItem?.sentAt) }}</p>
-                                <p><strong>Planifié le:</strong> {{ formatDateTime(queueDetailsItem?.sendAt) }}</p>
-                                <p><strong>Statut:</strong> {{ queueStatusLabel(queueDetailsItem?.status) }}</p>
-                                <p><strong>Message:</strong></p>
-                                <div class="p-3 rounded bg-white dark:bg-gray-900/50"><pre class="whitespace-pre-wrap">{{ queueDetailsItem?.message }}</pre></div>
-                                <p v-if="queueDetailsItem?.lastError"><strong>Dernière erreur:</strong> <span class="text-red-600 dark:text-red-300">{{ queueDetailsItem.lastError }}</span></p>
-                            </div>
-
-                            <div>
-                                <h4 class="text-sm font-semibold mb-2">Logs associés</h4>
-                                <div v-if="(queueDetailsLogs || []).length === 0" class="text-sm text-gray-500">Aucun log récent trouvé pour ce numéro.</div>
-                                <div v-else>
-                                    <DataTable :value="queueDetailsLogs" dataKey="id" class="text-sm">
-                                        <Column field="date" header="Date" />
-                                        <Column field="status" header="Statut" />
-                                        <Column field="providerMessageId" header="ID fournisseur" />
-                                        <Column field="error" header="Erreur">
-                                            <template #body="{ data }"><span class="text-xs text-red-600 dark:text-red-300">{{ data.error || '—' }}</span></template>
-                                        </Column>
-                                        <Column field="message" header="Message" />
-                                    </DataTable>
+                                <div>
+                                    <h4 class="text-sm font-semibold mb-2">Logs associés</h4>
+                                    <div v-if="(queueDetailsLogs || []).length === 0" class="text-sm text-gray-500">Aucun log récent trouvé pour ce numéro.</div>
+                                    <div v-else>
+                                        <DataTable :value="queueDetailsLogs" dataKey="id" class="text-sm">
+                                            <Column field="date" header="Date" />
+                                            <Column field="status" header="Statut" />
+                                            <Column field="providerMessageId" header="ID fournisseur" />
+                                            <Column field="error" header="Erreur">
+                                                <template #body="{ data }"
+                                                    ><span class="text-xs text-red-600 dark:text-red-300">{{ data.error || '—' }}</span></template
+                                                >
+                                            </Column>
+                                            <Column field="message" header="Message" />
+                                        </DataTable>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    </Dialog>
+                        </Dialog>
 
-                    <Dialog v-model:visible="queueActionDialogVisible" modal :header="queueActionTitle" :style="{ width: 'min(32rem, 96vw)' }">
-                        <div class="space-y-4">
-                            <p class="text-sm text-gray-600 dark:text-gray-300">{{ queueActionDescription }}</p>
-                            <div class="rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm dark:border-gray-700 dark:bg-gray-800/40">
-                                <p><strong>Destinataire:</strong> {{ queueActionItem?.phone || '—' }}</p>
-                                <p><strong>Statut:</strong> {{ queueStatusLabel(queueActionItem?.status) }}</p>
+                        <Dialog v-model:visible="queueActionDialogVisible" modal :header="queueActionTitle" :style="{ width: 'min(32rem, 96vw)' }">
+                            <div class="space-y-4">
+                                <p class="text-sm text-gray-600 dark:text-gray-300">{{ queueActionDescription }}</p>
+                                <div class="rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm dark:border-gray-700 dark:bg-gray-800/40">
+                                    <p><strong>Destinataire:</strong> {{ queueActionItem?.phone || '—' }}</p>
+                                    <p><strong>Statut:</strong> {{ queueStatusLabel(queueActionItem?.status) }}</p>
+                                </div>
+                                <div v-if="queueActionMode === 'reschedule'" class="space-y-2">
+                                    <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Nouvelle date d'envoi</label>
+                                    <DatePicker v-model="queueActionSendAt" showTime hourFormat="24" dateFormat="dd/mm/yy" class="w-full" />
+                                </div>
                             </div>
-                            <div v-if="queueActionMode === 'reschedule'" class="space-y-2">
-                                <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Nouvelle date d'envoi</label>
-                                <DatePicker v-model="queueActionSendAt" showTime hourFormat="24" dateFormat="dd/mm/yy" class="w-full" />
-                            </div>
-                        </div>
-                        <template #footer>
-                            <div class="flex justify-end gap-2">
-                                <Button label="Fermer" severity="secondary" outlined @click="closeQueueActionDialog" />
-                                <Button
-                                    :label="queueActionMode === 'reschedule' ? 'Reprogrammer' : (queueActionMode === 'cancel' ? 'Annuler le SMS' : 'Renvoyer')"
-                                    :icon="queueActionMode === 'reschedule' ? 'pi pi-calendar' : (queueActionMode === 'cancel' ? 'pi pi-times' : 'pi pi-refresh')"
-                                    :severity="queueActionMode === 'cancel' ? 'danger' : (queueActionMode === 'retry' ? 'warning' : 'primary')"
-                                    :loading="smsQueueItemUpdating === queueActionItem?.id"
-                                    @click="submitQueueAction"
-                                />
-                            </div>
-                        </template>
-                    </Dialog>
-                </TabPanel>
-
-                <!-- Logs Tab -->
-                <TabPanel value="logs">
-                    <div class="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900/50">
-                        <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                            <div>
-                                <p class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Historique</p>
-                                <h3 class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">Logs d'envoi</h3>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <Tag severity="contrast" :value="`${logsFiltered.length} résultat(s)`" />
-                                <Button label="Rafraîchir" icon="pi pi-refresh" severity="secondary" outlined size="small" :loading="logsRefreshing" @click="refreshSmsLogs" />
-                            </div>
-                        </div>
-
-                        <div class="mb-6 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1.2fr)] items-center">
-                            <FloatLabel variant="on">
-                                <InputText id="logs-search" v-model="logsSearch" class="w-full" />
-                                <label for="logs-search">Recherche libre</label>
-                            </FloatLabel>
-
-                            <div class="space-y-2">
-                                <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Statut</label>
-                                <Select v-model="logsStatusFilter" :options="statusOptions" optionLabel="label" optionValue="value" class="w-full" />
-                            </div>
-
-                            <div class="space-y-2">
-                                <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Période</label>
-                                <PanelDatePicker v-model="logsDateRange" showIcon dateFormat="dd/mm/yy" class="w-full" fluid />
-                            </div>
-                        </div>
-
-                        <DataTable
-                            :value="logsFiltered"
-                            paginator
-                            :rows="10"
-                            :rowsPerPageOptions="[10, 20, 50]"
-                            dataKey="id"
-                            responsiveLayout="scroll"
-                            stripedRows
-                            showGridlines
-                            class="text-sm"
-                        >
-                            <template #empty>
-                                <div class="py-10 text-center text-sm text-gray-500 dark:text-gray-400">
-                                    Aucun log SMS à afficher avec les filtres actuels.
+                            <template #footer>
+                                <div class="flex justify-end gap-2">
+                                    <Button label="Fermer" severity="secondary" outlined @click="closeQueueActionDialog" />
+                                    <Button
+                                        :label="queueActionMode === 'reschedule' ? 'Reprogrammer' : queueActionMode === 'cancel' ? 'Annuler le SMS' : 'Renvoyer'"
+                                        :icon="queueActionMode === 'reschedule' ? 'pi pi-calendar' : queueActionMode === 'cancel' ? 'pi pi-times' : 'pi pi-refresh'"
+                                        :severity="queueActionMode === 'cancel' ? 'danger' : queueActionMode === 'retry' ? 'warning' : 'primary'"
+                                        :loading="smsQueueItemUpdating === queueActionItem?.id"
+                                        @click="submitQueueAction"
+                                    />
                                 </div>
                             </template>
-                            <Column field="date" header="Date" class="whitespace-nowrap"></Column>
-                            <Column field="patient" header="Patient" class="whitespace-nowrap">
-                                <template #body="{ data }">{{ data.patient || '—' }}</template>
-                            </Column>
-                            <Column field="phone" header="Numéro" class="whitespace-nowrap"></Column>
-                            <Column field="message" header="Message">
-                                <template #body="{ data }">
-                                    <span class="block max-w-md whitespace-normal break-words">{{ data.message }}</span>
-                                </template>
-                            </Column>
-                            <Column field="status" header="Statut" class="whitespace-nowrap">
-                                <template #body="{ data }">
-                                    <Tag :severity="logStatusSeverity(data.status)" :value="data.status" />
-                                </template>
-                            </Column>
-                            <Column field="type" header="Type" class="whitespace-nowrap"></Column>
-                            <Column field="source" header="Source" class="whitespace-nowrap"></Column>
-                        </DataTable>
-                    </div>
-                </TabPanel>
+                        </Dialog>
+                    </TabPanel>
 
-                <!-- Templates Tab -->
-                <TabPanel value="templates">
-                    <div class="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900/50" data-tour="sms-settings.templates">
-                        <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                            <div>
-                                <p class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Contenu</p>
-                                <h3 class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">Gestion des templates SMS</h3>
+                    <!-- Logs Tab -->
+                    <TabPanel value="logs">
+                        <div class="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900/50">
+                            <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                <div>
+                                    <p class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Historique</p>
+                                    <h3 class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">Logs d'envoi</h3>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <Tag severity="contrast" :value="`${logsFiltered.length} résultat(s)`" />
+                                    <Button label="Rafraîchir" icon="pi pi-refresh" severity="secondary" outlined size="small" :loading="logsRefreshing" @click="refreshSmsLogs" />
+                                </div>
                             </div>
-                            <div class="flex flex-wrap gap-3">
-                                <Button label="Ajouter" icon="pi pi-plus" severity="secondary" @click="addTemplate" />
-                                <Button label="Supprimer" icon="pi pi-trash" severity="danger" text :disabled="!selectedTemplateCode" @click="removeSelectedTemplate" />
-                                <Button label="Sauvegarder templates" icon="pi pi-save" :loading="smsTemplateSaving" @click="saveTemplatesAction" />
+
+                            <div class="mb-6 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1.2fr)] items-center">
+                                <FloatLabel variant="on">
+                                    <InputText id="logs-search" v-model="logsSearch" class="w-full" />
+                                    <label for="logs-search">Recherche libre</label>
+                                </FloatLabel>
+
+                                <div class="space-y-2">
+                                    <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Statut</label>
+                                    <Select v-model="logsStatusFilter" :options="statusOptions" optionLabel="label" optionValue="value" class="w-full" />
+                                </div>
+
+                                <div class="space-y-2">
+                                    <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Période</label>
+                                    <PanelDatePicker v-model="logsDateRange" showIcon dateFormat="dd/mm/yy" class="w-full" fluid />
+                                </div>
                             </div>
+
+                            <DataTable :value="logsFiltered" paginator :rows="10" :rowsPerPageOptions="[10, 20, 50]" dataKey="id" responsiveLayout="scroll" stripedRows showGridlines class="text-sm">
+                                <template #empty>
+                                    <div class="py-10 text-center text-sm text-gray-500 dark:text-gray-400">Aucun log SMS à afficher avec les filtres actuels.</div>
+                                </template>
+                                <Column field="date" header="Date" class="whitespace-nowrap"></Column>
+                                <Column field="patient" header="Patient" class="whitespace-nowrap">
+                                    <template #body="{ data }">{{ data.patient || '—' }}</template>
+                                </Column>
+                                <Column field="phone" header="Numéro" class="whitespace-nowrap"></Column>
+                                <Column field="message" header="Message">
+                                    <template #body="{ data }">
+                                        <span class="block max-w-md whitespace-normal break-words">{{ data.message }}</span>
+                                    </template>
+                                </Column>
+                                <Column field="status" header="Statut" class="whitespace-nowrap">
+                                    <template #body="{ data }">
+                                        <Tag :severity="logStatusSeverity(data.status)" :value="data.status" />
+                                    </template>
+                                </Column>
+                                <Column field="type" header="Type" class="whitespace-nowrap"></Column>
+                                <Column field="source" header="Source" class="whitespace-nowrap"></Column>
+                            </DataTable>
                         </div>
+                    </TabPanel>
 
-                        <div v-if="smsTemplates.length" class="grid grid-cols-1 gap-6 xl:grid-cols-2">
-                            <!-- Template Editor -->
-                            <div class="rounded-xl border border-gray-200 bg-gray-50 p-5 dark:border-gray-700 dark:bg-gray-800/30">
-                                <div class="space-y-4">
-                                    <div class="grid grid-cols-1 gap-4">
-                                        <div class="space-y-2">
-                                            <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Template actif</label>
-                                            <Select v-model="selectedTemplateCode" :options="smsTemplates" optionLabel="name" optionValue="code" class="w-full" />
+                    <!-- Templates Tab -->
+                    <TabPanel value="templates">
+                        <div class="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900/50" data-tour="sms-settings.templates">
+                            <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                                <div>
+                                    <p class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Contenu</p>
+                                    <h3 class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">Gestion des templates SMS</h3>
+                                </div>
+                                <div class="flex flex-wrap gap-3">
+                                    <Button label="Ajouter" icon="pi pi-plus" severity="secondary" @click="addTemplate" />
+                                    <Button label="Supprimer" icon="pi pi-trash" severity="danger" text :disabled="!selectedTemplateCode" @click="removeSelectedTemplate" />
+                                    <Button label="Sauvegarder templates" icon="pi pi-save" :loading="smsTemplateSaving" @click="saveTemplatesAction" />
+                                </div>
+                            </div>
+
+                            <div v-if="smsTemplates.length" class="grid grid-cols-1 gap-6 xl:grid-cols-2">
+                                <!-- Template Editor -->
+                                <div class="rounded-xl border border-gray-200 bg-gray-50 p-5 dark:border-gray-700 dark:bg-gray-800/30">
+                                    <div class="space-y-4">
+                                        <div class="grid grid-cols-1 gap-4">
+                                            <div class="space-y-2">
+                                                <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Template actif</label>
+                                                <Select v-model="selectedTemplateCode" :options="smsTemplates" optionLabel="name" optionValue="code" class="w-full" />
+                                            </div>
+                                            <FloatLabel variant="on">
+                                                <InputText id="template-name" v-model="selectedTemplate.name" class="w-full" :disabled="!selectedTemplate" />
+                                                <label for="template-name">Nom du template</label>
+                                            </FloatLabel>
                                         </div>
                                         <FloatLabel variant="on">
-                                            <InputText id="template-name" v-model="selectedTemplate.name" class="w-full" :disabled="!selectedTemplate" />
-                                            <label for="template-name">Nom du template</label>
+                                            <Textarea id="template-content" v-if="selectedTemplate" v-model="selectedTemplate.content" rows="12" autoResize class="w-full" />
+                                            <label for="template-content">Contenu du message</label>
                                         </FloatLabel>
                                     </div>
-                                    <FloatLabel variant="on">
-                                        <Textarea id="template-content" v-if="selectedTemplate" v-model="selectedTemplate.content" rows="12" autoResize class="w-full" />
-                                        <label for="template-content">Contenu du message</label>
-                                    </FloatLabel>
+                                </div>
+
+                                <!-- Preview Section -->
+                                <div class="rounded-xl border border-gray-200 bg-gray-50 p-5 dark:border-gray-700 dark:bg-gray-800/30" data-tour="sms-settings.template-preview">
+                                    <div class="mb-4">
+                                        <h4 class="text-base font-semibold text-gray-900 dark:text-white">Variables dynamiques</h4>
+                                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Ajustez les variables puis générez un aperçu.</p>
+                                    </div>
+
+                                    <div class="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                        <FloatLabel variant="on">
+                                            <InputText id="prev-patient" v-model="previewVariables.patient_name" class="w-full" />
+                                            <label for="prev-patient">{patient_name}</label>
+                                        </FloatLabel>
+                                        <FloatLabel variant="on">
+                                            <InputText id="prev-date" v-model="previewVariables.date" class="w-full" />
+                                            <label for="prev-date">{date}</label>
+                                        </FloatLabel>
+                                        <FloatLabel variant="on">
+                                            <InputText id="prev-time" v-model="previewVariables.time" class="w-full" />
+                                            <label for="prev-time">{time}</label>
+                                        </FloatLabel>
+                                        <FloatLabel variant="on">
+                                            <InputText id="prev-new-date" v-model="previewVariables.new_date" class="w-full" />
+                                            <label for="prev-new-date">{new_date}</label>
+                                        </FloatLabel>
+                                        <FloatLabel variant="on">
+                                            <InputText id="prev-new-time" v-model="previewVariables.new_time" class="w-full" />
+                                            <label for="prev-new-time">{new_time}</label>
+                                        </FloatLabel>
+                                        <FloatLabel variant="on">
+                                            <InputText id="prev-amount" v-model="previewVariables.amount" class="w-full" />
+                                            <label for="prev-amount">{amount}</label>
+                                        </FloatLabel>
+                                        <FloatLabel variant="on">
+                                            <InputText id="prev-invoice" v-model="previewVariables.invoice_number" class="w-full" />
+                                            <label for="prev-invoice">{invoice_number}</label>
+                                        </FloatLabel>
+                                        <FloatLabel variant="on">
+                                            <InputText id="prev-cabinet" v-model="previewVariables.cabinet_name" class="w-full" />
+                                            <label for="prev-cabinet">{cabinet_name}</label>
+                                        </FloatLabel>
+                                    </div>
+
+                                    <Button label="Prévisualiser" icon="pi pi-eye" severity="secondary" class="mb-4" @click="previewTemplateAction" />
+
+                                    <Textarea v-model="previewResult" rows="6" autoResize class="w-full" readonly />
+
+                                    <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ previewCharacters }} caractères · estimation {{ previewEstimatedSms }} SMS</p>
                                 </div>
                             </div>
 
-                            <!-- Preview Section -->
-                            <div class="rounded-xl border border-gray-200 bg-gray-50 p-5 dark:border-gray-700 dark:bg-gray-800/30" data-tour="sms-settings.template-preview">
-                                <div class="mb-4">
-                                    <h4 class="text-base font-semibold text-gray-900 dark:text-white">Variables dynamiques</h4>
-                                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Ajustez les variables puis générez un aperçu.</p>
+                            <div v-else class="rounded-xl border border-dashed border-gray-300 px-4 py-10 text-center text-sm text-gray-500 dark:border-gray-600 dark:text-gray-400">Aucun template SMS configuré.</div>
+                        </div>
+                    </TabPanel>
+
+                    <!-- Manual Send Tab -->
+                    <TabPanel value="manual">
+                        <div class="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900/50" data-tour="sms-settings.manual-send">
+                            <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                                <div>
+                                    <p class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Action directe</p>
+                                    <h3 class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">Envoi manuel</h3>
                                 </div>
-
-                                <div class="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                                    <FloatLabel variant="on">
-                                        <InputText id="prev-patient" v-model="previewVariables.patient_name" class="w-full" />
-                                        <label for="prev-patient">{patient_name}</label>
-                                    </FloatLabel>
-                                    <FloatLabel variant="on">
-                                        <InputText id="prev-date" v-model="previewVariables.date" class="w-full" />
-                                        <label for="prev-date">{date}</label>
-                                    </FloatLabel>
-                                    <FloatLabel variant="on">
-                                        <InputText id="prev-time" v-model="previewVariables.time" class="w-full" />
-                                        <label for="prev-time">{time}</label>
-                                    </FloatLabel>
-                                    <FloatLabel variant="on">
-                                        <InputText id="prev-new-date" v-model="previewVariables.new_date" class="w-full" />
-                                        <label for="prev-new-date">{new_date}</label>
-                                    </FloatLabel>
-                                    <FloatLabel variant="on">
-                                        <InputText id="prev-new-time" v-model="previewVariables.new_time" class="w-full" />
-                                        <label for="prev-new-time">{new_time}</label>
-                                    </FloatLabel>
-                                    <FloatLabel variant="on">
-                                        <InputText id="prev-amount" v-model="previewVariables.amount" class="w-full" />
-                                        <label for="prev-amount">{amount}</label>
-                                    </FloatLabel>
-                                    <FloatLabel variant="on">
-                                        <InputText id="prev-invoice" v-model="previewVariables.invoice_number" class="w-full" />
-                                        <label for="prev-invoice">{invoice_number}</label>
-                                    </FloatLabel>
-                                    <FloatLabel variant="on">
-                                        <InputText id="prev-cabinet" v-model="previewVariables.cabinet_name" class="w-full" />
-                                        <label for="prev-cabinet">{cabinet_name}</label>
-                                    </FloatLabel>
-                                </div>
-
-                                <Button label="Prévisualiser" icon="pi pi-eye" severity="secondary" class="mb-4" @click="previewTemplateAction" />
-
-                                <Textarea v-model="previewResult" rows="6" autoResize class="w-full" readonly />
-
-                                <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                                    {{ previewCharacters }} caractères · estimation {{ previewEstimatedSms }} SMS
-                                </p>
-                            </div>
-                        </div>
-
-                        <div v-else class="rounded-xl border border-dashed border-gray-300 px-4 py-10 text-center text-sm text-gray-500 dark:border-gray-600 dark:text-gray-400">
-                            Aucun template SMS configuré.
-                        </div>
-                    </div>
-                </TabPanel>
-
-                <!-- Manual Send Tab -->
-                <TabPanel value="manual">
-                    <div class="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900/50" data-tour="sms-settings.manual-send">
-                        <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                            <div>
-                                <p class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Action directe</p>
-                                <h3 class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">Envoi manuel</h3>
-                            </div>
-                            <Button label="Envoyer" icon="pi pi-send" @click="sendManualSmsAction" />
-                        </div>
-
-                        <div class="flex flex-col gap-6 md:grid md:grid-cols-2 items-center">
-                            <FloatLabel variant="on">
-                                <InputText id="manual-phone" v-model="manualSms.phone" class="w-full" />
-                                <label for="manual-phone">Numéro <span class="text-red-500">*</span></label>
-                            </FloatLabel>
-
-                            <div class="space-y-2">
-                                <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Pré-remplir depuis un template</label>
-                                <Select v-model="manualTemplateCode" :options="smsTemplates" optionLabel="name" optionValue="code" placeholder="Choisir un template" class="w-full" />
+                                <Button label="Envoyer" icon="pi pi-send" @click="sendManualSmsAction" />
                             </div>
 
-                            <div class="md:col-span-2 space-y-2">
+                            <div class="flex flex-col gap-6 md:grid md:grid-cols-2 items-center">
                                 <FloatLabel variant="on">
-                                    <Textarea id="manual-message" v-model="manualSms.message" rows="5" autoResize class="w-full" />
-                                    <label for="manual-message">Message à envoyer <span class="text-red-500">*</span></label>
+                                    <InputText id="manual-phone" v-model="manualSms.phone" class="w-full" />
+                                    <label for="manual-phone">Numéro <span class="text-red-500">*</span></label>
                                 </FloatLabel>
-                                <p class="text-xs text-gray-500 dark:text-gray-400">
-                                    {{ manualSms.message.length }} caractères · estimation {{ Math.max(1, Math.ceil(Math.max(1, manualSms.message.length) / 160)) }} SMS
-                                </p>
+
+                                <div class="space-y-2">
+                                    <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Pré-remplir depuis un template</label>
+                                    <Select v-model="manualTemplateCode" :options="smsTemplates" optionLabel="name" optionValue="code" placeholder="Choisir un template" class="w-full" />
+                                </div>
+
+                                <div class="md:col-span-2 space-y-2">
+                                    <FloatLabel variant="on">
+                                        <Textarea id="manual-message" v-model="manualSms.message" rows="5" autoResize class="w-full" />
+                                        <label for="manual-message">Message à envoyer <span class="text-red-500">*</span></label>
+                                    </FloatLabel>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400">{{ manualSms.message.length }} caractères · estimation {{ Math.max(1, Math.ceil(Math.max(1, manualSms.message.length) / 160)) }} SMS</p>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                </TabPanel>
-            </TabPanels>
-        </Tabs>
+                    </TabPanel>
+                </TabPanels>
+            </Tabs>
         </template>
     </div>
 </template>
@@ -1623,5 +1515,4 @@ const retryLoadSmsSettings = async () => {
 :deep(.p-floatlabel .p-inputtext) {
     min-height: 3rem; /* Adjust based on label size */
 }
-
 </style>

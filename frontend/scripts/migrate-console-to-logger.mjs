@@ -23,26 +23,11 @@ for (const file of walk(root)) {
 
     const base = path.basename(file, path.extname(file));
 
-    content = content.replace(
-        /console\.error\(\s*'([^']+)'\s*,\s*(error|err|e)\s*\)/g,
-        "logAppError('$1', $2)"
-    );
-    content = content.replace(
-        /console\.error\(\s*"([^"]+)"\s*,\s*(error|err|e)\s*\)/g,
-        'logAppError("$1", $2)'
-    );
-    content = content.replace(
-        /console\.error\(\s*(error|err|e)\s*\)/g,
-        `logAppError('${base}', $1)`
-    );
-    content = content.replace(
-        /console\.warn\(\s*'([^']+)'\s*,\s*(error|err|e)\s*\)/g,
-        "logAppError('$1', $2)"
-    );
-    content = content.replace(
-        /console\.warn\(\s*"([^"]+)"\s*,\s*(error|err|e)\s*\)/g,
-        'logAppError("$1", $2)'
-    );
+    content = content.replace(/console\.error\(\s*'([^']+)'\s*,\s*(error|err|e)\s*\)/g, "logAppError('$1', $2)");
+    content = content.replace(/console\.error\(\s*"([^"]+)"\s*,\s*(error|err|e)\s*\)/g, 'logAppError("$1", $2)');
+    content = content.replace(/console\.error\(\s*(error|err|e)\s*\)/g, `logAppError('${base}', $1)`);
+    content = content.replace(/console\.warn\(\s*'([^']+)'\s*,\s*(error|err|e)\s*\)/g, "logAppError('$1', $2)");
+    content = content.replace(/console\.warn\(\s*"([^"]+)"\s*,\s*(error|err|e)\s*\)/g, 'logAppError("$1", $2)');
 
     if (!content.includes('logAppError')) continue;
 

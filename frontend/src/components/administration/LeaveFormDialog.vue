@@ -36,9 +36,13 @@ const form = ref({
     endDate: new Date()
 });
 
-watch(() => props.visible, (val) => {
-    localVisible.value = val;
-}, { immediate: true });
+watch(
+    () => props.visible,
+    (val) => {
+        localVisible.value = val;
+    },
+    { immediate: true }
+);
 
 watch(localVisible, (val) => emit('update:visible', val));
 
@@ -93,14 +97,7 @@ const submit = () => {
         <div class="space-y-4">
             <div class="space-y-1">
                 <label class="text-sm font-medium">Employe <span class="text-red-500">*</span></label>
-                <Select
-                    v-model="form.employeId"
-                    :options="employeeOptions"
-                    optionLabel="label"
-                    optionValue="value"
-                    class="w-full"
-                    placeholder="Selectionnez un employe"
-                />
+                <Select v-model="form.employeId" :options="employeeOptions" optionLabel="label" optionValue="value" class="w-full" placeholder="Selectionnez un employe" />
             </div>
 
             <div class="space-y-1">

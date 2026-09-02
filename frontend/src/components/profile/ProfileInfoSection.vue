@@ -26,7 +26,15 @@ const displayName = computed(() => {
 
 const initials = computed(() => {
     const name = displayName.value;
-    return name.split(' ').filter(Boolean).map((w) => w[0]).join('').slice(0, 2).toUpperCase() || 'U';
+    return (
+        name
+            .split(' ')
+            .filter(Boolean)
+            .map((w) => w[0])
+            .join('')
+            .slice(0, 2)
+            .toUpperCase() || 'U'
+    );
 });
 
 const roleLabel = (role) => {
@@ -58,7 +66,7 @@ const infoFields = computed(() => {
     <div class="overflow-hidden rounded-2xl border border-surface-200/50 dark:border-surface-700/50 bg-surface-0 dark:bg-surface-800/80 shadow-sm">
         <!-- Bannière / avatar -->
         <div class="relative h-24 bg-gradient-to-br from-primary-500 via-primary-600 to-primary-700 overflow-hidden">
-            <div class="absolute inset-0 opacity-20" style="background-image: radial-gradient(circle at 20% 80%, white 1px, transparent 1px), radial-gradient(circle at 80% 20%, white 1px, transparent 1px); background-size: 30px 30px;"></div>
+            <div class="absolute inset-0 opacity-20" style="background-image: radial-gradient(circle at 20% 80%, white 1px, transparent 1px), radial-gradient(circle at 80% 20%, white 1px, transparent 1px); background-size: 30px 30px"></div>
         </div>
 
         <!-- Avatar + actions -->
@@ -91,23 +99,13 @@ const infoFields = computed(() => {
             <div class="mb-4">
                 <p class="text-xs font-semibold uppercase tracking-wider text-surface-400 mb-2">Rôles</p>
                 <div class="flex flex-wrap gap-1.5">
-                    <Tag
-                        v-for="role in (user?.roles || [])"
-                        :key="role"
-                        :value="roleLabel(role).label"
-                        :severity="roleLabel(role).severity"
-                        class="text-xs"
-                    />
+                    <Tag v-for="role in user?.roles || []" :key="role" :value="roleLabel(role).label" :severity="roleLabel(role).severity" class="text-xs" />
                 </div>
             </div>
 
             <!-- Infos employé -->
             <div v-if="infoFields.length" class="space-y-2.5 pt-3 border-t border-surface-100 dark:border-surface-700/60">
-                <div
-                    v-for="field in infoFields"
-                    :key="field.label"
-                    class="flex items-center gap-3"
-                >
+                <div v-for="field in infoFields" :key="field.label" class="flex items-center gap-3">
                     <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-surface-100 dark:bg-surface-700">
                         <i :class="field.icon" class="text-xs text-surface-500 dark:text-surface-400"></i>
                     </div>
@@ -121,10 +119,24 @@ const infoFields = computed(() => {
     </div>
 
     <Dialog v-model:visible="editVisible" header="Modifier les informations" modal class="w-full max-w-3xl">
-        <ProfileInfoForm :user="user" :employee="employee" :loading="loading" @save="emit('save-info', $event); editVisible = false" />
+        <ProfileInfoForm
+            :user="user"
+            :employee="employee"
+            :loading="loading"
+            @save="
+                emit('save-info', $event);
+                editVisible = false;
+            "
+        />
     </Dialog>
 
     <Dialog v-model:visible="passwordVisible" header="Changer le mot de passe" modal class="w-full max-w-xl">
-        <ProfilePasswordForm :loading="loading" @save="emit('change-password', $event); passwordVisible = false" />
+        <ProfilePasswordForm
+            :loading="loading"
+            @save="
+                emit('change-password', $event);
+                passwordVisible = false;
+            "
+        />
     </Dialog>
 </template>

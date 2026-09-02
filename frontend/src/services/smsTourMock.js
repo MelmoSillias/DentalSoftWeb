@@ -24,37 +24,38 @@ function buildSeedState(scenario = 'configured') {
         configured,
         provider: configured
             ? {
-                id: 1,
-                provider: normalizedScenario === 'configured' ? 'orange' : 'orange',
-                label: 'Orange SMS',
-                enabled: true,
-                reachable: true
-            }
+                  id: 1,
+                  provider: normalizedScenario === 'configured' ? 'orange' : 'orange',
+                  label: 'Orange SMS',
+                  enabled: true,
+                  reachable: true
+              }
             : null,
         automationOperational: configured,
-        queue: normalizedScenario === 'queue-pending'
-            ? [
-                {
-                    id: 901,
-                    recipient: '+221771001010',
-                    message: 'Rappel rendez-vous demain 09h30',
-                    status: 'pending',
-                    scheduledAt: '2026-04-02T08:00:00'
-                },
-                {
-                    id: 902,
-                    recipient: '+221775551212',
-                    message: 'Votre facture est disponible.',
-                    status: 'failed',
-                    scheduledAt: '2026-04-01T18:00:00'
-                }
-            ]
-            : [],
+        queue:
+            normalizedScenario === 'queue-pending'
+                ? [
+                      {
+                          id: 901,
+                          recipient: '+221771001010',
+                          message: 'Rappel rendez-vous demain 09h30',
+                          status: 'pending',
+                          scheduledAt: '2026-04-02T08:00:00'
+                      },
+                      {
+                          id: 902,
+                          recipient: '+221775551212',
+                          message: 'Votre facture est disponible.',
+                          status: 'failed',
+                          scheduledAt: '2026-04-01T18:00:00'
+                      }
+                  ]
+                : [],
         templates: configured
             ? [
-                { id: 1, key: 'appointment_reminder', label: 'Rappel RDV', body: 'Bonjour {{patient}}, rappel RDV le {{date}}.' },
-                { id: 2, key: 'invoice_ready', label: 'Facture disponible', body: 'Votre facture de {{amount}} FCFA est disponible.' }
-            ]
+                  { id: 1, key: 'appointment_reminder', label: 'Rappel RDV', body: 'Bonjour {{patient}}, rappel RDV le {{date}}.' },
+                  { id: 2, key: 'invoice_ready', label: 'Facture disponible', body: 'Votre facture de {{amount}} FCFA est disponible.' }
+              ]
             : [],
         stats: {
             sentToday: configured ? 14 : 0,

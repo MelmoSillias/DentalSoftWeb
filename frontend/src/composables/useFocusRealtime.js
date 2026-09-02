@@ -4,15 +4,7 @@ import { useMedecinsStore } from '@/stores/medecins';
 import { usePaymentMethodsStore } from '@/stores/paymentMethods';
 import { useMercureClient } from '@/composables/realtime/useMercureClient';
 
-const FOCUS_ENTITIES = new Set([
-    'consultation',
-    'patient',
-    'devis',
-    'payment',
-    'medecin',
-    'payment_method',
-    'facture'
-]);
+const FOCUS_ENTITIES = new Set(['consultation', 'patient', 'devis', 'payment', 'medecin', 'payment_method', 'facture']);
 
 export function useFocusRealtime(onEvent) {
     const auth = useAuthStore();

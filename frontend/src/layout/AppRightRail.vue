@@ -124,30 +124,13 @@ function openProfile() {
 <template>
     <aside class="layout-right-rail" aria-label="Actions rapides">
         <div class="layout-right-rail__top">
-            <button
-                type="button"
-                class="layout-right-rail__btn"
-                :class="{ 'is-active': isOnHub }"
-                title="Accueil"
-                aria-label="Accueil"
-                @click="goHome"
-            >
+            <button type="button" class="layout-right-rail__btn" :class="{ 'is-active': isOnHub }" title="Accueil" aria-label="Accueil" @click="goHome">
                 <i class="pi pi-th-large"></i>
             </button>
-            <router-link
-                to="/dashboard"
-                class="layout-right-rail__btn layout-right-rail__logo"
-                :title="cabinetConfig.brandName"
-                :aria-label="cabinetConfig.brandName"
-            >
+            <router-link to="/dashboard" class="layout-right-rail__btn layout-right-rail__logo" :title="cabinetConfig.brandName" :aria-label="cabinetConfig.brandName">
                 <img src="/logo.png" alt="" width="28" height="22" />
             </router-link>
-            <span
-                v-if="isLocalDeploymentMode"
-                class="layout-right-rail__local"
-                title="Mode local"
-                aria-label="Mode local"
-            >
+            <span v-if="isLocalDeploymentMode" class="layout-right-rail__local" title="Mode local" aria-label="Mode local">
                 <i class="pi pi-wifi"></i>
             </span>
         </div>
@@ -169,13 +152,7 @@ function openProfile() {
                 <i class="pi pi-comment"></i>
             </button>
 
-            <button
-                type="button"
-                class="layout-right-rail__btn"
-                :title="isDarkTheme ? 'Mode clair' : 'Mode sombre'"
-                :aria-label="isDarkTheme ? 'Mode clair' : 'Mode sombre'"
-                @click="toggleDarkMode"
-            >
+            <button type="button" class="layout-right-rail__btn" :title="isDarkTheme ? 'Mode clair' : 'Mode sombre'" :aria-label="isDarkTheme ? 'Mode clair' : 'Mode sombre'" @click="toggleDarkMode">
                 <i :class="['pi', isDarkTheme ? 'pi-sun' : 'pi-moon']"></i>
             </button>
 
@@ -183,43 +160,16 @@ function openProfile() {
         </div>
 
         <div class="layout-right-rail__bottom">
-            <button
-                type="button"
-                class="layout-right-rail__btn"
-                title="Profil"
-                aria-label="Profil"
-                ref="profileButton"
-                @click="toggleProfilePopover($event)"
-            >
+            <button type="button" class="layout-right-rail__btn" title="Profil" aria-label="Profil" ref="profileButton" @click="toggleProfilePopover($event)">
                 <i class="pi pi-user"></i>
             </button>
-            <Popover
-                ref="profilePopover"
-                v-model:visible="showProfilePopover"
-                :autoHide="true"
-                :dismissable="true"
-                :target="profileButton"
-                position="left"
-                class="w-56 bg-white dark:bg-gray-800 shadow-lg rounded-lg p-3"
-                style="z-index: 1000"
-            >
+            <Popover ref="profilePopover" v-model:visible="showProfilePopover" :autoHide="true" :dismissable="true" :target="profileButton" position="left" class="w-56 bg-white dark:bg-gray-800 shadow-lg rounded-lg p-3" style="z-index: 1000">
                 <p class="font-semibold text-sm text-gray-800 dark:text-gray-100 mb-3 truncate">
                     {{ auth.user?.username || 'Utilisateur' }}
                 </p>
                 <div class="space-y-2">
-                    <Button
-                        class="p-button-secondary p-button-sm w-full"
-                        label="Profil"
-                        icon="pi pi-user"
-                        @click="openProfile"
-                    />
-                    <Button
-                        :loading="isLoggingOut"
-                        class="p-button-danger p-button-sm w-full"
-                        label="Quitter"
-                        icon="pi pi-sign-out"
-                        @click="handleLogout"
-                    />
+                    <Button class="p-button-secondary p-button-sm w-full" label="Profil" icon="pi pi-user" @click="openProfile" />
+                    <Button :loading="isLoggingOut" class="p-button-danger p-button-sm w-full" label="Quitter" icon="pi pi-sign-out" @click="handleLogout" />
                 </div>
             </Popover>
         </div>

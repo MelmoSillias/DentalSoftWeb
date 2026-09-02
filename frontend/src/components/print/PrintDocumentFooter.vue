@@ -1,14 +1,3 @@
-<template>
-    <footer class="print-doc-footer">
-        <div class="print-doc-footer__rule" />
-        <div class="print-doc-footer__row">
-            <span class="print-doc-footer__name">{{ profile.name }}</span>
-            <span v-if="contactLine" class="print-doc-footer__contact">{{ contactLine }}</span>
-            <span class="print-doc-footer__date">Édité le {{ printedDate }}</span>
-        </div>
-    </footer>
-</template>
-
 <script setup>
 import { computed } from 'vue';
 import { usePrintProfile } from '@/composables/usePrintProfile';
@@ -24,6 +13,17 @@ const contactLine = computed(() => {
     return parts.join(' · ');
 });
 </script>
+
+<template>
+    <footer class="print-doc-footer">
+        <div class="print-doc-footer__rule" />
+        <div class="print-doc-footer__row">
+            <span class="print-doc-footer__name">{{ profile.name }}</span>
+            <span v-if="contactLine" class="print-doc-footer__contact">{{ contactLine }}</span>
+            <span class="print-doc-footer__date">Édité le {{ printedDate }}</span>
+        </div>
+    </footer>
+</template>
 
 <style scoped>
 .print-doc-footer__rule {

@@ -2,16 +2,15 @@ import cabinetConfig from '@/cabinetConfig';
 
 function buildPrintProfile() {
     const profile = cabinetConfig.printProfile || {};
-    const phones = Array.isArray(profile.phones) && profile.phones.length
-        ? profile.phones
-        : String(cabinetConfig.cabinetPhone || '')
-              .split(/\s*\/\s*|\s*\|\s*/)
-              .map((p) => p.trim())
-              .filter(Boolean);
+    const phones =
+        Array.isArray(profile.phones) && profile.phones.length
+            ? profile.phones
+            : String(cabinetConfig.cabinetPhone || '')
+                  .split(/\s*\/\s*|\s*\|\s*/)
+                  .map((p) => p.trim())
+                  .filter(Boolean);
 
-    const addressLines = Array.isArray(profile.addressLines)
-        ? profile.addressLines.filter(Boolean)
-        : [];
+    const addressLines = Array.isArray(profile.addressLines) ? profile.addressLines.filter(Boolean) : [];
 
     return {
         name: profile.name || cabinetConfig.reportCabinetName || cabinetConfig.displayName || 'Cabinet dentaire',
@@ -195,10 +194,10 @@ export function buildPrintFooterHtml() {
 }
 
 export function buildPrintHtmlDocument({ title = 'Document', body = '', landscape = true } = {}) {
-  const pageSize = landscape ? 'A4 landscape' : 'A4';
-  const css = PRINT_DOCUMENT_BASE_CSS.replace('A4 landscape', pageSize);
+    const pageSize = landscape ? 'A4 landscape' : 'A4';
+    const css = PRINT_DOCUMENT_BASE_CSS.replace('A4 landscape', pageSize);
 
-  return `
+    return `
     <html lang="fr">
     <head>
         <meta charset="UTF-8" />

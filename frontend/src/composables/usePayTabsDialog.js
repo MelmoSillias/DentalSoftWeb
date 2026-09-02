@@ -13,10 +13,7 @@ export const resolveFacturePatientId = (row) => {
     return null;
 };
 
-export const isInsuranceFactureRow = (row) =>
-    row?.type === 'FactureAssurance'
-    || row?.type === 'assurance'
-    || row?.insurance?.hasInsurance === true;
+export const isInsuranceFactureRow = (row) => row?.type === 'FactureAssurance' || row?.type === 'assurance' || row?.insurance?.hasInsurance === true;
 
 export const factureIdentityKeys = (row) => {
     const keys = new Set();
@@ -43,8 +40,7 @@ export const isEmptyUnvalidatedFacture = (row) => {
     return Number(row.reste ?? 0) === 0;
 };
 
-export const isSettledFacture = (row) =>
-    Boolean(row?.isRegle) && Number(row?.reste ?? 0) === 0;
+export const isSettledFacture = (row) => Boolean(row?.isRegle) && Number(row?.reste ?? 0) === 0;
 
 const resolvePrimaryPayTabMode = (primaryRow, options = {}) => {
     if (options.primaryMode) {
@@ -59,8 +55,7 @@ const resolvePrimaryPayTabMode = (primaryRow, options = {}) => {
     return 'pay';
 };
 
-export const resolveOpenPayDialogMode = (row, primaryMode = null) =>
-    resolvePrimaryPayTabMode(row, { primaryMode });
+export const resolveOpenPayDialogMode = (row, primaryMode = null) => resolvePrimaryPayTabMode(row, { primaryMode });
 
 export const formatPayTabLabel = (row, { isPrimary = false } = {}) => {
     const id = row?.id ?? '—';
@@ -86,13 +81,11 @@ export const buildPayTabs = (primaryRow, unpaidRows = [], options = {}) => {
             label: formatPayTabLabel(primaryRow, { isPrimary: true }),
             facture: primaryRow,
             mode: primaryMode,
-            isPrimary: true,
-        },
+            isPrimary: true
+        }
     ];
 
-    const others = (Array.isArray(unpaidRows) ? unpaidRows : []).filter(
-        (row) => row && !sameFactureIdentity(row, primaryRow) && Number(row.reste ?? 0) > 0,
-    );
+    const others = (Array.isArray(unpaidRows) ? unpaidRows : []).filter((row) => row && !sameFactureIdentity(row, primaryRow) && Number(row.reste ?? 0) > 0);
 
     for (const row of others) {
         tabs.push({
@@ -100,7 +93,7 @@ export const buildPayTabs = (primaryRow, unpaidRows = [], options = {}) => {
             label: formatPayTabLabel(row),
             facture: row,
             mode: isEmptyUnvalidatedFacture(row) ? 'validate' : 'pay',
-            isPrimary: false,
+            isPrimary: false
         });
     }
 
@@ -128,14 +121,12 @@ export const advanceAfterSettledTab = (tabs, settledTabId) => {
         return { tabs: [], nextTabId: null, shouldClose: true };
     }
 
-    const nextIndex = settledIndex >= 0
-        ? Math.min(settledIndex, remaining.length - 1)
-        : 0;
+    const nextIndex = settledIndex >= 0 ? Math.min(settledIndex, remaining.length - 1) : 0;
 
     return {
         tabs: remaining,
         nextTabId: String(remaining[nextIndex].id),
-        shouldClose: false,
+        shouldClose: false
     };
 };
 
@@ -153,17 +144,17 @@ export const applyPartialPaymentToTab = (tabs, tabId, paidAmount) => {
             hasPayments: true,
             insurance: tab.facture?.insurance
                 ? {
-                    ...tab.facture.insurance,
-                    patientPaidAmount: alreadyPaid + amount,
-                    patientRemainingAmount: nextReste,
-                    restePatient: nextReste,
-                }
-                : tab.facture?.insurance,
+                      ...tab.facture.insurance,
+                      patientPaidAmount: alreadyPaid + amount,
+                      patientRemainingAmount: nextReste,
+                      restePatient: nextReste
+                  }
+                : tab.facture?.insurance
         };
         return {
             ...tab,
             facture: nextFacture,
-            mode: nextReste <= 0 && prevMontant <= 0 ? 'validate' : (nextReste <= 0 ? 'pay' : tab.mode),
+            mode: nextReste <= 0 && prevMontant <= 0 ? 'validate' : nextReste <= 0 ? 'pay' : tab.mode
         };
     });
 };

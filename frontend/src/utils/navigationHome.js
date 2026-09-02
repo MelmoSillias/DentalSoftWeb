@@ -9,7 +9,5 @@ export function getHomeRoute() {
     if (!uiSettings.initialized) {
         uiSettings.initialize();
     }
-    return uiSettings.layoutConfig.navigationMode === 'hub'
-        ? { name: 'navigation-hub' }
-        : { name: 'dashboard' };
+    return uiSettings.layoutConfig.navigationMode === 'hub' ? { name: 'navigation-hub' } : { name: 'dashboard' };
 }

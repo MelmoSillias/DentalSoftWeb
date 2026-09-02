@@ -10,13 +10,9 @@ function parsePhones(raw) {
 
 function normalizePrintProfile(config) {
     const profile = config.printProfile || {};
-    const phones = Array.isArray(profile.phones) && profile.phones.length
-        ? profile.phones.filter(Boolean)
-        : parsePhones(config.cabinetPhone);
+    const phones = Array.isArray(profile.phones) && profile.phones.length ? profile.phones.filter(Boolean) : parsePhones(config.cabinetPhone);
 
-    const addressLines = Array.isArray(profile.addressLines)
-        ? profile.addressLines.filter((line) => typeof line === 'string' && line.trim() !== '')
-        : [];
+    const addressLines = Array.isArray(profile.addressLines) ? profile.addressLines.filter((line) => typeof line === 'string' && line.trim() !== '') : [];
 
     return {
         name: profile.name || config.reportCabinetName || config.displayName || 'Cabinet dentaire',

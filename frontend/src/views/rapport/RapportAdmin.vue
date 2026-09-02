@@ -14,11 +14,7 @@ import AdminNonPeriodicDetailsSection from '@/components/rapport/admin/AdminNonP
 import AdminPeriodicDetailsSection from '@/components/rapport/admin/AdminPeriodicDetailsSection.vue';
 import DoctorReportsTable from '@/components/rapport/common/DoctorReportsTable.vue';
 import { useRapports } from '@/composables/useRapports';
-import {
-    loadRapportsPageState,
-    saveRapportsPageState,
-    RAPPORTS_ADMIN_TABS
-} from '@/composables/useRapportsPageState';
+import { loadRapportsPageState, saveRapportsPageState, RAPPORTS_ADMIN_TABS } from '@/composables/useRapportsPageState';
 
 const {
     adminLoading,
@@ -101,13 +97,7 @@ onMounted(() => {
     <div class="space-y-4">
         <div class="flex flex-wrap items-center justify-end gap-2" data-tour="rapports-admin.range">
             <div class="flex flex-wrap items-center gap-2">
-                <PanelDatePicker
-                    v-model="range"
-                    showIcon
-                    dateFormat="dd/mm/yy"
-                    class="w-64"
-                    placeholder="Choisir période"
-                />
+                <PanelDatePicker v-model="range" showIcon dateFormat="dd/mm/yy" class="w-64" placeholder="Choisir période" />
                 <Button label="Rafraîchir" icon="pi pi-refresh" outlined size="small" @click="refresh(false)" />
             </div>
         </div>
@@ -127,13 +117,7 @@ onMounted(() => {
                             <AdminGlobalStatsSection :stats="adminGlobalStats" :loading="adminLoading" />
                         </div>
                         <div data-tour="rapports-admin.non-periodic">
-                            <AdminNonPeriodicDetailsSection
-                                :employee-distribution="adminEmployeeDistribution"
-                                :low-stock="adminLowStockConsumables"
-                                :patients="adminGlobalPatients"
-                                :patient-referrals="adminPatientReferrals"
-                                :loading="adminLoading"
-                            />
+                            <AdminNonPeriodicDetailsSection :employee-distribution="adminEmployeeDistribution" :low-stock="adminLowStockConsumables" :patients="adminGlobalPatients" :patient-referrals="adminPatientReferrals" :loading="adminLoading" />
                         </div>
                     </div>
                 </TabPanel>
@@ -152,30 +136,16 @@ onMounted(() => {
                     </div>
                 </TabPanel>
                 <TabPanel value="finances">
-                    <FinanceCrossTable
-                        show-period-details
-                        title="Tableau croisé financier"
-                        subtitle="Section dédiée au suivi hebdomadaire des revenus et dépenses validés."
-                    />
+                    <FinanceCrossTable show-period-details title="Tableau croisé financier" subtitle="Section dédiée au suivi hebdomadaire des revenus et dépenses validés." />
                 </TabPanel>
                 <TabPanel value="acts">
                     <div data-tour="rapports-admin.acts">
-                        <AdminActsStatsSection
-                            :acts-stats="adminActsStats"
-                            :loading="adminLoading"
-                            :period-label="periodLabel"
-                        />
+                        <AdminActsStatsSection :acts-stats="adminActsStats" :loading="adminLoading" :period-label="periodLabel" />
                     </div>
                 </TabPanel>
                 <TabPanel value="doctors">
                     <div data-tour="rapports-admin.doctors">
-                        <DoctorReportsTable
-                            :data="adminDoctorReports"
-                            :loading="adminLoading"
-                            :period-label="periodLabel"
-                            :show-kpi="true"
-                            variant="admin"
-                        />
+                        <DoctorReportsTable :data="adminDoctorReports" :loading="adminLoading" :period-label="periodLabel" :show-kpi="true" variant="admin" />
                     </div>
                 </TabPanel>
             </TabPanels>

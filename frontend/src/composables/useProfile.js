@@ -116,11 +116,7 @@ export function useProfile() {
         loading.value = true;
         error.value = null;
         try {
-            const res = await http.put(
-                `${apiPrefix}/me`,
-                { notificationsEnabled: Boolean(enabled) },
-                { headers: buildAuthHeaders(auth.token) }
-            );
+            const res = await http.put(`${apiPrefix}/me`, { notificationsEnabled: Boolean(enabled) }, { headers: buildAuthHeaders(auth.token) });
             await fetchProfile();
             if (auth.user) {
                 auth.user = { ...auth.user, notificationsEnabled: Boolean(enabled) };

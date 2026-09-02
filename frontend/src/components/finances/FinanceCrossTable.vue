@@ -56,8 +56,17 @@ const printCrossTable = async () => {
 
     // wait for a short time to ensure resources (fonts/images) are ready
     setTimeout(() => {
-        try { target.focus(); target.print(); } catch (e) { /* ignore */ }
-        try { target.close(); } catch (e) { /* ignore */ }
+        try {
+            target.focus();
+            target.print();
+        } catch (e) {
+            /* ignore */
+        }
+        try {
+            target.close();
+        } catch (e) {
+            /* ignore */
+        }
     }, 400);
 };
 
@@ -65,10 +74,13 @@ const currentMonth = new Date();
 const monthPicker = ref(new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1));
 const selectedType = ref('revenue');
 
-const typeOptions = computed(() => crossTableData.value?.availableTypes || [
-    { label: 'Revenus', value: 'revenue' },
-    { label: 'Dépenses', value: 'expense' }
-]);
+const typeOptions = computed(
+    () =>
+        crossTableData.value?.availableTypes || [
+            { label: 'Revenus', value: 'revenue' },
+            { label: 'Dépenses', value: 'expense' }
+        ]
+);
 
 const loadCrossTable = async () => {
     const sourceDate = monthPicker.value instanceof Date ? monthPicker.value : new Date();
@@ -97,11 +109,7 @@ const loadPeriodOverview = async (sourceDate) => {
     await fetchCrossTablePeriodOverview(toIsoDate(from), toIsoDate(to));
 };
 
-const periodOverviewLabel = computed(() =>
-    crossTablePeriodOverview.value?.dateLabel
-    || crossTableData.value?.monthLabel
-    || 'Période courante'
-);
+const periodOverviewLabel = computed(() => crossTablePeriodOverview.value?.dateLabel || crossTableData.value?.monthLabel || 'Période courante');
 
 watch([monthPicker, selectedType], () => {
     loadCrossTable();
@@ -199,19 +207,8 @@ const openDayOverview = (week, weekday) => {
                 </div>
 
                 <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
-                    <DatePicker
-                        v-model="monthPicker"
-                        view="month"
-                        dateFormat="mm/yy"
-                        showIcon
-                        class="w-full sm:w-40"
-                        inputClass="w-full" />
-                    <SelectButton
-                        v-model="selectedType"
-                        :options="typeOptions"
-                        optionLabel="label"
-                        optionValue="value"
-                        :allowEmpty="false" />
+                    <DatePicker v-model="monthPicker" view="month" dateFormat="mm/yy" showIcon class="w-full sm:w-40" inputClass="w-full" />
+                    <SelectButton v-model="selectedType" :options="typeOptions" optionLabel="label" optionValue="value" :allowEmpty="false" />
                     <Button icon="pi pi-print" severity="secondary" outlined class="ml-2" @click="printCrossTable" />
                     <Button icon="pi pi-refresh" severity="secondary" outlined @click="loadCrossTable" />
                 </div>
@@ -220,12 +217,8 @@ const openDayOverview = (week, weekday) => {
 
         <div class="px-5 py-4 md:px-6">
             <div class="mb-4 flex items-center justify-between gap-3">
-                <p class="text-sm font-medium text-surface-700 dark:text-surface-300 ">
-                    {{ crossTableData.monthLabel || 'Période courante' }} · {{ crossTableData.typeLabel || 'Revenus' }}
-                </p>
-                <Tag :severity="selectedType === 'revenue' ? 'success' : 'danger'" class="text-lg font-semibold">
-                    Total général : {{ formatFcfa(grandTotal) }}
-                </Tag>
+                <p class="text-sm font-medium text-surface-700 dark:text-surface-300">{{ crossTableData.monthLabel || 'Période courante' }} · {{ crossTableData.typeLabel || 'Revenus' }}</p>
+                <Tag :severity="selectedType === 'revenue' ? 'success' : 'danger'" class="text-lg font-semibold"> Total général : {{ formatFcfa(grandTotal) }} </Tag>
             </div>
 
             <div v-if="loading.crossTable" class="grid gap-3">
@@ -236,20 +229,12 @@ const openDayOverview = (week, weekday) => {
                 <table class="min-w-full border-separate border-spacing-0 overflow-hidden rounded-2xl text-sm">
                     <thead>
                         <tr>
-                            <th class="sticky left-0 z-10 bg-surface-500 px-4 py-4 text-left font-semibold uppercase tracking-wide text-white dark:bg-surface-900">
-                                Jours de la semaine
-                            </th>
-                            <th
-                                v-for="week in weeks"
-                                :key="week.index"
-                                class="min-w-[180px] bg-surface-500 px-4 py-4 text-center font-semibold uppercase tracking-wide text-white dark:bg-surface-900"
-                            >
+                            <th class="sticky left-0 z-10 bg-surface-500 px-4 py-4 text-left font-semibold uppercase tracking-wide text-white dark:bg-surface-900">Jours de la semaine</th>
+                            <th v-for="week in weeks" :key="week.index" class="min-w-[180px] bg-surface-500 px-4 py-4 text-center font-semibold uppercase tracking-wide text-white dark:bg-surface-900">
                                 <div>{{ week.label }}</div>
                                 <div class="mt-1 text-xs font-normal normal-case text-surface-200">{{ formatWeekRange(week) }}</div>
                             </th>
-                            <th class=" bg-surface-900 px-4 py-4 text-center font-semibold uppercase tracking-wide text-white dark:bg-surface-900">
-                                Total
-                            </th>
+                            <th class="bg-surface-900 px-4 py-4 text-center font-semibold uppercase tracking-wide text-white dark:bg-surface-900">Total</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -277,9 +262,7 @@ const openDayOverview = (week, weekday) => {
                             </td>
                         </tr>
                         <tr class="bg-surface-200/80 dark:bg-surface-700/70">
-                            <th class="sticky left-0 bg-inherit px-4 py-3 text-left text-base font-semibold text-surface-900 dark:text-surface-50">
-                                Total
-                            </th>
+                            <th class="sticky left-0 bg-inherit px-4 py-3 text-left text-base font-semibold text-surface-900 dark:text-surface-50">Total</th>
                             <td v-for="(value, index) in columnTotals" :key="`total-${index}`" class="px-4 py-3 text-center font-semibold text-surface-900 dark:text-surface-50 min-w-[120px]">
                                 {{ formatFcfa(value) }}
                             </td>
@@ -295,18 +278,11 @@ const openDayOverview = (week, weekday) => {
         <FinanceCrossTableDayDialog v-model:visible="dayDialogVisible" :date="selectedDay" />
     </section>
 
-    <FinanceCrossTablePeriodDetails
-        v-if="showPeriodDetails"
-        class="mt-4"
-        :overview="crossTablePeriodOverview"
-        :loading="loading.periodOverview"
-        :period-label="periodOverviewLabel"
-        scope-label="mois"
-    />
+    <FinanceCrossTablePeriodDetails v-if="showPeriodDetails" class="mt-4" :overview="crossTablePeriodOverview" :loading="loading.periodOverview" :period-label="periodOverviewLabel" scope-label="mois" />
 </template>
 
-<style scoped>  
-    :deep(table td) {
-        height: 6.5rem !important;
-    }
+<style scoped>
+:deep(table td) {
+    height: 6.5rem !important;
+}
 </style>

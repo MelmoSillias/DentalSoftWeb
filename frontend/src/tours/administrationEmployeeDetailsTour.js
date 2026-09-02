@@ -46,40 +46,42 @@ function buildOverviewSteps(ctx) {
 
 export const administrationEmployeeDetailsRegistry = createTourRegistry(GROUP, TASKS, {
     overview: buildOverviewSteps,
-    'edit-info': (ctx) => normalizeTourSteps([
-        {
-            group: GROUP,
-            target: '[data-tour="admin-employee-details.personal"]',
-            title: 'Informations personnelles',
-            content: 'Modifiez identite, contacts et date d embauche directement dans ce bloc.'
-        },
-        {
-            group: GROUP,
-            target: '[data-tour="admin-employee-details.rh"]',
-            title: 'Parametres RH',
-            content: 'Ajustez type de salaire, valeur, contrat et jours travailles selon l evolution du poste.'
-        },
-        {
-            group: GROUP,
-            target: '[data-tour="admin-employee-details.conges"]',
-            title: 'Suivi des conges',
-            content: 'Visualisez l historique des conges avec total annuel pour completer le suivi RH.'
-        }
-    ]),
-    'manage-documents': (ctx) => normalizeTourSteps([
-        {
-            group: GROUP,
-            target: '[data-tour="admin-employee-details.documents"]',
-            title: 'Documents administratifs',
-            content: 'Ce bloc centralise l ajout et le telechargement des pieces liees a l employe.'
-        },
-        {
-            group: GROUP,
-            target: '[data-tour="admin-employee-details.summary"]',
-            title: 'Verifier le profil',
-            content: 'Les cartes de synthese permettent de confirmer le contexte avant d archiver un document.'
-        }
-    ])
+    'edit-info': (ctx) =>
+        normalizeTourSteps([
+            {
+                group: GROUP,
+                target: '[data-tour="admin-employee-details.personal"]',
+                title: 'Informations personnelles',
+                content: 'Modifiez identite, contacts et date d embauche directement dans ce bloc.'
+            },
+            {
+                group: GROUP,
+                target: '[data-tour="admin-employee-details.rh"]',
+                title: 'Parametres RH',
+                content: 'Ajustez type de salaire, valeur, contrat et jours travailles selon l evolution du poste.'
+            },
+            {
+                group: GROUP,
+                target: '[data-tour="admin-employee-details.conges"]',
+                title: 'Suivi des conges',
+                content: 'Visualisez l historique des conges avec total annuel pour completer le suivi RH.'
+            }
+        ]),
+    'manage-documents': (ctx) =>
+        normalizeTourSteps([
+            {
+                group: GROUP,
+                target: '[data-tour="admin-employee-details.documents"]',
+                title: 'Documents administratifs',
+                content: 'Ce bloc centralise l ajout et le telechargement des pieces liees a l employe.'
+            },
+            {
+                group: GROUP,
+                target: '[data-tour="admin-employee-details.summary"]',
+                title: 'Verifier le profil',
+                content: 'Les cartes de synthese permettent de confirmer le contexte avant d archiver un document.'
+            }
+        ])
 });
 
 export function buildAdministrationEmployeeDetailsTourSteps(taskId, variantId, ctx) {

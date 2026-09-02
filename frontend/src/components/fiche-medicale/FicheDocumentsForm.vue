@@ -82,7 +82,7 @@ const uploadLabel = computed(() => {
     if (total > 0) {
         return `${formatBytes(loaded)} / ${formatBytes(total)}`;
     }
-    return 'Preparation de l\'envoi...';
+    return "Preparation de l'envoi...";
 });
 
 const resetDraft = () => {
@@ -182,10 +182,7 @@ const addDocument = (doc = null) => {
     const docs = form.value.documents || [];
     form.value = {
         ...form.value,
-        documents: [
-            ...docs,
-            doc ?? { type: 'Document', libelle: '', urls: [], files: [], groupKey: createGroupKey() }
-        ]
+        documents: [...docs, doc ?? { type: 'Document', libelle: '', urls: [], files: [], groupKey: createGroupKey() }]
     };
 };
 
@@ -410,12 +407,7 @@ onBeforeUnmount(() => {
             </div>
         </div>
 
-        <div
-            v-if="isUploading"
-            class="mb-4 rounded-xl border border-primary-200/70 dark:border-primary-700/50 bg-primary-50/80 dark:bg-primary-950/30 p-4 shadow-sm"
-            role="status"
-            aria-live="polite"
-        >
+        <div v-if="isUploading" class="mb-4 rounded-xl border border-primary-200/70 dark:border-primary-700/50 bg-primary-50/80 dark:bg-primary-950/30 p-4 shadow-sm" role="status" aria-live="polite">
             <div class="flex items-center justify-between gap-3 mb-2">
                 <div class="flex items-center gap-2 text-sm font-medium text-primary-800 dark:text-primary-200">
                     <i class="pi pi-cloud-upload animate-pulse"></i>
@@ -428,9 +420,7 @@ onBeforeUnmount(() => {
         </div>
 
         <div class="space-y-4">
-            <div v-if="!galleryItems.length" class="text-sm text-surface-500 dark:text-surface-400">
-                Aucun document ajoute.
-            </div>
+            <div v-if="!galleryItems.length" class="text-sm text-surface-500 dark:text-surface-400">Aucun document ajoute.</div>
 
             <div v-for="(item, idx) in documentsView" :key="idx" class="rounded-2xl border border-surface-200/70 dark:border-surface-700/70 bg-surface-50 dark:bg-surface-800/30" :class="props.compact ? 'p-3' : 'p-5'">
                 <div class="flex flex-wrap items-start justify-between gap-4">
@@ -453,12 +443,7 @@ onBeforeUnmount(() => {
                         :class="props.compact ? 'h-16 sm:h-20 lg:h-24' : 'h-20 sm:h-24 md:h-28 lg:h-32'"
                         @click="openPreviewByKey(entry.entryKey)"
                     >
-                        <img
-                            v-if="entry.isImage && entry.previewSrc"
-                            :src="entry.previewSrc"
-                            :alt="item.title"
-                            class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                        />
+                        <img v-if="entry.isImage && entry.previewSrc" :src="entry.previewSrc" :alt="item.title" class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
                         <div v-else class="flex flex-col items-center justify-center gap-2 text-surface-500 dark:text-surface-400">
                             <div class="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-surface-100 dark:bg-surface-800 flex items-center justify-center">
                                 <i :class="['pi', entry.icon, 'text-lg']"></i>
@@ -470,9 +455,7 @@ onBeforeUnmount(() => {
                         <div class="absolute inset-0 bg-primary-500/0 transition-colors group-hover:bg-primary-500/10"></div>
                     </button>
                 </div>
-                <div v-else class="mt-4 text-xs text-surface-500 dark:text-surface-400">
-                    Aucun fichier attache.
-                </div>
+                <div v-else class="mt-4 text-xs text-surface-500 dark:text-surface-400">Aucun fichier attache.</div>
             </div>
         </div>
 
@@ -480,14 +463,7 @@ onBeforeUnmount(() => {
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <div class="space-y-2">
                     <label class="text-sm font-medium text-surface-700 dark:text-surface-300">Type</label>
-                    <Select
-                        :options="typeOptions"
-                        optionLabel="label"
-                        optionValue="value"
-                        :modelValue="draftDocument.type"
-                        @update:modelValue="(v) => (draftDocument.type = v)"
-                        class="w-full"
-                    />
+                    <Select :options="typeOptions" optionLabel="label" optionValue="value" :modelValue="draftDocument.type" @update:modelValue="(v) => (draftDocument.type = v)" class="w-full" />
                 </div>
                 <div class="space-y-2">
                     <label class="text-sm font-medium text-surface-700 dark:text-surface-300">Titre</label>
@@ -495,15 +471,7 @@ onBeforeUnmount(() => {
                 </div>
                 <div class="space-y-2 lg:col-span-2">
                     <label class="text-sm font-medium text-surface-700 dark:text-surface-300">Fichiers</label>
-                    <FileUpload
-                        mode="basic"
-                        chooseLabel="Selectionner"
-                        :customUpload="true"
-                        :multiple="true"
-                        class="mt-2"
-                        @select="onDraftFilesSelect"
-                        @clear="onDraftFilesClear"
-                    />
+                    <FileUpload mode="basic" chooseLabel="Selectionner" :customUpload="true" :multiple="true" class="mt-2" @select="onDraftFilesSelect" @clear="onDraftFilesClear" />
                     <div v-if="draftDocument.files.length" class="mt-3 space-y-2">
                         <div
                             v-for="(file, fileIdx) in draftDocument.files"
@@ -522,11 +490,7 @@ onBeforeUnmount(() => {
                         <Button label="Ajouter" icon="pi pi-plus" size="small" @click="addDraftUrl" />
                     </div>
                     <div v-if="draftDocument.urls.length" class="mt-3 space-y-2">
-                        <div
-                            v-for="(url, urlIdx) in draftDocument.urls"
-                            :key="urlIdx"
-                            class="flex items-center justify-between rounded-lg border border-surface-200 dark:border-surface-700 px-3 py-2 text-xs text-surface-600 dark:text-surface-300"
-                        >
+                        <div v-for="(url, urlIdx) in draftDocument.urls" :key="urlIdx" class="flex items-center justify-between rounded-lg border border-surface-200 dark:border-surface-700 px-3 py-2 text-xs text-surface-600 dark:text-surface-300">
                             <span class="truncate">{{ url }}</span>
                             <Button icon="pi pi-times" text rounded size="small" @click="removeDraftUrl(urlIdx)" />
                         </div>
@@ -573,12 +537,7 @@ onBeforeUnmount(() => {
                         <i class="pi pi-chevron-right"></i>
                     </button>
                     <div class="flex flex-1 items-center justify-center">
-                        <img
-                            v-if="item.isImage && item.previewSrc"
-                            :src="item.previewSrc"
-                            :alt="item.title"
-                            class="max-h-[70vh] w-auto max-w-[90vw] rounded-2xl shadow-xl"
-                        />
+                        <img v-if="item.isImage && item.previewSrc" :src="item.previewSrc" :alt="item.title" class="max-h-[70vh] w-auto max-w-[90vw] rounded-2xl shadow-xl" />
                         <div v-else class="flex flex-col items-center justify-center text-center text-white/90">
                             <div class="h-28 w-28 rounded-3xl bg-white/10 flex items-center justify-center">
                                 <i :class="['pi', item.icon, 'text-4xl text-white']"></i>
@@ -588,12 +547,7 @@ onBeforeUnmount(() => {
                     <div class="text-center text-white/90">
                         <div class="text-lg font-semibold">{{ item.fileName || item.title }}</div>
                         <div class="text-sm text-white/70 mt-1 max-w-xl break-words">{{ item.description }}</div>
-                        <a
-                            v-if="item.downloadUrl"
-                            :href="item.downloadUrl"
-                            download
-                            class="mt-4 inline-flex items-center gap-2 rounded-full border border-white/30 px-4 py-2 text-sm text-white hover:bg-white/10"
-                        >
+                        <a v-if="item.downloadUrl" :href="item.downloadUrl" download class="mt-4 inline-flex items-center gap-2 rounded-full border border-white/30 px-4 py-2 text-sm text-white hover:bg-white/10">
                             <i class="pi pi-download"></i>
                             Telecharger
                         </a>

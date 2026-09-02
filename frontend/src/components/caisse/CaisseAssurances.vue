@@ -50,23 +50,33 @@ const emit = defineEmits([
 
 const currentView = ref('dashboard');
 
-watch(() => props.lotsAssurance, (value) => {
-    if (value?.code && currentView.value === 'dashboard') {
-        currentView.value = 'lots';
-    }
-}, { deep: true });
+watch(
+    () => props.lotsAssurance,
+    (value) => {
+        if (value?.code && currentView.value === 'dashboard') {
+            currentView.value = 'lots';
+        }
+    },
+    { deep: true }
+);
 
-watch(() => props.selectedLot, (value) => {
-    if (value?.id) {
-        currentView.value = 'lot';
+watch(
+    () => props.selectedLot,
+    (value) => {
+        if (value?.id) {
+            currentView.value = 'lot';
+        }
     }
-});
+);
 
-watch(() => props.selectedClaim, (value) => {
-    if (value?.id) {
-        currentView.value = 'claim';
+watch(
+    () => props.selectedClaim,
+    (value) => {
+        if (value?.id) {
+            currentView.value = 'claim';
+        }
     }
-});
+);
 
 const handleViewLots = (card) => {
     emit('view-lots', card);
@@ -106,71 +116,64 @@ const handleBackFromClaim = () => {
 </script>
 
 <template>
-  <div>
-    <CaisseAssurancesDashboard
-      v-if="currentView === 'dashboard'"
-      data-tour="caisse-assurances.dashboard"
-      :cards="dashboardCards"
-      :loading="dashboardLoading"
-      @refresh="emit('refresh-dashboard')"
-      @view-lots="handleViewLots"
-    />
+    <div>
+        <CaisseAssurancesDashboard v-if="currentView === 'dashboard'" data-tour="caisse-assurances.dashboard" :cards="dashboardCards" :loading="dashboardLoading" @refresh="emit('refresh-dashboard')" @view-lots="handleViewLots" />
 
-    <CaisseAssuranceLots
-      v-else-if="currentView === 'lots'"
-      data-tour="caisse-assurances.lots"
-      :assurance="lotsAssurance"
-      :lots="lots"
-      :unassigned-claims="unassignedClaims"
-      :loading="lotsLoading"
-      :action-loading-id="actionLoadingId"
-      @back="handleBack"
-      @refresh="emit('refresh-lots')"
-      @create-lot="emit('create-lot', $event)"
-      @update-lot="emit('update-lot', $event)"
-      @view-lot="handleViewLot"
-      @send-lot="emit('send-lot', $event)"
-      @reopen-lot="emit('reopen-lot', $event)"
-      @confirm-lot="emit('confirm-lot', $event)"
-      @unconfirm-lot="emit('unconfirm-lot', $event)"
-      @refund-lot="emit('refund-lot', $event)"
-      @view-claim="handleViewClaim"
-      @pay-claim="emit('collect-patient-share', $event)"
-      @modify-claim="emit('modify-claim', $event)"
-      @assign-claim="emit('assign-claim', $event)"
-      @change-claim-lot="emit('change-claim-lot', $event)"
-    />
+        <CaisseAssuranceLots
+            v-else-if="currentView === 'lots'"
+            data-tour="caisse-assurances.lots"
+            :assurance="lotsAssurance"
+            :lots="lots"
+            :unassigned-claims="unassignedClaims"
+            :loading="lotsLoading"
+            :action-loading-id="actionLoadingId"
+            @back="handleBack"
+            @refresh="emit('refresh-lots')"
+            @create-lot="emit('create-lot', $event)"
+            @update-lot="emit('update-lot', $event)"
+            @view-lot="handleViewLot"
+            @send-lot="emit('send-lot', $event)"
+            @reopen-lot="emit('reopen-lot', $event)"
+            @confirm-lot="emit('confirm-lot', $event)"
+            @unconfirm-lot="emit('unconfirm-lot', $event)"
+            @refund-lot="emit('refund-lot', $event)"
+            @view-claim="handleViewClaim"
+            @pay-claim="emit('collect-patient-share', $event)"
+            @modify-claim="emit('modify-claim', $event)"
+            @assign-claim="emit('assign-claim', $event)"
+            @change-claim-lot="emit('change-claim-lot', $event)"
+        />
 
-    <CaisseAssuranceLotPage
-      v-else-if="currentView === 'lot'"
-      :lot="selectedLot"
-      :loading="lotLoading"
-      :action-loading="actionLoadingId !== null"
-      :payment-methods="paymentMethods"
-      @back="handleBackFromLot"
-      @refresh="emit('refresh-lot')"
-      @send-lot="emit('send-lot', $event)"
-      @reopen-lot="emit('reopen-lot', $event)"
-      @confirm-lot="emit('confirm-lot', $event)"
-      @unconfirm-lot="emit('unconfirm-lot', $event)"
-      @refund-lot="emit('refund-lot', $event)"
-      @cancel-refund="emit('cancel-refund', $event)"
-      @view-claim="handleViewClaim"
-      @pay-claim="emit('collect-patient-share', $event)"
-      @modify-claim="emit('modify-claim', $event)"
-      @remove-claim="emit('remove-claim', $event)"
-    />
+        <CaisseAssuranceLotPage
+            v-else-if="currentView === 'lot'"
+            :lot="selectedLot"
+            :loading="lotLoading"
+            :action-loading="actionLoadingId !== null"
+            :payment-methods="paymentMethods"
+            @back="handleBackFromLot"
+            @refresh="emit('refresh-lot')"
+            @send-lot="emit('send-lot', $event)"
+            @reopen-lot="emit('reopen-lot', $event)"
+            @confirm-lot="emit('confirm-lot', $event)"
+            @unconfirm-lot="emit('unconfirm-lot', $event)"
+            @refund-lot="emit('refund-lot', $event)"
+            @cancel-refund="emit('cancel-refund', $event)"
+            @view-claim="handleViewClaim"
+            @pay-claim="emit('collect-patient-share', $event)"
+            @modify-claim="emit('modify-claim', $event)"
+            @remove-claim="emit('remove-claim', $event)"
+        />
 
-    <CaisseAssuranceClaimDetail
-      v-else-if="currentView === 'claim'"
-      :claim="selectedClaim"
-      :loading="claimLoading"
-      :action-loading="actionLoadingId === Number(selectedClaim?.id)"
-      @back="handleBackFromClaim"
-      @collect-patient-share="emit('collect-patient-share', $event)"
-      @print-receipt="emit('print-receipt', $event)"
-      @print-claim="emit('print-claim', $event)"
-      @print-claim-devis="emit('print-claim-devis', $event)"
-    />
-  </div>
+        <CaisseAssuranceClaimDetail
+            v-else-if="currentView === 'claim'"
+            :claim="selectedClaim"
+            :loading="claimLoading"
+            :action-loading="actionLoadingId === Number(selectedClaim?.id)"
+            @back="handleBackFromClaim"
+            @collect-patient-share="emit('collect-patient-share', $event)"
+            @print-receipt="emit('print-receipt', $event)"
+            @print-claim="emit('print-claim', $event)"
+            @print-claim-devis="emit('print-claim-devis', $event)"
+        />
+    </div>
 </template>

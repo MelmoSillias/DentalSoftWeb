@@ -15,11 +15,7 @@ import Toast from 'primevue/toast';
 import ConfirmPopup from 'primevue/confirmpopup';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
-import {
-    deleteAdminAppreciation,
-    fetchAdminAppreciations,
-    setAdminAppreciationPublished
-} from '@/services/appreciationAdminService';
+import { deleteAdminAppreciation, fetchAdminAppreciations, setAdminAppreciationPublished } from '@/services/appreciationAdminService';
 import { getHttpErrorMessage } from '@/service/http';
 
 const token = localStorage.getItem('token');
@@ -52,7 +48,9 @@ const breadcrumbHome = { icon: 'pi pi-home', to: '/' };
 const breadcrumbItems = [{ label: 'Administration' }, { label: 'Avis & retours patients' }];
 
 const filteredItems = computed(() => {
-    const needle = String(q.value || '').toLowerCase().trim();
+    const needle = String(q.value || '')
+        .toLowerCase()
+        .trim();
 
     return items.value.filter((item) => {
         if (modeFilter.value === 'anonymous' && item.isAnonymous !== true) return false;
@@ -62,16 +60,7 @@ const filteredItems = computed(() => {
 
         if (!needle) return true;
 
-        const haystack = [
-            item.comment,
-            item.authorName,
-            item.authorEmail,
-            item.patientName,
-            String(item.consultationId || '')
-        ]
-            .filter(Boolean)
-            .join(' ')
-            .toLowerCase();
+        const haystack = [item.comment, item.authorName, item.authorEmail, item.patientName, String(item.consultationId || '')].filter(Boolean).join(' ').toLowerCase();
 
         return haystack.includes(needle);
     });
@@ -147,9 +136,7 @@ function removeLocalItem(id) {
         total: Math.max(0, stats.value.total - 1),
         anonymous: items.value.filter((item) => item.isAnonymous === true).length,
         published: items.value.filter((item) => item.isPublished === true).length,
-        averageRating: items.value.length
-            ? items.value.reduce((sum, item) => sum + Number(item.rating || 0), 0) / items.value.length
-            : 0
+        averageRating: items.value.length ? items.value.reduce((sum, item) => sum + Number(item.rating || 0), 0) / items.value.length : 0
     };
 }
 
@@ -159,9 +146,7 @@ function handleTogglePublish(event, item) {
     const willPublish = item.isPublished !== true;
     confirm.require({
         target: event?.currentTarget,
-        message: willPublish
-            ? 'Publier cet avis sur l\'API publique ?'
-            : 'Masquer cet avis de l\'API publique ?',
+        message: willPublish ? "Publier cet avis sur l'API publique ?" : "Masquer cet avis de l'API publique ?",
         icon: willPublish ? 'pi pi-globe' : 'pi pi-eye-slash',
         acceptLabel: willPublish ? 'Publier' : 'Masquer',
         rejectLabel: 'Annuler',
@@ -173,16 +158,14 @@ function handleTogglePublish(event, item) {
                 toast.add({
                     severity: 'success',
                     summary: willPublish ? 'Avis publié' : 'Avis masqué',
-                    detail: willPublish
-                        ? 'L\'avis est visible via l\'API publique.'
-                        : 'L\'avis n\'est plus visible via l\'API publique.',
+                    detail: willPublish ? "L'avis est visible via l'API publique." : "L'avis n'est plus visible via l'API publique.",
                     life: 3000
                 });
             } catch (error) {
                 toast.add({
                     severity: 'error',
                     summary: 'Erreur',
-                    detail: getHttpErrorMessage(error, 'Impossible de modifier la visibilité de l\'avis.'),
+                    detail: getHttpErrorMessage(error, "Impossible de modifier la visibilité de l'avis."),
                     life: 4000
                 });
             } finally {
@@ -210,14 +193,14 @@ function handleDelete(event, item) {
                 toast.add({
                     severity: 'success',
                     summary: 'Avis supprimé',
-                    detail: 'L\'avis a été supprimé.',
+                    detail: "L'avis a été supprimé.",
                     life: 3000
                 });
             } catch (error) {
                 toast.add({
                     severity: 'error',
                     summary: 'Erreur',
-                    detail: getHttpErrorMessage(error, 'Impossible de supprimer l\'avis.'),
+                    detail: getHttpErrorMessage(error, "Impossible de supprimer l'avis."),
                     life: 4000
                 });
             } finally {
@@ -242,15 +225,7 @@ onMounted(load);
                         <i class="pi pi-star-fill text-primary"></i>
                         Avis & retours patients
                     </h2>
-                    <Button
-                        icon="pi pi-refresh"
-                        label="Actualiser"
-                        severity="secondary"
-                        outlined
-                        rounded
-                        @click="load"
-                        :loading="loading"
-                    />
+                    <Button icon="pi pi-refresh" label="Actualiser" severity="secondary" outlined rounded @click="load" :loading="loading" />
                 </div>
                 <Breadcrumb :home="breadcrumbHome" :model="breadcrumbItems" class="bg-transparent p-0" />
             </template>
@@ -314,23 +289,10 @@ onMounted(load);
                     <!-- Recherche avec IconField PrimeVue V4 -->
                     <IconField class="flex-1" iconPosition="left">
                         <InputIcon class="pi pi-search" />
-                        <InputText
-                            v-model="q"
-                            placeholder="Rechercher commentaire, auteur, patient..."
-                            class="w-full"
-                            fluid
-                        />
+                        <InputText v-model="q" placeholder="Rechercher commentaire, auteur, patient..." class="w-full" fluid />
                     </IconField>
 
-                    <Select
-                        v-model="modeFilter"
-                        :options="modeOptions"
-                        optionLabel="label"
-                        optionValue="value"
-                        placeholder="Filtrer par statut"
-                        class="w-full md:w-64"
-                        fluid
-                    />
+                    <Select v-model="modeFilter" :options="modeOptions" optionLabel="label" optionValue="value" placeholder="Filtrer par statut" class="w-full md:w-64" fluid />
                 </div>
 
                 <!-- États de chargement / erreur / vide -->
@@ -351,21 +313,13 @@ onMounted(load);
 
                 <!-- Liste des avis améliorée -->
                 <div v-else class="grid gap-4">
-                    <article
-                        v-for="item in filteredItems"
-                        :key="item.id"
-                        class="feedback-item p-4 rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900 transition-all duration-200 hover:shadow-md"
-                    >
+                    <article v-for="item in filteredItems" :key="item.id" class="feedback-item p-4 rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900 transition-all duration-200 hover:shadow-md">
                         <header class="flex flex-wrap justify-between items-start gap-3 mb-3">
                             <div class="flex flex-wrap items-center gap-2">
                                 <Tag :value="stars(item.rating)" :severity="ratingSeverity(item.rating)" rounded />
                                 <Tag :value="ratingLabel(item.rating)" :severity="ratingSeverity(item.rating)" rounded />
-                                <Tag :value="item.isAnonymous ? 'Anonyme' : 'Identifié'"
-                                     :severity="item.isAnonymous ? 'secondary' : 'info'"
-                                     rounded />
-                                <Tag :value="item.isPublished ? 'Publié' : 'Non publié'"
-                                     :severity="item.isPublished ? 'success' : 'warning'"
-                                     rounded />
+                                <Tag :value="item.isAnonymous ? 'Anonyme' : 'Identifié'" :severity="item.isAnonymous ? 'secondary' : 'info'" rounded />
+                                <Tag :value="item.isPublished ? 'Publié' : 'Non publié'" :severity="item.isPublished ? 'success' : 'warning'" rounded />
                             </div>
                             <div class="flex flex-wrap items-center gap-2">
                                 <Badge :value="formatDate(item.createdAt)" severity="secondary" class="whitespace-nowrap" />
@@ -379,16 +333,7 @@ onMounted(load);
                                     :loading="actionLoadingId === item.id"
                                     @click="handleTogglePublish($event, item)"
                                 />
-                                <Button
-                                    icon="pi pi-trash"
-                                    label="Supprimer"
-                                    severity="danger"
-                                    size="small"
-                                    outlined
-                                    rounded
-                                    :loading="actionLoadingId === item.id"
-                                    @click="handleDelete($event, item)"
-                                />
+                                <Button icon="pi pi-trash" label="Supprimer" severity="danger" size="small" outlined rounded :loading="actionLoadingId === item.id" @click="handleDelete($event, item)" />
                             </div>
                         </header>
 
@@ -399,7 +344,7 @@ onMounted(load);
                         <footer class="flex flex-wrap gap-x-4 gap-y-2 text-sm text-surface-500 dark:text-surface-400 border-t border-surface-100 dark:border-surface-800 pt-3">
                             <div class="flex items-center gap-1">
                                 <i class="pi pi-user text-xs"></i>
-                                <span>Auteur: {{ item.isAnonymous ? 'Masqué' : (item.authorName || 'N/A') }}</span>
+                                <span>Auteur: {{ item.isAnonymous ? 'Masqué' : item.authorName || 'N/A' }}</span>
                             </div>
                             <div v-if="!item.isAnonymous && item.authorEmail" class="flex items-center gap-1">
                                 <i class="pi pi-envelope text-xs"></i>
@@ -428,7 +373,9 @@ onMounted(load);
 }
 
 .stat-card {
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    transition:
+        transform 0.2s ease,
+        box-shadow 0.2s ease;
 }
 
 .stat-card:hover {

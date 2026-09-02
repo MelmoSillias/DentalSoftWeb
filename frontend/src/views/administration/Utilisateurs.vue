@@ -25,20 +25,7 @@ const confirm = useConfirm();
 const breadcrumbHome = { icon: 'pi pi-home', to: '/' };
 const breadcrumbItems = [{ label: 'Administration' }, { label: 'Utilisateurs' }];
 
-const {
-    users,
-    loading,
-    error,
-    fetchUsers,
-    fetchUserAssociations,
-    availableEmployees,
-    availablePatients,
-    addUser,
-    updateUser,
-    resetPassword,
-    deleteUser,
-    toggleUserStatus
-} = useUsers();
+const { users, loading, error, fetchUsers, fetchUserAssociations, availableEmployees, availablePatients, addUser, updateUser, resetPassword, deleteUser, toggleUserStatus } = useUsers();
 
 const search = ref('');
 const filters = ref({
@@ -93,13 +80,9 @@ const usersView = computed(() =>
     })
 );
 
-const filteredUsersView = computed(() =>
-    usersView.value.filter((user) => user.associationType === usersAssociationView.value)
-);
+const filteredUsersView = computed(() => usersView.value.filter((user) => user.associationType === usersAssociationView.value));
 
-const associationColumnHeader = computed(() =>
-    usersAssociationView.value === 'patients' ? 'Patient associe' : 'Employe associe'
-);
+const associationColumnHeader = computed(() => (usersAssociationView.value === 'patients' ? 'Patient associe' : 'Employe associe'));
 
 const loadUsers = async () => {
     await fetchUsers();
@@ -193,7 +176,7 @@ const confirmResetPassword = (event) => {
 
     confirm.require({
         target: event?.currentTarget,
-        message: "Confirmer la réinitialisation du mot de passe ?",
+        message: 'Confirmer la réinitialisation du mot de passe ?',
         icon: 'pi pi-key',
         acceptLabel: 'Confirmer',
         rejectLabel: 'Annuler',
@@ -251,9 +234,10 @@ const resetTourDialogs = () => {
     resetPasswordValue.value = '';
 };
 
-const waitForTourUi = (ms = 180) => new Promise((resolve) => {
-    window.setTimeout(resolve, ms);
-});
+const waitForTourUi = (ms = 180) =>
+    new Promise((resolve) => {
+        window.setTimeout(resolve, ms);
+    });
 
 const openTourCreateDialog = async () => {
     resetTourDialogs();
@@ -327,8 +311,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-    <section
-        class="min-h-screen p-4 md:p-6 lg:p-8 transition-colors duration-300">
+    <section class="min-h-screen p-4 md:p-6 lg:p-8 transition-colors duration-300">
         <AppToast />
         <ConfirmPopup />
 
@@ -341,24 +324,18 @@ onBeforeUnmount(() => {
                         </span>
                         <div>
                             <h1 class="text-2xl md:text-3xl font-semibold text-surface-900 dark:text-surface-50">Gestion des utilisateurs</h1>
-                            <p class="text-surface-600 dark:text-surface-300 text-sm md:text-base">
-                                Ajoutez, modifiez et sécurisez les comptes utilisateurs.
-                            </p>
+                            <p class="text-surface-600 dark:text-surface-300 text-sm md:text-base">Ajoutez, modifiez et sécurisez les comptes utilisateurs.</p>
                         </div>
                     </div>
                 </div>
                 <div data-tour="admin-users.grouping" class="flex flex-wrap items-center gap-3">
-                    <Button
-                        icon="pi pi-sitemap"
-                        :label="groupByType ? 'Regroupement actif' : 'Regrouper par type'"
-                        :severity="groupByType ? 'info' : 'secondary'"
-                        outlined
-                        @click="toggleGrouping" />
+                    <Button icon="pi pi-sitemap" :label="groupByType ? 'Regroupement actif' : 'Regrouper par type'" :severity="groupByType ? 'info' : 'secondary'" outlined @click="toggleGrouping" />
                     <Button
                         icon="pi pi-plus"
                         label="Nouvel utilisateur"
                         class="shadow-lg hover:shadow-xl transition-all duration-300 bg-gradient-to-r from-primary-500 to-primary-600 border-0 text-white px-6 py-3 rounded-xl font-medium"
-                        @click="openCreate" />
+                        @click="openCreate"
+                    />
                 </div>
             </div>
 
@@ -377,9 +354,9 @@ onBeforeUnmount(() => {
                     <div class="md:col-span-6">
                         <IconField class="p-input-icon-left w-full">
                             <InputIcon class="pi pi-search text-surface-400" />
-                            <InputText 
-                                v-model="search" 
-                                placeholder="Nom d'utilisateur, employé, type..." 
+                            <InputText
+                                v-model="search"
+                                placeholder="Nom d'utilisateur, employé, type..."
                                 name="users-search"
                                 autocomplete="off"
                                 data-lpignore="true"
@@ -389,14 +366,7 @@ onBeforeUnmount(() => {
                     </div>
                     <div class="md:col-span-6">
                         <label class="block text-sm font-medium text-surface-700 dark:text-surface-200 mb-2">Afficher</label>
-                        <SelectButton
-                            v-model="usersAssociationView"
-                            :options="usersAssociationOptions"
-                            optionLabel="label"
-                            optionValue="value"
-                            :allowEmpty="false"
-                            class="w-full"
-                        />
+                        <SelectButton v-model="usersAssociationView" :options="usersAssociationOptions" optionLabel="label" optionValue="value" :allowEmpty="false" class="w-full" />
                     </div>
                 </div>
             </div>
@@ -463,50 +433,40 @@ onBeforeUnmount(() => {
                     <template #body="{ data }">
                         <div data-tour="admin-users.actions" class="flex flex-wrap gap-2">
                             <Button icon="pi pi-pencil" severity="secondary" text @click="openEdit(data)" />
-                            <Button icon="pi pi-key" severity="info" text @click="openResetPassword(data)" /> 
+                            <Button icon="pi pi-key" severity="info" text @click="openResetPassword(data)" />
                             <Button icon="pi pi-trash" severity="danger" text @click="confirmDelete(data, $event)" />
                         </div>
                     </template>
                 </Column>
 
                 <template #empty>
-                    <div class="text-center py-12 text-surface-600 dark:text-surface-300">
-                        Aucun utilisateur trouvé.
-                    </div>
+                    <div class="text-center py-12 text-surface-600 dark:text-surface-300">Aucun utilisateur trouvé.</div>
                 </template>
             </DataTable>
         </div>
 
-        <UserForm
-            v-model:visible="formVisible"
-            :mode="formMode"
-            :user="currentUser"
-            :employees="availableEmployees"
-            :patients="availablePatients"
-            :loading="loading"
-            tourTarget="admin-users.dialog.create"
-            @submit="confirmFormSubmit" />
+        <UserForm v-model:visible="formVisible" :mode="formMode" :user="currentUser" :employees="availableEmployees" :patients="availablePatients" :loading="loading" tourTarget="admin-users.dialog.create" @submit="confirmFormSubmit" />
 
-            <Dialog header="Réinitialiser le mot de passe" v-model:visible="resetDialogVisible" :style="{ width: '420px' }" :modal="true">
-                <div class="flex flex-col gap-3" data-tour="admin-users.dialog.reset">
-                    <label for="reset-password" class="font-medium">Nouveau mot de passe <span class="text-red-500">*</span></label>
-                    <Password
-                        inputId="reset-password"
-                        v-model="resetPasswordValue"
-                        toggleMask
-                        :feedback="false"
-                        placeholder="Saisir un mot de passe"
-                        :inputProps="{
-                            autocomplete: 'new-password',
-                            name: 'user-reset-password',
-                            'data-lpignore': 'true'
-                        }"
-                    />
-                </div>
-                <template #footer>
-                    <Button label="Annuler" icon="pi pi-times" severity="secondary" text @click="resetDialogVisible = false" />
-                    <Button label="Réinitialiser" icon="pi pi-check" @click="confirmResetPassword" />
-                </template>
-            </Dialog>
+        <Dialog header="Réinitialiser le mot de passe" v-model:visible="resetDialogVisible" :style="{ width: '420px' }" :modal="true">
+            <div class="flex flex-col gap-3" data-tour="admin-users.dialog.reset">
+                <label for="reset-password" class="font-medium">Nouveau mot de passe <span class="text-red-500">*</span></label>
+                <Password
+                    inputId="reset-password"
+                    v-model="resetPasswordValue"
+                    toggleMask
+                    :feedback="false"
+                    placeholder="Saisir un mot de passe"
+                    :inputProps="{
+                        autocomplete: 'new-password',
+                        name: 'user-reset-password',
+                        'data-lpignore': 'true'
+                    }"
+                />
+            </div>
+            <template #footer>
+                <Button label="Annuler" icon="pi pi-times" severity="secondary" text @click="resetDialogVisible = false" />
+                <Button label="Réinitialiser" icon="pi pi-check" @click="confirmResetPassword" />
+            </template>
+        </Dialog>
     </section>
 </template>

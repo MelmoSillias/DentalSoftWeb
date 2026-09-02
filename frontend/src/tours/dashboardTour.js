@@ -132,7 +132,8 @@ function buildFilterPeriodsSteps(ctx) {
             group: GROUP,
             target: '[data-tour="dashboard.filters"]',
             title: 'Basculer date ou plage',
-            content: 'Le selecteur « Date / Periode » determine le type de filtre actif. En mode Date, un seul calendrier suffit pour analyser une journee. En mode Periode, le selecteur de plage permet de couvrir une semaine, un mois ou toute intervalle personnalisee.'
+            content:
+                'Le selecteur « Date / Periode » determine le type de filtre actif. En mode Date, un seul calendrier suffit pour analyser une journee. En mode Periode, le selecteur de plage permet de couvrir une semaine, un mois ou toute intervalle personnalisee.'
         });
     }
 
@@ -141,15 +142,17 @@ function buildFilterPeriodsSteps(ctx) {
             group: GROUP,
             target: '[data-tour="dashboard.quick-stats"]',
             title: 'Recalcul immediat des cartes',
-            content: 'Des que la date ou la plage change, les valeurs des cartes (patients, consultations, rendez-vous, montants, attente) sont rechargees depuis l API. Verifiez que les chiffres correspondent bien a la periode affichee en haut des rapports.'
+            content:
+                'Des que la date ou la plage change, les valeurs des cartes (patients, consultations, rendez-vous, montants, attente) sont rechargees depuis l API. Verifiez que les chiffres correspondent bien a la periode affichee en haut des rapports.'
         },
         {
             group: GROUP,
             target: '[data-tour="dashboard.main-report"]',
             title: 'Impact sur les rapports',
-            content: roleLabel === 'reception'
-                ? 'Le tableau des rapports par medecin affiche la periode choisie dans son titre. Changez de date pour comparer l activite d un praticien d un jour a l autre.'
-                : 'Le carrousel et ses graphiques se recalculent sur la meme plage que le filtre principal. Utilisez aussi le selecteur de granularite (7 jours, mois, trimestre, annee) pour ajuster le niveau de detail des courbes.'
+            content:
+                roleLabel === 'reception'
+                    ? 'Le tableau des rapports par medecin affiche la periode choisie dans son titre. Changez de date pour comparer l activite d un praticien d un jour a l autre.'
+                    : 'Le carrousel et ses graphiques se recalculent sur la meme plage que le filtre principal. Utilisez aussi le selecteur de granularite (7 jours, mois, trimestre, annee) pour ajuster le niveau de detail des courbes.'
         },
         {
             group: GROUP,
@@ -176,7 +179,8 @@ function buildReadIndicatorsSteps(ctx) {
             group: GROUP,
             target: '[data-tour="dashboard.quick-stats"]',
             title: 'Valeur principale et sous-texte',
-            content: 'Le chiffre en grand est l indicateur principal (total, montant ou compteur). La ligne secondaire apporte un contexte utile : total cumule, part payante, duree d attente moyenne ou montant impaye. Ces deux niveaux evitent d ouvrir une page detaillee pour un premier diagnostic.'
+            content:
+                'Le chiffre en grand est l indicateur principal (total, montant ou compteur). La ligne secondaire apporte un contexte utile : total cumule, part payante, duree d attente moyenne ou montant impaye. Ces deux niveaux evitent d ouvrir une page detaillee pour un premier diagnostic.'
         },
         {
             group: GROUP,
@@ -188,11 +192,12 @@ function buildReadIndicatorsSteps(ctx) {
             group: GROUP,
             target: '[data-tour="dashboard.main-report"]',
             title: 'Raccourcis et objectifs',
-            content: roleLabel === 'admin'
-                ? 'Chaque slide du carrousel combine un classement (top medecins ou modes de paiement), un graphique barres, un resume chiffre et parfois un objectif cible (ex. taux de consultations payantes). Les boutons d action en bas du slide ouvrent Patients, Rapports ou Finances.'
-                : roleLabel === 'medecin'
-                  ? 'Les slides mettent en avant vos consultations, vos actes et vos montants avec des graphiques comparatifs. Les raccourcis Agenda, Consultations et Patients restent accessibles depuis chaque slide.'
-                  : 'Le tableau par medecin detaille le nombre de consultations et les montants associes. Utilisez-le pour equilibrer la charge entre praticiens ou reperer une activite atypique sur la journee selectionnee.'
+            content:
+                roleLabel === 'admin'
+                    ? 'Chaque slide du carrousel combine un classement (top medecins ou modes de paiement), un graphique barres, un resume chiffre et parfois un objectif cible (ex. taux de consultations payantes). Les boutons d action en bas du slide ouvrent Patients, Rapports ou Finances.'
+                    : roleLabel === 'medecin'
+                      ? 'Les slides mettent en avant vos consultations, vos actes et vos montants avec des graphiques comparatifs. Les raccourcis Agenda, Consultations et Patients restent accessibles depuis chaque slide.'
+                      : 'Le tableau par medecin detaille le nombre de consultations et les montants associes. Utilisez-le pour equilibrer la charge entre praticiens ou reperer une activite atypique sur la journee selectionnee.'
         },
         {
             group: GROUP,
@@ -204,11 +209,12 @@ function buildReadIndicatorsSteps(ctx) {
             group: GROUP,
             target: '[data-tour="dashboard.tabs-panel"]',
             title: 'Naviguer entre les onglets',
-            content: roleLabel === 'medecin'
-                ? 'Onglet Rendez-vous : prochains RDV avec patient, heure et motif. Onglet Consultations : file ouverte avec duree d attente. Onglet Factures : impayes a relancer. Onglet Actes : vos actes les plus realises sur la periode.'
-                : roleLabel === 'reception'
-                  ? 'Onglet Rendez-vous : accueil du jour. Onglet Consultations : patients en salle d attente. Onglet Factures : restes a payer. Onglet Paiements : encaissements recents a verifier ou a imprimer.'
-                  : 'Onglet Rendez-vous : planning du jour. Onglet Consultations : urgences et attentes. Onglet Factures : creances du cabinet. Chaque ligne propose un lien direct vers la page metier pour traiter l element.'
+            content:
+                roleLabel === 'medecin'
+                    ? 'Onglet Rendez-vous : prochains RDV avec patient, heure et motif. Onglet Consultations : file ouverte avec duree d attente. Onglet Factures : impayes a relancer. Onglet Actes : vos actes les plus realises sur la periode.'
+                    : roleLabel === 'reception'
+                      ? 'Onglet Rendez-vous : accueil du jour. Onglet Consultations : patients en salle d attente. Onglet Factures : restes a payer. Onglet Paiements : encaissements recents a verifier ou a imprimer.'
+                      : 'Onglet Rendez-vous : planning du jour. Onglet Consultations : urgences et attentes. Onglet Factures : creances du cabinet. Chaque ligne propose un lien direct vers la page metier pour traiter l element.'
         },
         {
             group: GROUP,

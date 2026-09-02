@@ -45,11 +45,7 @@ function placeLeftQuadrant(teeth, startCol = 10) {
 function buildMatrixRow(role, rightTeeth, leftTeeth, startColRight = 1, startColLeft = 10) {
     return {
         role,
-        cells: [
-            ...placeRightQuadrant(rightTeeth, startColRight),
-            { col: MIDLINE_COLUMN, type: 'midline' },
-            ...placeLeftQuadrant(leftTeeth, startColLeft)
-        ]
+        cells: [...placeRightQuadrant(rightTeeth, startColRight), { col: MIDLINE_COLUMN, type: 'midline' }, ...placeLeftQuadrant(leftTeeth, startColLeft)]
     };
 }
 
@@ -57,30 +53,13 @@ function buildDentitionMatrix(rightUpper, leftUpper, rightLower, leftLower, star
     return {
         gridColumns: GRID_COLUMNS,
         midlineColumn: MIDLINE_COLUMN,
-        rows: [
-            buildMatrixRow('upper', rightUpper, leftUpper, startColRight, startColLeft),
-            buildMatrixRow('lower', rightLower, leftLower, startColRight, startColLeft)
-        ]
+        rows: [buildMatrixRow('upper', rightUpper, leftUpper, startColRight, startColLeft), buildMatrixRow('lower', rightLower, leftLower, startColRight, startColLeft)]
     };
 }
 
-export const ADULTE_MATRIX = buildDentitionMatrix(
-    ADULT_UPPER_RIGHT,
-    ADULT_UPPER_LEFT,
-    ADULT_LOWER_RIGHT,
-    ADULT_LOWER_LEFT,
-    1,
-    10
-);
+export const ADULTE_MATRIX = buildDentitionMatrix(ADULT_UPPER_RIGHT, ADULT_UPPER_LEFT, ADULT_LOWER_RIGHT, ADULT_LOWER_LEFT, 1, 10);
 
-export const ENFANT_MATRIX = buildDentitionMatrix(
-    CHILD_UPPER_RIGHT,
-    CHILD_UPPER_LEFT,
-    CHILD_LOWER_RIGHT,
-    CHILD_LOWER_LEFT,
-    3,
-    11
-);
+export const ENFANT_MATRIX = buildDentitionMatrix(CHILD_UPPER_RIGHT, CHILD_UPPER_LEFT, CHILD_LOWER_RIGHT, CHILD_LOWER_LEFT, 3, 11);
 
 /** @deprecated Utiliser getMatrixForDentition */
 export const ADULTE_ROWS = [

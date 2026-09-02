@@ -1,3 +1,12 @@
+<script setup>
+defineProps({
+    entry: {
+        type: Object,
+        required: true
+    }
+});
+</script>
+
 <template>
     <div class="single-page">
         <article :class="entry.key === 'showcase' ? 'feature-card' : 'qr-card'">
@@ -22,15 +31,6 @@
         </article>
     </div>
 </template>
-
-<script setup>
-defineProps({
-    entry: {
-        type: Object,
-        required: true
-    }
-});
-</script>
 
 <style scoped>
 .single-page {

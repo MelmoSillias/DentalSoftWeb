@@ -8,24 +8,8 @@ import { useToast } from 'primevue/usetoast';
 import { useAuthStore } from '@/stores/auth';
 import { usePaymentMethodsStore } from '@/stores/paymentMethods';
 import { usePrinter } from '@/composables/usePrinter';
-import {
-    advanceAfterSettledTab,
-    applyPartialPaymentToTab,
-    buildPayTabs,
-    isInsuranceFactureRow,
-    resolveFacturePatientId,
-    resolveOpenPayDialogMode,
-    sumPriorReliquatFromTabs
-} from '@/composables/usePayTabsDialog';
-import {
-    fetchFactureDetail,
-    fetchInsuranceClaimDetail,
-    fetchUnpaidFacturesByPatient,
-    payFacture,
-    payInsurancePatientShare,
-    resetFacturePayments,
-    validateEmptyFacture
-} from '@/services/caisseService';
+import { advanceAfterSettledTab, applyPartialPaymentToTab, buildPayTabs, isInsuranceFactureRow, resolveFacturePatientId, resolveOpenPayDialogMode, sumPriorReliquatFromTabs } from '@/composables/usePayTabsDialog';
+import { fetchFactureDetail, fetchInsuranceClaimDetail, fetchUnpaidFacturesByPatient, payFacture, payInsurancePatientShare, resetFacturePayments, validateEmptyFacture } from '@/services/caisseService';
 import { fetchFactureAssurancePrintData, fetchInvoicePrintData, fetchReceiptPrintData } from '@/services/printService';
 import { getDefaultClassicMethod } from '@/utils/paymentMethodUtils';
 import { formatFactureFcfa, targetIsFreeFacture } from '@/utils/factureRow';
@@ -134,21 +118,15 @@ export function useInvoiceBillingActions(options = {}) {
     const patientAlreadyPaidAmount = computed(() => Number(selectedFactureInsurance.value?.patientPaidAmount) || 0);
     const insuranceStatusLabel = computed(() => {
         if (!invoiceHasInsurance.value) return 'Aucune assurance';
-        return selectedFactureInsurance.value?.assuranceNom
-            || selectedFactureInsurance.value?.insuranceModeLabel
-            || (selectedFactureInsurance.value?.insuranceStatus === 'pending' ? 'Assurance en attente' : 'Assurance enregistrée');
+        return selectedFactureInsurance.value?.assuranceNom || selectedFactureInsurance.value?.insuranceModeLabel || (selectedFactureInsurance.value?.insuranceStatus === 'pending' ? 'Assurance en attente' : 'Assurance enregistrée');
     });
     const previewPayments = computed(() => (Array.isArray(previewData.value?.paiements) ? previewData.value.paiements : []));
-    const previewServicesTotal = computed(() =>
-        (previewData.value?.contenus || []).reduce((sum, line) => sum + (Number(line?.total) || 0), 0)
-    );
+    const previewServicesTotal = computed(() => (previewData.value?.contenus || []).reduce((sum, line) => sum + (Number(line?.total) || 0), 0));
     const patientOutstandingAmount = computed(() => {
         if (!selectedFacture.value) return 0;
         return Math.max(0, Number(selectedFacture.value.reste) || 0);
     });
-    const activePayTab = computed(() =>
-        (payTabs.value || []).find((tab) => String(tab.id) === String(activePayTabId.value)) || null
-    );
+    const activePayTab = computed(() => (payTabs.value || []).find((tab) => String(tab.id) === String(activePayTabId.value)) || null);
     const activePayTabMode = computed(() => activePayTab.value?.mode || 'pay');
     const priorReliquatTotal = computed(() => sumPriorReliquatFromTabs(payTabs.value, activePayTabId.value));
     const hasPayReliquatTabs = computed(() => (payTabs.value || []).length > 1);
@@ -158,9 +136,7 @@ export function useInvoiceBillingActions(options = {}) {
     });
     const canResetInvoicePayments = computed(() => {
         if (!isAdmin.value || !activeInvoiceContext.value) return false;
-        return patientAlreadyPaidAmount.value > 0
-            || invoiceHasInsurance.value
-            || (Number(activeInvoiceContext.value.reste) || 0) !== (Number(activeInvoiceContext.value.montant) || 0);
+        return patientAlreadyPaidAmount.value > 0 || invoiceHasInsurance.value || (Number(activeInvoiceContext.value.reste) || 0) !== (Number(activeInvoiceContext.value.montant) || 0);
     });
     const remainingAfterPay = computed(() => {
         if (!selectedFacture.value) return 0;
@@ -168,20 +144,12 @@ export function useInvoiceBillingActions(options = {}) {
         const montantPatient = Number(payForm.value.montant) || 0;
         return Math.max(0, reste - montantPatient);
     });
-    const classicPaymentOptions = computed(() =>
-        (paymentMethods.value || [])
-            .filter((method) => method?.actif !== false)
-            .map((method) => ({ label: method.libelle, value: method.id, disabled: false }))
-    );
-    const factureTotal = computed(() =>
-        factureLines.value.reduce((sum, line) => sum + (Number(line.prix) || 0) * (Number(line.quantite) || 0), 0)
-    );
+    const classicPaymentOptions = computed(() => (paymentMethods.value || []).filter((method) => method?.actif !== false).map((method) => ({ label: method.libelle, value: method.id, disabled: false })));
+    const factureTotal = computed(() => factureLines.value.reduce((sum, line) => sum + (Number(line.prix) || 0) * (Number(line.quantite) || 0), 0));
 
     const previewPaymentRoleTag = (payment) => {
         if (isInsurancePayment(payment)) {
-            return payment?.status === 'pending'
-                ? { label: 'Assurance en attente', severity: 'warning' }
-                : { label: 'Assurance', severity: 'info' };
+            return payment?.status === 'pending' ? { label: 'Assurance en attente', severity: 'warning' } : { label: 'Assurance', severity: 'info' };
         }
         return { label: 'Client', severity: 'success' };
     };
@@ -350,9 +318,7 @@ export function useInvoiceBillingActions(options = {}) {
         previewLoading.value = true;
         try {
             if (isInsuranceFactureRow(selectedFacture.value) || isInsuranceFactureRow(previewData.value)) {
-                const claimId = selectedFacture.value?.factureAssuranceId
-                    || previewData.value?.insurance?.factureAssuranceId
-                    || factureId;
+                const claimId = selectedFacture.value?.factureAssuranceId || previewData.value?.insurance?.factureAssuranceId || factureId;
                 const detail = await fetchInsuranceClaimDetail(claimId, getToken());
                 previewData.value = mapClaimToPreviewData(detail, claimId);
             } else {
@@ -369,11 +335,7 @@ export function useInvoiceBillingActions(options = {}) {
         if (!paymentId) return;
         try {
             const res = await fetchReceiptPrintData(paymentId, getToken());
-            await printComponent(
-                PrintReceiptBody,
-                { paiement: res.paiement },
-                { format: [226.77, 255.12], width: '80mm' }
-            );
+            await printComponent(PrintReceiptBody, { paiement: res.paiement }, { format: [226.77, 255.12], width: '80mm' });
         } catch (_) {
             toast.add({ severity: 'error', summary: 'Reçu', detail: 'Impression indisponible', life: 3500 });
         }
@@ -384,11 +346,7 @@ export function useInvoiceBillingActions(options = {}) {
         if (!context?.id && !context?.factureAssuranceId) return;
         try {
             if (isInsuranceFactureRow(context) || isInsuranceFactureRow(previewData.value) || isInsuranceFactureRow(selectedFacture.value)) {
-                const claimId = context.insurance?.factureAssuranceId
-                    || context.factureAssuranceId
-                    || selectedFacture.value?.factureAssuranceId
-                    || previewData.value?.insurance?.factureAssuranceId
-                    || context.id;
+                const claimId = context.insurance?.factureAssuranceId || context.factureAssuranceId || selectedFacture.value?.factureAssuranceId || previewData.value?.insurance?.factureAssuranceId || context.id;
                 const res = await fetchFactureAssurancePrintData(claimId, getToken());
                 await printComponent(PrintFactureAssuranceBody, {
                     doc: res.doc,
@@ -425,21 +383,27 @@ export function useInvoiceBillingActions(options = {}) {
             let res;
 
             if (isInsured) {
-                const claimId = selectedFacture.value.factureAssuranceId
-                    || selectedFacture.value.insurance?.factureAssuranceId
-                    || selectedFacture.value.id;
-                res = await payInsurancePatientShare(claimId, {
-                    modeId: payForm.value.modeId,
-                    date: `${payForm.value.date}T${payForm.value.time}`,
-                    amount: montant
-                }, getToken());
+                const claimId = selectedFacture.value.factureAssuranceId || selectedFacture.value.insurance?.factureAssuranceId || selectedFacture.value.id;
+                res = await payInsurancePatientShare(
+                    claimId,
+                    {
+                        modeId: payForm.value.modeId,
+                        date: `${payForm.value.date}T${payForm.value.time}`,
+                        amount: montant
+                    },
+                    getToken()
+                );
             } else {
-                res = await payFacture(selectedFacture.value.id, {
-                    montant,
-                    modeId: payForm.value.modeId,
-                    date: payForm.value.date,
-                    time: payForm.value.time
-                }, getToken());
+                res = await payFacture(
+                    selectedFacture.value.id,
+                    {
+                        montant,
+                        modeId: payForm.value.modeId,
+                        date: payForm.value.date,
+                        time: payForm.value.time
+                    },
+                    getToken()
+                );
             }
 
             const paymentId = res?.paiement_id ?? res?.paiementId ?? null;
@@ -448,12 +412,13 @@ export function useInvoiceBillingActions(options = {}) {
                 summary: 'Paiement',
                 detail: 'Paiement enregistré.',
                 life: canPrintClientReceipt ? 10000 : 3000,
-                data: canPrintClientReceipt && paymentId
-                    ? {
-                        actionLabel: 'Imprimer le reçu',
-                        action: () => printReceiptById(paymentId)
-                    }
-                    : undefined
+                data:
+                    canPrintClientReceipt && paymentId
+                        ? {
+                              actionLabel: 'Imprimer le reçu',
+                              action: () => printReceiptById(paymentId)
+                          }
+                        : undefined
             });
 
             if (settledFully) {
@@ -481,11 +446,15 @@ export function useInvoiceBillingActions(options = {}) {
                 await loadPaymentMethods();
                 const claimId = target.factureAssuranceId || target.insurance?.factureAssuranceId || target.id;
                 const classicMethod = getDefaultClassicMethod(paymentMethods.value);
-                await payInsurancePatientShare(claimId, {
-                    modeId: classicMethod?.id,
-                    date: new Date().toISOString(),
-                    amount: 0
-                }, getToken());
+                await payInsurancePatientShare(
+                    claimId,
+                    {
+                        modeId: classicMethod?.id,
+                        date: new Date().toISOString(),
+                        amount: 0
+                    },
+                    getToken()
+                );
             } else {
                 await validateEmptyFacture(target.id, getToken());
             }

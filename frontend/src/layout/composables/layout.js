@@ -49,11 +49,7 @@ export function useLayout() {
 
     const isSidebarActive = computed(() => layoutState.overlayMenuActive || layoutState.staticMenuMobileActive);
 
-    const showLayoutMask = computed(
-        () =>
-            layoutState.staticMenuMobileActive ||
-            (layoutConfig.menuMode === 'overlay' && layoutState.overlayMenuActive)
-    );
+    const showLayoutMask = computed(() => layoutState.staticMenuMobileActive || (layoutConfig.menuMode === 'overlay' && layoutState.overlayMenuActive));
 
     const isDarkTheme = computed(() => layoutConfig.darkTheme);
 

@@ -165,9 +165,7 @@ function buildOverviewSteps(ctx) {
             group: GROUP,
             target: '[data-tour="patients-dossier.medical"]',
             title: 'Suivi clinique',
-            content: ctx.isReception
-                ? 'Historique des consultations avec filtres et export (profil reception).'
-                : 'Fiches medicales avec historique, contenu detaille, navigation interne et impression (profils medecin et admin).'
+            content: ctx.isReception ? 'Historique des consultations avec filtres et export (profil reception).' : 'Fiches medicales avec historique, contenu detaille, navigation interne et impression (profils medecin et admin).'
         },
         {
             group: GROUP,
@@ -197,118 +195,123 @@ function buildOverviewSteps(ctx) {
 
 export const patientsDossierRegistry = createTourRegistry(GROUP, TASKS, {
     overview: buildOverviewSteps,
-    'switch-patient': (ctx) => normalizeTourSteps([
-        {
-            group: GROUP,
-            target: '[data-tour="patients-dossier.selector"]',
-            title: 'Selectionner un autre patient',
-            content: 'Tapez quelques lettres pour filtrer. Chaque option affiche nom et telephone pour eviter les confusions entre homonymes.'
-        },
-        {
-            group: GROUP,
-            target: '[data-tour="patients-dossier.selector"]',
-            title: 'Rechargement du dossier',
-            content: 'A la selection, tout le dossier se recharge : identite, antecedents, assurance, fiches, RDV et paiements.'
-        },
-        {
-            group: GROUP,
-            target: '[data-tour="patients-dossier.identity"]',
-            title: 'Verifier le contexte',
-            content: 'Confirmez visuellement le nom et le numero de dossier avant toute action medicale ou administrative.'
-        }
-    ]),
-    'manage-antecedents': (ctx) => normalizeTourSteps([
-        {
-            group: GROUP,
-            target: '[data-tour="patients-dossier.antecedents"]',
-            title: 'Antecedents medicaux',
-            content: 'Pathologies, traitements chroniques et interventions passees. Chaque entree : type, description et date. Suppression possible via l icone poubelle.'
-        },
-        {
-            group: GROUP,
-            target: '[data-tour="patients-dossier.allergies"]',
-            title: 'Allergies connues',
-            content: 'Allergies medicamenteuses ou alimentaires avec description. Information critique avant toute prescription.'
-        },
-        {
-            group: GROUP,
-            target: '[data-tour="patients-dossier.emergency-contact"]',
-            title: 'Contact d urgence',
-            content: 'Nom, lien de parente et telephone d une personne a contacter en cas d urgence.'
-        }
-    ]),
-    'portal-account': (ctx) => normalizeTourSteps([
-        {
-            group: GROUP,
-            target: '[data-tour="patients-dossier.portal-account"]',
-            title: 'Creer le compte portail',
-            content: 'Genere l acces en ligne du patient pour consulter rendez-vous et documents depuis le portail web.'
-        },
-        {
-            group: GROUP,
-            target: '[data-tour="patients-dossier.portal-account"]',
-            title: 'Reinitialiser le mot de passe',
-            content: 'En cas d oubli, declenchez un reset. Le patient recoit les instructions de connexion.'
-        },
-        {
-            group: GROUP,
-            target: '[data-tour="patients-dossier.portal-account"]',
-            title: 'Activer ou desactiver l acces',
-            content: 'Suspendez temporairement l acces sans supprimer le compte (dossier archive, demande du patient, etc.).'
-        }
-    ]),
-    'view-fiches': (ctx) => normalizeTourSteps([
-        {
-            group: GROUP,
-            target: '[data-tour="patients-dossier.fiches-toolbar"]',
-            title: 'Historique des fiches',
-            content: 'Liste des fiches par date. Selectionnez une fiche pour afficher entretien, examens, bilans, plan de traitement et seances.'
-        },
-        {
-            group: GROUP,
-            target: '[data-tour="patients-dossier.fiches-preview"]',
-            title: 'Lecture de la fiche',
-            content: 'Contenu detaille de la fiche selectionnee : diagnostic, actes, notes de seance et documents associes.'
-        },
-        {
-            group: GROUP,
-            target: '[data-tour="patients-dossier.fiches-jump"]',
-            title: 'Navigation interne',
-            content: 'Raccourcis pour sauter a une section (entretien, examens, bilans, devis) dans les dossiers longs.'
-        },
-        {
-            group: GROUP,
-            target: '[data-tour="patients-dossier.fiches-expand"]',
-            title: 'Vue agrandie et impression',
-            content: 'Ouvrez la fiche en plein ecran ou lancez l impression unitaire depuis la barre d outils.'
-        },
-        {
-            group: GROUP,
-            target: '[data-tour="patients-dossier.fiches-new-consultation"]',
-            title: 'Nouvelle consultation',
-            content: 'Depuis la barre des fiches, demarrez une nouvelle prise en charge pour ce patient si aucune consultation n est deja active.'
-        }
-    ]),
-    'consultations-history': (ctx) => normalizeTourSteps([
-        {
-            group: GROUP,
-            target: '[data-tour="patients-dossier.consultations-toolbar"]',
-            title: 'Historique du patient',
-            content: 'Recense toutes les consultations passees : medecin, date et statut de facturation.'
-        },
-        {
-            group: GROUP,
-            target: '[data-tour="patients-dossier.consultations-filter"]',
-            title: 'Filtrer les consultations',
-            content: 'Restreignez par periode ou statut pour retrouver une consultation precise ou preparer un suivi de facturation.'
-        },
-        {
-            group: GROUP,
-            target: '[data-tour="patients-dossier.consultations-table"]',
-            title: 'Tableau et export',
-            content: 'Detail de chaque passage et possibilite d exporter la liste pour un controle administratif.'
-        }
-    ]),
+    'switch-patient': (ctx) =>
+        normalizeTourSteps([
+            {
+                group: GROUP,
+                target: '[data-tour="patients-dossier.selector"]',
+                title: 'Selectionner un autre patient',
+                content: 'Tapez quelques lettres pour filtrer. Chaque option affiche nom et telephone pour eviter les confusions entre homonymes.'
+            },
+            {
+                group: GROUP,
+                target: '[data-tour="patients-dossier.selector"]',
+                title: 'Rechargement du dossier',
+                content: 'A la selection, tout le dossier se recharge : identite, antecedents, assurance, fiches, RDV et paiements.'
+            },
+            {
+                group: GROUP,
+                target: '[data-tour="patients-dossier.identity"]',
+                title: 'Verifier le contexte',
+                content: 'Confirmez visuellement le nom et le numero de dossier avant toute action medicale ou administrative.'
+            }
+        ]),
+    'manage-antecedents': (ctx) =>
+        normalizeTourSteps([
+            {
+                group: GROUP,
+                target: '[data-tour="patients-dossier.antecedents"]',
+                title: 'Antecedents medicaux',
+                content: 'Pathologies, traitements chroniques et interventions passees. Chaque entree : type, description et date. Suppression possible via l icone poubelle.'
+            },
+            {
+                group: GROUP,
+                target: '[data-tour="patients-dossier.allergies"]',
+                title: 'Allergies connues',
+                content: 'Allergies medicamenteuses ou alimentaires avec description. Information critique avant toute prescription.'
+            },
+            {
+                group: GROUP,
+                target: '[data-tour="patients-dossier.emergency-contact"]',
+                title: 'Contact d urgence',
+                content: 'Nom, lien de parente et telephone d une personne a contacter en cas d urgence.'
+            }
+        ]),
+    'portal-account': (ctx) =>
+        normalizeTourSteps([
+            {
+                group: GROUP,
+                target: '[data-tour="patients-dossier.portal-account"]',
+                title: 'Creer le compte portail',
+                content: 'Genere l acces en ligne du patient pour consulter rendez-vous et documents depuis le portail web.'
+            },
+            {
+                group: GROUP,
+                target: '[data-tour="patients-dossier.portal-account"]',
+                title: 'Reinitialiser le mot de passe',
+                content: 'En cas d oubli, declenchez un reset. Le patient recoit les instructions de connexion.'
+            },
+            {
+                group: GROUP,
+                target: '[data-tour="patients-dossier.portal-account"]',
+                title: 'Activer ou desactiver l acces',
+                content: 'Suspendez temporairement l acces sans supprimer le compte (dossier archive, demande du patient, etc.).'
+            }
+        ]),
+    'view-fiches': (ctx) =>
+        normalizeTourSteps([
+            {
+                group: GROUP,
+                target: '[data-tour="patients-dossier.fiches-toolbar"]',
+                title: 'Historique des fiches',
+                content: 'Liste des fiches par date. Selectionnez une fiche pour afficher entretien, examens, bilans, plan de traitement et seances.'
+            },
+            {
+                group: GROUP,
+                target: '[data-tour="patients-dossier.fiches-preview"]',
+                title: 'Lecture de la fiche',
+                content: 'Contenu detaille de la fiche selectionnee : diagnostic, actes, notes de seance et documents associes.'
+            },
+            {
+                group: GROUP,
+                target: '[data-tour="patients-dossier.fiches-jump"]',
+                title: 'Navigation interne',
+                content: 'Raccourcis pour sauter a une section (entretien, examens, bilans, devis) dans les dossiers longs.'
+            },
+            {
+                group: GROUP,
+                target: '[data-tour="patients-dossier.fiches-expand"]',
+                title: 'Vue agrandie et impression',
+                content: 'Ouvrez la fiche en plein ecran ou lancez l impression unitaire depuis la barre d outils.'
+            },
+            {
+                group: GROUP,
+                target: '[data-tour="patients-dossier.fiches-new-consultation"]',
+                title: 'Nouvelle consultation',
+                content: 'Depuis la barre des fiches, demarrez une nouvelle prise en charge pour ce patient si aucune consultation n est deja active.'
+            }
+        ]),
+    'consultations-history': (ctx) =>
+        normalizeTourSteps([
+            {
+                group: GROUP,
+                target: '[data-tour="patients-dossier.consultations-toolbar"]',
+                title: 'Historique du patient',
+                content: 'Recense toutes les consultations passees : medecin, date et statut de facturation.'
+            },
+            {
+                group: GROUP,
+                target: '[data-tour="patients-dossier.consultations-filter"]',
+                title: 'Filtrer les consultations',
+                content: 'Restreignez par periode ou statut pour retrouver une consultation precise ou preparer un suivi de facturation.'
+            },
+            {
+                group: GROUP,
+                target: '[data-tour="patients-dossier.consultations-table"]',
+                title: 'Tableau et export',
+                content: 'Detail de chaque passage et possibilite d exporter la liste pour un controle administratif.'
+            }
+        ]),
     'create-consultation': (ctx, variantId) => {
         if (variantId === 'blocked-no-fiche' || variantId === 'blocked-with-fiche') {
             return normalizeTourSteps([
@@ -328,9 +331,10 @@ export const patientsDossierRegistry = createTourRegistry(GROUP, TASKS, {
                     group: GROUP,
                     target: '[data-tour="patients-dossier.dialog.active-warning"]',
                     title: variantId === 'blocked-with-fiche' ? 'Fiche deja saisie' : 'Annulation possible',
-                    content: variantId === 'blocked-with-fiche'
-                        ? 'Consultation avec fiche medicale : suppression impossible ici. Cloturez la fiche dans Consultations.'
-                        : 'Sans fiche saisie, annulez la consultation ouverte par erreur directement depuis ce dialogue.',
+                    content:
+                        variantId === 'blocked-with-fiche'
+                            ? 'Consultation avec fiche medicale : suppression impossible ici. Cloturez la fiche dans Consultations.'
+                            : 'Sans fiche saisie, annulez la consultation ouverte par erreur directement depuis ce dialogue.',
                     beforeEnter: async () => {
                         await ctx.openDuplicateConsultationDialog?.(variantId);
                         await flushUi();
@@ -386,92 +390,99 @@ export const patientsDossierRegistry = createTourRegistry(GROUP, TASKS, {
             },
             ...formSteps.map((step, index) => ({
                 ...step,
-                ...(index === 0 ? {
-                    beforeEnter: async () => {
-                        await ctx.openEditPatientDialog?.();
-                        await flushUi();
-                        await switchFormTabStep(ctx, 'personal');
-                    }
-                } : {}),
-                ...(index === formSteps.length - 1 ? {
-                    afterLeave: async () => {
-                        ctx.closeAllDialogs();
-                        await flushUi();
-                    }
-                } : {})
+                ...(index === 0
+                    ? {
+                          beforeEnter: async () => {
+                              await ctx.openEditPatientDialog?.();
+                              await flushUi();
+                              await switchFormTabStep(ctx, 'personal');
+                          }
+                      }
+                    : {}),
+                ...(index === formSteps.length - 1
+                    ? {
+                          afterLeave: async () => {
+                              ctx.closeAllDialogs();
+                              await flushUi();
+                          }
+                      }
+                    : {})
             }))
         ]);
     },
-    'schedule-rdv': (ctx) => normalizeTourSteps([
-        {
-            group: GROUP,
-            target: '[data-tour="patients-dossier.actions"]',
-            title: 'Planifier un passage',
-            content: 'Patient du dossier courant deja preselectionne dans le formulaire de rendez-vous.'
-        },
-        {
-            group: GROUP,
-            target: '[data-tour="patients-form-rdv.details"]',
-            title: 'Detail du rendez-vous',
-            content: 'Medecin, duree, motif, date/heure et notes internes pour preparer l accueil.',
-            beforeEnter: async () => openDialogStep(ctx.openRdvDialog, ctx.closeAllDialogs)
-        },
-        {
-            group: GROUP,
-            target: '[data-tour="patients-form-rdv.sms-reminder"]',
-            title: 'Rappel SMS',
-            content: 'Programmez un rappel (1 jour avant par defaut) et une repetition eventuelle. Respecte les preferences SMS du patient.'
-        },
-        {
-            group: GROUP,
-            target: '[data-tour="patients-dossier.finance-tabs"]',
-            title: 'Suivi dans le dossier',
-            content: 'Le RDV apparait dans l onglet Rendez-vous de la section historique administratif, avec le statut du SMS programme.'
-        }
-    ]),
-    'manage-archive': (ctx) => normalizeTourSteps([
-        {
-            group: GROUP,
-            target: '[data-tour="patients-dossier.archive-toolbar"]',
-            title: 'Deposer un document',
-            content: 'Ajoutez des fichiers administratifs (PDF, images, documents) independants des fiches medicales.'
-        },
-        {
-            group: GROUP,
-            target: '[data-tour="patients-dossier.archive-table"]',
-            title: 'Consulter et gerer',
-            content: 'Liste des fichiers avec actions Voir, Telecharger et Supprimer pour chaque document archive.'
-        }
-    ]),
-    'print-dossier': (ctx) => normalizeTourSteps([
-        {
-            group: GROUP,
-            target: '[data-tour="patients-dossier.actions"]',
-            title: 'Imprimer une fiche',
-            content: ctx.hasFiches
-                ? 'Prepare un document a partir des fiches medicales du patient.'
-                : 'Sans fiche medicale, l impression n est pas disponible. Completez une fiche dans Consultations d abord.'
-        },
-        ...(ctx.hasFiches ? [
+    'schedule-rdv': (ctx) =>
+        normalizeTourSteps([
             {
                 group: GROUP,
-                target: '[data-tour="patients-dossier.dialog.print"]',
-                title: 'Choisir les sections',
-                content: 'Questionnaire medical, examen, images, plan de traitement, bilan dentaire, seances. Option pour inclure les champs vides.',
-                beforeEnter: async () => openDialogStep(ctx.openPrintDialog, ctx.closeAllDialogs)
+                target: '[data-tour="patients-dossier.actions"]',
+                title: 'Planifier un passage',
+                content: 'Patient du dossier courant deja preselectionne dans le formulaire de rendez-vous.'
             },
             {
                 group: GROUP,
-                target: '[data-tour="patients-dossier.dialog.print"]',
-                title: 'Generer le document',
-                content: 'Lance l impression ou l apercu PDF avec l identite du patient et les sections selectionnees.',
-                afterLeave: async () => {
-                    ctx.closeAllDialogs();
-                    await flushUi();
-                }
+                target: '[data-tour="patients-form-rdv.details"]',
+                title: 'Detail du rendez-vous',
+                content: 'Medecin, duree, motif, date/heure et notes internes pour preparer l accueil.',
+                beforeEnter: async () => openDialogStep(ctx.openRdvDialog, ctx.closeAllDialogs)
+            },
+            {
+                group: GROUP,
+                target: '[data-tour="patients-form-rdv.sms-reminder"]',
+                title: 'Rappel SMS',
+                content: 'Programmez un rappel (1 jour avant par defaut) et une repetition eventuelle. Respecte les preferences SMS du patient.'
+            },
+            {
+                group: GROUP,
+                target: '[data-tour="patients-dossier.finance-tabs"]',
+                title: 'Suivi dans le dossier',
+                content: 'Le RDV apparait dans l onglet Rendez-vous de la section historique administratif, avec le statut du SMS programme.'
             }
-        ] : [])
-    ])
+        ]),
+    'manage-archive': (ctx) =>
+        normalizeTourSteps([
+            {
+                group: GROUP,
+                target: '[data-tour="patients-dossier.archive-toolbar"]',
+                title: 'Deposer un document',
+                content: 'Ajoutez des fichiers administratifs (PDF, images, documents) independants des fiches medicales.'
+            },
+            {
+                group: GROUP,
+                target: '[data-tour="patients-dossier.archive-table"]',
+                title: 'Consulter et gerer',
+                content: 'Liste des fichiers avec actions Voir, Telecharger et Supprimer pour chaque document archive.'
+            }
+        ]),
+    'print-dossier': (ctx) =>
+        normalizeTourSteps([
+            {
+                group: GROUP,
+                target: '[data-tour="patients-dossier.actions"]',
+                title: 'Imprimer une fiche',
+                content: ctx.hasFiches ? 'Prepare un document a partir des fiches medicales du patient.' : 'Sans fiche medicale, l impression n est pas disponible. Completez une fiche dans Consultations d abord.'
+            },
+            ...(ctx.hasFiches
+                ? [
+                      {
+                          group: GROUP,
+                          target: '[data-tour="patients-dossier.dialog.print"]',
+                          title: 'Choisir les sections',
+                          content: 'Questionnaire medical, examen, images, plan de traitement, bilan dentaire, seances. Option pour inclure les champs vides.',
+                          beforeEnter: async () => openDialogStep(ctx.openPrintDialog, ctx.closeAllDialogs)
+                      },
+                      {
+                          group: GROUP,
+                          target: '[data-tour="patients-dossier.dialog.print"]',
+                          title: 'Generer le document',
+                          content: 'Lance l impression ou l apercu PDF avec l identite du patient et les sections selectionnees.',
+                          afterLeave: async () => {
+                              ctx.closeAllDialogs();
+                              await flushUi();
+                          }
+                      }
+                  ]
+                : [])
+        ])
 });
 
 export function buildPatientsDossierTourSteps(taskId, variantId, ctx) {

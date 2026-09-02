@@ -1,10 +1,5 @@
 import { apiPrefix } from '@/config';
-import {
-    createPatientPortalUser,
-    fetchPatientPortalUser,
-    resetPatientPortalPassword,
-    togglePatientPortalUser
-} from '@/services/patients';
+import { createPatientPortalUser, fetchPatientPortalUser, resetPatientPortalPassword, togglePatientPortalUser } from '@/services/patients';
 import {
     addPatientAllergyTourMock,
     addPatientAntecedentTourMock,
@@ -55,7 +50,6 @@ const error = ref(null);
 const patientDossier = ref(null);
 
 export function usePatients() {
-
     function buildAuthHeaders(includeJson = false) {
         const token = auth?.token || localStorage.getItem('token') || localStorage.getItem('authToken');
         const headers = {};
@@ -73,21 +67,9 @@ export function usePatients() {
         }
 
         const assurance = insuranceProfile.assurance ?? value?.assurance ?? null;
-        const assuranceCode = insuranceProfile.assuranceCode
-            ?? insuranceProfile.assurance_code
-            ?? insuranceProfile.code
-            ?? assurance?.code
-            ?? '';
-        const assuranceId = insuranceProfile.assuranceId
-            ?? insuranceProfile.assurance_id
-            ?? assurance?.id
-            ?? null;
-        const assuranceName = insuranceProfile.assuranceName
-            ?? insuranceProfile.assurance_name
-            ?? assurance?.nom
-            ?? assurance?.libelle
-            ?? assuranceCode
-            ?? 'Assurance';
+        const assuranceCode = insuranceProfile.assuranceCode ?? insuranceProfile.assurance_code ?? insuranceProfile.code ?? assurance?.code ?? '';
+        const assuranceId = insuranceProfile.assuranceId ?? insuranceProfile.assurance_id ?? assurance?.id ?? null;
+        const assuranceName = insuranceProfile.assuranceName ?? insuranceProfile.assurance_name ?? assurance?.nom ?? assurance?.libelle ?? assuranceCode ?? 'Assurance';
         const rawFormData = insuranceProfile.formData ?? insuranceProfile.form_data ?? {};
 
         return {
@@ -95,18 +77,21 @@ export function usePatients() {
             assuranceCode,
             assuranceId,
             coverageRate: Number(insuranceProfile.coverageRate ?? insuranceProfile.coverage_rate ?? 0) || 0,
-            assurance: assurance || (assuranceCode || assuranceId ? {
-                id: assuranceId,
-                code: assuranceCode,
-                nom: assuranceName
-            } : null),
+            assurance:
+                assurance ||
+                (assuranceCode || assuranceId
+                    ? {
+                          id: assuranceId,
+                          code: assuranceCode,
+                          nom: assuranceName
+                      }
+                    : null),
             formData: {
                 ...defaultInsuranceFormData(),
                 ...(rawFormData || {})
             }
         };
     };
-
 
     const normalizePatient = (raw = {}) => ({
         id: raw.id,
@@ -185,15 +170,16 @@ export function usePatients() {
             adresse: patient.adresse ?? dossier.adresse ?? '--',
             contactUrgence,
             insuranceProfile,
-            smsPreferences: patient.smsPreferences ?? dossier.smsPreferences ?? {
-                patientCreated: false,
-                receipt: false,
-                ticket: false,
-                invoice: false,
-                appointmentReminder: false,
-                unsubscribed: false,
-                blacklisted: false
-            },
+            smsPreferences: patient.smsPreferences ??
+                dossier.smsPreferences ?? {
+                    patientCreated: false,
+                    receipt: false,
+                    ticket: false,
+                    invoice: false,
+                    appointmentReminder: false,
+                    unsubscribed: false,
+                    blacklisted: false
+                },
             portalAccount: dossier.portalAccount ?? null,
             allergies,
             antecedents,
@@ -218,10 +204,12 @@ export function usePatients() {
         try {
             const data = isPatientsTourMockEnabled()
                 ? listPatientsTourMock({ page, limit, q, sortField, sortOrder })
-                : (await http.get(`${apiPrefix}/patients`, {
-                    headers: buildAuthHeaders(true),
-                    params: { page, limit, q, sortField, sortOrder }
-                })).data || {};
+                : (
+                      await http.get(`${apiPrefix}/patients`, {
+                          headers: buildAuthHeaders(true),
+                          params: { page, limit, q, sortField, sortOrder }
+                      })
+                  ).data || {};
 
             const list = Array.isArray(data.items) ? data.items.map(normalizePatient) : [];
             patients.value = list;
@@ -241,9 +229,11 @@ export function usePatients() {
         try {
             const data = isPatientsTourMockEnabled()
                 ? fetchPatientByIdTourMock(patientId)
-                : (await http.get(`${apiPrefix}/patient/${patientId}`, {
-                    headers: buildAuthHeaders(true)
-                })).data;
+                : (
+                      await http.get(`${apiPrefix}/patient/${patientId}`, {
+                          headers: buildAuthHeaders(true)
+                      })
+                  ).data;
             const normalized = normalizePatient(data);
             return { ...data, ...normalized };
         } catch (err) {
@@ -260,9 +250,11 @@ export function usePatients() {
         try {
             const data = isPatientsTourMockEnabled()
                 ? createPatientTourMock(payload)
-                : (await http.post(`${apiPrefix}/patient/add`, payload, {
-                    headers: buildAuthHeaders(true)
-                })).data;
+                : (
+                      await http.post(`${apiPrefix}/patient/add`, payload, {
+                          headers: buildAuthHeaders(true)
+                      })
+                  ).data;
             return normalizePatient(data);
         } catch (err) {
             error.value = err;
@@ -278,10 +270,12 @@ export function usePatients() {
         try {
             const data = isPatientsTourMockEnabled()
                 ? listPatientsTourMock({ page, limit, q, sortField, sortOrder })
-                : (await http.get(`${apiPrefix}/patients/medecin`, {
-                    headers: buildAuthHeaders(true),
-                    params: { page, limit, q, sortField, sortOrder }
-                })).data || {};
+                : (
+                      await http.get(`${apiPrefix}/patients/medecin`, {
+                          headers: buildAuthHeaders(true),
+                          params: { page, limit, q, sortField, sortOrder }
+                      })
+                  ).data || {};
             const list = Array.isArray(data.items) ? data.items.map(normalizePatient) : [];
             patients.value = list;
             totalRecords.value = data.total ?? list.length;
@@ -301,9 +295,11 @@ export function usePatients() {
             const isFormData = payload instanceof FormData;
             const data = isPatientsTourMockEnabled()
                 ? updatePatientTourMock(patientId, payload)
-                : (await http.post(`${apiPrefix}/patient/${patientId}/update`, payload, {
-                    headers: isFormData ? buildAuthHeaders(false) : buildAuthHeaders(true)
-                })).data;
+                : (
+                      await http.post(`${apiPrefix}/patient/${patientId}/update`, payload, {
+                          headers: isFormData ? buildAuthHeaders(false) : buildAuthHeaders(true)
+                      })
+                  ).data;
             return normalizePatient(data.patient ?? data);
         } catch (err) {
             error.value = err;
@@ -346,9 +342,11 @@ export function usePatients() {
         try {
             const data = isPatientsTourMockEnabled()
                 ? fetchPatientDossierTourMock(patientId)
-                : (await http.get(`${apiPrefix}/patient/${patientId}/dossier`, {
-                    headers: buildAuthHeaders(true)
-                })).data;
+                : (
+                      await http.get(`${apiPrefix}/patient/${patientId}/dossier`, {
+                          headers: buildAuthHeaders(true)
+                      })
+                  ).data;
             patientDossier.value = normalizePatientDossier(data);
             return patientDossier.value;
         } catch (err) {
@@ -366,9 +364,11 @@ export function usePatients() {
         try {
             const data = isPatientsTourMockEnabled()
                 ? fetchPatientConsultationsTourMock(patientId)
-                : (await http.get(`${apiPrefix}/patient/${patientId}/consultations`, {
-                    headers: buildAuthHeaders(true)
-                })).data;
+                : (
+                      await http.get(`${apiPrefix}/patient/${patientId}/consultations`, {
+                          headers: buildAuthHeaders(true)
+                      })
+                  ).data;
             return Array.isArray(data) ? data : [];
         } catch (err) {
             error.value = err;
@@ -565,7 +565,7 @@ export function usePatients() {
             return {
                 ...data,
                 items: list,
-                total: data.total ?? list.length,
+                total: data.total ?? list.length
             };
         } catch (err) {
             error.value = err;
@@ -579,9 +579,13 @@ export function usePatients() {
         loading.value = true;
         error.value = null;
         try {
-            const res = await http.patch(`${apiPrefix}/patient/${patientId}/restore`, {}, {
-                headers: buildAuthHeaders(true)
-            });
+            const res = await http.patch(
+                `${apiPrefix}/patient/${patientId}/restore`,
+                {},
+                {
+                    headers: buildAuthHeaders(true)
+                }
+            );
             return res.data;
         } catch (err) {
             error.value = err;
@@ -597,9 +601,11 @@ export function usePatients() {
         try {
             const data = isPatientsTourMockEnabled()
                 ? fetchMedecinsTourMock()
-                : (await http.get(`${apiPrefix}/medecins`, {
-                    headers: buildAuthHeaders(true)
-                })).data;
+                : (
+                      await http.get(`${apiPrefix}/medecins`, {
+                          headers: buildAuthHeaders(true)
+                      })
+                  ).data;
             return Array.isArray(data) ? data : [];
         } catch (err) {
             error.value = err;
@@ -615,9 +621,11 @@ export function usePatients() {
         try {
             const data = isPatientsTourMockEnabled()
                 ? fetchPaymentMethodsTourMock()
-                : (await http.get(`${apiPrefix}/payment-methods`, {
-                    headers: buildAuthHeaders(true)
-                })).data;
+                : (
+                      await http.get(`${apiPrefix}/payment-methods`, {
+                          headers: buildAuthHeaders(true)
+                      })
+                  ).data;
             return Array.isArray(data) ? data : [];
         } catch (err) {
             error.value = err;

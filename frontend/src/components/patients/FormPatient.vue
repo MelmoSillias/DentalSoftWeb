@@ -136,9 +136,7 @@ const insuranceOptions = computed(() =>
 
 const hasActiveInsurances = computed(() => insuranceOptions.value.length > 0);
 
-const selectedInsurance = computed(() =>
-    (assurances.value || []).find((item) => (item?.code || '') === form.insuranceProfile.assuranceCode) || null
-);
+const selectedInsurance = computed(() => (assurances.value || []).find((item) => (item?.code || '') === form.insuranceProfile.assuranceCode) || null);
 
 const isSbn = computed(() => form.insuranceProfile.assuranceCode === 'SBN');
 const isBleues = computed(() => form.insuranceProfile.assuranceCode === 'BLEUES');
@@ -183,14 +181,8 @@ const resolveInsuranceProfile = (value) => {
     }
 
     const assurance = insuranceProfile.assurance ?? value?.assurance ?? null;
-    const assuranceCode = insuranceProfile.assuranceCode
-        ?? insuranceProfile.assurance_code
-        ?? assurance?.code
-        ?? '';
-    const assuranceId = insuranceProfile.assuranceId
-        ?? insuranceProfile.assurance_id
-        ?? assurance?.id
-        ?? null;
+    const assuranceCode = insuranceProfile.assuranceCode ?? insuranceProfile.assurance_code ?? assurance?.code ?? '';
+    const assuranceId = insuranceProfile.assuranceId ?? insuranceProfile.assurance_id ?? assurance?.id ?? null;
     const rawFormData = insuranceProfile.formData ?? insuranceProfile.form_data ?? {};
 
     return {
@@ -255,7 +247,9 @@ const onDateNaissanceInput = (value) => {
 };
 
 const onAgeInput = (value) => {
-    const normalized = String(value ?? '').replace(/\D/g, '').slice(0, 3);
+    const normalized = String(value ?? '')
+        .replace(/\D/g, '')
+        .slice(0, 3);
     ageInput.value = normalized;
 
     if (!normalized) {
@@ -436,17 +430,17 @@ const savePatient = async () => {
                 unsubscribed: form.smsPreferences.unsubscribed,
                 blacklisted: form.smsPreferences.blacklisted
             },
-            insuranceProfile: hasActiveInsurances.value ? {
-                enabled: Boolean(form.insuranceProfile.enabled && form.insuranceProfile.assuranceCode),
-                assuranceCode: form.insuranceProfile.assuranceCode || null,
-                assuranceId: form.insuranceProfile.assuranceId,
-                coverageRate: Number(form.insuranceProfile.coverageRate || 0),
-                formData: { ...form.insuranceProfile.formData }
-            } : null
+            insuranceProfile: hasActiveInsurances.value
+                ? {
+                      enabled: Boolean(form.insuranceProfile.enabled && form.insuranceProfile.assuranceCode),
+                      assuranceCode: form.insuranceProfile.assuranceCode || null,
+                      assuranceId: form.insuranceProfile.assuranceId,
+                      coverageRate: Number(form.insuranceProfile.coverageRate || 0),
+                      formData: { ...form.insuranceProfile.formData }
+                  }
+                : null
         };
-        const saved = isEdit.value && props.patient?.id
-            ? await updatePatient(props.patient.id, payload, token)
-            : await createPatient(payload, token);
+        const saved = isEdit.value && props.patient?.id ? await updatePatient(props.patient.id, payload, token) : await createPatient(payload, token);
         toast.add({ severity: 'success', summary: 'Succès', detail: 'Patient sauvegardé.', life: 2500 });
         emit('saved', saved);
         if (!isEdit.value) {
@@ -545,9 +539,7 @@ defineExpose({
                 <TabPanel value="sms" data-tour="patients-form.panel-sms">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 rounded-xl border border-surface-200 p-4 dark:border-surface-700">
                         <div class="md:col-span-2">
-                            <p class="text-sm text-surface-600 dark:text-surface-400">
-                                Définissez les SMS autorisés pour ce patient et les exclusions d'envoi.
-                            </p>
+                            <p class="text-sm text-surface-600 dark:text-surface-400">Définissez les SMS autorisés pour ce patient et les exclusions d'envoi.</p>
                         </div>
                         <div class="flex items-center gap-3">
                             <Checkbox inputId="sms-patient-created" v-model="form.smsPreferences.patientCreated" binary />
@@ -734,17 +726,14 @@ defineExpose({
                             </div>
                         </template>
 
-                        <div v-if="form.insuranceProfile.enabled && selectedInsurance?.logoPath" class="md:col-span-2 text-sm text-gray-500">
-                            Logo assurance: {{ selectedInsurance.logoPath }}
-                        </div>
+                        <div v-if="form.insuranceProfile.enabled && selectedInsurance?.logoPath" class="md:col-span-2 text-sm text-gray-500">Logo assurance: {{ selectedInsurance.logoPath }}</div>
                     </div>
                 </TabPanel>
             </TabPanels>
         </Tabs>
         <div class="flex gap-2 justify-end" data-tour="patients-form.actions">
             <Button type="button" label="Annuler" severity="secondary" @click="emit('cancel')" />
-            <Button type="button" :label="isEdit ? 'Mettre à jour' : 'Créer'" icon="pi pi-check" :loading="loading"
-                @click="handleSubmit" />
+            <Button type="button" :label="isEdit ? 'Mettre à jour' : 'Créer'" icon="pi pi-check" :loading="loading" @click="handleSubmit" />
         </div>
     </div>
 </template>

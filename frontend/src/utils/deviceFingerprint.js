@@ -32,6 +32,6 @@ export function getDeviceMetadata() {
     return {
         id: getOrCreateDeviceId(),
         type,
-        name,
+        name
     };
 }

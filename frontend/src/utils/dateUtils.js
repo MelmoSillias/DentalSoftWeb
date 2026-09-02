@@ -49,8 +49,7 @@ export function endOfMonth(date) {
 
 export function sameDayRange(a, b) {
     if (!a || !b || a.length < 2 || b.length < 2 || !a[0] || !a[1] || !b[0] || !b[1]) return false;
-    return startOfDay(a[0]).getTime() === startOfDay(b[0]).getTime()
-        && startOfDay(a[1]).getTime() === startOfDay(b[1]).getTime();
+    return startOfDay(a[0]).getTime() === startOfDay(b[0]).getTime() && startOfDay(a[1]).getTime() === startOfDay(b[1]).getTime();
 }
 
 /** Default period map for PanelDatePicker (always includes custom: null). */

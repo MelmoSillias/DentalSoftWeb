@@ -636,9 +636,7 @@ function buildStaticPatientDossiers(patients) {
 function buildSeedState(scenario) {
     const normalizedScenario = normalizeScenario(scenario);
     const patients = normalizedScenario === 'empty' ? {} : buildStaticPatients();
-    const consultations = normalizedScenario === 'empty'
-        ? {}
-        : buildStaticConsultationsForScenario(normalizedScenario);
+    const consultations = normalizedScenario === 'empty' ? {} : buildStaticConsultationsForScenario(normalizedScenario);
     const dossiers = normalizedScenario === 'empty' ? {} : buildStaticPatientDossiers(patients);
     const consultationHistory = normalizedScenario === 'empty' ? {} : buildStaticConsultationHistory();
 
@@ -668,14 +666,13 @@ function getPatientsList() {
 }
 
 function filterPatients(query) {
-    const needle = String(query || '').trim().toLowerCase();
+    const needle = String(query || '')
+        .trim()
+        .toLowerCase();
     if (!needle) return getPatientsList();
 
     return getPatientsList().filter((patient) => {
-        const haystack = [patient.fullname, patient.nom, patient.prenom, patient.telephone, patient.adresse]
-            .filter(Boolean)
-            .join(' ')
-            .toLowerCase();
+        const haystack = [patient.fullname, patient.nom, patient.prenom, patient.telephone, patient.adresse].filter(Boolean).join(' ').toLowerCase();
 
         return haystack.includes(needle);
     });
@@ -724,13 +721,14 @@ function createPatientRecord(payload, existingPatient = null, id = null) {
     const prenom = String(payload?.prenom ?? base.prenom ?? 'Test').trim();
     const dateNaissance = payload?.dateNaissance ?? base.dateNaissance ?? '';
     const contactUrgencePayload = payload?.contactUrgence;
-    const contactUrgence = contactUrgencePayload && typeof contactUrgencePayload === 'object'
-        ? {
-            nom: String(contactUrgencePayload.nom || '').trim(),
-            telephone: String(contactUrgencePayload.telephone || '').trim(),
-            lienParente: String(contactUrgencePayload.lienParente || '').trim()
-        }
-        : base.contactUrgence;
+    const contactUrgence =
+        contactUrgencePayload && typeof contactUrgencePayload === 'object'
+            ? {
+                  nom: String(contactUrgencePayload.nom || '').trim(),
+                  telephone: String(contactUrgencePayload.telephone || '').trim(),
+                  lienParente: String(contactUrgencePayload.lienParente || '').trim()
+              }
+            : base.contactUrgence;
     const hasContactUrgence = contactUrgence && Object.values(contactUrgence).some(Boolean);
 
     return {
@@ -760,9 +758,7 @@ function createPatientRecord(payload, existingPatient = null, id = null) {
 }
 
 function findActiveConsultation(patientId) {
-    return Object.values(tourMockState.consultations || {}).find(
-        (consultation) => Number(consultation.patientId) === Number(patientId)
-    ) || null;
+    return Object.values(tourMockState.consultations || {}).find((consultation) => Number(consultation.patientId) === Number(patientId)) || null;
 }
 
 export function resolvePatientsTourMockScenario(taskId = 'overview', variantId = null, fallbackScenario = DEFAULT_SCENARIO) {
@@ -961,9 +957,7 @@ export function deleteConsultationTourMock(consultationId) {
     }
 
     if (Array.isArray(tourMockState.consultationHistory?.[patientId])) {
-        tourMockState.consultationHistory[patientId] = tourMockState.consultationHistory[patientId].filter(
-            (item) => Number(item.id) !== Number(consultationId)
-        );
+        tourMockState.consultationHistory[patientId] = tourMockState.consultationHistory[patientId].filter((item) => Number(item.id) !== Number(consultationId));
     }
 
     delete tourMockState.consultations[consultationId];

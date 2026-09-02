@@ -18,9 +18,7 @@ const form = reactive({
     confirmPassword: ''
 });
 
-const canSubmit = computed(() =>
-    form.oldPassword.length >= 3 && form.newPassword.length >= 4 && form.newPassword === form.confirmPassword
-);
+const canSubmit = computed(() => form.oldPassword.length >= 3 && form.newPassword.length >= 4 && form.newPassword === form.confirmPassword);
 
 const submit = (event) => {
     if (!canSubmit.value) return;

@@ -117,7 +117,7 @@ function checkActiveRoute(item) {
                         <span class="layout-menuitem-text">{{ child.label }}</span>
                         <i class="pi pi-fw pi-angle-down layout-submenu-toggler" v-if="child.items"></i>
                     </a>
-                    <router-link 
+                    <router-link
                         v-if="child.to && !child.items && child.visible !== false"
                         @click="itemClick($event, child, i)"
                         :class="[child.class, { 'active-route': checkActiveRoute(child) }]"
@@ -128,19 +128,15 @@ function checkActiveRoute(item) {
                         <span class="layout-menuitem-text">{{ child.label }}</span>
                         <i class="pi pi-fw pi-angle-down layout-submenu-toggler" v-if="child.items"></i>
                     </router-link>
-                    
                 </template>
             </li>
         </ul>
-        
-        
     </li>
-
 </template>
 
 <style lang="scss" scoped>
 :deep(.p-divider-content) {
-    color : var(--primary-color);
+    color: var(--primary-color);
     font-weight: bold;
 }
 
@@ -333,4 +329,5 @@ const subMenuActiveClass = "border-l-[1px] border-gray-300 dark:border-gray-700 
                 <app-menu-item v-for="(child, i) in item.items" :key="child" :index="i" :item="child" :parentItemKey="itemKey" :root="false"></app-menu-item>
             </ul>
         </Transition>
-    </li> --> -->
+    </li> -->
+-->

@@ -12,7 +12,6 @@ import {
 } from '@/services/consultationsTourMock';
 import http from '@/service/http';
 import { logAppError } from '@/utils/appLogger';
-import { is } from 'zod/v4/locales';
 
 const axios = http;
 
@@ -24,7 +23,14 @@ export const normalizeDentList = (value) => {
     }
 
     if (typeof value === 'string') {
-        return [...new Set(value.split(',').map((item) => item.trim()).filter(Boolean))];
+        return [
+            ...new Set(
+                value
+                    .split(',')
+                    .map((item) => item.trim())
+                    .filter(Boolean)
+            )
+        ];
     }
 
     if (typeof value === 'number') {
@@ -42,7 +48,7 @@ const normalizeFocusPatient = (raw = {}) => ({
     photo: raw.photo ?? raw.photoUrl ?? raw.photo_url ?? null,
     telephone: raw.telephone ?? '',
     createdAt: raw.createdAt ?? raw.created_at ?? raw.dateInscription ?? raw.date_inscription ?? null,
-    impayees: Number(raw.impayees ?? raw.reliquat ?? 0) || 0,
+    impayees: Number(raw.impayees ?? raw.reliquat ?? 0) || 0
 });
 
 const normalizeUnpaidSummary = (raw = {}) => ({
@@ -52,7 +58,7 @@ const normalizeUnpaidSummary = (raw = {}) => ({
     montantPatient: Number(raw.montantPatient ?? raw.montant_patient ?? raw.montant ?? 0) || 0,
     reste: Number(raw.reste ?? 0) || 0,
     type: raw.type ?? 'classic',
-    factureAssuranceId: raw.factureAssuranceId ?? raw.facture_assurance_id ?? null,
+    factureAssuranceId: raw.factureAssuranceId ?? raw.facture_assurance_id ?? null
 });
 
 const normalizeFocusBilling = (raw = {}) => ({
@@ -61,42 +67,39 @@ const normalizeFocusBilling = (raw = {}) => ({
     remaining: Number(raw.remaining ?? raw.reste ?? 0) || 0,
     isPayante: Boolean(raw.isPayante ?? raw.payante ?? false),
     state: raw.state ?? { label: 'Aucune facture', severity: 'contrast' },
-    lines: Array.isArray(raw.lines) ? raw.lines.map((line) => ({
-        id: line.id,
-        label: line.label ?? line.designation ?? 'Soin',
-        quantity: Number(line.quantity ?? line.qte ?? 1) || 1,
-        unitPrice: Number(line.unitPrice ?? line.montant ?? 0) || 0,
-        total: Number(line.total ?? line.montantTotal ?? 0) || 0,
-    })) : [],
-    payments: Array.isArray(raw.payments) ? raw.payments.map((payment) => ({
-        id: payment.id ?? payment.pId ?? null,
-        invoiceId: payment.invoiceId ?? payment.devisId ?? raw.invoiceId ?? raw.id ?? null,
-        montant: Number(payment.montant ?? 0) || 0,
-        mode: payment.mode ?? null,
-        date: payment.date ?? payment.createdAt ?? null,
-        rolePaiement: payment.rolePaiement ?? null,
-        type: payment.type ?? 'paiement',
-        status: payment.status ?? 'validated',
-    })) : [],
+    lines: Array.isArray(raw.lines)
+        ? raw.lines.map((line) => ({
+              id: line.id,
+              label: line.label ?? line.designation ?? 'Soin',
+              quantity: Number(line.quantity ?? line.qte ?? 1) || 1,
+              unitPrice: Number(line.unitPrice ?? line.montant ?? 0) || 0,
+              total: Number(line.total ?? line.montantTotal ?? 0) || 0
+          }))
+        : [],
+    payments: Array.isArray(raw.payments)
+        ? raw.payments.map((payment) => ({
+              id: payment.id ?? payment.pId ?? null,
+              invoiceId: payment.invoiceId ?? payment.devisId ?? raw.invoiceId ?? raw.id ?? null,
+              montant: Number(payment.montant ?? 0) || 0,
+              mode: payment.mode ?? null,
+              date: payment.date ?? payment.createdAt ?? null,
+              rolePaiement: payment.rolePaiement ?? null,
+              type: payment.type ?? 'paiement',
+              status: payment.status ?? 'validated'
+          }))
+        : []
 });
 
 export const normalizeConsultation = (raw = {}) => {
-    const patient = raw.patient
+    const patient = raw.patient;
     const patient_photo = patient?.photo ?? patient?.photoUrl ?? patient?.patientPhoto ?? patient?.patient_photo ?? null;
-    const patientName = (raw.patientName ?? raw.patient_name
-        ?? (typeof patient === 'string' ? patient : `${patient?.prenom ?? ''} ${patient?.nom ?? ''}`.trim()))
-        || patient?.nom
-        || '';
+    const patientName = (raw.patientName ?? raw.patient_name ?? (typeof patient === 'string' ? patient : `${patient?.prenom ?? ''} ${patient?.nom ?? ''}`.trim())) || patient?.nom || '';
 
     const createdAt = raw.createdAt ?? raw.created_at ?? raw.date ?? raw.created_at_consultation ?? null;
     const hasFiche = raw.hasFiche ?? raw.has_fiche ?? Boolean(raw.fiche || raw.ficheId);
 
     const patientId = raw.patientId ?? raw.patient_id ?? patient?.id ?? null;
-    const patientCreatedAt = raw.patientCreatedAt
-        ?? raw.patient_created_at
-        ?? (patient && typeof patient === 'object'
-            ? (patient.createdAt ?? patient.created_at ?? patient.dateInscription ?? patient.date_inscription ?? null)
-            : null);
+    const patientCreatedAt = raw.patientCreatedAt ?? raw.patient_created_at ?? (patient && typeof patient === 'object' ? (patient.createdAt ?? patient.created_at ?? patient.dateInscription ?? patient.date_inscription ?? null) : null);
     const state = raw.state ?? raw.statut ?? raw.status ?? null;
     const factState = raw.factstate ?? raw.factState ?? raw.fact_state ?? null;
     const factModifiable = raw.factModifiable ?? raw.fact_modifiable ?? false;
@@ -105,19 +108,14 @@ export const normalizeConsultation = (raw = {}) => {
     const isPaid = raw.isPaid ?? raw.paid ?? raw.payee ?? false;
     const paymentId = raw.paymentId ?? raw.paiementId ?? raw.payment_id ?? raw.paiement_id ?? null;
     const paiementAmount = Number(raw.paiementAmount ?? raw.paymentAmount ?? raw.montantPaiement ?? raw.montant_paiement ?? 0) || 0;
-    const hasInsurance = Boolean(
-        raw.hasInsurance
-        ?? raw.has_insurance
-        ?? patient?.insuranceProfile?.enabled
-        ?? patient?.insuranceProfile
-    );
+    const hasInsurance = Boolean(raw.hasInsurance ?? raw.has_insurance ?? patient?.insuranceProfile?.enabled ?? patient?.insuranceProfile);
 
     return {
         id: raw.id,
         patient,
         patientName,
         patientPhoto: raw.patientPhoto ?? raw.patient_photo ?? patient?.photo ?? null,
-        patientPhone: (typeof patient === 'object' ? (patient?.telephone || patient?.phone) : null) || raw.patientPhone || '',
+        patientPhone: (typeof patient === 'object' ? patient?.telephone || patient?.phone : null) || raw.patientPhone || '',
         medecin: raw.medecin,
         createdAt,
         patientCreatedAt,
@@ -138,15 +136,9 @@ export const normalizeConsultation = (raw = {}) => {
         lastFicheId,
         hasInsurance,
         assuranceNom: raw.assuranceNom ?? patient?.insuranceProfile?.assurance?.nom ?? null,
-        patientImpayees: Number(
-            raw.patientImpayees
-            ?? raw.patient_impayees
-            ?? (typeof patient === 'object' ? patient?.impayees : null)
-            ?? 0
-        ) || 0,
-    }
+        patientImpayees: Number(raw.patientImpayees ?? raw.patient_impayees ?? (typeof patient === 'object' ? patient?.impayees : null) ?? 0) || 0
+    };
 };
-
 
 export const fetchPendingConsultations = async (token) => {
     if (isConsultationsTourMockEnabled()) {
@@ -186,7 +178,7 @@ export const fetchFocusReceptionData = async (date, token) => {
             consultations: fetchConsultationsByDateTourMock(date).map((c) => normalizeConsultation(c)),
             recentPatients: [],
             billingByConsultation: {},
-            unpaidByPatientId: {},
+            unpaidByPatientId: {}
         };
     }
 
@@ -198,21 +190,14 @@ export const fetchFocusReceptionData = async (date, token) => {
     const payload = res.data ?? {};
     const consultations = Array.isArray(payload.consultations) ? payload.consultations.map((c) => normalizeConsultation(c)) : [];
     const recentPatients = Array.isArray(payload.recentPatients) ? payload.recentPatients.map((patient) => normalizeFocusPatient(patient)) : [];
-    const billingByConsultation = Object.fromEntries(
-        Object.entries(payload.billingByConsultation ?? {}).map(([consultationId, billing]) => [Number(consultationId), normalizeFocusBilling(billing)])
-    );
-    const unpaidByPatientId = Object.fromEntries(
-        Object.entries(payload.unpaidByPatientId ?? {}).map(([patientId, rows]) => [
-            Number(patientId),
-            Array.isArray(rows) ? rows.map((row) => normalizeUnpaidSummary(row)) : [],
-        ])
-    );
+    const billingByConsultation = Object.fromEntries(Object.entries(payload.billingByConsultation ?? {}).map(([consultationId, billing]) => [Number(consultationId), normalizeFocusBilling(billing)]));
+    const unpaidByPatientId = Object.fromEntries(Object.entries(payload.unpaidByPatientId ?? {}).map(([patientId, rows]) => [Number(patientId), Array.isArray(rows) ? rows.map((row) => normalizeUnpaidSummary(row)) : []]));
 
     return {
         consultations,
         recentPatients,
         billingByConsultation,
-        unpaidByPatientId,
+        unpaidByPatientId
     };
 };
 
@@ -223,11 +208,7 @@ export const fetchConsultationDetails = async (consultationId, token) => {
 
     const headers = authHeaders(token);
     const baseUrl = apiPrefix.replace(/\/$/, '');
-    const candidates = [
-        `${baseUrl}/consultations/${consultationId}/details`,
-        `${baseUrl}/admin/consultation/${consultationId}/details`,
-        `${baseUrl.replace(/\/api$/, '')}/admin/consultation/${consultationId}/details.json`
-    ];
+    const candidates = [`${baseUrl}/consultations/${consultationId}/details`, `${baseUrl}/admin/consultation/${consultationId}/details`, `${baseUrl.replace(/\/api$/, '')}/admin/consultation/${consultationId}/details.json`];
 
     let lastError = null;
     for (const url of candidates) {
@@ -271,11 +252,7 @@ export const verifyConsultationMedecinPassword = async (consultationId, password
         return verifyConsultationMedecinPasswordTourMock(consultationId, password);
     }
 
-    const res = await axios.post(
-        `${apiPrefix}/consultations/${consultationId}/verify-medecin-password`,
-        { password },
-        { headers: authHeaders(token) }
-    );
+    const res = await axios.post(`${apiPrefix}/consultations/${consultationId}/verify-medecin-password`, { password }, { headers: authHeaders(token) });
 
     return Boolean(res.data?.valid);
 };
@@ -320,9 +297,9 @@ export const fetchConsultationInvoice = async (consultationId, token) => {
 };
 
 export const updateConsultationInvoice = async (consultationId, payload = {}, token) => {
-    const lines = Array.isArray(payload) ? payload : payload?.lines ?? payload?.lignes ?? [];
-    const date = Array.isArray(payload) ? null : payload?.date ?? null;
-    const time = Array.isArray(payload) ? null : payload?.time ?? null;
+    const lines = Array.isArray(payload) ? payload : (payload?.lines ?? payload?.lignes ?? []);
+    const date = Array.isArray(payload) ? null : (payload?.date ?? null);
+    const time = Array.isArray(payload) ? null : (payload?.time ?? null);
 
     if (isConsultationsTourMockEnabled()) {
         return updateConsultationInvoiceTourMock(consultationId, lines, { date, time });
@@ -366,11 +343,7 @@ export const setConsultationFiche = async (consultationId, ficheId = null, token
 
     const suffix = ficheId && !createNew ? `/${ficheId}` : '';
     try {
-        const res = await axios.post(
-            `${apiPrefix}/consultation/set_fiche${suffix}`,
-            { consultationId, createNew, allowDuplicate },
-            { headers: authHeaders(token) }
-        );
+        const res = await axios.post(`${apiPrefix}/consultation/set_fiche${suffix}`, { consultationId, createNew, allowDuplicate }, { headers: authHeaders(token) });
 
         return res.data;
     } catch (err) {
@@ -473,9 +446,10 @@ export const teethOptions = (() => {
     return options;
 })();
 
-export const formatActeCurrency = (value) => new Intl.NumberFormat('fr-FR', {
-    style: 'currency',
-    currency: 'XOF',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0
-}).format(Number(value) || 0);
+export const formatActeCurrency = (value) =>
+    new Intl.NumberFormat('fr-FR', {
+        style: 'currency',
+        currency: 'XOF',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+    }).format(Number(value) || 0);

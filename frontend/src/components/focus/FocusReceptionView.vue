@@ -155,12 +155,7 @@ const formatFcfa = (value) => `${Number(value || 0).toLocaleString('fr-FR')} FCF
 
 const patientImpayeesAmount = (patientOrConsultation) => {
     if (!patientOrConsultation) return 0;
-    const direct = Number(
-        patientOrConsultation.impayees
-        ?? patientOrConsultation.patientImpayees
-        ?? patientOrConsultation.reliquat
-        ?? 0
-    );
+    const direct = Number(patientOrConsultation.impayees ?? patientOrConsultation.patientImpayees ?? patientOrConsultation.reliquat ?? 0);
     if (direct > 0) return direct;
     const nested = patientOrConsultation.patient;
     if (nested && typeof nested === 'object') {
@@ -231,9 +226,7 @@ const isSameCalendarDay = (left, right) => {
     const leftDate = parseDateTime(left);
     const rightDate = parseDateTime(right);
     if (!leftDate || !rightDate) return false;
-    return leftDate.getFullYear() === rightDate.getFullYear()
-        && leftDate.getMonth() === rightDate.getMonth()
-        && leftDate.getDate() === rightDate.getDate();
+    return leftDate.getFullYear() === rightDate.getFullYear() && leftDate.getMonth() === rightDate.getMonth() && leftDate.getDate() === rightDate.getDate();
 };
 
 const monthRange = () => {
@@ -254,13 +247,7 @@ const patientLabel = (consultation) => {
     return `${patient.prenom ?? ''} ${patient.nom ?? ''}`.trim() || patient.nom || 'Patient';
 };
 
-const patientCreatedAt = (patient) => patient?.createdAt
-    || patient?.created_at
-    || patient?.dateInscription
-    || patient?.date_inscription
-    || patient?.dateCreation
-    || patient?.date_creation
-    || null;
+const patientCreatedAt = (patient) => patient?.createdAt || patient?.created_at || patient?.dateInscription || patient?.date_inscription || patient?.dateCreation || patient?.date_creation || null;
 
 const patientDisplayName = (patient) => {
     const source = patient?.patient || patient || {};
@@ -297,9 +284,7 @@ const consultationState = (consultation) => {
         return { label: 'Terminee', severity: 'success' };
     }
 
-    return consultation?.id === selectedConsultationId.value
-        ? { label: 'Selectionnee', severity: 'info' }
-        : { label: 'En attente', severity: 'warn' };
+    return consultation?.id === selectedConsultationId.value ? { label: 'Selectionnee', severity: 'info' } : { label: 'En attente', severity: 'warn' };
 };
 
 const queueItemClass = (consultation) => {
@@ -340,19 +325,13 @@ const currentBilling = computed(() => {
 const selectedPatientId = computed(() => {
     const consultation = currentConsultation.value;
     if (!consultation) return null;
-    return Number(
-        consultation.patientId
-        ?? consultation.patient?.id
-        ?? 0
-    ) || null;
+    return Number(consultation.patientId ?? consultation.patient?.id ?? 0) || null;
 });
 
 const selectedPatientUnpaidInvoices = computed(() => {
     const patientId = selectedPatientId.value;
     if (!patientId) return [];
-    const rows = props.unpaidByPatientId?.[patientId]
-        ?? props.unpaidByPatientId?.[String(patientId)]
-        ?? [];
+    const rows = props.unpaidByPatientId?.[patientId] ?? props.unpaidByPatientId?.[String(patientId)] ?? [];
     return Array.isArray(rows) ? rows : [];
 });
 
@@ -376,9 +355,7 @@ const selectedPriorUnpaidInvoices = computed(() => {
 
 const hasPriorReliquat = computed(() => selectedPriorUnpaidInvoices.value.length > 0);
 
-const selectedPriorReliquatTotal = computed(() =>
-    selectedPriorUnpaidInvoices.value.reduce((sum, invoice) => sum + (Number(invoice?.reste ?? 0) || 0), 0)
-);
+const selectedPriorReliquatTotal = computed(() => selectedPriorUnpaidInvoices.value.reduce((sum, invoice) => sum + (Number(invoice?.reste ?? 0) || 0), 0));
 
 const todayConsultations = computed(() => {
     const now = new Date();
@@ -491,7 +468,7 @@ const selectedInvoiceState = computed(() => currentBilling.value?.state || { lab
 
 const selectedInvoiceTotal = computed(() => Number(currentBilling.value?.total ?? 0) || 0);
 
-const selectedInvoiceRemaining = computed(() => currentBilling.value ? (Number(currentBilling.value.remaining ?? 0) || 0) : null);
+const selectedInvoiceRemaining = computed(() => (currentBilling.value ? Number(currentBilling.value.remaining ?? 0) || 0 : null));
 
 const consultationDetailsLines = computed(() => currentBilling.value?.lines || []);
 const hasInvoiceContext = computed(() => Boolean(currentBilling.value?.invoiceId));
@@ -517,7 +494,7 @@ const getConsultationBilling = (consultation) => {
 };
 
 const isConsultationPayante = (consultation) => {
-    return consultation?.isPaid
+    return consultation?.isPaid;
 };
 
 const isConsultationCreateLoading = (patientId) => {
@@ -557,35 +534,26 @@ const printInvoice = async () => {
 const printPaymentReceipt = async (paymentId) => {
     if (!paymentId) return;
     const response = await fetchReceiptPrintData(paymentId, token);
-    await printComponent(
-        PrintReceiptBody,
-        { paiement: response.paiement },
-        { format: [226.77, 255.12], width: '80mm' }
-    );
+    await printComponent(PrintReceiptBody, { paiement: response.paiement }, { format: [226.77, 255.12], width: '80mm' });
 };
 
 const printPaymentTicket = async (paymentId) => {
     if (!paymentId) return;
     const response = await fetchTicketPrintData(paymentId, token);
-    await printComponent(
-        PrintTicketBody,
-        { paiement: response.paiement },
-        { format: [226.77, 255.12], width: '80mm' }
-    );
+    await printComponent(PrintTicketBody, { paiement: response.paiement }, { format: [226.77, 255.12], width: '80mm' });
 };
 
 function formatPaymentMode(mode) {
-    if (!mode) return '—'
+    if (!mode) return '—';
 
-    if (mode.toLowerCase().includes('esp')) return 'Espèces'
-    if (mode.toLowerCase().includes('mobile')) return 'Mobile'
-    if (mode.toLowerCase().includes('carte')) return 'Carte'
+    if (mode.toLowerCase().includes('esp')) return 'Espèces';
+    if (mode.toLowerCase().includes('mobile')) return 'Mobile';
+    if (mode.toLowerCase().includes('carte')) return 'Carte';
 
-    return mode
+    return mode;
 }
 
-const isInteractiveTarget = (target) => target instanceof Element
-    && Boolean(target.closest('button, a, input, select, textarea, [role="button"], .p-button'));
+const isInteractiveTarget = (target) => target instanceof Element && Boolean(target.closest('button, a, input, select, textarea, [role="button"], .p-button'));
 
 const onQueueItemClick = (event, consultationId) => {
     if (isInteractiveTarget(event?.target)) return;
@@ -595,13 +563,9 @@ const onQueueItemClick = (event, consultationId) => {
 const handleCancelWithConfirm = (event, consultation) => {
     if (!consultation?.id) return;
     const sourceEvent = event?.originalEvent || event;
-    const target = sourceEvent?.currentTarget
-        || sourceEvent?.target?.closest?.('[data-cancel-consultation-id], .p-button, button')
-        || sourceEvent?.target
-        || null;
+    const target = sourceEvent?.currentTarget || sourceEvent?.target?.closest?.('[data-cancel-consultation-id], .p-button, button') || sourceEvent?.target || null;
     emit('cancel-consultation', target, consultation);
 };
-
 </script>
 
 <template>
@@ -627,9 +591,7 @@ const handleCancelWithConfirm = (event, consultation) => {
                                 @click="toggleSearchMode"
                                 :class="[
                                     'flex h-8 w-8 items-center justify-center rounded-xl transition-all duration-200',
-                                    searchMode
-                                        ? 'bg-purple-500 text-white shadow-md'
-                                        : 'bg-surface-100 text-surface-500 hover:bg-surface-200 dark:bg-surface-800 dark:hover:bg-surface-700'
+                                    searchMode ? 'bg-purple-500 text-white shadow-md' : 'bg-surface-100 text-surface-500 hover:bg-surface-200 dark:bg-surface-800 dark:hover:bg-surface-700'
                                 ]"
                                 :title="searchMode ? 'Fermer la recherche' : 'Rechercher un patient'"
                             >
@@ -661,7 +623,10 @@ const handleCancelWithConfirm = (event, consultation) => {
                         <button
                             v-if="patientSearchQuery"
                             class="absolute right-3 top-1/2 -translate-y-1/2 text-surface-400 hover:text-surface-600"
-                            @click="patientSearchQuery = ''; patientSearchResults = []"
+                            @click="
+                                patientSearchQuery = '';
+                                patientSearchResults = [];
+                            "
                         >
                             <i class="pi pi-times text-xs"></i>
                         </button>
@@ -682,9 +647,12 @@ const handleCancelWithConfirm = (event, consultation) => {
 
                         <!-- Résultats -->
                         <div v-else-if="patientSearchResults.length" class="space-y-2">
-                            <div v-for="patient in patientSearchResults" :key="`search-${patient.id}`"
+                            <div
+                                v-for="patient in patientSearchResults"
+                                :key="`search-${patient.id}`"
                                 class="group flex items-center gap-3 rounded-xl bg-surface-50/50 p-3 transition-all hover:bg-purple-50/30 hover:shadow-md dark:bg-surface-800/30 dark:hover:bg-purple-900/20"
-                                @contextmenu.prevent="openPatientContextMenu($event, patient)">
+                                @contextmenu.prevent="openPatientContextMenu($event, patient)"
+                            >
                                 <div class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-purple-600 font-bold text-white shadow-md">
                                     {{ ((patient.prenom?.[0] ?? '') + (patient.nom?.[0] ?? 'P')).toUpperCase() }}
                                 </div>
@@ -698,20 +666,14 @@ const handleCancelWithConfirm = (event, consultation) => {
                                     </div>
                                 </div>
                                 <div class="flex flex-col items-end justify-between gap-1 self-stretch flex-shrink-0">
-                                    <i
-                                        v-if="hasPatientReliquat(patient)"
-                                        v-tooltip.top="reliquatTooltip(patient)"
-                                        class="pi pi-wallet text-xs text-red-500"
-                                    ></i>
+                                    <i v-if="hasPatientReliquat(patient)" v-tooltip.top="reliquatTooltip(patient)" class="pi pi-wallet text-xs text-red-500"></i>
                                     <span v-else class="h-3"></span>
                                     <div class="flex items-center gap-2 opacity-0 transition-opacity group-hover:opacity-100">
                                         <button
                                             :disabled="isConsultationCreateLoading(patient?.id)"
                                             :class="[
                                                 'flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600 transition-colors dark:bg-emerald-900/30 dark:text-emerald-400',
-                                                isConsultationCreateLoading(patient?.id)
-                                                    ? 'cursor-not-allowed opacity-60'
-                                                    : 'hover:bg-emerald-200'
+                                                isConsultationCreateLoading(patient?.id) ? 'cursor-not-allowed opacity-60' : 'hover:bg-emerald-200'
                                             ]"
                                             title="Nouvelle consultation"
                                             @click="emit('open-create-consultation-for-patient', patient)"
@@ -756,9 +718,12 @@ const handleCancelWithConfirm = (event, consultation) => {
 
                     <!-- Liste -->
                     <div v-else-if="newPatients.length" class="space-y-2">
-                        <div v-for="patient in newPatients" :key="patient.id"
+                        <div
+                            v-for="patient in newPatients"
+                            :key="patient.id"
                             class="group flex items-center gap-3 rounded-xl bg-gradient-to-r from-transparent to-transparent p-3 transition-all hover:bg-purple-50/30 hover:shadow-md dark:hover:bg-purple-900/10"
-                            @contextmenu.prevent="openPatientContextMenu($event, patient)">
+                            @contextmenu.prevent="openPatientContextMenu($event, patient)"
+                        >
                             <div class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-fuchsia-500 font-bold text-white shadow-md">
                                 {{ (patient.prenom?.[0] ?? '') + (patient.nom?.[0] ?? 'P') }}
                             </div>
@@ -778,20 +743,14 @@ const handleCancelWithConfirm = (event, consultation) => {
                                 </div>
                             </div>
                             <div class="flex flex-col items-end justify-between gap-1 self-stretch flex-shrink-0">
-                                <i
-                                    v-if="hasPatientReliquat(patient)"
-                                    v-tooltip.top="reliquatTooltip(patient)"
-                                    class="pi pi-wallet text-xs text-red-500"
-                                ></i>
+                                <i v-if="hasPatientReliquat(patient)" v-tooltip.top="reliquatTooltip(patient)" class="pi pi-wallet text-xs text-red-500"></i>
                                 <span v-else class="h-3"></span>
                                 <div class="flex items-center gap-2 opacity-0 transition-opacity group-hover:opacity-100">
                                     <button
                                         :disabled="isConsultationCreateLoading(patient?.id)"
                                         :class="[
                                             'flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600 transition-colors dark:bg-emerald-900/30 dark:text-emerald-400',
-                                            isConsultationCreateLoading(patient?.id)
-                                                ? 'cursor-not-allowed opacity-60'
-                                                : 'hover:bg-emerald-200'
+                                            isConsultationCreateLoading(patient?.id) ? 'cursor-not-allowed opacity-60' : 'hover:bg-emerald-200'
                                         ]"
                                         title="Nouvelle consultation"
                                         @click="emit('open-create-consultation-for-patient', patient)"
@@ -835,12 +794,7 @@ const handleCancelWithConfirm = (event, consultation) => {
                         <div class="flex items-center gap-2">
                             <ToggleSwitch v-model="showCompletedSecretary" />
                             <button
-                                :class="[
-                                    'flex h-8 w-8 items-center justify-center rounded-xl transition-all',
-                                    newestFirstSecretary
-                                        ? 'bg-primary-500 text-white shadow-md'
-                                        : 'bg-surface-100 text-surface-500 hover:bg-surface-200'
-                                ]"
+                                :class="['flex h-8 w-8 items-center justify-center rounded-xl transition-all', newestFirstSecretary ? 'bg-primary-500 text-white shadow-md' : 'bg-surface-100 text-surface-500 hover:bg-surface-200']"
                                 :title="newestFirstSecretary ? 'Plus récentes en haut' : 'Plus anciennes en haut'"
                                 @click="newestFirstSecretary = !newestFirstSecretary"
                             >
@@ -889,17 +843,27 @@ const handleCancelWithConfirm = (event, consultation) => {
                             <div class="rounded-2xl border border-surface-200 bg-white p-4 dark:border-surface-700 dark:bg-surface-900/50">
                                 <h4 class="text-sm font-semibold text-surface-900 dark:text-surface-50">État des factures</h4>
                                 <div class="mt-4 grid grid-cols-2 gap-3 text-sm">
-                                    <div class="rounded-xl bg-emerald-50 px-3 py-3 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-300">Payées: <strong>{{ dailyRevenueStats.statusCounts.paid }}</strong></div>
-                                    <div class="rounded-xl bg-amber-50 px-3 py-3 text-amber-700 dark:bg-amber-950/20 dark:text-amber-300">Partielles: <strong>{{ dailyRevenueStats.statusCounts.partial }}</strong></div>
-                                    <div class="rounded-xl bg-rose-50 px-3 py-3 text-rose-700 dark:bg-rose-950/20 dark:text-rose-300">Impayées: <strong>{{ dailyRevenueStats.statusCounts.unpaid }}</strong></div>
-                                    <div class="rounded-xl bg-surface-100 px-3 py-3 text-surface-700 dark:bg-surface-800 dark:text-surface-300">Vides non validées: <strong>{{ dailyRevenueStats.statusCounts.freeNotValidated }}</strong></div>
+                                    <div class="rounded-xl bg-emerald-50 px-3 py-3 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-300">
+                                        Payées: <strong>{{ dailyRevenueStats.statusCounts.paid }}</strong>
+                                    </div>
+                                    <div class="rounded-xl bg-amber-50 px-3 py-3 text-amber-700 dark:bg-amber-950/20 dark:text-amber-300">
+                                        Partielles: <strong>{{ dailyRevenueStats.statusCounts.partial }}</strong>
+                                    </div>
+                                    <div class="rounded-xl bg-rose-50 px-3 py-3 text-rose-700 dark:bg-rose-950/20 dark:text-rose-300">
+                                        Impayées: <strong>{{ dailyRevenueStats.statusCounts.unpaid }}</strong>
+                                    </div>
+                                    <div class="rounded-xl bg-surface-100 px-3 py-3 text-surface-700 dark:bg-surface-800 dark:text-surface-300">
+                                        Vides non validées: <strong>{{ dailyRevenueStats.statusCounts.freeNotValidated }}</strong>
+                                    </div>
                                 </div>
                             </div>
 
                             <div class="rounded-2xl border border-surface-200 bg-white p-4 dark:border-surface-700 dark:bg-surface-900/50">
                                 <h4 class="text-sm font-semibold text-surface-900 dark:text-surface-50">Assurances</h4>
                                 <div class="mt-4 grid grid-cols-1 gap-3 text-sm">
-                                    <div class="rounded-xl bg-sky-50 px-3 py-3 text-sky-700 dark:bg-sky-950/20 dark:text-sky-300">Parts patient encaissées: <strong>{{ formatFcfa(dailyRevenueStats.totalInsurance) }}</strong></div>
+                                    <div class="rounded-xl bg-sky-50 px-3 py-3 text-sky-700 dark:bg-sky-950/20 dark:text-sky-300">
+                                        Parts patient encaissées: <strong>{{ formatFcfa(dailyRevenueStats.totalInsurance) }}</strong>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -912,9 +876,7 @@ const handleCancelWithConfirm = (event, consultation) => {
                                     <strong class="mt-2 block text-lg text-surface-900 dark:text-surface-50">{{ formatFcfa(item.amount) }}</strong>
                                 </div>
                             </div>
-                            <div v-else class="mt-4 rounded-xl border border-dashed border-surface-300 px-4 py-5 text-sm text-surface-500 dark:border-surface-700 dark:text-surface-400">
-                                Aucun paiement enregistré aujourd'hui.
-                            </div>
+                            <div v-else class="mt-4 rounded-xl border border-dashed border-surface-300 px-4 py-5 text-sm text-surface-500 dark:border-surface-700 dark:text-surface-400">Aucun paiement enregistré aujourd'hui.</div>
                         </div>
                     </div>
                 </Dialog>
@@ -938,32 +900,38 @@ const handleCancelWithConfirm = (event, consultation) => {
                         <div class="absolute left-4 top-0 bottom-0 w-0.5 bg-gradient-to-b from-primary-300 via-primary-200 to-transparent dark:from-primary-600 dark:via-primary-700"></div>
 
                         <div class="space-y-3">
-                            <div v-for="(consultation, index) in secretaryRows" :key="consultation.id"
+                            <div
+                                v-for="(consultation, index) in secretaryRows"
+                                :key="consultation.id"
                                 @click="selectConsultation(consultation.id)"
                                 @dblclick="Number(consultation.state) !== 1 && emit('select-medical-workspace', consultation)"
-                                class="group relative flex gap-3 w-full cursor-pointer rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-primary-400">
-
+                                class="group relative flex gap-3 w-full cursor-pointer rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-primary-400"
+                            >
                                 <div class="relative z-10">
-                                    <div :class="[
-                                        'flex h-8 w-8 items-center justify-center rounded-full font-bold text-xs transition-all duration-200 shadow-md',
-                                        consultation.id === selectedConsultationId
-                                            ? 'bg-gradient-to-br from-primary-500 to-primary-600 text-white scale-110 ring-2 ring-primary-300 ring-offset-2'
-                                            : Number(consultation.state) === 1
-                                                ? 'bg-gradient-to-br from-emerald-500 to-emerald-600 text-white'
-                                                : 'bg-gradient-to-br from-surface-400 to-surface-500 text-white dark:from-surface-600 dark:to-surface-700'
-                                    ]">
+                                    <div
+                                        :class="[
+                                            'flex h-8 w-8 items-center justify-center rounded-full font-bold text-xs transition-all duration-200 shadow-md',
+                                            consultation.id === selectedConsultationId
+                                                ? 'bg-gradient-to-br from-primary-500 to-primary-600 text-white scale-110 ring-2 ring-primary-300 ring-offset-2'
+                                                : Number(consultation.state) === 1
+                                                  ? 'bg-gradient-to-br from-emerald-500 to-emerald-600 text-white'
+                                                  : 'bg-gradient-to-br from-surface-400 to-surface-500 text-white dark:from-surface-600 dark:to-surface-700'
+                                        ]"
+                                    >
                                         {{ index + 1 }}
                                     </div>
                                 </div>
 
-                                <div :class="[
-                                    'flex-1 rounded-xl border p-3 transition-all duration-200',
-                                    consultation.id === selectedConsultationId
-                                        ? 'border-primary-200 bg-gradient-to-r from-primary-50 to-transparent shadow-md dark:border-primary-800 dark:from-primary-950/30'
-                                        : Number(consultation.state) === 1
-                                            ? 'border-emerald-200 bg-emerald-50/30 opacity-75 dark:border-emerald-800 dark:bg-emerald-950/20'
-                                            : 'border-surface-200 bg-surface-50/30 hover:shadow-md hover:border-primary-200 dark:border-surface-700 dark:bg-surface-800/30'
-                                ]">
+                                <div
+                                    :class="[
+                                        'flex-1 rounded-xl border p-3 transition-all duration-200',
+                                        consultation.id === selectedConsultationId
+                                            ? 'border-primary-200 bg-gradient-to-r from-primary-50 to-transparent shadow-md dark:border-primary-800 dark:from-primary-950/30'
+                                            : Number(consultation.state) === 1
+                                              ? 'border-emerald-200 bg-emerald-50/30 opacity-75 dark:border-emerald-800 dark:bg-emerald-950/20'
+                                              : 'border-surface-200 bg-surface-50/30 hover:shadow-md hover:border-primary-200 dark:border-surface-700 dark:bg-surface-800/30'
+                                    ]"
+                                >
                                     <div class="flex items-center justify-between mb-1.5">
                                         <span class="font-mono text-[11px] text-surface-400">
                                             {{ formatTime(consultation.createdAt) }}
@@ -977,12 +945,12 @@ const handleCancelWithConfirm = (event, consultation) => {
                                                 <i class="pi pi-wallet text-[9px]"></i>
                                                 {{ formatFcfa(patientImpayeesAmount(consultation)) }}
                                             </span>
-                                            <span :class="[
-                                                'rounded-full px-2 py-0.5 text-[10px] font-medium',
-                                                Number(consultation.state) === 1
-                                                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400'
-                                                    : 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400'
-                                            ]">
+                                            <span
+                                                :class="[
+                                                    'rounded-full px-2 py-0.5 text-[10px] font-medium',
+                                                    Number(consultation.state) === 1 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400'
+                                                ]"
+                                            >
                                                 {{ Number(consultation.state) === 1 ? 'Terminé' : 'En attente' }}
                                             </span>
                                         </div>
@@ -995,22 +963,22 @@ const handleCancelWithConfirm = (event, consultation) => {
                                         <span v-if="consultation.motif" class="text-surface-300">· {{ consultation.motif }}</span>
                                     </p>
                                     <div class="flex items-center justify-between mt-2">
-                                        <button v-if="Number(consultation.state) === 0"
+                                        <button
+                                            v-if="Number(consultation.state) === 0"
                                             @click="(e) => handleCancelWithConfirm(e, consultation)"
-                                            class="rounded-lg bg-red-50 px-3 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400">
+                                            class="rounded-lg bg-red-50 px-3 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400"
+                                        >
                                             Annuler
                                         </button>
                                         <div class="flex items-center gap-2">
-                                            <span :class="[
-                                                'text-xs font-medium',
-                                                consultation?.factState === 1 ? 'text-emerald-600' :
-                                                consultation?.factState === 0 ? 'text-sky-600' : 'text-surface-400'
-                                            ]">
+                                            <span :class="['text-xs font-medium', consultation?.factState === 1 ? 'text-emerald-600' : consultation?.factState === 0 ? 'text-sky-600' : 'text-surface-400']">
                                                 {{ formatFactureState(consultation).label }}
                                             </span>
-                                            <button v-if="isConsultationPayante(consultation)"
+                                            <button
+                                                v-if="isConsultationPayante(consultation)"
                                                 @click.stop="printConsultationTicket(consultation)"
-                                                class="flex items-center gap-1 rounded-lg bg-primary-50 px-2 py-1 text-[10px] font-medium text-primary-600 transition-colors hover:bg-primary-100 dark:bg-primary-900/30 dark:text-primary-400">
+                                                class="flex items-center gap-1 rounded-lg bg-primary-50 px-2 py-1 text-[10px] font-medium text-primary-600 transition-colors hover:bg-primary-100 dark:bg-primary-900/30 dark:text-primary-400"
+                                            >
                                                 <i class="pi pi-print text-xs"></i>
                                                 Ticket
                                             </button>
@@ -1039,10 +1007,7 @@ const handleCancelWithConfirm = (event, consultation) => {
                     <div class="flex items-center justify-between gap-2">
                         <h3 class="text-base font-semibold text-surface-900 dark:text-surface-50">Détails</h3>
                         <div class="flex items-center gap-2">
-                            <span
-                                v-if="currentConsultation && hasPriorReliquat"
-                                class="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-1 text-[10px] font-semibold text-red-700 dark:bg-red-900/50 dark:text-red-300"
-                            >
+                            <span v-if="currentConsultation && hasPriorReliquat" class="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-1 text-[10px] font-semibold text-red-700 dark:bg-red-900/50 dark:text-red-300">
                                 <i class="pi pi-wallet text-[10px]"></i>
                                 Reliquat {{ formatFcfa(selectedPriorReliquatTotal) }}
                             </span>
@@ -1056,17 +1021,21 @@ const handleCancelWithConfirm = (event, consultation) => {
 
                 <div v-if="currentConsultation" class="min-h-0 flex-1 space-y-4 overflow-y-auto p-4 scrollbar-thin">
                     <!-- Carte patient -->
-                    <div :class="[
-                        'rounded-xl border p-4 transition-all',
-                        Number(currentConsultation.state) === 1
-                            ? 'border-emerald-200 bg-gradient-to-br from-emerald-50 to-transparent dark:border-emerald-800 dark:from-emerald-950/30'
-                            : 'border-primary-200 bg-gradient-to-br from-primary-50 to-transparent dark:border-primary-800 dark:from-primary-950/30'
-                    ]">
+                    <div
+                        :class="[
+                            'rounded-xl border p-4 transition-all',
+                            Number(currentConsultation.state) === 1
+                                ? 'border-emerald-200 bg-gradient-to-br from-emerald-50 to-transparent dark:border-emerald-800 dark:from-emerald-950/30'
+                                : 'border-primary-200 bg-gradient-to-br from-primary-50 to-transparent dark:border-primary-800 dark:from-primary-950/30'
+                        ]"
+                    >
                         <div class="flex items-start gap-3">
-                            <div :class="[
-                                'flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full text-white font-bold shadow-lg',
-                                Number(currentConsultation.state) === 1 ? 'bg-gradient-to-br from-emerald-500 to-emerald-600' : 'bg-gradient-to-br from-primary-500 to-primary-600'
-                            ]">
+                            <div
+                                :class="[
+                                    'flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full text-white font-bold shadow-lg',
+                                    Number(currentConsultation.state) === 1 ? 'bg-gradient-to-br from-emerald-500 to-emerald-600' : 'bg-gradient-to-br from-primary-500 to-primary-600'
+                                ]"
+                            >
                                 {{ patientLabel(currentConsultation).charAt(0).toUpperCase() }}
                             </div>
                             <div class="flex-1 min-w-0">
@@ -1076,23 +1045,18 @@ const handleCancelWithConfirm = (event, consultation) => {
                                 <p class="text-xs text-surface-400 truncate mt-0.5">
                                     {{ medecinLabel(currentConsultation) }}
                                 </p>
-                                <p class="text-[11px] text-surface-400 mt-1">
-                                    <i class="pi pi-clock mr-1"></i>{{ formatTime(currentConsultation.createdAt) }}
-                                </p>
-                                <p
-                                    v-if="hasPriorReliquat"
-                                    class="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-red-50 px-2 py-1 text-xs font-semibold text-red-700 dark:bg-red-950/40 dark:text-red-300"
-                                >
+                                <p class="text-[11px] text-surface-400 mt-1"><i class="pi pi-clock mr-1"></i>{{ formatTime(currentConsultation.createdAt) }}</p>
+                                <p v-if="hasPriorReliquat" class="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-red-50 px-2 py-1 text-xs font-semibold text-red-700 dark:bg-red-950/40 dark:text-red-300">
                                     <i class="pi pi-exclamation-circle text-[11px]"></i>
                                     Reliquats antérieurs : {{ formatFcfa(selectedPriorReliquatTotal) }}
                                 </p>
                             </div>
-                            <span :class="[
-                                'rounded-full px-2 py-1 text-[10px] font-medium',
-                                Number(currentConsultation.state) === 1
-                                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400'
-                                    : 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400'
-                            ]">
+                            <span
+                                :class="[
+                                    'rounded-full px-2 py-1 text-[10px] font-medium',
+                                    Number(currentConsultation.state) === 1 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400'
+                                ]"
+                            >
                                 {{ Number(currentConsultation.state) === 1 ? 'Terminé' : 'En cours' }}
                             </span>
                         </div>
@@ -1100,8 +1064,10 @@ const handleCancelWithConfirm = (event, consultation) => {
 
                     <!-- Actions -->
                     <div class="grid grid-cols-2 gap-2">
-                        <button @click="emit('open-details', currentConsultation)"
-                            class="rounded-xl border border-surface-200 bg-surface-50 px-3 py-2 text-xs font-medium text-surface-600 transition-all hover:bg-surface-100 hover:shadow-sm dark:border-surface-700 dark:bg-surface-800/50">
+                        <button
+                            @click="emit('open-details', currentConsultation)"
+                            class="rounded-xl border border-surface-200 bg-surface-50 px-3 py-2 text-xs font-medium text-surface-600 transition-all hover:bg-surface-100 hover:shadow-sm dark:border-surface-700 dark:bg-surface-800/50"
+                        >
                             <i class="pi pi-eye mr-1"></i>Détails
                         </button>
                         <button
@@ -1111,14 +1077,18 @@ const handleCancelWithConfirm = (event, consultation) => {
                         >
                             <i class="pi pi-address-book mr-1"></i>Ouvrir dossier
                         </button>
-                        <button v-if="allowReceptionQuickClose && Number(currentConsultation.state) !== 1"
+                        <button
+                            v-if="allowReceptionQuickClose && Number(currentConsultation.state) !== 1"
                             @click="emit('open-quick-dialog', currentConsultation)"
-                            class="rounded-xl bg-amber-500 px-3 py-2 text-xs font-medium text-white shadow-md transition-all hover:bg-amber-600">
+                            class="rounded-xl bg-amber-500 px-3 py-2 text-xs font-medium text-white shadow-md transition-all hover:bg-amber-600"
+                        >
                             <i class="pi pi-bolt mr-1"></i>Clôture rapide
                         </button>
-                        <button v-if="(isAdmin || isMedecin) && Number(currentConsultation.state) !== 1"
+                        <button
+                            v-if="(isAdmin || isMedecin) && Number(currentConsultation.state) !== 1"
                             @click="emit('select-medical-workspace', currentConsultation)"
-                            class="rounded-xl border border-primary-500 bg-primary-50 px-3 py-2 text-xs font-medium text-primary-600 transition-all hover:bg-primary-100 dark:bg-primary-950/30">
+                            class="rounded-xl border border-primary-500 bg-primary-50 px-3 py-2 text-xs font-medium text-primary-600 transition-all hover:bg-primary-100 dark:bg-primary-950/30"
+                        >
                             <i class="pi pi-folder-open mr-1"></i>Ouvrir fiche médicale du patient
                         </button>
                     </div>
@@ -1127,12 +1097,18 @@ const handleCancelWithConfirm = (event, consultation) => {
                     <div v-if="hasInvoiceContext" class="rounded-xl border border-surface-200 bg-surface-50/50 p-4 dark:border-surface-700 dark:bg-surface-800/30">
                         <div class="flex items-center justify-between mb-3">
                             <span class="text-sm font-semibold text-surface-700 dark:text-surface-300">Facture</span>
-                            <span :class="[
-                                'rounded-full px-2 py-1 text-[10px] font-medium',
-                                isPaidInvoice ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400' :
-                                isValidatedFreeInvoice ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400' :
-                                isFreeInvoice ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400'
-                            ]">
+                            <span
+                                :class="[
+                                    'rounded-full px-2 py-1 text-[10px] font-medium',
+                                    isPaidInvoice
+                                        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400'
+                                        : isValidatedFreeInvoice
+                                          ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400'
+                                          : isFreeInvoice
+                                            ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-400'
+                                            : 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400'
+                                ]"
+                            >
                                 {{ isPaidInvoice ? 'Réglée' : isValidatedFreeInvoice ? 'Validée' : isFreeInvoice ? 'Gratuite' : 'En attente' }}
                             </span>
                         </div>
@@ -1149,23 +1125,31 @@ const handleCancelWithConfirm = (event, consultation) => {
                             </div>
                         </div>
                         <div class="grid grid-cols-2 gap-2 mt-4">
-                            <button v-if="!isPaidInvoice && !isFreeInvoice"
+                            <button
+                                v-if="!isPaidInvoice && !isFreeInvoice"
                                 @click="emit('open-caisse-pay')"
-                                class="rounded-xl bg-emerald-500 px-3 py-2 text-xs font-medium text-white shadow-md transition-all hover:bg-emerald-600 dark:bg-emerald-700 dark:hover:bg-emerald-800 dark:text-white">
+                                class="rounded-xl bg-emerald-500 px-3 py-2 text-xs font-medium text-white shadow-md transition-all hover:bg-emerald-600 dark:bg-emerald-700 dark:hover:bg-emerald-800 dark:text-white"
+                            >
                                 <i class="pi pi-credit-card mr-1"></i>Régler
                             </button>
-                            <button v-if="isFreeInvoice && !isValidatedFreeInvoice"
+                            <button
+                                v-if="isFreeInvoice && !isValidatedFreeInvoice"
                                 @click="emit('open-caisse-validate')"
-                                class="rounded-xl bg-blue-500 px-3 py-2 text-xs font-medium text-white shadow-md transition-all hover:bg-blue-600 dark:bg-blue-700 dark:hover:bg-blue-800 dark:text-white">
+                                class="rounded-xl bg-blue-500 px-3 py-2 text-xs font-medium text-white shadow-md transition-all hover:bg-blue-600 dark:bg-blue-700 dark:hover:bg-blue-800 dark:text-white"
+                            >
                                 <i class="pi pi-check mr-1"></i>Valider
                             </button>
-                            <button v-if="canModifyInvoice"
+                            <button
+                                v-if="canModifyInvoice"
                                 @click="emit('open-caisse-modify')"
-                                class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700 transition-all hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
+                                class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700 transition-all hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300"
+                            >
                                 <i class="pi pi-file-edit mr-1"></i>Modifier
                             </button>
-                            <button @click="emit('open-caisse-preview')"
-                                class="rounded-xl border border-surface-200 bg-white px-3 py-2 text-xs font-medium text-surface-600 transition-all hover:bg-surface-50 dark:border-surface-700 dark:bg-surface-800 dark:text-surface-400">
+                            <button
+                                @click="emit('open-caisse-preview')"
+                                class="rounded-xl border border-surface-200 bg-white px-3 py-2 text-xs font-medium text-surface-600 transition-all hover:bg-surface-50 dark:border-surface-700 dark:bg-surface-800 dark:text-surface-400"
+                            >
                                 <i class="pi pi-eye mr-1"></i>Aperçu
                             </button>
                         </div>
@@ -1175,13 +1159,14 @@ const handleCancelWithConfirm = (event, consultation) => {
                     <div v-if="selectedInvoicePayments.length" class="space-y-2">
                         <p class="text-sm font-semibold text-surface-700 dark:text-surface-400">Paiements effectués</p>
                         <div class="space-y-2">
-                            <div v-for="payment in selectedInvoicePayments" :key="payment.id"
-                                class="flex items-center justify-between rounded-xl border border-surface-200 bg-surface-50/50 p-3 dark:border-surface-700 dark:bg-surface-800/30">
+                            <div v-for="payment in selectedInvoicePayments" :key="payment.id" class="flex items-center justify-between rounded-xl border border-surface-200 bg-surface-50/50 p-3 dark:border-surface-700 dark:bg-surface-800/30">
                                 <div class="flex items-center gap-3 min-w-0">
-                                    <div :class="[
-                                        'flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-white',
-                                        payment.status === 'validated' ? 'bg-gradient-to-br from-emerald-500 to-emerald-600' : 'bg-gradient-to-br from-amber-500 to-amber-600'
-                                    ]">
+                                    <div
+                                        :class="[
+                                            'flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-white',
+                                            payment.status === 'validated' ? 'bg-gradient-to-br from-emerald-500 to-emerald-600' : 'bg-gradient-to-br from-amber-500 to-amber-600'
+                                        ]"
+                                    >
                                         <i class="pi pi-wallet text-xs"></i>
                                     </div>
                                     <div class="min-w-0">
@@ -1190,17 +1175,12 @@ const handleCancelWithConfirm = (event, consultation) => {
                                     </div>
                                 </div>
                                 <div class="text-right">
-                                    <span :class="[
-                                        'rounded-full px-2 py-0.5 text-[10px] font-medium',
-                                        payment.status === 'validated' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
-                                    ]">
+                                    <span :class="['rounded-full px-2 py-0.5 text-[10px] font-medium', payment.status === 'validated' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700']">
                                         {{ payment.status === 'validated' ? 'Validé' : 'En attente' }}
                                     </span>
                                     <div class="mt-1 flex items-center justify-end gap-1">
                                         <span class="text-[10px] text-surface-400">{{ formatTime(payment.date) }}</span>
-                                        <button v-if="payment.status === 'validated'"
-                                            @click="printPaymentReceipt(payment.id)"
-                                            class="text-primary-500 hover:text-primary-600">
+                                        <button v-if="payment.status === 'validated'" @click="printPaymentReceipt(payment.id)" class="text-primary-500 hover:text-primary-600">
                                             <i class="pi pi-receipt text-xs"></i>
                                         </button>
                                     </div>
@@ -1210,10 +1190,7 @@ const handleCancelWithConfirm = (event, consultation) => {
                     </div>
 
                     <!-- Reliquats antérieurs (hors facture de la consultation sélectionnée) -->
-                    <div
-                        v-if="hasPriorReliquat"
-                        class="rounded-xl border-2 border-red-200 bg-red-50/70 p-4 dark:border-red-800 dark:bg-red-950/30"
-                    >
+                    <div v-if="hasPriorReliquat" class="rounded-xl border-2 border-red-200 bg-red-50/70 p-4 dark:border-red-800 dark:bg-red-950/30">
                         <div class="mb-3 flex items-center justify-between gap-2">
                             <div class="flex items-center gap-2">
                                 <i class="pi pi-exclamation-circle text-red-600 dark:text-red-400"></i>
@@ -1224,11 +1201,7 @@ const handleCancelWithConfirm = (event, consultation) => {
                             </span>
                         </div>
                         <div class="space-y-2">
-                            <div
-                                v-for="invoice in selectedPriorUnpaidInvoices"
-                                :key="`unpaid-${invoice.id}`"
-                                class="rounded-lg border border-red-200/80 bg-white/80 p-3 dark:border-red-800/60 dark:bg-surface-900/40"
-                            >
+                            <div v-for="invoice in selectedPriorUnpaidInvoices" :key="`unpaid-${invoice.id}`" class="rounded-lg border border-red-200/80 bg-white/80 p-3 dark:border-red-800/60 dark:bg-surface-900/40">
                                 <div class="flex items-start justify-between gap-3">
                                     <div class="min-w-0">
                                         <p class="text-xs font-medium text-surface-600 dark:text-surface-300">
@@ -1238,9 +1211,7 @@ const handleCancelWithConfirm = (event, consultation) => {
                                         <p class="mt-0.5 text-[11px] text-surface-400">
                                             {{ formatDateTime(invoice.date) }}
                                         </p>
-                                        <p class="mt-1 text-[11px] text-surface-500">
-                                            Montant patient : {{ formatFcfa(invoice.montantPatient) }}
-                                        </p>
+                                        <p class="mt-1 text-[11px] text-surface-500">Montant patient : {{ formatFcfa(invoice.montantPatient) }}</p>
                                     </div>
                                     <div class="text-right flex-shrink-0">
                                         <p class="text-[10px] uppercase tracking-wide text-red-500">Reste</p>

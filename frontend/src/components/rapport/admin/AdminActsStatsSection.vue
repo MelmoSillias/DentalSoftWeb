@@ -68,13 +68,7 @@ function printSection() {
             </div>
             <Button label="Imprimer" icon="pi pi-print" outlined size="small" @click="printSection" />
         </div>
-        <ValueListCard
-            title="Répartition des soins"
-            :items="actsStats"
-            :loading="loading"
-            :show-chart="showChart"
-            empty-label="Aucun soin enregistré."
-        >
+        <ValueListCard title="Répartition des soins" :items="actsStats" :loading="loading" :show-chart="showChart" empty-label="Aucun soin enregistré.">
             <template #actions>
                 <ToggleButton v-model="showChart" onLabel="Graphique" offLabel="Données" onIcon="pi pi-chart-bar" offIcon="pi pi-list" />
             </template>

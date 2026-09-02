@@ -180,14 +180,8 @@ export function useSmsAdminSettings(token, toast, extractApiError) {
 
         smsLoading.value = true;
         try {
-            const [smsSettings, publicSettings] = await Promise.all([
-                fetchSmsSettings(token),
-                fetchPublicGeneralSettings(token).catch(() => ({}))
-            ]);
-            previewVariables.cabinet_name = publicSettings.smsCabinetName
-                || cabinetConfig.smsCabinetName
-                || cabinetConfig.displayName
-                || 'Cabinet dentaire';
+            const [smsSettings, publicSettings] = await Promise.all([fetchSmsSettings(token), fetchPublicGeneralSettings(token).catch(() => ({}))]);
+            previewVariables.cabinet_name = publicSettings.smsCabinetName || cabinetConfig.smsCabinetName || cabinetConfig.displayName || 'Cabinet dentaire';
             smsConfig.provider = smsSettings.provider || 'orange';
             smsConfig.enabled = Boolean(smsSettings.enabled);
             smsConfig.clientId = smsSettings.clientId || '';
@@ -213,21 +207,16 @@ export function useSmsAdminSettings(token, toast, extractApiError) {
             const to = smsStats.period.to;
             const statsParams = from && to ? { from, to } : {};
 
-            const [stats, logs, queue, templates, overview] = await Promise.all([
-                fetchSmsStats(token, statsParams),
-                fetchSmsLogs({ limit: 50 }, token),
-                fetchSmsQueue({ limit: 100 }, token),
-                fetchSmsTemplates(token),
-                fetchSmsProviderOverview(token)
-            ]);
+            const [stats, logs, queue, templates, overview] = await Promise.all([fetchSmsStats(token, statsParams), fetchSmsLogs({ limit: 50 }, token), fetchSmsQueue({ limit: 100 }, token), fetchSmsTemplates(token), fetchSmsProviderOverview(token)]);
 
             applyStatsPayload(stats);
             smsLogs.value = logs;
             smsQueue.value = queue;
             smsTemplates.value = templates;
-            providerOverview.value = overview && typeof overview === 'object'
-                ? { success: Boolean(overview.success), message: overview.message || '', contracts: Array.isArray(overview.contracts) ? overview.contracts : [] }
-                : { success: false, message: '', contracts: [] };
+            providerOverview.value =
+                overview && typeof overview === 'object'
+                    ? { success: Boolean(overview.success), message: overview.message || '', contracts: Array.isArray(overview.contracts) ? overview.contracts : [] }
+                    : { success: false, message: '', contracts: [] };
             applyProviderOverview(overview);
             if (templates.length > 0 && !selectedTemplateCode.value) {
                 selectedTemplateCode.value = templates[0].code;
@@ -274,25 +263,26 @@ export function useSmsAdminSettings(token, toast, extractApiError) {
     const saveSmsConfigAction = async () => {
         smsSaving.value = true;
         try {
-            const res = await saveSmsSettings({
-                provider: smsConfig.provider,
-                enabled: smsConfig.enabled,
-                clientId: smsConfig.clientId,
-                clientSecret: smsConfig.clientSecret,
-                senderAddress: smsConfig.senderAddress,
-                senderName: smsConfig.senderName,
-                approvedSenderNames: smsConfig.approvedSenderNames,
-                patientPreferenceBypass: smsConfig.patientPreferenceBypass,
-                baseUrl: smsConfig.baseUrl,
-                oauthUrl: smsConfig.oauthUrl,
-                webhookBaseUrl: smsConfig.webhookBaseUrl,
-                callbackNotifyType: smsConfig.callbackNotifyType
-            }, token);
+            const res = await saveSmsSettings(
+                {
+                    provider: smsConfig.provider,
+                    enabled: smsConfig.enabled,
+                    clientId: smsConfig.clientId,
+                    clientSecret: smsConfig.clientSecret,
+                    senderAddress: smsConfig.senderAddress,
+                    senderName: smsConfig.senderName,
+                    approvedSenderNames: smsConfig.approvedSenderNames,
+                    patientPreferenceBypass: smsConfig.patientPreferenceBypass,
+                    baseUrl: smsConfig.baseUrl,
+                    oauthUrl: smsConfig.oauthUrl,
+                    webhookBaseUrl: smsConfig.webhookBaseUrl,
+                    callbackNotifyType: smsConfig.callbackNotifyType
+                },
+                token
+            );
             smsConfig.clientSecret = '';
             const callbackRegistration = res?.callbackRegistration;
-            const detail = callbackRegistration
-                ? `Configuration sauvegardée. Callback: ${callbackRegistration.success ? 'enregistré' : callbackRegistration.message || 'non enregistré'}.`
-                : 'Configuration sauvegardée.';
+            const detail = callbackRegistration ? `Configuration sauvegardée. Callback: ${callbackRegistration.success ? 'enregistré' : callbackRegistration.message || 'non enregistré'}.` : 'Configuration sauvegardée.';
             toast.add({ severity: 'success', summary: 'SMS', detail, life: 3500 });
         } catch (error) {
             logAppError('useSmsAdminSettings', error);
@@ -334,10 +324,10 @@ export function useSmsAdminSettings(token, toast, extractApiError) {
             lastTestResult.value = {
                 kind: 'send',
                 success: Boolean(res.success),
-                message: res.success ? 'SMS envoyé.' : (res.error || 'Échec.')
+                message: res.success ? 'SMS envoyé.' : res.error || 'Échec.'
             };
             lastTestAt.value = new Date();
-            toast.add({ severity: res.success ? 'success' : 'warn', summary: 'SMS test', detail: res.success ? 'SMS envoyé.' : (res.error || 'Échec.'), life: 3000 });
+            toast.add({ severity: res.success ? 'success' : 'warn', summary: 'SMS test', detail: res.success ? 'SMS envoyé.' : res.error || 'Échec.', life: 3000 });
             await refreshSmsData();
         } catch (error) {
             logAppError('useSmsAdminSettings', error);
@@ -384,7 +374,7 @@ export function useSmsAdminSettings(token, toast, extractApiError) {
         }
         try {
             const res = await sendManualSms({ phone: manualSms.phone, message: manualSms.message }, token);
-            toast.add({ severity: res.success ? 'success' : 'warn', summary: 'SMS manuel', detail: res.success ? 'Ajouté à la file.' : (res.error || 'Échec.'), life: 3000 });
+            toast.add({ severity: res.success ? 'success' : 'warn', summary: 'SMS manuel', detail: res.success ? 'Ajouté à la file.' : res.error || 'Échec.', life: 3000 });
             await refreshSmsData();
         } catch (error) {
             logAppError('useSmsAdminSettings', error);
@@ -403,15 +393,13 @@ export function useSmsAdminSettings(token, toast, extractApiError) {
                 phone: queuedSms.phone,
                 message: queuedSms.message,
                 sendAt: queuedSms.sendAt instanceof Date ? queuedSms.sendAt.toISOString() : null,
-                recurrence: queuedSms.recurrence,
+                recurrence: queuedSms.recurrence
             };
             const res = await sendManualSms(payload, token);
             toast.add({
                 severity: res.success ? 'success' : 'warn',
                 summary: 'Programmation SMS',
-                detail: res.success
-                    ? `${res.queuedCount || 1} SMS programmé(s).`
-                    : (res.error || 'Programmation impossible.'),
+                detail: res.success ? `${res.queuedCount || 1} SMS programmé(s).` : res.error || 'Programmation impossible.',
                 life: 3500
             });
             if (res.success) {

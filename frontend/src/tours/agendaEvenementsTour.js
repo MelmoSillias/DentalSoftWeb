@@ -40,24 +40,22 @@ function buildOverviewSteps(ctx) {
 
 export const agendaEvenementsRegistry = createTourRegistry(GROUP, TASKS, {
     overview: buildOverviewSteps,
-    'create-event': (ctx) => normalizeTourSteps([
-        {
-            group: GROUP,
-            target: '[data-tour="agenda-events.create"]',
-            title: 'Nouvel evenement',
-            content: 'Cliquez sur ce bouton pour ouvrir le formulaire de creation.'
-        },
-        {
-            group: GROUP,
-            target: '[data-tour="agenda-events.actions"]',
-            title: 'Formulaire evenement',
-            content: 'Renseignez le titre, la date, la duree et les participants avant validation.',
-            beforeEnter: async () => openDialogStep(
-                () => ctx.openCreateDialog?.(),
-                ctx.closeAllDialogs
-            )
-        }
-    ]),
+    'create-event': (ctx) =>
+        normalizeTourSteps([
+            {
+                group: GROUP,
+                target: '[data-tour="agenda-events.create"]',
+                title: 'Nouvel evenement',
+                content: 'Cliquez sur ce bouton pour ouvrir le formulaire de creation.'
+            },
+            {
+                group: GROUP,
+                target: '[data-tour="agenda-events.actions"]',
+                title: 'Formulaire evenement',
+                content: 'Renseignez le titre, la date, la duree et les participants avant validation.',
+                beforeEnter: async () => openDialogStep(() => ctx.openCreateDialog?.(), ctx.closeAllDialogs)
+            }
+        ]),
     'manage-events': (ctx) => {
         const steps = [
             {
@@ -74,10 +72,7 @@ export const agendaEvenementsRegistry = createTourRegistry(GROUP, TASKS, {
                 target: '[data-tour="agenda-events.actions"]',
                 title: 'Ouvrir les actions contextuelles',
                 content: 'Un clic droit sur un evenement ouvre les actions de validation ou suppression.',
-                beforeEnter: async () => openDialogStep(
-                    () => ctx.openActionsDialog?.(),
-                    ctx.closeAllDialogs
-                )
+                beforeEnter: async () => openDialogStep(() => ctx.openActionsDialog?.(), ctx.closeAllDialogs)
             });
         } else {
             steps.push({

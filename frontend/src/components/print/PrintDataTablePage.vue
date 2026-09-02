@@ -1,3 +1,19 @@
+<script setup>
+import PrintA4Page from './PrintA4Page.vue';
+import PrintDocumentHeader from './PrintDocumentHeader.vue';
+import logoImg from '@/assets/logo.png';
+
+defineProps({
+    title: { type: String, default: 'Export' },
+    subtitle: { type: String, default: '' },
+    date: { type: [String, Date], default: '' },
+    docId: { type: [String, Number], default: '' },
+    columns: { type: Array, default: () => [] },
+    rows: { type: Array, default: () => [] },
+    logoSrc: { type: String, default: logoImg }
+});
+</script>
+
 <template>
     <PrintA4Page :logo-src="logoSrc">
         <template #header>
@@ -27,22 +43,6 @@
         </table>
     </PrintA4Page>
 </template>
-
-<script setup>
-import PrintA4Page from './PrintA4Page.vue';
-import PrintDocumentHeader from './PrintDocumentHeader.vue';
-import logoImg from '@/assets/logo.png';
-
-defineProps({
-    title: { type: String, default: 'Export' },
-    subtitle: { type: String, default: '' },
-    date: { type: [String, Date], default: '' },
-    docId: { type: [String, Number], default: '' },
-    columns: { type: Array, default: () => [] },
-    rows: { type: Array, default: () => [] },
-    logoSrc: { type: String, default: logoImg }
-});
-</script>
 
 <style scoped>
 .subtitle {

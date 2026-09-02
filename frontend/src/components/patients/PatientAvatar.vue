@@ -58,12 +58,14 @@ const resolvedInitials = computed(() => {
         return `${prenom?.[0] ?? ''}${nom?.[0] ?? ''}`.toUpperCase() || '--';
     }
 
-    return fullname
-        .split(' ')
-        .map((part) => part?.[0] ?? '')
-        .join('')
-        .toUpperCase()
-        .slice(0, 2) || '--';
+    return (
+        fullname
+            .split(' ')
+            .map((part) => part?.[0] ?? '')
+            .join('')
+            .toUpperCase()
+            .slice(0, 2) || '--'
+    );
 });
 
 const photoSource = computed(() => {
@@ -81,20 +83,14 @@ const photoSource = computed(() => {
 
 const insuranceProfile = computed(() => props.patient?.insuranceProfile || null);
 const insuranceAssurance = computed(() => insuranceProfile.value?.assurance || null);
-const hasInsurance = computed(() => Boolean(
-    insuranceProfile.value?.enabled
-    && (insuranceAssurance.value?.nom || insuranceAssurance.value?.code || insuranceProfile.value?.assuranceCode)
-));
+const hasInsurance = computed(() => Boolean(insuranceProfile.value?.enabled && (insuranceAssurance.value?.nom || insuranceAssurance.value?.code || insuranceProfile.value?.assuranceCode)));
 const insuranceLabel = computed(() => insuranceAssurance.value?.nom || insuranceAssurance.value?.code || insuranceProfile.value?.assuranceCode || 'Assurance');
 const insuranceTooltip = computed(() => {
     if (!hasInsurance.value) {
         return '';
     }
 
-    const lines = [
-        `Assurance: ${insuranceLabel.value}`,
-        `Couverture: ${Number(insuranceProfile.value?.coverageRate ?? 0) || 0} %`
-    ];
+    const lines = [`Assurance: ${insuranceLabel.value}`, `Couverture: ${Number(insuranceProfile.value?.coverageRate ?? 0) || 0} %`];
 
     const formData = insuranceProfile.value?.formData || {};
     const cardNumber = formData.beneficiaireNumero || formData.assureNumero || formData.patientMatricule || formData.salarieMatricule;
@@ -108,14 +104,7 @@ const insuranceTooltip = computed(() => {
 
 <template>
     <div class="relative inline-flex shrink-0">
-        <div
-            :class="[
-                sizeClass,
-                roundedClass,
-                'overflow-hidden flex items-center justify-center',
-                photoSource ? 'bg-surface-100 dark:bg-surface-700' : fallbackClass
-            ]"
-        >
+        <div :class="[sizeClass, roundedClass, 'overflow-hidden flex items-center justify-center', photoSource ? 'bg-surface-100 dark:bg-surface-700' : fallbackClass]">
             <img v-if="photoSource" :src="photoSource" :alt="alt" class="h-full w-full object-cover" />
             <span v-else :class="textClass">{{ resolvedInitials }}</span>
         </div>

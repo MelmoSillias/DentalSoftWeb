@@ -12,4 +12,3 @@ const { statusList } = useRdvStatus();
         </div>
     </div>
 </template>
-

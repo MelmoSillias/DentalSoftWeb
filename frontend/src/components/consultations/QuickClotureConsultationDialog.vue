@@ -77,20 +77,10 @@ const isAdmin = computed(() => Boolean(auth.user?.roles?.includes('ROLE_ADMIN'))
 const isMedecin = computed(() => Boolean(auth.user?.roles?.includes('ROLE_MEDECIN')));
 const isReception = computed(() => Boolean(auth.user?.roles?.includes('ROLE_RECEPTION') || auth.user?.roles?.includes('ROLE_RECEPTIONNISTE')));
 
-const requiresDoctorPassword = computed(() => (
-    !isConsultationsTourMockEnabled()
-    && isReception.value
-    && !isAdmin.value
-    && !isMedecin.value
-    && !allowReceptionBypassMedecinPasswordOnQuickClose.value
-));
+const requiresDoctorPassword = computed(() => !isConsultationsTourMockEnabled() && isReception.value && !isAdmin.value && !isMedecin.value && !allowReceptionBypassMedecinPasswordOnQuickClose.value);
 const canAccessForm = computed(() => !requiresDoctorPassword.value || passwordValidated.value);
 const hasSelectedMedecin = computed(() => Number.isFinite(Number(form.value?.medecinId)) && Number(form.value?.medecinId) > 0);
-const shouldUnlockMedecinSelection = computed(() => (
-    requireMedecinOnCreation.value === false
-    && !hasSelectedMedecin.value
-    && (isAdmin.value || isReception.value)
-));
+const shouldUnlockMedecinSelection = computed(() => requireMedecinOnCreation.value === false && !hasSelectedMedecin.value && (isAdmin.value || isReception.value));
 
 const patientLabel = computed(() => {
     const p = props.consultation?.patient;
@@ -113,9 +103,7 @@ const resolveConnectedMedecinId = () => {
     if (Number.isFinite(directId) && directId > 0) return directId;
 
     const userName = [user.prenom, user.nom].filter(Boolean).join(' ').trim();
-    const candidates = [userName, user.name, user.fullName, user.username]
-        .filter(Boolean)
-        .map(normalizeText);
+    const candidates = [userName, user.name, user.fullName, user.username].filter(Boolean).map(normalizeText);
 
     const foundByName = (medecins.value || []).find((m) => {
         const label = normalizeText(m.label);
@@ -149,12 +137,7 @@ const loadQuickData = async () => {
     allowReceptionBypassMedecinPasswordOnQuickClose.value = false;
 
     try {
-        const [meds, infs, salleItems, settings] = await Promise.all([
-            medecinsStore.load(token),
-            fetchInfirmiers(token),
-            fetchSalles(token),
-            fetchPublicGeneralSettings(token)
-        ]);
+        const [meds, infs, salleItems, settings] = await Promise.all([medecinsStore.load(token), fetchInfirmiers(token), fetchSalles(token), fetchPublicGeneralSettings(token)]);
 
         allowReceptionBypassMedecinPasswordOnQuickClose.value = settings?.allowReceptionBypassMedecinPasswordOnQuickClose === true;
         requireMedecinOnCreation.value = settings?.requireMedecinOnConsultationCreation !== false;
@@ -201,7 +184,7 @@ const loadQuickData = async () => {
 const buildPayload = () => ({
     ...form.value,
     medecinId: form.value?.medecinId ? Number(form.value.medecinId) : null,
-    infirmierId: Array.isArray(form.value.infirmierIds) ? form.value.infirmierIds[0] ?? null : form.value.infirmierIds
+    infirmierId: Array.isArray(form.value.infirmierIds) ? (form.value.infirmierIds[0] ?? null) : form.value.infirmierIds
 });
 
 const handleSave = async ({ silent = false } = {}) => {
@@ -323,27 +306,10 @@ watch(
                     <div class="flex items-start gap-3">
                         <i class="pi pi-shield text-amber-600 mt-1"></i>
                         <div class="flex-1 space-y-3">
-                            <p class="text-sm text-amber-900 dark:text-amber-100 font-medium">
-                                Validation médecin requise avant accès à la clôture.
-                            </p>
-                            <Password
-                                v-model="doctorPassword"
-                                placeholder="Mot de passe du médecin pré-sélectionné"
-                                :feedback="false"
-                                toggleMask
-                                class="w-full"
-                                inputClass="w-full"
-                                @keyup.enter="verifyDoctorPassword"
-                            />
+                            <p class="text-sm text-amber-900 dark:text-amber-100 font-medium">Validation médecin requise avant accès à la clôture.</p>
+                            <Password v-model="doctorPassword" placeholder="Mot de passe du médecin pré-sélectionné" :feedback="false" toggleMask class="w-full" inputClass="w-full" @keyup.enter="verifyDoctorPassword" />
                             <div class="flex justify-end">
-                                <Button
-                                    label="Vérifier"
-                                    icon="pi pi-check"
-                                    :loading="verifyLoading"
-                                    :disabled="!doctorPassword"
-                                    class="rounded-xl"
-                                    @click="verifyDoctorPassword"
-                                />
+                                <Button label="Vérifier" icon="pi pi-check" :loading="verifyLoading" :disabled="!doctorPassword" class="rounded-xl" @click="verifyDoctorPassword" />
                             </div>
                         </div>
                     </div>

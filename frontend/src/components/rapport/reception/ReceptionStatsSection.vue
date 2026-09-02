@@ -33,16 +33,7 @@ const buildItems = (stats) => [
 const chartData = computed(() => {
     const documentStyle = getComputedStyle(document.documentElement);
     return {
-        labels: [
-            'Nouveaux patients',
-            'Consultations',
-            'Consultations en attente',
-            'Rendez-vous planifiés',
-            'Absences',
-            'Factures payées',
-            'Encaissé',
-            'Montant encaissé (total)'
-        ],
+        labels: ['Nouveaux patients', 'Consultations', 'Consultations en attente', 'Rendez-vous planifiés', 'Absences', 'Factures payées', 'Encaissé', 'Montant encaissé (total)'],
         datasets: [
             {
                 label: 'Statistiques',

@@ -48,7 +48,6 @@ watch(
     },
     { immediate: true }
 );
-
 </script>
 
 <template>
@@ -76,20 +75,9 @@ watch(
             <div class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/30 p-5">
                 <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
                     <h4 class="font-semibold text-surface-900 dark:text-surface-100">Formule dentaire</h4>
-                    <SelectButton
-                        v-model="dentitionType"
-                        :options="DENTITION_OPTIONS"
-                        optionLabel="label"
-                        optionValue="value"
-                        :allowEmpty="false"
-                        class="text-sm"
-                    />
+                    <SelectButton v-model="dentitionType" :options="DENTITION_OPTIONS" optionLabel="label" optionValue="value" :allowEmpty="false" class="text-sm" />
                 </div>
-                <FormuleDentaire
-                    :modelValue="form.bilanDentaire?.formuleDentaire"
-                    :dentition-type="dentitionType"
-                    @update:modelValue="(v) => updateNested('bilanDentaire', 'formuleDentaire', v)"
-                />
+                <FormuleDentaire :modelValue="form.bilanDentaire?.formuleDentaire" :dentition-type="dentitionType" @update:modelValue="(v) => updateNested('bilanDentaire', 'formuleDentaire', v)" />
             </div>
 
             <h5>Bilan radiographiques</h5>
@@ -97,83 +85,44 @@ watch(
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div class="space-y-2">
                     <label class="text-sm font-medium text-surface-700 dark:text-surface-300">Radiographie extra buccale</label>
-                    <Textarea
-                        :modelValue="form.bilanRadiographique?.radiographieExtraBuccaleHypothese"
-                        rows="3"
-                        class="w-full"
-                        @update:modelValue="(v) => updateNested('bilanRadiographique', 'radiographieExtraBuccaleHypothese', v)"
-                    />
+                    <Textarea :modelValue="form.bilanRadiographique?.radiographieExtraBuccaleHypothese" rows="3" class="w-full" @update:modelValue="(v) => updateNested('bilanRadiographique', 'radiographieExtraBuccaleHypothese', v)" />
                 </div>
                 <div class="space-y-2">
                     <label class="text-sm font-medium text-surface-700 dark:text-surface-300">Radiographie intra buccale</label>
-                    <Textarea
-                        :modelValue="form.bilanRadiographique?.radiographieIntraBuccaleHypothese"
-                        rows="3"
-                        class="w-full"
-                        @update:modelValue="(v) => updateNested('bilanRadiographique', 'radiographieIntraBuccaleHypothese', v)"
-                    />
+                    <Textarea :modelValue="form.bilanRadiographique?.radiographieIntraBuccaleHypothese" rows="3" class="w-full" @update:modelValue="(v) => updateNested('bilanRadiographique', 'radiographieIntraBuccaleHypothese', v)" />
                 </div>
             </div>
 
-           <h5>Bilan sanguin</h5>
+            <h5>Bilan sanguin</h5>
 
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div class="space-y-2">
                     <label class="text-sm font-medium text-surface-700 dark:text-surface-300">NFS detaillee</label>
-                    <InputText
-                        :modelValue="form.bilanSanguin?.nfsDetaillee"
-                        class="w-full"
-                        @update:modelValue="(v) => updateNested('bilanSanguin', 'nfsDetaillee', v)"
-                    />
+                    <InputText :modelValue="form.bilanSanguin?.nfsDetaillee" class="w-full" @update:modelValue="(v) => updateNested('bilanSanguin', 'nfsDetaillee', v)" />
                 </div>
                 <div class="space-y-2">
                     <label class="text-sm font-medium text-surface-700 dark:text-surface-300">TP / TCA / INR</label>
-                    <InputText
-                        :modelValue="form.bilanSanguin?.tpTcaInr"
-                        class="w-full"
-                        @update:modelValue="(v) => updateNested('bilanSanguin', 'tpTcaInr', v)"
-                    />
+                    <InputText :modelValue="form.bilanSanguin?.tpTcaInr" class="w-full" @update:modelValue="(v) => updateNested('bilanSanguin', 'tpTcaInr', v)" />
                 </div>
                 <div class="space-y-2">
                     <label class="text-sm font-medium text-surface-700 dark:text-surface-300">Uree</label>
-                    <InputText
-                        :modelValue="form.bilanSanguin?.uree"
-                        class="w-full"
-                        @update:modelValue="(v) => updateNested('bilanSanguin', 'uree', v)"
-                    />
+                    <InputText :modelValue="form.bilanSanguin?.uree" class="w-full" @update:modelValue="(v) => updateNested('bilanSanguin', 'uree', v)" />
                 </div>
                 <div class="space-y-2">
                     <label class="text-sm font-medium text-surface-700 dark:text-surface-300">Creatininemie</label>
-                    <InputText
-                        :modelValue="form.bilanSanguin?.creatininemie"
-                        class="w-full"
-                        @update:modelValue="(v) => updateNested('bilanSanguin', 'creatininemie', v)"
-                    />
+                    <InputText :modelValue="form.bilanSanguin?.creatininemie" class="w-full" @update:modelValue="(v) => updateNested('bilanSanguin', 'creatininemie', v)" />
                 </div>
                 <div class="space-y-2">
                     <label class="text-sm font-medium text-surface-700 dark:text-surface-300">Glycemie</label>
-                    <InputText
-                        :modelValue="form.bilanSanguin?.glycemie"
-                        class="w-full"
-                        @update:modelValue="(v) => updateNested('bilanSanguin', 'glycemie', v)"
-                    />
+                    <InputText :modelValue="form.bilanSanguin?.glycemie" class="w-full" @update:modelValue="(v) => updateNested('bilanSanguin', 'glycemie', v)" />
                 </div>
             </div>
 
             <h5 class="">Diagnostic positif</h5>
 
-            <div class="space-y-2 border border-2 border-dashed border-emerald-500 dark:border-emerald-700 rounded-xl p-4"> 
-                <Textarea
-                    :modelValue="form.diagnosticPositif"
-                    rows="4"
-                    class="w-full"
-                    @update:modelValue="(v) => updateField('diagnosticPositif', v)"
-                />
+            <div class="space-y-2 border border-2 border-dashed border-emerald-500 dark:border-emerald-700 rounded-xl p-4">
+                <Textarea :modelValue="form.diagnosticPositif" rows="4" class="w-full" @update:modelValue="(v) => updateField('diagnosticPositif', v)" />
             </div>
-
-            
         </div>
-
-
     </div>
 </template>

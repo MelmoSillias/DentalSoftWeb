@@ -7,7 +7,7 @@ import Select from 'primevue/select';
 const props = defineProps({
     slides: { type: Array, default: () => [] },
     title: { type: String, default: 'Statistiques detaillees' },
-    subtitle: { type: String, default: "Analyse complete de votre activite" },
+    subtitle: { type: String, default: 'Analyse complete de votre activite' },
     periodOptions: { type: Array, default: () => [] },
     selectedPeriod: { type: String, default: 'month' },
     loading: { type: Boolean, default: false }
@@ -33,7 +33,7 @@ const updatePeriod = (value) => {
     emit('update:selectedPeriod', value);
 };
 </script>
- 
+
 <template>
     <div class="bg-surface-0 dark:bg-surface-800/80 rounded-2xl shadow-xl overflow-hidden border border-surface-200/50 dark:border-surface-700/50 backdrop-blur-sm">
         <div class="px-3 xs:px-4 sm:px-5 md:px-6 py-2 xs:py-3 sm:py-4 border-b border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900/50 dark:to-surface-800">
@@ -43,24 +43,8 @@ const updatePeriod = (value) => {
                     <p class="text-[10px] xs:text-xs sm:text-sm text-surface-600 dark:text-surface-400">{{ subtitle }}</p>
                 </div>
                 <div class="flex items-center gap-1 xs:gap-2 mt-2 sm:mt-0 shrink-0">
-                    <Button
-                        icon="pi pi-chevron-left"
-                        severity="secondary"
-                        text
-                        size="small"
-                        :disabled="!hasSlides"
-                        @click="prevSlide"
-                        class="text-surface-600 dark:text-surface-400 hover:text-primary-600 dark:hover:text-primary-400 p-1 xs:p-2"
-                    />
-                    <Button
-                        icon="pi pi-chevron-right"
-                        severity="secondary"
-                        text
-                        size="small"
-                        :disabled="!hasSlides"
-                        @click="nextSlide"
-                        class="text-surface-600 dark:text-surface-400 hover:text-primary-600 dark:hover:text-primary-400 p-1 xs:p-2"
-                    />
+                    <Button icon="pi pi-chevron-left" severity="secondary" text size="small" :disabled="!hasSlides" @click="prevSlide" class="text-surface-600 dark:text-surface-400 hover:text-primary-600 dark:hover:text-primary-400 p-1 xs:p-2" />
+                    <Button icon="pi pi-chevron-right" severity="secondary" text size="small" :disabled="!hasSlides" @click="nextSlide" class="text-surface-600 dark:text-surface-400 hover:text-primary-600 dark:hover:text-primary-400 p-1 xs:p-2" />
                 </div>
             </div>
         </div>
@@ -79,17 +63,7 @@ const updatePeriod = (value) => {
             </div>
             <div v-else-if="!hasSlides" class="text-xs xs:text-sm text-surface-500">Aucune statistique disponible.</div>
 
-            <Carousel
-                v-else
-                :value="slides"
-                :numVisible="1"
-                :numScroll="1"
-                v-model:page="currentSlide"
-                :showIndicators="true"
-                :autoplayInterval="8000"
-                circular
-                class="dashboard-carousel"
-            >
+            <Carousel v-else :value="slides" :numVisible="1" :numScroll="1" v-model:page="currentSlide" :showIndicators="true" :autoplayInterval="8000" circular class="dashboard-carousel">
                 <template #item="slotProps">
                     <div class="p-0.5 xs:p-1">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 xs:gap-6">
@@ -168,11 +142,7 @@ const updatePeriod = (value) => {
                                             ></div>
                                         </div>
                                         <div class="absolute bottom-0 left-0 right-0 flex justify-between px-2 xs:px-3 sm:px-4 text-[9px] xs:text-[10px] sm:text-xs text-surface-500">
-                                            <span
-                                                v-for="(label, idx) in slotProps.data.chart?.labels || []"
-                                                :key="idx"
-                                                class="max-w-[32px] xs:max-w-[42px] truncate"
-                                            >
+                                            <span v-for="(label, idx) in slotProps.data.chart?.labels || []" :key="idx" class="max-w-[32px] xs:max-w-[42px] truncate">
                                                 {{ label }}
                                             </span>
                                         </div>
@@ -208,4 +178,3 @@ const updatePeriod = (value) => {
     }
 }
 </style>
-

@@ -1,11 +1,45 @@
+<script setup>
+import { computed } from 'vue';
+import PrintA4Page from './PrintA4Page.vue';
+import PrintDocumentHeader from './PrintDocumentHeader.vue';
+import logoImg from '@/assets/logo.png';
+
+const props = defineProps({
+    fiche: { type: Object, default: () => ({}) },
+    patient: { type: Object, default: () => ({}) },
+    logoSrc: { type: String, default: logoImg }
+});
+
+const teeth = [11, 21, 12, 22, 13, 23, 14, 24, 15, 25, 16, 26, 17, 27, 18, 28, 31, 41, 32, 42, 33, 43, 34, 44, 35, 45, 36, 46, 37, 47, 38, 48];
+const teethRows = computed(() => {
+    const rows = [];
+    for (let i = 0; i < teeth.length; i += 2) {
+        rows.push([teeth[i], teeth[i + 1] || '']);
+    }
+    return rows;
+});
+
+const formatDate = (value) => {
+    if (!value) return '—';
+    const date = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(date.getTime())) return String(value);
+    return date.toLocaleDateString('fr-FR');
+};
+
+const formatDateTime = (value) => {
+    if (!value) return '—';
+    const date = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(date.getTime())) return String(value);
+    return `${date.toLocaleDateString('fr-FR')} ${date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`;
+};
+
+const formatMoney = (value) => `${Number(value || 0).toLocaleString('fr-FR')} FCFA`;
+</script>
+
 <template>
     <PrintA4Page :logo-src="logoSrc">
         <template #header>
-            <PrintDocumentHeader
-                title="Fiche de consultation"
-                :doc-id="fiche?.id"
-                :date="fiche?.createdAt"
-            />
+            <PrintDocumentHeader title="Fiche de consultation" :doc-id="fiche?.id" :date="fiche?.createdAt" />
         </template>
 
         <h2 class="print-section-title">Résumé</h2>
@@ -98,7 +132,8 @@
                 <tr v-for="row in teethRows" :key="row.join('-')">
                     <td v-for="num in row" :key="num" class="teeth-cell">
                         <template v-if="num">
-                            <strong>{{ num }}</strong><br />
+                            <strong>{{ num }}</strong
+                            ><br />
                             <span class="muted">{{ fiche?.toothChecks?.[String(num)] || '' }}</span>
                         </template>
                         <template v-else>&nbsp;</template>
@@ -198,44 +233,6 @@
         </template>
     </PrintA4Page>
 </template>
-
-<script setup>
-import { computed } from 'vue';
-import PrintA4Page from './PrintA4Page.vue';
-import PrintDocumentHeader from './PrintDocumentHeader.vue';
-import logoImg from '@/assets/logo.png';
-
-const props = defineProps({
-    fiche: { type: Object, default: () => ({}) },
-    patient: { type: Object, default: () => ({}) },
-    logoSrc: { type: String, default: logoImg }
-});
-
-const teeth = [11, 21, 12, 22, 13, 23, 14, 24, 15, 25, 16, 26, 17, 27, 18, 28, 31, 41, 32, 42, 33, 43, 34, 44, 35, 45, 36, 46, 37, 47, 38, 48];
-const teethRows = computed(() => {
-    const rows = [];
-    for (let i = 0; i < teeth.length; i += 2) {
-        rows.push([teeth[i], teeth[i + 1] || '']);
-    }
-    return rows;
-});
-
-const formatDate = (value) => {
-    if (!value) return '—';
-    const date = value instanceof Date ? value : new Date(value);
-    if (Number.isNaN(date.getTime())) return String(value);
-    return date.toLocaleDateString('fr-FR');
-};
-
-const formatDateTime = (value) => {
-    if (!value) return '—';
-    const date = value instanceof Date ? value : new Date(value);
-    if (Number.isNaN(date.getTime())) return String(value);
-    return `${date.toLocaleDateString('fr-FR')} ${date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`;
-};
-
-const formatMoney = (value) => `${Number(value || 0).toLocaleString('fr-FR')} FCFA`;
-</script>
 
 <style scoped>
 h2 {

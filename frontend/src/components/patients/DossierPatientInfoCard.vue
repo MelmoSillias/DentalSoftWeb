@@ -134,22 +134,8 @@ const handlePhotoChange = (event) => {
             <div class="flex flex-col items-center mb-6" data-tour="patients-dossier.identity">
                 <input ref="photoInput" type="file" accept="image/*" class="hidden" @change="handlePhotoChange" />
                 <div class="relative mb-4">
-                    <PatientAvatar
-                        :patient="patient"
-                        :initials="patient.initials"
-                        size-class="w-24 h-24"
-                        text-class="text-3xl font-bold"
-                        alt="Photo du patient"
-                        class="shadow-lg"
-                    />
-                    <Button
-                        v-if="!hidePhotoAction"
-                        icon="pi pi-pencil"
-                        rounded
-                        severity="secondary"
-                        class="!absolute -bottom-1 -right-1 !w-9 !h-9 shadow-md"
-                        @click="openPhotoPicker"
-                    />
+                    <PatientAvatar :patient="patient" :initials="patient.initials" size-class="w-24 h-24" text-class="text-3xl font-bold" alt="Photo du patient" class="shadow-lg" />
+                    <Button v-if="!hidePhotoAction" icon="pi pi-pencil" rounded severity="secondary" class="!absolute -bottom-1 -right-1 !w-9 !h-9 shadow-md" @click="openPhotoPicker" />
                 </div>
                 <h2 class="text-xl font-bold text-surface-900 dark:text-surface-100">{{ patient.nom }} {{ patient.prenom }}</h2>
                 <p class="text-surface-600 dark:text-surface-400">{{ patient.numeroDossier }}</p>
@@ -191,7 +177,7 @@ const handlePhotoChange = (event) => {
                 <div class="space-y-2">
                     <div class="flex items-center gap-2 text-surface-700 dark:text-surface-300">
                         <i class="pi pi-phone text-surface-400"></i>
-                        {{ hidePhone ? 'Masqué par l\'administrateur' : (patient.telephone || '--') }}
+                        {{ hidePhone ? "Masqué par l'administrateur" : patient.telephone || '--' }}
                     </div>
                     <div class="flex items-center gap-2 text-surface-700 dark:text-surface-300">
                         <i class="pi pi-envelope text-surface-400"></i>
@@ -229,8 +215,7 @@ const handlePhotoChange = (event) => {
                     <Button icon="pi pi-plus" label="Ajouter" size="small" outlined @click="emit('add-antecedent')" />
                 </div>
                 <div v-if="patient.antecedents?.length" class="space-y-2">
-                    <div v-for="(item, idx) in patient.antecedents" :key="idx"
-                        class="flex items-start justify-between gap-3 p-3 rounded-xl bg-surface-50 dark:bg-surface-700/50">
+                    <div v-for="(item, idx) in patient.antecedents" :key="idx" class="flex items-start justify-between gap-3 p-3 rounded-xl bg-surface-50 dark:bg-surface-700/50">
                         <div>
                             <div class="font-medium text-surface-900 dark:text-surface-100">{{ item.type || 'Antécédent' }}</div>
                             <div class="text-sm text-surface-600 dark:text-surface-300">{{ item.description || '—' }}</div>
@@ -250,8 +235,7 @@ const handlePhotoChange = (event) => {
                     <Button icon="pi pi-plus" label="Ajouter" size="small" outlined @click="emit('add-allergy')" />
                 </div>
                 <div v-if="patient.allergies?.length" class="space-y-2">
-                    <div v-for="(item, idx) in patient.allergies" :key="idx"
-                        class="flex items-start justify-between gap-3 p-3 rounded-xl bg-surface-50 dark:bg-surface-700/50">
+                    <div v-for="(item, idx) in patient.allergies" :key="idx" class="flex items-start justify-between gap-3 p-3 rounded-xl bg-surface-50 dark:bg-surface-700/50">
                         <div>
                             <div class="font-medium text-surface-900 dark:text-surface-100">{{ item.libelle || 'Allergie' }}</div>
                             <div class="text-sm text-surface-600 dark:text-surface-300">{{ item.description || '—' }}</div>
@@ -265,30 +249,17 @@ const handlePhotoChange = (event) => {
             <div class="mt-6 pt-6 border-t border-surface-200/50 dark:border-surface-700/50" data-tour="patients-dossier.ordonnances">
                 <div class="flex items-center justify-between mb-3">
                     <h4 class="text-sm font-medium text-surface-700 dark:text-surface-300">Ordonnances</h4>
-                    <Button
-                        v-if="!consultationReadonly"
-                        icon="pi pi-plus"
-                        label="Nouvelle"
-                        size="small"
-                        outlined
-                        @click="emit('open-ordonnance')"
-                    />
+                    <Button v-if="!consultationReadonly" icon="pi pi-plus" label="Nouvelle" size="small" outlined @click="emit('open-ordonnance')" />
                 </div>
 
                 <div v-if="ordonnances?.length" class="space-y-2">
-                    <div
-                        v-for="ordo in ordonnances"
-                        :key="ordo.id || `${ordo.date}-${ordo.medecinNom}`"
-                        class="rounded-xl border border-surface-200/80 dark:border-surface-700/80 bg-surface-50/80 dark:bg-surface-800/40 p-2.5"
-                    >
+                    <div v-for="ordo in ordonnances" :key="ordo.id || `${ordo.date}-${ordo.medecinNom}`" class="rounded-xl border border-surface-200/80 dark:border-surface-700/80 bg-surface-50/80 dark:bg-surface-800/40 p-2.5">
                         <div class="flex items-start justify-between gap-2">
                             <div class="min-w-0">
                                 <div class="text-sm font-medium text-surface-900 dark:text-surface-100 truncate">
                                     {{ ordo.date || '—' }}
                                 </div>
-                                <div class="text-xs text-surface-500 dark:text-surface-400 truncate">
-                                    {{ ordo.medecinNom || ordo.medecin || '—' }} · {{ ordo.lignes?.length || 0 }} ligne(s)
-                                </div>
+                                <div class="text-xs text-surface-500 dark:text-surface-400 truncate">{{ ordo.medecinNom || ordo.medecin || '—' }} · {{ ordo.lignes?.length || 0 }} ligne(s)</div>
                             </div>
                         </div>
                         <div class="mt-2 flex flex-wrap gap-1">
@@ -323,14 +294,7 @@ const handlePhotoChange = (event) => {
             <div class="mt-6 pt-6 border-t border-surface-200/50 dark:border-surface-700/50" data-tour="patients-dossier.portal-account">
                 <div class="flex items-center justify-between mb-3">
                     <h4 class="text-sm font-medium text-surface-700 dark:text-surface-300">Compte espace patient</h4>
-                    <Button
-                        v-if="!patient.portalAccount"
-                        icon="pi pi-user-plus"
-                        label="Créer"
-                        size="small"
-                        outlined
-                        @click="emit('create-portal-account')"
-                    />
+                    <Button v-if="!patient.portalAccount" icon="pi pi-user-plus" label="Créer" size="small" outlined @click="emit('create-portal-account')" />
                 </div>
 
                 <div v-if="patient.portalAccount" class="space-y-2">
@@ -345,13 +309,7 @@ const handlePhotoChange = (event) => {
                         </span>
                     </div>
                     <div class="flex flex-wrap gap-2 pt-1">
-                        <Button
-                            icon="pi pi-key"
-                            label="Mot de passe = 123"
-                            size="small"
-                            outlined
-                            @click="emit('reset-portal-password')"
-                        />
+                        <Button icon="pi pi-key" label="Mot de passe = 123" size="small" outlined @click="emit('reset-portal-password')" />
                         <Button
                             :icon="patient.portalAccount.active ? 'pi pi-user-minus' : 'pi pi-user-plus'"
                             :label="patient.portalAccount.active ? 'Désactiver' : 'Activer'"
@@ -362,15 +320,12 @@ const handlePhotoChange = (event) => {
                     </div>
                 </div>
 
-                <p v-else class="text-sm text-surface-500 dark:text-surface-400">
-                    Aucun compte lié. Cliquez sur Créer pour générer un identifiant (mot de passe par défaut: 123).
-                </p>
+                <p v-else class="text-sm text-surface-500 dark:text-surface-400">Aucun compte lié. Cliquez sur Créer pour générer un identifiant (mot de passe par défaut: 123).</p>
             </div>
         </div>
 
         <!-- MOBILE (Visible de 0px à 640px, caché après) -->
         <div v-if="!hideActions" data-tour="patients-dossier.actions" class="px-5 py-4 border-t border-surface-200/50 dark:border-surface-700/50 bg-surface-50/50 dark:bg-surface-900/50">
-
             <!-- DESKTOP (Caché sur mobile, visible à partir de sm: 640px) -->
             <div class="hidden sm:flex flex-wrap gap-2">
                 <Button icon="pi pi-print" label="Imprimer dossier" severity="secondary" outlined class="flex-1" @click="emit('print-dossier')" />
@@ -380,12 +335,10 @@ const handlePhotoChange = (event) => {
 
             <!-- MOBILE (Visible sur mobile, caché dès 640px) -->
             <div class="flex sm:hidden flex-wrap gap-2">
-                <Button icon="pi pi-print"  severity="secondary" outlined class="flex-1" @click="emit('print-dossier')" />
-                <Button icon="pi pi-pencil"  severity="secondary" outlined class="flex-1" @click="emit('edit')" />
+                <Button icon="pi pi-print" severity="secondary" outlined class="flex-1" @click="emit('print-dossier')" />
+                <Button icon="pi pi-pencil" severity="secondary" outlined class="flex-1" @click="emit('edit')" />
                 <Button icon="pi pi-plus" label="RDV" severity="primary" class="flex-1 bg-gradient-to-r from-primary-500 to-primary-600 border-0" @click="emit('new-rdv')" />
             </div>
-
         </div>
-
     </div>
 </template>

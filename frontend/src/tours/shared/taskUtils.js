@@ -11,7 +11,13 @@ export function normalizeUserRoles(roles = []) {
     const source = Array.isArray(roles) ? roles : [roles];
 
     return source
-        .map((role) => ROLE_ALIASES[role] || String(role || '').replace(/^ROLE_/, '').toLowerCase())
+        .map(
+            (role) =>
+                ROLE_ALIASES[role] ||
+                String(role || '')
+                    .replace(/^ROLE_/, '')
+                    .toLowerCase()
+        )
         .filter(Boolean);
 }
 

@@ -46,43 +46,49 @@ function buildOverviewSteps(ctx) {
 
 export const administrationUtilisateursRegistry = createTourRegistry(GROUP, TASKS, {
     overview: buildOverviewSteps,
-    'create-user': (ctx) => normalizeTourSteps([
-        {
-            group: GROUP,
-            target: '[data-tour="admin-users.header"]',
-            title: 'Creer un compte',
-            content: 'Depuis la barre principale, ouvrez le formulaire de creation d utilisateur.'
-        },
-        {
-            group: GROUP,
-            target: '[data-tour="admin-users.dialog.create"]',
-            title: 'Formulaire de creation',
-            content: 'Renseignez le compte et rattachez-le a un employe existant avec le profil adapte.',
-            beforeEnter: async () => openDialogStep(ctx.openCreateDialog, ctx.closeAllDialogs)
-        }
-    ]),
-    'edit-roles': (ctx) => normalizeTourSteps([
-        {
-            group: GROUP,
-            target: '[data-tour="admin-users.actions"]',
-            title: 'Modifier un compte',
-            content: 'Utilisez l action edition sur une ligne pour ajuster le profil et les roles d un utilisateur.'
-        },
-        {
-            group: GROUP,
-            target: '[data-tour="admin-users.dialog.create"]',
-            title: 'Formulaire d edition',
-            content: 'Le meme formulaire s ouvre en mode edition pour modifier le type de compte et les droits associes.',
-            beforeEnter: async () => openDialogStep(ctx.openEditDialog || ctx.openCreateDialog, ctx.closeAllDialogs)
-        },
-        ...(ctx.hasUsers ? [{
-            group: GROUP,
-            target: '[data-tour="admin-users.dialog.reset"]',
-            title: 'Securiser l acces',
-            content: 'Vous pouvez aussi reinitialiser le mot de passe temporaire d un utilisateur depuis cette page.',
-            beforeEnter: async () => openDialogStep(ctx.openResetDialog, ctx.closeAllDialogs)
-        }] : [])
-    ])
+    'create-user': (ctx) =>
+        normalizeTourSteps([
+            {
+                group: GROUP,
+                target: '[data-tour="admin-users.header"]',
+                title: 'Creer un compte',
+                content: 'Depuis la barre principale, ouvrez le formulaire de creation d utilisateur.'
+            },
+            {
+                group: GROUP,
+                target: '[data-tour="admin-users.dialog.create"]',
+                title: 'Formulaire de creation',
+                content: 'Renseignez le compte et rattachez-le a un employe existant avec le profil adapte.',
+                beforeEnter: async () => openDialogStep(ctx.openCreateDialog, ctx.closeAllDialogs)
+            }
+        ]),
+    'edit-roles': (ctx) =>
+        normalizeTourSteps([
+            {
+                group: GROUP,
+                target: '[data-tour="admin-users.actions"]',
+                title: 'Modifier un compte',
+                content: 'Utilisez l action edition sur une ligne pour ajuster le profil et les roles d un utilisateur.'
+            },
+            {
+                group: GROUP,
+                target: '[data-tour="admin-users.dialog.create"]',
+                title: 'Formulaire d edition',
+                content: 'Le meme formulaire s ouvre en mode edition pour modifier le type de compte et les droits associes.',
+                beforeEnter: async () => openDialogStep(ctx.openEditDialog || ctx.openCreateDialog, ctx.closeAllDialogs)
+            },
+            ...(ctx.hasUsers
+                ? [
+                      {
+                          group: GROUP,
+                          target: '[data-tour="admin-users.dialog.reset"]',
+                          title: 'Securiser l acces',
+                          content: 'Vous pouvez aussi reinitialiser le mot de passe temporaire d un utilisateur depuis cette page.',
+                          beforeEnter: async () => openDialogStep(ctx.openResetDialog, ctx.closeAllDialogs)
+                      }
+                  ]
+                : [])
+        ])
 });
 
 export function buildAdministrationUsersTourSteps(taskId, variantId, ctx) {

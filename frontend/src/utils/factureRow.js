@@ -6,10 +6,7 @@ import { isInsuranceFactureRow } from '@/composables/usePayTabsDialog';
 
 export { isInsuranceFactureRow };
 
-export const isValidatedEmptyFacture = (row) =>
-    row?.isRegle
-    && Number(row?.montant) === 0
-    && Number(row?.reste) === 0;
+export const isValidatedEmptyFacture = (row) => row?.isRegle && Number(row?.montant) === 0 && Number(row?.reste) === 0;
 
 export const computePriorReliquat = (row) => {
     const prior = Number(row?.priorReliquat);
@@ -41,9 +38,7 @@ export const computeFactureStatus = (row) => {
     return { label: 'Partiellement payé', severity: 'warning' };
 };
 
-export const canPreviewFacture = (row) =>
-    row?.insurance?.hasInsurance === true
-    || !(Number(row?.montant) === 0 && Number(row?.reste) === 0);
+export const canPreviewFacture = (row) => row?.insurance?.hasInsurance === true || !(Number(row?.montant) === 0 && Number(row?.reste) === 0);
 
 export const targetIsFreeFacture = (row) => !row?.isRegle && Number(row?.reste) === 0;
 
@@ -53,13 +48,7 @@ export const canSettleFacture = (row) => Boolean(row) && (!row?.isRegle || hasPa
 export const canPayFacture = (row) => canSettleFacture(row);
 
 export const canModifyFacture = (row, { allowInvoiceModification = false } = {}) =>
-    allowInvoiceModification
-    && !isInsuranceFactureRow(row)
-    && !row?.hasPayments
-    && (
-        isValidatedEmptyFacture(row)
-        || (Number(row?.montant) === Number(row?.reste) && !row?.isRegle)
-    );
+    allowInvoiceModification && !isInsuranceFactureRow(row) && !row?.hasPayments && (isValidatedEmptyFacture(row) || (Number(row?.montant) === Number(row?.reste) && !row?.isRegle));
 
 export const isUnpaidFacture = (row) => {
     const status = computeFactureStatus(row).label;
@@ -73,11 +62,13 @@ export const isUnpaidFacture = (row) => {
  */
 export const buildFactureContextMenuItems = (row, handlers = {}) => {
     if (!row) {
-        return [{
-            label: 'Aucune facture',
-            icon: 'pi pi-inbox',
-            disabled: true
-        }];
+        return [
+            {
+                label: 'Aucune facture',
+                icon: 'pi pi-inbox',
+                disabled: true
+            }
+        ];
     }
 
     const items = [];
@@ -105,11 +96,13 @@ export const buildFactureContextMenuItems = (row, handlers = {}) => {
     }
 
     if (!items.length) {
-        return [{
-            label: 'Aucune action disponible',
-            icon: 'pi pi-info-circle',
-            disabled: true
-        }];
+        return [
+            {
+                label: 'Aucune action disponible',
+                icon: 'pi pi-info-circle',
+                disabled: true
+            }
+        ];
     }
 
     return items;

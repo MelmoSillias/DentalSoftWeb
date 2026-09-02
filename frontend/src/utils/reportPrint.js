@@ -1,7 +1,4 @@
-import {
-    buildPrintHtmlDocument,
-    buildPrintTitleBandHtml
-} from '@/utils/printDocumentStyles';
+import { buildPrintHtmlDocument, buildPrintTitleBandHtml } from '@/utils/printDocumentStyles';
 
 export function escapeHtml(text) {
     return String(text ?? '')
@@ -68,9 +65,7 @@ export function buildDataTableHtml({ columns = [], rows = [], emptyLabel = 'Aucu
     const header = columns.map((col) => `<th>${escapeHtml(col.label)}</th>`).join('');
     const body = (rows || [])
         .map((row) => {
-            const cells = columns
-                .map((col) => `<td style="text-align:${col.align || 'left'}">${escapeHtml(row[col.key])}</td>`)
-                .join('');
+            const cells = columns.map((col) => `<td style="text-align:${col.align || 'left'}">${escapeHtml(row[col.key])}</td>`).join('');
             return `<tr>${cells}</tr>`;
         })
         .join('');
@@ -93,18 +88,13 @@ export function buildSectionBlockHtml(title, contentHtml, note = '') {
     `;
 }
 
-export function printReport({
-    title = 'Rapport',
-    periodLabel = '',
-    sections = [],
-    landscape = true,
-    extraBody = ''
-} = {}) {
+export function printReport({ title = 'Rapport', periodLabel = '', sections = [], landscape = true, extraBody = '' } = {}) {
     const subtitle = formatPeriodSubtitle(periodLabel);
     const sectionsHtml = sections
         .map((section) => {
-            const content = section.tableHtml
-                || (section.columns && section.rows
+            const content =
+                section.tableHtml ||
+                (section.columns && section.rows
                     ? buildDataTableHtml({
                           columns: section.columns,
                           rows: section.rows,

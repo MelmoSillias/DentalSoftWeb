@@ -33,9 +33,7 @@ const appointmentsItems = (period) => [
     { label: 'Annulés', value: period.rdvAnnules ?? 0, severity: 'danger' }
 ];
 
-const apportItems = (period) => [
-    { label: 'Montant facturé', value: formatFcfa(period.apportTotal || 0), severity: 'success' }
-];
+const apportItems = (period) => [{ label: 'Montant facturé', value: formatFcfa(period.apportTotal || 0), severity: 'success' }];
 
 const revenueItems = (period) => [
     {
@@ -91,10 +89,7 @@ const consultationsChartData = computed(() => {
         datasets: [
             {
                 label: 'Consultations',
-                backgroundColor: [
-                    documentStyle.getPropertyValue('--p-primary-500'),
-                    documentStyle.getPropertyValue('--p-emerald-500')
-                ],
+                backgroundColor: [documentStyle.getPropertyValue('--p-primary-500'), documentStyle.getPropertyValue('--p-emerald-500')],
                 data: [period.freeConsultations || 0, period.paidConsultations || 0]
             }
         ]
@@ -110,13 +105,7 @@ const appointmentsChartData = computed(() => {
             {
                 label: 'Rendez-vous',
                 backgroundColor: documentStyle.getPropertyValue('--p-orange-500'),
-                data: [
-                    period.rdvPlanifies || 0,
-                    period.rdvEnAttente || 0,
-                    period.rdvValides || 0,
-                    period.rdvReportes || 0,
-                    period.rdvAnnules || 0
-                ]
+                data: [period.rdvPlanifies || 0, period.rdvEnAttente || 0, period.rdvValides || 0, period.rdvReportes || 0, period.rdvAnnules || 0]
             }
         ]
     };
@@ -144,10 +133,7 @@ const revenueChartData = computed(() => {
         datasets: [
             {
                 data: [period.revenueTotal || 0, period.reliquat || 0],
-                backgroundColor: [
-                    documentStyle.getPropertyValue('--p-emerald-500'),
-                    documentStyle.getPropertyValue('--p-amber-500')
-                ]
+                backgroundColor: [documentStyle.getPropertyValue('--p-emerald-500'), documentStyle.getPropertyValue('--p-amber-500')]
             }
         ]
     };

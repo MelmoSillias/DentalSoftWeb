@@ -41,10 +41,10 @@ watch(
 );
 
 const searchTypeOptions = (event) => {
-    const query = String(event?.query || '').toLowerCase().trim();
-    typeSuggestions.value = query
-        ? props.typeOptions.filter((item) => String(item).toLowerCase().includes(query))
-        : props.typeOptions;
+    const query = String(event?.query || '')
+        .toLowerCase()
+        .trim();
+    typeSuggestions.value = query ? props.typeOptions.filter((item) => String(item).toLowerCase().includes(query)) : props.typeOptions;
 };
 
 const submit = () => {
@@ -56,21 +56,21 @@ const submit = () => {
 </script>
 
 <template>
-    <Dialog v-model:visible="visible" modal header="Ajouter un antécédent" :style="{ width: '32rem' }" :pt="{
-        root: 'rounded-2xl overflow-hidden',
-        header: 'px-6 py-4 border-b border-surface-200 dark:border-surface-700',
-        content: 'p-6'
-    }">
+    <Dialog
+        v-model:visible="visible"
+        modal
+        header="Ajouter un antécédent"
+        :style="{ width: '32rem' }"
+        :pt="{
+            root: 'rounded-2xl overflow-hidden',
+            header: 'px-6 py-4 border-b border-surface-200 dark:border-surface-700',
+            content: 'p-6'
+        }"
+    >
         <div class="flex flex-col gap-4">
             <div class="flex flex-col gap-2">
                 <label class="font-semibold">Type</label>
-                <AutoComplete
-                    v-model="form.type"
-                    :suggestions="typeSuggestions"
-                    dropdown
-                    placeholder="Saisir ou sélectionner"
-                    @complete="searchTypeOptions"
-                />
+                <AutoComplete v-model="form.type" :suggestions="typeSuggestions" dropdown placeholder="Saisir ou sélectionner" @complete="searchTypeOptions" />
             </div>
             <div class="flex flex-col gap-2">
                 <label class="font-semibold">Description</label>

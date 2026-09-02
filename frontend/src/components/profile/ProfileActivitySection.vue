@@ -38,11 +38,7 @@ const iconColorClass = (item) => {
                 <div class="absolute left-[19px] top-0 bottom-0 w-px bg-surface-100 dark:bg-surface-700/60"></div>
 
                 <div class="space-y-4">
-                    <div
-                        v-for="(item, idx) in activity"
-                        :key="idx"
-                        class="relative flex items-start gap-4"
-                    >
+                    <div v-for="(item, idx) in activity" :key="idx" class="relative flex items-start gap-4">
                         <!-- Icône timeline -->
                         <div :class="['relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-full shadow-sm ring-2 ring-surface-0 dark:ring-surface-800', iconColorClass(item)]">
                             <i :class="item.icon || 'pi pi-info-circle'" class="text-sm"></i>

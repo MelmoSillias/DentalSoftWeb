@@ -29,31 +29,19 @@ export const fetchTestModeStatus = async (token) => {
 };
 
 export const toggleTestMode = async ({ enabled, password, deleteTestData = true }, token) => {
-    const res = await http.put(
-        `${apiPrefix}/settings/test-mode/toggle`,
-        { enabled, password, deleteTestData },
-        { headers: authHeaders(token) }
-    );
+    const res = await http.put(`${apiPrefix}/settings/test-mode/toggle`, { enabled, password, deleteTestData }, { headers: authHeaders(token) });
 
     return res.data;
 };
 
 export const cleanTestMode = async ({ password }, token) => {
-    const res = await http.post(
-        `${apiPrefix}/settings/test-mode/clean`,
-        { password },
-        { headers: authHeaders(token) }
-    );
+    const res = await http.post(`${apiPrefix}/settings/test-mode/clean`, { password }, { headers: authHeaders(token) });
 
     return res.data;
 };
 
 export const exportDatabase = async ({ password, formats }, token) => {
-    const res = await http.post(
-        `${apiPrefix}/settings/database/export`,
-        { password, formats },
-        { headers: authHeaders(token) }
-    );
+    const res = await http.post(`${apiPrefix}/settings/database/export`, { password, formats }, { headers: authHeaders(token) });
 
     return res.data;
 };
@@ -62,7 +50,7 @@ export const downloadDatabaseExport = async ({ file }, token) => {
     const res = await http.get(`${apiPrefix}/settings/database/export/download`, {
         params: { file },
         headers: authHeaders(token),
-        responseType: 'blob',
+        responseType: 'blob'
     });
 
     const disposition = res.headers['content-disposition'] || '';
@@ -71,16 +59,12 @@ export const downloadDatabaseExport = async ({ file }, token) => {
 
     return {
         blob: res.data,
-        filename,
+        filename
     };
 };
 
 export const resetDatabase = async ({ password }, token) => {
-    const res = await http.post(
-        `${apiPrefix}/settings/database/reset`,
-        { password },
-        { headers: authHeaders(token) }
-    );
+    const res = await http.post(`${apiPrefix}/settings/database/reset`, { password }, { headers: authHeaders(token) });
 
     return res.data;
 };
@@ -106,10 +90,6 @@ export const deleteDevice = async (deviceId, token) => {
 };
 
 export const renameDevice = async (deviceId, name, token) => {
-    const res = await http.put(
-        `${apiPrefix}/settings/devices/${deviceId}/rename`,
-        { name },
-        { headers: authHeaders(token) }
-    );
+    const res = await http.put(`${apiPrefix}/settings/devices/${deviceId}/rename`, { name }, { headers: authHeaders(token) });
     return res.data;
 };

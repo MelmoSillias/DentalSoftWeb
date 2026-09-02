@@ -1,3 +1,28 @@
+<script setup>
+import PrintA4Page from './PrintA4Page.vue';
+import PrintDocumentHeader from './PrintDocumentHeader.vue';
+import logoImg from '@/assets/logo.png';
+
+defineProps({
+    patient: { type: Object, default: () => ({}) },
+    logoSrc: { type: String, default: logoImg }
+});
+
+const formatDate = (value) => {
+    if (!value) return '—';
+    const date = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(date.getTime())) return String(value);
+    return date.toLocaleDateString('fr-FR');
+};
+
+const formatDateTime = (value) => {
+    if (!value) return '—';
+    const date = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(date.getTime())) return String(value);
+    return `${date.toLocaleDateString('fr-FR')} ${date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`;
+};
+</script>
+
 <template>
     <PrintA4Page :logo-src="logoSrc">
         <template #header>
@@ -7,18 +32,54 @@
         <h2 class="print-section-title">Informations personnelles</h2>
         <table class="print-doc-table info-table">
             <tbody>
-                <tr><th>Nom</th><td>{{ patient?.nom || '—' }}</td></tr>
-                <tr><th>Prénom</th><td>{{ patient?.prenom || '—' }}</td></tr>
-                <tr><th>Date de naissance</th><td>{{ formatDate(patient?.dateNaissance) }}</td></tr>
-                <tr><th>Sexe</th><td>{{ patient?.sexe || '—' }}</td></tr>
-                <tr><th>Lieu de naissance</th><td>{{ patient?.lieuNaissance || '—' }}</td></tr>
-                <tr><th>Profession</th><td>{{ patient?.profession || '—' }}</td></tr>
-                <tr><th>Email</th><td>{{ patient?.email || '—' }}</td></tr>
-                <tr><th>Téléphone</th><td>{{ patient?.telephone || '—' }}</td></tr>
-                <tr><th>Adresse</th><td>{{ patient?.adresse || '—' }}</td></tr>
-                <tr><th>Numéro de carnet</th><td>{{ patient?.numCarnet || '—' }}</td></tr>
-                <tr><th>Groupe sanguin</th><td>{{ patient?.groupeSanguin || '—' }}</td></tr>
-                <tr><th>Date d'inscription</th><td>{{ formatDateTime(patient?.dateInscription) }}</td></tr>
+                <tr>
+                    <th>Nom</th>
+                    <td>{{ patient?.nom || '—' }}</td>
+                </tr>
+                <tr>
+                    <th>Prénom</th>
+                    <td>{{ patient?.prenom || '—' }}</td>
+                </tr>
+                <tr>
+                    <th>Date de naissance</th>
+                    <td>{{ formatDate(patient?.dateNaissance) }}</td>
+                </tr>
+                <tr>
+                    <th>Sexe</th>
+                    <td>{{ patient?.sexe || '—' }}</td>
+                </tr>
+                <tr>
+                    <th>Lieu de naissance</th>
+                    <td>{{ patient?.lieuNaissance || '—' }}</td>
+                </tr>
+                <tr>
+                    <th>Profession</th>
+                    <td>{{ patient?.profession || '—' }}</td>
+                </tr>
+                <tr>
+                    <th>Email</th>
+                    <td>{{ patient?.email || '—' }}</td>
+                </tr>
+                <tr>
+                    <th>Téléphone</th>
+                    <td>{{ patient?.telephone || '—' }}</td>
+                </tr>
+                <tr>
+                    <th>Adresse</th>
+                    <td>{{ patient?.adresse || '—' }}</td>
+                </tr>
+                <tr>
+                    <th>Numéro de carnet</th>
+                    <td>{{ patient?.numCarnet || '—' }}</td>
+                </tr>
+                <tr>
+                    <th>Groupe sanguin</th>
+                    <td>{{ patient?.groupeSanguin || '—' }}</td>
+                </tr>
+                <tr>
+                    <th>Date d'inscription</th>
+                    <td>{{ formatDateTime(patient?.dateInscription) }}</td>
+                </tr>
                 <tr>
                     <th>Contact d'urgence</th>
                     <td>
@@ -51,31 +112,6 @@
         <p v-else class="muted">Aucun antécédent médical enregistré.</p>
     </PrintA4Page>
 </template>
-
-<script setup>
-import PrintA4Page from './PrintA4Page.vue';
-import PrintDocumentHeader from './PrintDocumentHeader.vue';
-import logoImg from '@/assets/logo.png';
-
-defineProps({
-    patient: { type: Object, default: () => ({}) },
-    logoSrc: { type: String, default: logoImg }
-});
-
-const formatDate = (value) => {
-    if (!value) return '—';
-    const date = value instanceof Date ? value : new Date(value);
-    if (Number.isNaN(date.getTime())) return String(value);
-    return date.toLocaleDateString('fr-FR');
-};
-
-const formatDateTime = (value) => {
-    if (!value) return '—';
-    const date = value instanceof Date ? value : new Date(value);
-    if (Number.isNaN(date.getTime())) return String(value);
-    return `${date.toLocaleDateString('fr-FR')} ${date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`;
-};
-</script>
 
 <style scoped>
 .info-table th {

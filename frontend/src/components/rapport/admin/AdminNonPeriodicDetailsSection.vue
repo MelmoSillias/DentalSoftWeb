@@ -189,14 +189,7 @@ function printSection() {
         </div>
 
         <div class="grid gap-4 lg:grid-cols-2">
-            <ValueListCard
-                id="admin-employee-distribution"
-                title="Répartition des employés"
-                :items="employeeDistribution"
-                :loading="loading"
-                :show-chart="showEmployeesChart"
-                empty-label="Aucun employé à afficher."
-            >
+            <ValueListCard id="admin-employee-distribution" title="Répartition des employés" :items="employeeDistribution" :loading="loading" :show-chart="showEmployeesChart" empty-label="Aucun employé à afficher.">
                 <template #actions>
                     <ToggleButton v-model="showEmployeesChart" onLabel="Graphique" offLabel="Données" onIcon="pi pi-chart-pie" offIcon="pi pi-list" />
                 </template>
@@ -207,14 +200,7 @@ function printSection() {
                 </template>
             </ValueListCard>
 
-            <ValueListCard
-                id="admin-low-stock"
-                title="Consommables à stock bas"
-                :items="lowStock"
-                :loading="loading"
-                :show-chart="showLowStockChart"
-                empty-label="Aucun consommable critique."
-            >
+            <ValueListCard id="admin-low-stock" title="Consommables à stock bas" :items="lowStock" :loading="loading" :show-chart="showLowStockChart" empty-label="Aucun consommable critique.">
                 <template #actions>
                     <ToggleButton v-model="showLowStockChart" onLabel="Graphique" offLabel="Données" onIcon="pi pi-chart-bar" offIcon="pi pi-list" />
                 </template>
@@ -226,39 +212,25 @@ function printSection() {
             </ValueListCard>
         </div>
         <div class="grid gap-4 lg:grid-cols-2">
-        <ValueListCard
-            id="admin-global-patients"
-            title="Patients"
-            :items="patientItems(patients)"
-            :loading="loading"
-            :show-chart="showPatientsChart"
-            empty-label="Aucune donnée patient."
-        >
-            <template #actions>
-                <ToggleButton v-model="showPatientsChart" onLabel="Graphique" offLabel="Données" onIcon="pi pi-chart-pie" offIcon="pi pi-list" />
-            </template>
-            <template #chart>
-                <div class="aspect-square w-full">
-                    <AppChart type="doughnut" :data="patientsChartData" :options="pieOptions" class="h-full w-full" />
-                </div>
-            </template>
-        </ValueListCard>
+            <ValueListCard id="admin-global-patients" title="Patients" :items="patientItems(patients)" :loading="loading" :show-chart="showPatientsChart" empty-label="Aucune donnée patient.">
+                <template #actions>
+                    <ToggleButton v-model="showPatientsChart" onLabel="Graphique" offLabel="Données" onIcon="pi pi-chart-pie" offIcon="pi pi-list" />
+                </template>
+                <template #chart>
+                    <div class="aspect-square w-full">
+                        <AppChart type="doughnut" :data="patientsChartData" :options="pieOptions" class="h-full w-full" />
+                    </div>
+                </template>
+            </ValueListCard>
 
-        <ValueListCard
-            id="admin-patient-referrals"
-            title="Comment les patients ont connu le cabinet"
-            :items="patientReferrals"
-            :loading="loading"
-            :show-chart="showPatientReferralsChart"
-            empty-label="Aucune provenance disponible."
-        >
-            <template #actions>
-                <ToggleButton v-model="showPatientReferralsChart" onLabel="Graphique" offLabel="Données" onIcon="pi pi-chart-bar" offIcon="pi pi-list" />
-            </template>
-            <template #chart>
-                <div class="aspect-[16/9] w-full">
-                    <AppChart type="bar" :data="patientReferralsChartData" :options="barOptions" class="h-full w-full" />
-                </div>
+            <ValueListCard id="admin-patient-referrals" title="Comment les patients ont connu le cabinet" :items="patientReferrals" :loading="loading" :show-chart="showPatientReferralsChart" empty-label="Aucune provenance disponible.">
+                <template #actions>
+                    <ToggleButton v-model="showPatientReferralsChart" onLabel="Graphique" offLabel="Données" onIcon="pi pi-chart-bar" offIcon="pi pi-list" />
+                </template>
+                <template #chart>
+                    <div class="aspect-[16/9] w-full">
+                        <AppChart type="bar" :data="patientReferralsChartData" :options="barOptions" class="h-full w-full" />
+                    </div>
                 </template>
             </ValueListCard>
         </div>

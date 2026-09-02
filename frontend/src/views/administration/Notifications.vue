@@ -3,7 +3,7 @@ import { ref, computed, nextTick, onBeforeUnmount, onMounted, watch } from 'vue'
 import { activateAdminTourMock, deactivateAdminTourMock, resetAdminTourMockData } from '@/services/adminTourMock';
 import Breadcrumb from 'primevue/breadcrumb';
 import Button from 'primevue/button';
-import InputText from 'primevue/inputtext'; 
+import InputText from 'primevue/inputtext';
 import Select from 'primevue/select';
 import TextArea from 'primevue/textarea';
 import Toast from 'primevue/toast';
@@ -37,13 +37,16 @@ const link = ref('');
 
 const types = computed(() => {
     const s = new Set();
-    (users.value || []).forEach(u => { if (u.type) s.add(u.type); if (u.fonction) s.add(u.fonction); });
+    (users.value || []).forEach((u) => {
+        if (u.type) s.add(u.type);
+        if (u.fonction) s.add(u.fonction);
+    });
     return Array.from(s).sort();
 });
 
 const filteredUsers = computed(() => {
     const q = (search.value || '').toLowerCase().trim();
-    return (users.value || []).filter(u => {
+    return (users.value || []).filter((u) => {
         const name = (u.username || '').toLowerCase();
         const emp = ((u.employee && (u.employee.nom || '') + ' ' + (u.employee.prenom || '')) || (u.employe && (u.employe.nom || '') + ' ' + (u.employe.prenom || '')) || '').toLowerCase();
         return !q || name.includes(q) || emp.includes(q);
@@ -137,8 +140,8 @@ const cleanupGuidedTourDemo = async () => {
 };
 
 const addTypeUsers = (type) => {
-    const list = (users.value || []).filter(u => (u.type === type) || (u.fonction === type));
-    list.forEach(u => selectedRecipients.value.add(u.id));
+    const list = (users.value || []).filter((u) => u.type === type || u.fonction === type);
+    list.forEach((u) => selectedRecipients.value.add(u.id));
 };
 
 const removeRecipient = (id) => {
@@ -186,47 +189,47 @@ const submit = (event) => {
     });
 };
 
- function getPriorityIcon(priority) {
-            const icons = {
-                'low': 'pi pi-flag',
-                'normal': 'pi pi-flag-fill',
-                'high': 'pi pi-exclamation-triangle'
-            };
-            return icons[priority] || 'pi pi-flag';
-        }
-        
-        function getPriorityLabel(priority) {
-            const labels = {
-                'low': 'Faible',
-                'normal': 'Normal',
-                'high': 'Haute'
-            };
-            return labels[priority] || 'Normal';
-        }
-        
-        function getInitials(id) {
-            const user = users.value.find(u => u.id === id);
-            if (!user) return '?';
-            const nom = user.employee?.nom || user.employe?.nom || '';
-            const prenom = user.employee?.prenom || user.employe?.prenom || '';
-            if (nom || prenom) return `${nom.charAt(0)}${prenom.charAt(0)}`.toUpperCase();
-            return user.username?.charAt(0).toUpperCase() || '?';
-        }
-        
-        function getUserName(id) {
-            const user = users.value.find(u => u.id === id);
-            if (!user) return 'Utilisateur inconnu';
-            return user.username || `Utilisateur ${id}`;
-        }
-        
-        function clearSelection() {
-            selectedSingleUser.value = null;
-            selectedRecipients.value.clear();
-        }
+function getPriorityIcon(priority) {
+    const icons = {
+        low: 'pi pi-flag',
+        normal: 'pi pi-flag-fill',
+        high: 'pi pi-exclamation-triangle'
+    };
+    return icons[priority] || 'pi pi-flag';
+}
+
+function getPriorityLabel(priority) {
+    const labels = {
+        low: 'Faible',
+        normal: 'Normal',
+        high: 'Haute'
+    };
+    return labels[priority] || 'Normal';
+}
+
+function getInitials(id) {
+    const user = users.value.find((u) => u.id === id);
+    if (!user) return '?';
+    const nom = user.employee?.nom || user.employe?.nom || '';
+    const prenom = user.employee?.prenom || user.employe?.prenom || '';
+    if (nom || prenom) return `${nom.charAt(0)}${prenom.charAt(0)}`.toUpperCase();
+    return user.username?.charAt(0).toUpperCase() || '?';
+}
+
+function getUserName(id) {
+    const user = users.value.find((u) => u.id === id);
+    if (!user) return 'Utilisateur inconnu';
+    return user.username || `Utilisateur ${id}`;
+}
+
+function clearSelection() {
+    selectedSingleUser.value = null;
+    selectedRecipients.value.clear();
+}
 
 watch(selectedByType, (nv) => {
     // when types change, add corresponding users
-    nv.forEach(t => addTypeUsers(t));
+    nv.forEach((t) => addTypeUsers(t));
 });
 
 useGuidedTour({
@@ -250,7 +253,7 @@ onBeforeUnmount(() => {
     <section class="min-h-screen p-4 md:p-6 lg:p-8 transition-colors duration-300">
         <AppToast />
         <ConfirmPopup />
-        
+
         <!-- Header -->
         <div class="mb-6 md:mb-8" data-tour="admin-notifications.header">
             <div class="mb-6">
@@ -267,16 +270,19 @@ onBeforeUnmount(() => {
             </div>
 
             <!-- Action Bar -->
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl bg-gradient-to-r from-surface-0 to-surface-50/80 dark:from-surface-800 dark:to-surface-900/80 shadow-sm border border-surface-200/50 dark:border-surface-700/50 backdrop-blur-sm" data-tour="admin-notifications.action-bar">
+            <div
+                class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl bg-gradient-to-r from-surface-0 to-surface-50/80 dark:from-surface-800 dark:to-surface-900/80 shadow-sm border border-surface-200/50 dark:border-surface-700/50 backdrop-blur-sm"
+                data-tour="admin-notifications.action-bar"
+            >
                 <div class="space-y-1">
                     <h2 class="text-lg font-semibold text-surface-900 dark:text-surface-100">Configuration de l'envoi</h2>
                     <p class="text-sm text-surface-600 dark:text-surface-300">
                         <span class="font-medium text-primary-600 dark:text-primary-400">{{ selectedCount }}</span> destinataire(s) sélectionné(s)
                     </p>
                 </div>
-                <Button 
-                    :label="`Envoyer à ${selectedCount} destinataire(s)`" 
-                    icon="pi pi-send" 
+                <Button
+                    :label="`Envoyer à ${selectedCount} destinataire(s)`"
+                    icon="pi pi-send"
                     :loading="sending"
                     @click="submit"
                     data-tour="admin-notifications.send"
@@ -301,20 +307,20 @@ onBeforeUnmount(() => {
                     <div class="p-5">
                         <div class="relative mb-5">
                             <IconField>
-                            <InputIcon class="pi pi-search" />
-                            <InputText 
-                                v-model="search" 
-                                placeholder="Rechercher un utilisateur par nom, prénom ou identifiant..." 
-                                class="w-full pl-11 pr-4 py-3.5 rounded-xl border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-700/50 focus:ring-2 focus:ring-primary-500/20 transition-all"
+                                <InputIcon class="pi pi-search" />
+                                <InputText
+                                    v-model="search"
+                                    placeholder="Rechercher un utilisateur par nom, prénom ou identifiant..."
+                                    class="w-full pl-11 pr-4 py-3.5 rounded-xl border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-700/50 focus:ring-2 focus:ring-primary-500/20 transition-all"
                             /></IconField>
                         </div>
 
                         <!-- User List -->
                         <div class="rounded-xl border border-surface-200/50 dark:border-surface-700/50 overflow-hidden">
                             <div class="max-h-[400px] overflow-y-auto">
-                                <div 
-                                    v-for="u in filteredUsers" 
-                                    :key="u.id" 
+                                <div
+                                    v-for="u in filteredUsers"
+                                    :key="u.id"
                                     class="p-4 border-b border-surface-100 dark:border-surface-800 hover:bg-surface-50/50 dark:hover:bg-surface-700/30 transition-colors"
                                     :class="{
                                         'bg-primary-50/30 dark:bg-primary-900/20': selectedSingleUser === u.id || selectedRecipients.has(u.id)
@@ -326,27 +332,21 @@ onBeforeUnmount(() => {
                                                 <div class="w-10 h-10 rounded-full bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center text-white font-semibold">
                                                     {{ (u.employee?.nom || u.employe?.nom)?.charAt(0) || u.username?.charAt(0) }}
                                                 </div>
-                                                <div v-if="selectedSingleUser === u.id || selectedRecipients.has(u.id)" 
-                                                    class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-primary-500 flex items-center justify-center">
+                                                <div v-if="selectedSingleUser === u.id || selectedRecipients.has(u.id)" class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-primary-500 flex items-center justify-center">
                                                     <i class="pi pi-check text-white text-xs"></i>
                                                 </div>
                                             </div>
                                             <div>
                                                 <div class="font-semibold text-surface-900 dark:text-surface-100">{{ u.username }}</div>
                                                 <div class="text-sm text-surface-600 dark:text-surface-400">
-                                                    {{ (u.employee?.nom || u.employe?.nom) ? `${u.employee?.nom || u.employe?.nom} ${u.employee?.prenom || u.employe?.prenom}` : 'Utilisateur sans profil' }}
+                                                    {{ u.employee?.nom || u.employe?.nom ? `${u.employee?.nom || u.employe?.nom} ${u.employee?.prenom || u.employe?.prenom}` : 'Utilisateur sans profil' }}
                                                 </div>
                                             </div>
                                         </div>
                                         <div class="flex items-center gap-4">
                                             <div class="flex items-center">
                                                 <label class="relative inline-flex items-center cursor-pointer mr-4">
-                                                    <input 
-                                                        type="radio" 
-                                                        :value="u.id" 
-                                                        v-model="selectedSingleUser"
-                                                        class="sr-only peer"
-                                                    >
+                                                    <input type="radio" :value="u.id" v-model="selectedSingleUser" class="sr-only peer" />
                                                     <div class="w-5 h-5 border-2 border-surface-300 dark:border-surface-600 rounded-full peer-checked:border-primary-500 flex items-center justify-center">
                                                         <div v-if="selectedSingleUser === u.id" class="w-2.5 h-2.5 rounded-full bg-primary-500"></div>
                                                     </div>
@@ -354,12 +354,7 @@ onBeforeUnmount(() => {
                                             </div>
                                             <div class="flex items-center">
                                                 <label class="relative inline-flex items-center cursor-pointer">
-                                                    <input 
-                                                        type="checkbox" 
-                                                        :checked="selectedRecipients.has(u.id)" 
-                                                        @change.prevent.stop="toggleRecipient(u.id)"
-                                                        class="sr-only peer"
-                                                    >
+                                                    <input type="checkbox" :checked="selectedRecipients.has(u.id)" @change.prevent.stop="toggleRecipient(u.id)" class="sr-only peer" />
                                                     <div class="w-5 h-5 border-2 border-surface-300 dark:border-surface-600 rounded-md peer-checked:border-primary-500 peer-checked:bg-primary-500 flex items-center justify-center transition-colors">
                                                         <i v-if="selectedRecipients.has(u.id)" class="pi pi-check text-white text-xs"></i>
                                                     </div>
@@ -383,11 +378,11 @@ onBeforeUnmount(() => {
                     </div>
                     <div class="p-5">
                         <div class="flex flex-wrap gap-2 mb-4">
-                            <Button 
-                                v-for="t in types" 
-                                :key="t" 
-                                :label="t" 
-                                @click="addTypeUsers(t)" 
+                            <Button
+                                v-for="t in types"
+                                :key="t"
+                                :label="t"
+                                @click="addTypeUsers(t)"
                                 icon="pi pi-plus"
                                 severity="secondary"
                                 outlined
@@ -399,14 +394,7 @@ onBeforeUnmount(() => {
                                 <i class="pi pi-info-circle text-primary-500 mr-2"></i>
                                 {{ types.length }} type(s) détecté(s) dans la base
                             </span>
-                            <Button 
-                                label="Sélectionner tous" 
-                                icon="pi pi-verified" 
-                                severity="secondary" 
-                                text
-                                size="small"
-                                class="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300"
-                            />
+                            <Button label="Sélectionner tous" icon="pi pi-verified" severity="secondary" text size="small" class="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300" />
                         </div>
                     </div>
                 </div>
@@ -429,14 +417,14 @@ onBeforeUnmount(() => {
                                 <i class="pi pi-flag text-surface-400"></i>
                                 Priorité de la notification
                             </label>
-                            <Select 
-                                v-model="priority" 
+                            <Select
+                                v-model="priority"
                                 :options="[
-                                    {label:'Faible', value:'low', icon:'pi pi-flag'},
-                                    {label:'Normal', value:'normal', icon:'pi pi-flag-fill'},
-                                    {label:'Haute', value:'high', icon:'pi pi-exclamation-triangle'}
-                                ]" 
-                                optionLabel="label" 
+                                    { label: 'Faible', value: 'low', icon: 'pi pi-flag' },
+                                    { label: 'Normal', value: 'normal', icon: 'pi pi-flag-fill' },
+                                    { label: 'Haute', value: 'high', icon: 'pi pi-exclamation-triangle' }
+                                ]"
+                                optionLabel="label"
                                 optionValue="value"
                                 class="w-full rounded-xl border-surface-200 dark:border-surface-700 [&_.p-dropdown]:p-3.5"
                                 placeholder="Sélectionnez une priorité"
@@ -462,10 +450,10 @@ onBeforeUnmount(() => {
                                 <i class="pi pi-file-edit text-surface-400"></i>
                                 Message <span class="text-red-500">*</span>
                             </label>
-                            <TextArea 
-                                v-model="message" 
-                                rows="8" 
-                                placeholder="Rédigez votre message ici..." 
+                            <TextArea
+                                v-model="message"
+                                rows="8"
+                                placeholder="Rédigez votre message ici..."
                                 class="w-full p-3.5 rounded-xl border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-700/50 focus:ring-2 focus:ring-primary-500/20 transition-all resize-none"
                                 :autoResize="true"
                             />
@@ -484,9 +472,9 @@ onBeforeUnmount(() => {
                                 <i class="pi pi-link text-surface-400"></i>
                                 Lien associé (optionnel)
                             </label>
-                            <InputText 
-                                v-model="link" 
-                                placeholder="https://example.com/page" 
+                            <InputText
+                                v-model="link"
+                                placeholder="https://example.com/page"
                                 class="w-full p-3.5 rounded-xl border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-700/50 focus:ring-2 focus:ring-primary-500/20 transition-all"
                             />
                         </div>
@@ -499,12 +487,16 @@ onBeforeUnmount(() => {
                             </h4>
                             <div class="p-4 rounded-xl bg-surface-50 dark:bg-surface-700/50 border border-surface-200/50 dark:border-surface-700/50">
                                 <div class="flex items-start gap-3 mb-3">
-                                    <div :class="[
-                                        'p-2 rounded-lg',
-                                        priority === 'high' ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300' :
-                                        priority === 'low' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' :
-                                        'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300'
-                                    ]">
+                                    <div
+                                        :class="[
+                                            'p-2 rounded-lg',
+                                            priority === 'high'
+                                                ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300'
+                                                : priority === 'low'
+                                                  ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                                                  : 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300'
+                                        ]"
+                                    >
                                         <i :class="getPriorityIcon(priority)"></i>
                                     </div>
                                     <div>
@@ -540,14 +532,10 @@ onBeforeUnmount(() => {
                             <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-surface-100 dark:bg-surface-800 mb-4">
                                 <i class="pi pi-user-plus text-2xl text-surface-400"></i>
                             </div>
-                            <h4 class="text-lg font-semibold text-surface-700 dark:text-surface-300 mb-2">
-                                Aucun destinataire
-                            </h4>
-                            <p class="text-surface-600 dark:text-surface-400 text-sm">
-                                Sélectionnez des utilisateurs dans la liste pour envoyer une notification
-                            </p>
+                            <h4 class="text-lg font-semibold text-surface-700 dark:text-surface-300 mb-2">Aucun destinataire</h4>
+                            <p class="text-surface-600 dark:text-surface-400 text-sm">Sélectionnez des utilisateurs dans la liste pour envoyer une notification</p>
                         </div>
-                        
+
                         <div v-else class="space-y-3 max-h-[300px] overflow-y-auto pr-2">
                             <!-- Single User Selection -->
                             <div v-if="selectedSingleUser" class="group flex items-center justify-between p-3 rounded-xl bg-primary-50/30 dark:bg-primary-900/20 border border-primary-200/50 dark:border-primary-800/50">
@@ -566,9 +554,9 @@ onBeforeUnmount(() => {
                             </div>
 
                             <!-- Multiple Recipients -->
-                            <div 
-                                v-for="id in Array.from(selectedRecipients)" 
-                                :key="id" 
+                            <div
+                                v-for="id in Array.from(selectedRecipients)"
+                                :key="id"
                                 class="group flex items-center justify-between p-3 rounded-xl bg-surface-50 dark:bg-surface-700/50 hover:bg-surface-100 dark:hover:bg-surface-700 transition-colors"
                             >
                                 <div class="flex items-center gap-3">
@@ -588,18 +576,10 @@ onBeforeUnmount(() => {
 
                         <div v-if="selectedCount > 0" class="mt-4 pt-4 border-t border-surface-200/50 dark:border-surface-700/50">
                             <div class="flex justify-between items-center">
-                                <Button 
-                                    label="Tout effacer" 
-                                    icon="pi pi-trash" 
-                                    severity="danger" 
-                                    outlined
-                                    size="small"
-                                    class="rounded-xl"
-                                    @click="clearSelection"
-                                />
-                                <Button 
-                                    label="Confirmer l'envoi" 
-                                    icon="pi pi-send" 
+                                <Button label="Tout effacer" icon="pi pi-trash" severity="danger" outlined size="small" class="rounded-xl" @click="clearSelection" />
+                                <Button
+                                    label="Confirmer l'envoi"
+                                    icon="pi pi-send"
                                     severity="primary"
                                     size="small"
                                     :loading="sending"
@@ -614,7 +594,7 @@ onBeforeUnmount(() => {
             </div>
         </div>
     </section>
-</template> 
+</template>
 
 <style scoped>
 /* petites adaptations visuelles si nécessaire */

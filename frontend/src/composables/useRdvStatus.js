@@ -36,10 +36,12 @@ function normalize(value) {
 }
 
 export function useRdvStatus() {
-    const statusList = computed(() => Object.entries(STATUS_DEFS).map(([value, meta]) => ({
-        value: Number(value),
-        ...meta
-    })));
+    const statusList = computed(() =>
+        Object.entries(STATUS_DEFS).map(([value, meta]) => ({
+            value: Number(value),
+            ...meta
+        }))
+    );
 
     const getStatus = (value) => normalize(value);
     const getLabel = (value) => normalize(value).label;

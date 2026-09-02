@@ -11,14 +11,14 @@ const props = defineProps({
 });
 
 function getSexeSeverity(sexe) {
-            const severities = {
-                'M': 'info',
-                'F': 'help',
-                'Masculin': 'info',
-                'Féminin': 'help'
-            };
-            return severities[sexe] || 'info';
-        }
+    const severities = {
+        M: 'info',
+        F: 'help',
+        Masculin: 'info',
+        Féminin: 'help'
+    };
+    return severities[sexe] || 'info';
+}
 </script>
 
 <!-- PatientInfoCard.vue -->
@@ -45,9 +45,7 @@ function getSexeSeverity(sexe) {
                     </div>
                     <div>
                         <p class="text-sm text-surface-500 dark:text-surface-400">Nom complet</p>
-                        <p class="text-lg font-semibold text-surface-900 dark:text-surface-100">
-                            {{ patient.prenom }} {{ patient.nom }}
-                        </p>
+                        <p class="text-lg font-semibold text-surface-900 dark:text-surface-100">{{ patient.prenom }} {{ patient.nom }}</p>
                     </div>
                 </div>
 
@@ -69,9 +67,7 @@ function getSexeSeverity(sexe) {
                     </div>
                     <div>
                         <p class="text-sm text-surface-500 dark:text-surface-400">Sexe</p>
-                        <Tag :value="patient.sexe || '—'" 
-                             :severity="getSexeSeverity(patient.sexe)"
-                             class="px-3 py-1.5 rounded-full font-medium" />
+                        <Tag :value="patient.sexe || '—'" :severity="getSexeSeverity(patient.sexe)" class="px-3 py-1.5 rounded-full font-medium" />
                     </div>
                 </div>
             </div>
@@ -83,12 +79,11 @@ function getSexeSeverity(sexe) {
                     </div>
                     <div>
                         <p class="text-sm text-surface-500 dark:text-surface-400">Téléphone</p>
-                        <a v-if="!hidePhone && patient.telephone" :href="`tel:${patient.telephone}`" 
-                           class="text-lg font-semibold text-surface-900 dark:text-surface-100 hover:text-primary-600 dark:hover:text-primary-400 transition-colors">
+                        <a v-if="!hidePhone && patient.telephone" :href="`tel:${patient.telephone}`" class="text-lg font-semibold text-surface-900 dark:text-surface-100 hover:text-primary-600 dark:hover:text-primary-400 transition-colors">
                             {{ patient.telephone }}
                         </a>
                         <p v-else class="text-lg font-semibold text-surface-900 dark:text-surface-100">
-                            {{ hidePhone ? 'Masqué par l\'administrateur' : '—' }}
+                            {{ hidePhone ? "Masqué par l'administrateur" : '—' }}
                         </p>
                     </div>
                 </div>
@@ -113,9 +108,7 @@ function getSexeSeverity(sexe) {
                         <p class="text-sm text-surface-500 dark:text-surface-400">Statut</p>
                         <div class="flex items-center gap-2">
                             <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                            <span class="text-lg font-semibold text-surface-900 dark:text-surface-100">
-                                Patient actif
-                            </span>
+                            <span class="text-lg font-semibold text-surface-900 dark:text-surface-100"> Patient actif </span>
                         </div>
                     </div>
                 </div>
@@ -126,14 +119,10 @@ function getSexeSeverity(sexe) {
         <div class="mt-6 pt-4 border-t border-surface-100 dark:border-surface-700">
             <div class="text-sm font-medium text-surface-700 dark:text-surface-300 mb-3">Actions rapides</div>
             <div class="flex flex-wrap gap-2">
-                <Button icon="pi pi-envelope" label="Contacter" severity="secondary" outlined size="small"
-                    class="rounded-xl px-4 py-2 hover:shadow-sm" />
-                <Button icon="pi pi-file-pdf" label="Dossier médical" severity="secondary" outlined size="small"
-                    class="rounded-xl px-4 py-2 hover:shadow-sm" />
-                <Button icon="pi pi-calendar-plus" label="Nouveau RDV" severity="secondary" outlined size="small"
-                    class="rounded-xl px-4 py-2 hover:shadow-sm" />
+                <Button icon="pi pi-envelope" label="Contacter" severity="secondary" outlined size="small" class="rounded-xl px-4 py-2 hover:shadow-sm" />
+                <Button icon="pi pi-file-pdf" label="Dossier médical" severity="secondary" outlined size="small" class="rounded-xl px-4 py-2 hover:shadow-sm" />
+                <Button icon="pi pi-calendar-plus" label="Nouveau RDV" severity="secondary" outlined size="small" class="rounded-xl px-4 py-2 hover:shadow-sm" />
             </div>
         </div>
     </div>
 </template>
- 

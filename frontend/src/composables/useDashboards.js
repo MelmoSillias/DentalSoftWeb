@@ -95,11 +95,7 @@ export function useDashboards() {
         loading.value = true;
         error.value = null;
         try {
-            const [cardsData, carouselsData, tabsData] = await Promise.all([
-                fetchCards(role, params),
-                fetchCarousels(role, params),
-                fetchTabs(role, params)
-            ]);
+            const [cardsData, carouselsData, tabsData] = await Promise.all([fetchCards(role, params), fetchCarousels(role, params), fetchTabs(role, params)]);
             cards.value = cardsData || {};
             carousels.value = carouselsData || {};
             tabs.value = tabsData || {};

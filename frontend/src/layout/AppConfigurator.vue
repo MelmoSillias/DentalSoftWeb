@@ -4,25 +4,8 @@ import { useAppearanceSettings } from '@/composables/useAppearanceSettings';
 import Select from 'primevue/select';
 import SelectButton from 'primevue/selectbutton';
 
-const {
-    layoutConfig,
-    isDarkTheme,
-    preset,
-    presetOptions,
-    menuMode,
-    menuModeOptions,
-    themeOptions,
-    fontFamilyOptions,
-    fontSizeOptions,
-    primaryColors,
-    surfaces,
-    themeMode,
-    fontFamily,
-    fontSize,
-    updateColors,
-    onPresetChange,
-    onMenuModeChange
-} = useAppearanceSettings();
+const { layoutConfig, isDarkTheme, preset, presetOptions, menuMode, menuModeOptions, themeOptions, fontFamilyOptions, fontSizeOptions, primaryColors, surfaces, themeMode, fontFamily, fontSize, updateColors, onPresetChange, onMenuModeChange } =
+    useAppearanceSettings();
 
 const props = defineProps({
     embedded: {
@@ -76,20 +59,32 @@ const panelClass = computed(() => {
             <div v-if="showPrimary" :id="embedded ? 'appearance-primary' : null">
                 <span class="text-sm text-muted-color font-semibold">Primary</span>
                 <div class="pt-2 flex gap-2 flex-wrap justify-between">
-                    <button v-for="primaryColor of primaryColors" :key="primaryColor.name" type="button"
-                        :title="primaryColor.name" @click="updateColors('primary', primaryColor)"
+                    <button
+                        v-for="primaryColor of primaryColors"
+                        :key="primaryColor.name"
+                        type="button"
+                        :title="primaryColor.name"
+                        @click="updateColors('primary', primaryColor)"
                         :class="['border-none w-5 h-5 rounded-full p-0 cursor-pointer outline-none outline-offset-1', { 'outline-primary': layoutConfig.primary === primaryColor.name }]"
-                        :style="{ backgroundColor: `${primaryColor.name === 'noir' ? 'var(--text-color)' : primaryColor.palette['500']}` }"></button>
+                        :style="{ backgroundColor: `${primaryColor.name === 'noir' ? 'var(--text-color)' : primaryColor.palette['500']}` }"
+                    ></button>
                 </div>
             </div>
             <div v-if="showSurface" :id="embedded ? 'appearance-surface' : null">
                 <span class="text-sm text-muted-color font-semibold">Surface</span>
                 <div class="pt-2 flex gap-2 flex-wrap justify-between">
-                    <button v-for="surface of surfaces" :key="surface.name" type="button" :title="surface.name"
-                        @click="updateColors('surface', surface)" :class="[
+                    <button
+                        v-for="surface of surfaces"
+                        :key="surface.name"
+                        type="button"
+                        :title="surface.name"
+                        @click="updateColors('surface', surface)"
+                        :class="[
                             'border-none w-5 h-5 rounded-full p-0 cursor-pointer outline-none outline-offset-1',
                             { 'outline-primary': layoutConfig.surface ? layoutConfig.surface === surface.name : isDarkTheme ? surface.name === 'zinc' : surface.name === 'slate' }
-                        ]" :style="{ backgroundColor: `${surface.palette['500']}` }"></button>
+                        ]"
+                        :style="{ backgroundColor: `${surface.palette['500']}` }"
+                    ></button>
                 </div>
             </div>
             <div v-if="showPresets" class="flex flex-col gap-2" :id="embedded ? 'appearance-presets' : null">
@@ -106,8 +101,7 @@ const panelClass = computed(() => {
             </div>
             <div v-if="showMenuMode" class="flex flex-col gap-2">
                 <span class="text-sm text-muted-color font-semibold">Menu Mode</span>
-                <SelectButton v-model="menuMode" @change="onMenuModeChange" :options="menuModeOptions"
-                    :allowEmpty="false" optionLabel="label" optionValue="value" />
+                <SelectButton v-model="menuMode" @change="onMenuModeChange" :options="menuModeOptions" :allowEmpty="false" optionLabel="label" optionValue="value" />
             </div>
         </div>
     </div>

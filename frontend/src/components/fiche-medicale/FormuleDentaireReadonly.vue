@@ -65,25 +65,16 @@ const formatField = (value) => {
 };
 
 const examensComplementairesView = computed(() => {
-    const list = Array.isArray(selectedEntry.value?.examensComplementaires)
-        ? selectedEntry.value.examensComplementaires
-        : [];
+    const list = Array.isArray(selectedEntry.value?.examensComplementaires) ? selectedEntry.value.examensComplementaires : [];
     return list.length ? list : [{ titre: null, description: null, isPlaceholder: true }];
 });
 </script>
 
 <template>
     <div class="w-full min-w-0">
-        <FormuleDentaireGrid
-            :matrix="matrix"
-            :form="form"
-            mode="readonly"
-            @tooth-click="openToothDetail"
-        />
+        <FormuleDentaireGrid :matrix="matrix" :form="form" mode="readonly" @tooth-click="openToothDetail" />
 
-        <p class="text-xs text-surface-500 dark:text-surface-400 mt-3 text-center">
-            Cliquez sur une dent pour afficher les détails
-        </p>
+        <p class="text-xs text-surface-500 dark:text-surface-400 mt-3 text-center">Cliquez sur une dent pour afficher les détails</p>
 
         <Dialog
             v-model:visible="detailVisible"
@@ -105,29 +96,18 @@ const examensComplementairesView = computed(() => {
                         <i class="pi pi-th-large text-primary-600 dark:text-primary-400"></i>
                     </div>
                     <div>
-                        <h4 class="text-lg font-semibold text-surface-900 dark:text-surface-50 m-0">
-                            Dent {{ selectedTooth }}
-                        </h4>
-                        <p class="text-sm text-surface-500 dark:text-surface-400 m-0 mt-0.5">
-                            Détails de la formule dentaire
-                        </p>
+                        <h4 class="text-lg font-semibold text-surface-900 dark:text-surface-50 m-0">Dent {{ selectedTooth }}</h4>
+                        <p class="text-sm text-surface-500 dark:text-surface-400 m-0 mt-0.5">Détails de la formule dentaire</p>
                     </div>
                 </div>
             </template>
 
-            <div
-                v-if="selectedTooth && !selectedHasData"
-                class="flex flex-col items-center justify-center text-center py-10 px-4 rounded-xl border border-dashed border-surface-200 dark:border-surface-700 bg-surface-50/80 dark:bg-surface-800/50"
-            >
+            <div v-if="selectedTooth && !selectedHasData" class="flex flex-col items-center justify-center text-center py-10 px-4 rounded-xl border border-dashed border-surface-200 dark:border-surface-700 bg-surface-50/80 dark:bg-surface-800/50">
                 <div class="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-surface-100 dark:bg-surface-800 text-surface-400 dark:text-surface-500">
                     <i class="pi pi-th-large text-2xl"></i>
                 </div>
-                <p class="text-base font-medium text-surface-700 dark:text-surface-200">
-                    Dent non examinée
-                </p>
-                <p class="mt-2 max-w-xs text-sm text-surface-500 dark:text-surface-400">
-                    Aucune information n'a été saisie pour cette dent dans la formule dentaire.
-                </p>
+                <p class="text-base font-medium text-surface-700 dark:text-surface-200">Dent non examinée</p>
+                <p class="mt-2 max-w-xs text-sm text-surface-500 dark:text-surface-400">Aucune information n'a été saisie pour cette dent dans la formule dentaire.</p>
             </div>
 
             <div v-else-if="selectedTooth" class="space-y-5 text-sm max-h-[60vh] overflow-y-auto pr-1">
@@ -138,10 +118,7 @@ const examensComplementairesView = computed(() => {
 
                 <div class="space-y-2">
                     <h5 class="text-xs font-semibold uppercase tracking-wide text-surface-500 dark:text-surface-400">Dent causale</h5>
-                    <span
-                        v-if="selectedEntry?.estCausale"
-                        class="inline-flex items-center gap-1 rounded-full bg-red-100 dark:bg-red-900/30 px-2.5 py-1 text-xs font-semibold text-red-700 dark:text-red-300"
-                    >
+                    <span v-if="selectedEntry?.estCausale" class="inline-flex items-center gap-1 rounded-full bg-red-100 dark:bg-red-900/30 px-2.5 py-1 text-xs font-semibold text-red-700 dark:text-red-300">
                         <i class="pi pi-exclamation-circle text-[10px]"></i>
                         Oui
                     </span>
@@ -163,11 +140,7 @@ const examensComplementairesView = computed(() => {
                 <div class="space-y-2">
                     <h5 class="text-xs font-semibold uppercase tracking-wide text-surface-500 dark:text-surface-400">Examens complémentaires</h5>
                     <div class="space-y-2">
-                        <div
-                            v-for="(examen, idx) in examensComplementairesView"
-                            :key="idx"
-                            class="p-3 rounded-lg bg-surface-50 dark:bg-surface-800 border border-surface-200 dark:border-surface-700"
-                        >
+                        <div v-for="(examen, idx) in examensComplementairesView" :key="idx" class="p-3 rounded-lg bg-surface-50 dark:bg-surface-800 border border-surface-200 dark:border-surface-700">
                             <template v-if="examen.isPlaceholder">
                                 <p class="text-surface-600 dark:text-surface-400">—</p>
                             </template>
@@ -186,13 +159,7 @@ const examensComplementairesView = computed(() => {
 
             <template #footer>
                 <div class="flex justify-end w-full">
-                    <Button
-                        label="Fermer"
-                        icon="pi pi-times"
-                        severity="secondary"
-                        class="dark:border-surface-600 dark:text-surface-200"
-                        @click="closeToothDetail"
-                    />
+                    <Button label="Fermer" icon="pi pi-times" severity="secondary" class="dark:border-surface-600 dark:text-surface-200" @click="closeToothDetail" />
                 </div>
             </template>
         </Dialog>

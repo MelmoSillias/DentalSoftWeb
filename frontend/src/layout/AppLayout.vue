@@ -10,14 +10,7 @@ import AppSidebar from './AppSidebar.vue';
 import AppTopbar from './AppTopbar.vue';
 import AppRightRail from './AppRightRail.vue';
 
-const {
-    layoutConfig,
-    layoutState,
-    isSidebarActive,
-    isHubNavigation,
-    showLayoutMask,
-    closeMenu
-} = useLayout();
+const { layoutConfig, layoutState, isSidebarActive, isHubNavigation, showLayoutMask, closeMenu } = useLayout();
 const auth = useAuthStore();
 const { syncFromServer } = useInternetFeatures();
 const mercureClient = useMercureClient();
@@ -87,10 +80,7 @@ function isOutsideClicked(event) {
     const sidebarEl = document.querySelector('.layout-sidebar');
     const topbarEl = document.querySelector('.layout-menu-button');
 
-    return !(
-        (sidebarEl && (sidebarEl.isSameNode(event.target) || sidebarEl.contains(event.target))) ||
-        (topbarEl && (topbarEl.isSameNode(event.target) || topbarEl.contains(event.target)))
-    );
+    return !((sidebarEl && (sidebarEl.isSameNode(event.target) || sidebarEl.contains(event.target))) || (topbarEl && (topbarEl.isSameNode(event.target) || topbarEl.contains(event.target))));
 }
 
 onMounted(async () => {
@@ -127,13 +117,7 @@ onBeforeUnmount(() => {
             <div class="layout-main-column">
                 <main class="layout-main">
                     <router-view v-slot="{ Component, route: viewRoute }">
-                        <Transition
-                            name="page-route"
-                            mode="out-in"
-                            @before-leave="onPageRouteBeforeLeave"
-                            @before-enter="onPageRouteBeforeEnter"
-                            @after-enter="onPageRouteAfterEnter"
-                        >
+                        <Transition name="page-route" mode="out-in" @before-leave="onPageRouteBeforeLeave" @before-enter="onPageRouteBeforeEnter" @after-enter="onPageRouteAfterEnter">
                             <div v-if="Component" :key="viewRoute.name || viewRoute.path" class="page-route-root">
                                 <component :is="Component" />
                             </div>
@@ -146,11 +130,7 @@ onBeforeUnmount(() => {
             <AppRightRail v-if="isHubNavigation" />
         </div>
 
-        <div
-            v-if="showLayoutMask && !isHubNavigation"
-            class="layout-mask"
-            @click="closeMenu"
-        />
+        <div v-if="showLayoutMask && !isHubNavigation" class="layout-mask" @click="closeMenu" />
 
         <AppToast />
     </div>

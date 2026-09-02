@@ -66,12 +66,14 @@ function buildPatientFormTabSteps(ctx, { afterLeaveClose = true } = {}) {
         target: '[data-tour="patients-form.actions"]',
         title: 'Confirmer l enregistrement',
         content: 'Cliquez sur Creer ou Mettre a jour. Une confirmation est demandee avant la sauvegarde definitive du dossier.',
-        ...(afterLeaveClose ? {
-            afterLeave: async () => {
-                ctx.closeAllDialogs();
-                await flushUi();
-            }
-        } : {})
+        ...(afterLeaveClose
+            ? {
+                  afterLeave: async () => {
+                      ctx.closeAllDialogs();
+                      await flushUi();
+                  }
+              }
+            : {})
     });
 
     return steps;
@@ -290,13 +292,15 @@ function buildAddPatientSteps(ctx) {
         },
         ...formSteps.map((step, index) => ({
             ...step,
-            ...(index === 0 ? {
-                beforeEnter: async () => {
-                    await ctx.openCreatePatientDialog();
-                    await flushUi();
-                    await switchFormTabStep(ctx, 'personal');
-                }
-            } : {})
+            ...(index === 0
+                ? {
+                      beforeEnter: async () => {
+                          await ctx.openCreatePatientDialog();
+                          await flushUi();
+                          await switchFormTabStep(ctx, 'personal');
+                      }
+                  }
+                : {})
         }))
     ]);
 }
@@ -312,13 +316,15 @@ function buildEditPatientSteps(ctx) {
         },
         ...formSteps.map((step, index) => ({
             ...step,
-            ...(index === 0 ? {
-                beforeEnter: async () => {
-                    await ctx.openEditPatientDialog?.();
-                    await flushUi();
-                    await switchFormTabStep(ctx, 'personal');
-                }
-            } : {})
+            ...(index === 0
+                ? {
+                      beforeEnter: async () => {
+                          await ctx.openEditPatientDialog?.();
+                          await flushUi();
+                          await switchFormTabStep(ctx, 'personal');
+                      }
+                  }
+                : {})
         }))
     ]);
 }
@@ -385,9 +391,10 @@ function buildCreateConsultationSteps(ctx, variantId) {
                 group: GROUP,
                 target: '[data-tour="patients-list.dialog.active-warning"]',
                 title: variantId === 'blocked-with-fiche' ? 'Fiche deja saisie' : 'Annulation possible',
-                content: variantId === 'blocked-with-fiche'
-                    ? 'Consultation liee a une fiche medicale : suppression impossible ici. Poursuivez ou cloturez la fiche dans le module Consultations.'
-                    : 'Sans fiche saisie, la consultation ouverte par erreur peut etre annulee directement depuis ce dialogue.',
+                content:
+                    variantId === 'blocked-with-fiche'
+                        ? 'Consultation liee a une fiche medicale : suppression impossible ici. Poursuivez ou cloturez la fiche dans le module Consultations.'
+                        : 'Sans fiche saisie, la consultation ouverte par erreur peut etre annulee directement depuis ce dialogue.',
                 beforeEnter: async () => {
                     await ctx.openDuplicateConsultationDialog(variantId);
                     await flushUi();

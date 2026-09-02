@@ -14,7 +14,6 @@ import cabinetConfig from '@/cabinetConfig';
 import { frLocale } from '@/locales/primevue-fr';
 import { devDebug, logAppError, setAppLoggerRouteResolver } from '@/utils/appLogger';
 
-
 // Défensive: wrappe l'ajout/suppression de listeners sur matchMedia
 // pour éviter que des listeners tiers (ex: PrimeVue) lèvent des exceptions
 // non capturées (ex: alignOverlay accédant à des refs supprimées).
@@ -81,22 +80,21 @@ if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
         }
 
         // no EventSource polyfill here; we use fetch-event-source in composable
-
     } catch (e) {
         if (import.meta.env.DEV) {
             logAppError('matchMedia.wrapper', e);
         }
     }
 }
- 
+
 import '@/assets/styles.scss';
 import '@/assets/tourguide.scss';
- 
+
 if (import.meta.env.DEV) {
     const originalWarn = console.warn;
     console.warn = (...args) => {
         const first = args[0] ? String(args[0]) : '';
- 
+
         const shouldSilence =
             first.includes('onMounted is called when there is no active component instance to be associated with') ||
             first.includes('Deprecated since v4. Use Select component instead.') ||
@@ -120,7 +118,7 @@ if (typeof document !== 'undefined') {
         themeColorMeta.setAttribute('content', cabinetConfig.pwa.themeColor);
     }
 }
- 
+
 const SkyPreset = definePreset(Aura, {
     semantic: {
         primary: {
@@ -193,7 +191,7 @@ app.use(PrimeVue, {
         }
     }
 });
- 
+
 const pinia = createPinia();
 app.use(pinia);
 

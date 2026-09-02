@@ -1,3 +1,20 @@
+<script setup>
+import PrintA4Page from './PrintA4Page.vue';
+import PrintDocumentHeader from './PrintDocumentHeader.vue';
+import logoImg from '@/assets/logo.png';
+
+defineProps({
+    doc: { type: Object, default: () => ({}) },
+    title: { type: String, default: 'Devis' },
+    logoSrc: { type: String, default: logoImg }
+});
+
+const formatMoney = (value) => {
+    const num = Number(value || 0);
+    return `${num.toLocaleString('fr-FR')} FCFA`;
+};
+</script>
+
 <template>
     <PrintA4Page :logo-src="logoSrc">
         <template #header>
@@ -48,7 +65,7 @@
         </table>
 
         <p v-if="doc?.cabinetServicesFootnote || doc?.hasCabinetServices" class="cabinet-footnote">
-            {{ doc?.cabinetServicesFootnote || 'Les services marqués « Service cabinet » sont facturés par le cabinet et ne relèvent pas de l\'honoraire du praticien.' }}
+            {{ doc?.cabinetServicesFootnote || "Les services marqués « Service cabinet » sont facturés par le cabinet et ne relèvent pas de l'honoraire du praticien." }}
         </p>
 
         <div class="sign-row">
@@ -63,23 +80,6 @@
         </div>
     </PrintA4Page>
 </template>
-
-<script setup>
-import PrintA4Page from './PrintA4Page.vue';
-import PrintDocumentHeader from './PrintDocumentHeader.vue';
-import logoImg from '@/assets/logo.png';
-
-defineProps({
-    doc: { type: Object, default: () => ({}) },
-    title: { type: String, default: 'Devis' },
-    logoSrc: { type: String, default: logoImg }
-});
-
-const formatMoney = (value) => {
-    const num = Number(value || 0);
-    return `${num.toLocaleString('fr-FR')} FCFA`;
-};
-</script>
 
 <style scoped>
 .sign-row {

@@ -108,25 +108,16 @@ const hasRows = computed(() => localRows.value.length > 0);
                     </div>
 
                     <div class="flex items-center gap-3">
-                        <div class="rounded-xl bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 dark:bg-rose-950/40 dark:text-rose-200">
-                            Total : {{ formatFcfa(total) }}
-                        </div>
+                        <div class="rounded-xl bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 dark:bg-rose-950/40 dark:text-rose-200">Total : {{ formatFcfa(total) }}</div>
                         <Button v-if="hasRows && total > 0" icon="pi pi-minus-circle" label="Transaction globale" severity="warning" outlined @click="emit('create-global-expense')" />
                         <Button icon="pi pi-plus" label="Ajouter une ligne" @click="addRow" />
                     </div>
                 </div>
             </div>
 
-            <DataTable
-                :value="localRows"
-                dataKey="id"
-                :loading="loading"
-                responsiveLayout="scroll"
-                stripedRows>
+            <DataTable :value="localRows" dataKey="id" :loading="loading" responsiveLayout="scroll" stripedRows>
                 <template #empty>
-                    <div class="px-4 py-8 text-center text-surface-500 dark:text-surface-400">
-                        Aucune charge fixe enregistrée.
-                    </div>
+                    <div class="px-4 py-8 text-center text-surface-500 dark:text-surface-400">Aucune charge fixe enregistrée.</div>
                 </template>
 
                 <Column header="Désignation">

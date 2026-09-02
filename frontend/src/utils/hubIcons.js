@@ -41,5 +41,5 @@ export const HUB_ICONS = {
 };
 
 export function getHubIcon(iconKey) {
-    return iconKey ? HUB_ICONS[iconKey] ?? null : null;
+    return iconKey ? (HUB_ICONS[iconKey] ?? null) : null;
 }

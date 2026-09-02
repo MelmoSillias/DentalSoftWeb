@@ -68,9 +68,7 @@ const ensureTooth = (tooth) => {
             ...defaultEntry().siCausale,
             ...(current.siCausale || {})
         },
-        examensComplementaires: Array.isArray(current.examensComplementaires)
-            ? current.examensComplementaires
-            : []
+        examensComplementaires: Array.isArray(current.examensComplementaires) ? current.examensComplementaires : []
     };
 
     if (!form.value?.[tooth]) {
@@ -152,9 +150,7 @@ const updateExamen = (index, field, value) => {
         return;
     }
     const current = ensureTooth(selectedTooth.value);
-    const next = current.examensComplementaires.map((item, idx) =>
-        idx === index ? { ...item, [field]: value } : item
-    );
+    const next = current.examensComplementaires.map((item, idx) => (idx === index ? { ...item, [field]: value } : item));
     updateTooth(selectedTooth.value, { examensComplementaires: next });
 };
 
@@ -199,21 +195,11 @@ const clearEtatLabel = computed(() => {
 
 <template>
     <div class="w-full min-w-0">
-        <div
-            class="rounded-2xl border border-surface-200/70 dark:border-surface-700 bg-gradient-to-br from-surface-0 to-surface-50 dark:from-surface-900 dark:to-surface-900 p-4 sm:p-5 shadow-sm w-full min-w-0 overflow-hidden"
-        >
-            <FormuleDentaireGrid
-                :matrix="matrix"
-                :form="form"
-                :selected-tooth="selectedTooth"
-                mode="edit"
-                @tooth-click="openToothDetail"
-            />
+        <div class="rounded-2xl border border-surface-200/70 dark:border-surface-700 bg-gradient-to-br from-surface-0 to-surface-50 dark:from-surface-900 dark:to-surface-900 p-4 sm:p-5 shadow-sm w-full min-w-0 overflow-hidden">
+            <FormuleDentaireGrid :matrix="matrix" :form="form" :selected-tooth="selectedTooth" mode="edit" @tooth-click="openToothDetail" />
         </div>
 
-        <p class="text-xs text-surface-500 dark:text-surface-400 mt-3 text-center">
-            Cliquez sur une dent pour renseigner ses détails
-        </p>
+        <p class="text-xs text-surface-500 dark:text-surface-400 mt-3 text-center">Cliquez sur une dent pour renseigner ses détails</p>
 
         <Dialog
             v-model:visible="detailVisible"
@@ -235,12 +221,8 @@ const clearEtatLabel = computed(() => {
                         <i class="pi pi-th-large text-primary-600 dark:text-primary-400"></i>
                     </div>
                     <div>
-                        <h4 class="text-lg font-semibold text-surface-900 dark:text-surface-50 m-0">
-                            Dent {{ selectedTooth }}
-                        </h4>
-                        <p class="text-sm text-surface-500 dark:text-surface-400 m-0 mt-0.5">
-                            Détails de la formule dentaire
-                        </p>
+                        <h4 class="text-lg font-semibold text-surface-900 dark:text-surface-50 m-0">Dent {{ selectedTooth }}</h4>
+                        <p class="text-sm text-surface-500 dark:text-surface-400 m-0 mt-0.5">Détails de la formule dentaire</p>
                     </div>
                 </div>
             </template>
@@ -252,145 +234,65 @@ const clearEtatLabel = computed(() => {
                         <div class="text-xs text-surface-500">
                             {{ clearEtatLabel }}
                         </div>
-                        <Button
-                            label="Tout deselectionner"
-                            icon="pi pi-times"
-                            text
-                            size="small"
-                            :disabled="(selectedEntry?.etat || []).length === 0"
-                            @click="resetEtat"
-                        />
+                        <Button label="Tout deselectionner" icon="pi pi-times" text size="small" :disabled="(selectedEntry?.etat || []).length === 0" @click="resetEtat" />
                     </div>
-                    <MultiSelect
-                        :modelValue="selectedEntry?.etat"
-                        :options="etatOptions"
-                        optionLabel="label"
-                        optionValue="value"
-                        display="chip"
-                        class="w-full"
-                        placeholder="Selectionner"
-                        @update:modelValue="updateEtat"
-                    />
+                    <MultiSelect :modelValue="selectedEntry?.etat" :options="etatOptions" optionLabel="label" optionValue="value" display="chip" class="w-full" placeholder="Selectionner" @update:modelValue="updateEtat" />
                 </div>
 
                 <div v-if="selectedEntry?.estCausale" class="space-y-4 rounded-xl border border-red-200 bg-red-50/80 dark:bg-red-950/20 dark:border-red-800 p-4">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div class="space-y-2">
                             <label class="text-xs font-medium text-surface-700 dark:text-surface-300">Aspect</label>
-                            <InputText
-                                :modelValue="selectedEntry?.siCausale?.aspect"
-                                class="w-full"
-                                @update:modelValue="(v) => updateSiCausale('aspect', v)"
-                            />
+                            <InputText :modelValue="selectedEntry?.siCausale?.aspect" class="w-full" @update:modelValue="(v) => updateSiCausale('aspect', v)" />
                         </div>
                         <div class="space-y-2">
                             <label class="text-xs font-medium text-surface-700 dark:text-surface-300">Siege</label>
-                            <InputText
-                                :modelValue="selectedEntry?.siCausale?.siege"
-                                class="w-full"
-                                @update:modelValue="(v) => updateSiCausale('siege', v)"
-                            />
+                            <InputText :modelValue="selectedEntry?.siCausale?.siege" class="w-full" @update:modelValue="(v) => updateSiCausale('siege', v)" />
                         </div>
                         <div class="space-y-2">
                             <label class="text-xs font-medium text-surface-700 dark:text-surface-300">Profondeur</label>
-                            <InputText
-                                :modelValue="selectedEntry?.siCausale?.profondeur"
-                                class="w-full"
-                                @update:modelValue="(v) => updateSiCausale('profondeur', v)"
-                            />
+                            <InputText :modelValue="selectedEntry?.siCausale?.profondeur" class="w-full" @update:modelValue="(v) => updateSiCausale('profondeur', v)" />
                         </div>
                         <div class="space-y-2">
                             <label class="text-xs font-medium text-surface-700 dark:text-surface-300">Mobilite</label>
-                            <InputText
-                                :modelValue="selectedEntry?.siCausale?.mobilite"
-                                class="w-full"
-                                @update:modelValue="(v) => updateSiCausale('mobilite', v)"
-                            />
+                            <InputText :modelValue="selectedEntry?.siCausale?.mobilite" class="w-full" @update:modelValue="(v) => updateSiCausale('mobilite', v)" />
                         </div>
                         <div class="space-y-2">
                             <label class="text-xs font-medium text-surface-700 dark:text-surface-300">Sonde</label>
-                            <InputText
-                                :modelValue="selectedEntry?.siCausale?.sonde"
-                                class="w-full"
-                                @update:modelValue="(v) => updateSiCausale('sonde', v)"
-                            />
+                            <InputText :modelValue="selectedEntry?.siCausale?.sonde" class="w-full" @update:modelValue="(v) => updateSiCausale('sonde', v)" />
                         </div>
                         <div class="space-y-2">
                             <label class="text-xs font-medium text-surface-700 dark:text-surface-300">Tests de Vitalite (Froid, Chaud)</label>
-                            <InputText
-                                :modelValue="selectedEntry?.siCausale?.testsVitalite"
-                                class="w-full"
-                                @update:modelValue="(v) => updateSiCausale('testsVitalite', v)"
-                            />
+                            <InputText :modelValue="selectedEntry?.siCausale?.testsVitalite" class="w-full" @update:modelValue="(v) => updateSiCausale('testsVitalite', v)" />
                         </div>
                         <div class="space-y-2">
                             <label class="text-xs font-medium text-surface-700 dark:text-surface-300">Percussions</label>
-                            <InputText
-                                :modelValue="selectedEntry?.siCausale?.percussions"
-                                class="w-full"
-                                @update:modelValue="(v) => updateSiCausale('percussions', v)"
-                            />
+                            <InputText :modelValue="selectedEntry?.siCausale?.percussions" class="w-full" @update:modelValue="(v) => updateSiCausale('percussions', v)" />
                         </div>
                     </div>
                 </div>
 
                 <div class="space-y-2">
                     <label class="text-sm font-medium text-surface-700 dark:text-surface-300">Diagnostic suppose</label>
-                    <InputText
-                        :modelValue="selectedEntry?.diagnosticSuppose"
-                        class="w-full"
-                        @update:modelValue="(v) => updateTooth(selectedTooth, { diagnosticSuppose: v })"
-                    />
+                    <InputText :modelValue="selectedEntry?.diagnosticSuppose" class="w-full" @update:modelValue="(v) => updateTooth(selectedTooth, { diagnosticSuppose: v })" />
                 </div>
 
                 <div class="space-y-2">
                     <label class="text-sm font-medium text-surface-700 dark:text-surface-300">Examen complementaires</label>
                     <div class="space-y-3">
-                        <div
-                            v-for="(item, index) in selectedEntry?.examensComplementaires"
-                            :key="index"
-                            class="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-3 items-center"
-                        >
-                            <InputText
-                                :modelValue="item.titre"
-                                placeholder="Titre"
-                                class="w-full"
-                                @update:modelValue="(v) => updateExamen(index, 'titre', v)"
-                            />
-                            <Textarea
-                                :modelValue="item.raison"
-                                rows="2"
-                                placeholder="Raison"
-                                class="w-full"
-                                @update:modelValue="(v) => updateExamen(index, 'raison', v)"
-                            />
-                            <Button
-                                icon="pi pi-trash"
-                                severity="danger"
-                                text
-                                @click="removeExamen(index)"
-                            />
+                        <div v-for="(item, index) in selectedEntry?.examensComplementaires" :key="index" class="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-3 items-center">
+                            <InputText :modelValue="item.titre" placeholder="Titre" class="w-full" @update:modelValue="(v) => updateExamen(index, 'titre', v)" />
+                            <Textarea :modelValue="item.raison" rows="2" placeholder="Raison" class="w-full" @update:modelValue="(v) => updateExamen(index, 'raison', v)" />
+                            <Button icon="pi pi-trash" severity="danger" text @click="removeExamen(index)" />
                         </div>
-                        <Button
-                            label="Ajouter un examen"
-                            icon="pi pi-plus"
-                            class="w-full"
-                            outlined
-                            @click="addExamen"
-                        />
+                        <Button label="Ajouter un examen" icon="pi pi-plus" class="w-full" outlined @click="addExamen" />
                     </div>
                 </div>
             </div>
 
             <template #footer>
                 <div class="flex justify-end w-full">
-                    <Button
-                        label="Fermer"
-                        icon="pi pi-times"
-                        severity="secondary"
-                        class="dark:border-surface-600 dark:text-surface-200"
-                        @click="closeToothDetail"
-                    />
+                    <Button label="Fermer" icon="pi pi-times" severity="secondary" class="dark:border-surface-600 dark:text-surface-200" @click="closeToothDetail" />
                 </div>
             </template>
         </Dialog>

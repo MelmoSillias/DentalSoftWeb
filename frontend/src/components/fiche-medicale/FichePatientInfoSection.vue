@@ -45,9 +45,7 @@ const handleDeleteAllergy = (item) => emit('delete-allergy', item);
                     </div>
                     <div>
                         <p class="text-sm text-surface-500 dark:text-surface-400">Nom complet</p>
-                        <p class="text-lg font-semibold text-surface-900 dark:text-surface-100">
-                            {{ patient.prenom }} {{ patient.nom }}
-                        </p>
+                        <p class="text-lg font-semibold text-surface-900 dark:text-surface-100">{{ patient.prenom }} {{ patient.nom }}</p>
                     </div>
                 </div>
                 <div class="flex items-center gap-3 p-3 rounded-xl bg-surface-50 dark:bg-surface-700/30">
@@ -70,7 +68,7 @@ const handleDeleteAllergy = (item) => emit('delete-allergy', item);
                     <div>
                         <p class="text-sm text-surface-500 dark:text-surface-400">Telephone</p>
                         <p class="text-lg font-semibold text-surface-900 dark:text-surface-100">
-                            {{ hidePhone ? 'Masqué par l\'administrateur' : (patient.telephone || '—') }}
+                            {{ hidePhone ? "Masqué par l'administrateur" : patient.telephone || '—' }}
                         </p>
                     </div>
                 </div>

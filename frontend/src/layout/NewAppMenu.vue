@@ -37,7 +37,7 @@ const baseModel = ref([
             { label: 'Dashboard', icon: 'pi pi-fw pi-home', to: '/dashboard' },
             { label: 'Mode Focus', icon: 'pi pi-fw pi-eye', to: router.resolve({ name: 'focus-mode' }).href, separator: true }
         ]
-    },
+    }
     // Les autres sections seront ajoutées selon les rôles dans model computed
 ]);
 
@@ -45,9 +45,8 @@ const settingsSection = {
     label: 'Paramètres',
     items: [
         { label: 'Paramètres généraux', icon: 'pi pi-fw pi-cog', to: '/parametres/apparence' },
-        { label: 'API SMS', icon: 'pi pi-fw pi-send', to: '/administration/api-sms', adminOnly: true, requiresInternet: true },
+        { label: 'API SMS', icon: 'pi pi-fw pi-send', to: '/administration/api-sms', adminOnly: true, requiresInternet: true }
         // { label: 'Options des fichiers', icon: 'pi pi-fw pi-file-edit', to: '/parametres/fileOptions' },
-
     ]
 };
 
@@ -80,7 +79,7 @@ const model = computed(() => {
     if (hasAnyRole(['ROLE_ADMIN', 'ROLE_RECEPTION', 'ROLE_MEDECIN'])) {
         const consultationItems = [];
         if (isMedecin.value || isAdmin.value) {
-            consultationItems.push({ label: 'File d\'attente', icon: 'pi pi-fw pi-hourglass', to: router.resolve({ name: 'consultations-cards' }).href });
+            consultationItems.push({ label: "File d'attente", icon: 'pi pi-fw pi-hourglass', to: router.resolve({ name: 'consultations-cards' }).href });
         }
         consultationItems.push({ label: 'Historique', icon: 'pi pi-fw pi-list', to: router.resolve({ name: 'consultations-table' }).href });
         menu.push({
@@ -93,9 +92,7 @@ const model = computed(() => {
     if (hasAnyRole(['ROLE_ADMIN', 'ROLE_RECEPTION'])) {
         menu.push({
             label: 'Caisse',
-            items: [
-                { label: 'Encaissements', icon: 'pi pi-fw pi-briefcase', to: router.resolve({ name: 'caisse' }).href },
-            ]
+            items: [{ label: 'Encaissements', icon: 'pi pi-fw pi-briefcase', to: router.resolve({ name: 'caisse' }).href }]
         });
     }
 
@@ -103,9 +100,7 @@ const model = computed(() => {
     if (hasAnyRole(['ROLE_ADMIN', 'ROLE_RECEPTION', 'ROLE_MEDECIN'])) {
         menu.push({
             label: 'Rapports',
-            items: [
-                { label: 'Statistiques', icon: 'pi pi-fw pi-chart-bar', to: router.resolve({ name: 'rapports' }).href },
-            ]
+            items: [{ label: 'Statistiques', icon: 'pi pi-fw pi-chart-bar', to: router.resolve({ name: 'rapports' }).href }]
         });
     }
 
@@ -119,8 +114,7 @@ const model = computed(() => {
             { label: 'Finances', icon: 'pi pi-fw pi-wallet', to: router.resolve({ name: 'administration-finances' }).href },
             { label: 'Utilisateurs', icon: 'pi pi-fw pi-id-card', to: router.resolve({ name: 'administration-utilisateurs' }).href },
             { label: 'Notifications', icon: 'pi pi-fw pi-bell', to: router.resolve({ name: 'administration-notifications' }).href },
-            { label: 'Avis & retours patients', icon: 'pi pi-fw pi-comments', to: router.resolve({ name: 'administration-avis-retours-patients' }).href },
-
+            { label: 'Avis & retours patients', icon: 'pi pi-fw pi-comments', to: router.resolve({ name: 'administration-avis-retours-patients' }).href }
         );
     }
 
@@ -146,8 +140,6 @@ const model = computed(() => {
 
     return menu;
 });
-
-
 </script>
 
 <template>

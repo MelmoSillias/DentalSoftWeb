@@ -1,11 +1,18 @@
+<script setup>
+import PrintA4Page from './PrintA4Page.vue';
+import PrintDocumentHeader from './PrintDocumentHeader.vue';
+import logoImg from '@/assets/logo.png';
+
+defineProps({
+    data: { type: Object, default: () => ({}) },
+    logoSrc: { type: String, default: logoImg }
+});
+</script>
+
 <template>
     <PrintA4Page :logo-src="logoSrc">
         <template #header>
-            <PrintDocumentHeader
-                title="Ordonnance"
-                :doc-id="data?.id"
-                :date="data?.date"
-            />
+            <PrintDocumentHeader title="Ordonnance" :doc-id="data?.id" :date="data?.date" />
         </template>
 
         <div class="print-info-card">
@@ -26,7 +33,9 @@
             </thead>
             <tbody>
                 <tr v-for="(ligne, idx) in data?.lignes || []" :key="idx">
-                    <td><strong>{{ ligne.designation || '—' }}</strong></td>
+                    <td>
+                        <strong>{{ ligne.designation || '—' }}</strong>
+                    </td>
                     <td>{{ ligne.posologie || '—' }} <small>unités</small></td>
                     <td>{{ ligne.frequence || '—' }} <small>par jour</small></td>
                     <td>{{ ligne.quantite ?? '—' }}</td>
@@ -45,17 +54,6 @@
         </div>
     </PrintA4Page>
 </template>
-
-<script setup>
-import PrintA4Page from './PrintA4Page.vue';
-import PrintDocumentHeader from './PrintDocumentHeader.vue';
-import logoImg from '@/assets/logo.png';
-
-defineProps({
-    data: { type: Object, default: () => ({}) },
-    logoSrc: { type: String, default: logoImg }
-});
-</script>
 
 <style scoped>
 .notice {

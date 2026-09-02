@@ -312,25 +312,37 @@ export const fetchPatientPortalUser = async (patientId, token) => {
 };
 
 export const createPatientPortalUser = async (patientId, token) => {
-    const res = await axios.post(`${apiPrefix}/patient/${patientId}/portal-user/create`, {}, {
-        headers: authHeaders(token)
-    });
+    const res = await axios.post(
+        `${apiPrefix}/patient/${patientId}/portal-user/create`,
+        {},
+        {
+            headers: authHeaders(token)
+        }
+    );
 
     return res.data;
 };
 
 export const resetPatientPortalPassword = async (patientId, token) => {
-    const res = await axios.post(`${apiPrefix}/patient/${patientId}/portal-user/reset-password`, {}, {
-        headers: authHeaders(token)
-    });
+    const res = await axios.post(
+        `${apiPrefix}/patient/${patientId}/portal-user/reset-password`,
+        {},
+        {
+            headers: authHeaders(token)
+        }
+    );
 
     return res.data;
 };
 
 export const togglePatientPortalUser = async (patientId, active, token) => {
-    const res = await axios.patch(`${apiPrefix}/patient/${patientId}/portal-user/active`, { active }, {
-        headers: authHeaders(token)
-    });
+    const res = await axios.patch(
+        `${apiPrefix}/patient/${patientId}/portal-user/active`,
+        { active },
+        {
+            headers: authHeaders(token)
+        }
+    );
 
     return res.data;
 };

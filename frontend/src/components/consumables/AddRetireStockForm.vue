@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, ref } from 'vue'; 
+import { onMounted, ref } from 'vue';
 import InputNumber from 'primevue/inputnumber';
 import Button from 'primevue/button';
 import Message from 'primevue/message';
@@ -11,7 +11,7 @@ import { useConsumables } from '@/composables/useConsumables';
 import { computed } from 'vue';
 import { zodResolver } from '@primevue/forms/resolvers/zod';
 import { z } from 'zod';
-import { useEmployees } from '@/composables/useEmployees'; 
+import { useEmployees } from '@/composables/useEmployees';
 
 const consumablesStore = useConsumables();
 const confirm = useConfirm();
@@ -23,56 +23,54 @@ const props = defineProps({
         type: String,
         default: () => 'add'
     },
-    consumable : {
+    consumable: {
         type: Object,
         default: () => ({})
     }
 });
 
-const emit = defineEmits(['saved', 'cancelled'])
+const emit = defineEmits(['saved', 'cancelled']);
 
 const resolver = zodResolver(
     z.object({
-        quantite: z.number().min(1, 'Entrez une quantité supérieure à 0').and(
-            z.number().int('La quantité doit être un nombre entier')
-        ),
+        quantite: z.number().min(1, 'Entrez une quantité supérieure à 0').and(z.number().int('La quantité doit être un nombre entier')),
         employe: z.number().min(1, 'Veuillez choisir un employé').optional(),
         description: z.string().optional()
     })
-)
+);
 
 const initialValues = ref({
     quantite: 1,
     employe: null,
     description: ''
-})
+});
 
-async function onFormSubmit({ valid, values }) { 
+async function onFormSubmit({ valid, values }) {
     if (!valid) return;
     if (!props.consumable) return;
 
-    if (props.mode === "add") {
+    if (props.mode === 'add') {
         await consumablesStore.addStock(props.consumable.id, values);
-        toast.add({ severity: 'success', summary: 'Succès', detail: `Ajout réussie avec succès.`, life: 3000 }); 
+        toast.add({ severity: 'success', summary: 'Succès', detail: `Ajout réussie avec succès.`, life: 3000 });
         emit('saved');
     } else {
         await consumablesStore.withdrawStock(props.consumable.id, values);
-        toast.add({ severity: 'success', summary: 'Succès', detail: `Retrait réussie avec succès.`, life: 3000 }); 
+        toast.add({ severity: 'success', summary: 'Succès', detail: `Retrait réussie avec succès.`, life: 3000 });
         emit('saved');
-    } 
+    }
 }
 
 onMounted(async () => {
-    await employeeStore.fetchEmployees(); 
+    await employeeStore.fetchEmployees();
 });
-
 </script>
 
 <template>
-    <Form v-slot="$form" :initialValues="initialValues" :resolver="resolver" @submit="onFormSubmit"
-        class="flex flex-col gap-4 w-full">
+    <Form v-slot="$form" :initialValues="initialValues" :resolver="resolver" @submit="onFormSubmit" class="flex flex-col gap-4 w-full">
         <div class="flex flex-col gap-4">
-            <div v-if="props.consumable"> <p class="text-lg">Consommable : {{ props.consumable.nom }}</p></div>
+            <div v-if="props.consumable">
+                <p class="text-lg">Consommable : {{ props.consumable.nom }}</p>
+            </div>
             <Message v-else severity="warn" text="Aucun consommable sélectionné"></Message>
             <div class="col py-1">
                 <FloatLabel variant="on">
@@ -89,7 +87,7 @@ onMounted(async () => {
                         {{ $form.quantite.error?.message }}
                     </Message>
                 </FloatLabel>
-            </div> 
+            </div>
             <div v-if="props.mode !== 'add'" class="col">
                 <FloatLabel variant="on">
                     <Select name="employe" :options="employeeStore.employees.value" option-label="fullname" option-value="id" class="w-full" filter></Select>
@@ -108,11 +106,11 @@ onMounted(async () => {
                     </Message>
                 </FloatLabel>
             </div>
-        </div> 
+        </div>
         <Divider class="py-0"></Divider>
         <div class="flex justify-end">
             <Button label="Annuler" class="p-button-text mr-2" @click="emit('cancelled')"></Button>
             <Button label="Enregistrer" type="submit" :loading="consumablesStore.loading.value"></Button>
-        </div> 
+        </div>
     </Form>
 </template>

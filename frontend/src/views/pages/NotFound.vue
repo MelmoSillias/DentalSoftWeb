@@ -31,9 +31,9 @@ import FloatingConfigurator from '@/components/FloatingConfigurator.vue';
                     <router-link to="/" class="w-full flex items-center py-8 border-surface-300 dark:border-surface-500 border-b">
                         <span class="flex justify-center items-center border-2 border-primary text-primary rounded-border" style="height: 3.5rem; width: 3.5rem">
                             <i class="pi pi-fw pi-table !text-2xl"></i>
-                        </span> 
+                        </span>
                     </router-link>
-                    
+
                     <Button as="router-link" label="Go to Dashboard" to="/" />
                 </div>
             </div>

@@ -37,16 +37,23 @@ const form = ref({
     note: ''
 });
 
-watch(() => props.visible, (val) => {
-    localVisible.value = val;
-    if (val) {
-        editMode.value = false;
-        hydrateForm();
-    }
-}, { immediate: true });
+watch(
+    () => props.visible,
+    (val) => {
+        localVisible.value = val;
+        if (val) {
+            editMode.value = false;
+            hydrateForm();
+        }
+    },
+    { immediate: true }
+);
 
 watch(localVisible, (val) => emit('update:visible', val));
-watch(() => props.payment, () => hydrateForm());
+watch(
+    () => props.payment,
+    () => hydrateForm()
+);
 
 const hydrateForm = () => {
     const payment = props.payment;
@@ -81,9 +88,7 @@ const close = () => {
 };
 
 const submit = () => {
-    const paidAt = form.value.paidAt instanceof Date
-        ? form.value.paidAt.toISOString().slice(0, 10)
-        : '';
+    const paidAt = form.value.paidAt instanceof Date ? form.value.paidAt.toISOString().slice(0, 10) : '';
 
     const payload = {
         paidAmount: Number(form.value.paidAmount),
@@ -102,13 +107,7 @@ const submit = () => {
 </script>
 
 <template>
-    <Dialog
-        v-model:visible="localVisible"
-        modal
-        header="Détail du paiement"
-        :style="{ width: '44rem', maxWidth: '95vw' }"
-        @hide="close"
-    >
+    <Dialog v-model:visible="localVisible" modal header="Détail du paiement" :style="{ width: '44rem', maxWidth: '95vw' }" @hide="close">
         <div v-if="payment" class="space-y-4">
             <div class="flex items-start justify-between gap-3">
                 <div>
@@ -171,14 +170,7 @@ const submit = () => {
                 </div>
                 <div class="space-y-1">
                     <label class="text-sm font-medium">Mode de règlement</label>
-                    <Select
-                        v-model="form.paymentMethodId"
-                        :options="paymentMethods"
-                        optionLabel="libelle"
-                        optionValue="id"
-                        class="w-full"
-                        placeholder="Sélectionnez un mode"
-                    />
+                    <Select v-model="form.paymentMethodId" :options="paymentMethods" optionLabel="libelle" optionValue="id" class="w-full" placeholder="Sélectionnez un mode" />
                 </div>
                 <div class="space-y-1">
                     <label class="text-sm font-medium">Date de règlement</label>
@@ -196,20 +188,8 @@ const submit = () => {
                 <Button label="Imprimer le bulletin" icon="pi pi-print" severity="secondary" outlined @click="emit('print', payment)" />
                 <div class="flex gap-2">
                     <Button label="Fermer" text severity="secondary" @click="close" />
-                    <Button
-                        v-if="!editMode"
-                        label="Modifier"
-                        icon="pi pi-pencil"
-                        severity="info"
-                        @click="editMode = true"
-                    />
-                    <Button
-                        v-else
-                        label="Enregistrer"
-                        icon="pi pi-check"
-                        :loading="loading"
-                        @click="submit"
-                    />
+                    <Button v-if="!editMode" label="Modifier" icon="pi pi-pencil" severity="info" @click="editMode = true" />
+                    <Button v-else label="Enregistrer" icon="pi pi-check" :loading="loading" @click="submit" />
                 </div>
             </div>
         </template>

@@ -202,10 +202,7 @@ export function useRapports() {
             payrollFixedCount: data.payrollFixedCount || 0,
             consultRoomsCount: data.consultRoomsCount || 0,
             consumablesCount: data.consumablesCount || 0,
-            usersTotal:
-                (data.usersByRole?.administrateur || 0) +
-                (data.usersByRole?.receptionniste || 0) +
-                (data.usersByRole?.medecins || 0),
+            usersTotal: (data.usersByRole?.administrateur || 0) + (data.usersByRole?.receptionniste || 0) + (data.usersByRole?.medecins || 0),
             usersAdmin: data.usersByRole?.administrateur || 0,
             usersReceptionist: data.usersByRole?.receptionniste || 0,
             usersDoctor: data.usersByRole?.medecins || 0
@@ -382,9 +379,7 @@ export function useRapports() {
         try {
             const data = await fetchJson('/report/medecin', { from, to });
             const identity = data.identity || {};
-            const fullName = data.fullName
-                || identity.fullName
-                || `${identity.prenom || ''} ${identity.nom || ''}`.trim();
+            const fullName = data.fullName || identity.fullName || `${identity.prenom || ''} ${identity.nom || ''}`.trim();
 
             medecinData.value = {
                 ...medecinData.value,

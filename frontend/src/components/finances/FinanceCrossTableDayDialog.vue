@@ -39,19 +39,7 @@ watch(
 </script>
 
 <template>
-    <Dialog
-        v-model:visible="dialogVisible"
-        modal
-        :header="`Détail du ${periodLabel || 'jour'}`"
-        :style="{ width: 'min(96vw, 1100px)' }"
-        :breakpoints="{ '960px': '96vw' }"
-        :draggable="false"
-    >
-        <FinanceCrossTablePeriodDetails
-            :overview="overview"
-            :loading="loading.dayOverview"
-            :period-label="periodLabel"
-            scope-label="journée"
-        />
+    <Dialog v-model:visible="dialogVisible" modal :header="`Détail du ${periodLabel || 'jour'}`" :style="{ width: 'min(96vw, 1100px)' }" :breakpoints="{ '960px': '96vw' }" :draggable="false">
+        <FinanceCrossTablePeriodDetails :overview="overview" :loading="loading.dayOverview" :period-label="periodLabel" scope-label="journée" />
     </Dialog>
 </template>

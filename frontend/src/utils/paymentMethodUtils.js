@@ -39,13 +39,7 @@ export const normalizePaymentString = (value) =>
         .replace(/^_+|_+$/g, '');
 
 export const resolvePaymentMethodTypeKey = (source) => {
-    const candidates = [
-        source?.type,
-        source?.libelle,
-        source
-    ]
-        .map(normalizePaymentString)
-        .filter(Boolean);
+    const candidates = [source?.type, source?.libelle, source].map(normalizePaymentString).filter(Boolean);
 
     for (const candidate of candidates) {
         for (const definition of Object.values(TYPE_DEFINITIONS)) {
@@ -71,17 +65,10 @@ export const resolvePaymentMethodTypeKey = (source) => {
     return 'cash';
 };
 
-export const getPaymentMethodDefinition = (source) =>
-    TYPE_DEFINITIONS[resolvePaymentMethodTypeKey(source)] || TYPE_DEFINITIONS.cash;
+export const getPaymentMethodDefinition = (source) => TYPE_DEFINITIONS[resolvePaymentMethodTypeKey(source)] || TYPE_DEFINITIONS.cash;
 
 export const getPaymentCoverageRate = (source) => {
-    const rawValue = source?.coverageRate
-        ?? source?.coverage_rate
-        ?? source?.defaultCoverageRate
-        ?? source?.default_coverage_rate
-        ?? source?.tauxPriseEnCharge
-        ?? source?.taux_prise_en_charge
-        ?? source?.percentage;
+    const rawValue = source?.coverageRate ?? source?.coverage_rate ?? source?.defaultCoverageRate ?? source?.default_coverage_rate ?? source?.tauxPriseEnCharge ?? source?.taux_prise_en_charge ?? source?.percentage;
 
     const parsed = Number(rawValue);
     if (!Number.isFinite(parsed)) {

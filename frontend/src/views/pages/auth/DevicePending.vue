@@ -13,7 +13,7 @@ const router = useRouter();
 
 const checking = ref(false);
 const status = ref('pending');
-const message = ref('Cet appareil n\'est pas encore autorise. Veuillez attendre qu\'un administrateur valide votre demande.');
+const message = ref("Cet appareil n'est pas encore autorise. Veuillez attendre qu'un administrateur valide votre demande.");
 
 const syncFromResponse = (data) => {
     status.value = data?.status || 'pending';
@@ -86,18 +86,10 @@ onMounted(() => {
                 <h1>Appareil non autorise</h1>
                 <p class="device-pending-message">{{ message }}</p>
 
-                <p v-if="status === 'pending'" class="device-pending-hint">
-                    Un administrateur doit approuver cet appareil depuis les parametres du cabinet.
-                    Cliquez sur le bouton ci-dessous pour verifier si l'autorisation a ete accordee.
-                </p>
+                <p v-if="status === 'pending'" class="device-pending-hint">Un administrateur doit approuver cet appareil depuis les parametres du cabinet. Cliquez sur le bouton ci-dessous pour verifier si l'autorisation a ete accordee.</p>
 
                 <div class="device-pending-actions">
-                    <Button
-                        v-if="status !== 'rejected'"
-                        class="auth_submit_button"
-                        :disabled="checking"
-                        @click="checkAuthorization"
-                    >
+                    <Button v-if="status !== 'rejected'" class="auth_submit_button" :disabled="checking" @click="checkAuthorization">
                         <template v-if="checking">
                             <span class="my-spinner-container">
                                 <ProgressSpinner class="my-spinner" />
@@ -107,15 +99,7 @@ onMounted(() => {
                         <template v-else>Verifier l'autorisation</template>
                     </Button>
 
-                    <Button
-                        class="auth_secondary_button"
-                        severity="secondary"
-                        outlined
-                        :disabled="checking"
-                        @click="logout"
-                    >
-                        Se deconnecter
-                    </Button>
+                    <Button class="auth_secondary_button" severity="secondary" outlined :disabled="checking" @click="logout"> Se deconnecter </Button>
                 </div>
             </section>
         </div>
@@ -148,10 +132,7 @@ onMounted(() => {
     display: grid;
     place-items: center;
     padding: 1.5rem;
-    background:
-        radial-gradient(circle at 8% 15%, #dbe9ff 0, transparent 34%),
-        radial-gradient(circle at 92% 80%, #d8fff0 0, transparent 30%),
-        var(--auth-bg);
+    background: radial-gradient(circle at 8% 15%, #dbe9ff 0, transparent 34%), radial-gradient(circle at 92% 80%, #d8fff0 0, transparent 30%), var(--auth-bg);
 }
 
 .auth_container {
@@ -277,8 +258,12 @@ h1 {
 }
 
 @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 :global(.app-dark) .auth_brand {

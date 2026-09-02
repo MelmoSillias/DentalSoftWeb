@@ -22,15 +22,7 @@ const props = defineProps({
 const router = useRouter();
 const toast = useToast();
 
-const {
-    notifications,
-    unreadCount,
-    connectionState,
-    start: startNotifications,
-    markAsRead,
-    markAllAsRead,
-    onNotificationReceived
-} = useMercureNotifications();
+const { notifications, unreadCount, connectionState, start: startNotifications, markAsRead, markAllAsRead, onNotificationReceived } = useMercureNotifications();
 const { shouldShowInApp } = useNotificationPresentation();
 
 const showNotificationsPopover = ref(false);
@@ -116,7 +108,7 @@ function showNotificationToast(notification) {
 
         toast.add({
             severity: resolveNotificationSeverity(notification.type),
-            summary: count > 1 ? `${count} nouvelles notifications` : (notification.title || 'Notification'),
+            summary: count > 1 ? `${count} nouvelles notifications` : notification.title || 'Notification',
             detail: count > 1 ? 'Consultez la cloche pour les détails.' : notification.message,
             life: 3000
         });
@@ -239,12 +231,7 @@ async function handleNotificationClick(notification) {
             ref="notificationsButton"
         >
             <span class="notification-bell__status" :title="connectionIndicatorTitle" aria-hidden="true" />
-            <OverlayBadge
-                v-if="unreadCount && unreadCount !== 0"
-                :value="unreadCount"
-                severity="danger"
-                class="inline-flex items-center justify-center"
-            >
+            <OverlayBadge v-if="unreadCount && unreadCount !== 0" :value="unreadCount" severity="danger" class="inline-flex items-center justify-center">
                 <i :class="variant === 'topbar' ? 'pi pi-bell text-2xl' : 'pi pi-bell'" />
             </OverlayBadge>
             <i v-else :class="variant === 'topbar' ? 'pi pi-bell text-2xl' : 'pi pi-bell'" />
@@ -266,20 +253,9 @@ async function handleNotificationClick(notification) {
                     <div class="flex items-center gap-2">
                         <i class="pi pi-bell text-primary-500"></i>
                         <span class="font-semibold text-surface-900 dark:text-surface-50">Notifications</span>
-                        <span
-                            v-if="unreadCount"
-                            class="text-xs px-2 py-0.5 rounded-full bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300"
-                        >
-                            {{ unreadCount }} non lue(s)
-                        </span>
+                        <span v-if="unreadCount" class="text-xs px-2 py-0.5 rounded-full bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300"> {{ unreadCount }} non lue(s) </span>
                     </div>
-                    <button
-                        type="button"
-                        class="text-xs font-medium text-primary-600 dark:text-primary-400 hover:underline"
-                        @click="markAllNotificationsRead"
-                    >
-                        Tout lire
-                    </button>
+                    <button type="button" class="text-xs font-medium text-primary-600 dark:text-primary-400 hover:underline" @click="markAllNotificationsRead">Tout lire</button>
                 </div>
             </div>
 
@@ -310,10 +286,7 @@ async function handleNotificationClick(notification) {
                             <i :class="[getNotificationIcon(notification), getNotificationIconClass(notification)]"></i>
                         </div>
                         <div class="min-w-0 flex-1">
-                            <p
-                                class="text-sm text-surface-800 dark:text-surface-100 leading-5"
-                                :class="{ 'font-semibold': notification.status !== 'vu' }"
-                            >
+                            <p class="text-sm text-surface-800 dark:text-surface-100 leading-5" :class="{ 'font-semibold': notification.status !== 'vu' }">
                                 {{ notification.message }}
                             </p>
                             <div class="mt-1 flex items-center gap-2 text-xs text-surface-500 dark:text-surface-400">

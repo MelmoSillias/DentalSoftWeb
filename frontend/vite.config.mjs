@@ -4,25 +4,33 @@ import { PrimeVueResolver } from '@primevue/auto-import-resolver';
 import vue from '@vitejs/plugin-vue';
 import Components from 'unplugin-vue-components/vite';
 import { VitePWA } from 'vite-plugin-pwa';
-import { defineConfig } from 'vite';
+import { createLogger, defineConfig } from 'vite';
 import cabinetConfig from './src/generated/cabinet-config.generated.js';
 import { injectBuildVersion } from './plugins/injectBuildVersion.mjs';
 
 const cabinetPwa = cabinetConfig.pwa || {};
 
-const manifestIconSrcs = (cabinetPwa.icons || [])
-    .map((icon) => icon?.src)
-    .filter((src) => typeof src === 'string' && src.trim() !== '');
+const manifestIconSrcs = (cabinetPwa.icons || []).map((icon) => icon?.src).filter((src) => typeof src === 'string' && src.trim() !== '');
 
 // Exclude glob patterns (e.g. icons/*.svg): Workbox precaches exact URLs and fails on 404.
-const staticIncludeAssets = (cabinetPwa.includeAssets || ['favicon.ico', 'robots.txt'])
-    .filter((entry) => typeof entry === 'string' && !entry.includes('*'));
+const staticIncludeAssets = (cabinetPwa.includeAssets || ['favicon.ico', 'robots.txt']).filter((entry) => typeof entry === 'string' && !entry.includes('*'));
 
 const pwaIncludeAssets = [...new Set([...staticIncludeAssets, ...manifestIconSrcs])];
+
+const logger = createLogger();
+const originalWarn = logger.warn.bind(logger);
+logger.warn = (msg, options) => {
+    if (typeof msg === 'string' && msg.includes('dynamic import will not move module into another chunk')) {
+        return;
+    }
+
+    originalWarn(msg, options);
+};
 
 // https://vitejs.dev/config/
 // VITE_DROP_CONSOLE=false : build prod avec consoles (diagnostic temporaire)
 export default defineConfig(({ command }) => ({
+    customLogger: logger,
     optimizeDeps: {
         noDiscovery: true,
         include: ['qrcode'],
@@ -33,11 +41,8 @@ export default defineConfig(({ command }) => ({
         }
     },
     server: {
-        sourcemapIgnoreList: (sourcePath) =>
-            sourcePath.includes('/node_modules/@microsoft/fetch-event-source/')
-            || sourcePath.includes('\\node_modules\\@microsoft\\fetch-event-source\\'),
-        port: 5180,
-        
+        sourcemapIgnoreList: (sourcePath) => sourcePath.includes('/node_modules/@microsoft/fetch-event-source/') || sourcePath.includes('\\node_modules\\@microsoft\\fetch-event-source\\'),
+        port: 5180
     },
     plugins: [
         injectBuildVersion(),
@@ -51,7 +56,7 @@ export default defineConfig(({ command }) => ({
                 clientsClaim: true,
                 skipWaiting: true,
                 navigateFallback: 'index.html',
-                navigateFallbackDenylist: [/^\/api/],
+                navigateFallbackDenylist: [/^\/api/]
             },
             manifest: {
                 name: cabinetPwa.name || 'DENTALSOFT',
@@ -74,18 +79,22 @@ export default defineConfig(({ command }) => ({
         }
     },
     esbuild: {
-        drop:
-            command === 'build' && process.env.VITE_DROP_CONSOLE !== 'false'
-                ? ['console', 'debugger']
-                : []
+        drop: command === 'build' && process.env.VITE_DROP_CONSOLE !== 'false' ? ['console', 'debugger'] : []
     },
     build: {
         rollupOptions: {
+            onwarn(warning, warn) {
+                if (warning.code === 'INVALID_ANNOTATION') {
+                    return;
+                }
+
+                warn(warning);
+            },
             output: {
                 entryFileNames: 'assets/[name]-[hash].js',
                 chunkFileNames: 'assets/[name]-[hash].js',
-                assetFileNames: 'assets/[name]-[hash][extname]',
-            },
-        },
-    },
+                assetFileNames: 'assets/[name]-[hash][extname]'
+            }
+        }
+    }
 }));

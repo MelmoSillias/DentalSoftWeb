@@ -1,5 +1,5 @@
 <script setup>
-import Button from 'primevue/button'; 
+import Button from 'primevue/button';
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 
 const props = defineProps({
@@ -79,9 +79,7 @@ const setupObserver = () => {
     if (!targets.length) return;
     observer = new IntersectionObserver(
         (entries) => {
-            const visible = entries
-                .filter((entry) => entry.isIntersecting)
-                .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+            const visible = entries.filter((entry) => entry.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
             if (visible?.target?.dataset?.sectionId) emit('update:modelValue', visible.target.dataset.sectionId);
         },
         { rootMargin: '-20% 0px -60% 0px', threshold: [0.1, 0.5, 0.9] }
@@ -117,11 +115,10 @@ watch(
     },
     { immediate: true }
 );
- 
 
-     function completedSections() {
-            return props.sections.filter(s => s.status === 'saved').length;
-        }
+function completedSections() {
+    return props.sections.filter((s) => s.status === 'saved').length;
+}
 
 onBeforeUnmount(() => {
     if (observer) observer.disconnect();
@@ -134,13 +131,13 @@ onBeforeUnmount(() => {
         <!-- ===== MODE TABS ===== -->
         <template v-if="mode === 'tabs'">
             <div class="flex flex-wrap gap-2 px-6 pt-6">
-                <Button 
-                    v-for="section in sections" 
-                    :key="section.id" 
+                <Button
+                    v-for="section in sections"
+                    :key="section.id"
                     :label="section.label"
-                    :severity="active === section.id ? 'secondary' : 'help'" 
+                    :severity="active === section.id ? 'secondary' : 'help'"
                     :outlined="active === section.id"
-                    :disabled="section.disabled" 
+                    :disabled="section.disabled"
                     @click="select(section.id)"
                     class="rounded-xl px-4 py-2.5 font-medium transition-all hover:shadow-md"
                 />
@@ -157,16 +154,16 @@ onBeforeUnmount(() => {
                 <!-- ===== CONTENT ===== -->
                 <div class="w-full space-y-4">
                     <template v-for="(section, index) in sections" :key="section.id">
-                        <section 
-                            :id="section.id" 
+                        <section
+                            :id="section.id"
                             :data-section-id="section.id"
                             :ref="(el) => setSectionRef(section.id, el)"
                             class="w-full rounded-2xl border border-surface-200/50 dark:border-surface-700/50 bg-surface-0 dark:bg-surface-800/60 p-5 shadow-sm hover:shadow-md transition-shadow duration-300"
                         >
                             <!-- Header -->
                             <div class="flex items-center justify-between gap-4 pb-3 border-b border-surface-100 dark:border-surface-700">
-                                <button 
-                                    type="button" 
+                                <button
+                                    type="button"
                                     class="flex items-center gap-3 text-surface-900 dark:text-surface-100 font-semibold text-lg hover:text-primary-600 dark:hover:text-primary-400 transition-colors group"
                                     @click="toggleSection(section.id)"
                                 >
@@ -174,33 +171,32 @@ onBeforeUnmount(() => {
                                         <i class="pi text-primary-500" :class="section.icon || 'pi-file'" />
                                     </div>
                                     <span>{{ section.label }}</span>
-                                    <i class="pi transition-transform duration-300 text-surface-400"
-                                        :class="isOpen(section.id) ? 'pi-chevron-down' : 'pi-chevron-right'" />
+                                    <i class="pi transition-transform duration-300 text-surface-400" :class="isOpen(section.id) ? 'pi-chevron-down' : 'pi-chevron-right'" />
                                 </button>
 
                                 <div class="flex items-center gap-3">
-                                    <div 
+                                    <div
                                         v-if="section.statusLabel"
                                         class="flex items-center justify-center w-8 h-8 rounded-full border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-700 text-surface-500 dark:text-surface-400 transition-colors"
                                         :class="{
                                             'bg-emerald-50 dark:bg-emerald-900/30 border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400': section.status === 'saved',
                                             'bg-amber-50 dark:bg-amber-900/30 border-amber-200 dark:border-amber-800 text-amber-600 dark:text-amber-400': section.status === 'dirty',
                                             'bg-teal-50 dark:bg-teal-900/30 border-teal-200 dark:border-teal-800 text-teal-600 dark:text-teal-400': section.status === 'saving'
-                                        }" 
-                                        :title="section.statusLabel" 
+                                        }"
+                                        :title="section.statusLabel"
                                         role="img"
                                     >
                                         <i class="pi animate-spin" :class="getStatusIcon(section.status)" />
                                     </div>
 
-                                    <Button 
-                                        v-if="section.onSave" 
-                                        label="Enregistrer" 
-                                        icon="pi pi-save" 
+                                    <Button
+                                        v-if="section.onSave"
+                                        label="Enregistrer"
+                                        icon="pi pi-save"
                                         size="small"
                                         outlined
                                         :loading="section.saving"
-                                        :disabled="section.saveDisabled || section.saving" 
+                                        :disabled="section.saveDisabled || section.saving"
                                         @click.stop="section.onSave"
                                         class="hidden sm:inline-flex rounded-lg px-4 py-2 hover:shadow-sm transition-all"
                                     />
@@ -208,11 +204,7 @@ onBeforeUnmount(() => {
                             </div>
 
                             <!-- Body -->
-                            <div 
-                                v-show="isOpen(section.id)" 
-                                class="mt-4 animate-fade-in"
-                                :class="{ 'opacity-50': section.disabled }"
-                            >
+                            <div v-show="isOpen(section.id)" class="mt-4 animate-fade-in" :class="{ 'opacity-50': section.disabled }">
                                 <slot :name="section.id"></slot>
                             </div>
                         </section>
@@ -223,27 +215,25 @@ onBeforeUnmount(() => {
                 <aside class="hidden lg:block sticky top-16 h-fit max-h-[calc(100vh-6rem)] overflow-y-auto">
                     <div class="rounded-2xl border border-surface-200/50 dark:border-surface-700/50 bg-surface-0 dark:bg-surface-800/60 p-4 shadow-sm">
                         <div class="flex items-center gap-3 mb-4 pb-3 border-b border-surface-100 dark:border-surface-700">
-                            
                             <h5 class="font-semibold text-surface-900 dark:text-surface-100"><i class="pi pi-list text-primary-500"></i> Navigation rapide</h5>
                         </div>
-                        
+
                         <nav class="flex flex-col gap-1">
-                            <a 
-                                v-for="section in sections" 
-                                :key="section.id" 
+                            <a
+                                v-for="section in sections"
+                                :key="section.id"
                                 href="#"
-                                @click.prevent="scrollToSection(section.id)" 
+                                @click.prevent="scrollToSection(section.id)"
                                 class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-surface-600 dark:text-surface-400 hover:text-surface-900 dark:hover:text-surface-100 hover:bg-surface-50 dark:hover:bg-surface-700/50 transition-all group"
                                 :class="{
-                                    'font-semibold text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20 border-l-4 border-primary-500':
-                                        active === section.id
+                                    'font-semibold text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20 border-l-4 border-primary-500': active === section.id
                                 }"
                             >
                                 <div class="flex items-center justify-center w-6 h-6 rounded-md bg-surface-100 dark:bg-surface-700 group-hover:bg-surface-200 dark:group-hover:bg-surface-600 transition-colors">
                                     <i class="pi text-xs" :class="section.icon || 'pi-circle'" />
                                 </div>
                                 <span class="flex-1">{{ section.label }}</span>
-                                <div 
+                                <div
                                     v-if="section.status"
                                     class="w-2 h-2 rounded-full"
                                     :class="{
@@ -254,25 +244,21 @@ onBeforeUnmount(() => {
                                 />
                             </a>
                         </nav>
-                        
+
                         <!-- Progress Indicator -->
                         <div class="mt-6 pt-4 border-t border-surface-100 dark:border-surface-700">
                             <div class="text-xs font-medium text-surface-500 dark:text-surface-400 mb-2">Progression</div>
                             <div class="w-full h-2 bg-surface-100 dark:bg-surface-700 rounded-full overflow-hidden">
-                                <div 
-                                    class="h-full bg-gradient-to-r from-primary-500 to-primary-600 rounded-full transition-all duration-500"
-                                    :style="{ width: `${(completedSections / sections.length) * 100}%` }"
-                                />
+                                <div class="h-full bg-gradient-to-r from-primary-500 to-primary-600 rounded-full transition-all duration-500" :style="{ width: `${(completedSections / sections.length) * 100}%` }" />
                             </div>
                             <div class="flex justify-between text-xs text-surface-600 dark:text-surface-400 mt-2">
                                 <span>{{ completedSections() }} section(s) complétée(s)</span>
                                 <span>{{ sections.length }} total</span>
                             </div>
-                        </div> 
+                        </div>
                     </div>
                 </aside>
             </div>
         </template>
     </div>
 </template>
- 

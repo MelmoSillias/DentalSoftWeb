@@ -76,7 +76,7 @@ const defaultBilans = () => ({
     avisMedicales: ''
 });
 
-const defaultPlanTraitement = () => ([]);
+const defaultPlanTraitement = () => [];
 
 const defaultDevisEntry = () => ({
     id: null,
@@ -105,22 +105,21 @@ const normalizeDevisEntry = (entry = {}) => ({
     description: entry?.description || '',
     services: Array.isArray(entry?.services)
         ? entry.services.map((service) => ({
-            designation: service?.designation ?? '',
-            qte: Number(service?.qte) || 1,
-            montant: Number(service?.montant) || 0
-        }))
+              designation: service?.designation ?? '',
+              qte: Number(service?.qte) || 1,
+              montant: Number(service?.montant) || 0
+          }))
         : Array.isArray(entry?.contenus)
-            ? entry.contenus.map((service) => ({
+          ? entry.contenus.map((service) => ({
                 designation: service?.designation ?? '',
                 qte: Number(service?.qte) || 1,
                 montant: Number(service?.montant) || 0
             }))
-            : []
+          : []
 });
 
 const toDevisModel = (entries = [], requestedActiveIndex = 0) => {
-    const list = (Array.isArray(entries) ? entries : [])
-        .map((entry) => normalizeDevisEntry(entry));
+    const list = (Array.isArray(entries) ? entries : []).map((entry) => normalizeDevisEntry(entry));
     const safeList = list.length ? list : [defaultDevisEntry()];
     const activeDevisIndex = Math.min(Math.max(Number(requestedActiveIndex) || 0, 0), safeList.length - 1);
     const active = safeList[activeDevisIndex] || defaultDevisEntry();
@@ -167,7 +166,14 @@ const normalizeDentArray = (value) => {
     }
 
     if (typeof value === 'string') {
-        return [...new Set(value.split(',').map((item) => item.trim()).filter(Boolean))];
+        return [
+            ...new Set(
+                value
+                    .split(',')
+                    .map((item) => item.trim())
+                    .filter(Boolean)
+            )
+        ];
     }
 
     if (typeof value === 'number') {
@@ -229,7 +235,11 @@ export const useConsultationsForm = ({ ficheId, consultId, token, mode: _mode })
     const autoSaveEnabled = ref(false);
     const readyForDirty = ref(false);
     const savingCount = computed(() => Object.values(saving).filter(Boolean).length);
-    const dirtySectionsList = computed(() => Object.entries(dirty).filter(([, v]) => v).map(([k]) => k));
+    const dirtySectionsList = computed(() =>
+        Object.entries(dirty)
+            .filter(([, v]) => v)
+            .map(([k]) => k)
+    );
 
     const data = reactive({
         patient: { allergies: [], antecedents: [] },
@@ -310,11 +320,7 @@ export const useConsultationsForm = ({ ficheId, consultId, token, mode: _mode })
     };
 
     const loadReferenceData = async () => {
-        const [meds, infs, salles] = await Promise.all([
-            medecinsStore.load(token),
-            fetchInfirmiers(token),
-            fetchSalles(token)
-        ]);
+        const [meds, infs, salles] = await Promise.all([medecinsStore.load(token), fetchInfirmiers(token), fetchSalles(token)]);
 
         data.medecins = meds;
         data.infirmiers = infs;
@@ -371,11 +377,11 @@ export const useConsultationsForm = ({ ficheId, consultId, token, mode: _mode })
             examensHistologiques: examens.examensHistologiques ?? { observation: '', resultat: '' },
             examensLabo: Array.isArray(examens.examensLabo)
                 ? examens.examensLabo.map((item) => ({
-                    type: item?.type ?? '',
-                    description: item?.description ?? item?.observation ?? '',
-                    date: item?.date ?? null,
-                    resultat: item?.resultat ?? ''
-                }))
+                      type: item?.type ?? '',
+                      description: item?.description ?? item?.observation ?? '',
+                      date: item?.date ?? null,
+                      resultat: item?.resultat ?? ''
+                  }))
                 : [],
             diagnosticSupposeExamens: examens.diagnosticSupposeExamens ?? ''
         };
@@ -400,37 +406,43 @@ export const useConsultationsForm = ({ ficheId, consultId, token, mode: _mode })
         };
 
         data.documents = {
-            documents: Array.isArray(fiche.documents) ? fiche.documents.map((d, idx) => ({
-                id: d.id,
-                groupKey: d.groupKey ?? `doc-${d.id ?? idx}`,
-                type: d.type ?? 'Document',
-                libelle: d.libelle ?? '',
-                urls: Array.isArray(d.urls) ? d.urls.filter(Boolean) : d.url ? [d.url] : [],
-                files: []
-            })) : []
+            documents: Array.isArray(fiche.documents)
+                ? fiche.documents.map((d, idx) => ({
+                      id: d.id,
+                      groupKey: d.groupKey ?? `doc-${d.id ?? idx}`,
+                      type: d.type ?? 'Document',
+                      libelle: d.libelle ?? '',
+                      urls: Array.isArray(d.urls) ? d.urls.filter(Boolean) : d.url ? [d.url] : [],
+                      files: []
+                  }))
+                : []
         };
 
         const requestedActiveIndex = Number(data.devis?.activeDevisIndex) || 0;
         data.devis = hydrateDevisModelFromFiche(fiche, requestedActiveIndex);
 
         const plans = fiche.planTraitement ?? fiche.plansTraitement ?? [];
-        data.planTraitement = Array.isArray(plans) ? plans.map((p, idx) => ({
-            planIndex: p.planIndex ?? idx + 1,
-            type: p.type ?? '',
-            dateSupposed: p.dateSupposed ?? null,
-            description: p.description ?? p.Description ?? ''
-        })) : defaultPlanTraitement();
+        data.planTraitement = Array.isArray(plans)
+            ? plans.map((p, idx) => ({
+                  planIndex: p.planIndex ?? idx + 1,
+                  type: p.type ?? '',
+                  dateSupposed: p.dateSupposed ?? null,
+                  description: p.description ?? p.Description ?? ''
+              }))
+            : defaultPlanTraitement();
 
-        data.sessions = Array.isArray(fiche.consultations) ? fiche.consultations.map((s) => ({
-            id: s.id,
-            date: s.createdAt ?? s.date ?? null,
-            medecin: s.medecin?.name ?? s.medecin ?? null,
-            infirmier: s.infirmier?.name ?? s.infirmier ?? null,
-            salle: s.salle?.name ?? s.salle ?? null,
-            noteSeance: s.noteSeance ?? '',
-            statut: s.statut ?? null,
-            actes: s.actes ?? []
-        })) : [];
+        data.sessions = Array.isArray(fiche.consultations)
+            ? fiche.consultations.map((s) => ({
+                  id: s.id,
+                  date: s.createdAt ?? s.date ?? null,
+                  medecin: s.medecin?.name ?? s.medecin ?? null,
+                  infirmier: s.infirmier?.name ?? s.infirmier ?? null,
+                  salle: s.salle?.name ?? s.salle ?? null,
+                  noteSeance: s.noteSeance ?? '',
+                  statut: s.statut ?? null,
+                  actes: s.actes ?? []
+              }))
+            : [];
 
         // ignoreNextDirty reste true jusqu'à armDirtyTracking() pour absorber
         // les flushes asynchrones des watchers profonds après réassignation.
@@ -454,16 +466,12 @@ export const useConsultationsForm = ({ ficheId, consultId, token, mode: _mode })
                         ...defaultConsultation(),
                         type: consult.type ?? '',
                         medecinId: consult.medecinId ?? null,
-                        infirmierIds: Array.isArray(consult.infirmierIds)
-                            ? consult.infirmierIds
-                            : (consult.infirmierId != null ? [consult.infirmierId] : []),
+                        infirmierIds: Array.isArray(consult.infirmierIds) ? consult.infirmierIds : consult.infirmierId != null ? [consult.infirmierId] : [],
                         salleId: consult.salleId ?? null,
                         noteSeance: consult.noteSeance ?? '',
                         actes: Array.isArray(consult.actes) ? consult.actes.map((acte) => normalizeActeEntry(acte)) : []
                     };
-                    patientId = consult?.patientId
-                        ?? consult?.patient?.id
-                        ?? patientId;
+                    patientId = consult?.patientId ?? consult?.patient?.id ?? patientId;
                     if (patientId) {
                         data.patient.id = patientId;
                     }
@@ -576,17 +584,18 @@ export const useConsultationsForm = ({ ficheId, consultId, token, mode: _mode })
         if (!dirty.devis) return;
         setSaving('devis', true);
         try {
-            const devisList = Array.isArray(data.devis?.devisList) && data.devis.devisList.length
-                ? data.devis.devisList
-                : [
-                    {
-                        id: data.devis?.id ?? null,
-                        type: data.devis?.type ?? 0,
-                        date: data.devis?.date ?? null,
-                        description: data.devis?.description || '',
-                        services: data.devis?.services || []
-                    }
-                ];
+            const devisList =
+                Array.isArray(data.devis?.devisList) && data.devis.devisList.length
+                    ? data.devis.devisList
+                    : [
+                          {
+                              id: data.devis?.id ?? null,
+                              type: data.devis?.type ?? 0,
+                              date: data.devis?.date ?? null,
+                              description: data.devis?.description || '',
+                              services: data.devis?.services || []
+                          }
+                      ];
 
             const usedTypes = new Set();
             const payload = {
@@ -643,17 +652,15 @@ export const useConsultationsForm = ({ ficheId, consultId, token, mode: _mode })
     const buildConsultationPayload = ({ ordonnancePayload = null } = {}) => {
         const payload = {
             ...data.consultation,
-            infirmierId: Array.isArray(data.consultation.infirmierIds)
-                ? data.consultation.infirmierIds[0] ?? null
-                : data.consultation.infirmierIds,
+            infirmierId: Array.isArray(data.consultation.infirmierIds) ? (data.consultation.infirmierIds[0] ?? null) : data.consultation.infirmierIds,
             actes: Array.isArray(data.consultation?.actes)
                 ? data.consultation.actes.map((acte) => {
-                    const normalized = normalizeActeEntry(acte);
-                    return {
-                        ...normalized,
-                        dent: dentArrayToStorage(normalized.dent)
-                    };
-                })
+                      const normalized = normalizeActeEntry(acte);
+                      return {
+                          ...normalized,
+                          dent: dentArrayToStorage(normalized.dent)
+                      };
+                  })
                 : []
         };
 
@@ -698,9 +705,7 @@ export const useConsultationsForm = ({ ficheId, consultId, token, mode: _mode })
     const closeConsult = async ({ forcePersistConsult = true, ordonnancePayload = null } = {}) => {
         if (!consultId.value) return;
 
-        const payload = forcePersistConsult
-            ? buildConsultationPayload({ ordonnancePayload })
-            : null;
+        const payload = forcePersistConsult ? buildConsultationPayload({ ordonnancePayload }) : null;
 
         await closeConsultation(ficheId.value, consultId.value, token, payload);
     };

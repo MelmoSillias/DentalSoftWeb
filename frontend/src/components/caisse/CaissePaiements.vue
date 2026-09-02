@@ -20,14 +20,7 @@ const props = defineProps({
     hidePatientPhone: { type: Boolean, default: false }
 });
 
-const emit = defineEmits([
-    'update:paymentRange',
-    'refresh-payments',
-    'print-payments',
-    'print-payment',
-    'print-receipt',
-    'send-receipt-sms'
-]);
+const emit = defineEmits(['update:paymentRange', 'refresh-payments', 'print-payments', 'print-payment', 'print-receipt', 'send-receipt-sms']);
 
 const paymentRangeModel = computed({
     get: () => props.paymentRange,
@@ -37,10 +30,11 @@ const paymentRangeModel = computed({
 const paymentsSearch = ref('');
 const paymentModeFilter = ref('all');
 
-const normalizeText = (value) => String(value ?? '')
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '');
+const normalizeText = (value) =>
+    String(value ?? '')
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
 
 const matchesQuery = (parts, query) => {
     if (!query) return true;
@@ -55,8 +49,7 @@ const isInsurancePayment = (payment) => {
     return role === 'patient_insurance';
 };
 
-const isInvoiceStylePayment = (payment) =>
-    ['devis', 'facture', 'facture_assurance'].includes(payment?.type);
+const isInvoiceStylePayment = (payment) => ['devis', 'facture', 'facture_assurance'].includes(payment?.type);
 
 const computeModeTag = (payment) => {
     if (payment?.insuranceStatus === 'pending') {
@@ -80,18 +73,21 @@ const computeModeTag = (payment) => {
 };
 
 const paymentModeOptions = computed(() => {
-    const options = (Array.isArray(props.payments) ? props.payments : []).reduce((acc, payment) => {
-        const modeId = Number(payment?.modeId);
-        if (!Number.isFinite(modeId) || modeId <= 0) {
+    const options = (Array.isArray(props.payments) ? props.payments : []).reduce(
+        (acc, payment) => {
+            const modeId = Number(payment?.modeId);
+            if (!Number.isFinite(modeId) || modeId <= 0) {
+                return acc;
+            }
+
+            if (!acc.some((option) => option.value === modeId)) {
+                acc.push({ label: payment?.mode || 'Autre', value: modeId });
+            }
+
             return acc;
-        }
-
-        if (!acc.some((option) => option.value === modeId)) {
-            acc.push({ label: payment?.mode || 'Autre', value: modeId });
-        }
-
-        return acc;
-    }, [{ label: 'Tous les modes', value: 'all' }]);
+        },
+        [{ label: 'Tous les modes', value: 'all' }]
+    );
 
     return options.sort((left, right) => {
         if (left.value === 'all') return -1;
@@ -108,17 +104,7 @@ const filteredPayments = computed(() => {
             return false;
         }
 
-        return matchesQuery([
-            p.patient,
-            p.telephone,
-            p.date,
-            formatDate(p.date, true),
-            p.montant,
-            p.mode,
-            p.type,
-            p.insuranceStatus,
-            computeModeTag(p).label
-        ], query);
+        return matchesQuery([p.patient, p.telephone, p.date, formatDate(p.date, true), p.montant, p.mode, p.type, p.insuranceStatus, computeModeTag(p).label], query);
     });
 });
 
@@ -139,7 +125,7 @@ const formatDate = (value, withTime = false) => {
     return `${datePart} ${timePart}`;
 };
 
-const displayPhone = (value) => (props.hidePatientPhone ? 'Masqué par l\'administrateur' : (value || ''));
+const displayPhone = (value) => (props.hidePatientPhone ? "Masqué par l'administrateur" : value || '');
 
 const paymentsByMode = computed(() => {
     const bucket = {};
@@ -174,21 +160,17 @@ const miniChart = computed(() => {
                 <div class="filters" data-tour="caisse-paiements.filters">
                     <div class="filter-item">
                         <label>Recherche</label>
-                        <InputText v-model="paymentsSearch" placeholder="Tapez quelque chose..."
-                            fluid />
+                        <InputText v-model="paymentsSearch" placeholder="Tapez quelque chose..." fluid />
                     </div>
                     <div class="filter-item">
                         <label>Période</label>
-                        <PanelDatePicker v-model="paymentRangeModel" dateFormat="yy-mm-dd" showIcon
-                            fluid />
+                        <PanelDatePicker v-model="paymentRangeModel" dateFormat="yy-mm-dd" showIcon fluid />
                     </div>
                     <div class="filter-item">
                         <label>Mode de paiement</label>
-                        <Select v-model="paymentModeFilter" :options="paymentModeOptions" optionLabel="label"
-                            optionValue="value" />
+                        <Select v-model="paymentModeFilter" :options="paymentModeOptions" optionLabel="label" optionValue="value" />
                     </div>
-                    <Button label="Imprimer la période" icon="pi pi-print" severity="primary"
-                        @click="emit('print-payments')" />
+                    <Button label="Imprimer la période" icon="pi pi-print" severity="primary" @click="emit('print-payments')" />
                     <Button label="Rafraîchir" icon="pi pi-refresh" text @click="emit('refresh-payments')" />
                 </div>
             </div>
@@ -239,8 +221,7 @@ const miniChart = computed(() => {
                     </AccordionHeader>
                     <AccordionContent>
                         <div class="pay-list">
-                            <div v-for="row in list" :key="row.pId" class="pay-row"
-                                :class="isInsurancePayment(row) ? 'pay-row--insurance' : 'pay-row--client'">
+                            <div v-for="row in list" :key="row.pId" class="pay-row" :class="isInsurancePayment(row) ? 'pay-row--insurance' : 'pay-row--client'">
                                 <div class="pay-role-icon">
                                     <i :class="isInsurancePayment(row) ? 'pi pi-shield' : 'pi pi-wallet'"></i>
                                 </div>
@@ -249,32 +230,30 @@ const miniChart = computed(() => {
                                     <span class="pay-patient">{{ row.patient || '—' }}</span>
                                     <span class="pay-meta">
                                         <i class="pi pi-clock"></i> {{ formatDate(row.date, true) }}
-                                        <span v-if="!props.hidePatientPhone && row.telephone">
-                                            · <i class="pi pi-phone"></i> {{ row.telephone }}
-                                        </span>
+                                        <span v-if="!props.hidePatientPhone && row.telephone"> · <i class="pi pi-phone"></i> {{ row.telephone }} </span>
                                     </span>
                                 </div>
 
                                 <div class="pay-tags">
                                     <Tag :value="computeModeTag(row).label" :severity="computeModeTag(row).severity" />
                                     <Tag v-if="isInsurancePayment(row)" value="Assurance" severity="info" icon="pi pi-shield" />
-                                    <Tag v-if="row.insuranceStatus === 'pending'"
-                                        value="En attente" severity="warning" icon="pi pi-clock" />
+                                    <Tag v-if="row.insuranceStatus === 'pending'" value="En attente" severity="warning" icon="pi pi-clock" />
                                 </div>
 
                                 <div class="pay-right">
-                                    <strong class="pay-amount"
-                                        :class="isInsurancePayment(row) ? 'pay-amount--insurance' : 'pay-amount--client'">
+                                    <strong class="pay-amount" :class="isInsurancePayment(row) ? 'pay-amount--insurance' : 'pay-amount--client'">
                                         {{ formatFcfa(row.montant) }}
                                     </strong>
                                     <div class="pay-actions" data-tour="caisse-paiements.row-actions">
                                         <Button
                                             :icon="isInvoiceStylePayment(row) ? 'pi pi-print' : 'pi pi-ticket'"
-                                            size="small" text rounded
+                                            size="small"
+                                            text
+                                            rounded
                                             :title="isInvoiceStylePayment(row) ? 'Imprimer reçu' : 'Imprimer ticket'"
-                                            @click="emit(isInvoiceStylePayment(row) ? 'print-payment' : 'print-receipt', row)" />
-                                        <Button v-if="isInternetFeaturesEnabled" icon="pi pi-send" size="small" text rounded title="Envoyer par SMS"
-                                            @click="emit('send-receipt-sms', row)" />
+                                            @click="emit(isInvoiceStylePayment(row) ? 'print-payment' : 'print-receipt', row)"
+                                        />
+                                        <Button v-if="isInternetFeaturesEnabled" icon="pi pi-send" size="small" text rounded title="Envoyer par SMS" @click="emit('send-receipt-sms', row)" />
                                     </div>
                                 </div>
                             </div>
@@ -477,7 +456,9 @@ const miniChart = computed(() => {
     color: #0f172a;
 }
 
-.pay-mode-badge .pi { color: #6366f1; }
+.pay-mode-badge .pi {
+    color: #6366f1;
+}
 
 .pay-accordion-count {
     font-size: 0.78rem;
@@ -520,8 +501,13 @@ const miniChart = computed(() => {
     background: rgba(241, 245, 249, 0.7);
 }
 
-.pay-row--client   { border-left-color: #22c55e; }
-.pay-row--insurance { border-left-color: #6366f1; background: rgba(99, 102, 241, 0.04); }
+.pay-row--client {
+    border-left-color: #22c55e;
+}
+.pay-row--insurance {
+    border-left-color: #6366f1;
+    background: rgba(99, 102, 241, 0.04);
+}
 
 /* Icône rôle */
 .pay-role-icon {
@@ -544,7 +530,9 @@ const miniChart = computed(() => {
     color: #4f46e5;
 }
 
-.pay-role-icon .pi { font-size: 0.95rem; }
+.pay-role-icon .pi {
+    font-size: 0.95rem;
+}
 
 /* Info patient */
 .pay-info {
@@ -573,7 +561,9 @@ const miniChart = computed(() => {
     align-items: center;
 }
 
-.pay-meta .pi { font-size: 0.72rem; }
+.pay-meta .pi {
+    font-size: 0.72rem;
+}
 
 /* Tags */
 .pay-tags {
@@ -596,8 +586,12 @@ const miniChart = computed(() => {
     font-weight: 700;
 }
 
-.pay-amount--client   { color: #059669; }
-.pay-amount--insurance { color: #4f46e5; }
+.pay-amount--client {
+    color: #059669;
+}
+.pay-amount--insurance {
+    color: #4f46e5;
+}
 
 .pay-actions {
     display: flex;
@@ -605,13 +599,26 @@ const miniChart = computed(() => {
 }
 
 /* Dark mode */
-.app-dark .pay-mode-badge { color: #e2e8f0; }
-.app-dark .pay-accordion-count { background: #334155; color: #94a3b8; }
-.app-dark .pay-accordion-total { color: #4ade80; }
+.app-dark .pay-mode-badge {
+    color: #e2e8f0;
+}
+.app-dark .pay-accordion-count {
+    background: #334155;
+    color: #94a3b8;
+}
+.app-dark .pay-accordion-total {
+    color: #4ade80;
+}
 
-.app-dark .pay-row { background: rgba(30, 41, 59, 0.4); }
-.app-dark .pay-row:hover { background: rgba(30, 41, 59, 0.7); }
-.app-dark .pay-row--insurance { background: rgba(99, 102, 241, 0.08); }
+.app-dark .pay-row {
+    background: rgba(30, 41, 59, 0.4);
+}
+.app-dark .pay-row:hover {
+    background: rgba(30, 41, 59, 0.7);
+}
+.app-dark .pay-row--insurance {
+    background: rgba(99, 102, 241, 0.08);
+}
 
 .app-dark .pay-row--client .pay-role-icon {
     background: #14532d;
@@ -623,8 +630,16 @@ const miniChart = computed(() => {
     color: #a5b4fc;
 }
 
-.app-dark .pay-patient { color: #e2e8f0; }
-.app-dark .pay-meta { color: #94a3b8; }
-.app-dark .pay-amount--client { color: #4ade80; }
-.app-dark .pay-amount--insurance { color: #a5b4fc; }
+.app-dark .pay-patient {
+    color: #e2e8f0;
+}
+.app-dark .pay-meta {
+    color: #94a3b8;
+}
+.app-dark .pay-amount--client {
+    color: #4ade80;
+}
+.app-dark .pay-amount--insurance {
+    color: #a5b4fc;
+}
 </style>

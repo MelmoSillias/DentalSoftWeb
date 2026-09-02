@@ -21,7 +21,7 @@ const withHeaders = (token) => ({ headers: authHeaders(token) });
 
 const heavyListConfig = (token) => ({
     ...withHeaders(token),
-    timeout: HEAVY_REQUEST_TIMEOUT_MS,
+    timeout: HEAVY_REQUEST_TIMEOUT_MS
 });
 
 export const fetchFactures = async ({ start, end, factureType = 'all', unpaidOnly = false }, token) => {
@@ -39,14 +39,14 @@ export const fetchFactures = async ({ start, end, factureType = 'all', unpaidOnl
     if (type === 'impaye') {
         const res = await axios.get(`${apiPrefix}/factures/unpaid`, {
             params: { start, end },
-            ...heavyListConfig(token),
+            ...heavyListConfig(token)
         });
         return res.data || [];
     }
 
     const res = await axios.get(`${apiPrefix}/factures`, {
         params: { start, end },
-        ...heavyListConfig(token),
+        ...heavyListConfig(token)
     });
     const data = res.data;
     if (data && Array.isArray(data.all)) {
@@ -65,10 +65,7 @@ export const fetchUnpaidFacturesByPatient = async (patientId, token) => {
         return [];
     }
 
-    const res = await axios.get(
-        `${apiPrefix}/factures/unpaid-by-patient/${id}`,
-        heavyListConfig(token),
-    );
+    const res = await axios.get(`${apiPrefix}/factures/unpaid-by-patient/${id}`, heavyListConfig(token));
     const data = res.data;
     if (data && Array.isArray(data.data)) {
         return data.data;
@@ -81,7 +78,7 @@ export const fetchPayments = async ({ start, end }, token) => {
         return fetchPaymentsTourMock({ start, end: end === '' ? start : end });
     }
 
-    const res = await axios.get(`${apiPrefix}/factures/payments`, { params: { start, end: end === "" ? start : end }, ...withHeaders(token) });
+    const res = await axios.get(`${apiPrefix}/factures/payments`, { params: { start, end: end === '' ? start : end }, ...withHeaders(token) });
     return res.data || [];
 };
 
@@ -98,7 +95,11 @@ export const fetchAssurances = async (token) => {
     if (isCaisseTourMockEnabled()) {
         const methods = fetchPaymentMethodsTourMock();
         return methods
-            .filter((item) => String(item?.type || '').toLowerCase().includes('assur'))
+            .filter((item) =>
+                String(item?.type || '')
+                    .toLowerCase()
+                    .includes('assur')
+            )
             .map((item) => ({
                 id: item.id,
                 nom: item.libelle,
@@ -157,9 +158,9 @@ export const fetchFactureLines = async (consultationId, token) => {
 };
 
 export const updateFactureLines = async (consultationId, payload, token) => {
-    const lines = Array.isArray(payload) ? payload : payload?.lines ?? payload?.lignes ?? [];
-    const date = Array.isArray(payload) ? null : payload?.date ?? null;
-    const time = Array.isArray(payload) ? null : payload?.time ?? null;
+    const lines = Array.isArray(payload) ? payload : (payload?.lines ?? payload?.lignes ?? []);
+    const date = Array.isArray(payload) ? null : (payload?.date ?? null);
+    const time = Array.isArray(payload) ? null : (payload?.time ?? null);
 
     if (isCaisseTourMockEnabled()) {
         return updateFactureLinesTourMock(consultationId, lines, { date, time });
@@ -223,11 +224,7 @@ export const fetchInsuranceClaims = async ({ status, start, end, patient, assura
 };
 
 export const payInsurancePatientShare = async (claimId, { modeId, date, amount } = {}, token) => {
-    const res = await axios.post(
-        `${apiPrefix}/assurances/claims/${claimId}/patient-pay`,
-        { modeId, date, amount },
-        withHeaders(token)
-    );
+    const res = await axios.post(`${apiPrefix}/assurances/claims/${claimId}/patient-pay`, { modeId, date, amount }, withHeaders(token));
     return res.data;
 };
 
@@ -279,11 +276,7 @@ export const unconfirmAssuranceLot = async (lotId, token) => {
 };
 
 export const refundAssuranceLot = async (lotId, { modeId, date, amount } = {}, token) => {
-    const res = await axios.post(
-        `${apiPrefix}/assurances/lots/${lotId}/refund`,
-        { modeId, date, amount },
-        withHeaders(token)
-    );
+    const res = await axios.post(`${apiPrefix}/assurances/lots/${lotId}/refund`, { modeId, date, amount }, withHeaders(token));
     return res.data;
 };
 
@@ -291,11 +284,7 @@ export const refundAssuranceLot = async (lotId, { modeId, date, amount } = {}, t
 export const recoverAssuranceLot = async (lotId, payload = {}, token) => refundAssuranceLot(lotId, payload, token);
 
 export const cancelAssuranceLotRefund = async (lotId, transactionId, { comment } = {}, token) => {
-    const res = await axios.patch(
-        `${apiPrefix}/assurances/lots/${lotId}/refunds/${transactionId}/cancel`,
-        { comment },
-        withHeaders(token)
-    );
+    const res = await axios.patch(`${apiPrefix}/assurances/lots/${lotId}/refunds/${transactionId}/cancel`, { comment }, withHeaders(token));
     return res.data;
 };
 
@@ -311,11 +300,7 @@ export const addClaimToAssuranceLot = async (lotId, factureId, token) => {
 };
 
 export const moveClaimToAssuranceLot = async (factureId, lotId, token) => {
-    const res = await axios.post(
-        `${apiPrefix}/assurances/claims/${factureId}/move-lot`,
-        { lotId },
-        withHeaders(token)
-    );
+    const res = await axios.post(`${apiPrefix}/assurances/claims/${factureId}/move-lot`, { lotId }, withHeaders(token));
     return res.data;
 };
 

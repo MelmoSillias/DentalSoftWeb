@@ -8,12 +8,7 @@ function onToastMouseLeave() {}
 </script>
 
 <template>
-    <Toast
-        position="top-right"
-        class="app-toast"
-        :onMouseEnter="onToastMouseEnter"
-        :onMouseLeave="onToastMouseLeave"
-    >
+    <Toast position="top-right" class="app-toast" :onMouseEnter="onToastMouseEnter" :onMouseLeave="onToastMouseLeave">
         <template #message="slotProps">
             <div class="p-toast-message-text">
                 <span class="p-toast-summary">{{ slotProps.message.summary }}</span>
@@ -24,14 +19,16 @@ function onToastMouseLeave() {}
                         severity="primary"
                         icon="pi pi-print"
                         :label="slotProps.message.data.actionLabel"
-                        @click="() => {
-                            slotProps.message.data.action?.();
-                            if (typeof slotProps.closeCallback === 'function') {
-                                slotProps.closeCallback();
-                            } else if (typeof slotProps.close === 'function') {
-                                slotProps.close();
+                        @click="
+                            () => {
+                                slotProps.message.data.action?.();
+                                if (typeof slotProps.closeCallback === 'function') {
+                                    slotProps.closeCallback();
+                                } else if (typeof slotProps.close === 'function') {
+                                    slotProps.close();
+                                }
                             }
-                        }"
+                        "
                     />
                 </div>
             </div>

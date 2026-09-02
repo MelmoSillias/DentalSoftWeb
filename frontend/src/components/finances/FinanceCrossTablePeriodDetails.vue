@@ -12,13 +12,7 @@ import TabPanels from 'primevue/tabpanels';
 import Tabs from 'primevue/tabs';
 import Tag from 'primevue/tag';
 import StatsCardsGrid from '@/components/rapport/common/StatsCardsGrid.vue';
-import {
-    DAY_PRINT_SECTIONS,
-    DEFAULT_DAY_PRINT_SELECTION,
-    printDayActs,
-    printDayCompositeReport,
-    printDayTransactions
-} from '@/utils/crossTableDayPrint';
+import { DAY_PRINT_SECTIONS, DEFAULT_DAY_PRINT_SELECTION, printDayActs, printDayCompositeReport, printDayTransactions } from '@/utils/crossTableDayPrint';
 
 const props = defineProps({
     overview: { type: Object, default: () => ({}) },
@@ -93,9 +87,7 @@ const synthesisItems = computed(() => [
     { key: 'cabinetRevenue', label: 'Revenus services cabinet', value: formatFcfa(props.overview?.doctorsKpi?.revenusServicesCabinet ?? props.overview?.doctorsKpi?.totalCabinetRevenue ?? 0), icon: 'pi pi-building' }
 ]);
 
-const actsTotal = computed(() =>
-    (props.overview?.actes || []).reduce((sum, act) => sum + Number(act.montant || 0), 0)
-);
+const actsTotal = computed(() => (props.overview?.actes || []).reduce((sum, act) => sum + Number(act.montant || 0), 0));
 
 const allPrintSectionsSelected = computed(() => DAY_PRINT_SECTIONS.every((section) => printSelection[section.key]));
 
@@ -135,12 +127,8 @@ watch(
 <template>
     <div class="rounded-2xl border border-surface-200/70 bg-surface-0/80 shadow-sm dark:border-surface-700/50 dark:bg-surface-900/30">
         <div class="border-b border-surface-200/50 px-4 py-3 dark:border-surface-700/50 md:px-5">
-            <h3 class="text-base font-semibold text-surface-900 dark:text-surface-100">
-                Détail complet — {{ periodLabel || scopeLabel }}
-            </h3>
-            <p class="text-xs text-surface-500 dark:text-surface-400">
-                Transactions, synthèse, actes et impressions pour la {{ scopeLabel }} sélectionnée.
-            </p>
+            <h3 class="text-base font-semibold text-surface-900 dark:text-surface-100">Détail complet — {{ periodLabel || scopeLabel }}</h3>
+            <p class="text-xs text-surface-500 dark:text-surface-400">Transactions, synthèse, actes et impressions pour la {{ scopeLabel }} sélectionnée.</p>
         </div>
 
         <div class="px-4 py-4 md:px-5">
@@ -159,32 +147,11 @@ watch(
                 <TabPanels class="mt-4">
                     <TabPanel value="transactions">
                         <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                            <SelectButton
-                                v-model="transactionTypeFilter"
-                                :options="transactionTypeOptions"
-                                optionLabel="label"
-                                optionValue="value"
-                                :allowEmpty="false"
-                            />
-                            <Button
-                                label="Imprimer"
-                                icon="pi pi-print"
-                                outlined
-                                size="small"
-                                :disabled="!filteredTransactions.length"
-                                @click="handlePrintTransactions"
-                            />
+                            <SelectButton v-model="transactionTypeFilter" :options="transactionTypeOptions" optionLabel="label" optionValue="value" :allowEmpty="false" />
+                            <Button label="Imprimer" icon="pi pi-print" outlined size="small" :disabled="!filteredTransactions.length" @click="handlePrintTransactions" />
                         </div>
 
-                        <DataTable
-                            :value="filteredTransactions"
-                            dataKey="id"
-                            paginator
-                            :rows="10"
-                            responsiveLayout="scroll"
-                            stripedRows
-                            class="text-sm"
-                        >
+                        <DataTable :value="filteredTransactions" dataKey="id" paginator :rows="10" responsiveLayout="scroll" stripedRows class="text-sm">
                             <Column field="dateLabel" header="Date validation" sortable />
                             <Column field="description" header="Description" sortable>
                                 <template #body="{ data }">
@@ -214,38 +181,16 @@ watch(
                     </TabPanel>
 
                     <TabPanel value="synthese">
-                        <StatsCardsGrid
-                            :title="`Synthèse de la ${scopeLabel}`"
-                            :subtitle="periodLabel ? `Période : ${periodLabel}` : ''"
-                            :items="synthesisItems"
-                            :loading="loading"
-                        />
+                        <StatsCardsGrid :title="`Synthèse de la ${scopeLabel}`" :subtitle="periodLabel ? `Période : ${periodLabel}` : ''" :items="synthesisItems" :loading="loading" />
                     </TabPanel>
 
                     <TabPanel value="actes">
                         <div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                            <p class="text-sm text-surface-600 dark:text-surface-300">
-                                {{ (overview.actes || []).length }} acte(s) · Total {{ formatFcfa(actsTotal) }}
-                            </p>
-                            <Button
-                                label="Imprimer"
-                                icon="pi pi-print"
-                                outlined
-                                size="small"
-                                :disabled="!(overview.actes || []).length"
-                                @click="handlePrintActs"
-                            />
+                            <p class="text-sm text-surface-600 dark:text-surface-300">{{ (overview.actes || []).length }} acte(s) · Total {{ formatFcfa(actsTotal) }}</p>
+                            <Button label="Imprimer" icon="pi pi-print" outlined size="small" :disabled="!(overview.actes || []).length" @click="handlePrintActs" />
                         </div>
 
-                        <DataTable
-                            :value="overview.actes || []"
-                            dataKey="description"
-                            paginator
-                            :rows="10"
-                            responsiveLayout="scroll"
-                            stripedRows
-                            class="text-sm"
-                        >
+                        <DataTable :value="overview.actes || []" dataKey="description" paginator :rows="10" responsiveLayout="scroll" stripedRows class="text-sm">
                             <Column field="date" header="Date" sortable />
                             <Column field="medecin" header="Médecin" sortable />
                             <Column field="patient" header="Patient" sortable />
@@ -261,25 +206,14 @@ watch(
 
                     <TabPanel value="imprimer">
                         <div class="space-y-4">
-                            <p class="text-sm text-surface-600 dark:text-surface-300">
-                                Sélectionnez les sections à inclure dans le rapport complet.
-                            </p>
+                            <p class="text-sm text-surface-600 dark:text-surface-300">Sélectionnez les sections à inclure dans le rapport complet.</p>
 
                             <div class="flex flex-wrap gap-3">
-                                <Button
-                                    :label="allPrintSectionsSelected ? 'Tout décocher' : 'Tout cocher'"
-                                    size="small"
-                                    text
-                                    @click="toggleAllPrintSections(!allPrintSectionsSelected)"
-                                />
+                                <Button :label="allPrintSectionsSelected ? 'Tout décocher' : 'Tout cocher'" size="small" text @click="toggleAllPrintSections(!allPrintSectionsSelected)" />
                             </div>
 
                             <div class="grid gap-3 sm:grid-cols-2">
-                                <label
-                                    v-for="section in DAY_PRINT_SECTIONS"
-                                    :key="section.key"
-                                    class="flex items-center gap-3 rounded-xl border border-surface-200/70 px-4 py-3 dark:border-surface-700/60"
-                                >
+                                <label v-for="section in DAY_PRINT_SECTIONS" :key="section.key" class="flex items-center gap-3 rounded-xl border border-surface-200/70 px-4 py-3 dark:border-surface-700/60">
                                     <Checkbox v-model="printSelection[section.key]" :binary="true" :inputId="`print-${section.key}`" />
                                     <label :for="`print-${section.key}`" class="text-sm font-medium text-surface-800 dark:text-surface-100">
                                         {{ section.label }}

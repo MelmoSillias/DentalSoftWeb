@@ -52,7 +52,9 @@ function ensureCabinetId(value) {
 }
 
 function ensureConfigEnv(value) {
-    const safe = String(value || '').trim().toLowerCase();
+    const safe = String(value || '')
+        .trim()
+        .toLowerCase();
     if (!SUPPORTED_CONFIG_ENVS.has(safe)) {
         throw new Error(`Invalid config env "${value}". Use dev, prod, local-offline, xampp-lan or xampp-lan-http.`);
     }
@@ -75,16 +77,11 @@ function resolveConfigPath(cabinetDir, configEnv) {
     }
 
     if (fs.existsSync(legacyConfigPath)) {
-        console.warn(
-            `[cabinet] config.${configEnv}.json not found in ${path.basename(cabinetDir)}, falling back to config.json.`
-        );
+        console.warn(`[cabinet] config.${configEnv}.json not found in ${path.basename(cabinetDir)}, falling back to config.json.`);
         return legacyConfigPath;
     }
 
-    throw new Error(
-        `Config not found for cabinet "${path.basename(cabinetDir)}" (env=${configEnv}). `
-        + `Expected ${envConfigPath} or ${legacyConfigPath}.`
-    );
+    throw new Error(`Config not found for cabinet "${path.basename(cabinetDir)}" (env=${configEnv}). ` + `Expected ${envConfigPath} or ${legacyConfigPath}.`);
 }
 
 function readJsonFile(filePath) {
@@ -97,19 +94,7 @@ function readJsonFile(filePath) {
 }
 
 function validateConfig(cabinetId, config) {
-    const requiredStringFields = [
-        'id',
-        'displayName',
-        'appTitle',
-        'brandName',
-        'brandSubtitle',
-        'settingsTitle',
-        'settingsDescription',
-        'smsCabinetName',
-        'smsTestMessage',
-        'reportCabinetName',
-        'cabinetPhone'
-    ];
+    const requiredStringFields = ['id', 'displayName', 'appTitle', 'brandName', 'brandSubtitle', 'settingsTitle', 'settingsDescription', 'smsCabinetName', 'smsTestMessage', 'reportCabinetName', 'cabinetPhone'];
 
     for (const field of requiredStringFields) {
         if (typeof config[field] !== 'string' || config[field].trim() === '') {
@@ -177,7 +162,10 @@ function fileExists(filePath) {
 }
 
 function normalizeRelativePath(value) {
-    return String(value || '').replace(/\\/g, '/').replace(/^\/+/, '').trim();
+    return String(value || '')
+        .replace(/\\/g, '/')
+        .replace(/^\/+/, '')
+        .trim();
 }
 
 function isSafeRelativePath(value) {
@@ -227,9 +215,7 @@ function expandPatternEntries(cabinetPublicDir, entries) {
         const slashIndex = entry.lastIndexOf('/');
         const dirPart = slashIndex >= 0 ? entry.slice(0, slashIndex) : '';
         const filePattern = slashIndex >= 0 ? entry.slice(slashIndex + 1) : entry;
-        const escaped = filePattern
-            .replace(/[.+?^${}()|[\]\\]/g, '\\$&')
-            .replace(/\*/g, '.*');
+        const escaped = filePattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*');
         const matcher = new RegExp(`^${escaped}$`);
 
         const absoluteDir = path.join(cabinetPublicDir, dirPart);
@@ -318,10 +304,7 @@ function validateRequiredAssets(cabinetId, config, cabinetPublicDir) {
     }
 
     if (missing.length > 0) {
-        throw new Error(
-            `Missing required assets for cabinet "${cabinetId}": ${missing.join(', ')}. `
-            + `Add them under cabinet-configs/${cabinetId}/public/.`
-        );
+        throw new Error(`Missing required assets for cabinet "${cabinetId}": ${missing.join(', ')}. ` + `Add them under cabinet-configs/${cabinetId}/public/.`);
     }
 }
 
@@ -335,18 +318,9 @@ function syncCabinetAssets(config, cabinetPublicDir) {
     const brandingFiles = collectBrandingFiles(config);
     const pwaInclude = Array.isArray(config?.pwa?.includeAssets) ? config.pwa.includeAssets : [];
     const defaultPublicPatterns = ['header*'];
-    const pwaIconFiles = Array.isArray(config?.pwa?.icons)
-        ? config.pwa.icons
-            .map((icon) => (icon && typeof icon.src === 'string' ? normalizeRelativePath(icon.src) : ''))
-            .filter((value) => isSafeRelativePath(value))
-        : [];
+    const pwaIconFiles = Array.isArray(config?.pwa?.icons) ? config.pwa.icons.map((icon) => (icon && typeof icon.src === 'string' ? normalizeRelativePath(icon.src) : '')).filter((value) => isSafeRelativePath(value)) : [];
 
-    const publicTargets = new Set([
-        ...brandingFiles,
-        ...pwaIconFiles,
-        ...Array.from(expandPatternEntries(cabinetPublicDir, [...pwaInclude, ...defaultPublicPatterns])),
-        'manifest.webmanifest'
-    ]);
+    const publicTargets = new Set([...brandingFiles, ...pwaIconFiles, ...Array.from(expandPatternEntries(cabinetPublicDir, [...pwaInclude, ...defaultPublicPatterns])), 'manifest.webmanifest']);
 
     let copiedToPublic = 0;
     for (const relativeFile of publicTargets) {
@@ -355,10 +329,7 @@ function syncCabinetAssets(config, cabinetPublicDir) {
         }
     }
 
-    copiedToPublic += copyDirectory(
-        path.join(cabinetPublicDir, 'demo'),
-        path.join(publicDir, 'demo')
-    );
+    copiedToPublic += copyDirectory(path.join(cabinetPublicDir, 'demo'), path.join(publicDir, 'demo'));
 
     const assetTargets = new Set(brandingFiles);
     let copiedToAssets = 0;

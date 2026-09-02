@@ -105,10 +105,7 @@ export const useUiSettingsStore = defineStore('uiSettings', () => {
         layoutConfig.surface = DEFAULT_LAYOUT.surface;
         layoutConfig.menuMode = localStorage.getItem(STORAGE_KEYS.menuMode) || DEFAULT_LAYOUT.menuMode;
         const storedNavigationMode = localStorage.getItem(STORAGE_KEYS.navigationMode);
-        layoutConfig.navigationMode =
-            storedNavigationMode === 'hub' || storedNavigationMode === 'classic'
-                ? storedNavigationMode
-                : DEFAULT_LAYOUT.navigationMode;
+        layoutConfig.navigationMode = storedNavigationMode === 'hub' || storedNavigationMode === 'classic' ? storedNavigationMode : DEFAULT_LAYOUT.navigationMode;
 
         applyThemeMode(themeMode.value);
         applyFontSettings();

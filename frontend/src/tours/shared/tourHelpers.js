@@ -42,10 +42,8 @@ export function createStep(group, order, target, title, content, hooks = {}) {
 }
 
 export function normalizeTourSteps(steps) {
-    return steps
-        .filter(Boolean)
-        .map((step, index) => ({
-            ...step,
-            order: (index + 1) * 10
-        }));
+    return steps.filter(Boolean).map((step, index) => ({
+        ...step,
+        order: (index + 1) * 10
+    }));
 }

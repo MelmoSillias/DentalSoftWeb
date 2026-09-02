@@ -7,15 +7,7 @@ import Tag from 'primevue/tag';
 import { computed, ref } from 'vue';
 import PanelDatePicker from '@/components/common/PanelDatePicker.vue';
 import { useInternetFeatures } from '@/composables/useInternetFeatures';
-import {
-    canModifyFacture,
-    canPreviewFacture,
-    canSettleFacture,
-    computeFactureStatus,
-    computePriorReliquat,
-    isInsuranceFactureRow,
-    targetIsFreeFacture
-} from '@/utils/factureRow';
+import { canModifyFacture, canPreviewFacture, canSettleFacture, computeFactureStatus, computePriorReliquat, isInsuranceFactureRow, targetIsFreeFacture } from '@/utils/factureRow';
 
 const { isInternetFeaturesEnabled } = useInternetFeatures();
 
@@ -28,16 +20,7 @@ const props = defineProps({
     allowInvoiceModification: { type: Boolean, default: false }
 });
 
-const emit = defineEmits([
-    'update:factureType',
-    'update:factureRange',
-    'refresh-factures',
-    'pay',
-    'validate-free',
-    'modify',
-    'preview',
-    'send-invoice-sms'
-]);
+const emit = defineEmits(['update:factureType', 'update:factureRange', 'refresh-factures', 'pay', 'validate-free', 'modify', 'preview', 'send-invoice-sms']);
 
 const factureTypeOptions = [
     { label: 'Toutes', value: 'all' },
@@ -51,10 +34,11 @@ const safeFactures = computed(() => (Array.isArray(props.factures) ? props.factu
 
 const factureSearch = ref('');
 
-const normalizeText = (value) => String(value ?? '')
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '');
+const normalizeText = (value) =>
+    String(value ?? '')
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
 
 const matchesQuery = (parts, query) => {
     if (!query) return true;
@@ -99,16 +83,7 @@ const filteredFactures = computed(() => {
         const patient = formatPatient(row);
         const status = computeStatus(row).label;
         const insuranceLabel = computeInsuranceBadge(row)?.label || '';
-        return matchesQuery([
-            patient,
-            row.telephone,
-            row.date,
-            row.montant,
-            row.reste,
-            status,
-            insuranceLabel,
-            row?.insurance?.insuranceModeLabel
-        ], query);
+        return matchesQuery([patient, row.telephone, row.date, row.montant, row.reste, status, insuranceLabel, row?.insurance?.insuranceModeLabel], query);
     });
 });
 
@@ -141,7 +116,7 @@ const formatPatient = (row) => {
 
 const priorReliquatAmount = (row) => computePriorReliquat(row);
 
-const displayPhone = (value) => (props.hidePatientPhone ? 'Masqué par l\'administrateur' : (value || '—'));
+const displayPhone = (value) => (props.hidePatientPhone ? "Masqué par l'administrateur" : value || '—');
 </script>
 
 <template>
@@ -155,18 +130,15 @@ const displayPhone = (value) => (props.hidePatientPhone ? 'Masqué par l\'admini
                 <div class="filters" data-tour="caisse-factures.filters">
                     <div class="filter-item">
                         <label>Recherche</label>
-                        <InputText v-model="factureSearch" placeholder="Tapez quelque chose..."
-                            fluid />
+                        <InputText v-model="factureSearch" placeholder="Tapez quelque chose..." fluid />
                     </div>
                     <div class="filter-item">
                         <label>Affichage</label>
-                        <Select v-model="factureTypeModel" :options="factureTypeOptions" optionLabel="label"
-                            optionValue="value" />
+                        <Select v-model="factureTypeModel" :options="factureTypeOptions" optionLabel="label" optionValue="value" />
                     </div>
                     <div class="filter-item">
                         <label>Période</label>
-                        <PanelDatePicker v-model="factureRangeModel" dateFormat="yy-mm-dd" showIcon
-                            fluid :disabled="periodFilterDisabled" />
+                        <PanelDatePicker v-model="factureRangeModel" dateFormat="yy-mm-dd" showIcon fluid :disabled="periodFilterDisabled" />
                     </div>
                     <Button label="Rafraîchir" icon="pi pi-refresh" text @click="emit('refresh-factures')" />
                 </div>
@@ -198,14 +170,10 @@ const displayPhone = (value) => (props.hidePatientPhone ? 'Masqué par l\'admini
 
             <div v-if="!filteredFactures.length" class="empty">Aucune facture à afficher pour ces filtres.</div>
 
-            <DataView v-else data-tour="caisse-factures.cards" :value="filteredFactures" paginator :rows="6" :rowsPerPageOptions="[6, 12, 24]"
-                :loading="facturesLoading">
+            <DataView v-else data-tour="caisse-factures.cards" :value="filteredFactures" paginator :rows="6" :rowsPerPageOptions="[6, 12, 24]" :loading="facturesLoading">
                 <template #list="slotProps">
                     <div class="flex flex-col gap-3 p-1">
-                        <div v-for="(row, index) in slotProps.items" :key="row.id || index"
-                            class="fct-card"
-                            :class="`fct-card--${computeStatus(row).severity}`">
-
+                        <div v-for="(row, index) in slotProps.items" :key="row.id || index" class="fct-card" :class="`fct-card--${computeStatus(row).severity}`">
                             <!-- En-tête document -->
                             <div class="fct-header">
                                 <div class="fct-doc-badge" :class="{ 'fct-doc-badge--insurance': isInsuranceRow(row) }">
@@ -214,10 +182,7 @@ const displayPhone = (value) => (props.hidePatientPhone ? 'Masqué par l\'admini
                                 </div>
                                 <div class="fct-status-badges">
                                     <Tag :value="computeStatus(row).label" :severity="computeStatus(row).severity" />
-                                    <Tag v-if="computeInsuranceBadge(row)"
-                                        :value="computeInsuranceBadge(row).label"
-                                        :severity="computeInsuranceBadge(row).severity"
-                                        icon="pi pi-shield" />
+                                    <Tag v-if="computeInsuranceBadge(row)" :value="computeInsuranceBadge(row).label" :severity="computeInsuranceBadge(row).severity" icon="pi pi-shield" />
                                 </div>
                             </div>
 
@@ -247,9 +212,9 @@ const displayPhone = (value) => (props.hidePatientPhone ? 'Masqué par l\'admini
 
                                 <!-- Montants -->
                                 <div class="fct-amounts">
-                                    <div v-if="isInsuranceRow(row)" class="fct-amount-line" style="margin-bottom:0.15rem">
+                                    <div v-if="isInsuranceRow(row)" class="fct-amount-line" style="margin-bottom: 0.15rem">
                                         <span class="fct-amount-label">Total facture</span>
-                                        <span class="fct-amount-value" style="font-size:0.82rem;opacity:0.7">{{ formatFcfa(row.insurance?.montantTotal ?? row.montantTotal) }}</span>
+                                        <span class="fct-amount-value" style="font-size: 0.82rem; opacity: 0.7">{{ formatFcfa(row.insurance?.montantTotal ?? row.montantTotal) }}</span>
                                     </div>
                                     <div class="fct-amount-line">
                                         <span class="fct-amount-label">{{ isInsuranceRow(row) ? 'Part patient' : 'Montant total' }}</span>
@@ -257,8 +222,7 @@ const displayPhone = (value) => (props.hidePatientPhone ? 'Masqué par l\'admini
                                     </div>
                                     <div class="fct-amount-line fct-amount-line--reste">
                                         <span class="fct-amount-label">Reste à payer</span>
-                                        <span class="fct-amount-value fct-amount-reste"
-                                            :class="`fct-amount-reste--${computeStatus(row).severity}`">
+                                        <span class="fct-amount-value fct-amount-reste" :class="`fct-amount-reste--${computeStatus(row).severity}`">
                                             {{ formatFcfa(row.reste) }}
                                         </span>
                                     </div>
@@ -267,19 +231,17 @@ const displayPhone = (value) => (props.hidePatientPhone ? 'Masqué par l\'admini
 
                             <!-- Actions -->
                             <div class="fct-actions" data-tour="caisse-factures.actions">
-                                <Button v-if="canSettle(row)"
+                                <Button
+                                    v-if="canSettle(row)"
                                     :label="targetIsFree(row) ? 'Valider' : 'Régler'"
                                     size="small"
                                     :severity="targetIsFree(row) ? 'secondary' : 'success'"
                                     icon="pi pi-wallet"
-                                    @click="targetIsFree(row) ? emit('validate-free', row) : emit('pay', row)" />
-                                <Button v-if="canModify(row)" label="Modifier" size="small" severity="secondary"
-                                    icon="pi pi-pencil" @click="emit('modify', row)" />
-                                <Button v-if="canPreview(row)" label="Aperçu" size="small" icon="pi pi-eye"
-                                    severity="info" outlined @click="emit('preview', row)" />
-                                <Button v-if="canPreview(row) && isInternetFeaturesEnabled" icon="pi pi-send" size="small" severity="help"
-                                    text title="Envoyer facture par SMS"
-                                    @click="emit('send-invoice-sms', row)" />
+                                    @click="targetIsFree(row) ? emit('validate-free', row) : emit('pay', row)"
+                                />
+                                <Button v-if="canModify(row)" label="Modifier" size="small" severity="secondary" icon="pi pi-pencil" @click="emit('modify', row)" />
+                                <Button v-if="canPreview(row)" label="Aperçu" size="small" icon="pi pi-eye" severity="info" outlined @click="emit('preview', row)" />
+                                <Button v-if="canPreview(row) && isInternetFeaturesEnabled" icon="pi pi-send" size="small" severity="help" text title="Envoyer facture par SMS" @click="emit('send-invoice-sms', row)" />
                             </div>
                         </div>
                     </div>
@@ -461,16 +423,15 @@ const displayPhone = (value) => (props.hidePatientPhone ? 'Masqué par l\'admini
     justify-content: flex-end;
 }
 
-
 .app-dark .dv-name {
     color: #fafcff;
 }
 
-  .app-dark .dv-phone,
-    .app-dark .dv-date {
-        color: #94a3b8;
-        font-size: 1.1rem;
-    }
+.app-dark .dv-phone,
+.app-dark .dv-date {
+    color: #94a3b8;
+    font-size: 1.1rem;
+}
 
 .app-dark .dv-money {
     background: #1e293b;
@@ -526,7 +487,9 @@ const displayPhone = (value) => (props.hidePatientPhone ? 'Masqué par l\'admini
     background: var(--surface-card);
     overflow: hidden;
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05);
-    transition: box-shadow 0.2s ease, transform 0.2s ease;
+    transition:
+        box-shadow 0.2s ease,
+        transform 0.2s ease;
 }
 
 .fct-card:hover {
@@ -534,10 +497,18 @@ const displayPhone = (value) => (props.hidePatientPhone ? 'Masqué par l\'admini
     transform: translateY(-2px);
 }
 
-.fct-card--success   { border-left-color: #22c55e; }
-.fct-card--danger    { border-left-color: #ef4444; }
-.fct-card--warning   { border-left-color: #f59e0b; }
-.fct-card--secondary { border-left-color: #94a3b8; }
+.fct-card--success {
+    border-left-color: #22c55e;
+}
+.fct-card--danger {
+    border-left-color: #ef4444;
+}
+.fct-card--warning {
+    border-left-color: #f59e0b;
+}
+.fct-card--secondary {
+    border-left-color: #94a3b8;
+}
 
 /* En-tête document */
 .fct-header {
@@ -546,7 +517,7 @@ const displayPhone = (value) => (props.hidePatientPhone ? 'Masqué par l\'admini
     justify-content: space-between;
     gap: 0.75rem;
     padding: 0.5rem 1rem;
-    background: linear-gradient(90deg, rgba(241,245,249,0.95), rgba(248,250,252,0.8));
+    background: linear-gradient(90deg, rgba(241, 245, 249, 0.95), rgba(248, 250, 252, 0.8));
     border-bottom: 1px solid var(--surface-border);
     flex-wrap: wrap;
 }
@@ -565,21 +536,28 @@ const displayPhone = (value) => (props.hidePatientPhone ? 'Masqué par l\'admini
     padding: 0.22rem 0.6rem;
 }
 
-.fct-doc-badge .pi { font-size: 0.85rem; color: #64748b; }
+.fct-doc-badge .pi {
+    font-size: 0.85rem;
+    color: #64748b;
+}
 
 .fct-doc-badge--insurance {
     background: #e0f2fe;
     color: #0369a1;
 }
 
-.fct-doc-badge--insurance .pi { color: #0369a1; }
+.fct-doc-badge--insurance .pi {
+    color: #0369a1;
+}
 
 .app-dark .fct-doc-badge--insurance {
     background: #0c4a6e;
     color: #7dd3fc;
 }
 
-.app-dark .fct-doc-badge--insurance .pi { color: #7dd3fc; }
+.app-dark .fct-doc-badge--insurance .pi {
+    color: #7dd3fc;
+}
 
 .fct-status-badges {
     display: flex;
@@ -615,7 +593,10 @@ const displayPhone = (value) => (props.hidePatientPhone ? 'Masqué par l\'admini
     gap: 0.4rem;
 }
 
-.fct-patient-name .pi { color: #6366f1; font-size: 0.9rem; }
+.fct-patient-name .pi {
+    color: #6366f1;
+    font-size: 0.9rem;
+}
 
 .fct-patient-name .fct-reliquat-icon {
     font-size: 0.85rem;
@@ -631,7 +612,9 @@ const displayPhone = (value) => (props.hidePatientPhone ? 'Masqué par l\'admini
     gap: 0.35rem;
 }
 
-.fct-patient-detail .pi { font-size: 0.78rem; }
+.fct-patient-detail .pi {
+    font-size: 0.78rem;
+}
 
 /* Montants */
 .fct-amounts {
@@ -670,10 +653,18 @@ const displayPhone = (value) => (props.hidePatientPhone ? 'Masqué par l\'admini
     color: #0f172a;
 }
 
-.fct-amount-reste--success   { color: #16a34a; }
-.fct-amount-reste--danger    { color: #dc2626; }
-.fct-amount-reste--warning   { color: #d97706; }
-.fct-amount-reste--secondary { color: #64748b; }
+.fct-amount-reste--success {
+    color: #16a34a;
+}
+.fct-amount-reste--danger {
+    color: #dc2626;
+}
+.fct-amount-reste--warning {
+    color: #d97706;
+}
+.fct-amount-reste--secondary {
+    color: #64748b;
+}
 
 /* Actions */
 .fct-actions {
@@ -687,7 +678,7 @@ const displayPhone = (value) => (props.hidePatientPhone ? 'Masqué par l\'admini
 
 /* Dark mode */
 .app-dark .fct-header {
-    background: linear-gradient(90deg, rgba(30,41,59,0.9), rgba(15,23,42,0.7));
+    background: linear-gradient(90deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.7));
 }
 
 .app-dark .fct-doc-badge {
@@ -695,19 +686,29 @@ const displayPhone = (value) => (props.hidePatientPhone ? 'Masqué par l\'admini
     color: #94a3b8;
 }
 
-.app-dark .fct-doc-badge .pi { color: #94a3b8; }
+.app-dark .fct-doc-badge .pi {
+    color: #94a3b8;
+}
 
-.app-dark .fct-patient-name { color: #e2e8f0; }
+.app-dark .fct-patient-name {
+    color: #e2e8f0;
+}
 
-.app-dark .fct-patient-detail { color: #94a3b8; }
+.app-dark .fct-patient-detail {
+    color: #94a3b8;
+}
 
 .app-dark .fct-amounts {
     background: rgba(30, 41, 59, 0.6);
 }
 
-.app-dark .fct-amount-value { color: #e2e8f0; }
+.app-dark .fct-amount-value {
+    color: #e2e8f0;
+}
 
-.app-dark .fct-amount-label { color: #94a3b8; }
+.app-dark .fct-amount-label {
+    color: #94a3b8;
+}
 
 .app-dark .fct-actions {
     background: rgba(15, 23, 42, 0.4);

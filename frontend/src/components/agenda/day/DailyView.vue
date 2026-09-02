@@ -103,9 +103,7 @@ const onDateChange = (val) => {
 const onCreate = ({ medecin, slot }) => {
     const start = computeDateFromSlot(slot.minutes);
     const end = new Date(start.getTime() + 30 * 60000);
-    const effectiveMedecin = props.lockedMedecinId
-        ? (medecinsOptions.value || []).find((m) => Number(m.id) === Number(props.lockedMedecinId)) || medecin
-        : medecin;
+    const effectiveMedecin = props.lockedMedecinId ? (medecinsOptions.value || []).find((m) => Number(m.id) === Number(props.lockedMedecinId)) || medecin : medecin;
     emit('request-create', { start, end, medecin: effectiveMedecin });
 };
 
@@ -166,17 +164,7 @@ defineExpose({ reloadOnAction });
             </div>
             <ScrollPanel class="daily-schedule-scroll h-full w-full">
                 <div class="p-2 xs:p-3">
-                    <ScheduleTable
-                        :medecins="medecinsOptions"
-                        :rdvs="dayEvents"
-                        :zoom="zoom"
-                        :opening-time="openingTime"
-                        :closing-time="closingTime"
-                        @create="onCreate"
-                        @validate="onValidate"
-                        @cancel="onCancel"
-                        @report="onReport"
-                    />
+                    <ScheduleTable :medecins="medecinsOptions" :rdvs="dayEvents" :zoom="zoom" :opening-time="openingTime" :closing-time="closingTime" @create="onCreate" @validate="onValidate" @cancel="onCancel" @report="onReport" />
                 </div>
             </ScrollPanel>
         </div>

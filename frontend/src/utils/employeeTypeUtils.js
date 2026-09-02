@@ -15,9 +15,7 @@ export const STAFF_ROLE_OPTIONS = [
     { label: 'Patient', value: STAFF_ROLE_PATIENT }
 ];
 
-export const STAFF_ROLE_OPTIONS_WITHOUT_PATIENT = STAFF_ROLE_OPTIONS.filter(
-    (option) => option.value !== STAFF_ROLE_PATIENT
-);
+export const STAFF_ROLE_OPTIONS_WITHOUT_PATIENT = STAFF_ROLE_OPTIONS.filter((option) => option.value !== STAFF_ROLE_PATIENT);
 
 const RECEPTION_ROLES = ['ROLE_RECEPTION', 'ROLE_RECEPTIONNISTE', 'ROLE_SECRETAIRE'];
 
@@ -49,7 +47,9 @@ export function resolveRoleFromRoles(roles = []) {
 }
 
 export function suggestRoleFromEmployeeType(type) {
-    const normalized = String(type || '').trim().toLowerCase();
+    const normalized = String(type || '')
+        .trim()
+        .toLowerCase();
 
     if (normalized === 'admin') return STAFF_ROLE_ADMIN;
     if (normalized === 'medecin' || normalized === 'médecin') return STAFF_ROLE_MEDECIN;

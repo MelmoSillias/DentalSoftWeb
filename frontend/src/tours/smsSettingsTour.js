@@ -54,82 +54,82 @@ function buildOverviewSteps(ctx) {
 
 export const smsSettingsRegistry = createTourRegistry(GROUP, TASKS, {
     overview: buildOverviewSteps,
-    'configure-provider': (ctx, variantId) => normalizeTourSteps([
-        {
-            group: GROUP,
-            target: '[data-tour="sms-settings.config"]',
-            title: 'Configuration provider',
-            content: variantId === 'afrik'
-                ? 'Renseignez les identifiants Afrik SMS puis testez la connexion.'
-                : 'Renseignez les identifiants Orange SMS puis testez la connexion.',
-            beforeEnter: async () => {
-                await ctx.switchTab?.('config');
-                await flushUi();
+    'configure-provider': (ctx, variantId) =>
+        normalizeTourSteps([
+            {
+                group: GROUP,
+                target: '[data-tour="sms-settings.config"]',
+                title: 'Configuration provider',
+                content: variantId === 'afrik' ? 'Renseignez les identifiants Afrik SMS puis testez la connexion.' : 'Renseignez les identifiants Orange SMS puis testez la connexion.',
+                beforeEnter: async () => {
+                    await ctx.switchTab?.('config');
+                    await flushUi();
+                }
+            },
+            {
+                group: GROUP,
+                target: '[data-tour="sms-settings.test-connection"]',
+                title: 'Tester la connexion',
+                content: 'Verifiez que le provider repond avant d enregistrer la configuration.'
+            },
+            {
+                group: GROUP,
+                target: '[data-tour="sms-settings.save-config"]',
+                title: 'Enregistrer',
+                content: 'Sauvegardez la configuration active pour le cabinet.'
             }
-        },
-        {
-            group: GROUP,
-            target: '[data-tour="sms-settings.test-connection"]',
-            title: 'Tester la connexion',
-            content: 'Verifiez que le provider repond avant d enregistrer la configuration.'
-        },
-        {
-            group: GROUP,
-            target: '[data-tour="sms-settings.save-config"]',
-            title: 'Enregistrer',
-            content: 'Sauvegardez la configuration active pour le cabinet.'
-        }
-    ]),
-    'manage-queue': (ctx, variantId) => normalizeTourSteps([
-        {
-            group: GROUP,
-            target: '[data-tour="sms-settings.queue"]',
-            title: 'File SMS',
-            content: variantId === 'empty'
-                ? 'Quand la file est vide, aucun message n est en attente d envoi.'
-                : 'Les messages en attente peuvent etre relances, reprogrammes ou annules.',
-            beforeEnter: async () => {
-                await ctx.switchTab?.('queue');
-                await flushUi();
+        ]),
+    'manage-queue': (ctx, variantId) =>
+        normalizeTourSteps([
+            {
+                group: GROUP,
+                target: '[data-tour="sms-settings.queue"]',
+                title: 'File SMS',
+                content: variantId === 'empty' ? 'Quand la file est vide, aucun message n est en attente d envoi.' : 'Les messages en attente peuvent etre relances, reprogrammes ou annules.',
+                beforeEnter: async () => {
+                    await ctx.switchTab?.('queue');
+                    await flushUi();
+                }
+            },
+            {
+                group: GROUP,
+                target: '[data-tour="sms-settings.queue-actions"]',
+                title: 'Actions file',
+                content: 'Utilisez retry, annulation ou reprogrammation selon le statut du message.'
             }
-        },
-        {
-            group: GROUP,
-            target: '[data-tour="sms-settings.queue-actions"]',
-            title: 'Actions file',
-            content: 'Utilisez retry, annulation ou reprogrammation selon le statut du message.'
-        }
-    ]),
-    'manage-templates': (ctx) => normalizeTourSteps([
-        {
-            group: GROUP,
-            target: '[data-tour="sms-settings.templates"]',
-            title: 'Templates SMS',
-            content: 'Creez et modifiez les modeles reutilisables pour l automation.',
-            beforeEnter: async () => {
-                await ctx.switchTab?.('templates');
-                await flushUi();
+        ]),
+    'manage-templates': (ctx) =>
+        normalizeTourSteps([
+            {
+                group: GROUP,
+                target: '[data-tour="sms-settings.templates"]',
+                title: 'Templates SMS',
+                content: 'Creez et modifiez les modeles reutilisables pour l automation.',
+                beforeEnter: async () => {
+                    await ctx.switchTab?.('templates');
+                    await flushUi();
+                }
+            },
+            {
+                group: GROUP,
+                target: '[data-tour="sms-settings.template-preview"]',
+                title: 'Apercu template',
+                content: 'Previsualisez le rendu du message avant enregistrement.'
             }
-        },
-        {
-            group: GROUP,
-            target: '[data-tour="sms-settings.template-preview"]',
-            title: 'Apercu template',
-            content: 'Previsualisez le rendu du message avant enregistrement.'
-        }
-    ]),
-    'manual-send': (ctx) => normalizeTourSteps([
-        {
-            group: GROUP,
-            target: '[data-tour="sms-settings.manual-send"]',
-            title: 'Envoi manuel',
-            content: 'Envoyez un SMS ponctuel a un patient ou un numero externe.',
-            beforeEnter: async () => {
-                await ctx.switchTab?.('manual');
-                await flushUi();
+        ]),
+    'manual-send': (ctx) =>
+        normalizeTourSteps([
+            {
+                group: GROUP,
+                target: '[data-tour="sms-settings.manual-send"]',
+                title: 'Envoi manuel',
+                content: 'Envoyez un SMS ponctuel a un patient ou un numero externe.',
+                beforeEnter: async () => {
+                    await ctx.switchTab?.('manual');
+                    await flushUi();
+                }
             }
-        }
-    ])
+        ])
 });
 
 export function buildSmsSettingsTourSteps(taskId, variantId, ctx) {

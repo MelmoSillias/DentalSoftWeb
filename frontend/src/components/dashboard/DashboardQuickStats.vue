@@ -15,23 +15,12 @@ const props = defineProps({
                 <i class="pi pi-chart-line text-primary-500 text-sm sm:text-base"></i>
                 {{ title }}
             </h3>
-            <Button
-                icon="pi pi-ellipsis-h"
-                severity="secondary"
-                text
-                size="small"
-                class="text-surface-600 dark:text-surface-400"
-            />
+            <Button icon="pi pi-ellipsis-h" severity="secondary" text size="small" class="text-surface-600 dark:text-surface-400" />
         </div>
 
         <div class="relative">
             <div class="flex gap-4 pb-4 overflow-x-auto scrollbar-hide">
-                <div
-                    v-if="loading"
-                    v-for="idx in 4"
-                    :key="`loading-${idx}`"
-                    class="min-w-[240px] sm:min-w-[280px] rounded-2xl p-4 sm:p-5 border border-surface-200/60 dark:border-surface-700/60 bg-surface-50/70 dark:bg-surface-800/70 animate-pulse"
-                >
+                <div v-if="loading" v-for="idx in 4" :key="`loading-${idx}`" class="min-w-[240px] sm:min-w-[280px] rounded-2xl p-4 sm:p-5 border border-surface-200/60 dark:border-surface-700/60 bg-surface-50/70 dark:bg-surface-800/70 animate-pulse">
                     <div class="flex items-center justify-between">
                         <div class="flex-1 space-y-3">
                             <div class="h-3 w-24 rounded bg-surface-200/80 dark:bg-surface-700/70"></div>
@@ -45,16 +34,7 @@ const props = defineProps({
                     </div>
                 </div>
 
-                <div
-                    v-else
-                    v-for="card in cards"
-                    :key="card.id"
-                    :class="[
-                        'min-w-[240px] sm:min-w-[280px] rounded-2xl p-4 sm:p-5 border hover:shadow-lg transition-all duration-300 cursor-pointer group',
-                        card.background,
-                        card.border
-                    ]"
-                >
+                <div v-else v-for="card in cards" :key="card.id" :class="['min-w-[240px] sm:min-w-[280px] rounded-2xl p-4 sm:p-5 border hover:shadow-lg transition-all duration-300 cursor-pointer group', card.background, card.border]">
                     <div class="flex items-center justify-between">
                         <div class="flex-1">
                             <p :class="['text-xs sm:text-sm font-medium', card.text]">{{ card.title }}</p>
@@ -69,10 +49,7 @@ const props = defineProps({
                         </div>
                     </div>
                     <div v-if="card.link" :class="['mt-4 pt-3 border-t', card.borderLight || card.border]">
-                        <RouterLink
-                            :to="card.link"
-                            :class="['text-xs sm:text-sm hover:underline flex items-center gap-2', card.linkColor || card.text]"
-                        >
+                        <RouterLink :to="card.link" :class="['text-xs sm:text-sm hover:underline flex items-center gap-2', card.linkColor || card.text]">
                             {{ card.linkLabel || 'Voir' }}
                             <i class="pi pi-arrow-right text-xs"></i>
                         </RouterLink>
@@ -80,17 +57,10 @@ const props = defineProps({
                 </div>
             </div>
 
-            <div v-if="!loading && !cards.length" class="text-sm text-surface-500 py-2">
-                Aucun indicateur disponible.
-            </div>
+            <div v-if="!loading && !cards.length" class="text-sm text-surface-500 py-2">Aucun indicateur disponible.</div>
 
             <div class="flex justify-center gap-1 mt-4" v-if="!loading && cards.length">
-                <div
-                    v-for="idx in Math.min(cards.length, 3)"
-                    :key="idx"
-                    :class="idx === 1 ? 'bg-primary-500' : 'bg-surface-300 dark:bg-surface-600'"
-                    class="w-2 h-2 rounded-full"
-                ></div>
+                <div v-for="idx in Math.min(cards.length, 3)" :key="idx" :class="idx === 1 ? 'bg-primary-500' : 'bg-surface-300 dark:bg-surface-600'" class="w-2 h-2 rounded-full"></div>
             </div>
         </div>
     </div>

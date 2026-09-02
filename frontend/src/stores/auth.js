@@ -9,9 +9,10 @@ export const useAuthStore = defineStore('auth', {
     state: () => ({
         user: null,
         token: localStorage.getItem('token') || null,
-        loading: false,        error: null,
+        loading: false,
+        error: null,
         deviceBlockMessage: null,
-        deviceBlockStatus: null,
+        deviceBlockStatus: null
     }),
 
     actions: {
@@ -32,15 +33,15 @@ export const useAuthStore = defineStore('auth', {
             try {
                 const res = await http.post('login_check', { username, password });
                 this.token = res.data.token;
-                localStorage.setItem('token', this.token); 
-                await this.fetchUser(); 
+                localStorage.setItem('token', this.token);
+                await this.fetchUser();
             } catch (err) {
                 if (isDeviceNotAllowedError(err)) {
                     this.setDeviceBlock(err.response?.data?.message, err.response?.data?.status);
                     throw err;
                 }
                 this.logout();
-                this.error = err.response?.data?.message || 'Erreur de connexion'; 
+                this.error = err.response?.data?.message || 'Erreur de connexion';
                 throw err;
             } finally {
                 this.loading = false;
@@ -62,13 +63,12 @@ export const useAuthStore = defineStore('auth', {
 
         async validateToken() {
             try {
-                const response = await http.get('token/validate'); 
+                const response = await http.get('token/validate');
                 return true;
-            } catch (error) { 
-                if (error.response && error.response.status === 401) { 
+            } catch (error) {
+                if (error.response && error.response.status === 401) {
                     this.logout();
                 } else {
-                    
                 }
                 return false;
             }

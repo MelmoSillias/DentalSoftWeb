@@ -1,14 +1,6 @@
 export const GUIDED_TOUR_START_EVENT = 'orodent:guided-tour:start';
 
-export {
-    buildTourStepsForRoute,
-    getRegistryForRoute,
-    getSupportedTourRoutes,
-    getTaskForRoute,
-    getTaskMenuItemsForRoute,
-    getTasksForRoute,
-    resolveRouteMockScenario
-} from './registry';
+export { buildTourStepsForRoute, getRegistryForRoute, getSupportedTourRoutes, getTaskForRoute, getTaskMenuItemsForRoute, getTasksForRoute, resolveRouteMockScenario } from './registry';
 
 import { getSupportedTourRoutes } from './registry';
 

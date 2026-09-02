@@ -75,31 +75,13 @@ const chartData = computed(() => {
     const stats = props.stats || {};
     const documentStyle = getComputedStyle(document.documentElement);
     return {
-        labels: [
-            'Patients',
-            'Capital',
-            'Total facturé (cabinet)',
-            'Employés',
-            'Masse salariale',
-            'Salles',
-            'Consommables',
-            'Utilisateurs'
-        ],
+        labels: ['Patients', 'Capital', 'Total facturé (cabinet)', 'Employés', 'Masse salariale', 'Salles', 'Consommables', 'Utilisateurs'],
         datasets: [
             {
                 label: 'Valeurs',
                 backgroundColor: documentStyle.getPropertyValue('--p-primary-500'),
                 borderColor: documentStyle.getPropertyValue('--p-primary-500'),
-                data: [
-                    stats.patientsTotal || 0,
-                    stats.capitalTotal || 0,
-                    stats.revenueTotal || 0,
-                    stats.employeesTotal || 0,
-                    stats.payrollFixed || 0,
-                    stats.consultRoomsCount || 0,
-                    stats.consumablesCount || 0,
-                    stats.usersTotal || 0
-                ]
+                data: [stats.patientsTotal || 0, stats.capitalTotal || 0, stats.revenueTotal || 0, stats.employeesTotal || 0, stats.payrollFixed || 0, stats.consultRoomsCount || 0, stats.consumablesCount || 0, stats.usersTotal || 0]
             }
         ]
     };

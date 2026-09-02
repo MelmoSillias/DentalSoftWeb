@@ -6,9 +6,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 function readPackageVersion() {
     try {
-        const pkg = JSON.parse(
-            readFileSync(path.resolve(__dirname, '../package.json'), 'utf8')
-        );
+        const pkg = JSON.parse(readFileSync(path.resolve(__dirname, '../package.json'), 'utf8'));
         return pkg.version || '0.0.0';
     } catch {
         return '0.0.0';
@@ -33,12 +31,12 @@ export function injectBuildVersion() {
 
             return {
                 define: {
-                    'import.meta.env.VITE_APP_BUILD_ID': JSON.stringify(buildId),
-                },
+                    'import.meta.env.VITE_APP_BUILD_ID': JSON.stringify(buildId)
+                }
             };
         },
         transformIndexHtml(html) {
             return html.replaceAll('%APP_BUILD_VERSION%', buildId);
-        },
+        }
     };
 }

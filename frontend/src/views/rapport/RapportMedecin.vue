@@ -14,11 +14,7 @@ import MedecinPeriodicDetailsSection from '@/components/rapport/medecin/MedecinP
 import MedecinMedicalActsSection from '@/components/rapport/medecin/MedecinMedicalActsSection.vue';
 import MedecinProfileSection from '@/components/rapport/medecin/MedecinProfileSection.vue';
 import { useAuthStore } from '@/stores/auth';
-import {
-    loadRapportsPageState,
-    saveRapportsPageState,
-    RAPPORTS_MEDECIN_TABS
-} from '@/composables/useRapportsPageState';
+import { loadRapportsPageState, saveRapportsPageState, RAPPORTS_MEDECIN_TABS } from '@/composables/useRapportsPageState';
 
 const { medecinLoading, medecinData, fetchMedecinRapport, toIsoDate } = useRapports();
 const auth = useAuthStore();
@@ -40,17 +36,11 @@ const periodLabel = computed(() => {
 
 const connectedMedecinFullName = computed(() => {
     const identity = medecinData.value?.identity || {};
-    const fromRapport = medecinData.value?.fullName
-        || identity.fullName
-        || [identity.prenom, identity.nom].filter(Boolean).join(' ').trim();
+    const fromRapport = medecinData.value?.fullName || identity.fullName || [identity.prenom, identity.nom].filter(Boolean).join(' ').trim();
     if (fromRapport) return fromRapport;
 
     const user = auth.user || {};
-    return [user.prenom, user.nom].filter(Boolean).join(' ').trim()
-        || user.fullName
-        || user.name
-        || user.username
-        || '';
+    return [user.prenom, user.nom].filter(Boolean).join(' ').trim() || user.fullName || user.name || user.username || '';
 });
 
 function setActiveTab(tab) {
@@ -98,19 +88,11 @@ onMounted(() => {
     <div class="space-y-4">
         <div class="flex flex-wrap items-center justify-between gap-2" data-tour="rapports-medecin.range">
             <div class="min-w-0">
-                <h2 class="truncate text-lg font-semibold text-surface-900 dark:text-surface-0">
-                    Bienvenue {{ connectedMedecinFullName }}
-                </h2>
+                <h2 class="truncate text-lg font-semibold text-surface-900 dark:text-surface-0">Bienvenue {{ connectedMedecinFullName }}</h2>
                 <p class="text-xs text-surface-500 dark:text-surface-400">{{ periodLabel }}</p>
             </div>
             <div class="flex flex-wrap items-center gap-2">
-                <PanelDatePicker
-                    v-model="range"
-                    showIcon
-                    dateFormat="dd/mm/yy"
-                    class="w-64"
-                    placeholder="Choisir période"
-                />
+                <PanelDatePicker v-model="range" showIcon dateFormat="dd/mm/yy" class="w-64" placeholder="Choisir période" />
                 <Button label="Rafraîchir" icon="pi pi-refresh" outlined size="small" @click="refresh(false)" />
             </div>
         </div>

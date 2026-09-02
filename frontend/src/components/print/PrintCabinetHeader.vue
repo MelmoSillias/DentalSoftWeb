@@ -1,58 +1,3 @@
-<template>
-    <header
-        class="print-cabinet-header"
-        :class="[`print-cabinet-header--${variant}`, { 'print-cabinet-header--compact': compact }]"
-        :aria-label="profile.name"
-    >
-        <div class="brand">
-            <img :src="logoSrc" :alt="profile.name" class="brand-logo" />
-        </div>
-
-        <div class="details">
-            <p class="cabinet-name">{{ profile.name }}</p>
-
-            <p v-if="profile.addressLines.length" class="address">
-                <span v-if="variant !== 'ticket'" class="icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5z"/></svg>
-                </span>
-                <span class="address-text">
-                    <template v-if="variant === 'ticket'">
-                        <span class="address-line">{{ addressLabel }}</span>
-                    </template>
-                    <template v-else>
-                        <span v-for="(line, index) in profile.addressLines" :key="index" class="address-line">{{ line }}</span>
-                    </template>
-                </span>
-            </p>
-
-            <hr v-if="hasContactBlock && variant !== 'ticket'" class="divider" />
-
-            <div v-if="hasContactBlock" class="contacts">
-                <p v-if="profile.phones.length" class="contact-item">
-                    <span v-if="variant !== 'ticket'" class="icon icon--round" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6.62 10.79a15.05 15.05 0 0 0 6.59 6.59l2.2-2.2a1 1 0 0 1 1.01-.24c1.12.37 2.33.57 3.58.57a1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.46.57 3.58a1 1 0 0 1-.25 1.01l-2.2 2.2z"/></svg>
-                    </span>
-                    <span>{{ phonesLabel }}</span>
-                </p>
-
-                <p v-if="profile.email && variant !== 'ticket'" class="contact-item">
-                    <span v-if="variant !== 'ticket'" class="icon icon--round" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm0 4-8 5L4 8V6l8 5 8-5v2z"/></svg>
-                    </span>
-                    <span>{{ profile.email }}</span>
-                </p>
-
-                <p v-if="profile.website && variant !== 'ticket'" class="contact-item">
-                    <span v-if="variant !== 'ticket'" class="icon icon--round" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm7.93 9h-3.18a15.7 15.7 0 0 0-1.1-4.36A8.03 8.03 0 0 1 19.93 11zM12 4c.95 1.6 1.72 3.36 2.2 5.24H9.8A15.2 15.2 0 0 1 12 4zM4.35 13h3.18a15.7 15.7 0 0 0 1.1 4.36A8.03 8.03 0 0 1 4.35 13zm3.18-2H4.35a8.03 8.03 0 0 1 4.28-4.36A15.7 15.7 0 0 0 7.53 11zM12 20a15.2 15.2 0 0 1-2.2-5.24h4.4A15.2 15.2 0 0 1 12 20zm2.47-7.76A13.7 13.7 0 0 1 13.8 13h-3.6c.22-.86.5-1.7.87-2.48A13.7 13.7 0 0 1 14.47 12.24zM9.93 6.64A13.7 13.7 0 0 1 12 4c-.95 1.6-1.72 3.36-2.2 5.24H9.93V6.64zm0 10.72V17.36A13.7 13.7 0 0 1 12 20c-.95-1.6-1.72-3.36-2.2-5.24h.13zM14.07 17.36V15.1h2.2a8.03 8.03 0 0 1-4.28 4.36c.45-.9.82-1.86 1.08-2.86v.76zm2.2-8.72h-2.2V6.64a13.7 13.7 0 0 1 1.08-2.86 8.03 8.03 0 0 1 3.12 5.38z"/></svg>
-                    </span>
-                    <span>{{ profile.website }}</span>
-                </p>
-            </div>
-        </div>
-    </header>
-</template>
-
 <script setup>
 import { computed } from 'vue';
 import { usePrintProfile } from '@/composables/usePrintProfile';
@@ -79,6 +24,65 @@ const hasContactBlock = computed(() => {
     return profile.phones.length > 0 || Boolean(profile.email) || Boolean(profile.website);
 });
 </script>
+
+<template>
+    <header class="print-cabinet-header" :class="[`print-cabinet-header--${variant}`, { 'print-cabinet-header--compact': compact }]" :aria-label="profile.name">
+        <div class="brand">
+            <img :src="logoSrc" :alt="profile.name" class="brand-logo" />
+        </div>
+
+        <div class="details">
+            <p class="cabinet-name">{{ profile.name }}</p>
+
+            <p v-if="profile.addressLines.length" class="address">
+                <span v-if="variant !== 'ticket'" class="icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5z" /></svg>
+                </span>
+                <span class="address-text">
+                    <template v-if="variant === 'ticket'">
+                        <span class="address-line">{{ addressLabel }}</span>
+                    </template>
+                    <template v-else>
+                        <span v-for="(line, index) in profile.addressLines" :key="index" class="address-line">{{ line }}</span>
+                    </template>
+                </span>
+            </p>
+
+            <hr v-if="hasContactBlock && variant !== 'ticket'" class="divider" />
+
+            <div v-if="hasContactBlock" class="contacts">
+                <p v-if="profile.phones.length" class="contact-item">
+                    <span v-if="variant !== 'ticket'" class="icon icon--round" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path
+                                d="M6.62 10.79a15.05 15.05 0 0 0 6.59 6.59l2.2-2.2a1 1 0 0 1 1.01-.24c1.12.37 2.33.57 3.58.57a1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.46.57 3.58a1 1 0 0 1-.25 1.01l-2.2 2.2z"
+                            />
+                        </svg>
+                    </span>
+                    <span>{{ phonesLabel }}</span>
+                </p>
+
+                <p v-if="profile.email && variant !== 'ticket'" class="contact-item">
+                    <span v-if="variant !== 'ticket'" class="icon icon--round" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm0 4-8 5L4 8V6l8 5 8-5v2z" /></svg>
+                    </span>
+                    <span>{{ profile.email }}</span>
+                </p>
+
+                <p v-if="profile.website && variant !== 'ticket'" class="contact-item">
+                    <span v-if="variant !== 'ticket'" class="icon icon--round" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path
+                                d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm7.93 9h-3.18a15.7 15.7 0 0 0-1.1-4.36A8.03 8.03 0 0 1 19.93 11zM12 4c.95 1.6 1.72 3.36 2.2 5.24H9.8A15.2 15.2 0 0 1 12 4zM4.35 13h3.18a15.7 15.7 0 0 0 1.1 4.36A8.03 8.03 0 0 1 4.35 13zm3.18-2H4.35a8.03 8.03 0 0 1 4.28-4.36A15.7 15.7 0 0 0 7.53 11zM12 20a15.2 15.2 0 0 1-2.2-5.24h4.4A15.2 15.2 0 0 1 12 20zm2.47-7.76A13.7 13.7 0 0 1 13.8 13h-3.6c.22-.86.5-1.7.87-2.48A13.7 13.7 0 0 1 14.47 12.24zM9.93 6.64A13.7 13.7 0 0 1 12 4c-.95 1.6-1.72 3.36-2.2 5.24H9.93V6.64zm0 10.72V17.36A13.7 13.7 0 0 1 12 20c-.95-1.6-1.72-3.36-2.2-5.24h.13zM14.07 17.36V15.1h2.2a8.03 8.03 0 0 1-4.28 4.36c.45-.9.82-1.86 1.08-2.86v.76zm2.2-8.72h-2.2V6.64a13.7 13.7 0 0 1 1.08-2.86 8.03 8.03 0 0 1 3.12 5.38z"
+                            />
+                        </svg>
+                    </span>
+                    <span>{{ profile.website }}</span>
+                </p>
+            </div>
+        </div>
+    </header>
+</template>
 
 <style scoped>
 .print-cabinet-header {

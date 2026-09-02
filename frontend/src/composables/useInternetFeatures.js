@@ -42,6 +42,6 @@ export function useInternetFeatures() {
         isInternetFeaturesEnabled,
         isLocalDeploymentMode,
         syncFromServer,
-        reset,
+        reset
     };
 }

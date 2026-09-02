@@ -1,13 +1,6 @@
 <script setup>
 import { computed, reactive, watch } from 'vue';
-import {
-    STAFF_ROLE_ADMIN,
-    STAFF_ROLE_OPTIONS,
-    STAFF_ROLE_OPTIONS_WITHOUT_PATIENT,
-    STAFF_ROLE_PATIENT,
-    resolveRoleFromRoles,
-    suggestRoleFromEmployeeType
-} from '@/utils/employeeTypeUtils';
+import { STAFF_ROLE_ADMIN, STAFF_ROLE_OPTIONS, STAFF_ROLE_OPTIONS_WITHOUT_PATIENT, STAFF_ROLE_PATIENT, resolveRoleFromRoles, suggestRoleFromEmployeeType } from '@/utils/employeeTypeUtils';
 import Dialog from 'primevue/dialog';
 import InputText from 'primevue/inputtext';
 import Select from 'primevue/select';
@@ -42,9 +35,7 @@ const roleOptions = STAFF_ROLE_OPTIONS;
 
 const staffRoleOptions = computed(() => STAFF_ROLE_OPTIONS_WITHOUT_PATIENT);
 const patientRoleOptions = computed(() => roleOptions.filter((option) => option.value === STAFF_ROLE_PATIENT));
-const displayedRoleOptions = computed(() =>
-    formState.associationMode === 'patient' ? patientRoleOptions.value : staffRoleOptions.value
-);
+const displayedRoleOptions = computed(() => (formState.associationMode === 'patient' ? patientRoleOptions.value : staffRoleOptions.value));
 
 const activeTabIndex = computed({
     get: () => (formState.associationMode === 'patient' ? 1 : 0),
@@ -151,8 +142,7 @@ watch(
     (employeeId) => {
         if (!employeeId || formState.associationMode === 'patient') return;
 
-        const employee = (props.employees || []).find((item) => item?.id === employeeId)
-            || (props.user?.employee?.id === employeeId ? props.user.employee : null);
+        const employee = (props.employees || []).find((item) => item?.id === employeeId) || (props.user?.employee?.id === employeeId ? props.user.employee : null);
 
         const suggestedRole = suggestRoleFromEmployeeType(employee?.type);
         if (suggestedRole) {
@@ -190,15 +180,7 @@ const handleSubmit = (event) => {
 
                 <div class="flex flex-col gap-2">
                     <label for="user-role" class="font-medium">Role <span class="text-red-500">*</span></label>
-                    <Select
-                        id="user-role"
-                        v-model="formState.role"
-                        :options="displayedRoleOptions"
-                        optionLabel="label"
-                        optionValue="value"
-                        class="w-full"
-                        :disabled="formState.associationMode === 'patient'"
-                    />
+                    <Select id="user-role" v-model="formState.role" :options="displayedRoleOptions" optionLabel="label" optionValue="value" class="w-full" :disabled="formState.associationMode === 'patient'" />
                 </div>
             </div>
 
@@ -208,16 +190,7 @@ const handleSubmit = (event) => {
                     <TabPanel header="User / Employe (Staff)">
                         <div class="flex flex-col gap-2 pt-1">
                             <label for="user-employee" class="font-medium">Employe associe</label>
-                            <Select
-                                id="user-employee"
-                                v-model="formState.employee_id"
-                                :options="displayedEmployeeOptions"
-                                optionLabel="label"
-                                optionValue="value"
-                                placeholder="Selectionner un employe"
-                                class="w-full"
-                                showClear
-                            />
+                            <Select id="user-employee" v-model="formState.employee_id" :options="displayedEmployeeOptions" optionLabel="label" optionValue="value" placeholder="Selectionner un employe" class="w-full" showClear />
                             <small class="text-surface-500">Optionnel: vous pourrez associer cet utilisateur plus tard.</small>
                         </div>
                     </TabPanel>
@@ -225,16 +198,7 @@ const handleSubmit = (event) => {
                     <TabPanel header="User / Patient">
                         <div class="flex flex-col gap-2 pt-1">
                             <label for="user-patient" class="font-medium">Patient associe</label>
-                            <Select
-                                id="user-patient"
-                                v-model="formState.patient_id"
-                                :options="displayedPatientOptions"
-                                optionLabel="label"
-                                optionValue="value"
-                                placeholder="Selectionner un patient"
-                                class="w-full"
-                                showClear
-                            />
+                            <Select id="user-patient" v-model="formState.patient_id" :options="displayedPatientOptions" optionLabel="label" optionValue="value" placeholder="Selectionner un patient" class="w-full" showClear />
                             <small class="text-surface-500">Optionnel: vous pourrez associer ce patient plus tard.</small>
                         </div>
                     </TabPanel>
