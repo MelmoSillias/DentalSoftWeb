@@ -694,6 +694,11 @@ class LotFactureAssuranceService
             $patient = $facture->getConsultation()?->getPatient();
             $patientPaid = $this->resolvePatientPaidAmount($facture);
             $restePatient = max(0.0, (float) ($totals['montantPatient'] ?? 0.0) - $patientPaid);
+            $snapshot = $facture->getAssuranceSnapshot() ?: [];
+            $formData = is_array($snapshot['formData'] ?? null) ? $snapshot['formData'] : [];
+            $formSchema = $facture->getAssurance()?->getFormSchema() ?? [];
+            $assureFields = $this->buildAssureFields($formSchema, $formData);
+
             $factures[] = [
                 'id' => $facture->getId(),
                 'consultationId' => $facture->getConsultation()?->getId(),
@@ -710,6 +715,8 @@ class LotFactureAssuranceService
                 'tauxCouverture' => $facture->getCoverageRate(),
                 'canPay' => $restePatient > 0,
                 'canModify' => $this->canModifyClaim($facture, $lot),
+                'assureFields' => $assureFields,
+                'assureResume' => $this->formatAssureResume($assureFields),
             ];
         }
 
@@ -790,5 +797,80 @@ class LotFactureAssuranceService
         }
 
         return $statut;
+    }
+
+    /**
+     * @return list<array{key: string, label: string, value: string}>
+     */
+    private function buildAssureFields(array $formSchema, mixed $formData): array
+    {
+        if (!is_array($formData)) {
+            $formData = [];
+        }
+
+        $fields = $formSchema['fields'] ?? [];
+        if (!is_array($fields)) {
+            $fields = [];
+        }
+
+        $result = [];
+        foreach ($fields as $field) {
+            if (!is_array($field)) {
+                continue;
+            }
+
+            $key = (string) ($field['key'] ?? '');
+            if ($key === '' || $key === 'coverageRate') {
+                continue;
+            }
+
+            $raw = $formData[$key] ?? null;
+            if ($raw === null || $raw === '') {
+                continue;
+            }
+
+            $result[] = [
+                'key' => $key,
+                'label' => (string) ($field['label'] ?? $key),
+                'value' => is_scalar($raw) ? (string) $raw : json_encode($raw, JSON_UNESCAPED_UNICODE),
+            ];
+        }
+
+        if ($result === [] && $formData !== []) {
+            foreach ($formData as $key => $raw) {
+                if (!is_string($key) || $key === 'coverageRate' || $raw === null || $raw === '') {
+                    continue;
+                }
+                $result[] = [
+                    'key' => $key,
+                    'label' => $key,
+                    'value' => is_scalar($raw) ? (string) $raw : json_encode($raw, JSON_UNESCAPED_UNICODE),
+                ];
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * @param list<array{key: string, label: string, value: string}> $assureFields
+     */
+    private function formatAssureResume(array $assureFields): string
+    {
+        if ($assureFields === []) {
+            return '';
+        }
+
+        $parts = [];
+        foreach (array_slice($assureFields, 0, 4) as $field) {
+            $label = (string) ($field['label'] ?? '');
+            $value = (string) ($field['value'] ?? '');
+            if ($value === '') {
+                continue;
+            }
+            $parts[] = $label !== '' ? $label.': '.$value : $value;
+        }
+
+        return implode(' · ', $parts);
     }
 }

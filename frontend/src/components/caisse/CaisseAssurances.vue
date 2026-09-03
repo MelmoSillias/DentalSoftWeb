@@ -45,7 +45,8 @@ const emit = defineEmits([
     'remove-claim',
     'print-receipt',
     'print-claim',
-    'print-claim-devis'
+    'print-claim-devis',
+    'print-lot'
 ]);
 
 const currentView = ref('dashboard');
@@ -142,6 +143,7 @@ const handleBackFromClaim = () => {
             @modify-claim="emit('modify-claim', $event)"
             @assign-claim="emit('assign-claim', $event)"
             @change-claim-lot="emit('change-claim-lot', $event)"
+            @print-lot="emit('print-lot', $event)"
         />
 
         <CaisseAssuranceLotPage
@@ -162,6 +164,7 @@ const handleBackFromClaim = () => {
             @pay-claim="emit('collect-patient-share', $event)"
             @modify-claim="emit('modify-claim', $event)"
             @remove-claim="emit('remove-claim', $event)"
+            @print-lot="emit('print-lot', $event)"
         />
 
         <CaisseAssuranceClaimDetail

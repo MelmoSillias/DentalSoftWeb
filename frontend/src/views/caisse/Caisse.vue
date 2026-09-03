@@ -10,6 +10,7 @@ import PrintDevisBody from '@/components/print/PrintDevisBody.vue';
 import PrintDevisAssuranceBody from '@/components/print/PrintDevisAssuranceBody.vue';
 import PrintPaymentsListBody from '@/components/print/PrintPaymentsListBody.vue';
 import PrintFactureAssuranceBody from '@/components/print/PrintFactureAssuranceBody.vue';
+import PrintLotAssuranceBody from '@/components/print/PrintLotAssuranceBody.vue';
 import PrintReceiptBody from '@/components/print/PrintReceiptBody.vue';
 import PrintTicketBody from '@/components/print/PrintTicketBody.vue';
 import { usePrinter } from '@/composables/usePrinter';
@@ -760,6 +761,28 @@ const printInsuranceReceipt = async (paymentRow) => {
     const paymentId = Number(paymentRow?.paiementId);
     if (!paymentId) return;
     await printReceiptById(paymentId);
+};
+
+const printInsuranceLot = async (lotSummary) => {
+    const lotId = Number(lotSummary?.id);
+    if (!lotId) return;
+    try {
+        let lot = lotSummary;
+        if (!Array.isArray(lotSummary?.factures)) {
+            lot = await fetchAssuranceLotDetail(lotId, token);
+        }
+        if (!lot) {
+            toast.add({ severity: 'error', summary: 'Assurances', detail: 'Lot introuvable pour impression', life: 3500 });
+            return;
+        }
+        await printComponent(PrintLotAssuranceBody, {
+            lot,
+            title: 'Bordereau de lot assurance'
+        });
+    } catch (error) {
+        logAppError('Caisse', error);
+        toast.add({ severity: 'error', summary: 'Assurances', detail: 'Impression du lot indisponible', life: 3500 });
+    }
 };
 
 const collectPatientShare = async (claim) => {
@@ -1648,6 +1671,7 @@ onBeforeUnmount(() => {
                             @print-receipt="printInsuranceReceipt"
                             @print-claim="printInsuranceClaim"
                             @print-claim-devis="printInsuranceClaimDevis"
+                            @print-lot="printInsuranceLot"
                         />
                     </TabPanel>
                 </TabPanels>

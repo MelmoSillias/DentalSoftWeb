@@ -16,7 +16,7 @@ const props = defineProps({
     paymentMethods: { type: Array, default: () => [] }
 });
 
-const emit = defineEmits(['back', 'refresh', 'send-lot', 'reopen-lot', 'confirm-lot', 'unconfirm-lot', 'refund-lot', 'cancel-refund', 'view-claim', 'pay-claim', 'modify-claim', 'remove-claim']);
+const emit = defineEmits(['back', 'refresh', 'send-lot', 'reopen-lot', 'confirm-lot', 'unconfirm-lot', 'refund-lot', 'cancel-refund', 'view-claim', 'pay-claim', 'modify-claim', 'remove-claim', 'print-lot']);
 
 const formatFcfa = (value) => `${Number(value || 0).toLocaleString('fr-FR')} FCFA`;
 
@@ -116,6 +116,7 @@ const openClaimMenu = (event, claim) => {
             </div>
             <div class="flex flex-wrap gap-2">
                 <Button icon="pi pi-refresh" outlined rounded @click="emit('refresh')" />
+                <Button icon="pi pi-print" label="Imprimer" outlined :loading="actionLoading" @click="emit('print-lot', lot)" />
                 <Button v-if="lot?.availableActions?.canSend" icon="pi pi-send" label="Envoyer" :loading="actionLoading" @click="emit('send-lot', lot)" />
                 <Button v-if="lot?.availableActions?.canReopen" icon="pi pi-replay" label="Rouvrir" outlined :loading="actionLoading" @click="emit('reopen-lot', lot)" />
                 <Button v-if="lot?.availableActions?.canConfirm" icon="pi pi-check" label="Confirmer" :loading="actionLoading" @click="emit('confirm-lot', lot)" />
