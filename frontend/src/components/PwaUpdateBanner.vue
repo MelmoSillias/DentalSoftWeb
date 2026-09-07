@@ -9,13 +9,10 @@ const { needRefresh, applyUpdate, dismissUpdate } = usePwaUpdate();
     <div v-if="needRefresh" class="pwa-update-banner" role="status" aria-live="polite">
         <div class="pwa-update-banner__content">
             <i class="pi pi-refresh pwa-update-banner__icon" aria-hidden="true" />
-            <div class="pwa-update-banner__text">
-                <strong>Nouvelle version disponible</strong>
-                <span>Actualisez pour charger la dernière version de l’application.</span>
-            </div>
+            <p class="pwa-update-banner__text">Nouvelle version disponible</p>
             <div class="pwa-update-banner__actions">
                 <Button label="Actualiser" size="small" severity="primary" @click="applyUpdate" />
-                <Button label="Plus tard" size="small" text severity="secondary" @click="dismissUpdate" />
+                <Button icon="pi pi-times" size="small" text rounded severity="secondary" aria-label="Plus tard" @click="dismissUpdate" />
             </div>
         </div>
     </div>
@@ -24,67 +21,77 @@ const { needRefresh, applyUpdate, dismissUpdate } = usePwaUpdate();
 <style scoped>
 .pwa-update-banner {
     position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
+    bottom: 0.75rem;
+    left: 50%;
+    transform: translateX(-50%);
     z-index: 11000;
-    padding: 0.75rem 1rem;
-    background: color-mix(in srgb, var(--p-primary-color, #4e73df) 12%, var(--p-surface-0, #ffffff));
-    border-bottom: 1px solid color-mix(in srgb, var(--p-primary-color, #4e73df) 28%, transparent);
-    box-shadow: 0 8px 24px color-mix(in srgb, #0f172a 12%, transparent);
+    width: max-content;
+    max-width: calc(100vw - 1.5rem);
+    padding: 0.4rem 0.5rem 0.4rem 0.75rem;
+    border-radius: 0.65rem;
+    background: var(--p-surface-0, #ffffff);
+    border: 1px solid color-mix(in srgb, var(--p-primary-color, #4e73df) 28%, var(--p-surface-200, #e2e8f0));
+    box-shadow: 0 6px 20px color-mix(in srgb, #0f172a 14%, transparent);
+    color: var(--p-text-color, #1e293b);
 }
 
 .pwa-update-banner__content {
-    max-width: 72rem;
-    margin: 0 auto;
     display: flex;
-    flex-wrap: wrap;
     align-items: center;
-    gap: 0.75rem 1rem;
+    gap: 0.5rem;
 }
 
 .pwa-update-banner__icon {
     color: var(--p-primary-color, #4e73df);
-    font-size: 1.1rem;
+    font-size: 0.85rem;
+    flex-shrink: 0;
 }
 
 .pwa-update-banner__text {
-    display: flex;
-    flex-direction: column;
-    gap: 0.15rem;
-    flex: 1 1 14rem;
-    min-width: 0;
-    color: var(--p-text-color, #1e293b);
-    font-size: 0.9rem;
-    line-height: 1.35;
-}
-
-.pwa-update-banner__text strong {
+    margin: 0;
+    font-size: 0.8rem;
     font-weight: 600;
-}
-
-.pwa-update-banner__text span {
-    opacity: 0.85;
+    line-height: 1.2;
+    white-space: nowrap;
 }
 
 .pwa-update-banner__actions {
     display: flex;
-    flex-wrap: wrap;
     align-items: center;
-    gap: 0.35rem;
+    gap: 0.15rem;
+    flex-shrink: 0;
+}
+
+.pwa-update-banner__actions :deep(.p-button) {
+    font-size: 0.75rem;
+}
+
+.pwa-update-banner__actions :deep(.p-button-sm) {
+    padding: 0.25rem 0.55rem;
+}
+
+:global(.app-dark) .pwa-update-banner {
+    background: var(--p-surface-800, #1e293b);
+    border-color: color-mix(in srgb, var(--p-primary-color, #5ad6f5) 35%, var(--p-surface-600, #475569));
+    box-shadow: 0 8px 24px color-mix(in srgb, #000 45%, transparent);
+    color: var(--p-text-color, #f1f5f9);
+}
+
+:global(.app-dark) .pwa-update-banner__icon {
+    color: var(--p-primary-color, #5ad6f5);
 }
 
 @media (max-width: 640px) {
     .pwa-update-banner {
-        padding: 0.65rem 0.75rem;
+        bottom: 0.5rem;
+        width: calc(100vw - 1rem);
+        max-width: none;
     }
 
-    .pwa-update-banner__actions {
-        width: 100%;
-    }
-
-    .pwa-update-banner__actions :deep(.p-button) {
+    .pwa-update-banner__text {
+        white-space: normal;
         flex: 1 1 auto;
+        min-width: 0;
     }
 }
 </style>
