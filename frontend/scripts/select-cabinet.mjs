@@ -259,7 +259,8 @@ function copyDirectory(sourceDir, targetDir) {
 }
 
 function resetSyncedPublicDir() {
-    const preserve = new Set(['.htaccess']);
+    // Fichiers partagés (hors branding cabinet) : ne pas les effacer pendant le sync.
+    const preserve = new Set(['.htaccess', 'notification-handler.js']);
 
     if (!fs.existsSync(publicDir)) {
         return;
@@ -272,6 +273,31 @@ function resetSyncedPublicDir() {
 
         fs.rmSync(path.join(publicDir, entry.name), { recursive: true, force: true });
     }
+}
+
+/**
+ * Restaure les fichiers publics partagés (PWA, etc.) après un sync cabinet.
+ * Source de vérité : frontend/public-shared/
+ */
+function restoreSharedPublicFiles() {
+    const sharedDir = path.join(rootDir, 'public-shared');
+    if (!fs.existsSync(sharedDir) || !fs.statSync(sharedDir).isDirectory()) {
+        return 0;
+    }
+
+    fs.mkdirSync(publicDir, { recursive: true });
+
+    let copied = 0;
+    for (const entry of fs.readdirSync(sharedDir, { withFileTypes: true })) {
+        if (!entry.isFile()) {
+            continue;
+        }
+
+        fs.copyFileSync(path.join(sharedDir, entry.name), path.join(publicDir, entry.name));
+        copied += 1;
+    }
+
+    return copied;
 }
 
 function validateRequiredAssets(cabinetId, config, cabinetPublicDir) {
@@ -314,6 +340,7 @@ function syncCabinetAssets(config, cabinetPublicDir) {
     }
 
     resetSyncedPublicDir();
+    const sharedCopied = restoreSharedPublicFiles();
 
     const brandingFiles = collectBrandingFiles(config);
     const pwaInclude = Array.isArray(config?.pwa?.includeAssets) ? config.pwa.includeAssets : [];
@@ -322,7 +349,7 @@ function syncCabinetAssets(config, cabinetPublicDir) {
 
     const publicTargets = new Set([...brandingFiles, ...pwaIconFiles, ...Array.from(expandPatternEntries(cabinetPublicDir, [...pwaInclude, ...defaultPublicPatterns])), 'manifest.webmanifest']);
 
-    let copiedToPublic = 0;
+    let copiedToPublic = sharedCopied;
     for (const relativeFile of publicTargets) {
         if (copyRelativeFile(cabinetPublicDir, publicDir, relativeFile)) {
             copiedToPublic += 1;
