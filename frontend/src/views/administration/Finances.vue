@@ -53,6 +53,7 @@ const {
     createPaymentMethod,
     updateFixedCharge,
     updatePaymentMethod,
+    updateTransaction,
     deleteFixedCharge,
     deletePaymentMethod,
     togglePaymentMethod,
@@ -630,6 +631,24 @@ const openTransactionDialog = () => {
     transactionDialogVisible.value = true;
 };
 
+const openEditTransaction = (row) => {
+    if (!row?.canEdit && !row?.isManual) {
+        toast.add({ severity: 'warn', summary: 'Modification impossible', detail: 'Seules les transactions ajoutées manuellement peuvent être modifiées.', life: 3000 });
+        return;
+    }
+
+    draftTransaction.value = {
+        ...row,
+        typeKey: row.typeKey || resolveTransactionTypeKey(row),
+        modeId: row.modeId || row.modeDePaiement?.id || null,
+        amount: row.amountValue ?? row.amount ?? row.montant ?? null,
+        date: row.dateTransaction || row.date || null
+    };
+    transactionDialogVisible.value = true;
+};
+
+const transactionDialogMode = computed(() => (draftTransaction.value?.id ? 'edit' : 'create'));
+
 const openAddMode = () => {
     editingMode.value = null;
     modeDialogVisible.value = true;
@@ -646,21 +665,29 @@ const handleTransactionSubmit = ({ payload, event }) => {
         return;
     }
 
+    const editingId = draftTransaction.value?.id || null;
+    const isEdit = Boolean(editingId);
+
     confirm.require({
         target: event?.currentTarget,
-        message: 'Confirmer la création de cette transaction ?',
+        message: isEdit ? 'Confirmer la mise à jour de cette transaction ?' : 'Confirmer la création de cette transaction ?',
         icon: 'pi pi-check',
         acceptLabel: 'Confirmer',
         rejectLabel: 'Annuler',
         accept: async () => {
             try {
-                await createTransaction(payload);
-                toast.add({ severity: 'success', summary: 'Transaction', detail: 'Transaction enregistrée.', life: 3000 });
+                if (isEdit) {
+                    await updateTransaction(editingId, payload);
+                    toast.add({ severity: 'success', summary: 'Transaction', detail: 'Transaction mise à jour.', life: 3000 });
+                } else {
+                    await createTransaction(payload);
+                    toast.add({ severity: 'success', summary: 'Transaction', detail: 'Transaction enregistrée.', life: 3000 });
+                }
                 transactionDialogVisible.value = false;
                 draftTransaction.value = null;
                 await refreshAll();
             } catch (error) {
-                toast.add({ severity: 'error', summary: 'Erreur', detail: error?.message || 'Enregistrement impossible.', life: 3500 });
+                toast.add({ severity: 'error', summary: 'Erreur', detail: error?.message || (isEdit ? 'Mise à jour impossible.' : 'Enregistrement impossible.'), life: 3500 });
             }
         }
     });
@@ -1261,6 +1288,7 @@ onBeforeUnmount(() => {
                                 <Column header="Actions" style="width: 220px">
                                     <template #body="{ data }">
                                         <div class="flex gap-1" data-tour="admin-finances.validation">
+                                            <Button v-if="data.canEdit || data.isManual" icon="pi pi-pencil" text severity="info" title="Modifier" @click="openEditTransaction(data)" />
                                             <Button v-if="data.statusKey === 'pending'" icon="pi pi-check" text severity="success" title="Valider" @click="handleValidateTransaction(data)" />
                                             <Button v-if="data.statusKey === 'pending'" icon="pi pi-times" text severity="danger" title="Rejeter" @click="handleRejectTransaction(data)" />
                                             <Button icon="pi pi-trash" text severity="danger" title="Supprimer" @click="handleDeleteTransaction(data)" />
@@ -1473,6 +1501,7 @@ onBeforeUnmount(() => {
             :payment-methods="paymentMethodsView"
             :transaction-motifs="transactionMotifs"
             :transaction="draftTransaction"
+            :mode="transactionDialogMode"
             :loading="loading.action"
             tourTarget="admin-finances.dialog.transaction"
             @submit="handleTransactionSubmit"

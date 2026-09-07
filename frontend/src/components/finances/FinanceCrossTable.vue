@@ -275,10 +275,18 @@ const openDayOverview = (week, weekday) => {
             </div>
         </div>
 
-        <FinanceCrossTableDayDialog v-model:visible="dayDialogVisible" :date="selectedDay" />
+        <FinanceCrossTableDayDialog v-model:visible="dayDialogVisible" :date="selectedDay" @transaction-updated="loadCrossTable" />
     </section>
 
-    <FinanceCrossTablePeriodDetails v-if="showPeriodDetails" class="mt-4" :overview="crossTablePeriodOverview" :loading="loading.periodOverview" :period-label="periodOverviewLabel" scope-label="mois" />
+    <FinanceCrossTablePeriodDetails
+        v-if="showPeriodDetails"
+        class="mt-4"
+        :overview="crossTablePeriodOverview"
+        :loading="loading.periodOverview"
+        :period-label="periodOverviewLabel"
+        scope-label="mois"
+        @transaction-updated="loadCrossTable"
+    />
 </template>
 
 <style scoped>

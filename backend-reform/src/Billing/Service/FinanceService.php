@@ -378,6 +378,44 @@ class FinanceService
         ];
     }
 
+    public function updateTransaction(int $id, string $type, float $montant, ?string $description, DateTimeInterface $date, int $modeId, ?string $motif = null): array
+    {
+        $transaction = $this->transactionRepo->find($id);
+        if (!$transaction) {
+            return ['error' => 'Transaction introuvable', 'status' => 404];
+        }
+
+        if (!$this->isManualTransaction($transaction)) {
+            return ['error' => 'Seules les transactions ajoutées manuellement peuvent être modifiées.', 'status' => 400];
+        }
+
+        $mode = $this->modeRepo->find($modeId);
+        if (!$mode) {
+            return ['error' => 'Mode de paiement introuvable', 'status' => 400];
+        }
+
+        $transaction->setType($this->normalizePersistedTransactionType($type));
+        $transaction->setMontant($montant);
+        $transaction->setDescription($description);
+        $transaction->setMotif($motif);
+        $transaction->setDateTransaction($date);
+        $transaction->setModeDePaiement($mode);
+
+        if ($transaction->isValidated()) {
+            $validatedAt = $date instanceof DateTimeImmutable
+                ? $date
+                : DateTimeImmutable::createFromInterface($date);
+            $transaction->markValidated($validatedAt);
+        }
+
+        $this->em->flush();
+
+        return [
+            'success' => true,
+            'transaction' => $this->mapTransactionToArray($transaction),
+        ];
+    }
+
     public function getTransactionsByDateRange(DateTimeInterface $start, DateTimeInterface $end): array
     {
         $transactions = $this->transactionRepo->createQueryBuilder('t')
@@ -729,10 +767,19 @@ class FinanceService
         return $facture;
     }
 
+    private function isManualTransaction(Transaction $transaction): bool
+    {
+        return $transaction->getFacture() === null
+            && $transaction->getPaiement() === null
+            && $transaction->getConsultation() === null
+            && $transaction->getLotFactureAssurance() === null;
+    }
+
     private function mapTransactionToArray(Transaction $transaction): array
     {
         $typeKey = $this->resolveTransactionTypeKey($transaction->getType());
         $lot = $transaction->getLotFactureAssurance();
+        $isManual = $this->isManualTransaction($transaction);
 
         return [
             'date' => $transaction->getDateTransaction()->format('Y-m-d'),
@@ -749,6 +796,8 @@ class FinanceService
             'validationComment' => $transaction->getValidationComment(),
             'validatedAt' => $transaction->getValidatedAt()?->format(DATE_ATOM),
             'rolePaiement' => $transaction->getRolePaiement(),
+            'isManual' => $isManual,
+            'canEdit' => $isManual,
             'lotFactureAssurance' => $lot ? [
                 'id' => $lot->getId(),
                 'description' => $lot->getDescription(),

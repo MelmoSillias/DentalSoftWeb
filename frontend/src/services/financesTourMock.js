@@ -18,11 +18,11 @@ function buildSeedState() {
     ];
 
     const transactions = [
-        { id: 901, type: 'Entrée', montant: 45000, dateTransaction: '2026-04-02T09:15:00', description: 'Encaissement consultation cabinet 1', modeDePaiement: paymentMethods[0], validationStatus: 'validated' },
-        { id: 902, type: 'Sortie', montant: 18000, dateTransaction: '2026-04-02T12:10:00', description: 'Achat consommables urgence', modeDePaiement: paymentMethods[2], validationStatus: 'validated' },
-        { id: 903, type: 'Entrée', montant: 72500, dateTransaction: '2026-04-03T08:40:00', description: 'Règlement prothèse partiel', modeDePaiement: paymentMethods[1], validationStatus: 'pending' },
-        { id: 904, type: 'Entrée', montant: 52000, dateTransaction: '2026-04-03T10:20:00', description: 'Paiement assurance IPM', modeDePaiement: paymentMethods[3], validationStatus: 'validated' },
-        { id: 905, type: 'Sortie', montant: 9500, dateTransaction: '2026-04-03T11:45:00', description: 'Petite caisse maintenance', modeDePaiement: paymentMethods[0], validationStatus: 'rejected' }
+        { id: 901, type: 'Entrée', typeKey: 'revenue', montant: 45000, dateTransaction: '2026-04-02T09:15:00', description: 'Encaissement consultation cabinet 1', modeDePaiement: paymentMethods[0], validationStatus: 'validated', isManual: false, canEdit: false },
+        { id: 902, type: 'Sortie', typeKey: 'expense', montant: 18000, dateTransaction: '2026-04-02T12:10:00', description: 'Achat consommables urgence', modeDePaiement: paymentMethods[2], validationStatus: 'validated', isManual: true, canEdit: true },
+        { id: 903, type: 'Entrée', typeKey: 'revenue', montant: 72500, dateTransaction: '2026-04-03T08:40:00', description: 'Règlement prothèse partiel', modeDePaiement: paymentMethods[1], validationStatus: 'pending', isManual: true, canEdit: true },
+        { id: 904, type: 'Entrée', typeKey: 'revenue', montant: 52000, dateTransaction: '2026-04-03T10:20:00', description: 'Paiement assurance IPM', modeDePaiement: paymentMethods[3], validationStatus: 'validated', isManual: false, canEdit: false },
+        { id: 905, type: 'Sortie', typeKey: 'expense', montant: 9500, dateTransaction: '2026-04-03T11:45:00', description: 'Petite caisse maintenance', modeDePaiement: paymentMethods[0], validationStatus: 'rejected', isManual: true, canEdit: true }
     ];
 
     const chartData = {
@@ -99,15 +99,48 @@ export function createFinancesTransactionTourMock(payload = {}) {
     const mode = financesTourMockState.paymentMethods.find((item) => Number(item.id) === Number(payload.modeId)) || null;
     const transaction = {
         id: financesTourMockState.nextTransactionId++,
-        type: payload.type === 'exit' ? 'Sortie' : 'Entrée',
+        type: payload.type === 'expense' || payload.type === 'exit' ? 'Depense' : 'Revenue',
+        typeKey: payload.type === 'expense' || payload.type === 'exit' ? 'expense' : 'revenue',
         montant: Number(payload.montant || 0),
+        amount: Number(payload.montant || 0),
+        date: payload.date || '2026-04-03',
         dateTransaction: `${payload.date || '2026-04-03'}T09:00:00`,
         description: payload.description || 'Transaction démo',
+        motif: payload.motif || '',
         modeDePaiement: mode,
-        validationStatus: 'pending'
+        validationStatus: 'validated',
+        isManual: true,
+        canEdit: true
     };
     financesTourMockState.transactions.unshift(transaction);
     return cloneValue(transaction);
+}
+
+export function updateFinancesTransactionTourMock(id, payload = {}) {
+    const index = financesTourMockState.transactions.findIndex((item) => Number(item.id) === Number(id));
+    if (index === -1) throw new Error('Transaction introuvable');
+    const current = financesTourMockState.transactions[index];
+    if (current?.canEdit === false || current?.isManual === false) {
+        throw new Error('Seules les transactions ajoutées manuellement peuvent être modifiées.');
+    }
+
+    const mode = financesTourMockState.paymentMethods.find((item) => Number(item.id) === Number(payload.modeId)) || current.modeDePaiement || null;
+    const typeKey = payload.type === 'expense' || payload.type === 'exit' ? 'expense' : 'revenue';
+    financesTourMockState.transactions[index] = {
+        ...current,
+        type: typeKey === 'expense' ? 'Depense' : 'Revenue',
+        typeKey,
+        montant: Number(payload.montant ?? current.montant ?? 0),
+        amount: Number(payload.montant ?? current.amount ?? current.montant ?? 0),
+        date: payload.date || current.date,
+        dateTransaction: `${payload.date || String(current.dateTransaction || current.date || '').slice(0, 10)}T09:00:00`,
+        description: payload.description ?? current.description,
+        motif: payload.motif ?? current.motif,
+        modeDePaiement: mode,
+        isManual: true,
+        canEdit: true
+    };
+    return cloneValue(financesTourMockState.transactions[index]);
 }
 
 export function createFinancesPaymentMethodTourMock(payload = {}) {

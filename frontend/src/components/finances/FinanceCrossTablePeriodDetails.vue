@@ -1,8 +1,9 @@
 <script setup>
-import { computed, reactive, ref, watch } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import Button from 'primevue/button';
 import Checkbox from 'primevue/checkbox';
 import Column from 'primevue/column';
+import ConfirmPopup from 'primevue/confirmpopup';
 import DataTable from 'primevue/datatable';
 import SelectButton from 'primevue/selectbutton';
 import Tab from 'primevue/tab';
@@ -11,8 +12,14 @@ import TabPanel from 'primevue/tabpanel';
 import TabPanels from 'primevue/tabpanels';
 import Tabs from 'primevue/tabs';
 import Tag from 'primevue/tag';
+import { useConfirm } from 'primevue/useconfirm';
+import { useToast } from 'primevue/usetoast';
 import StatsCardsGrid from '@/components/rapport/common/StatsCardsGrid.vue';
+import TransactionFormDialog from '@/components/administration/finances/TransactionFormDialog.vue';
+import { useFinances } from '@/composables/useFinances';
+import { fetchGeneralSettings } from '@/services/globalSettingsService';
 import { DAY_PRINT_SECTIONS, DEFAULT_DAY_PRINT_SELECTION, printDayActs, printDayCompositeReport, printDayTransactions } from '@/utils/crossTableDayPrint';
+import { logAppError } from '@/utils/appLogger';
 
 const props = defineProps({
     overview: { type: Object, default: () => ({}) },
@@ -21,8 +28,20 @@ const props = defineProps({
     scopeLabel: { type: String, default: 'période' }
 });
 
+const emit = defineEmits(['transaction-updated']);
+
+const toast = useToast();
+const confirm = useConfirm();
+const { paymentMethods, loading: financesLoading, fetchPaymentMethods, updateTransaction } = useFinances();
+
 const activeTab = ref('transactions');
 const transactionTypeFilter = ref('all');
+const transactionDialogVisible = ref(false);
+const draftTransaction = ref(null);
+const transactionMotifs = ref({
+    revenue: ['Paiement patient', 'Remboursement assurance', 'Vente produit', 'Autre'],
+    expense: ['Charge fixe', 'Achat matériel', 'Frais généraux', 'Paiement salaire', 'Maintenance', 'Autre']
+});
 
 const transactionTypeOptions = [
     { label: 'Tous', value: 'all' },
@@ -51,9 +70,74 @@ const transactionsView = computed(() =>
         dateLabel: formatDateTime(row.validatedAt || row.dateTransaction),
         amountValue: Number(row.amount ?? row.montant ?? 0),
         modeLabel: row.modeDePaiement?.libelle || '--',
-        typeSeverity: row.typeKey === 'revenue' ? 'success' : row.typeKey === 'expense' ? 'danger' : 'secondary'
+        typeSeverity: row.typeKey === 'revenue' ? 'success' : row.typeKey === 'expense' ? 'danger' : 'secondary',
+        canEdit: row.canEdit === true || row.isManual === true
     }))
 );
+
+const paymentMethodsView = computed(() => paymentMethods.value || []);
+const transactionDialogMode = computed(() => (draftTransaction.value?.id ? 'edit' : 'create'));
+
+const loadTransactionMotifs = async () => {
+    try {
+        const token = localStorage.getItem('token');
+        const settings = await fetchGeneralSettings(token);
+        if (settings?.transactionMotifs) {
+            transactionMotifs.value = settings.transactionMotifs;
+        }
+    } catch (error) {
+        logAppError('Erreur chargement motifs transaction', error);
+    }
+};
+
+const openEditTransaction = (row) => {
+    if (!row?.canEdit) {
+        return;
+    }
+
+    draftTransaction.value = {
+        ...row,
+        modeId: row.modeId || row.modeDePaiement?.id || null,
+        amount: row.amountValue ?? row.amount ?? row.montant ?? null,
+        date: row.dateTransaction || row.date || null
+    };
+    transactionDialogVisible.value = true;
+};
+
+const handleTransactionSubmit = ({ payload, event }) => {
+    const editingId = draftTransaction.value?.id;
+    if (!editingId) {
+        return;
+    }
+
+    if (!payload?.modeId || !payload?.montant || !payload?.date || !payload?.motif) {
+        toast.add({ severity: 'warn', summary: 'Champs requis', detail: 'Compte, montant, motif et date sont obligatoires.', life: 3000 });
+        return;
+    }
+
+    confirm.require({
+        target: event?.currentTarget,
+        message: 'Confirmer la mise à jour de cette transaction ?',
+        icon: 'pi pi-check',
+        acceptLabel: 'Confirmer',
+        rejectLabel: 'Annuler',
+        accept: async () => {
+            try {
+                await updateTransaction(editingId, payload);
+                toast.add({ severity: 'success', summary: 'Transaction', detail: 'Transaction mise à jour.', life: 3000 });
+                transactionDialogVisible.value = false;
+                draftTransaction.value = null;
+                emit('transaction-updated');
+            } catch (error) {
+                toast.add({ severity: 'error', summary: 'Erreur', detail: error?.message || 'Mise à jour impossible.', life: 3500 });
+            }
+        }
+    });
+};
+
+onMounted(async () => {
+    await Promise.all([fetchPaymentMethods(), loadTransactionMotifs()]);
+});
 
 const filteredTransactions = computed(() =>
     transactionsView.value.filter((row) => {
@@ -126,6 +210,7 @@ watch(
 
 <template>
     <div class="rounded-2xl border border-surface-200/70 bg-surface-0/80 shadow-sm dark:border-surface-700/50 dark:bg-surface-900/30">
+        <ConfirmPopup />
         <div class="border-b border-surface-200/50 px-4 py-3 dark:border-surface-700/50 md:px-5">
             <h3 class="text-base font-semibold text-surface-900 dark:text-surface-100">Détail complet — {{ periodLabel || scopeLabel }}</h3>
             <p class="text-xs text-surface-500 dark:text-surface-400">Transactions, synthèse, actes et impressions pour la {{ scopeLabel }} sélectionnée.</p>
@@ -174,6 +259,11 @@ watch(
                                 </template>
                             </Column>
                             <Column field="modeLabel" header="Mode" sortable />
+                            <Column header="Actions" style="width: 4.5rem">
+                                <template #body="{ data }">
+                                    <Button v-if="data.canEdit" icon="pi pi-pencil" text severity="info" title="Modifier" @click="openEditTransaction(data)" />
+                                </template>
+                            </Column>
                             <template #empty>
                                 <div class="py-8 text-center text-surface-500">Aucune transaction validée pour cette période.</div>
                             </template>
@@ -229,5 +319,15 @@ watch(
                 </TabPanels>
             </Tabs>
         </div>
+
+        <TransactionFormDialog
+            v-model:visible="transactionDialogVisible"
+            :payment-methods="paymentMethodsView"
+            :transaction-motifs="transactionMotifs"
+            :transaction="draftTransaction"
+            :mode="transactionDialogMode"
+            :loading="financesLoading.action"
+            @submit="handleTransactionSubmit"
+        />
     </div>
 </template>

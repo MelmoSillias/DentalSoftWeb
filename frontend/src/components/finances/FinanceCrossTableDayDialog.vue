@@ -9,7 +9,7 @@ const props = defineProps({
     date: { type: String, default: '' }
 });
 
-const emit = defineEmits(['update:visible']);
+const emit = defineEmits(['update:visible', 'transaction-updated']);
 
 const { crossTableDayOverview, loading, fetchCrossTableDayOverview } = useFinances();
 
@@ -28,6 +28,11 @@ const loadOverview = async () => {
     await fetchCrossTableDayOverview(props.date);
 };
 
+const handleTransactionUpdated = async () => {
+    await loadOverview();
+    emit('transaction-updated');
+};
+
 watch(
     () => [props.visible, props.date],
     ([visible, date]) => {
@@ -40,6 +45,6 @@ watch(
 
 <template>
     <Dialog v-model:visible="dialogVisible" modal :header="`Détail du ${periodLabel || 'jour'}`" :style="{ width: 'min(96vw, 1100px)' }" :breakpoints="{ '960px': '96vw' }" :draggable="false">
-        <FinanceCrossTablePeriodDetails :overview="overview" :loading="loading.dayOverview" :period-label="periodLabel" scope-label="journée" />
+        <FinanceCrossTablePeriodDetails :overview="overview" :loading="loading.dayOverview" :period-label="periodLabel" scope-label="journée" @transaction-updated="handleTransactionUpdated" />
     </Dialog>
 </template>

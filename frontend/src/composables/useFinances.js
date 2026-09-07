@@ -10,6 +10,7 @@ import {
     rejectFinancesTransactionTourMock,
     toggleFinancesPaymentMethodTourMock,
     updateFinancesPaymentMethodTourMock,
+    updateFinancesTransactionTourMock,
     validateFinancesTransactionTourMock
 } from '@/services/financesTourMock';
 import { useAuthStore } from '@/stores/auth';
@@ -84,7 +85,9 @@ const buildMockDayOverview = (date) => {
                 amount: 15000,
                 validatedAt: `${safeDate}T10:30:00+00:00`,
                 validationStatus: 'validated',
-                modeDePaiement: { libelle: 'Espèces' }
+                modeDePaiement: { libelle: 'Espèces' },
+                isManual: false,
+                canEdit: false
             },
             {
                 id: 2,
@@ -95,7 +98,9 @@ const buildMockDayOverview = (date) => {
                 amount: 5000,
                 validatedAt: `${safeDate}T14:00:00+00:00`,
                 validationStatus: 'validated',
-                modeDePaiement: { libelle: 'Banque' }
+                modeDePaiement: { id: 802, libelle: 'Banque' },
+                isManual: true,
+                canEdit: true
             }
         ],
         totals: { revenue: 15000, expense: 5000 },
@@ -705,6 +710,33 @@ export function useFinances() {
         }
     };
 
+    const updateTransaction = async (id, payload) => {
+        loading.value.action = true;
+        error.value = null;
+        try {
+            if (isFinancesTourMockEnabled()) {
+                return updateFinancesTransactionTourMock(id, payload);
+            }
+
+            const body = {
+                type: payload?.type,
+                montant: Number(payload?.montant || 0),
+                description: payload?.description || '',
+                motif: payload?.motif || '',
+                date: payload?.date,
+                modeId: payload?.modeId
+            };
+            const res = await http.put(`${apiPrefix}/transactions/${id}`, body, {
+                headers: buildHeaders(true)
+            });
+            return res.data ?? null;
+        } catch (err) {
+            handleError(err);
+        } finally {
+            loading.value.action = false;
+        }
+    };
+
     const transferInterCompte = async (payload) => {
         loading.value.action = true;
         error.value = null;
@@ -815,6 +847,7 @@ export function useFinances() {
         togglePaymentMethod,
         fetchTransactionsRange,
         createTransaction,
+        updateTransaction,
         transferInterCompte,
         validateTransaction,
         rejectTransaction,

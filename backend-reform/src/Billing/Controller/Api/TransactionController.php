@@ -61,6 +61,47 @@ class TransactionController extends AbstractController
         return $this->json(['message' => 'Transaction enregistrée avec succès'] + $result, 201);
     }
 
+    #[Route('/api/transactions/{id}', name: 'api_transaction_update', methods: ['PUT', 'PATCH'], requirements: ['id' => '\d+'], priority: 10)]
+    public function update(int $id, Request $request): JsonResponse
+    {
+        $data = json_decode($request->getContent(), true);
+        if (!$data) {
+            return $this->json(['error' => 'Données requises'], 400);
+        }
+
+        if (
+            !isset($data['type'], $data['montant'], $data['date'], $data['modeId'], $data['motif'])
+            || trim((string) $data['type']) === ''
+            || trim((string) $data['date']) === ''
+            || trim((string) $data['motif']) === ''
+            || (int) $data['modeId'] <= 0
+        ) {
+            return $this->json(['error' => 'type, montant, motif, date et modeId sont obligatoires.'], 400);
+        }
+
+        try {
+            $date = new \DateTime((string) $data['date']);
+        } catch (\Exception) {
+            return $this->json(['error' => 'Date invalide.'], 400);
+        }
+
+        $result = $this->financeService->updateTransaction(
+            $id,
+            (string) $data['type'],
+            (float) $data['montant'],
+            $data['description'] ?? null,
+            $date,
+            (int) $data['modeId'],
+            $data['motif'] ?? null,
+        );
+
+        if (isset($result['error'])) {
+            return $this->json(['error' => $result['error']], $result['status'] ?? 400);
+        }
+
+        return $this->json(['message' => 'Transaction mise à jour avec succès'] + $result);
+    }
+
     #[Route('/api/transactions/{id}/validate', name: 'api_transaction_validate', methods: ['PATCH'])]
     public function validateTransaction(int $id, Request $request): JsonResponse
     {
