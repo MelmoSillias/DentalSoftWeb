@@ -49,12 +49,13 @@ export default defineConfig(({ command }) => ({
         vue(),
         // PWA plugin: génère le service worker et le manifest
         VitePWA({
-            registerType: 'autoUpdate',
+            // prompt : le nouveau SW attend ; l'utilisateur confirme via le bandeau (updateSW(true)).
+            registerType: 'prompt',
             includeAssets: pwaIncludeAssets,
             workbox: {
                 cleanupOutdatedCaches: true,
                 clientsClaim: true,
-                skipWaiting: true,
+                // skipWaiting volontairement absent : activation seulement après confirmation.
                 navigateFallback: 'index.html',
                 navigateFallbackDenylist: [/^\/api/],
                 importScripts: ['notification-handler.js']

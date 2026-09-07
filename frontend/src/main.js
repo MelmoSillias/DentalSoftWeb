@@ -4,7 +4,6 @@ import { createPinia } from 'pinia';
 import PrimeVue from 'primevue/config';
 import ConfirmationService from 'primevue/confirmationservice';
 import ToastService from 'primevue/toastservice';
-import { registerSW } from 'virtual:pwa-register';
 import { createApp } from 'vue';
 import App from './App.vue';
 import AppToast from '@/components/AppToast.vue';
@@ -13,7 +12,7 @@ import { useUiSettingsStore } from '@/stores/uiSettings';
 import cabinetConfig from '@/cabinetConfig';
 import { frLocale } from '@/locales/primevue-fr';
 import { navigateToNotificationLink } from '@/utils/notificationLinks';
-import { logAppError, devDebug, setAppLoggerRouteResolver } from '@/utils/appLogger';
+import { logAppError, setAppLoggerRouteResolver } from '@/utils/appLogger';
 
 // Défensive: wrappe l'ajout/suppression de listeners sur matchMedia
 // pour éviter que des listeners tiers (ex: PrimeVue) lèvent des exceptions
@@ -207,17 +206,6 @@ router.onError((error) => {
 app.use(ToastService);
 app.use(ConfirmationService);
 app.component('AppToast', AppToast);
-
-const updateSW = registerSW({
-    immediate: true,
-    onNeedRefresh() {
-        // Mise à jour silencieuse : pas de vidage manuel du cache navigateur.
-        updateSW(true);
-    },
-    onOfflineReady() {
-        devDebug('Application prête hors-ligne.');
-    }
-});
 
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.addEventListener('message', (event) => {
