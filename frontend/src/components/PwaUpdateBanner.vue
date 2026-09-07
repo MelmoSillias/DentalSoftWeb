@@ -70,14 +70,14 @@ const { needRefresh, applyUpdate, dismissUpdate } = usePwaUpdate();
     padding: 0.25rem 0.55rem;
 }
 
-:global(.app-dark) .pwa-update-banner {
+.app-dark .pwa-update-banner {
     background: var(--p-surface-800, #1e293b);
     border-color: color-mix(in srgb, var(--p-primary-color, #5ad6f5) 35%, var(--p-surface-600, #475569));
     box-shadow: 0 8px 24px color-mix(in srgb, #000 45%, transparent);
     color: var(--p-text-color, #f1f5f9);
 }
 
-:global(.app-dark) .pwa-update-banner__icon {
+.app-dark .pwa-update-banner__icon {
     color: var(--p-primary-color, #5ad6f5);
 }
 
