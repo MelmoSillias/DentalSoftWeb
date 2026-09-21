@@ -846,7 +846,15 @@ class ReportService
             'consultations_paid' => $paidConsultations,
             'salary' => $this->computeDoctorSalary($doctor, $revenueTotal),
             'actes' => $actesList,
-            'paiements_reliquats' => $reliquatPayments,
+            // Strip Doctrine entities — $this->json() would hit CircularReference on Consultation.
+            'paiements_reliquats' => array_map(
+                static function (array $payment): array {
+                    unset($payment['consultation']);
+
+                    return $payment;
+                },
+                $reliquatPayments
+            ),
             'paiements_reliquats_total' => $revenueReliquatsMedecin,
         ];
     }

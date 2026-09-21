@@ -10,22 +10,27 @@ use App\IdentityAccess\Entity\UserDeviceAccessLog;
 use App\IdentityAccess\Repository\UserDeviceAccessLogRepository;
 use App\IdentityAccess\Repository\UserDeviceRepository;
 use App\Settings\Service\GlobalSettingsService;
-use Doctrine\DBAL\Exception\RetryableException;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\Persistence\ManagerRegistry;
 use Symfony\Component\HttpFoundation\Request;
 
 class UserDeviceService
 {
     private const HEARTBEAT_INTERVAL_SECONDS = 30;
 
+    private EntityManagerInterface $em;
+
     public function __construct(
         private UserDeviceRepository $userDeviceRepo,
         private UserDeviceAccessLogRepository $accessLogRepo,
-        private EntityManagerInterface $em,
+        private ManagerRegistry $doctrine,
         private NotificationService $notificationService,
         private NotificationRecipientResolver $recipientResolver,
         private GlobalSettingsService $globalSettingsService,
     ) {
+        /** @var EntityManagerInterface $em */
+        $em = $doctrine->getManager();
+        $this->em = $em;
     }
 
     /** @return array{id:string,name:string,type:string,userAgent:?string,ip:?string} */
@@ -109,24 +114,11 @@ class UserDeviceService
         }
 
         if ($device->getStatus() === UserDevice::STATUS_APPROVED) {
-            if (!$this->shouldPersistHeartbeat($request, $device, $context, $now)) {
-                return [
-                    'allowed' => true,
-                    'code' => 200,
-                    'message' => null,
-                    'device' => $device,
-                ];
+            if ($this->shouldPersistHeartbeat($request, $device, $context, $now)) {
+                // DBAL only: UnitOfWork flush() closes the EM on DB errors and would
+                // break the rest of the request (dashboard/reports → EntityManagerClosed).
+                $this->persistApprovedHeartbeat($device, $user, $request, $context, $now);
             }
-
-            $device
-                ->setDeviceName($context['name'])
-                ->setDeviceType($context['type'])
-                ->setUserAgent($context['userAgent'])
-                ->setIpAddress($context['ip'])
-                ->setLastSeenAt($now);
-
-            $this->logAccess($user, $device, $request, 'allowed');
-            $this->flushWithRetry();
 
             return [
                 'allowed' => true,
@@ -317,21 +309,81 @@ class UserDeviceService
         return ($now->getTimestamp() - $lastSeen->getTimestamp()) >= self::HEARTBEAT_INTERVAL_SECONDS;
     }
 
+    /**
+     * Best-effort heartbeat via DBAL so a DB hiccup never closes the EntityManager
+     * mid-request (which would surface as EntityManagerClosed on the next query).
+     *
+     * @param array{id:string,name:string,type:string,userAgent:?string,ip:?string} $context
+     */
+    private function persistApprovedHeartbeat(
+        UserDevice $device,
+        User $user,
+        Request $request,
+        array $context,
+        \DateTimeImmutable $now,
+    ): void {
+        $deviceId = $device->getId();
+        if ($deviceId === null) {
+            return;
+        }
+
+        try {
+            $conn = $this->em->getConnection();
+            $conn->executeStatement(
+                'UPDATE user_device SET device_name = ?, device_type = ?, user_agent = ?, ip_address = ?, last_seen_at = ? WHERE id = ?',
+                [
+                    $context['name'],
+                    $context['type'],
+                    $context['userAgent'],
+                    $context['ip'],
+                    $now->format('Y-m-d H:i:s'),
+                    $deviceId,
+                ]
+            );
+            $conn->executeStatement(
+                'INSERT INTO user_device_access_log (user_id, device_id, path, ip_address, user_agent, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                [
+                    $user->getId(),
+                    $deviceId,
+                    (string) $request->getPathInfo(),
+                    $request->getClientIp(),
+                    $request->headers->get('User-Agent'),
+                    'allowed',
+                    $now->format('Y-m-d H:i:s'),
+                ]
+            );
+
+            $device
+                ->setDeviceName($context['name'])
+                ->setDeviceType($context['type'])
+                ->setUserAgent($context['userAgent'])
+                ->setIpAddress($context['ip'])
+                ->setLastSeenAt($now);
+        } catch (\Throwable) {
+            // Heartbeat must never break authenticated API calls.
+        }
+    }
+
     private function flushWithRetry(): void
     {
-        for ($attempt = 1; $attempt <= 2; ++$attempt) {
-            try {
-                $this->em->flush();
-
-                return;
-            } catch (RetryableException $exception) {
-                if ($attempt === 2) {
-                    throw $exception;
-                }
-
-                usleep(50000);
-            }
+        try {
+            $this->em->flush();
+        } catch (\Throwable $exception) {
+            // Never leave a closed EM for the rest of the request.
+            $this->recoverEntityManager();
+            throw $exception;
         }
+    }
+
+    private function recoverEntityManager(): void
+    {
+        if ($this->em->isOpen()) {
+            return;
+        }
+
+        /** @var EntityManagerInterface $em */
+        $em = $this->doctrine->resetManager();
+        $this->em = $em;
     }
 
     /** @return array<string,mixed> */
