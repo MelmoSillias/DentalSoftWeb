@@ -8,6 +8,16 @@ const props = defineProps({
     items: { type: Array, default: () => [] },
     loading: { type: Boolean, default: false }
 });
+
+function subLines(sub) {
+    if (Array.isArray(sub)) {
+        return sub.filter((line) => line != null && String(line).trim() !== '');
+    }
+    if (sub == null || String(sub).trim() === '') {
+        return [];
+    }
+    return [sub];
+}
 </script>
 
 <template>
@@ -38,7 +48,15 @@ const props = defineProps({
                             <p v-else class="text-2xl font-semibold text-surface-900 dark:text-surface-0">
                                 {{ item.value }}
                             </p>
-                            <p v-if="item.sub" class="text-xs text-surface-500 dark:text-surface-400">{{ item.sub }}</p>
+                            <div v-if="subLines(item.sub).length" class="space-y-0.5">
+                                <p
+                                    v-for="(line, index) in subLines(item.sub)"
+                                    :key="`${item.key || item.label}-sub-${index}`"
+                                    class="text-xs text-surface-500 dark:text-surface-400"
+                                >
+                                    {{ line }}
+                                </p>
+                            </div>
                         </div>
                         <div
                             v-if="item.icon"

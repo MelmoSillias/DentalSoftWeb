@@ -29,7 +29,10 @@ const items = (stats) => [
         key: 'treasury',
         label: 'Résultat (transactions)',
         value: formatFcfa(stats.resultTotal),
-        sub: `Revenus : ${formatFcfa(stats.revenueTotal)} · Dépenses : ${formatFcfa(stats.expenseTotal)}`,
+        sub: [
+            `Revenus : ${formatFcfa(stats.revenueTotal)}`,
+            `Dépenses : ${formatFcfa(stats.expenseTotal)}`
+        ],
         icon: 'pi pi-wallet'
     },
     {
@@ -49,7 +52,10 @@ const items = (stats) => [
         key: 'payroll',
         label: 'Masse salariale',
         value: formatFcfa(stats.payrollTotal ?? (Number(stats.payrollFixed || 0) + Number(stats.payrollPercentage || 0))),
-        sub: `Fixe : ${formatFcfa(stats.payrollFixed)} · % : ${formatFcfa(stats.payrollPercentage)}`,
+        sub: [
+            `Fixe : ${formatFcfa(stats.payrollFixed)}`,
+            `% : ${formatFcfa(stats.payrollPercentage)}`
+        ],
         icon: 'pi pi-money-bill'
     },
     {
@@ -68,7 +74,11 @@ const items = (stats) => [
         key: 'users',
         label: 'Utilisateurs',
         value: stats.usersTotal ?? 0,
-        sub: `Admin: ${stats.usersAdmin ?? 0}, Réception: ${stats.usersReceptionist ?? 0}, Médecin: ${stats.usersDoctor ?? 0}`,
+        sub: [
+            `Admin : ${stats.usersAdmin ?? 0}`,
+            `Réception : ${stats.usersReceptionist ?? 0}`,
+            `Médecin : ${stats.usersDoctor ?? 0}`
+        ],
         icon: 'pi pi-id-card'
     }
 ];
@@ -151,7 +161,7 @@ function printSection() {
                 items: items(props.stats).map((item) => ({
                     label: item.label,
                     value: item.value,
-                    sub: item.sub
+                    sub: Array.isArray(item.sub) ? item.sub.join('\n') : item.sub
                 }))
             }
         ]
