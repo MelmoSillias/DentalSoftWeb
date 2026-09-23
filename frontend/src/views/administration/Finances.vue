@@ -24,6 +24,7 @@ import FinanceCrossTable from '@/components/finances/FinanceCrossTable.vue';
 import FixedChargesTab from '@/components/finances/FixedChargesTab.vue';
 import PaymentModeFormDialog from '@/components/administration/finances/PaymentModeFormDialog.vue';
 import TransactionFormDialog from '@/components/administration/finances/TransactionFormDialog.vue';
+import StatsCardsGrid from '@/components/rapport/common/StatsCardsGrid.vue';
 import { fetchGeneralSettings } from '@/services/globalSettingsService';
 import { useGuidedTour } from '@/composables/useGuidedTour';
 import { useFinances } from '@/composables/useFinances';
@@ -228,6 +229,90 @@ const filteredTransactionsView = computed(() => {
         const matchesSearch = !searchQuery || row.searchBlob.includes(searchQuery);
         return matchesStatus && matchesType && matchesSearch;
     });
+});
+
+const formatDisplayDate = (value) => {
+    if (!value) {
+        return '';
+    }
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+        return '';
+    }
+
+    return date.toLocaleDateString('fr-FR');
+};
+
+const transactionPeriodLabel = computed(() => {
+    const [start, end] = transactionRange.value || [];
+    if (!start || !end) {
+        return '';
+    }
+
+    return `Du ${formatDisplayDate(start)} au ${formatDisplayDate(end)}`;
+});
+
+const periodTransactionTotals = computed(() => {
+    const rows = transactionsView.value.filter((row) => row.statusKey !== 'rejected');
+    const revenues = rows.filter((row) => row.typeKey === 'revenue');
+    const expenses = rows.filter((row) => row.typeKey === 'expense');
+    const sumAmount = (list) => list.reduce((sum, row) => sum + Number(row.amountValue || 0), 0);
+
+    const revenue = sumAmount(revenues);
+    const expense = sumAmount(expenses);
+    const validatedRevenue = sumAmount(revenues.filter((row) => row.statusKey === 'validated'));
+    const validatedExpense = sumAmount(expenses.filter((row) => row.statusKey === 'validated'));
+    const pendingCount = rows.filter((row) => row.statusKey === 'pending').length;
+
+    return {
+        count: rows.length,
+        pendingCount,
+        revenue,
+        expense,
+        net: revenue - expense,
+        validatedRevenue,
+        validatedExpense
+    };
+});
+
+const periodTotalsItems = computed(() => {
+    const totals = periodTransactionTotals.value;
+
+    return [
+        {
+            key: 'revenue',
+            label: 'Revenus',
+            value: formatFcfa(totals.revenue),
+            sub: `Validés : ${formatFcfa(totals.validatedRevenue)}`,
+            icon: 'pi pi-arrow-down-left',
+            iconBg: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-300'
+        },
+        {
+            key: 'expense',
+            label: 'Dépenses',
+            value: formatFcfa(totals.expense),
+            sub: `Validées : ${formatFcfa(totals.validatedExpense)}`,
+            icon: 'pi pi-arrow-up-right',
+            iconBg: 'bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-300'
+        },
+        {
+            key: 'net',
+            label: 'Résultat net',
+            value: formatFcfa(totals.net),
+            sub: 'Revenus − dépenses (hors rejetées)',
+            icon: 'pi pi-chart-line',
+            iconBg: 'bg-primary-50 text-primary-600 dark:bg-primary-900/20 dark:text-primary-300'
+        },
+        {
+            key: 'count',
+            label: 'Transactions',
+            value: totals.count,
+            sub: totals.pendingCount ? `${totals.pendingCount} en attente` : 'Aucune en attente',
+            icon: 'pi pi-list',
+            iconBg: 'bg-slate-50 text-slate-600 dark:bg-slate-900/20 dark:text-slate-300'
+        }
+    ];
 });
 
 const { printComponent } = usePrinter();
@@ -1296,6 +1381,15 @@ onBeforeUnmount(() => {
                                     </template>
                                 </Column>
                             </DataTable>
+
+                            <div class="border-t border-surface-200/50 px-5 py-5 dark:border-surface-700/50 md:px-6">
+                                <StatsCardsGrid
+                                    title="Totaux de la période"
+                                    :subtitle="transactionPeriodLabel"
+                                    :items="periodTotalsItems"
+                                    :loading="loading.transactions"
+                                />
+                            </div>
                         </section>
                     </div>
                 </TabPanel>
