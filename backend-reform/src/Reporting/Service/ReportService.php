@@ -1340,7 +1340,7 @@ class ReportService
      */
     public function periodicActsStats(?DateTime $from, ?DateTime $to): array
     {
-        $cacheKey = 'report.periodicActsStats.v2.' . ($from?->format('Ymd') ?? '') . '.' . ($to?->format('Ymd') ?? '');
+        $cacheKey = 'report.periodicActsStats.v3.' . ($from?->format('Ymd') ?? '') . '.' . ($to?->format('Ymd') ?? '');
 
         return $this->remember($cacheKey, 180, function () use ($from, $to) {
             $qb = $this->acteRepo->createQueryBuilder('a')
@@ -1363,28 +1363,6 @@ class ReportService
                 ->getQuery()
                 ->getArrayResult();
 
-            $stats = [];
-            foreach ($rows as $row) {
-                $label = trim((string) ($row['type'] ?? ''));
-                if ($label === '') {
-                    $label = trim((string) ($row['description'] ?? ''));
-                }
-                if ($label === '') {
-                    $label = 'Autre';
-                }
-
-                $count = (int) ($row['total'] ?? 0);
-                $insuranceCount = (int) ($row['insuranceCount'] ?? 0);
-                $isInsuranceDominant = $insuranceCount > 0;
-                $displayLabel = $isInsuranceDominant ? ($label . ' (Assurance)') : $label;
-
-                $stats[$displayLabel] = [
-                    'label' => $displayLabel,
-                    'baseLabel' => $label,
-                    'value' => ($stats[$displayLabel]['value'] ?? 0) + $count,
-                ];
-            }
-
             $settings = $this->globalSettingsService->getGeneralSettings();
             $categories = $settings['soinsCategories'] ?? [];
             $soinsList = $settings['soinsList'] ?? [];
@@ -1402,6 +1380,26 @@ class ReportService
                 $descriptionToCategoryId[$description] = is_string($categorieId) && $categorieId !== ''
                     ? $categorieId
                     : null;
+            }
+
+            $stats = [];
+            foreach ($rows as $row) {
+                // Only catalogue "type" counts; free-text descriptions are ignored.
+                $label = trim((string) ($row['type'] ?? ''));
+                if ($label === '' || !array_key_exists($label, $descriptionToCategoryId)) {
+                    continue;
+                }
+
+                $count = (int) ($row['total'] ?? 0);
+                $insuranceCount = (int) ($row['insuranceCount'] ?? 0);
+                $isInsuranceDominant = $insuranceCount > 0;
+                $displayLabel = $isInsuranceDominant ? ($label . ' (Assurance)') : $label;
+
+                $stats[$displayLabel] = [
+                    'label' => $displayLabel,
+                    'baseLabel' => $label,
+                    'value' => ($stats[$displayLabel]['value'] ?? 0) + $count,
+                ];
             }
 
             $categoryBuckets = [];
@@ -1431,7 +1429,11 @@ class ReportService
 
             foreach ($stats as $entry) {
                 $baseLabel = (string) ($entry['baseLabel'] ?? $entry['label'] ?? '');
-                $categorieId = $descriptionToCategoryId[$baseLabel] ?? null;
+                if (!array_key_exists($baseLabel, $descriptionToCategoryId)) {
+                    continue;
+                }
+
+                $categorieId = $descriptionToCategoryId[$baseLabel];
                 $item = [
                     'label' => (string) $entry['label'],
                     'value' => (int) $entry['value'],
