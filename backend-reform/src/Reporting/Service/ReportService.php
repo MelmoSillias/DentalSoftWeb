@@ -21,6 +21,7 @@ use App\Scheduling\Repository\RdvRepository;
 use App\Scheduling\Repository\SalleRepository;
 use App\IdentityAccess\Repository\EmployeRepository;
 use App\IdentityAccess\Repository\UserRepository;
+use App\Settings\Service\GlobalSettingsService;
 use DateTime;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Contracts\Cache\CacheInterface;
@@ -43,6 +44,7 @@ class ReportService
         private ConsultationRepository $consultRepo,
         private CacheInterface $cache,
         private ActAttributionService $actAttributionService,
+        private GlobalSettingsService $globalSettingsService,
     ) {}
 
     // ====================== HELPERS ======================
@@ -1334,11 +1336,11 @@ class ReportService
     // ====================== AUTRES MÉTHODES (exemples optimisés) ======================
 
     /**
-     * @return array<string, int> label => count (quantité)
+     * @return array{categories: list<array{id: ?string, label: string, total: int, items: list<array{label: string, value: int}>}>}
      */
     public function periodicActsStats(?DateTime $from, ?DateTime $to): array
     {
-        $cacheKey = 'report.periodicActsStats.' . ($from?->format('Ymd') ?? '') . '.' . ($to?->format('Ymd') ?? '');
+        $cacheKey = 'report.periodicActsStats.v2.' . ($from?->format('Ymd') ?? '') . '.' . ($to?->format('Ymd') ?? '');
 
         return $this->remember($cacheKey, 180, function () use ($from, $to) {
             $qb = $this->acteRepo->createQueryBuilder('a')
@@ -1376,26 +1378,104 @@ class ReportService
                 $isInsuranceDominant = $insuranceCount > 0;
                 $displayLabel = $isInsuranceDominant ? ($label . ' (Assurance)') : $label;
 
-                $stats[$displayLabel] = ($stats[$displayLabel] ?? 0) + $count;
+                $stats[$displayLabel] = [
+                    'label' => $displayLabel,
+                    'baseLabel' => $label,
+                    'value' => ($stats[$displayLabel]['value'] ?? 0) + $count,
+                ];
             }
 
-            arsort($stats);
+            $settings = $this->globalSettingsService->getGeneralSettings();
+            $categories = $settings['soinsCategories'] ?? [];
+            $soinsList = $settings['soinsList'] ?? [];
 
-            return $stats;
+            $descriptionToCategoryId = [];
+            foreach ($soinsList as $soin) {
+                if (!is_array($soin)) {
+                    continue;
+                }
+                $description = trim((string) ($soin['description'] ?? ''));
+                if ($description === '') {
+                    continue;
+                }
+                $categorieId = $soin['categorieId'] ?? null;
+                $descriptionToCategoryId[$description] = is_string($categorieId) && $categorieId !== ''
+                    ? $categorieId
+                    : null;
+            }
+
+            $categoryBuckets = [];
+            foreach ($categories as $category) {
+                if (!is_array($category)) {
+                    continue;
+                }
+                $id = trim((string) ($category['id'] ?? ''));
+                $nom = trim((string) ($category['nom'] ?? ''));
+                if ($id === '' || $nom === '') {
+                    continue;
+                }
+                $categoryBuckets[$id] = [
+                    'id' => $id,
+                    'label' => $nom,
+                    'total' => 0,
+                    'items' => [],
+                ];
+            }
+
+            $autresBucket = [
+                'id' => null,
+                'label' => 'Autres',
+                'total' => 0,
+                'items' => [],
+            ];
+
+            foreach ($stats as $entry) {
+                $baseLabel = (string) ($entry['baseLabel'] ?? $entry['label'] ?? '');
+                $categorieId = $descriptionToCategoryId[$baseLabel] ?? null;
+                $item = [
+                    'label' => (string) $entry['label'],
+                    'value' => (int) $entry['value'],
+                ];
+
+                if ($categorieId !== null && isset($categoryBuckets[$categorieId])) {
+                    $categoryBuckets[$categorieId]['items'][] = $item;
+                    $categoryBuckets[$categorieId]['total'] += $item['value'];
+                } else {
+                    $autresBucket['items'][] = $item;
+                    $autresBucket['total'] += $item['value'];
+                }
+            }
+
+            $allConfigured = [];
+            foreach ($categories as $category) {
+                if (!is_array($category)) {
+                    continue;
+                }
+                $id = trim((string) ($category['id'] ?? ''));
+                if ($id === '' || !isset($categoryBuckets[$id])) {
+                    continue;
+                }
+                $allConfigured[] = $categoryBuckets[$id];
+            }
+            if ($autresBucket['total'] > 0 || $autresBucket['items'] || !$allConfigured) {
+                $allConfigured[] = $autresBucket;
+            }
+
+            return ['categories' => $allConfigured];
         });
     }
 
     public function periodicConsultations(?DateTime $from, ?DateTime $to): array
     {
-        $cacheKey = 'report.periodicConsultations.' . ($from?->format('Ymd') ?? '') . '.' . ($to?->format('Ymd') ?? '');
+        $cacheKey = 'report.periodicConsultations.v2.' . ($from?->format('Ymd') ?? '') . '.' . ($to?->format('Ymd') ?? '');
 
         return $this->remember($cacheKey, 180, function () use ($from, $to) {
             $qb = $this->consultRepo->createQueryBuilder('c')
                 ->select('COUNT(c.id) AS total')
-                ->addSelect('SUM(CASE WHEN pay.id IS NOT NULL OR f.id IS NOT NULL THEN 1 ELSE 0 END) AS paid')
+                // Payante = présence d'un ticket de consultation (paiement), indépendant de la facture
+                ->addSelect('SUM(CASE WHEN pay.id IS NOT NULL THEN 1 ELSE 0 END) AS paid')
                 ->innerJoin('c.patient', 'cp')
                 ->leftJoin('c.paiement', 'pay')
-                ->leftJoin('c.facture', 'f')
                 ->andWhere('cp.deletedAt IS NULL');
 
             if ($from) $qb->andWhere('c.CreatedAt >= :from')->setParameter('from', $from);

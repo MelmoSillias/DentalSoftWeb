@@ -353,25 +353,56 @@ export const setConsultationFiche = async (consultationId, ficheId = null, token
 };
 
 export const defaultSoinList = [
-    { description: 'Consultation', montant: 0, attribution: 'medecin' },
-    { description: 'Détartrage', montant: 0, attribution: 'medecin' },
-    { description: 'Extraction', montant: 0, attribution: 'medecin' },
-    { description: 'Remplissage', montant: 0, attribution: 'medecin' },
-    { description: 'Composite', montant: 0, attribution: 'medecin' },
-    { description: 'Amalgame', montant: 0, attribution: 'medecin' },
-    { description: 'Traitement de canal', montant: 0, attribution: 'medecin' },
-    { description: 'Traumatisme', montant: 0, attribution: 'medecin' },
-    { description: 'Couronne', montant: 0, attribution: 'medecin' },
-    { description: 'Blanchiment', montant: 0, attribution: 'medecin' },
-    { description: 'Radio', montant: 0, attribution: 'cabinet' },
-    { description: 'Prothèse', montant: 0, attribution: 'medecin' },
-    { description: 'Orthodontie', montant: 0, attribution: 'medecin' },
-    { description: 'Chirurgie', montant: 0, attribution: 'medecin' }
+    { description: 'Consultation', montant: 0, attribution: 'medecin', categorieId: null },
+    { description: 'Détartrage', montant: 0, attribution: 'medecin', categorieId: null },
+    { description: 'Extraction', montant: 0, attribution: 'medecin', categorieId: null },
+    { description: 'Remplissage', montant: 0, attribution: 'medecin', categorieId: null },
+    { description: 'Composite', montant: 0, attribution: 'medecin', categorieId: null },
+    { description: 'Amalgame', montant: 0, attribution: 'medecin', categorieId: null },
+    { description: 'Traitement de canal', montant: 0, attribution: 'medecin', categorieId: null },
+    { description: 'Traumatisme', montant: 0, attribution: 'medecin', categorieId: null },
+    { description: 'Couronne', montant: 0, attribution: 'medecin', categorieId: null },
+    { description: 'Blanchiment', montant: 0, attribution: 'medecin', categorieId: null },
+    { description: 'Radio', montant: 0, attribution: 'cabinet', categorieId: null },
+    { description: 'Prothèse', montant: 0, attribution: 'medecin', categorieId: null },
+    { description: 'Orthodontie', montant: 0, attribution: 'medecin', categorieId: null },
+    { description: 'Chirurgie', montant: 0, attribution: 'medecin', categorieId: null }
 ];
 
 const cloneDefaultSoinList = () => defaultSoinList.map((item) => ({ ...item }));
 
-export const normalizeSoinList = (items) => {
+export const createSoinCategoryId = () =>
+    `cat_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+
+export const normalizeSoinsCategories = (items) => {
+    if (!Array.isArray(items)) {
+        return [];
+    }
+
+    const unique = new Set();
+    const clean = [];
+
+    items.forEach((item) => {
+        if (!item || typeof item !== 'object') {
+            return;
+        }
+        const id = String(item.id ?? '').trim();
+        const nom = String(item.nom ?? item.label ?? item.name ?? '').trim();
+        if (!id || !nom || unique.has(id)) {
+            return;
+        }
+        unique.add(id);
+        clean.push({ id, nom });
+    });
+
+    return clean;
+};
+
+export const normalizeSoinList = (items, categories = null) => {
+    const validCategoryIds = categories == null
+        ? null
+        : new Set(normalizeSoinsCategories(categories).map((category) => category.id));
+
     if (!Array.isArray(items)) {
         return cloneDefaultSoinList();
     }
@@ -383,6 +414,7 @@ export const normalizeSoinList = (items) => {
         let description = '';
         let montant = 0;
         let attribution = 'medecin';
+        let categorieId = null;
 
         if (typeof item === 'string' || typeof item === 'number') {
             description = String(item || '').trim();
@@ -394,6 +426,12 @@ export const normalizeSoinList = (items) => {
                 montant = 0;
             }
             attribution = item.attribution === 'cabinet' ? 'cabinet' : 'medecin';
+            const rawCategorieId = item.categorieId == null ? '' : String(item.categorieId).trim();
+            if (rawCategorieId) {
+                categorieId = validCategoryIds == null || validCategoryIds.has(rawCategorieId)
+                    ? rawCategorieId
+                    : null;
+            }
         }
 
         if (!description || unique.has(description)) {
@@ -401,7 +439,7 @@ export const normalizeSoinList = (items) => {
         }
 
         unique.add(description);
-        clean.push({ description, montant, attribution });
+        clean.push({ description, montant, attribution, categorieId });
     });
 
     return clean.length ? clean : cloneDefaultSoinList();

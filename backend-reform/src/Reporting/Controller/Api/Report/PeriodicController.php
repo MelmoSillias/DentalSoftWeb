@@ -29,6 +29,13 @@ class PeriodicController extends AbstractController
                 400
             );
         }
+        if ($fromDate) {
+            $fromDate->setTime(0, 0, 0);
+        }
+        if ($toDate) {
+            $toDate->setTime(23, 59, 59);
+        }
+
         return $this->json($this->reportService->periodicConsultations($fromDate, $toDate));
     }
 

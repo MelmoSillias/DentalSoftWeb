@@ -322,10 +322,34 @@ export function useRapports() {
 
     async function fetchAdminActsStats(from, to) {
         const data = await fetchJson('/report/periodic/acts-stats', { from, to });
-        adminActsStats.value = Object.entries(data || {}).map(([label, value]) => ({
+        if (Array.isArray(data?.categories)) {
+            adminActsStats.value = data.categories.map((category) => ({
+                id: category.id ?? null,
+                label: category.label || 'Autres',
+                total: Number(category.total) || 0,
+                items: Array.isArray(category.items)
+                    ? category.items.map((item) => ({
+                          label: item.label || 'Acte',
+                          value: Number(item.value) || 0
+                      }))
+                    : []
+            }));
+            return;
+        }
+
+        // Fallback ancienne forme plate label => count
+        const flatItems = Object.entries(data || {}).map(([label, value]) => ({
             label,
-            value
+            value: Number(value) || 0
         }));
+        adminActsStats.value = [
+            {
+                id: null,
+                label: 'Autres',
+                total: flatItems.reduce((sum, item) => sum + item.value, 0),
+                items: flatItems
+            }
+        ];
     }
 
     async function fetchDoctorReports(from, to, target = adminDoctorReports) {

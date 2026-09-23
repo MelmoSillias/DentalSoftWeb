@@ -486,10 +486,15 @@ class FinanceService
             }
         }
 
-        $actsStatsMap = $this->reportService->periodicActsStats($fromMutable, $toMutable);
+        $actsStatsPayload = $this->reportService->periodicActsStats($fromMutable, $toMutable);
         $actsByType = [];
-        foreach ($actsStatsMap as $label => $value) {
-            $actsByType[] = ['label' => (string) $label, 'value' => (int) $value];
+        foreach (($actsStatsPayload['categories'] ?? []) as $category) {
+            foreach (($category['items'] ?? []) as $item) {
+                $actsByType[] = [
+                    'label' => (string) ($item['label'] ?? ''),
+                    'value' => (int) ($item['value'] ?? 0),
+                ];
+            }
         }
         usort($actsByType, static fn (array $a, array $b): int => $b['value'] <=> $a['value']);
 

@@ -25,6 +25,10 @@ import Card from 'primevue/card';
 import Badge from 'primevue/badge';
 import InputNumber from 'primevue/inputnumber';
 import DatePicker from 'primevue/datepicker';
+import Accordion from 'primevue/accordion';
+import AccordionPanel from 'primevue/accordionpanel';
+import AccordionHeader from 'primevue/accordionheader';
+import AccordionContent from 'primevue/accordioncontent';
 import { useAuthStore } from '@/stores/auth';
 import { useInternetFeatures } from '@/composables/useInternetFeatures';
 import { usePrinter } from '@/composables/usePrinter';
@@ -52,7 +56,7 @@ import { buildPatientPortalQrPrintModel, getPatientPortalQrPrintEntry } from '@/
 import { createQrDataUrl } from '@/utils/qrCode';
 import { getHttpErrorMessage } from '@/service/http';
 import cabinetConfig from '@/cabinetConfig';
-import { defaultSoinList, normalizeSoinList } from '@/services/consultations';
+import { defaultSoinList, normalizeSoinList, normalizeSoinsCategories, createSoinCategoryId } from '@/services/consultations';
 
 const router = useRouter();
 const toast = useToast();
@@ -201,10 +205,23 @@ const transactionMotifs = reactive({
 });
 
 const soinsCatalog = reactive({
-    items: defaultSoinList.map((item) => ({ ...item }))
+    items: defaultSoinList.map((item) => ({ ...item })),
+    categories: []
 });
 
 const soinsDragIndex = ref(null);
+const soinsAccordionValue = ref(['autres']);
+
+const categoryDialog = reactive({
+    visible: false,
+    nom: ''
+});
+
+const changeCategoryDialog = reactive({
+    visible: false,
+    itemIndex: null,
+    categorieId: ''
+});
 
 const portalPatientConfig = reactive({
     patientPortalEnabled: true,
@@ -474,7 +491,12 @@ const loadGeneralSettings = async (force = false) => {
         billingPolicy.allowConsultationPriceEditOnCreation = settings.allowConsultationPriceEditOnCreation === true;
         transactionMotifs.revenueText = (settings.transactionMotifs?.revenue || []).join('\n');
         transactionMotifs.expenseText = (settings.transactionMotifs?.expense || []).join('\n');
-        soinsCatalog.items = normalizeSoinList(settings.soinsList).map((item) => ({ ...item }));
+        soinsCatalog.categories = normalizeSoinsCategories(settings.soinsCategories);
+        soinsCatalog.items = normalizeSoinList(settings.soinsList, soinsCatalog.categories).map((item) => ({ ...item }));
+        soinsAccordionValue.value = [
+            ...soinsCatalog.categories.map((category) => category.id),
+            'autres'
+        ];
         clinicalForm.examensTypesText = (settings.examensTypes || []).join('\n');
         clinicalForm.traitementTypesText = (settings.traitementTypes || []).join('\n');
         clinicalForm.allergyTypesText = (settings.allergyTypes || []).join('\n');
@@ -827,8 +849,74 @@ const copyToClipboard = async (label, value) => {
     }
 };
 
-const addSoinCatalogItem = () => {
-    soinsCatalog.items.push({ description: '', montant: 0, attribution: 'medecin' });
+const soinsInCategory = (categoryId) => {
+    const knownIds = new Set(soinsCatalog.categories.map((category) => String(category.id)));
+    const target = categoryId == null ? null : String(categoryId);
+
+    return soinsCatalog.items
+        .map((item, index) => ({ item, index }))
+        .filter(({ item }) => {
+            const id = item.categorieId == null || item.categorieId === '' ? null : String(item.categorieId);
+            if (target === null) {
+                return id === null || !knownIds.has(id);
+            }
+            return id === target;
+        });
+};
+
+const categorySelectOptions = computed(() => [
+    { label: 'Autres', value: '' },
+    ...soinsCatalog.categories.map((category) => ({ label: category.nom, value: category.id }))
+]);
+
+const openAddCategoryDialog = () => {
+    categoryDialog.nom = '';
+    categoryDialog.visible = true;
+};
+
+const confirmAddCategory = () => {
+    const nom = String(categoryDialog.nom || '').trim();
+    if (!nom) {
+        toast.add({
+            severity: 'warn',
+            summary: 'Catégorie',
+            detail: 'Le nom de la catégorie est obligatoire.',
+            life: 3000
+        });
+        return;
+    }
+    const id = createSoinCategoryId();
+    soinsCatalog.categories.push({ id, nom });
+    if (!soinsAccordionValue.value.includes(id)) {
+        soinsAccordionValue.value = [...soinsAccordionValue.value, id];
+    }
+    categoryDialog.visible = false;
+};
+
+const removeSoinsCategory = (categoryId) => {
+    if (soinsInCategory(categoryId).length > 0) {
+        toast.add({
+            severity: 'warn',
+            summary: 'Catégorie',
+            detail: 'Supprimez ou déplacez les soins avant de supprimer la catégorie.',
+            life: 3500
+        });
+        return;
+    }
+    const index = soinsCatalog.categories.findIndex((category) => category.id === categoryId);
+    if (index >= 0) {
+        soinsCatalog.categories.splice(index, 1);
+    }
+    soinsAccordionValue.value = soinsAccordionValue.value.filter((value) => value !== categoryId);
+};
+
+const addSoinCatalogItem = (categoryId = null) => {
+    soinsCatalog.items.push({
+        description: '',
+        montant: 0,
+        attribution: 'medecin',
+        categorieId: categoryId || null
+    });
 };
 
 const soinAttributionOptions = [
@@ -838,6 +926,22 @@ const soinAttributionOptions = [
 
 const removeSoinCatalogItem = (index) => {
     soinsCatalog.items.splice(index, 1);
+};
+
+const openChangeCategoryDialog = (index) => {
+    changeCategoryDialog.itemIndex = index;
+    changeCategoryDialog.categorieId = soinsCatalog.items[index]?.categorieId || '';
+    changeCategoryDialog.visible = true;
+};
+
+const confirmChangeCategory = () => {
+    const index = changeCategoryDialog.itemIndex;
+    if (index == null || index < 0 || index >= soinsCatalog.items.length) {
+        changeCategoryDialog.visible = false;
+        return;
+    }
+    soinsCatalog.items[index].categorieId = changeCategoryDialog.categorieId || null;
+    changeCategoryDialog.visible = false;
 };
 
 const onSoinDragStart = (index, event) => {
@@ -876,7 +980,8 @@ const onSoinDragEnd = () => {
 const saveSoinsCatalogAction = async () => {
     if (!canAccessWorkflowSettings.value) return;
 
-    const normalized = normalizeSoinList(soinsCatalog.items);
+    const normalizedCategories = normalizeSoinsCategories(soinsCatalog.categories);
+    const normalized = normalizeSoinList(soinsCatalog.items, normalizedCategories);
     const hasEmptyDescription = soinsCatalog.items.some((item) => !String(item?.description || '').trim());
     if (hasEmptyDescription) {
         toast.add({
@@ -899,8 +1004,14 @@ const saveSoinsCatalogAction = async () => {
 
     savingStates.soinsCatalog = true;
     try {
-        const saved = await saveGeneralSettings({ soinsList: normalized }, token);
-        soinsCatalog.items = normalizeSoinList(saved?.soinsList ?? normalized).map((item) => ({ ...item }));
+        const saved = await saveGeneralSettings(
+            { soinsList: normalized, soinsCategories: normalizedCategories },
+            token
+        );
+        soinsCatalog.categories = normalizeSoinsCategories(saved?.soinsCategories ?? normalizedCategories);
+        soinsCatalog.items = normalizeSoinList(saved?.soinsList ?? normalized, soinsCatalog.categories).map((item) => ({
+            ...item
+        }));
         toast.add({ severity: 'success', summary: 'Catalogue des soins', detail: 'Paramètres enregistrés', life: 2500 });
     } catch (error) {
         toast.add({ severity: 'error', summary: 'Erreur', detail: extractApiError(error, 'Sauvegarde impossible'), life: 3500 });
@@ -1733,44 +1844,160 @@ onBeforeUnmount(() => {
                                     <h3>Catalogue des soins</h3>
                                     <p class="settings-section-description">Liste des actes proposés dans les consultations et la facturation. Les services « Cabinet » sont facturés au patient mais exclus de la facturation médecins.</p>
                                 </div>
-                                <Button label="Enregistrer" icon="pi pi-save" :loading="savingStates.soinsCatalog" @click="saveSoinsCatalogAction" />
+                                <div class="settings-inline-actions">
+                                    <Button label="Ajouter une catégorie" icon="pi pi-folder-plus" severity="secondary" outlined @click="openAddCategoryDialog" />
+                                    <Button label="Enregistrer" icon="pi pi-save" :loading="savingStates.soinsCatalog" @click="saveSoinsCatalogAction" />
+                                </div>
                             </div>
                             <div class="settings-card">
                                 <div class="field-group">
-                                    <div class="flex items-center justify-between gap-3 mb-3">
-                                        <label class="mb-0">Soins proposés</label>
-                                        <Button label="Ajouter" icon="pi pi-plus" size="small" outlined @click="addSoinCatalogItem" />
-                                    </div>
-                                    <div class="soins-catalog-list flex flex-col gap-2">
-                                        <div
-                                            v-for="(item, index) in soinsCatalog.items"
-                                            :key="`soin-${index}`"
-                                            class="soins-catalog-row flex flex-wrap items-center gap-2 rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900 p-2"
-                                            :class="{ 'opacity-60': soinsDragIndex === index }"
-                                            @dragover="onSoinDragOver"
-                                            @drop="onSoinDrop(index, $event)"
+                                    <label class="mb-3">Soins proposés par catégorie</label>
+                                    <Accordion v-model:value="soinsAccordionValue" multiple :pt="{ root: 'space-y-3' }">
+                                        <AccordionPanel
+                                            v-for="category in soinsCatalog.categories"
+                                            :key="category.id"
+                                            :value="category.id"
+                                            class="rounded-xl border border-surface-200 dark:border-surface-700 overflow-hidden"
                                         >
-                                            <button
-                                                type="button"
-                                                class="soins-drag-handle cursor-grab active:cursor-grabbing text-surface-400 hover:text-surface-600 dark:hover:text-surface-200 px-1"
-                                                title="Déplacer"
-                                                aria-label="Déplacer"
-                                                draggable="true"
-                                                @dragstart="onSoinDragStart(index, $event)"
-                                                @dragend="onSoinDragEnd"
-                                                @click.prevent
-                                            >
-                                                <i class="pi pi-bars"></i>
-                                            </button>
-                                            <InputText v-model="item.description" class="flex-1 min-w-[12rem]" placeholder="Description de l'acte *" />
-                                            <InputNumber v-model="item.montant" mode="decimal" :min="0" :minFractionDigits="0" :maxFractionDigits="2" class="w-40" inputClass="w-full" placeholder="Montant" />
-                                            <Select v-model="item.attribution" :options="soinAttributionOptions" optionLabel="label" optionValue="value" class="w-44" placeholder="Attribution" />
-                                            <Button icon="pi pi-trash" severity="danger" text rounded v-tooltip="'Supprimer'" :disabled="soinsCatalog.items.length <= 1" @click="removeSoinCatalogItem(index)" />
-                                        </div>
-                                    </div>
-                                    <span class="field-helper">Description obligatoire. Attribution « Cabinet » pour les services (ex. radio) non comptés chez le médecin. Glissez-déposez pour réordonner.</span>
+                                            <AccordionHeader class="px-3 py-2">
+                                                <div class="flex w-full items-center justify-between gap-2 pr-2">
+                                                    <span class="font-semibold text-surface-900 dark:text-surface-50">{{ category.nom }}</span>
+                                                    <div class="flex items-center gap-1" @click.stop>
+                                                        <Button
+                                                            icon="pi pi-plus"
+                                                            size="small"
+                                                            text
+                                                            rounded
+                                                            v-tooltip="'Ajouter un soin'"
+                                                            @click="addSoinCatalogItem(category.id)"
+                                                        />
+                                                        <Button
+                                                            icon="pi pi-trash"
+                                                            size="small"
+                                                            severity="danger"
+                                                            text
+                                                            rounded
+                                                            v-tooltip="'Supprimer la catégorie'"
+                                                            :disabled="soinsInCategory(category.id).length > 0"
+                                                            @click="removeSoinsCategory(category.id)"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </AccordionHeader>
+                                            <AccordionContent>
+                                                <div class="soins-catalog-list flex flex-col gap-2 px-1 pb-2">
+                                                    <div
+                                                        v-for="{ item, index } in soinsInCategory(category.id)"
+                                                        :key="`soin-${category.id}-${index}`"
+                                                        class="soins-catalog-row flex flex-wrap items-center gap-2 rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900 p-2"
+                                                        :class="{ 'opacity-60': soinsDragIndex === index }"
+                                                        @dragover="onSoinDragOver"
+                                                        @drop="onSoinDrop(index, $event)"
+                                                    >
+                                                        <button
+                                                            type="button"
+                                                            class="soins-drag-handle cursor-grab active:cursor-grabbing text-surface-400 hover:text-surface-600 dark:hover:text-surface-200 px-1"
+                                                            title="Déplacer"
+                                                            aria-label="Déplacer"
+                                                            draggable="true"
+                                                            @dragstart="onSoinDragStart(index, $event)"
+                                                            @dragend="onSoinDragEnd"
+                                                            @click.prevent
+                                                        >
+                                                            <i class="pi pi-bars"></i>
+                                                        </button>
+                                                        <InputText v-model="item.description" class="flex-1 min-w-[12rem]" placeholder="Description de l'acte *" />
+                                                        <InputNumber v-model="item.montant" mode="decimal" :min="0" :minFractionDigits="0" :maxFractionDigits="2" class="w-40" inputClass="w-full" placeholder="Montant" />
+                                                        <Select v-model="item.attribution" :options="soinAttributionOptions" optionLabel="label" optionValue="value" class="w-44" placeholder="Attribution" />
+                                                        <Button icon="pi pi-folder" text rounded v-tooltip="'Changer de catégorie'" @click="openChangeCategoryDialog(index)" />
+                                                        <Button icon="pi pi-trash" severity="danger" text rounded v-tooltip="'Supprimer'" :disabled="soinsCatalog.items.length <= 1" @click="removeSoinCatalogItem(index)" />
+                                                    </div>
+                                                    <p v-if="!soinsInCategory(category.id).length" class="text-sm text-surface-500 dark:text-surface-400 px-1">Aucun soin dans cette catégorie.</p>
+                                                </div>
+                                            </AccordionContent>
+                                        </AccordionPanel>
+
+                                        <AccordionPanel value="autres" class="rounded-xl border border-surface-200 dark:border-surface-700 overflow-hidden">
+                                            <AccordionHeader class="px-3 py-2">
+                                                <div class="flex w-full items-center justify-between gap-2 pr-2">
+                                                    <span class="font-semibold text-surface-900 dark:text-surface-50">Autres</span>
+                                                    <div class="flex items-center gap-1" @click.stop>
+                                                        <Button
+                                                            icon="pi pi-plus"
+                                                            size="small"
+                                                            text
+                                                            rounded
+                                                            v-tooltip="'Ajouter un soin'"
+                                                            @click="addSoinCatalogItem(null)"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </AccordionHeader>
+                                            <AccordionContent>
+                                                <div class="soins-catalog-list flex flex-col gap-2 px-1 pb-2">
+                                                    <div
+                                                        v-for="{ item, index } in soinsInCategory(null)"
+                                                        :key="`soin-autres-${index}`"
+                                                        class="soins-catalog-row flex flex-wrap items-center gap-2 rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900 p-2"
+                                                        :class="{ 'opacity-60': soinsDragIndex === index }"
+                                                        @dragover="onSoinDragOver"
+                                                        @drop="onSoinDrop(index, $event)"
+                                                    >
+                                                        <button
+                                                            type="button"
+                                                            class="soins-drag-handle cursor-grab active:cursor-grabbing text-surface-400 hover:text-surface-600 dark:hover:text-surface-200 px-1"
+                                                            title="Déplacer"
+                                                            aria-label="Déplacer"
+                                                            draggable="true"
+                                                            @dragstart="onSoinDragStart(index, $event)"
+                                                            @dragend="onSoinDragEnd"
+                                                            @click.prevent
+                                                        >
+                                                            <i class="pi pi-bars"></i>
+                                                        </button>
+                                                        <InputText v-model="item.description" class="flex-1 min-w-[12rem]" placeholder="Description de l'acte *" />
+                                                        <InputNumber v-model="item.montant" mode="decimal" :min="0" :minFractionDigits="0" :maxFractionDigits="2" class="w-40" inputClass="w-full" placeholder="Montant" />
+                                                        <Select v-model="item.attribution" :options="soinAttributionOptions" optionLabel="label" optionValue="value" class="w-44" placeholder="Attribution" />
+                                                        <Button icon="pi pi-folder" text rounded v-tooltip="'Changer de catégorie'" @click="openChangeCategoryDialog(index)" />
+                                                        <Button icon="pi pi-trash" severity="danger" text rounded v-tooltip="'Supprimer'" :disabled="soinsCatalog.items.length <= 1" @click="removeSoinCatalogItem(index)" />
+                                                    </div>
+                                                    <p v-if="!soinsInCategory(null).length" class="text-sm text-surface-500 dark:text-surface-400 px-1">Aucun soin sans catégorie.</p>
+                                                </div>
+                                            </AccordionContent>
+                                        </AccordionPanel>
+                                    </Accordion>
+                                    <span class="field-helper">Description obligatoire. Attribution « Cabinet » pour les services (ex. radio) non comptés chez le médecin. Glissez-déposez pour réordonner. Les catégories vides peuvent être supprimées.</span>
                                 </div>
                             </div>
+
+                            <Dialog v-model:visible="categoryDialog.visible" modal header="Nouvelle catégorie" class="w-full max-w-md">
+                                <div class="field-group">
+                                    <label>Nom de la catégorie</label>
+                                    <InputText v-model="categoryDialog.nom" class="w-full" placeholder="Ex. Préventif" @keyup.enter="confirmAddCategory" />
+                                </div>
+                                <template #footer>
+                                    <Button label="Annuler" text severity="secondary" @click="categoryDialog.visible = false" />
+                                    <Button label="Ajouter" icon="pi pi-check" @click="confirmAddCategory" />
+                                </template>
+                            </Dialog>
+
+                            <Dialog v-model:visible="changeCategoryDialog.visible" modal header="Changer de catégorie" class="w-full max-w-md">
+                                <div class="field-group">
+                                    <label>Catégorie</label>
+                                    <Select
+                                        v-model="changeCategoryDialog.categorieId"
+                                        :options="categorySelectOptions"
+                                        optionLabel="label"
+                                        optionValue="value"
+                                        class="w-full"
+                                        placeholder="Choisir une catégorie"
+                                    />
+                                </div>
+                                <template #footer>
+                                    <Button label="Annuler" text severity="secondary" @click="changeCategoryDialog.visible = false" />
+                                    <Button label="Appliquer" icon="pi pi-check" @click="confirmChangeCategory" />
+                                </template>
+                            </Dialog>
                         </div>
                     </div>
 
