@@ -20,10 +20,14 @@ const showPatientReferralsChart = ref(false);
 
 const patientItems = (patients) => [
     { label: 'Total', value: patients.total ?? 0, severity: 'info' },
-    { label: 'Femmes / Hommes', value: `${patients.female ?? 0} / ${patients.male ?? 0}`, severity: 'success' },
     {
-        label: 'Mineurs / Adultes / Séniors',
-        value: `${patients.minors ?? 0} / ${patients.adults ?? 0} / ${patients.seniors ?? 0}`,
+        label: 'Hommes / Femmes / Non renseigné',
+        value: `${patients.male ?? 0} / ${patients.female ?? 0} / ${patients.sexUnknown ?? 0}`,
+        severity: 'success'
+    },
+    {
+        label: 'Mineurs / Majeurs / Séniors / Non renseigné',
+        value: `${patients.minors ?? 0} / ${patients.adults ?? 0} / ${patients.seniors ?? 0} / ${patients.ageUnknown ?? 0}`,
         severity: 'secondary'
     },
     {
@@ -67,20 +71,37 @@ const lowStockChartData = computed(() => {
     };
 });
 
-const patientsChartData = computed(() => {
+const patientsSexChartData = computed(() => {
     const documentStyle = getComputedStyle(document.documentElement);
     const patients = props.patients || {};
     return {
-        labels: ['Femmes', 'Hommes', 'Mineurs', 'Adultes', 'Séniors'],
+        labels: ['Hommes', 'Femmes', 'Non renseigné'],
         datasets: [
             {
-                data: [patients.female || 0, patients.male || 0, patients.minors || 0, patients.adults || 0, patients.seniors || 0],
+                data: [patients.male || 0, patients.female || 0, patients.sexUnknown || 0],
                 backgroundColor: [
-                    documentStyle.getPropertyValue('--p-pink-500'),
                     documentStyle.getPropertyValue('--p-blue-500'),
+                    documentStyle.getPropertyValue('--p-pink-500'),
+                    documentStyle.getPropertyValue('--p-surface-400') || '#94a3b8'
+                ]
+            }
+        ]
+    };
+});
+
+const patientsAgeChartData = computed(() => {
+    const documentStyle = getComputedStyle(document.documentElement);
+    const patients = props.patients || {};
+    return {
+        labels: ['Mineurs', 'Majeurs', 'Séniors', 'Non renseigné'],
+        datasets: [
+            {
+                data: [patients.minors || 0, patients.adults || 0, patients.seniors || 0, patients.ageUnknown || 0],
+                backgroundColor: [
                     documentStyle.getPropertyValue('--p-amber-500'),
                     documentStyle.getPropertyValue('--p-emerald-500'),
-                    documentStyle.getPropertyValue('--p-purple-500')
+                    documentStyle.getPropertyValue('--p-purple-500'),
+                    documentStyle.getPropertyValue('--p-surface-400') || '#94a3b8'
                 ]
             }
         ]
@@ -217,8 +238,19 @@ function printSection() {
                     <ToggleButton v-model="showPatientsChart" onLabel="Graphique" offLabel="Données" onIcon="pi pi-chart-pie" offIcon="pi pi-list" />
                 </template>
                 <template #chart>
-                    <div class="aspect-square w-full">
-                        <AppChart type="doughnut" :data="patientsChartData" :options="pieOptions" class="h-full w-full" />
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <div class="space-y-2">
+                            <p class="text-center text-xs font-semibold uppercase tracking-wide text-surface-500">Sexe</p>
+                            <div class="aspect-square w-full">
+                                <AppChart type="doughnut" :data="patientsSexChartData" :options="pieOptions" class="h-full w-full" />
+                            </div>
+                        </div>
+                        <div class="space-y-2">
+                            <p class="text-center text-xs font-semibold uppercase tracking-wide text-surface-500">Âge</p>
+                            <div class="aspect-square w-full">
+                                <AppChart type="doughnut" :data="patientsAgeChartData" :options="pieOptions" class="h-full w-full" />
+                            </div>
+                        </div>
                     </div>
                 </template>
             </ValueListCard>

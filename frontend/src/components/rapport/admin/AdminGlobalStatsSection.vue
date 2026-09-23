@@ -20,21 +20,23 @@ function formatFcfa(amount) {
 const items = (stats) => [
     {
         key: 'patients',
-        label: 'Patients (Total)',
-        value: stats.patientsTotal ?? 0,
+        label: 'Nouveaux patients',
+        value: stats.patientsNew ?? 0,
+        sub: `Total : ${stats.patientsTotal ?? 0}`,
         icon: 'pi pi-users'
     },
     {
-        key: 'capital',
-        label: 'Capital',
-        value: formatFcfa(stats.capitalTotal),
-        sub: `Espèces : ${formatFcfa(stats.capitalCash)}`,
+        key: 'treasury',
+        label: 'Résultat (transactions)',
+        value: formatFcfa(stats.resultTotal),
+        sub: `Revenus : ${formatFcfa(stats.revenueTotal)} · Dépenses : ${formatFcfa(stats.expenseTotal)}`,
         icon: 'pi pi-wallet'
     },
     {
-        key: 'revenue',
-        label: 'Total facturé (cabinet)',
-        value: formatFcfa(stats.revenueTotal),
+        key: 'billing',
+        label: 'Total facturé',
+        value: formatFcfa(stats.billedTotal),
+        sub: `Encaissé : ${formatFcfa(stats.collectedTotal)}`,
         icon: 'pi pi-chart-line'
     },
     {
@@ -45,9 +47,9 @@ const items = (stats) => [
     },
     {
         key: 'payroll',
-        label: 'Masse salariale fixe',
-        value: formatFcfa(stats.payrollFixed),
-        sub: `${stats.payrollFixedCount ?? 0} employés`,
+        label: 'Masse salariale',
+        value: formatFcfa(stats.payrollTotal ?? (Number(stats.payrollFixed || 0) + Number(stats.payrollPercentage || 0))),
+        sub: `Fixe : ${formatFcfa(stats.payrollFixed)} · % : ${formatFcfa(stats.payrollPercentage)}`,
         icon: 'pi pi-money-bill'
     },
     {
@@ -75,13 +77,28 @@ const chartData = computed(() => {
     const stats = props.stats || {};
     const documentStyle = getComputedStyle(document.documentElement);
     return {
-        labels: ['Patients', 'Capital', 'Total facturé (cabinet)', 'Employés', 'Masse salariale', 'Salles', 'Consommables', 'Utilisateurs'],
+        labels: ['Revenus', 'Dépenses', 'Facturé', 'Encaissé'],
         datasets: [
             {
-                label: 'Valeurs',
-                backgroundColor: documentStyle.getPropertyValue('--p-primary-500'),
-                borderColor: documentStyle.getPropertyValue('--p-primary-500'),
-                data: [stats.patientsTotal || 0, stats.capitalTotal || 0, stats.revenueTotal || 0, stats.employeesTotal || 0, stats.payrollFixed || 0, stats.consultRoomsCount || 0, stats.consumablesCount || 0, stats.usersTotal || 0]
+                label: 'Montants (Fcfa)',
+                backgroundColor: [
+                    documentStyle.getPropertyValue('--p-emerald-500'),
+                    documentStyle.getPropertyValue('--p-orange-500'),
+                    documentStyle.getPropertyValue('--p-primary-500'),
+                    documentStyle.getPropertyValue('--p-indigo-500')
+                ],
+                borderColor: [
+                    documentStyle.getPropertyValue('--p-emerald-500'),
+                    documentStyle.getPropertyValue('--p-orange-500'),
+                    documentStyle.getPropertyValue('--p-primary-500'),
+                    documentStyle.getPropertyValue('--p-indigo-500')
+                ],
+                data: [
+                    Number(stats.revenueTotal || 0),
+                    Number(stats.expenseTotal || 0),
+                    Number(stats.billedTotal || 0),
+                    Number(stats.collectedTotal || 0)
+                ]
             }
         ]
     };
@@ -97,6 +114,7 @@ const chartOptions = computed(() => {
         maintainAspectRatio: false,
         plugins: {
             legend: {
+                display: false,
                 labels: {
                     color: textColor
                 }

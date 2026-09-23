@@ -37,13 +37,20 @@ export function useRapports() {
 
     const adminGlobalStats = ref({
         patientsTotal: 0,
+        patientsNew: 0,
         capitalTotal: 0,
         capitalCash: 0,
         revenueTotal: 0,
+        expenseTotal: 0,
+        resultTotal: 0,
+        billedTotal: 0,
+        collectedTotal: 0,
         appointmentsTotal: 0,
         employeesTotal: 0,
         payrollFixed: 0,
         payrollFixedCount: 0,
+        payrollPercentage: 0,
+        payrollTotal: 0,
         consultRoomsCount: 0,
         consumablesCount: 0,
         usersTotal: 0,
@@ -58,9 +65,11 @@ export function useRapports() {
         total: 0,
         female: 0,
         male: 0,
+        sexUnknown: 0,
         minors: 0,
         adults: 0,
         seniors: 0,
+        ageUnknown: 0,
         averageAge: 0
     });
     const adminPatientReferrals = ref([]);
@@ -192,10 +201,13 @@ export function useRapports() {
     async function fetchAdminGlobalStats(from, to) {
         const data = await fetchJson('/report/global-stats', { from, to });
         adminGlobalStats.value = {
+            ...adminGlobalStats.value,
             patientsTotal: data.patientsTotal || 0,
             capitalTotal: data.capitalTotal || 0,
             capitalCash: data.inCash || 0,
             revenueTotal: data.revenueTotal || 0,
+            expenseTotal: data.expenseTotal || 0,
+            resultTotal: data.resultTotal ?? (Number(data.revenueTotal || 0) - Number(data.expenseTotal || 0)),
             appointmentsTotal: data.appointmentsTotal || 0,
             employeesTotal: data.employeesTotal || 0,
             payrollFixed: data.payrollFixed || 0,
@@ -231,9 +243,11 @@ export function useRapports() {
             total: stats.total || 0,
             female: stats.female || 0,
             male: stats.male || 0,
+            sexUnknown: stats.sexUnknown || 0,
             minors: stats.minors || 0,
             adults: stats.adults || 0,
             seniors: stats.seniors || 0,
+            ageUnknown: stats.ageUnknown || 0,
             averageAge: stats.averageAge || 0
         };
     }
@@ -331,6 +345,28 @@ export function useRapports() {
         };
     }
 
+    function composeAdminOverviewKpis() {
+        const doctors = safeArray(adminDoctorReports.value?.doctors);
+        const payrollPercentage = doctors.reduce((sum, doctor) => {
+            const type = String(doctor?.typeSalaire || '').toLowerCase();
+            if (type !== 'pourcentage' && type !== 'percentage') {
+                return sum;
+            }
+            return sum + Number(doctor?.salary || 0);
+        }, 0);
+        const payrollFixed = Number(adminGlobalStats.value.payrollFixed || 0);
+        const kpi = adminDoctorReports.value?.kpi || {};
+
+        adminGlobalStats.value = {
+            ...adminGlobalStats.value,
+            patientsNew: adminPeriodicPatients.value?.newPatients ?? 0,
+            billedTotal: Number(kpi.totalApport || 0),
+            collectedTotal: Number(kpi.totalPaidCash || kpi.totalPaid || 0),
+            payrollPercentage,
+            payrollTotal: payrollFixed + payrollPercentage
+        };
+    }
+
     async function fetchAdminRapport({ from, to, silent = false } = {}) {
         if (!hasToken()) {
             return;
@@ -354,6 +390,7 @@ export function useRapports() {
                 fetchAdminActsStats(from, to),
                 fetchDoctorReports(from, to, adminDoctorReports)
             ]);
+            composeAdminOverviewKpis();
             if (!silent) {
                 toast.add({ severity: 'success', summary: 'Rapport admin', detail: 'Données mises à jour.', life: 2500 });
             }

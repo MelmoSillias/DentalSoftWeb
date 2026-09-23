@@ -84,6 +84,11 @@ class ReportService
         return in_array($this->normalize((string) $type), ['entree', 'revenu', 'revenue'], true);
     }
 
+    private function isExpenseTransactionType(?string $type): bool
+    {
+        return in_array($this->normalize((string) $type), ['sortie', 'depense', 'expense', 'exit'], true);
+    }
+
     private function isCashMode(?string $mode): bool
     {
         return in_array($this->normalize((string) $mode), ['especes', 'espece', 'cash'], true);
@@ -196,6 +201,14 @@ class ReportService
 
     // ====================== RAPPORTS GÉNÉRAUX ======================
 
+    /**
+     * Totaux trésorerie / effectifs pour la période.
+     *
+     * @deprecated Ne plus exposer capitalTotal / revenueTotal comme KPI « Capital » / « Total facturé »
+     *             dans la vue d'ensemble admin. Utiliser revenueTotal, expenseTotal, resultTotal
+     *             pour la trésorerie ; facturé/encaissé viennent de periodicDoctorReports.
+     *             capitalTotal / capitalBreakdown / inCash restent pour payment-balances et réception.
+     */
     public function globalStats(?string $from, ?string $to): array
     {
         $cacheKey = sprintf('report.globalStats.%s.%s', $from ?? 'none', $to ?? 'none');
@@ -211,7 +224,7 @@ class ReportService
                 ->setParameter('to', $toDate ?? new DateTimeImmutable())
                 ->getQuery()->getResult();
 
-            $capitalTotal = $inCash = $revenueTotal = 0.0;
+            $capitalTotal = $inCash = $revenueTotal = $expenseTotal = 0.0;
             $capitalBreakdown = [];
 
             foreach ($transactions as $tx) {
@@ -226,18 +239,28 @@ class ReportService
                 }
                 if ($this->isRevenueTransactionType($tx->getType())) {
                     $revenueTotal += (float) $tx->getMontant();
+                } elseif ($this->isExpenseTransactionType($tx->getType())) {
+                    $expenseTotal += (float) $tx->getMontant();
                 }
             }
 
+            $fixedEmployees = $this->employeRepo->findBy(['typeSalaire' => 'fixe']);
+
             return [
                 'patientsTotal'     => $this->patientRepo->count(['deletedAt' => null]),
+                // capitalTotal conservé pour payment-balances / réception (plus un KPI overview)
                 'capitalTotal'      => $capitalTotal,
                 'capitalBreakdown'  => $capitalBreakdown,
                 'inCash'            => $inCash,
                 'revenueTotal'      => $revenueTotal,
+                'expenseTotal'      => $expenseTotal,
+                'resultTotal'       => $revenueTotal - $expenseTotal,
                 'employeesTotal'    => $this->employeRepo->count([]),
-                'payrollFixed'      => array_sum(array_column($this->employeRepo->findBy(['typeSalaire' => 'fixe']), 'valeurSalaire')),
-                'payrollFixedCount' => count($this->employeRepo->findBy(['typeSalaire' => 'fixe'])),
+                'payrollFixed'      => array_sum(array_map(
+                    static fn($e) => (float) ($e->getValeurSalaire() ?? 0),
+                    $fixedEmployees
+                )),
+                'payrollFixedCount' => count($fixedEmployees),
                 'consultRoomsCount' => $this->salleRepo->count([]),
                 'consumablesCount'  => $this->consommableRepo->count([]),
                 'usersByRole'       => [
@@ -270,24 +293,38 @@ class ReportService
     {
         return $this->remember('report.patientsReport', 300, function () {
             $patients = $this->patientRepo->findBy(['deletedAt' => null]);
-            $male = $female = $totalAge = $withBirth = 0;
-            $ageGroups = ['<18' => 0, '18-30' => 0, '31-50' => 0, '51+' => 0];
+            $male = $female = $sexUnknown = $totalAge = $withBirth = $ageUnknown = 0;
+            $ageGroups = ['<18' => 0, '18-30' => 0, '31-50' => 0, '51+' => 0, 'unknown' => 0];
             $regions = [];
             $today = new DateTimeImmutable();
 
             foreach ($patients as $patient) {
-                if ($patient->getSexe() === 'Homme') $male++;
-                elseif ($patient->getSexe() === 'Femme') $female++;
+                $sex = trim((string) $patient->getSexe());
+                if ($sex === 'Homme') {
+                    $male++;
+                } elseif ($sex === 'Femme') {
+                    $female++;
+                } else {
+                    $sexUnknown++;
+                }
 
                 $birth = $patient->getDateNaissance();
                 if ($birth) {
                     $age = $today->diff($birth)->y;
                     $totalAge += $age;
                     $withBirth++;
-                    if ($age < 18) $ageGroups['<18']++;
-                    elseif ($age <= 30) $ageGroups['18-30']++;
-                    elseif ($age <= 50) $ageGroups['31-50']++;
-                    else $ageGroups['51+']++;
+                    if ($age < 18) {
+                        $ageGroups['<18']++;
+                    } elseif ($age <= 30) {
+                        $ageGroups['18-30']++;
+                    } elseif ($age <= 50) {
+                        $ageGroups['31-50']++;
+                    } else {
+                        $ageGroups['51+']++;
+                    }
+                } else {
+                    $ageUnknown++;
+                    $ageGroups['unknown']++;
                 }
 
                 $address = trim((string) $patient->getAdresse());
@@ -305,7 +342,9 @@ class ReportService
             return [
                 'male'       => $male,
                 'female'     => $female,
+                'sexUnknown' => $sexUnknown,
                 'ageGroups'  => $ageGroups,
+                'ageUnknown' => $ageUnknown,
                 'averageAge' => $withBirth > 0 ? (int) round($totalAge / $withBirth) : 0,
                 'regions'    => array_map(
                     fn($region, $count) => ['region' => $region, 'count' => $count],
@@ -326,9 +365,11 @@ class ReportService
                 'total'      => $this->patientRepo->count(['deletedAt' => null]),
                 'male'       => $base['male'],
                 'female'     => $base['female'],
+                'sexUnknown' => $base['sexUnknown'] ?? 0,
                 'minors'     => $groups['<18'] ?? 0,
                 'adults'     => ($groups['18-30'] ?? 0) + ($groups['31-50'] ?? 0),
                 'seniors'    => $groups['51+'] ?? 0,
+                'ageUnknown' => $base['ageUnknown'] ?? ($groups['unknown'] ?? 0),
                 'averageAge' => $base['averageAge'] ?? 0,
             ];
         });
@@ -825,6 +866,7 @@ class ReportService
         return [
             'id' => $doctor->getId(),
             'name' => $doctor->getFullName(),
+            'typeSalaire' => $doctor->getTypeSalaire(),
             'consultations' => count($consultations),
             'new_patients' => $newPatients,
             'returning_patients' => $returningPatients,
