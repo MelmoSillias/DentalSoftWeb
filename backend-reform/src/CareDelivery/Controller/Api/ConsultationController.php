@@ -27,7 +27,9 @@ final class ConsultationController extends AbstractController{
     public function setFiche(Request $request, ?int $ficheId = null): JsonResponse
     {
         $data = json_decode($request->getContent(), true) ?? [];
-        $consultationId = $data['consultationId'] ?? $request->get('consultationId');
+        $consultationId = $data['consultationId']
+            ?? $request->request->get('consultationId')
+            ?? $request->query->get('consultationId');
         $ficheId = $ficheId ?? ($data['ficheId'] ?? null);
 
         if (!$consultationId) {
@@ -79,14 +81,14 @@ final class ConsultationController extends AbstractController{
     #[Route('/api/consultations/day', name: 'api_consultations_day', methods: ['GET'])]
     public function getConsultationsDay(Request $req): JsonResponse
     {
-        return new JsonResponse($this->consultationService->ConsultationsDuJour($req->get('date'), $this->getUser()));
+        return new JsonResponse($this->consultationService->ConsultationsDuJour($req->query->get('date'), $this->getUser()));
     }
 
     #[Route('/api/focus/reception', name: 'api_focus_reception', methods: ['GET'])]
     public function getReceptionFocusData(Request $req): JsonResponse
     {
         return $this->json(
-            $this->consultationService->getReceptionFocusData($req->get('date'), $this->getUser())->toArray()
+            $this->consultationService->getReceptionFocusData($req->query->get('date'), $this->getUser())->toArray()
         );
     }
 

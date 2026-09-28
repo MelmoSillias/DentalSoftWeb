@@ -71,7 +71,10 @@ class FicheConsultationController extends AbstractController
     #[Route('/traitements', methods: ['POST'], name: 'update_traitements')]
     public function updateTraitements(Request $request, int $ficheId): JsonResponse
     {
-        $data  = json_decode($request->get('data'), true) ?? [];
+        $raw = $request->request->get('data');
+        $data = is_string($raw) && $raw !== ''
+            ? (json_decode($raw, true) ?? [])
+            : (json_decode($request->getContent(), true) ?? []);
         $files = $request->files->get('documentsFiles', []); 
  
         $this->ficheMedicaleService->updateDocuments($ficheId, $data, $files ?: []); 
