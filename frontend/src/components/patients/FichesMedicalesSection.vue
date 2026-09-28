@@ -9,6 +9,7 @@ import { useToast } from 'primevue/usetoast';
 import { computed, ref, watch } from 'vue';
 import FicheMedicalEditPanel from '@/components/patients/FicheMedicalEditPanel.vue';
 import FicheMedicalV2 from '@/components/patients/FicheMedicalV2.vue';
+import PatientCabinetServicesPanel from '@/components/patients/PatientCabinetServicesPanel.vue';
 import { createNewFicheForPatient } from '@/composables/useFicheMedicaleAccess';
 import { useAuthStore } from '@/stores/auth';
 import { logAppError } from '@/utils/appLogger';
@@ -268,6 +269,13 @@ watch(
                         <template #item="slotProps">
                             <div class="medical-fiches-item">
                                 <FicheMedicalV2 :fiche="slotProps.data" :position-label="formatPosition(slotProps.index)" :patient-age="patientAge" compact @print="emit('print-fiche', slotProps.data)" />
+                                <PatientCabinetServicesPanel
+                                    class="mt-4"
+                                    :patient-id="patientId"
+                                    :fiche-id="slotProps.data.id"
+                                    :services="slotProps.data.servicesCabinet || []"
+                                    @refresh="emit('fiche-updated')"
+                                />
                             </div>
                         </template>
                     </Carousel>
@@ -313,6 +321,14 @@ watch(
             <div class="p-5">
                 <FicheMedicalEditPanel v-if="isEditMode && selectedFiche?.id" ref="editPanelRef" :key="`edit-${selectedFiche.id}`" :fiche-id="selectedFiche.id" @saved="handleFicheSaved" @dirty-change="editHasDirty = $event" />
                 <FicheMedicalV2 v-else-if="selectedFiche" :key="`view-${selectedFiche.id}`" :fiche="selectedFiche" :position-label="formatPosition(currentFicheIndex)" :patient-age="patientAge" compact hide-actions />
+                <PatientCabinetServicesPanel
+                    v-if="selectedFiche"
+                    class="mt-4"
+                    :patient-id="patientId"
+                    :fiche-id="selectedFiche.id"
+                    :services="selectedFiche.servicesCabinet || []"
+                    @refresh="emit('fiche-updated')"
+                />
             </div>
 
             <template #footer>

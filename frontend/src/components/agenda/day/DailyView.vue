@@ -28,6 +28,10 @@ const props = defineProps({
     lockedMedecinId: {
         type: Number,
         default: null
+    },
+    embedded: {
+        type: Boolean,
+        default: false
     }
 });
 
@@ -141,7 +145,7 @@ defineExpose({ reloadOnAction });
 </script>
 
 <template>
-    <section class="daily-view flex min-h-0 flex-1 flex-col gap-3 xs:gap-4">
+    <section class="daily-view flex min-h-0 flex-1 flex-col gap-3 xs:gap-4" :class="embedded ? 'h-full min-w-0' : undefined">
         <div class="flex flex-shrink-0 flex-wrap items-center justify-between gap-3 xs:gap-4 rounded-xl bg-surface-0 p-2 xs:p-3 shadow-sm dark:bg-surface-900 dark:shadow-none dark:ring-1 dark:ring-surface-700">
             <DateChooser :modelValue="selectedDate" @update:modelValue="onDateChange" />
             <div class="flex items-center gap-1 xs:gap-2 text-xs xs:text-sm font-medium text-surface-700">
@@ -158,7 +162,7 @@ defineExpose({ reloadOnAction });
 
         <Divider class="my-1 flex-shrink-0 xs:my-2" />
 
-        <div class="daily-schedule-frame relative min-h-0 flex-1 overflow-hidden rounded-xl border border-surface-200 bg-surface-0 shadow-sm dark:border-surface-700 dark:bg-surface-900">
+        <div class="daily-schedule-frame relative min-h-0 flex-1 overflow-hidden rounded-xl border border-surface-200 bg-surface-0 shadow-sm dark:border-surface-700 dark:bg-surface-900" :class="{ 'is-embedded': embedded }">
             <div v-if="loadingDay" class="absolute inset-0 z-10 flex items-center justify-center bg-surface-0/60 dark:bg-surface-900/60">
                 <ProgressSpinner strokeWidth="4" style="width: 40px; height: 40px" />
             </div>
@@ -175,6 +179,11 @@ defineExpose({ reloadOnAction });
 .daily-schedule-frame {
     min-height: 18rem;
     height: calc(100dvh - 22rem);
+}
+
+.daily-schedule-frame.is-embedded {
+    height: auto;
+    min-height: 0;
 }
 
 .daily-schedule-scroll :deep(.p-scrollpanel-content) {

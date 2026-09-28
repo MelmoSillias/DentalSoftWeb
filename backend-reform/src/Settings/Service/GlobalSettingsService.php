@@ -34,20 +34,22 @@ class GlobalSettingsService
         ],
     ];
     private const DEFAULT_SOINS_LIST = [
-        ['description' => 'Consultation', 'montant' => 0.0, 'attribution' => 'medecin'],
-        ['description' => 'Détartrage', 'montant' => 0.0, 'attribution' => 'medecin'],
-        ['description' => 'Extraction', 'montant' => 0.0, 'attribution' => 'medecin'],
-        ['description' => 'Remplissage', 'montant' => 0.0, 'attribution' => 'medecin'],
-        ['description' => 'Composite', 'montant' => 0.0, 'attribution' => 'medecin'],
-        ['description' => 'Amalgame', 'montant' => 0.0, 'attribution' => 'medecin'],
-        ['description' => 'Traitement de canal', 'montant' => 0.0, 'attribution' => 'medecin'],
-        ['description' => 'Traumatisme', 'montant' => 0.0, 'attribution' => 'medecin'],
-        ['description' => 'Couronne', 'montant' => 0.0, 'attribution' => 'medecin'],
-        ['description' => 'Blanchiment', 'montant' => 0.0, 'attribution' => 'medecin'],
-        ['description' => 'Radio', 'montant' => 0.0, 'attribution' => 'cabinet'],
-        ['description' => 'Prothèse', 'montant' => 0.0, 'attribution' => 'medecin'],
-        ['description' => 'Orthodontie', 'montant' => 0.0, 'attribution' => 'medecin'],
-        ['description' => 'Chirurgie', 'montant' => 0.0, 'attribution' => 'medecin'],
+        ['description' => 'Consultation', 'montant' => 0.0],
+        ['description' => 'Détartrage', 'montant' => 0.0],
+        ['description' => 'Extraction', 'montant' => 0.0],
+        ['description' => 'Remplissage', 'montant' => 0.0],
+        ['description' => 'Composite', 'montant' => 0.0],
+        ['description' => 'Amalgame', 'montant' => 0.0],
+        ['description' => 'Traitement de canal', 'montant' => 0.0],
+        ['description' => 'Traumatisme', 'montant' => 0.0],
+        ['description' => 'Couronne', 'montant' => 0.0],
+        ['description' => 'Blanchiment', 'montant' => 0.0],
+        ['description' => 'Prothèse', 'montant' => 0.0],
+        ['description' => 'Orthodontie', 'montant' => 0.0],
+        ['description' => 'Chirurgie', 'montant' => 0.0],
+    ];
+    private const DEFAULT_SERVICES_CABINET_LIST = [
+        ['description' => 'Radio', 'montant' => 0.0],
     ];
     private const DEFAULT_EXAMENS_TYPES = [
         'Bacteriologique',
@@ -93,6 +95,7 @@ class GlobalSettingsService
         $allowReceptionConsultationQuickActions = (bool) ($value['allowReceptionConsultationQuickActions'] ?? ($value['allowReceptionQuickCloseConsultation'] ?? true));
         $showReceptionQuickCloseButton = (bool) ($value['showReceptionQuickCloseButton'] ?? true);
         $soinsCategories = $this->sanitizeSoinsCategories($value['soinsCategories'] ?? null);
+        $legacyCabinetServices = $this->extractLegacyCabinetServices($value['soinsList'] ?? null);
 
         $result = [
             'autoApproveDevices' => (bool) ($value['autoApproveDevices'] ?? true),
@@ -114,6 +117,7 @@ class GlobalSettingsService
             'transactionMotifs' => $this->sanitizeTransactionMotifs($value['transactionMotifs'] ?? null),
             'soinsCategories' => $soinsCategories,
             'soinsList' => $this->sanitizeSoinsList($value['soinsList'] ?? null, $soinsCategories),
+            'servicesCabinetList' => $this->sanitizeServicesCabinetList($value['servicesCabinetList'] ?? null, $legacyCabinetServices),
             'examensTypes' => $this->sanitizeStringList($value['examensTypes'] ?? null, self::DEFAULT_EXAMENS_TYPES),
             'traitementTypes' => $this->sanitizeStringList($value['traitementTypes'] ?? null, self::DEFAULT_TRAITEMENT_TYPES),
             'allergyTypes' => $this->sanitizeStringList($value['allergyTypes'] ?? null, self::DEFAULT_ALLERGY_TYPES),
@@ -168,6 +172,8 @@ class GlobalSettingsService
         );
         unset($current['paiementDirectAssurance'], $current['paymentDirectInsurance']);
         $soinsCategories = $this->sanitizeSoinsCategories($payload['soinsCategories'] ?? ($current['soinsCategories'] ?? null));
+        $incomingSoins = $payload['soinsList'] ?? ($current['soinsList'] ?? null);
+        $legacyCabinetServices = $this->extractLegacyCabinetServices($incomingSoins);
         $entry->setValue([
             ...$current,
             'autoApproveDevices' => (bool) ($payload['autoApproveDevices'] ?? ($current['autoApproveDevices'] ?? true)),
@@ -188,7 +194,11 @@ class GlobalSettingsService
             'closingTime' => $closingTime,
             'transactionMotifs' => $this->sanitizeTransactionMotifs($payload['transactionMotifs'] ?? ($current['transactionMotifs'] ?? null)),
             'soinsCategories' => $soinsCategories,
-            'soinsList' => $this->sanitizeSoinsList($payload['soinsList'] ?? ($current['soinsList'] ?? null), $soinsCategories),
+            'soinsList' => $this->sanitizeSoinsList($incomingSoins, $soinsCategories),
+            'servicesCabinetList' => $this->sanitizeServicesCabinetList(
+                $payload['servicesCabinetList'] ?? ($current['servicesCabinetList'] ?? null),
+                $legacyCabinetServices
+            ),
             'examensTypes' => $this->sanitizeStringList($payload['examensTypes'] ?? ($current['examensTypes'] ?? null), self::DEFAULT_EXAMENS_TYPES),
             'traitementTypes' => $this->sanitizeStringList($payload['traitementTypes'] ?? ($current['traitementTypes'] ?? null), self::DEFAULT_TRAITEMENT_TYPES),
             'allergyTypes' => $this->sanitizeStringList($payload['allergyTypes'] ?? ($current['allergyTypes'] ?? null), self::DEFAULT_ALLERGY_TYPES),
@@ -428,10 +438,16 @@ class GlobalSettingsService
         return $this->getGeneralSettings()['transactionMotifs'];
     }
 
-    /** @return list<array{description: string, montant: float, attribution: string, categorieId: ?string}> */
+    /** @return list<array{description: string, montant: float, categorieId: ?string}> */
     public function getSoinsList(): array
     {
         return $this->getGeneralSettings()['soinsList'];
+    }
+
+    /** @return list<array{description: string, montant: float}> */
+    public function getServicesCabinetList(): array
+    {
+        return $this->getGeneralSettings()['servicesCabinetList'];
     }
 
     /** @return list<array{id: string, nom: string}> */
@@ -509,6 +525,7 @@ class GlobalSettingsService
             'closingTime' => $settings['closingTime'],
             'soinsCategories' => $settings['soinsCategories'],
             'soinsList' => $settings['soinsList'],
+            'servicesCabinetList' => $settings['servicesCabinetList'],
             'examensTypes' => $settings['examensTypes'],
             'traitementTypes' => $settings['traitementTypes'],
             'allergyTypes' => $settings['allergyTypes'],
@@ -587,11 +604,8 @@ class GlobalSettingsService
     }
 
     /**
-     * @return list<array{description: string, montant: float, attribution: string}>
-     */
-    /**
      * @param list<array{id: string, nom: string}>|null $categories
-     * @return list<array{description: string, montant: float, attribution: string, categorieId: ?string}>
+     * @return list<array{description: string, montant: float, categorieId: ?string}>
      */
     private function sanitizeSoinsList(mixed $value, ?array $categories = null): array
     {
@@ -615,9 +629,12 @@ class GlobalSettingsService
 
         $clean = [];
         foreach ($value as $item) {
+            if (is_array($item) && ($item['attribution'] ?? null) === 'cabinet') {
+                continue;
+            }
+
             $description = '';
             $montant = 0.0;
-            $attribution = 'medecin';
             $categorieId = null;
 
             if (is_scalar($item)) {
@@ -627,10 +644,6 @@ class GlobalSettingsService
                 $description = is_scalar($rawDescription) ? trim((string) $rawDescription) : '';
                 $rawMontant = $item['montant'] ?? $item['prix'] ?? 0;
                 $montant = is_numeric($rawMontant) ? max(0.0, (float) $rawMontant) : 0.0;
-                $rawAttribution = $item['attribution'] ?? 'medecin';
-                $attribution = is_scalar($rawAttribution) && (string) $rawAttribution === 'cabinet'
-                    ? 'cabinet'
-                    : 'medecin';
                 $rawCategorieId = $item['categorieId'] ?? null;
                 if (is_scalar($rawCategorieId)) {
                     $candidateId = trim((string) $rawCategorieId);
@@ -649,7 +662,6 @@ class GlobalSettingsService
             $clean[$description] = [
                 'description' => $description,
                 'montant' => round($montant, 2),
-                'attribution' => $attribution,
                 'categorieId' => $categorieId,
             ];
         }
@@ -662,6 +674,78 @@ class GlobalSettingsService
             static fn (array $item): array => $item + ['categorieId' => null],
             self::DEFAULT_SOINS_LIST
         );
+    }
+
+    /**
+     * @return list<array{description: string, montant: float}>
+     */
+    private function extractLegacyCabinetServices(mixed $value): array
+    {
+        if (!is_array($value)) {
+            return [];
+        }
+
+        $moved = [];
+        foreach ($value as $item) {
+            if (!is_array($item) || ($item['attribution'] ?? null) !== 'cabinet') {
+                continue;
+            }
+            $description = trim((string) ($item['description'] ?? $item['label'] ?? ''));
+            if ($description === '' || isset($moved[$description])) {
+                continue;
+            }
+            $rawMontant = $item['montant'] ?? $item['prix'] ?? 0;
+            $moved[$description] = [
+                'description' => $description,
+                'montant' => is_numeric($rawMontant) ? round(max(0.0, (float) $rawMontant), 2) : 0.0,
+            ];
+        }
+
+        return array_values($moved);
+    }
+
+    /**
+     * @param list<array{description: string, montant: float}> $legacy
+     * @return list<array{description: string, montant: float}>
+     */
+    private function sanitizeServicesCabinetList(mixed $value, array $legacy = []): array
+    {
+        $configured = is_array($value);
+        $source = $configured ? $value : self::DEFAULT_SERVICES_CABINET_LIST;
+        $clean = [];
+
+        foreach ($source as $item) {
+            $description = '';
+            $montant = 0.0;
+            if (is_scalar($item)) {
+                $description = trim((string) $item);
+            } elseif (is_array($item)) {
+                $description = trim((string) ($item['description'] ?? $item['label'] ?? ''));
+                $rawMontant = $item['montant'] ?? $item['prix'] ?? 0;
+                $montant = is_numeric($rawMontant) ? max(0.0, (float) $rawMontant) : 0.0;
+            }
+            if ($description === '' || isset($clean[$description])) {
+                continue;
+            }
+            $clean[$description] = [
+                'description' => $description,
+                'montant' => round($montant, 2),
+            ];
+        }
+
+        foreach ($legacy as $item) {
+            $description = $item['description'];
+            if ($description === '' || isset($clean[$description])) {
+                continue;
+            }
+            $clean[$description] = $item;
+        }
+
+        if ($clean === [] && !$configured) {
+            return self::DEFAULT_SERVICES_CABINET_LIST;
+        }
+
+        return array_values($clean);
     }
 
     /** @return list<array{id: string, nom: string}> */

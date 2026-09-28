@@ -67,6 +67,7 @@ export function usePatientDossier(options = {}) {
     const archiveFiles = computed(() => patient.value.archiveFiles || []);
     const paiements = computed(() => patient.value.paiements || []);
     const factures = computed(() => patient.value.factures || []);
+    const servicesCabinet = computed(() => patient.value.servicesCabinet || []);
     const isReception = computed(() => Boolean(auth.user?.roles?.includes('ROLE_RECEPTION')));
     const isMedecin = computed(() => Boolean(auth.user?.roles?.includes('ROLE_MEDECIN')));
     const isAdmin = computed(() => Boolean(auth.user?.roles?.includes('ROLE_ADMIN')));
@@ -465,6 +466,7 @@ export function usePatientDossier(options = {}) {
         archiveFiles,
         paiements,
         factures,
+        servicesCabinet,
         isReception,
         isMedecin,
         isAdmin,

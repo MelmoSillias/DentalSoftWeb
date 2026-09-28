@@ -2,6 +2,7 @@
 // Client Axios centralisé avec intercepteurs pour gestion automatique du token et du logout sur 401
 import axios from 'axios';
 import { apiPrefix } from '@/config';
+import { noteHttpFailure, noteTransportSuccess } from '@/composables/useNetworkStatus';
 import { getDeviceMetadata } from '@/utils/deviceFingerprint';
 
 /** Timeout par défaut pour la plupart des requêtes API (20 s). */
@@ -23,7 +24,7 @@ const isUploadRequest = (config) => {
 };
 
 const userFacingMessages = {
-    slow: 'Connexion au serveur impossible ou bloquee (reseau/CORS). Veuillez reessayer dans un instant.',
+    slow: "Connexion au serveur impossible. Vérifiez votre connexion internet : il ne s'agit pas d'une erreur de l'application.",
     unauthorized: 'Votre session a expire. Veuillez vous reconnecter.',
     forbidden: 'Vous n avez pas l autorisation necessaire pour cette action.',
     unavailable: 'Le service est temporairement indisponible. Veuillez reessayer dans un instant.',
@@ -63,6 +64,14 @@ export const getHttpErrorMessage = (error, fallback = userFacingMessages.generic
     const payloadMessage = extractPayloadMessage(error);
 
     if (isConnectionIssue(error)) {
+        if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+            return "Votre connexion internet est coupée. Ce n'est pas une erreur de l'application.";
+        }
+
+        if (error?.code === 'ECONNABORTED' || error?.code === 'ETIMEDOUT') {
+            return 'Le serveur met trop de temps à répondre. Veuillez réessayer dans un instant.';
+        }
+
         return userFacingMessages.slow;
     }
 
@@ -137,9 +146,16 @@ http.interceptors.request.use(
 
 // Intercepteur réponses: gère 401 -> logout + redirection login
 http.interceptors.response.use(
-    (response) => response,
+    (response) => {
+        noteTransportSuccess();
+        return response;
+    },
     (error) => {
         normalizeHttpError(error);
+
+        if (!error?.config?.networkProbe) {
+            noteHttpFailure(error);
+        }
 
         if (isDeviceNotAllowedError(error)) {
             Promise.all([loadAuthStore(), loadRouter()])

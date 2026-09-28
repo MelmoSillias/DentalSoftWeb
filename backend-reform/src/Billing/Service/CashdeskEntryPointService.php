@@ -9,10 +9,9 @@ use App\Billing\Repository\ModeDePaiementRepository;
 use App\Billing\Repository\PaiementRepository;
 use App\Billing\Service\Workflow\ClassicInvoiceWorkflowService;
 use App\Billing\Service\Workflow\InsuredInvoiceWorkflowService;
+use App\Billing\Entity\FactureCabinet;
 use App\CareDelivery\Entity\Consultation;
 use App\Patient\Entity\Patient;
-use App\Reporting\Service\ReportService;
-use DateTimeImmutable;
 use DateTimeInterface;
 
 class CashdeskEntryPointService
@@ -23,7 +22,7 @@ class CashdeskEntryPointService
         private PaiementRepository $paiementRepo,
         private ModeDePaiementRepository $modeRepo,
         private FactureRepository $factureRepo,
-        private ReportService $reportService,
+        private CabinetServiceBillingService $cabinetServices,
     ) {
     }
 
@@ -43,9 +42,10 @@ class CashdeskEntryPointService
     {
         $classiques = $this->classicWorkflow->listFacturesByPeriod($start, $end);
         $assurances = $this->insuredWorkflow->listFacturesAssuranceForCashdesk($start, $end);
+        $cabinet = $this->cabinetServices->listFacturesForCashdesk($start, $end);
 
         return new CashdeskFactureListDto(
-            $this->enrichFacturesWithPatientReliquat($classiques),
+            $this->enrichFacturesWithPatientReliquat(array_merge($classiques, $cabinet)),
             $this->enrichFacturesWithPatientReliquat($assurances),
         );
     }
@@ -91,7 +91,15 @@ class CashdeskEntryPointService
             }
         }
 
+        $rows = array_merge($rows, $this->cabinetServices->listUnpaidForCashdesk(null, null, $patientId));
+
         return $this->enrichFacturesWithPatientReliquat($rows);
+    }
+
+    /** @return list<array<string, mixed>> */
+    public function listUnpaidCabinetFactures(?DateTimeInterface $start, ?DateTimeInterface $end): array
+    {
+        return $this->cabinetServices->listUnpaidForCashdesk($start, $end);
     }
 
     /**
@@ -155,6 +163,9 @@ class CashdeskEntryPointService
             ->leftJoin('p.factureAssurance', 'fa')->addSelect('fa')
             ->leftJoin('fa.consultation', 'fac')->addSelect('fac')
             ->leftJoin('fac.patient', 'fapat')->addSelect('fapat')
+            ->leftJoin('p.factureCabinet', 'fcab')->addSelect('fcab')
+            ->leftJoin('fcab.service', 'scab')->addSelect('scab')
+            ->leftJoin('scab.patient', 'scpat')->addSelect('scpat')
             ->join('p.mode', 'm')->addSelect('m')
             ->where('p.date BETWEEN :start AND :end')
             ->setParameter('start', $start)
@@ -166,12 +177,15 @@ class CashdeskEntryPointService
         return array_map(function (Paiement $p) {
             $patient = $p->getConsultation()?->getPatient()
                 ?? $p->getFacture()?->getConsultation()?->getPatient()
-                ?? $p->getFactureAssurance()?->getPatient();
-            $factureId = $p->getFacture()?->getId() ?? $p->getFactureAssurance()?->getId();
+                ?? $p->getFactureAssurance()?->getPatient()
+                ?? $p->getFactureCabinet()?->getService()?->getPatient();
+            $factureId = $p->getFacture()?->getId() ?? $p->getFactureAssurance()?->getId() ?? $p->getFactureCabinet()?->getId();
             $consultationId = $p->getFacture()?->getConsultation()?->getId()
                 ?? $p->getFactureAssurance()?->getConsultation()?->getId()
                 ?? $p->getConsultation()?->getId();
-            $type = $p->getFacture() ? 'facture' : ($p->getFactureAssurance() ? 'facture_assurance' : 'ticket');
+            $type = $p->getFactureCabinet()
+                ? 'service_cabinet'
+                : ($p->getFacture() ? 'facture' : ($p->getFactureAssurance() ? 'facture_assurance' : 'ticket'));
 
             return [
                 'factureId' => $factureId ?? $p->getId(),
@@ -188,12 +202,10 @@ class CashdeskEntryPointService
         }, $paiements);
     }
 
-    public function computeCabinetPaymentsShare(DateTimeInterface $start, DateTimeInterface $end): float
+    /** @return array{count: int, facture: float, encaisse: float, reste: float} */
+    public function summarizeCabinetServices(DateTimeInterface $start, DateTimeInterface $end): array
     {
-        $from = DateTimeImmutable::createFromInterface($start);
-        $to = DateTimeImmutable::createFromInterface($end);
-
-        return $this->reportService->computeCabinetPaymentsShareForPeriod($from, $to);
+        return $this->cabinetServices->summarizePeriod($start, $end);
     }
 
     public function listPaiementsByPatients(Patient $patient): array
@@ -206,8 +218,11 @@ class CashdeskEntryPointService
             ->leftJoin('fc.patient', 'fpat')->addSelect('fpat')
             ->leftJoin('p.factureAssurance', 'fa')->addSelect('fa')
             ->leftJoin('fa.patient', 'fapat')->addSelect('fapat')
+            ->leftJoin('p.factureCabinet', 'fcab')->addSelect('fcab')
+            ->leftJoin('fcab.service', 'scab')->addSelect('scab')
+            ->leftJoin('scab.patient', 'scpat')->addSelect('scpat')
             ->join('p.mode', 'm')->addSelect('m')
-            ->where('pat = :patient OR fpat = :patient OR fapat = :patient')
+            ->where('pat = :patient OR fpat = :patient OR fapat = :patient OR scpat = :patient')
             ->setParameter('patient', $patient)
             ->orderBy('p.date', 'DESC')
             ->getQuery()
@@ -216,12 +231,15 @@ class CashdeskEntryPointService
         return array_map(function (Paiement $p) {
             $resolvedPatient = $p->getConsultation()?->getPatient()
                 ?? $p->getFacture()?->getConsultation()?->getPatient()
-                ?? $p->getFactureAssurance()?->getPatient();
-            $factureId = $p->getFacture()?->getId() ?? $p->getFactureAssurance()?->getId();
+                ?? $p->getFactureAssurance()?->getPatient()
+                ?? $p->getFactureCabinet()?->getService()?->getPatient();
+            $factureId = $p->getFacture()?->getId() ?? $p->getFactureAssurance()?->getId() ?? $p->getFactureCabinet()?->getId();
             $consultationId = $p->getFacture()?->getConsultation()?->getId()
                 ?? $p->getFactureAssurance()?->getConsultation()?->getId()
                 ?? $p->getConsultation()?->getId();
-            $type = $p->getFacture() ? 'facture' : ($p->getFactureAssurance() ? 'facture_assurance' : 'ticket');
+            $type = $p->getFactureCabinet()
+                ? 'service_cabinet'
+                : ($p->getFacture() ? 'facture' : ($p->getFactureAssurance() ? 'facture_assurance' : 'ticket'));
 
             return [
                 'factureId' => $factureId ?? $p->getId(),
@@ -335,23 +353,19 @@ class CashdeskEntryPointService
         $patient = $this->resolvePatientFromPaiement($paiement);
         $facture = $paiement->getFacture();
         $factureAssurance = $paiement->getFactureAssurance();
-        $factureId = $facture?->getId() ?? $factureAssurance?->getId();
-        $consultation = $this->resolveConsultationFromPaiement($paiement);
-        $hasCabinetServices = false;
-        if ($consultation !== null) {
-            foreach ($consultation->getActes() as $acte) {
-                if ($acte->isCabinetService()) {
-                    $hasCabinetServices = true;
-                    break;
-                }
-            }
-        }
+        $factureCabinet = $paiement->getFactureCabinet();
+        $factureId = $facture?->getId() ?? $factureAssurance?->getId() ?? $factureCabinet?->getId();
 
         $total = 0.0;
         $reste = 0.0;
         $assuranceBlock = null;
+        $kind = null;
 
-        if ($facture) {
+        if ($factureCabinet instanceof FactureCabinet) {
+            $total = $factureCabinet->getMontant();
+            $reste = $factureCabinet->computeReste();
+            $kind = 'service_cabinet';
+        } elseif ($facture) {
             $montants = $facture->computeMontantsFromConsultation();
             $total = (float) ($montants['montantTotal'] ?? 0.0);
             $reste = (float) ($montants['restePatient'] ?? 0.0);
@@ -391,10 +405,8 @@ class CashdeskEntryPointService
                 ],
             ] : null,
             'assurance' => $assuranceBlock,
-            'hasCabinetServices' => $hasCabinetServices,
-            'cabinetPaymentNote' => $hasCabinetServices
-                ? 'Ce règlement peut inclure des services cabinet.'
-                : null,
+            'kind' => $kind,
+            'serviceDesignation' => $factureCabinet?->getService()?->getDesignation(),
         ];
     }
 
@@ -480,6 +492,7 @@ class CashdeskEntryPointService
 
         return $paiement->getConsultation()?->getPatient()
             ?? $paiement->getFacture()?->getConsultation()?->getPatient()
-            ?? $paiement->getFactureAssurance()?->getPatient();
+            ?? $paiement->getFactureAssurance()?->getPatient()
+            ?? $paiement->getFactureCabinet()?->getService()?->getPatient();
     }
 }

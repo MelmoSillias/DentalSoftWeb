@@ -6,6 +6,7 @@ import FormCreateConsultation from '@/components/patients/FormCreateConsultation
 import FormPatient from '@/components/patients/FormPatient.vue';
 import PatientAvatar from '@/components/patients/PatientAvatar.vue';
 import FormRendezVous from '@/components/patients/FormRendezVous.vue';
+import CabinetServiceDialog from '@/components/patients/CabinetServiceDialog.vue';
 import PatientsReferralStats from '@/components/patients/PatientsReferralStats.vue';
 import PrintDataTablePage from '@/components/print/PrintDataTablePage.vue';
 import { usePrinter } from '@/composables/usePrinter';
@@ -65,6 +66,8 @@ let syncingTourState = false;
 const showPatientDialog = ref(false);
 const showConsultationDialog = ref(false);
 const showRdvDialog = ref(false);
+const showCabinetServiceDialog = ref(false);
+const cabinetServicePatient = ref(null);
 const showActiveConsultWarn = ref(false);
 const showTrashDialog = ref(false);
 const showDeletePatientDialog = ref(false);
@@ -506,7 +509,12 @@ const resetTourDialogs = () => {
     activeConsultInfo.value = { hasActive: false, consultationId: null, hasFiche: false };
 };
 
-const hasOpenPatientDialog = computed(() => showPatientDialog.value || showConsultationDialog.value || showRdvDialog.value || showActiveConsultWarn.value);
+const hasOpenPatientDialog = computed(() => showPatientDialog.value || showConsultationDialog.value || showRdvDialog.value || showCabinetServiceDialog.value || showActiveConsultWarn.value);
+
+const openCabinetService = (patient) => {
+    cabinetServicePatient.value = patient;
+    showCabinetServiceDialog.value = true;
+};
 
 const captureTableState = () => ({
     patients: cloneValue(patients.value),
@@ -897,6 +905,7 @@ onBeforeUnmount(() => {
                                         :loading="consultationLoading[data.id] === true"
                                     />
                                     <Button icon="fas fa-calendar-plus" severity="help" text rounded v-tooltip.top="'Nouveau rendez-vous'" class="hover:bg-purple-50 dark:hover:bg-purple-900/20" @click="openRendezVous(data)" />
+                                    <Button icon="pi pi-building" severity="warn" text rounded v-tooltip.top="'Enregistrer un service cabinet'" @click="openCabinetService(data)" />
                                     <Button icon="pi pi-pencil" severity="secondary" text rounded v-tooltip.top="'Modifier patient'" class="hover:bg-surface-100 dark:hover:bg-surface-700" @click="openEditPatient(data)" />
                                     <Button
                                         icon="pi pi-trash"
@@ -1096,6 +1105,11 @@ onBeforeUnmount(() => {
             </div>
         </Dialog>
 
+        <CabinetServiceDialog
+            v-model:visible="showCabinetServiceDialog"
+            :patient-id="cabinetServicePatient?.id"
+            :patient-name="cabinetServicePatient?.fullname || `${cabinetServicePatient?.nom || ''} ${cabinetServicePatient?.prenom || ''}`.trim()"
+        />
         <Dialog
             v-model:visible="showRdvDialog"
             modal

@@ -1,6 +1,7 @@
 <script setup>
 import { onBeforeUnmount, onMounted } from 'vue';
 import { useToast } from 'primevue/usetoast';
+import OfflineConnectionBanner from './components/OfflineConnectionBanner.vue';
 import { APP_TOAST_EVENT } from './services/toastBus';
 
 const toast = useToast();
@@ -29,6 +30,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
+    <OfflineConnectionBanner />
     <Toast position="top-right" />
     <RouterView />
 </template>

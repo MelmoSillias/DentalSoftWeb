@@ -65,7 +65,7 @@ function openShowcase() {
 
 <style scoped>
 .login-page {
-    min-height: 100dvh;
+    min-height: calc(100dvh - var(--connection-banner-offset, 0px));
     display: grid;
     align-content: center;
     gap: 1rem;

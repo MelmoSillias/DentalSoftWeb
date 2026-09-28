@@ -37,6 +37,10 @@ class Paiement
     #[ORM\JoinColumn(nullable: true)]
     private ?FactureAssurance $factureAssurance = null;
 
+    #[ORM\ManyToOne(targetEntity: FactureCabinet::class, inversedBy: 'paiements')]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?FactureCabinet $factureCabinet = null;
+
     #[ORM\OneToOne(mappedBy: 'paiement', cascade: ['persist', 'remove'])]
     private ?Transaction $transaction = null;
 
@@ -80,6 +84,18 @@ class Paiement
     public function setFactureAssurance(?FactureAssurance $factureAssurance): static
     {
         $this->factureAssurance = $factureAssurance;
+
+        return $this;
+    }
+
+    public function getFactureCabinet(): ?FactureCabinet
+    {
+        return $this->factureCabinet;
+    }
+
+    public function setFactureCabinet(?FactureCabinet $factureCabinet): static
+    {
+        $this->factureCabinet = $factureCabinet;
 
         return $this;
     }

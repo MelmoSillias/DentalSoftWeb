@@ -43,6 +43,7 @@ const {
     archiveFiles,
     paiements,
     factures,
+    servicesCabinet,
     isReception,
     isMedecin,
     showConsultationsTab,
@@ -182,6 +183,7 @@ const handleRetry = async () => {
             :rdvs="rdvs"
             :paiements="paiements"
             :factures="factures"
+            :services-cabinet="servicesCabinet"
             :archive-files="archiveFiles"
             :is-reception="isReception"
             :is-medecin="isMedecin"

@@ -7,7 +7,7 @@ import Tag from 'primevue/tag';
 import { computed, ref } from 'vue';
 import PanelDatePicker from '@/components/common/PanelDatePicker.vue';
 import { useInternetFeatures } from '@/composables/useInternetFeatures';
-import { canModifyFacture, canPreviewFacture, canSettleFacture, computeFactureStatus, computePriorReliquat, isInsuranceFactureRow, targetIsFreeFacture } from '@/utils/factureRow';
+import { canModifyFacture, canPreviewFacture, canSettleFacture, computeFactureStatus, computePriorReliquat, isCabinetServiceFacture, isInsuranceFactureRow, targetIsFreeFacture } from '@/utils/factureRow';
 
 const { isInternetFeaturesEnabled } = useInternetFeatures();
 
@@ -33,6 +33,12 @@ const periodFilterDisabled = computed(() => props.factureType === 'impaye_toutes
 const safeFactures = computed(() => (Array.isArray(props.factures) ? props.factures : []));
 
 const factureSearch = ref('');
+const factureOrigin = ref('all');
+const factureOriginOptions = [
+    { label: 'Tous', value: 'all' },
+    { label: 'Consultations', value: 'consultation' },
+    { label: 'Services cabinet', value: 'service_cabinet' }
+];
 
 const normalizeText = (value) =>
     String(value ?? '')
@@ -60,6 +66,13 @@ const factureRangeModel = computed({
 const formatFcfa = (value) => `${Number(value || 0).toLocaleString('fr-FR')} FCFA`;
 
 const isInsuranceRow = (row) => isInsuranceFactureRow(row);
+const isCabinetRow = (row) => isCabinetServiceFacture(row);
+const documentLabel = (row) => (isCabinetRow(row) ? 'SERVICE CABINET' : isInsuranceRow(row) ? 'FACTURE ASSURANCE' : 'FACTURE');
+const matchesOrigin = (row) => {
+    if (factureOrigin.value === 'service_cabinet') return isCabinetRow(row);
+    if (factureOrigin.value === 'consultation') return !isCabinetRow(row);
+    return true;
+};
 
 const computeInsuranceBadge = (row) => {
     if (!isInsuranceRow(row)) {
@@ -80,6 +93,7 @@ const targetIsFree = (row) => targetIsFreeFacture(row);
 const filteredFactures = computed(() => {
     const query = factureSearchQuery.value;
     return safeFactures.value.filter((row) => {
+        if (!matchesOrigin(row)) return false;
         const patient = formatPatient(row);
         const status = computeStatus(row).label;
         const insuranceLabel = computeInsuranceBadge(row)?.label || '';
@@ -133,6 +147,10 @@ const displayPhone = (value) => (props.hidePatientPhone ? "Masqué par l'adminis
                         <InputText v-model="factureSearch" placeholder="Tapez quelque chose..." fluid />
                     </div>
                     <div class="filter-item">
+                        <label>Origine</label>
+                        <Select v-model="factureOrigin" :options="factureOriginOptions" optionLabel="label" optionValue="value" />
+                    </div>
+                    <div class="filter-item">
                         <label>Affichage</label>
                         <Select v-model="factureTypeModel" :options="factureTypeOptions" optionLabel="label" optionValue="value" />
                     </div>
@@ -176,12 +194,13 @@ const displayPhone = (value) => (props.hidePatientPhone ? "Masqué par l'adminis
                         <div v-for="(row, index) in slotProps.items" :key="row.id || index" class="fct-card" :class="`fct-card--${computeStatus(row).severity}`">
                             <!-- En-tête document -->
                             <div class="fct-header">
-                                <div class="fct-doc-badge" :class="{ 'fct-doc-badge--insurance': isInsuranceRow(row) }">
-                                    <i :class="isInsuranceRow(row) ? 'pi pi-shield' : 'pi pi-receipt'"></i>
-                                    <span>{{ isInsuranceRow(row) ? 'FACTURE ASSURANCE' : 'FACTURE' }} #{{ row.id }}</span>
+                                <div class="fct-doc-badge" :class="{ 'fct-doc-badge--insurance': isInsuranceRow(row), 'fct-doc-badge--cabinet': isCabinetRow(row) }">
+                                    <i :class="isCabinetRow(row) ? 'pi pi-building' : isInsuranceRow(row) ? 'pi pi-shield' : 'pi pi-receipt'"></i>
+                                    <span>{{ documentLabel(row) }} #{{ row.id }}</span>
                                 </div>
                                 <div class="fct-status-badges">
                                     <Tag :value="computeStatus(row).label" :severity="computeStatus(row).severity" />
+                                    <Tag v-if="isCabinetRow(row)" value="Service cabinet" severity="warn" icon="pi pi-building" />
                                     <Tag v-if="computeInsuranceBadge(row)" :value="computeInsuranceBadge(row).label" :severity="computeInsuranceBadge(row).severity" icon="pi pi-shield" />
                                 </div>
                             </div>

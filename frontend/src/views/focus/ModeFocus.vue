@@ -13,7 +13,7 @@ import { useFocusRealtime } from '@/composables/useFocusRealtime';
 import { defaultSoinList, fetchConsultationDetails, fetchConsultationInvoice, fetchConsultationsByDate, fetchFocusReceptionData, normalizeSoinList, updateConsultationInvoice, cancelConsultation } from '@/services/consultations';
 import { getDefaultClassicMethod } from '@/utils/paymentMethodUtils';
 import { fetchFactureDetail, fetchUnpaidFacturesByPatient, payFacture, payInsurancePatientShare, resetFacturePayments, validateEmptyFacture } from '@/services/caisseService';
-import { advanceAfterSettledTab, applyPartialPaymentToTab, buildPayTabs, isInsuranceFactureRow, resolveFacturePatientId, sumPriorReliquatFromTabs } from '@/composables/usePayTabsDialog';
+import { advanceAfterSettledTab, applyPartialPaymentToTab, buildPayTabs, factureTabId, isInsuranceFactureRow, resolveFacturePatientId, sumPriorReliquatFromTabs } from '@/composables/usePayTabsDialog';
 import { fetchPublicGeneralSettings } from '@/services/globalSettingsService';
 import { canUserModifyInvoice } from '@/utils/invoiceModificationAccess';
 import { fetchInvoicePrintData, fetchReceiptPrintData } from '@/services/printService';
@@ -496,7 +496,7 @@ const onPayDialogVisibleUpdate = (visible) => {
 };
 
 const handleAfterInvoiceSettled = async () => {
-    const settledId = activePayTabId.value ?? String(selectedFacture.value?.id ?? '');
+    const settledId = activePayTabId.value ?? factureTabId(selectedFacture.value);
     const hadReliquatTabs = hasPayReliquatTabs.value;
 
     await loadConsultations();
@@ -536,7 +536,7 @@ const openPayDialog = async ({ primaryMode = null } = {}) => {
 
     const mode = primaryMode || ((Number(row?.reste) || 0) === 0 && !row?.isRegle ? 'validate' : 'pay');
     payTabs.value = buildPayTabs(row, unpaidRows, { primaryMode: mode });
-    activePayTabId.value = String(row.id);
+    activePayTabId.value = factureTabId(row);
     pendingFacture.value = mode === 'validate' ? row : null;
     syncPayFormForFacture(row);
     payDialogVisible.value = true;
@@ -1113,7 +1113,7 @@ onBeforeUnmount(() => {
         </header>
 
         <!-- Contenu Principal -->
-        <div class="mx-auto flex min-h-0 w-full max-w-[1920px] flex-1 flex-col p-4 sm:p-6">
+        <div class="mx-auto flex min-h-0 w-full max-w-[1920px] flex-1 flex-col p-4 sm:p-6" :class="selectedMode === 'rdv' ? 'overflow-hidden' : undefined">
             <FocusReceptionView
                 v-if="selectedMode === 'reception'"
                 class="min-h-0 flex-1"
@@ -1177,7 +1177,7 @@ onBeforeUnmount(() => {
                 @consultation-closed="loadConsultations"
             />
 
-            <FocusRendezVousView v-else-if="selectedMode === 'rdv'" />
+            <FocusRendezVousView v-else-if="selectedMode === 'rdv'" class="min-h-0 min-w-0 flex-1" embedded />
 
             <DossierPatientDialog v-model:visible="dossierDialogVisible" :patient-id="dossierDialogPatientId" @updated="handleDossierUpdated" />
 

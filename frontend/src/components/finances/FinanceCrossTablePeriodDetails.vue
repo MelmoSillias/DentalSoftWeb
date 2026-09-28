@@ -168,7 +168,10 @@ const synthesisItems = computed(() => [
     { key: 'doctorRevenue', label: 'Total facturé médecins', value: formatFcfa(props.overview?.doctorsKpi?.totalApport ?? props.overview?.doctorsKpi?.totalRevenue), icon: 'pi pi-chart-bar' },
     { key: 'doctorInsurance', label: 'Parts assurance', value: formatFcfa(props.overview?.doctorsKpi?.totalPartAssurance), icon: 'pi pi-shield' },
     { key: 'doctorCash', label: 'Encaissé médecins', value: formatFcfa(props.overview?.doctorsKpi?.totalPaidCash ?? props.overview?.doctorsKpi?.totalPaid), icon: 'pi pi-wallet' },
-    { key: 'cabinetRevenue', label: 'Revenus services cabinet', value: formatFcfa(props.overview?.doctorsKpi?.revenusServicesCabinet ?? props.overview?.doctorsKpi?.totalCabinetRevenue ?? 0), icon: 'pi pi-building' }
+    { key: 'cabinetCount', label: 'Services cabinet', value: props.overview?.doctorsKpi?.servicesCabinet?.count ?? 0, icon: 'pi pi-building' },
+    { key: 'cabinetInvoiced', label: 'Services cabinet facturés', value: formatFcfa(props.overview?.doctorsKpi?.servicesCabinet?.facture ?? props.overview?.doctorsKpi?.totalCabinetApport ?? 0), icon: 'pi pi-file' },
+    { key: 'cabinetCollected', label: 'Services cabinet encaissés', value: formatFcfa(props.overview?.doctorsKpi?.servicesCabinet?.encaisse ?? props.overview?.doctorsKpi?.revenusServicesCabinet ?? props.overview?.doctorsKpi?.totalCabinetRevenue ?? 0), icon: 'pi pi-wallet' },
+    { key: 'cabinetRemaining', label: 'Services cabinet restants', value: formatFcfa(props.overview?.doctorsKpi?.servicesCabinet?.reste ?? 0), icon: 'pi pi-clock' }
 ]);
 
 const actsTotal = computed(() => (props.overview?.actes || []).reduce((sum, act) => sum + Number(act.montant || 0), 0));
@@ -247,6 +250,7 @@ watch(
                                 <template #body="{ data }">
                                     <div class="flex flex-col gap-1">
                                         <Tag :value="data.typeLabel" :severity="data.typeSeverity" />
+                                        <Tag v-if="data.rolePaiement === 'service_cabinet'" value="Service cabinet" severity="warn" icon="pi pi-building" />
                                         <small class="text-surface-500">{{ data.motif || 'Sans motif' }}</small>
                                     </div>
                                 </template>

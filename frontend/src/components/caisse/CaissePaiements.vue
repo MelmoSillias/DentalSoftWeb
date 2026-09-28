@@ -49,7 +49,8 @@ const isInsurancePayment = (payment) => {
     return role === 'patient_insurance';
 };
 
-const isInvoiceStylePayment = (payment) => ['devis', 'facture', 'facture_assurance'].includes(payment?.type);
+const isInvoiceStylePayment = (payment) => ['devis', 'facture', 'facture_assurance', 'service_cabinet'].includes(payment?.type);
+const isCabinetPayment = (payment) => payment?.type === 'service_cabinet';
 
 const computeModeTag = (payment) => {
     if (payment?.insuranceStatus === 'pending') {
@@ -236,6 +237,7 @@ const miniChart = computed(() => {
 
                                 <div class="pay-tags">
                                     <Tag :value="computeModeTag(row).label" :severity="computeModeTag(row).severity" />
+                                    <Tag v-if="isCabinetPayment(row)" value="Service cabinet" severity="warn" icon="pi pi-building" />
                                     <Tag v-if="isInsurancePayment(row)" value="Assurance" severity="info" icon="pi pi-shield" />
                                     <Tag v-if="row.insuranceStatus === 'pending'" value="En attente" severity="warning" icon="pi pi-clock" />
                                 </div>

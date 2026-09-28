@@ -48,10 +48,12 @@ import {
     updateFactureLines,
     validateEmptyFacture
 } from '@/services/caisseService';
+import { fetchCabinetFacture, fetchCabinetInvoicePrintData, payCabinetFacture } from '@/services/cabinetServices';
+import { isCabinetServiceFacture } from '@/utils/factureRow';
 import { fetchPublicGeneralSettings } from '@/services/globalSettingsService';
 import { canUserModifyInvoice } from '@/utils/invoiceModificationAccess';
 import { defaultSoinList, normalizeSoinList } from '@/services/consultations';
-import { advanceAfterSettledTab, applyPartialPaymentToTab, buildPayTabs, resolveFacturePatientId, resolveOpenPayDialogMode, sumPriorReliquatFromTabs } from '@/composables/usePayTabsDialog';
+import { advanceAfterSettledTab, applyPartialPaymentToTab, buildPayTabs, factureTabId, resolveFacturePatientId, resolveOpenPayDialogMode, sumPriorReliquatFromTabs } from '@/composables/usePayTabsDialog';
 import { canModifyFacture } from '@/utils/factureRow';
 import { fetchInvoicePrintData, fetchFactureAssurancePrintData, fetchPaymentsListPrintData, fetchReceiptPrintData, fetchTicketPrintData } from '@/services/printService';
 import { sendInvoiceSms, sendReceiptSms } from '@/services/smsService';
@@ -124,7 +126,7 @@ if (authStore.user.roles.includes('ROLE_RECEPTION')) {
 
 const factures = ref([]);
 const payments = ref([]);
-const paymentsCabinetShare = ref(0);
+const servicesCabinetSummary = ref({ count: 0, facture: 0, encaisse: 0, reste: 0 });
 const insuranceDashboard = ref([]);
 const insuranceLotsAssurance = ref(null);
 const insuranceLots = ref([]);
@@ -332,7 +334,7 @@ const maxClientPaymentAmount = computed(() => {
 });
 
 const canResetInvoicePayments = computed(() => {
-    if (!isAdminUser.value || !activeInvoiceContext.value) {
+    if (!isAdminUser.value || !activeInvoiceContext.value || isCabinetServiceFacture(activeInvoiceContext.value)) {
         return false;
     }
 
@@ -422,7 +424,7 @@ const loadPayments = async () => {
         const [start, end] = paymentRange.value;
         const res = await fetchPayments({ start: toApiDate(start), end: toApiDate(end) }, token);
         payments.value = Array.isArray(res) ? res : Array.isArray(res?.data) ? res.data : [];
-        paymentsCabinetShare.value = Number(res?.summary?.cabinetShare ?? 0);
+        servicesCabinetSummary.value = res?.summary?.servicesCabinet || { count: 0, facture: 0, encaisse: 0, reste: 0 };
         if (isInitialLoadPhase.value) {
             loadErrorMessage.value = '';
         }
@@ -893,7 +895,7 @@ const onPayDialogVisibleUpdate = (visible) => {
 };
 
 const handleAfterInvoiceSettled = async ({ isInsured = false } = {}) => {
-    const settledId = activePayTabId.value ?? String(selectedFacture.value?.id ?? '');
+    const settledId = activePayTabId.value ?? factureTabId(selectedFacture.value);
     const hadReliquatTabs = hasPayReliquatTabs.value;
 
     await refreshListsAfterPayment(isInsured);
@@ -929,7 +931,7 @@ const openPayDialog = async (row, { primaryMode = null } = {}) => {
 
     const mode = resolveOpenPayDialogMode(row, primaryMode);
     payTabs.value = buildPayTabs(row, unpaidRows, { primaryMode: mode });
-    activePayTabId.value = String(row.id);
+    activePayTabId.value = factureTabId(row);
     pendingFacture.value = mode === 'validate' ? row : null;
     if (mode === 'pay') {
         syncPayFormForFacture(row);
@@ -979,7 +981,18 @@ const submitPayment = async () => {
         const settledFully = montant >= max;
 
         let res;
-        if (isInsured) {
+        if (isCabinetServiceFacture(selectedFacture.value)) {
+            res = await payCabinetFacture(
+                selectedFacture.value.id,
+                {
+                    montant,
+                    modeId: payForm.value.modeId,
+                    date: payForm.value.date,
+                    time: payForm.value.time
+                },
+                token
+            );
+        } else if (isInsured) {
             res = await payInsurancePatientShare(
                 claimId,
                 {
@@ -1015,7 +1028,10 @@ const submitPayment = async () => {
                       action: async () => {
                           if (!paymentId) {
                               await loadPayments();
-                              const match = payments.value.filter((p) => Number(p.factureId) === Number(factureId)).reduce((maxId, p) => (p?.pId && p.pId > maxId ? p.pId : maxId), 0);
+                              const expectedType = isCabinetServiceFacture(selectedFacture.value) ? 'service_cabinet' : null;
+                              const match = payments.value
+                                  .filter((p) => Number(p.factureId) === Number(factureId) && (expectedType ? p.type === expectedType : p.type !== 'service_cabinet'))
+                                  .reduce((maxId, p) => (p?.pId && p.pId > maxId ? p.pId : maxId), 0);
                               if (!match) {
                                   toast.add({ severity: 'warn', summary: 'Paiement', detail: 'Reçu introuvable pour cette facture.', life: 3000 });
                                   return;
@@ -1065,7 +1081,9 @@ const reloadFacturePreview = async (factureId) => {
 
     previewLoading.value = true;
     try {
-        if (isInsuranceFacture(selectedFacture.value) || isInsuranceFacture(previewData.value)) {
+        if (isCabinetServiceFacture(selectedFacture.value) || isCabinetServiceFacture(previewData.value)) {
+            previewData.value = await fetchCabinetFacture(factureId, token);
+        } else if (isInsuranceFacture(selectedFacture.value) || isInsuranceFacture(previewData.value)) {
             const claimId = selectedFacture.value?.factureAssuranceId || previewData.value?.insurance?.factureAssuranceId || factureId;
             const detail = await fetchInsuranceClaimDetail(claimId, token);
             previewData.value = mapClaimToPreviewData(detail, claimId);
@@ -1084,6 +1102,10 @@ const resetSelectedDevisPayments = async () => {
     const context = selectedFacture.value ?? previewData.value ?? activeInvoiceContext.value;
     const factureId = context?.id;
     if (!factureId) {
+        return;
+    }
+
+    if (isCabinetServiceFacture(context)) {
         return;
     }
 
@@ -1110,7 +1132,7 @@ const resetSelectedDevisPayments = async () => {
         await Promise.all(tasks);
         await reloadFacturePreview(factureId);
 
-        const updatedRow = factures.value.find((row) => Number(row.id) === Number(factureId));
+        const updatedRow = factures.value.find((row) => Number(row.id) === Number(factureId) && (isInsured ? isInsuranceFacture(row) : !isCabinetServiceFacture(row) && !isInsuranceFacture(row)));
         if (updatedRow) {
             selectedFacture.value = updatedRow;
         }
@@ -1254,7 +1276,9 @@ const openPreviewDialog = async (row) => {
     previewDialogTab.value = 'services';
     selectedFacture.value = row;
     try {
-        if (isInsuranceFacture(row)) {
+        if (isCabinetServiceFacture(row)) {
+            previewData.value = await fetchCabinetFacture(row.id, token);
+        } else if (isInsuranceFacture(row)) {
             const claimId = row.factureAssuranceId || row.insurance?.factureAssuranceId || row.id;
             const detail = await fetchInsuranceClaimDetail(claimId, token);
             previewData.value = mapClaimToPreviewData(detail, claimId);
@@ -1391,7 +1415,10 @@ const { isGuidedTourStarting } = useGuidedTour({
 const printInvoice = async () => {
     if (!previewData.value?.id) return;
     try {
-        if (isInsuranceFacture(previewData.value) || isInsuranceFacture(selectedFacture.value)) {
+        if (isCabinetServiceFacture(previewData.value) || isCabinetServiceFacture(selectedFacture.value)) {
+            const res = await fetchCabinetInvoicePrintData(previewData.value.id, token);
+            await printComponent(PrintDevisBody, { doc: res.doc, title: res.title || 'Facture service cabinet' });
+        } else if (isInsuranceFacture(previewData.value) || isInsuranceFacture(selectedFacture.value)) {
             const claimId = previewData.value.insurance?.factureAssuranceId || selectedFacture.value?.factureAssuranceId || previewData.value.id;
             const res = await fetchFactureAssurancePrintData(claimId, token);
             await printComponent(PrintFactureAssuranceBody, {
@@ -1464,8 +1491,8 @@ const printReceiptById = async (paymentId) => {
 
 const sendInvoiceBySms = async (row) => {
     if (!row?.id) return;
-    if (isInsuranceFacture(row)) {
-        toast.add({ severity: 'info', summary: 'SMS Facture', detail: "L'envoi SMS n'est pas disponible pour les factures assurance.", life: 3500 });
+    if (isInsuranceFacture(row) || isCabinetServiceFacture(row)) {
+        toast.add({ severity: 'info', summary: 'SMS Facture', detail: "L'envoi SMS n'est pas disponible pour cette facture.", life: 3500 });
         return;
     }
     try {
@@ -1577,7 +1604,7 @@ onBeforeUnmount(() => {
                             :factures="factures"
                             :factures-loading="facturesLoading"
                             :payments="payments"
-                            :cabinet-payments-share="paymentsCabinetShare"
+                            :services-cabinet="servicesCabinetSummary"
                             :hide-patient-phone="shouldHidePatientPhoneForMedecin"
                             :allow-invoice-modification="canModifyInvoiceByRole"
                             :payments-loading="paymentsLoading"

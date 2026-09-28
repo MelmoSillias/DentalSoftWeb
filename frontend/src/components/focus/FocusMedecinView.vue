@@ -8,7 +8,7 @@ import Button from 'primevue/button';
 import Checkbox from 'primevue/checkbox';
 import Tag from 'primevue/tag';
 
-import { computed, onMounted, ref, toRefs, watch } from 'vue';
+import { computed, nextTick, ref, toRefs, watch } from 'vue';
 
 const props = defineProps({
     consultations: {
@@ -45,6 +45,15 @@ const showCompletedMedecin = defineModel('showCompletedMedecin', {
 const newestFirstMedecin = ref(false);
 const embeddedFicheRef = ref(null);
 const consultationOrdonnances = ref([]);
+const queueItemRefs = ref({});
+
+const setQueueItemRef = (id, element) => {
+    if (element) {
+        queueItemRefs.value[id] = element;
+        return;
+    }
+    delete queueItemRefs.value[id];
+};
 
 const parseDateTime = (value) => {
     if (!value) return null;
@@ -174,15 +183,15 @@ const printOrdonnance = (ordo) => {
     embeddedFicheRef.value?.handlePrintOrdonnance?.(ordo);
 };
 
-onMounted(() => {
-    emit('clear-selection');
-});
-
 watch(
     () => selectedConsultationId.value,
-    () => {
+    async (id) => {
         consultationOrdonnances.value = [];
-    }
+        if (id == null) return;
+        await nextTick();
+        queueItemRefs.value[id]?.scrollIntoView({ block: 'nearest' });
+    },
+    { immediate: true }
 );
 </script>
 
@@ -274,7 +283,7 @@ watch(
                             <div class="absolute left-4 top-0 bottom-0 w-px bg-surface-200 dark:bg-surface-700"></div>
 
                             <div class="space-y-4">
-                                <button v-for="(consultation, index) in medecinQueue" :key="consultation.id" @click="emit('select-consultation', consultation.id)" class="relative w-full text-left flex gap-4 group">
+                                <button v-for="(consultation, index) in medecinQueue" :key="consultation.id" :ref="(element) => setQueueItemRef(consultation.id, element)" @click="emit('select-consultation', consultation.id)" class="relative w-full text-left flex gap-4 group">
                                     <div class="relative z-10 flex flex-col items-center">
                                         <div
                                             :class="[

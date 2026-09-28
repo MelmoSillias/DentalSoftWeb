@@ -2,6 +2,7 @@ import { computed } from 'vue';
 import { fetchEventSource } from '@microsoft/fetch-event-source';
 import http from '@/service/http';
 import { useAuthStore } from '@/stores/auth';
+import { noteRealtimeInterrupted, noteTransportSuccess } from '@/composables/useNetworkStatus';
 import { useRealtimeStore } from '@/stores/realtime';
 import * as mercureEventRouter from './mercureEventRouter';
 
@@ -246,6 +247,7 @@ function createMercureClient() {
                         reconnectAttempts = 0;
                         realtimeStore.setConnectionState('connected');
                         stopDegradedPolling();
+                        noteTransportSuccess();
                         return;
                     }
 
@@ -277,6 +279,7 @@ function createMercureClient() {
                     }
 
                     realtimeStore.setConnectionState('error');
+                    noteRealtimeInterrupted();
                     scheduleReconnect();
                 },
                 onclose() {
@@ -284,22 +287,29 @@ function createMercureClient() {
                         return;
                     }
 
+                    noteRealtimeInterrupted();
                     scheduleReconnect();
                 }
-            }).catch(() => {
+            }).catch((error) => {
                 if (generation !== connectGeneration) {
                     return;
                 }
 
                 realtimeStore.setConnectionState('error');
+                if (!error?.response) {
+                    noteRealtimeInterrupted();
+                }
                 scheduleReconnect();
             });
-        } catch (_) {
+        } catch (error) {
             if (generation !== connectGeneration) {
                 return;
             }
 
             realtimeStore.setConnectionState('error');
+            if (!error?.response) {
+                noteRealtimeInterrupted();
+            }
             scheduleReconnect();
         }
     }

@@ -42,6 +42,7 @@ use DateTime;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use App\Billing\Repository\FactureRepository;
+use App\Billing\Service\CabinetServiceBillingService;
 use App\Billing\Service\CashdeskEntryPointService;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
@@ -165,6 +166,7 @@ class PatientService
         private CacheInterface $cache,
         private EventDispatcherInterface $eventDispatcher,
         private FocusRealtimePublisher $focusRealtimePublisher,
+        private CabinetServiceBillingService $cabinetServiceBilling,
     ) {
     }
 
@@ -1391,6 +1393,7 @@ public function removeArchiveFile(int $patientId, string $fileUrl): array
             'fiches' => $fiches,
             'factures' => $factures,
             'paiements' => $paiements,
+            'servicesCabinet' => $this->cabinetServiceBilling->listForPatient($patient->getId()),
             'archiveFiles' => $patient->getArchiveFiles(),
         ];
     }

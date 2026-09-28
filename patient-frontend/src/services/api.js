@@ -1,4 +1,5 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8010';
+import { noteHttpFailure, noteTransportSuccess } from '../composables/useNetworkStatus';
 import { emitAppToast } from './toastBus';
 
 const IS_DEV = Boolean(import.meta.env.DEV);
@@ -40,13 +41,13 @@ export async function apiRequest(path, { method = 'GET', token = '', body, heade
             body: body !== undefined ? JSON.stringify(body) : undefined
         });
     } catch (networkError) {
-        if (showToast) {
+        noteHttpFailure();
+
+        if (showToast && IS_DEV) {
             emitAppToast({
-                severity: 'error',
-                summary: 'Reseau',
-                detail: IS_DEV
-                    ? `[${method}] ${path} -> Echec reseau (${networkError instanceof Error ? networkError.message : 'unknown'})`
-                    : 'Connexion au serveur impossible. Verifiez votre reseau puis reessayez.',
+                severity: 'warn',
+                summary: 'Connexion internet',
+                detail: `[${method}] ${path} -> Echec reseau (${networkError instanceof Error ? networkError.message : 'unknown'})`,
                 life: 5000
             });
         }
@@ -75,6 +76,7 @@ export async function apiRequest(path, { method = 'GET', token = '', body, heade
         throw new Error(errorMessage);
     }
 
+    noteTransportSuccess();
     return payload;
 }
 

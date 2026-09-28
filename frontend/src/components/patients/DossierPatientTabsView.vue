@@ -4,6 +4,7 @@ import DossierPatientInfoCard from '@/components/patients/DossierPatientInfoCard
 import FichesMedicalesSection from '@/components/patients/FichesMedicalesSection.vue';
 import ListePatientConsultations from '@/components/patients/ListePatientConsultations.vue';
 import PatientActiviteFinancesSection from '@/components/patients/PatientActiviteFinancesSection.vue';
+import PatientCabinetServicesPanel from '@/components/patients/PatientCabinetServicesPanel.vue';
 import Tab from 'primevue/tab';
 import TabList from 'primevue/tablist';
 import TabPanel from 'primevue/tabpanel';
@@ -21,6 +22,7 @@ const props = defineProps({
     rdvs: { type: Array, default: () => [] },
     paiements: { type: Array, default: () => [] },
     factures: { type: Array, default: () => [] },
+    servicesCabinet: { type: Array, default: () => [] },
     archiveFiles: { type: Array, default: () => [] },
     isReception: { type: Boolean, default: false },
     isMedecin: { type: Boolean, default: false },
@@ -70,6 +72,12 @@ const tabs = computed(() => [
         label: 'Activité & finances',
         icon: 'pi pi-chart-line',
         badge: props.rdvs?.length || null
+    },
+    {
+        id: 'services-cabinet',
+        label: 'Services cabinet',
+        icon: 'pi pi-building',
+        badge: props.servicesCabinet?.length || null
     }
 ]);
 </script>
@@ -135,6 +143,17 @@ const tabs = computed(() => [
                 <TabPanel value="activite">
                     <div data-tour="patients-dossier.finance">
                         <PatientActiviteFinancesSection :rdvs="rdvs" :paiements="paiements" :factures="factures" :consultations="consultations" :show-consultations="showConsultationsTab" @refresh="emit('refresh')" />
+                    </div>
+                </TabPanel>
+
+                <TabPanel value="services-cabinet">
+                    <div class="p-4">
+                        <PatientCabinetServicesPanel
+                            :patient-id="patientId"
+                            :patient-name="`${patient?.nom || ''} ${patient?.prenom || ''}`.trim()"
+                            :services="servicesCabinet"
+                            @refresh="emit('refresh')"
+                        />
                     </div>
                 </TabPanel>
             </TabPanels>

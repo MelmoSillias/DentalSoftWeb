@@ -38,7 +38,7 @@ function openShowcase() {
 
 <style scoped>
 .public-page {
-    min-height: 100dvh;
+    min-height: calc(100dvh - var(--connection-banner-offset, 0px));
     display: grid;
     place-items: center;
     padding: 1rem;

@@ -3,6 +3,7 @@
 namespace App\ClinicalRecord\Service;
 
 use App\Billing\Entity\ContenuDevis;
+use App\Billing\Service\CabinetServiceBillingService;
 use App\Billing\Entity\Devis;
 use App\Billing\Repository\DevisRepository;
 use App\CareDelivery\Repository\ConsultationRepository;
@@ -40,6 +41,7 @@ class FicheMedicaleService
         private ConsultationRepository $consultationRepo,
         private FicheMedicaleRepository $ficheMedicaleRepo,
         private PatientRepository $patientRepo,
+        private CabinetServiceBillingService $cabinetServiceBilling,
         ParameterBagInterface $params,
     ) {
         $this->projectDir = $params->get('kernel.project_dir');
@@ -1096,6 +1098,7 @@ class FicheMedicaleService
             'documents' => $documents,
             'devis' => $devisWrapper,
             'consultations' => $consultations,
+            'servicesCabinet' => $this->cabinetServiceBilling->listForFiche((int) $fiche->getId()),
         ];
     }
 }

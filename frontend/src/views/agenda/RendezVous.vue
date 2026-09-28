@@ -28,6 +28,10 @@ import InputText from 'primevue/inputtext';
 import SelectButton from 'primevue/selectbutton';
 import cabinetConfig from '@/cabinetConfig';
 
+defineProps({
+    embedded: { type: Boolean, default: false }
+});
+
 const smsCabinetName = ref(cabinetConfig.smsCabinetName || cabinetConfig.displayName || 'Cabinet dentaire');
 const requireMedecinOnConsultationCreation = ref(true);
 const defaultCreateConsultationOnRdvValidation = ref(false);
@@ -317,7 +321,10 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-    <section class="rendez-vous-page flex min-h-0 flex-col ml-4 gap-3 xs:gap-4 rounded-xl xs:rounded-2xl bg-surface-0 p-4 xs:p-5 shadow-sm dark:bg-surface-900 dark:shadow-none dark:ring-1 dark:ring-surface-700 sm:shadow-none sm:ring-0">
+    <section
+        class="rendez-vous-page flex min-h-0 min-w-0 flex-col gap-3 xs:gap-4 rounded-xl xs:rounded-2xl bg-surface-0 p-4 xs:p-5 shadow-sm dark:bg-surface-900 dark:shadow-none dark:ring-1 dark:ring-surface-700 sm:shadow-none sm:ring-0"
+        :class="embedded ? 'is-embedded overflow-hidden' : 'ml-4'"
+    >
         <AppToast />
         <div data-tour="agenda-rdv.header" class="flex flex-shrink-0 flex-wrap items-center justify-between gap-3 xs:gap-4 border-b border-surface-200 pb-2 xs:pb-3 dark:border-surface-700">
             <div class="space-y-0.5 xs:space-y-1">
@@ -341,14 +348,14 @@ onBeforeUnmount(() => {
         </div>
 
         <template v-else>
-            <Tabs v-model:value="activeIndex" class="rendez-vous-tabs flex min-h-0 flex-1 flex-col">
+            <Tabs v-model:value="activeIndex" class="rendez-vous-tabs flex min-h-0 min-w-0 flex-1 flex-col" :class="embedded ? 'overflow-hidden' : undefined">
                 <TabList data-tour="agenda-rdv.tabs" class="flex-shrink-0">
                     <Tab value="week">Vue hebdomadaire</Tab>
                     <Tab value="day">Vue journalière</Tab>
                 </TabList>
                 <TabPanels class="min-h-0 flex-1">
                     <TabPanel value="week">
-                        <div data-tour="agenda-rdv.calendar">
+                        <div data-tour="agenda-rdv.calendar" :class="embedded ? 'flex h-full min-h-0 min-w-0 flex-1 flex-col' : undefined">
                             <WeeklyView
                                 ref="weeklyViewRef"
                                 :medecins="scopedMedecinsList"
@@ -356,6 +363,7 @@ onBeforeUnmount(() => {
                                 :refreshKey="refreshKey"
                                 :lockedMedecinId="isMedecinUser ? connectedMedecinId : null"
                                 :medecinReadonly="isMedecinUser"
+                                :embedded="embedded"
                                 @request-create="openCreate"
                                 @request-validate="openValidate"
                                 @request-cancel="openCancel"
@@ -366,13 +374,14 @@ onBeforeUnmount(() => {
                         </div>
                     </TabPanel>
                     <TabPanel value="day" class="h-full">
-                        <div data-tour="agenda-rdv.calendar" class="flex h-full min-h-0 flex-col">
+                        <div data-tour="agenda-rdv.calendar" class="flex h-full min-h-0 flex-1 flex-col" :class="embedded ? 'min-w-0' : undefined">
                             <DailyView
                                 ref="dailyViewRef"
                                 :medecins="scopedMedecinsList"
                                 :api="api"
                                 :refreshKey="refreshKey"
                                 :lockedMedecinId="isMedecinUser ? connectedMedecinId : null"
+                                :embedded="embedded"
                                 @request-create="openCreate"
                                 @request-validate="openValidate"
                                 @request-cancel="openCancel"
@@ -467,8 +476,18 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.rendez-vous-page {
+.rendez-vous-page:not(.is-embedded) {
     min-height: calc(100dvh - 6rem);
+}
+
+.rendez-vous-page.is-embedded {
+    min-height: 0;
+}
+
+.rendez-vous-page.is-embedded :deep(.p-tabpanels),
+.rendez-vous-page.is-embedded :deep(.p-tabpanel) {
+    height: auto;
+    max-height: 100%;
 }
 
 .rendez-vous-tabs :deep(.p-tabpanels),

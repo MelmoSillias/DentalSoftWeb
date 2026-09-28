@@ -47,8 +47,10 @@ export const canSettleFacture = (row) => Boolean(row) && (!row?.isRegle || hasPa
 /** @deprecated Use canSettleFacture */
 export const canPayFacture = (row) => canSettleFacture(row);
 
+export const isCabinetServiceFacture = (row) => row?.type === 'ServiceCabinet' || row?.kind === 'service_cabinet';
+
 export const canModifyFacture = (row, { allowInvoiceModification = false } = {}) =>
-    allowInvoiceModification && !isInsuranceFactureRow(row) && !row?.hasPayments && (isValidatedEmptyFacture(row) || (Number(row?.montant) === Number(row?.reste) && !row?.isRegle));
+    allowInvoiceModification && !isInsuranceFactureRow(row) && !isCabinetServiceFacture(row) && !row?.hasPayments && (isValidatedEmptyFacture(row) || (Number(row?.montant) === Number(row?.reste) && !row?.isRegle));
 
 export const isUnpaidFacture = (row) => {
     const status = computeFactureStatus(row).label;

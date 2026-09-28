@@ -4,7 +4,7 @@
 .layout-wrapper {
     display: flex;
     flex-direction: column;
-    height: 100dvh;
+    height: calc(100dvh - var(--connection-banner-offset, 0px));
     max-width: 100%;
     overflow: hidden;
 }

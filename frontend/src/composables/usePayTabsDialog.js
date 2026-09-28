@@ -15,14 +15,22 @@ export const resolveFacturePatientId = (row) => {
 
 export const isInsuranceFactureRow = (row) => row?.type === 'FactureAssurance' || row?.type === 'assurance' || row?.insurance?.hasInsurance === true;
 
+export const factureKindKey = (row) => {
+    if (row?.type === 'ServiceCabinet' || row?.kind === 'service_cabinet') return 'cabinet';
+    if (isInsuranceFactureRow(row)) return 'assurance';
+    return 'consultation';
+};
+
+export const factureTabId = (row) => `${factureKindKey(row)}:${Number(row?.id ?? 0)}`;
+
 export const factureIdentityKeys = (row) => {
     const keys = new Set();
     const id = Number(row?.id ?? 0);
-    if (id > 0) keys.add(`id:${id}`);
+    if (id > 0) keys.add(factureTabId(row));
     const faId = Number(row?.factureAssuranceId ?? row?.insurance?.factureAssuranceId ?? 0);
     if (faId > 0) keys.add(`fa:${faId}`);
     const consultationId = Number(row?.consultation ?? row?.consultationId ?? 0);
-    if (consultationId > 0) keys.add(`c:${consultationId}`);
+    if (consultationId > 0 && factureKindKey(row) !== 'cabinet') keys.add(`c:${consultationId}`);
     return keys;
 };
 
@@ -60,7 +68,8 @@ export const resolveOpenPayDialogMode = (row, primaryMode = null) => resolvePrim
 export const formatPayTabLabel = (row, { isPrimary = false } = {}) => {
     const id = row?.id ?? '—';
     const date = row?.date ? String(row.date).slice(0, 10) : '';
-    const base = date ? `Facture #${id} · ${date}` : `Facture #${id}`;
+    const title = factureKindKey(row) === 'cabinet' ? 'Service cabinet' : 'Facture';
+    const base = date ? `${title} #${id} · ${date}` : `${title} #${id}`;
     return isPrimary ? `${base} (sélectionnée)` : base;
 };
 
@@ -77,7 +86,7 @@ export const buildPayTabs = (primaryRow, unpaidRows = [], options = {}) => {
 
     const tabs = [
         {
-            id: String(primaryRow.id),
+            id: factureTabId(primaryRow),
             label: formatPayTabLabel(primaryRow, { isPrimary: true }),
             facture: primaryRow,
             mode: primaryMode,
@@ -89,7 +98,7 @@ export const buildPayTabs = (primaryRow, unpaidRows = [], options = {}) => {
 
     for (const row of others) {
         tabs.push({
-            id: String(row.id),
+            id: factureTabId(row),
             label: formatPayTabLabel(row),
             facture: row,
             mode: isEmptyUnvalidatedFacture(row) ? 'validate' : 'pay',

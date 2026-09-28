@@ -105,7 +105,7 @@ const formatMoney = (value) => `${Number(value || 0).toLocaleString('fr-FR')} FC
             </thead>
             <tbody>
                 <tr>
-                    <td>{{ paiement?.assurance ? 'Paiement facture assurance' : 'Paiement devis' }} #{{ paiement?.devis?.id || '—' }}</td>
+                    <td>{{ paiement?.kind === 'service_cabinet' ? 'Paiement service cabinet' : paiement?.assurance ? 'Paiement facture assurance' : 'Paiement facture' }} #{{ paiement?.devis?.id || '—' }}</td>
                     <td class="right">{{ formatMoney(paiement?.montant) }}</td>
                 </tr>
             </tbody>

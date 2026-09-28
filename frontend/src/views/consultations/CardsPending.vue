@@ -6,6 +6,7 @@ import { activateConsultationsTourMock, deactivateConsultationsTourMock, resetCo
 import { useGuidedTour } from '@/composables/useGuidedTour';
 import { openConsultationFiche } from '@/composables/useFicheMedicaleAccess';
 import FormCreateConsultation from '@/components/patients/FormCreateConsultation.vue';
+import CabinetServiceDialog from '@/components/patients/CabinetServiceDialog.vue';
 import { cancelConsultation, fetchPendingConsultations, defaultSoinList, normalizeSoinList } from '@/services/consultations';
 import { fetchPublicGeneralSettings } from '@/services/globalSettingsService';
 import { activatePatientsTourMock, deactivatePatientsTourMock, resetPatientsTourMockData } from '@/services/patientsTourMock';
@@ -162,6 +163,20 @@ const handleCancel = async (consultation) => {
 const handleOpenFiche = (consultation) => {
     if (!consultation || isClosed(consultation)) return;
     goToConsultation(consultation);
+};
+
+const cabinetServiceVisible = ref(false);
+const cabinetServicePatient = ref(null);
+const openCabinetService = (consultation) => {
+    const patientId = consultation?.patientId || consultation?.patient?.id;
+    if (!patientId) {
+        return;
+    }
+    cabinetServicePatient.value = {
+        id: patientId,
+        name: consultation?.patientName || consultation?.patient || ''
+    };
+    cabinetServiceVisible.value = true;
 };
 
 const handleCancelWithConfirm = (event, consultation) => {
@@ -559,6 +574,14 @@ const viewOptions = [
                                         @click.stop="handleOpenFiche(consultation)"
                                     />
                                     <Button
+                                        icon="pi pi-building"
+                                        severity="warn"
+                                        size="small"
+                                        outlined
+                                        label="Service cabinet"
+                                        @click.stop="openCabinetService(consultation)"
+                                    />
+                                    <Button
                                         v-if="showActions.cancel(consultation)"
                                         :data-tour="idx === 0 ? 'consultations-cards.cancel-action' : null"
                                         label="Annuler"
@@ -645,6 +668,14 @@ const viewOptions = [
                                 @click.stop="handleOpenFiche(consultation)"
                             />
                             <Button
+                                icon="pi pi-building"
+                                severity="warn"
+                                size="small"
+                                outlined
+                                v-tooltip.top="'Enregistrer un service cabinet'"
+                                @click.stop="openCabinetService(consultation)"
+                            />
+                            <Button
                                 v-if="showActions.cancel(consultation)"
                                 :data-tour="idx === 0 ? 'consultations-cards.cancel-action' : null"
                                 icon="pi pi-times"
@@ -723,6 +754,7 @@ const viewOptions = [
         @saved="handleQuickDialogDone"
         @closed="handleQuickDialogDone"
     />
+    <CabinetServiceDialog v-model:visible="cabinetServiceVisible" :patient-id="cabinetServicePatient?.id" :patient-name="cabinetServicePatient?.name || ''" />
 </template>
 
 <style scoped>

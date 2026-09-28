@@ -6,6 +6,7 @@ import Popover from 'primevue/popover';
 import OverlayBadge from 'primevue/overlaybadge';
 import { useMercureNotifications } from '@/composables/useMercureNotifications';
 import { useNotificationPresentation } from '@/composables/useNotificationPresentation';
+import { useNetworkStatus } from '@/composables/useNetworkStatus';
 import { navigateToNotificationLink } from '@/utils/notificationLinks';
 
 const props = defineProps({
@@ -24,6 +25,7 @@ const router = useRouter();
 const toast = useToast();
 
 const { notifications, unreadCount, connectionState, start: startNotifications, markAsRead, markAllAsRead, onNotificationReceived } = useMercureNotifications();
+const { isOffline } = useNetworkStatus();
 const { shouldShowInApp } = useNotificationPresentation();
 
 const showNotificationsPopover = ref(false);
@@ -34,6 +36,10 @@ const isNotificationsLoading = ref(false);
 const topbarNotifications = computed(() => notifications.value.slice(0, 5));
 
 const connectionIndicatorClass = computed(() => {
+    if (isOffline.value) {
+        return 'is-disconnected';
+    }
+
     if (connectionState.value === 'connected') {
         return 'is-connected';
     }
@@ -46,6 +52,10 @@ const connectionIndicatorClass = computed(() => {
 });
 
 const connectionIndicatorTitle = computed(() => {
+    if (isOffline.value) {
+        return 'Connexion internet coupée — le problème vient de votre réseau, pas de l\'application';
+    }
+
     if (connectionState.value === 'connected') {
         return 'Temps réel actif';
     }

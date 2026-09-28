@@ -353,21 +353,22 @@ export const setConsultationFiche = async (consultationId, ficheId = null, token
 };
 
 export const defaultSoinList = [
-    { description: 'Consultation', montant: 0, attribution: 'medecin', categorieId: null },
-    { description: 'Détartrage', montant: 0, attribution: 'medecin', categorieId: null },
-    { description: 'Extraction', montant: 0, attribution: 'medecin', categorieId: null },
-    { description: 'Remplissage', montant: 0, attribution: 'medecin', categorieId: null },
-    { description: 'Composite', montant: 0, attribution: 'medecin', categorieId: null },
-    { description: 'Amalgame', montant: 0, attribution: 'medecin', categorieId: null },
-    { description: 'Traitement de canal', montant: 0, attribution: 'medecin', categorieId: null },
-    { description: 'Traumatisme', montant: 0, attribution: 'medecin', categorieId: null },
-    { description: 'Couronne', montant: 0, attribution: 'medecin', categorieId: null },
-    { description: 'Blanchiment', montant: 0, attribution: 'medecin', categorieId: null },
-    { description: 'Radio', montant: 0, attribution: 'cabinet', categorieId: null },
-    { description: 'Prothèse', montant: 0, attribution: 'medecin', categorieId: null },
-    { description: 'Orthodontie', montant: 0, attribution: 'medecin', categorieId: null },
-    { description: 'Chirurgie', montant: 0, attribution: 'medecin', categorieId: null }
+    { description: 'Consultation', montant: 0, categorieId: null },
+    { description: 'Détartrage', montant: 0, categorieId: null },
+    { description: 'Extraction', montant: 0, categorieId: null },
+    { description: 'Remplissage', montant: 0, categorieId: null },
+    { description: 'Composite', montant: 0, categorieId: null },
+    { description: 'Amalgame', montant: 0, categorieId: null },
+    { description: 'Traitement de canal', montant: 0, categorieId: null },
+    { description: 'Traumatisme', montant: 0, categorieId: null },
+    { description: 'Couronne', montant: 0, categorieId: null },
+    { description: 'Blanchiment', montant: 0, categorieId: null },
+    { description: 'Prothèse', montant: 0, categorieId: null },
+    { description: 'Orthodontie', montant: 0, categorieId: null },
+    { description: 'Chirurgie', montant: 0, categorieId: null }
 ];
+
+export const defaultServicesCabinetList = [{ description: 'Radio', montant: 0 }];
 
 const cloneDefaultSoinList = () => defaultSoinList.map((item) => ({ ...item }));
 
@@ -411,9 +412,12 @@ export const normalizeSoinList = (items, categories = null) => {
     const clean = [];
 
     items.forEach((item) => {
+        if (item && typeof item === 'object' && item.attribution === 'cabinet') {
+            return;
+        }
+
         let description = '';
         let montant = 0;
-        let attribution = 'medecin';
         let categorieId = null;
 
         if (typeof item === 'string' || typeof item === 'number') {
@@ -425,7 +429,6 @@ export const normalizeSoinList = (items, categories = null) => {
             if (!Number.isFinite(montant) || montant < 0) {
                 montant = 0;
             }
-            attribution = item.attribution === 'cabinet' ? 'cabinet' : 'medecin';
             const rawCategorieId = item.categorieId == null ? '' : String(item.categorieId).trim();
             if (rawCategorieId) {
                 categorieId = validCategoryIds == null || validCategoryIds.has(rawCategorieId)
@@ -439,10 +442,33 @@ export const normalizeSoinList = (items, categories = null) => {
         }
 
         unique.add(description);
-        clean.push({ description, montant, attribution, categorieId });
+        clean.push({ description, montant, categorieId });
     });
 
     return clean.length ? clean : cloneDefaultSoinList();
+};
+
+export const normalizeServicesCabinetList = (items) => {
+    if (!Array.isArray(items)) {
+        return defaultServicesCabinetList.map((item) => ({ ...item }));
+    }
+
+    const unique = new Set();
+    const clean = [];
+    items.forEach((item) => {
+        const description = String(item?.description ?? item?.label ?? item ?? '').trim();
+        if (!description || unique.has(description)) {
+            return;
+        }
+        let montant = Number(item?.montant ?? item?.prix ?? 0);
+        if (!Number.isFinite(montant) || montant < 0) {
+            montant = 0;
+        }
+        unique.add(description);
+        clean.push({ description, montant });
+    });
+
+    return clean;
 };
 
 export const soinLabelList = (items) => normalizeSoinList(items).map((item) => item.description);
@@ -455,17 +481,6 @@ export const findSoinMontant = (items, description) => {
     const match = normalizeSoinList(items).find((item) => item.description === label);
     return match ? match.montant : null;
 };
-
-export const findSoinAttribution = (items, description) => {
-    const label = String(description || '').trim();
-    if (!label) {
-        return 'medecin';
-    }
-    const match = normalizeSoinList(items).find((item) => item.description === label);
-    return match?.attribution === 'cabinet' ? 'cabinet' : 'medecin';
-};
-
-export const isCabinetSoin = (items, description) => findSoinAttribution(items, description) === 'cabinet';
 
 export const teethOptions = (() => {
     const options = [];

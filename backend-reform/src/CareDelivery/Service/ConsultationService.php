@@ -71,7 +71,6 @@ class ConsultationService
         private ConsultationNotificationService $consultationNotificationService,
         private FicheMedicaleRepository $ficheMedicaleRepo,
         private FactureRepository $factureRepo,
-        private ActAttributionResolver $actAttributionResolver,
     ) {
         $this->projectDir = $params->get('kernel.project_dir');
     }
@@ -322,8 +321,7 @@ class ConsultationService
                     ->setType($a['type'] ?? ($a['designation'] ?? ''))
                     ->setDescription($a['description'] ?? ($a['designation'] ?? ''))
                     ->setPrix((float) ($a['prix'] ?? $a['montant'] ?? 0))
-                    ->setQuantite((int) ($a['quantite'] ?? $a['qte'] ?? 1))
-                    ->setAttribution($this->actAttributionResolver->resolveFromPayload(is_array($a) ? $a : []));
+                    ->setQuantite((int) ($a['quantite'] ?? $a['qte'] ?? 1));
                 $consultation->addActe($act);
                 $this->em->persist($act);
             }
@@ -528,7 +526,6 @@ class ConsultationService
                 'prix' => $prix,
                 'quantite' => $quantite,
                 'montant' => $prix * $quantite,
-                'attribution' => $acte->getAttribution(),
             ];
         }
 
@@ -898,7 +895,6 @@ class ConsultationService
                 'description' => $a->getDescription(),
                 'prix' => $a->getPrix(),
                 'quantite' => $a->getQuantite(),
-                'attribution' => $a->getAttribution(),
             ];
         }
 
@@ -1082,7 +1078,6 @@ class ConsultationService
                 'description' => $a->getDescription(),
                 'prix'        => $a->getPrix(),
                 'quantite'    => $a->getQuantite(),
-                'attribution' => $a->getAttribution(),
             ];
         }
 
@@ -1612,7 +1607,6 @@ class ConsultationService
                 'prix' => $acte->getPrix(),
                 'dent' => $dentValue,
                 'dents' => $this->normalizeDentList($dentValue),
-                'attribution' => $acte->getAttribution(),
             ];
         }
 
@@ -1667,8 +1661,7 @@ class ConsultationService
                 ->setType($designation)
                 ->setDescription($description)
                 ->setPrix($prix)
-                ->setQuantite($quantite)
-                ->setAttribution($this->actAttributionResolver->resolveFromPayload(is_array($ligneData) ? $ligneData : []));
+                ->setQuantite($quantite);
             $this->em->persist($acte);
         }
 

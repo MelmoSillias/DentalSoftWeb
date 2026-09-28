@@ -9,7 +9,7 @@ import MultiSelect from 'primevue/multiselect';
 import InputText from 'primevue/inputtext';
 import ContextMenu from 'primevue/contextmenu';
 import ProgressSpinner from 'primevue/progressspinner';
-import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import Popover from 'primevue/popover';
 import DetailsRdv from './DetailsRdv.vue';
 import { addMinutes } from '@/utils/dateUtils';
@@ -23,7 +23,8 @@ const props = defineProps({
     api: { type: Object, required: true },
     refreshKey: { type: Number, default: 0 },
     lockedMedecinId: { type: Number, default: null },
-    medecinReadonly: { type: Boolean, default: false }
+    medecinReadonly: { type: Boolean, default: false },
+    embedded: { type: Boolean, default: false }
 });
 
 const emit = defineEmits(['request-create', 'request-validate', 'request-cancel', 'request-report', 'request-sms-reminder', 'request-sms-schedule']);
@@ -56,6 +57,8 @@ const filters = reactive({
     statuses: ['pending', 'validated', 'postponed']
 });
 const calendarRef = ref();
+const calendarFrameRef = ref(null);
+let calendarResizeObserver;
 const contextMenu = ref();
 const selectedEvent = ref(null);
 const drawerVisible = ref(false);
@@ -271,7 +274,7 @@ const calendarOptions = reactive({
     eventDidMount: handleEventMount,
     dateClick: handleDateClick,
     datesSet: handleDatesSet,
-    height: 'auto',
+    height: props.embedded ? '100%' : 'auto',
     headerToolbar: {
         left: 'prev,next today',
         center: 'title',
@@ -299,8 +302,23 @@ const applyOpeningHours = async () => {
     }
 };
 
+const syncCalendarSize = () => {
+    calendarRef.value?.getApi?.()?.updateSize();
+};
+
 onMounted(() => {
     applyOpeningHours();
+    if (!props.embedded) return;
+    nextTick(() => {
+        syncCalendarSize();
+        if (!calendarFrameRef.value || typeof ResizeObserver === 'undefined') return;
+        calendarResizeObserver = new ResizeObserver(() => syncCalendarSize());
+        calendarResizeObserver.observe(calendarFrameRef.value);
+    });
+});
+
+onBeforeUnmount(() => {
+    calendarResizeObserver?.disconnect();
 });
 
 watch(
@@ -335,9 +353,9 @@ defineExpose({ reloadOnAction });
 </script>
 
 <template>
-    <section class="weekly-view-page flex flex-col gap-3 xs:gap-4 p-0.5 xs:p-1">
+    <section class="weekly-view-page flex flex-col gap-3 xs:gap-4 p-0.5 xs:p-1" :class="embedded ? 'is-embedded h-full min-h-0 min-w-0 flex-1' : undefined">
         <!-- Filtres – plus moderne et espacé -->
-        <div data-tour="agenda-rdv.scope" class="flex flex-row items-center gap-3 xs:gap-4 rounded-xl xs:rounded-2xl bg-white p-3 xs:p-4 shadow-sm ring-1 ring-gray-200/70 dark:bg-gray-800 dark:ring-gray-700/60 dark:shadow-gray-900/20">
+        <div data-tour="agenda-rdv.scope" class="flex flex-row items-center gap-3 xs:gap-4 rounded-xl xs:rounded-2xl bg-white p-3 xs:p-4 shadow-sm ring-1 ring-gray-200/70 dark:bg-gray-800 dark:ring-gray-700/60 dark:shadow-gray-900/20" :class="embedded ? 'min-w-0 shrink-0 overflow-x-auto' : undefined">
             <Select
                 v-model="filters.medecinId"
                 :options="medecinsOptions"
@@ -356,7 +374,11 @@ defineExpose({ reloadOnAction });
         </div>
 
         <!-- Conteneur calendrier -->
-        <div class="relative overflow-x-auto p-3 xs:p-4 rounded-xl xs:rounded-2xl border border-gray-200 bg-white shadow-md dark:border-gray-700 dark:bg-gray-800 dark:shadow-gray-950/30">
+        <div
+            ref="calendarFrameRef"
+            class="relative rounded-xl xs:rounded-2xl border border-gray-200 bg-white p-3 xs:p-4 shadow-md dark:border-gray-700 dark:bg-gray-800 dark:shadow-gray-950/30"
+            :class="embedded ? 'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden' : 'overflow-x-auto'"
+        >
             <!-- Loading overlay plus doux -->
             <div v-if="loading" class="absolute inset-0 z-20 flex items-center justify-center bg-white/70 backdrop-blur-[1px] dark:bg-gray-900/70">
                 <ProgressSpinner strokeWidth="5" style="width: 3rem; height: 3rem" class="xs:style='width: 3.5rem; height: 3.5rem'" />
@@ -373,18 +395,20 @@ defineExpose({ reloadOnAction });
                 </div>
             </div>
 
-            <FullCalendar ref="calendarRef" :options="calendarOptions">
-                <template v-slot:eventContent="arg">
-                    <div class="event-inner">
-                        <div class="event-main">
-                            <div class="event-header">
-                                <strong>{{ arg.event.extendedProps.patientName || 'Patient' }}</strong>
+            <div :class="embedded ? 'h-full min-h-0 flex-1 overflow-hidden' : undefined">
+                <FullCalendar ref="calendarRef" :options="calendarOptions">
+                    <template v-slot:eventContent="arg">
+                        <div class="event-inner">
+                            <div class="event-main">
+                                <div class="event-header">
+                                    <strong>{{ arg.event.extendedProps.patientName || 'Patient' }}</strong>
+                                </div>
+                                <div v-if="arg.event.extendedProps.smsReminder?.label" class="mt-1 truncate text-[10px] font-medium text-slate-500 dark:text-slate-300">SMS: {{ arg.event.extendedProps.smsReminder.label }}</div>
                             </div>
-                            <div v-if="arg.event.extendedProps.smsReminder?.label" class="mt-1 truncate text-[10px] font-medium text-slate-500 dark:text-slate-300">SMS: {{ arg.event.extendedProps.smsReminder.label }}</div>
                         </div>
-                    </div>
-                </template>
-            </FullCalendar>
+                    </template>
+                </FullCalendar>
+            </div>
 
             <ContextMenu ref="contextMenu" :model="menuItems" />
 
@@ -453,6 +477,11 @@ defineExpose({ reloadOnAction });
    Personnalisation FullCalendar via variables CSS (v6)
    https://fullcalendar.io/docs/css-customization
    ────────────────────────────────────────────── */
+
+.weekly-view-page.is-embedded :deep(.fc) {
+    height: 100%;
+    min-height: 0;
+}
 
 .weekly-view-page .fc {
     --fc-border-color: theme('colors.gray.200');

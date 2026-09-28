@@ -1,28 +1,28 @@
 const cabinetConfig = {
-    "id": "mondentiste",
-    "displayName": "Mon dentiste",
-    "appTitle": "DentalSoft - Mon dentiste",
+    "id": "default",
+    "displayName": "Cabinet Demo",
+    "appTitle": "DentalSoft - Cabinet Demo",
     "brandName": "DentalSoft",
-    "brandSubtitle": "Mon dentiste",
+    "brandSubtitle": "Cabinet Dentaire Demo",
     "settingsTitle": "Configuration du cabinet",
     "settingsDescription": "Personnalisez l'apparence et les flux metier de DentalSoft",
-    "smsCabinetName": "Mon dentiste",
-    "smsTestMessage": "Message de test Mon dentiste.",
-    "reportCabinetName": "Mon dentiste",
-    "cabinetPhone": "+223 71 26 30 71",
+    "smsCabinetName": "CABINET DEMO",
+    "smsTestMessage": "Message de test CABINET DEMO.",
+    "reportCabinetName": "CABINET DENTAIRE DEMO",
+    "cabinetPhone": "+223 XX XX XX XX / +223 XX XX XX XX",
     "printProfile": {
-        "name": "MON DENTISTE CABINET DENTAIRE",
+        "name": "CABINET DENTAIRE DEMO",
         "addressLines": [
-            "Bacodjicoroni en face de la pharmacie Penda"
+            "BAMAKO, MALI, SIMCORP,",
+            "PORTE : 192; BKO MALI"
         ],
         "phones": [
-            "71 26 30 71"
+            "82 81 90 79"
         ],
-        "email": "mail@mondentiste-mali.com",
-        "website": "mondentiste-mali.com"
+        "email": "bamogomohamed90@gmail.com"
     },
-    "viteApiPrefix": "https://api.mondentiste-mali.com/api",
-    "viteFilePrefix": "https://api.mondentiste-mali.com",
+    "viteApiPrefix": "http://localhost:8000/api",
+    "viteFilePrefix": "http://localhost:8000",
     "brandingAssets": {
         "logo": "logo.png",
         "logoAlt": "logo.jpeg",
@@ -34,9 +34,9 @@ const cabinetConfig = {
         "notificationSound": "notification.mp3"
     },
     "pwa": {
-        "name": "DENTALSOFT - MON DENTISTE",
+        "name": "DENTALSOFT - CABINET DEMO",
         "shortName": "DENTALSOFT",
-        "description": "Application de gestion de cabinet dentaire - MON DENTISTE",
+        "description": "Application de gestion de cabinet dentaire - CABINET DEMO",
         "themeColor": "#5ad6f5",
         "backgroundColor": "#ffffff",
         "startUrl": "/",

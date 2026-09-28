@@ -5,7 +5,7 @@ import InputText from 'primevue/inputtext';
 import MultiSelect from 'primevue/multiselect';
 import Select from 'primevue/select';
 import { computed } from 'vue';
-import { findSoinMontant, findSoinAttribution, formatActeCurrency, normalizeDentList, normalizeSoinList, teethOptions } from '@/services/consultations';
+import { findSoinMontant, formatActeCurrency, normalizeDentList, normalizeSoinList, teethOptions } from '@/services/consultations';
 
 const props = defineProps({
     acte: {
@@ -40,14 +40,11 @@ const soinOptions = computed(() =>
     normalizeSoinList(props.soins).map((item) => ({
         label: item.description,
         value: item.description,
-        montant: item.montant,
-        attribution: item.attribution === 'cabinet' ? 'cabinet' : 'medecin'
+        montant: item.montant
     }))
 );
 
-const isCabinetActe = computed(() => props.acte?.attribution === 'cabinet');
-
-const cardClasses = computed(() => (isCabinetActe.value ? 'border-amber-300 dark:border-amber-600 bg-amber-50/60 dark:bg-amber-950/20' : 'border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-800'));
+const cardClasses = 'border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-800';
 
 const dentSelection = computed(() => normalizeDentList(props.acte?.dent));
 
@@ -100,16 +97,15 @@ const updateField = (patch) => emit('update', patch);
 const onSoinTypeChange = (value) => {
     const type = value || '';
     if (!type) {
-        updateField({ type: '', attribution: 'medecin' });
+        updateField({ type: '' });
         return;
     }
     const montant = findSoinMontant(props.soins, type);
-    const attribution = findSoinAttribution(props.soins, type);
     if (montant === null) {
-        updateField({ type, attribution });
+        updateField({ type });
         return;
     }
-    updateField({ type, prix: montant, attribution });
+    updateField({ type, prix: montant });
 };
 </script>
 
@@ -192,9 +188,7 @@ const onSoinTypeChange = (value) => {
                         <template #option="slotProps">
                             <div class="flex items-center justify-between gap-3 w-full">
                                 <div class="flex items-center gap-2 min-w-0">
-                                    <i v-if="slotProps.option.attribution === 'cabinet'" class="pi pi-building text-amber-600 dark:text-amber-400 shrink-0" />
                                     <span class="font-medium truncate">{{ slotProps.option.label }}</span>
-                                    <span v-if="slotProps.option.attribution === 'cabinet'" class="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-amber-800 dark:bg-amber-900/50 dark:text-amber-200"> Cabinet </span>
                                 </div>
                                 <span class="text-sm text-surface-500 dark:text-surface-400 whitespace-nowrap">
                                     {{ formatActeCurrency(slotProps.option.montant) }}

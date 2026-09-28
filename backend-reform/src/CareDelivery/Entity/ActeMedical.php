@@ -33,9 +33,6 @@ class ActeMedical
     #[ORM\Column(type: 'integer')]
     private ?int $quantite = null;
 
-    #[ORM\Column(type: 'string', length: 20, options: ['default' => 'medecin'])]
-    private string $attribution = 'medecin';
-
     public function getId(): ?int
     {
         return $this->id;
@@ -107,21 +104,5 @@ class ActeMedical
             return null;
         }
         return $this->prix * $this->quantite;
-    }
-
-    public function getAttribution(): string
-    {
-        return $this->attribution;
-    }
-
-    public function setAttribution(string $attribution): self
-    {
-        $this->attribution = $attribution === 'cabinet' ? 'cabinet' : 'medecin';
-        return $this;
-    }
-
-    public function isCabinetService(): bool
-    {
-        return $this->attribution === 'cabinet';
     }
 }

@@ -1,6 +1,7 @@
 <script setup>
 import { watch } from 'vue';
 import { useRoute } from 'vue-router';
+import OfflineConnectionBanner from '@/components/OfflineConnectionBanner.vue';
 import PwaUpdateBanner from '@/components/PwaUpdateBanner.vue';
 
 const route = useRoute();
@@ -22,6 +23,7 @@ watch(
 </script>
 
 <template>
+    <OfflineConnectionBanner />
     <PwaUpdateBanner />
     <router-view />
 </template>

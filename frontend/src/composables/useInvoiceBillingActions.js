@@ -8,7 +8,7 @@ import { useToast } from 'primevue/usetoast';
 import { useAuthStore } from '@/stores/auth';
 import { usePaymentMethodsStore } from '@/stores/paymentMethods';
 import { usePrinter } from '@/composables/usePrinter';
-import { advanceAfterSettledTab, applyPartialPaymentToTab, buildPayTabs, isInsuranceFactureRow, resolveFacturePatientId, resolveOpenPayDialogMode, sumPriorReliquatFromTabs } from '@/composables/usePayTabsDialog';
+import { advanceAfterSettledTab, applyPartialPaymentToTab, buildPayTabs, factureTabId, isInsuranceFactureRow, resolveFacturePatientId, resolveOpenPayDialogMode, sumPriorReliquatFromTabs } from '@/composables/usePayTabsDialog';
 import { fetchFactureDetail, fetchInsuranceClaimDetail, fetchUnpaidFacturesByPatient, payFacture, payInsurancePatientShare, resetFacturePayments, validateEmptyFacture } from '@/services/caisseService';
 import { fetchFactureAssurancePrintData, fetchInvoicePrintData, fetchReceiptPrintData } from '@/services/printService';
 import { getDefaultClassicMethod } from '@/utils/paymentMethodUtils';
@@ -207,7 +207,7 @@ export function useInvoiceBillingActions(options = {}) {
     };
 
     const handleAfterInvoiceSettled = async () => {
-        const settledId = activePayTabId.value ?? String(selectedFacture.value?.id ?? '');
+        const settledId = activePayTabId.value ?? factureTabId(selectedFacture.value);
         const hadReliquatTabs = hasPayReliquatTabs.value;
 
         await notifySettled();
@@ -247,7 +247,7 @@ export function useInvoiceBillingActions(options = {}) {
 
         const mode = resolveOpenPayDialogMode(normalized, primaryMode);
         payTabs.value = buildPayTabs(normalized, unpaidRows, { primaryMode: mode });
-        activePayTabId.value = String(normalized.id);
+        activePayTabId.value = factureTabId(normalized);
         pendingFacture.value = mode === 'validate' ? normalized : null;
         if (mode === 'pay') {
             syncPayFormForFacture(normalized);

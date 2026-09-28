@@ -116,7 +116,10 @@ class CaisseController extends AbstractController
             $end = (clone $start)->setTime(23, 59, 59);
         }
 
-        $rows = $this->entryPoint->getClassicWorkflow()->listFacturesImpayees($start, $end);
+        $rows = array_merge(
+            $this->entryPoint->getClassicWorkflow()->listFacturesImpayees($start, $end),
+            $this->entryPoint->listUnpaidCabinetFactures($start, $end),
+        );
 
         return new JsonResponse($this->entryPoint->enrichFacturesWithPatientReliquat($rows));
     }
@@ -141,12 +144,11 @@ class CaisseController extends AbstractController
         $end->setTime(23, 59, 59);
 
         $payments = $this->entryPoint->listPaiementsFactures($start, $end);
-        $cabinetShare = $this->entryPoint->computeCabinetPaymentsShare($start, $end);
 
         return new JsonResponse([
             'data' => $payments,
             'summary' => [
-                'cabinetShare' => $cabinetShare,
+                'servicesCabinet' => $this->entryPoint->summarizeCabinetServices($start, $end),
             ],
         ]);
     }

@@ -11,7 +11,7 @@ import Tag from 'primevue/tag';
 import { computed, ref } from 'vue';
 import PanelDatePicker from '@/components/common/PanelDatePicker.vue';
 import { useInternetFeatures } from '@/composables/useInternetFeatures';
-import { canModifyFacture, canPreviewFacture, canSettleFacture, computeFactureStatus, computePriorReliquat, isInsuranceFactureRow, isValidatedEmptyFacture, targetIsFreeFacture } from '@/utils/factureRow';
+import { canModifyFacture, canPreviewFacture, canSettleFacture, computeFactureStatus, computePriorReliquat, isCabinetServiceFacture, isInsuranceFactureRow, isValidatedEmptyFacture, targetIsFreeFacture } from '@/utils/factureRow';
 
 const { isInternetFeaturesEnabled } = useInternetFeatures();
 
@@ -20,7 +20,7 @@ const props = defineProps({
     facturesLoading: { type: Boolean, default: false },
     payments: { type: Array, default: () => [] },
     paymentsLoading: { type: Boolean, default: false },
-    cabinetPaymentsShare: { type: Number, default: 0 },
+    servicesCabinet: { type: Object, default: () => ({ count: 0, facture: 0, encaisse: 0, reste: 0 }) },
     factureType: { type: String, default: 'all' },
     factureRange: { type: Array, default: () => [] },
     paymentRange: { type: Array, default: () => [] },
@@ -69,6 +69,12 @@ const paymentRangeModel = computed({
 });
 
 const factureSearch = ref('');
+const factureOrigin = ref('all');
+const factureOriginOptions = [
+    { label: 'Tous', value: 'all' },
+    { label: 'Consultations', value: 'consultation' },
+    { label: 'Services cabinet', value: 'service_cabinet' }
+];
 const paymentsSearch = ref('');
 const paymentFamilyFilter = ref('non-insurance');
 const paymentModeFilter = ref('all');
@@ -114,16 +120,32 @@ const formatPatientName = (row) => {
 
 const priorReliquatAmount = (row) => computePriorReliquat(row);
 
-const isInvoiceStylePayment = (payment) => ['devis', 'facture', 'facture_assurance'].includes(payment?.type);
+const isInvoiceStylePayment = (payment) => ['devis', 'facture', 'facture_assurance', 'service_cabinet'].includes(payment?.type);
+const isCabinetRow = (row) => isCabinetServiceFacture(row);
+const documentLabel = (row) => (isCabinetRow(row) ? 'SERVICE CABINET' : isInsuranceRow(row) ? 'FACTURE ASSURANCE' : 'FACTURE');
+const matchesOrigin = (row) => {
+    if (factureOrigin.value === 'service_cabinet') return isCabinetRow(row);
+    if (factureOrigin.value === 'consultation') return !isCabinetRow(row);
+    return true;
+};
+const paymentMatchesInvoice = (payment, invoice) => {
+    if (Number(payment?.factureId) !== Number(invoice?.id)) return false;
+    if (isCabinetRow(invoice)) return payment?.type === 'service_cabinet';
+    if (isInsuranceRow(invoice)) return payment?.type === 'facture_assurance';
+    return payment?.type === 'facture' || payment?.type === 'devis';
+};
 
 const filteredFactures = computed(() => {
     const list = Array.isArray(props.factures) ? props.factures : [];
     const query = factureSearchQuery.value;
-    return list.filter((row) => {
-        const patient = row.patient && typeof row.patient === 'object' ? `${row.patient.nom || ''} ${row.patient.prenom || ''}`.trim() : row.patient || '';
-        const status = computeStatus(row).label;
-        return matchesQuery([patient, row.telephone, row.date, formatDate(row.date), row.montant, row.reste, status], query);
-    });
+    return list
+        .filter((row) => {
+            if (!matchesOrigin(row)) return false;
+            const patient = row.patient && typeof row.patient === 'object' ? `${row.patient.nom || ''} ${row.patient.prenom || ''}`.trim() : row.patient || '';
+            const status = computeStatus(row).label;
+            return matchesQuery([patient, row.telephone, row.date, formatDate(row.date), row.montant, row.reste, status], query);
+        })
+        .map((row) => ({ ...row, rowKey: `${row.type || row.kind || 'facture'}-${row.id}` }));
 });
 
 const filteredFacturesR = computed(() => {
@@ -131,18 +153,14 @@ const filteredFacturesR = computed(() => {
     const payments = Array.isArray(props.payments) ? props.payments : [];
 
     return rows.map((invoice) => {
-        const invoiceId = Number(invoice?.id);
         const consultationId = Number(invoice?.consultation);
 
         const invoicePayments = payments
-            .filter((payment) => {
-                const isInvoicePay = payment?.type === 'facture' || payment?.type === 'facture_assurance' || payment?.type === 'devis';
-                return isInvoicePay && Number(payment?.factureId) === invoiceId;
-            })
+            .filter((payment) => paymentMatchesInvoice(payment, invoice))
             .map((payment) => ({
                 ...payment,
-                detailType: payment?.type === 'facture_assurance' ? 'assurance_payment' : 'facture_payment',
-                detailLabel: payment?.type === 'facture_assurance' ? 'Paiement assurance' : 'Paiement facture'
+                detailType: payment?.type === 'service_cabinet' ? 'cabinet_payment' : payment?.type === 'facture_assurance' ? 'assurance_payment' : 'facture_payment',
+                detailLabel: payment?.type === 'service_cabinet' ? 'Paiement service cabinet' : payment?.type === 'facture_assurance' ? 'Paiement assurance' : 'Paiement facture'
             }));
 
         const consultationTicket = consultationId > 0 ? payments.find((payment) => payment?.type === 'ticket' && Number(payment?.consultationId) === consultationId) : null;
@@ -290,7 +308,12 @@ const detailedStats = computed(() => {
 });
 
 const totalRevenueLabel = computed(() => formatFcfa(detailedStats.value.totalPaid));
-const cabinetShareLabel = computed(() => formatFcfa(Number(props.cabinetPaymentsShare) || 0));
+const servicesCabinetStats = computed(() => ({
+    count: Number(props.servicesCabinet?.count) || 0,
+    facture: Number(props.servicesCabinet?.facture) || 0,
+    encaisse: Number(props.servicesCabinet?.encaisse) || 0,
+    reste: Number(props.servicesCabinet?.reste) || 0
+}));
 
 const formatFcfa = (value) => `${Number(value || 0).toLocaleString('fr-FR')} FCFA`;
 
@@ -366,7 +389,7 @@ const printDetailPayment = (row) => {
                 <div class="top-bar-metric">
                     <span class="top-bar-metric__label">Encaissements du jour</span>
                     <strong class="top-bar-metric__value">{{ totalRevenueLabel }}</strong>
-                    <span v-if="cabinetPaymentsShare > 0" class="top-bar-metric__hint"> Dont services cabinet : {{ cabinetShareLabel }} </span>
+                    <span v-if="servicesCabinetStats.encaisse > 0" class="top-bar-metric__hint"> Services cabinet encaissés : {{ formatFcfa(servicesCabinetStats.encaisse) }} </span>
                 </div>
                 <Button label="Statistiques" icon="pi pi-chart-bar" severity="secondary" outlined @click="showStatsModal = true" />
             </div>
@@ -384,11 +407,21 @@ const printDetailPayment = (row) => {
                     <div class="kpi-card success">
                         <span>Encaissements du jour</span>
                         <strong>{{ formatFcfa(detailedStats.totalPaid) }}</strong>
-                        <small v-if="cabinetPaymentsShare > 0" class="kpi-card__hint"> Dont services cabinet : {{ cabinetShareLabel }} </small>
+                        <small v-if="servicesCabinetStats.encaisse > 0" class="kpi-card__hint"> Services cabinet : {{ formatFcfa(servicesCabinetStats.encaisse) }} </small>
                     </div>
                     <div class="kpi-card danger">
                         <span>Restant</span>
                         <strong>{{ formatFcfa(detailedStats.totalUnpaid) }}</strong>
+                    </div>
+                </div>
+
+                <div class="stats-section">
+                    <h4>Services cabinet</h4>
+                    <div class="status-grid">
+                        <div class="status-item">Nombre: {{ servicesCabinetStats.count }}</div>
+                        <div class="status-item">Facturé: {{ formatFcfa(servicesCabinetStats.facture) }}</div>
+                        <div class="status-item paid">Encaissé: {{ formatFcfa(servicesCabinetStats.encaisse) }}</div>
+                        <div class="status-item unpaid">Reste: {{ formatFcfa(servicesCabinetStats.reste) }}</div>
                     </div>
                 </div>
 
@@ -443,6 +476,10 @@ const printDetailPayment = (row) => {
                         <InputText v-model="factureSearch" placeholder="Patient, téléphone, montant..." fluid />
                     </div>
                     <div class="filter-item">
+                        <label>Origine</label>
+                        <Select v-model="factureOrigin" :options="factureOriginOptions" optionLabel="label" optionValue="value" />
+                    </div>
+                    <div class="filter-item">
                         <label>Affichage</label>
                         <Select v-model="factureTypeModel" :options="factureTypeOptions" optionLabel="label" optionValue="value" />
                     </div>
@@ -455,7 +492,7 @@ const printDetailPayment = (row) => {
             </div>
 
             <!-- Vue standard -->
-            <DataTable v-if="overviewDisplayMode === 'standard'" class="rounded-xl overflow-hidden" :value="filteredFactures" dataKey="id" :loading="facturesLoading" paginator :rows="10" :rowsPerPageOptions="[5, 10, 20]" responsiveLayout="scroll">
+            <DataTable v-if="overviewDisplayMode === 'standard'" class="rounded-xl overflow-hidden" :value="filteredFactures" dataKey="rowKey" :loading="facturesLoading" paginator :rows="10" :rowsPerPageOptions="[5, 10, 20]" responsiveLayout="scroll">
                 <Column field="date" header="Date" sortable>
                     <template #body="{ data }">{{ formatDate(data.date) }}</template>
                 </Column>
@@ -495,6 +532,7 @@ const printDetailPayment = (row) => {
                     <template #body="{ data }">
                         <div class="flex flex-wrap gap-2">
                             <Tag :value="computeStatus(data).label" :severity="computeStatus(data).severity" />
+                            <Tag v-if="isCabinetRow(data)" value="Service cabinet" severity="warn" icon="pi pi-building" />
                             <Tag v-if="computeInsuranceBadge(data)" :value="computeInsuranceBadge(data).label" :severity="computeInsuranceBadge(data).severity" icon="pi pi-shield" />
                         </div>
                     </template>
@@ -522,12 +560,12 @@ const printDetailPayment = (row) => {
             <DataView v-else class="grouped-invoices-view" :value="filteredFacturesR" :loading="facturesLoading" paginator :rows="10" :rowsPerPageOptions="[5, 10, 20]">
                 <template #list="slotProps">
                     <div class="flex flex-col gap-4 p-2">
-                        <article v-for="invoice in slotProps.items" :key="invoice.id" class="inv-card" :class="`inv-card--${computeStatus(invoice).severity}`">
+                        <article v-for="invoice in slotProps.items" :key="invoice.rowKey || invoice.id" class="inv-card" :class="`inv-card--${computeStatus(invoice).severity}`">
                             <!-- ── DOCUMENT HEADER ── -->
                             <div class="inv-doc-header">
-                                <div class="inv-doc-badge" :class="{ 'inv-doc-badge--insurance': isInsuranceRow(invoice) }">
-                                    <i :class="isInsuranceRow(invoice) ? 'pi pi-shield' : 'pi pi-receipt'"></i>
-                                    <span>{{ isInsuranceRow(invoice) ? 'FACTURE ASSURANCE' : 'FACTURE' }}</span>
+                                <div class="inv-doc-badge" :class="{ 'inv-doc-badge--insurance': isInsuranceRow(invoice), 'inv-doc-badge--cabinet': isCabinetRow(invoice) }">
+                                    <i :class="isCabinetRow(invoice) ? 'pi pi-building' : isInsuranceRow(invoice) ? 'pi pi-shield' : 'pi pi-receipt'"></i>
+                                    <span>{{ documentLabel(invoice) }}</span>
                                 </div>
                                 <span class="inv-doc-id">#{{ invoice.id }}</span>
                             </div>
@@ -551,6 +589,7 @@ const printDetailPayment = (row) => {
                                     </div>
                                     <div class="inv-tags">
                                         <Tag :value="computeStatus(invoice).label" :severity="computeStatus(invoice).severity" />
+                                        <Tag v-if="isCabinetRow(invoice)" value="Service cabinet" severity="warn" icon="pi pi-building" />
                                         <Tag v-if="computeInsuranceBadge(invoice)" :value="computeInsuranceBadge(invoice).label" :severity="computeInsuranceBadge(invoice).severity" icon="pi pi-shield" />
                                     </div>
                                 </div>
@@ -683,6 +722,7 @@ const printDetailPayment = (row) => {
                     <template #body="{ data }">
                         <div class="flex flex-wrap gap-2">
                             <Tag :value="computePaymentModeTag(data).label" :severity="computePaymentModeTag(data).severity" />
+                            <Tag v-if="data.type === 'service_cabinet'" value="Service cabinet" severity="warn" icon="pi pi-building" />
                             <Tag v-if="isInsurancePayment(data)" value="Assurance" severity="info" icon="pi pi-shield" />
                         </div>
                     </template>

@@ -5,6 +5,7 @@ import PrintTicketBody from '@/components/print/PrintTicketBody.vue';
 import { usePrinter } from '@/composables/usePrinter';
 import { fetchInvoicePrintData, fetchReceiptPrintData, fetchTicketPrintData } from '@/services/printService';
 import { searchPatients } from '@/services/patients';
+import CabinetServiceDialog from '@/components/patients/CabinetServiceDialog.vue';
 import ContextMenu from 'primevue/contextmenu';
 import Dialog from 'primevue/dialog';
 import { computed, ref, toRefs } from 'vue';
@@ -173,6 +174,15 @@ const reliquatTooltip = (patientOrConsultation) => {
 
 const contextMenu = ref(null);
 const contextMenuPatient = ref(null);
+const cabinetServiceVisible = ref(false);
+const cabinetServicePatient = ref(null);
+const openCabinetService = (patient) => {
+    if (!patient?.id) {
+        return;
+    }
+    cabinetServicePatient.value = patient;
+    cabinetServiceVisible.value = true;
+};
 const patientContextMenuItems = computed(() => [
     {
         label: 'Nouvelle consultation',
@@ -182,6 +192,11 @@ const patientContextMenuItems = computed(() => [
                 emit('open-create-consultation-for-patient', contextMenuPatient.value);
             }
         }
+    },
+    {
+        label: 'Enregistrer un service cabinet',
+        icon: 'pi pi-building',
+        command: () => openCabinetService(contextMenuPatient.value)
     },
     {
         label: 'Nouveau RDV',
@@ -1078,6 +1093,13 @@ const handleCancelWithConfirm = (event, consultation) => {
                             <i class="pi pi-address-book mr-1"></i>Ouvrir dossier
                         </button>
                         <button
+                            v-if="selectedPatientId"
+                            class="col-span-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800 transition-all hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200"
+                            @click="openCabinetService(currentConsultation.patient || { id: selectedPatientId, nom: currentConsultation.patientName })"
+                        >
+                            <i class="pi pi-building mr-1"></i>Enregistrer un service cabinet
+                        </button>
+                        <button
                             v-if="allowReceptionQuickClose && Number(currentConsultation.state) !== 1"
                             @click="emit('open-quick-dialog', currentConsultation)"
                             class="rounded-xl bg-amber-500 px-3 py-2 text-xs font-medium text-white shadow-md transition-all hover:bg-amber-600"
@@ -1235,6 +1257,11 @@ const handleCancelWithConfirm = (event, consultation) => {
             </div>
         </aside>
     </div>
+    <CabinetServiceDialog
+        v-model:visible="cabinetServiceVisible"
+        :patient-id="cabinetServicePatient?.id"
+        :patient-name="cabinetServicePatient?.fullname || cabinetServicePatient?.nom || ''"
+    />
 </template>
 
 <style scoped>

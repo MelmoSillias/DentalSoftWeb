@@ -56,7 +56,7 @@ import { buildPatientPortalQrPrintModel, getPatientPortalQrPrintEntry } from '@/
 import { createQrDataUrl } from '@/utils/qrCode';
 import { getHttpErrorMessage } from '@/service/http';
 import cabinetConfig from '@/cabinetConfig';
-import { defaultSoinList, normalizeSoinList, normalizeSoinsCategories, createSoinCategoryId } from '@/services/consultations';
+import { defaultSoinList, defaultServicesCabinetList, normalizeServicesCabinetList, normalizeSoinList, normalizeSoinsCategories, createSoinCategoryId } from '@/services/consultations';
 
 const router = useRouter();
 const toast = useToast();
@@ -203,6 +203,8 @@ const transactionMotifs = reactive({
     revenueText: 'Paiement patient\nRemboursement assurance\nVente produit\nAutre',
     expenseText: 'Achat matériel\nFrais généraux\nPaiement salaire\nMaintenance\nAutre'
 });
+
+const servicesCabinetCatalog = ref(defaultServicesCabinetList.map((item) => ({ ...item })));
 
 const soinsCatalog = reactive({
     items: defaultSoinList.map((item) => ({ ...item })),
@@ -493,6 +495,7 @@ const loadGeneralSettings = async (force = false) => {
         transactionMotifs.expenseText = (settings.transactionMotifs?.expense || []).join('\n');
         soinsCatalog.categories = normalizeSoinsCategories(settings.soinsCategories);
         soinsCatalog.items = normalizeSoinList(settings.soinsList, soinsCatalog.categories).map((item) => ({ ...item }));
+        servicesCabinetCatalog.value = normalizeServicesCabinetList(settings.servicesCabinetList).map((item) => ({ ...item }));
         soinsAccordionValue.value = [
             ...soinsCatalog.categories.map((category) => category.id),
             'autres'
@@ -914,15 +917,17 @@ const addSoinCatalogItem = (categoryId = null) => {
     soinsCatalog.items.push({
         description: '',
         montant: 0,
-        attribution: 'medecin',
         categorieId: categoryId || null
     });
 };
 
-const soinAttributionOptions = [
-    { label: 'Médecin', value: 'medecin' },
-    { label: 'Cabinet', value: 'cabinet' }
-];
+const addServiceCabinetItem = () => {
+    servicesCabinetCatalog.value.push({ description: '', montant: 0 });
+};
+
+const removeServiceCabinetItem = (index) => {
+    servicesCabinetCatalog.value.splice(index, 1);
+};
 
 const removeSoinCatalogItem = (index) => {
     soinsCatalog.items.splice(index, 1);
@@ -1001,17 +1006,28 @@ const saveSoinsCatalogAction = async () => {
         });
         return;
     }
+    const servicesCabinetList = normalizeServicesCabinetList(servicesCabinetCatalog.value);
+    if (servicesCabinetCatalog.value.some((item) => !String(item?.description || '').trim())) {
+        toast.add({
+            severity: 'warn',
+            summary: 'Services cabinet',
+            detail: 'La description est obligatoire pour chaque service cabinet.',
+            life: 3500
+        });
+        return;
+    }
 
     savingStates.soinsCatalog = true;
     try {
         const saved = await saveGeneralSettings(
-            { soinsList: normalized, soinsCategories: normalizedCategories },
+            { soinsList: normalized, soinsCategories: normalizedCategories, servicesCabinetList },
             token
         );
         soinsCatalog.categories = normalizeSoinsCategories(saved?.soinsCategories ?? normalizedCategories);
         soinsCatalog.items = normalizeSoinList(saved?.soinsList ?? normalized, soinsCatalog.categories).map((item) => ({
             ...item
         }));
+        servicesCabinetCatalog.value = normalizeServicesCabinetList(saved?.servicesCabinetList ?? servicesCabinetList).map((item) => ({ ...item }));
         toast.add({ severity: 'success', summary: 'Catalogue des soins', detail: 'Paramètres enregistrés', life: 2500 });
     } catch (error) {
         toast.add({ severity: 'error', summary: 'Erreur', detail: extractApiError(error, 'Sauvegarde impossible'), life: 3500 });
@@ -1908,7 +1924,6 @@ onBeforeUnmount(() => {
                                                         </button>
                                                         <InputText v-model="item.description" class="flex-1 min-w-[12rem]" placeholder="Description de l'acte *" />
                                                         <InputNumber v-model="item.montant" mode="decimal" :min="0" :minFractionDigits="0" :maxFractionDigits="2" class="w-40" inputClass="w-full" placeholder="Montant" />
-                                                        <Select v-model="item.attribution" :options="soinAttributionOptions" optionLabel="label" optionValue="value" class="w-44" placeholder="Attribution" />
                                                         <Button icon="pi pi-folder" text rounded v-tooltip="'Changer de catégorie'" @click="openChangeCategoryDialog(index)" />
                                                         <Button icon="pi pi-trash" severity="danger" text rounded v-tooltip="'Supprimer'" :disabled="soinsCatalog.items.length <= 1" @click="removeSoinCatalogItem(index)" />
                                                     </div>
@@ -1957,7 +1972,6 @@ onBeforeUnmount(() => {
                                                         </button>
                                                         <InputText v-model="item.description" class="flex-1 min-w-[12rem]" placeholder="Description de l'acte *" />
                                                         <InputNumber v-model="item.montant" mode="decimal" :min="0" :minFractionDigits="0" :maxFractionDigits="2" class="w-40" inputClass="w-full" placeholder="Montant" />
-                                                        <Select v-model="item.attribution" :options="soinAttributionOptions" optionLabel="label" optionValue="value" class="w-44" placeholder="Attribution" />
                                                         <Button icon="pi pi-folder" text rounded v-tooltip="'Changer de catégorie'" @click="openChangeCategoryDialog(index)" />
                                                         <Button icon="pi pi-trash" severity="danger" text rounded v-tooltip="'Supprimer'" :disabled="soinsCatalog.items.length <= 1" @click="removeSoinCatalogItem(index)" />
                                                     </div>
@@ -1966,7 +1980,19 @@ onBeforeUnmount(() => {
                                             </AccordionContent>
                                         </AccordionPanel>
                                     </Accordion>
-                                    <span class="field-helper">Description obligatoire. Attribution « Cabinet » pour les services (ex. radio) non comptés chez le médecin. Glissez-déposez pour réordonner. Les catégories vides peuvent être supprimées.</span>
+                                    <span class="field-helper">Description obligatoire. Les prestations du cabinet (radio, etc.) se gèrent dans la liste Services cabinet. Glissez-déposez pour réordonner. Les catégories vides peuvent être supprimées.</span>
+                                    <div class="mt-4 flex flex-col gap-2">
+                                        <div class="flex items-center justify-between gap-2">
+                                            <span class="font-semibold text-surface-900 dark:text-surface-50">Services cabinet</span>
+                                            <Button icon="pi pi-plus" label="Ajouter" size="small" text @click="addServiceCabinetItem" />
+                                        </div>
+                                        <div v-for="(item, index) in servicesCabinetCatalog" :key="`cabinet-service-${index}`" class="flex flex-wrap items-center gap-2 rounded-lg border border-surface-200 p-2 dark:border-surface-700">
+                                            <InputText v-model="item.description" class="flex-1 min-w-[12rem]" placeholder="Ex. Radio" />
+                                            <InputNumber v-model="item.montant" mode="decimal" :min="0" :minFractionDigits="0" :maxFractionDigits="2" class="w-40" inputClass="w-full" placeholder="Montant" />
+                                            <Button icon="pi pi-trash" severity="danger" text rounded @click="removeServiceCabinetItem(index)" />
+                                        </div>
+                                        <span class="field-helper">Ces services se facturent hors consultation. La radio n'apparaît plus dans les actes du médecin.</span>
+                                    </div>
                                 </div>
                             </div>
 

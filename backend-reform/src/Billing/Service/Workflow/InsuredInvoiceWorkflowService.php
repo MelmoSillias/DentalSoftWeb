@@ -150,7 +150,6 @@ class InsuredInvoiceWorkflowService
         $lines = [];
         $contenus = [];
 
-        $hasCabinetServices = false;
         foreach ($facture->buildDisplayLignes() as $line) {
             $quantite = (int) ($line['quantite'] ?? 1);
             $prix = (float) ($line['prix'] ?? 0);
@@ -164,17 +163,12 @@ class InsuredInvoiceWorkflowService
                 'prix' => $prix,
                 'total' => $total,
                 'virtual' => !empty($line['virtual']),
-                'attribution' => $line['attribution'] ?? 'medecin',
             ];
-            if (($line['attribution'] ?? 'medecin') === 'cabinet') {
-                $hasCabinetServices = true;
-            }
             $contenus[] = [
                 'designation' => $designation,
                 'qte' => $quantite,
                 'montant' => $prix,
                 'total' => $total,
-                'attribution' => $line['attribution'] ?? 'medecin',
             ];
         }
 
@@ -212,10 +206,6 @@ class InsuredInvoiceWorkflowService
             'assureFields' => $this->buildAssureFields($assurance?->getFormSchema() ?? [], $snapshot['formData'] ?? []),
             'lignes' => $lines,
             'contenus' => $contenus,
-            'hasCabinetServices' => $hasCabinetServices,
-            'cabinetServicesFootnote' => $hasCabinetServices
-                ? 'Les services marqués « Service cabinet » sont facturés par le cabinet et ne relèvent pas de l\'honoraire du praticien.'
-                : null,
             'montant' => $montantTotal,
             'montantTotal' => $montantTotal,
             'montantAssurance' => $montantAssurance,
