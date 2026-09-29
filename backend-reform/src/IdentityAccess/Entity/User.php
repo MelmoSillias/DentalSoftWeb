@@ -197,7 +197,9 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
      * @see UserInterface
      *
      * Le mot de passe stocké est déjà haché : rien de sensible à effacer en mémoire.
+     * Conservé vide pour compatibilité UserInterface ; logique éventuelle à déplacer dans __serialize().
      */
+    #[\Deprecated]
     public function eraseCredentials(): void
     {
     }

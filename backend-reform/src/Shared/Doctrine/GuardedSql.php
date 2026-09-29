@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace DoctrineMigrations;
+namespace App\Shared\Doctrine;
 
 use Doctrine\DBAL\Schema\Schema;
 
