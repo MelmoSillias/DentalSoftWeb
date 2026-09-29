@@ -7,11 +7,15 @@ namespace DoctrineMigrations;
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 
-final class Version20260721193000 extends AbstractMigration
+/**
+ * Rejoue l'ajout des colonnes webhook si Version20260721193000 est déjà
+ * marquée exécutée sur une base dont le schéma ne les contient pas.
+ */
+final class Version20260929141000 extends AbstractMigration
 {
     public function getDescription(): string
     {
-        return 'Add AfrikSms webhook fields to sms_provider_config';
+        return 'Ensure AfrikSms webhook columns exist on sms_provider_config';
     }
 
     public function up(Schema $schema): void
