@@ -193,4 +193,13 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this;
     }
 
+    /**
+     * @see UserInterface
+     *
+     * Le mot de passe stocké est déjà haché : rien de sensible à effacer en mémoire.
+     */
+    public function eraseCredentials(): void
+    {
+    }
+
 }
