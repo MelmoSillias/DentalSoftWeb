@@ -9,6 +9,8 @@ use Doctrine\Migrations\AbstractMigration;
 
 final class Version20260829100000 extends AbstractMigration
 {
+    use GuardedSql;
+
     public function getDescription(): string
     {
         return 'Add attribution column to acte_medical for cabinet vs medecin services';
@@ -16,11 +18,11 @@ final class Version20260829100000 extends AbstractMigration
 
     public function up(Schema $schema): void
     {
-        $this->addSql("ALTER TABLE acte_medical ADD attribution VARCHAR(20) DEFAULT 'medecin' NOT NULL");
+        $this->guardedSql("ALTER TABLE acte_medical ADD attribution VARCHAR(20) DEFAULT 'medecin' NOT NULL");
     }
 
     public function down(Schema $schema): void
     {
-        $this->addSql('ALTER TABLE acte_medical DROP attribution');
+        $this->guardedSql('ALTER TABLE acte_medical DROP attribution');
     }
 }
