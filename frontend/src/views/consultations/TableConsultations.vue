@@ -1,12 +1,15 @@
 <script setup>
 import { logAppError } from '@/utils/appLogger';
 
+import PageShell from '@/components/layout/PageShell.vue';
+import PageHeader from '@/components/layout/PageHeader.vue';
+import PageSection from '@/components/layout/PageSection.vue';
 import PatientAvatar from '@/components/patients/PatientAvatar.vue';
 import ConsultationDetailsDialog from '@/components/consultations/ConsultationDetailsDialog.vue';
 import FactureModal from '@/components/consultations/FactureModal.vue';
 import { defaultSoinList, normalizeSoinList } from '@/services/consultations';
 import QuickClotureConsultationDialog from '@/components/consultations/QuickClotureConsultationDialog.vue';
-import FormCreateConsultation from '@/components/patients/FormCreateConsultation.vue';
+import CreateConsultationDialog from '@/components/patients/CreateConsultationDialog.vue';
 import PrintDataTablePage from '@/components/print/PrintDataTablePage.vue';
 import { usePrinter } from '@/composables/usePrinter';
 import { activateConsultationsTourMock, deactivateConsultationsTourMock, resetConsultationsTourMockData, resolveConsultationsTourMockScenario } from '@/services/consultationsTourMock';
@@ -23,11 +26,9 @@ import Button from 'primevue/button';
 import Column from 'primevue/column';
 import ConfirmPopup from 'primevue/confirmpopup';
 import DataTable from 'primevue/datatable';
-import Dialog from 'primevue/dialog';
 import InputText from 'primevue/inputtext';
 import Menu from 'primevue/menu';
 import Tag from 'primevue/tag';
-import Toast from 'primevue/toast';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
@@ -75,6 +76,8 @@ let guidedTourDemoActive = false;
 let guidedTourCleanupPromise = null;
 
 const headerTitle = computed(() => `Consultations du ${formatDisplayDate(selectedDate.value)}`);
+const breadcrumbHome = { icon: 'pi pi-home', to: '/dashboard' };
+const breadcrumbItems = [{ label: 'Consultations' }, { label: 'Historique' }];
 const isAdmin = computed(() => Boolean(auth.user?.roles?.includes('ROLE_ADMIN')));
 const isMedecin = computed(() => Boolean(auth.user?.roles?.includes('ROLE_MEDECIN')));
 const isReception = computed(() => Boolean(auth.user?.roles?.includes('ROLE_RECEPTION') || auth.user?.roles?.includes('ROLE_RECEPTIONNISTE')));
@@ -594,25 +597,19 @@ function resetFilters() {
 </script>
 
 <template>
-    <section class="min-h-screen p-4 md:p-6 lg:p-8 transition-colors duration-300">
+    <PageShell>
         <ConfirmPopup group="cancel-consultation" />
-        <!-- Header Section -->
-        <div class="mb-6 md:mb-8" data-tour="consultations-table.header">
-            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
-                <div class="space-y-2">
-                    <div class="flex items-center gap-3">
-                        <div class="p-2.5 rounded-xl bg-primary-500/10 dark:bg-primary-500/20">
-                            <i class="fas fa-clipboard-list text-primary-600 dark:text-primary-400 text-xl"></i>
-                        </div>
-                        <div>
-                            <h1 class="text-3xl lg:text-4xl font-bold text-surface-900 dark:text-surface-50 tracking-tight">Historique des Consultations</h1>
-                            <p class="text-surface-600 dark:text-surface-300 text-sm md:text-base mt-1">
-                                {{ headerTitle }}
-                            </p>
-                        </div>
-                    </div>
-                </div>
-                <div class="flex flex-wrap gap-3">
+
+        <template #header>
+            <PageHeader
+                title="Historique des Consultations"
+                :subtitle="headerTitle"
+                icon="fas fa-clipboard-list"
+                tour-id="consultations-table.header"
+                :breadcrumb-items="breadcrumbItems"
+                :breadcrumb-home="breadcrumbHome"
+            >
+                <template #actions>
                     <Button
                         v-if="!isMedecin"
                         data-tour="consultations-table.create-button"
@@ -621,9 +618,9 @@ function resetFilters() {
                         class="shadow-lg hover:shadow-xl transition-all duration-300 bg-gradient-to-r from-primary-500 to-primary-600 border-0 text-white px-5 py-2.5 rounded-xl font-medium"
                         @click="showCreateDialog = true"
                     />
-                </div>
-            </div>
-        </div>
+                </template>
+            </PageHeader>
+        </template>
 
         <div v-if="loadErrorMessage" class="mb-6 flex min-h-[320px] flex-col items-center justify-center gap-4 rounded-2xl border border-amber-200/70 bg-amber-50/70 p-8 dark:border-amber-800/70 dark:bg-amber-950/20">
             <div class="flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
@@ -636,68 +633,56 @@ function resetFilters() {
             <Button icon="pi pi-refresh" label="Réessayer" severity="warning" @click="retryLoadPage" />
         </div>
 
-        <template v-else>
-            <!-- Main Card -->
-            <div class="bg-surface-0 dark:bg-surface-800/80 rounded-2xl shadow-xl overflow-hidden border border-surface-200/50 dark:border-surface-700/50 backdrop-blur-sm mb-6 md:mb-8">
-                <!-- Card Header -->
-                <div class="px-5 md:px-6 py-4 border-b border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900/50 dark:to-surface-800">
-                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                        <div class="space-y-1">
-                            <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-100">Liste des Consultations</h3>
-                            <div class="flex items-center gap-3">
-                                <div class="flex items-center gap-2 text-sm text-surface-600 dark:text-surface-400">
-                                    <i class="pi pi-calendar"></i>
-                                    <span>{{ formatDateDisplay(selectedDate) }}</span>
-                                </div>
-                                <Tag v-if="totalCountLabel" :value="totalCountLabel" severity="info" class="px-3 py-1 rounded-full font-medium" />
-                            </div>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <Button icon="pi pi-download" severity="secondary" text size="small" label="Exporter" class="text-surface-600 dark:text-surface-400 hover:text-primary-600 dark:hover:text-primary-400" @click="printConsultations" />
-                            <Button icon="pi pi-cog" severity="secondary" text size="small" class="text-surface-600 dark:text-surface-400" />
-                        </div>
+        <template #toolbar>
+            <div v-if="!loadErrorMessage" class="flex flex-col lg:flex-row lg:items-end gap-4" data-tour="consultations-table.filters">
+                <div class="w-full lg:flex-1">
+                    <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2"> Rechercher une consultation </label>
+                    <IconField class="p-input-icon-left w-full">
+                        <InputIcon class="pi pi-search text-surface-400"></InputIcon>
+                        <InputText
+                            v-model="filterGlobalValue"
+                            placeholder="Patient, médecin, statut..."
+                            class="w-full p-3.5 rounded-xl border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-700/50 focus:ring-2 focus:ring-primary-500/20 transition-all"
+                        />
+                    </IconField>
+                </div>
+                <div class="w-full lg:flex-1">
+                    <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2"> Date de consultation </label>
+                    <div class="flex gap-2">
+                        <DatePicker v-model="selectedDate" dateFormat="dd/mm/yy" showIcon class="flex-1 rounded-xl border-surface-200 dark:border-surface-700 [&_.p-datepicker]:p-3.5" @update:modelValue="onDateChange" />
+                        <Button icon="pi pi-calendar-times" severity="secondary" outlined class="px-3 rounded-xl" @click="selectedDate = null" />
+                        <Button
+                            icon="pi pi-refresh"
+                            :loading="loading"
+                            outlined
+                            class="rounded-xl px-5 py-3.5 border-surface-300 dark:border-surface-600 hover:bg-surface-100 dark:hover:bg-surface-700 transition-colors"
+                            @click="loadConsultations"
+                        />
                     </div>
                 </div>
+            </div>
+        </template>
 
-                <!-- Filters & Controls -->
-                <div class="px-5 md:px-6 py-4 border-b border-surface-200/50 dark:border-surface-700/50 bg-surface-0/50 dark:bg-surface-800/30" data-tour="consultations-table.filters">
-                    <div class="flex flex-col lg:flex-row lg:items-center gap-4">
-                        <!-- Search -->
-                        <div class="col-6 w-full">
-                            <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2"> Rechercher une consultation </label>
-                            <IconField class="p-input-icon-left w-full">
-                                <InputIcon class="pi pi-search text-surface-400"></InputIcon>
-                                <InputText
-                                    v-model="filterGlobalValue"
-                                    placeholder="Patient, médecin, statut..."
-                                    class="w-full p-3.5 rounded-xl border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-700/50 focus:ring-2 focus:ring-primary-500/20 transition-all"
-                                />
-                            </IconField>
-                        </div>
-
-                        <!-- Date & Actions -->
-                        <div class="flex flex-col sm:flex-row lg:flex-col gap-3 col-6 w-full">
-                            <div>
-                                <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2"> Date de consultation </label>
-                                <div class="flex gap-2">
-                                    <DatePicker v-model="selectedDate" dateFormat="dd/mm/yy" showIcon class="flex-1 rounded-xl border-surface-200 dark:border-surface-700 [&_.p-datepicker]:p-3.5" @update:modelValue="onDateChange" />
-                                    <Button icon="pi pi-calendar-times" severity="secondary" outlined class="px-3 rounded-xl" @click="selectedDate = null" />
-                                    <Button
-                                        icon="pi pi-refresh"
-                                        :loading="loading"
-                                        outlined
-                                        class="w-full rounded-xl px-5 py-3.5 border-surface-300 dark:border-surface-600 hover:bg-surface-100 dark:hover:bg-surface-700 transition-colors"
-                                        @click="loadConsultations"
-                                    />
-                                </div>
+        <template v-if="!loadErrorMessage">
+            <PageSection tour-id="consultations-table.table">
+                <template #header>
+                    <div class="space-y-1">
+                        <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-100">Liste des Consultations</h3>
+                        <div class="flex flex-wrap items-center gap-3">
+                            <div class="flex items-center gap-2 text-sm text-surface-600 dark:text-surface-400">
+                                <i class="pi pi-calendar"></i>
+                                <span>{{ formatDateDisplay(selectedDate) }}</span>
                             </div>
+                            <Tag v-if="totalCountLabel" :value="totalCountLabel" severity="info" class="px-3 py-1 rounded-full font-medium" />
                         </div>
                     </div>
-                </div>
-
-                <!-- Data Table -->
+                </template>
+                <template #headerActions>
+                    <Button icon="pi pi-download" severity="secondary" text size="small" label="Exporter" class="text-surface-600 dark:text-surface-400 hover:text-primary-600 dark:hover:text-primary-400" @click="printConsultations" />
+                    <Button icon="pi pi-cog" severity="secondary" text size="small" class="text-surface-600 dark:text-surface-400" />
+                </template>
+                <div class="page-table-scroll">
                 <DataTable
-                    data-tour="consultations-table.table"
                     :value="consultations"
                     dataKey="id"
                     :loading="loading"
@@ -709,7 +694,7 @@ function resetFilters() {
                     filterDisplay="menu"
                     :globalFilterFields="['patientName', 'patient', 'medecin', 'statut']"
                     :rowClass="rowClass"
-                    class="rounded-none border-0 mx-4"
+                    class="rounded-none border-0"
                     :pt="{
                         table: 'rounded-none',
                         thead: 'bg-surface-50 dark:bg-surface-900/50',
@@ -766,7 +751,7 @@ function resetFilters() {
                     </Column>
 
                     <!-- Médecin Column -->
-                    <Column field="medecin" header="Médecin" sortable>
+                    <Column field="medecin" header="Médecin" sortable headerClass="hidden lg:table-cell" bodyClass="hidden lg:table-cell">
                         <template #header>
                             <div class="flex items-center gap-2">
                                 <i class="fas fa-user-md text-surface-500"></i>
@@ -785,7 +770,7 @@ function resetFilters() {
                     </Column>
 
                     <!-- Date Column -->
-                    <Column field="createdAt" header="Date création" sortable>
+                    <Column field="createdAt" header="Date création" sortable headerClass="hidden md:table-cell" bodyClass="hidden md:table-cell">
                         <template #header>
                             <div class="flex items-center gap-2">
                                 <i class="pi pi-calendar text-surface-500"></i>
@@ -825,7 +810,7 @@ function resetFilters() {
                     </Column>
 
                     <!-- Actions Column -->
-                    <Column header="Actions" :style="{ minWidth: '220px' }">
+                    <Column header="Actions" :style="{ minWidth: '8.5rem' }">
                         <template #header>
                             <div class="flex items-center gap-2">
                                 <i class="pi pi-cog text-surface-500"></i>
@@ -904,71 +889,47 @@ function resetFilters() {
                         </div>
                     </template>
                 </DataTable>
-            </div>
-        </template>
-
-        <Dialog
-            v-model:visible="showCreateDialog"
-            modal
-            :style="{ width: '50rem' }"
-            :pt="{
-                root: 'rounded-2xl overflow-hidden',
-                header: 'bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900 dark:to-surface-800 px-6 py-4 border-b',
-                content: 'p-0 mt-4'
-            }"
-        >
-            <template #header>
-                <div class="flex items-center gap-3">
-                    <div class="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
-                        <i class="fas fa-stethoscope text-green-600 dark:text-green-400"></i>
-                    </div>
-                    <div>
-                        <h4 class="m-0 text-surface-900 dark:text-surface-100">Nouvelle consultation</h4>
-                        <p class="text-sm text-surface-500 dark:text-surface-400 mt-1">Créer une consultation</p>
-                    </div>
                 </div>
-            </template>
-            <div data-tour="consultations-table.dialog.create">
-                <FormCreateConsultation @saved="handleCreateSaved" @cancel="showCreateDialog = false" />
-            </div>
-        </Dialog>
+            </PageSection>
 
-        <!-- Stats Overview -->
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 md:mb-8" data-tour="consultations-table.stats">
-            <div class="bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-900/20 dark:to-blue-800/20 rounded-2xl p-5 border border-blue-200/50 dark:border-blue-800/50">
-                <div class="flex items-center justify-between">
+            <!-- Stats Overview -->
+            <div class="page-kpi-grid" data-tour="consultations-table.stats">
+                <div class="page-kpi-card bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-900/20 dark:to-blue-800/20 border-blue-200/50 dark:border-blue-800/50">
                     <div>
-                        <p class="text-sm text-blue-700 dark:text-blue-300 font-medium">Total consultations</p>
-                        <p class="text-2xl font-bold text-blue-900 dark:text-blue-100 mt-2">{{ consultations.length }}</p>
+                        <p class="page-kpi-label text-blue-700 dark:text-blue-300">Total consultations</p>
+                        <p class="page-kpi-value text-blue-900 dark:text-blue-100">{{ consultations.length }}</p>
                     </div>
-                    <i class="fas fa-clipboard-list text-2xl text-blue-500"></i>
+                    <i class="fas fa-clipboard-list page-kpi-icon text-blue-500"></i>
                 </div>
-            </div>
 
-            <div class="bg-gradient-to-br from-green-50 to-green-100/50 dark:from-green-900/20 dark:to-green-800/20 rounded-2xl p-5 border border-green-200/50 dark:border-green-800/50">
-                <div class="flex items-center justify-between">
+                <div class="page-kpi-card bg-gradient-to-br from-green-50 to-green-100/50 dark:from-green-900/20 dark:to-green-800/20 border-green-200/50 dark:border-green-800/50">
                     <div>
-                        <p class="text-sm text-green-700 dark:text-green-300 font-medium">Consultations terminées</p>
-                        <p class="text-2xl font-bold text-green-900 dark:text-green-100 mt-2">
+                        <p class="page-kpi-label text-green-700 dark:text-green-300">Consultations terminées</p>
+                        <p class="page-kpi-value text-green-900 dark:text-green-100">
                             {{ consultations.filter((c) => c.state === 1).length }}
                         </p>
                     </div>
-                    <i class="fas fa-check-circle text-2xl text-green-500"></i>
+                    <i class="fas fa-check-circle page-kpi-icon text-green-500"></i>
                 </div>
-            </div>
 
-            <div class="bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-900/20 dark:to-amber-800/20 rounded-2xl p-5 border border-amber-200/50 dark:border-amber-800/50">
-                <div class="flex items-center justify-between">
+                <div class="page-kpi-card bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-900/20 dark:to-amber-800/20 border-amber-200/50 dark:border-amber-800/50">
                     <div>
-                        <p class="text-sm text-amber-700 dark:text-amber-300 font-medium">En cours</p>
-                        <p class="text-2xl font-bold text-amber-900 dark:text-amber-100 mt-2">
+                        <p class="page-kpi-label text-amber-700 dark:text-amber-300">En cours</p>
+                        <p class="page-kpi-value text-amber-900 dark:text-amber-100">
                             {{ consultations.filter((c) => c.state === 'EN_COURS' || c.state === 'EN_ATTENTE' || c.state == 0).length }}
                         </p>
                     </div>
-                    <i class="fas fa-clock text-2xl text-amber-500"></i>
+                    <i class="fas fa-clock page-kpi-icon text-amber-500"></i>
                 </div>
             </div>
-        </div>
+        </template>
+
+        <CreateConsultationDialog
+            v-model:visible="showCreateDialog"
+            content-tour-id="consultations-table.dialog.create"
+            subtitle="Créer une consultation"
+            @saved="handleCreateSaved"
+        />
 
         <!-- Dialogs -->
         <ConsultationDetailsDialog :visible="detailsDialogVisible" :details="detailData" :loading="detailsLoading" tourTarget="consultations-table.dialog.details" @update:visible="(val) => (detailsDialogVisible = val)" />
@@ -995,7 +956,7 @@ function resetFilters() {
             @saved="handleQuickDialogDone"
             @closed="handleQuickDialogDone"
         />
-    </section>
+    </PageShell>
 </template>
 
 <style scoped>

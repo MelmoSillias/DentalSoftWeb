@@ -2,6 +2,9 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { activateAdminTourMock, deactivateAdminTourMock, resetAdminTourMockData } from '@/services/adminTourMock';
 import { useSalles } from '@/composables/useSalles';
+import PageShell from '@/components/layout/PageShell.vue';
+import PageHeader from '@/components/layout/PageHeader.vue';
+import PageSection from '@/components/layout/PageSection.vue';
 import AddSalleDialog from '@/components/salles/AddSalleDialog.vue';
 import EditSalleDialog from '@/components/salles/EditSalleDialog.vue';
 import SallesTable from '@/components/salles/SallesTable.vue';
@@ -10,7 +13,6 @@ import { usePrinter } from '@/composables/usePrinter';
 import { useGuidedTour } from '@/composables/useGuidedTour';
 import Button from 'primevue/button';
 import ConfirmPopup from 'primevue/confirmpopup';
-import Toast from 'primevue/toast';
 import { useToast } from 'primevue/usetoast';
 import { useConfirm } from 'primevue/useconfirm';
 
@@ -19,7 +21,7 @@ const confirm = useConfirm();
 const { printComponent } = usePrinter();
 const { salles, loading, fetchSalles, addSalle, editSalle, deleteSalle } = useSalles();
 
-const breadcrumbHome = ref({ icon: 'pi pi-home', to: '/' });
+const breadcrumbHome = ref({ icon: 'pi pi-home', to: '/dashboard' });
 const breadcrumbItems = ref([{ label: 'Administration' }, { label: 'Salles' }]);
 
 const addDialogVisible = ref(false);
@@ -228,109 +230,70 @@ useGuidedTour({
 </script>
 
 <template>
-    <section class="min-h-screen p-4 md:p-6 lg:p-8 transition-colors duration-300">
-        <AppToast />
+    <PageShell>
         <ConfirmPopup />
 
-        <!-- Header Section -->
-        <div class="mb-6 md:mb-8" data-tour="admin-salles.header">
-            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
-                <div class="space-y-2">
-                    <div class="flex items-center gap-3">
-                        <div class="p-2.5 rounded-xl bg-primary-500/10 dark:bg-primary-500/20">
-                            <i class="pi pi-building text-primary-600 dark:text-primary-400 text-xl"></i>
-                        </div>
-                        <div>
-                            <h1 class="text-3xl lg:text-4xl font-bold text-surface-900 dark:text-surface-50 tracking-tight">Gestion des salles</h1>
-                            <p class="text-surface-600 dark:text-surface-300 text-sm md:text-base">Gérez vos espaces de consultation et de traitement</p>
-                        </div>
-                    </div>
-                </div>
-                <Button
-                    class="rounded-xl px-5 py-3 font-medium shadow-lg hover:shadow-xl transition-all duration-300 bg-gradient-to-r from-primary-500 to-primary-600 border-0 text-white"
-                    label="Ajouter une salle"
-                    icon="pi pi-plus"
-                    @click="openAdd"
-                />
-            </div>
+        <template #header>
+            <PageHeader
+                title="Gestion des salles"
+                subtitle="Gérez vos espaces de consultation et de traitement"
+                icon="pi pi-building"
+                tour-id="admin-salles.header"
+                :breadcrumb-items="breadcrumbItems"
+                :breadcrumb-home="breadcrumbHome"
+            >
+                <template #actions>
+                    <Button label="Ajouter une salle" icon="pi pi-plus" @click="openAdd" />
+                </template>
+            </PageHeader>
+        </template>
 
-            <div class="bg-surface-0 dark:bg-surface-800/80 rounded-2xl p-4 shadow-sm border border-surface-200/50 dark:border-surface-700/50 backdrop-blur-sm">
-                <Breadcrumb :home="breadcrumbHome" :model="breadcrumbItems" class="text-sm" />
-            </div>
-        </div>
-
-        <!-- Main Content Card -->
-        <div class="bg-surface-0 dark:bg-surface-800/80 rounded-2xl shadow-xl overflow-hidden border border-surface-200/50 dark:border-surface-700/50 backdrop-blur-sm" data-tour="admin-salles.table">
-            <!-- Table Header -->
-            <div class="px-5 md:px-6 py-4 border-b border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900/50 dark:to-surface-800">
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div class="space-y-1">
-                        <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-100">Liste des salles</h3>
-                        <p class="text-sm text-surface-600 dark:text-surface-400">{{ salles.length }} salle(s) disponible(s)</p>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <Button icon="pi pi-download" severity="secondary" text size="small" label="Exporter" class="text-surface-600 dark:text-surface-400 hover:text-primary-600 dark:hover:text-primary-400" @click="printSalles" />
-                    </div>
-                </div>
-            </div>
-
-            <!-- Table Content -->
-            <div class="p-0" data-tour="admin-salles.actions">
+        <PageSection title="Liste des salles" :subtitle="`${salles.length} salle(s) disponible(s)`" tour-id="admin-salles.table">
+            <template #headerActions>
+                <Button icon="pi pi-download" severity="secondary" text size="small" label="Exporter" @click="printSalles" />
+            </template>
+            <div class="page-table-scroll" data-tour="admin-salles.actions">
                 <SallesTable :salles="salles" :loading="loading" @edit="openEdit" @delete="handleDelete" @add="openAdd" />
             </div>
-        </div>
+        </PageSection>
 
         <!-- Stats Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-6" data-tour="admin-salles.stats">
-            <div class="bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-900/20 dark:to-blue-800/20 rounded-2xl p-5 border border-blue-200/50 dark:border-blue-800/50">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-sm text-blue-700 dark:text-blue-300 font-medium">Total salles</p>
-                        <p class="text-2xl font-bold text-blue-900 dark:text-blue-100 mt-2">{{ salles.length }}</p>
-                    </div>
-                    <i class="pi pi-building text-2xl text-blue-500"></i>
+        <div class="page-kpi-grid" data-tour="admin-salles.stats">
+            <div class="page-kpi-card bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-900/20 dark:to-blue-800/20 border-blue-200/50 dark:border-blue-800/50">
+                <div>
+                    <p class="page-kpi-label text-blue-700 dark:text-blue-300">Total salles</p>
+                    <p class="page-kpi-value text-blue-900 dark:text-blue-100">{{ salles.length }}</p>
                 </div>
+                <i class="pi pi-building page-kpi-icon text-blue-500"></i>
             </div>
 
-            <div class="bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-emerald-900/20 dark:to-emerald-800/20 rounded-2xl p-5 border border-emerald-200/50 dark:border-emerald-800/50">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-sm text-emerald-700 dark:text-emerald-300 font-medium">Salles disponibles</p>
-                        <p class="text-2xl font-bold text-emerald-900 dark:text-emerald-100 mt-2">
-                            {{ availableSalles }}
-                        </p>
-                    </div>
-                    <i class="pi pi-check-circle text-2xl text-emerald-500"></i>
+            <div class="page-kpi-card bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-emerald-900/20 dark:to-emerald-800/20 border-emerald-200/50 dark:border-emerald-800/50">
+                <div>
+                    <p class="page-kpi-label text-emerald-700 dark:text-emerald-300">Salles disponibles</p>
+                    <p class="page-kpi-value text-emerald-900 dark:text-emerald-100">{{ availableSalles }}</p>
                 </div>
+                <i class="pi pi-check-circle page-kpi-icon text-emerald-500"></i>
             </div>
 
-            <div class="bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-900/20 dark:to-amber-800/20 rounded-2xl p-5 border border-amber-200/50 dark:border-amber-800/50">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-sm text-amber-700 dark:text-amber-300 font-medium">Salles occupées</p>
-                        <p class="text-2xl font-bold text-amber-900 dark:text-amber-100 mt-2">
-                            {{ occupiedSalles }}
-                        </p>
-                    </div>
-                    <i class="pi pi-clock text-2xl text-amber-500"></i>
+            <div class="page-kpi-card bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-900/20 dark:to-amber-800/20 border-amber-200/50 dark:border-amber-800/50">
+                <div>
+                    <p class="page-kpi-label text-amber-700 dark:text-amber-300">Salles occupées</p>
+                    <p class="page-kpi-value text-amber-900 dark:text-amber-100">{{ occupiedSalles }}</p>
                 </div>
+                <i class="pi pi-clock page-kpi-icon text-amber-500"></i>
             </div>
 
-            <div class="bg-gradient-to-br from-purple-50 to-purple-100/50 dark:from-purple-900/20 dark:to-purple-800/20 rounded-2xl p-5 border border-purple-200/50 dark:border-purple-800/50">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-sm text-purple-700 dark:text-purple-300 font-medium">Types de salles</p>
-                        <p class="text-2xl font-bold text-purple-900 dark:text-purple-100 mt-2">
-                            {{ uniqueTypes }}
-                        </p>
-                    </div>
-                    <i class="pi pi-tags text-2xl text-purple-500"></i>
+            <div class="page-kpi-card bg-gradient-to-br from-purple-50 to-purple-100/50 dark:from-purple-900/20 dark:to-purple-800/20 border-purple-200/50 dark:border-purple-800/50">
+                <div>
+                    <p class="page-kpi-label text-purple-700 dark:text-purple-300">Types de salles</p>
+                    <p class="page-kpi-value text-purple-900 dark:text-purple-100">{{ uniqueTypes }}</p>
                 </div>
+                <i class="pi pi-tags page-kpi-icon text-purple-500"></i>
             </div>
         </div>
 
         <!-- Dialogs -->
         <AddSalleDialog :visible="addDialogVisible" :loading="loading" tourTarget="admin-salles.dialog.add" @update:visible="(value) => (addDialogVisible = value)" @submit="handleAddSubmit" />
         <EditSalleDialog :visible="editDialogVisible" :salle="currentSalle" :loading="loading" tourTarget="admin-salles.dialog.edit" @update:visible="(value) => (editDialogVisible = value)" @submit="handleEditSubmit" />
-    </section>
+    </PageShell>
 </template>

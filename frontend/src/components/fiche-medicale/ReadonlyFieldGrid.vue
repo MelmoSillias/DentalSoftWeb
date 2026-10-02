@@ -19,20 +19,45 @@ const formatValue = (value) => {
 
 <template>
     <div
-        class="grid gap-3"
+        class="medical-form-fields"
         :class="{
-            'grid-cols-1': columns === 1,
-            'grid-cols-1 md:grid-cols-2': columns === 2,
-            'grid-cols-1 md:grid-cols-2 lg:grid-cols-3': columns === 3
+            'medical-form-fields--1': columns === 1,
+            'medical-form-fields--2': columns === 2,
+            'medical-form-fields--3': columns === 3
         }"
     >
-        <div v-for="field in fields" :key="field.label" class="p-3 rounded-lg bg-surface-0 dark:bg-surface-800 border border-surface-200/70 dark:border-surface-700/70">
-            <div class="text-xs font-medium uppercase tracking-wide text-surface-500 dark:text-surface-400">
-                {{ field.label }}
-            </div>
-            <div class="text-sm text-surface-800 dark:text-surface-200 mt-1 whitespace-pre-wrap break-words">
-                {{ formatValue(field.value) }}
-            </div>
+        <div v-for="field in fields" :key="field.label" class="medical-form-row">
+            <div class="medical-form-row__label">{{ field.label }}</div>
+            <div class="medical-form-row__value">{{ formatValue(field.value) }}</div>
         </div>
     </div>
 </template>
+
+<style scoped>
+.medical-form-fields {
+    display: grid;
+    gap: 0;
+}
+
+.medical-form-fields--1 {
+    grid-template-columns: 1fr;
+}
+
+@media (min-width: 768px) {
+    .medical-form-fields--2 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        column-gap: 1.25rem;
+    }
+
+    .medical-form-fields--3 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        column-gap: 1.25rem;
+    }
+}
+
+@media (min-width: 1024px) {
+    .medical-form-fields--3 {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+</style>

@@ -1,6 +1,8 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import Breadcrumb from 'primevue/breadcrumb';
+import PageShell from '@/components/layout/PageShell.vue';
+import PageHeader from '@/components/layout/PageHeader.vue';
+import PageSection from '@/components/layout/PageSection.vue';
 import Button from 'primevue/button';
 import Column from 'primevue/column';
 import ConfirmPopup from 'primevue/confirmpopup';
@@ -9,10 +11,9 @@ import InputText from 'primevue/inputtext';
 import Password from 'primevue/password';
 import SelectButton from 'primevue/selectbutton';
 import Tag from 'primevue/tag';
-import Toast from 'primevue/toast';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
-import Dialog from 'primevue/dialog';
+import AppDialog from '@/components/layout/AppDialog.vue';
 import { useUsers } from '@/composables/useUsers';
 import UserForm from '@/components/administration/UserForm.vue';
 import { activateAdminTourMock, deactivateAdminTourMock, resetAdminTourMockData } from '@/services/adminTourMock';
@@ -22,7 +23,7 @@ import { formatEmployeeTypeLabel, formatStaffRoleLabel } from '@/utils/employeeT
 const toast = useToast();
 const confirm = useConfirm();
 
-const breadcrumbHome = { icon: 'pi pi-home', to: '/' };
+const breadcrumbHome = { icon: 'pi pi-home', to: '/dashboard' };
 const breadcrumbItems = [{ label: 'Administration' }, { label: 'Utilisateurs' }];
 
 const { users, loading, error, fetchUsers, fetchUserAssociations, availableEmployees, availablePatients, addUser, updateUser, resetPassword, deleteUser, toggleUserStatus } = useUsers();
@@ -311,45 +312,29 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-    <section class="min-h-screen p-4 md:p-6 lg:p-8 transition-colors duration-300">
-        <AppToast />
+    <PageShell>
         <ConfirmPopup />
 
-        <div data-tour="admin-users.header" class="mb-6 md:mb-8">
-            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
-                <div class="space-y-2">
-                    <div class="flex items-center gap-3">
-                        <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-500/10 text-primary-500">
-                            <i class="pi pi-users text-2xl"></i>
-                        </span>
-                        <div>
-                            <h1 class="text-2xl md:text-3xl font-semibold text-surface-900 dark:text-surface-50">Gestion des utilisateurs</h1>
-                            <p class="text-surface-600 dark:text-surface-300 text-sm md:text-base">Ajoutez, modifiez et sécurisez les comptes utilisateurs.</p>
-                        </div>
+        <template #header>
+            <PageHeader
+                title="Gestion des utilisateurs"
+                subtitle="Ajoutez, modifiez et sécurisez les comptes utilisateurs."
+                icon="pi pi-users"
+                tour-id="admin-users.header"
+                :breadcrumb-items="breadcrumbItems"
+                :breadcrumb-home="breadcrumbHome"
+            >
+                <template #actions>
+                    <div data-tour="admin-users.grouping" class="flex flex-wrap items-center gap-2">
+                        <Button icon="pi pi-sitemap" size="small" :label="groupByType ? 'Regroupement actif' : 'Regrouper par type'" :severity="groupByType ? 'info' : 'secondary'" outlined @click="toggleGrouping" />
+                        <Button icon="pi pi-plus" label="Nouvel utilisateur" @click="openCreate" />
                     </div>
-                </div>
-                <div data-tour="admin-users.grouping" class="flex flex-wrap items-center gap-3">
-                    <Button icon="pi pi-sitemap" :label="groupByType ? 'Regroupement actif' : 'Regrouper par type'" :severity="groupByType ? 'info' : 'secondary'" outlined @click="toggleGrouping" />
-                    <Button
-                        icon="pi pi-plus"
-                        label="Nouvel utilisateur"
-                        class="shadow-lg hover:shadow-xl transition-all duration-300 bg-gradient-to-r from-primary-500 to-primary-600 border-0 text-white px-6 py-3 rounded-xl font-medium"
-                        @click="openCreate"
-                    />
-                </div>
-            </div>
+                </template>
+            </PageHeader>
+        </template>
 
-            <div class="bg-surface-0 dark:bg-surface-800/80 rounded-2xl p-4 shadow-sm border border-surface-200/50 dark:border-surface-700/50 backdrop-blur-sm">
-                <Breadcrumb :home="breadcrumbHome" :model="breadcrumbItems" class="text-sm" />
-            </div>
-        </div>
-
-        <div data-tour="admin-users.search" class="mb-6 md:mb-8">
-            <div class="card p-5 md:p-6 border-0 rounded-2xl bg-gradient-to-r from-surface-0 to-surface-50/80 dark:from-surface-800 dark:to-surface-900/80 shadow-lg backdrop-blur-sm">
-                <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-100 mb-4 flex items-center gap-2">
-                    <i class="pi pi-filter text-primary-500"></i>
-                    Recherche
-                </h3>
+        <template #toolbar>
+            <PageSection title="Recherche" padded tour-id="admin-users.search">
                 <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
                     <div class="md:col-span-6">
                         <IconField class="p-input-icon-left w-full">
@@ -360,7 +345,7 @@ onBeforeUnmount(() => {
                                 name="users-search"
                                 autocomplete="off"
                                 data-lpignore="true"
-                                class="w-full p-3.5 rounded-xl border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-700/50 focus:ring-2 focus:ring-primary-500/20 transition-all"
+                                class="w-full"
                             />
                         </IconField>
                     </div>
@@ -369,19 +354,11 @@ onBeforeUnmount(() => {
                         <SelectButton v-model="usersAssociationView" :options="usersAssociationOptions" optionLabel="label" optionValue="value" :allowEmpty="false" class="w-full" />
                     </div>
                 </div>
-            </div>
-        </div>
+            </PageSection>
+        </template>
 
-        <div data-tour="admin-users.table" class="bg-surface-0 dark:bg-surface-800/80 rounded-2xl shadow-xl overflow-hidden border border-surface-200/50 dark:border-surface-700/50 backdrop-blur-sm">
-            <div class="px-5 md:px-6 py-4 border-b border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900/50 dark:to-surface-800">
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div>
-                        <h2 class="text-lg font-semibold text-surface-900 dark:text-surface-100">Liste des utilisateurs</h2>
-                        <p class="text-sm text-surface-600 dark:text-surface-300">Consultez et gérez les comptes existants.</p>
-                    </div>
-                </div>
-            </div>
-
+        <PageSection title="Liste des utilisateurs" subtitle="Consultez et gérez les comptes existants." tour-id="admin-users.table">
+            <div class="page-table-scroll">
             <DataTable
                 :value="filteredUsersView"
                 dataKey="id"
@@ -418,18 +395,18 @@ onBeforeUnmount(() => {
                         <div class="font-medium text-surface-900 dark:text-surface-100">{{ data.username }}</div>
                     </template>
                 </Column>
-                <Column field="associationLabel" :header="associationColumnHeader" sortable></Column>
-                <Column field="typeLabel" header="Type de poste" sortable>
+                <Column field="associationLabel" :header="associationColumnHeader" sortable headerClass="hidden md:table-cell" bodyClass="hidden md:table-cell"></Column>
+                <Column field="typeLabel" header="Type de poste" sortable headerClass="hidden lg:table-cell" bodyClass="hidden lg:table-cell">
                     <template #body="{ data }">
                         <Tag :value="data.typeLabel" severity="info" />
                     </template>
                 </Column>
-                <Column field="roleLabel" header="Role" sortable>
+                <Column field="roleLabel" header="Role" sortable headerClass="hidden sm:table-cell" bodyClass="hidden sm:table-cell">
                     <template #body="{ data }">
                         <Tag :value="data.roleLabel" :severity="data.roleLabel === 'Admin' ? 'danger' : 'info'" />
                     </template>
                 </Column>
-                <Column header="Actions" style="min-width: 200px">
+                <Column header="Actions" style="min-width: 7.5rem">
                     <template #body="{ data }">
                         <div data-tour="admin-users.actions" class="flex flex-wrap gap-2">
                             <Button icon="pi pi-pencil" severity="secondary" text @click="openEdit(data)" />
@@ -443,11 +420,22 @@ onBeforeUnmount(() => {
                     <div class="text-center py-12 text-surface-600 dark:text-surface-300">Aucun utilisateur trouvé.</div>
                 </template>
             </DataTable>
-        </div>
+            </div>
+        </PageSection>
 
         <UserForm v-model:visible="formVisible" :mode="formMode" :user="currentUser" :employees="availableEmployees" :patients="availablePatients" :loading="loading" tourTarget="admin-users.dialog.create" @submit="confirmFormSubmit" />
 
-        <Dialog header="Réinitialiser le mot de passe" v-model:visible="resetDialogVisible" :style="{ width: '420px' }" :modal="true">
+        <AppDialog
+            v-model:visible="resetDialogVisible"
+            title="Réinitialiser le mot de passe"
+            icon="pi pi-key"
+            icon-tone="warning"
+            size="sm"
+            cancel-label="Annuler"
+            confirm-label="Réinitialiser"
+            confirm-icon="pi pi-check"
+            @confirm="confirmResetPassword"
+        >
             <div class="flex flex-col gap-3" data-tour="admin-users.dialog.reset">
                 <label for="reset-password" class="font-medium">Nouveau mot de passe <span class="text-red-500">*</span></label>
                 <Password
@@ -463,10 +451,6 @@ onBeforeUnmount(() => {
                     }"
                 />
             </div>
-            <template #footer>
-                <Button label="Annuler" icon="pi pi-times" severity="secondary" text @click="resetDialogVisible = false" />
-                <Button label="Réinitialiser" icon="pi pi-check" @click="confirmResetPassword" />
-            </template>
-        </Dialog>
-    </section>
+        </AppDialog>
+    </PageShell>
 </template>

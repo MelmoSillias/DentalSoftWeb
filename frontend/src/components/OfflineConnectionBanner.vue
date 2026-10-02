@@ -25,10 +25,10 @@ const message = computed(() => {
     }
 
     if (offlineCause.value === 'browser') {
-        return "Votre appareil n'a plus accès au réseau. Ce n'est pas une erreur de l'application : les actions peuvent échouer tant que la connexion n'est pas rétablie.";
+        return "Votre appareil n'a plus accès au réseau.";
     }
 
-    return "Le serveur n'est plus joignable. Vérifiez votre connexion internet : le défaut vient de votre réseau, pas d'une erreur de l'application.";
+    return "Le serveur n'est plus joignable. Vérifiez votre connexion internet.";
 });
 
 function syncOffset() {
@@ -168,12 +168,5 @@ html.is-connection-restored .auth {
     min-height: calc(100dvh - var(--connection-banner-offset, 0px));
 }
 
-html.is-connection-offline .p-toast-top-right,
-html.is-connection-offline .p-toast-top-left,
-html.is-connection-offline .p-toast-top-center,
-html.is-connection-restored .p-toast-top-right,
-html.is-connection-restored .p-toast-top-left,
-html.is-connection-restored .p-toast-top-center {
-    top: 5.25rem;
-}
+/* Toast offset when banner is visible is handled in layout/_toast.scss */
 </style>

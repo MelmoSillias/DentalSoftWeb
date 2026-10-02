@@ -1,6 +1,6 @@
 <script setup>
 import Button from 'primevue/button';
-import Dialog from 'primevue/dialog';
+import AppDialog from '@/components/layout/AppDialog.vue';
 import InputText from 'primevue/inputtext';
 import Select from 'primevue/select';
 import SelectButton from 'primevue/selectbutton';
@@ -222,39 +222,28 @@ const deleteAntecedent = (row) => {
 </script>
 
 <template>
-    <div class="rounded-2xl border border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-br from-surface-0 to-surface-50/80 dark:from-surface-800 dark:to-surface-900/80 p-6 shadow-sm">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-surface-100 dark:border-surface-700">
-            <div class="flex items-center gap-3">
-                <div class="p-2.5 rounded-xl bg-primary-500/10 dark:bg-primary-500/20">
-                    <i class="pi pi-file-edit text-primary-600 dark:text-primary-400 text-xl"></i>
-                </div>
-                <div>
-                    <h3 class="text-xl font-bold text-surface-900 dark:text-surface-50">Questionnaire médical</h3>
-                    <p class="text-sm text-surface-500 dark:text-surface-400 mt-1">Anamnese, antecedents et habitudes declarees</p>
-                </div>
+    <div class="medical-form-block">
+        <div class="medical-form-block__header">
+            <div>
+                <h3 class="medical-form-block__title">Questionnaire médical</h3>
+                <p class="medical-form-block__subtitle">Anamnèse, antécédents et habitudes déclarées</p>
             </div>
             <Button
                 label="Sauvegarder"
                 icon="pi pi-save"
                 :loading="saving"
                 @click="emit('save')"
-                class="rounded-xl px-5 py-3 font-medium shadow-sm hover:shadow-md transition-all bg-gradient-to-r from-primary-500 to-primary-600 border-0 text-white"
             />
         </div>
 
-        <div class="space-y-6">
-            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                <div class="p-2 rounded-xl bg-surface-50 dark:bg-surface-700/30 border border-surface-200 dark:border-surface-700 lg:col-span-12">
-                    <div class="flex items-center gap-2 mb-2">
-                        <div class="flex items-center justify-center w-6 h-6 rounded-md bg-amber-500/10">
-                            <i class="pi pi-history text-amber-500 text-sm"></i>
-                        </div>
-                        <h5 class="font-semibold text-surface-900 dark:text-surface-100">Anamnese</h5>
-                    </div>
-                    <Textarea v-model="form.motifConsultation" rows="6" placeholder="Evolution de la maladie..." class="w-full rounded-xl border-surface-200 dark:border-surface-700" @update:modelValue="(v) => updateField('motifConsultation', v)" />
+        <div class="medical-form-block__body space-y-4">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                <div class="dossier-section-block lg:col-span-12" style="padding-top:0;margin-top:0;border-top:0">
+                    <h5 class="dossier-section-label">Anamnèse</h5>
+                    <Textarea v-model="form.motifConsultation" rows="6" placeholder="Evolution de la maladie..." class="w-full" @update:modelValue="(v) => updateField('motifConsultation', v)" />
                 </div>
 
-                <div v-if="isFemalePatient" class="p-4 rounded-xl bg-surface-50 dark:bg-surface-700/30 border border-surface-200 dark:border-surface-700 lg:col-span-4">
+                <div v-if="isFemalePatient" class="dossier-section-block lg:col-span-4">
                     <div class="flex items-center gap-2 mb-3">
                         <div class="flex items-center justify-center w-6 h-6 rounded-md bg-emerald-500/10">
                             <i class="pi pi-heart text-emerald-500 text-sm"></i>
@@ -295,7 +284,7 @@ const deleteAntecedent = (row) => {
                     </div>
                 </div>
 
-                <div v-if="isFemalePatient" class="p-4 rounded-xl bg-surface-50 dark:bg-surface-700/30 border border-surface-200 dark:border-surface-700 lg:col-span-8">
+                <div v-if="isFemalePatient" class="dossier-section-block lg:col-span-8">
                     <div class="flex items-center justify-between gap-3">
                         <div>
                             <h4 class="font-semibold text-surface-900 dark:text-surface-100">Prochain rendez-vous</h4>
@@ -397,7 +386,19 @@ const deleteAntecedent = (row) => {
                 </div>
             </div> -->
 
-            <Dialog v-model:visible="showAntecedentDialog" modal header="Ajouter un antecedent" class="w-full max-w-xl">
+            <AppDialog
+                v-model:visible="showAntecedentDialog"
+                title="Ajouter un antecedent"
+                icon="pi pi-plus"
+                icon-tone="primary"
+                size="md"
+                cancel-label="Annuler"
+                confirm-label="Ajouter"
+                confirm-icon="pi pi-check"
+                :confirm-disabled="!antecedentDraft.option || (antecedentDraft.option === 'Autres' && !antecedentDraft.customName.trim())"
+                @cancel="showAntecedentDialog = false"
+                @confirm="saveAntecedentDraft"
+            >
                 <div class="space-y-4">
                     <div class="space-y-2">
                         <label class="text-sm font-medium text-surface-700 dark:text-surface-300">Type</label>
@@ -436,14 +437,7 @@ const deleteAntecedent = (row) => {
                         <Textarea v-model="antecedentDraft.details" rows="3" class="w-full" placeholder="Details complementaires" />
                     </div>
                 </div>
-
-                <template #footer>
-                    <div class="flex items-center justify-end gap-2">
-                        <Button label="Annuler" severity="secondary" outlined @click="showAntecedentDialog = false" />
-                        <Button label="Ajouter" icon="pi pi-check" :disabled="!antecedentDraft.option || (antecedentDraft.option === 'Autres' && !antecedentDraft.customName.trim())" @click="saveAntecedentDraft" />
-                    </div>
-                </template>
-            </Dialog>
+            </AppDialog>
         </div>
     </div>
 </template>

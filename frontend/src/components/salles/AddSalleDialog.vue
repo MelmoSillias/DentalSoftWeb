@@ -1,9 +1,8 @@
 <script setup>
 import { ref, watch } from 'vue';
-import Dialog from 'primevue/dialog';
+import AppDialog from '@/components/layout/AppDialog.vue';
 import InputText from 'primevue/inputtext';
 import Textarea from 'primevue/textarea';
-import Button from 'primevue/button';
 
 const props = defineProps({
     visible: Boolean,
@@ -37,8 +36,22 @@ const submit = (event) => {
 </script>
 
 <template>
-    <Dialog :visible="visible" modal header="Ajouter une salle" :style="{ width: '34rem' }" @update:visible="close">
-        <form class="flex flex-col gap-4" :data-tour="props.tourTarget || null" @submit.prevent>
+    <AppDialog
+        :visible="visible"
+        title="Ajouter une salle"
+        icon="pi pi-building"
+        icon-tone="primary"
+        size="md"
+        :loading="loading"
+        cancel-label="Annuler"
+        confirm-label="Ajouter"
+        confirm-icon="pi pi-check"
+        :data-tour="props.tourTarget || undefined"
+        @update:visible="close"
+        @cancel="close"
+        @confirm="submit"
+    >
+        <form class="flex flex-col gap-4" @submit.prevent>
             <div class="grid grid-cols-1 gap-4">
                 <div class="flex flex-col gap-2">
                     <label class="text-sm font-medium text-gray-700 dark:text-gray-200">Nom <span class="text-red-500">*</span></label>
@@ -49,10 +62,6 @@ const submit = (event) => {
                     <Textarea v-model="form.description" autoResize rows="3" placeholder="Description ou usage" class="w-full border border-gray-200 rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-400" />
                 </div>
             </div>
-            <div class="flex justify-end gap-3 pt-2">
-                <Button type="button" class="bg-gray-200 text-gray-700 hover:bg-gray-300 rounded-md px-4 py-2" @click="close" label="Annuler" />
-                <Button type="button" class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-md px-4 py-2" icon="pi pi-check" :loading="loading" @click="submit" label="Ajouter" />
-            </div>
         </form>
-    </Dialog>
+    </AppDialog>
 </template>

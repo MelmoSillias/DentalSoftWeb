@@ -149,6 +149,7 @@ export function usePatients() {
             });
         const paiements = Array.isArray(dossier.paiements) ? dossier.paiements : [];
         const factures = Array.isArray(dossier.factures) ? dossier.factures : [];
+        const servicesCabinet = Array.isArray(dossier.servicesCabinet) ? dossier.servicesCabinet : [];
         const archiveFiles = Array.isArray(dossier.archiveFiles) ? dossier.archiveFiles : [];
 
         return {
@@ -193,6 +194,7 @@ export function usePatients() {
             fiches,
             paiements,
             factures,
+            servicesCabinet,
             archiveFiles,
             raw: dossier
         };

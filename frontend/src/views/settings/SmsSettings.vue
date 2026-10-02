@@ -3,6 +3,8 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useGuidedTour } from '@/composables/useGuidedTour';
 import { activateSmsTourMock, deactivateSmsTourMock, fetchSmsOverviewTourMock, fetchSmsQueueTourMock, fetchSmsTemplatesTourMock, resetSmsTourMockData, resolveSmsTourMockScenario } from '@/services/smsTourMock';
 import { useToast } from 'primevue/usetoast';
+import PageShell from '@/components/layout/PageShell.vue';
+import PageHeader from '@/components/layout/PageHeader.vue';
 import Button from 'primevue/button';
 import Chip from 'primevue/chip';
 import Column from 'primevue/column';
@@ -10,7 +12,7 @@ import Card from 'primevue/card';
 import DataTable from 'primevue/datatable';
 import DatePicker from 'primevue/datepicker';
 import PanelDatePicker from '@/components/common/PanelDatePicker.vue';
-import Dialog from 'primevue/dialog';
+import AppDialog from '@/components/layout/AppDialog.vue';
 import Divider from 'primevue/divider';
 import FloatLabel from 'primevue/floatlabel';
 import InputText from 'primevue/inputtext';
@@ -31,6 +33,8 @@ import { fetchSmsQueueDetails } from '@/services/smsService';
 import { getHttpErrorMessage } from '@/service/http';
 
 const toast = useToast();
+const breadcrumbHome = { icon: 'pi pi-home', to: '/dashboard' };
+const breadcrumbItems = [{ label: 'Administration' }, { label: 'API SMS' }];
 const token = localStorage.getItem('token');
 const activeTab = ref('overview');
 const logsStatusFilter = ref(null);
@@ -293,6 +297,24 @@ const queueActionDescription = computed(() => {
     if (queueActionMode.value === 'cancel') return 'Ce SMS en attente sera retiré du traitement automatique.';
     if (queueActionMode.value === 'retry') return 'Ce SMS échoué sera remis immédiatement dans la file d’envoi.';
     return '';
+});
+
+const queueActionConfirmLabel = computed(() => {
+    if (queueActionMode.value === 'reschedule') return 'Reprogrammer';
+    if (queueActionMode.value === 'cancel') return 'Annuler le SMS';
+    return 'Renvoyer';
+});
+
+const queueActionConfirmIcon = computed(() => {
+    if (queueActionMode.value === 'reschedule') return 'pi pi-calendar';
+    if (queueActionMode.value === 'cancel') return 'pi pi-times';
+    return 'pi pi-refresh';
+});
+
+const queueActionConfirmSeverity = computed(() => {
+    if (queueActionMode.value === 'cancel') return 'danger';
+    if (queueActionMode.value === 'retry') return 'warning';
+    return 'primary';
 });
 
 const openQueueActionDialog = (mode, item) => {
@@ -631,7 +653,43 @@ const retryLoadSmsSettings = async () => {
 </script>
 
 <template>
-    <div class="space-y-6 pb-6 ml-8">
+    <PageShell>
+        <template #header>
+            <PageHeader
+                title="API SMS"
+                subtitle="Configuration du fournisseur, supervision du trafic, templates et file d'envoi."
+                icon="pi pi-comment"
+                tour-id="sms-settings.overview"
+                :breadcrumb-items="breadcrumbItems"
+                :breadcrumb-home="breadcrumbHome"
+            >
+                <template #actions>
+                    <Button label="Rafraîchir" icon="pi pi-refresh" severity="secondary" outlined size="small" :loading="smsLoading" :disabled="Boolean(loadErrorMessage)" @click="refreshSmsData" />
+                    <Button label="Traiter file" icon="pi pi-play" size="small" :loading="smsQueueing" :disabled="Boolean(loadErrorMessage)" @click="processQueueAction" />
+                </template>
+                <template v-if="!loadErrorMessage" #below>
+                    <div
+                        class="mt-3 inline-flex max-w-3xl items-start gap-3 rounded-2xl border px-4 py-3"
+                        data-tour="sms-settings.status"
+                        :class="
+                            smsAutomationOperational
+                                ? 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-800/60 dark:bg-emerald-950/20 dark:text-emerald-200'
+                                : 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-800/60 dark:bg-amber-950/20 dark:text-amber-200'
+                        "
+                    >
+                        <i :class="smsAutomationOperational ? 'pi pi-check-circle' : 'pi pi-exclamation-triangle'" class="mt-0.5 text-base"></i>
+                        <div>
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="text-sm font-semibold">{{ smsAutomationStatusLabel }}</span>
+                                <Tag :severity="smsAutomationStatusSeverity" :value="smsConfig.enabled ? 'Activé' : 'Désactivé'" />
+                            </div>
+                            <p class="mt-1 text-xs leading-relaxed opacity-90">{{ smsAutomationStatusDetail }}</p>
+                        </div>
+                    </div>
+                </template>
+            </PageHeader>
+        </template>
+
         <div v-if="loadErrorMessage" class="flex min-h-[320px] flex-col items-center justify-center gap-4 rounded-2xl border border-amber-200/70 bg-amber-50/70 p-8 dark:border-amber-800/70 dark:bg-amber-950/20">
             <div class="flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
                 <i class="pi pi-exclamation-triangle text-2xl"></i>
@@ -643,44 +701,7 @@ const retryLoadSmsSettings = async () => {
             <Button icon="pi pi-refresh" label="Réessayer" severity="warning" @click="retryLoadSmsSettings" />
         </div>
 
-        <template v-else>
-            <!-- Header Section -->
-            <div class="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900/50" data-tour="sms-settings.overview">
-                <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                    <div class="space-y-2">
-                        <p class="text-sm font-semibold uppercase tracking-wider text-blue-600 dark:text-blue-400">Administration</p>
-                        <div class="space-y-1">
-                            <h1 class="text-3xl font-bold text-gray-900 dark:text-white">API SMS</h1>
-                            <p class="max-w-3xl text-sm leading-relaxed text-gray-600 dark:text-gray-400">Configuration du fournisseur, supervision du trafic, templates et file d'envoi.</p>
-                            <div
-                                class="mt-3 inline-flex max-w-3xl items-start gap-3 rounded-2xl border px-4 py-3"
-                                data-tour="sms-settings.status"
-                                :class="
-                                    smsAutomationOperational
-                                        ? 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-800/60 dark:bg-emerald-950/20 dark:text-emerald-200'
-                                        : 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-800/60 dark:bg-amber-950/20 dark:text-amber-200'
-                                "
-                            >
-                                <i :class="smsAutomationOperational ? 'pi pi-check-circle' : 'pi pi-exclamation-triangle'" class="mt-0.5 text-base"></i>
-                                <div>
-                                    <div class="flex flex-wrap items-center gap-2">
-                                        <span class="text-sm font-semibold">{{ smsAutomationStatusLabel }}</span>
-                                        <Tag :severity="smsAutomationStatusSeverity" :value="smsConfig.enabled ? 'Activé' : 'Désactivé'" />
-                                    </div>
-                                    <p class="mt-1 text-xs leading-relaxed opacity-90">{{ smsAutomationStatusDetail }}</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="flex flex-wrap gap-3">
-                        <Button label="Rafraîchir" icon="pi pi-refresh" severity="secondary" outlined :loading="smsLoading" @click="refreshSmsData" />
-                        <Button label="Traiter file" icon="pi pi-play" :loading="smsQueueing" @click="processQueueAction" />
-                    </div>
-                </div>
-            </div>
-
-            <!-- Tabs Navigation -->
-            <Tabs :value="activeTab" @update:value="activeTab = $event">
+        <Tabs v-else :value="activeTab" @update:value="activeTab = $event">
                 <TabList class="flex flex-wrap gap-2 border-b border-gray-200 dark:border-gray-800" data-tour="sms-settings.tabs">
                     <Tab
                         v-for="item in tabItems"
@@ -1219,7 +1240,14 @@ const retryLoadSmsSettings = async () => {
                             </div>
                         </div>
 
-                        <Dialog v-model:visible="queueDialogVisible" modal header="File SMS étendue" :style="{ width: 'min(1400px, 98vw)' }">
+                        <AppDialog
+                            v-model:visible="queueDialogVisible"
+                            title="File SMS étendue"
+                            icon="pi pi-list"
+                            icon-tone="info"
+                            size="full"
+                            :show-footer="false"
+                        >
                             <DataTable :value="smsQueue" paginator :rows="20" :rowsPerPageOptions="[20, 50, 100]" dataKey="id" responsiveLayout="scroll" stripedRows showGridlines class="text-sm">
                                 <template #empty>
                                     <div class="py-10 text-center text-sm text-gray-500 dark:text-gray-400">Aucun SMS en file pour le moment.</div>
@@ -1259,9 +1287,16 @@ const retryLoadSmsSettings = async () => {
                                     </template>
                                 </Column>
                             </DataTable>
-                        </Dialog>
+                        </AppDialog>
 
-                        <Dialog v-model:visible="queueDetailsDialogVisible" modal header="Détails SMS" :style="{ width: 'min(900px, 96vw)' }">
+                        <AppDialog
+                            v-model:visible="queueDetailsDialogVisible"
+                            title="Détails SMS"
+                            icon="pi pi-envelope"
+                            icon-tone="info"
+                            size="xl"
+                            :show-footer="false"
+                        >
                             <div v-if="queueDetailsLoading" class="py-8 text-center">Chargement…</div>
                             <div v-else class="space-y-4">
                                 <div class="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/30">
@@ -1298,9 +1333,22 @@ const retryLoadSmsSettings = async () => {
                                     </div>
                                 </div>
                             </div>
-                        </Dialog>
+                        </AppDialog>
 
-                        <Dialog v-model:visible="queueActionDialogVisible" modal :header="queueActionTitle" :style="{ width: 'min(32rem, 96vw)' }">
+                        <AppDialog
+                            v-model:visible="queueActionDialogVisible"
+                            :title="queueActionTitle"
+                            :icon="queueActionConfirmIcon"
+                            :icon-tone="queueActionConfirmSeverity"
+                            size="sm"
+                            :loading="smsQueueItemUpdating === queueActionItem?.id"
+                            cancel-label="Fermer"
+                            :confirm-label="queueActionConfirmLabel"
+                            :confirm-icon="queueActionConfirmIcon"
+                            :confirm-severity="queueActionConfirmSeverity"
+                            @cancel="closeQueueActionDialog"
+                            @confirm="submitQueueAction"
+                        >
                             <div class="space-y-4">
                                 <p class="text-sm text-gray-600 dark:text-gray-300">{{ queueActionDescription }}</p>
                                 <div class="rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm dark:border-gray-700 dark:bg-gray-800/40">
@@ -1312,19 +1360,7 @@ const retryLoadSmsSettings = async () => {
                                     <DatePicker v-model="queueActionSendAt" showTime hourFormat="24" dateFormat="dd/mm/yy" class="w-full" />
                                 </div>
                             </div>
-                            <template #footer>
-                                <div class="flex justify-end gap-2">
-                                    <Button label="Fermer" severity="secondary" outlined @click="closeQueueActionDialog" />
-                                    <Button
-                                        :label="queueActionMode === 'reschedule' ? 'Reprogrammer' : queueActionMode === 'cancel' ? 'Annuler le SMS' : 'Renvoyer'"
-                                        :icon="queueActionMode === 'reschedule' ? 'pi pi-calendar' : queueActionMode === 'cancel' ? 'pi pi-times' : 'pi pi-refresh'"
-                                        :severity="queueActionMode === 'cancel' ? 'danger' : queueActionMode === 'retry' ? 'warning' : 'primary'"
-                                        :loading="smsQueueItemUpdating === queueActionItem?.id"
-                                        @click="submitQueueAction"
-                                    />
-                                </div>
-                            </template>
-                        </Dialog>
+                        </AppDialog>
                     </TabPanel>
 
                     <!-- Logs Tab -->
@@ -1507,8 +1543,7 @@ const retryLoadSmsSettings = async () => {
                     </TabPanel>
                 </TabPanels>
             </Tabs>
-        </template>
-    </div>
+    </PageShell>
 </template>
 
 <style scoped>

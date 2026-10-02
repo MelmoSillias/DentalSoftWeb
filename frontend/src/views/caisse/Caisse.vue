@@ -6,6 +6,8 @@ import CaisseFactures from '@/components/caisse/CaisseFactures.vue';
 import CaisseOverview from '@/components/caisse/CaisseOverview.vue';
 import CaissePaiements from '@/components/caisse/CaissePaiements.vue';
 import CaisseAssurances from '@/components/caisse/CaisseAssurances.vue';
+import PageHeader from '@/components/layout/PageHeader.vue';
+import PageShell from '@/components/layout/PageShell.vue';
 import PrintDevisBody from '@/components/print/PrintDevisBody.vue';
 import PrintDevisAssuranceBody from '@/components/print/PrintDevisAssuranceBody.vue';
 import PrintPaymentsListBody from '@/components/print/PrintPaymentsListBody.vue';
@@ -58,8 +60,16 @@ import { canModifyFacture } from '@/utils/factureRow';
 import { fetchInvoicePrintData, fetchFactureAssurancePrintData, fetchPaymentsListPrintData, fetchReceiptPrintData, fetchTicketPrintData } from '@/services/printService';
 import { sendInvoiceSms, sendReceiptSms } from '@/services/smsService';
 import Button from 'primevue/button';
+import Tab from 'primevue/tab';
+import TabList from 'primevue/tablist';
+import TabPanel from 'primevue/tabpanel';
+import TabPanels from 'primevue/tabpanels';
+import Tabs from 'primevue/tabs';
 import { useToast } from 'primevue/usetoast';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+
+const breadcrumbHome = { icon: 'pi pi-home', to: '/dashboard' };
+const breadcrumbItems = [{ label: 'Caisse' }];
 
 const toApiDate = (value) => {
     if (!value) return '';
@@ -1571,26 +1581,33 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-    <div class="page-shell">
-        <div v-if="loadErrorMessage" class="mb-4 flex min-h-[320px] flex-col items-center justify-center gap-4 rounded-2xl border border-amber-200/70 bg-amber-50/70 p-8 dark:border-amber-800/70 dark:bg-amber-950/20">
-            <div class="flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
-                <i class="pi pi-exclamation-triangle text-2xl"></i>
+    <PageShell>
+        <template #header>
+            <PageHeader
+                title="Gestion de la caisse"
+                subtitle="Suivi des factures, paiements et dossiers assurance"
+                icon="pi pi-wallet"
+                tour-id="caisse.header"
+                :breadcrumb-items="breadcrumbItems"
+                :breadcrumb-home="breadcrumbHome"
+            />
+        </template>
+
+        <div
+            v-if="loadErrorMessage"
+            class="flex min-h-[280px] flex-col items-center justify-center gap-4 rounded-xl border border-amber-200/70 bg-amber-50/70 p-6 dark:border-amber-800/70 dark:bg-amber-950/20"
+        >
+            <div class="flex h-14 w-14 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
+                <i class="pi pi-exclamation-triangle text-xl"></i>
             </div>
             <div class="text-center">
-                <p class="text-lg font-semibold text-amber-800 dark:text-amber-200">Chargement interrompu</p>
+                <p class="text-base font-semibold text-amber-800 dark:text-amber-200">Chargement interrompu</p>
                 <p class="text-sm text-amber-700/90 dark:text-amber-300/90">{{ loadErrorMessage }}</p>
             </div>
-            <Button icon="pi pi-refresh" label="Réessayer" severity="warning" @click="retryLoadPage" />
+            <Button icon="pi pi-refresh" label="Réessayer" severity="warning" size="small" @click="retryLoadPage" />
         </div>
 
         <template v-else>
-            <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
-                <div>
-                    <h1 class="text-2xl font-semibold mb-1">Gestion de la caisse</h1>
-                    <p class="muted">Suivi des factures et paiements avec PrimeVue.</p>
-                </div>
-            </div>
-
             <Tabs :value="activeView" @update:value="setActiveView">
                 <TabList data-tour="caisse.tabs">
                     <Tab value="overview">Vue d'ensemble</Tab>
@@ -1703,7 +1720,9 @@ onBeforeUnmount(() => {
                     </TabPanel>
                 </TabPanels>
             </Tabs>
+        </template>
 
+        <template #dialogs>
             <CaisseInvoiceDialogs
                 :pay-dialog-visible="payDialogVisible"
                 :selected-facture="selectedFacture"
@@ -1759,127 +1778,5 @@ onBeforeUnmount(() => {
                 @print-invoice="printInvoice"
             />
         </template>
-    </div>
+    </PageShell>
 </template>
-
-<style scoped>
-.page-shell {
-    padding: 1.5rem;
-    background: var(--surface-ground);
-    min-height: 100vh;
-}
-
-.card {
-    border-radius: 14px;
-    padding: 1.25rem;
-    background: var(--surface-card);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
-    border: 1px solid var(--surface-border);
-}
-
-.eyebrow {
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    font-size: 0.8rem;
-    color: #94a3b8;
-    margin: 0;
-}
-
-.muted {
-    color: #6b7280;
-}
-
-.dialog-note {
-    color: #374151;
-}
-
-.preview-subtext,
-.preview-summary-label {
-    color: #6b7280;
-}
-
-.preview-table-card,
-.preview-payment-card {
-    background: rgba(255, 255, 255, 0.92);
-}
-
-.preview-table-head,
-.preview-table-foot {
-    background: rgba(248, 250, 252, 0.92);
-}
-
-.preview-table-head-row,
-.preview-table-row {
-    border-color: #e5e7eb;
-}
-
-.preview-table-muted,
-.preview-payment-date,
-.preview-payment-description,
-.preview-payment-meta,
-.preview-payment-meta-label,
-.preview-empty-state {
-    color: #64748b;
-}
-
-.preview-table-strong,
-.preview-table-emphasis,
-.preview-payment-amount {
-    color: #0f172a;
-}
-
-.preview-table-warning {
-    color: #b45309;
-}
-
-.app-dark .muted,
-.app-dark .dialog-note,
-.app-dark .preview-subtext,
-.app-dark .preview-summary-label,
-.app-dark .preview-table-muted,
-.app-dark .preview-payment-date,
-.app-dark .preview-payment-description,
-.app-dark .preview-payment-meta,
-.app-dark .preview-payment-meta-label,
-.app-dark .preview-empty-state {
-    color: #94a3b8;
-}
-
-.app-dark .preview-header-card,
-.app-dark .preview-summary-card,
-.app-dark .preview-empty-state {
-    background: linear-gradient(135deg, rgba(30, 41, 59, 0.88), rgba(15, 23, 42, 0.82));
-    border-color: #334155;
-}
-
-.app-dark .preview-table-card,
-.app-dark .preview-payment-card {
-    background: rgba(15, 23, 42, 0.92);
-    border-color: #334155;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28);
-}
-
-.app-dark .preview-table-head,
-.app-dark .preview-table-foot {
-    background: rgba(30, 41, 59, 0.92);
-    color: #e2e8f0;
-}
-
-.app-dark .preview-table-head-row,
-.app-dark .preview-table-row {
-    border-color: #334155;
-}
-
-.app-dark .preview-table-strong,
-.app-dark .preview-table-emphasis,
-.app-dark .preview-payment-amount,
-.app-dark .preview-payment-card .font-medium,
-.app-dark .preview-header-card .font-semibold,
-.app-dark .preview-summary-card .font-semibold {
-    color: #f8fafc;
-}
-
-.app-dark .preview-table-warning {
-    color: #fbbf24;
-}
-</style>

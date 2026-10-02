@@ -9,7 +9,7 @@ import Button from 'primevue/button';
 import Column from 'primevue/column';
 import ConfirmPopup from 'primevue/confirmpopup';
 import DataTable from 'primevue/datatable';
-import Dialog from 'primevue/dialog';
+import AppDialog from '@/components/layout/AppDialog.vue';
 import InputText from 'primevue/inputtext';
 import Password from 'primevue/password';
 import Select from 'primevue/select';
@@ -1996,18 +1996,34 @@ onBeforeUnmount(() => {
                                 </div>
                             </div>
 
-                            <Dialog v-model:visible="categoryDialog.visible" modal header="Nouvelle catégorie" class="w-full max-w-md">
+                            <AppDialog
+                                v-model:visible="categoryDialog.visible"
+                                title="Nouvelle catégorie"
+                                icon="pi pi-tags"
+                                icon-tone="primary"
+                                size="sm"
+                                cancel-label="Annuler"
+                                confirm-label="Ajouter"
+                                confirm-icon="pi pi-check"
+                                @confirm="confirmAddCategory"
+                            >
                                 <div class="field-group">
                                     <label>Nom de la catégorie</label>
                                     <InputText v-model="categoryDialog.nom" class="w-full" placeholder="Ex. Préventif" @keyup.enter="confirmAddCategory" />
                                 </div>
-                                <template #footer>
-                                    <Button label="Annuler" text severity="secondary" @click="categoryDialog.visible = false" />
-                                    <Button label="Ajouter" icon="pi pi-check" @click="confirmAddCategory" />
-                                </template>
-                            </Dialog>
+                            </AppDialog>
 
-                            <Dialog v-model:visible="changeCategoryDialog.visible" modal header="Changer de catégorie" class="w-full max-w-md">
+                            <AppDialog
+                                v-model:visible="changeCategoryDialog.visible"
+                                title="Changer de catégorie"
+                                icon="pi pi-sync"
+                                icon-tone="info"
+                                size="sm"
+                                cancel-label="Annuler"
+                                confirm-label="Appliquer"
+                                confirm-icon="pi pi-check"
+                                @confirm="confirmChangeCategory"
+                            >
                                 <div class="field-group">
                                     <label>Catégorie</label>
                                     <Select
@@ -2019,11 +2035,7 @@ onBeforeUnmount(() => {
                                         placeholder="Choisir une catégorie"
                                     />
                                 </div>
-                                <template #footer>
-                                    <Button label="Annuler" text severity="secondary" @click="changeCategoryDialog.visible = false" />
-                                    <Button label="Appliquer" icon="pi pi-check" @click="confirmChangeCategory" />
-                                </template>
-                            </Dialog>
+                            </AppDialog>
                         </div>
                     </div>
 
@@ -2320,16 +2332,20 @@ onBeforeUnmount(() => {
             </SelectButton>
         </div>
 
-        <Dialog
+        <AppDialog
             :visible="deviceAccessLogsDialogVisible"
-            header="Journal d'accès récent"
-            :modal="true"
-            :style="{ width: '56rem', maxWidth: '96vw' }"
+            title="Journal d'accès récent"
+            icon="pi pi-history"
+            icon-tone="info"
+            size="xl"
+            :show-footer="true"
+            cancel-label="Fermer"
             @update:visible="
                 (value) => {
                     deviceAccessLogsDialogVisible = value;
                 }
             "
+            @cancel="deviceAccessLogsDialogVisible = false"
         >
             <p class="settings-section-description m-0 mb-4">Historique des tentatives de connexion et accès récents par appareil.</p>
             <DataTable :value="deviceAccessLogs" :loading="devicesLoading" size="small" responsiveLayout="scroll">
@@ -2347,40 +2363,45 @@ onBeforeUnmount(() => {
                     <div class="text-sm text-surface-500 py-3">Aucun accès récent.</div>
                 </template>
             </DataTable>
-            <template #footer>
-                <Button label="Fermer" icon="pi pi-times" severity="secondary" @click="deviceAccessLogsDialogVisible = false" />
-            </template>
-        </Dialog>
+        </AppDialog>
 
-        <Dialog
+        <AppDialog
             :visible="deviceRenameDialogVisible"
-            header="Renommer l'appareil"
-            :modal="true"
-            :style="{ width: '28rem', maxWidth: '96vw' }"
+            title="Renommer l'appareil"
+            icon="pi pi-pencil"
+            icon-tone="primary"
+            size="sm"
+            :loading="deviceRenameSaving"
+            cancel-label="Annuler"
+            confirm-label="Enregistrer"
+            confirm-icon="pi pi-check"
             @update:visible="
                 (value) => {
                     if (!value) closeDeviceRenameDialog();
                 }
             "
+            @cancel="closeDeviceRenameDialog"
+            @confirm="saveDeviceRename"
         >
             <p class="settings-section-description m-0 mb-4">Choisissez un nom explicite (ex. « Accueil », « Salle 2 », « PC Dr Martin ») pour distinguer cet appareil.</p>
             <div class="field-group">
                 <label for="device-rename-input">Nom affiché <span class="text-red-500">*</span></label>
                 <InputText id="device-rename-input" v-model="deviceRenameValue" class="w-full" maxlength="255" placeholder="Nom de l'appareil" @keyup.enter="saveDeviceRename" />
             </div>
-            <template #footer>
-                <Button label="Annuler" icon="pi pi-times" severity="secondary" text :disabled="deviceRenameSaving" @click="closeDeviceRenameDialog" />
-                <Button label="Enregistrer" icon="pi pi-check" :loading="deviceRenameSaving" @click="saveDeviceRename" />
-            </template>
-        </Dialog>
+        </AppDialog>
 
-        <Dialog
+        <AppDialog
             :visible="securityDialog.visible"
-            :header="securityDialog.title"
-            :modal="true"
+            :title="securityDialog.title"
+            icon="pi pi-shield"
+            icon-tone="danger"
+            size="md"
             :closable="!isSecurityDialogSubmitting"
-            :dismissableMask="!isSecurityDialogSubmitting"
-            :style="{ width: '38rem', maxWidth: '96vw' }"
+            :dismissable-mask="!isSecurityDialogSubmitting"
+            :loading="isSecurityDialogSubmitting"
+            cancel-label="Annuler"
+            confirm-label="Confirmer"
+            confirm-icon="pi pi-check"
             @update:visible="
                 (value) => {
                     securityDialog.visible = value;
@@ -2388,6 +2409,8 @@ onBeforeUnmount(() => {
                 }
             "
             @hide="closeSecurityDialog"
+            @cancel="closeSecurityDialog"
+            @confirm="confirmSecurityDialog"
         >
             <div class="space-y-4">
                 <p class="text-sm text-color-secondary m-0">{{ securityDialog.message }}</p>
@@ -2424,12 +2447,7 @@ onBeforeUnmount(() => {
                     <Password id="settings-admin-password" v-model="securityDialog.password" :feedback="false" toggleMask fluid :disabled="isSecurityDialogSubmitting" inputClass="w-full" />
                 </div>
             </div>
-
-            <template #footer>
-                <Button label="Annuler" severity="secondary" outlined :disabled="isSecurityDialogSubmitting" @click="closeSecurityDialog" />
-                <Button label="Confirmer" icon="pi pi-check" :loading="isSecurityDialogSubmitting" @click="confirmSecurityDialog" />
-            </template>
-        </Dialog>
+        </AppDialog>
     </div>
 </template>
 

@@ -1,7 +1,9 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import Breadcrumb from 'primevue/breadcrumb';
+import PageShell from '@/components/layout/PageShell.vue';
+import PageHeader from '@/components/layout/PageHeader.vue';
+import PageSection from '@/components/layout/PageSection.vue';
 import Button from 'primevue/button';
 import Calendar from 'primevue/calendar';
 import ConfirmPopup from 'primevue/confirmpopup';
@@ -12,7 +14,6 @@ import InputText from 'primevue/inputtext';
 import Select from 'primevue/select';
 import SelectButton from 'primevue/selectbutton';
 import Tag from 'primevue/tag';
-import Toast from 'primevue/toast';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
 import { filePrefix } from '@/config';
@@ -26,7 +27,7 @@ const router = useRouter();
 const toast = useToast();
 const confirm = useConfirm();
 
-const breadcrumbHome = { icon: 'pi pi-home', to: '/' };
+const breadcrumbHome = { icon: 'pi pi-home', to: '/dashboard' };
 const breadcrumbItems = [{ label: 'Administration' }, { label: 'Gestion RH', to: '/administration/gestionrh' }, { label: 'Détails employé' }];
 
 const typeContratOptions = [
@@ -321,50 +322,29 @@ onMounted(() => {
 </script>
 
 <template>
-    <section class="min-h-screen p-4 md:p-6 lg:p-8 transition-colors duration-300">
-        <AppToast />
+    <PageShell>
         <ConfirmPopup />
 
-        <div data-tour="admin-employee-details.header" class="mb-6 md:mb-8">
-            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
-                <div class="space-y-2">
-                    <div class="flex items-center gap-3">
-                        <div class="p-2.5 rounded-xl bg-primary-500/10 dark:bg-primary-500/20">
-                            <i class="pi pi-id-card text-primary-600 dark:text-primary-400 text-xl"></i>
-                        </div>
-                        <div>
-                            <h1 class="text-3xl lg:text-4xl font-bold text-surface-900 dark:text-surface-50 tracking-tight">Détails employé</h1>
-                            <p class="text-surface-600 dark:text-surface-300 text-sm md:text-base">Consultez et mettez a jour les informations RH.</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="flex items-center gap-2">
+        <template #header>
+            <PageHeader
+                title="Détails employé"
+                subtitle="Consultez et mettez a jour les informations RH."
+                icon="pi pi-id-card"
+                tour-id="admin-employee-details.header"
+                :breadcrumb-items="breadcrumbItems"
+                :breadcrumb-home="breadcrumbHome"
+            >
+                <template #actions>
                     <Button icon="pi pi-arrow-left" severity="secondary" outlined label="Retour" @click="goBack" />
-                    <Button
-                        icon="pi pi-save"
-                        label="Enregistrer"
-                        class="shadow-lg hover:shadow-xl transition-all duration-300 bg-gradient-to-r from-primary-500 to-primary-600 border-0 text-white px-6 py-3 rounded-xl font-medium"
-                        :loading="loading"
-                        @click="confirmSave"
-                    />
-                </div>
-            </div>
-
-            <div class="bg-surface-0 dark:bg-surface-800/80 rounded-2xl p-4 shadow-sm border border-surface-200/50 dark:border-surface-700/50 backdrop-blur-sm">
-                <Breadcrumb :home="breadcrumbHome" :model="breadcrumbItems" class="text-sm" />
-            </div>
-        </div>
+                    <Button icon="pi pi-save" label="Enregistrer" :loading="loading" @click="confirmSave" />
+                </template>
+            </PageHeader>
+        </template>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div class="lg:col-span-2 space-y-6">
-                <div data-tour="admin-employee-details.personal" class="bg-surface-0 dark:bg-surface-800/80 rounded-2xl shadow-lg border border-surface-200/50 dark:border-surface-700/50 overflow-hidden">
-                    <div class="px-6 py-4 border-b border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900/50 dark:to-surface-800">
-                        <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-100 flex items-center gap-2">
-                            <i class="pi pi-user text-primary-500"></i>
-                            Informations personnelles
-                        </h3>
-                    </div>
-                    <div class="p-6 space-y-4">
+                <PageSection title="Informations personnelles" tour-id="admin-employee-details.personal" padded>
+                    <div class="space-y-4">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div class="space-y-1">
                                 <label class="text-sm font-medium">Nom</label>
@@ -400,16 +380,10 @@ onMounted(() => {
                             </div>
                         </div>
                     </div>
-                </div>
+                </PageSection>
 
-                <div data-tour="admin-employee-details.rh" class="bg-surface-0 dark:bg-surface-800/80 rounded-2xl shadow-lg border border-surface-200/50 dark:border-surface-700/50 overflow-hidden">
-                    <div class="px-6 py-4 border-b border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900/50 dark:to-surface-800">
-                        <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-100 flex items-center gap-2">
-                            <i class="pi pi-briefcase text-primary-500"></i>
-                            Informations RH
-                        </h3>
-                    </div>
-                    <div class="p-6 space-y-5">
+                <PageSection title="Informations RH" tour-id="admin-employee-details.rh" padded>
+                    <div class="space-y-5">
                         <EmployeeSalarySection v-model:form="form" :employee-type="form.type" />
 
                         <Divider />
@@ -432,16 +406,10 @@ onMounted(() => {
                             <SelectButton v-model="form.comingDays" :options="daysOptions" optionLabel="label" optionValue="value" multiple class="w-full flex flex-wrap gap-2" />
                         </div>
                     </div>
-                </div>
+                </PageSection>
 
-                <div data-tour="admin-employee-details.documents" class="bg-surface-0 dark:bg-surface-800/80 rounded-2xl shadow-lg border border-surface-200/50 dark:border-surface-700/50 overflow-hidden">
-                    <div class="px-6 py-4 border-b border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900/50 dark:to-surface-800">
-                        <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-100 flex items-center gap-2">
-                            <i class="pi pi-file text-primary-500"></i>
-                            Documents administratifs
-                        </h3>
-                    </div>
-                    <div class="p-6 space-y-4">
+                <PageSection title="Documents administratifs" tour-id="admin-employee-details.documents" padded>
+                    <div class="space-y-4">
                         <div class="space-y-2">
                             <label class="text-sm font-medium">Ajouter des fichiers</label>
                             <FileUpload name="administrativeFiles[]" :multiple="true" :customUpload="true" :auto="false" @select="onFilesSelect" @clear="onFilesClear" chooseLabel="Choisir" uploadLabel="Ajouter" cancelLabel="Vider" />
@@ -464,7 +432,7 @@ onMounted(() => {
                             <div v-else class="text-sm text-surface-500 dark:text-surface-400">Aucun fichier administratif.</div>
                         </div>
                     </div>
-                </div>
+                </PageSection>
             </div>
 
             <div class="space-y-6">
@@ -565,14 +533,8 @@ onMounted(() => {
                     </div>
                 </div>
 
-                <div data-tour="admin-employee-details.conges" class="bg-surface-0 dark:bg-surface-800/80 rounded-2xl shadow-lg border border-surface-200/50 dark:border-surface-700/50 overflow-hidden">
-                    <div class="px-6 py-4 border-b border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900/50 dark:to-surface-800">
-                        <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-100 flex items-center gap-2">
-                            <i class="pi pi-calendar text-primary-500"></i>
-                            Conges par annee
-                        </h3>
-                    </div>
-                    <div class="p-6 space-y-4">
+                <PageSection title="Conges par annee" tour-id="admin-employee-details.conges" padded>
+                    <div class="space-y-4">
                         <div v-if="congesByYear.length" class="space-y-6">
                             <div v-for="group in congesByYear" :key="group.year" class="space-y-3">
                                 <div class="flex items-center justify-between">
@@ -598,8 +560,8 @@ onMounted(() => {
                         </div>
                         <div v-else class="text-sm text-surface-500 dark:text-surface-400">Aucun conge enregistre pour cet employe.</div>
                     </div>
-                </div>
+                </PageSection>
             </div>
         </div>
-    </section>
+    </PageShell>
 </template>

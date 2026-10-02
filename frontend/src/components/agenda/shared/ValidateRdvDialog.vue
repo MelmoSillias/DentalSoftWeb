@@ -1,6 +1,5 @@
 <script setup>
-import Button from 'primevue/button';
-import Dialog from 'primevue/dialog';
+import AppDialog from '@/components/layout/AppDialog.vue';
 import Select from 'primevue/select';
 import SelectButton from 'primevue/selectbutton';
 import { computed, ref, watch } from 'vue';
@@ -109,7 +108,21 @@ const confirm = () => {
 </script>
 
 <template>
-    <Dialog v-model:visible="localVisible" modal header="Valider le rendez-vous" style="width: 440px" @hide="close">
+    <AppDialog
+        v-model:visible="localVisible"
+        title="Valider le rendez-vous"
+        icon="pi pi-check-circle"
+        icon-tone="success"
+        size="md"
+        :loading="loading"
+        :confirm-disabled="!canSubmit"
+        cancel-label="Annuler"
+        confirm-label="Valider"
+        confirm-icon="pi pi-check"
+        @cancel="close"
+        @confirm="confirm"
+        @hide="close"
+    >
         <div class="flex flex-col gap-4">
             <p class="text-sm text-surface-700 dark:text-surface-300">Confirmer la validation de ce rendez-vous ?</p>
 
@@ -129,12 +142,5 @@ const confirm = () => {
                 <p v-if="requireMedecinOnConsultationCreation && !medecinId" class="text-xs text-amber-600 dark:text-amber-400">Un médecin est obligatoire pour créer la consultation.</p>
             </div>
         </div>
-
-        <template #footer>
-            <div class="flex justify-end gap-2">
-                <Button label="Annuler" text severity="secondary" @click="close" />
-                <Button label="Valider" icon="pi pi-check" :loading="loading" :disabled="!canSubmit" @click="confirm" />
-            </div>
-        </template>
-    </Dialog>
+    </AppDialog>
 </template>

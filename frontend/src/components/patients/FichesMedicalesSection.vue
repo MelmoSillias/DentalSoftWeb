@@ -2,11 +2,11 @@
 import Button from 'primevue/button';
 import Carousel from 'primevue/carousel';
 import ConfirmDialog from 'primevue/confirmdialog';
-import Dialog from 'primevue/dialog';
 import Select from 'primevue/select';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
 import { computed, ref, watch } from 'vue';
+import AppDialog from '@/components/layout/AppDialog.vue';
 import FicheMedicalEditPanel from '@/components/patients/FicheMedicalEditPanel.vue';
 import FicheMedicalV2 from '@/components/patients/FicheMedicalV2.vue';
 import PatientCabinetServicesPanel from '@/components/patients/PatientCabinetServicesPanel.vue';
@@ -67,12 +67,13 @@ const ficheOptions = computed(() =>
     }))
 );
 
-const expandedDialogPt = {
-    root: { class: 'w-full max-w-7xl flex flex-col max-h-[90vh]' },
-    header: { class: 'shrink-0 border-b border-surface-200/50 dark:border-surface-700/50' },
-    content: { class: 'flex-1 overflow-y-auto p-0' },
-    footer: { class: 'shrink-0 border-t border-surface-200/50 dark:border-surface-700/50 bg-surface-50/80 dark:bg-surface-900/80 px-6 py-4' }
-};
+const expandedDialogSubtitle = computed(() => {
+    if (!selectedFiche.value) return null;
+    return `Créée le ${formatDateShort(selectedFiche.value.dateCreation || selectedFiche.value.createdAt)}`;
+});
+
+const expandedDialogTitle = computed(() => `Fiche médicale ${formatPosition(currentFicheIndex.value)}`);
+
 
 function prevFiche() {
     if (!orderedFiches.value.length) return;
@@ -213,64 +214,63 @@ watch(
 
 <template>
     <div>
-        <div class="bg-surface-0 dark:bg-surface-800/80 rounded-2xl shadow-lg border border-surface-200/50 dark:border-surface-700/50 overflow-hidden backdrop-blur-sm">
-            <div class="p-5 border-b border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900/50 dark:to-surface-800" data-tour="patients-dossier.fiches-toolbar">
-                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-100 flex items-center gap-2">
-                        <i class="pi pi-folder-open text-primary-500"></i>
-                        Fiches médicales
-                        <span class="ml-2 px-2.5 py-0.5 rounded-full bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 text-sm font-medium">
-                            {{ orderedFiches.length }}
-                        </span>
-                    </h3>
-                    <div class="flex flex-wrap items-center gap-2 sm:justify-end">
-                        <div class="flex items-center gap-1 sm:hidden">
-                            <Button icon="pi pi-chevron-left" severity="secondary" text size="small" :disabled="!orderedFiches.length" @click="prevFiche" />
-                            <Button icon="pi pi-chevron-right" severity="secondary" text size="small" :disabled="!orderedFiches.length" @click="nextFiche" />
-                        </div>
-                        <Button
-                            icon="pi pi-external-link"
-                            label="Agrandir"
-                            severity="secondary"
-                            outlined
-                            :disabled="!orderedFiches.length"
-                            @click="openExpanded"
-                            data-tour="patients-dossier.fiches-expand"
-                            :pt="{ label: { class: 'hidden sm:inline' } }"
-                        />
-                        <Button
-                            v-if="canEdit"
-                            icon="pi pi-file-plus"
-                            label="Nouvelle fiche"
-                            severity="success"
-                            outlined
-                            :loading="creatingFiche"
-                            :disabled="!patientId"
-                            @click="askCreateNewFiche"
-                            data-tour="patients-dossier.fiches-new"
-                            :pt="{ label: { class: 'hidden sm:inline' } }"
-                        />
-                        <Button
-                            v-if="canCreateConsultation"
-                            icon="pi pi-plus"
-                            label="Nouvelle consultation"
-                            severity="primary"
-                            class="bg-gradient-to-r from-primary-500 to-primary-600 border-0"
-                            @click="emit('new-consultation')"
-                            data-tour="patients-dossier.fiches-new-consultation"
-                            :pt="{ label: { class: 'hidden sm:inline' } }"
-                        />
+        <div class="page-section">
+            <div class="page-section__header" data-tour="patients-dossier.fiches-toolbar">
+                <div class="page-section__header-main">
+                    <h3 class="page-section__title">Fiches médicales</h3>
+                    <p class="page-section__subtitle">{{ orderedFiches.length }} fiche(s)</p>
+                </div>
+                <div class="page-section__header-actions">
+                    <div class="flex items-center gap-1 sm:hidden">
+                        <Button icon="pi pi-chevron-left" severity="secondary" text size="small" :disabled="!orderedFiches.length" @click="prevFiche" />
+                        <Button icon="pi pi-chevron-right" severity="secondary" text size="small" :disabled="!orderedFiches.length" @click="nextFiche" />
                     </div>
+                    <Button
+                        icon="pi pi-external-link"
+                        label="Agrandir"
+                        severity="secondary"
+                        outlined
+                        size="small"
+                        :disabled="!orderedFiches.length"
+                        @click="openExpanded"
+                        data-tour="patients-dossier.fiches-expand"
+                        :pt="{ label: { class: 'hidden sm:inline' } }"
+                    />
+                    <Button
+                        v-if="canEdit"
+                        icon="pi pi-file-plus"
+                        label="Nouvelle fiche"
+                        severity="secondary"
+                        outlined
+                        size="small"
+                        :loading="creatingFiche"
+                        :disabled="!patientId"
+                        @click="askCreateNewFiche"
+                        data-tour="patients-dossier.fiches-new"
+                        :pt="{ label: { class: 'hidden sm:inline' } }"
+                    />
+                    <Button
+                        v-if="canCreateConsultation"
+                        icon="pi pi-plus"
+                        label="Nouvelle consultation"
+                        size="small"
+                        @click="emit('new-consultation')"
+                        data-tour="patients-dossier.fiches-new-consultation"
+                        :pt="{ label: { class: 'hidden sm:inline' } }"
+                    />
                 </div>
             </div>
-            <div class="p-5">
+            <div class="p-3 md:p-4">
                 <div class="relative" data-tour="patients-dossier.fiches-preview">
                     <Carousel :value="orderedFiches" :numVisible="1" :numScroll="1" v-model:page="currentFicheIndex" :showIndicators="false" :showNavigators="false" circular class="medical-fiches-carousel">
                         <template #item="slotProps">
                             <div class="medical-fiches-item">
-                                <FicheMedicalV2 :fiche="slotProps.data" :position-label="formatPosition(slotProps.index)" :patient-age="patientAge" compact @print="emit('print-fiche', slotProps.data)" />
+                                <div class="medical-fiche-paper">
+                                    <FicheMedicalV2 :fiche="slotProps.data" :position-label="formatPosition(slotProps.index)" :patient-age="patientAge" compact @print="emit('print-fiche', slotProps.data)" />
+                                </div>
                                 <PatientCabinetServicesPanel
-                                    class="mt-4"
+                                    class="mt-3"
+                                    compact
                                     :patient-id="patientId"
                                     :fiche-id="slotProps.data.id"
                                     :services="slotProps.data.servicesCabinet || []"
@@ -280,18 +280,23 @@ watch(
                         </template>
                     </Carousel>
 
-                    <div class="flex items-center justify-center gap-2 mt-4">
+                    <div class="flex items-center justify-center gap-1.5 mt-3">
                         <button
                             v-for="(fiche, index) in orderedFiches"
                             :key="fiche.id || index"
+                            type="button"
                             @click="currentFicheIndex = index"
-                            :class="['w-2 h-2 rounded-full transition-all', currentFicheIndex === index ? 'w-8 bg-primary-500' : 'bg-surface-300 dark:bg-surface-600 hover:bg-surface-400 dark:hover:bg-surface-500']"
-                        />
+                            :class="['dossier-folder__tab-badge transition-all', currentFicheIndex === index ? 'dossier-tag--accent' : '']"
+                            :style="currentFicheIndex === index ? { minWidth: '1.75rem' } : { minWidth: '0.5rem', padding: '0.2rem' }"
+                            :aria-label="`Fiche ${index + 1}`"
+                        >
+                            <span v-if="currentFicheIndex === index">{{ index + 1 }}</span>
+                        </button>
                     </div>
 
-                    <div class="mt-6 pt-6 border-t border-surface-200/50 dark:border-surface-700/50" data-tour="patients-dossier.fiches-jump">
-                        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                            <div class="text-sm text-surface-600 dark:text-surface-400">Fiche {{ currentFicheIndex + 1 }} sur {{ orderedFiches.length }}</div>
+                    <div class="dossier-section-block" data-tour="patients-dossier.fiches-jump">
+                        <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                            <div style="font-size: var(--page-section-subtitle-size); color: var(--text-color-secondary)">Fiche {{ currentFicheIndex + 1 }} sur {{ orderedFiches.length }}</div>
                             <Select v-model="currentFicheIndex" :options="ficheOptions" optionLabel="label" optionValue="value" placeholder="Aller à une fiche..." class="w-full sm:w-48" />
                         </div>
                     </div>
@@ -299,31 +304,39 @@ watch(
             </div>
         </div>
 
-        <Dialog v-model:visible="isExpanded" modal :closable="false" :draggable="false" class="w-full max-w-7xl" :pt="expandedDialogPt">
-            <template #header>
-                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between w-full pr-8">
-                    <div>
-                        <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-100 flex items-center gap-2">
-                            <i class="pi pi-folder-open text-primary-500"></i>
-                            Fiche médicale {{ formatPosition(currentFicheIndex) }}
-                            <span v-if="isEditMode" class="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200"> Édition </span>
-                        </h3>
-                        <p v-if="selectedFiche" class="text-sm text-surface-500 dark:text-surface-400 mt-1">Créée le {{ formatDateShort(selectedFiche.dateCreation || selectedFiche.createdAt) }}</p>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <Button icon="pi pi-chevron-left" severity="secondary" text rounded :disabled="orderedFiches.length <= 1" @click="prevFiche" />
-                        <span class="text-sm text-surface-500">{{ currentFicheIndex + 1 }} / {{ orderedFiches.length }}</span>
-                        <Button icon="pi pi-chevron-right" severity="secondary" text rounded :disabled="orderedFiches.length <= 1" @click="nextFiche" />
-                    </div>
+        <AppDialog
+            v-model:visible="isExpanded"
+            :title="expandedDialogTitle"
+            :subtitle="expandedDialogSubtitle"
+            icon="pi pi-folder-open"
+            icon-tone="primary"
+            size="full"
+            :closable="false"
+            :draggable="false"
+            :style="{ width: 'min(96vw, 80rem)' }"
+            :show-footer="true"
+        >
+            <template #headerExtra>
+                <div class="flex items-center gap-2">
+                    <span
+                        v-if="isEditMode"
+                        class="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200"
+                    >
+                        Édition
+                    </span>
+                    <Button icon="pi pi-chevron-left" severity="secondary" text rounded :disabled="orderedFiches.length <= 1" @click="prevFiche" />
+                    <span class="text-sm text-surface-500">{{ currentFicheIndex + 1 }} / {{ orderedFiches.length }}</span>
+                    <Button icon="pi pi-chevron-right" severity="secondary" text rounded :disabled="orderedFiches.length <= 1" @click="nextFiche" />
                 </div>
             </template>
 
-            <div class="p-5">
+            <div>
                 <FicheMedicalEditPanel v-if="isEditMode && selectedFiche?.id" ref="editPanelRef" :key="`edit-${selectedFiche.id}`" :fiche-id="selectedFiche.id" @saved="handleFicheSaved" @dirty-change="editHasDirty = $event" />
                 <FicheMedicalV2 v-else-if="selectedFiche" :key="`view-${selectedFiche.id}`" :fiche="selectedFiche" :position-label="formatPosition(currentFicheIndex)" :patient-age="patientAge" compact hide-actions />
                 <PatientCabinetServicesPanel
                     v-if="selectedFiche"
                     class="mt-4"
+                    compact
                     :patient-id="patientId"
                     :fiche-id="selectedFiche.id"
                     :services="selectedFiche.servicesCabinet || []"
@@ -348,7 +361,7 @@ watch(
                     <Button label="Fermer" icon="pi pi-times" severity="secondary" text @click="closeExpanded" />
                 </div>
             </template>
-        </Dialog>
+        </AppDialog>
 
         <ConfirmDialog />
     </div>

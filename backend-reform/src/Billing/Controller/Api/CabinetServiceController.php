@@ -15,6 +15,18 @@ class CabinetServiceController extends AbstractController
     ) {
     }
 
+    #[Route('/api/services-cabinet', name: 'api_services_cabinet_list', methods: ['GET'])]
+    public function listAll(Request $request): JsonResponse
+    {
+        $start = $this->parseDateParam($request->query->get('start') ?? $request->query->get('date'));
+        $end = $this->parseDateParam($request->query->get('end') ?? $request->query->get('date'), true);
+        $includeCancelled = filter_var($request->query->get('includeCancelled', false), FILTER_VALIDATE_BOOLEAN);
+
+        return new JsonResponse([
+            'data' => $this->cabinetServices->listAll($start, $end, $includeCancelled),
+        ]);
+    }
+
     #[Route('/api/patients/{id}/services-cabinet', name: 'api_patient_services_cabinet_list', methods: ['GET'], requirements: ['id' => '\d+'])]
     public function listForPatient(int $id): JsonResponse
     {
@@ -35,6 +47,31 @@ class CabinetServiceController extends AbstractController
         return new JsonResponse($result, $status);
     }
 
+    #[Route('/api/services-cabinet/{id}', name: 'api_services_cabinet_get', methods: ['GET'], requirements: ['id' => '\d+'])]
+    public function get(int $id): JsonResponse
+    {
+        $row = $this->cabinetServices->get($id);
+        if ($row === null) {
+            return new JsonResponse(['error' => 'Service cabinet introuvable'], 404);
+        }
+
+        return new JsonResponse(['data' => $row]);
+    }
+
+    #[Route('/api/services-cabinet/{id}', name: 'api_services_cabinet_update', methods: ['PUT', 'PATCH'], requirements: ['id' => '\d+'])]
+    public function update(int $id, Request $request): JsonResponse
+    {
+        $payload = json_decode($request->getContent(), true);
+        if (!is_array($payload)) {
+            $payload = $request->request->all();
+        }
+
+        $result = $this->cabinetServices->update($id, $payload);
+        $status = (int) ($result['status'] ?? 200);
+
+        return new JsonResponse($result, $status);
+    }
+
     #[Route('/api/services-cabinet/{id}/cancel', name: 'api_services_cabinet_cancel', methods: ['POST'], requirements: ['id' => '\d+'])]
     public function cancel(int $id): JsonResponse
     {
@@ -42,6 +79,26 @@ class CabinetServiceController extends AbstractController
         $status = (int) ($result['status'] ?? 200);
 
         return new JsonResponse($result, $status);
+    }
+
+    private function parseDateParam(mixed $value, bool $endOfDay = false): ?\DateTime
+    {
+        if (!is_scalar($value) || trim((string) $value) === '') {
+            return null;
+        }
+
+        try {
+            $date = new \DateTime((string) $value);
+            if ($endOfDay && !str_contains((string) $value, ':')) {
+                $date->setTime(23, 59, 59);
+            } elseif (!$endOfDay && !str_contains((string) $value, ':')) {
+                $date->setTime(0, 0, 0);
+            }
+
+            return $date;
+        } catch (\Exception) {
+            return null;
+        }
     }
 
     #[Route('/api/factures-cabinet/{id}', name: 'api_factures_cabinet_preview', methods: ['GET'], requirements: ['id' => '\d+'])]

@@ -1,7 +1,6 @@
 <script setup>
-import Button from 'primevue/button';
 import AutoComplete from 'primevue/autocomplete';
-import Dialog from 'primevue/dialog';
+import AppDialog from '@/components/layout/AppDialog.vue';
 import Textarea from 'primevue/textarea';
 import { computed, reactive, ref, watch } from 'vue';
 
@@ -56,16 +55,18 @@ const submit = () => {
 </script>
 
 <template>
-    <Dialog
+    <AppDialog
         v-model:visible="visible"
-        modal
-        header="Ajouter un antécédent"
-        :style="{ width: '32rem' }"
-        :pt="{
-            root: 'rounded-2xl overflow-hidden',
-            header: 'px-6 py-4 border-b border-surface-200 dark:border-surface-700',
-            content: 'p-6'
-        }"
+        title="Ajouter un antécédent"
+        icon="pi pi-history"
+        icon-tone="info"
+        size="sm"
+        :loading="loading"
+        cancel-label="Annuler"
+        confirm-label="Enregistrer"
+        confirm-icon="pi pi-check"
+        @cancel="visible = false"
+        @confirm="submit"
     >
         <div class="flex flex-col gap-4">
             <div class="flex flex-col gap-2">
@@ -77,11 +78,5 @@ const submit = () => {
                 <Textarea v-model="form.description" rows="3" autoResize placeholder="Description" />
             </div>
         </div>
-        <template #footer>
-            <div class="flex justify-end gap-2">
-                <Button label="Annuler" severity="secondary" outlined @click="visible = false" />
-                <Button label="Enregistrer" icon="pi pi-check" :loading="loading" @click="submit" />
-            </div>
-        </template>
-    </Dialog>
+    </AppDialog>
 </template>

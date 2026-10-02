@@ -374,79 +374,63 @@ const sessions = computed(() =>
 
 <template>
     <div>
-        <div class="overflow-hidden backdrop-blur-sm" :class="compact ? '' : 'bg-surface-0 dark:bg-surface-800/80 rounded-2xl shadow-lg border border-surface-200/50 dark:border-surface-700/50'">
-            <div v-if="!compact" class="p-5 border-b border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900/50 dark:to-surface-800">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-100 flex items-center gap-2">
-                            <i class="pi pi-folder-open text-primary-500"></i>
-                            Fiche médicale {{ positionLabel || '' }}
-                        </h3>
-                        <p class="text-sm text-surface-600 dark:text-surface-300 mt-1">Créée le {{ formatDate(props.fiche?.dateCreation || props.fiche?.createdAt) }}</p>
-                    </div>
+        <div :class="compact ? '' : 'page-section'">
+            <div v-if="!compact" class="page-section__header">
+                <div class="page-section__header-main">
+                    <h3 class="page-section__title">Fiche médicale {{ positionLabel || '' }}</h3>
+                    <p class="page-section__subtitle">Créée le {{ formatDate(props.fiche?.dateCreation || props.fiche?.createdAt) }}</p>
                 </div>
             </div>
 
-            <div :class="compact ? '' : 'p-5'">
-                <div class="mb-6 sticky top-0 z-10 -mx-1 px-1 py-2 bg-surface-0/95 dark:bg-surface-800/95 backdrop-blur-sm">
-                    <div class="flex flex-wrap gap-2 border-b border-surface-200/50 dark:border-surface-700/50 pb-4">
-                        <button
-                            v-for="(section, index) in sections"
-                            :key="section.key"
-                            @click="activeSection = index"
-                            :class="[
-                                'relative px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300',
-                                activeSection === index ? 'bg-primary-500 text-white shadow-sm' : 'text-surface-600 dark:text-surface-400 hover:text-surface-900 dark:hover:text-surface-100 hover:bg-surface-100 dark:hover:bg-surface-700'
-                            ]"
-                        >
-                            <div class="flex items-center gap-2">
-                                <i :class="section.icon"></i>
-                                <span class="hidden sm:inline">{{ section.title }}</span>
-                                <span v-if="sectionHasContent[section.key]" class="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-emerald-400 ring-2 ring-white dark:ring-surface-800" />
-                            </div>
-                        </button>
-                    </div>
+            <div :class="compact ? '' : 'p-3 md:p-4'">
+                <div class="medical-form-nav sticky top-0 z-10 mb-3">
+                    <button
+                        v-for="(section, index) in sections"
+                        :key="section.key"
+                        type="button"
+                        class="medical-form-nav__item"
+                        :class="{ 'is-active': activeSection === index }"
+                        @click="activeSection = index"
+                    >
+                        <i :class="section.icon"></i>
+                        <span class="hidden sm:inline">{{ section.title }}</span>
+                        <span v-if="sectionHasContent[section.key]" class="medical-form-nav__dot" aria-hidden="true" />
+                    </button>
                 </div>
 
-                <div class="space-y-6" :class="compact ? 'max-h-[55vh] overflow-y-auto pr-1' : ''">
-                    <div v-if="activeSection === 0" class="animate-fadeIn space-y-6">
-                        <div class="rounded-2xl border border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-br from-surface-0 to-surface-50/80 dark:from-surface-800 dark:to-surface-900/80 p-6 shadow-sm">
-                            <div class="flex items-center gap-3 mb-6 pb-4 border-b border-surface-100 dark:border-surface-700">
-                                <div class="p-2.5 rounded-xl bg-primary-500/10 dark:bg-primary-500/20">
-                                    <i class="pi pi-file-edit text-primary-600 dark:text-primary-400 text-xl"></i>
-                                </div>
+                <div class="space-y-3" :class="compact ? 'max-h-[55vh] overflow-y-auto pr-1' : ''">
+                    <div v-if="activeSection === 0" class="space-y-3">
+                        <div class="medical-form-block">
+                            <div class="medical-form-block__header">
                                 <div>
-                                    <h3 class="text-xl font-bold text-surface-900 dark:text-surface-50">Questionnaire médical</h3>
-                                    <p class="text-sm text-surface-500 dark:text-surface-400 mt-1">Anamnèse, antécédents et habitudes déclarées</p>
+                                    <h3 class="medical-form-block__title">Questionnaire médical</h3>
+                                    <p class="medical-form-block__subtitle">Anamnèse, antécédents et habitudes déclarées</p>
                                 </div>
                             </div>
-
-                            <div class="space-y-6">
-                                <div class="p-4 rounded-xl bg-surface-50 dark:bg-surface-700/30 border border-surface-200 dark:border-surface-700">
-                                    <h4 class="font-semibold text-surface-900 dark:text-surface-100 mb-3">Anamnèse</h4>
-                                    <p class="text-surface-700 dark:text-surface-300 whitespace-pre-wrap">{{ entretien.motifConsultation || '—' }}</p>
+                            <div class="medical-form-block__body space-y-4">
+                                <div>
+                                    <h4 class="dossier-section-label">Anamnèse</h4>
+                                    <p style="font-size: var(--page-section-subtitle-size); color: var(--text-color); white-space: pre-wrap">{{ entretien.motifConsultation || '—' }}</p>
                                 </div>
 
-                                <div v-if="isFemalePatient" class="p-4 rounded-xl bg-surface-50 dark:bg-surface-700/30 border border-surface-200 dark:border-surface-700">
-                                    <h4 class="font-semibold text-surface-900 dark:text-surface-100 mb-3">État gynécologique</h4>
-                                    <div class="space-y-3 text-sm">
-                                        <div class="flex items-center justify-between">
-                                            <span class="text-surface-700 dark:text-surface-300">Allaitement</span>
-                                            <span class="font-medium text-surface-900 dark:text-surface-100">{{ formatBool(entretien.etatGynecologique?.allaitement) }}</span>
-                                        </div>
-                                        <div class="flex items-center justify-between">
-                                            <span class="text-surface-700 dark:text-surface-300">Grossesse en cours</span>
-                                            <span class="font-medium text-surface-900 dark:text-surface-100">{{ formatBool(entretien.etatGynecologique?.grossesseEnCours) }}</span>
-                                        </div>
-                                        <div class="flex items-center justify-between">
-                                            <span class="text-surface-700 dark:text-surface-300">Menstrues</span>
-                                            <span class="font-medium text-surface-900 dark:text-surface-100">{{ formatBool(entretien.etatGynecologique?.menstrues) }}</span>
-                                        </div>
+                                <div v-if="isFemalePatient" class="dossier-section-block">
+                                    <h4 class="dossier-section-label">État gynécologique</h4>
+                                    <div class="dossier-field-row">
+                                        <span class="dossier-field-row__label">Allaitement</span>
+                                        <span class="dossier-field-row__value">{{ formatBool(entretien.etatGynecologique?.allaitement) }}</span>
+                                    </div>
+                                    <div class="dossier-field-row">
+                                        <span class="dossier-field-row__label">Grossesse en cours</span>
+                                        <span class="dossier-field-row__value">{{ formatBool(entretien.etatGynecologique?.grossesseEnCours) }}</span>
+                                    </div>
+                                    <div class="dossier-field-row">
+                                        <span class="dossier-field-row__label">Menstrues</span>
+                                        <span class="dossier-field-row__value">{{ formatBool(entretien.etatGynecologique?.menstrues) }}</span>
                                     </div>
                                 </div>
 
-                                <div class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/30 p-4">
-                                    <h4 class="font-semibold text-surface-900 dark:text-surface-100 mb-3">Antécédents médicaux (médicaments et affections)</h4>
+                                <div class="dossier-section-block">
+                                    <h4 class="dossier-section-label">Antécédents médicaux (médicaments et affections)</h4>
                                     <div class="overflow-x-auto rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900/40">
                                         <table class="w-full text-sm">
                                             <thead>

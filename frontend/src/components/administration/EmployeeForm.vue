@@ -1,13 +1,12 @@
 <script setup>
 import { computed, ref, watch } from 'vue';
-import Dialog from 'primevue/dialog';
+import AppDialog from '@/components/layout/AppDialog.vue';
 import InputText from 'primevue/inputtext';
 import InputNumber from 'primevue/inputnumber';
 import Select from 'primevue/select';
 import Calendar from 'primevue/calendar';
 import MultiSelect from 'primevue/multiselect';
 import FileUpload from 'primevue/fileupload';
-import Button from 'primevue/button';
 import EmployeeSalarySection from '@/components/administration/EmployeeSalarySection.vue';
 import { employeeTypeInfirmierOption } from '@/utils/employeeTypeUtils';
 
@@ -166,7 +165,20 @@ const closeDialog = () => {
 </script>
 
 <template>
-    <Dialog :visible="visible" modal :style="{ width: '75vw', maxWidth: '980px' }" :header="dialogTitle" @update:visible="emit('update:visible', $event)">
+    <AppDialog
+        :visible="visible"
+        :title="dialogTitle"
+        icon="pi pi-id-card"
+        icon-tone="primary"
+        width="min(75vw, 980px)"
+        :loading="loading"
+        cancel-label="Annuler"
+        confirm-label="Enregistrer"
+        confirm-icon="pi pi-check"
+        @update:visible="emit('update:visible', $event)"
+        @cancel="closeDialog"
+        @confirm="submitForm"
+    >
         <div class="space-y-5 max-h-[70vh] overflow-y-auto pr-1" :data-tour="props.tourTarget || null">
             <section class="rounded-xl border border-surface-200 dark:border-surface-700 overflow-hidden">
                 <div class="px-4 py-3 border-b border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-900/40">
@@ -248,14 +260,7 @@ const closeDialog = () => {
                 </div>
             </section>
         </div>
-
-        <template #footer>
-            <div class="flex items-center justify-end gap-2">
-                <Button label="Annuler" severity="secondary" text @click="closeDialog" />
-                <Button label="Enregistrer" icon="pi pi-check" :loading="loading" @click="submitForm" />
-            </div>
-        </template>
-    </Dialog>
+    </AppDialog>
 </template>
 
 <style scoped>

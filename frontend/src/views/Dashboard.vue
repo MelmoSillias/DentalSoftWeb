@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue';
-import Breadcrumb from 'primevue/breadcrumb';
+import PageShell from '@/components/layout/PageShell.vue';
+import PageHeader from '@/components/layout/PageHeader.vue';
 import DatePicker from 'primevue/datepicker';
 import SelectButton from 'primevue/selectbutton';
 import Button from 'primevue/button';
@@ -29,7 +30,7 @@ const selectedRange = ref([startOfMonth, new Date()]);
 const selectedPeriod = ref('month');
 const loadErrorMessage = ref('');
 
-const breadcrumbHome = { icon: 'pi pi-home', to: '/' };
+const breadcrumbHome = { icon: 'pi pi-home', to: '/dashboard' };
 const breadcrumbItems = [{ label: 'Dashboard' }, { label: 'Tableau de bord' }];
 
 const filterOptions = [
@@ -115,11 +116,7 @@ const quickCards = computed(() => {
                 value: cards.value.patients?.new ?? 0,
                 subValue: `Total: ${cards.value.patients?.total ?? 0}`,
                 icon: 'pi pi-users',
-                background: 'bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-900/20 dark:to-blue-800/20',
-                border: 'border-blue-200/50 dark:border-blue-800/50',
-                text: 'text-blue-700 dark:text-blue-300',
-                iconBg: 'bg-blue-100/50 dark:bg-blue-900/30',
-                iconColor: 'text-blue-500',
+                tone: 'blue',
                 link: '/patients/liste',
                 linkLabel: 'Voir les patients'
             },
@@ -129,11 +126,7 @@ const quickCards = computed(() => {
                 value: cards.value.pendingConsultations?.total ?? 0,
                 subValue: `Attente moyenne: ${cards.value.pendingConsultations?.avgWaitMinutes ?? 0} min`,
                 icon: 'pi pi-wave-pulse',
-                background: 'bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-900/20 dark:to-amber-800/20',
-                border: 'border-amber-200/50 dark:border-amber-800/50',
-                text: 'text-amber-700 dark:text-amber-300',
-                iconBg: 'bg-amber-100/50 dark:bg-amber-900/30',
-                iconColor: 'text-amber-500',
+                tone: 'amber',
                 link: '/consultations/cards',
                 linkLabel: 'Voir les consultations'
             },
@@ -143,11 +136,7 @@ const quickCards = computed(() => {
                 value: cards.value.appointments?.pending ?? 0,
                 subValue: `Annules: ${cards.value.appointments?.cancelled ?? 0}`,
                 icon: 'pi pi-calendar',
-                background: 'bg-gradient-to-br from-green-50 to-green-100/50 dark:from-green-900/20 dark:to-green-800/20',
-                border: 'border-green-200/50 dark:border-green-800/50',
-                text: 'text-green-700 dark:text-green-300',
-                iconBg: 'bg-green-100/50 dark:bg-green-900/30',
-                iconColor: 'text-green-500',
+                tone: 'green',
                 link: '/agenda/rendez-vous',
                 linkLabel: "Ouvrir l'agenda"
             },
@@ -157,11 +146,7 @@ const quickCards = computed(() => {
                 value: cards.value.consultations?.total ?? 0,
                 subValue: `Payantes: ${cards.value.consultations?.paid ?? 0}`,
                 icon: 'pi pi-briefcase',
-                background: 'bg-gradient-to-br from-purple-50 to-purple-100/50 dark:from-purple-900/20 dark:to-purple-800/20',
-                border: 'border-purple-200/50 dark:border-purple-800/50',
-                text: 'text-purple-700 dark:text-purple-300',
-                iconBg: 'bg-purple-100/50 dark:bg-purple-900/30',
-                iconColor: 'text-purple-500',
+                tone: 'purple',
                 link: '/consultations/table',
                 linkLabel: 'Voir les statistiques'
             },
@@ -171,11 +156,7 @@ const quickCards = computed(() => {
                 value: formatAmount(cards.value.revenue?.total ?? 0),
                 subValue: `Impayes: ${formatAmount(cards.value.revenue?.unpaid ?? 0)}`,
                 icon: 'pi pi-euro',
-                background: 'bg-gradient-to-br from-red-50 to-red-100/50 dark:from-red-900/20 dark:to-red-800/20',
-                border: 'border-red-200/50 dark:border-red-800/50',
-                text: 'text-red-700 dark:text-red-300',
-                iconBg: 'bg-red-100/50 dark:bg-red-900/30',
-                iconColor: 'text-red-500',
+                tone: 'red',
                 link: '/caisse',
                 linkLabel: 'Voir la caisse'
             }
@@ -190,11 +171,7 @@ const quickCards = computed(() => {
                 value: cards.value.patients?.new ?? 0,
                 subValue: `Total: ${cards.value.patients?.total ?? 0}`,
                 icon: 'pi pi-users',
-                background: 'bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-900/20 dark:to-blue-800/20',
-                border: 'border-blue-200/50 dark:border-blue-800/50',
-                text: 'text-blue-700 dark:text-blue-300',
-                iconBg: 'bg-blue-100/50 dark:bg-blue-900/30',
-                iconColor: 'text-blue-500',
+                tone: 'blue',
                 link: '/patients/liste',
                 linkLabel: 'Voir les patients'
             },
@@ -204,11 +181,7 @@ const quickCards = computed(() => {
                 value: cards.value.consultations?.total ?? 0,
                 subValue: `Payantes: ${cards.value.consultations?.paid ?? 0}`,
                 icon: 'pi pi-briefcase',
-                background: 'bg-gradient-to-br from-green-50 to-green-100/50 dark:from-green-900/20 dark:to-green-800/20',
-                border: 'border-green-200/50 dark:border-green-800/50',
-                text: 'text-green-700 dark:text-green-300',
-                iconBg: 'bg-green-100/50 dark:bg-green-900/30',
-                iconColor: 'text-green-500',
+                tone: 'green',
                 link: '/consultations/table',
                 linkLabel: 'Voir les consultations'
             },
@@ -218,11 +191,7 @@ const quickCards = computed(() => {
                 value: cards.value.appointments?.pending ?? 0,
                 subValue: `Annules: ${cards.value.appointments?.cancelled ?? 0}`,
                 icon: 'pi pi-calendar',
-                background: 'bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-900/20 dark:to-amber-800/20',
-                border: 'border-amber-200/50 dark:border-amber-800/50',
-                text: 'text-amber-700 dark:text-amber-300',
-                iconBg: 'bg-amber-100/50 dark:bg-amber-900/30',
-                iconColor: 'text-amber-500',
+                tone: 'amber',
                 link: '/agenda/rendez-vous',
                 linkLabel: "Ouvrir l'agenda"
             },
@@ -232,11 +201,7 @@ const quickCards = computed(() => {
                 value: formatAmount(cards.value.cash?.total ?? 0),
                 subValue: `Impayes: ${formatAmount(cards.value.cash?.unpaid ?? 0)}`,
                 icon: 'pi pi-wallet',
-                background: 'bg-gradient-to-br from-red-50 to-red-100/50 dark:from-red-900/20 dark:to-red-800/20',
-                border: 'border-red-200/50 dark:border-red-800/50',
-                text: 'text-red-700 dark:text-red-300',
-                iconBg: 'bg-red-100/50 dark:bg-red-900/30',
-                iconColor: 'text-red-500',
+                tone: 'red',
                 link: '/caisse',
                 linkLabel: 'Voir la caisse'
             }
@@ -250,11 +215,7 @@ const quickCards = computed(() => {
             value: cards.value.patients?.new ?? 0,
             subValue: `Total: ${cards.value.patients?.total ?? 0}`,
             icon: 'pi pi-users',
-            background: 'bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-900/20 dark:to-blue-800/20',
-            border: 'border-blue-200/50 dark:border-blue-800/50',
-            text: 'text-blue-700 dark:text-blue-300',
-            iconBg: 'bg-blue-100/50 dark:bg-blue-900/30',
-            iconColor: 'text-blue-500',
+            tone: 'blue',
             link: '/patients/liste',
             linkLabel: 'Voir la liste complete'
         },
@@ -264,11 +225,7 @@ const quickCards = computed(() => {
             value: cards.value.consultations?.total ?? 0,
             subValue: `Payantes: ${cards.value.consultations?.paid ?? 0}`,
             icon: 'pi pi-briefcase',
-            background: 'bg-gradient-to-br from-green-50 to-green-100/50 dark:from-green-900/20 dark:to-green-800/20',
-            border: 'border-green-200/50 dark:border-green-800/50',
-            text: 'text-green-700 dark:text-green-300',
-            iconBg: 'bg-green-100/50 dark:bg-green-900/30',
-            iconColor: 'text-green-500',
+            tone: 'green',
             link: '/consultations/table',
             linkLabel: 'Voir les consultations'
         },
@@ -278,11 +235,7 @@ const quickCards = computed(() => {
             value: cards.value.appointments?.pending ?? 0,
             subValue: `Annules: ${cards.value.appointments?.cancelled ?? 0}`,
             icon: 'pi pi-calendar',
-            background: 'bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-900/20 dark:to-amber-800/20',
-            border: 'border-amber-200/50 dark:border-amber-800/50',
-            text: 'text-amber-700 dark:text-amber-300',
-            iconBg: 'bg-amber-100/50 dark:bg-amber-900/30',
-            iconColor: 'text-amber-500',
+            tone: 'amber',
             link: '/agenda/rendez-vous',
             linkLabel: "Ouvrir l'agenda"
         },
@@ -292,11 +245,7 @@ const quickCards = computed(() => {
             value: formatAmount(cards.value.cash?.total ?? 0),
             subValue: `Impayes: ${formatAmount(cards.value.cash?.unpaid ?? 0)}`,
             icon: 'pi pi-wallet',
-            background: 'bg-gradient-to-br from-purple-50 to-purple-100/50 dark:from-purple-900/20 dark:to-purple-800/20',
-            border: 'border-purple-200/50 dark:border-purple-800/50',
-            text: 'text-purple-700 dark:text-purple-300',
-            iconBg: 'bg-purple-100/50 dark:bg-purple-900/30',
-            iconColor: 'text-purple-500',
+            tone: 'purple',
             link: '/caisse',
             linkLabel: 'Voir la caisse'
         },
@@ -306,11 +255,7 @@ const quickCards = computed(() => {
             value: cards.value.pendingConsultations?.total ?? 0,
             subValue: `Attente moyenne: ${cards.value.pendingConsultations?.avgWaitMinutes ?? 0} min`,
             icon: 'pi pi-wave-pulse',
-            background: 'bg-gradient-to-br from-red-50 to-red-100/50 dark:from-red-900/20 dark:to-red-800/20',
-            border: 'border-red-200/50 dark:border-red-800/50',
-            text: 'text-red-700 dark:text-red-300',
-            iconBg: 'bg-red-100/50 dark:bg-red-900/30',
-            iconColor: 'text-red-500',
+            tone: 'red',
             link: '/consultations/cards',
             linkLabel: 'Voir les urgences'
         }
@@ -585,51 +530,44 @@ onMounted(async () => {
 </script>
 
 <template>
-    <section class="min-h-screen p-3 sm:p-4 md:p-6 lg:p-8 transition-colors duration-300">
-        <div class="mb-6 md:mb-8" data-tour="dashboard.header">
-            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
-                <div class="space-y-2 flex-1">
-                    <div class="flex items-center gap-3">
-                        <div class="p-2 rounded-xl bg-primary-500/10 dark:bg-primary-500/20 sm:p-2.5">
-                            <i class="pi pi-home text-primary-600 dark:text-primary-400 text-lg sm:text-xl"></i>
+    <PageShell>
+        <template #header>
+            <PageHeader
+                :title="`Bonjour, ${userLabel} 👋`"
+                subtitle="Voici votre tableau de bord pour aujourd'hui"
+                icon="pi pi-home"
+                tour-id="dashboard.header"
+                :breadcrumb-items="breadcrumbItems"
+                :breadcrumb-home="breadcrumbHome"
+            >
+                <template #actions>
+                    <div class="flex flex-wrap items-center justify-end gap-2 w-full sm:w-auto" data-tour="dashboard.filters">
+                        <SelectButton v-if="showRangeFilters" v-model="filterMode" :options="filterOptions" optionLabel="label" optionValue="value" class="shrink-0" />
+                        <div class="relative min-w-0 flex-1 sm:flex-none sm:w-52 lg:w-64" v-if="filterMode === 'date'">
+                            <DatePicker
+                                v-model="selectedDate"
+                                showIcon
+                                iconDisplay="input"
+                                dateFormat="dd/mm/yy"
+                                placeholder="Date"
+                                class="w-full rounded-xl border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-800 [&_.p-datepicker]:p-3.5"
+                                :pt="{ input: 'pl-10 py-2', icon: 'left-3 top-2.5 text-surface-400' }"
+                            />
                         </div>
-                        <div>
-                            <h1 class="text-xl sm:text-2xl lg:text-3xl font-bold text-surface-900 dark:text-surface-50 tracking-tight">Bonjour, {{ userLabel }} 👋</h1>
-                            <p class="text-surface-600 dark:text-surface-300 text-xs sm:text-sm md:text-base mt-1">Voici votre tableau de bord pour aujourd'hui</p>
+                        <div class="relative min-w-0 flex-1 sm:flex-none sm:w-56 lg:w-72" v-else-if="showRangeFilters">
+                            <PanelDatePicker
+                                v-model="selectedRange"
+                                showIcon
+                                dateFormat="dd/mm/yy"
+                                placeholder="Période"
+                                class="w-full"
+                                inputClass="rounded-xl border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-800 py-2"
+                            />
                         </div>
                     </div>
-                </div>
-
-                <div class="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-2 sm:gap-3 w-full lg:w-auto" data-tour="dashboard.filters">
-                    <SelectButton v-if="showRangeFilters" v-model="filterMode" :options="filterOptions" optionLabel="label" optionValue="value" class="w-full sm:w-auto" />
-                    <div class="relative w-full sm:w-auto" v-if="filterMode === 'date'">
-                        <DatePicker
-                            v-model="selectedDate"
-                            showIcon
-                            iconDisplay="input"
-                            dateFormat="dd/mm/yy"
-                            placeholder="Selectionner une date"
-                            class="rounded-xl border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-800 [&_.p-datepicker]:p-3.5 w-full sm:w-56 lg:w-64"
-                            :pt="{ input: 'pl-10 py-2.5 sm:py-3', icon: 'left-3 top-3 text-surface-400' }"
-                        />
-                    </div>
-                    <div class="relative w-full sm:w-auto" v-else-if="showRangeFilters">
-                        <PanelDatePicker
-                            v-model="selectedRange"
-                            showIcon
-                            dateFormat="dd/mm/yy"
-                            placeholder="Choisir periode"
-                            class="w-full sm:w-64 lg:w-72"
-                            inputClass="rounded-xl border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-800 py-2.5 sm:py-3"
-                        />
-                    </div>
-                </div>
-            </div>
-
-            <div class="bg-surface-0 dark:bg-surface-800/80 rounded-2xl p-3 sm:p-4 shadow-sm border border-surface-200/50 dark:border-surface-700/50 backdrop-blur-sm">
-                <Breadcrumb :home="breadcrumbHome" :model="breadcrumbItems" />
-            </div>
-        </div>
+                </template>
+            </PageHeader>
+        </template>
 
         <div v-if="loadErrorMessage" class="mb-6 flex min-h-[320px] flex-col items-center justify-center gap-4 rounded-2xl border border-amber-200/70 bg-amber-50/70 p-8 dark:border-amber-800/70 dark:bg-amber-950/20">
             <div class="flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
@@ -674,5 +612,5 @@ onMounted(async () => {
                 />
             </div>
         </template>
-    </section>
+    </PageShell>
 </template>

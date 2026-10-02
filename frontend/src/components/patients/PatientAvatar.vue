@@ -31,6 +31,10 @@ const props = defineProps({
         type: String,
         default: 'rounded-full'
     },
+    elevated: {
+        type: Boolean,
+        default: false
+    },
     alt: {
         type: String,
         default: 'Photo du patient'
@@ -104,7 +108,15 @@ const insuranceTooltip = computed(() => {
 
 <template>
     <div class="relative inline-flex shrink-0">
-        <div :class="[sizeClass, roundedClass, 'overflow-hidden flex items-center justify-center', photoSource ? 'bg-surface-100 dark:bg-surface-700' : fallbackClass]">
+        <div
+            :class="[
+                sizeClass,
+                roundedClass,
+                'overflow-hidden flex items-center justify-center',
+                elevated ? 'shadow-lg' : '',
+                photoSource ? 'bg-surface-100 dark:bg-surface-700' : fallbackClass
+            ]"
+        >
             <img v-if="photoSource" :src="photoSource" :alt="alt" class="h-full w-full object-cover" />
             <span v-else :class="textClass">{{ resolvedInitials }}</span>
         </div>

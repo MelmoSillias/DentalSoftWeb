@@ -29,12 +29,6 @@ const FONT_FAMILY_MAP = {
     System: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
 };
 
-const FONT_SIZE_MAP = {
-    small: '14px',
-    normal: '16px',
-    large: '18px'
-};
-
 export const useUiSettingsStore = defineStore('uiSettings', () => {
     const initialized = ref(false);
 
@@ -68,11 +62,14 @@ export const useUiSettingsStore = defineStore('uiSettings', () => {
 
     const applyFontSettings = () => {
         const root = document.documentElement;
+        const size = ['small', 'normal', 'large'].includes(fontSize.value) ? fontSize.value : 'normal';
 
+        // Taille gérée en CSS (media queries) via data-font-size — ne pas fixer --app-font-size en inline.
+        root.dataset.fontSize = size;
         root.style.setProperty('--app-font-family', FONT_FAMILY_MAP[fontFamily.value] || FONT_FAMILY_MAP.System);
-        root.style.setProperty('--app-font-size', FONT_SIZE_MAP[fontSize.value] || FONT_SIZE_MAP.normal);
         root.style.fontFamily = 'var(--app-font-family)';
-        root.style.fontSize = 'var(--app-font-size)';
+        root.style.removeProperty('font-size');
+        root.style.removeProperty('--app-font-size');
     };
 
     const registerSystemThemeListener = () => {

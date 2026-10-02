@@ -1,12 +1,13 @@
 <script setup>
 import { ref, computed, nextTick, onBeforeUnmount, onMounted, watch } from 'vue';
 import { activateAdminTourMock, deactivateAdminTourMock, resetAdminTourMockData } from '@/services/adminTourMock';
-import Breadcrumb from 'primevue/breadcrumb';
+import PageShell from '@/components/layout/PageShell.vue';
+import PageHeader from '@/components/layout/PageHeader.vue';
+import PageSection from '@/components/layout/PageSection.vue';
 import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
 import Select from 'primevue/select';
 import TextArea from 'primevue/textarea';
-import Toast from 'primevue/toast';
 import ConfirmPopup from 'primevue/confirmpopup';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
@@ -20,7 +21,7 @@ let guidedTourPageState = null;
 let guidedTourDemoActive = false;
 let guidedTourCleanupPromise = null;
 
-const breadcrumbHome = { icon: 'pi pi-home', to: '/' };
+const breadcrumbHome = { icon: 'pi pi-home', to: '/dashboard' };
 const breadcrumbItems = [{ label: 'Administration' }, { label: 'Notifications' }];
 
 const { users, fetchUsers, loading: usersLoading } = useUsers();
@@ -250,61 +251,47 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-    <section class="min-h-screen p-4 md:p-6 lg:p-8 transition-colors duration-300">
-        <AppToast />
+    <PageShell>
         <ConfirmPopup />
 
-        <!-- Header -->
-        <div class="mb-6 md:mb-8" data-tour="admin-notifications.header">
-            <div class="mb-6">
-                <div class="inline-flex items-center gap-3 mb-4 p-3 rounded-2xl bg-surface-0/80 dark:bg-surface-800/80 backdrop-blur-sm border border-surface-200/50 dark:border-surface-700/50">
-                    <div class="p-2.5 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600">
-                        <i class="pi pi-envelope text-white text-xl"></i>
-                    </div>
-                    <div>
-                        <h1 class="text-2xl md:text-3xl font-bold text-surface-900 dark:text-surface-50">Envoyer une notification</h1>
-                        <p class="text-sm text-surface-600 dark:text-surface-300">Communiquez avec vos collaborateurs</p>
-                    </div>
-                </div>
-                <Breadcrumb :home="breadcrumbHome" :model="breadcrumbItems" class="text-sm" />
-            </div>
+        <template #header>
+            <PageHeader
+                title="Envoyer une notification"
+                subtitle="Communiquez avec vos collaborateurs"
+                icon="pi pi-envelope"
+                tour-id="admin-notifications.header"
+                :breadcrumb-items="breadcrumbItems"
+                :breadcrumb-home="breadcrumbHome"
+            />
+        </template>
 
-            <!-- Action Bar -->
-            <div
-                class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl bg-gradient-to-r from-surface-0 to-surface-50/80 dark:from-surface-800 dark:to-surface-900/80 shadow-sm border border-surface-200/50 dark:border-surface-700/50 backdrop-blur-sm"
-                data-tour="admin-notifications.action-bar"
+        <template #toolbar>
+            <PageSection
+                title="Configuration de l'envoi"
+                :subtitle="`${selectedCount} destinataire(s) sélectionné(s)`"
+                padded
+                tour-id="admin-notifications.action-bar"
             >
-                <div class="space-y-1">
-                    <h2 class="text-lg font-semibold text-surface-900 dark:text-surface-100">Configuration de l'envoi</h2>
-                    <p class="text-sm text-surface-600 dark:text-surface-300">
-                        <span class="font-medium text-primary-600 dark:text-primary-400">{{ selectedCount }}</span> destinataire(s) sélectionné(s)
-                    </p>
-                </div>
-                <Button
-                    :label="`Envoyer à ${selectedCount} destinataire(s)`"
-                    icon="pi pi-send"
-                    :loading="sending"
-                    @click="submit"
-                    data-tour="admin-notifications.send"
-                    class="shadow-lg hover:shadow-xl transition-all duration-300 bg-gradient-to-r from-primary-500 to-primary-600 border-0 text-white px-6 py-3 rounded-xl font-medium min-w-[200px]"
-                    :disabled="!canSubmit || sending"
-                />
-            </div>
-        </div>
+                <template #headerActions>
+                    <Button
+                        :label="`Envoyer à ${selectedCount} destinataire(s)`"
+                        icon="pi pi-send"
+                        size="small"
+                        :loading="sending"
+                        data-tour="admin-notifications.send"
+                        :disabled="!canSubmit || sending"
+                        @click="submit"
+                    />
+                </template>
+            </PageSection>
+        </template>
 
-        <!-- Main Grid -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <!-- Left Panel - User Selection -->
             <div class="lg:col-span-2 space-y-6">
                 <!-- Search Section -->
-                <div class="bg-surface-0 dark:bg-surface-800/80 rounded-2xl shadow-lg border border-surface-200/50 dark:border-surface-700/50 overflow-hidden backdrop-blur-sm" data-tour="admin-notifications.users">
-                    <div class="p-5 border-b border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900/50 dark:to-surface-800">
-                        <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-100 flex items-center gap-2">
-                            <i class="pi pi-users text-primary-500"></i>
-                            Sélection des destinataires
-                        </h3>
-                    </div>
-                    <div class="p-5">
+                <PageSection title="Sélection des destinataires" tour-id="admin-notifications.users" padded>
+                    <div>
                         <div class="relative mb-5">
                             <IconField>
                                 <InputIcon class="pi pi-search" />
@@ -366,17 +353,10 @@ onBeforeUnmount(() => {
                             </div>
                         </div>
                     </div>
-                </div>
+                </PageSection>
 
-                <!-- Quick Selection by Type -->
-                <div class="bg-surface-0 dark:bg-surface-800/80 rounded-2xl shadow-lg border border-surface-200/50 dark:border-surface-700/50 overflow-hidden backdrop-blur-sm" data-tour="admin-notifications.types">
-                    <div class="p-5 border-b border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900/50 dark:to-surface-800">
-                        <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-100 flex items-center gap-2">
-                            <i class="pi pi-tags text-primary-500"></i>
-                            Sélection rapide par type
-                        </h3>
-                    </div>
-                    <div class="p-5">
+                <PageSection title="Sélection rapide par type" tour-id="admin-notifications.types" padded>
+                    <div>
                         <div class="flex flex-wrap gap-2 mb-4">
                             <Button
                                 v-for="t in types"
@@ -397,20 +377,12 @@ onBeforeUnmount(() => {
                             <Button label="Sélectionner tous" icon="pi pi-verified" severity="secondary" text size="small" class="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300" />
                         </div>
                     </div>
-                </div>
+                </PageSection>
             </div>
 
-            <!-- Right Panel - Message & Settings -->
             <div class="space-y-6">
-                <!-- Message Content -->
-                <div class="bg-surface-0 dark:bg-surface-800/80 rounded-2xl shadow-lg border border-surface-200/50 dark:border-surface-700/50 overflow-hidden backdrop-blur-sm" data-tour="admin-notifications.message">
-                    <div class="p-5 border-b border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900/50 dark:to-surface-800">
-                        <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-100 flex items-center gap-2">
-                            <i class="pi pi-comment text-primary-500"></i>
-                            Contenu du message
-                        </h3>
-                    </div>
-                    <div class="p-5 space-y-5">
+                <PageSection title="Contenu du message" tour-id="admin-notifications.message" padded>
+                    <div class="space-y-5">
                         <!-- Priority -->
                         <div>
                             <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2 flex items-center gap-2">
@@ -514,20 +486,10 @@ onBeforeUnmount(() => {
                             </div>
                         </div>
                     </div>
-                </div>
+                </PageSection>
 
-                <!-- Selected Recipients -->
-                <div class="bg-surface-0 dark:bg-surface-800/80 rounded-2xl shadow-lg border border-surface-200/50 dark:border-surface-700/50 overflow-hidden backdrop-blur-sm" data-tour="admin-notifications.recipients">
-                    <div class="p-5 border-b border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900/50 dark:to-surface-800">
-                        <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-100 flex items-center gap-2">
-                            <i class="pi pi-check-circle text-primary-500"></i>
-                            Destinataires sélectionnés <span class="text-red-500">*</span>
-                            <span class="ml-2 px-2.5 py-0.5 rounded-full bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 text-sm font-medium">
-                                {{ selectedCount }}
-                            </span>
-                        </h3>
-                    </div>
-                    <div class="p-5">
+                <PageSection :title="`Destinataires sélectionnés (${selectedCount})`" tour-id="admin-notifications.recipients" padded>
+                    <div>
                         <div v-if="selectedCount === 0" class="text-center py-8">
                             <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-surface-100 dark:bg-surface-800 mb-4">
                                 <i class="pi pi-user-plus text-2xl text-surface-400"></i>
@@ -590,10 +552,10 @@ onBeforeUnmount(() => {
                             </div>
                         </div>
                     </div>
-                </div>
+                </PageSection>
             </div>
         </div>
-    </section>
+    </PageShell>
 </template>
 
 <style scoped>

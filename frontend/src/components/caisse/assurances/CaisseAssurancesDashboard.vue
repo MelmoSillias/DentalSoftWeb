@@ -1,5 +1,6 @@
 <script setup>
 import Button from 'primevue/button';
+import PageSection from '@/components/layout/PageSection.vue';
 import { resolveAssuranceLogoUrl } from '@/utils/assuranceUtils';
 
 defineProps({
@@ -13,19 +14,12 @@ const countValue = (card, key) => Number(card?.counts?.[key] ?? 0);
 </script>
 
 <template>
-    <div class="flex flex-col gap-8">
-        <div class="section-card p-5">
-            <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
-                <div class="flex items-center gap-3">
-                    <i class="pi pi-shield text-primary text-xl"></i>
-                    <div>
-                        <p class="section-eyebrow">Assurances</p>
-                        <h2 class="section-title text-xl font-bold">Vue par assureur</h2>
-                    </div>
-                </div>
-                <Button icon="pi pi-refresh" label="Rafraîchir" outlined rounded @click="emit('refresh')" />
-            </div>
+    <PageSection title="Assurances" subtitle="Vue par assureur" tour-id="caisse-assurances.dashboard">
+        <template #headerActions>
+            <Button icon="pi pi-refresh" label="Rafraîchir" outlined size="small" @click="emit('refresh')" />
+        </template>
 
+        <div class="p-3 sm:p-4">
             <div v-if="loading" class="py-12 text-center muted-text">
                 <i class="pi pi-spin pi-spinner text-2xl"></i>
             </div>
@@ -76,26 +70,10 @@ const countValue = (card, key) => Number(card?.counts?.[key] ?? 0);
                 </article>
             </div>
         </div>
-    </div>
+    </PageSection>
 </template>
 
 <style scoped>
-.section-card {
-    background: var(--surface-card);
-    border: 1px solid var(--surface-border);
-    border-radius: 1rem;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
-}
-
-.section-eyebrow {
-    font-size: 0.75rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--p-primary-color);
-}
-
-.section-title,
 .card-title {
     color: var(--text-color);
 }

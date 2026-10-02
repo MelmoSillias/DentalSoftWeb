@@ -1,6 +1,6 @@
 <script setup>
 import { computed, watch } from 'vue';
-import Dialog from 'primevue/dialog';
+import AppDialog from '@/components/layout/AppDialog.vue';
 import FinanceCrossTablePeriodDetails from '@/components/finances/FinanceCrossTablePeriodDetails.vue';
 import { useFinances } from '@/composables/useFinances';
 
@@ -44,7 +44,15 @@ watch(
 </script>
 
 <template>
-    <Dialog v-model:visible="dialogVisible" modal :header="`Détail du ${periodLabel || 'jour'}`" :style="{ width: 'min(96vw, 1100px)' }" :breakpoints="{ '960px': '96vw' }" :draggable="false">
+    <AppDialog
+        v-model:visible="dialogVisible"
+        :title="`Détail du ${periodLabel || 'jour'}`"
+        icon="pi pi-calendar"
+        icon-tone="info"
+        size="full"
+        :draggable="false"
+        :show-footer="false"
+    >
         <FinanceCrossTablePeriodDetails :overview="overview" :loading="loading.dayOverview" :period-label="periodLabel" scope-label="journée" @transaction-updated="handleTransactionUpdated" />
-    </Dialog>
+    </AppDialog>
 </template>

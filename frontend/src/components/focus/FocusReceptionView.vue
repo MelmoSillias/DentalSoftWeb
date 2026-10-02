@@ -7,8 +7,13 @@ import { fetchInvoicePrintData, fetchReceiptPrintData, fetchTicketPrintData } fr
 import { searchPatients } from '@/services/patients';
 import CabinetServiceDialog from '@/components/patients/CabinetServiceDialog.vue';
 import ContextMenu from 'primevue/contextmenu';
-import Dialog from 'primevue/dialog';
-import { computed, ref, toRefs } from 'vue';
+import AppDialog from '@/components/layout/AppDialog.vue';
+import ToggleSwitch from 'primevue/toggleswitch';
+import { computed, ref, toRefs, useAttrs } from 'vue';
+
+defineOptions({ inheritAttrs: false });
+
+const attrs = useAttrs();
 
 const props = defineProps({
     consultations: {
@@ -128,6 +133,10 @@ const showCompletedSecretary = defineModel('showCompletedSecretary', {
 
 const newestFirstSecretary = ref(false);
 const showRevenueStatsModal = ref(false);
+/** Mobile panel: patients | queue | details (xl+ shows all three) */
+const mobilePanel = ref('queue');
+
+const isMobileFocusLayout = () => typeof window !== 'undefined' && window.matchMedia('(max-width: 1279.98px)').matches;
 
 const parseDateTime = (value) => {
     if (!value) return null;
@@ -501,6 +510,9 @@ const canPreviewInvoice = computed(() => hasInvoiceContext.value && !(selectedIn
 
 const selectConsultation = (consultationId) => {
     emit('select-consultation', consultationId);
+    if (isMobileFocusLayout()) {
+        mobilePanel.value = 'details';
+    }
 };
 
 const getConsultationBilling = (consultation) => {
@@ -584,10 +596,16 @@ const handleCancelWithConfirm = (event, consultation) => {
 </script>
 
 <template>
-    <div class="grid min-h-0 gap-5 xl:h-full xl:grid-cols-[360px_minmax(0,1fr)_420px] xl:overflow-hidden">
+    <div class="flex min-h-0 flex-1 flex-col xl:grid xl:h-full xl:grid-cols-[360px_minmax(0,1fr)_420px] xl:gap-5 xl:overflow-hidden" v-bind="attrs">
         <ContextMenu ref="contextMenu" :model="patientContextMenuItems" />
         <!-- Colonne Gauche - Nouveaux patients -->
-        <aside class="flex max-h-[70vh] min-h-0 flex-col overflow-hidden xl:h-full xl:max-h-none">
+        <aside
+            :class="[
+                'min-h-0 flex-col overflow-hidden',
+                mobilePanel === 'patients' ? 'flex flex-1' : 'hidden',
+                'xl:flex xl:h-full xl:max-h-none xl:flex-none'
+            ]"
+        >
             <div class="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-surface-200/60 bg-white/90 backdrop-blur-sm dark:border-surface-700/60 dark:bg-surface-900/90">
                 <!-- En-tête -->
                 <div class="shrink-0 border-b border-surface-200/60 px-4 py-3 dark:border-surface-700/60">
@@ -605,7 +623,7 @@ const handleCancelWithConfirm = (event, consultation) => {
                             <button
                                 @click="toggleSearchMode"
                                 :class="[
-                                    'flex h-8 w-8 items-center justify-center rounded-xl transition-all duration-200',
+                                    'flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-200 xl:h-8 xl:w-8',
                                     searchMode ? 'bg-purple-500 text-white shadow-md' : 'bg-surface-100 text-surface-500 hover:bg-surface-200 dark:bg-surface-800 dark:hover:bg-surface-700'
                                 ]"
                                 :title="searchMode ? 'Fermer la recherche' : 'Rechercher un patient'"
@@ -614,7 +632,7 @@ const handleCancelWithConfirm = (event, consultation) => {
                             </button>
                             <button
                                 @click="emit('open-create-patient')"
-                                class="flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-500 to-purple-600 px-3.5 py-1.5 text-xs font-medium text-white shadow-md transition-all hover:shadow-lg hover:scale-105 active:scale-95"
+                                class="flex h-10 items-center gap-2 rounded-xl bg-gradient-to-r from-purple-500 to-purple-600 px-3.5 py-1.5 text-xs font-medium text-white shadow-md transition-all hover:shadow-lg hover:scale-105 active:scale-95 xl:h-auto"
                             >
                                 <i class="pi pi-plus text-xs"></i>
                                 <span class="hidden sm:inline">Ajouter</span>
@@ -683,11 +701,11 @@ const handleCancelWithConfirm = (event, consultation) => {
                                 <div class="flex flex-col items-end justify-between gap-1 self-stretch flex-shrink-0">
                                     <i v-if="hasPatientReliquat(patient)" v-tooltip.top="reliquatTooltip(patient)" class="pi pi-wallet text-xs text-red-500"></i>
                                     <span v-else class="h-3"></span>
-                                    <div class="flex items-center gap-2 opacity-0 transition-opacity group-hover:opacity-100">
+                                    <div class="flex items-center gap-1.5 opacity-100 transition-opacity xl:opacity-0 xl:group-hover:opacity-100">
                                         <button
                                             :disabled="isConsultationCreateLoading(patient?.id)"
                                             :class="[
-                                                'flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600 transition-colors dark:bg-emerald-900/30 dark:text-emerald-400',
+                                                'flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600 transition-colors dark:bg-emerald-900/30 dark:text-emerald-400 xl:h-8 xl:w-8',
                                                 isConsultationCreateLoading(patient?.id) ? 'cursor-not-allowed opacity-60' : 'hover:bg-emerald-200'
                                             ]"
                                             title="Nouvelle consultation"
@@ -696,11 +714,18 @@ const handleCancelWithConfirm = (event, consultation) => {
                                             <i :class="isConsultationCreateLoading(patient?.id) ? 'pi pi-spin pi-spinner text-xs' : 'fas fa-stethoscope text-xs'"></i>
                                         </button>
                                         <button
-                                            class="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100 text-blue-600 transition-colors hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400"
+                                            class="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 text-blue-600 transition-colors hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400 xl:h-8 xl:w-8"
                                             title="Modifier le patient"
                                             @click="emit('open-edit-patient', patient)"
                                         >
                                             <i class="pi pi-user-edit text-xs"></i>
+                                        </button>
+                                        <button
+                                            class="flex h-10 w-10 items-center justify-center rounded-lg bg-surface-100 text-surface-600 transition-colors hover:bg-surface-200 dark:bg-surface-800 dark:text-surface-300 xl:h-8 xl:w-8"
+                                            title="Plus d'actions"
+                                            @click.stop="openPatientContextMenu($event, patient)"
+                                        >
+                                            <i class="pi pi-ellipsis-v text-xs"></i>
                                         </button>
                                     </div>
                                 </div>
@@ -760,11 +785,11 @@ const handleCancelWithConfirm = (event, consultation) => {
                             <div class="flex flex-col items-end justify-between gap-1 self-stretch flex-shrink-0">
                                 <i v-if="hasPatientReliquat(patient)" v-tooltip.top="reliquatTooltip(patient)" class="pi pi-wallet text-xs text-red-500"></i>
                                 <span v-else class="h-3"></span>
-                                <div class="flex items-center gap-2 opacity-0 transition-opacity group-hover:opacity-100">
+                                <div class="flex items-center gap-1.5 opacity-100 transition-opacity xl:opacity-0 xl:group-hover:opacity-100">
                                     <button
                                         :disabled="isConsultationCreateLoading(patient?.id)"
                                         :class="[
-                                            'flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600 transition-colors dark:bg-emerald-900/30 dark:text-emerald-400',
+                                            'flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600 transition-colors dark:bg-emerald-900/30 dark:text-emerald-400 xl:h-8 xl:w-8',
                                             isConsultationCreateLoading(patient?.id) ? 'cursor-not-allowed opacity-60' : 'hover:bg-emerald-200'
                                         ]"
                                         title="Nouvelle consultation"
@@ -773,11 +798,18 @@ const handleCancelWithConfirm = (event, consultation) => {
                                         <i :class="isConsultationCreateLoading(patient?.id) ? 'pi pi-spin pi-spinner text-xs' : 'fas fa-stethoscope text-xs'"></i>
                                     </button>
                                     <button
-                                        class="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100 text-blue-600 transition-colors hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400"
+                                        class="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 text-blue-600 transition-colors hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400 xl:h-8 xl:w-8"
                                         title="Modifier le patient"
                                         @click="emit('open-edit-patient', patient)"
                                     >
                                         <i class="pi pi-user-edit text-xs"></i>
+                                    </button>
+                                    <button
+                                        class="flex h-10 w-10 items-center justify-center rounded-lg bg-surface-100 text-surface-600 transition-colors hover:bg-surface-200 dark:bg-surface-800 dark:text-surface-300 xl:h-8 xl:w-8"
+                                        title="Plus d'actions"
+                                        @click.stop="openPatientContextMenu($event, patient)"
+                                    >
+                                        <i class="pi pi-ellipsis-v text-xs"></i>
                                     </button>
                                 </div>
                             </div>
@@ -797,19 +829,25 @@ const handleCancelWithConfirm = (event, consultation) => {
         </aside>
 
         <!-- Colonne Centre - File d'attente -->
-        <section class="flex max-h-[70vh] min-h-0 flex-col overflow-hidden xl:h-full xl:max-h-none">
+        <section
+            :class="[
+                'min-h-0 flex-col overflow-hidden',
+                mobilePanel === 'queue' ? 'flex flex-1' : 'hidden',
+                'xl:flex xl:h-full xl:max-h-none xl:flex-none'
+            ]"
+        >
             <div class="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-surface-200/60 bg-white/90 backdrop-blur-sm dark:border-surface-700/60 dark:bg-surface-900/90">
                 <!-- Header -->
-                <div class="shrink-0 border-b border-surface-200/60 px-4 py-3 dark:border-surface-700/60">
-                    <div class="flex items-center justify-between">
-                        <div>
+                <div class="shrink-0 border-b border-surface-200/60 px-3 py-3 dark:border-surface-700/60 sm:px-4">
+                    <div class="flex items-center justify-between gap-2">
+                        <div class="min-w-0">
                             <h3 class="text-base font-semibold text-surface-900 dark:text-surface-50">File d'attente</h3>
                             <p class="text-xs text-surface-500">{{ secretaryRows.length }} consultation(s)</p>
                         </div>
-                        <div class="flex items-center gap-2">
+                        <div class="flex shrink-0 items-center gap-1.5 sm:gap-2">
                             <ToggleSwitch v-model="showCompletedSecretary" />
                             <button
-                                :class="['flex h-8 w-8 items-center justify-center rounded-xl transition-all', newestFirstSecretary ? 'bg-primary-500 text-white shadow-md' : 'bg-surface-100 text-surface-500 hover:bg-surface-200']"
+                                :class="['flex h-10 w-10 items-center justify-center rounded-xl transition-all xl:h-8 xl:w-8', newestFirstSecretary ? 'bg-primary-500 text-white shadow-md' : 'bg-surface-100 text-surface-500 hover:bg-surface-200']"
                                 :title="newestFirstSecretary ? 'Plus récentes en haut' : 'Plus anciennes en haut'"
                                 @click="newestFirstSecretary = !newestFirstSecretary"
                             >
@@ -817,15 +855,17 @@ const handleCancelWithConfirm = (event, consultation) => {
                             </button>
                             <button
                                 type="button"
-                                class="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 shadow-sm transition-colors hover:bg-emerald-100 dark:border-emerald-800/60 dark:bg-emerald-950/30 dark:text-emerald-300 dark:hover:bg-emerald-900/30"
+                                class="rounded-xl border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-semibold text-emerald-700 shadow-sm transition-colors hover:bg-emerald-100 dark:border-emerald-800/60 dark:bg-emerald-950/30 dark:text-emerald-300 dark:hover:bg-emerald-900/30 sm:px-3"
+                                :title="revenueButtonLabel"
                                 @click="showRevenueStatsModal = true"
                             >
-                                {{ revenueButtonLabel }}
+                                <span class="sm:hidden"><i class="pi pi-wallet"></i></span>
+                                <span class="hidden sm:inline">{{ revenueButtonLabel }}</span>
                             </button>
                             <button
                                 @click="emit('open-create-consultation')"
                                 :disabled="consultationToolbarLoading"
-                                class="rounded-xl bg-gradient-to-r from-primary-500 to-primary-600 p-1.5 text-white shadow-md transition-all hover:shadow-lg hover:scale-105 disabled:cursor-not-allowed disabled:opacity-60"
+                                class="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-md transition-all hover:shadow-lg hover:scale-105 disabled:cursor-not-allowed disabled:opacity-60 xl:h-auto xl:w-auto xl:p-1.5"
                             >
                                 <i :class="consultationToolbarLoading ? 'pi pi-spin pi-spinner text-xs' : 'pi pi-plus text-xs'"></i>
                             </button>
@@ -833,7 +873,14 @@ const handleCancelWithConfirm = (event, consultation) => {
                     </div>
                 </div>
 
-                <Dialog v-model:visible="showRevenueStatsModal" modal header="Statistiques d'encaissements du jour" :style="{ width: 'min(960px, 96vw)' }">
+                <AppDialog
+                    v-model:visible="showRevenueStatsModal"
+                    title="Statistiques d'encaissements du jour"
+                    icon="pi pi-chart-bar"
+                    icon-tone="success"
+                    width="min(960px, 96vw)"
+                    :show-footer="false"
+                >
                     <div class="space-y-6">
                         <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
                             <div class="rounded-2xl border border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-800/40">
@@ -894,7 +941,7 @@ const handleCancelWithConfirm = (event, consultation) => {
                             <div v-else class="mt-4 rounded-xl border border-dashed border-surface-300 px-4 py-5 text-sm text-surface-500 dark:border-surface-700 dark:text-surface-400">Aucun paiement enregistré aujourd'hui.</div>
                         </div>
                     </div>
-                </Dialog>
+                </AppDialog>
 
                 <!-- Contenu consultations -->
                 <div class="min-h-0 flex-1 overflow-y-auto p-4 scrollbar-thin">
@@ -919,7 +966,6 @@ const handleCancelWithConfirm = (event, consultation) => {
                                 v-for="(consultation, index) in secretaryRows"
                                 :key="consultation.id"
                                 @click="selectConsultation(consultation.id)"
-                                @dblclick="Number(consultation.state) !== 1 && emit('select-medical-workspace', consultation)"
                                 class="group relative flex gap-3 w-full cursor-pointer rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-primary-400"
                             >
                                 <div class="relative z-10">
@@ -977,22 +1023,22 @@ const handleCancelWithConfirm = (event, consultation) => {
                                         {{ medecinLabel(consultation) }}
                                         <span v-if="consultation.motif" class="text-surface-300">· {{ consultation.motif }}</span>
                                     </p>
-                                    <div class="flex items-center justify-between mt-2">
+                                    <div class="flex items-center justify-between mt-2 gap-2">
                                         <button
                                             v-if="Number(consultation.state) === 0"
                                             @click="(e) => handleCancelWithConfirm(e, consultation)"
-                                            class="rounded-lg bg-red-50 px-3 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400"
+                                            class="min-h-10 rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-600 transition-colors hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 xl:min-h-0 xl:py-1"
                                         >
                                             Annuler
                                         </button>
-                                        <div class="flex items-center gap-2">
+                                        <div class="ml-auto flex items-center gap-2">
                                             <span :class="['text-xs font-medium', consultation?.factState === 1 ? 'text-emerald-600' : consultation?.factState === 0 ? 'text-sky-600' : 'text-surface-400']">
                                                 {{ formatFactureState(consultation).label }}
                                             </span>
                                             <button
                                                 v-if="isConsultationPayante(consultation)"
                                                 @click.stop="printConsultationTicket(consultation)"
-                                                class="flex items-center gap-1 rounded-lg bg-primary-50 px-2 py-1 text-[10px] font-medium text-primary-600 transition-colors hover:bg-primary-100 dark:bg-primary-900/30 dark:text-primary-400"
+                                                class="flex min-h-10 items-center gap-1 rounded-lg bg-primary-50 px-2.5 py-2 text-[10px] font-medium text-primary-600 transition-colors hover:bg-primary-100 dark:bg-primary-900/30 dark:text-primary-400 xl:min-h-0 xl:py-1"
                                             >
                                                 <i class="pi pi-print text-xs"></i>
                                                 Ticket
@@ -1016,8 +1062,13 @@ const handleCancelWithConfirm = (event, consultation) => {
         </section>
 
         <!-- Colonne Droite - Détails -->
-        <aside class="flex max-h-[70vh] min-h-0 flex-col overflow-hidden xl:h-full xl:max-h-none">
-            <div class="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-surface-200/60 bg-white/90 backdrop-blur-sm dark:border-surface-700/60 dark:bg-surface-900/90">
+        <aside
+            :class="[
+                'min-h-0 flex-col overflow-hidden',
+                mobilePanel === 'details' ? 'flex flex-1' : 'hidden',
+                'xl:flex xl:h-full xl:max-h-none xl:flex-none'
+            ]"
+        >            <div class="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-surface-200/60 bg-white/90 backdrop-blur-sm dark:border-surface-700/60 dark:bg-surface-900/90">
                 <div class="shrink-0 border-b border-surface-200/60 px-4 py-3 dark:border-surface-700/60">
                     <div class="flex items-center justify-between gap-2">
                         <h3 class="text-base font-semibold text-surface-900 dark:text-surface-50">Détails</h3>
@@ -1252,10 +1303,61 @@ const handleCancelWithConfirm = (event, consultation) => {
                         <i class="pi pi-inbox text-3xl text-surface-400"></i>
                     </div>
                     <p class="text-sm font-medium text-surface-600">Aucune consultation sélectionnée</p>
-                    <p class="mt-1 text-xs text-surface-400">Cliquez sur une consultation pour voir les détails</p>
+                    <p class="mt-1 text-xs text-surface-400">Sélectionnez une consultation dans la file</p>
+                    <button
+                        type="button"
+                        class="mt-4 rounded-xl bg-primary-500 px-4 py-2.5 text-xs font-medium text-white shadow-md xl:hidden"
+                        @click="mobilePanel = 'queue'"
+                    >
+                        Voir la file d'attente
+                    </button>
                 </div>
             </div>
         </aside>
+
+        <!-- Bottom tab bar (mobile / below xl) -->
+        <nav
+            class="mt-2 flex shrink-0 items-stretch gap-1 rounded-2xl border border-surface-200/60 bg-white/95 p-1 shadow-sm backdrop-blur-sm dark:border-surface-700/60 dark:bg-surface-900/95 xl:hidden"
+            aria-label="Navigation Mode Focus"
+        >
+            <button
+                type="button"
+                :class="[
+                    'flex flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-2 py-2 text-[11px] font-medium transition-colors',
+                    mobilePanel === 'patients' ? 'bg-purple-500 text-white shadow-sm' : 'text-surface-500 hover:bg-surface-100 dark:hover:bg-surface-800'
+                ]"
+                @click="mobilePanel = 'patients'"
+            >
+                <i class="pi pi-users text-sm"></i>
+                Patients
+            </button>
+            <button
+                type="button"
+                :class="[
+                    'flex flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-2 py-2 text-[11px] font-medium transition-colors',
+                    mobilePanel === 'queue' ? 'bg-primary-500 text-white shadow-sm' : 'text-surface-500 hover:bg-surface-100 dark:hover:bg-surface-800'
+                ]"
+                @click="mobilePanel = 'queue'"
+            >
+                <i class="pi pi-list text-sm"></i>
+                File
+            </button>
+            <button
+                type="button"
+                :class="[
+                    'relative flex flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-2 py-2 text-[11px] font-medium transition-colors',
+                    mobilePanel === 'details' ? 'bg-primary-500 text-white shadow-sm' : 'text-surface-500 hover:bg-surface-100 dark:hover:bg-surface-800'
+                ]"
+                @click="mobilePanel = 'details'"
+            >
+                <i class="pi pi-id-card text-sm"></i>
+                Détails
+                <span
+                    v-if="currentConsultation && mobilePanel !== 'details'"
+                    class="absolute right-3 top-1.5 h-2 w-2 rounded-full bg-primary-500 ring-2 ring-white dark:ring-surface-900"
+                ></span>
+            </button>
+        </nav>
     </div>
     <CabinetServiceDialog
         v-model:visible="cabinetServiceVisible"

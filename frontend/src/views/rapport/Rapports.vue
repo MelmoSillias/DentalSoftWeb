@@ -1,7 +1,8 @@
 <script setup>
 import { computed } from 'vue';
 import { useGuidedTour } from '@/composables/useGuidedTour';
-import Breadcrumb from 'primevue/breadcrumb';
+import PageShell from '@/components/layout/PageShell.vue';
+import PageHeader from '@/components/layout/PageHeader.vue';
 import { useAuthStore } from '@/stores/auth';
 import RapportAdmin from '@/views/rapport/RapportAdmin.vue';
 import RapportMedecin from '@/views/rapport/RapportMedecin.vue';
@@ -19,7 +20,7 @@ const reportRole = computed(() => {
     return 'admin';
 });
 
-const breadcrumbHome = { icon: 'pi pi-home', to: '/' };
+const breadcrumbHome = { icon: 'pi pi-home', to: '/dashboard' };
 const breadcrumbItems = computed(() => {
     if (isAdmin.value) return [{ label: 'Rapports' }, { label: 'Administration' }];
     if (isMedecin.value) return [{ label: 'Rapports' }, { label: 'Médecin' }];
@@ -35,20 +36,19 @@ useGuidedTour({
 </script>
 
 <template>
-    <section class="min-h-screen p-3 md:p-4 lg:p-5 transition-colors duration-300">
-        <AppToast />
-
-        <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <div class="flex items-center gap-2">
-                <i class="pi pi-chart-bar text-primary-600 dark:text-primary-400 text-lg"></i>
-                <h1 class="text-xl font-bold text-surface-900 dark:text-surface-50 tracking-tight">Rapports</h1>
-            </div>
-            <Breadcrumb :home="breadcrumbHome" :model="breadcrumbItems" class="text-xs md:text-sm" />
-        </div>
+    <PageShell>
+        <template #header>
+            <PageHeader
+                title="Rapports"
+                icon="pi pi-chart-bar"
+                :breadcrumb-items="breadcrumbItems"
+                :breadcrumb-home="breadcrumbHome"
+            />
+        </template>
 
         <RapportAdmin v-if="isAdmin" />
         <RapportMedecin v-else-if="isMedecin" />
         <RapportReception v-else-if="isReception" />
         <div v-else class="rounded-2xl border border-surface-200/60 bg-surface-0 p-6 text-surface-500 dark:border-surface-700 dark:bg-surface-900">Aucun tableau de bord disponible pour ce profil.</div>
-    </section>
+    </PageShell>
 </template>

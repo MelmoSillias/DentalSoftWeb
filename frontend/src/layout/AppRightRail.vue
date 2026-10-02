@@ -263,7 +263,7 @@ function openProfile() {
     }
 }
 
-@media (max-width: 991px) {
+@media (max-width: 991.98px) {
     .layout-right-rail {
         flex-direction: row;
         justify-content: space-around;

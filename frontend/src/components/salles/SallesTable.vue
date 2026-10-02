@@ -112,7 +112,7 @@ const emitAdd = (event) => {
             </template>
         </Column>
 
-        <Column field="description" header="Description" :sortable="true">
+        <Column field="description" header="Description" :sortable="true" headerClass="hidden md:table-cell" bodyClass="hidden md:table-cell">
             <template #body="{ data }">
                 <div class="flex items-center gap-3">
                     <div>
@@ -174,7 +174,7 @@ const emitAdd = (event) => {
       </template>
     </Column> -->
 
-        <Column header="Actions" style="min-width: 120px">
+        <Column header="Actions" style="min-width: 7.5rem">
             <template #body="{ data }">
                 <div class="flex items-center gap-2">
                     <Button icon="pi pi-eye" severity="secondary" text rounded v-tooltip.top="'Voir détails'" class="hover:bg-surface-100 dark:hover:bg-surface-700" />

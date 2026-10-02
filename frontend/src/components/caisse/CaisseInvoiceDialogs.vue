@@ -1,12 +1,14 @@
 <script setup>
 import ActeLineCard from '@/components/consultations/ActeLineCard.vue';
+import AppDialog from '@/components/layout/AppDialog.vue';
 import Button from 'primevue/button';
-import Dialog from 'primevue/dialog';
 import InputNumber from 'primevue/inputnumber';
 import InputText from 'primevue/inputtext';
 import Select from 'primevue/select';
 import Tab from 'primevue/tab';
 import TabList from 'primevue/tablist';
+import TabPanel from 'primevue/tabpanel';
+import TabPanels from 'primevue/tabpanels';
 import Tabs from 'primevue/tabs';
 import Tag from 'primevue/tag';
 import { computed } from 'vue';
@@ -118,7 +120,7 @@ const payDialogHeader = computed(() => {
 
 <template>
     <div>
-        <Dialog :visible="payDialogVisible" :header="payDialogHeader" :modal="true" :style="{ width: '760px' }" @update:visible="emit('update:payDialogVisible', $event)">
+        <AppDialog :visible="payDialogVisible" :title="payDialogHeader" icon="pi pi-wallet" icon-tone="success" size="xl" @update:visible="emit('update:payDialogVisible', $event)">
             <div class="flex flex-col gap-5">
                 <Tabs v-if="showPayTabs" :value="String(activePayTabId ?? '')" @update:value="emit('update:activePayTabId', $event)">
                     <TabList>
@@ -229,26 +231,55 @@ const payDialogHeader = computed(() => {
                     </div>
                 </div>
             </template>
-        </Dialog>
+        </AppDialog>
 
-        <Dialog :visible="resetPaymentDialogVisible" header="Réinitialiser la facture" :modal="true" :style="{ width: '420px' }" @update:visible="emit('update:resetPaymentDialogVisible', $event)">
+        <AppDialog
+            :visible="resetPaymentDialogVisible"
+            title="Réinitialiser la facture"
+            icon="pi pi-refresh"
+            icon-tone="danger"
+            size="sm"
+            :loading="resetPaymentsLoading"
+            cancel-label="Annuler"
+            confirm-label="Réinitialiser"
+            confirm-icon="pi pi-refresh"
+            confirm-severity="danger"
+            @update:visible="emit('update:resetPaymentDialogVisible', $event)"
+            @confirm="emit('confirm-reset')"
+        >
             <p class="dialog-note text-sm text-gray-700">Cette action supprimera tous les paiements et toutes les transactions liées à la facture pour la remettre à son état initial.</p>
-            <template #footer>
-                <Button label="Annuler" text @click="emit('update:resetPaymentDialogVisible', false)" />
-                <Button label="Réinitialiser" severity="danger" icon="pi pi-refresh" @click="emit('confirm-reset')" :loading="resetPaymentsLoading" />
-            </template>
-        </Dialog>
+        </AppDialog>
 
-        <Dialog :visible="validateDialogVisible" header="Valider la facture vide" :modal="true" :style="{ width: '420px' }" @update:visible="emit('update:validateDialogVisible', $event)">
+        <AppDialog
+            :visible="validateDialogVisible"
+            title="Valider la facture vide"
+            icon="pi pi-check-circle"
+            icon-tone="success"
+            size="sm"
+            :loading="validateLoading"
+            cancel-label="Annuler"
+            confirm-label="Valider"
+            confirm-icon="pi pi-check"
+            confirm-severity="success"
+            @update:visible="emit('update:validateDialogVisible', $event)"
+            @confirm="emit('confirm-validate')"
+        >
             <p class="dialog-note text-sm text-gray-700">Confirmer que cette facture est vide et doit être marquée comme validée.</p>
-            <template #footer>
-                <Button label="Annuler" text @click="emit('update:validateDialogVisible', false)" />
-                <Button label="Valider" severity="success" icon="pi pi-check" @click="emit('confirm-validate')" :loading="validateLoading" />
-            </template>
-        </Dialog>
+        </AppDialog>
 
-        <Dialog :visible="factureDialogVisible" header="Modifier la facture" :modal="true" :style="{ width: '52rem', maxWidth: '98vw' }" @update:visible="emit('update:factureDialogVisible', $event)">
-            <div class="flex flex-col gap-4">
+        <AppDialog
+            :visible="factureDialogVisible"
+            title="Modifier la facture"
+            icon="pi pi-file-edit"
+            icon-tone="warning"
+            size="xl"
+            :loading="factureSaving"
+            cancel-label="Annuler"
+            confirm-label="Enregistrer"
+            confirm-icon="pi pi-save"
+            @update:visible="emit('update:factureDialogVisible', $event)"
+            @confirm="emit('save-facture')"
+        >            <div class="flex flex-col gap-4">
                 <div class="rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800/40 p-4">
                     <p class="mb-3 text-sm font-semibold text-surface-900 dark:text-surface-100">Date de la facture</p>
                     <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -305,22 +336,17 @@ const payDialogHeader = computed(() => {
                     </div>
                 </div>
             </div>
-            <template #footer>
-                <div class="flex w-full flex-wrap items-center justify-end gap-2">
-                    <Button label="Annuler" icon="pi pi-times" severity="secondary" text class="rounded-xl px-4" @click="emit('update:factureDialogVisible', false)" />
-                    <Button
-                        label="Enregistrer"
-                        icon="pi pi-save"
-                        :loading="factureSaving"
-                        class="rounded-xl border-0 bg-gradient-to-r from-primary-500 to-primary-600 px-5 py-2.5 font-medium text-white shadow-sm transition-all hover:shadow-md"
-                        @click="emit('save-facture')"
-                    />
-                </div>
-            </template>
-        </Dialog>
+        </AppDialog>
 
-        <Dialog :visible="previewDialogVisible" header="Détail de la facture" :modal="true" :style="{ width: '820px' }" @update:visible="emit('update:previewDialogVisible', $event)">
-            <div>
+        <AppDialog
+            :visible="previewDialogVisible"
+            title="Détail de la facture"
+            icon="pi pi-eye"
+            icon-tone="info"
+            size="xl"
+            :show-footer="true"
+            @update:visible="emit('update:previewDialogVisible', $event)"
+        >            <div>
                 <div v-if="previewLoading" class="p-4 text-center text-gray-600 dark:text-gray-400">Chargement...</div>
                 <div v-else-if="hasPreviewData" class="preview-dialog-content flex flex-col gap-3">
                     <div class="preview-header-card flex items-center justify-between rounded-2xl border border-surface-200 bg-surface-50/80 p-4 dark:bg-surface-800 dark:border-surface-700">
@@ -467,10 +493,12 @@ const payDialogHeader = computed(() => {
                 </div>
             </div>
             <template #footer>
-                <Button v-if="canResetInvoicePayments" label="Réinitialiser la facture" severity="danger" outlined icon="pi pi-refresh" @click="emit('confirm-reset')" />
-                <Button label="Fermer" text @click="emit('update:previewDialogVisible', false)" />
-                <Button v-if="showPrintInPreview" label="Imprimer" icon="pi pi-print" severity="info" @click="emit('print-invoice')" />
+                <div class="flex w-full flex-wrap items-center justify-end gap-2">
+                    <Button v-if="canResetInvoicePayments" label="Réinitialiser la facture" severity="danger" outlined icon="pi pi-refresh" @click="emit('confirm-reset')" />
+                    <Button label="Fermer" text @click="emit('update:previewDialogVisible', false)" />
+                    <Button v-if="showPrintInPreview" label="Imprimer" icon="pi pi-print" severity="info" @click="emit('print-invoice')" />
+                </div>
             </template>
-        </Dialog>
+        </AppDialog>
     </div>
 </template>

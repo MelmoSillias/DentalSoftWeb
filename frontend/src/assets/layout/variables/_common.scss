@@ -27,6 +27,50 @@
     --layout-z-mask: 998;
     --layout-z-sidebar: 999;
 
+    /* Page shell tokens (shared PageShell / PageHeader / PageSection)
+       Horizontal padding comes from layout-main; page-shell adds vertical rhythm only. */
+    --page-padding-x: 0;
+    --page-padding-y: 0.25rem;
+    --page-header-gap: 0.625rem;
+    --page-header-margin-bottom: 0.75rem;
+    --page-title-size: 1.1875rem;
+    --page-subtitle-size: 0.75rem;
+    --page-icon-size: 0.9375rem;
+    --page-icon-box-size: 2.125rem;
+    --page-section-radius: 0.75rem;
+    --page-section-padding: 0;
+    --page-section-title-size: 0.875rem;
+    --page-section-subtitle-size: 0.6875rem;
+    --page-toolbar-gap: 0.75rem;
+    --page-content-gap: 0.75rem;
+
+    /* Shared KPI strip (page-kpi + dashboard quick stats) */
+    --page-kpi-label-size: 0.75rem;
+    --page-kpi-value-size: 1.125rem;
+    --page-kpi-meta-size: 0.6875rem;
+    --page-kpi-icon-size: 1.25rem;
+
     /* Backward-compatible alias */
     --top-bar-height: var(--layout-topbar-height);
+}
+
+@media (min-width: 768px) {
+    :root {
+        --page-padding-y: 0.35rem;
+        --page-header-margin-bottom: 1rem;
+        --page-title-size: 1.25rem;
+        --page-subtitle-size: 0.8125rem;
+        --page-section-title-size: 0.9375rem;
+        --page-section-subtitle-size: 0.75rem;
+        --page-content-gap: 1rem;
+        --page-kpi-value-size: 1.25rem;
+        --page-kpi-meta-size: 0.75rem;
+    }
+}
+
+@media (min-width: 992px) {
+    :root {
+        --page-padding-y: 0.5rem;
+        --page-title-size: 1.375rem;
+    }
 }

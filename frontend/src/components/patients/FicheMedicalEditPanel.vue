@@ -117,24 +117,18 @@ defineExpose({
         </div>
 
         <template v-else>
-            <div class="sticky top-0 z-10 -mx-1 px-1 py-2 mb-4 bg-surface-0/95 dark:bg-surface-900/95 backdrop-blur-sm">
-                <div class="flex flex-wrap gap-2 border-b border-surface-200/50 dark:border-surface-700/50 pb-4">
-                    <button
-                        v-for="(section, index) in sections"
-                        :key="section.key"
-                        type="button"
-                        @click="activeSection = index"
-                        :class="[
-                            'px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300',
-                            activeSection === index ? 'bg-primary-500 text-white shadow-sm' : 'text-surface-600 dark:text-surface-400 hover:text-surface-900 dark:hover:text-surface-100 hover:bg-surface-100 dark:hover:bg-surface-700'
-                        ]"
-                    >
-                        <div class="flex items-center gap-2">
-                            <i :class="section.icon"></i>
-                            <span class="hidden sm:inline">{{ section.title }}</span>
-                        </div>
-                    </button>
-                </div>
+            <div class="medical-form-nav sticky top-0 z-10 mb-3">
+                <button
+                    v-for="(section, index) in sections"
+                    :key="section.key"
+                    type="button"
+                    class="medical-form-nav__item"
+                    :class="{ 'is-active': activeSection === index }"
+                    @click="activeSection = index"
+                >
+                    <i :class="section.icon"></i>
+                    <span class="hidden sm:inline">{{ section.title }}</span>
+                </button>
             </div>
 
             <div class="space-y-4">

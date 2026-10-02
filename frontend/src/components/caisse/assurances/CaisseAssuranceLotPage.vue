@@ -3,7 +3,7 @@ import { computed, ref, watch } from 'vue';
 import Button from 'primevue/button';
 import Column from 'primevue/column';
 import DataTable from 'primevue/datatable';
-import Dialog from 'primevue/dialog';
+import AppDialog from '@/components/layout/AppDialog.vue';
 import InputNumber from 'primevue/inputnumber';
 import Select from 'primevue/select';
 import Tag from 'primevue/tag';
@@ -198,7 +198,18 @@ const openClaimMenu = (event, claim) => {
             </div>
         </template>
 
-        <Dialog v-model:visible="refundDialogVisible" modal header="Remboursement du lot" class="w-full max-w-md">
+        <AppDialog
+            v-model:visible="refundDialogVisible"
+            title="Remboursement du lot"
+            icon="pi pi-wallet"
+            icon-tone="success"
+            size="sm"
+            cancel-label="Annuler"
+            confirm-label="Valider"
+            :confirm-disabled="!refundForm.modeId || montantSaisi <= 0 || montantSaisi > resteARembourser"
+            @cancel="refundDialogVisible = false"
+            @confirm="submitRefund"
+        >
             <div class="flex flex-col gap-4 py-2">
                 <div>
                     <label class="block text-sm mb-1">Mode de paiement</label>
@@ -213,11 +224,7 @@ const openClaimMenu = (event, claim) => {
                     <strong>{{ formatFcfa(resteApresSaisie) }}</strong>
                 </div>
             </div>
-            <template #footer>
-                <Button label="Annuler" text @click="refundDialogVisible = false" />
-                <Button label="Valider" icon="pi pi-check" :disabled="!refundForm.modeId || montantSaisi <= 0 || montantSaisi > resteARembourser" @click="submitRefund" />
-            </template>
-        </Dialog>
+        </AppDialog>
     </div>
 </template>
 

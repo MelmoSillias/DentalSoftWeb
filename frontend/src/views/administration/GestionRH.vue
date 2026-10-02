@@ -1,7 +1,9 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
-import Breadcrumb from 'primevue/breadcrumb';
+import PageShell from '@/components/layout/PageShell.vue';
+import PageHeader from '@/components/layout/PageHeader.vue';
+import PageSection from '@/components/layout/PageSection.vue';
 import Button from 'primevue/button';
 import Column from 'primevue/column';
 import ConfirmPopup from 'primevue/confirmpopup';
@@ -32,7 +34,7 @@ const toast = useToast();
 const confirm = useConfirm();
 const { printComponent } = usePrinter();
 
-const breadcrumbHome = { icon: 'pi pi-home', to: '/' };
+const breadcrumbHome = { icon: 'pi pi-home', to: '/dashboard' };
 const breadcrumbItems = [{ label: 'Administration' }, { label: 'Gestion RH' }];
 
 const activeTab = ref('employees');
@@ -530,32 +532,25 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-    <section class="min-h-screen p-4 md:p-6 lg:p-8 transition-colors duration-300">
-        <AppToast />
+    <PageShell>
         <ConfirmPopup />
 
-        <div data-tour="admin-rh.header" class="mb-6 md:mb-8">
-            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
-                <div class="space-y-2">
-                    <div class="flex items-center gap-3">
-                        <div class="p-2.5 rounded-xl bg-primary-500/10 dark:bg-primary-500/20">
-                            <i class="pi pi-users text-primary-600 dark:text-primary-400 text-xl"></i>
-                        </div>
-                        <h1 class="text-3xl lg:text-4xl font-bold text-surface-900 dark:text-surface-50 tracking-tight">Gestion RH</h1>
-                    </div>
-                    <p class="text-surface-600 dark:text-surface-300 text-sm md:text-base">Gestion des employes, paie et conges.</p>
-                </div>
-                <div class="flex flex-wrap items-center gap-2">
-                    <Button v-if="activeTab === 'employees'" icon="pi pi-plus" label="Nouvel employe" class="bg-gradient-to-r from-primary-500 to-primary-600 border-0" @click="openCreateEmployee" />
-                    <Button v-if="activeTab === 'payroll'" icon="pi pi-wallet" label="Ajouter un paiement" class="bg-gradient-to-r from-primary-500 to-primary-600 border-0" @click="openPayrollDialog" />
-                    <Button v-if="activeTab === 'leaves'" icon="pi pi-calendar-plus" label="Ajouter un conge" class="bg-gradient-to-r from-primary-500 to-primary-600 border-0" @click="openCreateLeave" />
-                </div>
-            </div>
-
-            <div class="bg-surface-0 dark:bg-surface-800/80 rounded-2xl p-4 shadow-sm border border-surface-200/50 dark:border-surface-700/50 backdrop-blur-sm">
-                <Breadcrumb :home="breadcrumbHome" :model="breadcrumbItems" class="text-sm" />
-            </div>
-        </div>
+        <template #header>
+            <PageHeader
+                title="Gestion RH"
+                subtitle="Gestion des employes, paie et conges."
+                icon="pi pi-users"
+                tour-id="admin-rh.header"
+                :breadcrumb-items="breadcrumbItems"
+                :breadcrumb-home="breadcrumbHome"
+            >
+                <template #actions>
+                    <Button v-if="activeTab === 'employees'" icon="pi pi-plus" label="Nouvel employe" @click="openCreateEmployee" />
+                    <Button v-if="activeTab === 'payroll'" icon="pi pi-wallet" label="Ajouter un paiement" @click="openPayrollDialog" />
+                    <Button v-if="activeTab === 'leaves'" icon="pi pi-calendar-plus" label="Ajouter un conge" @click="openCreateLeave" />
+                </template>
+            </PageHeader>
+        </template>
 
         <Tabs :value="activeTab" @update:value="activeTab = $event">
             <TabList>
@@ -566,9 +561,9 @@ onBeforeUnmount(() => {
 
             <TabPanels class="mt-4">
                 <TabPanel value="employees">
-                    <div data-tour="admin-rh.table" class="bg-surface-0 dark:bg-surface-800/80 rounded-2xl shadow-xl overflow-hidden border border-surface-200/50 dark:border-surface-700/50 backdrop-blur-sm">
-                        <div class="px-5 md:px-6 py-4 border-b border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900/50 dark:to-surface-800">
-                            <div class="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+                    <PageSection title="Employés" tour-id="admin-rh.table">
+                        <template #header>
+                            <div class="grid grid-cols-1 md:grid-cols-12 gap-3 items-end w-full">
                                 <div class="md:col-span-5">
                                     <label class="block text-sm font-medium mb-2">Recherche</label>
                                     <InputText v-model="search" class="w-full" placeholder="Nom, prenom, telephone" />
@@ -582,8 +577,9 @@ onBeforeUnmount(() => {
                                     <Button icon="pi pi-filter-slash" severity="secondary" outlined @click="resetFilters" />
                                 </div>
                             </div>
-                        </div>
+                        </template>
 
+                        <div class="page-table-scroll">
                         <DataTable
                             :value="filteredEmployees"
                             :loading="employeesLoading"
@@ -648,7 +644,8 @@ onBeforeUnmount(() => {
                                 </div>
                             </template>
                         </DataTable>
-                    </div>
+                        </div>
+                    </PageSection>
 
                     <div data-tour="admin-rh.stats" class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
                         <div class="bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-900/20 dark:to-blue-800/20 rounded-2xl p-5 border border-blue-200/50 dark:border-blue-800/50">
@@ -667,9 +664,9 @@ onBeforeUnmount(() => {
                 </TabPanel>
 
                 <TabPanel value="payroll">
-                    <div class="bg-surface-0 dark:bg-surface-800/80 rounded-2xl shadow-xl overflow-hidden border border-surface-200/50 dark:border-surface-700/50">
-                        <div class="px-5 md:px-6 py-4 border-b border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900/50 dark:to-surface-800">
-                            <div class="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+                    <PageSection title="Gestion de la paie" padded>
+                        <template #header>
+                            <div class="grid grid-cols-1 md:grid-cols-12 gap-3 items-end w-full">
                                 <div class="md:col-span-4">
                                     <label class="block text-sm font-medium mb-2">Mois / Annee</label>
                                     <DatePicker v-model="payrollMonthModel" view="month" dateFormat="mm/yy" showIcon class="w-full" />
@@ -686,8 +683,9 @@ onBeforeUnmount(() => {
                                     <Button icon="pi pi-refresh" severity="secondary" outlined @click="loadPayrolls({ page: 0, rows: payrollRows })" />
                                 </div>
                             </div>
-                        </div>
+                        </template>
 
+                        <div class="page-table-scroll">
                         <DataTable
                             :value="payrolls"
                             :loading="payrollLoading"
@@ -724,13 +722,14 @@ onBeforeUnmount(() => {
                                 </template>
                             </Column>
                         </DataTable>
-                    </div>
+                        </div>
+                    </PageSection>
                 </TabPanel>
 
                 <TabPanel value="leaves">
-                    <div class="bg-surface-0 dark:bg-surface-800/80 rounded-2xl shadow-xl overflow-hidden border border-surface-200/50 dark:border-surface-700/50">
-                        <div class="px-5 md:px-6 py-4 border-b border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900/50 dark:to-surface-800">
-                            <div class="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+                    <PageSection title="Gestion des congés" padded>
+                        <template #header>
+                            <div class="grid grid-cols-1 md:grid-cols-12 gap-3 items-end w-full">
                                 <div class="md:col-span-4">
                                     <label class="block text-sm font-medium mb-2">Employe</label>
                                     <Select v-model="leaveEmployeeId" :options="employeeOptions" optionLabel="fullname" optionValue="id" class="w-full" showClear placeholder="Tous les employes">
@@ -751,8 +750,9 @@ onBeforeUnmount(() => {
                                     <Button icon="pi pi-refresh" severity="secondary" outlined @click="loadLeaves" />
                                 </div>
                             </div>
-                        </div>
+                        </template>
 
+                        <div class="page-table-scroll">
                         <DataTable :value="leavesFiltered" :loading="leavesLoading" dataKey="id">
                             <Column field="employe" header="Employe" />
                             <Column field="type" header="Type" />
@@ -776,7 +776,8 @@ onBeforeUnmount(() => {
                                 <div class="text-center py-10 text-surface-500">Aucun conge enregistre.</div>
                             </template>
                         </DataTable>
-                    </div>
+                        </div>
+                    </PageSection>
                 </TabPanel>
             </TabPanels>
         </Tabs>
@@ -797,5 +798,5 @@ onBeforeUnmount(() => {
         <PayrollDetailDialog v-model:visible="payrollDetailVisible" :payment="selectedPayroll" :payment-methods="paymentMethods" :loading="payrollDetailSaving" @submit="submitPayrollEdit" @print="printPayrollSlip" />
 
         <LeaveFormDialog v-model:visible="leaveDialogVisible" :mode="leaveMode" :leave="selectedLeave" :employees="employeeOptions" :loading="leaveSaving" @submit="submitLeave" />
-    </section>
+    </PageShell>
 </template>

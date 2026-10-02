@@ -13,7 +13,3 @@ const { model } = useNavigationMenu();
         </template>
     </ul>
 </template>
-
-<style lang="scss" scoped>
-/* Ajoutez ici vos styles personnalisés si nécessaire */
-</style>

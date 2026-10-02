@@ -1,4 +1,6 @@
-/* Toast styling aligned with SuperCargo — positioned top-right for DentalSoftWeb */
+/* Toast styling — desktop top-right, full-bleed friendly on mobile.
+   Prefer !important for container position/size: PrimeVue Toast applies
+   inline top/right styles that otherwise win over stylesheet rules. */
 
 .p-toast .p-toast-message {
     --toast-life: 3s;
@@ -99,27 +101,53 @@
     border-color: color-mix(in srgb, #f59e0b 45%, #334155) !important;
 }
 
+/* Desktop / tablet: anchored top-right under the app topbar */
+.app-toast.p-toast.p-toast-top-right,
 .p-toast.p-toast-top-right {
-    top: max(calc(4rem + 0.75rem), env(safe-area-inset-top, 0px));
-    right: max(0.625rem, env(safe-area-inset-right, 0px));
-    left: auto;
-    width: min(calc(100vw - 1.25rem), 22rem);
-    max-width: calc(100vw - 1.25rem);
+    top: max(calc(var(--layout-topbar-height, 4rem) + 0.75rem), calc(env(safe-area-inset-top, 0px) + 0.75rem)) !important;
+    right: max(0.75rem, env(safe-area-inset-right, 0px)) !important;
+    left: auto !important;
+    width: min(22rem, calc(100vw - 1.5rem)) !important;
+    max-width: calc(100vw - 1.5rem) !important;
+    box-sizing: border-box;
 }
 
-@media (max-width: 767px) {
-    .app-toast.p-toast,
-    .p-toast {
-        width: min(calc(100vw - 1.25rem), 22rem);
-        max-width: calc(100vw - 1.25rem);
-    }
+.app-toast__body {
+    min-width: 0;
+    flex: 1 1 auto;
+}
 
+.app-toast__action {
+    margin-top: 0.5rem;
+}
+
+.app-toast__action-btn {
+    max-width: 100%;
+}
+
+@media (max-width: 991.98px) {
+    .app-toast.p-toast.p-toast-top-right,
     .p-toast.p-toast-top-right {
-        top: max(calc(4rem + 0.5rem), env(safe-area-inset-top, 0px));
-        right: max(0.625rem, env(safe-area-inset-right, 0px));
-        left: auto;
-        width: calc(100vw - 1.25rem);
-        max-width: calc(100vw - 1.25rem);
+        top: max(calc(var(--layout-topbar-height, 4rem) + 0.5rem), calc(env(safe-area-inset-top, 0px) + 0.5rem)) !important;
+        right: max(0.75rem, env(safe-area-inset-right, 0px)) !important;
+        left: auto !important;
+        width: min(24rem, calc(100vw - 1.5rem)) !important;
+        max-width: calc(100vw - 1.5rem) !important;
+    }
+}
+
+@media (max-width: 640px) {
+    .app-toast.p-toast,
+    .app-toast.p-toast.p-toast-top-right,
+    .p-toast,
+    .p-toast.p-toast-top-right {
+        top: max(calc(var(--layout-topbar-height, 4rem) + 0.375rem), calc(env(safe-area-inset-top, 0px) + 0.375rem)) !important;
+        right: max(0.5rem, env(safe-area-inset-right, 0px)) !important;
+        left: max(0.5rem, env(safe-area-inset-left, 0px)) !important;
+        /* Prefer left+right stretch; width from PrimeVue breakpoints still works as fallback */
+        width: auto !important;
+        max-width: none !important;
+        box-sizing: border-box;
     }
 
     .p-toast-message {
@@ -127,9 +155,11 @@
         max-width: 100%;
         box-sizing: border-box;
         margin-bottom: 0.5rem;
+        border-radius: 0.75rem;
     }
 
     .p-toast-message-content {
+        display: flex;
         align-items: flex-start;
         gap: 0.65rem;
         padding: 0.7rem 0.75rem;
@@ -137,9 +167,12 @@
     }
 
     .p-toast-message-text,
+    .app-toast__body,
     .p-toast-message-content > div:not(.p-toast-close-button) {
         min-width: 0;
         flex: 1 1 auto;
+        overflow-wrap: anywhere;
+        word-break: break-word;
     }
 
     .p-toast-summary {
@@ -147,8 +180,6 @@
         font-size: 0.875rem;
         font-weight: 700;
         line-height: 1.35;
-        word-break: break-word;
-        overflow-wrap: anywhere;
         white-space: normal;
     }
 
@@ -156,8 +187,6 @@
         display: block;
         font-size: 0.8125rem;
         line-height: 1.45;
-        word-break: break-word;
-        overflow-wrap: anywhere;
         white-space: normal;
         margin-top: 0.2rem;
     }
@@ -172,4 +201,20 @@
         height: 1.75rem;
         margin-left: 0.15rem;
     }
+
+    .app-toast__action-btn {
+        width: 100%;
+    }
+}
+
+/* Keep toasts below the offline connection banner when present */
+html.is-connection-offline .app-toast.p-toast-top-right,
+html.is-connection-offline .p-toast-top-right,
+html.is-connection-offline .p-toast-top-left,
+html.is-connection-offline .p-toast-top-center,
+html.is-connection-restored .app-toast.p-toast-top-right,
+html.is-connection-restored .p-toast-top-right,
+html.is-connection-restored .p-toast-top-left,
+html.is-connection-restored .p-toast-top-center {
+    top: calc(var(--connection-banner-offset, 2.75rem) + var(--layout-topbar-height, 4rem) + 0.375rem) !important;
 }

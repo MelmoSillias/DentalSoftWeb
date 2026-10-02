@@ -27,6 +27,7 @@ export const HUB_ICONS = {
     'patients-dossier': patientsDossier,
     'consultations-cards': consultationsCards,
     'consultations-table': consultationsTable,
+    'consultations-services-cabinets': consultationsTable,
     caisse,
     rapports,
     consommables,

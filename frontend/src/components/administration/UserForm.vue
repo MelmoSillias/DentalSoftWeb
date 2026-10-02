@@ -1,10 +1,9 @@
 <script setup>
 import { computed, reactive, watch } from 'vue';
 import { STAFF_ROLE_ADMIN, STAFF_ROLE_OPTIONS, STAFF_ROLE_OPTIONS_WITHOUT_PATIENT, STAFF_ROLE_PATIENT, resolveRoleFromRoles, suggestRoleFromEmployeeType } from '@/utils/employeeTypeUtils';
-import Dialog from 'primevue/dialog';
+import AppDialog from '@/components/layout/AppDialog.vue';
 import InputText from 'primevue/inputtext';
 import Select from 'primevue/select';
-import Button from 'primevue/button';
 import TabView from 'primevue/tabview';
 import TabPanel from 'primevue/tabpanel';
 
@@ -170,7 +169,20 @@ const handleSubmit = (event) => {
 </script>
 
 <template>
-    <Dialog :header="dialogTitle" v-model:visible="localVisible" :style="{ width: '640px' }" :modal="true" @hide="closeDialog">
+    <AppDialog
+        v-model:visible="localVisible"
+        :title="dialogTitle"
+        icon="pi pi-user"
+        icon-tone="primary"
+        width="640px"
+        :loading="loading"
+        cancel-label="Annuler"
+        :confirm-label="submitLabel"
+        confirm-icon="pi pi-check"
+        @cancel="closeDialog"
+        @confirm="handleSubmit"
+        @hide="closeDialog"
+    >
         <div class="flex flex-col gap-4" :data-tour="props.tourTarget || null">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div class="flex flex-col gap-2">
@@ -205,10 +217,5 @@ const handleSubmit = (event) => {
                 </TabView>
             </div>
         </div>
-
-        <template #footer>
-            <Button label="Annuler" icon="pi pi-times" severity="secondary" text @click="closeDialog" />
-            <Button :label="submitLabel" icon="pi pi-check" :loading="loading" @click="handleSubmit" />
-        </template>
-    </Dialog>
+    </AppDialog>
 </template>

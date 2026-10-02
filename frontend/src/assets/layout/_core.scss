@@ -3,6 +3,41 @@
     --app-font-size: 16px;
 }
 
+/* Desktop / tablette : petit 14 · normal 16 · grand 18 */
+html[data-font-size='small'] {
+    --app-font-size: 14px;
+}
+
+html[data-font-size='normal'] {
+    --app-font-size: 16px;
+}
+
+html[data-font-size='large'] {
+    --app-font-size: 18px;
+}
+
+/*
+ * Petits écrans (~360px+) : reproportionner pour éviter les débordements
+ * avec la taille « normale » (même écart relatif ~2px entre chaque niveau).
+ */
+@media (max-width: 520px) {
+    :root {
+        --app-font-size: 14px;
+    }
+
+    html[data-font-size='small'] {
+        --app-font-size: 12px;
+    }
+
+    html[data-font-size='normal'] {
+        --app-font-size: 14px;
+    }
+
+    html[data-font-size='large'] {
+        --app-font-size: 16px;
+    }
+}
+
 html {
     height: 100%;
     font-size: var(--app-font-size);

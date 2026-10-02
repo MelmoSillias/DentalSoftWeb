@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useToast } from 'primevue/usetoast';
 import Popover from 'primevue/popover';
@@ -126,7 +126,7 @@ function showNotificationToast(notification) {
     }, 400);
 }
 
-onNotificationReceived((notification) => {
+const unsubscribeNotificationReceived = onNotificationReceived((notification) => {
     if (!shouldShowInApp()) {
         return;
     }
@@ -135,11 +135,12 @@ onNotificationReceived((notification) => {
     showNotificationToast(notification);
 });
 
+function enableAudioOnce() {
+    enableNotificationAudio();
+    window.removeEventListener('click', enableAudioOnce, true);
+}
+
 if (typeof window !== 'undefined') {
-    const enableAudioOnce = () => {
-        enableNotificationAudio();
-        window.removeEventListener('click', enableAudioOnce, true);
-    };
     window.addEventListener('click', enableAudioOnce, true);
 }
 
@@ -156,6 +157,20 @@ onMounted(async () => {
         });
     } finally {
         isNotificationsLoading.value = false;
+    }
+});
+
+onBeforeUnmount(() => {
+    unsubscribeNotificationReceived();
+
+    if (toastGroupTimer) {
+        clearTimeout(toastGroupTimer);
+        toastGroupTimer = null;
+        pendingToastCount = 0;
+    }
+
+    if (typeof window !== 'undefined') {
+        window.removeEventListener('click', enableAudioOnce, true);
     }
 });
 
@@ -243,9 +258,9 @@ async function handleNotificationClick(notification) {
         >
             <span class="notification-bell__status" :title="connectionIndicatorTitle" aria-hidden="true" />
             <OverlayBadge v-if="unreadCount && unreadCount !== 0" :value="unreadCount" severity="danger" class="inline-flex items-center justify-center">
-                <i :class="variant === 'topbar' ? 'pi pi-bell text-2xl' : 'pi pi-bell'" />
+                <i class="pi pi-bell" />
             </OverlayBadge>
-            <i v-else :class="variant === 'topbar' ? 'pi pi-bell text-2xl' : 'pi pi-bell'" />
+            <i v-else class="pi pi-bell" />
             <span class="sr-only">Notifications ({{ unreadCount }} non lues)</span>
         </button>
 

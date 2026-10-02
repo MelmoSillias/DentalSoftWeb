@@ -1,77 +1,319 @@
 <script setup>
-import Button from 'primevue/button';
-
-const props = defineProps({
+defineProps({
     cards: { type: Array, default: () => [] },
-    title: { type: String, default: 'Apercu rapide' },
+    title: { type: String, default: 'Aperçu rapide' },
     loading: { type: Boolean, default: false }
 });
+
+const toneClass = (tone) => {
+    const key = tone || 'neutral';
+    return `dash-stat--${key}`;
+};
 </script>
 
 <template>
-    <div class="mb-6 md:mb-8">
-        <div class="flex items-center justify-between mb-4">
-            <h3 class="text-base sm:text-lg font-semibold text-surface-900 dark:text-surface-100 flex items-center gap-2">
-                <i class="pi pi-chart-line text-primary-500 text-sm sm:text-base"></i>
+    <section class="dash-stats">
+        <div class="dash-stats__head">
+            <h3 class="dash-stats__title">
+                <i class="pi pi-chart-line" aria-hidden="true"></i>
                 {{ title }}
             </h3>
-            <Button icon="pi pi-ellipsis-h" severity="secondary" text size="small" class="text-surface-600 dark:text-surface-400" />
         </div>
 
-        <div class="relative">
-            <div class="flex gap-4 pb-4 overflow-x-auto scrollbar-hide">
-                <div v-if="loading" v-for="idx in 4" :key="`loading-${idx}`" class="min-w-[240px] sm:min-w-[280px] rounded-2xl p-4 sm:p-5 border border-surface-200/60 dark:border-surface-700/60 bg-surface-50/70 dark:bg-surface-800/70 animate-pulse">
-                    <div class="flex items-center justify-between">
-                        <div class="flex-1 space-y-3">
-                            <div class="h-3 w-24 rounded bg-surface-200/80 dark:bg-surface-700/70"></div>
-                            <div class="h-7 w-16 rounded bg-surface-200/80 dark:bg-surface-700/70"></div>
-                            <div class="h-3 w-32 rounded bg-surface-200/80 dark:bg-surface-700/70"></div>
-                        </div>
-                        <div class="h-12 w-12 rounded-xl bg-surface-200/80 dark:bg-surface-700/70"></div>
+        <div class="dash-stats__track scrollbar-hide">
+            <template v-if="loading">
+                <div v-for="idx in 4" :key="`loading-${idx}`" class="dash-stat dash-stat--skeleton">
+                    <div class="dash-stat__body">
+                        <div class="dash-stat__skel dash-stat__skel--label"></div>
+                        <div class="dash-stat__skel dash-stat__skel--value"></div>
+                        <div class="dash-stat__skel dash-stat__skel--sub"></div>
                     </div>
-                    <div class="mt-4 pt-3 border-t border-surface-200/60 dark:border-surface-700/60">
-                        <div class="h-3 w-28 rounded bg-surface-200/80 dark:bg-surface-700/70"></div>
-                    </div>
+                    <div class="dash-stat__skel dash-stat__skel--icon"></div>
                 </div>
+            </template>
 
-                <div v-else v-for="card in cards" :key="card.id" :class="['min-w-[240px] sm:min-w-[280px] rounded-2xl p-4 sm:p-5 border hover:shadow-lg transition-all duration-300 cursor-pointer group', card.background, card.border]">
-                    <div class="flex items-center justify-between">
-                        <div class="flex-1">
-                            <p :class="['text-xs sm:text-sm font-medium', card.text]">{{ card.title }}</p>
-                            <p :class="['text-2xl sm:text-3xl font-bold mt-2', card.valueColor || card.text]">{{ card.value }}</p>
-                            <div v-if="card.subValue" class="flex items-center gap-2 mt-2">
-                                <i v-if="card.subIcon" :class="[card.subIcon, card.subIconColor || 'text-surface-400', 'text-xs']"></i>
-                                <span :class="['text-[11px] sm:text-xs', card.subColor || 'text-surface-500']">{{ card.subValue }}</span>
-                            </div>
-                        </div>
-                        <div :class="['p-2.5 sm:p-3 rounded-xl group-hover:scale-110 transition-transform duration-300', card.iconBg]">
-                            <i :class="[card.icon, 'text-xl sm:text-2xl', card.iconColor]"></i>
-                        </div>
-                    </div>
-                    <div v-if="card.link" :class="['mt-4 pt-3 border-t', card.borderLight || card.border]">
-                        <RouterLink :to="card.link" :class="['text-xs sm:text-sm hover:underline flex items-center gap-2', card.linkColor || card.text]">
+            <template v-else>
+                <article
+                    v-for="card in cards"
+                    :key="card.id"
+                    :class="['dash-stat', toneClass(card.tone)]"
+                >
+                    <div class="dash-stat__body">
+                        <p class="dash-stat__label">{{ card.title }}</p>
+                        <p class="dash-stat__value">{{ card.value }}</p>
+                        <p v-if="card.subValue" class="dash-stat__sub">
+                            <i v-if="card.subIcon" :class="card.subIcon" aria-hidden="true"></i>
+                            <span>{{ card.subValue }}</span>
+                        </p>
+                        <RouterLink
+                            v-if="card.link"
+                            :to="card.link"
+                            class="dash-stat__link"
+                        >
                             {{ card.linkLabel || 'Voir' }}
-                            <i class="pi pi-arrow-right text-xs"></i>
+                            <i class="pi pi-arrow-right" aria-hidden="true"></i>
                         </RouterLink>
                     </div>
-                </div>
-            </div>
-
-            <div v-if="!loading && !cards.length" class="text-sm text-surface-500 py-2">Aucun indicateur disponible.</div>
-
-            <div class="flex justify-center gap-1 mt-4" v-if="!loading && cards.length">
-                <div v-for="idx in Math.min(cards.length, 3)" :key="idx" :class="idx === 1 ? 'bg-primary-500' : 'bg-surface-300 dark:bg-surface-600'" class="w-2 h-2 rounded-full"></div>
-            </div>
+                    <div class="dash-stat__icon" aria-hidden="true">
+                        <i :class="card.icon"></i>
+                    </div>
+                </article>
+            </template>
         </div>
-    </div>
+
+        <p v-if="!loading && !cards.length" class="dash-stats__empty">Aucun indicateur disponible.</p>
+    </section>
 </template>
 
 <style scoped>
+.dash-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+    margin-bottom: 1.25rem;
+}
+
+.dash-stats__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.dash-stats__title {
+    margin: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: var(--page-section-title-size);
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    color: var(--text-color);
+}
+
+.dash-stats__title i {
+    font-size: var(--page-kpi-label-size);
+    color: var(--p-primary-color);
+}
+
+.dash-stats__track {
+    display: flex;
+    gap: 0.625rem;
+    overflow-x: auto;
+    padding-bottom: 0.125rem;
+    -webkit-overflow-scrolling: touch;
+}
+
+.dash-stat {
+    --stat-accent: var(--p-primary-color);
+    --stat-accent-soft: color-mix(in srgb, var(--p-primary-color) 10%, var(--surface-card));
+    --stat-accent-border: color-mix(in srgb, var(--p-primary-color) 18%, var(--surface-border));
+
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.5rem;
+    flex: 0 0 auto;
+    min-width: 9.75rem;
+    max-width: 12.5rem;
+    padding: 0.625rem 0.75rem;
+    border-radius: 0.625rem;
+    border: 1px solid color-mix(in srgb, var(--surface-border) 80%, transparent);
+    background: var(--surface-card);
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.dash-stat:hover {
+    border-color: var(--stat-accent-border);
+    background: color-mix(in srgb, var(--surface-card) 92%, var(--text-color) 3%);
+}
+
+.dash-stat__body {
+    min-width: 0;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.dash-stat__label {
+    margin: 0;
+    font-size: var(--page-kpi-label-size);
+    font-weight: 500;
+    line-height: 1.3;
+    color: var(--text-color-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dash-stat__value {
+    margin: 0;
+    font-size: var(--page-kpi-value-size);
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+    color: var(--text-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dash-stat__sub {
+    margin: 0.1rem 0 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: var(--page-kpi-meta-size);
+    line-height: 1.3;
+    color: var(--text-color-secondary);
+}
+
+.dash-stat__sub i {
+    font-size: 0.85em;
+}
+
+.dash-stat__link {
+    margin-top: 0.35rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: var(--page-kpi-meta-size);
+    font-weight: 500;
+    color: var(--stat-accent);
+    text-decoration: none;
+}
+
+.dash-stat__link:hover {
+    text-decoration: underline;
+}
+
+.dash-stat__link i {
+    font-size: 0.8em;
+}
+
+.dash-stat__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 0.4rem;
+    border: 1px solid var(--stat-accent-border);
+    background: var(--stat-accent-soft);
+    color: var(--stat-accent);
+}
+
+.dash-stat__icon i {
+    font-size: var(--page-icon-size);
+    line-height: 1;
+}
+
+.dash-stat--blue {
+    --stat-accent: #3b82f6;
+    --stat-accent-soft: color-mix(in srgb, #3b82f6 10%, var(--surface-card));
+    --stat-accent-border: color-mix(in srgb, #3b82f6 22%, var(--surface-border));
+}
+
+.dash-stat--amber {
+    --stat-accent: #d97706;
+    --stat-accent-soft: color-mix(in srgb, #d97706 10%, var(--surface-card));
+    --stat-accent-border: color-mix(in srgb, #d97706 22%, var(--surface-border));
+}
+
+.dash-stat--green {
+    --stat-accent: #16a34a;
+    --stat-accent-soft: color-mix(in srgb, #16a34a 10%, var(--surface-card));
+    --stat-accent-border: color-mix(in srgb, #16a34a 22%, var(--surface-border));
+}
+
+.dash-stat--purple {
+    --stat-accent: #7c3aed;
+    --stat-accent-soft: color-mix(in srgb, #7c3aed 10%, var(--surface-card));
+    --stat-accent-border: color-mix(in srgb, #7c3aed 22%, var(--surface-border));
+}
+
+.dash-stat--red {
+    --stat-accent: #dc2626;
+    --stat-accent-soft: color-mix(in srgb, #dc2626 10%, var(--surface-card));
+    --stat-accent-border: color-mix(in srgb, #dc2626 22%, var(--surface-border));
+}
+
+.dash-stat--neutral {
+    --stat-accent: var(--p-primary-color);
+    --stat-accent-soft: color-mix(in srgb, var(--p-primary-color) 10%, var(--surface-card));
+    --stat-accent-border: color-mix(in srgb, var(--p-primary-color) 18%, var(--surface-border));
+}
+
+.dash-stat--skeleton {
+    pointer-events: none;
+    animation: dash-stat-pulse 1.4s ease-in-out infinite;
+}
+
+.dash-stat__skel {
+    border-radius: 0.25rem;
+    background: color-mix(in srgb, var(--surface-border) 70%, transparent);
+}
+
+.dash-stat__skel--label {
+    width: 4.5rem;
+    height: 0.5rem;
+}
+
+.dash-stat__skel--value {
+    width: 2.75rem;
+    height: 1rem;
+    margin-top: 0.35rem;
+}
+
+.dash-stat__skel--sub {
+    width: 5.5rem;
+    height: 0.45rem;
+    margin-top: 0.35rem;
+}
+
+.dash-stat__skel--icon {
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 0.4rem;
+    flex-shrink: 0;
+}
+
+.dash-stats__empty {
+    margin: 0;
+    font-size: var(--page-subtitle-size);
+    color: var(--text-color-secondary);
+}
+
 .scrollbar-hide {
     -ms-overflow-style: none;
     scrollbar-width: none;
 }
+
 .scrollbar-hide::-webkit-scrollbar {
     display: none;
+}
+
+@keyframes dash-stat-pulse {
+    0%,
+    100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.55;
+    }
+}
+
+@media (min-width: 640px) {
+    .dash-stats {
+        margin-bottom: 1.5rem;
+        gap: 0.75rem;
+    }
+
+    .dash-stat {
+        min-width: 10.5rem;
+        max-width: 13rem;
+        padding: 0.7rem 0.85rem;
+    }
 }
 </style>

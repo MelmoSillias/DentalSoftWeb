@@ -1,8 +1,8 @@
 <script setup>
 import { formatActeCurrency, normalizeDentList } from '@/services/consultations';
+import AppDialog from '@/components/layout/AppDialog.vue';
 import Column from 'primevue/column';
 import DataTable from 'primevue/datatable';
-import Dialog from 'primevue/dialog';
 import ProgressSpinner from 'primevue/progressspinner';
 import Tag from 'primevue/tag';
 import { computed } from 'vue';
@@ -47,19 +47,17 @@ const handleHide = () => emit('update:visible', false);
 </script>
 
 <template>
-    <Dialog :visible="visible" modal :style="{ width: '52rem', maxWidth: '98vw' }" class="consultation-details-dialog" @update:visible="handleHide">
-        <template #header>
-            <div class="flex items-center gap-3">
-                <span class="flex items-center justify-center w-9 h-9 rounded-xl bg-primary-500/10 text-primary-600 dark:text-primary-400">
-                    <i class="pi pi-file-edit text-lg"></i>
-                </span>
-                <div>
-                    <h2 class="text-lg font-semibold text-surface-900 dark:text-surface-0 leading-tight">Détails de la consultation</h2>
-                    <p v-if="details?.patient" class="text-sm text-surface-500 dark:text-surface-400 mt-0.5">{{ details.patient }}</p>
-                </div>
-            </div>
-        </template>
-
+    <AppDialog
+        :visible="visible"
+        title="Détails de la consultation"
+        :subtitle="details?.patient || null"
+        icon="pi pi-file-edit"
+        icon-tone="primary"
+        size="xl"
+        :show-footer="false"
+        class="consultation-details-dialog"
+        @update:visible="handleHide"
+    >
         <div :data-tour="props.tourTarget || null">
             <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-10 text-surface-500 dark:text-surface-400">
                 <ProgressSpinner style="width: 2.5rem; height: 2.5rem" strokeWidth="4" />
@@ -203,5 +201,5 @@ const handleHide = () => emit('update:visible', false);
                 <span class="text-sm">Aucune donnée disponible.</span>
             </div>
         </div>
-    </Dialog>
+    </AppDialog>
 </template>

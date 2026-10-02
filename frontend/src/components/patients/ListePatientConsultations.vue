@@ -53,27 +53,25 @@ const consultationMontant = (consultation) => Number(consultation?.factureMontan
 </script>
 
 <template>
-    <div class="bg-surface-0 dark:bg-surface-800/80 rounded-2xl shadow-lg border border-surface-200/50 dark:border-surface-700/50 overflow-hidden backdrop-blur-sm">
-        <div class="px-5 md:px-6 py-4 border-b border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900/50 dark:to-surface-800" data-tour="patients-dossier.consultations-toolbar">
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div class="space-y-1">
-                    <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-100">Consultations du patient</h3>
-                    <Tag :value="totalCountLabel" severity="info" class="px-3 py-1 rounded-full font-medium" />
-                </div>
-                <div class="flex items-center gap-2">
-                    <Button icon="pi pi-download" label="Exporter" severity="secondary" text size="small" @click="exportCSV" />
-                </div>
+    <div class="page-section">
+        <div class="page-section__header" data-tour="patients-dossier.consultations-toolbar">
+            <div class="page-section__header-main">
+                <h3 class="page-section__title">Consultations du patient</h3>
+                <p class="page-section__subtitle">{{ totalCountLabel }}</p>
+            </div>
+            <div class="page-section__header-actions">
+                <Button icon="pi pi-download" label="Exporter" severity="secondary" text size="small" @click="exportCSV" />
             </div>
         </div>
 
-        <div class="px-5 md:px-6 py-4 border-b border-surface-200/50 dark:border-surface-700/50 bg-surface-0/50 dark:bg-surface-800/30" data-tour="patients-dossier.consultations-filter">
-            <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2"> Rechercher une consultation </label>
+        <div class="px-3 py-3 border-b" style="border-color: color-mix(in srgb, var(--surface-border) 80%, transparent)" data-tour="patients-dossier.consultations-filter">
+            <label class="block mb-1.5" style="font-size: var(--page-section-subtitle-size); font-weight: 500; color: var(--text-color)">Rechercher une consultation</label>
             <span class="p-input-icon-left w-full">
-                <i class="pi pi-search text-surface-400" />
+                <i class="pi pi-search" style="color: var(--text-color-secondary)" />
                 <InputText
                     v-model="filterValue"
                     placeholder="Date, statut, médecin..."
-                    class="w-full p-3.5 rounded-xl border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-700/50 focus:ring-2 focus:ring-primary-500/20 transition-all"
+                    class="w-full"
                 />
             </span>
         </div>

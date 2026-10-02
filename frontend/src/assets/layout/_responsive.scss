@@ -10,15 +10,12 @@ $layout-sidebar-motion: 0.4s cubic-bezier(0.05, 0.74, 0.2, 0.99);
     width: var(--layout-sidebar-width);
     height: auto;
     z-index: var(--layout-z-sidebar);
-    border-top-left-radius: 0;
-    border-bottom-left-radius: 0;
+    margin: 0;
+    border-radius: 0;
     border-right: 1px solid var(--surface-border);
     transform: translateX(-100%);
     transition: transform $layout-sidebar-motion;
-    box-shadow:
-        0px 3px 5px rgba(0, 0, 0, 0.02),
-        0px 0px 2px rgba(0, 0, 0, 0.05),
-        0px 1px 4px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
 }
 
 /* Overlay/mobile: content already full-width; sidebar slides over it. */
@@ -87,14 +84,14 @@ $layout-sidebar-motion: 0.4s cubic-bezier(0.05, 0.74, 0.2, 0.99);
                     padding-right: 0;
                     opacity: 0;
                     pointer-events: none;
-                    border: none;
+                    border-color: transparent;
                 }
             }
         }
     }
 }
 
-@media (max-width: 991px) {
+@media (max-width: 991.98px) {
     .blocked-scroll {
         overflow: hidden;
     }

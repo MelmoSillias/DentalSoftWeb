@@ -97,6 +97,12 @@ export function useNavigationMenu() {
                 iconKey: 'consultations-table',
                 to: router.resolve({ name: 'consultations-table' }).href
             });
+            consultationItems.push({
+                label: 'Services cabinets',
+                icon: 'pi pi-fw pi-building',
+                iconKey: 'consultations-services-cabinets',
+                to: router.resolve({ name: 'consultations-services-cabinets' }).href
+            });
             menu.push({
                 label: 'Consultations',
                 items: consultationItems

@@ -4,7 +4,7 @@ import DossierPatientInfoCard from '@/components/patients/DossierPatientInfoCard
 import FichesMedicalesSection from '@/components/patients/FichesMedicalesSection.vue';
 import ListePatientConsultations from '@/components/patients/ListePatientConsultations.vue';
 import PatientActiviteFinancesSection from '@/components/patients/PatientActiviteFinancesSection.vue';
-import PatientCabinetServicesPanel from '@/components/patients/PatientCabinetServicesPanel.vue';
+import Button from 'primevue/button';
 import Tab from 'primevue/tab';
 import TabList from 'primevue/tablist';
 import TabPanel from 'primevue/tabpanel';
@@ -27,7 +27,9 @@ const props = defineProps({
     isReception: { type: Boolean, default: false },
     isMedecin: { type: Boolean, default: false },
     showConsultationsTab: { type: Boolean, default: false },
-    hidePhone: { type: Boolean, default: false }
+    hidePhone: { type: Boolean, default: false },
+    /** Hide spine actions when parent already exposes them (e.g. dialog header) */
+    hideSpineActions: { type: Boolean, default: false }
 });
 
 const emit = defineEmits([
@@ -54,6 +56,25 @@ const activeTab = ref('identite');
 
 const patientAge = computed(() => computeAgeYears(props.patient?.dateNaissance || props.patient?.age));
 
+const spineMeta = computed(() => {
+    const parts = [];
+    if (props.patient?.numeroDossier) parts.push(props.patient.numeroDossier);
+    if (patientAge.value != null && patientAge.value !== '') parts.push(`${patientAge.value} ans`);
+    if (props.patient?.sexe) parts.push(props.patient.sexe);
+    return parts.join(' · ');
+});
+
+const patientDisplayName = computed(() => `${props.patient?.nom || ''} ${props.patient?.prenom || ''}`.trim());
+
+const activiteBadge = computed(() => {
+    const total =
+        (props.rdvs?.length || 0) +
+        (props.paiements?.length || 0) +
+        (props.factures?.length || 0) +
+        (props.servicesCabinet?.length || 0);
+    return total || null;
+});
+
 const tabs = computed(() => [
     {
         id: 'identite',
@@ -71,60 +92,68 @@ const tabs = computed(() => [
         id: 'activite',
         label: 'Activité & finances',
         icon: 'pi pi-chart-line',
-        badge: props.rdvs?.length || null
-    },
-    {
-        id: 'services-cabinet',
-        label: 'Services cabinet',
-        icon: 'pi pi-building',
-        badge: props.servicesCabinet?.length || null
+        badge: activiteBadge.value
     }
 ]);
 </script>
 
 <template>
-    <div class="bg-surface-0 dark:bg-surface-800/80 rounded-2xl shadow-lg border border-surface-200/50 dark:border-surface-700/50 overflow-hidden backdrop-blur-sm">
-        <Tabs :value="activeTab" @update:value="activeTab = $event" class="dossier-tabs">
-            <TabList class="flex flex-wrap gap-1 border-b border-surface-200/50 dark:border-surface-700/50 px-4 pt-4" data-tour="patients-dossier.main-tabs">
-                <Tab v-for="tab in tabs" :key="tab.id" :value="tab.id" class="flex-1 sm:flex-none">
-                    <span class="flex items-center justify-center gap-2 px-2 py-1">
+    <div class="dossier-folder">
+        <div class="dossier-folder__spine">
+            <div class="dossier-folder__spine-main">
+                <h2 class="dossier-folder__spine-name">{{ patient.nom }} {{ patient.prenom }}</h2>
+                <p v-if="spineMeta" class="dossier-folder__spine-meta">{{ spineMeta }}</p>
+            </div>
+            <div v-if="!hideSpineActions" class="dossier-folder__spine-actions">
+                <Button icon="pi pi-print" label="Imprimer" severity="secondary" outlined size="small" @click="emit('print-dossier')" />
+                <Button icon="pi pi-pencil" label="Modifier" severity="secondary" outlined size="small" @click="emit('edit')" />
+                <Button icon="pi pi-plus" label="RDV" size="small" @click="emit('new-rdv')" />
+            </div>
+        </div>
+
+        <Tabs :value="activeTab" @update:value="activeTab = $event" class="dossier-folder__tabs">
+            <TabList data-tour="patients-dossier.main-tabs">
+                <Tab v-for="tab in tabs" :key="tab.id" :value="tab.id">
+                    <span class="dossier-folder__tab-label">
                         <i :class="tab.icon"></i>
                         <span class="hidden sm:inline">{{ tab.label }}</span>
-                        <span v-if="tab.badge" class="inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-primary-100 dark:bg-primary-900/40 px-1.5 py-0.5 text-[10px] font-semibold text-primary-700 dark:text-primary-300">
-                            {{ tab.badge }}
-                        </span>
+                        <span v-if="tab.badge" class="dossier-folder__tab-badge">{{ tab.badge }}</span>
                     </span>
                 </Tab>
             </TabList>
 
-            <TabPanels class="p-4 md:p-6">
+            <TabPanels>
                 <TabPanel value="identite">
-                    <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                        <div data-tour="patients-dossier.info-card">
-                            <DossierPatientInfoCard
-                                :patient="patient"
-                                :hide-phone="hidePhone"
-                                @print-dossier="emit('print-dossier')"
-                                @edit="emit('edit')"
-                                @new-rdv="emit('new-rdv')"
-                                @photo-selected="(file) => emit('photo-selected', file)"
-                                @add-antecedent="emit('add-antecedent')"
-                                @add-allergy="emit('add-allergy')"
-                                @delete-antecedent="(item) => emit('delete-antecedent', item)"
-                                @delete-allergy="(item) => emit('delete-allergy', item)"
-                                @create-portal-account="emit('create-portal-account')"
-                                @reset-portal-password="emit('reset-portal-password')"
-                                @toggle-portal-active="(active) => emit('toggle-portal-active', active)"
-                            />
-                        </div>
-                        <div data-tour="patients-dossier.archive-files">
-                            <ArchiveFilesSection :patient-id="patientId" :files="archiveFiles" @refresh="emit('refresh-archive')" />
+                    <div class="dossier-folder__panel">
+                        <div class="dossier-folder__grid dossier-folder__grid--split">
+                            <div data-tour="patients-dossier.info-card">
+                                <DossierPatientInfoCard
+                                    :patient="patient"
+                                    flat
+                                    hide-actions
+                                    :hide-phone="hidePhone"
+                                    @print-dossier="emit('print-dossier')"
+                                    @edit="emit('edit')"
+                                    @new-rdv="emit('new-rdv')"
+                                    @photo-selected="(file) => emit('photo-selected', file)"
+                                    @add-antecedent="emit('add-antecedent')"
+                                    @add-allergy="emit('add-allergy')"
+                                    @delete-antecedent="(item) => emit('delete-antecedent', item)"
+                                    @delete-allergy="(item) => emit('delete-allergy', item)"
+                                    @create-portal-account="emit('create-portal-account')"
+                                    @reset-portal-password="emit('reset-portal-password')"
+                                    @toggle-portal-active="(active) => emit('toggle-portal-active', active)"
+                                />
+                            </div>
+                            <div data-tour="patients-dossier.archive-files">
+                                <ArchiveFilesSection :patient-id="patientId" :files="archiveFiles" @refresh="emit('refresh-archive')" />
+                            </div>
                         </div>
                     </div>
                 </TabPanel>
 
                 <TabPanel value="clinique">
-                    <div data-tour="patients-dossier.medical">
+                    <div class="dossier-folder__panel" data-tour="patients-dossier.medical">
                         <ListePatientConsultations v-if="isReception" :consultations="consultations" :loading="consultationsLoading" />
                         <FichesMedicalesSection
                             v-else
@@ -141,17 +170,16 @@ const tabs = computed(() => [
                 </TabPanel>
 
                 <TabPanel value="activite">
-                    <div data-tour="patients-dossier.finance">
-                        <PatientActiviteFinancesSection :rdvs="rdvs" :paiements="paiements" :factures="factures" :consultations="consultations" :show-consultations="showConsultationsTab" @refresh="emit('refresh')" />
-                    </div>
-                </TabPanel>
-
-                <TabPanel value="services-cabinet">
-                    <div class="p-4">
-                        <PatientCabinetServicesPanel
+                    <div class="dossier-folder__panel dossier-folder__panel--flush" data-tour="patients-dossier.finance">
+                        <PatientActiviteFinancesSection
+                            :rdvs="rdvs"
+                            :paiements="paiements"
+                            :factures="factures"
+                            :consultations="consultations"
+                            :services-cabinet="servicesCabinet"
                             :patient-id="patientId"
-                            :patient-name="`${patient?.nom || ''} ${patient?.prenom || ''}`.trim()"
-                            :services="servicesCabinet"
+                            :patient-name="patientDisplayName"
+                            :show-consultations="showConsultationsTab"
                             @refresh="emit('refresh')"
                         />
                     </div>
@@ -160,14 +188,3 @@ const tabs = computed(() => [
         </Tabs>
     </div>
 </template>
-
-<style scoped>
-.dossier-tabs :deep(.p-tablist-tab-list) {
-    background: transparent;
-    border: none;
-}
-
-.dossier-tabs :deep(.p-tab) {
-    border-radius: 0.75rem 0.75rem 0 0;
-}
-</style>

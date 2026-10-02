@@ -1,8 +1,7 @@
 <script setup>
 import { ref, watch, computed } from 'vue';
-import Button from 'primevue/button';
+import AppDialog from '@/components/layout/AppDialog.vue';
 import DatePicker from 'primevue/datepicker';
-import Dialog from 'primevue/dialog';
 import InputText from 'primevue/inputtext';
 import Select from 'primevue/select';
 
@@ -93,7 +92,20 @@ const submit = () => {
 </script>
 
 <template>
-    <Dialog v-model:visible="localVisible" modal :header="mode === 'edit' ? 'Modifier un conge' : 'Nouveau conge'" :style="{ width: '34rem' }" @hide="close">
+    <AppDialog
+        v-model:visible="localVisible"
+        :title="mode === 'edit' ? 'Modifier un conge' : 'Nouveau conge'"
+        icon="pi pi-calendar"
+        icon-tone="primary"
+        size="md"
+        :loading="loading"
+        cancel-label="Annuler"
+        :confirm-label="mode === 'edit' ? 'Mettre a jour' : 'Creer'"
+        confirm-icon="pi pi-check"
+        @cancel="close"
+        @confirm="submit"
+        @hide="close"
+    >
         <div class="space-y-4">
             <div class="space-y-1">
                 <label class="text-sm font-medium">Employe <span class="text-red-500">*</span></label>
@@ -116,12 +128,5 @@ const submit = () => {
                 </div>
             </div>
         </div>
-
-        <template #footer>
-            <div class="flex justify-end gap-2">
-                <Button label="Annuler" text severity="secondary" @click="close" />
-                <Button :label="mode === 'edit' ? 'Mettre a jour' : 'Creer'" icon="pi pi-check" :loading="loading" @click="submit" />
-            </div>
-        </template>
-    </Dialog>
+    </AppDialog>
 </template>

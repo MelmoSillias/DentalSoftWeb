@@ -1,8 +1,12 @@
 <script setup>
 import { logAppError } from '@/utils/appLogger';
 
+import PageShell from '@/components/layout/PageShell.vue';
+import PageHeader from '@/components/layout/PageHeader.vue';
+import PageSection from '@/components/layout/PageSection.vue';
+import AppDialog from '@/components/layout/AppDialog.vue';
 import ActionsPatient from '@/components/patients/ActionsPatient.vue';
-import FormCreateConsultation from '@/components/patients/FormCreateConsultation.vue';
+import CreateConsultationDialog from '@/components/patients/CreateConsultationDialog.vue';
 import FormPatient from '@/components/patients/FormPatient.vue';
 import PatientAvatar from '@/components/patients/PatientAvatar.vue';
 import FormRendezVous from '@/components/patients/FormRendezVous.vue';
@@ -20,12 +24,15 @@ import { useGuidedTour } from '@/composables/useGuidedTour';
 import Button from 'primevue/button';
 import Column from 'primevue/column';
 import DataTable from 'primevue/datatable';
-import Dialog from 'primevue/dialog';
 import InputText from 'primevue/inputtext';
+import Menu from 'primevue/menu';
 import { useToast } from 'primevue/usetoast';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { InputIcon } from 'primevue';
+
+const breadcrumbHome = { icon: 'pi pi-home', to: '/dashboard' };
+const breadcrumbItems = [{ label: 'Patients' }, { label: 'Liste' }];
 
 const toast = useToast();
 const router = useRouter();
@@ -81,6 +88,7 @@ const patientToDelete = ref(null);
 const deletingPatientId = ref(null);
 const restoringPatientId = ref(null);
 const patientFormRef = ref(null);
+const rdvFormRef = ref(null);
 
 const trashPatients = ref([]);
 const trashTotalRecords = ref(0);
@@ -345,6 +353,44 @@ const cancelActiveConsultation = async () => {
 
 const handleRdvSaved = () => {
     showRdvDialog.value = false;
+};
+
+const patientActionMenu = ref(null);
+const patientActionMenuTarget = ref(null);
+
+const patientActionMenuItems = computed(() => {
+    const patient = patientActionMenuTarget.value;
+    if (!patient) return [];
+
+    return [
+        {
+            label: 'Voir dossier médical',
+            icon: 'pi pi-eye',
+            command: () => openDossier(patient)
+        },
+        {
+            label: 'Nouveau rendez-vous',
+            icon: 'fas fa-calendar-plus',
+            command: () => openRendezVous(patient)
+        },
+        {
+            label: 'Service cabinet',
+            icon: 'pi pi-building',
+            command: () => openCabinetService(patient)
+        },
+        { separator: true },
+        {
+            label: 'Supprimer (corbeille)',
+            icon: 'pi pi-trash',
+            class: 'text-red-500',
+            command: () => openDeletePatientDialog(patient)
+        }
+    ];
+});
+
+const togglePatientActionMenu = (event, patient) => {
+    patientActionMenuTarget.value = patient;
+    nextTick(() => patientActionMenu.value?.toggle(event));
 };
 
 const openDeletePatientDialog = (patient) => {
@@ -682,62 +728,73 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-    <section class="min-h-screen w-full px-4 py-4 sm:px-5 sm:py-5 md:px-6 md:py-6 lg:px-8 lg:py-8 transition-colors duration-300">
-        <!-- Header Section -->
-        <div class="mb-6 md:mb-8 w-full">
-            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-                <div class="space-y-2" data-tour="patients-list.header">
-                    <div class="flex items-center gap-3">
-                        <div class="p-2.5 rounded-xl bg-primary-500/10 dark:bg-primary-500/20">
-                            <i class="fas fa-user-injured text-primary-600 dark:text-primary-400 text-xl"></i>
-                        </div>
-                        <div>
-                            <h1 class="text-2xl sm:text-3xl lg:text-4xl font-bold text-surface-900 dark:text-surface-50 tracking-tight">Gestion des Patients</h1>
-                            <p class="text-surface-600 dark:text-surface-300 text-sm md:text-base mt-1">Gérez les dossiers médicaux et les consultations de vos patients</p>
-                        </div>
+    <PageShell>
+        <template #header>
+            <PageHeader
+                title="Gestion des Patients"
+                subtitle="Gérez les dossiers médicaux et les consultations de vos patients"
+                icon="fas fa-user-injured"
+                tour-id="patients-list.header"
+                :breadcrumb-items="breadcrumbItems"
+                :breadcrumb-home="breadcrumbHome"
+            >
+                <template #actions>
+                    <div class="flex flex-row flex-wrap gap-3 w-full md:w-auto" data-tour="patients-list.toolbar">
+                        <Button
+                            label="Corbeille"
+                            icon="pi pi-trash"
+                            severity="secondary"
+                            data-tour="patients-list.trash-button"
+                            class="sm:w-auto shadow-lg hover:shadow-xl transition-all duration-300 px-5 py-2.5 rounded-xl font-medium"
+                            @click="openTrashDialog"
+                            :pt="{ label: { class: 'hidden sm:inline' } }"
+                        />
+                        <Button
+                            label="Nouveau rendez-vous"
+                            icon="fas fa-calendar-plus"
+                            severity="warn"
+                            data-tour="patients-list.rdv-button"
+                            class="sm:w-auto shadow-lg hover:shadow-xl transition-all duration-300 bg-gradient-to-r from-blue-500 to-blue-600 border-0 text-white px-5 py-2.5 rounded-xl font-medium"
+                            @click="openRendezVous()"
+                            :pt="{ label: { class: 'hidden sm:inline' } }"
+                        />
+                        <Button
+                            v-if="!isMedecin"
+                            label="Nouvelle consultation"
+                            severity="success"
+                            icon="fas fa-stethoscope"
+                            data-tour="patients-list.consultation-button"
+                            class="sm:w-auto shadow-lg hover:shadow-xl transition-all duration-300 bg-gradient-to-r from-green-500 to-green-600 border-0 text-white px-5 py-2.5 rounded-xl font-medium"
+                            :loading="toolbarConsultLoading"
+                            @click="openConsultation()"
+                            :pt="{ label: { class: 'hidden sm:inline' } }"
+                        />
+                        <Button
+                            label="Ajouter un patient"
+                            icon="fas fa-plus"
+                            data-tour="patients-list.add-patient-button"
+                            class="sm:w-auto shadow-lg hover:shadow-xl transition-all duration-300 bg-gradient-to-r from-primary-500 to-primary-600 border-0 text-white px-5 py-2.5 rounded-xl font-medium"
+                            @click="openCreatePatient"
+                            :pt="{ label: { class: 'hidden sm:inline' } }"
+                        />
                     </div>
-                </div>
-                <div class="flex flex-row gap-3 w-full md:w-auto" data-tour="patients-list.toolbar">
-                    <Button
-                        label="Corbeille"
-                        icon="pi pi-trash"
-                        severity="secondary"
-                        data-tour="patients-list.trash-button"
-                        class="sm:w-auto shadow-lg hover:shadow-xl transition-all duration-300 px-5 py-2.5 rounded-xl font-medium"
-                        @click="openTrashDialog"
-                        :pt="{ label: { class: 'hidden sm:inline' } }"
+                </template>
+            </PageHeader>
+        </template>
+
+        <template #toolbar>
+            <div v-if="!loadErrorMessage" class="w-full sm:max-w-xl" data-tour="patients-list.search">
+                <label class="block text-sm md:text-base font-medium text-surface-700 dark:text-surface-300 mb-2"> Rechercher un patient </label>
+                <IconField class="w-full relative">
+                    <InputIcon class="fas fa-search text-surface-400" />
+                    <InputText
+                        v-model="searchQuery"
+                        placeholder="Nom, prénom, téléphone, adresse..."
+                        class="w-full p-3 md:p-3.5 rounded-xl border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-700/50 focus:ring-2 focus:ring-primary-500/20 transition-all"
                     />
-                    <Button
-                        label="Nouveau rendez-vous"
-                        icon="fas fa-calendar-plus"
-                        severity="warn"
-                        data-tour="patients-list.rdv-button"
-                        class="sm:w-auto shadow-lg hover:shadow-xl transition-all duration-300 bg-gradient-to-r from-blue-500 to-blue-600 border-0 text-white px-5 py-2.5 rounded-xl font-medium"
-                        @click="openRendezVous()"
-                        :pt="{ label: { class: 'hidden sm:inline' } }"
-                    />
-                    <Button
-                        v-if="!isMedecin"
-                        label="Nouvelle consultation"
-                        severity="success"
-                        icon="fas fa-stethoscope"
-                        data-tour="patients-list.consultation-button"
-                        class="sm:w-auto shadow-lg hover:shadow-xl transition-all duration-300 bg-gradient-to-r from-green-500 to-green-600 border-0 text-white px-5 py-2.5 rounded-xl font-medium"
-                        :loading="toolbarConsultLoading"
-                        @click="openConsultation()"
-                        :pt="{ label: { class: 'hidden sm:inline' } }"
-                    />
-                    <Button
-                        label="Ajouter un patient"
-                        icon="fas fa-plus"
-                        data-tour="patients-list.add-patient-button"
-                        class="sm:w-auto shadow-lg hover:shadow-xl transition-all duration-300 bg-gradient-to-r from-primary-500 to-primary-600 border-0 text-white px-5 py-2.5 rounded-xl font-medium"
-                        @click="openCreatePatient"
-                        :pt="{ label: { class: 'hidden sm:inline' } }"
-                    />
-                </div>
+                </IconField>
             </div>
-        </div>
+        </template>
 
         <div v-if="loadErrorMessage" class="flex min-h-[320px] flex-col items-center justify-center gap-4 rounded-2xl border border-amber-200/70 bg-amber-50/70 p-8 dark:border-amber-800/70 dark:bg-amber-950/20">
             <div class="flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
@@ -751,31 +808,12 @@ onBeforeUnmount(() => {
         </div>
 
         <template v-else>
-            <!-- Patients Table Card -->
-            <div class="bg-surface-0 dark:bg-surface-800/80 rounded-2xl shadow-xl overflow-hidden border border-surface-200/50 dark:border-surface-700/50 backdrop-blur-sm">
-                <!-- Table Header -->
-                <div class="px-4 sm:px-2 md:px-6 py-4 border-b border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900/50 dark:to-surface-800">
-                    <div class="flex flex-row sm:items-center justify-between gap-3">
-                        <div class="space-y-1 col-6">
-                            <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-100">Liste des Patients</h3>
-                            <p class="text-sm text-surface-600 dark:text-surface-400">{{ totalRecords || patients.length }} patient(s) au total</p>
-                        </div>
-                        <div class="sm:w-auto col-6" data-tour="patients-list.search">
-                            <label class="block text-sm md:text-base font-medium text-surface-700 dark:text-surface-300 mb-2"> Rechercher un patient </label>
-                            <IconField class="w-full relative">
-                                <InputIcon class="fas fa-search text-surface-400" />
-                                <InputText
-                                    v-model="searchQuery"
-                                    placeholder="Nom, prénom, téléphone, adresse..."
-                                    class="w-full p-3 md:p-3.5 rounded-xl border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-700/50 focus:ring-2 focus:ring-primary-500/20 transition-all"
-                                />
-                            </IconField>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Data Table -->
-                <div class="m-2 p-2 border-rounded-1 overflow-x-auto" data-tour="patients-list.table">
+            <PageSection
+                title="Liste des Patients"
+                :subtitle="`${totalRecords || patients.length} patient(s) au total`"
+                tour-id="patients-list.table"
+            >
+                <div class="page-table-scroll">
                     <DataTable
                         :value="patients"
                         dataKey="id"
@@ -791,7 +829,7 @@ onBeforeUnmount(() => {
                         :sortField="sortField"
                         :sortOrder="sortOrder"
                         :rowClass="rowClass"
-                        class="min-w-[500px] md:min-w-0 rounded-none border-0"
+                        class="rounded-none border-0"
                         :pt="{
                             table: 'rounded-none',
                             thead: 'bg-surface-50 dark:bg-surface-900/50',
@@ -889,10 +927,9 @@ onBeforeUnmount(() => {
                             </template>
                         </Column>
 
-                        <Column header="Actions" :style="{ minWidth: '200px' }">
+                        <Column header="Actions" :style="{ minWidth: '7rem', width: '7rem' }">
                             <template #body="{ data }">
-                                <div class="flex flex-wrap items-center gap-2" :data-tour="data.id === patients[0]?.id ? 'patients-list.row-actions' : null">
-                                    <Button icon="pi pi-eye" severity="info" text rounded v-tooltip.top="'Voir dossier médical'" class="hover:bg-blue-50 dark:hover:bg-blue-900/20" @click="openDossier(data)" />
+                                <div class="flex items-center gap-1" :data-tour="data.id === patients[0]?.id ? 'patients-list.row-actions' : null">
                                     <Button
                                         v-if="!isMedecin"
                                         icon="fas fa-stethoscope"
@@ -904,18 +941,17 @@ onBeforeUnmount(() => {
                                         @click="openConsultation(data)"
                                         :loading="consultationLoading[data.id] === true"
                                     />
-                                    <Button icon="fas fa-calendar-plus" severity="help" text rounded v-tooltip.top="'Nouveau rendez-vous'" class="hover:bg-purple-50 dark:hover:bg-purple-900/20" @click="openRendezVous(data)" />
-                                    <Button icon="pi pi-building" severity="warn" text rounded v-tooltip.top="'Enregistrer un service cabinet'" @click="openCabinetService(data)" />
                                     <Button icon="pi pi-pencil" severity="secondary" text rounded v-tooltip.top="'Modifier patient'" class="hover:bg-surface-100 dark:hover:bg-surface-700" @click="openEditPatient(data)" />
                                     <Button
-                                        icon="pi pi-trash"
-                                        severity="danger"
+                                        icon="pi pi-ellipsis-v"
+                                        severity="secondary"
                                         text
                                         rounded
-                                        v-tooltip.top="'Supprimer (corbeille)'"
-                                        class="hover:bg-red-50 dark:hover:bg-red-900/20"
-                                        :loading="deletingPatientId === data.id"
-                                        @click="openDeletePatientDialog(data)"
+                                        v-tooltip.top="'Autres actions'"
+                                        class="hover:bg-surface-100 dark:hover:bg-surface-700"
+                                        aria-haspopup="true"
+                                        aria-controls="patient-row-actions-menu"
+                                        @click="togglePatientActionMenu($event, data)"
                                     />
                                 </div>
                             </template>
@@ -956,56 +992,48 @@ onBeforeUnmount(() => {
                         </template>
                     </DataTable>
                 </div>
-            </div>
+            </PageSection>
 
             <!-- Stats Overview -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 mt-6" data-tour="patients-list.stats">
-                <div class="bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-900/20 dark:to-blue-800/20 rounded-2xl p-4 sm:p-5 border border-blue-200/50 dark:border-blue-800/50">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm text-blue-700 dark:text-blue-300 font-medium">Total Patients</p>
-                            <p class="text-2xl font-bold text-blue-900 dark:text-blue-100 mt-2">
-                                {{ statsLoading ? '—' : overviewStats.totalPatients || totalRecords || patients.length }}
-                            </p>
-                        </div>
-                        <i class="fas fa-users text-2xl text-blue-500"></i>
+            <div class="page-kpi-grid" data-tour="patients-list.stats">
+                <div class="page-kpi-card bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-900/20 dark:to-blue-800/20 border-blue-200/50 dark:border-blue-800/50">
+                    <div>
+                        <p class="page-kpi-label text-blue-700 dark:text-blue-300">Total Patients</p>
+                        <p class="page-kpi-value text-blue-900 dark:text-blue-100">
+                            {{ statsLoading ? '—' : overviewStats.totalPatients || totalRecords || patients.length }}
+                        </p>
                     </div>
+                    <i class="fas fa-users page-kpi-icon text-blue-500"></i>
                 </div>
 
-                <div class="bg-gradient-to-br from-green-50 to-green-100/50 dark:from-green-900/20 dark:to-green-800/20 rounded-2xl p-4 sm:p-5 border border-green-200/50 dark:border-green-800/50">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm text-green-700 dark:text-green-300 font-medium">Consultations aujourd'hui</p>
-                            <p class="text-2xl font-bold text-green-900 dark:text-green-100 mt-2">
-                                {{ statsLoading ? '—' : overviewStats.consultationsToday }}
-                            </p>
-                        </div>
-                        <i class="fas fa-stethoscope text-2xl text-green-500"></i>
+                <div class="page-kpi-card bg-gradient-to-br from-green-50 to-green-100/50 dark:from-green-900/20 dark:to-green-800/20 border-green-200/50 dark:border-green-800/50">
+                    <div>
+                        <p class="page-kpi-label text-green-700 dark:text-green-300">Consultations aujourd'hui</p>
+                        <p class="page-kpi-value text-green-900 dark:text-green-100">
+                            {{ statsLoading ? '—' : overviewStats.consultationsToday }}
+                        </p>
                     </div>
+                    <i class="fas fa-stethoscope page-kpi-icon text-green-500"></i>
                 </div>
 
-                <div class="bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-900/20 dark:to-amber-800/20 rounded-2xl p-4 sm:p-5 border border-amber-200/50 dark:border-amber-800/50">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm text-amber-700 dark:text-amber-300 font-medium">Rendez-vous à venir</p>
-                            <p class="text-2xl font-bold text-amber-900 dark:text-amber-100 mt-2">
-                                {{ statsLoading ? '—' : overviewStats.upcomingAppointments }}
-                            </p>
-                        </div>
-                        <i class="fas fa-calendar-day text-2xl text-amber-500"></i>
+                <div class="page-kpi-card bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-900/20 dark:to-amber-800/20 border-amber-200/50 dark:border-amber-800/50">
+                    <div>
+                        <p class="page-kpi-label text-amber-700 dark:text-amber-300">Rendez-vous à venir</p>
+                        <p class="page-kpi-value text-amber-900 dark:text-amber-100">
+                            {{ statsLoading ? '—' : overviewStats.upcomingAppointments }}
+                        </p>
                     </div>
+                    <i class="fas fa-calendar-day page-kpi-icon text-amber-500"></i>
                 </div>
 
-                <div class="bg-gradient-to-br from-purple-50 to-purple-100/50 dark:from-purple-900/20 dark:to-purple-800/20 rounded-2xl p-4 sm:p-5 border border-purple-200/50 dark:border-purple-800/50">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm text-purple-700 dark:text-purple-300 font-medium">Nouveaux ce mois</p>
-                            <p class="text-2xl font-bold text-purple-900 dark:text-purple-100 mt-2">
-                                {{ statsLoading ? '—' : overviewStats.newPatientsThisMonth }}
-                            </p>
-                        </div>
-                        <i class="fas fa-chart-line text-2xl text-purple-500"></i>
+                <div class="page-kpi-card bg-gradient-to-br from-purple-50 to-purple-100/50 dark:from-purple-900/20 dark:to-purple-800/20 border-purple-200/50 dark:border-purple-800/50">
+                    <div>
+                        <p class="page-kpi-label text-purple-700 dark:text-purple-300">Nouveaux ce mois</p>
+                        <p class="page-kpi-value text-purple-900 dark:text-purple-100">
+                            {{ statsLoading ? '—' : overviewStats.newPatientsThisMonth }}
+                        </p>
                     </div>
+                    <i class="fas fa-chart-line page-kpi-icon text-purple-500"></i>
                 </div>
             </div>
 
@@ -1013,82 +1041,58 @@ onBeforeUnmount(() => {
         </template>
 
         <!-- Dialogs -->
-        <Dialog
+        <Menu id="patient-row-actions-menu" ref="patientActionMenu" :model="patientActionMenuItems" popup />
+        <AppDialog
             v-model:visible="showPatientDialog"
-            modal
-            :style="{ width: '45rem' }"
-            :pt="{
-                root: 'rounded-2xl overflow-hidden',
-                header: ({ props }) => ({
-                    class: ['px-6 py-4 border-b border-surface-200 dark:border-surface-700', 'bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900 dark:to-surface-800']
-                }),
-                content: 'p-0 mt-4'
-            }"
+            :title="editingPatient ? 'Modifier le patient' : 'Ajouter un patient'"
+            :subtitle="editingPatient ? 'Mettez à jour les informations du patient' : 'Créez un nouveau dossier patient'"
+            :icon="editingPatient ? 'fas fa-user-edit' : 'fas fa-user-plus'"
+            icon-tone="primary"
+            size="lg"
+            :loading="Boolean(patientFormRef?.loading)"
+            @cancel="showPatientDialog = false"
         >
-            <template #header>
-                <div class="flex items-center gap-3">
-                    <div class="p-2 rounded-lg bg-primary-100 dark:bg-primary-900/30">
-                        <i :class="['fas', editingPatient ? 'fa-user-edit text-primary-600 dark:text-primary-400' : 'fa-user-plus text-primary-600 dark:text-primary-400']"></i>
-                    </div>
-                    <div>
-                        <h4 class="m-0 text-surface-900 dark:text-surface-100">
-                            {{ editingPatient ? 'Modifier le patient' : 'Ajouter un patient' }}
-                        </h4>
-                        <p class="text-sm text-surface-500 dark:text-surface-400 mt-1">{{ editingPatient ? 'Mettez à jour les informations du patient' : 'Créez un nouveau dossier patient' }}</p>
-                    </div>
-                </div>
-            </template>
             <div data-tour="patients-list.dialog.patient">
-                <FormPatient ref="patientFormRef" :patient="editingPatient" @saved="handlePatientSaved" @cancel="showPatientDialog = false" class="mt-2" />
+                <FormPatient
+                    ref="patientFormRef"
+                    hide-actions
+                    :patient="editingPatient"
+                    @saved="handlePatientSaved"
+                    @cancel="showPatientDialog = false"
+                />
             </div>
-        </Dialog>
-
-        <Dialog
-            v-model:visible="showConsultationDialog"
-            modal
-            :style="{ width: '50rem' }"
-            :pt="{
-                root: 'rounded-2xl overflow-hidden',
-                header: 'bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900 dark:to-surface-800 px-6 py-4 border-b',
-                content: 'p-0 mt-4'
-            }"
-        >
-            <template #header>
-                <div class="flex items-center gap-3">
-                    <div class="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
-                        <i class="fas fa-stethoscope text-green-600 dark:text-green-400"></i>
-                    </div>
-                    <div>
-                        <h4 class="m-0 text-surface-900 dark:text-surface-100">Nouvelle consultation</h4>
-                        <p class="text-sm text-surface-500 dark:text-surface-400 mt-1">
-                            {{ consultationPatient?.fullname || consultationPatient?.nom || 'Nouveau patient' }}
-                        </p>
-                    </div>
+            <template #footer>
+                <div class="flex justify-end gap-2 w-full" data-tour="patients-form.actions">
+                    <Button type="button" label="Annuler" severity="secondary" text class="rounded-xl px-5" :disabled="Boolean(patientFormRef?.loading)" @click="showPatientDialog = false" />
+                    <Button
+                        type="button"
+                        :label="patientFormRef?.isEdit ? 'Mettre à jour' : 'Créer'"
+                        icon="pi pi-check"
+                        class="rounded-xl px-5"
+                        :loading="Boolean(patientFormRef?.loading)"
+                        @click="patientFormRef?.submit()"
+                    />
                 </div>
             </template>
-            <div data-tour="patients-list.dialog.consultation">
-                <FormCreateConsultation :patient="consultationPatient" :patient-id="consultationPatient?.id" @saved="handleConsultationSaved" @cancel="showConsultationDialog = false" />
-            </div>
-        </Dialog>
+        </AppDialog>
 
-        <Dialog
+        <CreateConsultationDialog
+            v-model:visible="showConsultationDialog"
+            :patient="consultationPatient"
+            :patient-id="consultationPatient?.id"
+            content-tour-id="patients-list.dialog.consultation"
+            @saved="handleConsultationSaved"
+        />
+
+        <AppDialog
             v-model:visible="showActiveConsultWarn"
-            modal
-            :style="{ width: '35rem' }"
-            :pt="{
-                root: 'rounded-2xl overflow-hidden',
-                header: 'bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900 dark:to-surface-800 px-6 py-4 border-b',
-                content: 'p-0 mt-4'
-            }"
+            title="Consultation en cours"
+            icon="fas fa-exclamation-triangle"
+            icon-tone="warning"
+            size="md"
+            :show-footer="true"
         >
-            <div class="p-6" data-tour="patients-list.dialog.active-warning">
-                <div class="flex items-center gap-3 mb-4">
-                    <div class="p-2 rounded-lg bg-amber-100 dark:bg-amber-900/30">
-                        <i class="fas fa-exclamation-triangle text-amber-600 dark:text-amber-400"></i>
-                    </div>
-                    <h4 class="m-0 text-surface-900 dark:text-surface-100">Consultation en cours</h4>
-                </div>
-
+            <div data-tour="patients-list.dialog.active-warning">
                 <p class="text-surface-700 dark:text-surface-300 mb-4">Une consultation est déjà ouverte pour ce patient. Clôturez-la ou continuez-la avant d'en créer une nouvelle.</p>
 
                 <p v-if="!activeConsultInfo.hasFiche" class="text-sm text-surface-600 dark:text-surface-400 mb-4">Si cette consultation a été ouverte par erreur, vous pouvez l annuler directement depuis ce dialogue.</p>
@@ -1097,107 +1101,82 @@ onBeforeUnmount(() => {
                     <i class="pi pi-info-circle text-surface-500"></i>
                     <span class="text-sm text-surface-600 dark:text-surface-400"> Cette consultation est liée à une fiche : elle ne peut pas être supprimée. </span>
                 </div>
+            </div>
 
-                <div class="flex justify-end gap-2">
+            <template #footer>
+                <div class="flex justify-end gap-2 w-full">
                     <Button label="Compris" severity="secondary" @click="closeActiveConsultWarn" class="rounded-xl px-5" />
                     <Button v-if="!activeConsultInfo.hasFiche" label="Annuler la consultation" icon="pi pi-times" severity="danger" @click="cancelActiveConsultation" class="rounded-xl px-5" />
                 </div>
-            </div>
-        </Dialog>
+            </template>
+        </AppDialog>
 
         <CabinetServiceDialog
             v-model:visible="showCabinetServiceDialog"
             :patient-id="cabinetServicePatient?.id"
             :patient-name="cabinetServicePatient?.fullname || `${cabinetServicePatient?.nom || ''} ${cabinetServicePatient?.prenom || ''}`.trim()"
         />
-        <Dialog
+        <AppDialog
             v-model:visible="showRdvDialog"
-            modal
-            :style="{ width: '45rem' }"
-            :pt="{
-                root: 'rounded-2xl overflow-hidden',
-                header: 'bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900 dark:to-surface-800 px-6 py-4 border-b',
-                content: 'p-0 mt-4'
-            }"
+            title="Nouveau rendez-vous"
+            :subtitle="rdvPatient?.fullname || rdvPatient?.nom || 'Nouveau patient'"
+            icon="fas fa-calendar-plus"
+            icon-tone="info"
+            size="lg"
+            :loading="Boolean(rdvFormRef?.loading)"
+            @cancel="showRdvDialog = false"
         >
-            <template #header>
-                <div class="flex items-center gap-3">
-                    <div class="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
-                        <i class="fas fa-calendar-plus text-blue-600 dark:text-blue-400"></i>
-                    </div>
-                    <div>
-                        <h4 class="m-0 text-surface-900 dark:text-surface-100">Nouveau rendez-vous</h4>
-                        <p class="text-sm text-surface-500 dark:text-surface-400 mt-1">
-                            {{ rdvPatient?.fullname || rdvPatient?.nom || 'Nouveau patient' }}
-                        </p>
-                    </div>
-                </div>
-            </template>
             <div data-tour="patients-list.dialog.rdv">
-                <FormRendezVous :patient="rdvPatient" :patient-id="rdvPatient?.id" @saved="handleRdvSaved" @cancel="showRdvDialog = false" />
+                <FormRendezVous
+                    ref="rdvFormRef"
+                    hide-actions
+                    :patient="rdvPatient"
+                    :patient-id="rdvPatient?.id"
+                    @saved="handleRdvSaved"
+                    @cancel="showRdvDialog = false"
+                />
             </div>
-        </Dialog>
+            <template #footer>
+                <div class="flex justify-end gap-2 w-full" data-tour="patients-form-rdv.actions">
+                    <Button type="button" label="Annuler" severity="secondary" text class="rounded-xl px-5" :disabled="Boolean(rdvFormRef?.loading)" @click="showRdvDialog = false" />
+                    <Button type="button" label="Créer" icon="pi pi-check" class="rounded-xl px-5" :loading="Boolean(rdvFormRef?.loading)" @click="rdvFormRef?.submit()" />
+                </div>
+            </template>
+        </AppDialog>
 
-        <Dialog
+        <AppDialog
             v-model:visible="showDeletePatientDialog"
-            modal
-            :style="{ width: '34rem' }"
-            :pt="{
-                root: 'rounded-2xl overflow-hidden',
-                header: 'bg-gradient-to-r from-red-50 to-surface-0 dark:from-red-900/20 dark:to-surface-800 px-6 py-4 border-b',
-                content: 'p-0 mt-2'
-            }"
+            title="Supprimer le patient"
+            subtitle="Le patient sera déplacé dans la corbeille"
+            icon="pi pi-trash"
+            icon-tone="danger"
+            size="sm"
+            :loading="deletingPatientId === patientToDelete?.id"
+            cancel-label="Annuler"
+            confirm-label="Supprimer"
+            confirm-icon="pi pi-trash"
+            confirm-severity="danger"
+            @cancel="closeDeletePatientDialog"
+            @confirm="confirmDeletePatient"
         >
-            <template #header>
-                <div class="flex items-center gap-3">
-                    <div class="p-2 rounded-lg bg-red-100 dark:bg-red-900/30">
-                        <i class="pi pi-trash text-red-600 dark:text-red-400"></i>
-                    </div>
-                    <div>
-                        <h4 class="m-0 text-surface-900 dark:text-surface-100">Supprimer le patient</h4>
-                        <p class="text-sm text-surface-500 dark:text-surface-400 mt-1">Le patient sera déplacé dans la corbeille</p>
-                    </div>
-                </div>
-            </template>
+            <p class="text-surface-700 dark:text-surface-300">
+                Voulez-vous déplacer
+                <span class="font-semibold">{{ patientToDelete?.fullname || patientToDelete?.nom }}</span>
+                vers la corbeille ?
+            </p>
+        </AppDialog>
 
-            <div class="p-6">
-                <p class="text-surface-700 dark:text-surface-300 mb-5">
-                    Voulez-vous déplacer
-                    <span class="font-semibold">{{ patientToDelete?.fullname || patientToDelete?.nom }}</span>
-                    vers la corbeille ?
-                </p>
-
-                <div class="flex justify-end gap-2">
-                    <Button label="Annuler" severity="secondary" @click="closeDeletePatientDialog" />
-                    <Button label="Supprimer" icon="pi pi-trash" severity="danger" :loading="deletingPatientId === patientToDelete?.id" @click="confirmDeletePatient" />
-                </div>
-            </div>
-        </Dialog>
-
-        <Dialog
+        <AppDialog
             v-model:visible="showTrashDialog"
-            modal
+            title="Corbeille des patients"
+            subtitle="Restaurez un patient supprimé par erreur"
+            icon="pi pi-trash"
+            icon-tone="neutral"
+            size="xl"
             maximizable
-            :style="{ width: '62rem' }"
-            :pt="{
-                root: 'rounded-2xl overflow-hidden',
-                header: 'bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900 dark:to-surface-800 px-6 py-4 border-b',
-                content: 'p-0 mt-2'
-            }"
+            :show-footer="false"
         >
-            <template #header>
-                <div class="flex items-center gap-3">
-                    <div class="p-2 rounded-lg bg-surface-100 dark:bg-surface-700">
-                        <i class="pi pi-trash text-surface-700 dark:text-surface-200"></i>
-                    </div>
-                    <div>
-                        <h4 class="m-0 text-surface-900 dark:text-surface-100">Corbeille des patients</h4>
-                        <p class="text-sm text-surface-500 dark:text-surface-400 mt-1">Restaurez un patient supprimé par erreur</p>
-                    </div>
-                </div>
-            </template>
-
-            <div class="p-5 space-y-4" data-tour="patients-list.dialog.trash">
+            <div class="space-y-4" data-tour="patients-list.dialog.trash">
                 <div class="flex flex-col sm:flex-row sm:items-end gap-3">
                     <div class="w-full sm:max-w-md">
                         <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">Rechercher dans la corbeille</label>
@@ -1247,8 +1226,8 @@ onBeforeUnmount(() => {
                     </template>
                 </DataTable>
             </div>
-        </Dialog>
-    </section>
+        </AppDialog>
+    </PageShell>
 </template>
 
 <style scoped>

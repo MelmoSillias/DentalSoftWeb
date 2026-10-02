@@ -4,7 +4,7 @@ import QuickClotureConsultationDialog from '@/components/consultations/QuickClot
 import CaisseInvoiceDialogs from '@/components/caisse/CaisseInvoiceDialogs.vue';
 import FocusMedecinView from '@/components/focus/FocusMedecinView.vue';
 import FocusReceptionView from '@/components/focus/FocusReceptionView.vue';
-import FormCreateConsultation from '@/components/patients/FormCreateConsultation.vue';
+import CreateConsultationDialog from '@/components/patients/CreateConsultationDialog.vue';
 import FormPatient from '@/components/patients/FormPatient.vue';
 import FormRendezVous from '@/components/patients/FormRendezVous.vue';
 import DossierPatientDialog from '@/components/patients/DossierPatientDialog.vue';
@@ -26,7 +26,7 @@ import { useAuthStore } from '@/stores/auth';
 import { usePaymentMethodsStore } from '@/stores/paymentMethods';
 import Button from 'primevue/button';
 import ConfirmPopup from 'primevue/confirmpopup';
-import Dialog from 'primevue/dialog';
+import AppDialog from '@/components/layout/AppDialog.vue';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
 import { computed, defineAsyncComponent, onMounted, onBeforeUnmount, ref, watch } from 'vue';
@@ -42,6 +42,9 @@ const { printComponent } = usePrinter();
 const paymentMethodsStore = usePaymentMethodsStore();
 
 const loading = ref(false);
+const createPatientFormRef = ref(null);
+const editPatientFormRef = ref(null);
+const rdvFormRef = ref(null);
 const consultations = ref([]);
 const allowReceptionQuickClose = ref(true);
 const allowReceptionInvoiceModification = ref(false);
@@ -1053,45 +1056,56 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-    <section class="flex h-[calc(100dvh-var(--layout-topbar-height)-1.5rem)] flex-col bg-surface-50 dark:bg-surface-950 transition-colors duration-300">
-        <AppToast />
+    <section class="flex h-[calc(100dvh-var(--layout-topbar-height)-2.5rem)] flex-col transition-colors duration-300">
         <ConfirmPopup group="focus-cancel-consultation" />
 
         <!-- Header ultra-mince (h-12 = 48px) avec bordure inférieure colorée selon le mode -->
         <header class="sticky top-0 z-30 h-12 shrink-0 border-b-2 bg-white/90 backdrop-blur-xl dark:bg-surface-900/90" :class="selectedModeBorderClass">
-            <div class="mx-auto flex h-full max-w-[1920px] items-center justify-between px-6">
-                <div class="flex items-center gap-3">
-                    <div class="flex h-7 w-7 items-center justify-center rounded-md bg-primary-500 text-white">
-                        <i class="pi pi-bolt text-xs"></i>
+            <div class="mx-auto flex h-full max-w-[1920px] items-center justify-between gap-2 px-3 md:px-6">
+                <div class="flex min-w-0 items-center gap-2 md:gap-3">
+                    <div
+                        :class="[
+                            'flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-white',
+                            selectedMode === 'medecin' ? 'bg-gradient-to-br from-cyan-500 to-teal-600' : selectedMode === 'rdv' ? 'bg-gradient-to-br from-amber-500 to-amber-600' : 'bg-primary-500'
+                        ]"
+                    >
+                        <i :class="selectedMode === 'medecin' ? 'pi pi-heart text-xs' : selectedMode === 'rdv' ? 'pi pi-calendar text-xs' : 'pi pi-bolt text-xs'"></i>
                     </div>
-                    <h1 class="text-sm font-bold tracking-tight text-surface-900 dark:text-surface-50">Mode Focus</h1>
+                    <h1 class="hidden text-sm font-bold tracking-tight text-surface-900 dark:text-surface-50 sm:inline">Mode Focus</h1>
                     <span class="hidden sm:inline text-xs text-surface-500"> {{ focusStats.pending }} en attente · {{ focusStats.closed }} terminées </span>
                     <span v-if="isRealtimeRefreshing" class="hidden lg:inline text-xs text-primary-600 dark:text-primary-300"> <i class="pi pi-spin pi-spinner mr-1"></i>Sync en cours </span>
                 </div>
 
-                <div class="flex items-center gap-2">
-                    <!-- Switcher de mode avec bordure colorée active -->
-                    <div v-if="availableModes.length > 1" class="flex rounded-md bg-surface-100 p-0.5 dark:bg-surface-800">
-                        <button
-                            v-for="mode in availableModes"
-                            :key="mode.value"
-                            @click="selectedMode = mode.value"
-                            :class="[
-                                'rounded px-3 py-1 text-xs font-medium transition-all',
-                                selectedMode === mode.value
-                                    ? 'bg-white text-surface-900 shadow-sm ring-1 ring-primary-500/20 dark:bg-surface-700 dark:text-surface-50 dark:ring-primary-400/20'
-                                    : 'text-surface-500 hover:text-surface-700 dark:text-surface-400 dark:hover:text-surface-200'
-                            ]"
-                        >
-                            {{ mode.label }}
-                        </button>
+                <div class="flex min-w-0 items-center gap-1.5 md:gap-2">
+                    <!-- Switcher de mode scrollable sur mobile -->
+                    <div v-if="availableModes.length > 1" class="max-w-[55vw] overflow-x-auto rounded-md bg-surface-100 p-0.5 dark:bg-surface-800 sm:max-w-none">
+                        <div class="flex whitespace-nowrap">
+                            <button
+                                v-for="mode in availableModes"
+                                :key="mode.value"
+                                @click="selectedMode = mode.value"
+                                :class="[
+                                    'rounded px-2.5 py-1 text-xs font-medium transition-all md:px-3',
+                                    selectedMode === mode.value
+                                        ? mode.value === 'medecin'
+                                            ? 'bg-white text-cyan-700 shadow-sm ring-1 ring-cyan-500/30 dark:bg-surface-700 dark:text-cyan-300 dark:ring-cyan-400/30'
+                                            : mode.value === 'rdv'
+                                              ? 'bg-white text-amber-700 shadow-sm ring-1 ring-amber-500/30 dark:bg-surface-700 dark:text-amber-300 dark:ring-amber-400/30'
+                                              : 'bg-white text-surface-900 shadow-sm ring-1 ring-primary-500/20 dark:bg-surface-700 dark:text-surface-50 dark:ring-primary-400/20'
+                                        : 'text-surface-500 hover:text-surface-700 dark:text-surface-400 dark:hover:text-surface-200'
+                                ]"
+                            >
+                                {{ mode.label }}
+                            </button>
+                        </div>
                     </div>
 
-                    <div class="h-4 w-px bg-surface-200 dark:bg-surface-700"></div>
+                    <div class="hidden h-4 w-px bg-surface-200 dark:bg-surface-700 sm:block"></div>
 
-                    <!-- Temps réel avec point clignotant coloré -->
+                    <!-- Temps réel : pastille seule sur mobile -->
                     <button
                         @click="realtimeEnabled = !realtimeEnabled"
+                        :title="realtimeEnabled ? 'Temps réel activé' : 'Temps réel désactivé'"
                         :class="[
                             'flex items-center gap-1.5 rounded px-2 py-1 text-xs font-medium transition-all',
                             realtimeEnabled ? 'bg-green-50 text-green-700 ring-1 ring-green-300 dark:bg-green-900/20 dark:text-green-400 dark:ring-green-700' : 'text-surface-500 hover:bg-surface-100 dark:text-surface-400 dark:hover:bg-surface-800'
@@ -1101,7 +1115,7 @@ onBeforeUnmount(() => {
                             <span v-if="realtimeEnabled" class="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75"></span>
                             <span class="relative inline-flex h-1.5 w-1.5 rounded-full" :class="realtimeEnabled ? 'bg-green-500' : 'bg-surface-300 dark:bg-surface-600'"></span>
                         </span>
-                        Temps réel
+                        <span class="hidden sm:inline">Temps réel</span>
                     </button>
 
                     <!-- Rafraîchir -->
@@ -1113,7 +1127,7 @@ onBeforeUnmount(() => {
         </header>
 
         <!-- Contenu Principal -->
-        <div class="mx-auto flex min-h-0 w-full max-w-[1920px] flex-1 flex-col p-4 sm:p-6" :class="selectedMode === 'rdv' ? 'overflow-hidden' : undefined">
+        <div class="mx-auto flex min-h-0 w-full max-w-[1920px] flex-1 flex-col px-0 sm:px-0 md:px-0 bg-transparent my-2" :class="selectedMode === 'rdv' ? 'overflow-hidden' : undefined">
             <FocusReceptionView
                 v-if="selectedMode === 'reception'"
                 class="min-h-0 flex-1"
@@ -1238,78 +1252,70 @@ onBeforeUnmount(() => {
                 @save-facture="handleSaveFacture"
                 @print-invoice="printInvoice"
             />
-            <Dialog v-model:visible="createPatientDialogVisible" modal :style="{ width: '45rem' }">
-                <template #header>
-                    <div class="flex items-center gap-3">
-                        <div class="rounded-lg bg-primary-100 p-2 dark:bg-primary-900/30">
-                            <i class="pi pi-user-plus text-primary-600 dark:text-primary-300"></i>
-                        </div>
-                        <div>
-                            <h4 class="m-0 text-surface-900 dark:text-surface-100">Nouveau patient</h4>
-                            <p class="mt-1 text-sm text-surface-500 dark:text-surface-400">Ajouter un patient depuis le mode focus</p>
-                        </div>
-                    </div>
-                </template>
-                <FormPatient @saved="handlePatientSaved" @cancel="createPatientDialogVisible = false" />
-            </Dialog>
-            <Dialog v-model:visible="createConsultationDialogVisible" modal :style="{ width: '50rem' }">
-                <template #header>
-                    <div class="flex items-center gap-3">
-                        <div class="rounded-lg bg-green-100 p-2 dark:bg-green-900/30">
-                            <i class="pi pi-plus-circle text-green-600 dark:text-green-400"></i>
-                        </div>
-                        <div>
-                            <h4 class="m-0 text-surface-900 dark:text-surface-100">Nouvelle consultation</h4>
-                            <p class="mt-1 text-sm text-surface-500 dark:text-surface-400">Creer une consultation depuis le mode focus</p>
-                        </div>
-                    </div>
-                </template>
-                <FormCreateConsultation
-                    :patient="createConsultationPreSelectedPatient"
-                    @saved="handleConsultationCreated"
-                    @cancel="
-                        createConsultationDialogVisible = false;
-                        createConsultationPreSelectedPatient = null;
-                    "
-                />
-            </Dialog>
-            <Dialog v-model:visible="showActiveConsultWarn" modal :style="{ width: '35rem' }">
-                <div class="p-6">
-                    <div class="mb-4 flex items-center gap-3">
-                        <div class="rounded-lg bg-amber-100 p-2 dark:bg-amber-900/30">
-                            <i class="fas fa-exclamation-triangle text-amber-600 dark:text-amber-400"></i>
-                        </div>
-                        <h4 class="m-0 text-surface-900 dark:text-surface-100">Consultation en cours</h4>
-                    </div>
+            <AppDialog
+                v-model:visible="createPatientDialogVisible"
+                title="Nouveau patient"
+                subtitle="Ajouter un patient depuis le mode focus"
+                icon="pi pi-user-plus"
+                icon-tone="primary"
+                size="lg"
+                maximizable
+                :loading="Boolean(createPatientFormRef?.loading)"
+                cancel-label="Annuler"
+                :confirm-label="createPatientFormRef?.isEdit ? 'Mettre à jour' : 'Créer'"
+                @confirm="createPatientFormRef?.submit()"
+                @cancel="createPatientDialogVisible = false"
+            >
+                <FormPatient ref="createPatientFormRef" hide-actions @saved="handlePatientSaved" @cancel="createPatientDialogVisible = false" />
+            </AppDialog>
+            <CreateConsultationDialog
+                v-model:visible="createConsultationDialogVisible"
+                :patient="createConsultationPreSelectedPatient"
+                maximizable
+                subtitle="Créer une consultation depuis le mode focus"
+                @saved="handleConsultationCreated"
+                @cancel="
+                    createConsultationDialogVisible = false;
+                    createConsultationPreSelectedPatient = null;
+                "
+            />
+            <AppDialog v-model:visible="showActiveConsultWarn" title="Consultation en cours" icon="fas fa-exclamation-triangle" icon-tone="warning" size="md" :show-footer="true">
+                <p class="mb-4 text-surface-700 dark:text-surface-300">Une consultation est déjà ouverte pour ce patient. Clôturez-la ou continuez-la avant d'en créer une nouvelle.</p>
 
-                    <p class="mb-4 text-surface-700 dark:text-surface-300">Une consultation est déjà ouverte pour ce patient. Clôturez-la ou continuez-la avant d'en créer une nouvelle.</p>
+                <p v-if="!activeConsultInfo.hasFiche" class="mb-4 text-sm text-surface-600 dark:text-surface-400">Si cette consultation a été ouverte par erreur, vous pouvez l'annuler directement depuis ce dialogue.</p>
 
-                    <p v-if="!activeConsultInfo.hasFiche" class="mb-4 text-sm text-surface-600 dark:text-surface-400">Si cette consultation a été ouverte par erreur, vous pouvez l'annuler directement depuis ce dialogue.</p>
-
-                    <div v-if="activeConsultInfo.hasFiche" class="mb-4 flex items-center gap-2 rounded-lg bg-surface-50 p-3 dark:bg-surface-800/50">
-                        <i class="pi pi-info-circle text-surface-500"></i>
-                        <span class="text-sm text-surface-600 dark:text-surface-400"> Cette consultation est liée à une fiche : elle ne peut pas être supprimée. </span>
-                    </div>
-
-                    <div class="flex justify-end gap-2">
-                        <Button label="Compris" severity="secondary" @click="closeActiveConsultWarn" class="rounded-xl px-5" />
-                        <Button v-if="!activeConsultInfo.hasFiche" label="Annuler la consultation" icon="pi pi-times" severity="danger" @click="cancelActiveConsultation" class="rounded-xl px-5" />
-                    </div>
+                <div v-if="activeConsultInfo.hasFiche" class="mb-4 flex items-center gap-2 rounded-lg bg-surface-50 p-3 dark:bg-surface-800/50">
+                    <i class="pi pi-info-circle text-surface-500"></i>
+                    <span class="text-sm text-surface-600 dark:text-surface-400"> Cette consultation est liée à une fiche : elle ne peut pas être supprimée. </span>
                 </div>
-            </Dialog>
-            <Dialog v-model:visible="editPatientDialogVisible" modal :style="{ width: '45rem' }">
-                <template #header>
-                    <div class="flex items-center gap-3">
-                        <div class="rounded-lg bg-blue-100 p-2 dark:bg-blue-900/30">
-                            <i class="pi pi-user-edit text-blue-600 dark:text-blue-300"></i>
-                        </div>
-                        <div>
-                            <h4 class="m-0 text-surface-900 dark:text-surface-100">Modifier le patient</h4>
-                            <p class="mt-1 text-sm text-surface-500 dark:text-surface-400">Mettre à jour les informations du patient</p>
-                        </div>
+
+                <template #footer>
+                    <div class="flex flex-col-reverse justify-end gap-2 sm:flex-row w-full">
+                        <Button label="Compris" severity="secondary" text class="rounded-xl px-5" @click="closeActiveConsultWarn" />
+                        <Button v-if="!activeConsultInfo.hasFiche" label="Annuler la consultation" icon="pi pi-times" severity="danger" class="rounded-xl px-5" @click="cancelActiveConsultation" />
                     </div>
                 </template>
+            </AppDialog>
+            <AppDialog
+                v-model:visible="editPatientDialogVisible"
+                title="Modifier le patient"
+                subtitle="Mettre à jour les informations du patient"
+                icon="pi pi-user-edit"
+                icon-tone="info"
+                size="lg"
+                maximizable
+                :loading="Boolean(editPatientFormRef?.loading)"
+                cancel-label="Annuler"
+                confirm-label="Mettre à jour"
+                @confirm="editPatientFormRef?.submit()"
+                @cancel="
+                    editPatientDialogVisible = false;
+                    patientToEdit = null;
+                "
+            >
                 <FormPatient
+                    ref="editPatientFormRef"
+                    hide-actions
                     :patient="patientToEdit"
                     @saved="handlePatientSaved"
                     @cancel="
@@ -1317,22 +1323,27 @@ onBeforeUnmount(() => {
                         patientToEdit = null;
                     "
                 />
-            </Dialog>
-            <Dialog v-model:visible="showRdvDialog" modal :style="{ width: '50rem' }">
-                <template #header>
-                    <div class="flex items-center gap-3">
-                        <div class="rounded-lg bg-blue-100 p-2 dark:bg-blue-900/30">
-                            <i class="fas fa-calendar-plus text-blue-600 dark:text-blue-400"></i>
-                        </div>
-                        <div>
-                            <h4 class="m-0 text-surface-900 dark:text-surface-100">Nouveau rendez-vous</h4>
-                            <p class="mt-1 text-sm text-surface-500 dark:text-surface-400">
-                                {{ rdvPatient?.fullname || `${rdvPatient?.prenom ?? ''} ${rdvPatient?.nom ?? ''}`.trim() || 'Patient' }}
-                            </p>
-                        </div>
-                    </div>
-                </template>
+            </AppDialog>
+            <AppDialog
+                v-model:visible="showRdvDialog"
+                title="Nouveau rendez-vous"
+                :subtitle="rdvPatient?.fullname || `${rdvPatient?.prenom ?? ''} ${rdvPatient?.nom ?? ''}`.trim() || 'Patient'"
+                icon="fas fa-calendar-plus"
+                icon-tone="info"
+                size="lg"
+                maximizable
+                :loading="Boolean(rdvFormRef?.loading)"
+                cancel-label="Annuler"
+                confirm-label="Créer"
+                @confirm="rdvFormRef?.submit()"
+                @cancel="
+                    showRdvDialog = false;
+                    rdvPatient = null;
+                "
+            >
                 <FormRendezVous
+                    ref="rdvFormRef"
+                    hide-actions
                     :patient="rdvPatient"
                     :patient-id="rdvPatient?.id"
                     @saved="handleRdvSaved"
@@ -1341,7 +1352,7 @@ onBeforeUnmount(() => {
                         rdvPatient = null;
                     "
                 />
-            </Dialog>
+            </AppDialog>
         </div>
     </section>
 </template>

@@ -1,6 +1,5 @@
 <script setup>
 import Breadcrumb from 'primevue/breadcrumb';
-import Toast from 'primevue/toast';
 import { useToast } from 'primevue/usetoast';
 import { computed, onMounted, ref } from 'vue';
 import { useProfile } from '@/composables/useProfile';
@@ -137,8 +136,6 @@ onMounted(async () => {
 
 <template>
     <section class="min-h-screen p-4 md:p-6 lg:p-8 transition-colors duration-300">
-        <AppToast />
-
         <div class="mb-6 md:mb-8">
             <div class="mb-6">
                 <div class="inline-flex items-center gap-3 mb-4 p-3 rounded-2xl bg-surface-0/80 dark:bg-surface-800/80 backdrop-blur-sm border border-surface-200/50 dark:border-surface-700/50">

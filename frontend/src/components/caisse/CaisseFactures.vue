@@ -3,9 +3,9 @@ import Button from 'primevue/button';
 import DataView from 'primevue/dataview';
 import InputText from 'primevue/inputtext';
 import Select from 'primevue/select';
-import Tag from 'primevue/tag';
 import { computed, ref } from 'vue';
 import PanelDatePicker from '@/components/common/PanelDatePicker.vue';
+import PageSection from '@/components/layout/PageSection.vue';
 import { useInternetFeatures } from '@/composables/useInternetFeatures';
 import { canModifyFacture, canPreviewFacture, canSettleFacture, computeFactureStatus, computePriorReliquat, isCabinetServiceFacture, isInsuranceFactureRow, targetIsFreeFacture } from '@/utils/factureRow';
 
@@ -135,121 +135,127 @@ const displayPhone = (value) => (props.hidePatientPhone ? "Masqué par l'adminis
 
 <template>
     <div class="flex flex-col gap-4">
-        <div class="section-card">
-            <div class="section-header">
-                <div>
-                    <p class="section-eyebrow">Vue Factures</p>
-                    <p class="section-title">Cartes par statut et liste détaillée, selon vos filtres.</p>
-                </div>
+        <PageSection title="Factures" subtitle="Documents facture regroupés selon vos filtres." tour-id="caisse-factures.section">
+            <template #headerActions>
                 <div class="filters" data-tour="caisse-factures.filters">
                     <div class="filter-item">
                         <label>Recherche</label>
-                        <InputText v-model="factureSearch" placeholder="Tapez quelque chose..." fluid />
+                        <InputText v-model="factureSearch" placeholder="Recherche..." fluid />
                     </div>
                     <div class="filter-item">
                         <label>Origine</label>
-                        <Select v-model="factureOrigin" :options="factureOriginOptions" optionLabel="label" optionValue="value" />
+                        <Select v-model="factureOrigin" :options="factureOriginOptions" optionLabel="label" optionValue="value" placeholder="Origine" fluid />
                     </div>
                     <div class="filter-item">
                         <label>Affichage</label>
-                        <Select v-model="factureTypeModel" :options="factureTypeOptions" optionLabel="label" optionValue="value" />
+                        <Select v-model="factureTypeModel" :options="factureTypeOptions" optionLabel="label" optionValue="value" placeholder="Affichage" fluid />
                     </div>
                     <div class="filter-item">
                         <label>Période</label>
-                        <PanelDatePicker v-model="factureRangeModel" dateFormat="yy-mm-dd" showIcon fluid :disabled="periodFilterDisabled" />
+                        <PanelDatePicker v-model="factureRangeModel" dateFormat="yy-mm-dd" showIcon fluid placeholder="Période" :disabled="periodFilterDisabled" />
                     </div>
-                    <Button label="Rafraîchir" icon="pi pi-refresh" text @click="emit('refresh-factures')" />
+                    <Button icon="pi pi-refresh" text aria-label="Rafraîchir" v-tooltip.top="'Rafraîchir'" class="!px-2" @click="emit('refresh-factures')" />
                 </div>
-            </div>
-            <div class="grid md:grid-cols-3 gap-3 mb-4">
-                <div class="stat-card stat-primary">
-                    <div class="icon pi pi-file"></div>
-                    <div>
-                        <p class="label">Factures visibles</p>
-                        <p class="value">{{ stats.count }}</p>
-                    </div>
-                </div>
-                <div class="stat-card stat-warning">
-                    <div class="icon pi pi-wallet"></div>
-                    <div>
-                        <p class="label">Total impayé</p>
-                        <p class="value">{{ formatFcfa(stats.restant) }}</p>
-                    </div>
-                </div>
-                <div class="stat-card stat-neutral">
-                    <div class="icon pi pi-sliders-h"></div>
-                    <div>
-                        <p class="label">Répartition</p>
-                        <p class="value">{{ stats.breakdown }}</p>
-                        <p class="hint">Impayées / Partiellement payées / Payées (hors vides et validées)</p>
-                    </div>
-                </div>
-            </div>
+            </template>
 
-            <div v-if="!filteredFactures.length" class="empty">Aucune facture à afficher pour ces filtres.</div>
+            <div class="flex flex-col gap-4 p-3 sm:p-4">
+                <div class="page-kpi-grid">
+                    <div class="page-kpi-card border-primary-200/70 bg-gradient-to-br from-primary-50/80 to-primary-100/50 dark:border-primary-800/40 dark:from-primary-900/30 dark:to-primary-800/20">
+                        <div class="min-w-0 flex-1">
+                            <p class="page-kpi-label text-primary-700 dark:text-primary-300">Factures visibles</p>
+                            <p class="page-kpi-value text-primary-900 dark:text-primary-100">{{ stats.count }}</p>
+                        </div>
+                        <i class="pi pi-file page-kpi-icon text-primary-500"></i>
+                    </div>
+                    <div class="page-kpi-card border-amber-200/70 bg-gradient-to-br from-amber-50/80 to-amber-100/50 dark:border-amber-800/40 dark:from-amber-900/20 dark:to-amber-800/20">
+                        <div class="min-w-0 flex-1">
+                            <p class="page-kpi-label text-amber-700 dark:text-amber-300">Total impayé</p>
+                            <p class="page-kpi-value truncate text-amber-900 dark:text-amber-100">{{ formatFcfa(stats.restant) }}</p>
+                        </div>
+                        <i class="pi pi-wallet page-kpi-icon text-amber-500"></i>
+                    </div>
+                    <div class="page-kpi-card border-slate-200/70 bg-gradient-to-br from-slate-50/80 to-slate-100/50 dark:border-slate-800/40 dark:from-slate-900/20 dark:to-slate-800/20">
+                        <div class="min-w-0 flex-1">
+                            <p class="page-kpi-label text-slate-600 dark:text-slate-300">Répartition</p>
+                            <p class="page-kpi-value text-slate-900 dark:text-surface-100">{{ stats.breakdown }}</p>
+                            <p class="mt-1 text-xs text-slate-500/70 dark:text-slate-400/70">Impayées / Partielles / Payées</p>
+                        </div>
+                        <i class="pi pi-sliders-h page-kpi-icon text-slate-500"></i>
+                    </div>
+                </div>
 
-            <DataView v-else data-tour="caisse-factures.cards" :value="filteredFactures" paginator :rows="6" :rowsPerPageOptions="[6, 12, 24]" :loading="facturesLoading">
+                <div v-if="!filteredFactures.length" class="empty px-1">Aucune facture à afficher pour ces filtres.</div>
+
+            <DataView v-else data-tour="caisse-factures.cards" :value="filteredFactures" paginator :rows="9" :rowsPerPageOptions="[9, 12, 24]" :loading="facturesLoading">
                 <template #list="slotProps">
-                    <div class="flex flex-col gap-3 p-1">
-                        <div v-for="(row, index) in slotProps.items" :key="row.id || index" class="fct-card" :class="`fct-card--${computeStatus(row).severity}`">
-                            <!-- En-tête document -->
-                            <div class="fct-header">
-                                <div class="fct-doc-badge" :class="{ 'fct-doc-badge--insurance': isInsuranceRow(row), 'fct-doc-badge--cabinet': isCabinetRow(row) }">
-                                    <i :class="isCabinetRow(row) ? 'pi pi-building' : isInsuranceRow(row) ? 'pi pi-shield' : 'pi pi-receipt'"></i>
-                                    <span>{{ documentLabel(row) }} #{{ row.id }}</span>
+                    <div class="fct-grid p-1">
+                        <article
+                            v-for="(row, index) in slotProps.items"
+                            :key="row.id || index"
+                            class="fct-invoice"
+                            :class="`fct-invoice--${computeStatus(row).severity}`"
+                        >
+                            <header class="fct-invoice-top">
+                                <div class="fct-invoice-brand">
+                                    <span class="fct-invoice-type">{{ documentLabel(row) }}</span>
+                                    <span class="fct-invoice-number">N° {{ row.id }}</span>
                                 </div>
-                                <div class="fct-status-badges">
-                                    <Tag :value="computeStatus(row).label" :severity="computeStatus(row).severity" />
-                                    <Tag v-if="isCabinetRow(row)" value="Service cabinet" severity="warn" icon="pi pi-building" />
-                                    <Tag v-if="computeInsuranceBadge(row)" :value="computeInsuranceBadge(row).label" :severity="computeInsuranceBadge(row).severity" icon="pi pi-shield" />
+                                <div class="fct-invoice-meta">
+                                    <span class="fct-invoice-date">{{ row.date || '—' }}</span>
+                                    <span class="fct-invoice-status" :class="`fct-invoice-status--${computeStatus(row).severity}`">
+                                        {{ computeStatus(row).label }}
+                                    </span>
                                 </div>
-                            </div>
+                            </header>
 
-                            <!-- Corps -->
-                            <div class="fct-body">
-                                <!-- Patient -->
-                                <div class="fct-patient">
-                                    <p class="fct-patient-name">
-                                        <i class="pi pi-user"></i>
-                                        {{ formatPatient(row) }}
-                                        <i
-                                            v-if="priorReliquatAmount(row) > 0"
-                                            v-tooltip.top="`Reliquat : ${priorReliquatAmount(row).toLocaleString('fr-FR')} FCFA`"
-                                            class="pi pi-wallet fct-reliquat-icon text-orange-500 dark:text-orange-400"
-                                            aria-label="Reliquat patient"
-                                        ></i>
-                                    </p>
-                                    <p class="fct-patient-detail">
-                                        <i class="pi pi-phone"></i>
-                                        {{ displayPhone(row.telephone) }}
-                                    </p>
-                                    <p class="fct-patient-detail">
-                                        <i class="pi pi-calendar"></i>
-                                        {{ row.date || '—' }}
-                                    </p>
-                                </div>
+                            <div class="fct-invoice-divider" aria-hidden="true"></div>
 
-                                <!-- Montants -->
-                                <div class="fct-amounts">
-                                    <div v-if="isInsuranceRow(row)" class="fct-amount-line" style="margin-bottom: 0.15rem">
-                                        <span class="fct-amount-label">Total facture</span>
-                                        <span class="fct-amount-value" style="font-size: 0.82rem; opacity: 0.7">{{ formatFcfa(row.insurance?.montantTotal ?? row.montantTotal) }}</span>
-                                    </div>
-                                    <div class="fct-amount-line">
-                                        <span class="fct-amount-label">{{ isInsuranceRow(row) ? 'Part patient' : 'Montant total' }}</span>
-                                        <span class="fct-amount-value">{{ formatFcfa(row.montant) }}</span>
-                                    </div>
-                                    <div class="fct-amount-line fct-amount-line--reste">
-                                        <span class="fct-amount-label">Reste à payer</span>
-                                        <span class="fct-amount-value fct-amount-reste" :class="`fct-amount-reste--${computeStatus(row).severity}`">
+                            <section class="fct-invoice-party">
+                                <p class="fct-invoice-party-label">Facturé à</p>
+                                <p class="fct-invoice-party-name">
+                                    {{ formatPatient(row) }}
+                                    <i
+                                        v-if="priorReliquatAmount(row) > 0"
+                                        v-tooltip.top="`Reliquat : ${priorReliquatAmount(row).toLocaleString('fr-FR')} FCFA`"
+                                        class="pi pi-wallet fct-reliquat-icon"
+                                        aria-label="Reliquat patient"
+                                    ></i>
+                                </p>
+                                <p class="fct-invoice-party-line">Tél. {{ displayPhone(row.telephone) }}</p>
+                                <p v-if="isCabinetRow(row) || computeInsuranceBadge(row)" class="fct-invoice-tags">
+                                    <span v-if="isCabinetRow(row)" class="fct-invoice-tag">Service cabinet</span>
+                                    <span v-if="computeInsuranceBadge(row)" class="fct-invoice-tag">{{ computeInsuranceBadge(row).label }}</span>
+                                </p>
+                            </section>
+
+                            <table class="fct-invoice-table">
+                                <thead>
+                                    <tr>
+                                        <th>Désignation</th>
+                                        <th class="fct-col-amount">Montant</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-if="isInsuranceRow(row)">
+                                        <td>Total facture</td>
+                                        <td class="fct-col-amount">{{ formatFcfa(row.insurance?.montantTotal ?? row.montantTotal) }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>{{ isInsuranceRow(row) ? 'Part patient' : 'Montant total' }}</td>
+                                        <td class="fct-col-amount">{{ formatFcfa(row.montant) }}</td>
+                                    </tr>
+                                </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <td>Reste à payer</td>
+                                        <td class="fct-col-amount fct-reste" :class="`fct-reste--${computeStatus(row).severity}`">
                                             {{ formatFcfa(row.reste) }}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
+                                        </td>
+                                    </tr>
+                                </tfoot>
+                            </table>
 
-                            <!-- Actions -->
-                            <div class="fct-actions" data-tour="caisse-factures.actions">
+                            <footer class="fct-invoice-actions" data-tour="caisse-factures.actions">
                                 <Button
                                     v-if="canSettle(row)"
                                     :label="targetIsFree(row) ? 'Valider' : 'Régler'"
@@ -261,475 +267,314 @@ const displayPhone = (value) => (props.hidePatientPhone ? "Masqué par l'adminis
                                 <Button v-if="canModify(row)" label="Modifier" size="small" severity="secondary" icon="pi pi-pencil" @click="emit('modify', row)" />
                                 <Button v-if="canPreview(row)" label="Aperçu" size="small" icon="pi pi-eye" severity="info" outlined @click="emit('preview', row)" />
                                 <Button v-if="canPreview(row) && isInternetFeaturesEnabled" icon="pi pi-send" size="small" severity="help" text title="Envoyer facture par SMS" @click="emit('send-invoice-sms', row)" />
-                            </div>
-                        </div>
+                            </footer>
+                        </article>
                     </div>
                 </template>
             </DataView>
-        </div>
+            </div>
+        </PageSection>
     </div>
 </template>
 
 <style scoped>
-.section-card {
-    background: var(--surface-card);
-    border-radius: 14px;
-    padding: 1.25rem;
-    border: 1px solid var(--surface-border);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
-}
-
-.section-header {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1rem;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 1rem;
-}
-
-.section-eyebrow {
-    font-size: 0.85rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: #64748b;
-}
-
-.app-dark .section-eyebrow {
-    color: #dadada;
-}
-
-.section-title {
-    color: #0f172a;
-    font-weight: 600;
-}
-
-.app-dark .section-title {
-    color: #e2e8f0;
-}
-
-.filters {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.75rem;
-    align-items: flex-end;
-}
-
-.filter-item {
-    min-width: 220px;
-    display: flex;
-    flex-direction: column;
-    gap: 0.35rem;
-}
-
-.filter-item label {
-    font-size: 0.85rem;
-    color: #475569;
-}
-
-.app-dark .filter-item label {
-    font-size: 0.85rem;
-    color: #94a3b8;
-}
-
-.stat-card {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    gap: 0.75rem;
-    padding: 1rem;
-    border-radius: 14px;
-    color: #0f172a;
-    background: linear-gradient(135deg, #f8fafc, #eef2ff);
-    border: 1px solid #e2e8f0;
-}
-
-.stat-card .icon {
-    font-size: 1.3rem;
-    padding: 0.6rem;
-    border-radius: 12px;
-    background: rgba(15, 23, 42, 0.08);
-}
-
-.stat-card .label {
-    font-size: 0.85rem;
-    color: #475569;
-}
-
-.stat-card .value {
-    font-size: 1.4rem;
-    font-weight: 700;
-}
-
-.stat-card .hint {
-    font-size: 0.8rem;
-    color: #6b7280;
-}
-
-.stat-warning {
-    background: linear-gradient(135deg, #fff7ed, #fef3c7);
-    border-color: #fde68a;
-}
-
-.stat-neutral {
-    background: linear-gradient(135deg, #eef2ff, #e2e8f0);
-    border-color: #e2e8f0;
-}
-
-.kv {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 0.35rem;
-    font-size: 1.2rem;
-}
-
 .empty {
     color: #64748b;
     font-size: 0.95rem;
     margin-bottom: 0.5rem;
 }
 
-.dataview-item {
-    position: relative;
-    padding: 1rem;
-    border-radius: 12px;
-    border: 1px solid var(--surface-border);
-    background: var(--surface-card);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.05);
-}
-
-.dataview-body {
+/* Grille : 1 → 2 → 3 colonnes */
+.fct-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    grid-template-columns: 1fr;
     gap: 1rem;
-    align-items: center;
 }
 
-.status-chip {
-    position: absolute;
-    top: 0.65rem;
-    right: 0.65rem;
+@media (min-width: 768px) {
+    .fct-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
 }
 
-.dv-patient {
+@media (min-width: 1200px) {
+    .fct-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+/* Document facture (papier) */
+.fct-invoice {
     display: flex;
     flex-direction: column;
-    gap: 0.25rem;
-}
-
-.dv-name {
-    font-weight: 700;
-    color: #0f172a;
-    font-size: 1.2rem;
-}
-
-.dv-phone,
-.dv-date {
-    color: #475569;
-    font-size: 0.9rem;
-}
-
-.dv-money {
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 10px;
-    padding: 0.75rem;
-}
-
-.dv-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    justify-content: flex-end;
-}
-
-.app-dark .dv-name {
-    color: #fafcff;
-}
-
-.app-dark .dv-phone,
-.app-dark .dv-date {
-    color: #94a3b8;
-    font-size: 1.1rem;
-}
-
-.app-dark .dv-money {
-    background: #1e293b;
-    border: 1px solid #475569;
-    border-radius: 10px;
-    padding: 0.75rem;
-}
-
-.app-dark .stat-card {
-    background: linear-gradient(135deg, #0f172a, #111827);
-    color: #e2e8f0;
-    border-color: #1f2937;
-}
-
-.app-dark .stat-card .icon {
-    background: rgba(255, 255, 255, 0.06);
-    color: #e2e8f0;
-}
-
-.app-dark .stat-card .label {
-    color: #cbd5e1;
-}
-
-.app-dark .stat-card .hint {
-    color: #94a3b8;
-}
-
-.app-dark .stat-primary {
-    background: linear-gradient(135deg, #0ea5e9, #1e293b);
-    border-color: #1f2937;
-}
-
-.app-dark .stat-warning {
-    background: linear-gradient(135deg, #f59e0b, #1f2937);
-    border-color: #1f2937;
-}
-
-.app-dark .stat-success {
-    background: linear-gradient(135deg, #22c55e, #1f2937);
-    border-color: #1f2937;
-}
-.app-dark .stat-neutral {
-    background: linear-gradient(135deg, #475569, #1f2937);
-    border-color: #1f2937;
-}
-
-/* ─── CARTES FACTURE ─── */
-
-.fct-card {
-    border-radius: 14px;
-    border: 1px solid var(--surface-border);
-    border-left: 5px solid #94a3b8;
-    background: var(--surface-card);
-    overflow: hidden;
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05);
+    border: 1px solid #cbd5e1;
+    border-radius: 0;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
     transition:
         box-shadow 0.2s ease,
         transform 0.2s ease;
+    min-height: 100%;
 }
 
-.fct-card:hover {
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+.fct-invoice:hover {
+    box-shadow: 0 8px 22px rgba(15, 23, 42, 0.1);
     transform: translateY(-2px);
 }
 
-.fct-card--success {
-    border-left-color: #22c55e;
-}
-.fct-card--danger {
-    border-left-color: #ef4444;
-}
-.fct-card--warning {
-    border-left-color: #f59e0b;
-}
-.fct-card--secondary {
-    border-left-color: #94a3b8;
-}
-
-/* En-tête document */
-.fct-header {
+.fct-invoice-top {
     display: flex;
-    align-items: center;
     justify-content: space-between;
+    align-items: flex-start;
     gap: 0.75rem;
-    padding: 0.5rem 1rem;
-    background: linear-gradient(90deg, rgba(241, 245, 249, 0.95), rgba(248, 250, 252, 0.8));
-    border-bottom: 1px solid var(--surface-border);
-    flex-wrap: wrap;
+    padding: 0.85rem 1rem 0.65rem;
 }
 
-.fct-doc-badge {
+.fct-invoice-brand {
     display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    font-size: 0.72rem;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
+}
+
+.fct-invoice-type {
+    font-size: 0.7rem;
     font-weight: 700;
-    letter-spacing: 0.09em;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
     color: #475569;
-    background: #e2e8f0;
-    border-radius: 6px;
-    padding: 0.22rem 0.6rem;
 }
 
-.fct-doc-badge .pi {
-    font-size: 0.85rem;
-    color: #64748b;
-}
-
-.fct-doc-badge--insurance {
-    background: #e0f2fe;
-    color: #0369a1;
-}
-
-.fct-doc-badge--insurance .pi {
-    color: #0369a1;
-}
-
-.app-dark .fct-doc-badge--insurance {
-    background: #0c4a6e;
-    color: #7dd3fc;
-}
-
-.app-dark .fct-doc-badge--insurance .pi {
-    color: #7dd3fc;
-}
-
-.fct-status-badges {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.4rem;
-    align-items: center;
-}
-
-/* Corps */
-.fct-body {
-    display: flex;
-    gap: 1rem;
-    padding: 0.85rem 1rem;
-    flex-wrap: wrap;
-    align-items: flex-start;
-}
-
-/* Bloc patient */
-.fct-patient {
-    flex: 1 1 200px;
-    display: flex;
-    flex-direction: column;
-    gap: 0.3rem;
-}
-
-.fct-patient-name {
-    margin: 0;
-    font-size: 1.1rem;
+.fct-invoice-number {
+    font-size: 1.05rem;
     font-weight: 700;
-    color: var(--text-color);
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
+    color: #0f172a;
+    font-variant-numeric: tabular-nums;
 }
 
-.fct-patient-name .pi {
-    color: #6366f1;
-    font-size: 0.9rem;
-}
-
-.fct-patient-name .fct-reliquat-icon {
-    font-size: 0.85rem;
-    margin-left: 0.15rem;
-}
-
-.fct-patient-detail {
-    margin: 0;
-    font-size: 0.83rem;
-    color: #64748b;
-    display: flex;
-    align-items: center;
-    gap: 0.35rem;
-}
-
-.fct-patient-detail .pi {
-    font-size: 0.78rem;
-}
-
-/* Montants */
-.fct-amounts {
-    min-width: 165px;
+.fct-invoice-meta {
     display: flex;
     flex-direction: column;
-    gap: 0.3rem;
-    background: rgba(241, 245, 249, 0.7);
-    border-radius: 10px;
-    padding: 0.6rem 0.85rem;
-    align-self: flex-start;
+    align-items: flex-end;
+    gap: 0.35rem;
+    flex-shrink: 0;
 }
 
-.fct-amount-line {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    gap: 0.75rem;
-}
-
-.fct-amount-line--reste {
-    padding-top: 0.28rem;
-    margin-top: 0.1rem;
-    border-top: 1px dashed #cbd5e1;
-}
-
-.fct-amount-label {
+.fct-invoice-date {
     font-size: 0.78rem;
     color: #64748b;
+    font-variant-numeric: tabular-nums;
+}
+
+.fct-invoice-status {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #475569;
+    border: 1px solid #94a3b8;
+    padding: 0.15rem 0.45rem;
+    border-radius: 0;
     white-space: nowrap;
 }
 
-.fct-amount-value {
-    font-size: 0.9rem;
+.fct-invoice-status--success {
+    color: #166534;
+    border-color: #86efac;
+}
+
+.fct-invoice-status--danger {
+    color: #991b1b;
+    border-color: #fca5a5;
+}
+
+.fct-invoice-status--warning {
+    color: #92400e;
+    border-color: #fcd34d;
+}
+
+.fct-invoice-status--secondary {
+    color: #475569;
+    border-color: #94a3b8;
+}
+
+.fct-invoice-divider {
+    height: 1px;
+    margin: 0 1rem;
+    background: repeating-linear-gradient(90deg, #cbd5e1 0 6px, transparent 6px 10px);
+}
+
+.fct-invoice-party {
+    padding: 0.75rem 1rem 0.5rem;
+}
+
+.fct-invoice-party-label {
+    margin: 0 0 0.2rem;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #94a3b8;
+}
+
+.fct-invoice-party-name {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #0f172a;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    line-height: 1.3;
+}
+
+.fct-reliquat-icon {
+    font-size: 0.85rem;
+    color: #d97706;
+}
+
+.fct-invoice-party-line {
+    margin: 0.25rem 0 0;
+    font-size: 0.8rem;
+    color: #64748b;
+}
+
+.fct-invoice-tags {
+    margin: 0.45rem 0 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.fct-invoice-tag {
+    font-size: 0.68rem;
+    color: #475569;
+    border-bottom: 1px solid #cbd5e1;
+    padding-bottom: 0.05rem;
+}
+
+.fct-invoice-table {
+    width: calc(100% - 2rem);
+    margin: 0.35rem 1rem 0.75rem;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+}
+
+.fct-invoice-table th {
+    text-align: left;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #94a3b8;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 0.35rem 0;
+}
+
+.fct-invoice-table td {
+    padding: 0.4rem 0;
+    color: #334155;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.fct-invoice-table tfoot td {
+    border-bottom: none;
+    border-top: 1px solid #cbd5e1;
+    padding-top: 0.55rem;
     font-weight: 700;
     color: #0f172a;
 }
 
-.fct-amount-reste--success {
+.fct-col-amount {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.fct-reste--success {
     color: #16a34a;
 }
-.fct-amount-reste--danger {
+.fct-reste--danger {
     color: #dc2626;
 }
-.fct-amount-reste--warning {
+.fct-reste--warning {
     color: #d97706;
 }
-.fct-amount-reste--secondary {
+.fct-reste--secondary {
     color: #64748b;
 }
 
-/* Actions */
-.fct-actions {
+.fct-invoice-actions {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.45rem;
-    padding: 0.6rem 1rem;
-    border-top: 1px solid var(--surface-border);
-    background: rgba(248, 250, 252, 0.6);
+    gap: 0.4rem;
+    padding: 0.65rem 1rem 0.85rem;
+    margin-top: auto;
+    border-top: 1px solid #e2e8f0;
 }
 
 /* Dark mode */
-.app-dark .fct-header {
-    background: linear-gradient(90deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.7));
+.app-dark .fct-invoice {
+    background: #0f172a;
+    border-color: #334155;
+    box-shadow: none;
 }
 
-.app-dark .fct-doc-badge {
-    background: #334155;
+.app-dark .fct-invoice:hover {
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.35);
+}
+
+.app-dark .fct-invoice-type,
+.app-dark .fct-invoice-date,
+.app-dark .fct-invoice-party-line,
+.app-dark .fct-invoice-party-label,
+.app-dark .fct-invoice-table th {
     color: #94a3b8;
 }
 
-.app-dark .fct-doc-badge .pi {
-    color: #94a3b8;
-}
-
-.app-dark .fct-patient-name {
+.app-dark .fct-invoice-number,
+.app-dark .fct-invoice-party-name,
+.app-dark .fct-invoice-table tfoot td {
     color: #e2e8f0;
 }
 
-.app-dark .fct-patient-detail {
+.app-dark .fct-invoice-divider {
+    background: repeating-linear-gradient(90deg, #475569 0 6px, transparent 6px 10px);
+}
+
+.app-dark .fct-invoice-tag {
     color: #94a3b8;
+    border-bottom-color: #475569;
 }
 
-.app-dark .fct-amounts {
-    background: rgba(30, 41, 59, 0.6);
+.app-dark .fct-invoice-table td {
+    color: #cbd5e1;
+    border-bottom-color: #1e293b;
 }
 
-.app-dark .fct-amount-value {
-    color: #e2e8f0;
+.app-dark .fct-invoice-table th,
+.app-dark .fct-invoice-table tfoot td,
+.app-dark .fct-invoice-actions {
+    border-color: #334155;
 }
 
-.app-dark .fct-amount-label {
-    color: #94a3b8;
+.app-dark .fct-invoice-status {
+    color: #cbd5e1;
+    border-color: #64748b;
 }
 
-.app-dark .fct-actions {
-    background: rgba(15, 23, 42, 0.4);
+.app-dark .fct-invoice-status--success {
+    color: #86efac;
+    border-color: #166534;
+}
+
+.app-dark .fct-invoice-status--danger {
+    color: #fca5a5;
+    border-color: #991b1b;
+}
+
+.app-dark .fct-invoice-status--warning {
+    color: #fcd34d;
+    border-color: #92400e;
 }
 </style>

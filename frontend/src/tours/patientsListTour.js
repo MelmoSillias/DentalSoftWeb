@@ -207,7 +207,7 @@ function buildOverviewSteps(ctx) {
             group: GROUP,
             target: '[data-tour="patients-list.row-actions"]',
             title: 'Actions par ligne',
-            content: 'Ouvrir le dossier, lancer une consultation, planifier un RDV, modifier le patient ou le deplacer vers la corbeille via l icone poubelle.'
+            content: 'Consultation et modification en acces direct ; dossier, RDV, service cabinet et corbeille via le menu (trois points).'
         });
     }
 

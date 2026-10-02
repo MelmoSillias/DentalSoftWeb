@@ -1,6 +1,6 @@
 <script setup>
+import AppDialog from '@/components/layout/AppDialog.vue';
 import Button from 'primevue/button';
-import Dialog from 'primevue/dialog';
 import InputNumber from 'primevue/inputnumber';
 import InputText from 'primevue/inputtext';
 import { computed } from 'vue';
@@ -113,33 +113,29 @@ const dialogSubtitle = computed(() => {
     if (isEditMode.value) return 'Mettre à jour la prescription';
     return 'Prescrire des médicaments et traitements';
 });
+const confirmLabel = computed(() => {
+    if (isViewMode.value) return null;
+    if (isEditMode.value) return 'Enregistrer les modifications';
+    return "Enregistrer l'ordonnance";
+});
 </script>
 <!-- OrdonnanceModal.vue -->
 <template>
-    <Dialog
+    <AppDialog
         v-model:visible="dialogVisible"
-        modal
-        :style="{ width: '60rem', maxWidth: '98vw' }"
-        :pt="{
-            root: 'rounded-2xl overflow-hidden',
-            header: 'px-6 py-4 bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900 dark:to-surface-800 border-b border-surface-200 dark:border-surface-700',
-            content: 'px-6 py-4 bg-surface-0 dark:bg-surface-900',
-            footer: 'px-6 py-4 bg-surface-50 dark:bg-surface-800 border-t border-surface-200 dark:border-surface-700'
-        }"
+        :title="dialogTitle"
+        :subtitle="dialogSubtitle"
+        icon="pi pi-file-plus"
+        icon-tone="primary"
+        size="xl"
+        :show-footer="true"
+        :cancel-label="isViewMode ? 'Fermer' : 'Annuler'"
+        :confirm-label="confirmLabel"
+        confirm-icon="pi pi-save"
+        :loading="saving"
+        @cancel="close"
+        @confirm="emit('save')"
     >
-        <!-- Header -->
-        <template #header>
-            <div class="flex items-center gap-3">
-                <div class="p-2 rounded-lg bg-primary-500/10 dark:bg-primary-500/20">
-                    <i class="pi pi-file-plus text-primary-600 dark:text-primary-400 text-2xl px-4"></i>
-                </div>
-                <div>
-                    <h3 class="text-xl font-bold text-surface-900 dark:text-surface-50">{{ dialogTitle }}</h3>
-                    <p class="text-sm text-surface-500 dark:text-surface-400">{{ dialogSubtitle }}</p>
-                </div>
-            </div>
-        </template>
-
         <!-- Content -->
         <div class="space-y-6">
             <!-- Basic Info -->
@@ -304,26 +300,5 @@ const dialogSubtitle = computed(() => {
                 </div>
             </div>
         </div>
-
-        <!-- Footer -->
-        <template #footer>
-            <div class="flex justify-end gap-3">
-                <Button
-                    :label="isViewMode ? 'Fermer' : 'Annuler'"
-                    severity="secondary"
-                    outlined
-                    class="rounded-xl px-5 py-2.5 border-surface-300 dark:border-surface-600 hover:bg-surface-100 dark:hover:bg-surface-700 transition-colors"
-                    @click="close"
-                />
-                <Button
-                    v-if="!isViewMode"
-                    :label="isEditMode ? 'Enregistrer les modifications' : 'Enregistrer l\'ordonnance'"
-                    icon="pi pi-save"
-                    :loading="saving"
-                    class="rounded-xl px-5 py-2.5 font-medium shadow-sm hover:shadow-md transition-all bg-gradient-to-r from-primary-500 to-primary-600 border-0 text-white"
-                    @click="emit('save')"
-                />
-            </div>
-        </template>
-    </Dialog>
+    </AppDialog>
 </template>

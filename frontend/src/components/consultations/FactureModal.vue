@@ -1,7 +1,7 @@
 <script setup>
 import ActeLineCard from '@/components/consultations/ActeLineCard.vue';
+import AppDialog from '@/components/layout/AppDialog.vue';
 import Button from 'primevue/button';
-import Dialog from 'primevue/dialog';
 import InputText from 'primevue/inputtext';
 import ProgressSpinner from 'primevue/progressspinner';
 import { computed, ref, watch } from 'vue';
@@ -146,7 +146,20 @@ const handleHide = () => emit('update:visible', false);
 </script>
 
 <template>
-    <Dialog :visible="visible" modal header="Modifier la facture" :style="{ width: '52rem', maxWidth: '98vw' }" @update:visible="handleHide">
+    <AppDialog
+        :visible="visible"
+        title="Modifier la facture"
+        icon="pi pi-file-edit"
+        icon-tone="warning"
+        size="lg"
+        :loading="saving"
+        cancel-label="Fermer"
+        confirm-label="Enregistrer"
+        confirm-icon="pi pi-save"
+        @update:visible="(val) => !val && handleHide()"
+        @cancel="handleHide"
+        @confirm="handleSave"
+    >
         <div :data-tour="props.tourTarget || null">
             <div v-if="loading" class="flex min-h-[12rem] flex-col items-center justify-center gap-3 p-6 text-surface-600 dark:text-surface-300">
                 <ProgressSpinner strokeWidth="4" style="width: 42px; height: 42px" />
@@ -214,18 +227,5 @@ const handleHide = () => emit('update:visible', false);
                 </div>
             </div>
         </div>
-
-        <template #footer>
-            <div class="flex w-full flex-wrap items-center justify-end gap-2">
-                <Button label="Fermer" icon="pi pi-times" severity="secondary" text class="rounded-xl px-4" @click="handleHide" />
-                <Button
-                    label="Enregistrer"
-                    icon="pi pi-save"
-                    :loading="saving"
-                    class="rounded-xl border-0 bg-gradient-to-r from-primary-500 to-primary-600 px-5 py-2.5 font-medium text-white shadow-sm transition-all hover:shadow-md"
-                    @click="handleSave"
-                />
-            </div>
-        </template>
-    </Dialog>
+    </AppDialog>
 </template>

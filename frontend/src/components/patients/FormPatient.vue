@@ -23,6 +23,10 @@ const props = defineProps({
     patient: {
         type: Object,
         default: null
+    },
+    hideActions: {
+        type: Boolean,
+        default: false
     }
 });
 
@@ -455,8 +459,12 @@ const savePatient = async () => {
 };
 
 const handleSubmit = (event) => {
+    if (props.hideActions) {
+        savePatient();
+        return;
+    }
     confirmPopup.require({
-        target: event.currentTarget || event.target,
+        target: event?.currentTarget || event?.target,
         message: isEdit.value ? 'Confirmer la mise à jour du patient ?' : 'Confirmer la création du patient ?',
         icon: 'pi pi-exclamation-triangle',
         acceptLabel: 'Confirmer',
@@ -470,7 +478,10 @@ function switchTab(tab) {
 }
 
 defineExpose({
-    switchTab
+    switchTab,
+    submit: handleSubmit,
+    loading,
+    isEdit
 });
 </script>
 
@@ -731,7 +742,7 @@ defineExpose({
                 </TabPanel>
             </TabPanels>
         </Tabs>
-        <div class="flex gap-2 justify-end" data-tour="patients-form.actions">
+        <div v-if="!hideActions" class="flex gap-2 justify-end" data-tour="patients-form.actions">
             <Button type="button" label="Annuler" severity="secondary" @click="emit('cancel')" />
             <Button type="button" :label="isEdit ? 'Mettre à jour' : 'Créer'" icon="pi pi-check" :loading="loading" @click="handleSubmit" />
         </div>

@@ -93,6 +93,123 @@ class CabinetServiceBillingService
         return array_map(fn (ServiceCabinet $service): array => $this->mapService($service), $services);
     }
 
+    /**
+     * @return list<array<string, mixed>>
+     */
+    public function listAll(?DateTimeInterface $start = null, ?DateTimeInterface $end = null, bool $includeCancelled = false): array
+    {
+        $qb = $this->serviceRepo->createQueryBuilder('s')
+            ->leftJoin('s.patient', 'patient')->addSelect('patient')
+            ->leftJoin('s.facture', 'f')->addSelect('f')
+            ->leftJoin('f.paiements', 'p')->addSelect('p')
+            ->orderBy('s.dateRealisation', 'DESC')
+            ->addOrderBy('s.id', 'DESC');
+
+        if ($start !== null && $end !== null) {
+            $qb->andWhere('s.dateRealisation BETWEEN :start AND :end')
+                ->setParameter('start', $start)
+                ->setParameter('end', $end);
+        }
+
+        if (!$includeCancelled) {
+            $qb->andWhere('s.statut = :statut')
+                ->setParameter('statut', ServiceCabinet::STATUT_EFFECTUE);
+        }
+
+        return array_map(fn (ServiceCabinet $service): array => $this->mapService($service), $qb->getQuery()->getResult());
+    }
+
+    /** @return array<string, mixed>|null */
+    public function get(int $serviceId, bool $includePayments = true): ?array
+    {
+        $service = $this->serviceRepo->createQueryBuilder('s')
+            ->leftJoin('s.patient', 'patient')->addSelect('patient')
+            ->leftJoin('s.facture', 'f')->addSelect('f')
+            ->leftJoin('f.paiements', 'p')->addSelect('p')
+            ->leftJoin('p.mode', 'm')->addSelect('m')
+            ->andWhere('s.id = :id')
+            ->setParameter('id', $serviceId)
+            ->getQuery()
+            ->getOneOrNullResult();
+
+        if (!$service instanceof ServiceCabinet) {
+            return null;
+        }
+
+        return $this->mapService($service, $includePayments);
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     * @return array<string, mixed>
+     */
+    public function update(int $serviceId, array $payload): array
+    {
+        $service = $this->serviceRepo->find($serviceId);
+        if (!$service instanceof ServiceCabinet) {
+            return ['error' => 'Service cabinet introuvable', 'status' => 404];
+        }
+
+        if ($service->isAnnule()) {
+            return ['error' => 'Ce service cabinet est annulé', 'status' => 400];
+        }
+
+        $hasPayments = ($service->getFacture()?->getPaiements()->count() ?? 0) > 0;
+
+        $designation = array_key_exists('designation', $payload) || array_key_exists('description', $payload)
+            ? trim((string) ($payload['designation'] ?? $payload['description'] ?? ''))
+            : $service->getDesignation();
+        if ($designation === '') {
+            return ['error' => 'Le service cabinet est requis', 'status' => 400];
+        }
+
+        $note = array_key_exists('note', $payload)
+            ? (isset($payload['note']) && is_scalar($payload['note']) ? trim((string) $payload['note']) : null)
+            : $service->getNote();
+
+        $date = array_key_exists('date', $payload)
+            ? ($this->parseDate($payload['date'] ?? null) ?? $service->getDateRealisation())
+            : $service->getDateRealisation();
+
+        $quantite = array_key_exists('quantite', $payload)
+            ? max(1, (int) $payload['quantite'])
+            : $service->getQuantite();
+        $prix = array_key_exists('prix', $payload)
+            ? round(max(0.0, (float) $payload['prix']), 2)
+            : $service->getPrix();
+        $montant = round($prix * $quantite, 2);
+
+        if ($hasPayments && ($quantite !== $service->getQuantite() || abs($prix - $service->getPrix()) > 0.001 || abs($montant - $service->getMontant()) > 0.001)) {
+            return ['error' => 'Impossible de modifier le montant d’un service déjà payé.', 'status' => 400];
+        }
+
+        if ($montant <= 0.0) {
+            return ['error' => 'Le montant du service doit être supérieur à zéro', 'status' => 400];
+        }
+
+        $service->setDesignation(mb_substr($designation, 0, 255));
+        $service->setNote($note === '' ? null : $note);
+        if ($date instanceof \DateTimeInterface) {
+            $service->setDateRealisation($date);
+        }
+        $service->setQuantite($quantite);
+        $service->setPrix($prix);
+        $service->setMontant($montant);
+
+        $facture = $service->getFacture();
+        if ($facture instanceof FactureCabinet && !$hasPayments) {
+            $facture->setMontant($montant);
+            if ($date instanceof \DateTimeInterface) {
+                $facture->setDateFacture($date);
+            }
+            $facture->setIsReglee(false);
+        }
+
+        $this->em->flush();
+
+        return ['success' => true, 'data' => $this->mapService($service, true)];
+    }
+
     /** @return list<array<string, mixed>> */
     public function listForFiche(int $ficheId): array
     {
@@ -308,13 +425,23 @@ class CabinetServiceBillingService
     }
 
     /** @return array<string, mixed> */
-    public function mapService(ServiceCabinet $service): array
+    public function mapService(ServiceCabinet $service, bool $includePayments = false): array
     {
         $facture = $service->getFacture();
+        $patient = $service->getPatient();
+        $patientName = trim((string) ($patient?->getFullName() ?? ''));
 
         return [
             'id' => $service->getId(),
-            'patientId' => $service->getPatient()?->getId(),
+            'patientId' => $patient?->getId(),
+            'patientName' => $patientName,
+            'patient' => [
+                'id' => $patient?->getId(),
+                'nom' => $patient?->getNom() ?? '',
+                'prenom' => $patient?->getPrenom() ?? '',
+                'fullname' => $patientName,
+                'telephone' => $patient?->getTelephone() ?? '',
+            ],
             'ficheId' => $service->getFicheMedicale()?->getId(),
             'designation' => $service->getDesignation(),
             'quantite' => $service->getQuantite(),
@@ -323,7 +450,7 @@ class CabinetServiceBillingService
             'date' => $service->getDateRealisation()?->format('Y-m-d H:i'),
             'note' => $service->getNote(),
             'statut' => $service->getStatut(),
-            'facture' => $facture instanceof FactureCabinet ? $this->mapFacture($facture) : null,
+            'facture' => $facture instanceof FactureCabinet ? $this->mapFacture($facture, $includePayments) : null,
         ];
     }
 

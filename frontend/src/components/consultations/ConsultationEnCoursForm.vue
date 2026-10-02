@@ -1,6 +1,6 @@
 <script setup>
 import Button from 'primevue/button';
-import Dialog from 'primevue/dialog';
+import AppDialog from '@/components/layout/AppDialog.vue';
 import MultiSelect from 'primevue/multiselect';
 import ProgressSpinner from 'primevue/progressspinner';
 import Select from 'primevue/select';
@@ -461,7 +461,19 @@ const consultationTypes = [
                     </div>
                 </div>
 
-                <Dialog v-model:visible="addActeDialogVisible" header="Ajouter plusieurs soins" modal class="w-full max-w-3xl">
+                <AppDialog
+                    v-model:visible="addActeDialogVisible"
+                    title="Ajouter plusieurs soins"
+                    icon="pi pi-plus"
+                    icon-tone="primary"
+                    size="lg"
+                    :confirm-disabled="!selectedTeeth.length"
+                    cancel-label="Annuler"
+                    confirm-label="Ajouter"
+                    confirm-icon="pi pi-check"
+                    @cancel="addActeDialogVisible = false"
+                    @confirm="confirmAddActes"
+                >
                     <div class="space-y-4">
                         <p class="text-sm text-surface-600 dark:text-surface-300">Sélectionnez une ou plusieurs dents.</p>
                         <div class="space-y-4">
@@ -497,11 +509,7 @@ const consultationTypes = [
                             </div>
                         </div>
                     </div>
-                    <template #footer>
-                        <Button label="Annuler" severity="secondary" text @click="addActeDialogVisible = false" />
-                        <Button label="Ajouter" icon="pi pi-check" :disabled="!selectedTeeth.length" @click="confirmAddActes" />
-                    </template>
-                </Dialog>
+                </AppDialog>
 
                 <!-- Ordonnances -->
                 <div v-if="!hideOrdonnances" class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/30 p-5" :class="readonly ? 'pointer-events-auto select-auto opacity-100' : ''">

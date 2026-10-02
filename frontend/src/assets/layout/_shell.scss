@@ -9,18 +9,6 @@
     overflow: hidden;
 }
 
-.layout-shell.force-desktop,
-.layout-wrapper.force-desktop {
-    min-width: 800px;
-}
-
-@media (max-width: 768px) {
-    .layout-shell.force-desktop,
-    .layout-wrapper.force-desktop {
-        overflow-x: auto;
-    }
-}
-
 .layout-body {
     display: grid;
     grid-template-columns: var(--layout-sidebar-width) minmax(0, 1fr);

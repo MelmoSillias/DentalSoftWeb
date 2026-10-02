@@ -2,7 +2,6 @@
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
 import { useLayout } from '@/layout/composables/layout';
 import { useAuthStore } from '@/stores/auth';
-import AppConfigurator from './AppConfigurator.vue';
 import Popover from 'primevue/popover';
 import Button from 'primevue/button';
 import { useToast } from 'primevue/usetoast';
@@ -55,10 +54,28 @@ const guidedTourMenuItems = computed(() => {
     return getTaskMenuItemsForRoute(route.name, { roles: auth.roles || auth.user?.roles || [] });
 });
 
+const profileDisplayName = computed(() => auth.user?.username || 'Utilisateur');
+const profileRoleLabel = computed(() => {
+    const roles = auth.user?.roles || auth.roles || [];
+    if (roles.includes('ROLE_ADMIN')) return 'Administrateur';
+    if (roles.includes('ROLE_MEDECIN')) return 'Médecin';
+    if (roles.includes('ROLE_RECEPTION') || roles.includes('ROLE_RECEPTIONNISTE')) return 'Réception';
+    return auth.user?.role || 'Utilisateur';
+});
+const profileInitials = computed(() => {
+    const name = String(profileDisplayName.value || '').trim();
+    if (!name) return 'U';
+    const parts = name.split(/[\s._-]+/).filter(Boolean);
+    if (parts.length >= 2) {
+        return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+    }
+    return name.slice(0, 2).toUpperCase();
+});
+
 function updateDateTime() {
     const now = new Date();
-    currentTime.value = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    currentDate.value = now.toLocaleDateString([], { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    currentTime.value = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    currentDate.value = now.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' });
 }
 
 let timer;
@@ -89,6 +106,12 @@ watch(
         }
     }
 );
+
+const smsCreditsTooltip = computed(() => {
+    const units = smsDisplayUnits.value ?? '—';
+    const expiration = smsDisplayExpiration.value ?? '—';
+    return `${smsProviderLabel.value} — Restants: ${units} — Expiration: ${expiration}`;
+});
 
 function openSmsSettings() {
     if (!canOpenSmsSettings.value) {
@@ -177,63 +200,102 @@ function handleStartGuidedTourTask(taskId, variantId = null) {
 <template>
     <div class="layout-topbar">
         <div class="layout-topbar-logo-container">
-            <button class="layout-menu-button layout-topbar-action" @click="toggleMenu">
+            <button type="button" class="layout-menu-button layout-topbar-action" aria-label="Ouvrir le menu" @click="toggleMenu">
                 <i class="pi pi-bars"></i>
             </button>
-            <router-link to="/" class="layout-topbar-logo">
-                <div class="h-12 w-12 rounded-full rounded-50 p-1 bg-white dark:bg-white/90">
-                    <img src="/logo.png" class="app-logo" width="54" height="40" :alt="cabinetConfig.brandName" />
+            <router-link to="/" class="layout-topbar-logo" :aria-label="cabinetConfig.brandName">
+                <div class="layout-topbar-logo-mark">
+                    <img src="/logo.png" class="app-logo" width="40" height="40" :alt="cabinetConfig.brandName" />
                 </div>
-
-                <span style="font-weight: 500"
-                    >{{ cabinetConfig.brandName }} <br />
-                    <small>{{ cabinetConfig.brandSubtitle }}</small></span
-                >
+                <div class="layout-topbar-logo-text">
+                    <span class="layout-topbar-logo-title">{{ cabinetConfig.brandName }}</span>
+                    <span v-if="cabinetConfig.brandSubtitle" class="layout-topbar-logo-subtitle">{{ cabinetConfig.brandSubtitle }}</span>
+                </div>
             </router-link>
             <Tag v-if="isLocalDeploymentMode" value="Mode local" severity="warn" class="local-mode-tag" role="status" />
         </div>
+
         <div class="layout-topbar-actions">
+            <div class="layout-topbar-datetime" aria-live="polite">
+                <span class="layout-topbar-datetime-time">{{ currentTime }}</span>
+                <span class="layout-topbar-datetime-date">{{ currentDate }}</span>
+            </div>
+
+            <div class="layout-topbar-divider hidden xl:block" aria-hidden="true"></div>
+
             <div class="layout-config-menu">
-                <button v-if="showSmsCredits && canOpenSmsSettings" type="button" class="sms-credits-widget sms-credits-widget--clickable" :class="{ 'sms-credits-widget--warn': !smsOverviewSuccess && !smsCreditsLoading }" @click="openSmsSettings">
+                <button
+                    v-if="showSmsCredits && canOpenSmsSettings"
+                    type="button"
+                    class="sms-credits-widget sms-credits-widget--clickable"
+                    :class="{ 'sms-credits-widget--warn': !smsOverviewSuccess && !smsCreditsLoading }"
+                    :title="smsCreditsTooltip"
+                    :aria-label="smsCreditsTooltip"
+                    @click="openSmsSettings"
+                >
                     <div class="sms-credits-widget__icon" aria-hidden="true">
                         <i class="pi pi-comment"></i>
                     </div>
                     <div class="sms-credits-widget__content">
                         <span class="sms-credits-widget__provider">{{ smsProviderLabel }}</span>
                         <div class="sms-credits-widget__metrics">
-                            <div class="sms-credits-widget__metric">
+                            <div class="sms-credits-widget__metric sms-credits-widget__metric--units">
                                 <span class="sms-credits-widget__metric-label">Restants</span>
                                 <span class="sms-credits-widget__metric-value">{{ smsDisplayUnits }}</span>
                             </div>
-                            <div class="sms-credits-widget__metric">
+                            <div class="sms-credits-widget__metric sms-credits-widget__metric--expiration">
                                 <span class="sms-credits-widget__metric-label">Expiration</span>
                                 <span class="sms-credits-widget__metric-value sms-credits-widget__metric-value--date">{{ smsDisplayExpiration }}</span>
                             </div>
                         </div>
                     </div>
                 </button>
-                <div v-else-if="showSmsCredits" class="sms-credits-widget" :class="{ 'sms-credits-widget--warn': !smsOverviewSuccess && !smsCreditsLoading }" role="status" aria-live="polite">
+                <div
+                    v-else-if="showSmsCredits"
+                    class="sms-credits-widget"
+                    :class="{ 'sms-credits-widget--warn': !smsOverviewSuccess && !smsCreditsLoading }"
+                    role="status"
+                    aria-live="polite"
+                    :title="smsCreditsTooltip"
+                    :aria-label="smsCreditsTooltip"
+                >
                     <div class="sms-credits-widget__icon" aria-hidden="true">
                         <i class="pi pi-comment"></i>
                     </div>
                     <div class="sms-credits-widget__content">
                         <span class="sms-credits-widget__provider">{{ smsProviderLabel }}</span>
                         <div class="sms-credits-widget__metrics">
-                            <div class="sms-credits-widget__metric">
+                            <div class="sms-credits-widget__metric sms-credits-widget__metric--units">
                                 <span class="sms-credits-widget__metric-label">Restants</span>
                                 <span class="sms-credits-widget__metric-value">{{ smsDisplayUnits }}</span>
                             </div>
-                            <div class="sms-credits-widget__metric">
+                            <div class="sms-credits-widget__metric sms-credits-widget__metric--expiration">
                                 <span class="sms-credits-widget__metric-label">Expiration</span>
                                 <span class="sms-credits-widget__metric-value sms-credits-widget__metric-value--date">{{ smsDisplayExpiration }}</span>
                             </div>
                         </div>
                     </div>
                 </div>
-                <button type="button" class="layout-topbar-action" @click="toggleDarkMode">
+
+                <button
+                    type="button"
+                    class="layout-topbar-action layout-topbar-action-desktop-only"
+                    :title="isDarkTheme ? 'Mode clair' : 'Mode sombre'"
+                    :aria-label="isDarkTheme ? 'Passer en mode clair' : 'Passer en mode sombre'"
+                    @click="toggleDarkMode"
+                >
                     <i :class="['pi', { 'pi-moon': isDarkTheme, 'pi-sun': !isDarkTheme }]"></i>
                 </button>
-                <button type="button" class="layout-topbar-action" :class="{ 'layout-topbar-action-disabled': !isGuidedTourAvailable }" @click="toggleHelpPopover($event)" ref="helpButton" :aria-disabled="!isGuidedTourAvailable" title="Aide guidee">
+                <button
+                    type="button"
+                    class="layout-topbar-action layout-topbar-action-desktop-only"
+                    :class="{ 'layout-topbar-action-disabled': !isGuidedTourAvailable }"
+                    ref="helpButton"
+                    :aria-disabled="!isGuidedTourAvailable"
+                    title="Aide guidée"
+                    aria-label="Aide guidée"
+                    @click="toggleHelpPopover($event)"
+                >
                     <i class="pi pi-question-circle"></i>
                 </button>
                 <Popover
@@ -243,22 +305,22 @@ function handleStartGuidedTourTask(taskId, variantId = null) {
                     :dismissable="true"
                     :target="helpButton"
                     position="bottom"
-                    class="w-[22rem] max-w-[90vw] bg-surface-0 dark:bg-surface-900 shadow-xl rounded-2xl border border-surface-200/70 dark:border-surface-700/70 p-0 overflow-hidden"
+                    class="w-[22rem] max-w-[90vw] bg-surface-0 dark:bg-surface-900 shadow-md rounded-lg border border-surface-200 dark:border-surface-700 p-0 overflow-hidden"
                     style="z-index: 1000"
                 >
-                    <div class="px-4 py-3 border-b border-surface-200/70 dark:border-surface-700/70 bg-surface-50/80 dark:bg-surface-800/80">
+                    <div class="px-4 py-3 border-b border-surface-200 dark:border-surface-700">
                         <div class="flex items-center gap-2">
                             <i class="pi pi-question-circle text-primary-500"></i>
-                            <span class="font-semibold text-surface-900 dark:text-surface-50">Aide guidee</span>
+                            <span class="font-semibold text-surface-900 dark:text-surface-50">Aide guidée</span>
                         </div>
-                        <p class="text-xs text-surface-500 dark:text-surface-400 mt-1">Choisissez une action a decouvrir sur cette page.</p>
+                        <p class="text-xs text-surface-500 dark:text-surface-400 mt-1">Choisissez une action à découvrir sur cette page.</p>
                     </div>
                     <div class="p-2 space-y-1 max-h-[24rem] overflow-y-auto">
                         <button
                             v-for="item in guidedTourMenuItems"
                             :key="`${item.taskId}:${item.variantId || 'default'}`"
                             type="button"
-                            class="w-full text-left p-3 rounded-xl border border-transparent hover:border-surface-200 dark:hover:border-surface-700 hover:bg-surface-50 dark:hover:bg-surface-800 transition-colors"
+                            class="w-full text-left p-3 rounded-md border border-transparent hover:bg-surface-50 dark:hover:bg-surface-800 transition-colors"
                             @click="handleStartGuidedTourTask(item.taskId, item.variantId)"
                         >
                             <div class="flex items-start gap-3">
@@ -275,41 +337,48 @@ function handleStartGuidedTourTask(taskId, variantId = null) {
                         </button>
                     </div>
                 </Popover>
-                <!-- <div class="relative">
-                     <button
-                        v-styleclass="{ selector: '@next', enterFromClass: 'hidden', enterActiveClass: 'animate-scalein', leaveToClass: 'hidden', leaveActiveClass: 'animate-fadeout', hideOnOutsideClick: true }"
-                        type="button"
-                        class="layout-topbar-action layout-topbar-action-highlight"
-                    >
-                        <i class="pi pi-palette"></i>
-                    </button> -->
-                <!-- <AppConfigurator />
-                </div> -->
                 <NotificationBell variant="topbar" popover-position="bottom" />
             </div>
+
             <button
+                type="button"
                 class="layout-topbar-menu-button layout-topbar-action"
+                aria-label="Plus d'actions"
                 v-styleclass="{ selector: '@next', enterFromClass: 'hidden', enterActiveClass: 'animate-scalein', leaveToClass: 'hidden', leaveActiveClass: 'animate-fadeout', hideOnOutsideClick: true }"
             >
                 <i class="pi pi-ellipsis-v"></i>
             </button>
+
             <div class="layout-topbar-menu hidden lg:block">
-                <div class="layout-topbar-menu-content flex items-center gap-4">
-                    <!-- ======= CALENDRIER + DATE/HEURE ======= -->
-                    <!-- <div class="relative flex items-center gap-2 layout-topbar-action">
-                        <i class="pi pi-calendar"></i>
-                        <div class="flex flex-col leading-tight text-base">
-                            <span>{{ currentTime }}</span>
-                            <span class="text-sm opacity-80">{{ currentDate }}</span>
-                        </div>
-                    </div> -->
-                    <!-- ======= NOTIFICATIONS avec POPOVER ======= -->
-                    <div class="relative"></div>
-                    <!-- ======= PROFIL avec POPOVER ======= -->
+                <div class="layout-topbar-menu-content">
+                    <button
+                        type="button"
+                        class="layout-topbar-action layout-topbar-action-mobile-only"
+                        :aria-label="isDarkTheme ? 'Passer en mode clair' : 'Passer en mode sombre'"
+                        @click="toggleDarkMode"
+                    >
+                        <i :class="['pi', { 'pi-moon': isDarkTheme, 'pi-sun': !isDarkTheme }]"></i>
+                        <span>{{ isDarkTheme ? 'Mode clair' : 'Mode sombre' }}</span>
+                    </button>
+                    <button
+                        type="button"
+                        class="layout-topbar-action layout-topbar-action-mobile-only"
+                        :class="{ 'layout-topbar-action-disabled': !isGuidedTourAvailable }"
+                        :aria-disabled="!isGuidedTourAvailable"
+                        aria-label="Aide guidée"
+                        @click="toggleHelpPopover($event)"
+                    >
+                        <i class="pi pi-question-circle"></i>
+                        <span>Aide guidée</span>
+                    </button>
                     <div class="relative">
-                        <button type="button" class="layout-topbar-action flex items-center gap-1" @click="toggleProfilePopover" ref="profileButton">
-                            <i class="pi pi-user"></i>
-                            <span>Profil</span>
+                        <button type="button" class="layout-topbar-profile" ref="profileButton" aria-label="Menu profil" @click="toggleProfilePopover">
+                            <span class="layout-topbar-profile-avatar" aria-hidden="true">{{ profileInitials }}</span>
+                            <span class="layout-topbar-profile-meta">
+                                <span class="layout-topbar-profile-name">{{ profileDisplayName }}</span>
+                                <span class="layout-topbar-profile-role">{{ profileRoleLabel }}</span>
+                            </span>
+                            <i class="pi pi-chevron-down layout-topbar-profile-caret" aria-hidden="true"></i>
                         </button>
                         <Popover
                             ref="profilePopover"
@@ -318,21 +387,25 @@ function handleStartGuidedTourTask(taskId, variantId = null) {
                             :dismissable="true"
                             :target="profileButton"
                             position="bottom"
-                            class="w-64 bg-white dark:bg-gray-800 shadow-lg rounded-lg p-4"
+                            class="w-72 max-w-[90vw] bg-surface-0 dark:bg-surface-900 shadow-md rounded-lg border border-surface-200 dark:border-surface-700 p-0 overflow-hidden"
                             style="z-index: 1000"
                         >
-                            <div class="flex items-center gap-3 border-b pb-3 mb-3">
-                                <img src="https://cdn-icons-png.flaticon.com/512/149/149071.png" alt="User Avatar" class="w-12 h-12 rounded-full border border-gray-300 dark:border-gray-600" />
-                                <div>
-                                    <p class="font-semibold text-lg text-gray-800 dark:text-gray-100">
-                                        {{ auth.user?.username || 'Utilisateur' }}
-                                    </p>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400 capitalize">
-                                        {{ auth.user?.role || 'Administrateur' }}
-                                    </p>
+                            <div class="px-4 py-3 border-b border-surface-200 dark:border-surface-700">
+                                <div class="flex items-center gap-3">
+                                    <span class="inline-flex h-10 w-10 items-center justify-center rounded-md bg-primary-500 text-sm font-bold text-white">
+                                        {{ profileInitials }}
+                                    </span>
+                                    <div class="min-w-0">
+                                        <p class="font-semibold text-surface-900 dark:text-surface-50 truncate">
+                                            {{ profileDisplayName }}
+                                        </p>
+                                        <p class="text-xs text-surface-500 dark:text-surface-400 capitalize truncate">
+                                            {{ profileRoleLabel }}
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="mt-4 space-y-2">
+                            <div class="p-3 space-y-2">
                                 <Button class="p-button-secondary p-button-sm w-full" label="Mon profil" icon="pi pi-user" iconPos="left" @click="openProfile" />
                                 <Button :loading="isLoggingOut" class="p-button-danger p-button-sm w-full" label="Déconnexion" icon="pi pi-sign-out" iconPos="left" @click="handleLogout" />
                             </div>
@@ -345,60 +418,14 @@ function handleStartGuidedTourTask(taskId, variantId = null) {
 </template>
 
 <style scoped>
-/* .layout-topbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    height: 60px;
-    padding: 0 1rem;
-    background-color: var(--primary-color);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.18);
-} */
-
-.layout-topbar-logo span {
-    text-wrap-mode: nowrap;
-}
-
 .local-mode-tag {
     flex-shrink: 0;
-    margin-left: 0.5rem;
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     font-weight: 600;
-}
-
-.layout-topbar-action {
-    display: flex;
-    align-items: center;
-    gap: 0.3rem;
-    cursor: pointer;
-    color: #fff;
-    padding: 0.5rem;
-    border-radius: 4px;
-    transition: background-color 0.2s;
-}
-
-.layout-topbar-action:hover {
-    color: #fff;
-    background-color: rgba(255, 255, 255, 0.12);
 }
 
 .layout-topbar-action-disabled {
     opacity: 0.55;
-}
-
-.notification-badge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 20px;
-    height: 20px;
-    padding: 0 6px;
-    border-radius: 999px;
-    background: #ef4444;
-    color: #fff;
-    font-size: 0.75rem;
-    font-weight: 600;
-    line-height: 1;
 }
 
 :deep(.p-button.p-button-danger) {
@@ -414,16 +441,13 @@ function handleStartGuidedTourTask(taskId, variantId = null) {
 .sms-credits-widget {
     display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
-    padding: 0.3rem 0.65rem 0.3rem 0.45rem;
-    max-height: 2.65rem;
-    border-radius: 0.625rem;
-    background: rgba(255, 255, 255, 0.94);
-    border: 1px solid rgba(255, 255, 255, 0.55);
-    box-shadow:
-        0 1px 2px rgba(15, 23, 42, 0.08),
-        inset 0 1px 0 rgba(255, 255, 255, 0.85);
-    color: #334155;
+    gap: 0.4rem;
+    padding: 0.25rem 0.5rem;
+    max-height: 2.25rem;
+    border-radius: 0.375rem;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    color: #fff;
     text-align: left;
     flex-shrink: 0;
 }
@@ -432,38 +456,30 @@ function handleStartGuidedTourTask(taskId, variantId = null) {
     cursor: pointer;
     font: inherit;
     appearance: none;
-    transition:
-        box-shadow 0.15s ease,
-        transform 0.15s ease;
+    transition: background-color 0.15s ease;
 }
 
 .sms-credits-widget--clickable:hover {
-    box-shadow:
-        0 2px 8px rgba(15, 23, 42, 0.12),
-        inset 0 1px 0 rgba(255, 255, 255, 0.85);
-    transform: translateY(-1px);
-}
-
-.sms-credits-widget--clickable:active {
-    transform: translateY(0);
+    background: rgba(255, 255, 255, 0.18);
 }
 
 .sms-credits-widget--warn {
-    border-color: rgba(251, 191, 36, 0.65);
-    background: rgba(255, 251, 235, 0.96);
+    border-color: rgba(251, 191, 36, 0.55);
+    background: rgba(251, 191, 36, 0.18);
 }
 
 .sms-credits-widget__icon {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 1.75rem;
-    height: 1.75rem;
-    border-radius: 0.45rem;
-    background: color-mix(in srgb, var(--primary-color, #3b82f6) 14%, white);
-    color: var(--primary-color, #3b82f6);
-    font-size: 0.85rem;
+    width: 1.35rem;
+    height: 1.35rem;
+    border-radius: 0.25rem;
+    background: transparent;
+    color: #fff;
+    font-size: 0.8rem;
     flex-shrink: 0;
+    opacity: 0.9;
 }
 
 .sms-credits-widget__content {
@@ -477,51 +493,85 @@ function handleStartGuidedTourTask(taskId, variantId = null) {
 .sms-credits-widget__provider {
     font-size: 0.625rem;
     font-weight: 600;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.03em;
     text-transform: uppercase;
-    color: #64748b;
+    opacity: 0.75;
 }
 
 .sms-credits-widget__metrics {
     display: flex;
     align-items: baseline;
-    gap: 0.65rem;
+    gap: 0.55rem;
 }
 
 .sms-credits-widget__metric {
     display: inline-flex;
     align-items: baseline;
-    gap: 0.25rem;
+    gap: 0.2rem;
     white-space: nowrap;
 }
 
 .sms-credits-widget__metric-label {
     font-size: 0.6875rem;
-    color: #64748b;
+    opacity: 0.75;
 }
 
 .sms-credits-widget__metric-value {
     font-size: 0.8125rem;
-    font-weight: 700;
-    color: #0f172a;
+    font-weight: 600;
     font-variant-numeric: tabular-nums;
 }
 
 .sms-credits-widget__metric-value--date {
     font-size: 0.75rem;
-    font-weight: 600;
+    font-weight: 500;
 }
 
-.notification-btn {
+@media (max-width: 991.98px) {
+    .sms-credits-widget {
+        gap: 0.25rem;
+        padding: 0.2rem 0.4rem;
+    }
+
+    .sms-credits-widget__provider,
+    .sms-credits-widget__metric--expiration,
+    .sms-credits-widget__metric-label {
+        display: none;
+    }
+
+    .sms-credits-widget__metrics {
+        gap: 0;
+    }
+}
+
+@media (max-width: 520px) {
+    .sms-credits-widget {
+        padding: 0.15rem 0.3rem;
+        gap: 0.15rem;
+    }
+
+    .sms-credits-widget__icon {
+        width: 1.2rem;
+        height: 1.2rem;
+        font-size: 0.7rem;
+    }
+
+    .local-mode-tag {
+        display: none;
+    }
+}
+
+:deep(.notification-btn) {
     display: inline-flex;
     justify-content: center;
     align-items: center;
-    width: 2.5rem;
-    height: 2.5rem;
-    border-radius: 50%;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 0.375rem;
     color: #fff;
     background: transparent;
-    transition: background-color 0.2s ease;
+    border: none;
+    transition: background-color 0.15s ease;
     cursor: pointer;
     position: relative;
 
@@ -531,33 +581,15 @@ function handleStartGuidedTourTask(taskId, variantId = null) {
 
     &:focus-visible {
         outline: none;
-        box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.3);
+        box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.35);
     }
 
     .pi-bell {
-        font-size: 1.3rem;
+        font-size: 1.05rem;
     }
 
-    &.has-unread {
-        animation: ring 2s ease-in-out infinite;
-
-        .pi-bell {
-            color: #fef2f2;
-        }
-    }
-}
-
-@keyframes ring {
-    0% {
-        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.55);
-    }
-
-    70% {
-        box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
-    }
-
-    100% {
-        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+    &.has-unread .pi-bell {
+        color: #fee2e2;
     }
 }
 </style>

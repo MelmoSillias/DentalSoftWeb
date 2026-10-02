@@ -1,6 +1,6 @@
 <script setup>
 import Button from 'primevue/button';
-import Dialog from 'primevue/dialog';
+import AppDialog from '@/components/layout/AppDialog.vue';
 import Tag from 'primevue/tag';
 import ProfileInfoForm from './ProfileInfoForm.vue';
 import ProfilePasswordForm from './ProfilePasswordForm.vue';
@@ -118,7 +118,14 @@ const infoFields = computed(() => {
         </div>
     </div>
 
-    <Dialog v-model:visible="editVisible" header="Modifier les informations" modal class="w-full max-w-3xl">
+    <AppDialog
+        v-model:visible="editVisible"
+        title="Modifier les informations"
+        icon="pi pi-user-edit"
+        icon-tone="primary"
+        size="xl"
+        :show-footer="false"
+    >
         <ProfileInfoForm
             :user="user"
             :employee="employee"
@@ -128,9 +135,16 @@ const infoFields = computed(() => {
                 editVisible = false;
             "
         />
-    </Dialog>
+    </AppDialog>
 
-    <Dialog v-model:visible="passwordVisible" header="Changer le mot de passe" modal class="w-full max-w-xl">
+    <AppDialog
+        v-model:visible="passwordVisible"
+        title="Changer le mot de passe"
+        icon="pi pi-lock"
+        icon-tone="warning"
+        size="md"
+        :show-footer="false"
+    >
         <ProfilePasswordForm
             :loading="loading"
             @save="
@@ -138,5 +152,5 @@ const infoFields = computed(() => {
                 passwordVisible = false;
             "
         />
-    </Dialog>
+    </AppDialog>
 </template>

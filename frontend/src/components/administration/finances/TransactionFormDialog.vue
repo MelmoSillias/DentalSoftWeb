@@ -1,10 +1,8 @@
 <script setup>
 import { computed, reactive, watch } from 'vue';
-import Button from 'primevue/button';
+import AppDialog from '@/components/layout/AppDialog.vue';
 import DatePicker from 'primevue/datepicker';
-import Dialog from 'primevue/dialog';
 import InputNumber from 'primevue/inputnumber';
-import InputText from 'primevue/inputtext';
 import Select from 'primevue/select';
 import Textarea from 'primevue/textarea';
 
@@ -128,7 +126,20 @@ const submitForm = (event) => {
 </script>
 
 <template>
-    <Dialog :visible="visible" modal :style="{ width: '640px' }" :header="mode === 'edit' ? 'Modifier une transaction' : 'Nouvelle transaction'" @update:visible="close">
+    <AppDialog
+        :visible="visible"
+        :title="mode === 'edit' ? 'Modifier une transaction' : 'Nouvelle transaction'"
+        icon="pi pi-money-bill"
+        :icon-tone="mode === 'edit' ? 'warning' : 'success'"
+        size="lg"
+        :loading="loading"
+        cancel-label="Annuler"
+        :confirm-label="mode === 'edit' ? 'Mettre a jour' : 'Enregistrer'"
+        confirm-icon="pi pi-check"
+        @update:visible="close"
+        @cancel="close"
+        @confirm="submitForm"
+    >
         <div class="grid gap-4">
             <div class="grid md:grid-cols-2 gap-3">
                 <div class="flex flex-col gap-2">
@@ -161,10 +172,5 @@ const submitForm = (event) => {
                 <Textarea v-model="form.description" rows="3" autoResize class="w-full" placeholder="Précision complémentaire facultative" />
             </div>
         </div>
-
-        <template #footer>
-            <Button label="Annuler" text @click="close" />
-            <Button :label="mode === 'edit' ? 'Mettre a jour' : 'Enregistrer'" icon="pi pi-check" :loading="loading" @click="submitForm" />
-        </template>
-    </Dialog>
+    </AppDialog>
 </template>

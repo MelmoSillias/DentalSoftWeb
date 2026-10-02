@@ -3,13 +3,14 @@ import Button from 'primevue/button';
 import Column from 'primevue/column';
 import DataTable from 'primevue/datatable';
 import DataView from 'primevue/dataview';
-import Dialog from 'primevue/dialog';
+import AppDialog from '@/components/layout/AppDialog.vue';
 import InputText from 'primevue/inputtext';
 import Select from 'primevue/select';
 import SelectButton from 'primevue/selectbutton';
 import Tag from 'primevue/tag';
 import { computed, ref } from 'vue';
 import PanelDatePicker from '@/components/common/PanelDatePicker.vue';
+import PageSection from '@/components/layout/PageSection.vue';
 import { useInternetFeatures } from '@/composables/useInternetFeatures';
 import { canModifyFacture, canPreviewFacture, canSettleFacture, computeFactureStatus, computePriorReliquat, isCabinetServiceFacture, isInsuranceFactureRow, isValidatedEmptyFacture, targetIsFreeFacture } from '@/utils/factureRow';
 
@@ -379,24 +380,33 @@ const printDetailPayment = (row) => {
 
 <template>
     <div class="flex flex-col gap-5">
-        <!-- Barre supérieure avec SelectButton et bouton Stats -->
-        <div class="top-bar">
-            <div class="display-mode-selector">
-                <span class="label">Mode d'affichage</span>
-                <SelectButton v-model="overviewDisplayMode" :options="overviewDisplayOptions" optionLabel="label" optionValue="value" />
-            </div>
-            <div class="top-bar-actions">
-                <div class="top-bar-metric">
-                    <span class="top-bar-metric__label">Encaissements du jour</span>
-                    <strong class="top-bar-metric__value">{{ totalRevenueLabel }}</strong>
-                    <span v-if="servicesCabinetStats.encaisse > 0" class="top-bar-metric__hint"> Services cabinet encaissés : {{ formatFcfa(servicesCabinetStats.encaisse) }} </span>
+        <PageSection padded tour-id="caisse-overview.toolbar">
+            <div class="top-bar">
+                <div class="display-mode-selector">
+                    <span class="label">Mode d'affichage</span>
+                    <SelectButton v-model="overviewDisplayMode" :options="overviewDisplayOptions" optionLabel="label" optionValue="value" />
                 </div>
-                <Button label="Statistiques" icon="pi pi-chart-bar" severity="secondary" outlined @click="showStatsModal = true" />
+                <div class="top-bar-actions">
+                    <div class="top-bar-metric">
+                        <span class="top-bar-metric__label">Encaissements du jour</span>
+                        <strong class="top-bar-metric__value">{{ totalRevenueLabel }}</strong>
+                        <span v-if="servicesCabinetStats.encaisse > 0" class="top-bar-metric__hint"> Services cabinet encaissés : {{ formatFcfa(servicesCabinetStats.encaisse) }} </span>
+                    </div>
+                    <Button label="Statistiques" icon="pi pi-chart-bar" severity="secondary" outlined @click="showStatsModal = true" />
+                </div>
             </div>
-        </div>
+        </PageSection>
 
         <!-- Modal statistiques détaillées -->
-        <Dialog v-model:visible="showStatsModal" header="Statistiques détaillées" :modal="true" :style="{ width: '600px' }" class="stats-dialog">
+        <AppDialog
+            v-model:visible="showStatsModal"
+            title="Statistiques détaillées"
+            icon="pi pi-chart-bar"
+            icon-tone="primary"
+            size="md"
+            :show-footer="false"
+            class="stats-dialog"
+        >
             <div class="stats-dashboard">
                 <!-- KPI principaux -->
                 <div class="stats-kpis">
@@ -458,39 +468,37 @@ const printDetailPayment = (row) => {
                     <div v-else class="rounded-xl border border-dashed border-surface-300 px-4 py-5 text-sm text-surface-500 dark:border-surface-600 dark:text-surface-400">Aucun paiement enregistré sur la période.</div>
                 </div>
             </div>
-        </Dialog>
+        </AppDialog>
 
         <!-- Section factures -->
-        <div class="section-card" data-tour="caisse-overview.factures">
-            <!-- En-tête simplifié en mode regroupé -->
-            <div class="section-header" :class="{ 'simplified-header': overviewDisplayMode === 'grouped' }">
-                <div>
-                    <p class="section-eyebrow">Factures</p>
-                    <p class="section-title">
-                        {{ overviewDisplayMode === 'grouped' ? 'Vue détaillée avec paiements associés' : 'Filtrez, réglez ou modifiez une facture' }}
-                    </p>
-                </div>
+        <PageSection
+            title="Factures"
+            :subtitle="overviewDisplayMode === 'grouped' ? 'Vue détaillée avec paiements associés' : 'Filtrez, réglez ou modifiez une facture'"
+            tour-id="caisse-overview.factures"
+        >
+            <template #headerActions>
                 <div class="filters" :class="{ 'simplified-filters': overviewDisplayMode === 'grouped' }">
                     <div class="filter-item">
                         <label>Recherche</label>
-                        <InputText v-model="factureSearch" placeholder="Patient, téléphone, montant..." fluid />
+                        <InputText v-model="factureSearch" placeholder="Recherche..." fluid />
                     </div>
                     <div class="filter-item">
                         <label>Origine</label>
-                        <Select v-model="factureOrigin" :options="factureOriginOptions" optionLabel="label" optionValue="value" />
+                        <Select v-model="factureOrigin" :options="factureOriginOptions" optionLabel="label" optionValue="value" placeholder="Origine" fluid />
                     </div>
                     <div class="filter-item">
                         <label>Affichage</label>
-                        <Select v-model="factureTypeModel" :options="factureTypeOptions" optionLabel="label" optionValue="value" />
+                        <Select v-model="factureTypeModel" :options="factureTypeOptions" optionLabel="label" optionValue="value" placeholder="Affichage" fluid />
                     </div>
                     <div class="filter-item">
                         <label>Période</label>
-                        <PanelDatePicker v-model="factureRangeModel" dateFormat="yy-mm-dd" showIcon fluid :disabled="periodFilterDisabled" />
+                        <PanelDatePicker v-model="factureRangeModel" dateFormat="yy-mm-dd" showIcon fluid placeholder="Période" :disabled="periodFilterDisabled" />
                     </div>
-                    <Button label="Rafraîchir" icon="pi pi-refresh" text @click="emit('refresh-factures')" />
+                    <Button icon="pi pi-refresh" text aria-label="Rafraîchir" v-tooltip.top="'Rafraîchir'" class="!px-2" @click="emit('refresh-factures')" />
                 </div>
-            </div>
+            </template>
 
+            <div class="page-table-scroll">
             <!-- Vue standard -->
             <DataTable v-if="overviewDisplayMode === 'standard'" class="rounded-xl overflow-hidden" :value="filteredFactures" dataKey="rowKey" :loading="facturesLoading" paginator :rows="10" :rowsPerPageOptions="[5, 10, 20]" responsiveLayout="scroll">
                 <Column field="date" header="Date" sortable>
@@ -684,29 +692,32 @@ const printDetailPayment = (row) => {
                     </div>
                 </template>
             </DataView>
-        </div>
+            </div>
+        </PageSection>
 
         <!-- Section paiements - masquée en mode regroupé -->
-        <div v-if="overviewDisplayMode !== 'grouped'" class="section-card" data-tour="caisse-overview.payments">
-            <div class="section-header">
-                <div>
-                    <p class="section-eyebrow text-success">Paiements enregistrés</p>
-                    <p class="section-title">Consultez les encaissements et imprimez un récapitulatif.</p>
-                </div>
+        <PageSection
+            v-if="overviewDisplayMode !== 'grouped'"
+            title="Paiements enregistrés"
+            subtitle="Consultez les encaissements et imprimez un récapitulatif."
+            tour-id="caisse-overview.payments"
+        >
+            <template #headerActions>
                 <div class="filters">
                     <div class="filter-item">
                         <label>Recherche</label>
-                        <InputText v-model="paymentsSearch" placeholder="Tapez quelque chose..." fluid />
+                        <InputText v-model="paymentsSearch" placeholder="Recherche..." fluid />
                     </div>
                     <div class="filter-item">
                         <label>Période</label>
-                        <PanelDatePicker v-model="paymentRangeModel" dateFormat="yy-mm-dd" showIcon fluid />
+                        <PanelDatePicker v-model="paymentRangeModel" dateFormat="yy-mm-dd" showIcon fluid placeholder="Période" />
                     </div>
-                    <Button label="Imprimer la période" icon="pi pi-print" severity="primary" @click="emit('print-payments')" />
-                    <Button label="Rafraîchir" icon="pi pi-refresh" text @click="emit('refresh-payments')" />
+                    <Button icon="pi pi-print" severity="primary" aria-label="Imprimer la période" v-tooltip.top="'Imprimer la période'" class="!px-2" @click="emit('print-payments')" />
+                    <Button icon="pi pi-refresh" text aria-label="Rafraîchir" v-tooltip.top="'Rafraîchir'" class="!px-2" @click="emit('refresh-payments')" />
                 </div>
-            </div>
+            </template>
 
+            <div class="page-table-scroll">
             <DataTable class="rounded-xl overflow-hidden" :value="filteredPayments" dataKey="pId" :loading="paymentsLoading" paginator :rows="10" :rowsPerPageOptions="[5, 10, 20]" responsiveLayout="scroll">
                 <Column field="date" header="Date" sortable>
                     <template #body="{ data }">{{ formatDate(data.date, true) }}</template>
@@ -741,7 +752,8 @@ const printDetailPayment = (row) => {
                     </div>
                 </template>
             </DataTable>
-        </div>
+            </div>
+        </PageSection>
     </div>
 </template>
 
@@ -752,10 +764,7 @@ const printDetailPayment = (row) => {
     justify-content: space-between;
     align-items: center;
     gap: 1rem;
-    background: var(--surface-card);
-    padding: 0.75rem 1rem;
-    border-radius: 14px;
-    border: 1px solid var(--surface-border);
+    flex-wrap: wrap;
 }
 
 .display-mode-selector {
@@ -825,63 +834,8 @@ const printDetailPayment = (row) => {
     color: var(--text-color);
 }
 
-/* Section cards */
-.section-card {
-    background: var(--surface-card);
-    border-radius: 14px;
-    border: 1px solid var(--surface-border);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
-    overflow: hidden;
-}
-
-.section-header {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1rem;
-    justify-content: space-between;
-    align-items: flex-start;
-    padding: 1rem 1rem 0.95rem;
-    background: linear-gradient(135deg, rgba(226, 232, 240, 0.9), rgba(203, 213, 225, 0.72));
-    border-bottom: 1px solid var(--surface-border);
-}
-
-.simplified-header {
-    background: linear-gradient(135deg, rgba(220, 240, 220, 0.85), rgba(200, 220, 200, 0.7));
-}
-
-.section-eyebrow {
-    font-size: 0.85rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: #64748b;
-}
-
-.section-title {
-    color: #020617;
-    font-weight: 600;
-}
-
-.filters {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.75rem;
-    align-items: flex-end;
-}
-
 .simplified-filters {
     opacity: 0.9;
-}
-
-.filter-item {
-    min-width: 200px;
-    display: flex;
-    flex-direction: column;
-    gap: 0.35rem;
-}
-
-.filter-item label {
-    font-size: 0.85rem;
-    color: #475569;
 }
 
 /* Mode regroupé */
@@ -1223,22 +1177,6 @@ const printDetailPayment = (row) => {
 }
 
 /* Dark mode */
-.app-dark .section-header {
-    background: linear-gradient(135deg, rgba(30, 41, 59, 0.96), rgba(15, 23, 42, 0.88));
-}
-
-.app-dark .section-eyebrow {
-    color: #9ca3af;
-}
-
-.app-dark .section-title {
-    color: #e2e8f0;
-}
-
-.app-dark .filter-item label {
-    color: #94a3b8;
-}
-
 .app-dark .invoice-number {
     color: #e2e8f0;
 }

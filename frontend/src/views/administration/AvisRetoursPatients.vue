@@ -1,6 +1,8 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue';
-import Breadcrumb from 'primevue/breadcrumb';
+import PageShell from '@/components/layout/PageShell.vue';
+import PageHeader from '@/components/layout/PageHeader.vue';
+import PageSection from '@/components/layout/PageSection.vue';
 import InputText from 'primevue/inputtext';
 import Select from 'primevue/select';
 import Tag from 'primevue/tag';
@@ -9,9 +11,7 @@ import Message from 'primevue/message';
 import Button from 'primevue/button';
 import IconField from 'primevue/iconfield';
 import InputIcon from 'primevue/inputicon';
-import Card from 'primevue/card';
 import Badge from 'primevue/badge';
-import Toast from 'primevue/toast';
 import ConfirmPopup from 'primevue/confirmpopup';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
@@ -44,7 +44,7 @@ const modeOptions = [
     { label: 'Non publiés', value: 'hidden' }
 ];
 
-const breadcrumbHome = { icon: 'pi pi-home', to: '/' };
+const breadcrumbHome = { icon: 'pi pi-home', to: '/dashboard' };
 const breadcrumbItems = [{ label: 'Administration' }, { label: 'Avis & retours patients' }];
 
 const filteredItems = computed(() => {
@@ -214,77 +214,58 @@ onMounted(load);
 </script>
 
 <template>
-    <Toast />
-    <ConfirmPopup />
-    <div class="space-y-6 p-4 md:p-6">
-        <!-- En-tête avec fil d'Ariane -->
-        <Card class="shadow-sm">
-            <template #content>
-                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-                    <h2 class="text-2xl font-semibold m-0 flex items-center gap-2">
-                        <i class="pi pi-star-fill text-primary"></i>
-                        Avis & retours patients
-                    </h2>
-                    <Button icon="pi pi-refresh" label="Actualiser" severity="secondary" outlined rounded @click="load" :loading="loading" />
+    <PageShell>
+        <ConfirmPopup />
+
+        <template #header>
+            <PageHeader
+                title="Avis & retours patients"
+                subtitle="Modérez et publiez les retours patients."
+                icon="pi pi-star-fill"
+                tour-id="admin-avis-retours.header"
+                :breadcrumb-items="breadcrumbItems"
+                :breadcrumb-home="breadcrumbHome"
+            >
+                <template #actions>
+                    <Button icon="pi pi-refresh" label="Actualiser" severity="secondary" outlined size="small" :loading="loading" @click="load" />
+                </template>
+            </PageHeader>
+        </template>
+
+        <template #toolbar>
+            <div class="page-kpi-grid">
+                <div class="page-kpi-card">
+                    <div>
+                        <p class="page-kpi-label">Total avis</p>
+                        <p class="page-kpi-value">{{ stats.total }}</p>
+                    </div>
+                    <i class="pi pi-chart-line page-kpi-icon text-primary opacity-80"></i>
                 </div>
-                <Breadcrumb :home="breadcrumbHome" :model="breadcrumbItems" class="bg-transparent p-0" />
-            </template>
-        </Card>
-
-        <!-- Cartes statistiques -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card class="stat-card">
-                <template #content>
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-surface-500 dark:text-surface-400 text-sm m-0">Total avis</p>
-                            <p class="text-3xl font-bold m-0 mt-1">{{ stats.total }}</p>
-                        </div>
-                        <i class="pi pi-chart-line text-3xl text-primary opacity-80"></i>
+                <div class="page-kpi-card">
+                    <div>
+                        <p class="page-kpi-label">Avis anonymes</p>
+                        <p class="page-kpi-value">{{ stats.anonymous }}</p>
                     </div>
-                </template>
-            </Card>
-
-            <Card class="stat-card">
-                <template #content>
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-surface-500 dark:text-surface-400 text-sm m-0">Avis anonymes</p>
-                            <p class="text-3xl font-bold m-0 mt-1">{{ stats.anonymous }}</p>
-                        </div>
-                        <i class="pi pi-user-minus text-3xl text-info opacity-80"></i>
+                    <i class="pi pi-user-minus page-kpi-icon text-info opacity-80"></i>
+                </div>
+                <div class="page-kpi-card">
+                    <div>
+                        <p class="page-kpi-label">Avis publiés</p>
+                        <p class="page-kpi-value">{{ stats.published }}</p>
                     </div>
-                </template>
-            </Card>
-
-            <Card class="stat-card">
-                <template #content>
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-surface-500 dark:text-surface-400 text-sm m-0">Avis publiés</p>
-                            <p class="text-3xl font-bold m-0 mt-1">{{ stats.published }}</p>
-                        </div>
-                        <i class="pi pi-globe text-3xl text-success opacity-80"></i>
+                    <i class="pi pi-globe page-kpi-icon text-success opacity-80"></i>
+                </div>
+                <div class="page-kpi-card">
+                    <div>
+                        <p class="page-kpi-label">Note moyenne</p>
+                        <p class="page-kpi-value">{{ stats.averageRating.toFixed(2) }}/5</p>
                     </div>
-                </template>
-            </Card>
+                    <i class="pi pi-star-fill page-kpi-icon text-warning opacity-80"></i>
+                </div>
+            </div>
+        </template>
 
-            <Card class="stat-card">
-                <template #content>
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-surface-500 dark:text-surface-400 text-sm m-0">Note moyenne</p>
-                            <p class="text-3xl font-bold m-0 mt-1">{{ stats.averageRating.toFixed(2) }}/5</p>
-                        </div>
-                        <i class="pi pi-star-fill text-3xl text-warning opacity-80"></i>
-                    </div>
-                </template>
-            </Card>
-        </div>
-
-        <!-- Zone de filtres et liste -->
-        <Card class="shadow-sm">
-            <template #content>
+        <PageSection title="Liste des avis" subtitle="Filtrez et modérez les retours patients." padded>
                 <div class="flex flex-col md:flex-row gap-4 mb-6">
                     <!-- Recherche avec IconField PrimeVue V4 -->
                     <IconField class="flex-1" iconPosition="left">
@@ -361,17 +342,11 @@ onMounted(load);
                         </footer>
                     </article>
                 </div>
-            </template>
-        </Card>
-    </div>
+        </PageSection>
+    </PageShell>
 </template>
 
 <style scoped>
-/* Style personnalisé pour les cartes statistiques */
-.stat-card :deep(.p-card-content) {
-    padding: 1.25rem;
-}
-
 .stat-card {
     transition:
         transform 0.2s ease,

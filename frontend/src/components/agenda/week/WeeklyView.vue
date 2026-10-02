@@ -14,6 +14,7 @@ import Popover from 'primevue/popover';
 import DetailsRdv from './DetailsRdv.vue';
 import { addMinutes } from '@/utils/dateUtils';
 import { useRdvStatus } from '@/composables/useRdvStatus';
+import { getFullCalendarResponsiveOptions, useFullCalendarResponsive } from '@/composables/useFullCalendarResponsive';
 import { fetchPublicGeneralSettings } from '@/services/globalSettingsService';
 import { useAuthStore } from '@/stores/auth';
 import { useInternetFeatures } from '@/composables/useInternetFeatures';
@@ -257,9 +258,14 @@ const handleDatesSet = (info) => {
     loadEvents();
 };
 
+const initialResponsive = getFullCalendarResponsiveOptions('week', {
+    isMobile: typeof window !== 'undefined' && window.matchMedia('(max-width: 639.98px)').matches,
+    isNarrow: typeof window !== 'undefined' && window.matchMedia('(max-width: 399.98px)').matches
+});
+
 const calendarOptions = reactive({
     plugins: calendarPlugins,
-    initialView: 'timeGridWeek',
+    initialView: typeof window !== 'undefined' && window.matchMedia('(max-width: 399.98px)').matches ? 'timeGridDay' : 'timeGridWeek',
     locale: 'fr',
     slotMinTime: '08:00:00',
     slotMaxTime: '18:00:00',
@@ -269,22 +275,18 @@ const calendarOptions = reactive({
     hiddenDays: [0],
     allDaySlot: false,
     nowIndicator: true,
+    stickyHeaderDates: true,
     events: [],
     eventClick: handleEventClick,
     eventDidMount: handleEventMount,
     dateClick: handleDateClick,
     datesSet: handleDatesSet,
     height: props.embedded ? '100%' : 'auto',
-    headerToolbar: {
-        left: 'prev,next today',
-        center: 'title',
-        right: 'timeGridWeek,timeGridDay'
-    },
-    buttonText: {
-        today: "Aujourd'hui",
-        week: 'Semaine',
-        day: 'Jour'
-    }
+    ...initialResponsive
+});
+
+const { isNarrow } = useFullCalendarResponsive(calendarRef, 'week', (opts) => {
+    Object.assign(calendarOptions, opts);
 });
 
 const applyOpeningHours = async () => {
@@ -403,7 +405,12 @@ defineExpose({ reloadOnAction });
                                 <div class="event-header">
                                     <strong>{{ arg.event.extendedProps.patientName || 'Patient' }}</strong>
                                 </div>
-                                <div v-if="arg.event.extendedProps.smsReminder?.label" class="mt-1 truncate text-[10px] font-medium text-slate-500 dark:text-slate-300">SMS: {{ arg.event.extendedProps.smsReminder.label }}</div>
+                                <div
+                                    v-if="!isNarrow && arg.event.extendedProps.smsReminder?.label"
+                                    class="mt-1 truncate text-[10px] font-medium text-slate-500 dark:text-slate-300"
+                                >
+                                    SMS: {{ arg.event.extendedProps.smsReminder.label }}
+                                </div>
                             </div>
                         </div>
                     </template>
@@ -579,5 +586,161 @@ defineExpose({ reloadOnAction });
 .app-dark .weekly-view-page :deep(.fc-event .fc-event-main-frame) {
     background-color: #030d20 !important;
     color: #cbd5e1 !important;
+}
+
+/* ── Responsive FullCalendar (mobile → 360px) ── */
+.weekly-view-page :deep(.fc-toolbar) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 0.75rem;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.weekly-view-page :deep(.fc-toolbar-title) {
+    font-size: 1.05rem;
+    font-weight: 700;
+    line-height: 1.25;
+    text-align: center;
+}
+
+.weekly-view-page :deep(.fc-toolbar-chunk) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.weekly-view-page :deep(.fc .fc-button) {
+    font-size: 0.8rem;
+    padding: 0.35rem 0.55rem;
+    margin: 0;
+}
+
+.weekly-view-page :deep(.fc-col-header-cell-cushion) {
+    font-size: 0.8rem;
+    padding: 0.4rem 0.15rem;
+}
+
+.weekly-view-page :deep(.fc-timegrid-slot-label-cushion) {
+    font-size: 0.7rem;
+}
+
+.weekly-view-page :deep(.fc-event .event-header strong) {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.72rem;
+    line-height: 1.2;
+}
+
+@media (max-width: 639.98px) {
+    .weekly-view-page :deep(.fc-toolbar) {
+        flex-direction: column;
+        align-items: stretch;
+        margin-bottom: 0.75rem;
+        gap: 0.4rem;
+    }
+
+    .weekly-view-page :deep(.fc-toolbar-chunk) {
+        justify-content: center;
+        width: 100%;
+    }
+
+    .weekly-view-page :deep(.fc-toolbar-title) {
+        font-size: 0.95rem;
+        width: 100%;
+    }
+
+    .weekly-view-page :deep(.fc .fc-button) {
+        font-size: 0.72rem;
+        padding: 0.3rem 0.45rem;
+        border-radius: 0.3rem;
+    }
+
+    .weekly-view-page :deep(.fc-button-group) {
+        display: inline-flex;
+    }
+
+    .weekly-view-page :deep(.fc-col-header-cell-cushion) {
+        font-size: 0.68rem;
+        font-weight: 600;
+        padding: 0.3rem 0.1rem;
+        white-space: nowrap;
+    }
+
+    .weekly-view-page :deep(.fc-timegrid-axis-cushion),
+    .weekly-view-page :deep(.fc-timegrid-slot-label-cushion) {
+        font-size: 0.62rem;
+        padding: 0 0.15rem !important;
+    }
+
+    .weekly-view-page :deep(.fc-timegrid-axis) {
+        width: 2.25rem !important;
+        min-width: 2.25rem !important;
+    }
+
+    .weekly-view-page :deep(.fc-event) {
+        padding: 1px 3px !important;
+        border-left-width: 3px !important;
+    }
+
+    .weekly-view-page :deep(.fc-event:hover) {
+        transform: none;
+    }
+
+    .weekly-view-page :deep(.fc-event .event-header strong) {
+        font-size: 0.62rem;
+    }
+
+    .weekly-view-page :deep(.fc-scrollgrid),
+    .weekly-view-page :deep(.fc-scrollgrid table) {
+        min-width: 0;
+    }
+}
+
+@media (max-width: 399.98px) {
+    .weekly-view-page :deep(.fc-toolbar-title) {
+        font-size: 0.85rem;
+    }
+
+    .weekly-view-page :deep(.fc .fc-button) {
+        font-size: 0.65rem;
+        padding: 0.25rem 0.35rem;
+    }
+
+    .weekly-view-page :deep(.fc-col-header-cell-cushion) {
+        font-size: 0.6rem;
+        letter-spacing: -0.01em;
+    }
+
+    .weekly-view-page :deep(.fc-timegrid-axis) {
+        width: 1.85rem !important;
+        min-width: 1.85rem !important;
+    }
+
+    .weekly-view-page :deep(.fc-timegrid-slot-label-cushion) {
+        font-size: 0.55rem;
+    }
+
+    .weekly-view-page :deep(.fc-event) {
+        padding: 0 2px !important;
+        border-radius: 0.2rem !important;
+    }
+
+    .weekly-view-page :deep(.fc-event .event-header strong) {
+        font-size: 0.55rem;
+    }
+
+    /* Semaine : scroll horizontal si colonnes trop étroites */
+    .weekly-view-page:not(.is-embedded) :deep(.fc-view-harness) {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .weekly-view-page:not(.is-embedded) :deep(.fc-timeGridWeek-view .fc-scrollgrid) {
+        min-width: 28rem;
+    }
 }
 </style>

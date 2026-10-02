@@ -10,6 +10,10 @@ import { useGuidedTour } from '@/composables/useGuidedTour';
 import PrintDataTablePage from '@/components/print/PrintDataTablePage.vue';
 import { usePrinter } from '@/composables/usePrinter';
 import PanelDatePicker from '@/components/common/PanelDatePicker.vue';
+import PageShell from '@/components/layout/PageShell.vue';
+import PageHeader from '@/components/layout/PageHeader.vue';
+import PageSection from '@/components/layout/PageSection.vue';
+import AppDialog from '@/components/layout/AppDialog.vue';
 import { useToast } from 'primevue/usetoast';
 
 const showForm = ref(false);
@@ -320,48 +324,26 @@ useGuidedTour({
 });
 </script>
 <template>
-    <section class="min-h-screen p-4 md:p-6 lg:p-8 transition-colors duration-300">
-        <AppToast />
+    <PageShell>
+        <template #header>
+            <PageHeader
+                title="Gestion des Consommables"
+                subtitle="Suivez et gérez votre stock de consommables"
+                icon="pi pi-shopping-cart"
+                tour-id="admin-consumables.header"
+                :breadcrumb-items="breadcrumbItems"
+                :breadcrumb-home="breadcrumbHome"
+            >
+                <template #actions>
+                    <Button label="Nouveau Consommable" icon="pi pi-plus" @click="showForm = true" />
+                </template>
+            </PageHeader>
+        </template>
 
-        <!-- Header Section -->
-        <div class="mb-6 md:mb-8" data-tour="admin-consumables.header">
-            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
-                <div class="space-y-2">
-                    <div class="flex items-center gap-3">
-                        <div class="p-2.5 rounded-xl bg-primary-500/10 dark:bg-primary-500/20">
-                            <i class="pi pi-shopping-cart text-primary-600 dark:text-primary-400 text-xl"></i>
-                        </div>
-                        <div>
-                            <h1 class="text-3xl lg:text-4xl font-bold text-surface-900 dark:text-surface-50 tracking-tight">Gestion des Consommables</h1>
-                            <p class="text-surface-600 dark:text-surface-300 text-sm md:text-base mt-1">Suivez et gérez votre stock de consommables</p>
-                        </div>
-                    </div>
-                </div>
-                <Button
-                    label="Nouveau Consommable"
-                    icon="pi pi-plus"
-                    class="shadow-lg hover:shadow-xl transition-all duration-300 bg-gradient-to-r from-primary-500 to-primary-600 border-0 text-white px-6 py-3 rounded-xl font-medium"
-                    @click="showForm = true"
-                />
-            </div>
-
-            <div class="bg-surface-0 dark:bg-surface-800/80 rounded-2xl p-4 shadow-sm border border-surface-200/50 dark:border-surface-700/50 backdrop-blur-sm">
-                <Breadcrumb :home="breadcrumbHome" :model="breadcrumbItems" />
-            </div>
-        </div>
-
-        <!-- Mode Selection Card -->
-        <div class="mb-6 md:mb-8" data-tour="admin-consumables.mode">
-            <div class="card p-5 md:p-6 border-0 rounded-2xl bg-gradient-to-r from-surface-0 to-surface-50/80 dark:from-surface-800 dark:to-surface-900/80 shadow-lg backdrop-blur-sm">
+        <template #toolbar>
+            <PageSection title="Mode d'affichage" subtitle="Choisissez la vue qui vous convient" padded tour-id="admin-consumables.mode">
                 <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div>
-                        <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-100 mb-2 flex items-center gap-2">
-                            <i class="pi pi-sliders-h text-primary-500"></i>
-                            Mode d'affichage
-                        </h3>
-                        <p class="text-sm text-surface-600 dark:text-surface-400">Choisissez la vue qui vous convient</p>
-                    </div>
-                    <div class="flex justify-end">
+                    <div class="flex justify-end w-full md:w-auto">
                         <div class="bg-surface-100 dark:bg-surface-700 p-1.5 rounded-xl inline-flex">
                             <SelectButton
                                 v-model="menuValue"
@@ -389,74 +371,58 @@ useGuidedTour({
                         </div>
                     </div>
                 </div>
+            </PageSection>
+
+            <div class="page-kpi-grid" data-tour="admin-consumables.stats">
+            <div class="page-kpi-card bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-900/20 dark:to-blue-800/20 border-blue-200/50 dark:border-blue-800/50">
+                <div>
+                    <p class="page-kpi-label text-blue-700 dark:text-blue-300">Total Consommables</p>
+                    <p class="page-kpi-value text-blue-900 dark:text-blue-100">{{ consumables.length }}</p>
+                </div>
+                <i class="pi pi-box page-kpi-icon text-blue-500"></i>
+            </div>
+
+            <div class="page-kpi-card bg-gradient-to-br from-green-50 to-green-100/50 dark:from-green-900/20 dark:to-green-800/20 border-green-200/50 dark:border-green-800/50">
+                <div>
+                    <p class="page-kpi-label text-green-700 dark:text-green-300">En stock suffisant</p>
+                    <p class="page-kpi-value text-green-900 dark:text-green-100">
+                        {{ consumables.filter((c) => getQuantity(c) > getLowValue(c)).length }}
+                    </p>
+                </div>
+                <i class="pi pi-check-circle page-kpi-icon text-green-500"></i>
+            </div>
+
+            <div class="page-kpi-card bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-900/20 dark:to-amber-800/20 border-amber-200/50 dark:border-amber-800/50">
+                <div>
+                    <p class="page-kpi-label text-amber-700 dark:text-amber-300">Stock faible</p>
+                    <p class="page-kpi-value text-amber-900 dark:text-amber-100">
+                        {{ consumables.filter((c) => getQuantity(c) <= getLowValue(c) && getQuantity(c) > 0).length }}
+                    </p>
+                </div>
+                <i class="pi pi-exclamation-triangle page-kpi-icon text-amber-500"></i>
+            </div>
+
+            <div class="page-kpi-card bg-gradient-to-br from-red-50 to-red-100/50 dark:from-red-900/20 dark:to-red-800/20 border-red-200/50 dark:border-red-800/50">
+                <div>
+                    <p class="page-kpi-label text-red-700 dark:text-red-300">En rupture</p>
+                    <p class="page-kpi-value text-red-900 dark:text-red-100">
+                        {{ consumables.filter((c) => getQuantity(c) === 0).length }}
+                    </p>
+                </div>
+                <i class="pi pi-times-circle page-kpi-icon text-red-500"></i>
             </div>
         </div>
+        </template>
 
-        <!-- Stats Overview -->
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 md:mb-8" data-tour="admin-consumables.stats">
-            <div class="bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-900/20 dark:to-blue-800/20 rounded-2xl p-5 border border-blue-200/50 dark:border-blue-800/50">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-sm text-blue-700 dark:text-blue-300 font-medium">Total Consommables</p>
-                        <p class="text-2xl font-bold text-blue-900 dark:text-blue-100 mt-2">{{ consumables.length }}</p>
-                    </div>
-                    <i class="pi pi-box text-2xl text-blue-500"></i>
-                </div>
-            </div>
-
-            <div class="bg-gradient-to-br from-green-50 to-green-100/50 dark:from-green-900/20 dark:to-green-800/20 rounded-2xl p-5 border border-green-200/50 dark:border-green-800/50">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-sm text-green-700 dark:text-green-300 font-medium">En stock suffisant</p>
-                        <p class="text-2xl font-bold text-green-900 dark:text-green-100 mt-2">
-                            {{ consumables.filter((c) => getQuantity(c) > getLowValue(c)).length }}
-                        </p>
-                    </div>
-                    <i class="pi pi-check-circle text-2xl text-green-500"></i>
-                </div>
-            </div>
-
-            <div class="bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-900/20 dark:to-amber-800/20 rounded-2xl p-5 border border-amber-200/50 dark:border-amber-800/50">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-sm text-amber-700 dark:text-amber-300 font-medium">Stock faible</p>
-                        <p class="text-2xl font-bold text-amber-900 dark:text-amber-100 mt-2">
-                            {{ consumables.filter((c) => getQuantity(c) <= getLowValue(c) && getQuantity(c) > 0).length }}
-                        </p>
-                    </div>
-                    <i class="pi pi-exclamation-triangle text-2xl text-amber-500"></i>
-                </div>
-            </div>
-
-            <div class="bg-gradient-to-br from-red-50 to-red-100/50 dark:from-red-900/20 dark:to-red-800/20 rounded-2xl p-5 border border-red-200/50 dark:border-red-800/50">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-sm text-red-700 dark:text-red-300 font-medium">En rupture</p>
-                        <p class="text-2xl font-bold text-red-900 dark:text-red-100 mt-2">
-                            {{ consumables.filter((c) => getQuantity(c) === 0).length }}
-                        </p>
-                    </div>
-                    <i class="pi pi-times-circle text-2xl text-red-500"></i>
-                </div>
-            </div>
-        </div>
-
-        <!-- List View -->
-        <div v-if="menuValue === 'list'" data-tour="admin-consumables.list" class="bg-surface-0 dark:bg-surface-800/80 rounded-2xl shadow-xl overflow-hidden border border-surface-200/50 dark:border-surface-700/50 backdrop-blur-sm">
-            <!-- List Header -->
-            <div class="px-5 md:px-6 py-4 border-b border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900/50 dark:to-surface-800">
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div class="space-y-1">
-                        <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-100">Liste des Consommables</h3>
-                        <p class="text-sm text-surface-600 dark:text-surface-400">{{ consumables.length }} consommable(s) au total</p>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <Button icon="pi pi-download" severity="secondary" text size="small" label="Exporter" class="text-surface-600 dark:text-surface-400 hover:text-primary-600 dark:hover:text-primary-400" @click="printConsumables" />
-                    </div>
-                </div>
-            </div>
-
-            <!-- Data View -->
+        <PageSection
+            v-if="menuValue === 'list'"
+            title="Liste des Consommables"
+            :subtitle="`${consumables.length} consommable(s) au total`"
+            tour-id="admin-consumables.list"
+        >
+            <template #headerActions>
+                <Button icon="pi pi-download" severity="secondary" text size="small" label="Exporter" @click="printConsumables" />
+            </template>
             <DataView
                 :value="consumables"
                 layout="list"
@@ -561,24 +527,18 @@ useGuidedTour({
                     </div>
                 </template>
             </DataView>
-        </div>
+        </PageSection>
 
-        <!-- Variations View -->
-        <div v-else-if="menuValue === 'vars'" data-tour="admin-consumables.variations" class="bg-surface-0 dark:bg-surface-800/80 rounded-2xl shadow-xl overflow-hidden border border-surface-200/50 dark:border-surface-700/50 backdrop-blur-sm">
-            <!-- Table Header -->
-            <div class="px-5 md:px-6 py-4 border-b border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900/50 dark:to-surface-800">
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div class="space-y-1">
-                        <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-100">Mouvements des stocks</h3>
-                        <p class="text-sm text-surface-600 dark:text-surface-400">Historique complet des entrées et sorties</p>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <Button icon="pi pi-download" severity="secondary" text size="small" label="Exporter" class="text-surface-600 dark:text-surface-400 hover:text-primary-600 dark:hover:text-primary-400" @click="printVariations" />
-                    </div>
-                </div>
-
-                <!-- Filters -->
-                <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+        <PageSection
+            v-else-if="menuValue === 'vars'"
+            title="Mouvements des stocks"
+            subtitle="Historique complet des entrées et sorties"
+            tour-id="admin-consumables.variations"
+        >
+            <template #headerActions>
+                <Button icon="pi pi-download" severity="secondary" text size="small" label="Exporter" @click="printVariations" />
+            </template>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                     <div class="md:col-span-1">
                         <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2"> Consommable </label>
                         <Select
@@ -600,9 +560,8 @@ useGuidedTour({
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Data Table -->
+            <div class="page-table-scroll">
             <DataTable
                 :value="stockVariationsStore.variations.value"
                 stripedRows
@@ -706,66 +665,45 @@ useGuidedTour({
                     </div>
                 </template>
             </DataTable>
-        </div>
-    </section>
+            </div>
+        </PageSection>
 
-    <!-- Dialogs -->
-    <Dialog
+    <AppDialog
         v-model:visible="showForm"
-        modal
-        header="Nouveau consommable"
-        style="width: 40rem"
-        :pt="{
-            root: 'rounded-2xl overflow-hidden',
-            header: 'bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900 dark:to-surface-800 px-6 py-4 border-b',
-            content: 'p-0 mt-4'
-        }"
+        title="Nouveau consommable"
+        icon="pi pi-box"
+        icon-tone="primary"
+        size="md"
+        :show-footer="false"
+        :content-padding="false"
     >
         <div data-tour="admin-consumables.dialog.create">
             <ConsumableForm @saved="showForm = false" @close="showForm = false" :consumable="editConsumable" />
         </div>
-    </Dialog>
+    </AppDialog>
 
-    <Dialog
+    <AppDialog
         v-model:visible="showAddRetireForm"
-        modal
-        style="width: 35rem"
-        :pt="{
-            root: 'rounded-2xl overflow-hidden',
-            header: 'bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900 dark:to-surface-800 px-6 py-4 border-b',
-            content: 'p-0 mt-4'
-        }"
+        :title="addRetireFormType === 'add' ? 'Ajouter au stock' : 'Retirer du stock'"
+        :subtitle="editConsumable?.nom || 'Consommable'"
+        :icon="addRetireFormType === 'add' ? 'pi pi-plus' : 'pi pi-minus'"
+        :icon-tone="addRetireFormType === 'add' ? 'success' : 'warning'"
+        size="md"
+        :show-footer="false"
+        :content-padding="false"
     >
-        <template #header>
-            <div class="flex items-center gap-3">
-                <div :class="['p-2 rounded-lg', addRetireFormType === 'add' ? 'bg-green-100 dark:bg-green-900/30' : 'bg-amber-100 dark:bg-amber-900/30']">
-                    <i :class="['pi', addRetireFormType === 'add' ? 'pi-plus text-green-600 dark:text-green-400' : 'pi-minus text-amber-600 dark:text-amber-400']"></i>
-                </div>
-                <div>
-                    <h4 class="m-0 text-surface-900 dark:text-surface-100">
-                        {{ addRetireFormType === 'add' ? 'Ajouter au stock' : 'Retirer du stock' }}
-                    </h4>
-                    <p class="text-sm text-surface-500 dark:text-surface-400 mt-1">
-                        {{ editConsumable?.nom || 'Consommable' }}
-                    </p>
-                </div>
-            </div>
-        </template>
         <div data-tour="admin-consumables.dialog.stock">
             <AddRetireStockForm @saved="showAddRetireForm = false" @cancelled="showAddRetireForm = false" :mode="addRetireFormType" :consumable="editConsumable" />
         </div>
-    </Dialog>
+    </AppDialog>
 
-    <Dialog
+    <AppDialog
         v-model:visible="showDetails"
-        modal
-        header="Détails du consommable"
-        style="width: 32rem"
-        :pt="{
-            root: 'rounded-2xl overflow-hidden',
-            header: 'bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900 dark:to-surface-800 px-6 py-4 border-b',
-            content: 'p-6'
-        }"
+        title="Détails du consommable"
+        icon="pi pi-info-circle"
+        icon-tone="info"
+        size="sm"
+        :show-footer="false"
     >
         <div v-if="detailConsumable" class="space-y-4" data-tour="admin-consumables.dialog.details">
             <div>
@@ -788,5 +726,6 @@ useGuidedTour({
             </div>
         </div>
         <div v-else class="text-surface-500 dark:text-surface-400">Aucun consommable sélectionné.</div>
-    </Dialog>
+    </AppDialog>
+    </PageShell>
 </template>

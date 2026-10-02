@@ -3,14 +3,16 @@ import { logAppError } from '@/utils/appLogger';
 
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { activateFinancesTourMock, deactivateFinancesTourMock, resetFinancesTourMockData } from '@/services/financesTourMock';
-import Breadcrumb from 'primevue/breadcrumb';
+import PageShell from '@/components/layout/PageShell.vue';
+import PageHeader from '@/components/layout/PageHeader.vue';
+import PageSection from '@/components/layout/PageSection.vue';
 import Button from 'primevue/button';
 import AppChart from '@/components/common/AppChart.vue';
 import Column from 'primevue/column';
 import ConfirmPopup from 'primevue/confirmpopup';
 import DataTable from 'primevue/datatable';
 import DatePicker from 'primevue/datepicker';
-import Dialog from 'primevue/dialog';
+import AppDialog from '@/components/layout/AppDialog.vue';
 import InputText from 'primevue/inputtext';
 import Select from 'primevue/select';
 import Tag from 'primevue/tag';
@@ -63,7 +65,7 @@ const {
     deleteTransaction
 } = useFinances();
 
-const breadcrumbHome = { icon: 'pi pi-home', to: '/' };
+const breadcrumbHome = { icon: 'pi pi-home', to: '/dashboard' };
 const breadcrumbItems = [{ label: 'Administration' }, { label: 'Finances' }];
 
 const activeTab = ref('transactions');
@@ -300,7 +302,7 @@ const periodTotalsItems = computed(() => {
             key: 'net',
             label: 'Résultat net',
             value: formatFcfa(totals.net),
-            sub: 'Revenus − dépenses (hors rejetées)',
+            sub: 'Revenus − dépenses',
             icon: 'pi pi-chart-line',
             iconBg: 'bg-primary-50 text-primary-600 dark:bg-primary-900/20 dark:text-primary-300'
         },
@@ -1201,100 +1203,63 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-    <section class="min-h-screen bg-gradient-to-br from-surface-50 via-surface-50/80 to-surface-100/60 p-4 transition-colors duration-300 dark:from-surface-900 dark:via-surface-900/80 dark:to-surface-800/90 md:p-6 lg:p-8">
-        <AppToast />
+    <PageShell>
         <ConfirmPopup />
 
-        <div class="mb-6 md:mb-8">
-            <div class="mb-6 flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
-                <div class="space-y-3" data-tour="admin-finances.header">
-                    <div class="flex items-center gap-4">
-                        <div class="rounded-2xl bg-gradient-to-br from-primary-500 to-primary-600 p-3 shadow-lg">
-                            <i class="pi pi-wallet text-2xl text-white"></i>
-                        </div>
-                        <div>
-                            <h1 class="text-3xl font-bold tracking-tight text-surface-900 dark:text-surface-50 lg:text-4xl">Tableau de bord financier</h1>
-                            <p class="mt-1 text-sm text-surface-600 dark:text-surface-300 md:text-base">Transactions, validations manuelles, modes de paiement et assurances séparés</p>
-                        </div>
-                    </div>
-                </div>
+        <template #header>
+            <PageHeader
+                title="Tableau de bord financier"
+                subtitle="Transactions, validations manuelles, modes de paiement et assurances séparés"
+                icon="pi pi-wallet"
+                tour-id="admin-finances.header"
+                :breadcrumb-items="breadcrumbItems"
+                :breadcrumb-home="breadcrumbHome"
+            >
+                <template #actions>
+                    <Button label="Nouvelle transaction" icon="pi pi-plus" @click="openTransactionDialog" />
+                </template>
+            </PageHeader>
+        </template>
 
-                <div class="flex flex-wrap items-center gap-3">
-                    <Button
-                        label="Nouvelle transaction"
-                        icon="pi pi-plus"
-                        class="rounded-xl border-0 bg-gradient-to-r from-primary-500 to-primary-600 px-5 py-3 font-medium text-white shadow-lg transition-all duration-300 hover:from-primary-600 hover:to-primary-700 hover:shadow-xl"
-                        @click="openTransactionDialog"
-                    />
+        <template #toolbar>
+        <div class="page-kpi-grid" data-tour="admin-finances.kpi">
+            <article class="page-kpi-card border-primary-200/70 bg-gradient-to-br from-primary-50/80 to-primary-100/50 dark:border-primary-800/40 dark:from-primary-900/30 dark:to-primary-800/20">
+                <div class="min-w-0 flex-1">
+                    <p class="page-kpi-label text-primary-700 dark:text-primary-300">Capital total</p>
+                    <p class="page-kpi-value truncate text-primary-900 dark:text-primary-100">{{ formatFcfa(capitalTotal) }}</p>
+                    <p class="mt-1 truncate text-xs text-primary-600/70 dark:text-primary-400/70">Tous comptes confondus</p>
                 </div>
-            </div>
-
-            <div class="rounded-2xl border border-surface-200/70 bg-surface-0/80 p-4 shadow-sm backdrop-blur-sm dark:border-surface-700/50 dark:bg-surface-800/80">
-                <Breadcrumb :home="breadcrumbHome" :model="breadcrumbItems" class="text-sm" />
-            </div>
-        </div>
-
-        <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4" data-tour="admin-finances.kpi">
-            <article class="rounded-2xl border border-primary-200/70 bg-gradient-to-br from-primary-50/80 to-primary-100/50 p-5 shadow-md backdrop-blur-sm dark:border-primary-800/40 dark:from-primary-900/30 dark:to-primary-800/20">
-                <div class="flex items-center justify-between gap-4">
-                    <div class="min-w-0 flex-1">
-                        <p class="text-xs font-medium text-primary-700 dark:text-primary-300 sm:text-sm">Capital total</p>
-                        <p class="mt-2 truncate text-lg font-bold tracking-tight text-primary-900 dark:text-primary-100 sm:text-xl lg:text-2xl">
-                            {{ formatFcfa(capitalTotal) }}
-                        </p>
-                        <p class="mt-1 truncate text-xs text-primary-600/70 dark:text-primary-400/70">Tous comptes confondus</p>
-                    </div>
-                    <div class="flex-shrink-0 rounded-lg bg-primary-500/10 p-2 dark:bg-primary-500/20">
-                        <i class="pi pi-database text-lg text-primary-500 sm:text-xl"></i>
-                    </div>
-                </div>
+                <i class="pi pi-database page-kpi-icon text-primary-500"></i>
             </article>
 
-            <article class="rounded-2xl border border-amber-200/70 bg-gradient-to-br from-amber-50/80 to-amber-100/50 p-5 shadow-md backdrop-blur-sm dark:border-amber-800/40 dark:from-amber-900/20 dark:to-amber-800/20">
-                <div class="flex items-center justify-between gap-4">
-                    <div class="min-w-0 flex-1">
-                        <p class="text-xs font-medium text-amber-700 dark:text-amber-300 sm:text-sm">En attente</p>
-                        <p class="mt-2 truncate text-lg font-bold tracking-tight text-amber-900 dark:text-amber-100 sm:text-xl lg:text-2xl">
-                            {{ pendingTransactionsCount }}
-                        </p>
-                        <p class="mt-1 truncate text-xs text-amber-600/70 dark:text-amber-400/70">{{ formatFcfa(pendingTransactionsAmount) }} à valider</p>
-                    </div>
-                    <div class="flex-shrink-0 rounded-lg bg-amber-500/10 p-2 dark:bg-amber-500/20">
-                        <i class="pi pi-hourglass text-lg text-amber-500 sm:text-xl"></i>
-                    </div>
+            <article class="page-kpi-card border-amber-200/70 bg-gradient-to-br from-amber-50/80 to-amber-100/50 dark:border-amber-800/40 dark:from-amber-900/20 dark:to-amber-800/20">
+                <div class="min-w-0 flex-1">
+                    <p class="page-kpi-label text-amber-700 dark:text-amber-300">En attente</p>
+                    <p class="page-kpi-value truncate text-amber-900 dark:text-amber-100">{{ pendingTransactionsCount }}</p>
+                    <p class="mt-1 truncate text-xs text-amber-600/70 dark:text-amber-400/70">{{ formatFcfa(pendingTransactionsAmount) }} à valider</p>
                 </div>
+                <i class="pi pi-hourglass page-kpi-icon text-amber-500"></i>
             </article>
 
-            <article class="rounded-2xl border border-slate-200/70 bg-gradient-to-br from-slate-50/80 to-slate-100/50 p-5 shadow-md backdrop-blur-sm dark:border-slate-800/40 dark:from-slate-900/20 dark:to-slate-800/20">
-                <div class="flex items-center justify-between gap-4">
-                    <div class="min-w-0 flex-1">
-                        <p class="text-xs font-medium text-slate-600 dark:text-slate-300 sm:text-sm">Modes actifs</p>
-                        <p class="mt-2 truncate text-lg font-bold tracking-tight text-slate-900 dark:text-surface-100 sm:text-xl lg:text-2xl">
-                            {{ comptesActifsCount }}
-                        </p>
-                        <p class="mt-1 truncate text-xs text-slate-500/70 dark:text-slate-400/70">{{ assurancesCount }} assurance(s) configurée(s)</p>
-                    </div>
-                    <div class="flex-shrink-0 rounded-lg bg-slate-500/10 p-2 dark:bg-slate-500/20">
-                        <i class="pi pi-credit-card text-lg text-slate-500 sm:text-xl"></i>
-                    </div>
+            <article class="page-kpi-card border-slate-200/70 bg-gradient-to-br from-slate-50/80 to-slate-100/50 dark:border-slate-800/40 dark:from-slate-900/20 dark:to-slate-800/20">
+                <div class="min-w-0 flex-1">
+                    <p class="page-kpi-label text-slate-600 dark:text-slate-300">Modes actifs</p>
+                    <p class="page-kpi-value truncate text-slate-900 dark:text-surface-100">{{ comptesActifsCount }}</p>
+                    <p class="mt-1 truncate text-xs text-slate-500/70 dark:text-slate-400/70">{{ assurancesCount }} assurance(s) configurée(s)</p>
                 </div>
+                <i class="pi pi-credit-card page-kpi-icon text-slate-500"></i>
             </article>
 
-            <article class="rounded-2xl border border-rose-200/70 bg-gradient-to-br from-rose-50/80 to-rose-100/50 p-5 shadow-md backdrop-blur-sm dark:border-rose-800/40 dark:from-rose-900/20 dark:to-rose-800/20">
-                <div class="flex items-center justify-between gap-4">
-                    <div class="min-w-0 flex-1">
-                        <p class="text-xs font-medium text-rose-700 dark:text-rose-300 sm:text-sm">Charges fixes</p>
-                        <p class="mt-2 truncate text-lg font-bold tracking-tight text-rose-900 dark:text-rose-100 sm:text-xl lg:text-2xl">
-                            {{ formatFcfa(fixedChargesTotal) }}
-                        </p>
-                        <p class="mt-1 truncate text-xs text-rose-600/70 dark:text-rose-400/70">{{ fixedCharges.length }} charge(s) configurée(s)</p>
-                    </div>
-                    <div class="flex-shrink-0 rounded-lg bg-rose-500/10 p-2 dark:bg-rose-500/20">
-                        <i class="pi pi-building-columns text-lg text-rose-500 sm:text-xl"></i>
-                    </div>
+            <article class="page-kpi-card border-rose-200/70 bg-gradient-to-br from-rose-50/80 to-rose-100/50 dark:border-rose-800/40 dark:from-rose-900/20 dark:to-rose-800/20">
+                <div class="min-w-0 flex-1">
+                    <p class="page-kpi-label text-rose-700 dark:text-rose-300">Charges fixes</p>
+                    <p class="page-kpi-value truncate text-rose-900 dark:text-rose-100">{{ formatFcfa(fixedChargesTotal) }}</p>
+                    <p class="mt-1 truncate text-xs text-rose-600/70 dark:text-rose-400/70">{{ fixedCharges.length }} charge(s) configurée(s)</p>
                 </div>
+                <i class="pi pi-building-columns page-kpi-icon text-rose-500"></i>
             </article>
         </div>
+        </template>
 
         <Tabs :value="activeTab" @update:value="setActiveTab">
             <TabList data-tour="admin-finances.tabs">
@@ -1601,7 +1566,19 @@ onBeforeUnmount(() => {
             @submit="handleTransactionSubmit"
         />
 
-        <Dialog v-model:visible="validationDialogVisible" modal header="Confirmer la validation" :style="{ width: '420px' }">
+        <AppDialog
+            v-model:visible="validationDialogVisible"
+            title="Confirmer la validation"
+            icon="pi pi-check-circle"
+            icon-tone="success"
+            size="sm"
+            :loading="loading.action"
+            cancel-label="Annuler"
+            confirm-label="Valider"
+            confirm-icon="pi pi-check"
+            @cancel="closeValidationDialog"
+            @confirm="confirmTransactionValidation"
+        >
             <div class="space-y-4">
                 <p class="text-sm text-surface-600 dark:text-surface-300">Choisissez la date de validation qui servira aux rapports et au tableau croisé.</p>
                 <div class="flex flex-col gap-2">
@@ -1609,16 +1586,18 @@ onBeforeUnmount(() => {
                     <DatePicker v-model="transactionValidationDate" dateFormat="yy-mm-dd" showIcon class="w-full" />
                 </div>
             </div>
-
-            <template #footer>
-                <Button label="Annuler" text @click="closeValidationDialog" />
-                <Button label="Valider" icon="pi pi-check" :loading="loading.action" @click="confirmTransactionValidation" />
-            </template>
-        </Dialog>
+        </AppDialog>
 
         <PaymentModeFormDialog v-model:visible="modeDialogVisible" :mode="editingMode" :loading="loading.action" tourTarget="admin-finances.dialog.mode" @submit="handleModeSubmit" />
 
-        <Dialog v-model:visible="assuranceFieldsDialogVisible" modal :header="assuranceFieldsDialogTitle" :style="{ width: '560px' }">
+        <AppDialog
+            v-model:visible="assuranceFieldsDialogVisible"
+            :title="assuranceFieldsDialogTitle"
+            icon="pi pi-list"
+            icon-tone="info"
+            size="md"
+            :show-footer="false"
+        >
             <div v-if="assuranceFieldsList.length" class="space-y-2">
                 <div v-for="field in assuranceFieldsList" :key="field.key" class="flex items-start justify-between gap-3 rounded-xl border border-surface-200/70 px-3 py-2.5 dark:border-surface-700/60">
                     <div class="min-w-0">
@@ -1629,9 +1608,20 @@ onBeforeUnmount(() => {
                 </div>
             </div>
             <p v-else class="text-sm text-surface-500 dark:text-surface-400">Aucun champ configuré pour cette assurance.</p>
-        </Dialog>
+        </AppDialog>
 
-        <Dialog v-model:visible="assuranceEditDialogVisible" modal header="Modifier l'assurance" :style="{ width: '480px' }">
+        <AppDialog
+            v-model:visible="assuranceEditDialogVisible"
+            title="Modifier l'assurance"
+            icon="pi pi-pencil"
+            icon-tone="primary"
+            size="md"
+            :loading="loading.action"
+            cancel-label="Annuler"
+            confirm-label="Enregistrer"
+            confirm-icon="pi pi-check"
+            @confirm="handleUpdateAssurance"
+        >
             <div class="space-y-4">
                 <div class="flex flex-col gap-2">
                     <label class="text-sm font-medium text-surface-700 dark:text-surface-200">Code</label>
@@ -1650,12 +1640,8 @@ onBeforeUnmount(() => {
                     <InputText v-model="assuranceEditForm.email" class="w-full" placeholder="contact@..." />
                 </div>
             </div>
-            <template #footer>
-                <Button label="Annuler" text @click="assuranceEditDialogVisible = false" />
-                <Button label="Enregistrer" icon="pi pi-check" :loading="loading.action" @click="handleUpdateAssurance" />
-            </template>
-        </Dialog>
-    </section>
+        </AppDialog>
+    </PageShell>
 </template>
 
 <style scoped>

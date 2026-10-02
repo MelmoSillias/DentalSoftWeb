@@ -18,39 +18,39 @@ const router = createRouter({
                     path: '/accueil',
                     name: 'navigation-hub',
                     component: () => import('@/views/NavigationHub.vue'),
-                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN', 'ROLE_RECEPTION', 'ROLE_MEDECIN'], fixedWidth: true }
+                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN', 'ROLE_RECEPTION', 'ROLE_MEDECIN'] }
                 },
                 {
                     path: '/dashboard',
                     name: 'dashboard',
                     component: () => import('@/views/Dashboard.vue'),
-                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN', 'ROLE_RECEPTION', 'ROLE_MEDECIN'], fixedWidth: true }
+                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN', 'ROLE_RECEPTION', 'ROLE_MEDECIN'] }
                 },
                 {
                     path: '/focus',
                     name: 'focus-mode',
                     component: () => import('@/views/focus/ModeFocus.vue'),
-                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN', 'ROLE_RECEPTION', 'ROLE_RECEPTIONNISTE', 'ROLE_SECRETAIRE', 'ROLE_MEDECIN'], fixedWidth: false }
+                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN', 'ROLE_RECEPTION', 'ROLE_RECEPTIONNISTE', 'ROLE_SECRETAIRE', 'ROLE_MEDECIN'] }
                 },
                 // Agenda
                 {
                     path: '/agenda/rendez-vous',
                     name: 'agenda-rendezvous',
                     component: () => import('@/views/agenda/RendezVous.vue'),
-                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN', 'ROLE_RECEPTION', 'ROLE_MEDECIN'], fixedWidth: true }
+                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN', 'ROLE_RECEPTION', 'ROLE_MEDECIN'] }
                 },
                 {
                     path: '/agenda/evenements',
                     name: 'agenda-evenements',
                     component: () => import('@/views/agenda/Evenements.vue'),
-                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN'], fixedWidth: true }
+                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN'] }
                 },
                 // patients
                 {
                     path: '/patients/liste',
                     name: 'patients-liste',
                     component: () => import('@/views/patients/Liste.vue'),
-                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN', 'ROLE_RECEPTION', 'ROLE_MEDECIN'], fixedWidth: true }
+                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN', 'ROLE_RECEPTION', 'ROLE_MEDECIN'] }
                 },
                 {
                     path: '/patients/dossier/:patientId?',
@@ -67,119 +67,125 @@ const router = createRouter({
                             patientId: Number.isFinite(parsedId) && parsedId > 0 ? parsedId : null
                         };
                     },
-                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN', 'ROLE_RECEPTION', 'ROLE_MEDECIN'], fixedWidth: true }
+                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN', 'ROLE_RECEPTION', 'ROLE_MEDECIN'] }
                 },
                 // Consultations
                 {
                     path: '/consultations/cards',
                     name: 'consultations-cards',
                     component: () => import('@/views/consultations/CardsPending.vue'),
-                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN', 'ROLE_MEDECIN'], fixedWidth: true }
+                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN', 'ROLE_MEDECIN'] }
                 },
                 {
                     path: '/consultations/table',
                     name: 'consultations-table',
                     component: () => import('@/views/consultations/TableConsultations.vue'),
-                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN', 'ROLE_RECEPTION', 'ROLE_MEDECIN'], fixedWidth: true }
+                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN', 'ROLE_RECEPTION', 'ROLE_MEDECIN'] }
+                },
+                {
+                    path: '/consultations/services-cabinets',
+                    name: 'consultations-services-cabinets',
+                    component: () => import('@/views/consultations/ServicesCabinets.vue'),
+                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN', 'ROLE_RECEPTION', 'ROLE_MEDECIN'] }
                 },
                 {
                     path: '/consultations/form',
                     name: 'consultations-form',
                     component: () => import('@/views/consultations/FicheForm.vue'),
-                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN', 'ROLE_MEDECIN'], fixedWidth: true }
+                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN', 'ROLE_MEDECIN'] }
                 },
                 // Caisse
                 {
                     path: '/caisse',
                     name: 'caisse',
                     component: () => import('@/views/caisse/Caisse.vue'),
-                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN', 'ROLE_RECEPTION'], fixedWidth: true }
+                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN', 'ROLE_RECEPTION'] }
                 },
                 // Rapports
                 {
                     path: '/rapports',
                     name: 'rapports',
                     component: () => import('@/views/rapport/Rapports.vue'),
-                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN', 'ROLE_MEDECIN', 'ROLE_RECEPTION'], fixedWidth: true }
+                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN', 'ROLE_MEDECIN', 'ROLE_RECEPTION'] }
                 },
                 // Administration
                 {
                     path: '/administration/consommables',
                     name: 'administration-consommables',
                     component: () => import('@/views/administration/Consommables.vue'),
-                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN'], fixedWidth: true }
+                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN'] }
                 },
                 {
                     path: '/administration/salles',
                     name: 'administration-salles',
                     component: () => import('@/views/administration/Salles.vue'),
-                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN'], fixedWidth: true }
+                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN'] }
                 },
                 {
                     path: '/administration/finances',
                     name: 'administration-finances',
                     component: () => import('@/views/administration/Finances.vue'),
-                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN'], fixedWidth: true }
+                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN'] }
                 },
                 {
                     path: '/administration/utilisateurs',
                     name: 'administration-utilisateurs',
                     component: () => import('@/views/administration/Utilisateurs.vue'),
-                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN'], fixedWidth: true }
+                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN'] }
                 },
                 {
                     path: '/administration/gestionrh',
                     name: 'administration-gestionrh',
                     component: () => import('@/views/administration/GestionRH.vue'),
-                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN'], fixedWidth: true }
+                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN'] }
                 },
                 {
                     path: '/administration/employes/:id',
                     name: 'administration-employee-details',
                     component: () => import('@/views/administration/EmployeeDetails.vue'),
-                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN'], fixedWidth: true }
+                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN'] }
                 },
                 {
                     path: '/administration/notifications',
                     name: 'administration-notifications',
                     component: () => import('@/views/administration/Notifications.vue'),
-                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN'], fixedWidth: true }
+                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN'] }
                 },
                 {
                     path: '/administration/avis-retours-patients',
                     name: 'administration-avis-retours-patients',
                     component: () => import('@/views/administration/AvisRetoursPatients.vue'),
-                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN'], fixedWidth: true }
+                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN'] }
                 },
                 {
                     path: '/profile',
                     name: 'profile',
                     component: () => import('@/views/Profile.vue'),
-                    meta: { requiresAuth: true, fixedWidth: true }
+                    meta: { requiresAuth: true }
                 },
                 {
                     path: '/manual',
                     name: 'manual',
                     component: () => import('@/views/manual/UserManual.vue'),
-                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN'], fixedWidth: true }
+                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN'] }
                 },
                 // {
                 //    path: '/parametres/fileOptions',
                 //    name: 'settings-fileOptions',
                 //    component: () => import('@/views/settings/FilesOptions.vue'),
-                //    meta: { requiresAuth: true, roles: ['ROLE_ADMIN', "ROLE_SECRETAIRE", "ROLE_TOPO"], fixedWidth: true }
+                //    meta: { requiresAuth: true, roles: ['ROLE_ADMIN', "ROLE_SECRETAIRE", "ROLE_TOPO"] }
                 // },
                 {
                     path: '/parametres/general-options',
                     name: 'settings-general-options',
                     component: () => import('@/views/settings/GeneralOptions.vue'),
-                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN', 'ROLE_SECRETAIRE', 'ROLE_TOPO'], fixedWidth: true }
+                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN', 'ROLE_SECRETAIRE', 'ROLE_TOPO'] }
                 },
                 {
                     path: '/administration/api-sms',
                     name: 'administration-api-sms',
                     component: () => import('@/views/settings/SmsSettings.vue'),
-                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN'], fixedWidth: true, requiresInternet: true }
+                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN'], requiresInternet: true }
                 }
             ]
         },

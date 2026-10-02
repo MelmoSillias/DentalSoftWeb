@@ -28,6 +28,10 @@ const props = defineProps({
     patientId: {
         type: [Number, String],
         default: null
+    },
+    hideActions: {
+        type: Boolean,
+        default: false
     }
 });
 
@@ -345,9 +349,13 @@ const saveConsultation = async () => {
 };
 
 const handleSubmit = (event) => {
+    if (props.hideActions) {
+        saveConsultation();
+        return;
+    }
     confirmPopup.require({
         group: 'create-consultation',
-        target: event.currentTarget || event.target,
+        target: event?.currentTarget || event?.target,
         message: 'Confirmer la création de la consultation ?',
         icon: 'pi pi-exclamation-triangle',
         acceptLabel: 'Confirmer',
@@ -355,6 +363,16 @@ const handleSubmit = (event) => {
         accept: saveConsultation
     });
 };
+
+const canSubmit = computed(() => !checkingActive.value && !hasActiveConsultation.value && !loading.value);
+
+defineExpose({
+    submit: handleSubmit,
+    loading,
+    checkingActive,
+    hasActiveConsultation,
+    canSubmit
+});
 </script>
 
 <template>
@@ -440,7 +458,7 @@ const handleSubmit = (event) => {
                 <Textarea v-model="form.notes" rows="3" auto-resize placeholder="Notes supplémentaires" />
             </div> -->
         </div>
-        <div class="flex gap-2 justify-end" data-tour="patients-form-consultation.actions">
+        <div v-if="!hideActions" class="flex gap-2 justify-end" data-tour="patients-form-consultation.actions">
             <Button type="button" label="Annuler" severity="secondary" @click="emit('cancel')" />
             <Button type="button" label="Créer" icon="pi pi-check" :loading="loading || checkingActive" :disabled="checkingActive || hasActiveConsultation" @click="handleSubmit" />
         </div>

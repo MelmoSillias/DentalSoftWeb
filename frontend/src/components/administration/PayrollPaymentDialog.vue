@@ -1,8 +1,8 @@
 <script setup>
 import { computed, ref, watch } from 'vue';
+import AppDialog from '@/components/layout/AppDialog.vue';
 import Button from 'primevue/button';
 import DatePicker from 'primevue/datepicker';
-import Dialog from 'primevue/dialog';
 import InputNumber from 'primevue/inputnumber';
 import Select from 'primevue/select';
 import Textarea from 'primevue/textarea';
@@ -194,7 +194,21 @@ const employeeOptions = computed(() =>
 </script>
 
 <template>
-    <Dialog v-model:visible="localVisible" modal header="Paiement de salaire" :style="{ width: '52rem', maxWidth: '95vw' }" @hide="close">
+    <AppDialog
+        v-model:visible="localVisible"
+        title="Paiement de salaire"
+        icon="pi pi-wallet"
+        icon-tone="success"
+        size="xl"
+        :loading="loading"
+        :confirm-disabled="!canSubmit"
+        cancel-label="Annuler"
+        confirm-label="Enregistrer"
+        confirm-icon="pi pi-check"
+        @cancel="close"
+        @confirm="submit"
+        @hide="close"
+    >
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
             <div class="space-y-4">
                 <div class="space-y-1">
@@ -237,12 +251,12 @@ const employeeOptions = computed(() =>
         </div>
 
         <template #footer>
-            <div class="flex justify-end gap-2">
+            <div class="flex justify-end gap-2 w-full">
                 <Button label="Annuler" text severity="secondary" @click="close" />
                 <span v-tooltip.top="submitTooltip">
                     <Button label="Enregistrer" icon="pi pi-check" :loading="loading" :disabled="!canSubmit" @click="submit" />
                 </span>
             </div>
         </template>
-    </Dialog>
+    </AppDialog>
 </template>

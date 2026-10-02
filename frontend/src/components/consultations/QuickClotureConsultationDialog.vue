@@ -11,8 +11,8 @@ import { fetchInfirmiers } from '@/services/corpsmedical';
 import { fetchSalles } from '@/services/salles';
 import { useAuthStore } from '@/stores/auth';
 import { useMedecinsStore } from '@/stores/medecins';
+import AppDialog from '@/components/layout/AppDialog.vue';
 import Button from 'primevue/button';
-import Dialog from 'primevue/dialog';
 import Password from 'primevue/password';
 import ProgressSpinner from 'primevue/progressspinner';
 import { useToast } from 'primevue/usetoast';
@@ -270,31 +270,18 @@ watch(
 </script>
 
 <template>
-    <Dialog
+    <AppDialog
         v-model:visible="visibleProxy"
-        modal
+        title="Clôture rapide"
+        :subtitle="patientLabel"
+        icon="pi pi-bolt"
+        icon-tone="primary"
+        size="full"
         :dismissable-mask="false"
         :closable="!saving && !clotureLoading"
+        :show-footer="false"
         @hide="handleDialogHide"
-        :style="{ width: '92vw', maxWidth: '1100px' }"
-        :pt="{
-            root: 'rounded-2xl overflow-hidden',
-            header: 'bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900 dark:to-surface-800 px-6 py-4 border-b',
-            content: 'p-4 md:p-6'
-        }"
     >
-        <template #header>
-            <div class="flex items-center gap-3">
-                <div class="p-2 rounded-lg bg-primary-100 dark:bg-primary-900/30">
-                    <i class="pi pi-bolt text-primary-600 dark:text-primary-400"></i>
-                </div>
-                <div>
-                    <h4 class="m-0 text-surface-900 dark:text-surface-100">Clôture rapide</h4>
-                    <p class="text-sm text-surface-500 dark:text-surface-400 mt-1">{{ patientLabel }}</p>
-                </div>
-            </div>
-        </template>
-
         <div :data-tour="props.tourTarget || null">
             <div v-if="loading" class="flex min-h-[16rem] flex-col items-center justify-center gap-3">
                 <ProgressSpinner strokeWidth="4" style="width: 44px; height: 44px" />
@@ -332,5 +319,5 @@ watch(
                 />
             </template>
         </div>
-    </Dialog>
+    </AppDialog>
 </template>

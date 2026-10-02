@@ -1,11 +1,14 @@
 <script setup>
 import { logAppError } from '@/utils/appLogger';
 
+import PageShell from '@/components/layout/PageShell.vue';
+import PageHeader from '@/components/layout/PageHeader.vue';
+import PageSection from '@/components/layout/PageSection.vue';
 import QuickClotureConsultationDialog from '@/components/consultations/QuickClotureConsultationDialog.vue';
 import { activateConsultationsTourMock, deactivateConsultationsTourMock, resetConsultationsTourMockData, resolveConsultationsTourMockScenario } from '@/services/consultationsTourMock';
 import { useGuidedTour } from '@/composables/useGuidedTour';
 import { openConsultationFiche } from '@/composables/useFicheMedicaleAccess';
-import FormCreateConsultation from '@/components/patients/FormCreateConsultation.vue';
+import CreateConsultationDialog from '@/components/patients/CreateConsultationDialog.vue';
 import CabinetServiceDialog from '@/components/patients/CabinetServiceDialog.vue';
 import { cancelConsultation, fetchPendingConsultations, defaultSoinList, normalizeSoinList } from '@/services/consultations';
 import { fetchPublicGeneralSettings } from '@/services/globalSettingsService';
@@ -13,11 +16,9 @@ import { activatePatientsTourMock, deactivatePatientsTourMock, resetPatientsTour
 import { useAuthStore } from '@/stores/auth';
 import Button from 'primevue/button';
 import ConfirmPopup from 'primevue/confirmpopup';
-import Dialog from 'primevue/dialog';
 import Menu from 'primevue/menu';
 import { useConfirm } from 'primevue/useconfirm';
 import Tag from 'primevue/tag';
-import Toast from 'primevue/toast';
 import { useToast } from 'primevue/usetoast';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
@@ -392,59 +393,61 @@ const viewOptions = [
     { label: 'Cartes', value: 'cards', icon: 'pi pi-th-large' },
     { label: 'File d’attente', value: 'queue', icon: 'pi pi-bars' }
 ];
+
+const breadcrumbHome = { icon: 'pi pi-home', to: '/dashboard' };
+const breadcrumbItems = [{ label: 'Consultations' }, { label: "File d'attente" }];
 </script>
 
 <template>
-    <div class="m-6 md:mb-8">
-        <!-- Stats Card -->
-        <div data-tour="consultations-cards.stats" class="bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-900/20 dark:to-amber-800/20 rounded-2xl p-5 border border-amber-200/50 dark:border-amber-800/50 mb-6">
-            <div class="flex items-center justify-between">
+    <PageShell>
+        <template #header>
+            <PageHeader
+                title="Consultations en cours"
+                subtitle="Gestion des consultations ouvertes et en attente"
+                icon="fas fa-stethoscope"
+                tour-id="consultations-cards.header"
+                :breadcrumb-items="breadcrumbItems"
+                :breadcrumb-home="breadcrumbHome"
+            >
+                <template #actions>
+                    <div class="flex flex-wrap items-center justify-end gap-1.5">
+                        <SelectButton v-model="viewMode" :options="viewOptions" optionLabel="label" optionValue="value" class="rounded-xl">
+                            <template #option="slotProps">
+                                <div class="flex items-center gap-1.5 px-1 sm:px-2">
+                                    <i :class="slotProps.option.icon"></i>
+                                    <span class="hidden sm:inline">{{ slotProps.option.label }}</span>
+                                </div>
+                            </template>
+                        </SelectButton>
+                        <Button
+                            data-tour="consultations-cards.refresh"
+                            icon="pi pi-refresh"
+                            aria-label="Rafraîchir"
+                            v-tooltip.top="'Rafraîchir'"
+                            :loading="loading"
+                            outlined
+                            class="rounded-xl !px-2.5"
+                            @click="loadPending"
+                        />
+                    </div>
+                </template>
+            </PageHeader>
+        </template>
+
+        <template #toolbar>
+            <div data-tour="consultations-cards.stats" class="page-kpi-card bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-900/20 dark:to-amber-800/20 border-amber-200/50 dark:border-amber-800/50">
                 <div>
-                    <p class="text-sm text-amber-700 dark:text-amber-300 font-medium">File D'attente</p>
-                    <p class="text-2xl font-bold text-amber-900 dark:text-amber-100 mt-2">
+                    <p class="page-kpi-label text-amber-700 dark:text-amber-300">File D'attente</p>
+                    <p class="page-kpi-value text-amber-900 dark:text-amber-100">
                         {{ sortedConsultations.length }}
-                        <span class="text-base font-normal text-amber-600 dark:text-amber-400 ml-1">en attente</span>
+                        <span class="text-sm font-normal text-amber-600 dark:text-amber-400 ml-1">en attente</span>
                     </p>
                 </div>
-                <i class="fas fa-clock text-2xl text-amber-500 animate-pulse"></i>
+                <i class="fas fa-clock page-kpi-icon text-amber-500 animate-pulse"></i>
             </div>
-        </div>
+        </template>
 
-        <!-- Main Card -->
-        <div data-tour="consultations-cards.header" class="card p-5 md:p-6 border-0 rounded-2xl bg-gradient-to-r from-surface-0 to-surface-50/80 dark:from-surface-800 dark:to-surface-900/80 shadow-xl backdrop-blur-sm">
-            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
-                <div class="space-y-2">
-                    <div class="flex items-center gap-3">
-                        <div class="p-2.5 rounded-xl bg-primary-500/10 dark:bg-primary-500/20">
-                            <i class="fas fa-stethoscope text-primary-600 dark:text-primary-400 text-xl"></i>
-                        </div>
-                        <div>
-                            <h2 class="text-2xl lg:text-3xl font-bold text-surface-900 dark:text-surface-50">Consultations en cours</h2>
-                            <p class="text-surface-600 dark:text-surface-300 text-sm md:text-base">Gestion des consultations ouvertes et en attente</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="flex items-center gap-2">
-                    <SelectButton v-model="viewMode" :options="viewOptions" optionLabel="label" optionValue="value" class="rounded-xl">
-                        <template #option="slotProps">
-                            <div class="flex items-center gap-2 px-2">
-                                <i :class="slotProps.option.icon"></i>
-                                <span>{{ slotProps.option.label }}</span>
-                            </div>
-                        </template>
-                    </SelectButton>
-                    <Button
-                        data-tour="consultations-cards.refresh"
-                        icon="pi pi-refresh"
-                        label="Rafraîchir"
-                        :loading="loading"
-                        outlined
-                        class="rounded-xl px-5 py-2.5 border-surface-300 dark:border-surface-600 hover:bg-surface-100 dark:hover:bg-surface-700 transition-colors"
-                        @click="loadPending"
-                    />
-                </div>
-            </div>
-
+        <PageSection plain>
             <!-- Empty State -->
             <div
                 v-if="!loading && !sortedConsultations.length"
@@ -467,8 +470,8 @@ const viewOptions = [
                             v-for="(consultation, idx) in sortedConsultations"
                             :key="consultation.id"
                             :data-tour="idx === 0 ? 'consultations-cards.case-last-fiche' : idx === 1 ? 'consultations-cards.case-linked' : idx === 2 ? 'consultations-cards.case-new' : null"
-                            class="relative overflow-hidden rounded-2xl border transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 flex flex-col h-full group cursor-pointer"
-                            :class="['border-' + getBorderColor(idx) + '-200/50 dark:border-' + getBorderColor(idx) + '-800/50', 'bg-gradient-to-br from-white to-surface-50/80 dark:from-surface-800 dark:to-surface-900/80']"
+                            class="queue-card relative overflow-hidden rounded-2xl transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 flex flex-col h-full group cursor-pointer"
+                            :class="'queue-card--' + getBorderColor(idx)"
                             @dblclick="handleOpenFiche(consultation)"
                         >
                             <!-- Priority Indicator -->
@@ -607,7 +610,7 @@ const viewOptions = [
                     <div
                         v-for="(consultation, idx) in sortedConsultations"
                         :key="consultation.id"
-                        class="flex items-center justify-between p-4 rounded-xl border bg-white dark:bg-surface-800 shadow-sm hover:shadow-md transition cursor-pointer"
+                        class="queue-card queue-card--row flex items-center justify-between p-4 rounded-xl shadow-sm hover:shadow-md transition cursor-pointer"
                         @dblclick="handleOpenFiche(consultation)"
                     >
                         <!-- Gauche -->
@@ -698,50 +701,21 @@ const viewOptions = [
                     <p class="text-surface-600 dark:text-surface-400">Chargement des consultations...</p>
                 </div>
             </div>
-        </div>
-    </div>
+        </PageSection>
 
-    <Dialog
+    <CreateConsultationDialog
         v-if="!isMedecin"
         v-model:visible="openCreateConsultationDialog"
-        data-tour="consultations-cards.create-dialog"
-        header="Créer une nouvelle consultation"
-        :modal="true"
-        :closable="true"
-        :dismissable-mask="true"
-        :style="{ width: '50rem' }"
-        :pt="{
-            root: 'rounded-2xl overflow-hidden',
-            header: 'bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900 dark:to-surface-800 px-6 py-4 border-b',
-            content: 'p-0 mt-4'
-        }"
-    >
-        <template #header>
-            <div class="flex items-center gap-3">
-                <div class="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
-                    <i class="fas fa-stethoscope text-green-600 dark:text-green-400"></i>
-                </div>
-                <div>
-                    <h4 class="m-0 text-surface-900 dark:text-surface-100">Nouvelle consultation</h4>
-                    <p class="text-sm text-surface-500 dark:text-surface-400 mt-1">
-                        {{ consultationPatient?.fullname || consultationPatient?.nom || 'Nouveau patient' }}
-                    </p>
-                </div>
-            </div>
-        </template>
-
-        <div data-tour="consultations-cards.dialog.create">
-            <FormCreateConsultation
-                @cancel="openCreateConsultationDialog = false"
-                @saved="
-                    () => {
-                        openCreateConsultationDialog = false;
-                        loadPending();
-                    }
-                "
-            />
-        </div>
-    </Dialog>
+        tour-id="consultations-cards.create-dialog"
+        content-tour-id="consultations-cards.dialog.create"
+        :subtitle="consultationPatient?.fullname || consultationPatient?.nom || 'Nouveau patient'"
+        @saved="
+            () => {
+                openCreateConsultationDialog = false;
+                loadPending();
+            }
+        "
+    />
 
     <ConfirmPopup group="cards-cancel-consultation" />
 
@@ -755,9 +729,28 @@ const viewOptions = [
         @closed="handleQuickDialogDone"
     />
     <CabinetServiceDialog v-model:visible="cabinetServiceVisible" :patient-id="cabinetServicePatient?.id" :patient-name="cabinetServicePatient?.name || ''" />
+    </PageShell>
 </template>
 
 <style scoped>
+.queue-card {
+    background: var(--surface-card);
+    border: 1px solid color-mix(in srgb, var(--surface-border) 80%, transparent);
+    box-shadow: 0 1px 2px color-mix(in srgb, var(--text-color) 4%, transparent);
+}
+
+.queue-card--emerald {
+    border-color: color-mix(in srgb, #34d399 50%, var(--surface-border));
+}
+
+.queue-card--amber {
+    border-color: color-mix(in srgb, #fbbf24 45%, var(--surface-border));
+}
+
+.queue-card--surface {
+    border-color: color-mix(in srgb, var(--surface-border) 80%, transparent);
+}
+
 /* Animation pour les cartes */
 @keyframes pulse-glow {
     0%,

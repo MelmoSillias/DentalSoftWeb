@@ -3,7 +3,7 @@ import Button from 'primevue/button';
 import Card from 'primevue/card';
 import Column from 'primevue/column';
 import DataTable from 'primevue/datatable';
-import Dialog from 'primevue/dialog';
+import AppDialog from '@/components/layout/AppDialog.vue';
 import AutoComplete from 'primevue/autocomplete';
 import Textarea from 'primevue/textarea';
 import Timeline from 'primevue/timeline';
@@ -174,31 +174,25 @@ const tablePlans = computed(() =>
 </script>
 
 <template>
-    <div class="rounded-2xl border border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-br from-surface-0 to-surface-50/80 dark:from-surface-800 dark:to-surface-900/80 p-6 shadow-sm">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-surface-100 dark:border-surface-700">
-            <div class="flex items-center gap-3">
-                <div class="p-2.5 rounded-xl bg-primary-500/10 dark:bg-primary-500/20">
-                    <i class="pi pi-sitemap text-primary-600 dark:text-primary-400 text-xl"></i>
-                </div>
-                <div>
-                    <h3 class="text-xl font-bold text-surface-900 dark:text-surface-50">Plan de traitement</h3>
-                    <p class="text-sm text-surface-500 dark:text-surface-400 mt-1">Planifier les actes et priorites</p>
-                </div>
+    <div class="medical-form-block">
+        <div class="medical-form-block__header">
+            <div>
+                <h3 class="medical-form-block__title">Plan de traitement</h3>
+                <p class="medical-form-block__subtitle">Planifier les actes et priorités</p>
             </div>
             <div class="flex items-center gap-2">
-                <Button icon="pi pi-plus" label="Ajouter" size="small" class="rounded-xl" @click="openAddDialog" />
+                <Button icon="pi pi-plus" label="Ajouter" size="small" outlined @click="openAddDialog" />
                 <Button
                     label="Sauvegarder"
                     icon="pi pi-save"
                     :loading="saving"
                     @click="emit('save')"
-                    class="rounded-xl px-5 py-3 font-medium shadow-sm hover:shadow-md transition-all bg-gradient-to-r from-primary-500 to-primary-600 border-0 text-white"
                 />
             </div>
         </div>
 
-        <div class="space-y-4">
-            <div v-if="!(plans && plans.length)" class="text-sm text-surface-500 dark:text-surface-400">Aucun plan de traitement ajoute.</div>
+        <div class="medical-form-block__body space-y-4">
+            <div v-if="!(plans && plans.length)" class="dossier-state__text" style="text-align:left">Aucun plan de traitement ajouté.</div>
 
             <div v-else class="space-y-6">
                 <div class="flex items-center justify-end">
@@ -256,7 +250,18 @@ const tablePlans = computed(() =>
             </div>
         </div>
 
-        <Dialog v-model:visible="showDialog" modal :header="dialogTitle" class="w-full max-w-2xl">
+        <AppDialog
+            v-model:visible="showDialog"
+            :title="dialogTitle"
+            icon="pi pi-calendar"
+            icon-tone="primary"
+            size="lg"
+            cancel-label="Annuler"
+            confirm-label="Enregistrer"
+            confirm-icon="pi pi-check"
+            @cancel="showDialog = false"
+            @confirm="saveDraft"
+        >
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <div class="space-y-2">
                     <label class="text-sm font-medium text-surface-700 dark:text-surface-300">Type</label>
@@ -277,12 +282,6 @@ const tablePlans = computed(() =>
                 <label class="text-sm font-medium text-surface-700 dark:text-surface-300">Description</label>
                 <Textarea :modelValue="draftPlan.description" rows="4" class="w-full" @update:modelValue="(v) => (draftPlan.description = v)" />
             </div>
-            <template #footer>
-                <div class="flex items-center justify-end gap-2">
-                    <Button label="Annuler" text @click="showDialog = false" />
-                    <Button label="Enregistrer" icon="pi pi-check" @click="saveDraft" />
-                </div>
-            </template>
-        </Dialog>
+        </AppDialog>
     </div>
 </template>

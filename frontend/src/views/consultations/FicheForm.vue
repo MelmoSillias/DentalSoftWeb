@@ -33,9 +33,8 @@ import { useGuidedTour } from '@/composables/useGuidedTour';
 import { useAuthStore } from '@/stores/auth';
 import Button from 'primevue/button';
 import ConfirmDialog from 'primevue/confirmdialog';
-import Dialog from 'primevue/dialog';
+import AppDialog from '@/components/layout/AppDialog.vue';
 import SelectButton from 'primevue/selectbutton';
-import Toast from 'primevue/toast';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
@@ -976,8 +975,6 @@ const retryLoad = async () => {
 <template>
     <div class="min-h-screen p-4 md:p-6 lg:p-8 transition-colors duration-300">
         <ConfirmDialog />
-        <AppToast />
-
         <div v-if="!pageLoading && !loadErrorMessage" class="relative">
             <div v-if="isClotureProcessing" class="absolute inset-0 z-30 flex items-center justify-center bg-surface-0/60 dark:bg-surface-900/60 backdrop-blur-[1px]">
                 <div class="flex items-center gap-2 rounded-xl border border-surface-300 dark:border-surface-700 bg-surface-0 dark:bg-surface-900 px-4 py-2 text-sm font-medium text-surface-700 dark:text-surface-100 shadow">
@@ -1134,29 +1131,16 @@ const retryLoad = async () => {
             <div data-tour="consultations-form.dialogs">
                 <AntecedentDialogForm v-model="showAntecedentDialog" :loading="savingAntecedent" :type-options="antecedentTypeOptions" @save="handleSaveAntecedent" />
                 <AllergyDialogForm v-model="showAllergyDialog" :loading="savingAllergy" :type-options="allergyTypeOptions" @save="handleSaveAllergy" />
-                <Dialog
+                <AppDialog
                     v-model:visible="showRdvDialog"
-                    modal
-                    :style="{ width: '45rem' }"
-                    :pt="{
-                        root: 'rounded-2xl overflow-hidden',
-                        header: 'bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900 dark:to-surface-800 px-6 py-4 border-b',
-                        content: 'p-0 mt-4'
-                    }"
+                    title="Nouveau rendez-vous"
+                    :subtitle="`${data.patient?.prenom || ''} ${data.patient?.nom || ''}`.trim() || 'Patient'"
+                    icon="fas fa-calendar-plus"
+                    icon-tone="info"
+                    size="lg"
+                    :show-footer="false"
+                    :content-padding="false"
                 >
-                    <template #header>
-                        <div class="flex items-center gap-3">
-                            <div class="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
-                                <i class="fas fa-calendar-plus text-blue-600 dark:text-blue-400"></i>
-                            </div>
-                            <div>
-                                <h4 class="m-0 text-surface-900 dark:text-surface-100">Nouveau rendez-vous</h4>
-                                <p class="text-sm text-surface-500 dark:text-surface-400 mt-1">
-                                    {{ `${data.patient?.prenom || ''} ${data.patient?.nom || ''}`.trim() || 'Patient' }}
-                                </p>
-                            </div>
-                        </div>
-                    </template>
                     <FormRendezVous
                         v-if="showRdvDialog"
                         :patient="data.patient"
@@ -1167,7 +1151,7 @@ const retryLoad = async () => {
                         @saved="handleRdvSaved"
                         @cancel="showRdvDialog = false"
                     />
-                </Dialog>
+                </AppDialog>
                 <OrdonnanceModal v-model="ordonnanceDraft" v-model:visible="ordonnanceModalVisible" :mode="ordonnanceModalMode" :medecin-readonly="true" :saving="saving.consult" @save="saveOrdonnanceSection" />
             </div>
         </div>

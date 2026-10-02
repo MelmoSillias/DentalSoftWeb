@@ -4,7 +4,7 @@ import Button from 'primevue/button';
 import Column from 'primevue/column';
 import DataTable from 'primevue/datatable';
 import DataView from 'primevue/dataview';
-import Dialog from 'primevue/dialog';
+import AppDialog from '@/components/layout/AppDialog.vue';
 import InputText from 'primevue/inputtext';
 import Menu from 'primevue/menu';
 import SelectButton from 'primevue/selectbutton';
@@ -514,7 +514,17 @@ const onLotDrop = (lot, event) => {
 
         <Menu ref="claimMenu" :model="claimMenuItems" popup />
 
-        <Dialog v-model:visible="createDialogVisible" modal header="Créer un lot" class="w-full max-w-lg">
+        <AppDialog
+            v-model:visible="createDialogVisible"
+            title="Créer un lot"
+            icon="pi pi-plus"
+            icon-tone="primary"
+            size="md"
+            cancel-label="Annuler"
+            confirm-label="Créer"
+            @cancel="createDialogVisible = false"
+            @confirm="submitCreate"
+        >
             <div class="flex flex-col gap-4 py-2">
                 <div>
                     <label class="block text-sm mb-1">Nom</label>
@@ -531,13 +541,19 @@ const onLotDrop = (lot, event) => {
                     </div>
                 </div>
             </div>
-            <template #footer>
-                <Button label="Annuler" text @click="createDialogVisible = false" />
-                <Button label="Créer" icon="pi pi-check" @click="submitCreate" />
-            </template>
-        </Dialog>
+        </AppDialog>
 
-        <Dialog v-model:visible="editDialogVisible" modal header="Modifier le lot" class="w-full max-w-lg">
+        <AppDialog
+            v-model:visible="editDialogVisible"
+            title="Modifier le lot"
+            icon="pi pi-pencil"
+            icon-tone="info"
+            size="md"
+            cancel-label="Annuler"
+            confirm-label="Enregistrer"
+            @cancel="editDialogVisible = false"
+            @confirm="submitEdit"
+        >
             <div class="flex flex-col gap-4 py-2">
                 <div>
                     <label class="block text-sm mb-1">Nom</label>
@@ -554,13 +570,20 @@ const onLotDrop = (lot, event) => {
                     </div>
                 </div>
             </div>
-            <template #footer>
-                <Button label="Annuler" text @click="editDialogVisible = false" />
-                <Button label="Enregistrer" icon="pi pi-check" @click="submitEdit" />
-            </template>
-        </Dialog>
+        </AppDialog>
 
-        <Dialog v-model:visible="assignDialogVisible" modal header="Affecter à un lot" class="w-full max-w-md">
+        <AppDialog
+            v-model:visible="assignDialogVisible"
+            title="Affecter à un lot"
+            icon="pi pi-link"
+            icon-tone="primary"
+            size="sm"
+            cancel-label="Annuler"
+            confirm-label="Affecter"
+            :confirm-disabled="!selectedAssignLotId"
+            @cancel="assignDialogVisible = false"
+            @confirm="submitAssign"
+        >
             <div class="flex flex-col gap-3 py-2">
                 <p class="muted-text text-sm">{{ assignClaim?.patient }}</p>
                 <label class="block text-sm mb-1">Lot ouvert</label>
@@ -570,11 +593,7 @@ const onLotDrop = (lot, event) => {
                     </option>
                 </select>
             </div>
-            <template #footer>
-                <Button label="Annuler" text @click="assignDialogVisible = false" />
-                <Button label="Affecter" icon="pi pi-check" :disabled="!selectedAssignLotId" @click="submitAssign" />
-            </template>
-        </Dialog>
+        </AppDialog>
     </div>
 </template>
 

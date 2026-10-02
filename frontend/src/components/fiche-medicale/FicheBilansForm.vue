@@ -51,30 +51,24 @@ watch(
 </script>
 
 <template>
-    <div class="rounded-2xl border border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-br from-surface-0 to-surface-50/80 dark:from-surface-800 dark:to-surface-900/80 p-6 shadow-sm">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-surface-100 dark:border-surface-700">
-            <div class="flex items-center gap-3">
-                <div class="p-2.5 rounded-xl bg-primary-500/10 dark:bg-primary-500/20">
-                    <i class="pi pi-clipboard text-primary-600 dark:text-primary-400 text-xl"></i>
-                </div>
-                <div>
-                    <h3 class="text-xl font-bold text-surface-900 dark:text-surface-50">Bilans</h3>
-                    <p class="text-sm text-surface-500 dark:text-surface-400 mt-1">Formule dentaire et examens</p>
-                </div>
+    <div class="medical-form-block">
+        <div class="medical-form-block__header">
+            <div>
+                <h3 class="medical-form-block__title">Bilans</h3>
+                <p class="medical-form-block__subtitle">Formule dentaire et examens</p>
             </div>
             <Button
                 label="Sauvegarder"
                 icon="pi pi-save"
                 :loading="saving"
                 @click="emit('save')"
-                class="rounded-xl px-5 py-3 font-medium shadow-sm hover:shadow-md transition-all bg-gradient-to-r from-primary-500 to-primary-600 border-0 text-white"
             />
         </div>
 
-        <div class="space-y-6">
-            <div class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/30 p-5">
-                <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
-                    <h4 class="font-semibold text-surface-900 dark:text-surface-100">Formule dentaire</h4>
+        <div class="medical-form-block__body space-y-4">
+            <div class="dossier-section-block" style="padding-top:0;margin-top:0;border-top:0">
+                <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+                    <h4 class="dossier-section-label mb-0">Formule dentaire</h4>
                     <SelectButton v-model="dentitionType" :options="DENTITION_OPTIONS" optionLabel="label" optionValue="value" :allowEmpty="false" class="text-sm" />
                 </div>
                 <FormuleDentaire :modelValue="form.bilanDentaire?.formuleDentaire" :dentition-type="dentitionType" @update:modelValue="(v) => updateNested('bilanDentaire', 'formuleDentaire', v)" />

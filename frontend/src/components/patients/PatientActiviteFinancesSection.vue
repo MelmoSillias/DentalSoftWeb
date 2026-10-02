@@ -2,6 +2,7 @@
 import CaisseInvoiceDialogs from '@/components/caisse/CaisseInvoiceDialogs.vue';
 import ConsultationDetailsDialog from '@/components/consultations/ConsultationDetailsDialog.vue';
 import FactureModal from '@/components/consultations/FactureModal.vue';
+import PatientCabinetServicesPanel from '@/components/patients/PatientCabinetServicesPanel.vue';
 import { useInvoiceBillingActions } from '@/composables/useInvoiceBillingActions';
 import { cancelConsultation, fetchConsultationDetails, fetchConsultationInvoice, updateConsultationInvoice } from '@/services/consultations';
 import { fetchPublicGeneralSettings } from '@/services/globalSettingsService';
@@ -14,6 +15,10 @@ import Column from 'primevue/column';
 import ConfirmPopup from 'primevue/confirmpopup';
 import ContextMenu from 'primevue/contextmenu';
 import DataTable from 'primevue/datatable';
+import IconField from 'primevue/iconfield';
+import InputIcon from 'primevue/inputicon';
+import InputText from 'primevue/inputtext';
+import Select from 'primevue/select';
 import Tab from 'primevue/tab';
 import TabList from 'primevue/tablist';
 import TabPanel from 'primevue/tabpanel';
@@ -42,6 +47,18 @@ const props = defineProps({
         type: Array,
         default: () => []
     },
+    servicesCabinet: {
+        type: Array,
+        default: () => []
+    },
+    patientId: {
+        type: [Number, String],
+        default: null
+    },
+    patientName: {
+        type: String,
+        default: ''
+    },
     showConsultations: {
         type: Boolean,
         default: false
@@ -57,25 +74,53 @@ const token = localStorage.getItem('token');
 
 const allowReceptionInvoiceModification = ref(false);
 
+const activeTab = ref('rdv');
+const showUnpaidOnly = ref(false);
+
+const rdvSearch = ref('');
+const rdvStatusFilter = ref(null);
+const paiementSearch = ref('');
+const paiementModeFilter = ref(null);
+const factureSearch = ref('');
+const actesSearch = ref('');
+const consultationSearch = ref('');
+const consultationStatusFilter = ref(null);
+
+const canModifyInvoiceByRole = computed(() => canUserModifyInvoice(auth.user, { allowReceptionInvoiceModification: allowReceptionInvoiceModification.value }));
+
+const medicalActs = computed(() => {
+    const rows = (props.consultations || []).flatMap((consultation) =>
+        (consultation.actes || []).map((acte) => ({
+            ...acte,
+            date: consultation.date,
+            medecin: consultation.medecin,
+            consultationId: consultation.id,
+            label: acte.description || acte.type || 'Acte médical'
+        }))
+    );
+
+    return rows.sort((left, right) => {
+        const leftTime = new Date(left.date || 0).getTime();
+        const rightTime = new Date(right.date || 0).getTime();
+        return rightTime - leftTime;
+    });
+});
+
 const tabs = computed(() => {
     const base = [
-        { id: 'rdv', label: 'Rendez-vous', icon: 'pi pi-calendar' },
-        { id: 'paiements', label: 'Paiements', icon: 'pi pi-credit-card' },
-        { id: 'factures', label: 'Factures', icon: 'pi pi-file' },
-        { id: 'actes', label: 'Actes médicaux', icon: 'pi pi-list-check' }
+        { id: 'rdv', label: 'Rendez-vous', icon: 'pi pi-calendar', badge: props.rdvs?.length || null },
+        { id: 'paiements', label: 'Paiements', icon: 'pi pi-credit-card', badge: props.paiements?.length || null },
+        { id: 'factures', label: 'Factures', icon: 'pi pi-file', badge: props.factures?.length || null },
+        { id: 'actes', label: 'Actes', icon: 'pi pi-list-check', badge: medicalActs.value?.length || null },
+        { id: 'services-cabinet', label: 'Services cabinet', icon: 'pi pi-building', badge: props.servicesCabinet?.length || null }
     ];
 
     if (props.showConsultations) {
-        base.push({ id: 'consultations', label: 'Consultations', icon: 'pi pi-folder-open' });
+        base.splice(4, 0, { id: 'consultations', label: 'Consultations', icon: 'pi pi-folder-open', badge: props.consultations?.length || null });
     }
 
     return base;
 });
-
-const activeTab = ref('rdv');
-const showUnpaidOnly = ref(false);
-
-const canModifyInvoiceByRole = computed(() => canUserModifyInvoice(auth.user, { allowReceptionInvoiceModification: allowReceptionInvoiceModification.value }));
 
 const {
     payDialogVisible,
@@ -184,35 +229,126 @@ const openConsultationContextMenu = (event, consultation) => {
     consultationContextMenu.value?.show(event);
 };
 
-const displayedFactures = computed(() => {
-    const list = Array.isArray(props.factures) ? props.factures : [];
-    if (!showUnpaidOnly.value) return list;
-    return list.filter((facture) => isUnpaidFacture(facture));
-});
-
-const medicalActs = computed(() => {
-    const rows = (props.consultations || []).flatMap((consultation) =>
-        (consultation.actes || []).map((acte) => ({
-            ...acte,
-            date: consultation.date,
-            medecin: consultation.medecin,
-            consultationId: consultation.id,
-            label: acte.description || acte.type || 'Acte médical'
-        }))
-    );
-
-    return rows.sort((left, right) => {
-        const leftTime = new Date(left.date || 0).getTime();
-        const rightTime = new Date(right.date || 0).getTime();
-        return rightTime - leftTime;
-    });
-});
-
 const medicalActsTotal = computed(() => medicalActs.value.reduce((sum, acte) => sum + Number(acte.montant ?? 0), 0));
 
 const totalPaye = computed(() => props.paiements.reduce((sum, p) => sum + getPaiementMontant(p), 0));
 
 const totalImpaye = computed(() => (Array.isArray(props.factures) ? props.factures : []).filter((f) => isUnpaidFacture(f)).reduce((sum, f) => sum + (Number(f.reste ?? f.montant ?? 0) || 0), 0));
+
+const rdvStatusOptions = computed(() => {
+    const values = [...new Set((props.rdvs || []).map((rdv) => getRdvStatus(rdv)).filter((v) => v && v !== '—'))];
+    return [{ label: 'Tous les statuts', value: null }, ...values.map((value) => ({ label: value, value }))];
+});
+
+const paiementModeOptions = computed(() => {
+    const values = [...new Set((props.paiements || []).map((p) => getPaiementMode(p)).filter((v) => v && v !== '—'))];
+    return [{ label: 'Tous les modes', value: null }, ...values.map((value) => ({ label: value, value }))];
+});
+
+const consultationStatusOptions = [
+    { label: 'Tous les statuts', value: null },
+    { label: 'En cours', value: 'En cours' },
+    { label: 'Clôturée', value: 'Clôturée' }
+];
+
+const filteredRdvs = computed(() => {
+    const query = rdvSearch.value.trim().toLowerCase();
+    return (props.rdvs || []).filter((rdv) => {
+        if (rdvStatusFilter.value && getRdvStatus(rdv) !== rdvStatusFilter.value) return false;
+        if (!query) return true;
+        const haystack = [getRdvLabel(rdv), getRdvMedecin(rdv), getRdvStatus(rdv), rdv.notes].filter(Boolean).join(' ').toLowerCase();
+        return haystack.includes(query);
+    });
+});
+
+const filteredPaiements = computed(() => {
+    const query = paiementSearch.value.trim().toLowerCase();
+    return (props.paiements || []).filter((paiement) => {
+        if (paiementModeFilter.value && getPaiementMode(paiement) !== paiementModeFilter.value) return false;
+        if (!query) return true;
+        const haystack = [getPaiementLabel(paiement), getPaiementMode(paiement), paiement.notes].filter(Boolean).join(' ').toLowerCase();
+        return haystack.includes(query);
+    });
+});
+
+const displayedFactures = computed(() => {
+    const list = Array.isArray(props.factures) ? props.factures : [];
+    const query = factureSearch.value.trim().toLowerCase();
+    return list.filter((facture) => {
+        if (showUnpaidOnly.value && !isUnpaidFacture(facture)) return false;
+        if (!query) return true;
+        const haystack = [getFactureLabel(facture), computeFactureStatus(facture).label].filter(Boolean).join(' ').toLowerCase();
+        return haystack.includes(query);
+    });
+});
+
+const filteredActes = computed(() => {
+    const query = actesSearch.value.trim().toLowerCase();
+    if (!query) return medicalActs.value;
+    return medicalActs.value.filter((acte) => {
+        const haystack = [acte.label, acte.type, acte.dent, acte.medecin].filter(Boolean).join(' ').toLowerCase();
+        return haystack.includes(query);
+    });
+});
+
+const filteredConsultations = computed(() => {
+    const query = consultationSearch.value.trim().toLowerCase();
+    return (props.consultations || []).filter((consultation) => {
+        const statut = getConsultationStatut(consultation);
+        if (consultationStatusFilter.value && statut !== consultationStatusFilter.value) return false;
+        if (!query) return true;
+        const haystack = [`#${consultation.id}`, getConsultationMedecin(consultation), statut].join(' ').toLowerCase();
+        return haystack.includes(query);
+    });
+});
+
+const rdvKpi = computed(() => {
+    const list = filteredRdvs.value;
+    const byStatus = (status) => list.filter((rdv) => getRdvStatus(rdv) === status).length;
+    return {
+        total: list.length,
+        planifies: byStatus('Planifié') + byStatus('Confirmé'),
+        termines: byStatus('Terminé'),
+        annules: byStatus('Annulé') + byStatus('Reporté')
+    };
+});
+
+const paiementsKpi = computed(() => {
+    const list = filteredPaiements.value;
+    const total = list.reduce((sum, p) => sum + getPaiementMontant(p), 0);
+    return {
+        count: list.length,
+        total,
+        modes: new Set(list.map((p) => getPaiementMode(p)).filter((m) => m && m !== '—')).size,
+        impaye: totalImpaye.value
+    };
+});
+
+const facturesKpi = computed(() => {
+    const list = displayedFactures.value;
+    const montant = list.reduce((sum, f) => sum + (Number(f.montant) || 0), 0);
+    const reste = list.reduce((sum, f) => sum + (Number(f.reste) || 0), 0);
+    const unpaid = list.filter((f) => isUnpaidFacture(f)).length;
+    return { count: list.length, montant, reste, unpaid };
+});
+
+const actesKpi = computed(() => {
+    const list = filteredActes.value;
+    const total = list.reduce((sum, a) => sum + (Number(a.montant) || 0), 0);
+    return {
+        count: list.length,
+        total,
+        medecins: new Set(list.map((a) => a.medecin).filter(Boolean)).size
+    };
+});
+
+const consultationsKpi = computed(() => {
+    const list = filteredConsultations.value;
+    const enCours = list.filter((c) => getConsultationStatut(c) === 'En cours').length;
+    const cloturees = list.filter((c) => getConsultationStatut(c) === 'Clôturée').length;
+    const montant = list.reduce((sum, c) => sum + getConsultationMontant(c), 0);
+    return { count: list.length, enCours, cloturees, montant };
+});
 
 const openConsultationDetails = async (consultation) => {
     if (!consultation?.id) return;
@@ -416,269 +552,508 @@ function getRDVStatusSeverity(status) {
     };
     return severities[status] || 'info';
 }
-
-function getRDVStatusIcon(status) {
-    const icons = {
-        Terminé: 'pi pi-check-circle',
-        Confirmé: 'pi pi-verified',
-        Planifié: 'pi pi-calendar-plus',
-        Annulé: 'pi pi-times-circle',
-        Reporté: 'pi pi-calendar-times'
-    };
-    return icons[status] || 'pi pi-calendar';
-}
-
-function getRDVStatusColor(status) {
-    const colors = {
-        Terminé: { bg: 'bg-emerald-100 dark:bg-emerald-900/30', text: 'text-emerald-600 dark:text-emerald-400' },
-        Confirmé: { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-600 dark:text-blue-400' },
-        Planifié: { bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-600 dark:text-amber-400' },
-        Annulé: { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-600 dark:text-red-400' },
-        Reporté: { bg: 'bg-surface-100 dark:bg-surface-700', text: 'text-surface-600 dark:text-surface-400' }
-    };
-    return colors[status] || { bg: 'bg-surface-100', text: 'text-surface-600' };
-}
 </script>
 
 <template>
-    <div class="bg-surface-0 dark:bg-surface-800/80 rounded-2xl shadow-lg border border-surface-200/50 dark:border-surface-700/50 overflow-hidden backdrop-blur-sm">
+    <div class="page-section page-section--flush">
         <ConfirmPopup group="cancel-consultation-dossier" />
         <ContextMenu ref="factureContextMenu" :model="factureContextMenuItems" />
         <ContextMenu ref="consultationContextMenu" :model="consultationContextMenuItems" />
 
-        <Tabs :value="activeTab" @update:value="activeTab = $event">
-            <TabList class="flex flex-wrap gap-2 border-b border-surface-200/50 dark:border-surface-700/50" data-tour="patients-dossier.finance-tabs">
+        <Tabs :value="activeTab" @update:value="activeTab = $event" class="dossier-folder__tabs">
+            <TabList data-tour="patients-dossier.finance-tabs">
                 <Tab v-for="tab in tabs" :key="tab.id" :value="tab.id">
-                    <span class="flex items-center gap-2">
+                    <span class="dossier-folder__tab-label">
                         <i :class="tab.icon"></i>
-                        <span>{{ tab.label }}</span>
+                        <span class="hidden sm:inline">{{ tab.label }}</span>
+                        <span v-if="tab.badge" class="dossier-folder__tab-badge">{{ tab.badge }}</span>
                     </span>
                 </Tab>
             </TabList>
-            <TabPanels class="p-5" data-tour="patients-dossier.finance-content">
+            <TabPanels class="!p-2 md:!p-3" data-tour="patients-dossier.finance-content">
+                <!-- RDV -->
                 <TabPanel value="rdv">
-                    <div v-if="rdvs.length" class="space-y-4">
-                        <div v-for="rdv in rdvs" :key="rdv.id" class="p-4 rounded-xl border border-surface-200/50 dark:border-surface-700/50 hover:border-primary-300/50 dark:hover:border-primary-700/50 transition-colors">
-                            <div class="flex items-center justify-between">
-                                <div class="flex items-center gap-3">
-                                    <div :class="['p-2 rounded-lg', getRDVStatusColor(getRdvStatus(rdv)).bg]">
-                                        <i :class="[getRDVStatusIcon(getRdvStatus(rdv)), getRDVStatusColor(getRdvStatus(rdv)).text]"></i>
-                                    </div>
-                                    <div>
-                                        <div class="font-semibold text-surface-900 dark:text-surface-100">{{ getRdvLabel(rdv) }}</div>
-                                        <div class="text-sm text-surface-600 dark:text-surface-400">
-                                            {{ formatDate(getRdvDate(rdv)) }}
-                                        </div>
-                                    </div>
+                    <div class="space-y-3">
+                        <div class="page-kpi-grid page-kpi-grid--compact">
+                            <div class="page-kpi-card border-blue-200/50 bg-gradient-to-br from-blue-50 to-blue-100/50 dark:border-blue-800/50 dark:from-blue-900/20 dark:to-blue-800/20">
+                                <div class="min-w-0">
+                                    <p class="page-kpi-label text-blue-700 dark:text-blue-300">Total</p>
+                                    <p class="page-kpi-value text-blue-900 dark:text-blue-100">{{ rdvKpi.total }}</p>
                                 </div>
-                                <div class="text-right">
-                                    <Tag :value="getRdvStatus(rdv)" :severity="getRDVStatusSeverity(getRdvStatus(rdv))" class="px-3 py-1 rounded-full" />
-                                    <div class="text-sm text-surface-600 dark:text-surface-400 mt-1">{{ getRdvMedecin(rdv) }}</div>
+                                <i class="pi pi-calendar page-kpi-icon text-blue-500"></i>
+                            </div>
+                            <div class="page-kpi-card border-amber-200/50 bg-gradient-to-br from-amber-50 to-amber-100/50 dark:border-amber-800/50 dark:from-amber-900/20 dark:to-amber-800/20">
+                                <div class="min-w-0">
+                                    <p class="page-kpi-label text-amber-700 dark:text-amber-300">À venir</p>
+                                    <p class="page-kpi-value text-amber-900 dark:text-amber-100">{{ rdvKpi.planifies }}</p>
                                 </div>
+                                <i class="pi pi-clock page-kpi-icon text-amber-500"></i>
                             </div>
-                            <div class="mt-3 flex flex-wrap items-center gap-2">
-                                <Tag v-if="getRdvSmsReminder(rdv)" :value="`SMS: ${getRdvSmsReminder(rdv).label}`" :severity="getSmsSeverity(getRdvSmsReminder(rdv))" class="px-3 py-1 rounded-full" />
-                                <span v-if="getRdvSmsReminder(rdv)?.sendAt" class="text-xs text-surface-500 dark:text-surface-400"> Programmation: {{ formatDateTime(getRdvSmsReminder(rdv).sendAt) }} </span>
-                                <span v-if="getRdvSmsReminder(rdv)?.sentAt" class="text-xs text-surface-500 dark:text-surface-400"> Envoi: {{ formatDateTime(getRdvSmsReminder(rdv).sentAt) }} </span>
+                            <div class="page-kpi-card border-emerald-200/50 bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:border-emerald-800/50 dark:from-emerald-900/20 dark:to-emerald-800/20">
+                                <div class="min-w-0">
+                                    <p class="page-kpi-label text-emerald-700 dark:text-emerald-300">Terminés</p>
+                                    <p class="page-kpi-value text-emerald-900 dark:text-emerald-100">{{ rdvKpi.termines }}</p>
+                                </div>
+                                <i class="pi pi-check-circle page-kpi-icon text-emerald-500"></i>
                             </div>
-                            <div v-if="rdv.notes || getRdvSmsReminder(rdv)?.message || getRdvSmsReminder(rdv)?.lastError" class="mt-3 pt-3 border-t border-surface-200/50 dark:border-surface-700/50 space-y-2">
-                                <p class="text-sm text-surface-700 dark:text-surface-300">{{ rdv.notes }}</p>
-                                <p v-if="getRdvSmsReminder(rdv)?.message" class="text-sm text-surface-700 dark:text-surface-300">SMS: {{ getRdvSmsReminder(rdv).message }}</p>
-                                <p v-if="getRdvSmsReminder(rdv)?.lastError" class="text-sm text-red-600 dark:text-red-400">Erreur SMS: {{ getRdvSmsReminder(rdv).lastError }}</p>
+                            <div class="page-kpi-card border-rose-200/50 bg-gradient-to-br from-rose-50 to-rose-100/50 dark:border-rose-800/50 dark:from-rose-900/20 dark:to-rose-800/20">
+                                <div class="min-w-0">
+                                    <p class="page-kpi-label text-rose-700 dark:text-rose-300">Annulés / reportés</p>
+                                    <p class="page-kpi-value text-rose-900 dark:text-rose-100">{{ rdvKpi.annules }}</p>
+                                </div>
+                                <i class="pi pi-times-circle page-kpi-icon text-rose-500"></i>
                             </div>
                         </div>
-                    </div>
-                    <div v-else class="flex flex-col items-center justify-center py-12 text-center">
-                        <div class="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full bg-surface-100 dark:bg-surface-800">
-                            <i class="pi pi-calendar text-3xl text-surface-400"></i>
+
+                        <div class="page-filters !justify-start">
+                            <div class="page-filter-item max-w-xs">
+                                <label>Recherche</label>
+                                <IconField>
+                                    <InputIcon class="pi pi-search" />
+                                    <InputText v-model="rdvSearch" placeholder="Motif, médecin…" class="w-full" />
+                                </IconField>
+                            </div>
+                            <div class="page-filter-item">
+                                <label>Statut</label>
+                                <Select v-model="rdvStatusFilter" :options="rdvStatusOptions" optionLabel="label" optionValue="value" class="w-full" />
+                            </div>
                         </div>
-                        <h4 class="text-lg font-semibold text-surface-700 dark:text-surface-300">Aucun rendez-vous</h4>
-                        <p class="mt-1 max-w-md text-sm text-surface-500 dark:text-surface-400">Ce patient n’a pas encore de rendez-vous enregistré.</p>
+
+                        <div v-if="filteredRdvs.length" class="page-table-scroll">
+                            <DataTable :value="filteredRdvs" dataKey="id" paginator :rows="8" :rowsPerPageOptions="[5, 8, 15]" responsiveLayout="scroll" stripedRows size="small" class="text-sm">
+                                <Column header="Date" sortable sortField="dateRdv" style="min-width: 7rem">
+                                    <template #body="{ data }">
+                                        {{ formatDate(getRdvDate(data)) }}
+                                    </template>
+                                </Column>
+                                <Column header="Motif" style="min-width: 10rem">
+                                    <template #body="{ data }">
+                                        <div class="font-medium">{{ getRdvLabel(data) }}</div>
+                                        <div v-if="data.notes" class="text-xs text-surface-500 dark:text-surface-400 line-clamp-1">{{ data.notes }}</div>
+                                    </template>
+                                </Column>
+                                <Column header="Médecin" style="min-width: 8rem">
+                                    <template #body="{ data }">
+                                        {{ getRdvMedecin(data) }}
+                                    </template>
+                                </Column>
+                                <Column header="Statut" style="min-width: 7rem">
+                                    <template #body="{ data }">
+                                        <Tag :value="getRdvStatus(data)" :severity="getRDVStatusSeverity(getRdvStatus(data))" />
+                                    </template>
+                                </Column>
+                                <Column header="SMS" style="min-width: 8rem">
+                                    <template #body="{ data }">
+                                        <Tag v-if="getRdvSmsReminder(data)" :value="getRdvSmsReminder(data).label" :severity="getSmsSeverity(getRdvSmsReminder(data))" />
+                                        <span v-else class="text-surface-400">—</span>
+                                    </template>
+                                </Column>
+                            </DataTable>
+                        </div>
+                        <div v-else class="dossier-state dossier-state--dashed py-8" style="box-shadow: none">
+                            <div class="dossier-state__icon"><i class="pi pi-calendar"></i></div>
+                            <h4 class="dossier-state__title">{{ rdvs.length ? 'Aucun résultat' : 'Aucun rendez-vous' }}</h4>
+                            <p class="dossier-state__text">
+                                {{ rdvs.length ? 'Aucun rendez-vous ne correspond aux filtres.' : 'Ce patient n’a pas encore de rendez-vous enregistré.' }}
+                            </p>
+                        </div>
                     </div>
                 </TabPanel>
 
+                <!-- Paiements -->
                 <TabPanel value="paiements">
-                    <div v-if="paiements.length" class="space-y-4">
-                        <div v-for="paiement in paiements" :key="paiement.id" class="p-4 rounded-xl border border-surface-200/50 dark:border-surface-700/50 hover:border-surface-300/50 dark:hover:border-surface-600/50 transition-colors">
-                            <div class="flex items-center justify-between">
-                                <div class="flex items-center gap-3">
-                                    <div class="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-900/30">
-                                        <i class="pi pi-check-circle text-emerald-600 dark:text-emerald-400"></i>
-                                    </div>
-                                    <div>
-                                        <div class="font-semibold text-surface-900 dark:text-surface-100">{{ getPaiementLabel(paiement) }}</div>
-                                        <div class="text-sm text-surface-600 dark:text-surface-400">
-                                            {{ formatDate(getPaiementDate(paiement)) }}
-                                        </div>
-                                    </div>
+                    <div class="space-y-3">
+                        <div class="page-kpi-grid page-kpi-grid--compact">
+                            <div class="page-kpi-card border-blue-200/50 bg-gradient-to-br from-blue-50 to-blue-100/50 dark:border-blue-800/50 dark:from-blue-900/20 dark:to-blue-800/20">
+                                <div class="min-w-0">
+                                    <p class="page-kpi-label text-blue-700 dark:text-blue-300">Paiements</p>
+                                    <p class="page-kpi-value text-blue-900 dark:text-blue-100">{{ paiementsKpi.count }}</p>
                                 </div>
-                                <div class="text-right">
-                                    <div class="text-lg font-bold text-emerald-600 dark:text-emerald-400">{{ getPaiementMontant(paiement) }} F CFA</div>
-                                    <div class="text-sm text-surface-600 dark:text-surface-400">{{ getPaiementMode(paiement) }}</div>
-                                </div>
+                                <i class="pi pi-list page-kpi-icon text-blue-500"></i>
                             </div>
-                            <div v-if="paiement.notes" class="mt-3 pt-3 border-t border-surface-200/50 dark:border-surface-700/50">
-                                <p class="text-sm text-surface-700 dark:text-surface-300">{{ paiement.notes }}</p>
+                            <div class="page-kpi-card border-emerald-200/50 bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:border-emerald-800/50 dark:from-emerald-900/20 dark:to-emerald-800/20">
+                                <div class="min-w-0">
+                                    <p class="page-kpi-label text-emerald-700 dark:text-emerald-300">Total payé</p>
+                                    <p class="page-kpi-value truncate text-emerald-900 dark:text-emerald-100">{{ formatFactureFcfa(paiementsKpi.total) }}</p>
+                                </div>
+                                <i class="pi pi-check-circle page-kpi-icon text-emerald-500"></i>
+                            </div>
+                            <div class="page-kpi-card border-slate-200/50 bg-gradient-to-br from-slate-50 to-slate-100/50 dark:border-slate-800/50 dark:from-slate-900/20 dark:to-slate-800/20">
+                                <div class="min-w-0">
+                                    <p class="page-kpi-label text-slate-600 dark:text-slate-300">Modes</p>
+                                    <p class="page-kpi-value text-slate-900 dark:text-surface-100">{{ paiementsKpi.modes }}</p>
+                                </div>
+                                <i class="pi pi-credit-card page-kpi-icon text-slate-500"></i>
+                            </div>
+                            <div class="page-kpi-card border-rose-200/50 bg-gradient-to-br from-rose-50 to-rose-100/50 dark:border-rose-800/50 dark:from-rose-900/20 dark:to-rose-800/20">
+                                <div class="min-w-0">
+                                    <p class="page-kpi-label text-rose-700 dark:text-rose-300">Impayés</p>
+                                    <p class="page-kpi-value truncate text-rose-900 dark:text-rose-100">{{ formatFactureFcfa(paiementsKpi.impaye) }}</p>
+                                </div>
+                                <i class="pi pi-exclamation-circle page-kpi-icon text-rose-500"></i>
                             </div>
                         </div>
 
-                        <div class="mt-6 border-t border-surface-200/50 pt-6 dark:border-surface-700/50">
-                            <div class="grid grid-cols-2 gap-4">
-                                <div class="rounded-xl border border-emerald-200/50 bg-gradient-to-br from-emerald-50 to-emerald-100/50 p-3 text-center dark:border-emerald-800/50 dark:from-emerald-900/20 dark:to-emerald-800/20">
-                                    <div class="text-sm text-emerald-700 dark:text-emerald-300">Total payé</div>
-                                    <div class="text-xl font-bold text-emerald-900 dark:text-emerald-100">{{ totalPaye }} F CFA</div>
-                                </div>
-                                <div class="rounded-xl border border-red-200/50 bg-gradient-to-br from-red-50 to-red-100/50 p-3 text-center dark:border-red-800/50 dark:from-red-900/20 dark:to-red-800/20">
-                                    <div class="text-sm text-red-700 dark:text-red-300">Impayés</div>
-                                    <div class="text-xl font-bold text-red-900 dark:text-red-100">{{ totalImpaye }} F CFA</div>
-                                </div>
+                        <div class="page-filters !justify-start">
+                            <div class="page-filter-item max-w-xs">
+                                <label>Recherche</label>
+                                <IconField>
+                                    <InputIcon class="pi pi-search" />
+                                    <InputText v-model="paiementSearch" placeholder="Libellé, mode…" class="w-full" />
+                                </IconField>
+                            </div>
+                            <div class="page-filter-item">
+                                <label>Mode</label>
+                                <Select v-model="paiementModeFilter" :options="paiementModeOptions" optionLabel="label" optionValue="value" class="w-full" />
                             </div>
                         </div>
-                    </div>
-                    <div v-else class="flex flex-col items-center justify-center py-12 text-center">
-                        <div class="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full bg-surface-100 dark:bg-surface-800">
-                            <i class="pi pi-credit-card text-3xl text-surface-400"></i>
+
+                        <div v-if="filteredPaiements.length" class="page-table-scroll">
+                            <DataTable :value="filteredPaiements" dataKey="id" paginator :rows="8" :rowsPerPageOptions="[5, 8, 15]" responsiveLayout="scroll" stripedRows size="small" class="text-sm">
+                                <Column header="Date" style="min-width: 7rem">
+                                    <template #body="{ data }">
+                                        {{ formatDate(getPaiementDate(data)) }}
+                                    </template>
+                                </Column>
+                                <Column header="Libellé" style="min-width: 10rem">
+                                    <template #body="{ data }">
+                                        <div class="font-medium">{{ getPaiementLabel(data) }}</div>
+                                        <div v-if="data.notes" class="text-xs text-surface-500 dark:text-surface-400 line-clamp-1">{{ data.notes }}</div>
+                                    </template>
+                                </Column>
+                                <Column header="Mode" style="min-width: 7rem">
+                                    <template #body="{ data }">
+                                        {{ getPaiementMode(data) }}
+                                    </template>
+                                </Column>
+                                <Column header="Montant" style="min-width: 8rem">
+                                    <template #body="{ data }">
+                                        <span class="font-semibold text-emerald-600 dark:text-emerald-400">{{ formatFactureFcfa(getPaiementMontant(data)) }}</span>
+                                    </template>
+                                </Column>
+                            </DataTable>
                         </div>
-                        <h4 class="text-lg font-semibold text-surface-700 dark:text-surface-300">Aucun paiement</h4>
-                        <p class="mt-1 max-w-md text-sm text-surface-500 dark:text-surface-400">Aucun paiement n’a encore été enregistré pour ce patient.</p>
+                        <div v-else class="dossier-state dossier-state--dashed py-8" style="box-shadow: none">
+                            <div class="dossier-state__icon"><i class="pi pi-credit-card"></i></div>
+                            <h4 class="dossier-state__title">{{ paiements.length ? 'Aucun résultat' : 'Aucun paiement' }}</h4>
+                            <p class="dossier-state__text">
+                                {{ paiements.length ? 'Aucun paiement ne correspond aux filtres.' : 'Aucun paiement n’a encore été enregistré pour ce patient.' }}
+                            </p>
+                        </div>
                     </div>
                 </TabPanel>
 
+                <!-- Factures -->
                 <TabPanel value="factures">
-                    <div v-if="factures.length" class="space-y-4">
-                        <div class="flex flex-wrap items-center justify-between gap-3">
-                            <p class="text-sm text-surface-500 dark:text-surface-400">Clic droit sur une facture pour Payer, Voir ou Imprimer.</p>
-                            <ToggleButton v-model="showUnpaidOnly" onLabel="Impayées uniquement" offLabel="Toutes les factures" onIcon="pi pi-filter" offIcon="pi pi-list" class="w-56" data-tour="patients-dossier.factures-unpaid-toggle" />
+                    <div class="space-y-3">
+                        <div class="page-kpi-grid page-kpi-grid--compact">
+                            <div class="page-kpi-card border-blue-200/50 bg-gradient-to-br from-blue-50 to-blue-100/50 dark:border-blue-800/50 dark:from-blue-900/20 dark:to-blue-800/20">
+                                <div class="min-w-0">
+                                    <p class="page-kpi-label text-blue-700 dark:text-blue-300">Factures</p>
+                                    <p class="page-kpi-value text-blue-900 dark:text-blue-100">{{ facturesKpi.count }}</p>
+                                </div>
+                                <i class="pi pi-file page-kpi-icon text-blue-500"></i>
+                            </div>
+                            <div class="page-kpi-card border-slate-200/50 bg-gradient-to-br from-slate-50 to-slate-100/50 dark:border-slate-800/50 dark:from-slate-900/20 dark:to-slate-800/20">
+                                <div class="min-w-0">
+                                    <p class="page-kpi-label text-slate-600 dark:text-slate-300">Montant</p>
+                                    <p class="page-kpi-value truncate text-slate-900 dark:text-surface-100">{{ formatFactureFcfa(facturesKpi.montant) }}</p>
+                                </div>
+                                <i class="pi pi-money-bill page-kpi-icon text-slate-500"></i>
+                            </div>
+                            <div class="page-kpi-card border-amber-200/50 bg-gradient-to-br from-amber-50 to-amber-100/50 dark:border-amber-800/50 dark:from-amber-900/20 dark:to-amber-800/20">
+                                <div class="min-w-0">
+                                    <p class="page-kpi-label text-amber-700 dark:text-amber-300">Reste</p>
+                                    <p class="page-kpi-value truncate text-amber-900 dark:text-amber-100">{{ formatFactureFcfa(facturesKpi.reste) }}</p>
+                                </div>
+                                <i class="pi pi-wallet page-kpi-icon text-amber-500"></i>
+                            </div>
+                            <div class="page-kpi-card border-rose-200/50 bg-gradient-to-br from-rose-50 to-rose-100/50 dark:border-rose-800/50 dark:from-rose-900/20 dark:to-rose-800/20">
+                                <div class="min-w-0">
+                                    <p class="page-kpi-label text-rose-700 dark:text-rose-300">Impayées</p>
+                                    <p class="page-kpi-value text-rose-900 dark:text-rose-100">{{ facturesKpi.unpaid }}</p>
+                                </div>
+                                <i class="pi pi-exclamation-triangle page-kpi-icon text-rose-500"></i>
+                            </div>
                         </div>
 
-                        <template v-if="displayedFactures.length">
-                            <div
-                                v-for="facture in displayedFactures"
-                                :key="facture.id"
-                                class="cursor-context-menu rounded-xl border border-surface-200/50 p-4 transition-colors hover:border-surface-300/50 dark:border-surface-700/50 dark:hover:border-surface-600/50"
-                                @contextmenu.prevent="openFactureContextMenu($event, facture)"
+                        <div class="flex flex-wrap items-end justify-between gap-2">
+                            <div class="page-filters !justify-start !w-auto flex-1">
+                                <div class="page-filter-item max-w-xs">
+                                    <label>Recherche</label>
+                                    <IconField>
+                                        <InputIcon class="pi pi-search" />
+                                        <InputText v-model="factureSearch" placeholder="Libellé…" class="w-full" />
+                                    </IconField>
+                                </div>
+                            </div>
+                            <ToggleButton
+                                v-model="showUnpaidOnly"
+                                onLabel="Impayées"
+                                offLabel="Toutes"
+                                onIcon="pi pi-filter"
+                                offIcon="pi pi-list"
+                                class="w-36"
+                                data-tour="patients-dossier.factures-unpaid-toggle"
+                            />
+                        </div>
+
+                        <p v-if="factures.length" class="text-xs text-surface-500 dark:text-surface-400 m-0">Clic droit sur une facture pour Payer, Voir ou Imprimer.</p>
+
+                        <div v-if="displayedFactures.length" class="page-table-scroll">
+                            <DataTable
+                                :value="displayedFactures"
+                                dataKey="id"
+                                paginator
+                                :rows="8"
+                                :rowsPerPageOptions="[5, 8, 15]"
+                                responsiveLayout="scroll"
+                                stripedRows
+                                size="small"
+                                class="text-sm"
+                                rowHover
+                                @row-contextmenu="openFactureContextMenu($event.originalEvent, $event.data)"
                             >
-                                <div class="flex items-center justify-between gap-3">
-                                    <div class="flex min-w-0 items-center gap-3">
-                                        <div class="shrink-0 rounded-lg bg-surface-100 p-2 dark:bg-surface-700">
-                                            <i class="pi pi-file text-surface-600 dark:text-surface-300"></i>
-                                        </div>
-                                        <div class="min-w-0">
-                                            <div class="truncate font-semibold text-surface-900 dark:text-surface-100">{{ getFactureLabel(facture) }}</div>
-                                            <div class="text-sm text-surface-600 dark:text-surface-400">
-                                                {{ formatDate(getFactureDate(facture)) }}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="shrink-0 text-right">
-                                        <div class="text-lg font-bold text-surface-900 dark:text-surface-100">
-                                            {{ formatFactureFcfa(facture.montant) }}
-                                        </div>
-                                        <div class="text-sm text-surface-600 dark:text-surface-400">Reste {{ formatFactureFcfa(facture.reste) }}</div>
-                                        <Tag class="mt-1" :value="computeFactureStatus(facture).label" :severity="computeFactureStatus(facture).severity" />
-                                    </div>
-                                </div>
-                            </div>
-                        </template>
-                        <div v-else class="flex flex-col items-center justify-center py-12 text-center">
-                            <div class="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full bg-surface-100 dark:bg-surface-800">
-                                <i class="pi pi-filter text-3xl text-surface-400"></i>
-                            </div>
-                            <h4 class="text-lg font-semibold text-surface-700 dark:text-surface-300">Aucune facture impayée</h4>
-                            <p class="mt-1 max-w-md text-sm text-surface-500 dark:text-surface-400">Ce patient n’a pas de facture en attente de règlement.</p>
+                                <Column header="Date" style="min-width: 7rem">
+                                    <template #body="{ data }">
+                                        {{ formatDate(getFactureDate(data)) }}
+                                    </template>
+                                </Column>
+                                <Column header="Libellé" style="min-width: 10rem">
+                                    <template #body="{ data }">
+                                        <span class="font-medium">{{ getFactureLabel(data) }}</span>
+                                    </template>
+                                </Column>
+                                <Column header="Montant" style="min-width: 8rem">
+                                    <template #body="{ data }">
+                                        {{ formatFactureFcfa(data.montant) }}
+                                    </template>
+                                </Column>
+                                <Column header="Reste" style="min-width: 7rem">
+                                    <template #body="{ data }">
+                                        {{ formatFactureFcfa(data.reste) }}
+                                    </template>
+                                </Column>
+                                <Column header="Statut" style="min-width: 7rem">
+                                    <template #body="{ data }">
+                                        <Tag :value="computeFactureStatus(data).label" :severity="computeFactureStatus(data).severity" />
+                                    </template>
+                                </Column>
+                            </DataTable>
                         </div>
-                    </div>
-                    <div v-else class="flex flex-col items-center justify-center py-12 text-center">
-                        <div class="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full bg-surface-100 dark:bg-surface-800">
-                            <i class="pi pi-file text-3xl text-surface-400"></i>
+                        <div v-else class="dossier-state dossier-state--dashed py-8" style="box-shadow: none">
+                            <div class="dossier-state__icon"><i class="pi pi-file"></i></div>
+                            <h4 class="dossier-state__title">
+                                {{ factures.length ? (showUnpaidOnly ? 'Aucune facture impayée' : 'Aucun résultat') : 'Aucune facture' }}
+                            </h4>
+                            <p class="dossier-state__text">
+                                {{
+                                    factures.length
+                                        ? showUnpaidOnly
+                                            ? 'Ce patient n’a pas de facture en attente de règlement.'
+                                            : 'Aucune facture ne correspond à la recherche.'
+                                        : 'Aucune facture n’est encore associée à ce patient.'
+                                }}
+                            </p>
                         </div>
-                        <h4 class="text-lg font-semibold text-surface-700 dark:text-surface-300">Aucune facture</h4>
-                        <p class="mt-1 max-w-md text-sm text-surface-500 dark:text-surface-400">Aucune facture n’est encore associée à ce patient.</p>
                     </div>
                 </TabPanel>
 
+                <!-- Actes -->
                 <TabPanel value="actes">
-                    <div v-if="medicalActs.length" class="space-y-4">
-                        <p class="text-sm text-surface-500 dark:text-surface-400">{{ medicalActs.length }} acte(s) · Total {{ formatFactureFcfa(medicalActsTotal) }}</p>
-                        <DataTable :value="medicalActs" dataKey="id" paginator :rows="8" responsiveLayout="scroll" stripedRows class="text-sm">
-                            <Column field="date" header="Date" sortable>
-                                <template #body="{ data }">
-                                    {{ formatDateTime(data.date) }}
-                                </template>
-                            </Column>
-                            <Column field="label" header="Description" sortable>
-                                <template #body="{ data }">
-                                    <div class="font-medium text-surface-900 dark:text-surface-100">{{ data.label }}</div>
-                                    <div v-if="data.type && data.type !== data.label" class="text-xs text-surface-500 dark:text-surface-400">
-                                        {{ data.type }}
-                                    </div>
-                                </template>
-                            </Column>
-                            <Column field="dent" header="Dent" sortable>
-                                <template #body="{ data }">
-                                    {{ data.dent || '—' }}
-                                </template>
-                            </Column>
-                            <Column field="medecin" header="Médecin" sortable>
-                                <template #body="{ data }">
-                                    {{ data.medecin || '—' }}
-                                </template>
-                            </Column>
-                            <Column field="quantite" header="Quantité" sortable />
-                            <Column field="montant" header="Montant" sortable>
-                                <template #body="{ data }">
-                                    {{ formatFactureFcfa(data.montant) }}
-                                </template>
-                            </Column>
-                        </DataTable>
-                    </div>
-                    <div v-else class="flex flex-col items-center justify-center py-12 text-center">
-                        <div class="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full bg-surface-100 dark:bg-surface-800">
-                            <i class="pi pi-list-check text-3xl text-surface-400"></i>
+                    <div class="space-y-3">
+                        <div class="page-kpi-grid page-kpi-grid--compact">
+                            <div class="page-kpi-card border-blue-200/50 bg-gradient-to-br from-blue-50 to-blue-100/50 dark:border-blue-800/50 dark:from-blue-900/20 dark:to-blue-800/20">
+                                <div class="min-w-0">
+                                    <p class="page-kpi-label text-blue-700 dark:text-blue-300">Actes</p>
+                                    <p class="page-kpi-value text-blue-900 dark:text-blue-100">{{ actesKpi.count }}</p>
+                                </div>
+                                <i class="pi pi-list-check page-kpi-icon text-blue-500"></i>
+                            </div>
+                            <div class="page-kpi-card border-violet-200/50 bg-gradient-to-br from-violet-50 to-violet-100/50 dark:border-violet-800/50 dark:from-violet-900/20 dark:to-violet-800/20">
+                                <div class="min-w-0">
+                                    <p class="page-kpi-label text-violet-700 dark:text-violet-300">Total</p>
+                                    <p class="page-kpi-value truncate text-violet-900 dark:text-violet-100">{{ formatFactureFcfa(actesKpi.total) }}</p>
+                                </div>
+                                <i class="pi pi-money-bill page-kpi-icon text-violet-500"></i>
+                            </div>
+                            <div class="page-kpi-card border-slate-200/50 bg-gradient-to-br from-slate-50 to-slate-100/50 dark:border-slate-800/50 dark:from-slate-900/20 dark:to-slate-800/20">
+                                <div class="min-w-0">
+                                    <p class="page-kpi-label text-slate-600 dark:text-slate-300">Médecins</p>
+                                    <p class="page-kpi-value text-slate-900 dark:text-surface-100">{{ actesKpi.medecins }}</p>
+                                </div>
+                                <i class="pi pi-user page-kpi-icon text-slate-500"></i>
+                            </div>
+                            <div class="page-kpi-card border-emerald-200/50 bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:border-emerald-800/50 dark:from-emerald-900/20 dark:to-emerald-800/20">
+                                <div class="min-w-0">
+                                    <p class="page-kpi-label text-emerald-700 dark:text-emerald-300">Tous actes</p>
+                                    <p class="page-kpi-value truncate text-emerald-900 dark:text-emerald-100">{{ formatFactureFcfa(medicalActsTotal) }}</p>
+                                </div>
+                                <i class="pi pi-chart-bar page-kpi-icon text-emerald-500"></i>
+                            </div>
                         </div>
-                        <h4 class="text-lg font-semibold text-surface-700 dark:text-surface-300">Aucun acte médical</h4>
-                        <p class="mt-1 max-w-md text-sm text-surface-500 dark:text-surface-400">Aucun acte médical n’a encore été enregistré pour ce patient.</p>
+
+                        <div class="page-filters !justify-start">
+                            <div class="page-filter-item max-w-xs">
+                                <label>Recherche</label>
+                                <IconField>
+                                    <InputIcon class="pi pi-search" />
+                                    <InputText v-model="actesSearch" placeholder="Description, dent, médecin…" class="w-full" />
+                                </IconField>
+                            </div>
+                        </div>
+
+                        <div v-if="filteredActes.length" class="page-table-scroll">
+                            <DataTable :value="filteredActes" dataKey="id" paginator :rows="8" :rowsPerPageOptions="[5, 8, 15]" responsiveLayout="scroll" stripedRows size="small" class="text-sm">
+                                <Column field="date" header="Date" sortable style="min-width: 8rem">
+                                    <template #body="{ data }">
+                                        {{ formatDateTime(data.date) }}
+                                    </template>
+                                </Column>
+                                <Column field="label" header="Description" sortable style="min-width: 10rem">
+                                    <template #body="{ data }">
+                                        <div class="font-medium">{{ data.label }}</div>
+                                        <div v-if="data.type && data.type !== data.label" class="text-xs text-surface-500 dark:text-surface-400">{{ data.type }}</div>
+                                    </template>
+                                </Column>
+                                <Column field="dent" header="Dent" sortable style="min-width: 5rem">
+                                    <template #body="{ data }">
+                                        {{ data.dent || '—' }}
+                                    </template>
+                                </Column>
+                                <Column field="medecin" header="Médecin" sortable style="min-width: 8rem">
+                                    <template #body="{ data }">
+                                        {{ data.medecin || '—' }}
+                                    </template>
+                                </Column>
+                                <Column field="quantite" header="Qté" sortable style="min-width: 4rem" />
+                                <Column field="montant" header="Montant" sortable style="min-width: 8rem">
+                                    <template #body="{ data }">
+                                        {{ formatFactureFcfa(data.montant) }}
+                                    </template>
+                                </Column>
+                            </DataTable>
+                        </div>
+                        <div v-else class="dossier-state dossier-state--dashed py-8" style="box-shadow: none">
+                            <div class="dossier-state__icon"><i class="pi pi-list-check"></i></div>
+                            <h4 class="dossier-state__title">{{ medicalActs.length ? 'Aucun résultat' : 'Aucun acte médical' }}</h4>
+                            <p class="dossier-state__text">
+                                {{ medicalActs.length ? 'Aucun acte ne correspond à la recherche.' : 'Aucun acte médical n’a encore été enregistré pour ce patient.' }}
+                            </p>
+                        </div>
                     </div>
                 </TabPanel>
 
+                <!-- Consultations -->
                 <TabPanel v-if="showConsultations" value="consultations">
-                    <div v-if="consultations.length" class="space-y-4">
-                        <p class="text-sm text-surface-500 dark:text-surface-400">Clic droit sur une consultation pour les actions disponibles.</p>
-                        <div
-                            v-for="consultation in consultations"
-                            :key="consultation.id"
-                            class="cursor-context-menu rounded-xl border border-surface-200/50 p-4 transition-colors hover:border-surface-300/50 dark:border-surface-700/50 dark:hover:border-surface-600/50"
-                            @contextmenu.prevent="openConsultationContextMenu($event, consultation)"
-                        >
-                            <div class="flex items-center justify-between">
-                                <div class="flex items-center gap-3">
-                                    <div class="rounded-lg bg-surface-100 p-2 dark:bg-surface-700">
-                                        <i class="pi pi-folder-open text-surface-600 dark:text-surface-300"></i>
-                                    </div>
-                                    <div>
-                                        <div class="font-semibold text-surface-900 dark:text-surface-100">Consultation #{{ consultation.id }}</div>
-                                        <div class="text-sm text-surface-600 dark:text-surface-400">
-                                            {{ formatDate(getConsultationDate(consultation)) }}
-                                        </div>
-                                        <div class="text-sm text-surface-600 dark:text-surface-400">
-                                            {{ getConsultationMedecin(consultation) }}
-                                        </div>
-                                    </div>
+                    <div class="space-y-3">
+                        <div class="page-kpi-grid page-kpi-grid--compact">
+                            <div class="page-kpi-card border-blue-200/50 bg-gradient-to-br from-blue-50 to-blue-100/50 dark:border-blue-800/50 dark:from-blue-900/20 dark:to-blue-800/20">
+                                <div class="min-w-0">
+                                    <p class="page-kpi-label text-blue-700 dark:text-blue-300">Total</p>
+                                    <p class="page-kpi-value text-blue-900 dark:text-blue-100">{{ consultationsKpi.count }}</p>
                                 </div>
-                                <div class="text-right">
-                                    <Tag :value="getConsultationStatut(consultation)" :severity="getConsultationStatusSeverity(getConsultationStatut(consultation))" class="rounded-full px-3 py-1" />
-                                    <div class="mt-2 text-lg font-bold text-surface-900 dark:text-surface-100">{{ getConsultationMontant(consultation) }} F CFA</div>
+                                <i class="pi pi-folder-open page-kpi-icon text-blue-500"></i>
+                            </div>
+                            <div class="page-kpi-card border-amber-200/50 bg-gradient-to-br from-amber-50 to-amber-100/50 dark:border-amber-800/50 dark:from-amber-900/20 dark:to-amber-800/20">
+                                <div class="min-w-0">
+                                    <p class="page-kpi-label text-amber-700 dark:text-amber-300">En cours</p>
+                                    <p class="page-kpi-value text-amber-900 dark:text-amber-100">{{ consultationsKpi.enCours }}</p>
                                 </div>
+                                <i class="pi pi-clock page-kpi-icon text-amber-500"></i>
+                            </div>
+                            <div class="page-kpi-card border-emerald-200/50 bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:border-emerald-800/50 dark:from-emerald-900/20 dark:to-emerald-800/20">
+                                <div class="min-w-0">
+                                    <p class="page-kpi-label text-emerald-700 dark:text-emerald-300">Clôturées</p>
+                                    <p class="page-kpi-value text-emerald-900 dark:text-emerald-100">{{ consultationsKpi.cloturees }}</p>
+                                </div>
+                                <i class="pi pi-check-circle page-kpi-icon text-emerald-500"></i>
+                            </div>
+                            <div class="page-kpi-card border-violet-200/50 bg-gradient-to-br from-violet-50 to-violet-100/50 dark:border-violet-800/50 dark:from-violet-900/20 dark:to-violet-800/20">
+                                <div class="min-w-0">
+                                    <p class="page-kpi-label text-violet-700 dark:text-violet-300">Montant</p>
+                                    <p class="page-kpi-value truncate text-violet-900 dark:text-violet-100">{{ formatFactureFcfa(consultationsKpi.montant) }}</p>
+                                </div>
+                                <i class="pi pi-money-bill page-kpi-icon text-violet-500"></i>
                             </div>
                         </div>
-                    </div>
-                    <div v-else class="flex flex-col items-center justify-center py-12 text-center">
-                        <div class="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full bg-surface-100 dark:bg-surface-800">
-                            <i class="pi pi-folder-open text-3xl text-surface-400"></i>
+
+                        <div class="page-filters !justify-start">
+                            <div class="page-filter-item max-w-xs">
+                                <label>Recherche</label>
+                                <IconField>
+                                    <InputIcon class="pi pi-search" />
+                                    <InputText v-model="consultationSearch" placeholder="N°, médecin…" class="w-full" />
+                                </IconField>
+                            </div>
+                            <div class="page-filter-item">
+                                <label>Statut</label>
+                                <Select v-model="consultationStatusFilter" :options="consultationStatusOptions" optionLabel="label" optionValue="value" class="w-full" />
+                            </div>
                         </div>
-                        <h4 class="text-lg font-semibold text-surface-700 dark:text-surface-300">Aucune consultation</h4>
-                        <p class="mt-1 max-w-md text-sm text-surface-500 dark:text-surface-400">Aucune consultation n’est encore associée à ce patient.</p>
+
+                        <p v-if="consultations.length" class="text-xs text-surface-500 dark:text-surface-400 m-0">Clic droit sur une consultation pour les actions disponibles.</p>
+
+                        <div v-if="filteredConsultations.length" class="page-table-scroll">
+                            <DataTable
+                                :value="filteredConsultations"
+                                dataKey="id"
+                                paginator
+                                :rows="8"
+                                :rowsPerPageOptions="[5, 8, 15]"
+                                responsiveLayout="scroll"
+                                stripedRows
+                                size="small"
+                                class="text-sm"
+                                rowHover
+                                @row-contextmenu="openConsultationContextMenu($event.originalEvent, $event.data)"
+                            >
+                                <Column header="Date" style="min-width: 7rem">
+                                    <template #body="{ data }">
+                                        {{ formatDate(getConsultationDate(data)) }}
+                                    </template>
+                                </Column>
+                                <Column header="Consultation" style="min-width: 8rem">
+                                    <template #body="{ data }">
+                                        <span class="font-medium">#{{ data.id }}</span>
+                                    </template>
+                                </Column>
+                                <Column header="Médecin" style="min-width: 8rem">
+                                    <template #body="{ data }">
+                                        {{ getConsultationMedecin(data) }}
+                                    </template>
+                                </Column>
+                                <Column header="Statut" style="min-width: 7rem">
+                                    <template #body="{ data }">
+                                        <Tag :value="getConsultationStatut(data)" :severity="getConsultationStatusSeverity(getConsultationStatut(data))" />
+                                    </template>
+                                </Column>
+                                <Column header="Montant" style="min-width: 8rem">
+                                    <template #body="{ data }">
+                                        {{ formatFactureFcfa(getConsultationMontant(data)) }}
+                                    </template>
+                                </Column>
+                            </DataTable>
+                        </div>
+                        <div v-else class="dossier-state dossier-state--dashed py-8" style="box-shadow: none">
+                            <div class="dossier-state__icon"><i class="pi pi-folder-open"></i></div>
+                            <h4 class="dossier-state__title">{{ consultations.length ? 'Aucun résultat' : 'Aucune consultation' }}</h4>
+                            <p class="dossier-state__text">
+                                {{ consultations.length ? 'Aucune consultation ne correspond aux filtres.' : 'Aucune consultation n’est encore associée à ce patient.' }}
+                            </p>
+                        </div>
                     </div>
+                </TabPanel>
+
+                <!-- Services cabinet -->
+                <TabPanel value="services-cabinet">
+                    <PatientCabinetServicesPanel
+                        compact
+                        :patient-id="patientId"
+                        :patient-name="patientName"
+                        :services="servicesCabinet"
+                        @refresh="emit('refresh')"
+                    />
                 </TabPanel>
             </TabPanels>
         </Tabs>

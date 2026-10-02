@@ -1,6 +1,6 @@
 <script setup>
 import Button from 'primevue/button';
-import Dialog from 'primevue/dialog';
+import AppDialog from '@/components/layout/AppDialog.vue';
 import FileUpload from 'primevue/fileupload';
 import Galleria from 'primevue/galleria';
 import InputText from 'primevue/inputtext';
@@ -383,50 +383,45 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-    <div class="rounded-2xl border border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-br from-surface-0 to-surface-50/80 dark:from-surface-800 dark:to-surface-900/80 shadow-sm" :class="props.compact ? 'p-3' : 'p-6'">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-surface-100 dark:border-surface-700" :class="props.compact ? 'mb-3 pb-2' : 'mb-6 pb-4'">
-            <div class="flex items-center gap-3">
-                <div class="rounded-xl bg-primary-500/10 dark:bg-primary-500/20" :class="props.compact ? 'p-2' : 'p-2.5'">
-                    <i class="pi pi-images text-primary-600 dark:text-primary-400" :class="props.compact ? 'text-base' : 'text-xl'"></i>
-                </div>
-                <div>
-                    <h3 class="font-bold text-surface-900 dark:text-surface-50" :class="props.compact ? 'text-base' : 'text-xl'">Images & Documents</h3>
-                    <p class="text-surface-500 dark:text-surface-400 mt-1" :class="props.compact ? 'text-xs' : 'text-sm'">Pieces jointes du dossier</p>
-                </div>
+    <div class="medical-form-block" :class="props.compact ? 'medical-form-block--compact' : ''">
+        <div class="medical-form-block__header">
+            <div>
+                <h3 class="medical-form-block__title">Images & Documents</h3>
+                <p class="medical-form-block__subtitle">Pièces jointes du dossier</p>
             </div>
             <div class="flex items-center gap-2">
-                <Button icon="pi pi-plus" label="Ajouter" size="small" class="rounded-xl" @click="openAddDialog" />
+                <Button icon="pi pi-plus" label="Ajouter" size="small" outlined @click="openAddDialog" />
                 <Button
                     label="Sauvegarder"
                     icon="pi pi-save"
                     :loading="saving"
                     @click="emit('save')"
-                    class="rounded-xl font-medium shadow-sm hover:shadow-md transition-all bg-gradient-to-r from-primary-500 to-primary-600 border-0 text-white"
-                    :class="props.compact ? 'px-3 py-2 text-xs' : 'px-5 py-3'"
                 />
             </div>
         </div>
 
-        <div v-if="isUploading" class="mb-4 rounded-xl border border-primary-200/70 dark:border-primary-700/50 bg-primary-50/80 dark:bg-primary-950/30 p-4 shadow-sm" role="status" aria-live="polite">
+        <div class="medical-form-block__body">
+        <div v-if="isUploading" class="mb-4 rounded border p-3" style="border-color: color-mix(in srgb, var(--primary-color) 30%, transparent); background: color-mix(in srgb, var(--primary-color) 6%, var(--surface-card))" role="status" aria-live="polite">
             <div class="flex items-center justify-between gap-3 mb-2">
-                <div class="flex items-center gap-2 text-sm font-medium text-primary-800 dark:text-primary-200">
+                <div class="flex items-center gap-2" style="font-size: var(--page-section-subtitle-size); font-weight: 500; color: var(--text-color)">
                     <i class="pi pi-cloud-upload animate-pulse"></i>
                     <span>Envoi des fichiers...</span>
                 </div>
-                <span class="text-sm font-semibold tabular-nums text-primary-700 dark:text-primary-300">{{ uploadPercent }}%</span>
+                <span class="font-semibold tabular-nums" style="font-size: var(--page-section-subtitle-size)">{{ uploadPercent }}%</span>
             </div>
             <ProgressBar :value="uploadPercent" :showValue="false" class="h-2" />
-            <p class="mt-2 text-xs text-primary-700/80 dark:text-primary-300/80">{{ uploadLabel }}</p>
+            <p class="mt-2" style="font-size: var(--page-kpi-meta-size); color: var(--text-color-secondary)">{{ uploadLabel }}</p>
         </div>
 
-        <div class="space-y-4">
-            <div v-if="!galleryItems.length" class="text-sm text-surface-500 dark:text-surface-400">Aucun document ajoute.</div>
+        <div class="space-y-3">
+            <div v-if="!galleryItems.length" class="dossier-state__text" style="text-align:left">Aucun document ajouté.</div>
 
-            <div v-for="(item, idx) in documentsView" :key="idx" class="rounded-2xl border border-surface-200/70 dark:border-surface-700/70 bg-surface-50 dark:bg-surface-800/30" :class="props.compact ? 'p-3' : 'p-5'">
+            <div v-for="(item, idx) in documentsView" :key="idx" class="medical-form-block">
+                <div class="medical-form-block__body">
                 <div class="flex flex-wrap items-start justify-between gap-4">
                     <div class="min-w-0">
-                        <h4 class="font-semibold text-surface-900 dark:text-surface-100" :class="props.compact ? 'text-sm' : 'text-base'">{{ item.title }}</h4>
-                        <p class="text-xs text-surface-500 dark:text-surface-400 mt-1 break-words">{{ item.description }}</p>
+                        <h4 class="medical-form-block__title">{{ item.title }}</h4>
+                        <p class="medical-form-block__subtitle break-words">{{ item.description }}</p>
                     </div>
                     <div class="flex items-center gap-1">
                         <Button icon="pi pi-pencil" text rounded size="small" @click="openEditDialog(item.doc, idx)" />
@@ -456,10 +451,23 @@ onBeforeUnmount(() => {
                     </button>
                 </div>
                 <div v-else class="mt-4 text-xs text-surface-500 dark:text-surface-400">Aucun fichier attache.</div>
+                </div>
             </div>
         </div>
+        </div>
 
-        <Dialog v-model:visible="showDialog" modal :header="dialogTitle" class="w-full max-w-2xl">
+        <AppDialog
+            v-model:visible="showDialog"
+            :title="dialogTitle"
+            icon="pi pi-file"
+            icon-tone="primary"
+            size="lg"
+            cancel-label="Annuler"
+            confirm-label="Enregistrer"
+            confirm-icon="pi pi-check"
+            @cancel="showDialog = false"
+            @confirm="saveDraft"
+        >
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <div class="space-y-2">
                     <label class="text-sm font-medium text-surface-700 dark:text-surface-300">Type</label>
@@ -497,13 +505,7 @@ onBeforeUnmount(() => {
                     </div>
                 </div>
             </div>
-            <template #footer>
-                <div class="flex items-center justify-end gap-2">
-                    <Button label="Annuler" text @click="showDialog = false" />
-                    <Button label="Enregistrer" icon="pi pi-check" @click="saveDraft" />
-                </div>
-            </template>
-        </Dialog>
+        </AppDialog>
 
         <Galleria
             v-model:visible="previewVisible"

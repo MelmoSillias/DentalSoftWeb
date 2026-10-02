@@ -1,6 +1,5 @@
 <script setup>
-import Button from 'primevue/button';
-import Dialog from 'primevue/dialog';
+import AppDialog from '@/components/layout/AppDialog.vue';
 import { computed, ref } from 'vue';
 import FormuleDentaireGrid from '@/components/fiche-medicale/FormuleDentaireGrid.vue';
 import ReadonlyFieldGrid from '@/components/fiche-medicale/ReadonlyFieldGrid.vue';
@@ -76,32 +75,20 @@ const examensComplementairesView = computed(() => {
 
         <p class="text-xs text-surface-500 dark:text-surface-400 mt-3 text-center">Cliquez sur une dent pour afficher les détails</p>
 
-        <Dialog
+        <AppDialog
             v-model:visible="detailVisible"
-            modal
+            :title="`Dent ${selectedTooth}`"
+            subtitle="Détails de la formule dentaire"
+            icon="pi pi-th-large"
+            icon-tone="primary"
+            size="md"
             :closable="false"
             :draggable="false"
-            class="w-full max-w-lg formule-dentaire-detail-dialog"
-            :pt="{
-                root: 'rounded-2xl overflow-hidden border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900 shadow-xl',
-                header: 'border-b border-surface-200/50 dark:border-surface-700/50 bg-surface-50 dark:bg-surface-900 px-5 py-4',
-                content: 'px-5 py-4 bg-surface-0 dark:bg-surface-900 text-surface-900 dark:text-surface-100',
-                footer: 'border-t border-surface-200/50 dark:border-surface-700/50 bg-surface-50 dark:bg-surface-900 px-5 py-4'
-            }"
+            :show-footer="true"
+            cancel-label="Fermer"
+            @cancel="closeToothDetail"
             @hide="selectedTooth = null"
         >
-            <template #header>
-                <div class="flex items-center gap-3">
-                    <div class="p-2 rounded-xl bg-primary-500/10 dark:bg-primary-500/25">
-                        <i class="pi pi-th-large text-primary-600 dark:text-primary-400"></i>
-                    </div>
-                    <div>
-                        <h4 class="text-lg font-semibold text-surface-900 dark:text-surface-50 m-0">Dent {{ selectedTooth }}</h4>
-                        <p class="text-sm text-surface-500 dark:text-surface-400 m-0 mt-0.5">Détails de la formule dentaire</p>
-                    </div>
-                </div>
-            </template>
-
             <div v-if="selectedTooth && !selectedHasData" class="flex flex-col items-center justify-center text-center py-10 px-4 rounded-xl border border-dashed border-surface-200 dark:border-surface-700 bg-surface-50/80 dark:bg-surface-800/50">
                 <div class="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-surface-100 dark:bg-surface-800 text-surface-400 dark:text-surface-500">
                     <i class="pi pi-th-large text-2xl"></i>
@@ -156,12 +143,6 @@ const examensComplementairesView = computed(() => {
                     </div>
                 </div>
             </div>
-
-            <template #footer>
-                <div class="flex justify-end w-full">
-                    <Button label="Fermer" icon="pi pi-times" severity="secondary" class="dark:border-surface-600 dark:text-surface-200" @click="closeToothDetail" />
-                </div>
-            </template>
-        </Dialog>
+        </AppDialog>
     </div>
 </template>

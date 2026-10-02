@@ -113,17 +113,10 @@ const onSoinTypeChange = (value) => {
     <div class="rounded-xl border p-4 shadow-sm hover:shadow-md transition-all" :class="cardClasses">
         <div v-if="showHeader" class="flex items-center justify-between mb-4">
             <div class="flex items-center gap-2 flex-wrap">
-                <span class="flex items-center justify-center w-6 h-6 rounded-md text-sm font-bold" :class="isCabinetActe ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300' : 'bg-blue-500/10 text-blue-600 dark:text-blue-400'">
+                <span class="flex items-center justify-center w-6 h-6 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 text-sm font-bold">
                     {{ index + 1 }}
                 </span>
                 <span class="font-medium text-surface-900 dark:text-surface-100">Acte {{ index + 1 }}</span>
-                <span
-                    v-if="isCabinetActe"
-                    class="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-100 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-amber-800 dark:border-amber-700 dark:bg-amber-900/40 dark:text-amber-200"
-                >
-                    <i class="pi pi-building text-[10px]" />
-                    Service cabinet
-                </span>
             </div>
             <Button icon="pi pi-trash" severity="danger" text rounded v-tooltip="'Supprimer cet acte'" class="hover:bg-red-50 dark:hover:bg-red-900/20" @click="emit('remove')" />
         </div>

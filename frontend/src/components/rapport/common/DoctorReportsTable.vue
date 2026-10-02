@@ -4,7 +4,7 @@ import Button from 'primevue/button';
 import Card from 'primevue/card';
 import Column from 'primevue/column';
 import DataTable from 'primevue/datatable';
-import Dialog from 'primevue/dialog';
+import AppDialog from '@/components/layout/AppDialog.vue';
 import Tag from 'primevue/tag';
 import { buildPrintHtmlDocument, buildPrintTitleBandHtml } from '@/utils/printDocumentStyles';
 import { openPrintWindow } from '@/utils/reportPrint';
@@ -776,11 +776,11 @@ function printAllActs() {
         </template>
     </Card>
 
-    <Dialog v-model:visible="printDialogVisible" modal header="Choix d'impression" :style="{ width: '90vw', maxWidth: '32rem' }">
+    <AppDialog v-model:visible="printDialogVisible" title="Choix d'impression" icon="pi pi-print" icon-tone="primary" size="sm" :show-footer="false">
         <p class="mb-4">Souhaitez-vous imprimer :</p>
         <div class="flex flex-col gap-2">
             <Button label="Liste des médecins (résumé)" icon="pi pi-print" @click="printSummary" />
             <Button label="Liste des soins détaillée" icon="pi pi-file" severity="secondary" @click="printAllActs" />
         </div>
-    </Dialog>
+    </AppDialog>
 </template>

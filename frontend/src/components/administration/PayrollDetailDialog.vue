@@ -1,8 +1,8 @@
 <script setup>
 import { computed, ref, watch } from 'vue';
+import AppDialog from '@/components/layout/AppDialog.vue';
 import Button from 'primevue/button';
 import DatePicker from 'primevue/datepicker';
-import Dialog from 'primevue/dialog';
 import InputNumber from 'primevue/inputnumber';
 import Select from 'primevue/select';
 import Textarea from 'primevue/textarea';
@@ -107,7 +107,16 @@ const submit = () => {
 </script>
 
 <template>
-    <Dialog v-model:visible="localVisible" modal header="Détail du paiement" :style="{ width: '44rem', maxWidth: '95vw' }" @hide="close">
+    <AppDialog
+        v-model:visible="localVisible"
+        title="Détail du paiement"
+        icon="pi pi-file"
+        icon-tone="info"
+        size="lg"
+        :loading="loading"
+        :show-footer="true"
+        @hide="close"
+    >
         <div v-if="payment" class="space-y-4">
             <div class="flex items-start justify-between gap-3">
                 <div>
@@ -193,5 +202,5 @@ const submit = () => {
                 </div>
             </div>
         </template>
-    </Dialog>
+    </AppDialog>
 </template>

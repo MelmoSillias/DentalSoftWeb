@@ -1,7 +1,6 @@
 <script setup>
-import Button from 'primevue/button';
+import AppDialog from '@/components/layout/AppDialog.vue';
 import DatePicker from 'primevue/datepicker';
-import Dialog from 'primevue/dialog';
 import Select from 'primevue/select';
 import { reactive, ref, watch } from 'vue';
 
@@ -81,7 +80,21 @@ const submit = () => {
 </script>
 
 <template>
-    <Dialog v-model:visible="localVisible" modal header="Reporter le rendez-vous" style="width: 480px" @hide="close">
+    <AppDialog
+        v-model:visible="localVisible"
+        title="Reporter le rendez-vous"
+        icon="pi pi-calendar-plus"
+        icon-tone="warning"
+        size="md"
+        :loading="loading"
+        cancel-label="Fermer"
+        confirm-label="Reporter"
+        confirm-icon="pi pi-send"
+        confirm-severity="warning"
+        @cancel="close"
+        @confirm="submit"
+        @hide="close"
+    >
         <div class="flex flex-col gap-3">
             <div class="flex flex-col gap-1">
                 <label class="text-sm font-semibold text-surface-700 dark:text-surface-50">Médecin</label>
@@ -98,12 +111,5 @@ const submit = () => {
                 </div>
             </div>
         </div>
-
-        <template #footer>
-            <div class="flex justify-end gap-2">
-                <Button label="Fermer" text severity="secondary" @click="close" />
-                <Button label="Reporter" icon="pi pi-send" severity="warning" :loading="loading" @click="submit" />
-            </div>
-        </template>
-    </Dialog>
+    </AppDialog>
 </template>

@@ -1,7 +1,6 @@
 <script setup>
 import { computed, reactive, watch } from 'vue';
-import Button from 'primevue/button';
-import Dialog from 'primevue/dialog';
+import AppDialog from '@/components/layout/AppDialog.vue';
 import InputText from 'primevue/inputtext';
 import Select from 'primevue/select';
 import Textarea from 'primevue/textarea';
@@ -75,7 +74,21 @@ const submitForm = (event) => {
 </script>
 
 <template>
-    <Dialog :visible="visible" modal :style="{ width: '560px' }" :header="isEdit ? 'Modifier un mode de paiement' : 'Ajouter un mode de paiement'" @update:visible="close">
+    <AppDialog
+        :visible="visible"
+        :title="isEdit ? 'Modifier un mode de paiement' : 'Ajouter un mode de paiement'"
+        icon="pi pi-credit-card"
+        icon-tone="primary"
+        size="md"
+        :loading="loading"
+        :confirm-disabled="!canSubmit"
+        cancel-label="Annuler"
+        :confirm-label="isEdit ? 'Mettre a jour' : 'Enregistrer'"
+        confirm-icon="pi pi-check"
+        @update:visible="close"
+        @cancel="close"
+        @confirm="submitForm"
+    >
         <div class="grid gap-4">
             <div class="flex flex-col gap-2">
                 <label class="text-sm font-medium text-surface-700">Libelle <span class="text-red-500">*</span></label>
@@ -90,10 +103,5 @@ const submitForm = (event) => {
                 <Textarea v-model="form.notes" rows="3" autoResize class="w-full" placeholder="Informations internes" />
             </div>
         </div>
-
-        <template #footer>
-            <Button label="Annuler" text @click="close" />
-            <Button :label="isEdit ? 'Mettre a jour' : 'Enregistrer'" icon="pi pi-check" :loading="loading" :disabled="!canSubmit" @click="submitForm" />
-        </template>
-    </Dialog>
+    </AppDialog>
 </template>

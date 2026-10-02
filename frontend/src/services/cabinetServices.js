@@ -3,8 +3,26 @@ import http from '@/service/http';
 
 const authHeaders = (token) => (token ? { Authorization: `Bearer ${token}` } : {});
 
+export const fetchCabinetServices = async (params = {}, token) => {
+    const res = await http.get(`${apiPrefix}/services-cabinet`, {
+        headers: authHeaders(token),
+        params
+    });
+    return res.data?.data ?? res.data ?? [];
+};
+
+export const fetchCabinetService = async (serviceId, token) => {
+    const res = await http.get(`${apiPrefix}/services-cabinet/${serviceId}`, { headers: authHeaders(token) });
+    return res.data?.data ?? res.data;
+};
+
 export const createCabinetService = async (patientId, payload, token) => {
     const res = await http.post(`${apiPrefix}/patients/${patientId}/services-cabinet`, payload, { headers: authHeaders(token) });
+    return res.data;
+};
+
+export const updateCabinetService = async (serviceId, payload, token) => {
+    const res = await http.put(`${apiPrefix}/services-cabinet/${serviceId}`, payload, { headers: authHeaders(token) });
     return res.data;
 };
 

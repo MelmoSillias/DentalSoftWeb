@@ -26,9 +26,8 @@ import { addPatientAllergy, addPatientAntecedent, deletePatientAllergy, deletePa
 import { fetchDevisPrintData, fetchOrdonnancePrintData, fetchPatientFichePrintData } from '@/services/printService';
 import { useAuthStore } from '@/stores/auth';
 import ConfirmDialog from 'primevue/confirmdialog';
-import Dialog from 'primevue/dialog';
+import AppDialog from '@/components/layout/AppDialog.vue';
 import Tag from 'primevue/tag';
-import Toast from 'primevue/toast';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
 import { computed, ref, watch } from 'vue';
@@ -922,6 +921,22 @@ watch(
     }
 );
 
+const syncPatientMedicalLists = (patient) => {
+    if (!data.patient || !patient) return;
+    if (Array.isArray(patient.antecedents)) {
+        data.patient.antecedents = [...patient.antecedents];
+    }
+    if (Array.isArray(patient.allergies)) {
+        data.patient.allergies = [...patient.allergies];
+    }
+};
+
+const refreshOrdonnances = async () => {
+    if (!consultIdRef.value) return;
+    data.ordonnances = await loadOrdonnances(consultIdRef.value, token);
+    notifyOrdonnancesChanged();
+};
+
 defineExpose({
     openAntecedentDialog,
     openAllergyDialog,
@@ -932,15 +947,15 @@ defineExpose({
     openViewOrdonnance,
     openEditOrdonnance,
     handlePrintOrdonnance,
+    syncPatientMedicalLists,
+    refreshOrdonnances,
     retryLoad: retryInitialize
 });
 </script>
 
 <template>
-    <div class="min-h-[32rem]">
+    <div class="min-h-0 lg:min-h-[32rem]">
         <ConfirmDialog />
-        <AppToast />
-
         <div v-if="!pageLoading && !loadErrorMessage" class="relative space-y-5">
             <div v-if="isClotureProcessing" class="absolute inset-0 z-30 flex items-center justify-center bg-surface-0/60 dark:bg-surface-900/60 backdrop-blur-[1px]">
                 <div class="flex items-center gap-2 rounded-xl border border-surface-300 dark:border-surface-700 bg-surface-0 dark:bg-surface-900 px-4 py-2 text-sm font-medium text-surface-700 dark:text-surface-100 shadow">
@@ -948,19 +963,19 @@ defineExpose({
                     Clôture en cours...
                 </div>
             </div>
-            <div class="flex items-center justify-between border border-surface-200/60 dark:border-surface-700/60 bg-surface-0 dark:bg-surface-800/70 px-4 py-3 shadow-sm">
-                <div class="flex items-center gap-3">
-                    <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-primary-500/10 text-primary-600 dark:bg-primary-500/20 dark:text-primary-300">
+            <div class="flex flex-wrap items-center justify-between gap-2 border border-surface-200/60 dark:border-surface-700/60 bg-surface-0 dark:bg-surface-800/70 px-3 py-3 shadow-sm sm:px-4">
+                <div class="flex min-w-0 items-center gap-2 sm:gap-3">
+                    <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary-500/10 text-primary-600 dark:bg-primary-500/20 dark:text-primary-300">
                         <i class="pi pi-file-edit text-sm"></i>
                     </div>
 
-                    <div class="leading-tight">
-                        <h3 class="text-base font-semibold text-surface-900 dark:text-surface-50">Fiche médicale</h3>
+                    <div class="min-w-0 leading-tight">
+                        <h3 class="truncate text-base font-semibold text-surface-900 dark:text-surface-50">Fiche médicale</h3>
                         <span class="text-xs text-surface-500 dark:text-surface-400"> Mode focus </span>
                     </div>
 
                     <!-- Status -->
-                    <Tag :value="isReadonly ? 'Terminée' : 'En cours'" :severity="isReadonly ? 'success' : 'info'" class="ml-2" />
+                    <Tag :value="isReadonly ? 'Terminée' : 'En cours'" :severity="isReadonly ? 'success' : 'info'" class="ml-1 shrink-0 sm:ml-2" />
                 </div>
 
                 <!-- Right -->
@@ -1087,43 +1102,6 @@ defineExpose({
                 </div>
             </div>
 
-            <AntecedentDialogForm v-model="showAntecedentDialog" :loading="savingAntecedent" :type-options="antecedentTypeOptions" @save="handleSaveAntecedent" />
-            <AllergyDialogForm v-model="showAllergyDialog" :loading="savingAllergy" :type-options="allergyTypeOptions" @save="handleSaveAllergy" />
-            <Dialog
-                v-model:visible="showRdvDialog"
-                modal
-                :style="{ width: '45rem' }"
-                :pt="{
-                    root: 'rounded-2xl overflow-hidden',
-                    header: 'bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900 dark:to-surface-800 px-6 py-4 border-b',
-                    content: 'p-0 mt-4'
-                }"
-            >
-                <template #header>
-                    <div class="flex items-center gap-3">
-                        <div class="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
-                            <i class="fas fa-calendar-plus text-blue-600 dark:text-blue-400"></i>
-                        </div>
-                        <div>
-                            <h4 class="m-0 text-surface-900 dark:text-surface-100">Nouveau rendez-vous</h4>
-                            <p class="text-sm text-surface-500 dark:text-surface-400 mt-1">
-                                {{ `${data.patient?.prenom || ''} ${data.patient?.nom || ''}`.trim() || 'Patient' }}
-                            </p>
-                        </div>
-                    </div>
-                </template>
-                <FormRendezVous
-                    v-if="showRdvDialog"
-                    :patient="data.patient"
-                    :patient-id="data.patient?.id"
-                    :initial-medecin-id="rdvInitialMedecinId"
-                    :locked-medecin-id="rdvLockedMedecinId"
-                    :medecin-readonly="isMedecinUser"
-                    @saved="handleRdvSaved"
-                    @cancel="showRdvDialog = false"
-                />
-            </Dialog>
-            <OrdonnanceModal v-model="ordonnanceDraft" v-model:visible="ordonnanceModalVisible" :mode="ordonnanceModalMode" :medecin-readonly="true" :saving="saving.consult" @save="saveOrdonnanceSection" />
         </div>
 
         <div v-else-if="loadErrorMessage" class="flex min-h-[28rem] flex-col items-center justify-center gap-4 rounded-2xl border border-amber-200/70 bg-amber-50/70 p-8 dark:border-amber-800/70 dark:bg-amber-950/20">
@@ -1137,12 +1115,38 @@ defineExpose({
             <Button icon="pi pi-refresh" label="Réessayer" severity="warning" @click="retryInitialize" />
         </div>
 
-        <div v-else class="flex min-h-[28rem] flex-col items-center justify-center gap-4 rounded-2xl border border-surface-200/60 bg-surface-0/80 p-8 dark:border-surface-700/60 dark:bg-surface-800/70">
+        <div v-else class="flex min-h-[28rem] flex-col items-center justify-center gap-4 p-8 dark:border-surface-700/60 dark:bg-surface-800/70">
             <span class="block h-16 w-16 rounded-full border-4 border-primary-500 border-t-transparent pi-spin"></span>
             <div class="text-center">
                 <p class="text-lg font-semibold text-primary-600">Chargement de la fiche focus...</p>
                 <p class="text-sm text-surface-500 dark:text-surface-400">Préparation des données patient, consultation et formulaires.</p>
             </div>
         </div>
+
+        <!-- Dialogs hors du v-if loading : ouverts aussi depuis la colonne Dossier patient -->
+        <AntecedentDialogForm v-model="showAntecedentDialog" :loading="savingAntecedent" :type-options="antecedentTypeOptions" @save="handleSaveAntecedent" />
+        <AllergyDialogForm v-model="showAllergyDialog" :loading="savingAllergy" :type-options="allergyTypeOptions" @save="handleSaveAllergy" />
+        <AppDialog
+            v-model:visible="showRdvDialog"
+            title="Nouveau rendez-vous"
+            :subtitle="`${data.patient?.prenom || ''} ${data.patient?.nom || ''}`.trim() || 'Patient'"
+            icon="fas fa-calendar-plus"
+            icon-tone="info"
+            size="lg"
+            :show-footer="false"
+            :content-padding="false"
+        >
+            <FormRendezVous
+                v-if="showRdvDialog"
+                :patient="data.patient"
+                :patient-id="data.patient?.id"
+                :initial-medecin-id="rdvInitialMedecinId"
+                :locked-medecin-id="rdvLockedMedecinId"
+                :medecin-readonly="isMedecinUser"
+                @saved="handleRdvSaved"
+                @cancel="showRdvDialog = false"
+            />
+        </AppDialog>
+        <OrdonnanceModal v-model="ordonnanceDraft" v-model:visible="ordonnanceModalVisible" :mode="ordonnanceModalMode" :medecin-readonly="true" :saving="saving.consult" @save="saveOrdonnanceSection" />
     </div>
 </template>

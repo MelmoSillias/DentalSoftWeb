@@ -1,6 +1,5 @@
 <script setup>
-import Button from 'primevue/button';
-import Dialog from 'primevue/dialog';
+import AppDialog from '@/components/layout/AppDialog.vue';
 import { ref, watch } from 'vue';
 
 const props = defineProps({
@@ -33,16 +32,22 @@ const confirm = () => {
 </script>
 
 <template>
-    <Dialog v-model:visible="localVisible" modal header="Annuler le rendez-vous" style="width: 380px">
+    <AppDialog
+        v-model:visible="localVisible"
+        title="Annuler le rendez-vous"
+        icon="pi pi-times-circle"
+        icon-tone="danger"
+        size="sm"
+        :loading="loading"
+        cancel-label="Retour"
+        confirm-label="Annuler le rendez-vous"
+        confirm-icon="pi pi-times"
+        confirm-severity="danger"
+        @cancel="close"
+        @confirm="confirm"
+    >
         <div class="flex flex-col gap-3">
             <p class="text-sm text-surface-700">Confirmer l'annulation de ce rendez-vous ?</p>
         </div>
-
-        <template #footer>
-            <div class="flex justify-end gap-2">
-                <Button label="Retour" text severity="secondary" @click="close" />
-                <Button label="Annuler le rendez-vous" icon="pi pi-times" severity="danger" :loading="loading" @click="confirm" />
-            </div>
-        </template>
-    </Dialog>
+    </AppDialog>
 </template>

@@ -39,6 +39,10 @@ const props = defineProps({
     medecinReadonly: {
         type: Boolean,
         default: false
+    },
+    hideActions: {
+        type: Boolean,
+        default: false
     }
 });
 
@@ -342,8 +346,12 @@ const saveRendezVous = async () => {
 };
 
 const handleSubmit = (event) => {
+    if (props.hideActions) {
+        saveRendezVous();
+        return;
+    }
     confirmPopup.require({
-        target: event.currentTarget || event.target,
+        target: event?.currentTarget || event?.target,
         message: 'Confirmer la création du rendez-vous ?',
         icon: 'pi pi-exclamation-triangle',
         acceptLabel: 'Confirmer',
@@ -351,6 +359,11 @@ const handleSubmit = (event) => {
         accept: saveRendezVous
     });
 };
+
+defineExpose({
+    submit: handleSubmit,
+    loading
+});
 </script>
 
 <template>
@@ -429,7 +442,7 @@ const handleSubmit = (event) => {
                 </p>
             </div>
         </div>
-        <div class="flex gap-2 justify-end" data-tour="patients-form-rdv.actions">
+        <div v-if="!hideActions" class="flex gap-2 justify-end" data-tour="patients-form-rdv.actions">
             <Button type="button" label="Annuler" severity="secondary" @click="emit('cancel')" />
             <Button type="button" label="Créer" icon="pi pi-check" :loading="loading" @click="handleSubmit" />
         </div>

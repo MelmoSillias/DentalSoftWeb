@@ -1,11 +1,8 @@
 <script setup>
-import { ref, computed, watch } from 'vue';
-import Dialog from 'primevue/dialog';
+import { ref, watch } from 'vue';
+import AppDialog from '@/components/layout/AppDialog.vue';
 import InputText from 'primevue/inputtext';
 import Textarea from 'primevue/textarea';
-import Button from 'primevue/button';
-import { useToast } from 'primevue/usetoast';
-import { useConfirm } from 'primevue/useconfirm';
 
 const props = defineProps({
     visible: Boolean,
@@ -40,7 +37,20 @@ function onSubmit() {
 }
 </script>
 <template>
-    <Dialog :visible="visible" modal :header="mode === 'edit' ? 'Modifier la salle' : 'Ajouter une salle'" :style="{ width: '30rem' }" @update:visible="close">
+    <AppDialog
+        :visible="visible"
+        :title="mode === 'edit' ? 'Modifier la salle' : 'Ajouter une salle'"
+        icon="pi pi-building"
+        :icon-tone="mode === 'edit' ? 'success' : 'primary'"
+        size="sm"
+        :loading="loading"
+        cancel-label="Annuler"
+        :confirm-label="mode === 'edit' ? 'Mettre à jour' : 'Ajouter'"
+        :confirm-severity="mode === 'edit' ? 'success' : 'primary'"
+        @update:visible="close"
+        @cancel="close"
+        @confirm="onSubmit"
+    >
         <form @submit.prevent="onSubmit" class="flex flex-col gap-4">
             <div>
                 <label class="block mb-1">Nom <span class="text-red-500">*</span></label>
@@ -50,10 +60,6 @@ function onSubmit() {
                 <label class="block mb-1">Description</label>
                 <Textarea v-model="form.description" autoResize rows="2" class="w-full" />
             </div>
-            <div class="flex justify-end gap-2 mt-4">
-                <Button type="button" label="Annuler" severity="secondary" @click="close" />
-                <Button type="submit" :label="mode === 'edit' ? 'Mettre à jour' : 'Ajouter'" :loading="loading" :severity="mode === 'edit' ? 'success' : 'primary'" />
-            </div>
         </form>
-    </Dialog>
+    </AppDialog>
 </template>
