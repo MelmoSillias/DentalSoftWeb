@@ -19,10 +19,16 @@ const props = defineProps({
     patientAge: {
         type: Number,
         default: 0
+    },
+    layout: {
+        type: String,
+        default: ''
     }
 });
 
 const emit = defineEmits(['update:modelValue', 'save']);
+
+const isBook = computed(() => props.layout === 'book');
 
 const form = computed({
     get: () => props.modelValue,
@@ -51,11 +57,11 @@ watch(
 </script>
 
 <template>
-    <div class="medical-form-block">
+    <div class="medical-form-block" :class="{ 'is-book': isBook }">
         <div class="medical-form-block__header">
             <div>
                 <h3 class="medical-form-block__title">Bilans</h3>
-                <p class="medical-form-block__subtitle">Formule dentaire et examens</p>
+                <p v-if="!isBook" class="medical-form-block__subtitle">Formule dentaire et examens</p>
             </div>
             <Button
                 label="Sauvegarder"

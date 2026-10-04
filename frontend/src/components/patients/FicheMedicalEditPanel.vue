@@ -16,6 +16,10 @@ const props = defineProps({
     ficheId: {
         type: Number,
         required: true
+    },
+    tall: {
+        type: Boolean,
+        default: false
     }
 });
 
@@ -26,20 +30,9 @@ const ficheIdRef = ref(props.ficheId);
 const consultIdRef = ref(null);
 const mode = computed(() => 'continue');
 
-const activeSection = ref(0);
 const soinsList = ref(defaultSoinList);
 
-const sections = [
-    { key: 'entretien', title: 'Questionnaire médical', icon: 'pi pi-file-edit' },
-    { key: 'examens', title: 'Examen', icon: 'pi pi-search' },
-    { key: 'documents', title: 'Images et Docs', icon: 'pi pi-images' },
-    { key: 'plan', title: 'Plan de traitement', icon: 'pi pi-sitemap' },
-    { key: 'bilans', title: 'Bilan', icon: 'pi pi-clipboard' },
-    { key: 'devis', title: 'Devis', icon: 'pi pi-file' },
-    { key: 'seances', title: 'Séances passées', icon: 'pi pi-history' }
-];
-
-const { loading, data, saving, dirty, dirtySectionsList, documentsUploadProgress, loadData, watchSection, saveEntretienSection, saveExamensSection, saveBilansSection, savePlanTraitementSection, saveDocumentsSection, saveDevisSection } =
+const { loading, data, saving, dirtySectionsList, documentsUploadProgress, loadData, watchSection, saveEntretienSection, saveExamensSection, saveBilansSection, savePlanTraitementSection, saveDocumentsSection, saveDevisSection } =
     useConsultationsForm({ ficheId: ficheIdRef, consultId: consultIdRef, token, mode });
 
 const ageNumber = computed(() => {
@@ -61,13 +54,9 @@ const saveAll = async () => {
     emit('saved');
 };
 
-const saveCurrentSection = async () => {
-    const handlers = [saveEntretienSection, saveExamensSection, saveDocumentsSection, savePlanTraitementSection, saveBilansSection, saveDevisSection, null];
-    const handler = handlers[activeSection.value];
-    if (handler) {
-        await handler();
-        emit('saved');
-    }
+const saveAndNotify = async (saver) => {
+    await saver();
+    emit('saved');
 };
 
 watch(
@@ -117,36 +106,15 @@ defineExpose({
         </div>
 
         <template v-else>
-            <div class="medical-form-nav sticky top-0 z-10 mb-3">
-                <button
-                    v-for="(section, index) in sections"
-                    :key="section.key"
-                    type="button"
-                    class="medical-form-nav__item"
-                    :class="{ 'is-active': activeSection === index }"
-                    @click="activeSection = index"
-                >
-                    <i :class="section.icon"></i>
-                    <span class="hidden sm:inline">{{ section.title }}</span>
-                </button>
-            </div>
-
-            <div class="space-y-4">
-                <EntretienVerbalForm v-if="activeSection === 0" v-model="data.entretien" :saving="saving.entretien" :patient-sex="data.patient?.sexe" @save="saveCurrentSection" />
-
-                <ExamensFicheForm v-if="activeSection === 1" v-model="data.examens" :saving="saving.examens" @save="saveCurrentSection" />
-
-                <FicheDocumentsForm v-if="activeSection === 2" v-model="data.documents" :saving="saving.documents" :upload-progress="documentsUploadProgress" @save="saveCurrentSection" />
-
-                <FichePlanTraitementForm v-if="activeSection === 3" v-model="data.planTraitement" :saving="saving.planTraitement" @save="saveCurrentSection" />
-
-                <FicheBilansForm v-if="activeSection === 4" v-model="data.bilans" :saving="saving.bilans" :patient-age="ageNumber" @save="saveCurrentSection" />
-
-                <DevisForm v-if="activeSection === 5" v-model="data.devis" :saving="saving.devis" :soins="soinsList" @save="saveCurrentSection" />
-
-                <div v-if="activeSection === 6">
-                    <PastSessions :sessions="data.sessions" />
-                    <p v-if="!data.sessions?.length" class="text-sm text-surface-500 dark:text-surface-400 mt-4 text-center">Aucune séance précédente.</p>
+            <div class="fiche-book" :class="{ 'fiche-book--tall': tall }">
+                <div class="fiche-book__pages">
+                    <EntretienVerbalForm v-model="data.entretien" layout="book" :saving="saving.entretien" :patient-sex="data.patient?.sexe" @save="() => saveAndNotify(saveEntretienSection)" />
+                    <ExamensFicheForm v-model="data.examens" layout="book" :saving="saving.examens" @save="() => saveAndNotify(saveExamensSection)" />
+                    <FicheDocumentsForm v-model="data.documents" layout="book" :saving="saving.documents" :upload-progress="documentsUploadProgress" @save="() => saveAndNotify(saveDocumentsSection)" />
+                    <FichePlanTraitementForm v-model="data.planTraitement" layout="book" :saving="saving.planTraitement" @save="() => saveAndNotify(savePlanTraitementSection)" />
+                    <FicheBilansForm v-model="data.bilans" layout="book" :saving="saving.bilans" :patient-age="ageNumber" @save="() => saveAndNotify(saveBilansSection)" />
+                    <DevisForm v-model="data.devis" layout="book" :saving="saving.devis" :soins="soinsList" @save="() => saveAndNotify(saveDevisSection)" />
+                    <PastSessions :sessions="data.sessions" layout="book" />
                 </div>
             </div>
         </template>

@@ -1,9 +1,7 @@
 <script setup>
 import Button from 'primevue/button';
-import Card from 'primevue/card';
 import Galleria from 'primevue/galleria';
 import SelectButton from 'primevue/selectbutton';
-import Timeline from 'primevue/timeline';
 import { computed, ref, watch } from 'vue';
 import { defaultDentitionFromAge, DENTITION_OPTIONS } from '@/utils/formuleDentaireLayout';
 import { filePrefix } from '@/config';
@@ -29,6 +27,10 @@ const props = defineProps({
         type: Boolean,
         default: false
     },
+    tall: {
+        type: Boolean,
+        default: false
+    },
     patientAge: {
         type: Number,
         default: 0
@@ -37,7 +39,6 @@ const props = defineProps({
 
 const emit = defineEmits(['print']);
 
-const activeSection = ref(0);
 const dentitionType = ref(defaultDentitionFromAge(props.patientAge));
 
 watch(
@@ -47,16 +48,6 @@ watch(
     },
     { immediate: true }
 );
-
-const sections = [
-    { key: 'entretien', title: 'Questionnaire médical', icon: 'pi pi-file-edit' },
-    { key: 'examens', title: 'Examen', icon: 'pi pi-search' },
-    { key: 'documents', title: 'Images et Docs', icon: 'pi pi-images' },
-    { key: 'plan', title: 'Plan de traitement', icon: 'pi pi-sitemap' },
-    { key: 'bilan', title: 'Bilan', icon: 'pi pi-clipboard' },
-    { key: 'devis', title: 'Devis', icon: 'pi pi-file' },
-    { key: 'seances', title: 'Séances passées', icon: 'pi pi-history' }
-];
 
 const entretien = computed(() => props.fiche?.entretien || {});
 const examens = computed(() => props.fiche?.examens || {});
@@ -116,23 +107,6 @@ const diagnosticPositifValue = computed(() => {
     return typeof raw === 'string' ? raw.trim() : String(raw || '').trim();
 });
 
-const hasValue = (value) => {
-    if (value === null || value === undefined) return false;
-    if (typeof value === 'boolean') return true;
-    if (Array.isArray(value)) return value.length > 0;
-    if (typeof value === 'object') return Object.values(value).some((v) => hasValue(v));
-    return String(value).trim() !== '';
-};
-
-const sectionHasContent = computed(() => ({
-    entretien: hasValue(entretien.value?.motifConsultation) || antecedentsRows.value.length > 0 || (entretien.value?.questions || []).length > 0 || (entretien.value?.habitudes || []).length > 0,
-    examens: hasValue(examens.value) || examensLabo.value.length > 0,
-    documents: documents.value.length > 0,
-    plan: plansTraitement.value.length > 0,
-    bilan: hasValue(bilans.value?.bilanDentaire?.formuleDentaire) || bilanRadiographiqueFields.value.some((f) => hasValue(f.value)) || bilanSanguinFields.value.some((f) => hasValue(f.value)) || hasValue(diagnosticPositifValue.value),
-    devis: devisModel.value.devisList.some((d) => d.services?.length || d.date || d.description),
-    seances: consultations.value.length > 0
-}));
 const plansTraitement = computed(() => props.fiche?.planTraitement || []);
 const consultations = computed(() => props.fiche?.consultations || []);
 const patientSex = computed(() => props.fiche?.patient?.sexe || props.fiche?.sexe || '');
@@ -322,14 +296,6 @@ const formatPlanDate = (value) => {
     return date.toLocaleDateString('fr-FR');
 };
 
-const iconMap = {
-    Urgence: { icon: 'pi pi-bolt', color: '#ef4444' },
-    Dentaires: { icon: 'pi pi-th-large', color: '#0ea5e9' },
-    Parodontaux: { icon: 'pi pi-heart', color: '#22c55e' },
-    Orthodontiques: { icon: 'pi pi-sliders-h', color: '#f59e0b' },
-    Autres: { icon: 'pi pi-briefcase', color: '#64748b' }
-};
-
 const sortedPlans = computed(() => {
     const list = plansTraitement.value || [];
     return [...list].sort((a, b) => {
@@ -341,21 +307,6 @@ const sortedPlans = computed(() => {
         return da.getTime() - db.getTime();
     });
 });
-
-const timelineEvents = computed(() =>
-    sortedPlans.value.map((plan, idx) => {
-        const type = plan.type || 'Autres';
-        const iconMeta = iconMap[type] || iconMap.Autres;
-        return {
-            status: plan.type || `Plan ${idx + 1}`,
-            date: formatPlanDate(plan.dateSupposed),
-            icon: iconMeta.icon,
-            color: iconMeta.color,
-            description: plan.description || 'Aucune description.',
-            planIndex: plan.planIndex ?? idx + 1
-        };
-    })
-);
 
 const sessions = computed(() =>
     (consultations.value || []).map((session) => ({
@@ -382,481 +333,283 @@ const sessions = computed(() =>
                 </div>
             </div>
 
-            <div :class="compact ? '' : 'p-3 md:p-4'">
-                <div class="medical-form-nav sticky top-0 z-10 mb-3">
-                    <button
-                        v-for="(section, index) in sections"
-                        :key="section.key"
-                        type="button"
-                        class="medical-form-nav__item"
-                        :class="{ 'is-active': activeSection === index }"
-                        @click="activeSection = index"
-                    >
-                        <i :class="section.icon"></i>
-                        <span class="hidden sm:inline">{{ section.title }}</span>
-                        <span v-if="sectionHasContent[section.key]" class="medical-form-nav__dot" aria-hidden="true" />
-                    </button>
-                </div>
-
-                <div class="space-y-3" :class="compact ? 'max-h-[55vh] overflow-y-auto pr-1' : ''">
-                    <div v-if="activeSection === 0" class="space-y-3">
-                        <div class="medical-form-block">
-                            <div class="medical-form-block__header">
-                                <div>
-                                    <h3 class="medical-form-block__title">Questionnaire médical</h3>
-                                    <p class="medical-form-block__subtitle">Anamnèse, antécédents et habitudes déclarées</p>
-                                </div>
-                            </div>
-                            <div class="medical-form-block__body space-y-4">
-                                <div>
-                                    <h4 class="dossier-section-label">Anamnèse</h4>
-                                    <p style="font-size: var(--page-section-subtitle-size); color: var(--text-color); white-space: pre-wrap">{{ entretien.motifConsultation || '—' }}</p>
-                                </div>
-
-                                <div v-if="isFemalePatient" class="dossier-section-block">
-                                    <h4 class="dossier-section-label">État gynécologique</h4>
-                                    <div class="dossier-field-row">
-                                        <span class="dossier-field-row__label">Allaitement</span>
-                                        <span class="dossier-field-row__value">{{ formatBool(entretien.etatGynecologique?.allaitement) }}</span>
-                                    </div>
-                                    <div class="dossier-field-row">
-                                        <span class="dossier-field-row__label">Grossesse en cours</span>
-                                        <span class="dossier-field-row__value">{{ formatBool(entretien.etatGynecologique?.grossesseEnCours) }}</span>
-                                    </div>
-                                    <div class="dossier-field-row">
-                                        <span class="dossier-field-row__label">Menstrues</span>
-                                        <span class="dossier-field-row__value">{{ formatBool(entretien.etatGynecologique?.menstrues) }}</span>
-                                    </div>
-                                </div>
-
-                                <div class="dossier-section-block">
-                                    <h4 class="dossier-section-label">Antécédents médicaux (médicaments et affections)</h4>
-                                    <div class="overflow-x-auto rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900/40">
-                                        <table class="w-full text-sm">
-                                            <thead>
-                                                <tr class="border-b border-surface-200 dark:border-surface-700 bg-surface-100/80 dark:bg-surface-800/80">
-                                                    <th class="p-3 text-left font-semibold text-surface-700 dark:text-surface-300">Type</th>
-                                                    <th class="p-3 text-left font-semibold text-surface-700 dark:text-surface-300">Element</th>
-                                                    <th class="p-3 text-left font-semibold text-surface-700 dark:text-surface-300">Etat</th>
-                                                    <th class="p-3 text-left font-semibold text-surface-700 dark:text-surface-300">Details</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <tr v-if="!antecedentsRows.length">
-                                                    <td colspan="4" class="p-4 text-center text-surface-500 dark:text-surface-400">Aucun antecedent enregistre.</td>
-                                                </tr>
-                                                <tr v-for="row in antecedentsRows" :key="row.key" class="border-b border-surface-200/70 dark:border-surface-700/70 last:border-b-0">
-                                                    <td class="p-3 text-surface-700 dark:text-surface-300">{{ row.type }}</td>
-                                                    <td class="p-3 text-surface-700 dark:text-surface-300">{{ row.nom }}</td>
-                                                    <td class="p-3">
-                                                        <span class="text-xs font-semibold" :class="row.etat ? 'text-emerald-600' : 'text-surface-400'">{{ row.etat ? 'Oui' : 'Non' }}</span>
-                                                    </td>
-                                                    <td class="p-3 text-surface-600 dark:text-surface-400">{{ row.details || '—' }}</td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-
-                                <div v-if="(entretien.questions || []).length || (entretien.habitudes || []).length" class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/30 p-4">
-                                    <h4 class="font-semibold text-surface-900 dark:text-surface-100 mb-3">Questionnaire medical et habitudes de vie</h4>
-                                    <div class="space-y-3">
-                                        <div v-for="q in entretien.questions" :key="q.id || q.question" class="p-3 rounded-lg bg-surface-0 dark:bg-surface-800">
-                                            <div class="flex items-center justify-between">
-                                                <span class="text-sm font-medium text-surface-700 dark:text-surface-300">{{ q.question }}</span>
-                                                <span class="text-xs font-semibold" :class="q.reponse ? 'text-emerald-600' : 'text-surface-400'">
-                                                    {{ q.reponse === true ? 'Oui' : q.reponse === false ? 'Non' : '--' }}
-                                                </span>
-                                            </div>
-                                            <div class="text-sm text-surface-600 dark:text-surface-400 mt-2">
-                                                {{ q.precision || '—' }}
-                                            </div>
-                                        </div>
-
-                                        <div v-for="h in entretien.habitudes || []" :key="h.id || h.type" class="p-3 rounded-lg bg-surface-0 dark:bg-surface-800">
-                                            <div class="flex items-center justify-between">
-                                                <span class="text-sm font-medium text-surface-700 dark:text-surface-300">Habitude: {{ h.type || '—' }}</span>
-                                                <span class="text-xs font-semibold" :class="h.estPresente ? 'text-emerald-600' : 'text-surface-400'">
-                                                    {{ h.estPresente ? 'Oui' : 'Non' }}
-                                                </span>
-                                            </div>
-                                            <div class="text-sm text-surface-600 dark:text-surface-400 mt-2">
-                                                {{ h.quantite || '—' }}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+            <div class="fiche-book" :class="{ 'fiche-book--tall': tall }">
+                <div class="fiche-book__pages">
+                    <h3 class="fiche-book__title">Questionnaire médical</h3>
+                    <div class="fiche-book__line">
+                        <span class="fiche-book__label">Anamnèse</span>
+                        <span class="fiche-book__value">{{ entretien.motifConsultation || '—' }}</span>
                     </div>
 
-                    <div v-if="activeSection === 1" class="animate-fadeIn space-y-6">
-                        <div class="rounded-2xl border border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-br from-surface-0 to-surface-50/80 dark:from-surface-800 dark:to-surface-900/80 p-6 shadow-sm">
-                            <div class="flex items-center gap-3 mb-6 pb-4 border-b border-surface-100 dark:border-surface-700">
-                                <div class="p-2.5 rounded-xl bg-primary-500/10 dark:bg-primary-500/20">
-                                    <i class="pi pi-search text-primary-600 dark:text-primary-400 text-xl"></i>
-                                </div>
-                                <div>
-                                    <h3 class="text-xl font-bold text-surface-900 dark:text-surface-50">Examens cliniques</h3>
-                                    <p class="text-sm text-surface-500 dark:text-surface-400 mt-1">Observation et examens locaux</p>
-                                </div>
-                            </div>
-
-                            <div class="space-y-6">
-                                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                    <div class="p-4 rounded-xl bg-surface-50 dark:bg-surface-700/30 border border-surface-200 dark:border-surface-700">
-                                        <h4 class="font-semibold text-surface-900 dark:text-surface-100 mb-3">Exobuccal - Inspection</h4>
-                                        <div class="space-y-2">
-                                            <div v-for="[label, value] in mapEntries(examens.exobuccalInspection)" :key="label" class="p-3 rounded-lg bg-surface-0 dark:bg-surface-800">
-                                                <div class="text-sm font-medium text-surface-700 dark:text-surface-300">{{ label }}</div>
-                                                <div class="text-sm text-surface-600 dark:text-surface-400 mt-1">{{ value || '—' }}</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="p-4 rounded-xl bg-surface-50 dark:bg-surface-700/30 border border-surface-200 dark:border-surface-700">
-                                        <h4 class="font-semibold text-surface-900 dark:text-surface-100 mb-3">Exobuccal - Palpation</h4>
-                                        <div class="space-y-2">
-                                            <div v-for="[label, value] in mapEntries(examens.exobuccalPalpation)" :key="label" class="p-3 rounded-lg bg-surface-0 dark:bg-surface-800">
-                                                <div class="text-sm font-medium text-surface-700 dark:text-surface-300">{{ label }}</div>
-                                                <div class="text-sm text-surface-600 dark:text-surface-400 mt-1">{{ value || '—' }}</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="p-4 rounded-xl bg-surface-50 dark:bg-surface-700/30 border border-surface-200 dark:border-surface-700">
-                                    <h4 class="font-semibold text-surface-900 dark:text-surface-100 mb-3">Chaines ganglionnaires</h4>
-                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                        <div v-for="[label, value] in mapEntries(examens.chainesGanglionnaires)" :key="label" class="flex items-center justify-between p-3 rounded-lg bg-surface-0 dark:bg-surface-800">
-                                            <span class="text-sm font-medium text-surface-700 dark:text-surface-300">{{ label }}</span>
-                                            <span class="text-xs font-semibold" :class="value ? 'text-emerald-600' : 'text-surface-400'">
-                                                {{ value ? 'Oui' : 'Non' }}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <h4 class="font-semibold text-surface-900 dark:text-surface-100 mb-3">Examen endobuccal</h4>
-                                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                    <div class="space-y-3">
-                                        <h5 class="text-sm font-semibold text-surface-700 dark:text-surface-300">Bouche fermee</h5>
-                                        <div class="space-y-2">
-                                            <div class="flex items-center justify-between p-3 rounded-lg bg-surface-50 dark:bg-surface-700/30">
-                                                <span class="text-sm text-surface-600 dark:text-surface-400">Occlusion</span>
-                                                <span class="text-sm font-medium text-surface-900 dark:text-surface-100">{{ examens.endobuccalBoucheFermee?.occlusion || '—' }}</span>
-                                            </div>
-                                            <div class="flex items-center justify-between p-3 rounded-lg bg-surface-50 dark:bg-surface-700/30">
-                                                <span class="text-sm text-surface-600 dark:text-surface-400">Mediane</span>
-                                                <span class="text-sm font-medium text-surface-900 dark:text-surface-100">{{ examens.endobuccalBoucheFermee?.mediane || '—' }}</span>
-                                            </div>
-                                            <div class="flex items-center justify-between p-3 rounded-lg bg-surface-50 dark:bg-surface-700/30">
-                                                <span class="text-sm text-surface-600 dark:text-surface-400">Classes d'Angle</span>
-                                                <span class="text-sm font-medium text-surface-900 dark:text-surface-100">{{ examens.endobuccalBoucheFermee?.classesAngle || '—' }}</span>
-                                            </div>
-                                            <div class="flex items-center justify-between p-3 rounded-lg bg-surface-50 dark:bg-surface-700/30">
-                                                <span class="text-sm text-surface-600 dark:text-surface-400">Vestibules</span>
-                                                <span class="text-sm font-medium text-surface-900 dark:text-surface-100">{{ examens.endobuccalBoucheFermee?.vestibules || '—' }}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="space-y-3">
-                                        <h5 class="text-sm font-semibold text-surface-700 dark:text-surface-300">Bouche ouverte</h5>
-                                        <div class="space-y-2">
-                                            <div class="flex items-center justify-between p-3 rounded-lg bg-surface-50 dark:bg-surface-700/30">
-                                                <span class="text-sm text-surface-600 dark:text-surface-400">HBD</span>
-                                                <span class="text-sm font-medium text-surface-900 dark:text-surface-100">{{ examens.endobuccalBoucheOuverte?.hbd || '—' }}</span>
-                                            </div>
-                                            <div class="flex items-center justify-between p-3 rounded-lg bg-surface-50 dark:bg-surface-700/30">
-                                                <span class="text-sm text-surface-600 dark:text-surface-400">Brossage</span>
-                                                <span class="text-sm font-medium text-surface-900 dark:text-surface-100">{{ examens.endobuccalBoucheOuverte?.brossage || '—' }}</span>
-                                            </div>
-                                            <div class="flex items-center justify-between p-3 rounded-lg bg-surface-50 dark:bg-surface-700/30">
-                                                <span class="text-sm text-surface-600 dark:text-surface-400">Soccu</span>
-                                                <span class="text-sm font-medium text-surface-900 dark:text-surface-100">{{ examens.endobuccalBoucheOuverte?.soccu || '—' }}</span>
-                                            </div>
-                                            <div class="flex items-center justify-between p-3 rounded-lg bg-surface-50 dark:bg-surface-700/30">
-                                                <span class="text-sm text-surface-600 dark:text-surface-400">Cinematique mandibulaire</span>
-                                                <span class="text-sm font-medium text-surface-900 dark:text-surface-100">{{ examens.endobuccalBoucheOuverte?.cinematiqueMandibulaire || '—' }}</span>
-                                            </div>
-                                            <div class="flex items-center justify-between p-3 rounded-lg bg-surface-50 dark:bg-surface-700/30">
-                                                <span class="text-sm text-surface-600 dark:text-surface-400">Ouverture buccale</span>
-                                                <span class="text-sm font-medium text-surface-900 dark:text-surface-100">{{ examens.endobuccalBoucheOuverte?.ouvertureBuccale || '—' }}</span>
-                                            </div>
-                                            <div class="flex items-center justify-between p-3 rounded-lg bg-surface-50 dark:bg-surface-700/30">
-                                                <span class="text-sm text-surface-600 dark:text-surface-400">Temperature buccale</span>
-                                                <span class="text-sm font-medium text-surface-900 dark:text-surface-100">{{ examens.endobuccalBoucheOuverte?.temperatureBuccale || '—' }}</span>
-                                            </div>
-                                            <div class="flex items-center justify-between p-3 rounded-lg bg-surface-50 dark:bg-surface-700/30">
-                                                <span class="text-sm text-surface-600 dark:text-surface-400">Amplitude d'ouverture</span>
-                                                <span class="text-sm font-medium text-surface-900 dark:text-surface-100">{{ examens.endobuccalBoucheOuverte?.amplitudeOuverture || '—' }}</span>
-                                            </div>
-                                            <div class="flex items-center justify-between p-3 rounded-lg bg-surface-50 dark:bg-surface-700/30">
-                                                <span class="text-sm text-surface-600 dark:text-surface-400">Bruits articulaires</span>
-                                                <span class="text-sm font-medium text-surface-900 dark:text-surface-100">{{ examens.endobuccalBoucheOuverte?.bruitsArticulaires || '—' }}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="space-y-2">
-                                    <h5 class="text-sm font-semibold text-surface-700 dark:text-surface-300">Examen des canaux excreteurs</h5>
-                                    <div class="p-3 rounded-lg bg-surface-50 dark:bg-surface-700/30 text-surface-700 dark:text-surface-300">
-                                        {{ examens.examenCanauxExcreteurs || '—' }}
-                                    </div>
-                                </div>
-
-                                <div class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/30 p-4 overflow-x-auto">
-                                    <h4 class="font-semibold text-surface-900 dark:text-surface-100 mb-3">Examen des tissus mous</h4>
-                                    <table class="w-full text-sm">
-                                        <thead>
-                                            <tr>
-                                                <th class="p-2 text-left"></th>
-                                                <th v-for="col in tissusMousColumns" :key="col" class="p-2 text-left font-semibold text-surface-700 dark:text-surface-300">
-                                                    {{ col }}
-                                                </th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <tr v-for="row in tissusMousRows" :key="row" class="border-t border-surface-200 dark:border-surface-700">
-                                                <td class="p-2 font-semibold text-surface-700 dark:text-surface-300">{{ row }}</td>
-                                                <td v-for="col in tissusMousColumns" :key="col" class="p-2">
-                                                    <span class="text-surface-600 dark:text-surface-400">
-                                                        {{ examens.tissusMousTable?.[row]?.[col] || '—' }}
-                                                    </span>
-                                                </td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-
-                                <div class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/30 p-4 overflow-x-auto">
-                                    <h4 class="font-semibold text-surface-900 dark:text-surface-100 mb-3">Examen des tissus durs</h4>
-                                    <table class="w-full text-sm">
-                                        <thead>
-                                            <tr>
-                                                <th class="p-2 text-left"></th>
-                                                <th v-for="col in tissusDursColumns" :key="col" class="p-2 text-left font-semibold text-surface-700 dark:text-surface-300">
-                                                    {{ col }}
-                                                </th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <tr v-for="row in tissusDursRows" :key="row" class="border-t border-surface-200 dark:border-surface-700">
-                                                <td class="p-2 font-semibold text-surface-700 dark:text-surface-300">{{ row }}</td>
-                                                <td v-for="col in tissusDursColumns" :key="col" class="p-2">
-                                                    <span class="text-surface-600 dark:text-surface-400">
-                                                        {{ examens.tissusDursTable?.[row]?.[col] || '—' }}
-                                                    </span>
-                                                </td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-
-                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    <div class="p-4 rounded-xl bg-surface-50 dark:bg-surface-700/30 border border-surface-200 dark:border-surface-700">
-                                        <h4 class="font-semibold text-surface-900 dark:text-surface-100 mb-2">Examens bactériologiques</h4>
-                                        <p class="text-sm text-surface-600 dark:text-surface-400">Observation : {{ examens.examensBacteriologiques?.observation || '—' }}</p>
-                                        <p class="text-sm text-surface-600 dark:text-surface-400">Résultat : {{ examens.examensBacteriologiques?.resultat || '—' }}</p>
-                                    </div>
-                                    <div class="p-4 rounded-xl bg-surface-50 dark:bg-surface-700/30 border border-surface-200 dark:border-surface-700">
-                                        <h4 class="font-semibold text-surface-900 dark:text-surface-100 mb-2">Examens sérologiques</h4>
-                                        <p class="text-sm text-surface-600 dark:text-surface-400">Observation : {{ examens.examensSerologiques?.observation || '—' }}</p>
-                                        <p class="text-sm text-surface-600 dark:text-surface-400">Résultat : {{ examens.examensSerologiques?.resultat || '—' }}</p>
-                                    </div>
-                                    <div class="p-4 rounded-xl bg-surface-50 dark:bg-surface-700/30 border border-surface-200 dark:border-surface-700">
-                                        <h4 class="font-semibold text-surface-900 dark:text-surface-100 mb-2">Examens histologiques</h4>
-                                        <p class="text-sm text-surface-600 dark:text-surface-400">Observation : {{ examens.examensHistologiques?.observation || '—' }}</p>
-                                        <p class="text-sm text-surface-600 dark:text-surface-400">Résultat : {{ examens.examensHistologiques?.resultat || '—' }}</p>
-                                    </div>
-                                </div>
-
-                                <div class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/30 p-4">
-                                    <h4 class="font-semibold text-surface-900 dark:text-surface-100 mb-3">Examens complémentaires (laboratoire)</h4>
-                                    <div class="overflow-x-auto rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900/40">
-                                        <table class="w-full text-sm">
-                                            <thead>
-                                                <tr class="border-b border-surface-200 dark:border-surface-700 bg-surface-100/80 dark:bg-surface-800/80">
-                                                    <th class="p-3 text-left font-semibold text-surface-700 dark:text-surface-300">Type</th>
-                                                    <th class="p-3 text-left font-semibold text-surface-700 dark:text-surface-300">Description</th>
-                                                    <th class="p-3 text-left font-semibold text-surface-700 dark:text-surface-300">Date</th>
-                                                    <th class="p-3 text-left font-semibold text-surface-700 dark:text-surface-300">Résultat</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <tr v-if="!examensLabo.length">
-                                                    <td colspan="4" class="p-4 text-center text-surface-500 dark:text-surface-400">Aucun examen complémentaire.</td>
-                                                </tr>
-                                                <tr v-for="(item, idx) in examensLabo" :key="idx" class="border-b border-surface-200/70 dark:border-surface-700/70 last:border-b-0">
-                                                    <td class="p-3 text-surface-700 dark:text-surface-300">{{ item.type || '—' }}</td>
-                                                    <td class="p-3 text-surface-700 dark:text-surface-300">{{ item.description || '—' }}</td>
-                                                    <td class="p-3 text-surface-600 dark:text-surface-400">{{ formatDateShort(item.date) }}</td>
-                                                    <td class="p-3 text-surface-600 dark:text-surface-400">{{ item.resultat || '—' }}</td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-
-                                <div v-if="examens.diagnosticSupposeExamens" class="p-4 rounded-xl bg-surface-50 dark:bg-surface-700/30 border border-surface-200 dark:border-surface-700">
-                                    <h4 class="font-semibold text-surface-900 dark:text-surface-100 mb-2">Diagnostic supposé (examens)</h4>
-                                    <p class="text-sm text-surface-700 dark:text-surface-300 whitespace-pre-wrap">{{ examens.diagnosticSupposeExamens }}</p>
-                                </div>
-                            </div>
+                    <template v-if="isFemalePatient">
+                        <h4 class="fiche-book__title">État gynécologique</h4>
+                        <div class="fiche-book__line">
+                            <span class="fiche-book__label">Allaitement</span>
+                            <span class="fiche-book__value">{{ formatBool(entretien.etatGynecologique?.allaitement) }}</span>
                         </div>
+                        <div class="fiche-book__line">
+                            <span class="fiche-book__label">Grossesse en cours</span>
+                            <span class="fiche-book__value">{{ formatBool(entretien.etatGynecologique?.grossesseEnCours) }}</span>
+                        </div>
+                        <div class="fiche-book__line">
+                            <span class="fiche-book__label">Menstrues</span>
+                            <span class="fiche-book__value">{{ formatBool(entretien.etatGynecologique?.menstrues) }}</span>
+                        </div>
+                    </template>
+
+                    <h4 class="fiche-book__title">Antécédents médicaux</h4>
+                    <div class="fiche-book__block">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Type</th>
+                                    <th>Élément</th>
+                                    <th>État</th>
+                                    <th>Détails</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-if="!antecedentsRows.length">
+                                    <td colspan="4">Aucun antécédent enregistré.</td>
+                                </tr>
+                                <tr v-for="row in antecedentsRows" :key="row.key">
+                                    <td>{{ row.type }}</td>
+                                    <td>{{ row.nom }}</td>
+                                    <td>{{ row.etat ? 'Oui' : 'Non' }}</td>
+                                    <td>{{ row.details || '—' }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
 
-                    <div v-if="activeSection === 2" class="animate-fadeIn">
-                        <div class="rounded-2xl border border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-br from-surface-0 to-surface-50/80 dark:from-surface-800 dark:to-surface-900/80 p-6 shadow-sm">
-                            <div class="flex items-center gap-3 mb-6 pb-4 border-b border-surface-100 dark:border-surface-700">
-                                <div class="p-2.5 rounded-xl bg-primary-500/10 dark:bg-primary-500/20">
-                                    <i class="pi pi-images text-primary-600 dark:text-primary-400 text-xl"></i>
-                                </div>
-                                <div>
-                                    <h3 class="text-xl font-bold text-surface-900 dark:text-surface-50">Images et Docs</h3>
-                                    <p class="text-sm text-surface-500 dark:text-surface-400 mt-1">Pieces jointes et documents associes</p>
-                                </div>
-                            </div>
-
-                            <div v-if="documentsView.length" class="space-y-4">
-                                <div v-for="(item, idx) in documentsView" :key="idx" class="rounded-2xl border border-surface-200/70 dark:border-surface-700/70 bg-surface-50 dark:bg-surface-800/30 p-5">
-                                    <div class="flex flex-wrap items-start justify-between gap-4">
-                                        <div class="min-w-0">
-                                            <h4 class="text-base font-semibold text-surface-900 dark:text-surface-100">{{ item.title }}</h4>
-                                            <p class="text-xs text-surface-500 dark:text-surface-400 mt-1 break-words">{{ item.type }}</p>
-                                        </div>
-                                    </div>
-
-                                    <div v-if="item.entries.length" class="mt-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                                        <button
-                                            v-for="entry in item.entries"
-                                            :key="entry.entryKey"
-                                            type="button"
-                                            class="group relative flex h-20 sm:h-24 md:h-28 lg:h-32 items-center justify-center overflow-hidden rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900/40 transition-shadow hover:shadow-md"
-                                            @click="openPreviewByKey(entry.entryKey)"
-                                        >
-                                            <img v-if="entry.isImage && entry.previewSrc" :src="entry.previewSrc" :alt="item.title" class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
-                                            <div v-else class="flex flex-col items-center justify-center gap-2 text-surface-500 dark:text-surface-400">
-                                                <div class="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-surface-100 dark:bg-surface-800 flex items-center justify-center">
-                                                    <i :class="['pi', entry.icon, 'text-lg']"></i>
-                                                </div>
-                                                <span class="text-[10px] sm:text-[11px] uppercase tracking-wide">
-                                                    {{ entry.extension || 'file' }}
-                                                </span>
-                                            </div>
-                                            <div class="absolute inset-0 bg-primary-500/0 transition-colors group-hover:bg-primary-500/10"></div>
-                                        </button>
-                                    </div>
-                                    <div v-else class="mt-4 text-xs text-surface-500 dark:text-surface-400">Aucun fichier attache.</div>
-                                </div>
-                            </div>
-                            <p v-else class="text-sm text-surface-500 dark:text-surface-400">Aucun document disponible.</p>
+                    <template v-if="(entretien.questions || []).length || (entretien.habitudes || []).length">
+                        <h4 class="fiche-book__title">Questionnaire et habitudes</h4>
+                        <div v-for="q in entretien.questions" :key="q.id || q.question" class="fiche-book__line">
+                            <span class="fiche-book__label">{{ q.question }} — {{ q.reponse === true ? 'Oui' : q.reponse === false ? 'Non' : '--' }}</span>
+                            <span class="fiche-book__value">{{ q.precision || '—' }}</span>
                         </div>
+                        <div v-for="h in entretien.habitudes || []" :key="h.id || h.type" class="fiche-book__line">
+                            <span class="fiche-book__label">Habitude : {{ h.type || '—' }} — {{ h.estPresente ? 'Oui' : 'Non' }}</span>
+                            <span class="fiche-book__value">{{ h.quantite || '—' }}</span>
+                        </div>
+                    </template>
+
+                    <h3 class="fiche-book__title">Examen</h3>
+                    <h4 class="fiche-book__title">Exobuccal — inspection</h4>
+                    <div v-for="[label, value] in mapEntries(examens.exobuccalInspection)" :key="`insp-${label}`" class="fiche-book__line">
+                        <span class="fiche-book__label">{{ label }}</span>
+                        <span class="fiche-book__value">{{ value || '—' }}</span>
+                    </div>
+                    <p v-if="!mapEntries(examens.exobuccalInspection).length" class="fiche-book__empty">—</p>
+
+                    <h4 class="fiche-book__title">Exobuccal — palpation</h4>
+                    <div v-for="[label, value] in mapEntries(examens.exobuccalPalpation)" :key="`palp-${label}`" class="fiche-book__line">
+                        <span class="fiche-book__label">{{ label }}</span>
+                        <span class="fiche-book__value">{{ value || '—' }}</span>
+                    </div>
+                    <p v-if="!mapEntries(examens.exobuccalPalpation).length" class="fiche-book__empty">—</p>
+
+                    <h4 class="fiche-book__title">Chaînes ganglionnaires</h4>
+                    <div v-for="[label, value] in mapEntries(examens.chainesGanglionnaires)" :key="`gang-${label}`" class="fiche-book__line">
+                        <span class="fiche-book__label">{{ label }}</span>
+                        <span class="fiche-book__value">{{ value ? 'Oui' : 'Non' }}</span>
+                    </div>
+                    <p v-if="!mapEntries(examens.chainesGanglionnaires).length" class="fiche-book__empty">—</p>
+
+                    <h4 class="fiche-book__title">Bouche fermée</h4>
+                    <div class="fiche-book__line">
+                        <span class="fiche-book__label">Occlusion</span>
+                        <span class="fiche-book__value">{{ examens.endobuccalBoucheFermee?.occlusion || '—' }}</span>
+                    </div>
+                    <div class="fiche-book__line">
+                        <span class="fiche-book__label">Médiane</span>
+                        <span class="fiche-book__value">{{ examens.endobuccalBoucheFermee?.mediane || '—' }}</span>
+                    </div>
+                    <div class="fiche-book__line">
+                        <span class="fiche-book__label">Classes d'Angle</span>
+                        <span class="fiche-book__value">{{ examens.endobuccalBoucheFermee?.classesAngle || '—' }}</span>
+                    </div>
+                    <div class="fiche-book__line">
+                        <span class="fiche-book__label">Vestibules</span>
+                        <span class="fiche-book__value">{{ examens.endobuccalBoucheFermee?.vestibules || '—' }}</span>
                     </div>
 
-                    <div v-if="activeSection === 3" class="animate-fadeIn">
-                        <div class="rounded-2xl border border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-br from-surface-0 to-surface-50/80 dark:from-surface-800 dark:to-surface-900/80 p-6 shadow-sm">
-                            <div class="flex items-center gap-3 mb-6 pb-4 border-b border-surface-100 dark:border-surface-700">
-                                <div class="p-2.5 rounded-xl bg-primary-500/10 dark:bg-primary-500/20">
-                                    <i class="pi pi-sitemap text-primary-600 dark:text-primary-400 text-xl"></i>
-                                </div>
-                                <div>
-                                    <h3 class="text-xl font-bold text-surface-900 dark:text-surface-50">Plan de traitement</h3>
-                                    <p class="text-sm text-surface-500 dark:text-surface-400 mt-1">Planifier les actes et priorites</p>
-                                </div>
-                            </div>
-
-                            <div v-if="!timelineEvents.length" class="text-sm text-surface-500 dark:text-surface-400">Aucun plan de traitement ajoute.</div>
-
-                            <Timeline v-else :value="timelineEvents" align="alternate" class="customized-timeline">
-                                <template #marker="slotProps">
-                                    <span class="flex w-8 h-8 items-center justify-center text-white rounded-full z-10 shadow-sm" :style="{ backgroundColor: slotProps.item.color }">
-                                        <i :class="slotProps.item.icon"></i>
-                                    </span>
-                                </template>
-                                <template #content="slotProps">
-                                    <Card class="mt-4">
-                                        <template #title>
-                                            {{ slotProps.item.status }}
-                                        </template>
-                                        <template #subtitle>
-                                            {{ slotProps.item.date }}
-                                        </template>
-                                        <template #content>
-                                            <p class="text-sm text-surface-600 dark:text-surface-300">
-                                                {{ slotProps.item.description }}
-                                            </p>
-                                        </template>
-                                    </Card>
-                                </template>
-                            </Timeline>
-                        </div>
+                    <h4 class="fiche-book__title">Bouche ouverte</h4>
+                    <div class="fiche-book__line">
+                        <span class="fiche-book__label">HBD</span>
+                        <span class="fiche-book__value">{{ examens.endobuccalBoucheOuverte?.hbd || '—' }}</span>
+                    </div>
+                    <div class="fiche-book__line">
+                        <span class="fiche-book__label">Brossage</span>
+                        <span class="fiche-book__value">{{ examens.endobuccalBoucheOuverte?.brossage || '—' }}</span>
+                    </div>
+                    <div class="fiche-book__line">
+                        <span class="fiche-book__label">Soccu</span>
+                        <span class="fiche-book__value">{{ examens.endobuccalBoucheOuverte?.soccu || '—' }}</span>
+                    </div>
+                    <div class="fiche-book__line">
+                        <span class="fiche-book__label">Cinématique mandibulaire</span>
+                        <span class="fiche-book__value">{{ examens.endobuccalBoucheOuverte?.cinematiqueMandibulaire || '—' }}</span>
+                    </div>
+                    <div class="fiche-book__line">
+                        <span class="fiche-book__label">Ouverture buccale</span>
+                        <span class="fiche-book__value">{{ examens.endobuccalBoucheOuverte?.ouvertureBuccale || '—' }}</span>
+                    </div>
+                    <div class="fiche-book__line">
+                        <span class="fiche-book__label">Température buccale</span>
+                        <span class="fiche-book__value">{{ examens.endobuccalBoucheOuverte?.temperatureBuccale || '—' }}</span>
+                    </div>
+                    <div class="fiche-book__line">
+                        <span class="fiche-book__label">Amplitude d'ouverture</span>
+                        <span class="fiche-book__value">{{ examens.endobuccalBoucheOuverte?.amplitudeOuverture || '—' }}</span>
+                    </div>
+                    <div class="fiche-book__line">
+                        <span class="fiche-book__label">Bruits articulaires</span>
+                        <span class="fiche-book__value">{{ examens.endobuccalBoucheOuverte?.bruitsArticulaires || '—' }}</span>
                     </div>
 
-                    <div v-if="activeSection === 4" class="animate-fadeIn">
-                        <div class="rounded-2xl border border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-br from-surface-0 to-surface-50/80 dark:from-surface-800 dark:to-surface-900/80 p-6 shadow-sm">
-                            <div class="flex items-center gap-3 mb-6 pb-4 border-b border-surface-100 dark:border-surface-700">
-                                <div class="p-2.5 rounded-xl bg-primary-500/10 dark:bg-primary-500/20">
-                                    <i class="pi pi-clipboard text-primary-600 dark:text-primary-400 text-xl"></i>
-                                </div>
-                                <div>
-                                    <h3 class="text-xl font-bold text-surface-900 dark:text-surface-50">Bilan</h3>
-                                    <p class="text-sm text-surface-500 dark:text-surface-400 mt-1">Formule dentaire et examens complémentaires</p>
-                                </div>
-                            </div>
-
-                            <div class="space-y-6">
-                                <div class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/30 p-5">
-                                    <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
-                                        <h4 class="font-semibold text-surface-900 dark:text-surface-100">Formule dentaire</h4>
-                                        <SelectButton v-model="dentitionType" :options="DENTITION_OPTIONS" optionLabel="label" optionValue="value" :allowEmpty="false" class="text-sm" />
-                                    </div>
-                                    <FormuleDentaireReadonly :modelValue="bilans.bilanDentaire?.formuleDentaire" :dentition-type="dentitionType" />
-                                </div>
-
-                                <div class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/30 p-5">
-                                    <h4 class="font-semibold text-surface-900 dark:text-surface-100 mb-4">Bilan radiographique</h4>
-                                    <ReadonlyFieldGrid :fields="bilanRadiographiqueFields" />
-                                </div>
-
-                                <div class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/30 p-5">
-                                    <h4 class="font-semibold text-surface-900 dark:text-surface-100 mb-4">Bilan sanguin</h4>
-                                    <ReadonlyFieldGrid :fields="bilanSanguinFields" />
-                                </div>
-
-                                <div class="rounded-xl border-2 border-dashed border-emerald-500/50 dark:border-emerald-700/50 bg-emerald-50/30 dark:bg-emerald-950/20 p-5">
-                                    <h4 class="font-semibold text-surface-900 dark:text-surface-100 mb-3">Diagnostic positif</h4>
-                                    <p class="text-sm text-surface-700 dark:text-surface-300 whitespace-pre-wrap">
-                                        {{ diagnosticPositifValue || '—' }}
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
+                    <div class="fiche-book__line">
+                        <span class="fiche-book__label">Canaux excréteurs</span>
+                        <span class="fiche-book__value">{{ examens.examenCanauxExcreteurs || '—' }}</span>
                     </div>
 
-                    <div v-if="activeSection === 5" class="animate-fadeIn">
-                        <div class="rounded-2xl border border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-br from-surface-0 to-surface-50/80 dark:from-surface-800 dark:to-surface-900/80 p-6 shadow-sm">
-                            <div class="flex items-center gap-3 mb-6 pb-4 border-b border-surface-100 dark:border-surface-700">
-                                <div class="p-2.5 rounded-xl bg-primary-500/10 dark:bg-primary-500/20">
-                                    <i class="pi pi-file text-primary-600 dark:text-primary-400 text-xl"></i>
-                                </div>
-                                <div>
-                                    <h3 class="text-xl font-bold text-surface-900 dark:text-surface-50">Devis</h3>
-                                    <p class="text-sm text-surface-500 dark:text-surface-400 mt-1">Détails des devis</p>
-                                </div>
+                    <h4 class="fiche-book__title">Tissus mous</h4>
+                    <div class="fiche-book__block">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th></th>
+                                    <th v-for="col in tissusMousColumns" :key="col">{{ col }}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="row in tissusMousRows" :key="row">
+                                    <td>{{ row }}</td>
+                                    <td v-for="col in tissusMousColumns" :key="col">{{ examens.tissusMousTable?.[row]?.[col] || '—' }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <h4 class="fiche-book__title">Tissus durs</h4>
+                    <div class="fiche-book__block">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th></th>
+                                    <th v-for="col in tissusDursColumns" :key="col">{{ col }}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="row in tissusDursRows" :key="row">
+                                    <td>{{ row }}</td>
+                                    <td v-for="col in tissusDursColumns" :key="col">{{ examens.tissusDursTable?.[row]?.[col] || '—' }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <h4 class="fiche-book__title">Examens biologiques</h4>
+                    <div class="fiche-book__line">
+                        <span class="fiche-book__label">Bactériologiques</span>
+                        <span class="fiche-book__value">{{ examens.examensBacteriologiques?.observation || '—' }} — {{ examens.examensBacteriologiques?.resultat || '—' }}</span>
+                    </div>
+                    <div class="fiche-book__line">
+                        <span class="fiche-book__label">Sérologiques</span>
+                        <span class="fiche-book__value">{{ examens.examensSerologiques?.observation || '—' }} — {{ examens.examensSerologiques?.resultat || '—' }}</span>
+                    </div>
+                    <div class="fiche-book__line">
+                        <span class="fiche-book__label">Histologiques</span>
+                        <span class="fiche-book__value">{{ examens.examensHistologiques?.observation || '—' }} — {{ examens.examensHistologiques?.resultat || '—' }}</span>
+                    </div>
+
+                    <h4 class="fiche-book__title">Examens complémentaires</h4>
+                    <div class="fiche-book__block">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Type</th>
+                                    <th>Description</th>
+                                    <th>Date</th>
+                                    <th>Résultat</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-if="!examensLabo.length">
+                                    <td colspan="4">Aucun examen complémentaire.</td>
+                                </tr>
+                                <tr v-for="(item, idx) in examensLabo" :key="idx">
+                                    <td>{{ item.type || '—' }}</td>
+                                    <td>{{ item.description || '—' }}</td>
+                                    <td>{{ formatDateShort(item.date) }}</td>
+                                    <td>{{ item.resultat || '—' }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div v-if="examens.diagnosticSupposeExamens" class="fiche-book__line">
+                        <span class="fiche-book__label">Diagnostic supposé</span>
+                        <span class="fiche-book__value">{{ examens.diagnosticSupposeExamens }}</span>
+                    </div>
+
+                    <h3 class="fiche-book__title">Images et documents</h3>
+                    <template v-if="documentsView.length">
+                        <div v-for="(item, idx) in documentsView" :key="idx" class="fiche-book__block">
+                            <div class="fiche-book__line">
+                                <span class="fiche-book__label">{{ item.type }}</span>
+                                <span class="fiche-book__value">{{ item.title }}</span>
                             </div>
-
-                            <DevisForm v-if="devisModel.devisList.length" :modelValue="devisModel" readonly />
-                            <p v-else class="text-sm text-surface-500 dark:text-surface-400">Aucun devis enregistré.</p>
+                            <div v-if="item.entries.length" class="flex flex-wrap gap-2">
+                                <button
+                                    v-for="entry in item.entries"
+                                    :key="entry.entryKey"
+                                    type="button"
+                                    class="fiche-book__thumb"
+                                    @click="openPreviewByKey(entry.entryKey)"
+                                >
+                                    <img v-if="entry.isImage && entry.previewSrc" :src="entry.previewSrc" :alt="item.title" />
+                                    <span v-else>{{ entry.extension || 'fichier' }}</span>
+                                </button>
+                            </div>
+                            <p v-else class="fiche-book__empty">Aucun fichier attaché.</p>
                         </div>
+                    </template>
+                    <p v-else class="fiche-book__empty">Aucun document.</p>
+
+                    <h3 class="fiche-book__title">Plan de traitement</h3>
+                    <p v-if="!sortedPlans.length" class="fiche-book__empty">Aucun plan de traitement.</p>
+                    <div v-for="(plan, idx) in sortedPlans" :key="plan.id || idx" class="fiche-book__line">
+                        <span class="fiche-book__label">{{ plan.type || `Plan ${idx + 1}` }} — {{ formatPlanDate(plan.dateSupposed) }}</span>
+                        <span class="fiche-book__value">{{ plan.description || 'Aucune description.' }}</span>
                     </div>
 
-                    <div v-if="activeSection === 6" class="animate-fadeIn">
-                        <div class="rounded-2xl border border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-br from-surface-0 to-surface-50/80 dark:from-surface-800 dark:to-surface-900/80 p-6 shadow-sm">
-                            <SeancesSection :sessions="sessions" />
-                            <p v-if="!sessions.length" class="text-sm text-surface-500 dark:text-surface-400 mt-4">Aucune séance précédente.</p>
+                    <h3 class="fiche-book__title">Bilan</h3>
+                    <div class="fiche-book__block">
+                        <div class="mb-2">
+                            <SelectButton v-model="dentitionType" :options="DENTITION_OPTIONS" optionLabel="label" optionValue="value" :allowEmpty="false" />
                         </div>
+                        <FormuleDentaireReadonly :modelValue="bilans.bilanDentaire?.formuleDentaire" :dentition-type="dentitionType" />
                     </div>
+                    <h4 class="fiche-book__title">Bilan radiographique</h4>
+                    <ReadonlyFieldGrid :fields="bilanRadiographiqueFields" :columns="1" />
+                    <h4 class="fiche-book__title">Bilan sanguin</h4>
+                    <ReadonlyFieldGrid :fields="bilanSanguinFields" :columns="1" />
+                    <div class="fiche-book__line">
+                        <span class="fiche-book__label">Diagnostic positif</span>
+                        <span class="fiche-book__value">{{ diagnosticPositifValue || '—' }}</span>
+                    </div>
+
+                    <DevisForm v-if="devisModel.devisList.length" :modelValue="devisModel" readonly layout="book" />
+                    <template v-else>
+                        <h3 class="fiche-book__title">Devis</h3>
+                        <p class="fiche-book__empty">Aucun devis enregistré.</p>
+                    </template>
+
+                    <SeancesSection v-if="sessions.length" :sessions="sessions" layout="book" />
+                    <template v-else>
+                        <h3 class="fiche-book__title">Séances passées</h3>
+                        <p class="fiche-book__empty">Aucune séance précédente.</p>
+                    </template>
                 </div>
             </div>
 
@@ -922,19 +675,3 @@ const sessions = computed(() =>
     </div>
 </template>
 
-<style scoped>
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.animate-fadeIn {
-    animation: fadeIn 0.3s ease-out;
-}
-</style>

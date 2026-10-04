@@ -25,10 +25,16 @@ const props = defineProps({
     compact: {
         type: Boolean,
         default: false
+    },
+    layout: {
+        type: String,
+        default: ''
     }
 });
 
 const emit = defineEmits(['update:modelValue', 'save']);
+
+const isBook = computed(() => props.layout === 'book');
 
 const form = computed({
     get: () => props.modelValue,
@@ -383,11 +389,11 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-    <div class="medical-form-block" :class="props.compact ? 'medical-form-block--compact' : ''">
+    <div class="medical-form-block" :class="[props.compact ? 'medical-form-block--compact' : '', { 'is-book': isBook }]">
         <div class="medical-form-block__header">
             <div>
                 <h3 class="medical-form-block__title">Images & Documents</h3>
-                <p class="medical-form-block__subtitle">Pièces jointes du dossier</p>
+                <p v-if="!isBook" class="medical-form-block__subtitle">Pièces jointes du dossier</p>
             </div>
             <div class="flex items-center gap-2">
                 <Button icon="pi pi-plus" label="Ajouter" size="small" outlined @click="openAddDialog" />

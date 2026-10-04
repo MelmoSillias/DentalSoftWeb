@@ -19,10 +19,16 @@ const props = defineProps({
     patientSex: {
         type: String,
         default: ''
+    },
+    layout: {
+        type: String,
+        default: ''
     }
 });
 
 const emit = defineEmits(['update:modelValue', 'save', 'open-rdv']);
+
+const isBook = computed(() => props.layout === 'book');
 
 const form = computed({
     get: () => props.modelValue,
@@ -222,11 +228,11 @@ const deleteAntecedent = (row) => {
 </script>
 
 <template>
-    <div class="medical-form-block">
+    <div class="medical-form-block" :class="{ 'is-book': isBook }">
         <div class="medical-form-block__header">
             <div>
                 <h3 class="medical-form-block__title">Questionnaire médical</h3>
-                <p class="medical-form-block__subtitle">Anamnèse, antécédents et habitudes déclarées</p>
+                <p v-if="!isBook" class="medical-form-block__subtitle">Anamnèse, antécédents et habitudes déclarées</p>
             </div>
             <Button
                 label="Sauvegarder"

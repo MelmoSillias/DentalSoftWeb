@@ -17,10 +17,16 @@ const props = defineProps({
     saving: {
         type: Boolean,
         default: false
+    },
+    layout: {
+        type: String,
+        default: ''
     }
 });
 
 const emit = defineEmits(['update:modelValue', 'save']);
+
+const isBook = computed(() => props.layout === 'book');
 
 const plans = computed({
     get: () => props.modelValue,
@@ -174,11 +180,11 @@ const tablePlans = computed(() =>
 </script>
 
 <template>
-    <div class="medical-form-block">
+    <div class="medical-form-block" :class="{ 'is-book': isBook }">
         <div class="medical-form-block__header">
             <div>
                 <h3 class="medical-form-block__title">Plan de traitement</h3>
-                <p class="medical-form-block__subtitle">Planifier les actes et priorités</p>
+                <p v-if="!isBook" class="medical-form-block__subtitle">Planifier les actes et priorités</p>
             </div>
             <div class="flex items-center gap-2">
                 <Button icon="pi pi-plus" label="Ajouter" size="small" outlined @click="openAddDialog" />

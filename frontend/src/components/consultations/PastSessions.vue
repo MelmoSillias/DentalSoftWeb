@@ -11,8 +11,14 @@ const props = defineProps({
     sessions: {
         type: Array,
         default: () => []
+    },
+    layout: {
+        type: String,
+        default: ''
     }
 });
+
+const isBook = computed(() => props.layout === 'book');
 
 const formatCurrency = (value) => {
     const amount = Number(value);
@@ -54,8 +60,9 @@ const getSessionOrdonnances = (session) => {
 
 <!-- PastSessions.vue -->
 <template>
-    <div class="overflow-hidden rounded-2xl border border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-br from-surface-0 to-surface-50/80 dark:from-surface-800 dark:to-surface-900/80 p-6 shadow-sm">
-        <div class="flex items-center justify-between mb-6 pb-4 border-b border-surface-100 dark:border-surface-700">
+    <div :class="isBook ? 'is-book' : 'overflow-hidden rounded-2xl border border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-br from-surface-0 to-surface-50/80 dark:from-surface-800 dark:to-surface-900/80 p-6 shadow-sm'">
+        <h3 v-if="isBook" class="fiche-book__title">Séances passées</h3>
+        <div v-else class="flex items-center justify-between mb-6 pb-4 border-b border-surface-100 dark:border-surface-700">
             <div class="flex items-center gap-3">
                 <div class="p-2.5 rounded-xl bg-primary-500/10 dark:bg-primary-500/20">
                     <i class="pi pi-history text-primary-600 dark:text-primary-400 text-xl"></i>

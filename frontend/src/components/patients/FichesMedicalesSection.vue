@@ -9,7 +9,6 @@ import { computed, ref, watch } from 'vue';
 import AppDialog from '@/components/layout/AppDialog.vue';
 import FicheMedicalEditPanel from '@/components/patients/FicheMedicalEditPanel.vue';
 import FicheMedicalV2 from '@/components/patients/FicheMedicalV2.vue';
-import PatientCabinetServicesPanel from '@/components/patients/PatientCabinetServicesPanel.vue';
 import { createNewFicheForPatient } from '@/composables/useFicheMedicaleAccess';
 import { useAuthStore } from '@/stores/auth';
 import { logAppError } from '@/utils/appLogger';
@@ -268,14 +267,6 @@ watch(
                                 <div class="medical-fiche-paper">
                                     <FicheMedicalV2 :fiche="slotProps.data" :position-label="formatPosition(slotProps.index)" :patient-age="patientAge" compact @print="emit('print-fiche', slotProps.data)" />
                                 </div>
-                                <PatientCabinetServicesPanel
-                                    class="mt-3"
-                                    compact
-                                    :patient-id="patientId"
-                                    :fiche-id="slotProps.data.id"
-                                    :services="slotProps.data.servicesCabinet || []"
-                                    @refresh="emit('fiche-updated')"
-                                />
                             </div>
                         </template>
                     </Carousel>
@@ -331,17 +322,8 @@ watch(
             </template>
 
             <div>
-                <FicheMedicalEditPanel v-if="isEditMode && selectedFiche?.id" ref="editPanelRef" :key="`edit-${selectedFiche.id}`" :fiche-id="selectedFiche.id" @saved="handleFicheSaved" @dirty-change="editHasDirty = $event" />
-                <FicheMedicalV2 v-else-if="selectedFiche" :key="`view-${selectedFiche.id}`" :fiche="selectedFiche" :position-label="formatPosition(currentFicheIndex)" :patient-age="patientAge" compact hide-actions />
-                <PatientCabinetServicesPanel
-                    v-if="selectedFiche"
-                    class="mt-4"
-                    compact
-                    :patient-id="patientId"
-                    :fiche-id="selectedFiche.id"
-                    :services="selectedFiche.servicesCabinet || []"
-                    @refresh="emit('fiche-updated')"
-                />
+                <FicheMedicalEditPanel v-if="isEditMode && selectedFiche?.id" ref="editPanelRef" :key="`edit-${selectedFiche.id}`" :fiche-id="selectedFiche.id" tall @saved="handleFicheSaved" @dirty-change="editHasDirty = $event" />
+                <FicheMedicalV2 v-else-if="selectedFiche" :key="`view-${selectedFiche.id}`" :fiche="selectedFiche" :position-label="formatPosition(currentFicheIndex)" :patient-age="patientAge" compact hide-actions tall />
             </div>
 
             <template #footer>

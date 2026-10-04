@@ -23,10 +23,16 @@ const props = defineProps({
     readonly: {
         type: Boolean,
         default: false
+    },
+    layout: {
+        type: String,
+        default: ''
     }
 });
 
 const emit = defineEmits(['update:modelValue', 'save', 'cloture', 'open-ordonnance', 'print-ordonnance', 'print-devis']);
+
+const isBook = computed(() => props.layout === 'book');
 
 const devis = computed({
     get: () => props.modelValue,
@@ -309,9 +315,14 @@ function subtotal(service) {
 
 <!-- DevisForm.vue -->
 <template>
-    <div class="rounded-2xl border border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-br from-surface-0 to-surface-50/80 dark:from-surface-800 dark:to-surface-900/80 p-6 shadow-sm">
-        <!-- Header -->
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-surface-100 dark:border-surface-700">
+    <div :class="isBook ? 'is-book' : 'rounded-2xl border border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-br from-surface-0 to-surface-50/80 dark:from-surface-800 dark:to-surface-900/80 p-6 shadow-sm'">
+        <div v-if="isBook" class="medical-form-block__header">
+            <div class="flex items-center justify-between gap-2">
+                <h3 class="medical-form-block__title">Devis</h3>
+                <Button v-if="!readonly" label="Sauvegarder" icon="pi pi-save" :loading="saving" size="small" outlined @click="emit('save')" />
+            </div>
+        </div>
+        <div v-else class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-surface-100 dark:border-surface-700">
             <div class="flex items-center gap-3">
                 <div class="p-2.5 rounded-xl bg-primary-500/10 dark:bg-primary-500/20">
                     <i class="pi pi-file-pdf text-primary-600 dark:text-primary-400 text-xl"></i>

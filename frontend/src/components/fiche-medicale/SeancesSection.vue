@@ -1,14 +1,18 @@
 <script setup>
 import PastSessions from '@/components/consultations/PastSessions.vue';
 
-const props = defineProps({
+defineProps({
     sessions: {
         type: Array,
         default: () => []
+    },
+    layout: {
+        type: String,
+        default: ''
     }
 });
 </script>
 
 <template>
-    <PastSessions :sessions="sessions" />
+    <PastSessions :sessions="sessions" :layout="layout" />
 </template>

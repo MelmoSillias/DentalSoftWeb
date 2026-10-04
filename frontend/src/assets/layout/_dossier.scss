@@ -565,3 +565,239 @@
     height: 3rem !important;
     box-shadow: 0 2px 8px color-mix(in srgb, var(--text-color) 12%, transparent) !important;
 }
+
+/* Fiche médicale — pages d'un dossier physique, colonnes de gauche à droite */
+.fiche-book {
+    --fiche-paper: #f4efe4;
+    --fiche-ink: #3d342b;
+    --fiche-rule: #b7a48c;
+    --fiche-column: 22rem;
+    height: 28rem;
+    overflow-x: auto;
+    overflow-y: hidden;
+    background-color: var(--fiche-paper);
+    color: var(--fiche-ink);
+    border: 1px solid color-mix(in srgb, var(--fiche-rule) 80%, #8a7560);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, #fff 40%, transparent);
+}
+
+.fiche-book--tall {
+    height: min(70vh, 42rem);
+}
+
+.app-dark .fiche-book,
+[class*='app-dark'] .fiche-book {
+    --fiche-paper: #2c2824;
+    --fiche-ink: #f0e6d6;
+    --fiche-rule: #6a5e52;
+}
+
+.fiche-book__pages {
+    box-sizing: border-box;
+    height: 100%;
+    width: max-content;
+    min-width: 100%;
+    column-width: var(--fiche-column);
+    column-fill: auto;
+    column-gap: 1.5rem;
+    column-rule: 1px solid var(--fiche-rule);
+    padding: 0.85rem 1rem 1rem;
+}
+
+.fiche-book__title {
+    margin: 0.85rem 0 0.4rem;
+    padding-bottom: 0.2rem;
+    border-bottom: 1px solid var(--fiche-rule);
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--fiche-ink);
+    break-after: avoid;
+}
+
+.fiche-book__title:first-child {
+    margin-top: 0;
+}
+
+.fiche-book__line,
+.fiche-book .medical-form-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    margin: 0.15rem 0 0.45rem;
+    break-inside: avoid;
+}
+
+.fiche-book__label,
+.fiche-book .medical-form-row__label {
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--fiche-ink) 68%, transparent);
+}
+
+.fiche-book__value,
+.fiche-book .medical-form-row__value {
+    min-height: 1.35rem;
+    padding-bottom: 0.1rem;
+    border-bottom: 1px dotted var(--fiche-rule);
+    font-family: Palatino, 'Palatino Linotype', 'Book Antiqua', Georgia, serif;
+    font-size: 0.92rem;
+    line-height: 1.35;
+    color: var(--fiche-ink);
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.fiche-book__block {
+    margin: 0.35rem 0 0.65rem;
+    break-inside: avoid;
+    max-height: 100%;
+    overflow: auto;
+}
+
+.fiche-book__empty {
+    margin: 0.2rem 0 0.5rem;
+    font-size: 0.8rem;
+    font-style: italic;
+    color: color-mix(in srgb, var(--fiche-ink) 55%, transparent);
+}
+
+.fiche-book .medical-form-block,
+.fiche-book .is-book {
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    overflow: visible;
+}
+
+.fiche-book .medical-form-block__header {
+    display: block;
+    margin-top: 0.85rem;
+    padding: 0 0 0.2rem;
+    border: 0;
+    border-bottom: 1px solid var(--fiche-rule);
+    background: transparent;
+    break-after: avoid;
+}
+
+.fiche-book .medical-form-block__title {
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--fiche-ink);
+}
+
+.fiche-book .medical-form-block__subtitle,
+.fiche-book .fiche-book-hide {
+    display: none !important;
+}
+
+.fiche-book .medical-form-block__body {
+    padding: 0.45rem 0 0;
+    overflow: visible;
+    background: transparent;
+}
+
+.fiche-book .medical-form-fields,
+.fiche-book .medical-form-fields--1,
+.fiche-book .medical-form-fields--2,
+.fiche-book .medical-form-fields--3 {
+    display: block;
+}
+
+.fiche-book h4,
+.fiche-book h5 {
+    margin: 0.7rem 0 0.3rem;
+    padding-bottom: 0.15rem;
+    border-bottom: 1px solid color-mix(in srgb, var(--fiche-rule) 70%, transparent);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--fiche-ink);
+    break-after: avoid;
+}
+
+.fiche-book .grid {
+    display: block;
+}
+
+.fiche-book .p-tablist,
+.fiche-book .p-tablist-content,
+.fiche-book .p-tablist-tab-list {
+    display: none !important;
+}
+
+.fiche-book .p-tabpanels {
+    display: block;
+    overflow: visible;
+}
+
+.fiche-book .p-tabpanel,
+.fiche-book .p-tabpanel[hidden] {
+    display: block !important;
+}
+
+.fiche-book .p-inputtext,
+.fiche-book .p-textarea,
+.fiche-book .p-select,
+.fiche-book .p-autocomplete-input,
+.fiche-book .p-datepicker-input,
+.fiche-book .p-inputnumber-input {
+    background: transparent !important;
+    border: none !important;
+    border-bottom: 1px dotted var(--fiche-rule) !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    color: var(--fiche-ink) !important;
+}
+
+.fiche-book table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.75rem;
+}
+
+.fiche-book th,
+.fiche-book td {
+    padding: 0.3rem 0.35rem;
+    border-bottom: 1px solid color-mix(in srgb, var(--fiche-rule) 55%, transparent);
+    text-align: left;
+    vertical-align: top;
+}
+
+.fiche-book__thumb {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 4.25rem;
+    height: 4.25rem;
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid var(--fiche-rule);
+    background: color-mix(in srgb, var(--fiche-paper) 70%, #fff);
+    color: var(--fiche-ink);
+    font-size: 0.65rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    cursor: pointer;
+    break-inside: avoid;
+}
+
+.fiche-book__thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.fiche-book .is-book {
+    padding: 0;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+}

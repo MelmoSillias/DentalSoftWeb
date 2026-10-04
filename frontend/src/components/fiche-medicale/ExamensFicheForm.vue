@@ -19,10 +19,16 @@ const props = defineProps({
     saving: {
         type: Boolean,
         default: false
+    },
+    layout: {
+        type: String,
+        default: ''
     }
 });
 
 const emit = defineEmits(['update:modelValue', 'save']);
+
+const isBook = computed(() => props.layout === 'book');
 
 const activeTab = ref('examens-complementaires');
 
@@ -148,11 +154,11 @@ const tissusDursRows = ['Forme', 'Lesions', 'Excroissance osseuse'];
 </script>
 
 <template>
-    <div class="medical-form-block">
+    <div class="medical-form-block" :class="{ 'is-book': isBook }">
         <div class="medical-form-block__header">
             <div>
                 <h3 class="medical-form-block__title">Examens cliniques</h3>
-                <p class="medical-form-block__subtitle">Observation et examens locaux</p>
+                <p v-if="!isBook" class="medical-form-block__subtitle">Observation et examens locaux</p>
             </div>
             <Button
                 label="Sauvegarder"
@@ -174,6 +180,7 @@ const tissusDursRows = ['Forme', 'Lesions', 'Excroissance osseuse'];
 
             <TabPanels class="mt-4">
                 <TabPanel value="examens-complementaires">
+                    <h4 v-if="isBook" class="fiche-book__title">Examens complémentaires</h4>
                     <div class="space-y-4">
                         <div class="flex items-center justify-between">
                             <p class="text-sm text-surface-600 dark:text-surface-300">Renseignez les examens personnalisés de laboratoire.</p>
@@ -220,6 +227,7 @@ const tissusDursRows = ['Forme', 'Lesions', 'Excroissance osseuse'];
                 </TabPanel>
 
                 <TabPanel value="exobuccal">
+                    <h4 v-if="isBook" class="fiche-book__title">Exobuccal</h4>
                     <div class="space-y-6">
                         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                             <div class="p-4 rounded-xl bg-surface-50 dark:bg-surface-700/30 border border-surface-200 dark:border-surface-700">
@@ -256,6 +264,7 @@ const tissusDursRows = ['Forme', 'Lesions', 'Excroissance osseuse'];
                 </TabPanel>
 
                 <TabPanel value="endobuccal">
+                    <h4 v-if="isBook" class="fiche-book__title">Endobuccal</h4>
                     <div class="space-y-6">
                         <div>
                             <h4 class="font-semibold text-surface-900 dark:text-surface-100 mb-3">Bouche fermee</h4>
@@ -325,6 +334,7 @@ const tissusDursRows = ['Forme', 'Lesions', 'Excroissance osseuse'];
                 </TabPanel>
 
                 <TabPanel value="tissus">
+                    <h4 v-if="isBook" class="fiche-book__title">Tissus</h4>
                     <div class="space-y-6">
                         <div class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/30 p-4 overflow-x-auto">
                             <h4 class="font-semibold text-surface-900 dark:text-surface-100 mb-3">Examen des tissus mous</h4>
@@ -373,6 +383,7 @@ const tissusDursRows = ['Forme', 'Lesions', 'Excroissance osseuse'];
                 </TabPanel>
 
                 <TabPanel value="examens-biologiques">
+                    <h4 v-if="isBook" class="fiche-book__title">Examens biologiques</h4>
                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         <div class="space-y-2">
                             <label class="text-sm font-medium text-surface-700 dark:text-surface-300"> Examens bacteriologiques </label>
