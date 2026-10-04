@@ -120,7 +120,7 @@ watch(
 
             <h5 class="">Diagnostic positif</h5>
 
-            <div class="space-y-2 border border-2 border-dashed border-emerald-500 dark:border-emerald-700 rounded-xl p-4">
+            <div class="space-y-2 border-2 border-dashed border-emerald-500 dark:border-emerald-700 rounded-xl p-4">
                 <Textarea :modelValue="form.diagnosticPositif" rows="4" class="w-full" @update:modelValue="(v) => updateField('diagnosticPositif', v)" />
             </div>
         </div>

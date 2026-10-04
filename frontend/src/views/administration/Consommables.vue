@@ -530,7 +530,7 @@ useGuidedTour({
             <template #headerActions>
                 <Button icon="pi pi-download" severity="secondary" text size="small" label="Exporter" @click="printVariations" />
             </template>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <div class="py-3 px-5 grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div class="md:col-span-1">
                         <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2"> Consommable </label>
                         <Select
@@ -565,7 +565,7 @@ useGuidedTour({
                 class="rounded-none border-0"
                 :pt="{
                     table: 'rounded-none',
-                    thead: 'py-4 px-5 bg-surface-50 dark:bg-surface-900/50',
+                    thead: 'bg-surface-50 dark:bg-surface-900/50',
                     headerCell: ({ state }) => ({
                         class: [
                             'py-4 px-5 text-left font-semibold text-surface-700 dark:text-surface-300',
