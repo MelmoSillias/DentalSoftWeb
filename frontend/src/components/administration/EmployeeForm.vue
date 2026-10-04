@@ -45,7 +45,7 @@ const form = ref({
     email: '',
     fonction: '',
     type: 'Medecin',
-    dateEmbauche: null,
+    dateEmbauche: new Date(),
     typeContrat: 'CDI',
     dureeContrat: null,
     typeSalaire: 'fixe',
@@ -182,19 +182,19 @@ const closeDialog = () => {
         <div class="space-y-5 max-h-[70vh] overflow-y-auto pr-1" :data-tour="props.tourTarget || null">
             <section class="rounded-xl border border-surface-200 dark:border-surface-700 overflow-hidden">
                 <div class="px-4 py-3 border-b border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-900/40">
-                    <h5 class="font-semibold flex items-center gap-2"><i class="pi pi-user text-primary-500"></i> Identité</h5>
+                    <h6 class="font-semibold flex items-center gap-2 mb-0"><i class="pi pi-user text-primary-500"></i> Identité  </h6>
                 </div>
                 <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div class="space-y-1">
-                        <label class="text-sm font-medium">Nom</label>
+                        <label class="text-sm font-medium">Nom <span class="text-red-500">*</span></label>
                         <InputText v-model="form.nom" placeholder="Nom" class="w-full" />
                     </div>
                     <div class="space-y-1">
-                        <label class="text-sm font-medium">Prénom</label>
+                        <label class="text-sm font-medium">Prénom <span class="text-red-500">*</span></label>
                         <InputText v-model="form.prenom" placeholder="Prénom" class="w-full" />
                     </div>
                     <div class="space-y-1">
-                        <label class="text-sm font-medium">Téléphone</label>
+                        <label class="text-sm font-medium">Téléphone <span class="text-red-500">*</span></label>
                         <InputText v-model="form.telephone" placeholder="Téléphone" class="w-full" />
                     </div>
                     <div class="space-y-1">
@@ -206,19 +206,19 @@ const closeDialog = () => {
 
             <section class="rounded-xl border border-surface-200 dark:border-surface-700 overflow-hidden">
                 <div class="px-4 py-3 border-b border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-900/40">
-                    <h5 class="font-semibold flex items-center gap-2"><i class="pi pi-briefcase text-primary-500"></i> Rôle & contrat</h5>
+                    <h6 class="font-semibold flex items-center gap-2 mb-0"><i class="pi pi-briefcase text-primary-500"></i> Rôle & contrat</h6>
                 </div>
                 <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div class="space-y-1">
-                        <label class="text-sm font-medium">Type de poste</label>
+                        <label class="text-sm font-medium">Type de poste <span class="text-red-500">*</span></label>
                         <Select v-model="form.type" :options="typeOptions" optionLabel="label" optionValue="value" class="w-full" />
                     </div>
                     <div class="space-y-1">
-                        <label class="text-sm font-medium">Description de fonction</label>
+                        <label class="text-sm font-medium">Description de fonction <span class="text-red-500">*</span></label>
                         <InputText v-model="form.fonction" placeholder="Description de fonction (optionnel)" class="w-full" />
                     </div>
                     <div class="space-y-1">
-                        <label class="text-sm font-medium">Date d'embauche</label>
+                        <label class="text-sm font-medium">Date d'embauche <span class="text-red-500">*</span></label>
                         <DatePicker v-model="form.dateEmbauche" class="w-full" dateFormat="yy-mm-dd" showIcon placeholder="YYYY-MM-DD" />
                     </div>
                     <div class="space-y-1">
@@ -234,7 +234,7 @@ const closeDialog = () => {
 
             <section class="rounded-xl border border-surface-200 dark:border-surface-700 overflow-hidden">
                 <div class="px-4 py-3 border-b border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-900/40">
-                    <h5 class="font-semibold flex items-center gap-2"><i class="pi pi-wallet text-primary-500"></i> Rémunération</h5>
+                    <h6 class="font-semibold flex items-center gap-2 mb-0"><i class="pi pi-wallet text-primary-500"></i> Rémunération</h6>
                 </div>
                 <div class="p-4">
                     <EmployeeSalarySection v-model:form="form" :employee-type="form.type" />
@@ -243,7 +243,7 @@ const closeDialog = () => {
 
             <section class="rounded-xl border border-surface-200 dark:border-surface-700 overflow-hidden">
                 <div class="px-4 py-3 border-b border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-900/40">
-                    <h3 class="font-semibold flex items-center gap-2"><i class="pi pi-calendar text-primary-500"></i> Planning</h3>
+                    <h6 class="font-semibold flex items-center gap-2 mb-0"><i class="pi pi-calendar text-primary-500"></i> Planning</h6>
                 </div>
                 <div class="p-4 space-y-1">
                     <label class="text-sm font-medium">Jours travaillés</label>
@@ -253,7 +253,7 @@ const closeDialog = () => {
 
             <section class="rounded-xl border border-surface-200 dark:border-surface-700 overflow-hidden">
                 <div class="px-4 py-3 border-b border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-900/40">
-                    <h5 class="font-semibold flex items-center gap-2"><i class="pi pi-file text-primary-500"></i> Documents</h5>
+                    <h6 class="font-semibold flex items-center gap-2 mb-0"><i class="pi pi-file text-primary-500"></i> Documents</h6>
                 </div>
                 <div class="p-4">
                     <FileUpload name="administrativeFiles[]" :multiple="true" :customUpload="true" :auto="false" @select="onFilesSelect" @clear="onFilesClear" chooseLabel="Choisir" uploadLabel="Ajouter" cancelLabel="Vider" />

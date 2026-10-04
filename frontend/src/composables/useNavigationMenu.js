@@ -37,6 +37,12 @@ export function useNavigationMenu() {
                         iconKey: 'focus-mode',
                         to: router.resolve({ name: 'focus-mode' }).href,
                         separator: true
+                    },
+                    {
+                        label: "Manuel d'utilisation",
+                        icon: 'pi pi-fw pi-book',
+                        iconKey: 'manual',
+                        to: router.resolve({ name: 'manual' }).href
                     }
                 ]
             }

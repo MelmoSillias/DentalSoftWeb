@@ -332,7 +332,7 @@ const tissusDursRows = ['Forme', 'Lesions', 'Excroissance osseuse'];
                                 <thead>
                                     <tr>
                                         <th class="p-2 text-left"></th>
-                                        <th v-for="col in tissusMousColumns" :key="col" class="p-2 text-left font-semibold text-surface-700 dark:text-surface-300">
+                                        <th v-for="col in tissusMousColumns" :key="col" class="p-2 text-left font-semibold text-surface-700 dark:text-surface-300 min-w-[100px]">
                                             {{ col }}
                                         </th>
                                     </tr>

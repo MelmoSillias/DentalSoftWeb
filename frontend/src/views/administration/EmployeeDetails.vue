@@ -411,7 +411,6 @@ onMounted(() => {
                 <PageSection title="Documents administratifs" tour-id="admin-employee-details.documents" padded>
                     <div class="space-y-4">
                         <div class="space-y-2">
-                            <label class="text-sm font-medium">Ajouter des fichiers</label>
                             <FileUpload name="administrativeFiles[]" :multiple="true" :customUpload="true" :auto="false" @select="onFilesSelect" @clear="onFilesClear" chooseLabel="Choisir" uploadLabel="Ajouter" cancelLabel="Vider" />
                         </div>
 

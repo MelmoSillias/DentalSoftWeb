@@ -167,6 +167,11 @@ function openProfile() {
     router.push({ name: 'profile' });
 }
 
+function openManual() {
+    profilePopover.value?.hide?.();
+    router.push({ name: 'manual' });
+}
+
 function toggleHelpPopover(event) {
     if (!isGuidedTourAvailable.value) {
         toast.add({
@@ -407,6 +412,7 @@ function handleStartGuidedTourTask(taskId, variantId = null) {
                             </div>
                             <div class="p-3 space-y-2">
                                 <Button class="p-button-secondary p-button-sm w-full" label="Mon profil" icon="pi pi-user" iconPos="left" @click="openProfile" />
+                                <Button class="p-button-secondary p-button-sm w-full" label="Manuel d'utilisation" icon="pi pi-book" iconPos="left" @click="openManual" />
                                 <Button :loading="isLoggingOut" class="p-button-danger p-button-sm w-full" label="Déconnexion" icon="pi pi-sign-out" iconPos="left" @click="handleLogout" />
                             </div>
                         </Popover>

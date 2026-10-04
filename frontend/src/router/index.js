@@ -167,7 +167,7 @@ const router = createRouter({
                     path: '/manual',
                     name: 'manual',
                     component: () => import('@/views/manual/UserManual.vue'),
-                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN'] }
+                    meta: { requiresAuth: true }
                 },
                 // {
                 //    path: '/parametres/fileOptions',
