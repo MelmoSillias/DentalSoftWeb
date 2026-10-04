@@ -427,6 +427,99 @@
     background: color-mix(in srgb, #22c55e 85%, transparent);
 }
 
+/* Fiche sections: keep titles, body text, controls and icons on page tokens.
+   Global h1–h6 sizes in _typography.scss are much larger than the app shell. */
+.medical-form-ui,
+.medical-form-block {
+    h1,
+    h2,
+    h3,
+    .medical-form-block__title,
+    .dossier-section-label {
+        margin: 0;
+        font-size: var(--page-section-title-size);
+        font-weight: 600;
+        line-height: 1.3;
+        letter-spacing: -0.01em;
+        color: var(--text-color);
+    }
+
+    h4:not(.medical-form-block__title):not(.dossier-section-label),
+    h5:not(.medical-form-block__title):not(.dossier-section-label),
+    h6 {
+        margin: 0;
+        font-size: var(--page-section-subtitle-size);
+        font-weight: 600;
+        line-height: 1.35;
+        color: var(--text-color);
+    }
+
+    p:not(.medical-form-block__subtitle) {
+        margin: 0;
+        font-size: var(--page-section-subtitle-size);
+        line-height: 1.4;
+    }
+
+    label,
+    .text-sm,
+    .text-base,
+    th,
+    td {
+        font-size: var(--page-section-subtitle-size);
+    }
+
+    .text-xs {
+        font-size: var(--page-kpi-meta-size);
+    }
+
+    .text-lg:not(i):not(.pi) {
+        font-size: var(--page-section-title-size);
+        line-height: 1.3;
+    }
+
+    .text-2xl:not(i):not(.pi),
+    .text-3xl:not(i):not(.pi) {
+        font-size: var(--page-kpi-value-size);
+        line-height: 1.2;
+    }
+
+    i.text-lg,
+    i.text-xl,
+    i.text-2xl,
+    i.text-3xl,
+    .pi.text-lg,
+    .pi.text-xl,
+    .pi.text-2xl,
+    .pi.text-3xl {
+        font-size: var(--page-icon-size);
+        line-height: 1;
+    }
+
+    .p-button {
+        font-size: var(--page-section-subtitle-size) !important;
+    }
+
+    .p-button:not(.p-button-icon-only) {
+        padding-block: 0.4rem !important;
+        padding-inline: 0.75rem !important;
+    }
+
+    .p-button .p-button-icon,
+    .p-button .pi {
+        font-size: var(--page-icon-size) !important;
+    }
+
+    .p-inputtext,
+    .p-textarea,
+    .p-select-label,
+    .p-autocomplete-input,
+    .p-datepicker-input,
+    .p-togglebutton,
+    .p-tab {
+        font-size: var(--page-section-subtitle-size) !important;
+    }
+}
+
 /* Fiche paper stack (carousel) */
 .medical-fiche-paper {
     position: relative;

@@ -127,7 +127,7 @@ onBeforeUnmount(() => {
 
 <!-- SectionSwitcher.vue -->
 <template>
-    <div class="w-full" :class="mode === 'tabs' ? 'block' : 'block'">
+    <div class="medical-form-ui w-full">
         <!-- ===== MODE TABS ===== -->
         <template v-if="mode === 'tabs'">
             <div class="medical-form-nav">

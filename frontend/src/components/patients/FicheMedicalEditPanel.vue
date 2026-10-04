@@ -111,7 +111,7 @@ defineExpose({
 </script>
 
 <template>
-    <div class="min-h-[200px]">
+    <div class="medical-form-ui min-h-[200px]">
         <div v-if="loading" class="flex items-center justify-center py-16">
             <ProgressSpinner style="width: 40px; height: 40px" />
         </div>
