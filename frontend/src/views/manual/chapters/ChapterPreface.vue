@@ -169,7 +169,7 @@ import ManualSection from '../components/ManualSection.vue';
                 l’indique. Le manuel explique le pourquoi et l’enchaînement ; l’aide guidée montre où cliquer.
             </p>
             <ManualCallout type="tip">
-                <p>Ce manuel est accessible à tout moment depuis le menu du compte, en haut à droite : <span class="ui">Manuel d'utilisation</span>. Il figure aussi dans la rubrique Accueil du menu latéral.</p>
+                <p>Ce manuel est accessible à tout moment depuis le menu du compte, en haut à droite : <span class="ui">Manuel d'utilisation</span>. Il figure aussi tout en bas du menu latéral, dans la rubrique <span class="ui">Documentation</span>.</p>
             </ManualCallout>
         </ManualSection>
     </ManualChapter>

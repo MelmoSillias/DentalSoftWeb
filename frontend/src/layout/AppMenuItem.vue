@@ -79,7 +79,7 @@ function checkActiveRoute(item) {
 </script>
 
 <template>
-    <li class="layout-root-menuitem" :class="{ 'active-menuitem': isActiveMenu }">
+        <li class="layout-root-menuitem" :class="[{ 'active-menuitem': isActiveMenu }, item.class]">
         <div v-if="item.visible !== false" class="layout-menuitem-root-text">
             <span class="layout-menuitem-root-label">{{ item.label }}</span>
         </div>

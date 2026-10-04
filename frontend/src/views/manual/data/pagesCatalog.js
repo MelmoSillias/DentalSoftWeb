@@ -720,7 +720,7 @@ export const pageDocs = [
     {
         id: 'page-manuel',
         title: 'Manuel d’utilisation',
-        menu: 'Menu du compte › Manuel d\'utilisation, ou Accueil › Manuel d\'utilisation',
+        menu: 'Documentation › Manuel d\'utilisation, ou Menu du compte › Manuel d\'utilisation',
         route: '/manual',
         roles: 'Tout utilisateur connecté',
         audience: ['admin', 'accueil', 'medecin'],

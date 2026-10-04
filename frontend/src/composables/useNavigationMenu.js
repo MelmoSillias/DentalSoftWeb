@@ -35,14 +35,7 @@ export function useNavigationMenu() {
                         label: 'Mode Focus',
                         icon: 'pi pi-fw pi-bolt',
                         iconKey: 'focus-mode',
-                        to: router.resolve({ name: 'focus-mode' }).href,
-                        separator: true
-                    },
-                    {
-                        label: "Manuel d'utilisation",
-                        icon: 'pi pi-fw pi-book',
-                        iconKey: 'manual',
-                        to: router.resolve({ name: 'manual' }).href
+                        to: router.resolve({ name: 'focus-mode' }).href
                     }
                 ]
             }
@@ -210,6 +203,19 @@ export function useNavigationMenu() {
                 })
             });
         }
+
+        menu.push({
+            label: 'Documentation',
+            class: 'layout-menuitem-dock',
+            items: [
+                {
+                    label: "Manuel d'utilisation",
+                    icon: 'pi pi-fw pi-book',
+                    iconKey: 'manual',
+                    to: router.resolve({ name: 'manual' }).href
+                }
+            ]
+        });
 
         return menu;
     });

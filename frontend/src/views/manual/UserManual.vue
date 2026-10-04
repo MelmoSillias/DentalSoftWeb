@@ -1,5 +1,8 @@
 <script setup>
+import PageHeader from '@/components/layout/PageHeader.vue';
+import PageShell from '@/components/layout/PageShell.vue';
 import { useAuthStore } from '@/stores/auth';
+import Button from 'primevue/button';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import AppendixReference from './chapters/AppendixReference.vue';
 import ChapterBasicWorkflow from './chapters/ChapterBasicWorkflow.vue';
@@ -81,10 +84,18 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
+    <PageShell class="manual-page">
+        <template #header>
+            <PageHeader title="Manuel d’utilisation" subtitle="Guide de cabinet : administrateur, accueil et médecin. Le profil de lecture filtre les sections à l’écran et à l’impression." icon="pi pi-book">
+                <template #actions>
+                    <Button label="Imprimer ou exporter en PDF" icon="pi pi-print" size="small" @click="exportPdf" />
+                </template>
+            </PageHeader>
+        </template>
+
     <div class="manual">
         <aside class="m-nav" aria-label="Sommaire du manuel">
-            <p class="m-nav__brand">DentalSoft</p>
-            <p class="m-nav__title">Manuel d’utilisation</p>
+            <p class="m-nav__title">Sommaire</p>
 
             <div class="m-nav__audience">
                 <label id="manual-audience-label">Lire en tant que</label>
@@ -114,8 +125,8 @@ onBeforeUnmount(() => {
                 </ol>
             </nav>
 
-            <button type="button" class="m-nav__print" @click="exportPdf"><i class="pi pi-print" aria-hidden="true"></i>Imprimer ou exporter en PDF</button>
-            <p class="m-nav__hint">Choisissez « Enregistrer au format PDF » comme imprimante et décochez « En-têtes et pieds de page » du navigateur. Le profil de lecture choisi ci-dessus s’applique au document imprimé.</p>
+            <button type="button" class="m-nav__print" @click="exportPdf"><i class="pi pi-print" aria-hidden="true"></i>Exporter en PDF</button>
+
         </aside>
 
         <article class="m-doc">
@@ -179,4 +190,5 @@ onBeforeUnmount(() => {
             </footer>
         </article>
     </div>
+    </PageShell>
 </template>

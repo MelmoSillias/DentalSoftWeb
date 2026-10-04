@@ -1,41 +1,43 @@
 /* Styles du manuel d'utilisation. Non scopés pour couvrir les contenus passés en slot ; tout est préfixé par .manual. */
 
 .manual {
-    --m-ink: #1b1a17;
-    --m-muted: #5d574e;
-    --m-faint: #8a8276;
-    --m-line: #e3dbcd;
-    --m-line-strong: #cfc3b0;
-    --m-paper: #fdfbf7;
-    --m-card: #ffffff;
-    --m-accent: #1d4f47;
-    --m-accent-ink: #143a34;
-    --m-accent-soft: #e5efec;
-    --m-tip: #1c6a44;
-    --m-tip-bg: #edf6f0;
-    --m-warn: #8c4a06;
-    --m-warn-bg: #fcf3e4;
-    --m-note: #1d4c7a;
-    --m-note-bg: #edf3f9;
-    --m-critical: #9b1c1c;
-    --m-critical-bg: #fcefee;
-    --m-admin: #6b3fa0;
-    --m-accueil: #1f6fb2;
-    --m-medecin: #0e7c74;
-    --m-serif: 'Iowan Old Style', Palatino, 'Palatino Linotype', 'Book Antiqua', Georgia, serif;
-    --m-sans: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    --m-ink: var(--text-color);
+    --m-muted: var(--text-color-secondary);
+    --m-faint: var(--p-text-muted-color);
+    --m-line: var(--surface-border);
+    --m-line-strong: color-mix(in srgb, var(--surface-border) 55%, var(--text-color) 45%);
+    --m-paper: var(--surface-card);
+    --m-card: var(--surface-card);
+    --m-accent: var(--primary-color);
+    --m-accent-ink: var(--primary-color);
+    --m-accent-soft: color-mix(in srgb, var(--primary-color) 12%, var(--surface-card));
+    --m-on-accent: var(--primary-contrast-color);
+    --m-tip: color-mix(in srgb, var(--p-green-500) 72%, var(--text-color));
+    --m-tip-bg: color-mix(in srgb, var(--p-green-500) 12%, var(--surface-card));
+    --m-warn: color-mix(in srgb, var(--p-orange-500) 72%, var(--text-color));
+    --m-warn-bg: color-mix(in srgb, var(--p-orange-500) 12%, var(--surface-card));
+    --m-note: color-mix(in srgb, var(--p-blue-500) 72%, var(--text-color));
+    --m-note-bg: color-mix(in srgb, var(--p-blue-500) 12%, var(--surface-card));
+    --m-critical: color-mix(in srgb, var(--p-red-500) 72%, var(--text-color));
+    --m-critical-bg: color-mix(in srgb, var(--p-red-500) 12%, var(--surface-card));
+    --m-admin: color-mix(in srgb, var(--p-purple-500) 78%, var(--text-color));
+    --m-accueil: color-mix(in srgb, var(--p-blue-500) 78%, var(--text-color));
+    --m-medecin: color-mix(in srgb, var(--p-teal-500) 78%, var(--text-color));
+    --m-serif: var(--app-font-family);
+    --m-sans: var(--app-font-family);
+    --m-radius: var(--page-section-radius);
+    --m-shadow: 0 1px 2px color-mix(in srgb, var(--text-color) 4%, transparent);
 
     display: grid;
-    grid-template-columns: 16.5rem minmax(0, 50rem);
-    gap: 1.75rem;
+    grid-template-columns: 16.5rem minmax(0, 1fr);
+    gap: var(--page-content-gap);
     align-items: start;
-    justify-content: center;
-    padding: 0.5rem 0.5rem 3rem;
+    width: 100%;
+    padding: 0 0 2rem;
     color: var(--m-ink);
-    font-family: var(--m-sans);
-    font-size: 15.5px;
-    line-height: 1.6;
-    color-scheme: light;
+    font-family: var(--app-font-family);
+    font-size: 0.9375rem;
+    line-height: 1.55;
 }
 
 .manual *,
@@ -52,10 +54,11 @@
     display: flex;
     max-height: calc(100vh - 7rem);
     flex-direction: column;
-    padding: 1rem 0.85rem;
-    border: 1px solid var(--m-line);
-    border-radius: 16px;
+    padding: 0.875rem 0.75rem;
+    border: 1px solid color-mix(in srgb, var(--surface-border) 80%, transparent);
+    border-radius: var(--m-radius);
     background: var(--m-card);
+    box-shadow: var(--m-shadow);
 }
 
 .manual .m-nav__brand {
@@ -68,10 +71,26 @@
 }
 
 .manual .m-nav__title {
-    margin: 0.15rem 0 0.75rem;
-    font-family: var(--m-serif);
-    font-size: 1.2rem;
-    font-weight: 600;
+    margin: 0 0 0.75rem;
+    padding-left: 0.7rem;
+    color: var(--text-color);
+    font-family: var(--app-font-family);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    line-height: 1.2;
+    text-transform: uppercase;
+    position: relative;
+}
+
+.manual .m-nav__title::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0.05rem;
+    bottom: 0.05rem;
+    width: 2px;
+    background-color: var(--primary-color);
 }
 
 .manual .m-nav__audience {
@@ -108,7 +127,7 @@
 .manual .m-nav__chips button[aria-pressed='true'] {
     border-color: var(--m-accent);
     background: var(--m-accent);
-    color: #fff;
+    color: var(--m-on-accent);
 }
 
 .manual .m-nav__tree {
@@ -184,9 +203,9 @@
     margin-top: 0.8rem;
     padding: 0.6rem 0.8rem;
     border: 0;
-    border-radius: 999px;
+    border-radius: var(--content-border-radius);
     background: var(--m-accent);
-    color: #fff;
+    color: var(--m-on-accent);
     font: inherit;
     font-size: 0.9rem;
     font-weight: 600;
@@ -194,7 +213,7 @@
 }
 
 .manual .m-nav__print:hover {
-    background: var(--m-accent-ink);
+    background: color-mix(in srgb, var(--primary-color) 82%, var(--text-color));
 }
 
 .manual .m-nav__hint {
@@ -208,11 +227,11 @@
 
 .manual .m-doc {
     min-width: 0;
-    padding: 2.6rem 3rem 3rem;
-    border: 1px solid var(--m-line);
-    border-radius: 20px;
+    padding: 1.15rem 1.25rem 1.75rem;
+    border: 1px solid color-mix(in srgb, var(--surface-border) 80%, transparent);
+    border-radius: var(--m-radius);
     background: var(--m-paper);
-    box-shadow: 0 20px 60px rgba(48, 36, 18, 0.07);
+    box-shadow: var(--m-shadow);
 }
 
 .manual h1,
@@ -284,7 +303,7 @@
     height: 6px;
     margin-bottom: 1.6rem;
     border-radius: 999px;
-    background: linear-gradient(90deg, var(--m-accent), var(--m-medecin));
+    background: var(--primary-color);
 }
 
 .manual .m-cover__brand {
@@ -297,9 +316,11 @@
 }
 
 .manual .m-cover h1 {
-    max-width: 15ch;
-    margin: 0.35rem 0 0.9rem;
-    font-size: 2.9rem;
+    max-width: none;
+    margin: 0.35rem 0 0.6rem;
+    font-size: var(--page-title-size);
+    font-weight: 600;
+    letter-spacing: -0.015em;
 }
 
 .manual .m-cover__lead {
@@ -410,10 +431,16 @@
     scroll-margin-top: 1rem;
 }
 
+.manual .m-cover__band,
+.manual .m-cover__brand,
+.manual .m-cover h1 {
+    display: none;
+}
+
 .manual .m-chapter__head {
     margin-bottom: 1.2rem;
-    padding-bottom: 1rem;
-    border-bottom: 2px solid var(--m-ink);
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid color-mix(in srgb, var(--surface-border) 85%, transparent);
 }
 
 .manual .m-chapter__kicker {
@@ -427,7 +454,7 @@
 
 .manual .m-chapter h2 {
     margin: 0.2rem 0 0.5rem;
-    font-size: 2.1rem;
+    font-size: 1.25rem;
 }
 
 .manual .m-chapter__goal {
@@ -458,7 +485,7 @@
 
 .manual .m-section h3 {
     margin: 0;
-    font-size: 1.38rem;
+    font-size: 1.0625rem;
 }
 
 .manual .m-section__num {
@@ -603,13 +630,13 @@
     place-items: center;
     border-radius: 999px;
     background: var(--m-accent);
-    color: #fff;
+    color: var(--m-on-accent);
     font-size: 0.8rem;
     font-weight: 700;
 }
 
 .manual .m-step--critical {
-    border-color: #e9b9b6;
+    border-color: color-mix(in srgb, var(--p-red-500) 45%, var(--surface-border));
     box-shadow: inset 3px 0 0 var(--m-critical);
 }
 
@@ -664,11 +691,11 @@
     min-height: 8rem;
     place-items: center;
     padding: 1rem;
-    border: 1.5px dashed #b6a993;
-    border-radius: 12px;
+    border: 1.5px dashed var(--m-line-strong);
+    border-radius: var(--m-radius);
     background:
-        linear-gradient(180deg, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.25)),
-        repeating-linear-gradient(-45deg, #f4efe7, #f4efe7 9px, #efe8dc 9px, #efe8dc 18px);
+        linear-gradient(180deg, color-mix(in srgb, var(--surface-card) 72%, transparent), color-mix(in srgb, var(--surface-card) 28%, transparent)),
+        repeating-linear-gradient(-45deg, color-mix(in srgb, var(--surface-hover) 88%, var(--surface-card)) 0 9px, color-mix(in srgb, var(--text-color) 6%, var(--surface-card)) 9px 18px);
 }
 
 .manual .m-figure--compact .m-figure__frame {
@@ -682,10 +709,10 @@
     left: 50%;
     max-width: calc(100% - 1.4rem);
     padding: 0.2rem 0.7rem;
-    border: 1px solid #d9cfbf;
+    border: 1px solid var(--m-line);
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.9);
-    color: #6b6255;
+    background: color-mix(in srgb, var(--surface-card) 92%, transparent);
+    color: var(--m-muted);
     font-size: 0.88rem;
     font-weight: 600;
     text-align: center;
@@ -696,7 +723,7 @@
 }
 
 .manual .m-figure__icon {
-    color: #c9bda9;
+    color: var(--m-faint);
     font-size: 2.2rem;
 }
 
@@ -709,7 +736,7 @@
     place-items: center;
     border-radius: 999px;
     background: var(--m-critical);
-    color: #fff;
+    color: var(--primary-contrast-color);
     font-size: 0.75rem;
     font-weight: 700;
 }
@@ -717,7 +744,7 @@
 .manual .m-figure__marker {
     position: absolute;
     transform: translate(-50%, -50%);
-    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.9);
+    box-shadow: 0 0 0 3px var(--surface-card);
 }
 
 .manual .m-figure figcaption {
@@ -777,7 +804,7 @@
 }
 
 .manual .m-table th {
-    background: #efe8dc;
+    background: color-mix(in srgb, var(--surface-hover) 70%, var(--surface-card));
     font-size: 0.74rem;
     font-weight: 700;
     letter-spacing: 0.05em;
@@ -785,7 +812,7 @@
 }
 
 .manual .m-table tbody tr:nth-child(even) td {
-    background: #fcfaf6;
+    background: color-mix(in srgb, var(--text-color) 3%, var(--surface-card));
 }
 
 .manual .m-table td:first-child {
@@ -969,7 +996,7 @@
     padding: 1rem 1.15rem;
     border: 1px solid var(--m-line);
     border-radius: 14px;
-    background: linear-gradient(135deg, #ffffff, #f6f1e8);
+    background: color-mix(in srgb, var(--primary-color) 6%, var(--surface-card));
 }
 
 .manual .m-situation__label {
@@ -1007,7 +1034,7 @@
     padding: 0.8rem 1rem;
     border: 1.5px solid var(--m-accueil);
     border-radius: 14px;
-    background: #f2f7fc;
+    background: color-mix(in srgb, var(--p-blue-500) 10%, var(--surface-card));
 }
 
 .manual .m-decision__label {
@@ -1041,7 +1068,7 @@
     gap: 0.7rem;
     padding: 0.45rem 0.6rem;
     border-radius: 9px;
-    background: #fff;
+    background: var(--surface-card);
     font-size: 0.92rem;
 }
 
@@ -1115,7 +1142,7 @@
 }
 
 .manual .m-schema__col--rdv {
-    border-top-color: #b26a00;
+    border-top-color: var(--p-orange-500);
 }
 
 .manual .m-schema__foot {
@@ -1223,7 +1250,7 @@
     padding: 0.65rem 0.9rem;
     border: 1px dashed var(--m-line-strong);
     border-radius: 10px;
-    background: #f7f4ee;
+    background: color-mix(in srgb, var(--text-color) 4%, var(--surface-card));
     font-size: 0.88rem;
 }
 
@@ -1279,7 +1306,7 @@
     margin-left: 0.4rem;
     padding: 0 0.5rem;
     border-radius: 999px;
-    background: #efe8dc;
+    background: color-mix(in srgb, var(--text-color) 8%, var(--surface-card));
     color: var(--m-muted);
     font-size: 0.7rem;
     font-weight: 700;
@@ -1458,7 +1485,8 @@
     body.manual-open .layout-mask,
     body.manual-open .layout-right-rail,
     body.manual-open .p-toast,
-    body.manual-open .p-dialog-mask {
+    body.manual-open .p-dialog-mask,
+    .manual-page .page-header {
         display: none !important;
     }
 
@@ -1490,6 +1518,26 @@
         box-shadow: none !important;
     }
 
+    .manual .m-cover__band,
+    .manual .m-cover__brand,
+    .manual .m-cover h1 {
+        display: block !important;
+    }
+
+    .manual .m-cover h1 {
+        max-width: 15ch;
+        margin: 0.35rem 0 0.9rem;
+        font-size: 34pt !important;
+    }
+
+    .manual .m-chapter h2 {
+        font-size: 18pt;
+    }
+
+    .manual .m-section h3 {
+        font-size: 13pt;
+    }
+
     .manual .m-cover {
         display: flex;
         min-height: 255mm;
@@ -1497,10 +1545,6 @@
         justify-content: center;
         border-bottom: 0;
         break-after: page;
-    }
-
-    .manual .m-cover h1 {
-        font-size: 34pt;
     }
 
     .manual .m-toc {
