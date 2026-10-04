@@ -34,6 +34,10 @@ import { useAuthStore } from '@/stores/auth';
 import Button from 'primevue/button';
 import ConfirmDialog from 'primevue/confirmdialog';
 import AppDialog from '@/components/layout/AppDialog.vue';
+import PageHeader from '@/components/layout/PageHeader.vue';
+import PageSection from '@/components/layout/PageSection.vue';
+import PageShell from '@/components/layout/PageShell.vue';
+import ProgressSpinner from 'primevue/progressspinner';
 import SelectButton from 'primevue/selectbutton';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
@@ -111,6 +115,11 @@ const displayModeOptions = [
     { label: 'Onglets', value: 'tabs' },
     { label: 'Sidebar', value: 'sidebar' }
 ];
+
+const pageSubtitle = computed(() => {
+    const name = `${data.patient?.prenom || ''} ${data.patient?.nom || ''}`.trim();
+    return name || 'Suivi complet du patient';
+});
 
 const toFullName = (employee = {}) => {
     return employee.label || employee.fullName || employee.fullname || employee.name || employee.FullName || employee.Fullname || `${employee.prenom ?? ''} ${employee.nom ?? ''}`.trim() || employee.nom || '';
@@ -973,49 +982,60 @@ const retryLoad = async () => {
 </script>
 
 <template>
-    <div class="min-h-screen p-4 md:p-6 lg:p-8 transition-colors duration-300">
-        <ConfirmDialog />
-        <div v-if="!pageLoading && !loadErrorMessage" class="relative">
+    <PageShell>
+        <template #header>
+            <PageHeader title="Fiche médicale" :subtitle="pageSubtitle" icon="pi pi-file" tour-id="consultations-form.header">
+                <template #actions>
+                    <div class="flex flex-wrap items-center justify-end gap-1.5">
+                        <div data-tour="consultations-form.navigation" class="flex items-center gap-1.5">
+                            <Button icon="pi pi-arrow-left" label="Retour" severity="secondary" outlined :disabled="isClotureProcessing" @click="() => router.back()" />
+                            <Button icon="pi pi-print" label="Imprimer" severity="secondary" outlined :disabled="isClotureProcessing" @click="handlePrintFiche" />
+                        </div>
+                        <div data-tour="consultations-form.display-mode">
+                            <SelectButton v-model="switcherMode" :options="displayModeOptions" optionLabel="label" optionValue="value" :disabled="isClotureProcessing" />
+                        </div>
+                    </div>
+                </template>
+            </PageHeader>
+        </template>
+
+        <template v-if="!pageLoading && !loadErrorMessage" #toolbar>
+            <div data-tour="consultations-form.save-indicator">
+                <SaveIndicator
+                    v-model:auto-save-enabled="autoSaveEnabled"
+                    :loading="loading || isClotureProcessing"
+                    :saving-count="savingCount"
+                    :last-saved-at="lastSavedAt"
+                    :dirty-sections="dirtySectionsList"
+                    :floating="isIndicatorFloating"
+                    @save-all="() => saveAll({ silent: false })"
+                />
+            </div>
+        </template>
+
+        <div v-if="pageLoading" class="dossier-state">
+            <ProgressSpinner style="width: 40px; height: 40px" />
+            <p class="dossier-state__text">Chargement de la fiche médicale…</p>
+        </div>
+
+        <div v-else-if="loadErrorMessage" class="dossier-state dossier-state--warning">
+            <div class="dossier-state__icon">
+                <i class="pi pi-exclamation-triangle"></i>
+            </div>
+            <h3 class="dossier-state__title">Chargement interrompu</h3>
+            <p class="dossier-state__text">{{ loadErrorMessage }}</p>
+            <Button class="mt-2" icon="pi pi-refresh" label="Réessayer" severity="warning" outlined @click="retryLoad" />
+        </div>
+
+        <div v-else class="relative">
             <div v-if="isClotureProcessing" class="absolute inset-0 z-30 flex items-center justify-center bg-surface-0/60 dark:bg-surface-900/60 backdrop-blur-[1px]">
-                <div class="flex items-center gap-2 rounded-xl border border-surface-300 dark:border-surface-700 bg-surface-0 dark:bg-surface-900 px-4 py-2 text-sm font-medium text-surface-700 dark:text-surface-100 shadow">
+                <div class="flex items-center gap-2 rounded-xl border border-surface-300 bg-surface-0 px-4 py-2 text-sm font-medium text-surface-700 shadow dark:border-surface-700 dark:bg-surface-900 dark:text-surface-100">
                     <i class="pi pi-spin pi-spinner"></i>
                     Clôture en cours...
                 </div>
             </div>
-            <div data-tour="consultations-form.header" class="mb-6 md:mb-8 gap-4 flex flex-row justify-items-strech rounded-2xl bg-surface-0/80 dark:bg-surface-800/80 backdrop-blur-sm border border-surface-200/50 dark:border-surface-700/50">
-                <div class="inline-flex items-center gap-3 mb-4 p-3">
-                    <div class="p-2.5 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600">
-                        <i class="pi pi-file text-white text-xl"></i>
-                    </div>
-                    <div>
-                        <h1 class="text-2xl md:text-3xl font-bold text-surface-900 dark:text-surface-50">Fiche medicale</h1>
-                        <p class="text-sm text-surface-600 dark:text-surface-300">Suivi complet du patient</p>
-                    </div>
-                </div>
-                <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-                    <div data-tour="consultations-form.navigation" class="flex items-center gap-2">
-                        <Button icon="pi pi-arrow-left" label="Retour" severity="danger" :disabled="isClotureProcessing" @click="() => router.back()" />
-                        <Button icon="pi pi-print" label="Imprimer fiche" severity="secondary" outlined :disabled="isClotureProcessing" @click="handlePrintFiche" />
-                    </div>
-                    <div data-tour="consultations-form.display-mode" class="flex items-center gap-2">
-                        <SelectButton v-model="switcherMode" :options="displayModeOptions" optionLabel="label" optionValue="value" :disabled="isClotureProcessing" />
-                    </div>
-                </div>
-            </div>
 
-            <div class="p-6 bg-surface-0 dark:bg-surface-800/80 rounded-2xl shadow-xl border border-surface-200/50 dark:border-surface-700/50 backdrop-blur-sm" :class="isClotureProcessing ? 'pointer-events-none opacity-80' : ''">
-                <div data-tour="consultations-form.save-indicator">
-                    <SaveIndicator
-                        v-model:auto-save-enabled="autoSaveEnabled"
-                        :loading="loading || isClotureProcessing"
-                        :saving-count="savingCount"
-                        :last-saved-at="lastSavedAt"
-                        :dirty-sections="dirtySectionsList"
-                        :floating="isIndicatorFloating"
-                        @save-all="() => saveAll({ silent: false })"
-                    />
-                </div>
-
+            <PageSection :class="isClotureProcessing ? 'pointer-events-none opacity-80' : ''">
                 <div data-tour="consultations-form.switcher">
                     <SectionSwitcher v-model="activeSection" :sections="sections" :mode="switcherMode" :init-key="sectionInitKey">
                         <template #infos>
@@ -1126,8 +1146,11 @@ const retryLoad = async () => {
                         </template>
                     </SectionSwitcher>
                 </div>
-            </div>
+            </PageSection>
+        </div>
 
+        <template #dialogs>
+            <ConfirmDialog />
             <div data-tour="consultations-form.dialogs">
                 <AntecedentDialogForm v-model="showAntecedentDialog" :loading="savingAntecedent" :type-options="antecedentTypeOptions" @save="handleSaveAntecedent" />
                 <AllergyDialogForm v-model="showAllergyDialog" :loading="savingAllergy" :type-options="allergyTypeOptions" @save="handleSaveAllergy" />
@@ -1154,24 +1177,6 @@ const retryLoad = async () => {
                 </AppDialog>
                 <OrdonnanceModal v-model="ordonnanceDraft" v-model:visible="ordonnanceModalVisible" :mode="ordonnanceModalMode" :medecin-readonly="true" :saving="saving.consult" @save="saveOrdonnanceSection" />
             </div>
-        </div>
-        <div v-else-if="loadErrorMessage" class="flex min-h-[320px] flex-col items-center justify-center gap-4 rounded-2xl border border-amber-200/70 bg-amber-50/70 p-8 dark:border-amber-800/70 dark:bg-amber-950/20">
-            <div class="flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
-                <i class="pi pi-exclamation-triangle text-2xl"></i>
-            </div>
-            <div class="text-center">
-                <p class="text-lg font-semibold text-amber-800 dark:text-amber-200">Chargement interrompu</p>
-                <p class="text-sm text-amber-700/90 dark:text-amber-300/90">{{ loadErrorMessage }}</p>
-            </div>
-            <Button icon="pi pi-refresh" label="Réessayer" severity="warning" @click="retryLoad" />
-        </div>
-
-        <div v-else class="flex flex-col items-center justify-center min-h-[300px]">
-            <div class="relative mb-4">
-                <span class="block w-16 h-16 rounded-full border-4 border-primary-500 border-t-transparent pi-spin"></span>
-                <i class="pi pi-file text-primary-500 text-2xl absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"></i>
-            </div>
-            <span class="text-lg font-semibold text-primary-600">Chargement de la fiche médicale...</span>
-        </div>
-    </div>
+        </template>
+    </PageShell>
 </template>

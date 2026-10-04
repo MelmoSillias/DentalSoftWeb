@@ -130,48 +130,48 @@ onBeforeUnmount(() => {
     <div class="w-full" :class="mode === 'tabs' ? 'block' : 'block'">
         <!-- ===== MODE TABS ===== -->
         <template v-if="mode === 'tabs'">
-            <div class="flex flex-wrap gap-2 px-6 pt-6">
-                <Button
+            <div class="medical-form-nav">
+                <button
                     v-for="section in sections"
                     :key="section.id"
-                    :label="section.label"
-                    :severity="active === section.id ? 'secondary' : 'help'"
-                    :outlined="active === section.id"
+                    type="button"
+                    class="medical-form-nav__item"
+                    :class="{ 'is-active': active === section.id, 'opacity-50': section.disabled }"
                     :disabled="section.disabled"
                     @click="select(section.id)"
-                    class="rounded-xl px-4 py-2.5 font-medium transition-all hover:shadow-md"
-                />
+                >
+                    <i v-if="section.icon" :class="section.icon"></i>
+                    <span>{{ section.label }}</span>
+                </button>
             </div>
 
-            <div class="p-6 w-full">
+            <div class="w-full p-3 md:p-4">
                 <slot :name="active"></slot>
             </div>
         </template>
 
         <!-- ===== MODE SIDEBAR ===== -->
         <template v-else>
-            <div class="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-6 w-full p-6">
+            <div class="grid grid-cols-1 lg:grid-cols-[1fr_16rem] gap-3 w-full p-3 md:p-4">
                 <!-- ===== CONTENT ===== -->
-                <div class="w-full space-y-4">
-                    <template v-for="(section, index) in sections" :key="section.id">
+                <div class="w-full space-y-3">
+                    <template v-for="section in sections" :key="section.id">
                         <section
                             :id="section.id"
                             :data-section-id="section.id"
                             :ref="(el) => setSectionRef(section.id, el)"
-                            class="w-full rounded-2xl border border-surface-200/50 dark:border-surface-700/50 bg-surface-0 dark:bg-surface-800/60 p-5 shadow-sm hover:shadow-md transition-shadow duration-300"
+                            class="medical-form-block"
                         >
                             <!-- Header -->
-                            <div class="flex items-center justify-between gap-4 pb-3 border-b border-surface-100 dark:border-surface-700">
+                            <div class="medical-form-block__header">
                                 <button
                                     type="button"
-                                    class="flex items-center gap-3 text-surface-900 dark:text-surface-100 font-semibold text-lg hover:text-primary-600 dark:hover:text-primary-400 transition-colors group"
+                                    class="flex items-center gap-2 text-left"
                                     @click="toggleSection(section.id)"
                                 >
-                                    <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-primary-500/10 dark:bg-primary-500/20 group-hover:bg-primary-500/20 transition-colors">
-                                        <i class="pi text-primary-500" :class="section.icon || 'pi-file'" />
-                                    </div>
-                                    <span>{{ section.label }}</span>
-                                    <i class="pi transition-transform duration-300 text-surface-400" :class="isOpen(section.id) ? 'pi-chevron-down' : 'pi-chevron-right'" />
+                                    <i v-if="section.icon" class="pi text-primary" :class="section.icon" />
+                                    <span class="medical-form-block__title">{{ section.label }}</span>
+                                    <i class="pi text-sm" :class="isOpen(section.id) ? 'pi-chevron-down' : 'pi-chevron-right'" />
                                 </button>
 
                                 <div class="flex items-center gap-3">
@@ -194,17 +194,18 @@ onBeforeUnmount(() => {
                                         label="Enregistrer"
                                         icon="pi pi-save"
                                         size="small"
+                                        severity="secondary"
                                         outlined
                                         :loading="section.saving"
                                         :disabled="section.saveDisabled || section.saving"
                                         @click.stop="section.onSave"
-                                        class="hidden sm:inline-flex rounded-lg px-4 py-2 hover:shadow-sm transition-all"
+                                        class="hidden sm:inline-flex"
                                     />
                                 </div>
                             </div>
 
                             <!-- Body -->
-                            <div v-show="isOpen(section.id)" class="mt-4 animate-fade-in" :class="{ 'opacity-50': section.disabled }">
+                            <div v-show="isOpen(section.id)" class="medical-form-block__body" :class="{ 'opacity-50': section.disabled }">
                                 <slot :name="section.id"></slot>
                             </div>
                         </section>
@@ -212,49 +213,44 @@ onBeforeUnmount(() => {
                 </div>
 
                 <!-- ===== SIDEBAR NAVIGATION ===== -->
-                <aside class="hidden lg:block sticky top-16 h-fit max-h-[calc(100vh-6rem)] overflow-y-auto">
-                    <div class="rounded-2xl border border-surface-200/50 dark:border-surface-700/50 bg-surface-0 dark:bg-surface-800/60 p-4 shadow-sm">
-                        <div class="flex items-center gap-3 mb-4 pb-3 border-b border-surface-100 dark:border-surface-700">
-                            <h5 class="font-semibold text-surface-900 dark:text-surface-100"><i class="pi pi-list text-primary-500"></i> Navigation rapide</h5>
+                <aside class="hidden lg:block sticky top-4 h-fit max-h-[calc(100vh-6rem)] overflow-y-auto">
+                    <div class="medical-form-block">
+                        <div class="medical-form-block__header">
+                            <h5 class="medical-form-block__title"><i class="pi pi-list mr-2"></i>Navigation</h5>
                         </div>
 
-                        <nav class="flex flex-col gap-1">
-                            <a
+                        <nav class="medical-form-block__body flex flex-col gap-0.5 !py-2">
+                            <button
                                 v-for="section in sections"
                                 :key="section.id"
-                                href="#"
-                                @click.prevent="scrollToSection(section.id)"
-                                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-surface-600 dark:text-surface-400 hover:text-surface-900 dark:hover:text-surface-100 hover:bg-surface-50 dark:hover:bg-surface-700/50 transition-all group"
-                                :class="{
-                                    'font-semibold text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20 border-l-4 border-primary-500': active === section.id
-                                }"
+                                type="button"
+                                class="medical-form-nav__item w-full justify-start rounded-md border-b-0 px-2"
+                                :class="{ 'is-active': active === section.id }"
+                                @click="scrollToSection(section.id)"
                             >
-                                <div class="flex items-center justify-center w-6 h-6 rounded-md bg-surface-100 dark:bg-surface-700 group-hover:bg-surface-200 dark:group-hover:bg-surface-600 transition-colors">
-                                    <i class="pi text-xs" :class="section.icon || 'pi-circle'" />
-                                </div>
-                                <span class="flex-1">{{ section.label }}</span>
-                                <div
-                                    v-if="section.status"
-                                    class="w-2 h-2 rounded-full"
+                                <span class="flex-1 text-left">{{ section.label }}</span>
+                                <span
+                                    v-if="section.status && section.status !== 'readonly'"
+                                    class="medical-form-nav__dot"
                                     :class="{
-                                        'bg-emerald-500': section.status === 'saved',
-                                        'bg-amber-500 animate-pulse': section.status === 'dirty',
-                                        'bg-teal-500 animate-spin': section.status === 'saving'
+                                        'bg-amber-500': section.status === 'dirty',
+                                        'bg-primary': section.status === 'saving'
                                     }"
                                 />
-                            </a>
+                            </button>
                         </nav>
 
-                        <!-- Progress Indicator -->
-                        <div class="mt-6 pt-4 border-t border-surface-100 dark:border-surface-700">
+                        <div class="medical-form-block__body border-t border-surface-200 dark:border-surface-700">
                             <div class="text-xs font-medium text-surface-500 dark:text-surface-400 mb-2">Progression</div>
-                            <div class="w-full h-2 bg-surface-100 dark:bg-surface-700 rounded-full overflow-hidden">
-                                <div class="h-full bg-gradient-to-r from-primary-500 to-primary-600 rounded-full transition-all duration-500" :style="{ width: `${(completedSections / sections.length) * 100}%` }" />
+                            <div class="w-full h-1.5 bg-surface-100 dark:bg-surface-700 rounded-full overflow-hidden">
+                                <div
+                                    class="h-full bg-primary rounded-full transition-all duration-500"
+                                    :style="{ width: `${sections.length ? (completedSections() / sections.length) * 100 : 0}%` }"
+                                />
                             </div>
-                            <div class="flex justify-between text-xs text-surface-600 dark:text-surface-400 mt-2">
-                                <span>{{ completedSections() }} section(s) complétée(s)</span>
-                                <span>{{ sections.length }} total</span>
-                            </div>
+                            <p class="mt-2 text-xs text-surface-500 dark:text-surface-400">
+                                {{ completedSections() }} / {{ sections.length }}
+                            </p>
                         </div>
                     </div>
                 </aside>

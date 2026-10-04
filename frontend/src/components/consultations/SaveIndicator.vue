@@ -1,7 +1,5 @@
 <script setup>
 import Button from 'primevue/button';
-import InputSwitch from 'primevue/inputswitch';
-import Tag from 'primevue/tag';
 import { computed } from 'vue';
 
 const props = defineProps({
@@ -80,78 +78,35 @@ const wrapperClass = computed(() => {
         <Button icon="pi pi-save" text rounded size="small" :disabled="savingCount > 0 || !dirtySections.length" @click="emit('save-all')" />
     </div>
 
-    <div v-else class="rounded-2xl border border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-r from-surface-0 to-surface-50/80 dark:from-surface-800 dark:to-surface-900/80 p-5 shadow-sm" :class="wrapperClass">
-        <div class="flex items-center justify-between gap-4">
-            <!-- Left: Status -->
-            <div class="flex items-center gap-4">
-                <div class="relative">
-                    <div class="w-4 h-4 rounded-full animate-pulse" :style="{ backgroundColor: status.tone }" />
-                    <div v-if="savingCount > 0" class="absolute -top-1 -right-1">
-                        <div class="flex items-center justify-center w-6 h-6 rounded-full bg-primary-500 animate-spin">
-                            <i class="pi pi-spinner text-white text-xs"></i>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="space-y-1">
-                    <div class="flex items-center gap-2">
-                        <span class="font-semibold text-surface-900 dark:text-surface-100">{{ status.text }}</span>
-                        <Badge v-if="savingCount > 0" :value="savingCount" severity="info" class="px-2 py-0.5 text-xs animate-pulse" />
-                    </div>
-                    <div class="flex items-center gap-2 text-sm text-surface-600 dark:text-surface-400">
-                        <i class="pi pi-clock"></i>
-                        <span>{{ lastSavedText }}</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Center: Dirty Sections -->
-            <div class="flex-1">
-                <div v-if="dirtySections.length" class="flex flex-wrap items-center gap-2">
-                    <span class="text-sm font-medium text-surface-700 dark:text-surface-300">Modifications en attente :</span>
-                    <div class="flex flex-wrap gap-1">
-                        <span
-                            v-for="section in dirtySections"
-                            :key="section"
-                            class="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 text-sm font-medium border border-amber-200 dark:border-amber-800"
-                        >
-                            <i class="pi pi-exclamation-circle text-xs"></i>
-                            {{ section }}
-                        </span>
-                    </div>
-                </div>
-                <div v-else class="text-sm text-emerald-600 dark:text-emerald-400 font-medium">
-                    <i class="pi pi-check-circle mr-2"></i>
-                    Toutes les modifications sont enregistrées
-                </div>
-            </div>
-
-            <!-- Right: Actions -->
-            <div class="flex items-center gap-4">
-                <div class="flex items-center gap-2">
-                    <span class="text-sm text-surface-600 dark:text-surface-300">Auto-sauvegarde</span>
-                    <ToggleSwitch :modelValue="autoSaveEnabled" @update:modelValue="(value) => emit('update:autoSaveEnabled', value)" />
-                </div>
-                <Button
-                    label="Enregistrer tout"
-                    icon="pi pi-save"
-                    size="small"
-                    :disabled="savingCount > 0 || !dirtySections.length"
-                    @click="emit('save-all')"
-                    class="rounded-xl px-5 py-2.5 font-medium shadow-sm hover:shadow-md transition-all bg-gradient-to-r from-primary-500 to-primary-600 border-0 text-white disabled:opacity-50 disabled:cursor-not-allowed"
-                />
-            </div>
+    <div v-else class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2" :class="wrapperClass">
+        <div class="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+            <span class="h-2 w-2 shrink-0 rounded-full" :style="{ backgroundColor: status.tone }" />
+            <span class="text-sm font-medium text-surface-800 dark:text-surface-100">{{ status.text }}</span>
+            <span class="text-xs text-surface-500 dark:text-surface-400">{{ lastSavedText }}</span>
+            <span
+                v-for="section in dirtySections"
+                :key="section"
+                class="inline-flex items-center rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200"
+            >
+                {{ section }}
+            </span>
         </div>
 
-        <!-- Progress Bar -->
-        <div v-if="savingCount > 0" class="mt-4 pt-4 border-t border-surface-100 dark:border-surface-700">
-            <div class="flex items-center justify-between text-sm text-surface-600 dark:text-surface-400 mb-2">
-                <span>Sauvegarde en cours...</span>
-                <span>{{ savingCount }} section(s)</span>
-            </div>
-            <div class="w-full h-2 bg-surface-100 dark:bg-surface-700 rounded-full overflow-hidden">
-                <div class="h-full bg-gradient-to-r from-primary-500 to-primary-600 rounded-full animate-pulse" style="width: 80%" />
-            </div>
+        <div class="flex items-center gap-3">
+            <label class="flex items-center gap-2 text-sm text-surface-600 dark:text-surface-300">
+                <span class="hidden sm:inline">Auto-sauvegarde</span>
+                <ToggleSwitch :modelValue="autoSaveEnabled" @update:modelValue="(value) => emit('update:autoSaveEnabled', value)" />
+            </label>
+            <Button
+                label="Enregistrer tout"
+                icon="pi pi-save"
+                size="small"
+                severity="secondary"
+                outlined
+                :loading="savingCount > 0"
+                :disabled="savingCount > 0 || !dirtySections.length"
+                @click="emit('save-all')"
+            />
         </div>
     </div>
 </template>
