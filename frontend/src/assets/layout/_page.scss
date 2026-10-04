@@ -409,3 +409,159 @@
         font-size: 0.8125rem;
     }
 }
+
+/* App type scale
+   Prime controls ship at 1rem and global h1–h6 are 2.5rem–1rem.
+   Page tokens are smaller (--page-title-size, --page-section-title-size,
+   --page-section-subtitle-size). Apply that scale to the shell and to
+   overlays portaled on body. :where() keeps exclusions at zero specificity
+   so the fiche form rules in _dossier.scss can stay more specific. */
+$app-type-skip: ':where(.manual *, .navigation-hub *, .fiche-book *, .print-page *, .print-doc-header *, .print-doc-footer *)';
+
+@mixin app-heading-scale {
+    h1:not(:where(.page-header__title)):not(#{$app-type-skip}) {
+        font-size: var(--page-title-size) !important;
+        line-height: 1.2;
+    }
+
+    h2:not(#{$app-type-skip}),
+    h3:not(#{$app-type-skip}) {
+        font-size: var(--page-section-title-size) !important;
+        line-height: 1.3;
+    }
+
+    h4:not(#{$app-type-skip}),
+    h5:not(#{$app-type-skip}),
+    h6:not(#{$app-type-skip}) {
+        font-size: var(--page-section-subtitle-size) !important;
+        line-height: 1.35;
+    }
+}
+
+@mixin app-text-utility-scale {
+    :is(.text-sm, .text-base, label):not(:where(.p-floatlabel label, .p-iftalabel label)):not(#{$app-type-skip}) {
+        font-size: var(--page-section-subtitle-size) !important;
+    }
+
+    .text-xs:not(#{$app-type-skip}) {
+        font-size: var(--page-kpi-meta-size) !important;
+    }
+
+    .text-lg:not(i):not(.pi):not(#{$app-type-skip}) {
+        font-size: var(--page-section-title-size) !important;
+        line-height: 1.3;
+    }
+
+    :is(.text-xl, .text-2xl, .text-3xl):not(i):not(.pi):not(#{$app-type-skip}) {
+        font-size: var(--page-kpi-value-size) !important;
+        line-height: 1.2;
+    }
+
+    :is(i, .pi):is(.text-lg, .text-xl, .text-2xl, .text-3xl):not(#{$app-type-skip}) {
+        font-size: var(--page-icon-size) !important;
+        line-height: 1;
+    }
+
+    p:not(:where(.page-header__subtitle, .page-section__subtitle, .page-kpi-label, .page-kpi-value)):not(#{$app-type-skip}) {
+        font-size: var(--page-section-subtitle-size);
+        line-height: 1.4;
+    }
+}
+
+@mixin app-prime-type-scale {
+    .p-button:not(#{$app-type-skip}) {
+        font-size: var(--page-section-subtitle-size) !important;
+    }
+
+    .p-button:not(.p-button-icon-only):not(#{$app-type-skip}) {
+        padding-block: 0.4rem !important;
+        padding-inline: 0.75rem !important;
+    }
+
+    .p-button .p-button-icon:not(#{$app-type-skip}),
+    .p-button .pi:not(#{$app-type-skip}) {
+        font-size: var(--page-icon-size) !important;
+    }
+
+    :is(
+        .p-inputtext,
+        .p-textarea,
+        .p-select-label,
+        .p-multiselect-label,
+        .p-autocomplete-input,
+        .p-datepicker-input,
+        .p-inputnumber-input,
+        .p-password-input,
+        .p-togglebutton,
+        .p-tab,
+        .p-select-option,
+        .p-multiselect-option,
+        .p-autocomplete-option,
+        .p-listbox-option,
+        .p-menu-item-label,
+        .p-tieredmenu-item-label,
+        .p-contextmenu-item-label,
+        .p-datatable,
+        .p-paginator,
+        .p-tag,
+        .p-chip,
+        .p-message-text,
+        .p-accordionheader,
+        .p-panel-title,
+        .p-fieldset-legend,
+        .p-breadcrumb
+    ):not(#{$app-type-skip}) {
+        font-size: var(--page-section-subtitle-size) !important;
+    }
+
+    :is(.p-dialog-title, .p-drawer-title):not(#{$app-type-skip}) {
+        font-size: var(--page-title-size) !important;
+        line-height: 1.2;
+    }
+}
+
+.layout-main {
+    font-size: var(--page-section-subtitle-size);
+    line-height: 1.45;
+
+    @include app-heading-scale;
+    @include app-text-utility-scale;
+    @include app-prime-type-scale;
+}
+
+.layout-main :is(.manual, .navigation-hub, .fiche-book) {
+    font-size: 1rem;
+}
+
+:is(
+    .p-dialog,
+    .p-drawer,
+    .p-popover,
+    .p-confirmpopup,
+    .p-menu,
+    .p-tieredmenu,
+    .p-contextmenu,
+    .p-select-overlay,
+    .p-multiselect-overlay,
+    .p-autocomplete-overlay,
+    .p-datepicker-panel,
+    .p-cascadeselect-overlay,
+    .p-treeselect-overlay
+) {
+    font-size: var(--page-section-subtitle-size);
+    line-height: 1.45;
+
+    @include app-heading-scale;
+    @include app-text-utility-scale;
+    @include app-prime-type-scale;
+}
+
+.p-toast {
+    .p-toast-summary {
+        font-size: var(--page-section-title-size) !important;
+    }
+
+    .p-toast-detail {
+        font-size: var(--page-section-subtitle-size) !important;
+    }
+}
