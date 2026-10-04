@@ -341,7 +341,19 @@ useGuidedTour({
         </template>
 
         <template #toolbar>
-            <PageSection title="Mode d'affichage" subtitle="Choisissez la vue qui vous convient" padded tour-id="admin-consumables.mode">
+            <section
+                class="mb-4"
+                tour-id="admin-consumables.mode"
+                aria-labelledby="display-mode-title"
+            >
+                <header class="mb-2">
+                    <h2 id="display-mode-title" class="text-xl font-semibold leading-tight mb-0">
+                        Liste des consommables ou mouvements des stocks
+                    </h2>
+                    <p class="mt-1 text-surface-500 dark:text-surface-300 text-base">
+                        Choisissez la vue que vous souhaitez afficher
+                    </p>
+                </header>
                 <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div class="flex justify-end w-full md:w-auto">
                         <div class="bg-surface-100 dark:bg-surface-700 p-1.5 rounded-xl inline-flex">
@@ -371,7 +383,7 @@ useGuidedTour({
                         </div>
                     </div>
                 </div>
-            </PageSection>
+            </section>
 
             <div class="page-kpi-grid" data-tour="admin-consumables.stats">
             <div class="page-kpi-card bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-900/20 dark:to-blue-800/20 border-blue-200/50 dark:border-blue-800/50">
@@ -573,7 +585,7 @@ useGuidedTour({
                 class="rounded-none border-0"
                 :pt="{
                     table: 'rounded-none',
-                    thead: 'bg-surface-50 dark:bg-surface-900/50',
+                    thead: 'py-4 px-5 bg-surface-50 dark:bg-surface-900/50',
                     headerCell: ({ state }) => ({
                         class: [
                             'py-4 px-5 text-left font-semibold text-surface-700 dark:text-surface-300',
