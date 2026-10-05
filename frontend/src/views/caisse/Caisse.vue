@@ -1780,3 +1780,12 @@ onBeforeUnmount(() => {
         </template>
     </PageShell>
 </template>
+
+<style scoped>
+.p-tabpanels {
+    margin-top: var(--page-content-gap);
+    background: transparent !important;
+    padding: 0 !important;
+}
+
+</style>

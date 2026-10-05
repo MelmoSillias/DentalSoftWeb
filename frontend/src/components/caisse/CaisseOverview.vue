@@ -379,23 +379,44 @@ const printDetailPayment = (row) => {
 </script>
 
 <template>
-    <div class="flex flex-col gap-5">
-        <PageSection padded tour-id="caisse-overview.toolbar">
-            <div class="top-bar">
-                <div class="display-mode-selector">
-                    <span class="label">Mode d'affichage</span>
-                    <SelectButton v-model="overviewDisplayMode" :options="overviewDisplayOptions" optionLabel="label" optionValue="value" />
+    <div class="flex flex-col gap-4">
+        <div class="flex flex-wrap items-center justify-between gap-3" data-tour="caisse-overview.toolbar">
+            <SelectButton v-model="overviewDisplayMode" :options="overviewDisplayOptions" optionLabel="label" optionValue="value" />
+            <Button label="Statistiques" icon="pi pi-chart-bar" severity="secondary" outlined @click="showStatsModal = true" />
+        </div>
+
+        <div class="page-kpi-grid" data-tour="caisse-overview.stats">
+            <article class="page-kpi-card border-primary-200/70 bg-gradient-to-br from-primary-50/80 to-primary-100/50 dark:border-primary-800/40 dark:from-primary-900/30 dark:to-primary-800/20">
+                <div class="min-w-0 flex-1">
+                    <p class="page-kpi-label text-primary-700 dark:text-primary-300">Factures</p>
+                    <p class="page-kpi-value text-primary-900 dark:text-primary-100">{{ detailedStats.totalInvoices }}</p>
                 </div>
-                <div class="top-bar-actions">
-                    <div class="top-bar-metric">
-                        <span class="top-bar-metric__label">Encaissements du jour</span>
-                        <strong class="top-bar-metric__value">{{ totalRevenueLabel }}</strong>
-                        <span v-if="servicesCabinetStats.encaisse > 0" class="top-bar-metric__hint"> Services cabinet encaissés : {{ formatFcfa(servicesCabinetStats.encaisse) }} </span>
-                    </div>
-                    <Button label="Statistiques" icon="pi pi-chart-bar" severity="secondary" outlined @click="showStatsModal = true" />
+                <i class="pi pi-file page-kpi-icon text-primary-500"></i>
+            </article>
+            <article class="page-kpi-card border-emerald-200/70 bg-gradient-to-br from-emerald-50/80 to-emerald-100/50 dark:border-emerald-800/40 dark:from-emerald-900/20 dark:to-emerald-800/20">
+                <div class="min-w-0 flex-1">
+                    <p class="page-kpi-label text-emerald-700 dark:text-emerald-300">Encaissements</p>
+                    <p class="page-kpi-value truncate text-emerald-900 dark:text-emerald-100">{{ totalRevenueLabel }}</p>
+                    <p v-if="servicesCabinetStats.encaisse > 0" class="mt-1 truncate text-xs text-emerald-600/70 dark:text-emerald-400/70">Services cabinet : {{ formatFcfa(servicesCabinetStats.encaisse) }}</p>
                 </div>
-            </div>
-        </PageSection>
+                <i class="pi pi-wallet page-kpi-icon text-emerald-500"></i>
+            </article>
+            <article class="page-kpi-card border-rose-200/70 bg-gradient-to-br from-rose-50/80 to-rose-100/50 dark:border-rose-800/40 dark:from-rose-900/20 dark:to-rose-800/20">
+                <div class="min-w-0 flex-1">
+                    <p class="page-kpi-label text-rose-700 dark:text-rose-300">Reste à encaisser</p>
+                    <p class="page-kpi-value truncate text-rose-900 dark:text-rose-100">{{ formatFcfa(detailedStats.totalUnpaid) }}</p>
+                </div>
+                <i class="pi pi-clock page-kpi-icon text-rose-500"></i>
+            </article>
+            <article class="page-kpi-card border-amber-200/70 bg-gradient-to-br from-amber-50/80 to-amber-100/50 dark:border-amber-800/40 dark:from-amber-900/20 dark:to-amber-800/20">
+                <div class="min-w-0 flex-1">
+                    <p class="page-kpi-label text-amber-700 dark:text-amber-300">Services cabinet</p>
+                    <p class="page-kpi-value text-amber-900 dark:text-amber-100">{{ servicesCabinetStats.count }}</p>
+                    <p class="mt-1 truncate text-xs text-amber-600/70 dark:text-amber-400/70">Facturé {{ formatFcfa(servicesCabinetStats.facture) }}</p>
+                </div>
+                <i class="pi pi-building page-kpi-icon text-amber-500"></i>
+            </article>
+        </div>
 
         <!-- Modal statistiques détaillées -->
         <AppDialog
@@ -407,66 +428,74 @@ const printDetailPayment = (row) => {
             :show-footer="false"
             class="stats-dialog"
         >
-            <div class="stats-dashboard">
-                <!-- KPI principaux -->
-                <div class="stats-kpis">
-                    <div class="kpi-card">
-                        <span>Total factures</span>
-                        <strong>{{ detailedStats.totalInvoices }}</strong>
-                    </div>
-                    <div class="kpi-card success">
-                        <span>Encaissements du jour</span>
-                        <strong>{{ formatFcfa(detailedStats.totalPaid) }}</strong>
-                        <small v-if="servicesCabinetStats.encaisse > 0" class="kpi-card__hint"> Services cabinet : {{ formatFcfa(servicesCabinetStats.encaisse) }} </small>
-                    </div>
-                    <div class="kpi-card danger">
-                        <span>Restant</span>
-                        <strong>{{ formatFcfa(detailedStats.totalUnpaid) }}</strong>
-                    </div>
-                </div>
-
-                <div class="stats-section">
-                    <h4>Services cabinet</h4>
-                    <div class="status-grid">
-                        <div class="status-item">Nombre: {{ servicesCabinetStats.count }}</div>
-                        <div class="status-item">Facturé: {{ formatFcfa(servicesCabinetStats.facture) }}</div>
-                        <div class="status-item paid">Encaissé: {{ formatFcfa(servicesCabinetStats.encaisse) }}</div>
-                        <div class="status-item unpaid">Reste: {{ formatFcfa(servicesCabinetStats.reste) }}</div>
-                    </div>
-                </div>
-
-                <!-- Statuts -->
-                <div class="stats-section">
-                    <h4>Répartition des factures</h4>
-                    <div class="status-grid">
-                        <div class="status-item paid">Payé: {{ detailedStats.statusCounts.paid }}</div>
-                        <div class="status-item partial">Partiel: {{ detailedStats.statusCounts.partial }}</div>
-                        <div class="status-item unpaid">Impayé: {{ detailedStats.statusCounts.unpaid }}</div>
-                        <div class="status-item free">Gratuit: {{ detailedStats.statusCounts.freeNotValidated }}</div>
-                        <div class="status-item validated">Validée: {{ detailedStats.statusCounts.validatedEmpty }}</div>
-                    </div>
-                </div>
-
-                <!-- Paiements -->
-                <div class="stats-section">
-                    <h4>Paiements</h4>
-                    <div class="stats-grid">
-                        <div>Total: {{ detailedStats.totalPaymentsCount }}</div>
-                        <div>Montant: {{ formatFcfa(detailedStats.totalPaymentsAmount) }}</div>
-                        <div>Parts patient assurance: {{ formatFcfa(detailedStats.totalInsurance) }}</div>
-                    </div>
-                </div>
-
-                <div class="stats-section">
-                    <h4>Encaissements par mode de paiement</h4>
-                    <div v-if="detailedStats.paymentModeRows.length" class="payment-breakdown-grid">
-                        <div v-for="item in detailedStats.paymentModeRows" :key="item.mode" class="payment-breakdown-card">
-                            <span class="payment-breakdown-card__mode">{{ item.mode }}</span>
-                            <strong class="payment-breakdown-card__amount">{{ formatFcfa(item.amount) }}</strong>
+            <div class="flex flex-col gap-4">
+                <div class="page-kpi-grid page-kpi-grid--compact">
+                    <article class="page-kpi-card border-primary-200/70 bg-gradient-to-br from-primary-50/80 to-primary-100/50 dark:border-primary-800/40 dark:from-primary-900/30 dark:to-primary-800/20">
+                        <div class="min-w-0 flex-1">
+                            <p class="page-kpi-label text-primary-700 dark:text-primary-300">Total factures</p>
+                            <p class="page-kpi-value text-primary-900 dark:text-primary-100">{{ detailedStats.totalInvoices }}</p>
                         </div>
+                        <i class="pi pi-file page-kpi-icon text-primary-500"></i>
+                    </article>
+                    <article class="page-kpi-card border-emerald-200/70 bg-gradient-to-br from-emerald-50/80 to-emerald-100/50 dark:border-emerald-800/40 dark:from-emerald-900/20 dark:to-emerald-800/20">
+                        <div class="min-w-0 flex-1">
+                            <p class="page-kpi-label text-emerald-700 dark:text-emerald-300">Encaissements</p>
+                            <p class="page-kpi-value truncate text-emerald-900 dark:text-emerald-100">{{ formatFcfa(detailedStats.totalPaid) }}</p>
+                        </div>
+                        <i class="pi pi-wallet page-kpi-icon text-emerald-500"></i>
+                    </article>
+                    <article class="page-kpi-card border-rose-200/70 bg-gradient-to-br from-rose-50/80 to-rose-100/50 dark:border-rose-800/40 dark:from-rose-900/20 dark:to-rose-800/20">
+                        <div class="min-w-0 flex-1">
+                            <p class="page-kpi-label text-rose-700 dark:text-rose-300">Restant</p>
+                            <p class="page-kpi-value truncate text-rose-900 dark:text-rose-100">{{ formatFcfa(detailedStats.totalUnpaid) }}</p>
+                        </div>
+                        <i class="pi pi-clock page-kpi-icon text-rose-500"></i>
+                    </article>
+                </div>
+
+                <section class="rounded-xl border border-surface-200 p-3 dark:border-surface-700">
+                    <h4 class="mb-2 font-semibold text-surface-900 dark:text-surface-100">Services cabinet</h4>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div class="rounded-lg bg-surface-50 px-3 py-2 text-sm dark:bg-surface-800/60">Nombre : {{ servicesCabinetStats.count }}</div>
+                        <div class="rounded-lg bg-surface-50 px-3 py-2 text-sm dark:bg-surface-800/60">Facturé : {{ formatFcfa(servicesCabinetStats.facture) }}</div>
+                        <div class="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-200">Encaissé : {{ formatFcfa(servicesCabinetStats.encaisse) }}</div>
+                        <div class="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-800 dark:bg-rose-950/30 dark:text-rose-200">Reste : {{ formatFcfa(servicesCabinetStats.reste) }}</div>
+                    </div>
+                </section>
+
+                <section class="rounded-xl border border-surface-200 p-3 dark:border-surface-700">
+                    <h4 class="mb-2 font-semibold text-surface-900 dark:text-surface-100">Répartition des factures</h4>
+                    <div class="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                        <div class="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-200">Payé : {{ detailedStats.statusCounts.paid }}</div>
+                        <div class="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-950/30 dark:text-amber-200">Partiel : {{ detailedStats.statusCounts.partial }}</div>
+                        <div class="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-800 dark:bg-rose-950/30 dark:text-rose-200">Impayé : {{ detailedStats.statusCounts.unpaid }}</div>
+                        <div class="rounded-lg bg-surface-100 px-3 py-2 text-sm dark:bg-surface-800">Gratuit : {{ detailedStats.statusCounts.freeNotValidated }}</div>
+                        <div class="rounded-lg bg-sky-50 px-3 py-2 text-sm text-sky-800 dark:bg-sky-950/30 dark:text-sky-200">Validée : {{ detailedStats.statusCounts.validatedEmpty }}</div>
+                    </div>
+                </section>
+
+                <section class="rounded-xl border border-surface-200 p-3 dark:border-surface-700">
+                    <h4 class="mb-2 font-semibold text-surface-900 dark:text-surface-100">Paiements</h4>
+                    <div class="grid gap-2 sm:grid-cols-3">
+                        <div class="rounded-lg bg-surface-50 px-3 py-2 text-sm dark:bg-surface-800/60">Total : {{ detailedStats.totalPaymentsCount }}</div>
+                        <div class="rounded-lg bg-surface-50 px-3 py-2 text-sm dark:bg-surface-800/60">Montant : {{ formatFcfa(detailedStats.totalPaymentsAmount) }}</div>
+                        <div class="rounded-lg bg-surface-50 px-3 py-2 text-sm dark:bg-surface-800/60">Parts patient assurance : {{ formatFcfa(detailedStats.totalInsurance) }}</div>
+                    </div>
+                </section>
+
+                <section class="rounded-xl border border-surface-200 p-3 dark:border-surface-700">
+                    <h4 class="mb-2 font-semibold text-surface-900 dark:text-surface-100">Encaissements par mode de paiement</h4>
+                    <div v-if="detailedStats.paymentModeRows.length" class="page-kpi-grid page-kpi-grid--compact">
+                        <article v-for="item in detailedStats.paymentModeRows" :key="item.mode" class="page-kpi-card">
+                            <div class="min-w-0 flex-1">
+                                <p class="page-kpi-label">{{ item.mode }}</p>
+                                <p class="page-kpi-value truncate">{{ formatFcfa(item.amount) }}</p>
+                            </div>
+                            <i class="pi pi-credit-card page-kpi-icon text-surface-400"></i>
+                        </article>
                     </div>
                     <div v-else class="rounded-xl border border-dashed border-surface-300 px-4 py-5 text-sm text-surface-500 dark:border-surface-600 dark:text-surface-400">Aucun paiement enregistré sur la période.</div>
-                </div>
+                </section>
             </div>
         </AppDialog>
 
@@ -477,7 +506,7 @@ const printDetailPayment = (row) => {
             tour-id="caisse-overview.factures"
         >
             <template #headerActions>
-                <div class="filters" :class="{ 'simplified-filters': overviewDisplayMode === 'grouped' }">
+                <div class="filters">
                     <div class="filter-item">
                         <label>Recherche</label>
                         <InputText v-model="factureSearch" placeholder="Recherche..." fluid />
@@ -500,7 +529,7 @@ const printDetailPayment = (row) => {
 
             <div class="page-table-scroll">
             <!-- Vue standard -->
-            <DataTable v-if="overviewDisplayMode === 'standard'" class="rounded-xl overflow-hidden" :value="filteredFactures" dataKey="rowKey" :loading="facturesLoading" paginator :rows="10" :rowsPerPageOptions="[5, 10, 20]" responsiveLayout="scroll">
+            <DataTable v-if="overviewDisplayMode === 'standard'" :value="filteredFactures" dataKey="rowKey" :loading="facturesLoading" paginator :rows="10" :rowsPerPageOptions="[5, 10, 20]" stripedRows responsiveLayout="scroll">
                 <Column field="date" header="Date" sortable>
                     <template #body="{ data }">{{ formatDate(data.date) }}</template>
                 </Column>
@@ -718,7 +747,7 @@ const printDetailPayment = (row) => {
             </template>
 
             <div class="page-table-scroll">
-            <DataTable class="rounded-xl overflow-hidden" :value="filteredPayments" dataKey="pId" :loading="paymentsLoading" paginator :rows="10" :rowsPerPageOptions="[5, 10, 20]" responsiveLayout="scroll">
+            <DataTable :value="filteredPayments" dataKey="pId" :loading="paymentsLoading" paginator :rows="10" :rowsPerPageOptions="[5, 10, 20]" stripedRows responsiveLayout="scroll">
                 <Column field="date" header="Date" sortable>
                     <template #body="{ data }">{{ formatDate(data.date, true) }}</template>
                 </Column>
@@ -758,252 +787,6 @@ const printDetailPayment = (row) => {
 </template>
 
 <style scoped>
-/* Barre supérieure */
-.top-bar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 1rem;
-    flex-wrap: wrap;
-}
-
-.display-mode-selector {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-}
-
-.display-mode-selector .label {
-    font-weight: 500;
-    color: var(--text-color-secondary);
-}
-
-.top-bar-actions {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-}
-
-.top-bar-metric {
-    display: flex;
-    flex-direction: column;
-    gap: 0.1rem;
-    padding: 0.65rem 0.9rem;
-    border-radius: 12px;
-    background: linear-gradient(135deg, rgba(16, 185, 129, 0.16), rgba(14, 165, 233, 0.1));
-    border: 1px solid rgba(16, 185, 129, 0.18);
-}
-
-.top-bar-metric__label {
-    font-size: 0.72rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--text-color-secondary);
-}
-
-.top-bar-metric__value {
-    font-size: 1rem;
-    color: var(--text-color);
-}
-
-.payment-breakdown-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 0.85rem;
-}
-
-.payment-breakdown-card {
-    display: flex;
-    flex-direction: column;
-    gap: 0.35rem;
-    padding: 0.95rem 1rem;
-    border-radius: 14px;
-    border: 1px solid var(--surface-border);
-    background: color-mix(in srgb, var(--surface-card) 88%, #14b8a6 12%);
-}
-
-.payment-breakdown-card__mode {
-    font-size: 0.83rem;
-    color: var(--text-color-secondary);
-}
-
-.payment-breakdown-card__amount {
-    font-size: 1.1rem;
-    color: var(--text-color);
-}
-
-.simplified-filters {
-    opacity: 0.9;
-}
-
-/* Mode regroupé */
-.grouped-invoices-view {
-    padding: 0.5rem;
-}
-
-.invoice-card {
-    border: 2px solid transparent;
-    border-left: 6px solid var(--primary-color);
-    border-radius: 18px;
-    background: var(--surface-card);
-    padding: 1.2rem;
-    transition: all 0.25s ease;
-    position: relative;
-}
-
-.invoice-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
-    border-left-color: var(--primary-500);
-}
-
-/* NOM PATIENT = HERO */
-.invoice-patient {
-    margin: 0;
-    font-size: 1.2rem;
-    font-weight: 700;
-    color: var(--primary-color);
-}
-
-/* Facture secondaire */
-.invoice-number {
-    margin: 0;
-    font-size: 0.8rem;
-    color: #64748b;
-}
-
-/* Sub info */
-.invoice-subline {
-    font-size: 0.8rem;
-    color: #94a3b8;
-}
-
-.invoice-card-header {
-    display: flex;
-    justify-content: space-between;
-    gap: 1rem;
-    align-items: flex-start;
-    flex-wrap: wrap;
-}
-
-.invoice-main {
-    display: flex;
-    flex-direction: column;
-    gap: 0.4rem;
-}
-
-.invoice-topline {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 0.6rem;
-}
-
-.invoice-amounts {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 0.3rem;
-    font-size: 0.85rem;
-}
-
-.invoice-amounts p {
-    margin: 0;
-}
-
-.invoice-amounts.highlight {
-    background: linear-gradient(135deg, #ecfdf5, #d1fae5);
-    padding: 0.6rem 0.8rem;
-    border-radius: 12px;
-    min-width: 140px;
-}
-
-.invoice-amounts strong {
-    font-size: 1rem;
-    color: #065f46;
-}
-
-.app-dark .invoice-amounts.highlight {
-    background: linear-gradient(135deg, #064e3b, #064e3b);
-}
-
-.app-dark .invoice-amounts strong {
-    color: #ecfdf5;
-}
-
-.invoice-amounts span {
-    color: #64748b;
-}
-
-.invoice-actions {
-    margin-top: 0.9rem;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    border-top: 1px solid var(--surface-border);
-    padding-top: 0.75rem;
-}
-
-.invoice-details {
-    margin-top: 0.8rem;
-    border-top: 1px dashed var(--surface-border);
-    padding-top: 0.7rem;
-}
-
-.detail-list {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-
-.detail-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 0.75rem;
-    border-radius: 12px;
-    background: color-mix(in srgb, var(--surface-card) 95%, var(--surface-border) 5%);
-    padding: 0.6rem 0.8rem;
-}
-
-.detail-row {
-    border-left: 4px solid transparent;
-}
-
-.detail-row:not(.ticket-row) {
-    border-left-color: #10b981;
-}
-
-.ticket-row {
-    border-left-color: #f59e0b;
-}
-
-.detail-meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.6rem;
-    align-items: center;
-    font-size: 0.85rem;
-}
-
-.detail-date,
-.detail-mode {
-    color: #64748b;
-}
-
-.detail-right {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.ticket-row {
-    background: rgba(245, 158, 11, 0.1);
-    border-left: 3px solid #f59e0b;
-}
-
 /* Filtres pagination paiements */
 .payment-paginator-filters {
     display: flex;
@@ -1026,186 +809,6 @@ const printDetailPayment = (row) => {
     transform: translateY(-6px);
 }
 
-/* Modal stats */
-.stats-dialog :deep(.p-dialog-content) {
-    padding: 1rem 1.5rem;
-}
-
-.stats-content {
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
-}
-
-.stats-section h4 {
-    margin: 0 0 0.75rem 0;
-    font-size: 1.1rem;
-    font-weight: 600;
-    border-left: 4px solid var(--primary-color);
-    padding-left: 0.75rem;
-}
-
-.stats-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0.5rem 1rem;
-    margin-bottom: 1rem;
-}
-
-.status-breakdown {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1rem;
-    margin-top: 0.5rem;
-}
-
-.stats-dashboard {
-    display: flex;
-    flex-direction: column;
-    gap: 1.2rem;
-}
-
-/* KPI cards */
-.stats-kpis {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 1rem;
-}
-
-.kpi-card {
-    background: #f1f5f9;
-    border-radius: 14px;
-    padding: 0.8rem;
-    display: flex;
-    flex-direction: column;
-}
-
-.kpi-card span {
-    font-size: 0.75rem;
-    color: #64748b;
-}
-
-.kpi-card strong {
-    font-size: 1.1rem;
-}
-
-.kpi-card__hint,
-.top-bar-metric__hint {
-    display: block;
-    margin-top: 0.25rem;
-    font-size: 0.72rem;
-    font-weight: 600;
-    color: #b45309;
-}
-
-.app-dark .kpi-card__hint,
-.app-dark .top-bar-metric__hint {
-    color: #fbbf24;
-}
-
-.kpi-card.success {
-    background: #ecfdf5;
-    color: #065f46;
-}
-
-.kpi-card.danger {
-    background: #fef2f2;
-    color: #7f1d1d;
-}
-
-.app-dark .kpi-card {
-    background: #1e293b;
-}
-
-.app-dark .kpi-card span {
-    color: #dceafd;
-}
-
-.app-dark .kpi-card.success {
-    background: #064e3b;
-    color: #ecfdf5;
-}
-
-.app-dark .kpi-card.danger {
-    background: #7f1d1d;
-    color: #fef2f2;
-}
-
-/* Status */
-.status-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 0.5rem;
-}
-
-.status-item {
-    padding: 0.5rem;
-    border-radius: 10px;
-    font-size: 0.85rem;
-}
-
-.status-item.paid {
-    background: #dcfce7;
-}
-.status-item.partial {
-    background: #fef9c3;
-}
-.status-item.unpaid {
-    background: #fee2e2;
-}
-.status-item.free {
-    background: #e2e8f0;
-}
-.status-item.validated {
-    background: #dbeafe;
-}
-
-.app-dark .status-item.paid {
-    background: #064e3b;
-}
-.app-dark .status-item.partial {
-    background: #f59e0b;
-}
-.app-dark .status-item.unpaid {
-    background: #7f1d1d;
-}
-.app-dark .status-item.free {
-    background: #1e293b;
-}
-.app-dark .status-item.validated {
-    background: #1e3a5f;
-}
-
-/* Dark mode */
-.app-dark .invoice-number {
-    color: #e2e8f0;
-}
-
-.app-dark .invoice-subline,
-.app-dark .invoice-amounts span,
-.app-dark .detail-date,
-.app-dark .detail-mode {
-    color: #94a3b8;
-}
-
-@media (max-width: 900px) {
-    .invoice-card-header {
-        flex-direction: column;
-    }
-
-    .invoice-amounts {
-        align-items: flex-start;
-    }
-
-    .top-bar {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    .display-mode-selector {
-        justify-content: space-between;
-    }
-}
 
 /* ────────────────────────────────────────────────────────────
    NOUVELLE VUE REGROUPÉE — cartes facture + paiements liés
@@ -1214,19 +817,11 @@ const printDetailPayment = (row) => {
 /* Carte principale */
 .inv-card {
     background: var(--surface-card);
-    border-radius: 16px;
-    border: 1px solid var(--surface-border);
-    border-left: 5px solid #94a3b8;
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+    border-radius: var(--page-section-radius);
+    border: 1px solid color-mix(in srgb, var(--surface-border) 80%, transparent);
+    border-left: 4px solid #94a3b8;
+    box-shadow: 0 1px 2px color-mix(in srgb, var(--text-color) 4%, transparent);
     overflow: hidden;
-    transition:
-        box-shadow 0.2s ease,
-        transform 0.2s ease;
-}
-
-.inv-card:hover {
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
-    transform: translateY(-2px);
 }
 
 /* Couleur de la bordure gauche selon statut */

@@ -3,6 +3,7 @@ import Button from 'primevue/button';
 import DataView from 'primevue/dataview';
 import InputText from 'primevue/inputtext';
 import Select from 'primevue/select';
+import Tag from 'primevue/tag';
 import { computed, ref } from 'vue';
 import PanelDatePicker from '@/components/common/PanelDatePicker.vue';
 import PageSection from '@/components/layout/PageSection.vue';
@@ -116,8 +117,7 @@ const stats = computed(() => {
     const totalRestant = filteredFactures.value.reduce((sum, r) => sum + (Number(r.reste) || 0), 0);
     return {
         count: filteredFactures.value.length,
-        restant: totalRestant,
-        breakdown: `${groups.value.impaye.length}/${groups.value.partiel.length}/${groups.value.paye.length}`
+        restant: totalRestant
     };
 });
 
@@ -135,6 +135,37 @@ const displayPhone = (value) => (props.hidePatientPhone ? "Masqué par l'adminis
 
 <template>
     <div class="flex flex-col gap-4">
+        <div class="page-kpi-grid">
+            <div class="page-kpi-card border-primary-200/70 bg-gradient-to-br from-primary-50/80 to-primary-100/50 dark:border-primary-800/40 dark:from-primary-900/30 dark:to-primary-800/20">
+                <div class="min-w-0 flex-1">
+                    <p class="page-kpi-label text-primary-700 dark:text-primary-300">Factures visibles</p>
+                    <p class="page-kpi-value text-primary-900 dark:text-primary-100">{{ stats.count }}</p>
+                </div>
+                <i class="pi pi-file page-kpi-icon text-primary-500"></i>
+            </div>
+            <div class="page-kpi-card border-amber-200/70 bg-gradient-to-br from-amber-50/80 to-amber-100/50 dark:border-amber-800/40 dark:from-amber-900/20 dark:to-amber-800/20">
+                <div class="min-w-0 flex-1">
+                    <p class="page-kpi-label text-amber-700 dark:text-amber-300">Total impayé</p>
+                    <p class="page-kpi-value truncate text-amber-900 dark:text-amber-100">{{ formatFcfa(stats.restant) }}</p>
+                </div>
+                <i class="pi pi-wallet page-kpi-icon text-amber-500"></i>
+            </div>
+            <div class="page-kpi-card border-rose-200/70 bg-gradient-to-br from-rose-50/80 to-rose-100/50 dark:border-rose-800/40 dark:from-rose-900/20 dark:to-rose-800/20">
+                <div class="min-w-0 flex-1">
+                    <p class="page-kpi-label text-rose-700 dark:text-rose-300">Impayées</p>
+                    <p class="page-kpi-value text-rose-900 dark:text-rose-100">{{ groups.impaye.length }}</p>
+                </div>
+                <i class="pi pi-exclamation-circle page-kpi-icon text-rose-500"></i>
+            </div>
+            <div class="page-kpi-card border-slate-200/70 bg-gradient-to-br from-slate-50/80 to-slate-100/50 dark:border-slate-800/40 dark:from-slate-900/20 dark:to-slate-800/20">
+                <div class="min-w-0 flex-1">
+                    <p class="page-kpi-label text-slate-600 dark:text-slate-300">Partielles / payées</p>
+                    <p class="page-kpi-value text-slate-900 dark:text-surface-100">{{ groups.partiel.length }} / {{ groups.paye.length }}</p>
+                </div>
+                <i class="pi pi-sliders-h page-kpi-icon text-slate-500"></i>
+            </div>
+        </div>
+
         <PageSection title="Factures" subtitle="Documents facture regroupés selon vos filtres." tour-id="caisse-factures.section">
             <template #headerActions>
                 <div class="filters" data-tour="caisse-factures.filters">
@@ -159,31 +190,6 @@ const displayPhone = (value) => (props.hidePatientPhone ? "Masqué par l'adminis
             </template>
 
             <div class="flex flex-col gap-4 p-3 sm:p-4">
-                <div class="page-kpi-grid">
-                    <div class="page-kpi-card border-primary-200/70 bg-gradient-to-br from-primary-50/80 to-primary-100/50 dark:border-primary-800/40 dark:from-primary-900/30 dark:to-primary-800/20">
-                        <div class="min-w-0 flex-1">
-                            <p class="page-kpi-label text-primary-700 dark:text-primary-300">Factures visibles</p>
-                            <p class="page-kpi-value text-primary-900 dark:text-primary-100">{{ stats.count }}</p>
-                        </div>
-                        <i class="pi pi-file page-kpi-icon text-primary-500"></i>
-                    </div>
-                    <div class="page-kpi-card border-amber-200/70 bg-gradient-to-br from-amber-50/80 to-amber-100/50 dark:border-amber-800/40 dark:from-amber-900/20 dark:to-amber-800/20">
-                        <div class="min-w-0 flex-1">
-                            <p class="page-kpi-label text-amber-700 dark:text-amber-300">Total impayé</p>
-                            <p class="page-kpi-value truncate text-amber-900 dark:text-amber-100">{{ formatFcfa(stats.restant) }}</p>
-                        </div>
-                        <i class="pi pi-wallet page-kpi-icon text-amber-500"></i>
-                    </div>
-                    <div class="page-kpi-card border-slate-200/70 bg-gradient-to-br from-slate-50/80 to-slate-100/50 dark:border-slate-800/40 dark:from-slate-900/20 dark:to-slate-800/20">
-                        <div class="min-w-0 flex-1">
-                            <p class="page-kpi-label text-slate-600 dark:text-slate-300">Répartition</p>
-                            <p class="page-kpi-value text-slate-900 dark:text-surface-100">{{ stats.breakdown }}</p>
-                            <p class="mt-1 text-xs text-slate-500/70 dark:text-slate-400/70">Impayées / Partielles / Payées</p>
-                        </div>
-                        <i class="pi pi-sliders-h page-kpi-icon text-slate-500"></i>
-                    </div>
-                </div>
-
                 <div v-if="!filteredFactures.length" class="empty px-1">Aucune facture à afficher pour ces filtres.</div>
 
             <DataView v-else data-tour="caisse-factures.cards" :value="filteredFactures" paginator :rows="9" :rowsPerPageOptions="[9, 12, 24]" :loading="facturesLoading">
@@ -202,9 +208,7 @@ const displayPhone = (value) => (props.hidePatientPhone ? "Masqué par l'adminis
                                 </div>
                                 <div class="fct-invoice-meta">
                                     <span class="fct-invoice-date">{{ row.date || '—' }}</span>
-                                    <span class="fct-invoice-status" :class="`fct-invoice-status--${computeStatus(row).severity}`">
-                                        {{ computeStatus(row).label }}
-                                    </span>
+                                    <Tag :value="computeStatus(row).label" :severity="computeStatus(row).severity" />
                                 </div>
                             </header>
 
@@ -223,8 +227,8 @@ const displayPhone = (value) => (props.hidePatientPhone ? "Masqué par l'adminis
                                 </p>
                                 <p class="fct-invoice-party-line">Tél. {{ displayPhone(row.telephone) }}</p>
                                 <p v-if="isCabinetRow(row) || computeInsuranceBadge(row)" class="fct-invoice-tags">
-                                    <span v-if="isCabinetRow(row)" class="fct-invoice-tag">Service cabinet</span>
-                                    <span v-if="computeInsuranceBadge(row)" class="fct-invoice-tag">{{ computeInsuranceBadge(row).label }}</span>
+                                    <Tag v-if="isCabinetRow(row)" value="Service cabinet" severity="warn" icon="pi pi-building" />
+                                    <Tag v-if="computeInsuranceBadge(row)" :value="computeInsuranceBadge(row).label" severity="info" icon="pi pi-shield" />
                                 </p>
                             </section>
 
@@ -303,23 +307,15 @@ const displayPhone = (value) => (props.hidePatientPhone ? "Masqué par l'adminis
     }
 }
 
-/* Document facture (papier) */
 .fct-invoice {
     display: flex;
     flex-direction: column;
-    border: 1px solid #cbd5e1;
-    border-radius: 0;
-    background: #fff;
-    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
-    transition:
-        box-shadow 0.2s ease,
-        transform 0.2s ease;
+    border: 1px solid color-mix(in srgb, var(--surface-border) 80%, transparent);
+    border-radius: var(--page-section-radius);
+    background: var(--surface-card);
+    box-shadow: 0 1px 2px color-mix(in srgb, var(--text-color) 4%, transparent);
+    overflow: hidden;
     min-height: 100%;
-}
-
-.fct-invoice:hover {
-    box-shadow: 0 8px 22px rgba(15, 23, 42, 0.1);
-    transform: translateY(-2px);
 }
 
 .fct-invoice-top {
@@ -340,15 +336,15 @@ const displayPhone = (value) => (props.hidePatientPhone ? "Masqué par l'adminis
 .fct-invoice-type {
     font-size: 0.7rem;
     font-weight: 700;
-    letter-spacing: 0.12em;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: #475569;
+    color: var(--text-color-secondary);
 }
 
 .fct-invoice-number {
     font-size: 1.05rem;
     font-weight: 700;
-    color: #0f172a;
+    color: var(--text-color);
     font-variant-numeric: tabular-nums;
 }
 
@@ -362,46 +358,14 @@ const displayPhone = (value) => (props.hidePatientPhone ? "Masqué par l'adminis
 
 .fct-invoice-date {
     font-size: 0.78rem;
-    color: #64748b;
+    color: var(--text-color-secondary);
     font-variant-numeric: tabular-nums;
-}
-
-.fct-invoice-status {
-    font-size: 0.68rem;
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: #475569;
-    border: 1px solid #94a3b8;
-    padding: 0.15rem 0.45rem;
-    border-radius: 0;
-    white-space: nowrap;
-}
-
-.fct-invoice-status--success {
-    color: #166534;
-    border-color: #86efac;
-}
-
-.fct-invoice-status--danger {
-    color: #991b1b;
-    border-color: #fca5a5;
-}
-
-.fct-invoice-status--warning {
-    color: #92400e;
-    border-color: #fcd34d;
-}
-
-.fct-invoice-status--secondary {
-    color: #475569;
-    border-color: #94a3b8;
 }
 
 .fct-invoice-divider {
     height: 1px;
     margin: 0 1rem;
-    background: repeating-linear-gradient(90deg, #cbd5e1 0 6px, transparent 6px 10px);
+    background: color-mix(in srgb, var(--surface-border) 85%, transparent);
 }
 
 .fct-invoice-party {
@@ -414,14 +378,14 @@ const displayPhone = (value) => (props.hidePatientPhone ? "Masqué par l'adminis
     font-weight: 600;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: #94a3b8;
+    color: var(--text-color-secondary);
 }
 
 .fct-invoice-party-name {
     margin: 0;
     font-size: 1rem;
     font-weight: 700;
-    color: #0f172a;
+    color: var(--text-color);
     display: flex;
     align-items: center;
     gap: 0.35rem;
@@ -436,7 +400,7 @@ const displayPhone = (value) => (props.hidePatientPhone ? "Masqué par l'adminis
 .fct-invoice-party-line {
     margin: 0.25rem 0 0;
     font-size: 0.8rem;
-    color: #64748b;
+    color: var(--text-color-secondary);
 }
 
 .fct-invoice-tags {
@@ -444,13 +408,6 @@ const displayPhone = (value) => (props.hidePatientPhone ? "Masqué par l'adminis
     display: flex;
     flex-wrap: wrap;
     gap: 0.35rem;
-}
-
-.fct-invoice-tag {
-    font-size: 0.68rem;
-    color: #475569;
-    border-bottom: 1px solid #cbd5e1;
-    padding-bottom: 0.05rem;
 }
 
 .fct-invoice-table {
@@ -466,23 +423,23 @@ const displayPhone = (value) => (props.hidePatientPhone ? "Masqué par l'adminis
     font-weight: 600;
     letter-spacing: 0.06em;
     text-transform: uppercase;
-    color: #94a3b8;
-    border-bottom: 1px solid #e2e8f0;
+    color: var(--text-color-secondary);
+    border-bottom: 1px solid color-mix(in srgb, var(--surface-border) 85%, transparent);
     padding: 0.35rem 0;
 }
 
 .fct-invoice-table td {
     padding: 0.4rem 0;
-    color: #334155;
-    border-bottom: 1px solid #f1f5f9;
+    color: var(--text-color);
+    border-bottom: 1px solid color-mix(in srgb, var(--surface-border) 55%, transparent);
 }
 
 .fct-invoice-table tfoot td {
     border-bottom: none;
-    border-top: 1px solid #cbd5e1;
+    border-top: 1px solid color-mix(in srgb, var(--surface-border) 85%, transparent);
     padding-top: 0.55rem;
     font-weight: 700;
-    color: #0f172a;
+    color: var(--text-color);
 }
 
 .fct-col-amount {
@@ -510,71 +467,7 @@ const displayPhone = (value) => (props.hidePatientPhone ? "Masqué par l'adminis
     gap: 0.4rem;
     padding: 0.65rem 1rem 0.85rem;
     margin-top: auto;
-    border-top: 1px solid #e2e8f0;
-}
-
-/* Dark mode */
-.app-dark .fct-invoice {
-    background: #0f172a;
-    border-color: #334155;
-    box-shadow: none;
-}
-
-.app-dark .fct-invoice:hover {
-    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.35);
-}
-
-.app-dark .fct-invoice-type,
-.app-dark .fct-invoice-date,
-.app-dark .fct-invoice-party-line,
-.app-dark .fct-invoice-party-label,
-.app-dark .fct-invoice-table th {
-    color: #94a3b8;
-}
-
-.app-dark .fct-invoice-number,
-.app-dark .fct-invoice-party-name,
-.app-dark .fct-invoice-table tfoot td {
-    color: #e2e8f0;
-}
-
-.app-dark .fct-invoice-divider {
-    background: repeating-linear-gradient(90deg, #475569 0 6px, transparent 6px 10px);
-}
-
-.app-dark .fct-invoice-tag {
-    color: #94a3b8;
-    border-bottom-color: #475569;
-}
-
-.app-dark .fct-invoice-table td {
-    color: #cbd5e1;
-    border-bottom-color: #1e293b;
-}
-
-.app-dark .fct-invoice-table th,
-.app-dark .fct-invoice-table tfoot td,
-.app-dark .fct-invoice-actions {
-    border-color: #334155;
-}
-
-.app-dark .fct-invoice-status {
-    color: #cbd5e1;
-    border-color: #64748b;
-}
-
-.app-dark .fct-invoice-status--success {
-    color: #86efac;
-    border-color: #166534;
-}
-
-.app-dark .fct-invoice-status--danger {
-    color: #fca5a5;
-    border-color: #991b1b;
-}
-
-.app-dark .fct-invoice-status--warning {
-    color: #fcd34d;
-    border-color: #92400e;
+    border-top: 1px solid color-mix(in srgb, var(--surface-border) 80%, transparent);
+    background: color-mix(in srgb, var(--surface-card) 92%, var(--text-color) 4%);
 }
 </style>

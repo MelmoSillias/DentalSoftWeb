@@ -6,6 +6,7 @@ import AccordionPanel from 'primevue/accordionpanel';
 import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
 import Select from 'primevue/select';
+import Tag from 'primevue/tag';
 import { computed, ref } from 'vue';
 import PanelDatePicker from '@/components/common/PanelDatePicker.vue';
 import PageSection from '@/components/layout/PageSection.vue';
@@ -138,20 +139,51 @@ const paymentsByMode = computed(() => {
     return bucket;
 });
 
-const miniChart = computed(() => {
-    const byDay = {};
-    filteredPayments.value.forEach((p) => {
-        const key = p.date ? new Date(p.date).toISOString().slice(0, 10) : '—';
-        byDay[key] = (byDay[key] || 0) + (Number(p.montant) || 0);
+const paymentDayCount = computed(() => {
+    const days = new Set();
+    filteredPayments.value.forEach((payment) => {
+        if (!payment?.date) return;
+        const date = new Date(payment.date);
+        if (Number.isNaN(date.getTime())) return;
+        days.add(date.toISOString().slice(0, 10));
     });
-    const keys = Object.keys(byDay).sort().slice(-7);
-    const max = Math.max(...keys.map((k) => byDay[k]), 1);
-    return keys.map((key) => ({ day: key, value: byDay[key], pct: Math.round((byDay[key] / max) * 100) }));
+    return days.size;
 });
 </script>
 
 <template>
     <div class="flex flex-col gap-4">
+        <div class="page-kpi-grid" data-tour="caisse-paiements.totals">
+            <div class="page-kpi-card border-primary-200/70 bg-gradient-to-br from-primary-50/80 to-primary-100/50 dark:border-primary-800/40 dark:from-primary-900/30 dark:to-primary-800/20">
+                <div class="min-w-0 flex-1">
+                    <p class="page-kpi-label text-primary-700 dark:text-primary-300">Paiements visibles</p>
+                    <p class="page-kpi-value text-primary-900 dark:text-primary-100">{{ totals.count }}</p>
+                </div>
+                <i class="pi pi-wallet page-kpi-icon text-primary-500"></i>
+            </div>
+            <div class="page-kpi-card border-emerald-200/70 bg-gradient-to-br from-emerald-50/80 to-emerald-100/50 dark:border-emerald-800/40 dark:from-emerald-900/20 dark:to-emerald-800/20">
+                <div class="min-w-0 flex-1">
+                    <p class="page-kpi-label text-emerald-700 dark:text-emerald-300">Encaissements (période)</p>
+                    <p class="page-kpi-value truncate text-emerald-900 dark:text-emerald-100">{{ formatFcfa(totals.montant) }}</p>
+                </div>
+                <i class="pi pi-chart-line page-kpi-icon text-emerald-500"></i>
+            </div>
+            <div class="page-kpi-card border-sky-200/70 bg-gradient-to-br from-sky-50/80 to-sky-100/50 dark:border-sky-800/40 dark:from-sky-900/20 dark:to-sky-800/20">
+                <div class="min-w-0 flex-1">
+                    <p class="page-kpi-label text-sky-700 dark:text-sky-300">Modes de paiement</p>
+                    <p class="page-kpi-value text-sky-900 dark:text-sky-100">{{ Object.keys(paymentsByMode).length }}</p>
+                </div>
+                <i class="pi pi-credit-card page-kpi-icon text-sky-500"></i>
+            </div>
+            <div class="page-kpi-card border-slate-200/70 bg-gradient-to-br from-slate-50/80 to-slate-100/50 dark:border-slate-800/40 dark:from-slate-900/20 dark:to-slate-800/20">
+                <div class="min-w-0 flex-1">
+                    <p class="page-kpi-label text-slate-600 dark:text-slate-300">Jours avec encaissement</p>
+                    <p class="page-kpi-value text-slate-900 dark:text-surface-100">{{ paymentDayCount }}</p>
+                </div>
+                <i class="pi pi-calendar page-kpi-icon text-slate-500"></i>
+            </div>
+        </div>
+
         <PageSection title="Paiements" subtitle="Période, montants et ventilation par mode de paiement." tour-id="caisse-paiements.section">
             <template #headerActions>
                 <div class="filters" data-tour="caisse-paiements.filters">
@@ -173,23 +205,6 @@ const miniChart = computed(() => {
             </template>
 
             <div class="flex flex-col gap-4 p-3 sm:p-4">
-                <div class="page-kpi-grid" data-tour="caisse-paiements.totals">
-                    <div class="page-kpi-card border-primary-200/70 bg-gradient-to-br from-primary-50/80 to-primary-100/50 dark:border-primary-800/40 dark:from-primary-900/30 dark:to-primary-800/20">
-                        <div class="min-w-0 flex-1">
-                            <p class="page-kpi-label text-primary-700 dark:text-primary-300">Paiements visibles</p>
-                            <p class="page-kpi-value text-primary-900 dark:text-primary-100">{{ totals.count }}</p>
-                        </div>
-                        <i class="pi pi-wallet page-kpi-icon text-primary-500"></i>
-                    </div>
-                    <div class="page-kpi-card border-emerald-200/70 bg-gradient-to-br from-emerald-50/80 to-emerald-100/50 dark:border-emerald-800/40 dark:from-emerald-900/20 dark:to-emerald-800/20">
-                        <div class="min-w-0 flex-1">
-                            <p class="page-kpi-label text-emerald-700 dark:text-emerald-300">Encaissements (période)</p>
-                            <p class="page-kpi-value truncate text-emerald-900 dark:text-emerald-100">{{ formatFcfa(totals.montant) }}</p>
-                        </div>
-                        <i class="pi pi-chart-line page-kpi-icon text-emerald-500"></i>
-                    </div>
-                </div>
-
                 <Accordion v-if="Object.keys(paymentsByMode).length" multiple data-tour="caisse-paiements.accordion">
                 <AccordionPanel v-for="(list, mode) in paymentsByMode" :key="mode" :value="String(mode)">
                     <AccordionHeader>
@@ -221,12 +236,7 @@ const miniChart = computed(() => {
                                     </div>
                                     <div class="pay-receipt-meta">
                                         <span class="pay-receipt-date">{{ formatDate(row.date, true) }}</span>
-                                        <span
-                                            class="pay-receipt-stamp"
-                                            :class="isInsurancePayment(row) ? 'pay-receipt-stamp--insurance' : 'pay-receipt-stamp--client'"
-                                        >
-                                            {{ computeModeTag(row).label }}
-                                        </span>
+                                        <Tag :value="computeModeTag(row).label" :severity="isInsurancePayment(row) ? 'info' : 'success'" />
                                     </div>
                                 </header>
 
@@ -237,9 +247,9 @@ const miniChart = computed(() => {
                                     <p class="pay-receipt-party-name">{{ row.patient || '—' }}</p>
                                     <p v-if="displayPhone(row.telephone)" class="pay-receipt-party-line">Tél. {{ displayPhone(row.telephone) }}</p>
                                     <p v-if="isCabinetPayment(row) || isInsurancePayment(row) || row.insuranceStatus === 'pending'" class="pay-receipt-tags">
-                                        <span v-if="isCabinetPayment(row)" class="pay-receipt-tag">Service cabinet</span>
-                                        <span v-if="isInsurancePayment(row)" class="pay-receipt-tag">Assurance</span>
-                                        <span v-if="row.insuranceStatus === 'pending'" class="pay-receipt-tag">En attente</span>
+                                        <Tag v-if="isCabinetPayment(row)" value="Service cabinet" severity="warn" icon="pi pi-building" />
+                                        <Tag v-if="isInsurancePayment(row)" value="Assurance" severity="info" icon="pi pi-shield" />
+                                        <Tag v-if="row.insuranceStatus === 'pending'" value="En attente" severity="warn" />
                                     </p>
                                 </section>
 
@@ -320,18 +330,18 @@ const miniChart = computed(() => {
     gap: 0.35rem;
     font-size: 0.82rem;
     font-weight: 700;
-    color: #0f172a;
+    color: var(--text-color);
 }
 
 .pay-mode-badge .pi {
-    color: #64748b;
+    color: var(--text-color-secondary);
 }
 
 .pay-accordion-count {
     font-size: 0.78rem;
-    color: #64748b;
-    border: 1px solid #cbd5e1;
-    border-radius: 0;
+    color: var(--text-color-secondary);
+    border: 1px solid color-mix(in srgb, var(--surface-border) 85%, transparent);
+    border-radius: var(--page-section-radius);
     padding: 0.1rem 0.55rem;
 }
 
@@ -339,7 +349,7 @@ const miniChart = computed(() => {
     margin-left: auto;
     font-size: 0.92rem;
     font-weight: 700;
-    color: #0f172a;
+    color: var(--text-color);
     font-variant-numeric: tabular-nums;
 }
 
@@ -363,23 +373,15 @@ const miniChart = computed(() => {
     }
 }
 
-/* Document reçu */
 .pay-receipt {
     display: flex;
     flex-direction: column;
-    border: 1px solid #cbd5e1;
-    border-radius: 0;
-    background: #fff;
-    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
-    transition:
-        box-shadow 0.2s ease,
-        transform 0.2s ease;
+    border: 1px solid color-mix(in srgb, var(--surface-border) 80%, transparent);
+    border-radius: var(--page-section-radius);
+    background: var(--surface-card);
+    box-shadow: 0 1px 2px color-mix(in srgb, var(--text-color) 4%, transparent);
+    overflow: hidden;
     min-height: 100%;
-}
-
-.pay-receipt:hover {
-    box-shadow: 0 8px 22px rgba(15, 23, 42, 0.1);
-    transform: translateY(-2px);
 }
 
 .pay-receipt-top {
@@ -400,15 +402,15 @@ const miniChart = computed(() => {
 .pay-receipt-type {
     font-size: 0.7rem;
     font-weight: 700;
-    letter-spacing: 0.12em;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: #475569;
+    color: var(--text-color-secondary);
 }
 
 .pay-receipt-number {
     font-size: 1.05rem;
     font-weight: 700;
-    color: #0f172a;
+    color: var(--text-color);
     font-variant-numeric: tabular-nums;
 }
 
@@ -422,37 +424,15 @@ const miniChart = computed(() => {
 
 .pay-receipt-date {
     font-size: 0.78rem;
-    color: #64748b;
+    color: var(--text-color-secondary);
     font-variant-numeric: tabular-nums;
     text-align: right;
-}
-
-.pay-receipt-stamp {
-    font-size: 0.68rem;
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: #475569;
-    border: 1px solid #94a3b8;
-    padding: 0.15rem 0.45rem;
-    border-radius: 0;
-    white-space: nowrap;
-}
-
-.pay-receipt-stamp--client {
-    color: #166534;
-    border-color: #86efac;
-}
-
-.pay-receipt-stamp--insurance {
-    color: #1e3a8a;
-    border-color: #93c5fd;
 }
 
 .pay-receipt-divider {
     height: 1px;
     margin: 0 1rem;
-    background: repeating-linear-gradient(90deg, #cbd5e1 0 6px, transparent 6px 10px);
+    background: color-mix(in srgb, var(--surface-border) 85%, transparent);
 }
 
 .pay-receipt-party {
@@ -465,21 +445,21 @@ const miniChart = computed(() => {
     font-weight: 600;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: #94a3b8;
+    color: var(--text-color-secondary);
 }
 
 .pay-receipt-party-name {
     margin: 0;
     font-size: 1rem;
     font-weight: 700;
-    color: #0f172a;
+    color: var(--text-color);
     line-height: 1.3;
 }
 
 .pay-receipt-party-line {
     margin: 0.25rem 0 0;
     font-size: 0.8rem;
-    color: #64748b;
+    color: var(--text-color-secondary);
 }
 
 .pay-receipt-tags {
@@ -487,13 +467,6 @@ const miniChart = computed(() => {
     display: flex;
     flex-wrap: wrap;
     gap: 0.35rem;
-}
-
-.pay-receipt-tag {
-    font-size: 0.68rem;
-    color: #475569;
-    border-bottom: 1px solid #cbd5e1;
-    padding-bottom: 0.05rem;
 }
 
 .pay-receipt-table {
@@ -509,23 +482,23 @@ const miniChart = computed(() => {
     font-weight: 600;
     letter-spacing: 0.06em;
     text-transform: uppercase;
-    color: #94a3b8;
-    border-bottom: 1px solid #e2e8f0;
+    color: var(--text-color-secondary);
+    border-bottom: 1px solid color-mix(in srgb, var(--surface-border) 85%, transparent);
     padding: 0.35rem 0;
 }
 
 .pay-receipt-table td {
     padding: 0.4rem 0;
-    color: #334155;
-    border-bottom: 1px solid #f1f5f9;
+    color: var(--text-color);
+    border-bottom: 1px solid color-mix(in srgb, var(--surface-border) 55%, transparent);
 }
 
 .pay-receipt-table tfoot td {
     border-bottom: none;
-    border-top: 1px solid #cbd5e1;
+    border-top: 1px solid color-mix(in srgb, var(--surface-border) 85%, transparent);
     padding-top: 0.55rem;
     font-weight: 700;
-    color: #0f172a;
+    color: var(--text-color);
 }
 
 .pay-col-amount {
@@ -548,80 +521,8 @@ const miniChart = computed(() => {
     gap: 0.4rem;
     padding: 0.65rem 1rem 0.85rem;
     margin-top: auto;
-    border-top: 1px solid #e2e8f0;
-}
-
-/* Dark mode */
-.app-dark .pay-mode-badge {
-    color: #e2e8f0;
-}
-
-.app-dark .pay-accordion-count {
-    border-color: #475569;
-    color: #94a3b8;
-}
-
-.app-dark .pay-accordion-total {
-    color: #e2e8f0;
-}
-
-.app-dark .pay-receipt {
-    background: #0f172a;
-    border-color: #334155;
-    box-shadow: none;
-}
-
-.app-dark .pay-receipt:hover {
-    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.35);
-}
-
-.app-dark .pay-receipt-type,
-.app-dark .pay-receipt-date,
-.app-dark .pay-receipt-party-line,
-.app-dark .pay-receipt-party-label,
-.app-dark .pay-receipt-table th {
-    color: #94a3b8;
-}
-
-.app-dark .pay-receipt-number,
-.app-dark .pay-receipt-party-name,
-.app-dark .pay-receipt-table tfoot td {
-    color: #e2e8f0;
-}
-
-.app-dark .pay-receipt-divider {
-    background: repeating-linear-gradient(90deg, #475569 0 6px, transparent 6px 10px);
-}
-
-.app-dark .pay-receipt-tag {
-    color: #94a3b8;
-    border-bottom-color: #475569;
-}
-
-.app-dark .pay-receipt-table td {
-    color: #cbd5e1;
-    border-bottom-color: #1e293b;
-}
-
-.app-dark .pay-receipt-table th,
-.app-dark .pay-receipt-table tfoot td,
-.app-dark .pay-receipt-actions {
-    border-color: #334155;
-}
-
-.app-dark .pay-receipt-stamp {
-    color: #cbd5e1;
-    border-color: #64748b;
-}
-
-.app-dark .pay-receipt-stamp--client {
-    color: #86efac;
-    border-color: #166534;
-}
-
-.app-dark .pay-receipt-stamp--insurance {
-    color: #93c5fd;
-    border-color: #1e3a8a;
+    border-top: 1px solid color-mix(in srgb, var(--surface-border) 80%, transparent);
+    background: color-mix(in srgb, var(--surface-card) 92%, var(--text-color) 4%);
 }
 
 .app-dark .pay-total--client {
