@@ -1665,6 +1665,12 @@ onBeforeUnmount(() => {
     object-fit: contain;
 }
 
+.p-tabpanels {
+    margin-top: var(--page-content-gap);
+    background: transparent !important;
+    padding: 0 !important;
+}
+
 :global(.app-dark) .assurance-table-logo {
     background: var(--p-surface-800);
     border-color: var(--p-surface-700);

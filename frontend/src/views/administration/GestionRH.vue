@@ -800,3 +800,11 @@ onBeforeUnmount(() => {
         <LeaveFormDialog v-model:visible="leaveDialogVisible" :mode="leaveMode" :leave="selectedLeave" :employees="employeeOptions" :loading="leaveSaving" @submit="submitLeave" />
     </PageShell>
 </template>
+
+<style scoped>
+.p-tabpanels {
+    margin-top: var(--page-content-gap);
+    background: transparent !important;
+    padding: 0 !important;
+}
+</style>
