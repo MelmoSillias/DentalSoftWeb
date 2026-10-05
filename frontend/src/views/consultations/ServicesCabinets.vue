@@ -103,6 +103,8 @@ const filterGlobalValue = computed({
     }
 });
 
+const hasActiveFilters = computed(() => Boolean(String(filterGlobalValue.value || '').trim()) || (selectedDesignations.value?.length ?? 0) > 0);
+
 const unpaidCount = computed(() => filteredServices.value.filter((s) => canPay(s)).length);
 const paidCount = computed(() => filteredServices.value.filter((s) => isFullyPaid(s)).length);
 const totalAmount = computed(() => filteredServices.value.reduce((sum, s) => sum + (Number(s.montant) || 0), 0));
@@ -415,7 +417,6 @@ onMounted(async () => {
                         :rowsPerPageOptions="[10, 25, 50]"
                         filterDisplay="menu"
                         :globalFilterFields="['patientName', 'designation', 'note', 'patient.nom', 'patient.prenom']"
-                        emptyMessage="Aucun service cabinet pour cette période."
                         class="text-sm"
                     >
                         <Column header="Patient" style="min-width: 14rem">
@@ -487,6 +488,22 @@ onMounted(async () => {
                                 </div>
                             </template>
                         </Column>
+
+                        <template #empty>
+                            <div class="text-center py-16">
+                                <div class="inline-flex items-center justify-center w-20 h-20 rounded-full bg-surface-100 dark:bg-surface-800 mb-6">
+                                    <i class="pi pi-building text-4xl text-surface-400"></i>
+                                </div>
+                                <h4 class="text-xl font-semibold text-surface-700 dark:text-surface-300 mb-3">Aucun service trouvé</h4>
+                                <p class="text-surface-600 dark:text-surface-400 mb-8 max-w-md mx-auto">
+                                    {{ hasActiveFilters ? 'Aucun résultat ne correspond à vos filtres.' : "Aucun service cabinet n'a été enregistré pour cette période." }}
+                                </p>
+                                <div class="flex flex-wrap gap-3 justify-center">
+                                    <Button icon="pi pi-plus" label="Ajouter un service" class="bg-gradient-to-r from-primary-500 to-primary-600 border-0" @click="openCreate" />
+                                    <Button v-if="hasActiveFilters" icon="pi pi-filter-slash" label="Réinitialiser les filtres" severity="secondary" outlined @click="resetFilters" />
+                                </div>
+                            </div>
+                        </template>
                     </DataTable>
                 </div>
             </PageSection>

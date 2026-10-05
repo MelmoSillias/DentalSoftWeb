@@ -529,7 +529,9 @@ $app-type-skip: ':where(.manual *, .navigation-hub *, .fiche-book *, .print-page
     @include app-prime-type-scale;
 }
 
-.layout-main :is(.manual, .navigation-hub, .fiche-book) {
+/* The manual keeps the shell scale (--page-section-subtitle-size).
+   Hubs and the fiche book opt out of that compact size. */
+.layout-main :is(.navigation-hub, .fiche-book) {
     font-size: 1rem;
 }
 

@@ -36,8 +36,8 @@
     padding: 0 0 2rem;
     color: var(--m-ink);
     font-family: var(--app-font-family);
-    font-size: 0.9375rem;
-    line-height: 1.55;
+    font-size: var(--page-section-subtitle-size);
+    line-height: 1.45;
 }
 
 .manual *,
@@ -247,6 +247,8 @@
 
 .manual p {
     margin: 0.5rem 0 0.75rem;
+    font-size: var(--page-section-subtitle-size);
+    line-height: 1.4;
 }
 
 .manual strong {
@@ -326,7 +328,8 @@
 .manual .m-cover__lead {
     max-width: 40rem;
     color: var(--m-muted);
-    font-size: 1.08rem;
+    font-size: var(--page-subtitle-size);
+    line-height: 1.4;
 }
 
 .manual .m-cover__meta {
@@ -351,7 +354,7 @@
 
 .manual .m-cover__meta dd {
     margin: 0.15rem 0 0;
-    font-size: 0.92rem;
+    font-size: var(--page-section-subtitle-size);
 }
 
 .manual .m-cover__audience {
@@ -361,7 +364,7 @@
     border-radius: 999px;
     background: var(--m-accent-soft);
     color: var(--m-accent-ink);
-    font-size: 0.85rem;
+    font-size: var(--page-section-subtitle-size);
     font-weight: 600;
 }
 
@@ -408,7 +411,7 @@
 .manual .m-toc__sections {
     margin: 0.3rem 0 0 6.1rem !important;
     color: var(--m-muted);
-    font-size: 0.85rem;
+    font-size: var(--page-section-subtitle-size);
     column-count: 2;
     column-gap: 1.2rem;
 }
@@ -464,7 +467,8 @@
 }
 
 .manual .m-lead {
-    font-size: 1.04rem;
+    font-size: var(--page-subtitle-size);
+    line-height: 1.4;
 }
 
 .manual .m-section {
@@ -666,7 +670,7 @@
     padding-top: 0.35rem;
     border-top: 1px dashed var(--m-line);
     color: var(--m-muted);
-    font-size: 0.9rem;
+    font-size: var(--page-section-subtitle-size);
 }
 
 .manual .m-step__result span {
@@ -713,7 +717,7 @@
     border-radius: 999px;
     background: color-mix(in srgb, var(--surface-card) 92%, transparent);
     color: var(--m-muted);
-    font-size: 0.88rem;
+    font-size: var(--page-section-subtitle-size);
     font-weight: 600;
     text-align: center;
     transform: translateX(-50%);
@@ -750,7 +754,7 @@
 .manual .m-figure figcaption {
     margin-top: 0.4rem;
     color: var(--m-muted);
-    font-size: 0.85rem;
+    font-size: var(--page-section-subtitle-size);
 }
 
 .manual .m-figure__number {
@@ -765,7 +769,7 @@
     margin: 0.5rem 0 0;
     padding: 0;
     list-style: none;
-    font-size: 0.85rem;
+    font-size: var(--page-section-subtitle-size);
 }
 
 .manual .m-figure__legend li {
@@ -785,13 +789,13 @@
     width: 100%;
     border-collapse: collapse;
     background: var(--m-card);
-    font-size: 0.9rem;
+    font-size: var(--page-section-subtitle-size);
 }
 
 .manual .m-table caption {
     padding-bottom: 0.35rem;
     color: var(--m-muted);
-    font-size: 0.82rem;
+    font-size: var(--page-section-subtitle-size);
     text-align: left;
 }
 
@@ -886,7 +890,7 @@
 
 .manual .m-checklist__what span {
     color: var(--m-muted);
-    font-size: 0.88rem;
+    font-size: var(--page-section-subtitle-size);
 }
 
 .manual .m-checklist__where {
@@ -1025,7 +1029,7 @@
 
 .manual .m-situation dd {
     margin: 0;
-    font-size: 0.9rem;
+    font-size: var(--page-section-subtitle-size);
 }
 
 /* Décision dans un scénario. */
@@ -1069,7 +1073,7 @@
     padding: 0.45rem 0.6rem;
     border-radius: 9px;
     background: var(--surface-card);
-    font-size: 0.92rem;
+    font-size: var(--page-section-subtitle-size);
 }
 
 .manual .m-decision__when {
@@ -1096,7 +1100,7 @@
     border: 1px solid var(--m-line-strong);
     border-radius: 999px;
     width: fit-content;
-    font-size: 0.85rem;
+    font-size: var(--page-section-subtitle-size);
     font-weight: 600;
 }
 
@@ -1130,7 +1134,7 @@
 .manual .m-schema__col ul {
     margin: 0;
     padding-left: 1rem;
-    font-size: 0.86rem;
+    font-size: var(--page-section-subtitle-size);
 }
 
 .manual .m-schema__col--reception {
@@ -1150,7 +1154,7 @@
     padding-top: 0.6rem;
     border-top: 1px dashed var(--m-line);
     color: var(--m-muted);
-    font-size: 0.85rem;
+    font-size: var(--page-section-subtitle-size);
     text-align: center;
 }
 
@@ -1174,7 +1178,7 @@
     border-radius: 12px;
     background: var(--m-card);
     counter-increment: m-flow;
-    font-size: 0.86rem;
+    font-size: var(--page-section-subtitle-size);
 }
 
 .manual .m-flow li::before {
@@ -1228,17 +1232,18 @@
 
 .manual .m-sheet__meta dd {
     margin: 0.1rem 0 0;
-    font-size: 0.88rem;
+    font-size: var(--page-section-subtitle-size);
 }
 
 .manual .m-sheet__purpose {
-    font-size: 1.02rem;
+    font-size: var(--page-subtitle-size);
+    line-height: 1.4;
 }
 
 .manual .m-sheet__see {
     margin-top: 1rem;
     color: var(--m-muted);
-    font-size: 0.88rem;
+    font-size: var(--page-section-subtitle-size);
 }
 
 .manual .m-sheet__see a {
@@ -1251,7 +1256,7 @@
     border: 1px dashed var(--m-line-strong);
     border-radius: 10px;
     background: color-mix(in srgb, var(--text-color) 4%, var(--surface-card));
-    font-size: 0.88rem;
+    font-size: var(--page-section-subtitle-size);
 }
 
 .manual .m-technote__label {
@@ -1348,7 +1353,7 @@
     padding-top: 1rem;
     border-top: 1px solid var(--m-line);
     color: var(--m-muted);
-    font-size: 0.86rem;
+    font-size: var(--page-section-subtitle-size);
 }
 
 .manual .m-end p {
@@ -1495,6 +1500,33 @@
         padding: 0 !important;
         font-size: 10.2pt !important;
         line-height: 1.5 !important;
+    }
+
+    .manual :is(
+        p,
+        .m-lead,
+        .m-table,
+        .m-table caption,
+        .m-technote,
+        .m-end,
+        .m-step__result,
+        .m-figure__placeholder,
+        .m-figure figcaption,
+        .m-figure__legend,
+        .m-checklist__what span,
+        .m-situation dd,
+        .m-decision__branches li,
+        .m-schema__top,
+        .m-schema__col ul,
+        .m-schema__foot,
+        .m-flow li,
+        .m-sheet__meta dd,
+        .m-sheet__see,
+        .m-toc__sections,
+        .m-cover__meta dd,
+        .m-cover__audience
+    ) {
+        font-size: inherit;
     }
 
     .manual * {
