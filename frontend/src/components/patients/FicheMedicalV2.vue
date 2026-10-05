@@ -5,7 +5,6 @@ import SelectButton from 'primevue/selectbutton';
 import { computed, ref, watch } from 'vue';
 import { defaultDentitionFromAge, DENTITION_OPTIONS } from '@/utils/formuleDentaireLayout';
 import { filePrefix } from '@/config';
-import DevisForm from '@/components/consultations/DevisForm.vue';
 import FormuleDentaireReadonly from '@/components/fiche-medicale/FormuleDentaireReadonly.vue';
 import ReadonlyFieldGrid from '@/components/fiche-medicale/ReadonlyFieldGrid.vue';
 import SeancesSection from '@/components/fiche-medicale/SeancesSection.vue';
@@ -53,39 +52,6 @@ const entretien = computed(() => props.fiche?.entretien || {});
 const examens = computed(() => props.fiche?.examens || {});
 const bilans = computed(() => props.fiche?.bilans || {});
 const documents = computed(() => props.fiche?.documents || []);
-const normalizeDevisEntry = (entry = {}) => ({
-    id: Number(entry?.id) || null,
-    type: entry?.type ?? null,
-    date: entry?.date ?? null,
-    description: entry?.description || '',
-    services: Array.isArray(entry?.services)
-        ? entry.services
-        : Array.isArray(entry?.contenus)
-          ? entry.contenus.map((s) => ({
-                designation: s?.designation || '',
-                qte: Number(s?.qte) || 1,
-                montant: Number(s?.montant) || 0
-            }))
-          : []
-});
-
-const devisModel = computed(() => {
-    const rawDevis = props.fiche?.devis;
-    let entries = [];
-    if (Array.isArray(rawDevis)) {
-        entries = rawDevis.map(normalizeDevisEntry);
-    } else if (rawDevis && Array.isArray(rawDevis.devisList)) {
-        entries = rawDevis.devisList.map(normalizeDevisEntry);
-    } else if (rawDevis && typeof rawDevis === 'object') {
-        entries = [normalizeDevisEntry(rawDevis)];
-    }
-    return {
-        devisList: entries.length ? entries : [],
-        activeDevisIndex: 0,
-        date: entries[0]?.date ?? null,
-        services: entries[0]?.services ?? []
-    };
-});
 
 const examensLabo = computed(() => (Array.isArray(examens.value?.examensLabo) ? examens.value.examensLabo : []));
 
@@ -598,12 +564,6 @@ const sessions = computed(() =>
                         <span class="fiche-book__label">Diagnostic positif</span>
                         <span class="fiche-book__value">{{ diagnosticPositifValue || '—' }}</span>
                     </div>
-
-                    <DevisForm v-if="devisModel.devisList.length" :modelValue="devisModel" readonly layout="book" />
-                    <template v-else>
-                        <h3 class="fiche-book__title">Devis</h3>
-                        <p class="fiche-book__empty">Aucun devis enregistré.</p>
-                    </template>
 
                     <SeancesSection v-if="sessions.length" :sessions="sessions" layout="book" />
                     <template v-else>

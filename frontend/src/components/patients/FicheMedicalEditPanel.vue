@@ -1,5 +1,4 @@
 <script setup>
-import DevisForm from '@/components/consultations/DevisForm.vue';
 import PastSessions from '@/components/consultations/PastSessions.vue';
 import EntretienVerbalForm from '@/components/fiche-medicale/EntretienVerbalForm.vue';
 import ExamensFicheForm from '@/components/fiche-medicale/ExamensFicheForm.vue';
@@ -7,8 +6,6 @@ import FicheBilansForm from '@/components/fiche-medicale/FicheBilansForm.vue';
 import FicheDocumentsForm from '@/components/fiche-medicale/FicheDocumentsForm.vue';
 import FichePlanTraitementForm from '@/components/fiche-medicale/FichePlanTraitementForm.vue';
 import { useConsultationsForm } from '@/composables/useConsultationsForm';
-import { defaultSoinList, normalizeSoinList } from '@/services/consultations';
-import { fetchPublicGeneralSettings } from '@/services/globalSettingsService';
 import ProgressSpinner from 'primevue/progressspinner';
 import { computed, onMounted, ref, watch } from 'vue';
 
@@ -30,9 +27,7 @@ const ficheIdRef = ref(props.ficheId);
 const consultIdRef = ref(null);
 const mode = computed(() => 'continue');
 
-const soinsList = ref(defaultSoinList);
-
-const { loading, data, saving, dirtySectionsList, documentsUploadProgress, loadData, watchSection, saveEntretienSection, saveExamensSection, saveBilansSection, savePlanTraitementSection, saveDocumentsSection, saveDevisSection } =
+const { loading, data, saving, dirtySectionsList, documentsUploadProgress, loadData, watchSection, saveEntretienSection, saveExamensSection, saveBilansSection, savePlanTraitementSection, saveDocumentsSection } =
     useConsultationsForm({ ficheId: ficheIdRef, consultId: consultIdRef, token, mode });
 
 const ageNumber = computed(() => {
@@ -50,7 +45,7 @@ const ageNumber = computed(() => {
 });
 
 const saveAll = async () => {
-    await Promise.all([saveEntretienSection(), saveExamensSection(), saveBilansSection(), savePlanTraitementSection(), saveDocumentsSection(), saveDevisSection()]);
+    await Promise.all([saveEntretienSection(), saveExamensSection(), saveBilansSection(), savePlanTraitementSection(), saveDocumentsSection()]);
     emit('saved');
 };
 
@@ -81,14 +76,6 @@ onMounted(async () => {
     watchSection(() => data.documents, 'documents', saveAll);
     watchSection(() => data.bilans, 'bilans', saveAll);
     watchSection(() => data.planTraitement, 'planTraitement', saveAll);
-    watchSection(() => data.devis, 'devis', saveAll);
-
-    try {
-        const settings = await fetchPublicGeneralSettings();
-        soinsList.value = normalizeSoinList(settings?.soins || defaultSoinList);
-    } catch {
-        soinsList.value = defaultSoinList;
-    }
 
     await loadData();
 });
@@ -113,7 +100,6 @@ defineExpose({
                     <FicheDocumentsForm v-model="data.documents" layout="book" :saving="saving.documents" :upload-progress="documentsUploadProgress" @save="() => saveAndNotify(saveDocumentsSection)" />
                     <FichePlanTraitementForm v-model="data.planTraitement" layout="book" :saving="saving.planTraitement" @save="() => saveAndNotify(savePlanTraitementSection)" />
                     <FicheBilansForm v-model="data.bilans" layout="book" :saving="saving.bilans" :patient-age="ageNumber" @save="() => saveAndNotify(saveBilansSection)" />
-                    <DevisForm v-model="data.devis" layout="book" :saving="saving.devis" :soins="soinsList" @save="() => saveAndNotify(saveDevisSection)" />
                     <PastSessions :sessions="data.sessions" layout="book" />
                 </div>
             </div>

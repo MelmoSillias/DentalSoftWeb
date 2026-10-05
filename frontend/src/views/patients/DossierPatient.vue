@@ -607,6 +607,7 @@ const goBackToList = () => {
                                 :factures="factures"
                                 :consultations="consultations"
                                 :services-cabinet="servicesCabinet"
+                                :fiches="fiches"
                                 :patient-id="props.patientId"
                                 :patient-name="`${patient?.nom || ''} ${patient?.prenom || ''}`.trim()"
                                 :show-consultations="showConsultationsTab"

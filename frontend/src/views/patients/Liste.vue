@@ -11,6 +11,8 @@ import FormPatient from '@/components/patients/FormPatient.vue';
 import PatientAvatar from '@/components/patients/PatientAvatar.vue';
 import FormRendezVous from '@/components/patients/FormRendezVous.vue';
 import CabinetServiceDialog from '@/components/patients/CabinetServiceDialog.vue';
+import DevisDialog from '@/components/patients/DevisDialog.vue';
+import PatientActiviteDialog from '@/components/patients/PatientActiviteDialog.vue';
 import PatientsReferralStats from '@/components/patients/PatientsReferralStats.vue';
 import PrintDataTablePage from '@/components/print/PrintDataTablePage.vue';
 import { usePrinter } from '@/composables/usePrinter';
@@ -75,6 +77,10 @@ const showConsultationDialog = ref(false);
 const showRdvDialog = ref(false);
 const showCabinetServiceDialog = ref(false);
 const cabinetServicePatient = ref(null);
+const showActiviteDialog = ref(false);
+const activitePatient = ref(null);
+const showDevisDialog = ref(false);
+const devisPatient = ref(null);
 const showActiveConsultWarn = ref(false);
 const showTrashDialog = ref(false);
 const showDeletePatientDialog = ref(false);
@@ -369,6 +375,16 @@ const patientActionMenuItems = computed(() => {
             command: () => openDossier(patient)
         },
         {
+            label: 'Voir activité',
+            icon: 'pi pi-chart-line',
+            command: () => openActivite(patient)
+        },
+        {
+            label: 'Créer un devis',
+            icon: 'pi pi-file-edit',
+            command: () => openDevis(patient)
+        },
+        {
             label: 'Nouveau rendez-vous',
             icon: 'fas fa-calendar-plus',
             command: () => openRendezVous(patient)
@@ -547,6 +563,9 @@ const resetTourDialogs = () => {
     showPatientDialog.value = false;
     showConsultationDialog.value = false;
     showRdvDialog.value = false;
+    showCabinetServiceDialog.value = false;
+    showActiviteDialog.value = false;
+    showDevisDialog.value = false;
     showActiveConsultWarn.value = false;
     editingPatient.value = null;
     consultationPatient.value = null;
@@ -555,11 +574,23 @@ const resetTourDialogs = () => {
     activeConsultInfo.value = { hasActive: false, consultationId: null, hasFiche: false };
 };
 
-const hasOpenPatientDialog = computed(() => showPatientDialog.value || showConsultationDialog.value || showRdvDialog.value || showCabinetServiceDialog.value || showActiveConsultWarn.value);
+const hasOpenPatientDialog = computed(() => showPatientDialog.value || showConsultationDialog.value || showRdvDialog.value || showCabinetServiceDialog.value || showActiviteDialog.value || showDevisDialog.value || showActiveConsultWarn.value);
+
+const patientLabel = (patient) => patient?.fullname || `${patient?.nom || ''} ${patient?.prenom || ''}`.trim();
 
 const openCabinetService = (patient) => {
     cabinetServicePatient.value = patient;
     showCabinetServiceDialog.value = true;
+};
+
+const openActivite = (patient) => {
+    activitePatient.value = patient;
+    showActiviteDialog.value = true;
+};
+
+const openDevis = (patient) => {
+    devisPatient.value = patient;
+    showDevisDialog.value = true;
 };
 
 const captureTableState = () => ({
@@ -1114,8 +1145,10 @@ onBeforeUnmount(() => {
         <CabinetServiceDialog
             v-model:visible="showCabinetServiceDialog"
             :patient-id="cabinetServicePatient?.id"
-            :patient-name="cabinetServicePatient?.fullname || `${cabinetServicePatient?.nom || ''} ${cabinetServicePatient?.prenom || ''}`.trim()"
+            :patient-name="patientLabel(cabinetServicePatient)"
         />
+        <PatientActiviteDialog v-model:visible="showActiviteDialog" :patient-id="activitePatient?.id" :patient-name="patientLabel(activitePatient)" />
+        <DevisDialog v-model:visible="showDevisDialog" :patient-id="devisPatient?.id" :patient-name="patientLabel(devisPatient)" />
         <AppDialog
             v-model:visible="showRdvDialog"
             title="Nouveau rendez-vous"

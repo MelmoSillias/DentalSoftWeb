@@ -1,12 +1,16 @@
 <script setup>
 import DatePicker from 'primevue/datepicker';
 import AppDialog from '@/components/layout/AppDialog.vue';
+import PrintDevisBody from '@/components/print/PrintDevisBody.vue';
+import Button from 'primevue/button';
 import InputNumber from 'primevue/inputnumber';
 import Select from 'primevue/select';
+import Tag from 'primevue/tag';
 import Textarea from 'primevue/textarea';
-import { computed, ref, watch } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import { useToast } from 'primevue/usetoast';
-import { createCabinetService, updateCabinetService } from '@/services/cabinetServices';
+import { usePrinter } from '@/composables/usePrinter';
+import { createCabinetService, fetchCabinetInvoicePrintData, updateCabinetService } from '@/services/cabinetServices';
 import { defaultServicesCabinetList, normalizeServicesCabinetList } from '@/services/consultations';
 import { fetchPublicGeneralSettings } from '@/services/globalSettingsService';
 import { normalizePatient, searchPatients } from '@/services/patients';
@@ -28,8 +32,14 @@ const emit = defineEmits(['created', 'updated']);
 
 const auth = useAuthStore();
 const toast = useToast();
+const { printComponent } = usePrinter();
 const catalog = ref(defaultServicesCabinetList.map((item) => ({ ...item })));
 const saving = ref(false);
+const printing = ref(false);
+const saved = ref(false);
+const savedFactureId = ref(null);
+const savedServiceId = ref(null);
+const ignoreFormWatch = ref(false);
 const form = ref(emptyForm());
 const selectedPatientId = ref(null);
 const patients = ref([]);
@@ -53,6 +63,21 @@ const effectivePatientId = computed(() => {
 });
 
 const total = computed(() => Math.max(0, Number(form.value.quantite) || 0) * Math.max(0, Number(form.value.prix) || 0));
+const canPrint = computed(() => saved.value && Number(savedFactureId.value) > 0);
+
+watch(
+    form,
+    () => {
+        if (ignoreFormWatch.value) return;
+        saved.value = false;
+    },
+    { deep: true }
+);
+
+watch(selectedPatientId, () => {
+    if (ignoreFormWatch.value || isEdit.value) return;
+    saved.value = false;
+});
 
 const patientOptions = computed(() =>
     patients.value.map((p) => ({
@@ -119,12 +144,30 @@ const handlePatientFilter = (event) => {
     }, 250);
 };
 
-watch(visible, (open) => {
+const factureIdFrom = (service) => Number(service?.facture?.id) || null;
+
+const applySavedState = async (service) => {
+    const factureId = factureIdFrom(service);
+    ignoreFormWatch.value = true;
+    savedServiceId.value = Number(service?.id) || savedServiceId.value;
+    savedFactureId.value = factureId;
+    saved.value = Boolean(factureId);
+    await nextTick();
+    ignoreFormWatch.value = false;
+};
+
+watch(visible, async (open) => {
     if (!open) {
         return;
     }
+    ignoreFormWatch.value = true;
+    saved.value = false;
+    savedFactureId.value = null;
+    savedServiceId.value = isEdit.value ? Number(props.service.id) : null;
     if (isEdit.value) {
         form.value = formFromService(props.service);
+        savedFactureId.value = factureIdFrom(props.service);
+        saved.value = Boolean(savedFactureId.value);
     } else {
         form.value = emptyForm();
         selectedPatientId.value = props.patientId ? Number(props.patientId) : null;
@@ -132,6 +175,8 @@ watch(visible, (open) => {
             loadPatients();
         }
     }
+    await nextTick();
+    ignoreFormWatch.value = false;
     loadCatalog();
 });
 
@@ -173,17 +218,17 @@ const submit = async () => {
 
     try {
         saving.value = true;
-        if (isEdit.value) {
-            const result = await updateCabinetService(props.service.id, payload, auth.token);
+        if (savedServiceId.value) {
+            const result = await updateCabinetService(savedServiceId.value, payload, auth.token);
+            await applySavedState(result?.data);
             toast.add({ severity: 'success', summary: 'Service cabinet', detail: 'Service modifié', life: 2500 });
-            visible.value = false;
             emit('updated', result?.data || null);
             return;
         }
 
         const result = await createCabinetService(effectivePatientId.value, payload, auth.token);
+        await applySavedState(result?.data);
         toast.add({ severity: 'success', summary: 'Service cabinet', detail: 'Service enregistré et facture créée', life: 2500 });
-        visible.value = false;
         emit('created', result?.data || null);
     } catch (error) {
         logAppError('Services cabinet', error);
@@ -197,6 +242,20 @@ const submit = async () => {
         saving.value = false;
     }
 };
+
+const printInvoice = async () => {
+    if (!canPrint.value) return;
+    printing.value = true;
+    try {
+        const res = await fetchCabinetInvoicePrintData(savedFactureId.value, auth.token);
+        await printComponent(PrintDevisBody, { doc: res.doc, title: res.title || 'Facture service cabinet' });
+    } catch (error) {
+        logAppError('Services cabinet', error);
+        toast.add({ severity: 'error', summary: 'Impression', detail: 'Impression indisponible', life: 3000 });
+    } finally {
+        printing.value = false;
+    }
+};
 </script>
 
 <template>
@@ -208,12 +267,15 @@ const submit = async () => {
         icon-tone="primary"
         size="md"
         :loading="saving"
-        cancel-label="Annuler"
+        cancel-label="Fermer"
         :confirm-label="confirmLabel"
         confirm-icon="pi pi-check"
         @cancel="visible = false"
         @confirm="submit"
     >
+        <template #headerExtra>
+            <Tag :value="saved ? 'Enregistré' : 'Non enregistré'" :severity="saved ? 'success' : 'warn'" />
+        </template>
         <div class="flex flex-col gap-4">
             <div v-if="needsPatientSelect" class="flex flex-col gap-1">
                 <label class="text-sm font-medium">Patient <span class="text-red-500">*</span></label>
@@ -271,5 +333,8 @@ const submit = async () => {
             </div>
             <p class="text-sm font-semibold text-surface-800 dark:text-surface-100">Total : {{ total.toLocaleString('fr-FR') }} FCFA</p>
         </div>
+        <template #footerStart>
+            <Button v-if="canPrint" label="Imprimer" icon="pi pi-print" severity="secondary" outlined :loading="printing" @click="printInvoice" />
+        </template>
     </AppDialog>
 </template>

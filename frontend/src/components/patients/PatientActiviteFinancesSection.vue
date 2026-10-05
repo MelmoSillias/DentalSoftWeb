@@ -3,6 +3,8 @@ import CaisseInvoiceDialogs from '@/components/caisse/CaisseInvoiceDialogs.vue';
 import ConsultationDetailsDialog from '@/components/consultations/ConsultationDetailsDialog.vue';
 import FactureModal from '@/components/consultations/FactureModal.vue';
 import PatientCabinetServicesPanel from '@/components/patients/PatientCabinetServicesPanel.vue';
+import PatientDevisPanel from '@/components/patients/PatientDevisPanel.vue';
+import { countPatientDevis } from '@/utils/patientDevis';
 import { useInvoiceBillingActions } from '@/composables/useInvoiceBillingActions';
 import { cancelConsultation, fetchConsultationDetails, fetchConsultationInvoice, updateConsultationInvoice } from '@/services/consultations';
 import { fetchPublicGeneralSettings } from '@/services/globalSettingsService';
@@ -48,6 +50,10 @@ const props = defineProps({
         default: () => []
     },
     servicesCabinet: {
+        type: Array,
+        default: () => []
+    },
+    fiches: {
         type: Array,
         default: () => []
     },
@@ -111,12 +117,13 @@ const tabs = computed(() => {
         { id: 'rdv', label: 'Rendez-vous', icon: 'pi pi-calendar', badge: props.rdvs?.length || null },
         { id: 'paiements', label: 'Paiements', icon: 'pi pi-credit-card', badge: props.paiements?.length || null },
         { id: 'factures', label: 'Factures', icon: 'pi pi-file', badge: props.factures?.length || null },
+        { id: 'devis', label: 'Devis', icon: 'pi pi-file-edit', badge: countPatientDevis(props.fiches) || null },
         { id: 'actes', label: 'Actes', icon: 'pi pi-list-check', badge: medicalActs.value?.length || null },
         { id: 'services-cabinet', label: 'Services cabinet', icon: 'pi pi-building', badge: props.servicesCabinet?.length || null }
     ];
 
     if (props.showConsultations) {
-        base.splice(4, 0, { id: 'consultations', label: 'Consultations', icon: 'pi pi-folder-open', badge: props.consultations?.length || null });
+        base.splice(5, 0, { id: 'consultations', label: 'Consultations', icon: 'pi pi-folder-open', badge: props.consultations?.length || null });
     }
 
     return base;
@@ -1043,6 +1050,10 @@ function getRDVStatusSeverity(status) {
                             </p>
                         </div>
                     </div>
+                </TabPanel>
+
+                <TabPanel value="devis">
+                    <PatientDevisPanel :patient-id="patientId" :patient-name="patientName" :fiches="fiches" @refresh="emit('refresh')" />
                 </TabPanel>
 
                 <!-- Services cabinet -->

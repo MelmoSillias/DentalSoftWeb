@@ -27,6 +27,11 @@ const props = defineProps({
     layout: {
         type: String,
         default: ''
+    },
+    /** Un seul devis, sans onglets ni bouton de sauvegarde interne. */
+    single: {
+        type: Boolean,
+        default: false
     }
 });
 
@@ -315,14 +320,14 @@ function subtotal(service) {
 
 <!-- DevisForm.vue -->
 <template>
-    <div :class="isBook ? 'is-book' : 'rounded-2xl border border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-br from-surface-0 to-surface-50/80 dark:from-surface-800 dark:to-surface-900/80 p-6 shadow-sm'">
-        <div v-if="isBook" class="medical-form-block__header">
+    <div :class="single ? '' : isBook ? 'is-book' : 'rounded-2xl border border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-br from-surface-0 to-surface-50/80 dark:from-surface-800 dark:to-surface-900/80 p-6 shadow-sm'">
+        <div v-if="!single && isBook" class="medical-form-block__header">
             <div class="flex items-center justify-between gap-2">
                 <h3 class="medical-form-block__title">Devis</h3>
                 <Button v-if="!readonly" label="Sauvegarder" icon="pi pi-save" :loading="saving" size="small" outlined @click="emit('save')" />
             </div>
         </div>
-        <div v-else class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-surface-100 dark:border-surface-700">
+        <div v-else-if="!single" class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-surface-100 dark:border-surface-700">
             <div class="flex items-center gap-3">
                 <div class="p-2.5 rounded-xl bg-primary-500/10 dark:bg-primary-500/20">
                     <i class="pi pi-file-pdf text-primary-600 dark:text-primary-400 text-xl"></i>
@@ -347,7 +352,7 @@ function subtotal(service) {
         <!-- Content -->
         <div class="space-y-6">
             <!-- Devis Tabs -->
-            <div class="rounded-xl border border-surface-200/70 dark:border-surface-700/70 p-3 bg-surface-50/60 dark:bg-surface-800/40">
+            <div v-if="!single" class="rounded-xl border border-surface-200/70 dark:border-surface-700/70 p-3 bg-surface-50/60 dark:bg-surface-800/40">
                 <div class="flex flex-wrap items-center gap-2">
                     <button
                         v-for="(entry, idx) in devisTabs"

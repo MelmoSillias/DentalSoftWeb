@@ -12,6 +12,7 @@ import TabPanels from 'primevue/tabpanels';
 import Tabs from 'primevue/tabs';
 import { computed, ref } from 'vue';
 import { computeAgeYears } from '@/utils/formuleDentaireLayout';
+import { countPatientDevis } from '@/utils/patientDevis';
 
 const props = defineProps({
     patient: { type: Object, required: true },
@@ -71,7 +72,8 @@ const activiteBadge = computed(() => {
         (props.rdvs?.length || 0) +
         (props.paiements?.length || 0) +
         (props.factures?.length || 0) +
-        (props.servicesCabinet?.length || 0);
+        (props.servicesCabinet?.length || 0) +
+        countPatientDevis(props.fiches);
     return total || null;
 });
 
@@ -177,6 +179,7 @@ const tabs = computed(() => [
                             :factures="factures"
                             :consultations="consultations"
                             :services-cabinet="servicesCabinet"
+                            :fiches="fiches"
                             :patient-id="patientId"
                             :patient-name="patientDisplayName"
                             :show-consultations="showConsultationsTab"
