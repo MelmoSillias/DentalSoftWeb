@@ -20,6 +20,10 @@ const props = defineProps({
         type: String,
         default: 'readonly',
         validator: (value) => ['readonly', 'edit'].includes(value)
+    },
+    compact: {
+        type: Boolean,
+        default: false
     }
 });
 
@@ -131,7 +135,7 @@ const gridItems = computed(() => {
         </div>
 
         <!-- Matrice anatomique (desktop) -->
-        <div class="formule-dentaire-matrix hidden sm:grid gap-x-1 mx-auto max-w-3xl" :style="gridStyle">
+        <div class="formule-dentaire-matrix hidden sm:grid gap-x-1 mx-auto" :class="compact ? 'max-w-2xl' : 'max-w-3xl'" :style="gridStyle">
             <div v-for="item in gridItems" :key="item.key" :style="item.style" class="min-w-0">
                 <!-- Ligne médiane -->
                 <div v-if="item.kind === 'midline'" class="flex h-full justify-center px-0.5">
@@ -146,7 +150,7 @@ const gridItems = computed(() => {
                 <!-- Dent -->
                 <div v-else-if="item.kind === 'tooth'" class="flex h-full" :class="item.role === 'upper' ? 'items-end' : 'items-start'">
                     <button type="button" class="mx-auto" :class="wrapperClass(item.tooth)" :title="`Dent ${item.tooth}${toothSummary(formData, item.tooth) ? ' — ' + toothSummary(formData, item.tooth) : ''}`" @click="onToothClick(item.tooth)">
-                        <span class="block h-14 w-9 sm:h-[4.25rem] sm:w-11" :class="toothColorClass(item.tooth)">
+                        <span class="block" :class="[toothColorClass(item.tooth), compact ? 'h-9 w-6 sm:h-11 sm:w-7' : 'h-14 w-9 sm:h-[4.25rem] sm:w-11']">
                             <ToothSvg :tooth="item.tooth" />
                         </span>
                     </button>
@@ -174,7 +178,7 @@ const gridItems = computed(() => {
                         <div class="flex flex-wrap justify-center gap-1">
                             <button v-for="cell in rightCells(row)" :key="'mob-r-' + row.role + '-' + cell.tooth" type="button" :class="wrapperClass(cell.tooth)" @click="onToothClick(cell.tooth)">
                                 <span class="flex flex-col items-center">
-                                    <span class="block h-10 w-7" :class="toothColorClass(cell.tooth)">
+                                    <span class="block" :class="[toothColorClass(cell.tooth), compact ? 'h-8 w-5' : 'h-10 w-7']">
                                         <ToothSvg :tooth="cell.tooth" />
                                     </span>
                                     <span class="text-[9px]" :class="labelClass(cell.tooth)">{{ cell.tooth }}</span>
@@ -187,7 +191,7 @@ const gridItems = computed(() => {
                         <div class="flex flex-wrap justify-center gap-1">
                             <button v-for="cell in leftCells(row)" :key="'mob-l-' + row.role + '-' + cell.tooth" type="button" :class="wrapperClass(cell.tooth)" @click="onToothClick(cell.tooth)">
                                 <span class="flex flex-col items-center">
-                                    <span class="block h-10 w-7" :class="toothColorClass(cell.tooth)">
+                                    <span class="block" :class="[toothColorClass(cell.tooth), compact ? 'h-8 w-5' : 'h-10 w-7']">
                                         <ToothSvg :tooth="cell.tooth" />
                                     </span>
                                     <span class="text-[9px]" :class="labelClass(cell.tooth)">{{ cell.tooth }}</span>

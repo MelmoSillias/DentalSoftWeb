@@ -1605,6 +1605,8 @@ const retryLoadSmsSettings = async () => {
 
 .sms-panels {
     margin-top: var(--page-content-gap);
+    background: transparent !important;
+    padding: 0 !important;
 }
 
 .sms-stack,

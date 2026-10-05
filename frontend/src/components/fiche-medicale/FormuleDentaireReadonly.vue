@@ -71,7 +71,7 @@ const examensComplementairesView = computed(() => {
 
 <template>
     <div class="w-full min-w-0">
-        <FormuleDentaireGrid :matrix="matrix" :form="form" mode="readonly" @tooth-click="openToothDetail" />
+        <FormuleDentaireGrid :matrix="matrix" :form="form" mode="readonly" compact @tooth-click="openToothDetail" />
 
         <p class="text-xs text-surface-500 dark:text-surface-400 mt-3 text-center">Cliquez sur une dent pour afficher les détails</p>
 
