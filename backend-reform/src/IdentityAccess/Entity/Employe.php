@@ -22,7 +22,7 @@ class Employe
     #[ORM\Column(type: Types::INTEGER)]
     private ?int $id = null;
 
-    #[ORM\OneToOne(cascade: ['persist', 'remove'])]
+    #[ORM\OneToOne(cascade: ['persist'])]
     private ?User $user = null;
 
     #[ORM\Column(length: 255)]
@@ -75,6 +75,9 @@ class Employe
 
     #[ORM\Column(type: Types::JSON)]
     private array $administrativeFiles = [];
+
+    #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true)]
+    private ?\DateTimeInterface $deletedAt = null;
 
     #[ORM\OneToMany(mappedBy: 'medecin', targetEntity: Consultation::class)]
     private Collection $consultationsAsMedecin;
@@ -535,6 +538,23 @@ class Employe
         }
 
         return $this;
+    }
+
+    public function getDeletedAt(): ?\DateTimeInterface
+    {
+        return $this->deletedAt;
+    }
+
+    public function setDeletedAt(?\DateTimeInterface $deletedAt): static
+    {
+        $this->deletedAt = $deletedAt;
+
+        return $this;
+    }
+
+    public function isDeleted(): bool
+    {
+        return $this->deletedAt !== null;
     }
 
 }

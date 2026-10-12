@@ -21,8 +21,10 @@ class AgendaService
     public function getRendezVousContext(?object $user, bool $onlyCurrentMedecin = false, ?string $typeFilter = 'medecin'): array
     {
         $medecins = $onlyCurrentMedecin && $user
-            ? [$this->employeRepo->findOneBy(['user' => $user])]
-            : ($typeFilter ? $this->employeRepo->findBy(['type' => $typeFilter]) : $this->employeRepo->findAll());
+            ? [$this->employeRepo->findOneBy(['user' => $user, 'deletedAt' => null])]
+            : ($typeFilter
+                ? $this->employeRepo->findBy(['type' => $typeFilter, 'deletedAt' => null])
+                : $this->employeRepo->findBy(['deletedAt' => null]));
 
         $medecins = array_values(array_filter($medecins));
 

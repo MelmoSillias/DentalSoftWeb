@@ -102,14 +102,35 @@ export function useEmployees() {
         }
     }
 
+    async function fetchEmployeesTrash({ page = 1, limit = 10, q = '' } = {}) {
+        const params = new URLSearchParams();
+        params.append('page', String(page));
+        params.append('limit', String(limit));
+        if (q) params.append('q', q);
+
+        const response = await http.get(`${apiPrefix}/employees/trash?${params.toString()}`, {
+            headers: buildAuthHeaders()
+        });
+        return response.data;
+    }
+
+    async function restoreEmployee(id) {
+        const response = await http.patch(`${apiPrefix}/employees/${id}/restore`, null, {
+            headers: buildAuthHeaders(false)
+        });
+        return response.data;
+    }
+
     return {
         employees,
         totalRecords,
         loading,
         error,
         fetchEmployees,
+        fetchEmployeesTrash,
         addEmployee,
         updateEmployee,
-        deleteEmployee
+        deleteEmployee,
+        restoreEmployee
     };
 }

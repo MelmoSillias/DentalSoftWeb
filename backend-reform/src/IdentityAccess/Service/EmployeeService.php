@@ -10,6 +10,7 @@ use App\IdentityAccess\Repository\EmployeRepository;
 use App\IdentityAccess\StaffRoleCatalog;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
+use DateTimeImmutable;
 use InvalidArgumentException;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 use Symfony\Component\Uid\Uuid;
@@ -33,7 +34,7 @@ class EmployeeService
     public function listEmployeesPaginated(int $start, int $length, string $searchValue): array
     {
         $employees = $this->employeRepo->findEmployeesWithPagination($start, $length, $searchValue);
-        $totalRecords = $this->employeRepo->count([]);
+        $totalRecords = $this->employeRepo->count(['deletedAt' => null]);
         $filteredRecords = $this->employeRepo->countFiltered($searchValue);
 
         $data = array_map(function (Employe $employee) {
@@ -61,6 +62,77 @@ class EmployeeService
             'data' => $data,
             'total' => $totalRecords,
             'filtered' => $filteredRecords,
+        ];
+    }
+
+    public function listDeletedEmployeesPaginated(int $page, int $limit, ?string $query = null): array
+    {
+        $resolvedPage = max(1, $page);
+        $resolvedLimit = max(1, min($limit, 100));
+        $result = $this->employeRepo->paginateDeletedEmployees($resolvedPage, $resolvedLimit, $query);
+
+        $items = array_map(static function (Employe $employee): array {
+            return [
+                'id' => $employee->getId(),
+                'nom' => $employee->getNom(),
+                'prenom' => $employee->getPrenom(),
+                'fullname' => trim(($employee->getPrenom() ?? '') . ' ' . ($employee->getNom() ?? '')),
+                'fonction' => $employee->getFonction(),
+                'type' => $employee->getType(),
+                'telephone' => $employee->getTelephone(),
+                'deletedAt' => $employee->getDeletedAt()?->format('Y-m-d H:i:s'),
+            ];
+        }, $result['items']);
+
+        return [
+            'items' => $items,
+            'total' => $result['total'],
+            'page' => $resolvedPage,
+            'limit' => $resolvedLimit,
+        ];
+    }
+
+    public function softDeleteEmployee(int $id): array
+    {
+        $employee = $this->employeRepo->find($id);
+        if (!$employee instanceof Employe || $employee->isDeleted()) {
+            return ['error' => 'Employé introuvable', 'status' => 404];
+        }
+
+        $employee->setDeletedAt(new DateTimeImmutable());
+        $user = $employee->getUser();
+        if ($user !== null) {
+            $user->setActive(false);
+        }
+
+        $this->em->flush();
+        $this->publishMedecinReferenceUpdate($employee, 'deleted');
+
+        return [
+            'success' => true,
+            'message' => 'Employé déplacé dans la corbeille.',
+        ];
+    }
+
+    public function restoreEmployee(int $id): array
+    {
+        $employee = $this->employeRepo->find($id);
+        if (!$employee instanceof Employe || !$employee->isDeleted()) {
+            return ['error' => 'Employé introuvable dans la corbeille', 'status' => 404];
+        }
+
+        $employee->setDeletedAt(null);
+        $user = $employee->getUser();
+        if ($user !== null) {
+            $user->setActive(true);
+        }
+
+        $this->em->flush();
+        $this->publishMedecinReferenceUpdate($employee, 'restored');
+
+        return [
+            'success' => true,
+            'message' => 'Employé restauré avec succès.',
         ];
     }
 
@@ -137,6 +209,10 @@ class EmployeeService
 
     public function updateEmployee(Employe $employee, array $data, array $files = []): array
     {
+        if ($employee->isDeleted()) {
+            throw new InvalidArgumentException('Cet employé est dans la corbeille.');
+        }
+
         $this->assertRequiredFields($data, [
             'nom' => 'Nom',
             'prenom' => 'Prénom',

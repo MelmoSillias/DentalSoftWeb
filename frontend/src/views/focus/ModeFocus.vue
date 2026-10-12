@@ -125,15 +125,17 @@ const isRestrictedMedecin = computed(() => isMedecin.value && !isAdmin.value);
 const shouldHidePatientDossierForMedecin = computed(() => isRestrictedMedecin.value && hidePatientDossierForMedecins.value);
 const shouldHidePatientPhoneForMedecin = computed(() => isRestrictedMedecin.value && hidePatientPhoneForMedecins.value);
 const availableModes = computed(() => {
-    const rdvMode = { label: 'Rendez-vous', value: 'rdv' };
+    const receptionMode = { label: 'Reception', value: 'reception', icon: 'pi pi-users' };
+    const medecinMode = { label: 'Dentiste', value: 'medecin', icon: 'fas fa-stethoscope' };
+    const rdvMode = { label: 'Rendez-vous', value: 'rdv', icon: 'pi pi-calendar' };
 
     if (isAdmin.value) {
-        return [{ label: 'Reception', value: 'reception' }, { label: 'Dentiste', value: 'medecin' }, rdvMode];
+        return [receptionMode, medecinMode, rdvMode];
     }
     if (isMedecin.value) {
-        return [{ label: 'Dentiste', value: 'medecin' }, rdvMode];
+        return [medecinMode, rdvMode];
     }
-    return [{ label: 'Reception', value: 'reception' }, rdvMode];
+    return [receptionMode, rdvMode];
 });
 
 const selectedModeBorderClass = computed(() => {
@@ -1083,9 +1085,12 @@ onBeforeUnmount(() => {
                             <button
                                 v-for="mode in availableModes"
                                 :key="mode.value"
+                                type="button"
+                                :title="mode.label"
+                                :aria-label="mode.label"
                                 @click="selectedMode = mode.value"
                                 :class="[
-                                    'rounded px-2.5 py-1 text-xs font-medium transition-all md:px-3',
+                                    'inline-flex items-center gap-1.5 rounded px-2 py-1 text-xs font-medium transition-all sm:px-2.5 md:px-3',
                                     selectedMode === mode.value
                                         ? mode.value === 'medecin'
                                             ? 'bg-white text-cyan-700 shadow-sm ring-1 ring-cyan-500/30 dark:bg-surface-700 dark:text-cyan-300 dark:ring-cyan-400/30'
@@ -1095,7 +1100,8 @@ onBeforeUnmount(() => {
                                         : 'text-surface-500 hover:text-surface-700 dark:text-surface-400 dark:hover:text-surface-200'
                                 ]"
                             >
-                                {{ mode.label }}
+                                <i :class="[mode.icon, 'text-xs']" aria-hidden="true"></i>
+                                <span class="hidden sm:inline">{{ mode.label }}</span>
                             </button>
                         </div>
                     </div>

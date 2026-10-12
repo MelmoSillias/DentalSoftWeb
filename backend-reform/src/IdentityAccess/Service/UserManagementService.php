@@ -61,7 +61,10 @@ class UserManagementService
 
     public function getAvailableAssociations(): array
     {
-        $employees = $this->employeRepo->findBy(['user' => null], ['nom' => 'ASC', 'prenom' => 'ASC']);
+        $employees = array_values(array_filter(
+            $this->employeRepo->findBy(['user' => null], ['nom' => 'ASC', 'prenom' => 'ASC']),
+            static fn (Employe $employee): bool => !$employee->isDeleted()
+        ));
         $patients = $this->patientRepo->findBy(['portalUser' => null], ['nom' => 'ASC', 'prenom' => 'ASC']);
 
         return [
@@ -88,6 +91,9 @@ class UserManagementService
         $result = [];
         foreach ($users as $user) {
             $employee = $this->findEmployeeByUser($user);
+            if ($employee?->isDeleted()) {
+                continue;
+            }
             $patient = $this->findPatientByUser($user);
             $roles = $user->getRoles();
 
@@ -152,7 +158,7 @@ class UserManagementService
         $employee = null;
         if ($employeeId !== null) {
             $employee = $this->employeRepo->find($employeeId);
-            if (!$employee) {
+            if (!$employee || $employee->isDeleted()) {
                 return ['error' => 'Employe introuvable', 'status' => 404];
             }
             if ($employee->getUser()) {
@@ -258,7 +264,7 @@ class UserManagementService
         $targetEmployee = null;
         if ($employeeId !== null) {
             $targetEmployee = $this->employeRepo->find($employeeId);
-            if (!$targetEmployee) {
+            if (!$targetEmployee || $targetEmployee->isDeleted()) {
                 return ['error' => 'Employe introuvable', 'status' => 404];
             }
             if ($targetEmployee->getUser() && $targetEmployee->getUser()?->getId() !== $user->getId()) {

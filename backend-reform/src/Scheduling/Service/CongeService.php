@@ -31,7 +31,7 @@ class CongeService
         }
 
         $employe = $this->employeRepo->find($data['employeId']);
-        if (!$employe) {
+        if (!$employe || $employe->isDeleted()) {
             return ['error' => 'Employé introuvable.', 'status' => 404];
         }
 
@@ -138,7 +138,7 @@ class CongeService
         }
 
         $employe = $this->employeRepo->find((int) $data['employeId']);
-        if (!$employe) {
+        if (!$employe || ($employe->isDeleted() && $conge->getEmploye()?->getId() !== $employe->getId())) {
             return ['error' => 'Employé introuvable.', 'status' => 404];
         }
 
@@ -192,7 +192,10 @@ class CongeService
 
     public function listEmployesWithConges(): array
     {
-        $employes = $this->employeRepo->findAll();
+        $employes = array_values(array_filter(
+            $this->employeRepo->findAll(),
+            static fn ($emp) => !$emp->isDeleted()
+        ));
 
         return array_map(function ($emp) {
             return [

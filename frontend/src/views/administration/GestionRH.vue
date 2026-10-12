@@ -16,6 +16,7 @@ import Tag from 'primevue/tag';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
 import EmployeeForm from '@/components/administration/EmployeeForm.vue';
+import AppDialog from '@/components/layout/AppDialog.vue';
 import LeaveFormDialog from '@/components/administration/LeaveFormDialog.vue';
 import PayrollPaymentDialog from '@/components/administration/PayrollPaymentDialog.vue';
 import PayrollDetailDialog from '@/components/administration/PayrollDetailDialog.vue';
@@ -48,7 +49,7 @@ const typeOptions = [
     { label: 'Autre', value: 'Autre' }
 ];
 
-const { employees, totalRecords, loading: employeesLoading, error: employeesError, fetchEmployees, addEmployee, updateEmployee, deleteEmployee } = useEmployees();
+const { employees, totalRecords, loading: employeesLoading, error: employeesError, fetchEmployees, fetchEmployeesTrash, addEmployee, updateEmployee, deleteEmployee, restoreEmployee } = useEmployees();
 
 const {
     payrolls,
@@ -96,6 +97,15 @@ const leaveRange = ref([]);
 const formVisible = ref(false);
 const formMode = ref('create');
 const currentEmployee = ref(null);
+const showTrashDialog = ref(false);
+const trashEmployees = ref([]);
+const trashLoading = ref(false);
+const trashSearch = ref('');
+const trashFirst = ref(0);
+const trashRows = ref(10);
+const trashTotalRecords = ref(0);
+const restoringEmployeeId = ref(null);
+let trashSearchTimer = null;
 
 let guidedTourDemoActive = false;
 
@@ -254,22 +264,74 @@ const confirmEmployeeSave = (payload, event) => {
 };
 
 const confirmEmployeeDelete = (event, employee) => {
+    const name = `${employee?.prenom || ''} ${employee?.nom || ''}`.trim();
     confirm.require({
         target: event?.currentTarget,
-        message: `Supprimer ${employee?.prenom || ''} ${employee?.nom || ''} ?`,
+        message: `Deplacer ${name || 'cet employe'} vers la corbeille ?`,
         icon: 'pi pi-exclamation-triangle',
         acceptLabel: 'Supprimer',
         rejectLabel: 'Annuler',
         accept: async () => {
             try {
                 await deleteEmployee(employee.id);
-                toast.add({ severity: 'success', summary: 'Succes', detail: 'Employe supprime.', life: 3000 });
+                toast.add({ severity: 'success', summary: 'Succes', detail: 'Employe deplace dans la corbeille.', life: 3000 });
                 await loadEmployees();
+                clearMissingEmployeeFilters();
             } catch (err) {
                 toast.add({ severity: 'error', summary: 'Erreur', detail: err?.message || 'Suppression impossible.', life: 4000 });
             }
         }
     });
+};
+
+const clearMissingEmployeeFilters = () => {
+    const ids = new Set((employees.value || []).map((employee) => employee.id));
+    if (payrollEmployeeId.value && !ids.has(payrollEmployeeId.value)) {
+        payrollEmployeeId.value = null;
+    }
+    if (leaveEmployeeId.value && !ids.has(leaveEmployeeId.value)) {
+        leaveEmployeeId.value = null;
+    }
+};
+
+const loadTrash = async ({ page = 1, rows = trashRows.value } = {}) => {
+    trashLoading.value = true;
+    try {
+        const data = await fetchEmployeesTrash({ page, limit: rows, q: trashSearch.value || '' });
+        trashEmployees.value = Array.isArray(data?.items) ? data.items : [];
+        trashTotalRecords.value = data?.total ?? trashEmployees.value.length;
+    } catch (err) {
+        toast.add({ severity: 'error', summary: 'Erreur', detail: err?.message || 'Corbeille indisponible.', life: 4000 });
+    } finally {
+        trashLoading.value = false;
+    }
+};
+
+const openTrashDialog = async () => {
+    showTrashDialog.value = true;
+    trashFirst.value = 0;
+    await loadTrash({ page: 1, rows: trashRows.value });
+};
+
+const handleTrashPage = (event) => {
+    trashFirst.value = event.first;
+    trashRows.value = event.rows;
+    loadTrash({ page: event.page + 1, rows: event.rows });
+};
+
+const restoreEmployeeFromTrash = async (employee) => {
+    restoringEmployeeId.value = employee.id;
+    try {
+        await restoreEmployee(employee.id);
+        toast.add({ severity: 'success', summary: 'Succes', detail: 'Employe restaure.', life: 3000 });
+        const page = Math.floor(trashFirst.value / trashRows.value) + 1;
+        await loadTrash({ page, rows: trashRows.value });
+        await loadEmployees();
+    } catch (err) {
+        toast.add({ severity: 'error', summary: 'Erreur', detail: err?.message || 'Restauration impossible.', life: 4000 });
+    } finally {
+        restoringEmployeeId.value = null;
+    }
 };
 
 const printEmployees = async () => {
@@ -520,11 +582,21 @@ watch(activeTab, (tab) => {
     }
 });
 
+watch(trashSearch, () => {
+    if (!showTrashDialog.value) return;
+    clearTimeout(trashSearchTimer);
+    trashSearchTimer = setTimeout(() => {
+        trashFirst.value = 0;
+        loadTrash({ page: 1, rows: trashRows.value });
+    }, 350);
+});
+
 onMounted(async () => {
     await loadEmployees();
 });
 
 onBeforeUnmount(() => {
+    clearTimeout(trashSearchTimer);
     deactivateAdminTourMock();
     guidedTourDemoActive = false;
     closeRhTourDialogs();
@@ -545,6 +617,7 @@ onBeforeUnmount(() => {
                 :breadcrumb-home="breadcrumbHome"
             >
                 <template #actions>
+                    <Button v-if="activeTab === 'employees'" icon="pi pi-trash" label="Corbeille" severity="secondary" outlined @click="openTrashDialog" />
                     <Button v-if="activeTab === 'employees'" icon="pi pi-plus" label="Nouvel employe" @click="openCreateEmployee" />
                     <Button v-if="activeTab === 'payroll'" icon="pi pi-wallet" label="Ajouter un paiement" @click="openPayrollDialog" />
                     <Button v-if="activeTab === 'leaves'" icon="pi pi-calendar-plus" label="Ajouter un conge" @click="openCreateLeave" />
@@ -798,6 +871,65 @@ onBeforeUnmount(() => {
         <PayrollDetailDialog v-model:visible="payrollDetailVisible" :payment="selectedPayroll" :payment-methods="paymentMethods" :loading="payrollDetailSaving" @submit="submitPayrollEdit" @print="printPayrollSlip" />
 
         <LeaveFormDialog v-model:visible="leaveDialogVisible" :mode="leaveMode" :leave="selectedLeave" :employees="employeeOptions" :loading="leaveSaving" @submit="submitLeave" />
+
+        <AppDialog
+            v-model:visible="showTrashDialog"
+            title="Corbeille des employes"
+            subtitle="Restaurez un employe supprime par erreur"
+            icon="pi pi-trash"
+            icon-tone="neutral"
+            size="xl"
+            maximizable
+            :show-footer="false"
+        >
+            <div class="space-y-4">
+                <div class="w-full sm:max-w-md">
+                    <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">Rechercher dans la corbeille</label>
+                    <InputText v-model="trashSearch" placeholder="Nom, prenom, telephone..." class="w-full" />
+                </div>
+
+                <DataTable
+                    :value="trashEmployees"
+                    dataKey="id"
+                    :loading="trashLoading"
+                    paginator
+                    lazy
+                    :rows="trashRows"
+                    :rowsPerPageOptions="[5, 10, 20]"
+                    :first="trashFirst"
+                    :totalRecords="trashTotalRecords"
+                    class="rounded-xl border border-surface-200 dark:border-surface-700"
+                    @page="handleTrashPage"
+                >
+                    <Column field="fullname" header="Employe">
+                        <template #body="{ data }">
+                            <div class="flex flex-col">
+                                <span class="font-semibold text-surface-900 dark:text-surface-100">{{ data.fullname || `${data.prenom || ''} ${data.nom || ''}`.trim() }}</span>
+                                <span class="text-xs text-surface-500">{{ data.telephone || '—' }}</span>
+                            </div>
+                        </template>
+                    </Column>
+                    <Column field="type" header="Type">
+                        <template #body="{ data }">
+                            <Tag :value="formatEmployeeTypeLabel(data.type) || '-'" severity="info" />
+                        </template>
+                    </Column>
+                    <Column field="deletedAt" header="Supprime le">
+                        <template #body="{ data }">
+                            <span class="text-sm text-surface-700 dark:text-surface-300">{{ formatDate(data.deletedAt) }}</span>
+                        </template>
+                    </Column>
+                    <Column header="Actions" :style="{ width: '180px' }">
+                        <template #body="{ data }">
+                            <Button label="Restaurer" icon="pi pi-replay" severity="success" text :loading="restoringEmployeeId === data.id" @click="restoreEmployeeFromTrash(data)" />
+                        </template>
+                    </Column>
+                    <template #empty>
+                        <div class="py-10 text-center text-surface-500">Aucun employe dans la corbeille.</div>
+                    </template>
+                </DataTable>
+            </div>
+        </AppDialog>
     </PageShell>
 </template>
 

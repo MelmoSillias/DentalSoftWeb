@@ -37,7 +37,7 @@ class PayrollService
     public function getPaymentContext(int $employeeId, int $month, int $year, ?string $day = null): array
     {
         $employee = $this->employeRepo->find($employeeId);
-        if (!$employee) {
+        if (!$employee || $employee->isDeleted()) {
             throw new InvalidArgumentException('Employe introuvable.');
         }
 
@@ -96,7 +96,7 @@ class PayrollService
         }
 
         $employee = $this->employeRepo->find($employeeId);
-        if (!$employee) {
+        if (!$employee || $employee->isDeleted()) {
             throw new InvalidArgumentException('Employe introuvable.');
         }
 

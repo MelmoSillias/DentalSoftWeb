@@ -35,6 +35,40 @@ class RHController extends AbstractController
         ]);
     }
 
+    #[Route('/api/employees/trash', name: 'api_employees_trash', methods: ['GET'])]
+    public function listDeletedEmployees(Request $request): JsonResponse
+    {
+        $page = $request->query->getInt('page', 1);
+        $limit = $request->query->getInt('limit', 10);
+        $query = trim((string) $request->query->get('q', ''));
+
+        return $this->json(
+            $this->employeeService->listDeletedEmployeesPaginated($page, $limit, $query !== '' ? $query : null)
+        );
+    }
+
+    #[Route('/api/employees/{id}/restore', name: 'api_employees_restore', methods: ['PATCH'], requirements: ['id' => '\d+'])]
+    public function restoreEmployee(int $id): JsonResponse
+    {
+        $result = $this->employeeService->restoreEmployee($id);
+        if (isset($result['error'])) {
+            return $this->json(['message' => $result['error']], $result['status'] ?? 400);
+        }
+
+        return $this->json($result);
+    }
+
+    #[Route('/api/employees/{id}', name: 'api_employees_delete', methods: ['DELETE'], requirements: ['id' => '\d+'])]
+    public function softDeleteEmployee(int $id): JsonResponse
+    {
+        $result = $this->employeeService->softDeleteEmployee($id);
+        if (isset($result['error'])) {
+            return $this->json(['message' => $result['error']], $result['status'] ?? 400);
+        }
+
+        return $this->json($result);
+    }
+
     #[Route('/api/employees', name: 'api_employees_create', methods: ['POST'])]
     public function createEmployee(Request $request): JsonResponse
     {

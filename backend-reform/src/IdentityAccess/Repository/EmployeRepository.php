@@ -5,6 +5,7 @@ namespace App\IdentityAccess\Repository;
 use App\IdentityAccess\Entity\Employe;
 use App\IdentityAccess\Entity\User;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
 
 /**
@@ -68,6 +69,7 @@ class EmployeRepository extends ServiceEntityRepository
     {
         return $this->createQueryBuilder('e')
             ->where('LOWER(e.type) = LOWER(:type)')
+            ->andWhere('e.deletedAt IS NULL')
             ->setParameter('type', $type)
             ->orderBy('e.id', 'ASC')
             ->getQuery()
@@ -92,6 +94,7 @@ class EmployeRepository extends ServiceEntityRepository
     public function findAllEmployees(): array
     {
         return $this->createQueryBuilder('e')
+            ->andWhere('e.deletedAt IS NULL')
             ->orderBy('e.id', 'ASC')
             ->getQuery()
             ->getResult();
@@ -100,6 +103,7 @@ class EmployeRepository extends ServiceEntityRepository
     public function findAllActive(): array
     {
         return $this->createQueryBuilder('e')
+            ->andWhere('e.deletedAt IS NULL')
             ->andWhere('e.dateEmbauche <= :now')
             ->setParameter('now', new \DateTime())
             ->getQuery()
@@ -110,6 +114,7 @@ class EmployeRepository extends ServiceEntityRepository
     {
         return $this->createQueryBuilder('e')
             ->select('DISTINCT e.type')
+            ->andWhere('e.deletedAt IS NULL')
             ->getQuery()
             ->getSingleColumnResult();
     }
@@ -122,41 +127,80 @@ class EmployeRepository extends ServiceEntityRepository
 
     public function findEmployeesWithPagination(int $start, int $length, string $searchValue): array
     {
-        $qb = $this->createQueryBuilder('e');
+        $qb = $this->activeEmployeesQuery($searchValue);
 
-        if ($searchValue) {
-            $qb->where('e.nom LIKE :search')
-               ->orWhere('e.prenom LIKE :search')
-               ->orWhere('e.fonction LIKE :search')
-               ->orWhere('e.type LIKE :search')
-               ->orderBy('e.type')
-               ->addOrderBy('e.nom', 'ASC')
-               ->setParameter('search', '%' . $searchValue . '%');
-        }
-
-        $qb->orderBy('e.type', 'ASC')
-           ->addOrderBy('e.nom', 'ASC');
-        return $qb->setFirstResult($start)
-                  ->setMaxResults($length)
-                  ->getQuery()
-                  ->getResult();
+        return $qb->orderBy('e.type', 'ASC')
+            ->addOrderBy('e.nom', 'ASC')
+            ->setFirstResult($start)
+            ->setMaxResults($length)
+            ->getQuery()
+            ->getResult();
     }
 
     public function countFiltered(string $searchValue): int
     {
-        $qb = $this->createQueryBuilder('e')
-                   ->select('COUNT(e.id)');
-
-        if ($searchValue) {
-            $qb->where('e.nom LIKE :search')
-               ->orWhere('e.prenom LIKE :search')
-               ->orWhere('e.fonction LIKE :search')
-               ->orWhere('e.type LIKE :search')
-               ->orderBy('e.type')
-               ->setParameter('search', '%' . $searchValue . '%');
-        }
+        $qb = $this->activeEmployeesQuery($searchValue)
+            ->select('COUNT(e.id)');
 
         return (int) $qb->getQuery()->getSingleScalarResult();
+    }
+
+    /**
+     * @return array{items: Employe[], total: int}
+     */
+    public function paginateDeletedEmployees(int $page, int $limit, ?string $term = null): array
+    {
+        $qb = $this->createQueryBuilder('e')
+            ->andWhere('e.deletedAt IS NOT NULL');
+
+        $normalized = trim((string) $term);
+        if ($normalized !== '') {
+            $like = '%' . mb_strtolower($normalized) . '%';
+            $qb->andWhere($qb->expr()->orX(
+                'LOWER(e.nom) LIKE :term',
+                'LOWER(e.prenom) LIKE :term',
+                'LOWER(e.fonction) LIKE :term',
+                'LOWER(e.type) LIKE :term',
+                'LOWER(e.telephone) LIKE :term'
+            ))->setParameter('term', $like);
+        }
+
+        $countQb = clone $qb;
+        $total = (int) $countQb
+            ->select('COUNT(e.id)')
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        $items = $qb
+            ->orderBy('e.deletedAt', 'DESC')
+            ->addOrderBy('e.nom', 'ASC')
+            ->addOrderBy('e.prenom', 'ASC')
+            ->setFirstResult(($page - 1) * $limit)
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getResult();
+
+        return [
+            'items' => $items,
+            'total' => $total,
+        ];
+    }
+
+    private function activeEmployeesQuery(string $searchValue): QueryBuilder
+    {
+        $qb = $this->createQueryBuilder('e')
+            ->andWhere('e.deletedAt IS NULL');
+
+        if ($searchValue !== '') {
+            $qb->andWhere($qb->expr()->orX(
+                'e.nom LIKE :search',
+                'e.prenom LIKE :search',
+                'e.fonction LIKE :search',
+                'e.type LIKE :search'
+            ))->setParameter('search', '%' . $searchValue . '%');
+        }
+
+        return $qb;
     }
 
     public function emailExists(string $email, ?int $excludeId = null): bool
@@ -196,6 +240,7 @@ class EmployeRepository extends ServiceEntityRepository
     return $this->createQueryBuilder('e')
         ->select('SUM(e.valeurSalaire)')
         ->andWhere('e.typeSalaire = :typeSalaire')
+        ->andWhere('e.deletedAt IS NULL')
         ->setParameter('typeSalaire', $typeSalaire)
         ->getQuery()
         ->getSingleScalarResult();

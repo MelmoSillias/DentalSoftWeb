@@ -247,7 +247,7 @@ class ReportService
                 }
             }
 
-            $fixedEmployees = $this->employeRepo->findBy(['typeSalaire' => 'fixe']);
+            $fixedEmployees = $this->employeRepo->findBy(['typeSalaire' => 'fixe', 'deletedAt' => null]);
 
             return [
                 'patientsTotal'     => $this->patientRepo->count(['deletedAt' => null]),
@@ -258,7 +258,7 @@ class ReportService
                 'revenueTotal'      => $revenueTotal,
                 'expenseTotal'      => $expenseTotal,
                 'resultTotal'       => $revenueTotal - $expenseTotal,
-                'employeesTotal'    => $this->employeRepo->count([]),
+                'employeesTotal'    => $this->employeRepo->count(['deletedAt' => null]),
                 'payrollFixed'      => array_sum(array_map(
                     static fn($e) => (float) ($e->getValeurSalaire() ?? 0),
                     $fixedEmployees
@@ -281,6 +281,7 @@ class ReportService
             $rows = $this->em->createQueryBuilder()
                 ->select('e.type, COUNT(e.id) AS cnt')
                 ->from(Employe::class, 'e')
+                ->andWhere('e.deletedAt IS NULL')
                 ->groupBy('e.type')
                 ->getQuery()->getArrayResult();
 
@@ -491,7 +492,6 @@ class ReportService
     public function periodicDoctorReports(DateTimeImmutable $from, DateTimeImmutable $to): array
     {
         $consultations = $this->loadConsultationsForPeriod($from, $to);
-        $doctors = $this->employeRepo->FindAllMedecin() ?? [];
         $reliquatPaymentsByDoctor = $this->loadReliquatPaymentsByDoctor($from, $to);
 
         $consultationsByDoctor = [];
@@ -504,6 +504,8 @@ class ReportService
             }
             $consultationsByDoctor[$doctorId][] = $consultation;
         }
+
+        $doctors = $this->doctorsForPeriodReport($consultationsByDoctor, $reliquatPaymentsByDoctor);
 
         $doctorStats = [];
         $totalApport = $totalPartAssurance = $totalPaidCash = $totalRemuneration = $totalSalaries = 0.0;
@@ -543,6 +545,48 @@ class ReportService
             ],
             'doctors' => $doctorStats,
         ];
+    }
+
+    /**
+     * Médecins actifs, plus les médecins supprimés qui ont une activité sur la période.
+     *
+     * @param array<int, list<Consultation>> $consultationsByDoctor
+     * @param array<int, list<mixed>> $reliquatPaymentsByDoctor
+     * @return Employe[]
+     */
+    private function doctorsForPeriodReport(array $consultationsByDoctor, array $reliquatPaymentsByDoctor): array
+    {
+        $doctors = [];
+        foreach ($this->employeRepo->FindAllMedecin() ?? [] as $doctor) {
+            if (!$doctor instanceof Employe || $doctor->getId() === null) {
+                continue;
+            }
+            $doctors[$doctor->getId()] = $doctor;
+        }
+
+        $activityIds = array_unique([
+            ...array_map('intval', array_keys($consultationsByDoctor)),
+            ...array_map('intval', array_keys($reliquatPaymentsByDoctor)),
+        ]);
+
+        foreach ($activityIds as $doctorId) {
+            if ($doctorId <= 0 || isset($doctors[$doctorId])) {
+                continue;
+            }
+
+            $doctor = $this->employeRepo->find($doctorId);
+            if (!$doctor instanceof Employe || !$doctor->isDeleted()) {
+                continue;
+            }
+
+            if (strtolower((string) $doctor->getType()) !== 'medecin') {
+                continue;
+            }
+
+            $doctors[$doctorId] = $doctor;
+        }
+
+        return array_values($doctors);
     }
 
     /**

@@ -1477,7 +1477,7 @@ class ConsultationService
 
         $consultation = $this->consultationRepo->find($id);
         $medecins = $this->employeRepo->FindAllMedecin() ?? [];
-        $infirmiers = $this->employeRepo->findBy(['type' => 'infirmier']);
+        $infirmiers = $this->employeRepo->findBy(['type' => 'infirmier', 'deletedAt' => null]);
         $salles = $this->salleRepo->findAll();
 
         return [
