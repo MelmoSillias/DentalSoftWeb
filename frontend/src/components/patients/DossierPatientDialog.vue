@@ -47,6 +47,7 @@ const {
     servicesCabinet,
     isReception,
     isMedecin,
+    canCreatePatientAndConsultation,
     showConsultationsTab,
     dossierHiddenForMedecin,
     shouldHidePatientPhoneForMedecin,
@@ -178,6 +179,7 @@ const handleRetry = async () => {
             :archive-files="archiveFiles"
             :is-reception="isReception"
             :is-medecin="isMedecin"
+            :can-create-consultation="canCreatePatientAndConsultation"
             :show-consultations-tab="showConsultationsTab"
             :hide-phone="shouldHidePatientPhoneForMedecin"
             hide-spine-actions
@@ -219,7 +221,7 @@ const handleRetry = async () => {
         </AppDialog>
 
         <CreateConsultationDialog
-            v-if="!isMedecin"
+            v-if="canCreatePatientAndConsultation"
             v-model:visible="showConsultationDialog"
             :patient="patient"
             :patient-id="patient?.id"

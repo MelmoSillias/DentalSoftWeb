@@ -27,11 +27,14 @@ const props = defineProps({
     archiveFiles: { type: Array, default: () => [] },
     isReception: { type: Boolean, default: false },
     isMedecin: { type: Boolean, default: false },
+    canCreateConsultation: { type: Boolean, default: undefined },
     showConsultationsTab: { type: Boolean, default: false },
     hidePhone: { type: Boolean, default: false },
     /** Hide spine actions when parent already exposes them (e.g. dialog header) */
     hideSpineActions: { type: Boolean, default: false }
 });
+
+const allowCreateConsultation = computed(() => (props.canCreateConsultation === undefined ? !props.isMedecin : props.canCreateConsultation));
 
 const emit = defineEmits([
     'print-dossier',
@@ -162,7 +165,7 @@ const tabs = computed(() => [
                             :fiches="fiches"
                             :patient-id="patientId"
                             :patient-age="patientAge"
-                            :can-create-consultation="!isMedecin"
+                            :can-create-consultation="allowCreateConsultation"
                             @print-fiche="(fiche) => emit('print-fiche', fiche)"
                             @new-consultation="emit('new-consultation')"
                             @fiche-updated="emit('fiche-updated')"

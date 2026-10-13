@@ -45,6 +45,9 @@ const api = useRdvApi();
 const auth = useAuthStore();
 const medecinsList = computed(() => api.medecins?.value ?? api.medecins ?? []);
 const isMedecinUser = computed(() => Boolean(auth.user?.roles?.includes('ROLE_MEDECIN')));
+const isRestrictedMedecin = computed(() => isMedecinUser.value && !auth.user?.roles?.includes('ROLE_ADMIN'));
+const allowMedecinCreatePatientAndConsultation = ref(false);
+const allowCreateConsultationOnValidate = computed(() => !isRestrictedMedecin.value || allowMedecinCreatePatientAndConsultation.value);
 
 const normalizeText = (value) =>
     String(value || '')
@@ -311,6 +314,7 @@ onMounted(async () => {
         }
         requireMedecinOnConsultationCreation.value = settings?.requireMedecinOnConsultationCreation !== false;
         defaultCreateConsultationOnRdvValidation.value = settings?.defaultCreateConsultationOnRdvValidation === true;
+        allowMedecinCreatePatientAndConsultation.value = settings?.allowMedecinCreatePatientAndConsultation === true;
     } catch (error) {
         logAppError('RendezVous', error);
     }
@@ -430,6 +434,7 @@ onBeforeUnmount(() => {
                     :lockedMedecinId="isMedecinUser ? connectedMedecinId : null"
                     :medecinReadonly="isMedecinUser"
                     :requireMedecinOnConsultationCreation="requireMedecinOnConsultationCreation"
+                    :allow-create-consultation="allowCreateConsultationOnValidate"
                     :defaultCreateConsultation="defaultCreateConsultationOnRdvValidation"
                     :loading="actionLoading"
                     @confirm="confirmValidate"

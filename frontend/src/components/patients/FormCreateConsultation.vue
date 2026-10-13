@@ -7,6 +7,7 @@ import { fetchTicketPrintData } from '@/services/printService';
 import PrintTicketBody from '@/components/print/PrintTicketBody.vue';
 import { usePrinter } from '@/composables/usePrinter';
 import { useMedecinsStore } from '@/stores/medecins';
+import { useAuthStore } from '@/stores/auth';
 import { usePaymentMethodsStore } from '@/stores/paymentMethods';
 import { getPaymentMethodDefinition, getDefaultClassicMethod } from '@/utils/paymentMethodUtils';
 import Button from 'primevue/button';
@@ -43,6 +44,12 @@ const token = localStorage.getItem('token');
 const loading = ref(false);
 const { printComponent } = usePrinter();
 const medecinsStore = useMedecinsStore();
+const auth = useAuthStore();
+const isRestrictedMedecin = computed(() => {
+    const roles = auth.user?.roles || [];
+    return roles.includes('ROLE_MEDECIN') && !roles.includes('ROLE_ADMIN');
+});
+const lockConnectedMedecin = computed(() => isRestrictedMedecin.value);
 const paymentMethodsStore = usePaymentMethodsStore();
 const consultationAmount = ref(5000);
 const consultationPrices = ref([5000]);
@@ -291,7 +298,7 @@ const saveConsultation = async () => {
         toast.add({ severity: 'warn', summary: 'Consultation active', detail: 'Une consultation est déjà en cours pour ce patient.', life: 3000 });
         return;
     }
-    if (requireMedecinOnCreation.value && !form.medecinId) {
+    if (requireMedecinOnCreation.value && !lockConnectedMedecin.value && !form.medecinId) {
         toast.add({ severity: 'warn', summary: 'Médecin requis', detail: 'Sélectionnez un médecin.', life: 2500 });
         return;
     }
@@ -410,10 +417,11 @@ defineExpose({
             <div class="flex flex-col gap-2" data-tour="patients-form-consultation.schedule">
                 <label class="font-semibold">
                     Médecin
-                    <span v-if="requireMedecinOnCreation" class="text-red-500">*</span>
+                    <span v-if="lockConnectedMedecin || requireMedecinOnCreation" class="text-red-500">*</span>
                     <span v-else class="font-normal text-surface-500"> (optionnel)</span>
                 </label>
-                <Select v-model="form.medecinId" :options="medecinOptions || []" optionLabel="label" optionValue="value" placeholder="Choisir un médecin" class="w-full" />
+                <InputText v-if="lockConnectedMedecin" value="Médecin connecté" disabled />
+                <Select v-else v-model="form.medecinId" :options="medecinOptions || []" optionLabel="label" optionValue="value" placeholder="Choisir un médecin" class="w-full" />
             </div>
 
             <div class="flex flex-col gap-2">

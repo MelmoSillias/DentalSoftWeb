@@ -109,6 +109,7 @@ class GlobalSettingsService
             'allowConsultationPriceEditOnCreation' => (bool) ($value['allowConsultationPriceEditOnCreation'] ?? false),
             'hidePatientDossierForMedecins' => (bool) ($value['hidePatientDossierForMedecins'] ?? false),
             'hidePatientPhoneForMedecins' => (bool) ($value['hidePatientPhoneForMedecins'] ?? false),
+            'allowMedecinCreatePatientAndConsultation' => (bool) ($value['allowMedecinCreatePatientAndConsultation'] ?? false),
             'ficheFormSimplifie' => (bool) ($value['ficheFormSimplifie'] ?? false),
             'showDiagnosticPositifInConsultation' => (bool) ($value['showDiagnosticPositifInConsultation'] ?? true),
             'consultationPrice' => $this->sanitizePositiveAmount($value['consultationPrice'] ?? null, self::DEFAULT_CONSULTATION_PRICE),
@@ -187,6 +188,7 @@ class GlobalSettingsService
             'allowConsultationPriceEditOnCreation' => (bool) ($payload['allowConsultationPriceEditOnCreation'] ?? ($current['allowConsultationPriceEditOnCreation'] ?? false)),
             'hidePatientDossierForMedecins' => (bool) ($payload['hidePatientDossierForMedecins'] ?? ($current['hidePatientDossierForMedecins'] ?? false)),
             'hidePatientPhoneForMedecins' => (bool) ($payload['hidePatientPhoneForMedecins'] ?? ($current['hidePatientPhoneForMedecins'] ?? false)),
+            'allowMedecinCreatePatientAndConsultation' => (bool) ($payload['allowMedecinCreatePatientAndConsultation'] ?? ($current['allowMedecinCreatePatientAndConsultation'] ?? false)),
             'ficheFormSimplifie' => (bool) ($payload['ficheFormSimplifie'] ?? ($current['ficheFormSimplifie'] ?? false)),
             'showDiagnosticPositifInConsultation' => (bool) ($payload['showDiagnosticPositifInConsultation'] ?? ($current['showDiagnosticPositifInConsultation'] ?? true)),
             'consultationPrice' => $this->sanitizePositiveAmount($payload['consultationPrice'] ?? ($current['consultationPrice'] ?? null), self::DEFAULT_CONSULTATION_PRICE),
@@ -278,6 +280,11 @@ class GlobalSettingsService
     public function isPatientPhoneHiddenForMedecins(): bool
     {
         return $this->getGeneralSettings()['hidePatientPhoneForMedecins'];
+    }
+
+    public function isMedecinCreatePatientAndConsultationAllowed(): bool
+    {
+        return $this->getGeneralSettings()['allowMedecinCreatePatientAndConsultation'];
     }
 
     public function getTestModeStatus(): array
@@ -517,6 +524,7 @@ class GlobalSettingsService
             'allowConsultationPriceEditOnCreation' => $settings['allowConsultationPriceEditOnCreation'],
             'hidePatientDossierForMedecins' => $settings['hidePatientDossierForMedecins'],
             'hidePatientPhoneForMedecins' => $settings['hidePatientPhoneForMedecins'],
+            'allowMedecinCreatePatientAndConsultation' => $settings['allowMedecinCreatePatientAndConsultation'],
             'ficheFormSimplifie' => $settings['ficheFormSimplifie'],
             'showDiagnosticPositifInConsultation' => $settings['showDiagnosticPositifInConsultation'],
             'consultationPrice' => $settings['consultationPrice'],

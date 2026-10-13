@@ -61,11 +61,13 @@ const loadQuickClosePolicy = async () => {
         const settings = await fetchPublicGeneralSettings(token);
         allowReceptionQuickClose.value = settings?.allowReceptionConsultationQuickActions !== false && settings?.allowReceptionQuickCloseConsultation !== false;
         hidePatientPhoneForMedecins.value = settings?.hidePatientPhoneForMedecins === true;
+        allowMedecinCreatePatientAndConsultation.value = settings?.allowMedecinCreatePatientAndConsultation === true;
         soinsList.value = normalizeSoinList(settings?.soinsList);
     } catch (error) {
         logAppError('Erreur chargement politique de clôture rapide', error);
         allowReceptionQuickClose.value = true;
         hidePatientPhoneForMedecins.value = false;
+        allowMedecinCreatePatientAndConsultation.value = false;
         soinsList.value = normalizeSoinList(defaultSoinList);
     }
 };
@@ -126,6 +128,8 @@ const isAdmin = computed(() => Boolean(auth.user?.roles?.includes('ROLE_ADMIN'))
 const isMedecin = computed(() => Boolean(auth.user?.roles?.includes('ROLE_MEDECIN')));
 const isReception = computed(() => Boolean(auth.user?.roles?.includes('ROLE_RECEPTION') || auth.user?.roles?.includes('ROLE_RECEPTIONNISTE')));
 const isRestrictedMedecin = computed(() => isMedecin.value && !isAdmin.value);
+const allowMedecinCreatePatientAndConsultation = ref(false);
+const canCreatePatientAndConsultation = computed(() => !isRestrictedMedecin.value || allowMedecinCreatePatientAndConsultation.value);
 const shouldHidePatientPhoneForMedecin = computed(() => isRestrictedMedecin.value && hidePatientPhoneForMedecins.value);
 const canUseQuickActions = computed(() => !isReception.value || allowReceptionQuickClose.value);
 
@@ -350,7 +354,7 @@ const { isGuidedTourStarting } = useGuidedTour({
             firstConsultationCanCancel: consultation ? showActions.cancel(consultation) : false,
             hasLinkedCase: Boolean(linkedConsultation.value),
             hasFreshCase: Boolean(freshConsultation.value),
-            canOpenCreateDialog: !isMedecin.value
+            canOpenCreateDialog: canCreatePatientAndConsultation.value
         };
     },
     loadingMessage: 'Attendez la fin du chargement de la file d attente avant de lancer le tour.',
@@ -459,7 +463,7 @@ const breadcrumbItems = [{ label: 'Consultations' }, { label: "File d'attente" }
                 </div>
                 <h4 class="text-xl font-semibold text-surface-700 dark:text-surface-300 mb-3">Aucune consultation en cours</h4>
                 <p class="text-surface-600 dark:text-surface-400 mb-8 max-w-md mx-auto">Toutes les consultations ont été traitées ou clôturées.</p>
-                <Button v-if="!isMedecin" data-tour="consultations-cards.empty-create-button" icon="fas fa-plus" label="Créer une consultation" severity="secondary" @click="openCreateConsultationDialog = true" outlined class="rounded-xl" />
+                <Button v-if="canCreatePatientAndConsultation" data-tour="consultations-cards.empty-create-button" icon="fas fa-plus" label="Créer une consultation" severity="secondary" @click="openCreateConsultationDialog = true" outlined class="rounded-xl" />
             </div>
 
             <!-- Consultations Grid -->
@@ -704,7 +708,7 @@ const breadcrumbItems = [{ label: 'Consultations' }, { label: "File d'attente" }
         </PageSection>
 
     <CreateConsultationDialog
-        v-if="!isMedecin"
+        v-if="canCreatePatientAndConsultation"
         v-model:visible="openCreateConsultationDialog"
         tour-id="consultations-cards.create-dialog"
         content-tour-id="consultations-cards.dialog.create"

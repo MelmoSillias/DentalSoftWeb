@@ -47,6 +47,9 @@ const assurancesStore = useAssurancesStore();
 const isMedecin = computed(() => Boolean(auth.user?.roles?.includes('ROLE_MEDECIN')));
 const isAdmin = computed(() => Boolean(auth.user?.roles?.includes('ROLE_ADMIN')));
 const hidePatientPhoneForMedecins = ref(false);
+const allowMedecinCreatePatientAndConsultation = ref(false);
+const isRestrictedMedecin = computed(() => isMedecin.value && !isAdmin.value);
+const canCreatePatientAndConsultation = computed(() => !isRestrictedMedecin.value || allowMedecinCreatePatientAndConsultation.value);
 const shouldHidePatientPhoneForMedecin = computed(() => isMedecin.value && !isAdmin.value && hidePatientPhoneForMedecins.value);
 const searchQuery = ref('');
 const first = ref(0);
@@ -148,10 +151,12 @@ const loadVisibilityPolicy = async ({ asPageLoad = false } = {}) => {
     try {
         const settings = await fetchPublicGeneralSettings(token);
         hidePatientPhoneForMedecins.value = settings?.hidePatientPhoneForMedecins === true;
+        allowMedecinCreatePatientAndConsultation.value = settings?.allowMedecinCreatePatientAndConsultation === true;
         return true;
     } catch (error) {
         logAppError('Erreur chargement politique visibilité patients', error);
         hidePatientPhoneForMedecins.value = false;
+        allowMedecinCreatePatientAndConsultation.value = false;
         if (asPageLoad) {
             loadErrorMessage.value = 'Impossible de charger les paramètres de visibilité des patients.';
         }
@@ -790,7 +795,7 @@ onBeforeUnmount(() => {
                             :pt="{ label: { class: 'hidden sm:inline' } }"
                         />
                         <Button
-                            v-if="!isMedecin"
+                            v-if="canCreatePatientAndConsultation"
                             label="Nouvelle consultation"
                             severity="success"
                             icon="fas fa-stethoscope"
@@ -801,6 +806,7 @@ onBeforeUnmount(() => {
                             :pt="{ label: { class: 'hidden sm:inline' } }"
                         />
                         <Button
+                            v-if="canCreatePatientAndConsultation"
                             label="Ajouter un patient"
                             icon="fas fa-plus"
                             data-tour="patients-list.add-patient-button"
@@ -962,7 +968,7 @@ onBeforeUnmount(() => {
                             <template #body="{ data }">
                                 <div class="flex items-center gap-1" :data-tour="data.id === patients[0]?.id ? 'patients-list.row-actions' : null">
                                     <Button
-                                        v-if="!isMedecin"
+                                        v-if="canCreatePatientAndConsultation"
                                         icon="fas fa-stethoscope"
                                         severity="success"
                                         text
@@ -1007,7 +1013,7 @@ onBeforeUnmount(() => {
                                     {{ searchQuery ? 'Aucun résultat ne correspond à votre recherche.' : 'Commencez par ajouter votre premier patient.' }}
                                 </p>
                                 <div class="flex gap-3 justify-center">
-                                    <Button v-if="!searchQuery" icon="fas fa-plus" label="Ajouter un patient" @click="openCreatePatient" class="bg-gradient-to-r from-primary-500 to-primary-600 border-0" />
+                                    <Button v-if="!searchQuery && canCreatePatientAndConsultation" icon="fas fa-plus" label="Ajouter un patient" @click="openCreatePatient" class="bg-gradient-to-r from-primary-500 to-primary-600 border-0" />
                                     <Button v-else icon="pi pi-filter-slash" label="Réinitialiser la recherche" severity="secondary" outlined @click="searchQuery = ''" />
                                 </div>
                             </div>

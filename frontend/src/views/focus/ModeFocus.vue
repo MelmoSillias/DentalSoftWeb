@@ -5,6 +5,7 @@ import CaisseInvoiceDialogs from '@/components/caisse/CaisseInvoiceDialogs.vue';
 import FocusMedecinView from '@/components/focus/FocusMedecinView.vue';
 import FocusReceptionView from '@/components/focus/FocusReceptionView.vue';
 import CreateConsultationDialog from '@/components/patients/CreateConsultationDialog.vue';
+import FocusQuickAdmissionDialog from '@/components/focus/FocusQuickAdmissionDialog.vue';
 import FormPatient from '@/components/patients/FormPatient.vue';
 import FormRendezVous from '@/components/patients/FormRendezVous.vue';
 import DossierPatientDialog from '@/components/patients/DossierPatientDialog.vue';
@@ -50,6 +51,8 @@ const allowReceptionQuickClose = ref(true);
 const allowReceptionInvoiceModification = ref(false);
 const hidePatientDossierForMedecins = ref(false);
 const hidePatientPhoneForMedecins = ref(false);
+const allowMedecinCreatePatientAndConsultation = ref(false);
+const quickAdmissionVisible = ref(false);
 const soinsList = ref([...defaultSoinList]);
 const selectedMode = ref('reception');
 const showCompletedSecretary = ref(true);
@@ -122,6 +125,7 @@ const canModifyInvoiceByRole = computed(() => canUserModifyInvoice(auth.user, { 
 const isMedecin = computed(() => roles.value.includes('ROLE_MEDECIN'));
 const isReception = computed(() => roles.value.includes('ROLE_RECEPTION') || roles.value.includes('ROLE_RECEPTIONNISTE') || roles.value.includes('ROLE_SECRETAIRE'));
 const isRestrictedMedecin = computed(() => isMedecin.value && !isAdmin.value);
+const showFocusQuickAdmission = computed(() => allowMedecinCreatePatientAndConsultation.value && (isAdmin.value || isRestrictedMedecin.value));
 const shouldHidePatientDossierForMedecin = computed(() => isRestrictedMedecin.value && hidePatientDossierForMedecins.value);
 const shouldHidePatientPhoneForMedecin = computed(() => isRestrictedMedecin.value && hidePatientPhoneForMedecins.value);
 const availableModes = computed(() => {
@@ -346,12 +350,14 @@ const loadSettings = async () => {
         allowReceptionInvoiceModification.value = settings?.allowReceptionInvoiceModification === true;
         hidePatientDossierForMedecins.value = settings?.hidePatientDossierForMedecins === true;
         hidePatientPhoneForMedecins.value = settings?.hidePatientPhoneForMedecins === true;
+        allowMedecinCreatePatientAndConsultation.value = settings?.allowMedecinCreatePatientAndConsultation === true;
         soinsList.value = normalizeSoinList(settings?.soinsList);
     } catch (_) {
         allowReceptionQuickClose.value = true;
         allowReceptionInvoiceModification.value = false;
         hidePatientDossierForMedecins.value = false;
         hidePatientPhoneForMedecins.value = false;
+        allowMedecinCreatePatientAndConsultation.value = false;
         soinsList.value = [...defaultSoinList];
     }
 };
@@ -1359,6 +1365,18 @@ onBeforeUnmount(() => {
                     "
                 />
             </AppDialog>
+            <button
+                v-if="showFocusQuickAdmission"
+                type="button"
+                class="fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-lg transition hover:scale-105 hover:shadow-xl"
+                style="bottom: max(1.5rem, env(safe-area-inset-bottom))"
+                aria-label="Nouveau patient et consultation"
+                title="Nouveau patient et consultation"
+                @click="quickAdmissionVisible = true"
+            >
+                <i class="pi pi-user-plus text-xl"></i>
+            </button>
+            <FocusQuickAdmissionDialog v-model:visible="quickAdmissionVisible" @saved="loadConsultations" />
         </div>
     </section>
 </template>

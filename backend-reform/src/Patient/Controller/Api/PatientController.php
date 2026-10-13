@@ -94,6 +94,31 @@ final class PatientController extends AbstractController
         return $this->json($result);
     }
 
+    #[Route('/api/patient/add-with-consultation', name: 'api_patient_add_with_consultation', methods: ['POST'])]
+    public function addPatientWithConsultation(Request $request): JsonResponse
+    {
+        $payload = json_decode($request->getContent(), true) ?? [];
+        $patientData = is_array($payload['patient'] ?? null) ? $payload['patient'] : $payload;
+        $consultationData = is_array($payload['consultation'] ?? null) ? $payload['consultation'] : [];
+        $user = $this->getUser();
+        $result = $this->patientService->addPatientWithConsultation(
+            $patientData,
+            $consultationData,
+            $user instanceof User ? $user : null,
+        );
+
+        if (isset($result['error'])) {
+            return $this->json(['message' => $result['error']], $result['status'] ?? 400);
+        }
+
+        return $this->json([
+            'message' => 'Patient et consultation créés avec succès',
+            'patientId' => $result['patientId'],
+            'consultation_id' => $result['consultation_id'] ?? null,
+            'paiement_id' => $result['paiement_id'] ?? null,
+        ], $result['status'] ?? 201);
+    }
+
     #[Route('/api/patient/add', name: 'api_patient_add', methods: ['POST'])]
     public function addPatient(Request $request): JsonResponse
     {

@@ -58,6 +58,7 @@ export function usePatientDossier(options = {}) {
 
     const hidePatientDossierForMedecins = ref(false);
     const hidePatientPhoneForMedecins = ref(false);
+    const allowMedecinCreatePatientAndConsultation = ref(false);
 
     const printSectionOptions = DOSSIER_PRINT_SECTION_OPTIONS;
 
@@ -75,6 +76,7 @@ export function usePatientDossier(options = {}) {
     const isRestrictedMedecin = computed(() => isMedecin.value && !isAdmin.value);
     const dossierHiddenForMedecin = computed(() => isRestrictedMedecin.value && hidePatientDossierForMedecins.value);
     const shouldHidePatientPhoneForMedecin = computed(() => isRestrictedMedecin.value && hidePatientPhoneForMedecins.value);
+    const canCreatePatientAndConsultation = computed(() => !isRestrictedMedecin.value || allowMedecinCreatePatientAndConsultation.value);
 
     const hasOpenDialogs = computed(() => showRdvDialog.value || showConsultationDialog.value || showEditDialog.value || showAntecedentDialog.value || showAllergyDialog.value || showPrintDialog.value || showActiveConsultWarn.value);
 
@@ -191,10 +193,12 @@ export function usePatientDossier(options = {}) {
             const settings = await fetchPublicGeneralSettings(token);
             hidePatientDossierForMedecins.value = settings?.hidePatientDossierForMedecins === true;
             hidePatientPhoneForMedecins.value = settings?.hidePatientPhoneForMedecins === true;
+            allowMedecinCreatePatientAndConsultation.value = settings?.allowMedecinCreatePatientAndConsultation === true;
         } catch (error) {
             logAppError('Erreur chargement politique visibilité dossier', error);
             hidePatientDossierForMedecins.value = false;
             hidePatientPhoneForMedecins.value = false;
+            allowMedecinCreatePatientAndConsultation.value = false;
         }
     };
 
@@ -470,6 +474,7 @@ export function usePatientDossier(options = {}) {
         isReception,
         isMedecin,
         isAdmin,
+        canCreatePatientAndConsultation,
         showConsultationsTab,
         hidePatientDossierForMedecins,
         hidePatientPhoneForMedecins,

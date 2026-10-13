@@ -33,6 +33,10 @@ const props = defineProps({
         type: Boolean,
         default: true
     },
+    allowCreateConsultation: {
+        type: Boolean,
+        default: true
+    },
     defaultCreateConsultation: {
         type: Boolean,
         default: false
@@ -58,7 +62,7 @@ watch(
 watch(localVisible, (v) => emit('update:visible', v));
 
 const resetForm = () => {
-    createConsultation.value = props.defaultCreateConsultation === true;
+    createConsultation.value = props.allowCreateConsultation && props.defaultCreateConsultation === true;
     medecinId.value = props.lockedMedecinId ?? props.rdv?.medecinId ?? null;
 };
 
@@ -126,7 +130,7 @@ const confirm = () => {
         <div class="flex flex-col gap-4">
             <p class="text-sm text-surface-700 dark:text-surface-300">Confirmer la validation de ce rendez-vous ?</p>
 
-            <div class="flex flex-col gap-2">
+            <div v-if="allowCreateConsultation" class="flex flex-col gap-2">
                 <label class="text-sm font-medium text-surface-800 dark:text-surface-100"> Créer une consultation maintenant ? </label>
                 <SelectButton v-model="createConsultation" :options="consultationOptions" option-label="label" option-value="value" aria-labelledby="validate-rdv-create-consultation" />
                 <p v-if="!createConsultation" class="text-xs text-surface-500 dark:text-surface-400">Le rendez-vous sera validé sans consultation ni attribution de médecin.</p>

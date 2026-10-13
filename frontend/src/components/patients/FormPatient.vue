@@ -27,10 +27,14 @@ const props = defineProps({
     hideActions: {
         type: Boolean,
         default: false
+    },
+    collectOnly: {
+        type: Boolean,
+        default: false
     }
 });
 
-const emit = defineEmits(['saved', 'cancel']);
+const emit = defineEmits(['saved', 'cancel', 'collected']);
 
 const confirmPopup = useConfirm();
 const toast = useToast();
@@ -444,6 +448,14 @@ const savePatient = async () => {
                   }
                 : null
         };
+        if (props.collectOnly) {
+            if (!payload.nom || !payload.prenom || !payload.sexe || !payload.telephone) {
+                toast.add({ severity: 'warn', summary: 'Patient incomplet', detail: 'Nom, prénom, sexe et téléphone sont obligatoires.', life: 3000 });
+                return;
+            }
+            emit('collected', payload);
+            return;
+        }
         const saved = isEdit.value && props.patient?.id ? await updatePatient(props.patient.id, payload, token) : await createPatient(payload, token);
         toast.add({ severity: 'success', summary: 'Succès', detail: 'Patient sauvegardé.', life: 2500 });
         emit('saved', saved);

@@ -75,6 +75,7 @@ const {
     servicesCabinet,
     isReception,
     isMedecin,
+    canCreatePatientAndConsultation,
     showConsultationsTab,
     dossierHiddenForMedecin,
     shouldHidePatientPhoneForMedecin,
@@ -526,6 +527,7 @@ const goBackToList = () => {
                 :archive-files="archiveFiles"
                 :is-reception="isReception"
                 :is-medecin="isMedecin"
+                :can-create-consultation="canCreatePatientAndConsultation"
                 :show-consultations-tab="showConsultationsTab"
                 :hide-phone="shouldHidePatientPhoneForMedecin"
                 @print-dossier="handlePrintDossier"
@@ -593,7 +595,7 @@ const goBackToList = () => {
                                 :fiches="fiches"
                                 :patient-id="props.patientId"
                                 :patient-age="patientAge"
-                                :can-create-consultation="!isMedecin"
+                                :can-create-consultation="canCreatePatientAndConsultation"
                                 @print-fiche="handlePrintFiche"
                                 @new-consultation="() => (showConsultationDialog = true)"
                                 @fiche-updated="handleFicheUpdated"
@@ -656,7 +658,7 @@ const goBackToList = () => {
         </AppDialog>
 
         <CreateConsultationDialog
-            v-if="!isMedecin"
+            v-if="canCreatePatientAndConsultation"
             v-model:visible="showConsultationDialog"
             :patient="patient"
             :patient-id="patient?.id"

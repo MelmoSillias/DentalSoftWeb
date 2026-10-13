@@ -101,6 +101,15 @@ export const createPatient = async (payload, token) => {
     return fetchPatientById(createdPatientId, token);
 };
 
+export const createPatientWithConsultation = async (patient, consultation, token) => {
+    const res = await axios.post(
+        `${apiPrefix}/patient/add-with-consultation`,
+        { patient, consultation },
+        { headers: authHeaders(token) }
+    );
+    return res.data;
+};
+
 export const fetchAllPatients = async (token) => {
     if (isPatientsTourMockEnabled()) {
         const data = listPatientsTourMock({ page: 1, limit: 1000, q: '', sortField: null, sortOrder: null });

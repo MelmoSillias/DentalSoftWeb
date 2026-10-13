@@ -78,6 +78,12 @@ class ConsultationService
     public function createConsultation(array $data, ?User $triggeredBy = null): array
     {
         try {
+            $guard = $this->guardRestrictedMedecinCreation($data, $triggeredBy);
+            if (isset($guard['error'])) {
+                return $guard;
+            }
+            $data = $guard['data'];
+
             $isMedecinRequired = $this->globalSettingsService->isMedecinRequiredOnConsultationCreation();
             if ($isMedecinRequired && empty($data['medecin_id'])) {
                 return [
@@ -215,6 +221,43 @@ class ConsultationService
     private function isMedecinUser(?object $user): bool
     {
         return $user instanceof User && in_array('ROLE_MEDECIN', $user->getRoles(), true);
+    }
+
+    private function isRestrictedMedecin(?object $user): bool
+    {
+        return $user instanceof User
+            && in_array('ROLE_MEDECIN', $user->getRoles(), true)
+            && !in_array('ROLE_ADMIN', $user->getRoles(), true);
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     * @return array{data: array<string, mixed>}|array{error: string, status: int}
+     */
+    private function guardRestrictedMedecinCreation(array $data, ?User $user): array
+    {
+        if (!$this->isRestrictedMedecin($user)) {
+            return ['data' => $data];
+        }
+
+        if (!$this->globalSettingsService->isMedecinCreatePatientAndConsultationAllowed()) {
+            return [
+                'error' => 'La création de consultation n\'est pas autorisée pour ce compte.',
+                'status' => 403,
+            ];
+        }
+
+        $medecin = $this->getMedecinForUser($user);
+        if (!$medecin instanceof Employe) {
+            return [
+                'error' => 'Aucun médecin lié à ce compte.',
+                'status' => 403,
+            ];
+        }
+
+        $data['medecin_id'] = $medecin->getId();
+
+        return ['data' => $data];
     }
 
     private function enforceMedecinOwnership(Consultation $consultation, ?object $user, bool $restrictToMedecin): ?Employe

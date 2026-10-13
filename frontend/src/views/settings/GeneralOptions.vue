@@ -181,7 +181,8 @@ const closingTimeModel = computed({
 
 const medecinPrivacy = reactive({
     hidePatientDossierForMedecins: false,
-    hidePatientPhoneForMedecins: false
+    hidePatientPhoneForMedecins: false,
+    allowMedecinCreatePatientAndConsultation: false
 });
 
 const clinicalForm = reactive({
@@ -487,6 +488,7 @@ const loadGeneralSettings = async (force = false) => {
         openingHours.closingTime = settings.closingTime || '18:00';
         medecinPrivacy.hidePatientDossierForMedecins = settings.hidePatientDossierForMedecins === true;
         medecinPrivacy.hidePatientPhoneForMedecins = settings.hidePatientPhoneForMedecins === true;
+        medecinPrivacy.allowMedecinCreatePatientAndConsultation = settings.allowMedecinCreatePatientAndConsultation === true;
         clinicalForm.ficheFormSimplifie = settings.ficheFormSimplifie === true;
         clinicalForm.showDiagnosticPositifInConsultation = settings.showDiagnosticPositifInConsultation !== false;
         billingPolicy.allowReceptionInvoiceModification = settings.allowReceptionInvoiceModification === true;
@@ -734,7 +736,8 @@ const saveMedecinPrivacyAction = async () => {
         await saveGeneralSettings(
             {
                 hidePatientDossierForMedecins: medecinPrivacy.hidePatientDossierForMedecins,
-                hidePatientPhoneForMedecins: medecinPrivacy.hidePatientPhoneForMedecins
+                hidePatientPhoneForMedecins: medecinPrivacy.hidePatientPhoneForMedecins,
+                allowMedecinCreatePatientAndConsultation: medecinPrivacy.allowMedecinCreatePatientAndConsultation
             },
             token
         );
@@ -1757,6 +1760,14 @@ onBeforeUnmount(() => {
                                             <span class="toggle-description">Les numéros de téléphone patients sont masqués dans l'interface médecin</span>
                                         </div>
                                         <ToggleSwitch v-model="medecinPrivacy.hidePatientPhoneForMedecins" />
+                                    </div>
+                                    <Divider />
+                                    <div class="toggle-item">
+                                        <div class="toggle-info">
+                                            <label>Autoriser les médecins à créer patients et consultations</label>
+                                            <span class="toggle-description">Les médecins non-admin peuvent ajouter un patient et une consultation rattachée à eux-mêmes. Inactif par défaut.</span>
+                                        </div>
+                                        <ToggleSwitch v-model="medecinPrivacy.allowMedecinCreatePatientAndConsultation" />
                                     </div>
                                 </div>
                             </div>

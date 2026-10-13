@@ -606,6 +606,95 @@ class PatientService
 
     public function addPatient(array $data, ?User $actor = null): array
     {
+        $denied = $this->denyRestrictedMedecinCreation($actor);
+        if ($denied !== null) {
+            return $denied;
+        }
+
+        return $this->persistNewPatient($data, $actor);
+    }
+
+    /**
+     * @param array<string, mixed> $patientData
+     * @param array<string, mixed> $consultationData
+     * @return array<string, mixed>
+     */
+    public function addPatientWithConsultation(array $patientData, array $consultationData, ?User $actor = null): array
+    {
+        $denied = $this->denyRestrictedMedecinCreation($actor);
+        if ($denied !== null) {
+            return $denied;
+        }
+
+        if ($this->isRestrictedMedecin($actor)) {
+            $medecin = $this->employeRepo->findOneBy(['user' => $actor]);
+            if (!$medecin instanceof Employe) {
+                return ['error' => 'Aucun médecin lié à ce compte.', 'status' => 403];
+            }
+            $consultationData['medecin_id'] = $medecin->getId();
+        } elseif (empty($consultationData['medecin_id'])) {
+            return ['error' => 'Le médecin est requis pour créer la consultation.', 'status' => 400];
+        }
+
+        try {
+            return $this->em->wrapInTransaction(function () use ($patientData, $consultationData, $actor): array {
+                $patientResult = $this->persistNewPatient($patientData, $actor);
+                if (isset($patientResult['error'])) {
+                    throw new \RuntimeException((string) $patientResult['error']);
+                }
+
+                $consultationData['patient_id'] = $patientResult['patientId'];
+                $consultationResult = $this->consultationService->createConsultation($consultationData, $actor);
+                if (isset($consultationResult['error'])) {
+                    throw new \RuntimeException((string) $consultationResult['error']);
+                }
+
+                return [
+                    'success' => true,
+                    'status' => 201,
+                    'patientId' => $patientResult['patientId'],
+                    'consultation_id' => $consultationResult['consultation_id'] ?? null,
+                    'paiement_id' => $consultationResult['paiement_id'] ?? null,
+                ];
+            });
+        } catch (\RuntimeException $e) {
+            return ['error' => $e->getMessage(), 'status' => 400];
+        }
+    }
+
+    /**
+     * @return array{error: string, status: int}|null
+     */
+    private function denyRestrictedMedecinCreation(?User $actor): ?array
+    {
+        if (!$this->isRestrictedMedecin($actor)) {
+            return null;
+        }
+
+        if ($this->globalSettingsService->isMedecinCreatePatientAndConsultationAllowed()) {
+            return null;
+        }
+
+        return ['error' => 'La création de patient n\'est pas autorisée pour ce compte.', 'status' => 403];
+    }
+
+    private function isRestrictedMedecin(?User $actor): bool
+    {
+        if (!$actor instanceof User) {
+            return false;
+        }
+
+        $roles = $actor->getRoles();
+
+        return in_array('ROLE_MEDECIN', $roles, true) && !in_array('ROLE_ADMIN', $roles, true);
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     * @return array<string, mixed>
+     */
+    private function persistNewPatient(array $data, ?User $actor): array
+    {
         if (!isset($data['nom'], $data['prenom'], $data['sexe'], $data['telephone'])) {
             return ['error' => 'ParamÃ¨tres obligatoires manquants', 'status' => 400];
         }

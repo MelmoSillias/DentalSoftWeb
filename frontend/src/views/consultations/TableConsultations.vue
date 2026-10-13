@@ -82,6 +82,8 @@ const isAdmin = computed(() => Boolean(auth.user?.roles?.includes('ROLE_ADMIN'))
 const isMedecin = computed(() => Boolean(auth.user?.roles?.includes('ROLE_MEDECIN')));
 const isReception = computed(() => Boolean(auth.user?.roles?.includes('ROLE_RECEPTION') || auth.user?.roles?.includes('ROLE_RECEPTIONNISTE')));
 const isRestrictedMedecin = computed(() => isMedecin.value && !isAdmin.value);
+const allowMedecinCreatePatientAndConsultation = ref(false);
+const canCreatePatientAndConsultation = computed(() => !isRestrictedMedecin.value || allowMedecinCreatePatientAndConsultation.value);
 const shouldHidePatientDossierForMedecin = computed(() => isRestrictedMedecin.value && hidePatientDossierForMedecins.value);
 const shouldHidePatientPhoneForMedecin = computed(() => isRestrictedMedecin.value && hidePatientPhoneForMedecins.value);
 const canUseQuickActions = computed(() => !isReception.value || allowReceptionQuickClose.value);
@@ -183,6 +185,7 @@ const loadQuickClosePolicy = async ({ asPageLoad = false } = {}) => {
         allowReceptionInvoiceModification.value = settings?.allowReceptionInvoiceModification === true;
         hidePatientDossierForMedecins.value = settings?.hidePatientDossierForMedecins === true;
         hidePatientPhoneForMedecins.value = settings?.hidePatientPhoneForMedecins === true;
+        allowMedecinCreatePatientAndConsultation.value = settings?.allowMedecinCreatePatientAndConsultation === true;
         soinsList.value = normalizeSoinList(settings?.soinsList);
         return true;
     } catch (error) {
@@ -190,6 +193,7 @@ const loadQuickClosePolicy = async ({ asPageLoad = false } = {}) => {
         allowReceptionQuickClose.value = true;
         hidePatientDossierForMedecins.value = false;
         hidePatientPhoneForMedecins.value = false;
+        allowMedecinCreatePatientAndConsultation.value = false;
         soinsList.value = [...defaultSoinList];
         if (asPageLoad) {
             loadErrorMessage.value = 'Impossible de charger les paramètres des consultations.';
@@ -611,7 +615,7 @@ function resetFilters() {
             >
                 <template #actions>
                     <Button
-                        v-if="!isMedecin"
+                        v-if="canCreatePatientAndConsultation"
                         data-tour="consultations-table.create-button"
                         icon="pi pi-calendar-plus"
                         label="Nouvelle consultation"
@@ -873,7 +877,7 @@ function resetFilters() {
                                 {{ filterGlobalValue ? 'Aucun résultat ne correspond à votre recherche.' : "Aucune consultation n'a été enregistrée pour cette période." }}
                             </p>
                             <div class="flex gap-3 justify-center">
-                                <Button v-if="!isMedecin" icon="pi pi-plus" label="Créer une consultation" class="bg-gradient-to-r from-primary-500 to-primary-600 border-0" @click="showCreateDialog = true" />
+                                <Button v-if="canCreatePatientAndConsultation" icon="pi pi-plus" label="Créer une consultation" class="bg-gradient-to-r from-primary-500 to-primary-600 border-0" @click="showCreateDialog = true" />
                                 <Button v-if="filterGlobalValue" icon="pi pi-filter-slash" label="Réinitialiser les filtres" severity="secondary" outlined @click="resetFilters" />
                             </div>
                         </div>

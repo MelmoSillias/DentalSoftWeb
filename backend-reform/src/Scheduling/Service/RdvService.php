@@ -272,6 +272,47 @@ class RdvService
         return $actor instanceof User && in_array('ROLE_MEDECIN', $actor->getRoles(), true);
     }
 
+    private function isRestrictedMedecin(?User $actor): bool
+    {
+        return $actor instanceof User
+            && in_array('ROLE_MEDECIN', $actor->getRoles(), true)
+            && !in_array('ROLE_ADMIN', $actor->getRoles(), true);
+    }
+
+    /**
+     * @return array{error: string, status: int}|null
+     */
+    private function denyRestrictedMedecinConsultation(?User $actor): ?array
+    {
+        if (!$this->isRestrictedMedecin($actor)) {
+            return null;
+        }
+
+        if ($this->globalSettingsService->isMedecinCreatePatientAndConsultationAllowed()) {
+            return null;
+        }
+
+        return ['error' => 'La création de consultation n\'est pas autorisée pour ce compte.', 'status' => 403];
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     * @return array<string, mixed>
+     */
+    private function lockConsultationMedecinForRestrictedActor(array $payload, ?User $actor): array
+    {
+        if (!$this->isRestrictedMedecin($actor)) {
+            return $payload;
+        }
+
+        $medecin = $this->getMedecinForUser($actor);
+        if ($medecin instanceof Employe) {
+            $payload['medecin'] = $medecin->getId();
+        }
+
+        return $payload;
+    }
+
     private function shouldCreateConsultation(array $payload = []): bool
     {
         $flag = $payload['create_consultation'] ?? false;
@@ -324,10 +365,18 @@ class RdvService
             return ['error' => 'RDV non trouvé', 'status' => 404];
         }
 
+        if ($newStatus === 1 && $this->shouldCreateConsultation($payload)) {
+            $denied = $this->denyRestrictedMedecinConsultation($actor);
+            if ($denied !== null) {
+                return $denied;
+            }
+        }
+
         $rdv->setStatut($newStatus);
         $createdConsultation = null;
 
         if ($newStatus === 1 && $this->shouldCreateConsultation($payload)) {
+            $payload = $this->lockConsultationMedecinForRestrictedActor($payload, $actor);
             $resolved = $this->resolveMedecinForConsultation($rdv, $payload);
             if (isset($resolved['error'])) {
                 return $resolved;
@@ -370,8 +419,15 @@ class RdvService
         $newRdv = null;
 
         if ($action === 'validate') {
+            if ($this->shouldCreateConsultation($payload)) {
+                $denied = $this->denyRestrictedMedecinConsultation($actor);
+                if ($denied !== null) {
+                    return $denied;
+                }
+            }
             $rdv->setStatut(1);
             if ($this->shouldCreateConsultation($payload)) {
+                $payload = $this->lockConsultationMedecinForRestrictedActor($payload, $actor);
                 $resolved = $this->resolveMedecinForConsultation($rdv, $payload);
                 if (isset($resolved['error'])) {
                     return $resolved;
