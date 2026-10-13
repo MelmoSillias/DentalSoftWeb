@@ -168,6 +168,7 @@ export function usePatients() {
             profession: patient.profession ?? dossier.profession ?? '--',
             lieuNaissance: patient.lieuNaissance ?? dossier.lieuNaissance ?? dossier.lieu_naissance ?? '--',
             referencement: patient.referencement ?? dossier.referencement ?? '',
+            createdBy: patient.createdBy ?? dossier.createdBy ?? null,
             adresse: patient.adresse ?? dossier.adresse ?? '--',
             contactUrgence,
             insuranceProfile,

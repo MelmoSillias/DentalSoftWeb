@@ -44,6 +44,7 @@ export const normalizePatient = (raw = {}) => ({
     deletedAt: raw.deletedAt ?? raw.deleted_at ?? null,
     dateInscription: raw.dateInscription ?? raw.date_inscription ?? raw.createdAt ?? raw.created_at ?? '',
     createdAt: raw.createdAt ?? raw.created_at ?? raw.dateInscription ?? raw.date_inscription ?? '',
+    createdBy: raw.createdBy ?? raw.created_by ?? null,
     contactUrgence: raw.contactUrgence ?? raw.contact_urgence ?? null,
     smsPreferences: raw.smsPreferences ?? {
         patientCreated: raw.smsPatientCreated ?? false,

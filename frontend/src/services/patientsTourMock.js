@@ -185,7 +185,8 @@ function buildStaticPatients() {
                 motif: 'Controle post detartrage',
                 statut: 'NORMAL'
             },
-            impayees: 0
+            impayees: 0,
+            createdBy: { id: 1, username: 'reception', fullname: 'Awa Diop' }
         },
         1002: {
             id: 1002,
@@ -232,7 +233,8 @@ function buildStaticPatients() {
                 motif: 'Consultation en cours de demonstration',
                 statut: 'SUIVI'
             },
-            impayees: 15000
+            impayees: 15000,
+            createdBy: { id: 2, username: 'accueil', fullname: 'Moussa Fall' }
         },
         1003: {
             id: 1003,
@@ -753,7 +755,8 @@ function createPatientRecord(payload, existingPatient = null, id = null) {
             ...(payload?.smsPreferences || {})
         },
         derniereConsultation: base.derniereConsultation ?? null,
-        impayees: Number(base.impayees || 0)
+        impayees: Number(base.impayees || 0),
+        createdBy: base.createdBy ?? { id: 1, username: 'reception', fullname: 'Awa Diop' }
     };
 }
 

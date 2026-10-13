@@ -128,7 +128,7 @@ onMounted(() => {
 });
 
 watch(
-    () => [selectedDate.value, props.refreshKey],
+    () => [selectedDate.value, props.refreshKey, props.lockedMedecinId],
     () => {
         refreshDay();
         refreshStats();

@@ -6,6 +6,7 @@ use App\Scheduling\Entity\Rdv;
 use App\IdentityAccess\Entity\User;
 use App\IdentityAccess\Repository\EmployeRepository;
 use App\Scheduling\Service\RdvService;
+use App\Settings\Service\GlobalSettingsService;
 use DateTime;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -17,7 +18,13 @@ class RdvController extends AbstractController
     public function __construct(
         private RdvService $rdvService,
         private EmployeRepository $employeRepo,
+        private GlobalSettingsService $globalSettingsService,
     ) {
+    }
+
+    private function shouldForceActorMedecinScope(bool $isMedecin): bool
+    {
+        return $isMedecin && !$this->globalSettingsService->isMedecinCreatePatientAndConsultationAllowed();
     }
 
     private function jsonPayload(Request $request): array
@@ -69,14 +76,14 @@ class RdvController extends AbstractController
         $actor = $this->getUser();
         $isMedecin = in_array('ROLE_MEDECIN', $actor?->getRoles() ?? [], true);
         $actorMedecin = $isMedecin ? $this->rdvService->getMedecinForUser($actor) : null;
-        if ($isMedecin && !$actorMedecin) {
+        if ($this->shouldForceActorMedecinScope($isMedecin) && !$actorMedecin) {
             return new JsonResponse(['error' => 'Aucun médecin associé'], 403);
         }
 
         $dateStr = $request->query->get('date');
         $startStr = $request->query->get('start');
         $endStr = $request->query->get('end');
-        $medecinId = $isMedecin ? $actorMedecin?->getId() : $request->query->get('medecin');
+        $medecinId = $this->shouldForceActorMedecinScope($isMedecin) ? $actorMedecin?->getId() : $request->query->get('medecin');
 
         try {
             if ($dateStr) {
@@ -109,7 +116,7 @@ class RdvController extends AbstractController
         $actor = $this->getUser();
         $isMedecin = in_array('ROLE_MEDECIN', $actor?->getRoles() ?? [], true);
         $actorMedecin = $isMedecin ? $this->rdvService->getMedecinForUser($actor) : null;
-        if ($isMedecin && !$actorMedecin) {
+        if ($this->shouldForceActorMedecinScope($isMedecin) && !$actorMedecin) {
             return new JsonResponse(['error' => 'Aucun médecin associé'], 403);
         }
 
@@ -118,7 +125,7 @@ class RdvController extends AbstractController
             return new JsonResponse(['error' => 'Format de date invalide'], 400);
         }
 
-        $medecinId = $isMedecin ? $actorMedecin?->getId() : $request->query->get('medecin');
+        $medecinId = $this->shouldForceActorMedecinScope($isMedecin) ? $actorMedecin?->getId() : $request->query->get('medecin');
         if ($medecinId) {
             $medecin = $this->employeRepo->find((int) $medecinId);
             if (!$medecin) {
@@ -138,7 +145,7 @@ class RdvController extends AbstractController
         $actor = $this->getUser();
         $isMedecin = in_array('ROLE_MEDECIN', $actor?->getRoles() ?? [], true);
         $actorMedecin = $isMedecin ? $this->rdvService->getMedecinForUser($actor) : null;
-        if ($isMedecin && !$actorMedecin) {
+        if ($this->shouldForceActorMedecinScope($isMedecin) && !$actorMedecin) {
             return new JsonResponse(['error' => 'Aucun médecin associé'], 403);
         }
 
@@ -147,7 +154,7 @@ class RdvController extends AbstractController
             return new JsonResponse(['error' => 'Format de date invalide'], 400);
         }
 
-        $medecinId = $isMedecin ? $actorMedecin?->getId() : $request->query->get('medecin');
+        $medecinId = $this->shouldForceActorMedecinScope($isMedecin) ? $actorMedecin?->getId() : $request->query->get('medecin');
         $medecin = $medecinId ? $this->employeRepo->find((int) $medecinId) : null;
         if ($medecinId && !$medecin) {
             return new JsonResponse(['error' => 'Médecin introuvable'], 404);
@@ -165,7 +172,7 @@ class RdvController extends AbstractController
         $actor = $this->getUser();
         $isMedecin = in_array('ROLE_MEDECIN', $actor?->getRoles() ?? [], true);
         $actorMedecin = $isMedecin ? $this->rdvService->getMedecinForUser($actor) : null;
-        if ($isMedecin && !$actorMedecin) {
+        if ($this->shouldForceActorMedecinScope($isMedecin) && !$actorMedecin) {
             return new JsonResponse(['error' => 'Aucun médecin associé'], 403);
         }
 
@@ -183,7 +190,7 @@ class RdvController extends AbstractController
             return new JsonResponse(['error' => 'Format de date invalide'], 400);
         }
 
-        $medecinId = $isMedecin ? $actorMedecin?->getId() : $request->query->get('medecin');
+        $medecinId = $this->shouldForceActorMedecinScope($isMedecin) ? $actorMedecin?->getId() : $request->query->get('medecin');
         $excludeCancelled = in_array('ROLE_RECEPTIONNISTE', $this->getUser()?->getRoles() ?? [], true);
 
         $data = $this->rdvService->listByRange($start, $end, $medecinId ? (int) $medecinId : null, $excludeCancelled);
@@ -197,7 +204,7 @@ class RdvController extends AbstractController
         $actor = $this->getUser();
         $isMedecin = in_array('ROLE_MEDECIN', $actor?->getRoles() ?? [], true);
         $actorMedecin = $isMedecin ? $this->rdvService->getMedecinForUser($actor) : null;
-        if ($isMedecin && !$actorMedecin) {
+        if ($this->shouldForceActorMedecinScope($isMedecin) && !$actorMedecin) {
             return new JsonResponse(['error' => 'Aucun médecin associé'], 403);
         }
 
@@ -215,7 +222,7 @@ class RdvController extends AbstractController
             return new JsonResponse(['error' => 'Format de date invalide'], 400);
         }
 
-        $medecinId = $isMedecin ? $actorMedecin?->getId() : $request->query->get('medecin');
+        $medecinId = $this->shouldForceActorMedecinScope($isMedecin) ? $actorMedecin?->getId() : $request->query->get('medecin');
 
         $data = $this->rdvService->listPendingByRange($start, $end, $medecinId ? (int) $medecinId : null);
 

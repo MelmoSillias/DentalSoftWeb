@@ -64,7 +64,9 @@ final class ConsultationController extends AbstractController{
     #[Route('/api/consultations/pending', name: 'consultations_pending')]
     public function pendingConsultations(): Response
     {
-        $restrictToMedecin = $this->isGranted('ROLE_MEDECIN') && !$this->isGranted('ROLE_ADMIN');
+        $restrictToMedecin = $this->isGranted('ROLE_MEDECIN')
+            && !$this->isGranted('ROLE_ADMIN')
+            && !$this->globalSettingsService->isMedecinCreatePatientAndConsultationAllowed();
         $data = $this->consultationService->listPendingConsultationsJsonForUser($this->getUser(), $restrictToMedecin);
 
         return $this->json(

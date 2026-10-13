@@ -81,6 +81,10 @@ const formatDateTime = (value) => {
                     <td>{{ formatDateTime(patient?.dateInscription) }}</td>
                 </tr>
                 <tr>
+                    <th>Ajouté par</th>
+                    <td>{{ patient?.createdBy?.fullname || patient?.createdBy?.username || '—' }}</td>
+                </tr>
+                <tr>
                     <th>Contact d'urgence</th>
                     <td>
                         <template v-if="patient?.contactUrgence">

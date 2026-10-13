@@ -347,6 +347,10 @@ class PatientService
         $resolvedLimit = max(1, min($limit, 100));
         $resolvedSortOrder = strtolower($sortOrder ?? 'asc') === 'desc' ? 'desc' : 'asc';
 
+        if ($medecinOnly && $this->globalSettingsService->isMedecinCreatePatientAndConsultationAllowed()) {
+            $medecinOnly = false;
+        }
+
         $medecin = null;
         if ($medecinOnly) {
             $resolved = $this->resolveMedecinFromUser($user);
@@ -460,6 +464,10 @@ class PatientService
 
     public function getOverviewStats(?object $user = null, bool $medecinOnly = false): array
     {
+        if ($medecinOnly && $this->globalSettingsService->isMedecinCreatePatientAndConsultationAllowed()) {
+            $medecinOnly = false;
+        }
+
         $medecin = null;
         if ($medecinOnly) {
             $resolved = $this->resolveMedecinFromUser($user);
@@ -714,6 +722,9 @@ class PatientService
             $patient->setNumCarnet(uniqid('PAT-', true));
             $patient->setGroupeSanguin($data['groupeSanguin'] ?? null);
             $patient->setReferencement((string) ($data['referencement'] ?? ''));
+            if ($actor instanceof User) {
+                $patient->setCreatedBy($actor);
+            }
             $this->applySmsPreferences($patient, $data);
             $this->applyInsuranceProfile($patient, $data);
 
@@ -1084,6 +1095,7 @@ public function removeArchiveFile(int $patientId, string $fileUrl): array
             'groupeSanguin' => $patient->getGroupeSanguin(),
             'dateInscription' => $patient->getDateInscription()->format('Y-m-d H:i'),
             'referencement' => $patient->getReferencement() ?? '',
+            'createdBy' => $this->formatCreatedBy($patient),
             'contactUrgence' => $contactUrgence,
             'smsPreferences' => $this->extractSmsPreferences($patient),
             'insuranceProfile' => $this->formatInsuranceProfile($patient),
@@ -1316,6 +1328,29 @@ public function removeArchiveFile(int $patientId, string $fileUrl): array
         ];
     }
 
+    /**
+     * @return array{id: int|null, username: string|null, fullname: string}|null
+     */
+    private function formatCreatedBy(Patient $patient): ?array
+    {
+        $user = $patient->getCreatedBy();
+        if (!$user instanceof User) {
+            return null;
+        }
+
+        $employe = $this->employeRepo->findOneBy(['user' => $user]);
+        $fullname = $employe instanceof Employe ? trim((string) $employe->getFullName()) : '';
+        if ($fullname === '') {
+            $fullname = trim((string) $user->getUsername());
+        }
+
+        return [
+            'id' => $user->getId(),
+            'username' => $user->getUsername(),
+            'fullname' => $fullname,
+        ];
+    }
+
     private function ensurePatientPortalAccount(Patient $patient): User
     {
         $user = $patient->getPortalUser();
@@ -1471,6 +1506,7 @@ public function removeArchiveFile(int $patientId, string $fileUrl): array
             'groupeSanguin' => $patient->getGroupeSanguin(),
             'dateInscription' => $patient->getDateInscription()->format('Y-m-d H:i'),
             'referencement' => $patient->getReferencement() ?? '',
+            'createdBy' => $this->formatCreatedBy($patient),
             'contactUrgence' => $contactUrgence,
             'portalAccount' => $this->formatPortalAccount($patient),
             'smsPreferences' => $this->extractSmsPreferences($patient),
@@ -1890,6 +1926,7 @@ public function removeArchiveFile(int $patientId, string $fileUrl): array
             'numCarnet' => $patient->getNumCarnet(),
             'groupeSanguin' => $patient->getGroupeSanguin(),
             'dateInscription' => $patient->getDateInscription()?->format('Y-m-d H:i'),
+            'createdBy' => $this->formatCreatedBy($patient),
             'contactUrgence' => $contactUrgence,
             'allergies' => $allergies,
             'antecedents' => $antecedents,

@@ -528,7 +528,7 @@ class ConsultationService
             ->setParameter('start', $start)
             ->setParameter('end', $end);
 
-        if ($user instanceof User && in_array('ROLE_MEDECIN', $user->getRoles(), true)) {
+        if ($user instanceof User && in_array('ROLE_MEDECIN', $user->getRoles(), true) && !$this->globalSettingsService->isMedecinCreatePatientAndConsultationAllowed()) {
             $medecin = $this->employeRepo->FindOneBy(['user' => $user]);
             if ($medecin) {
                 $qb->andWhere('(m = :medecin OR m IS NULL)')

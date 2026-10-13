@@ -84,6 +84,13 @@ const referencementLabel = computed(() => {
     return referralLabels[value] || value;
 });
 
+const createdByLabel = computed(() => {
+    const creator = props.patient?.createdBy;
+    if (!creator || typeof creator !== 'object') return '--';
+    const name = String(creator.fullname || creator.username || '').trim();
+    return name || '--';
+});
+
 const insuranceProfile = computed(() => props.patient?.insuranceProfile || null);
 const insuranceName = computed(() => insuranceProfile.value?.assurance?.nom || insuranceProfile.value?.assurance?.code || 'Assurance');
 const insuranceCoverageRate = computed(() => Number(insuranceProfile.value?.coverageRate ?? 0) || 0);
@@ -194,6 +201,10 @@ const handlePhotoChange = (event) => {
                 <div class="dossier-field-row">
                     <span class="dossier-field-row__label">Référencement</span>
                     <span class="dossier-field-row__value">{{ referencementLabel }}</span>
+                </div>
+                <div class="dossier-field-row">
+                    <span class="dossier-field-row__label">Ajouté par</span>
+                    <span class="dossier-field-row__value">{{ createdByLabel }}</span>
                 </div>
             </div>
 

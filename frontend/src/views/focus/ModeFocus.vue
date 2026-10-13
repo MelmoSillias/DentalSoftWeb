@@ -26,6 +26,7 @@ import { sendInvoiceSms } from '@/services/smsService';
 import { useAuthStore } from '@/stores/auth';
 import { usePaymentMethodsStore } from '@/stores/paymentMethods';
 import Button from 'primevue/button';
+import SpeedDial from 'primevue/speeddial';
 import ConfirmPopup from 'primevue/confirmpopup';
 import AppDialog from '@/components/layout/AppDialog.vue';
 import { useConfirm } from 'primevue/useconfirm';
@@ -126,6 +127,7 @@ const isMedecin = computed(() => roles.value.includes('ROLE_MEDECIN'));
 const isReception = computed(() => roles.value.includes('ROLE_RECEPTION') || roles.value.includes('ROLE_RECEPTIONNISTE') || roles.value.includes('ROLE_SECRETAIRE'));
 const isRestrictedMedecin = computed(() => isMedecin.value && !isAdmin.value);
 const showFocusQuickAdmission = computed(() => allowMedecinCreatePatientAndConsultation.value && (isAdmin.value || isRestrictedMedecin.value));
+const showFocusQuickActions = computed(() => showFocusQuickAdmission.value && selectedMode.value === 'medecin');
 const shouldHidePatientDossierForMedecin = computed(() => isRestrictedMedecin.value && hidePatientDossierForMedecins.value);
 const shouldHidePatientPhoneForMedecin = computed(() => isRestrictedMedecin.value && hidePatientPhoneForMedecins.value);
 const availableModes = computed(() => {
@@ -859,6 +861,21 @@ const handleDossierUpdated = () => {
     loadConsultations({ silent: true });
 };
 
+const focusQuickActions = computed(() => [
+    {
+        label: 'Consultation seule',
+        icon: 'pi pi-plus',
+        command: () => openCreateConsultationDialog()
+    },
+    {
+        label: 'Patient et consultation',
+        icon: 'pi pi-user-plus',
+        command: () => {
+            quickAdmissionVisible.value = true;
+        }
+    }
+]);
+
 const openCreateConsultationDialog = () => {
     consultationToolbarLoading.value = true;
     try {
@@ -1365,18 +1382,44 @@ onBeforeUnmount(() => {
                     "
                 />
             </AppDialog>
-            <button
-                v-if="showFocusQuickAdmission"
-                type="button"
-                class="fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-lg transition hover:scale-105 hover:shadow-xl"
-                style="bottom: max(1.5rem, env(safe-area-inset-bottom))"
-                aria-label="Nouveau patient et consultation"
-                title="Nouveau patient et consultation"
-                @click="quickAdmissionVisible = true"
+            <SpeedDial
+                v-if="showFocusQuickActions"
+                :model="focusQuickActions"
+                direction="up"
+                :transition-delay="40"
+                class="focus-quick-actions right-6 z-40"
+                :style="{ bottom: 'max(1.5rem, env(safe-area-inset-bottom))' }"
+                button-class="!h-14 !w-14 !border-0 !bg-gradient-to-r !from-primary-500 !to-primary-600 !shadow-lg"
+                :button-props="{ rounded: true, severity: 'primary' }"
+                show-icon="pi pi-plus"
+                hide-icon="pi pi-times"
+                aria-label="Ajouter une consultation"
             >
-                <i class="pi pi-user-plus text-xl"></i>
-            </button>
+                <template #item="{ item, toggleCallback }">
+                    <button
+                        type="button"
+                        class="flex h-11 items-center gap-2 whitespace-nowrap rounded-full bg-white py-1 pl-1.5 pr-4 text-sm font-semibold text-surface-800 shadow-lg ring-1 ring-surface-200 transition hover:bg-surface-50 dark:bg-surface-800 dark:text-surface-50 dark:ring-surface-700 dark:hover:bg-surface-700"
+                        @click="toggleCallback"
+                    >
+                        <span class="flex h-8 w-8 items-center justify-center rounded-full bg-primary-500 text-white">
+                            <i :class="item.icon"></i>
+                        </span>
+                        {{ item.label }}
+                    </button>
+                </template>
+            </SpeedDial>
             <FocusQuickAdmissionDialog v-model:visible="quickAdmissionVisible" @saved="loadConsultations" />
         </div>
     </section>
 </template>
+
+<style>
+.focus-quick-actions.p-speeddial {
+    position: fixed !important;
+    align-items: flex-end !important;
+}
+
+.focus-quick-actions .p-speeddial-list {
+    align-items: flex-end;
+}
+</style>

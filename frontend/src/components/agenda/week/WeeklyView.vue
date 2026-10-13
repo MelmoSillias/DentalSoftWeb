@@ -333,9 +333,7 @@ watch(
 watch(
     () => props.lockedMedecinId,
     (next) => {
-        if (next) {
-            filters.medecinId = next;
-        }
+        filters.medecinId = next || null;
     },
     { immediate: true }
 );

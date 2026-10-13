@@ -1765,7 +1765,7 @@ onBeforeUnmount(() => {
                                     <div class="toggle-item">
                                         <div class="toggle-info">
                                             <label>Autoriser les médecins à créer patients et consultations</label>
-                                            <span class="toggle-description">Les médecins non-admin peuvent ajouter un patient et une consultation rattachée à eux-mêmes. Inactif par défaut.</span>
+                                            <span class="toggle-description">Les médecins non-admin peuvent ajouter un patient et une consultation rattachée à eux-mêmes. Les listes patients, consultations et rendez-vous ne sont plus limitées à leur activité. Inactif par défaut.</span>
                                         </div>
                                         <ToggleSwitch v-model="medecinPrivacy.allowMedecinCreatePatientAndConsultation" />
                                     </div>

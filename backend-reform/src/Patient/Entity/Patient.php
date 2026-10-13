@@ -123,6 +123,10 @@ class Patient
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL', unique: true)]
     private ?User $portalUser = null;
 
+    #[ORM\ManyToOne(targetEntity: User::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?User $createdBy = null;
+
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $photo = null;
 
@@ -620,6 +624,18 @@ class Patient
     public function getPortalUser(): ?User
     {
         return $this->portalUser;
+    }
+
+    public function getCreatedBy(): ?User
+    {
+        return $this->createdBy;
+    }
+
+    public function setCreatedBy(?User $createdBy): static
+    {
+        $this->createdBy = $createdBy;
+
+        return $this;
     }
 
     public function setPortalUser(?User $portalUser): static

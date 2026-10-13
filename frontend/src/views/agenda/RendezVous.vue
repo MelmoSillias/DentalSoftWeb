@@ -77,8 +77,9 @@ const connectedMedecinId = computed(() => {
     return foundByName?.id ?? null;
 });
 
+const scopeListsToConnectedMedecin = computed(() => isMedecinUser.value && !allowMedecinCreatePatientAndConsultation.value);
 const scopedMedecinsList = computed(() => {
-    if (!isMedecinUser.value) return medecinsList.value;
+    if (!scopeListsToConnectedMedecin.value) return medecinsList.value;
     const id = connectedMedecinId.value;
     if (!id) return [];
     return (medecinsList.value || []).filter((m) => Number(m.id) === Number(id));
@@ -374,8 +375,8 @@ onBeforeUnmount(() => {
                                     :medecins="scopedMedecinsList"
                                     :api="api"
                                     :refreshKey="refreshKey"
-                                    :lockedMedecinId="isMedecinUser ? connectedMedecinId : null"
-                                    :medecinReadonly="isMedecinUser"
+                                    :lockedMedecinId="scopeListsToConnectedMedecin ? connectedMedecinId : null"
+                                    :medecinReadonly="scopeListsToConnectedMedecin"
                                     :embedded="embedded"
                                     @request-create="openCreate"
                                     @request-validate="openValidate"
@@ -393,7 +394,7 @@ onBeforeUnmount(() => {
                                     :medecins="scopedMedecinsList"
                                     :api="api"
                                     :refreshKey="refreshKey"
-                                    :lockedMedecinId="isMedecinUser ? connectedMedecinId : null"
+                                    :lockedMedecinId="scopeListsToConnectedMedecin ? connectedMedecinId : null"
                                     :embedded="embedded"
                                     @request-create="openCreate"
                                     @request-validate="openValidate"
