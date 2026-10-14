@@ -182,7 +182,8 @@ const closingTimeModel = computed({
 const medecinPrivacy = reactive({
     hidePatientDossierForMedecins: false,
     hidePatientPhoneForMedecins: false,
-    allowMedecinCreatePatientAndConsultation: false
+    allowMedecinCreatePatientAndConsultation: false,
+    allowMedecinInvoiceSettlement: false
 });
 
 const clinicalForm = reactive({
@@ -489,6 +490,7 @@ const loadGeneralSettings = async (force = false) => {
         medecinPrivacy.hidePatientDossierForMedecins = settings.hidePatientDossierForMedecins === true;
         medecinPrivacy.hidePatientPhoneForMedecins = settings.hidePatientPhoneForMedecins === true;
         medecinPrivacy.allowMedecinCreatePatientAndConsultation = settings.allowMedecinCreatePatientAndConsultation === true;
+        medecinPrivacy.allowMedecinInvoiceSettlement = settings.allowMedecinInvoiceSettlement === true;
         clinicalForm.ficheFormSimplifie = settings.ficheFormSimplifie === true;
         clinicalForm.showDiagnosticPositifInConsultation = settings.showDiagnosticPositifInConsultation !== false;
         billingPolicy.allowReceptionInvoiceModification = settings.allowReceptionInvoiceModification === true;
@@ -737,7 +739,8 @@ const saveMedecinPrivacyAction = async () => {
             {
                 hidePatientDossierForMedecins: medecinPrivacy.hidePatientDossierForMedecins,
                 hidePatientPhoneForMedecins: medecinPrivacy.hidePatientPhoneForMedecins,
-                allowMedecinCreatePatientAndConsultation: medecinPrivacy.allowMedecinCreatePatientAndConsultation
+                allowMedecinCreatePatientAndConsultation: medecinPrivacy.allowMedecinCreatePatientAndConsultation,
+                allowMedecinInvoiceSettlement: medecinPrivacy.allowMedecinInvoiceSettlement
             },
             token
         );
@@ -1768,6 +1771,14 @@ onBeforeUnmount(() => {
                                             <span class="toggle-description">Les médecins non-admin peuvent ajouter un patient et une consultation rattachée à eux-mêmes. Les listes patients, consultations et rendez-vous ne sont plus limitées à leur activité. Inactif par défaut.</span>
                                         </div>
                                         <ToggleSwitch v-model="medecinPrivacy.allowMedecinCreatePatientAndConsultation" />
+                                    </div>
+                                    <Divider />
+                                    <div class="toggle-item">
+                                        <div class="toggle-info">
+                                            <label>Autoriser les médecins à régler les factures</label>
+                                            <span class="toggle-description">Les médecins peuvent voir le détail d'une facture et encaisser le reste depuis l'historique des consultations et le mode focus, sans passer par la caisse. Inactif par défaut.</span>
+                                        </div>
+                                        <ToggleSwitch v-model="medecinPrivacy.allowMedecinInvoiceSettlement" />
                                     </div>
                                 </div>
                             </div>

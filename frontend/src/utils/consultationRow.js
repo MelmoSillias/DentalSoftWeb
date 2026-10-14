@@ -1,6 +1,54 @@
-import { buildFactureContextMenuItems } from '@/utils/factureRow';
+import { buildFactureContextMenuItems, computeFactureStatus } from '@/utils/factureRow';
 
 export const isConsultationClosed = (consultation) => Number(consultation?.state ?? consultation?.statut) === 1;
+
+export const consultationHasInvoice = (consultation) => Number(consultation?.factureId) > 0;
+
+export const consultationInvoiceStatus = (consultation) => {
+    if (!consultationHasInvoice(consultation)) {
+        return { label: 'Aucune facture', severity: 'contrast' };
+    }
+
+    return computeFactureStatus({
+        montant: consultation.factureMontant,
+        reste: consultation.factureReste,
+        isRegle: Boolean(consultation.factureReglee),
+        insuranceStatus: consultation.factureInsuranceStatus || null
+    });
+};
+
+export const consultationToFactureRow = (consultation) => {
+    if (!consultationHasInvoice(consultation)) return null;
+
+    const isInsurance = consultation.factureType === 'FactureAssurance';
+    const factureId = Number(consultation.factureId);
+
+    return {
+        id: factureId,
+        factureAssuranceId: isInsurance ? Number(consultation.factureAssuranceId || factureId) : null,
+        consultation: consultation.id,
+        date: consultation.createdAt,
+        montant: Number(consultation.factureMontant) || 0,
+        reste: Number(consultation.factureReste) || 0,
+        isRegle: Boolean(consultation.factureReglee),
+        type: isInsurance ? 'FactureAssurance' : 'Facture',
+        patientId: consultation.patientId,
+        patient: consultation.patient,
+        insuranceStatus: consultation.factureInsuranceStatus || null,
+        insurance: isInsurance
+            ? {
+                  hasInsurance: true,
+                  factureAssuranceId: Number(consultation.factureAssuranceId || factureId),
+                  assuranceNom: consultation.assuranceNom || null,
+                  insuranceRate: Number(consultation.insuranceRate) || 0,
+                  insuranceAmount: Number(consultation.insuranceAmount) || 0,
+                  patientPaidAmount: Number(consultation.patientPaidAmount) || 0,
+                  restePatient: Number(consultation.factureReste) || 0,
+                  insuranceStatus: consultation.factureInsuranceStatus || 'pending'
+              }
+            : { hasInsurance: false, insuranceStatus: 'none' }
+    };
+};
 
 export const findFactureForConsultation = (consultation, factures = []) => {
     const consultationId = consultation?.id;

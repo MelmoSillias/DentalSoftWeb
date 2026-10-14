@@ -13,14 +13,16 @@ import { usePrinter } from '@/composables/usePrinter';
 import { useFocusRealtime } from '@/composables/useFocusRealtime';
 import { defaultSoinList, fetchConsultationDetails, fetchConsultationInvoice, fetchConsultationsByDate, fetchFocusReceptionData, normalizeSoinList, updateConsultationInvoice, cancelConsultation } from '@/services/consultations';
 import { getDefaultClassicMethod } from '@/utils/paymentMethodUtils';
-import { fetchFactureDetail, fetchUnpaidFacturesByPatient, payFacture, payInsurancePatientShare, resetFacturePayments, validateEmptyFacture } from '@/services/caisseService';
+import { fetchFactureDetail, fetchInsuranceClaimDetail, fetchUnpaidFacturesByPatient, payFacture, payInsurancePatientShare, resetFacturePayments, validateEmptyFacture } from '@/services/caisseService';
 import { advanceAfterSettledTab, applyPartialPaymentToTab, buildPayTabs, factureTabId, isInsuranceFactureRow, resolveFacturePatientId, sumPriorReliquatFromTabs } from '@/composables/usePayTabsDialog';
 import { fetchPublicGeneralSettings } from '@/services/globalSettingsService';
+import { consultationToFactureRow } from '@/utils/consultationRow';
 import { canUserModifyInvoice } from '@/utils/invoiceModificationAccess';
-import { fetchInvoicePrintData, fetchReceiptPrintData } from '@/services/printService';
+import { fetchFactureAssurancePrintData, fetchInvoicePrintData, fetchReceiptPrintData } from '@/services/printService';
 import { checkConsultationActive, deleteConsultation } from '@/services/patients';
 import { fetchPatientById, normalizePatient } from '@/services/patients';
 import PrintDevisBody from '@/components/print/PrintDevisBody.vue';
+import PrintFactureAssuranceBody from '@/components/print/PrintFactureAssuranceBody.vue';
 import PrintReceiptBody from '@/components/print/PrintReceiptBody.vue';
 import { sendInvoiceSms } from '@/services/smsService';
 import { useAuthStore } from '@/stores/auth';
@@ -53,11 +55,12 @@ const allowReceptionInvoiceModification = ref(false);
 const hidePatientDossierForMedecins = ref(false);
 const hidePatientPhoneForMedecins = ref(false);
 const allowMedecinCreatePatientAndConsultation = ref(false);
+const allowMedecinInvoiceSettlement = ref(false);
 const quickAdmissionVisible = ref(false);
 const soinsList = ref([...defaultSoinList]);
 const selectedMode = ref('reception');
 const showCompletedSecretary = ref(true);
-const showCompletedMedecin = ref(false);
+const showCompletedMedecin = ref(true);
 const selectedConsultationId = ref(null);
 const selectedPatient = ref(null);
 const receptionRecentPatients = ref([]);
@@ -67,6 +70,7 @@ const detailsDialogVisible = ref(false);
 const detailsLoading = ref(false);
 const detailData = ref(null);
 const factureDialogVisible = ref(false);
+const factureLoading = ref(false);
 const factureSaving = ref(false);
 const factureLines = ref([]);
 const factureDate = ref('');
@@ -123,6 +127,7 @@ const hasInitialLoadCompleted = ref(false);
 const roles = computed(() => auth.user?.roles || []);
 const isAdmin = computed(() => roles.value.includes('ROLE_ADMIN'));
 const canModifyInvoiceByRole = computed(() => canUserModifyInvoice(auth.user, { allowReceptionInvoiceModification: allowReceptionInvoiceModification.value }));
+const canMedecinSettleInvoices = computed(() => isMedecin.value && allowMedecinInvoiceSettlement.value);
 const isMedecin = computed(() => roles.value.includes('ROLE_MEDECIN'));
 const isReception = computed(() => roles.value.includes('ROLE_RECEPTION') || roles.value.includes('ROLE_RECEPTIONNISTE') || roles.value.includes('ROLE_SECRETAIRE'));
 const isRestrictedMedecin = computed(() => isMedecin.value && !isAdmin.value);
@@ -353,6 +358,7 @@ const loadSettings = async () => {
         hidePatientDossierForMedecins.value = settings?.hidePatientDossierForMedecins === true;
         hidePatientPhoneForMedecins.value = settings?.hidePatientPhoneForMedecins === true;
         allowMedecinCreatePatientAndConsultation.value = settings?.allowMedecinCreatePatientAndConsultation === true;
+        allowMedecinInvoiceSettlement.value = settings?.allowMedecinInvoiceSettlement === true;
         soinsList.value = normalizeSoinList(settings?.soinsList);
     } catch (_) {
         allowReceptionQuickClose.value = true;
@@ -360,6 +366,7 @@ const loadSettings = async () => {
         hidePatientDossierForMedecins.value = false;
         hidePatientPhoneForMedecins.value = false;
         allowMedecinCreatePatientAndConsultation.value = false;
+        allowMedecinInvoiceSettlement.value = false;
         soinsList.value = [...defaultSoinList];
     }
 };
@@ -528,11 +535,12 @@ const handleAfterInvoiceSettled = async () => {
     selectPayTab(advanced.nextTabId);
 };
 
-const openPayDialog = async ({ primaryMode = null } = {}) => {
-    if (!currentReceptionInvoiceRow.value) return;
+const openPayDialog = async ({ primaryMode = null, row: sourceRow = null } = {}) => {
+    const source = sourceRow || currentReceptionInvoiceRow.value;
+    if (!source) return;
     const row = {
-        ...currentReceptionInvoiceRow.value,
-        patientId: resolveFacturePatientId(currentReceptionInvoiceRow.value) || Number(currentConsultation.value?.patientId ?? currentConsultation.value?.patient?.id ?? 0) || null
+        ...source,
+        patientId: resolveFacturePatientId(source) || Number(currentConsultation.value?.patientId ?? currentConsultation.value?.patient?.id ?? 0) || null
     };
     selectedFacture.value = row;
     await loadPaymentMethods();
@@ -592,20 +600,69 @@ const openModifyDialog = async () => {
     }
 };
 
-const openPreviewDialog = async () => {
-    if (!currentReceptionInvoiceRow.value?.id) return;
+const mapClaimToPreviewData = (detail, claimId) => ({
+    ...detail,
+    insurance: {
+        hasInsurance: true,
+        assuranceNom: detail?.assurance?.nom,
+        assuranceCode: detail?.assurance?.code,
+        tauxCouverture: detail?.tauxCouverture,
+        insuranceRate: detail?.tauxCouverture,
+        montantTotal: detail?.montantTotal,
+        montantAssurance: detail?.montantAssurance,
+        insuranceAmount: detail?.montantAssurance,
+        montantPatient: detail?.montantPatient,
+        restePatient: detail?.restePatient,
+        patientPaidAmount: detail?.patientPaidAmount,
+        factureAssuranceId: claimId
+    },
+    type: 'FactureAssurance',
+    montant: detail?.montantPatient ?? 0,
+    reste: detail?.restePatient ?? 0,
+    contenus: detail?.lignes || []
+});
+
+const openPreviewDialog = async (row = null) => {
+    const source = row?.id ? row : currentReceptionInvoiceRow.value;
+    if (!source?.id) return;
     previewDialogVisible.value = true;
     previewLoading.value = true;
     previewDialogTab.value = 'services';
-    selectedFacture.value = currentReceptionInvoiceRow.value;
+    selectedFacture.value = source;
     try {
-        previewData.value = await fetchFactureDetail(currentReceptionInvoiceRow.value.id, token);
+        if (source.type === 'FactureAssurance') {
+            const claimId = source.factureAssuranceId || source.insurance?.factureAssuranceId || source.id;
+            const detail = await fetchInsuranceClaimDetail(claimId, token);
+            previewData.value = mapClaimToPreviewData(detail, claimId);
+        } else {
+            previewData.value = await fetchFactureDetail(source.id, token);
+        }
     } catch (_) {
         previewDialogVisible.value = false;
         toast.add({ severity: 'error', summary: 'Facture', detail: 'Aperçu indisponible', life: 3500 });
     } finally {
         previewLoading.value = false;
     }
+};
+
+const openMedecinInvoicePreview = (consultation) => openPreviewDialog(consultationToFactureRow(consultation));
+const openMedecinInvoicePay = (consultation) => openPayDialog({ row: consultationToFactureRow(consultation) });
+
+const handleMedecinConsultationClosed = async (consultation) => {
+    const consultationId = Number(consultation?.id ?? selectedConsultationId.value ?? 0) || null;
+    await loadConsultations();
+
+    if (selectedMode.value !== 'medecin' || !canMedecinSettleInvoices.value || !consultationId) {
+        return;
+    }
+
+    const refreshed = consultations.value.find((item) => Number(item.id) === consultationId);
+    const row = consultationToFactureRow(refreshed);
+    if (!row || (Number(row.reste) || 0) <= 0) {
+        return;
+    }
+
+    await openPayDialog({ row });
 };
 
 const submitPayment = async () => {
@@ -757,9 +814,16 @@ const confirmValidate = async () => {
 };
 
 const printInvoice = async () => {
-    const invoiceId = previewData.value?.id || currentReceptionInvoiceRow.value?.id;
-    if (!invoiceId) return;
+    const context = previewData.value || selectedFacture.value || currentReceptionInvoiceRow.value;
+    const invoiceId = context?.id;
+    if (!invoiceId && !context?.factureAssuranceId) return;
     try {
+        if (context?.type === 'FactureAssurance' || previewData.value?.type === 'FactureAssurance') {
+            const claimId = context?.insurance?.factureAssuranceId || context?.factureAssuranceId || selectedFacture.value?.factureAssuranceId || invoiceId;
+            const res = await fetchFactureAssurancePrintData(claimId, token);
+            await printComponent(PrintFactureAssuranceBody, { doc: res.doc, title: res.title || 'Facture assurance' });
+            return;
+        }
         const res = await fetchInvoicePrintData(invoiceId, token);
         await printComponent(PrintDevisBody, { doc: res.doc, title: res.title || 'Facture' });
     } catch (_) {
@@ -1210,6 +1274,9 @@ onBeforeUnmount(() => {
                 :selected-patient="selectedPatient"
                 :hide-patient-dossier="shouldHidePatientDossierForMedecin"
                 :hide-patient-phone="shouldHidePatientPhoneForMedecin"
+                :allow-invoice-settlement="canMedecinSettleInvoices"
+                @preview-invoice="openMedecinInvoicePreview"
+                @pay-invoice="openMedecinInvoicePay"
                 @clear-selection="clearSelection"
                 @select-consultation="
                     (consultationId) => {
@@ -1217,7 +1284,7 @@ onBeforeUnmount(() => {
                     }
                 "
                 @patient-loaded="handlePatientLoaded"
-                @consultation-closed="loadConsultations"
+                @consultation-closed="handleMedecinConsultationClosed"
             />
 
             <FocusRendezVousView v-else-if="selectedMode === 'rdv'" class="min-h-0 min-w-0 flex-1" embedded />

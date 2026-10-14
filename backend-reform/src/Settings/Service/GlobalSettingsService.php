@@ -110,6 +110,7 @@ class GlobalSettingsService
             'hidePatientDossierForMedecins' => (bool) ($value['hidePatientDossierForMedecins'] ?? false),
             'hidePatientPhoneForMedecins' => (bool) ($value['hidePatientPhoneForMedecins'] ?? false),
             'allowMedecinCreatePatientAndConsultation' => (bool) ($value['allowMedecinCreatePatientAndConsultation'] ?? false),
+            'allowMedecinInvoiceSettlement' => (bool) ($value['allowMedecinInvoiceSettlement'] ?? false),
             'ficheFormSimplifie' => (bool) ($value['ficheFormSimplifie'] ?? false),
             'showDiagnosticPositifInConsultation' => (bool) ($value['showDiagnosticPositifInConsultation'] ?? true),
             'consultationPrice' => $this->sanitizePositiveAmount($value['consultationPrice'] ?? null, self::DEFAULT_CONSULTATION_PRICE),
@@ -189,6 +190,7 @@ class GlobalSettingsService
             'hidePatientDossierForMedecins' => (bool) ($payload['hidePatientDossierForMedecins'] ?? ($current['hidePatientDossierForMedecins'] ?? false)),
             'hidePatientPhoneForMedecins' => (bool) ($payload['hidePatientPhoneForMedecins'] ?? ($current['hidePatientPhoneForMedecins'] ?? false)),
             'allowMedecinCreatePatientAndConsultation' => (bool) ($payload['allowMedecinCreatePatientAndConsultation'] ?? ($current['allowMedecinCreatePatientAndConsultation'] ?? false)),
+            'allowMedecinInvoiceSettlement' => (bool) ($payload['allowMedecinInvoiceSettlement'] ?? ($current['allowMedecinInvoiceSettlement'] ?? false)),
             'ficheFormSimplifie' => (bool) ($payload['ficheFormSimplifie'] ?? ($current['ficheFormSimplifie'] ?? false)),
             'showDiagnosticPositifInConsultation' => (bool) ($payload['showDiagnosticPositifInConsultation'] ?? ($current['showDiagnosticPositifInConsultation'] ?? true)),
             'consultationPrice' => $this->sanitizePositiveAmount($payload['consultationPrice'] ?? ($current['consultationPrice'] ?? null), self::DEFAULT_CONSULTATION_PRICE),
@@ -285,6 +287,11 @@ class GlobalSettingsService
     public function isMedecinCreatePatientAndConsultationAllowed(): bool
     {
         return $this->getGeneralSettings()['allowMedecinCreatePatientAndConsultation'];
+    }
+
+    public function isMedecinInvoiceSettlementAllowed(): bool
+    {
+        return $this->getGeneralSettings()['allowMedecinInvoiceSettlement'];
     }
 
     public function getTestModeStatus(): array
@@ -525,6 +532,7 @@ class GlobalSettingsService
             'hidePatientDossierForMedecins' => $settings['hidePatientDossierForMedecins'],
             'hidePatientPhoneForMedecins' => $settings['hidePatientPhoneForMedecins'],
             'allowMedecinCreatePatientAndConsultation' => $settings['allowMedecinCreatePatientAndConsultation'],
+            'allowMedecinInvoiceSettlement' => $settings['allowMedecinInvoiceSettlement'],
             'ficheFormSimplifie' => $settings['ficheFormSimplifie'],
             'showDiagnosticPositifInConsultation' => $settings['showDiagnosticPositifInConsultation'],
             'consultationPrice' => $settings['consultationPrice'],

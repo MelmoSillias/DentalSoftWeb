@@ -10,8 +10,10 @@ import { fetchOrdonnanceById, loadOrdonnances, saveOrdonnance, updateOrdonnance 
 import { addPatientAllergy, addPatientAntecedent, deletePatientAllergy, deletePatientAntecedent } from '@/services/patients';
 import { fetchOrdonnancePrintData } from '@/services/printService';
 
+import { consultationHasInvoice, consultationInvoiceStatus, consultationToFactureRow } from '@/utils/consultationRow';
 import Button from 'primevue/button';
 import Drawer from 'primevue/drawer';
+import Menu from 'primevue/menu';
 import Tag from 'primevue/tag';
 import ToggleSwitch from 'primevue/toggleswitch';
 import { useToast } from 'primevue/usetoast';
@@ -38,16 +40,20 @@ const props = defineProps({
     hidePatientPhone: {
         type: Boolean,
         default: false
+    },
+    allowInvoiceSettlement: {
+        type: Boolean,
+        default: false
     }
 });
 
-const emit = defineEmits(['clear-selection', 'select-consultation', 'patient-loaded', 'consultation-closed']);
+const emit = defineEmits(['clear-selection', 'select-consultation', 'patient-loaded', 'consultation-closed', 'preview-invoice', 'pay-invoice']);
 
-const { consultations, selectedConsultationId, selectedPatient, hidePatientDossier, hidePatientPhone } = toRefs(props);
+const { consultations, selectedConsultationId, selectedPatient, hidePatientDossier, hidePatientPhone, allowInvoiceSettlement } = toRefs(props);
 
 const showCompletedMedecin = defineModel('showCompletedMedecin', {
     type: Boolean,
-    default: false
+    default: true
 });
 
 const newestFirstMedecin = ref(false);
@@ -70,6 +76,8 @@ const ordonnanceModalVisible = ref(false);
 const ordonnanceModalMode = ref('create');
 const ordonnanceDraft = ref({ date: '', medecinNom: '', note: '', lignes: [] });
 const savingOrdonnance = ref(false);
+const invoiceMenu = ref(null);
+const invoiceMenuConsultation = ref(null);
 
 const MOBILE_MQ = '(max-width: 1023.98px)';
 let mobileMq = null;
@@ -192,6 +200,41 @@ const queueStats = computed(() => {
     const completed = all.filter((item) => Number(item.state) === 1).length;
     return { pending, completed, total: all.length };
 });
+
+const invoiceMenuItems = computed(() => {
+    const row = consultationToFactureRow(invoiceMenuConsultation.value);
+    if (!row) {
+        return [{ label: 'Aucune facture', icon: 'pi pi-inbox', disabled: true }];
+    }
+
+    const items = [
+        {
+            label: 'Voir détails facture',
+            icon: 'pi pi-eye',
+            command: () => emit('preview-invoice', invoiceMenuConsultation.value)
+        }
+    ];
+
+    if ((Number(row.reste) || 0) > 0) {
+        items.push({
+            label: 'Payer',
+            icon: 'pi pi-wallet',
+            command: () => emit('pay-invoice', invoiceMenuConsultation.value)
+        });
+    }
+
+    return items;
+});
+
+const emitConsultationClosed = () => {
+    emit('consultation-closed', currentConsultation.value);
+};
+
+const openInvoiceMenu = (event, consultation) => {
+    if (!allowInvoiceSettlement.value || !consultationHasInvoice(consultation)) return;
+    invoiceMenuConsultation.value = consultation;
+    invoiceMenu.value?.toggle(event);
+};
 
 const selectConsultationFromQueue = (consultationId) => {
     emit('select-consultation', consultationId);
@@ -458,7 +501,7 @@ watch(
                     :readonly="currentConsultationClosed"
                     @patient-loaded="(payload) => emit('patient-loaded', payload)"
                     @ordonnances-changed="handleOrdonnancesChanged"
-                    @closed="() => emit('consultation-closed')"
+                    @closed="emitConsultationClosed"
                 />
             </div>
             <div v-else class="flex h-full flex-col items-center justify-center gap-4 p-8 text-center">
@@ -589,7 +632,7 @@ watch(
                         :readonly="currentConsultationClosed"
                         @patient-loaded="(payload) => emit('patient-loaded', payload)"
                         @ordonnances-changed="handleOrdonnancesChanged"
-                        @closed="() => emit('consultation-closed')"
+                        @closed="emitConsultationClosed"
                     />
                 </div>
 
@@ -691,16 +734,29 @@ watch(
                                 >
                                     <div class="mb-1.5 flex items-center justify-between gap-2">
                                         <span class="font-mono text-[11px] text-surface-400">{{ formatTime(consultation.createdAt) }}</span>
-                                        <span
-                                            :class="[
-                                                'rounded-full px-2 py-0.5 text-[10px] font-medium',
-                                                Number(consultation.state) === 1
-                                                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400'
-                                                    : 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400'
-                                            ]"
-                                        >
-                                            {{ Number(consultation.state) === 1 ? 'Terminé' : 'En attente' }}
-                                        </span>
+                                        <div class="flex items-center gap-1">
+                                            <span
+                                                v-if="allowInvoiceSettlement && consultationHasInvoice(consultation)"
+                                                role="button"
+                                                tabindex="0"
+                                                class="flex h-6 w-6 items-center justify-center rounded-md text-surface-400 transition hover:bg-surface-200 hover:text-surface-700 dark:hover:bg-surface-700 dark:hover:text-surface-100"
+                                                title="Actions facture"
+                                                @click.stop="openInvoiceMenu($event, consultation)"
+                                                @keydown.enter.stop.prevent="openInvoiceMenu($event, consultation)"
+                                            >
+                                                <i class="pi pi-ellipsis-v text-[11px]"></i>
+                                            </span>
+                                            <span
+                                                :class="[
+                                                    'rounded-full px-2 py-0.5 text-[10px] font-medium',
+                                                    Number(consultation.state) === 1
+                                                        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400'
+                                                        : 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400'
+                                                ]"
+                                            >
+                                                {{ Number(consultation.state) === 1 ? 'Terminé' : 'En attente' }}
+                                            </span>
+                                        </div>
                                     </div>
 
                                     <p class="truncate text-sm font-semibold text-surface-900 dark:text-surface-50">
@@ -711,9 +767,10 @@ watch(
                                         <span v-if="consultation.motif" class="text-surface-300">· {{ consultation.motif }}</span>
                                     </p>
 
-                                    <div v-if="isNewPatient(consultation) || consultation.hasInsurance || consultation.patient?.insuranceProfile" class="mt-2 flex flex-wrap gap-1">
+                                    <div v-if="isNewPatient(consultation) || consultation.hasInsurance || consultation.patient?.insuranceProfile || (allowInvoiceSettlement && Number(consultation.state) === 1)" class="mt-2 flex flex-wrap gap-1">
                                         <Tag v-if="isNewPatient(consultation)" value="Nouveau patient" size="small" severity="info" />
                                         <Tag v-if="consultation.hasInsurance || consultation.patient?.insuranceProfile" value="Assuré" size="small" severity="success" icon="pi pi-shield" />
+                                        <Tag v-if="allowInvoiceSettlement && Number(consultation.state) === 1" :value="consultationInvoiceStatus(consultation).label" :severity="consultationInvoiceStatus(consultation).severity" size="small" />
                                     </div>
                                 </div>
                             </button>
@@ -800,20 +857,34 @@ watch(
                     <div class="min-w-0 flex-1">
                         <div class="mb-0.5 flex items-center justify-between gap-2">
                             <span class="font-mono text-[11px] text-surface-400">{{ formatTime(consultation.createdAt) }}</span>
-                            <span
-                                :class="[
-                                    'rounded-full px-2 py-0.5 text-[10px] font-medium',
-                                    Number(consultation.state) === 1 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400'
-                                ]"
-                            >
-                                {{ Number(consultation.state) === 1 ? 'Terminé' : 'En attente' }}
-                            </span>
+                            <div class="flex items-center gap-1">
+                                <span
+                                    v-if="allowInvoiceSettlement && consultationHasInvoice(consultation)"
+                                    role="button"
+                                    tabindex="0"
+                                    class="flex h-6 w-6 items-center justify-center rounded-md text-surface-400"
+                                    title="Actions facture"
+                                    @click.stop="openInvoiceMenu($event, consultation)"
+                                    @keydown.enter.stop.prevent="openInvoiceMenu($event, consultation)"
+                                >
+                                    <i class="pi pi-ellipsis-v text-[11px]"></i>
+                                </span>
+                                <span
+                                    :class="[
+                                        'rounded-full px-2 py-0.5 text-[10px] font-medium',
+                                        Number(consultation.state) === 1 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400'
+                                    ]"
+                                >
+                                    {{ Number(consultation.state) === 1 ? 'Terminé' : 'En attente' }}
+                                </span>
+                            </div>
                         </div>
                         <p class="truncate text-sm font-semibold text-surface-900 dark:text-white">{{ patientLabel(consultation) }}</p>
                         <p class="truncate text-xs text-surface-400">{{ medecinLabel(consultation) }}</p>
                         <div class="mt-1.5 flex flex-wrap gap-1">
                             <Tag v-if="isNewPatient(consultation)" value="Nouveau" size="small" severity="info" />
                             <Tag v-if="consultation.hasInsurance || consultation.patient?.insuranceProfile" value="Assuré" size="small" severity="success" icon="pi pi-shield" />
+                            <Tag v-if="allowInvoiceSettlement && Number(consultation.state) === 1" :value="consultationInvoiceStatus(consultation).label" :severity="consultationInvoiceStatus(consultation).severity" size="small" />
                         </div>
                     </div>
                 </button>
@@ -826,6 +897,7 @@ watch(
                 </div>
             </div>
         </Drawer>
+        <Menu ref="invoiceMenu" :model="invoiceMenuItems" popup />
 
         <!-- Mobile: Dossier drawer -->
         <Drawer

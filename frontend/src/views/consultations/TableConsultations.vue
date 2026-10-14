@@ -5,8 +5,10 @@ import PageShell from '@/components/layout/PageShell.vue';
 import PageHeader from '@/components/layout/PageHeader.vue';
 import PageSection from '@/components/layout/PageSection.vue';
 import PatientAvatar from '@/components/patients/PatientAvatar.vue';
+import CaisseInvoiceDialogs from '@/components/caisse/CaisseInvoiceDialogs.vue';
 import ConsultationDetailsDialog from '@/components/consultations/ConsultationDetailsDialog.vue';
 import FactureModal from '@/components/consultations/FactureModal.vue';
+import { useInvoiceBillingActions } from '@/composables/useInvoiceBillingActions';
 import { defaultSoinList, normalizeSoinList } from '@/services/consultations';
 import QuickClotureConsultationDialog from '@/components/consultations/QuickClotureConsultationDialog.vue';
 import CreateConsultationDialog from '@/components/patients/CreateConsultationDialog.vue';
@@ -20,6 +22,7 @@ import { fetchPublicGeneralSettings } from '@/services/globalSettingsService';
 import { activatePatientsTourMock, deactivatePatientsTourMock, resetPatientsTourMockData } from '@/services/patientsTourMock';
 
 import { useAuthStore } from '@/stores/auth';
+import { consultationHasInvoice, consultationInvoiceStatus, consultationToFactureRow } from '@/utils/consultationRow';
 import { canUserModifyInvoice } from '@/utils/invoiceModificationAccess';
 import { FilterMatchMode } from '@primevue/core/api';
 import Button from 'primevue/button';
@@ -83,11 +86,13 @@ const isMedecin = computed(() => Boolean(auth.user?.roles?.includes('ROLE_MEDECI
 const isReception = computed(() => Boolean(auth.user?.roles?.includes('ROLE_RECEPTION') || auth.user?.roles?.includes('ROLE_RECEPTIONNISTE')));
 const isRestrictedMedecin = computed(() => isMedecin.value && !isAdmin.value);
 const allowMedecinCreatePatientAndConsultation = ref(false);
+const allowMedecinInvoiceSettlement = ref(false);
 const canCreatePatientAndConsultation = computed(() => !isRestrictedMedecin.value || allowMedecinCreatePatientAndConsultation.value);
 const shouldHidePatientDossierForMedecin = computed(() => isRestrictedMedecin.value && hidePatientDossierForMedecins.value);
 const shouldHidePatientPhoneForMedecin = computed(() => isRestrictedMedecin.value && hidePatientPhoneForMedecins.value);
 const canUseQuickActions = computed(() => !isReception.value || allowReceptionQuickClose.value);
 const canModifyInvoiceByRole = computed(() => canUserModifyInvoice(auth.user, { allowReceptionInvoiceModification: allowReceptionInvoiceModification.value }));
+const canMedecinSettleInvoices = computed(() => isMedecin.value && allowMedecinInvoiceSettlement.value);
 const totalCountLabel = computed(() => (consultations.value?.length ? `${consultations.value.length} consultation(s)` : ''));
 
 const filterGlobalValue = computed({
@@ -186,6 +191,7 @@ const loadQuickClosePolicy = async ({ asPageLoad = false } = {}) => {
         hidePatientDossierForMedecins.value = settings?.hidePatientDossierForMedecins === true;
         hidePatientPhoneForMedecins.value = settings?.hidePatientPhoneForMedecins === true;
         allowMedecinCreatePatientAndConsultation.value = settings?.allowMedecinCreatePatientAndConsultation === true;
+        allowMedecinInvoiceSettlement.value = settings?.allowMedecinInvoiceSettlement === true;
         soinsList.value = normalizeSoinList(settings?.soinsList);
         return true;
     } catch (error) {
@@ -194,6 +200,7 @@ const loadQuickClosePolicy = async ({ asPageLoad = false } = {}) => {
         hidePatientDossierForMedecins.value = false;
         hidePatientPhoneForMedecins.value = false;
         allowMedecinCreatePatientAndConsultation.value = false;
+        allowMedecinInvoiceSettlement.value = false;
         soinsList.value = [...defaultSoinList];
         if (asPageLoad) {
             loadErrorMessage.value = 'Impossible de charger les paramètres des consultations.';
@@ -269,6 +276,93 @@ const toggleQuickActions = (event, consultation) => {
     const menu = quickMenus[consultation.id];
     if (!menu) return;
     menu.toggle(event);
+};
+
+const {
+    payDialogVisible,
+    selectedFacture,
+    payForm,
+    classicPaymentOptions,
+    insuranceCoveredAmount,
+    invoiceInsuranceRate,
+    patientAlreadyPaidAmount,
+    patientOutstandingAmount,
+    invoiceHasInsurance,
+    insuranceStatusLabel,
+    maxClientPaymentAmount,
+    remainingAfterPay,
+    canResetInvoicePayments,
+    payLoading,
+    payTabs,
+    activePayTabId,
+    priorReliquatTotal,
+    activePayTabMode,
+    resetPaymentDialogVisible,
+    resetPaymentsLoading,
+    validateDialogVisible,
+    validateLoading,
+    factureDialogVisible: billingFactureDialogVisible,
+    factureLines: billingFactureLines,
+    factureDate: billingFactureDate,
+    factureTime: billingFactureTime,
+    factureSaving: billingFactureSaving,
+    factureTotal,
+    soinsList: billingSoinsList,
+    previewDialogVisible,
+    previewLoading,
+    previewData,
+    previewDialogTab,
+    previewPayments,
+    previewServicesTotal,
+    formatFcfa,
+    previewPaymentModeTag,
+    previewPaymentRoleTag,
+    handlePayAction,
+    openPreviewDialog,
+    printInvoice,
+    submitPayment,
+    confirmValidate,
+    resetSelectedDevisPayments,
+    selectPayTab,
+    onPayDialogVisibleUpdate,
+    closePayDialog
+} = useInvoiceBillingActions({
+    onSettled: () => loadConsultations()
+});
+
+const invoiceMenu = ref(null);
+const invoiceMenuConsultation = ref(null);
+
+const invoiceMenuItems = computed(() => {
+    const consultation = invoiceMenuConsultation.value;
+    const row = consultationToFactureRow(consultation);
+    if (!row) {
+        return [{ label: 'Aucune facture', icon: 'pi pi-inbox', disabled: true }];
+    }
+
+    const items = [
+        {
+            label: 'Voir détails facture',
+            icon: 'pi pi-eye',
+            command: () => openPreviewDialog(row)
+        }
+    ];
+
+    if ((Number(row.reste) || 0) > 0) {
+        items.push({
+            label: 'Payer',
+            icon: 'pi pi-wallet',
+            command: () => handlePayAction(row)
+        });
+    }
+
+    return items;
+});
+
+const toggleInvoiceMenu = (event, consultation) => {
+    if (!consultationHasInvoice(consultation)) return;
+    invoiceMenuConsultation.value = consultation;
+    invoiceMenu.value?.toggle(event);
 };
 
 const askCancel = (event, consultation) => {
@@ -407,7 +501,7 @@ const freshConsultation = computed(() => consultations.value.find((c) => !isClos
 const closedConsultation = computed(() => consultations.value.find((c) => isClosed(c)) || null);
 const urgentConsultation = computed(() => consultations.value.find((c) => Boolean(c.urgence)) || null);
 
-const hasOpenDialogs = computed(() => showCreateDialog.value || quickDialogVisible.value || detailsDialogVisible.value || factureDialogVisible.value);
+const hasOpenDialogs = computed(() => showCreateDialog.value || quickDialogVisible.value || detailsDialogVisible.value || factureDialogVisible.value || payDialogVisible.value || previewDialogVisible.value || validateDialogVisible.value);
 
 const resetTourDialogs = () => {
     showCreateDialog.value = false;
@@ -422,6 +516,9 @@ const resetTourDialogs = () => {
     factureLines.value = [];
     factureDate.value = '';
     factureTime.value = '';
+    closePayDialog();
+    previewDialogVisible.value = false;
+    validateDialogVisible.value = false;
 };
 
 const capturePageState = () => ({
@@ -795,6 +892,12 @@ function resetFilters() {
                         </template>
                     </Column>
 
+                    <Column v-if="canMedecinSettleInvoices" header="Facture">
+                        <template #body="{ data }">
+                            <Tag :value="consultationInvoiceStatus(data).label" :severity="consultationInvoiceStatus(data).severity" class="px-3 py-1.5 rounded-full font-medium" />
+                        </template>
+                    </Column>
+
                     <!-- Statut Column -->
                     <Column header="Statut">
                         <template #header>
@@ -856,6 +959,16 @@ function resetFilters() {
                                     v-if="data.state !== 1"
                                 />
 
+                                <Button
+                                    v-if="canMedecinSettleInvoices && consultationHasInvoice(data)"
+                                    icon="pi pi-wallet"
+                                    severity="help"
+                                    text
+                                    rounded
+                                    v-tooltip.top="'Actions facture'"
+                                    class="hover:bg-purple-50 dark:hover:bg-purple-900/20"
+                                    @click="toggleInvoiceMenu($event, data)"
+                                />
                                 <Button v-if="canUseQuickActions && !isClosed(data)" icon="pi pi-bolt" label="Actions rapides" severity="contrast" size="small" outlined class="rounded-xl" @click="toggleQuickActions($event, data)" />
                                 <Menu v-if="canUseQuickActions" :ref="(el) => setQuickMenuRef(data.id, el)" :model="quickActionItems(data)" popup>
                                     <template #start>
@@ -893,6 +1006,7 @@ function resetFilters() {
                         </div>
                     </template>
                 </DataTable>
+                <Menu ref="invoiceMenu" :model="invoiceMenuItems" popup />
                 </div>
             </PageSection>
 
@@ -949,6 +1063,60 @@ function resetFilters() {
             tourTarget="consultations-table.dialog.facture"
             @update:visible="closeFactureModal"
             @save="handleSaveFacture"
+        />
+
+        <CaisseInvoiceDialogs
+            :pay-dialog-visible="payDialogVisible"
+            :selected-facture="selectedFacture"
+            :pay-form="payForm"
+            :classic-payment-options="classicPaymentOptions"
+            :insurance-covered-amount="insuranceCoveredAmount"
+            :insurance-rate="invoiceInsuranceRate"
+            :patient-already-paid-amount="patientAlreadyPaidAmount"
+            :patient-outstanding-amount="patientOutstandingAmount"
+            :invoice-has-insurance="invoiceHasInsurance"
+            :insurance-status-label="insuranceStatusLabel"
+            :max-client-payment-amount="maxClientPaymentAmount"
+            :remaining-after-pay="remainingAfterPay"
+            :can-reset-invoice-payments="canResetInvoicePayments"
+            :pay-loading="payLoading"
+            :pay-tabs="payTabs"
+            :active-pay-tab-id="activePayTabId"
+            :prior-reliquat-total="priorReliquatTotal"
+            :active-pay-tab-mode="activePayTabMode"
+            :reset-payment-dialog-visible="resetPaymentDialogVisible"
+            :reset-payments-loading="resetPaymentsLoading"
+            :validate-dialog-visible="validateDialogVisible"
+            :validate-loading="validateLoading"
+            :facture-dialog-visible="billingFactureDialogVisible"
+            :facture-lines="billingFactureLines"
+            :facture-date="billingFactureDate"
+            :facture-time="billingFactureTime"
+            :facture-saving="billingFactureSaving"
+            :facture-total="factureTotal"
+            :soins-list="billingSoinsList"
+            :preview-dialog-visible="previewDialogVisible"
+            :preview-loading="previewLoading"
+            :preview-data="previewData"
+            :preview-dialog-tab="previewDialogTab"
+            :preview-payments="previewPayments"
+            :preview-services-total="previewServicesTotal"
+            :format-fcfa="formatFcfa"
+            :preview-payment-mode-tag="previewPaymentModeTag"
+            :preview-payment-role-tag="previewPaymentRoleTag"
+            @update:payDialogVisible="onPayDialogVisibleUpdate"
+            @update:activePayTabId="selectPayTab"
+            @update:resetPaymentDialogVisible="resetPaymentDialogVisible = $event"
+            @update:validateDialogVisible="validateDialogVisible = $event"
+            @update:factureDialogVisible="billingFactureDialogVisible = $event"
+            @update:factureDate="billingFactureDate = $event"
+            @update:factureTime="billingFactureTime = $event"
+            @update:previewDialogVisible="previewDialogVisible = $event"
+            @update:previewDialogTab="previewDialogTab = $event"
+            @submit-payment="submitPayment"
+            @confirm-reset="resetSelectedDevisPayments"
+            @confirm-validate="confirmValidate"
+            @print-invoice="printInvoice()"
         />
 
         <QuickClotureConsultationDialog
