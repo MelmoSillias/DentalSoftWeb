@@ -105,6 +105,13 @@ const quickActions = computed(() => {
 
 const formatAmount = (value) => `${new Intl.NumberFormat('fr-FR').format(Number(value || 0))} Fcfa`;
 
+const formatConsultationSplit = (consultations) => {
+    const total = Number(consultations?.total ?? 0) || 0;
+    const paid = Number(consultations?.paid ?? 0) || 0;
+    const free = consultations?.free != null ? Number(consultations.free) || 0 : Math.max(0, total - paid);
+    return `Payantes: ${paid} · Gratuites: ${free}`;
+};
+
 const quickCards = computed(() => {
     if (!cards.value) return [];
 
@@ -142,9 +149,9 @@ const quickCards = computed(() => {
             },
             {
                 id: 'consultations',
-                title: 'Consultations payantes',
+                title: 'Consultations',
                 value: cards.value.consultations?.total ?? 0,
-                subValue: `Payantes: ${cards.value.consultations?.paid ?? 0}`,
+                subValue: formatConsultationSplit(cards.value.consultations),
                 icon: 'pi pi-briefcase',
                 tone: 'purple',
                 link: '/consultations/table',
@@ -179,7 +186,7 @@ const quickCards = computed(() => {
                 id: 'consultations',
                 title: 'Consultations',
                 value: cards.value.consultations?.total ?? 0,
-                subValue: `Payantes: ${cards.value.consultations?.paid ?? 0}`,
+                subValue: formatConsultationSplit(cards.value.consultations),
                 icon: 'pi pi-briefcase',
                 tone: 'green',
                 link: '/consultations/table',
@@ -223,7 +230,7 @@ const quickCards = computed(() => {
             id: 'consultations',
             title: 'Consultations',
             value: cards.value.consultations?.total ?? 0,
-            subValue: `Payantes: ${cards.value.consultations?.paid ?? 0}`,
+            subValue: formatConsultationSplit(cards.value.consultations),
             icon: 'pi pi-briefcase',
             tone: 'green',
             link: '/consultations/table',
@@ -301,7 +308,7 @@ const adminSlides = computed(() => {
             stats: topConsults.map((row) => ({
                 label: row.name,
                 value: row.total,
-                description: `Payantes: ${row.paid} (${row.paidRate}%)`,
+                description: `Payantes: ${row.paid} · Gratuites: ${Math.max(0, (row.total || 0) - (row.paid || 0))} (${row.paidRate}%)`,
                 icon: 'pi pi-user',
                 color: 'bg-blue-100 dark:bg-blue-900/30',
                 trend: `${row.paidRate}%`,

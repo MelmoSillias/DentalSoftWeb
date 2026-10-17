@@ -42,7 +42,7 @@ class DashboardService
 
     public function getAdminCards(\DateTimeImmutable $from, \DateTimeImmutable $to): array
     {
-        $cacheKey = sprintf('dashboard.admin.cards.%s.%s', $from->format('Ymd'), $to->format('Ymd'));
+        $cacheKey = sprintf('dashboard.admin.cards.v2.%s.%s', $from->format('Ymd'), $to->format('Ymd'));
         return $this->remember($cacheKey, 120, function () use ($from, $to) {
         $newPatients = (int) $this->patientRepo->createQueryBuilder('p')
             ->select('COUNT(p.id)')
@@ -65,18 +65,7 @@ class DashboardService
             ->getQuery()
             ->getSingleScalarResult();
 
-        $paidConsultations = (int) $this->consultRepo->createQueryBuilder('c')
-            ->select('COUNT(DISTINCT c.id)')
-            ->innerJoin('c.patient', 'cp')
-            ->leftJoin('c.paiement', 'pd')
-            ->leftJoin('c.facture', 'f')
-            ->andWhere('c.CreatedAt BETWEEN :from AND :to')
-            ->andWhere('cp.deletedAt IS NULL')
-            ->andWhere('pd.id IS NOT NULL OR f.id IS NOT NULL')
-            ->setParameter('from', $from)
-            ->setParameter('to', $to)
-            ->getQuery()
-            ->getSingleScalarResult();
+        $paidConsultations = $this->countPaidConsultations($from, $to);
 
         $pendingAppointments = (int) $this->rdvRepo->createQueryBuilder('r')
             ->select('COUNT(r.id)')
@@ -137,6 +126,7 @@ class DashboardService
             'consultations' => [
                 'total' => $totalConsultations,
                 'paid' => $paidConsultations,
+                'free' => max(0, $totalConsultations - $paidConsultations),
             ],
             'appointments' => [
                 'pending' => $pendingAppointments,
@@ -156,19 +146,19 @@ class DashboardService
 
     public function getAdminCarousels(\DateTimeImmutable $from, \DateTimeImmutable $to): array
     {
-        $cacheKey = sprintf('dashboard.admin.carousels.%s.%s', $from->format('Ymd'), $to->format('Ymd'));
+        $cacheKey = sprintf('dashboard.admin.carousels.v2.%s.%s', $from->format('Ymd'), $to->format('Ymd'));
         return $this->remember($cacheKey, 120, function () use ($from, $to) {
         $doctorConsultations = $this->consultRepo->createQueryBuilder('c')
             ->select(
                 "m.id AS id",
                 "CONCAT(m.nom, ' ', m.prenom) AS name",
                 'COUNT(c.id) AS total',
-                'SUM(CASE WHEN pd.id IS NOT NULL OR f.id IS NOT NULL THEN 1 ELSE 0 END) AS paid'
+                'SUM(CASE WHEN pd.id IS NOT NULL OR fa.isConsultationPayante = true THEN 1 ELSE 0 END) AS paid'
             )
             ->join('c.medecin', 'm')
             ->join('c.patient', 'cp')
             ->leftJoin('c.paiement', 'pd')
-            ->leftJoin('c.facture', 'f')
+            ->leftJoin('c.factureAssurance', 'fa')
             ->andWhere('c.CreatedAt BETWEEN :from AND :to')
             ->andWhere('cp.deletedAt IS NULL')
             ->setParameter('from', $from)
@@ -243,7 +233,7 @@ class DashboardService
 
     public function getMedecinCards(Employe $medecin, \DateTimeImmutable $from, \DateTimeImmutable $to): array
     {
-        $cacheKey = sprintf('dashboard.medecin.%d.cards.%s.%s', $medecin->getId(), $from->format('Ymd'), $to->format('Ymd'));
+        $cacheKey = sprintf('dashboard.medecin.%d.cards.v2.%s.%s', $medecin->getId(), $from->format('Ymd'), $to->format('Ymd'));
         return $this->remember($cacheKey, 120, function () use ($medecin, $from, $to) {
         $newPatients = (int) $this->patientRepo->createQueryBuilder('p')
             ->select('COUNT(p.id)')
@@ -320,20 +310,7 @@ class DashboardService
             ->getQuery()
             ->getSingleScalarResult();
 
-        $paidConsultations = (int) $this->consultRepo->createQueryBuilder('c')
-            ->select('COUNT(DISTINCT c.id)')
-            ->innerJoin('c.patient', 'cp')
-            ->leftJoin('c.paiement', 'pd')
-            ->leftJoin('c.facture', 'f')
-            ->andWhere('c.medecin = :medecin')
-            ->andWhere('c.CreatedAt BETWEEN :from AND :to')
-            ->andWhere('cp.deletedAt IS NULL')
-            ->andWhere('pd.id IS NOT NULL OR f.id IS NOT NULL')
-            ->setParameter('medecin', $medecin)
-            ->setParameter('from', $from)
-            ->setParameter('to', $to)
-            ->getQuery()
-            ->getSingleScalarResult();
+        $paidConsultations = $this->countPaidConsultations($from, $to, $medecin);
 
         $facturesByMedecin = $this->em->createQueryBuilder()
             ->select('f')
@@ -378,6 +355,7 @@ class DashboardService
             'consultations' => [
                 'total' => $totalConsultations,
                 'paid' => $paidConsultations,
+                'free' => max(0, $totalConsultations - $paidConsultations),
             ],
             'revenue' => [
                 'total' => (float) $amounts['total'],
@@ -428,7 +406,7 @@ class DashboardService
 
     public function getReceptionCards(\DateTimeImmutable $from, \DateTimeImmutable $to): array
     {
-        $cacheKey = sprintf('dashboard.reception.cards.%s.%s', $from->format('Ymd'), $to->format('Ymd'));
+        $cacheKey = sprintf('dashboard.reception.cards.v2.%s.%s', $from->format('Ymd'), $to->format('Ymd'));
         return $this->remember($cacheKey, 120, function () use ($from, $to) {
             $cards = $this->getAdminCards($from, $to);
 
@@ -626,6 +604,31 @@ class DashboardService
             'label' => $row['label'],
             'total' => (int) $row['total'],
         ], $rows);
+    }
+
+    /**
+     * Une consultation est payante si elle a un ticket (patient non assuré)
+     * ou si la facture assurance a été ouverte comme payante.
+     * La facture d'actes ne compte pas : une consultation gratuite peut en avoir une.
+     */
+    private function countPaidConsultations(\DateTimeImmutable $from, \DateTimeImmutable $to, ?Employe $medecin = null): int
+    {
+        $qb = $this->consultRepo->createQueryBuilder('c')
+            ->select('COUNT(DISTINCT c.id)')
+            ->innerJoin('c.patient', 'cp')
+            ->leftJoin('c.paiement', 'pd')
+            ->leftJoin('c.factureAssurance', 'fa')
+            ->andWhere('c.CreatedAt BETWEEN :from AND :to')
+            ->andWhere('cp.deletedAt IS NULL')
+            ->andWhere('pd.id IS NOT NULL OR fa.isConsultationPayante = true')
+            ->setParameter('from', $from)
+            ->setParameter('to', $to);
+
+        if ($medecin instanceof Employe) {
+            $qb->andWhere('c.medecin = :medecin')->setParameter('medecin', $medecin);
+        }
+
+        return (int) $qb->getQuery()->getSingleScalarResult();
     }
 
     private function computeWaitStats(array $consultations): array

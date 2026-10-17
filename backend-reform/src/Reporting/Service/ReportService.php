@@ -1403,15 +1403,17 @@ class ReportService
 
     public function periodicConsultations(?DateTime $from, ?DateTime $to): array
     {
-        $cacheKey = 'report.periodicConsultations.v2.' . ($from?->format('Ymd') ?? '') . '.' . ($to?->format('Ymd') ?? '');
+        $cacheKey = 'report.periodicConsultations.v3.' . ($from?->format('Ymd') ?? '') . '.' . ($to?->format('Ymd') ?? '');
 
         return $this->remember($cacheKey, 180, function () use ($from, $to) {
             $qb = $this->consultRepo->createQueryBuilder('c')
                 ->select('COUNT(c.id) AS total')
-                // Payante = présence d'un ticket de consultation (paiement), indépendant de la facture
-                ->addSelect('SUM(CASE WHEN pay.id IS NOT NULL THEN 1 ELSE 0 END) AS paid')
+                // Payante = ticket de consultation, ou consultation assurée ouverte comme payante.
+                // La facture d'actes ne suffit pas : une consultation gratuite peut en avoir une.
+                ->addSelect('SUM(CASE WHEN pay.id IS NOT NULL OR fa.isConsultationPayante = true THEN 1 ELSE 0 END) AS paid')
                 ->innerJoin('c.patient', 'cp')
                 ->leftJoin('c.paiement', 'pay')
+                ->leftJoin('c.factureAssurance', 'fa')
                 ->andWhere('cp.deletedAt IS NULL');
 
             if ($from) $qb->andWhere('c.CreatedAt >= :from')->setParameter('from', $from);
