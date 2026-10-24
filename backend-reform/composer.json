@@ -12,6 +12,7 @@
         "doctrine/doctrine-migrations-bundle": "^3.7.1",
         "doctrine/orm": "^3.6.8",
         "lexik/jwt-authentication-bundle": "^3.2",
+        "minishlink/web-push": "^11",
         "nelmio/cors-bundle": "^2.6.1",
         "symfony/console": "7.4.*",
         "symfony/doctrine-messenger": "7.4.*",

@@ -3,11 +3,13 @@
 namespace App\Communication\Service;
 
 use App\Communication\Entity\Notification;
+use App\Communication\Message\SendWebPushMessage;
 use App\Communication\Repository\NotificationRepository;
-use App\Communication\Service\NotificationRealtimePublisher;
+use App\Communication\Repository\WebPushSubscriptionRepository;
 use App\IdentityAccess\Entity\User;
 use App\Enum\NotificationPriority;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\Messenger\MessageBusInterface;
 
 final class NotificationService
 {
@@ -16,6 +18,8 @@ final class NotificationService
         private readonly EntityManagerInterface $entityManager,
         private readonly \App\Communication\Service\NotificationRecipientResolver $recipientResolver,
         private readonly NotificationRealtimePublisher $realtimePublisher,
+        private readonly WebPushSubscriptionRepository $webPushSubscriptionRepository,
+        private readonly MessageBusInterface $bus,
     ) {
     }
 
@@ -35,7 +39,7 @@ final class NotificationService
 
         $this->entityManager->persist($notification);
         $this->entityManager->flush();
-        $this->realtimePublisher->publish($notification);
+        $this->publishChannels($notification);
 
         return $notification;
     }
@@ -72,7 +76,7 @@ final class NotificationService
         if ($sent > 0) {
             $this->entityManager->flush();
             foreach ($notifications as $notification) {
-                $this->realtimePublisher->publish($notification);
+                $this->publishChannels($notification);
             }
         }
 
@@ -168,6 +172,27 @@ final class NotificationService
     public function purgeOlderThan(\DateTimeInterface $threshold): int
     {
         return $this->notificationRepository->purgeOlderThan($threshold);
+    }
+
+    private function publishChannels(Notification $notification): void
+    {
+        $this->realtimePublisher->publish($notification);
+        $this->dispatchWebPush($notification);
+    }
+
+    private function dispatchWebPush(Notification $notification): void
+    {
+        $user = $notification->getUser();
+        $notificationId = $notification->getId();
+        if ($user === null || $notificationId === null || !$user->isNotificationsEnabled()) {
+            return;
+        }
+
+        if ($this->webPushSubscriptionRepository->countForUser($user) < 1) {
+            return;
+        }
+
+        $this->bus->dispatch(new SendWebPushMessage($notificationId));
     }
 
     private function mapPriorityToType(string $priority): string

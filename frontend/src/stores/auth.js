@@ -2,6 +2,7 @@
 import { defineStore } from 'pinia';
 import http, { isDeviceNotAllowedError } from '@/service/http';
 import { resetMercureClient } from '@/composables/realtime/useMercureClient';
+import { releasePushSubscription } from '@/composables/webPushSession';
 import { useRealtimeStore } from '@/stores/realtime';
 import { useNotificationsStore } from '@/stores/notifications';
 
@@ -86,6 +87,9 @@ export const useAuthStore = defineStore('auth', {
                 const { useInternetFeatures } = await import('@/composables/useInternetFeatures');
                 const { syncFromServer } = useInternetFeatures();
                 await syncFromServer(this.token);
+                import('@/composables/useBrowserNotifications').then(({ useBrowserNotifications }) => {
+                    useBrowserNotifications().syncSubscription();
+                });
                 return res.data;
             } catch (err) {
                 if (isDeviceNotAllowedError(err)) {
@@ -100,6 +104,10 @@ export const useAuthStore = defineStore('auth', {
         },
 
         logout() {
+            releasePushSubscription(this.token);
+            import('@/composables/useBrowserNotifications').then(({ useBrowserNotifications }) => {
+                useBrowserNotifications().markPushSubscriptionReleased();
+            });
             this.user = null;
             this.token = null;
             this.clearDeviceBlock();

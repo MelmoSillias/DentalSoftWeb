@@ -24,6 +24,7 @@ framework:
             App\Communication\Message\ProcessSmsQueueMessage: async
             # Publish Mercure hors requête HTTP (consommé par mercure UpdateHandler).
             Symfony\Component\Mercure\Update: async
+            App\Communication\Message\SendWebPushMessage: async
 
             # Route your messages to the transports
             # 'App\Communication\Message\YourMessage': async

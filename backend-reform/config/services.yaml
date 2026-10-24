@@ -9,6 +9,9 @@ parameters:
     env(MERCURE_PUBLISH_TIMEOUT): '0.8'
     env(MERCURE_PUBLISH_MAX_DURATION): '1.2'
     env(MERCURE_CIRCUIT_COOLDOWN_SECONDS): '60'
+    env(VAPID_SUBJECT): ''
+    env(VAPID_PUBLIC_KEY): ''
+    env(VAPID_PRIVATE_KEY): ''
 
 
 services:
@@ -74,6 +77,28 @@ services:
             $mercurePublicUrl: '%env(MERCURE_PUBLIC_URL)%'
             $topicNamespace: '%env(MERCURE_TOPIC_NAMESPACE)%'
     Symfony\Component\Mercure\Jwt\TokenFactoryInterface: '@defaultTokenFactory'
+    web_push.http_client:
+        class: Symfony\Component\HttpClient\CurlHttpClient
+        factory: ['Symfony\Component\HttpClient\HttpClient', 'create']
+        arguments:
+            -
+                timeout: 10
+                max_duration: 20
+    web_push.psr18_client:
+        class: Symfony\Component\HttpClient\Psr18Client
+        arguments:
+            $client: '@web_push.http_client'
+    App\Communication\Service\WebPushSender:
+        arguments:
+            $httpClient: '@web_push.psr18_client'
+            $vapidSubject: '%env(VAPID_SUBJECT)%'
+            $vapidPublicKey: '%env(VAPID_PUBLIC_KEY)%'
+            $vapidPrivateKey: '%env(VAPID_PRIVATE_KEY)%'
+    App\Communication\Controller\Api\PushSubscriptionController:
+        arguments:
+            $vapidSubject: '%env(VAPID_SUBJECT)%'
+            $vapidPublicKey: '%env(VAPID_PUBLIC_KEY)%'
+            $vapidPrivateKey: '%env(VAPID_PRIVATE_KEY)%'
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
 

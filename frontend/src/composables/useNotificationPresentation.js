@@ -31,7 +31,7 @@ export function useNotificationPresentation() {
             return false;
         }
 
-        return !isTabActiveForInAppPresentation() && browserNotifications.canShowSystemNotifications.value;
+        return !isTabActiveForInAppPresentation() && browserNotifications.canShowSystemNotifications.value && !browserNotifications.hasPushSubscription.value;
     }
 
     function handleNotificationPresentation(notification) {
