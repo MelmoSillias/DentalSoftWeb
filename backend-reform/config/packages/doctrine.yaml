@@ -84,7 +84,10 @@ when@test:
 when@prod:
     doctrine:
         orm:
-            auto_generate_proxy_classes: false
+            # FILE_NOT_EXISTS : un proxy absent est réécrit dans la requête (fichier temporaire + rename).
+            # NEVER (false) fait un require sec et répond 500 si le fichier manque.
+            # Le warmup Symfony ne pré-génère les proxies qu'en mode NEVER, d'où app:doctrine:ensure-proxies au boot.
+            auto_generate_proxy_classes: FILE_NOT_EXISTS
             proxy_dir: '%kernel.build_dir%/doctrine/orm/Proxies'
             query_cache_driver:
                 type: pool

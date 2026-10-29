@@ -11,8 +11,12 @@ if [ "${APP_ENV:-prod}" = "prod" ]; then
             || echo "[entrypoint] migrate failed (verifier DATABASE_URL)"
     fi
 
-    php bin/console cache:clear --env=prod --no-warmup || echo "[entrypoint] cache:clear failed (non bloquant)"
-    php bin/console cache:warmup --env=prod || echo "[entrypoint] cache:warmup failed (non bloquant)"
+    # Échec bloquant : avec set -e, un warmup raté empêche FrankenPHP de démarrer.
+    echo "[entrypoint] cache:clear + cache:warmup + ensure-proxies"
+    php bin/console cache:clear --env=prod --no-warmup
+    php bin/console cache:warmup --env=prod
+    php bin/console app:doctrine:ensure-proxies --env=prod
+    chown -R www-data:www-data var/cache var/log 2>/dev/null || chmod -R 777 var/cache var/log
 fi
 
 _poll_interval="${SMS_POLL_INTERVAL:-60}"
