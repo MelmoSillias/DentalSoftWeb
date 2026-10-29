@@ -115,7 +115,12 @@ const loadPatients = async (query = '') => {
 const loadMedecins = async () => {
     try {
         const data = await medecinsStore.load(token);
-        medecins.value = Array.isArray(data) ? data : [];
+        const list = Array.isArray(data) ? data : [];
+        const connectedId = isMedecinUser.value ? resolveConnectedMedecinId(list) : null;
+        medecins.value = isMedecinUser.value
+            ? list.filter((medecin) => connectedId && Number(medecin.id) === Number(connectedId))
+            : list;
+        if (connectedId) selectedMedecinId.value = connectedId;
     } catch (error) {
         logAppError('Erreur lors du chargement des médecins', error);
         toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de charger les médecins.', life: 3000 });
@@ -183,22 +188,10 @@ const handlePatientFilter = (event) => {
     }, 250);
 };
 
-const medecinOptions = computed(() => {
-    const options = medecins.value.map((m) => ({
-        label: m.label || m.fullName || m.fullname || m.name || `${m.prenom ?? ''} ${m.nom ?? ''}`.trim() || m.nom || 'Médecin',
-        value: m.id
-    }));
-
-    if (isMedecinUser.value && selectedMedecinId.value && !options.some((opt) => Number(opt.value) === Number(selectedMedecinId.value))) {
-        options.unshift({
-            label: connectedMedecinDisplayName.value || `Médecin #${selectedMedecinId.value}`,
-            value: selectedMedecinId.value
-        });
-    }
-
-    return options;
-});
-
+const medecinOptions = computed(() => medecins.value.map((m) => ({
+    label: m.label || m.fullName || m.fullname || m.name || `${m.prenom ?? ''} ${m.nom ?? ''}`.trim() || m.nom || 'Médecin',
+    value: m.id
+})));
 const normalizeText = (value) =>
     String(value || '')
         .normalize('NFD')
@@ -206,18 +199,18 @@ const normalizeText = (value) =>
         .toLowerCase()
         .trim();
 
-const resolveConnectedMedecinId = () => {
+const resolveConnectedMedecinId = (source = medecins.value) => {
     const user = auth.user || {};
-    const directId = Number(user.medecinId ?? user.medecin_id ?? user.medecin?.id ?? Number.NaN);
-    if (Number.isFinite(directId)) {
+    const directId = Number(user.employee?.id ?? user.medecinId ?? user.medecin_id ?? user.medecin?.id ?? Number.NaN);
+    if (Number.isFinite(directId) && directId > 0) {
         return directId;
     }
 
-    const fullName = [user.prenom, user.nom].filter(Boolean).join(' ').trim();
+    const fullName = [user.employee?.prenom ?? user.prenom, user.employee?.nom ?? user.nom].filter(Boolean).join(' ').trim();
     const candidates = [fullName, user.name, user.fullName, user.username].filter(Boolean).map(normalizeText);
     if (!candidates.length) return null;
 
-    const foundByName = (medecins.value || []).find((m) => {
+    const foundByName = (source || []).find((m) => {
         const label = normalizeText(m.label || m.fullName || m.fullname || m.name || `${m.prenom ?? ''} ${m.nom ?? ''}`.trim() || m.nom);
         return candidates.some((candidate) => candidate && (label === candidate || label.includes(candidate) || candidate.includes(label)));
     });
@@ -227,7 +220,7 @@ const resolveConnectedMedecinId = () => {
 
 const connectedMedecinDisplayName = computed(() => {
     const user = auth.user || {};
-    const fullName = [user.prenom, user.nom].filter(Boolean).join(' ').trim();
+    const fullName = [user.employee?.prenom ?? user.prenom, user.employee?.nom ?? user.nom].filter(Boolean).join(' ').trim();
     return fullName || user.fullName || user.name || user.username || '';
 });
 
@@ -398,7 +391,8 @@ defineExpose({
             </div>
             <div class="flex flex-col gap-2">
                 <label class="font-semibold">Médecin <span class="text-red-500">*</span></label>
-                <Select v-model="selectedMedecinId" :options="medecinOptions" optionLabel="label" optionValue="value" placeholder="Choisir un médecin" class="w-full" :disabled="isMedecinLocked" />
+                <InputText v-if="isMedecinLocked" :value="connectedMedecinDisplayName || medecinOptions[0]?.label || ''" disabled />
+                <Select v-else v-model="selectedMedecinId" :options="medecinOptions" optionLabel="label" optionValue="value" placeholder="Choisir un médecin" class="w-full" />
             </div>
             <div class="flex flex-col gap-2">
                 <label class="font-semibold">Durée (minutes) <span class="text-red-500">*</span></label>

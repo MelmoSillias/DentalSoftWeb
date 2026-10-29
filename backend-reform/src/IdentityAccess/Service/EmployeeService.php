@@ -246,18 +246,26 @@ class EmployeeService
         $valeurSalaire = $this->normalizeSalaireValue(
             $typeSalaire,
             $data['type'] ?? $employee->getType(),
-            $data['valeurSalaire'] ?? $employee->getValeurSalaire()
+            array_key_exists('valeurSalaire', $data) ? $data['valeurSalaire'] : $employee->getValeurSalaire()
         );
         $frequencePaiement = $this->normalizeFrequencePaiement($data['frequencePaiement'] ?? $employee->getFrequencePaiement());
         $typePrime = $this->normalizeTypePrime(
-            $data['typePrime'] ?? $employee->getTypePrime(),
+            array_key_exists('typePrime', $data) ? $data['typePrime'] : $employee->getTypePrime(),
             $data['type'] ?? $employee->getType()
         );
-        $valeurPrime = $this->normalizePrimeValue($typePrime, $data['valeurPrime'] ?? $employee->getValeurPrime());
+        $valeurPrime = $this->normalizePrimeValue(
+            $typePrime,
+            array_key_exists('valeurPrime', $data) ? $data['valeurPrime'] : $employee->getValeurPrime()
+        );
 
         $typeContrat = $this->sanitizeString($data['typeContrat']);
-        $dureeContrat = $this->normalizeDureeContrat($typeContrat, $data['dureeContrat'] ?? $employee->getDureeContrat());
-        $comingDays = $this->normalizeComingDays($data['comingDays'] ?? []);
+        $dureeContrat = $this->normalizeDureeContrat(
+            $typeContrat,
+            array_key_exists('dureeContrat', $data) ? $data['dureeContrat'] : $employee->getDureeContrat()
+        );
+        $comingDays = array_key_exists('comingDays', $data) || array_key_exists('comingDays[]', $data)
+            ? $this->normalizeComingDays($data['comingDays'] ?? $data['comingDays[]'])
+            : $employee->getComingDaysInWeek();
 
         $employee->setNom($this->sanitizeString($data['nom']));
         $employee->setPrenom($this->sanitizeString($data['prenom']));

@@ -131,19 +131,22 @@ const buildFormData = () => {
     const formData = new FormData();
     Object.entries(form.value).forEach(([key, value]) => {
         if (key === 'comingDays') {
-            (value || []).forEach((day) => formData.append('comingDays[]', day));
+            const days = value || [];
+            if (days.length === 0) formData.append('comingDays[]', '');
+            else days.forEach((day) => formData.append('comingDays[]', day));
             return;
         }
         if (key === 'fonction') {
             formData.append(key, value ?? '');
             return;
         }
-        if (value === null || value === undefined || value === '') return;
         if (value instanceof Date) {
             formData.append(key, value.toISOString().substring(0, 10));
             return;
         }
-        formData.append(key, value);
+        // Envoyer aussi les valeurs nulles/vides : en édition, elles doivent
+        // pouvoir effacer une ancienne valeur (ex. salaire ou prime).
+        formData.append(key, value === null || value === undefined ? '' : value);
     });
 
     files.value.forEach((fileItem) => {

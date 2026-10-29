@@ -82,7 +82,14 @@ export const useAuthStore = defineStore('auth', {
         async fetchUser() {
             try {
                 const res = await http.get('me');
-                this.user = res.data.user;
+                this.user = {
+                    ...res.data.user,
+                    employee: res.data.employee ?? null,
+                    // Keep the linked employee identity handy for doctor scoped forms.
+                    medecinId: res.data.employee?.id ?? res.data.user?.medecinId ?? null,
+                    prenom: res.data.employee?.prenom ?? res.data.user?.prenom ?? null,
+                    nom: res.data.employee?.nom ?? res.data.user?.nom ?? null
+                };
                 this.clearDeviceBlock();
                 const { useInternetFeatures } = await import('@/composables/useInternetFeatures');
                 const { syncFromServer } = useInternetFeatures();
