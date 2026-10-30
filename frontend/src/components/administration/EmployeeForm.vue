@@ -42,6 +42,8 @@ const form = ref({
     nom: '',
     prenom: '',
     telephone: '',
+    adresse: '',
+    titre: '',
     email: '',
     fonction: '',
     type: 'Medecin',
@@ -65,6 +67,8 @@ const hydrateForm = (employee) => {
         nom: employee?.nom || '',
         prenom: employee?.prenom || '',
         telephone: employee?.telephone || '',
+        adresse: employee?.adresse || '',
+        titre: employee?.titre || ((employee?.type || 'Medecin') === 'Medecin' ? 'Dr Chirurgien Dentiste' : ''),
         email: employee?.email || employee?.mail || '',
         fonction: employee?.fonction || employee?.poste || '',
         type: employee?.type || 'Medecin',
@@ -84,6 +88,7 @@ const hydrateForm = (employee) => {
 watch(
     () => form.value.type,
     (value) => {
+        if (value === 'Medecin' && !form.value.titre) form.value.titre = 'Dr Chirurgien Dentiste';
         if (value !== 'Medecin' && form.value.typeSalaire === 'pourcentage') {
             form.value.typeSalaire = 'fixe';
         }
@@ -217,8 +222,16 @@ const closeDialog = () => {
                         <Select v-model="form.type" :options="typeOptions" optionLabel="label" optionValue="value" class="w-full" />
                     </div>
                     <div class="space-y-1">
-                        <label class="text-sm font-medium">Description de fonction <span class="text-red-500">*</span></label>
-                        <InputText v-model="form.fonction" placeholder="Description de fonction (optionnel)" class="w-full" />
+                        <label class="text-sm font-medium">Adresse</label>
+                        <InputText v-model="form.adresse" placeholder="Adresse de l'employé" class="w-full" />
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-sm font-medium">Description de la fonction <span class="text-red-500">*</span></label>
+                        <InputText v-model="form.fonction" placeholder="Ex. Médecin permanent au CDOS" class="w-full" />
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-sm font-medium">Titre</label>
+                        <InputText v-model="form.titre" placeholder="Ex. Dr Chirurgien Dentiste" class="w-full" />
                     </div>
                     <div class="space-y-1">
                         <label class="text-sm font-medium">Date d'embauche <span class="text-red-500">*</span></label>

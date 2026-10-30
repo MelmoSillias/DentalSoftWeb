@@ -59,6 +59,15 @@ class SalaryPayment
     #[ORM\Column(type: Types::DECIMAL, precision: 12, scale: 2, options: ['default' => '0'])]
     private string $primeAmount = '0';
 
+    #[ORM\Column(type: Types::DECIMAL, precision: 12, scale: 2, options: ['default' => '0'])]
+    private string $indemniteSpeciale = '0';
+
+    #[ORM\Column(type: Types::DECIMAL, precision: 12, scale: 2, options: ['default' => '0'])]
+    private string $inps = '0';
+
+    #[ORM\Column(type: Types::DECIMAL, precision: 12, scale: 2, nullable: true)]
+    private ?string $primeBaseAmount = null;
+
     #[ORM\Column(type: Types::DECIMAL, precision: 12, scale: 2)]
     private string $calculatedAmount = '0';
 
@@ -271,6 +280,13 @@ class SalaryPayment
 
         return $this;
     }
+
+    public function getIndemniteSpeciale(): float { return (float) $this->indemniteSpeciale; }
+    public function setIndemniteSpeciale(float $amount): self { $this->indemniteSpeciale = (string) $amount; return $this; }
+    public function getInps(): float { return (float) $this->inps; }
+    public function setInps(float $amount): self { $this->inps = (string) $amount; return $this; }
+    public function getPrimeBaseAmount(): ?float { return $this->primeBaseAmount === null ? null : (float) $this->primeBaseAmount; }
+    public function setPrimeBaseAmount(?float $amount): self { $this->primeBaseAmount = $amount === null ? null : (string) $amount; return $this; }
 
     public function getPaidAmount(): float
     {

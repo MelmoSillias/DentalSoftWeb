@@ -116,7 +116,11 @@ class PayrollService
 
         $baseSalaryAmount = (float) ($computed['baseSalaryAmount'] ?? 0);
         $primeAmount = $primeOverride ?? (float) ($computed['primeAmount'] ?? 0);
-        $calculatedAmount = round($baseSalaryAmount + $primeAmount, 2);
+        $indemniteSpeciale = $this->normalizeAmount($payload['indemniteSpeciale'] ?? 0, 'Indemnite speciale');
+        $inps = $this->normalizeAmount($payload['inps'] ?? 0, 'INPS');
+        $grossAmount = round($baseSalaryAmount + $primeAmount + $indemniteSpeciale, 2);
+        if ($inps > $grossAmount) throw new InvalidArgumentException('La retenue INPS ne peut depasser le salaire brut.');
+        $calculatedAmount = round($grossAmount - $inps, 2);
         $alreadyPaid = (float) ($computed['breakdown']['alreadyPaid'] ?? 0);
         $remaining = round(max(0, $calculatedAmount - $alreadyPaid), 2);
 
@@ -159,6 +163,9 @@ class PayrollService
             ->setBaseAmount($computed['baseAmount'] ?? null)
             ->setBaseSalaryAmount($baseSalaryAmount)
             ->setPrimeAmount($primeAmount)
+            ->setIndemniteSpeciale($indemniteSpeciale)
+            ->setInps($inps)
+            ->setPrimeBaseAmount($computed['primeBaseAmount'] ?? null)
             ->setCalculatedAmount($calculatedAmount)
             ->setPaidAmount($paidAmount)
             ->setPaidAt($paidAt)
@@ -212,7 +219,11 @@ class PayrollService
 
         $baseSalaryAmount = (float) ($payment->getBaseSalaryAmount() ?? $computed['baseSalaryAmount'] ?? 0);
         $primeAmount = $primeOverride ?? $payment->getPrimeAmount();
-        $calculatedAmount = round($baseSalaryAmount + $primeAmount, 2);
+        $indemniteSpeciale = array_key_exists('indemniteSpeciale', $payload) ? $this->normalizeAmount($payload['indemniteSpeciale'], 'Indemnite speciale') : $payment->getIndemniteSpeciale();
+        $inps = array_key_exists('inps', $payload) ? $this->normalizeAmount($payload['inps'], 'INPS') : $payment->getInps();
+        $grossAmount = round($baseSalaryAmount + $primeAmount + $indemniteSpeciale, 2);
+        if ($inps > $grossAmount) throw new InvalidArgumentException('La retenue INPS ne peut depasser le salaire brut.');
+        $calculatedAmount = round($grossAmount - $inps, 2);
 
         $paidAmount = isset($payload['paidAmount']) && $payload['paidAmount'] !== ''
             ? $this->normalizeAmount($payload['paidAmount'], 'Montant verse')
@@ -248,6 +259,8 @@ class PayrollService
 
         $payment
             ->setPrimeAmount($primeAmount)
+            ->setIndemniteSpeciale($indemniteSpeciale)
+            ->setInps($inps)
             ->setCalculatedAmount($calculatedAmount)
             ->setPaidAmount($paidAmount);
 
@@ -315,6 +328,8 @@ class PayrollService
                 'prenom' => $employee?->getPrenom(),
                 'fullname' => $employee?->getFullName(),
                 'fonction' => $employee?->getFonction(),
+                'adresse' => $employee?->getAdresse(),
+                'titre' => $employee?->getTitre(),
                 'matricule' => $employee?->getMatricule(),
             ],
             'period' => [
@@ -332,6 +347,11 @@ class PayrollService
             'baseAmount' => $payment->getBaseAmount(),
             'baseSalaryAmount' => $payment->getBaseSalaryAmount(),
             'primeAmount' => $payment->getPrimeAmount(),
+            'indemniteSpeciale' => $payment->getIndemniteSpeciale(),
+            'inps' => $payment->getInps(),
+            'salaireBrut' => round($payment->getBaseSalaryAmount() + $payment->getPrimeAmount() + $payment->getIndemniteSpeciale(), 2),
+            'totalRetenues' => $payment->getInps(),
+            'netAPayer' => $payment->getCalculatedAmount(),
             'calculatedAmount' => $payment->getCalculatedAmount(),
             'paidAmount' => $payment->getPaidAmount(),
             'paidAt' => $payment->getPaidAt()?->format('Y-m-d'),
@@ -349,6 +369,8 @@ class PayrollService
                 'id' => $payment->getEmploye()?->getId(),
                 'fullname' => $payment->getEmploye()?->getFullName(),
                 'fonction' => $payment->getEmploye()?->getFonction(),
+                'titre' => $payment->getEmploye()?->getTitre(),
+                'adresse' => $payment->getEmploye()?->getAdresse(),
                 'matricule' => $payment->getEmploye()?->getMatricule(),
             ],
         ];
@@ -373,9 +395,12 @@ class PayrollService
             'salaryValue' => $payment->getSalaryValueSnapshot(),
             'primeType' => $payment->getPrimeTypeSnapshot(),
             'primeValue' => $payment->getPrimeValueSnapshot(),
+            'primeBaseAmount' => $payment->getPrimeBaseAmount(),
             'baseAmount' => $payment->getBaseAmount(),
             'baseSalaryAmount' => $payment->getBaseSalaryAmount(),
             'primeAmount' => $payment->getPrimeAmount(),
+            'indemniteSpeciale' => $payment->getIndemniteSpeciale(),
+            'inps' => $payment->getInps(),
             'calculatedAmount' => $payment->getCalculatedAmount(),
             'paidAmount' => $payment->getPaidAmount(),
             'paidAt' => $payment->getPaidAt()?->format('Y-m-d'),

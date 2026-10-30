@@ -38,6 +38,11 @@ const localVisible = ref(false);
 const monthModel = ref(new Date());
 const dayModel = ref(new Date());
 const primeAmountModel = ref(null);
+const readSavedAmount = (key) => {
+    try { return Number(localStorage.getItem(key) || 0); } catch { return 0; }
+};
+const indemniteSpecialeModel = ref(readSavedAmount('payroll.indemniteSpeciale'));
+const inpsModel = ref(readSavedAmount('payroll.inps'));
 const form = ref({
     employeeId: null,
     paidAmount: null,
@@ -71,7 +76,7 @@ const canSubmit = computed(() => {
     }
     if (!form.value.paymentMethodId) return false;
     if (isJournalier.value && !selectedDay.value) return false;
-    if (props.context && props.context.canPay === false) return false;
+    if (props.context && props.context.canPay === false && !(effectiveRemaining.value > 0)) return false;
     return true;
 });
 
@@ -93,8 +98,12 @@ const effectiveRemaining = computed(() => {
     const base = Number(props.context.breakdown?.baseSalary ?? props.context.baseSalaryAmount ?? 0);
     const prime = Number(primeAmountModel.value ?? props.context.primeAmount ?? 0);
     const alreadyPaid = Number(props.context.breakdown?.alreadyPaid ?? 0);
-    return Math.max(0, base + prime - alreadyPaid);
+    const gross = base + prime + Number(indemniteSpecialeModel.value || 0);
+    return Math.max(0, gross - Number(inpsModel.value || 0) - alreadyPaid);
 });
+
+watch(indemniteSpecialeModel, (value) => { try { localStorage.setItem('payroll.indemniteSpeciale', String(Number(value || 0))); } catch {} });
+watch(inpsModel, (value) => { try { localStorage.setItem('payroll.inps', String(Number(value || 0))); } catch {} });
 
 watch(
     () => props.visible,
@@ -154,6 +163,11 @@ watch(primeAmountModel, () => {
     const remaining = effectiveRemaining.value;
     form.value.paidAmount = remaining > 0 ? remaining : null;
 });
+watch([indemniteSpecialeModel, inpsModel], () => {
+    if (!props.context) return;
+    const remaining = effectiveRemaining.value;
+    form.value.paidAmount = remaining > 0 ? remaining : null;
+});
 
 const close = () => {
     localVisible.value = false;
@@ -181,6 +195,8 @@ const submit = () => {
     if (hasFixedPrime.value && primeAmountModel.value !== null) {
         payload.primeAmount = Number(primeAmountModel.value);
     }
+    payload.indemniteSpeciale = Number(indemniteSpecialeModel.value || 0);
+    payload.inps = Number(inpsModel.value || 0);
 
     emit('submit', payload);
 };
@@ -227,6 +243,16 @@ const employeeOptions = computed(() =>
                 </div>
 
                 <div class="space-y-1">
+                    <label class="text-sm font-medium">Indemnité spéciale</label>
+                    <InputNumber v-model="indemniteSpecialeModel" class="w-full" :min="0" mode="decimal" :minFractionDigits="0" :maxFractionDigits="2" suffix=" F CFA" />
+                </div>
+
+                <div class="space-y-1">
+                    <label class="text-sm font-medium">INPS (retenue)</label>
+                    <InputNumber v-model="inpsModel" class="w-full" :min="0" mode="decimal" :minFractionDigits="0" :maxFractionDigits="2" suffix=" F CFA" />
+                </div>
+
+                <div class="space-y-1">
                     <label class="text-sm font-medium">Montant versé <span class="text-red-500">*</span></label>
                     <InputNumber v-model="form.paidAmount" class="w-full" :min="0" mode="decimal" :minFractionDigits="0" :maxFractionDigits="2" suffix=" F CFA" />
                 </div>
@@ -247,7 +273,7 @@ const employeeOptions = computed(() =>
                 </div>
             </div>
 
-            <SalaryPreviewPanel :context="context" :loading="contextLoading" v-model:prime-amount="primeAmountModel" :editable-prime="hasFixedPrime" />
+            <SalaryPreviewPanel :context="context" :loading="contextLoading" v-model:prime-amount="primeAmountModel" :editable-prime="hasFixedPrime" :indemnite-speciale="indemniteSpecialeModel" :inps="inpsModel" />
         </div>
 
         <template #footer>

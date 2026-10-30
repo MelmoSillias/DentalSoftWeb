@@ -34,8 +34,14 @@ class Employe
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $telephone = null;
 
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $adresse = null;
+
     #[ORM\Column(length: 255)]
     private ?string $fonction = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $titre = null;
 
     #[ORM\Column(type: Types::DATE_MUTABLE)]
     private ?\DateTimeInterface $dateEmbauche = null;
@@ -170,6 +176,11 @@ class Employe
         $this->telephone = $telephone;
         return $this;
     }
+
+    public function getAdresse(): ?string { return $this->adresse; }
+    public function setAdresse(?string $adresse): static { $this->adresse = $adresse; return $this; }
+    public function getTitre(): ?string { return $this->titre; }
+    public function setTitre(?string $titre): static { $this->titre = $titre; return $this; }
 
     public function getFonction(): ?string
     {

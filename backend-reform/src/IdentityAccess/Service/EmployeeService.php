@@ -44,6 +44,8 @@ class EmployeeService
                 'prenom' => $employee->getPrenom(),
                 'fullname' => $employee->getPrenom() . ' ' . $employee->getNom(),
                 'fonction' => $employee->getFonction(),
+                'adresse' => $employee->getAdresse(),
+                'titre' => $employee->getTitre(),
                 'type' => $employee->getType(),
                 'telephone' => $employee->getTelephone(),
                 'dateEmbauche' => $employee->getDateEmbauche()->format('Y-m-d'),
@@ -78,6 +80,8 @@ class EmployeeService
                 'prenom' => $employee->getPrenom(),
                 'fullname' => trim(($employee->getPrenom() ?? '') . ' ' . ($employee->getNom() ?? '')),
                 'fonction' => $employee->getFonction(),
+                'adresse' => $employee->getAdresse(),
+                'titre' => $employee->getTitre(),
                 'type' => $employee->getType(),
                 'telephone' => $employee->getTelephone(),
                 'deletedAt' => $employee->getDeletedAt()?->format('Y-m-d H:i:s'),
@@ -177,6 +181,8 @@ class EmployeeService
         $employe->setNom($this->sanitizeString($data['nom']));
         $employe->setPrenom($this->sanitizeString($data['prenom']));
         $employe->setTelephone($this->normalizeNullableString($data['telephone'] ?? null));
+        $employe->setAdresse($this->normalizeNullableString($data['adresse'] ?? null));
+        $employe->setTitre($this->normalizeNullableString($data['titre'] ?? null) ?? ($employeeType === 'Medecin' ? 'Dr Chirurgien Dentiste' : null));
         $employe->setFonction($fonction);
         $employe->setEmail($email);
         $employe->setType($employeeType);
@@ -273,6 +279,8 @@ class EmployeeService
         $employee->setFonction($fonction);
         $employee->setType($employeeType);
         $employee->setTelephone($this->normalizeNullableString($data['telephone'] ?? null));
+        $employee->setAdresse($this->normalizeNullableString($data['adresse'] ?? $employee->getAdresse()));
+        $employee->setTitre($this->normalizeNullableString($data['titre'] ?? $employee->getTitre()) ?? ($employeeType === 'Medecin' ? ($employee->getTitre() ?: 'Dr Chirurgien Dentiste') : null));
         $employee->setEmail($email);
         $employee->setDateEmbauche($dateEmbauche);
         $employee->setTypeSalaire($typeSalaire);

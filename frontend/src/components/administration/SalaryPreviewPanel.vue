@@ -21,7 +21,9 @@ const props = defineProps({
     editablePrime: {
         type: Boolean,
         default: false
-    }
+    },
+    indemniteSpeciale: { type: Number, default: 0 },
+    inps: { type: Number, default: 0 }
 });
 
 const emit = defineEmits(['update:primeAmount']);
@@ -55,10 +57,13 @@ const adjustedTotal = computed(() => {
     const base = Number(breakdown.value.baseSalary || props.context?.baseSalaryAmount || 0);
     const prime = Number(localPrimeAmount.value || 0);
     const alreadyPaid = Number(breakdown.value.alreadyPaid || 0);
-    const total = base + prime;
+    const gross = base + prime + Number(props.indemniteSpeciale || 0);
+    const net = Math.max(0, gross - Number(props.inps || 0));
     return {
-        total,
-        remaining: Math.max(0, total - alreadyPaid)
+        gross,
+        deductions: Number(props.inps || 0),
+        total: net,
+        remaining: Math.max(0, net - alreadyPaid)
     };
 });
 </script>
@@ -110,7 +115,7 @@ const adjustedTotal = computed(() => {
             </div>
 
             <div v-if="context.employee?.typePrime !== 'aucune' && context.typePrime !== 'aucune'" class="rounded-lg bg-amber-50/70 dark:bg-amber-900/20 p-3 space-y-2">
-                <p class="text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">Prime — {{ primeTypeLabel }}</p>
+                <p class="text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">{{ context.employee?.typePrime === 'actes' || context.typePrime === 'actes' ? 'Prime de rendement' : 'Prime' }} — {{ primeTypeLabel }}</p>
                 <div class="flex justify-between text-sm">
                     <span>Valeur configurée</span>
                     <span class="font-medium">
@@ -131,10 +136,14 @@ const adjustedTotal = computed(() => {
                 </div>
             </div>
 
+            <div class="flex justify-between text-sm"><span>Indemnité spéciale</span><span>{{ formatCurrency(indemniteSpeciale) }}</span></div>
+
             <div class="rounded-lg border border-primary-200 dark:border-primary-800 p-3 space-y-2 bg-primary-50/40 dark:bg-primary-900/20">
+                <div class="flex justify-between text-sm"><span>Salaire brut</span><span>{{ formatCurrency(adjustedTotal.gross) }}</span></div>
+                <div class="flex justify-between text-sm"><span>Total des retenues (INPS)</span><span>{{ formatCurrency(adjustedTotal.deductions) }}</span></div>
                 <div class="flex justify-between text-sm">
-                    <span>Total calculé</span>
-                    <span class="font-semibold">{{ formatCurrency(editablePrime ? adjustedTotal.total : (breakdown.total ?? context.calculatedAmount)) }}</span>
+                    <span>Net à payer</span>
+                    <span class="font-semibold">{{ formatCurrency(adjustedTotal.total) }}</span>
                 </div>
                 <div class="flex justify-between text-sm">
                     <span>Déjà versé</span>

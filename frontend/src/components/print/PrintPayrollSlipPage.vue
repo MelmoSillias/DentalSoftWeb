@@ -12,6 +12,8 @@ const props = defineProps({
     periodLabel: { type: String, default: '' },
     employeeName: { type: String, default: '' },
     employeeFonction: { type: String, default: '' },
+    employeeTitle: { type: String, default: '' },
+    employeeAddress: { type: String, default: '' },
     matricule: { type: String, default: '' },
     frequenceSnapshot: { type: String, default: 'mensuel' },
     salaryType: { type: String, default: '' },
@@ -22,6 +24,11 @@ const props = defineProps({
     baseAmount: { type: Number, default: null },
     baseSalaryAmount: { type: Number, default: null },
     primeAmount: { type: Number, default: 0 },
+    indemniteSpeciale: { type: Number, default: 0 },
+    inps: { type: Number, default: 0 },
+    salaireBrut: { type: Number, default: null },
+    totalRetenues: { type: Number, default: null },
+    netAPayer: { type: Number, default: null },
     calculatedAmount: { type: Number, default: 0 },
     paidAmount: { type: Number, default: 0 },
     paidAt: { type: String, default: '' },
@@ -74,9 +81,11 @@ const formatPrimeValue = (value, type) => {
                         <span class="payroll-slip__value">{{ matricule || '—' }}</span>
                     </div>
                     <div class="payroll-slip__field">
-                        <span class="payroll-slip__label">Fonction</span>
+                        <span class="payroll-slip__label">Description de la fonction</span>
                         <span class="payroll-slip__value">{{ employeeFonction || '—' }}</span>
                     </div>
+                    <div class="payroll-slip__field"><span class="payroll-slip__label">Titre</span><span class="payroll-slip__value">{{ employeeTitle || '—' }}</span></div>
+                    <div class="payroll-slip__field"><span class="payroll-slip__label">Adresse</span><span class="payroll-slip__value">{{ employeeAddress || '—' }}</span></div>
                     <div class="payroll-slip__field">
                         <span class="payroll-slip__label">Fréquence</span>
                         <span class="payroll-slip__value">{{ frequenceLabel }}</span>
@@ -123,24 +132,28 @@ const formatPrimeValue = (value, type) => {
                             <td class="right">{{ formatAmount(baseSalaryAmount) }}</td>
                         </tr>
                         <tr v-if="primeAmount > 0">
-                            <td>Prime</td>
+                            <td>{{ primeType === 'actes' ? 'Prime de rendement' : 'Prime' }}</td>
                             <td class="right">{{ primeType === 'actes' ? formatAmount(primeBaseAmount) : '—' }}</td>
                             <td class="right">{{ formatAmount(primeAmount) }}</td>
                         </tr>
+                        <tr><td>Indemnité spéciale</td><td class="right">—</td><td class="right">{{ formatAmount(indemniteSpeciale) }}</td></tr>
+                        <tr><td>INPS (retenue)</td><td class="right">—</td><td class="right">- {{ formatAmount(inps) }}</td></tr>
                     </tbody>
                     <tfoot>
                         <tr>
-                            <td colspan="2"><strong>Total calculé</strong></td>
+                            <td colspan="2"><strong>Salaire brut</strong></td>
                             <td class="right">
-                                <strong>{{ formatAmount(calculatedAmount) }}</strong>
+                                <strong>{{ formatAmount(salaireBrut ?? (baseSalaryAmount + primeAmount + indemniteSpeciale)) }}</strong>
                             </td>
                         </tr>
+                        <tr><td colspan="2"><strong>Total des retenues</strong></td><td class="right"><strong>{{ formatAmount(totalRetenues ?? inps) }}</strong></td></tr>
                         <tr>
-                            <td colspan="2"><strong>Net versé</strong></td>
+                            <td colspan="2"><strong>Net à payer</strong></td>
                             <td class="right">
-                                <strong>{{ formatAmount(paidAmount) }}</strong>
+                                <strong>{{ formatAmount(netAPayer ?? calculatedAmount) }}</strong>
                             </td>
                         </tr>
+                        <tr><td colspan="2"><strong>Net versé</strong></td><td class="right"><strong>{{ formatAmount(paidAmount) }}</strong></td></tr>
                     </tfoot>
                 </table>
             </section>

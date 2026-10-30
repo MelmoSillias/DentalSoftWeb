@@ -171,6 +171,8 @@ class RHController extends AbstractController
             'fullname' => $employee->getFullName(),
             'matricule' => $employee->getMatricule(),
             'fonction' => $employee->getFonction(),
+            'adresse' => $employee->getAdresse(),
+            'titre' => $employee->getTitre(),
             'type' => $employee->getType(),
             'telephone' => $employee->getTelephone(),
             'email' => $employee->getEmail(),
