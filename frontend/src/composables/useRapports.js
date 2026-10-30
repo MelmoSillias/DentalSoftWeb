@@ -44,6 +44,8 @@ export function useRapports() {
         expenseTotal: 0,
         resultTotal: 0,
         billedTotal: 0,
+        normalBilledTotal: 0,
+        insuranceBilledTotal: 0,
         collectedTotal: 0,
         appointmentsTotal: 0,
         employeesTotal: 0,
@@ -380,11 +382,15 @@ export function useRapports() {
         }, 0);
         const payrollFixed = Number(adminGlobalStats.value.payrollFixed || 0);
         const kpi = adminDoctorReports.value?.kpi || {};
+        const billedTotal = Number(kpi.totalApport || 0);
+        const insuranceBilledTotal = Number(kpi.totalPartAssurance || 0);
 
         adminGlobalStats.value = {
             ...adminGlobalStats.value,
             patientsNew: adminPeriodicPatients.value?.newPatients ?? 0,
-            billedTotal: Number(kpi.totalApport || 0),
+            billedTotal,
+            normalBilledTotal: billedTotal - insuranceBilledTotal,
+            insuranceBilledTotal,
             collectedTotal: Number(kpi.totalPaidCash || kpi.totalPaid || 0),
             payrollPercentage,
             payrollTotal: payrollFixed + payrollPercentage

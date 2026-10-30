@@ -22,64 +22,76 @@ const items = (stats) => [
         key: 'patients',
         label: 'Nouveaux patients',
         value: stats.patientsNew ?? 0,
-        sub: `Total : ${stats.patientsTotal ?? 0}`,
-        icon: 'pi pi-users'
+        subStats: [{ label: 'Patients au total', value: stats.patientsTotal ?? 0 }],
+        icon: 'pi pi-users',
+        tone: 'blue'
     },
     {
         key: 'treasury',
         label: 'Résultat (transactions)',
         value: formatFcfa(stats.resultTotal),
-        sub: [
-            `Revenus : ${formatFcfa(stats.revenueTotal)}`,
-            `Dépenses : ${formatFcfa(stats.expenseTotal)}`
+        subStats: [
+            { label: 'Revenus', value: formatFcfa(stats.revenueTotal) },
+            { label: 'Dépenses', value: formatFcfa(stats.expenseTotal) }
         ],
-        icon: 'pi pi-wallet'
+        icon: 'pi pi-wallet',
+        tone: Number(stats.resultTotal || 0) < 0 ? 'rose' : 'emerald'
     },
     {
         key: 'billing',
         label: 'Total facturé',
         value: formatFcfa(stats.billedTotal),
-        sub: `Encaissé : ${formatFcfa(stats.collectedTotal)}`,
-        icon: 'pi pi-chart-line'
+        subStats: [
+            { label: 'Factures normales', value: formatFcfa(stats.normalBilledTotal) },
+            { label: 'Factures assurances', value: formatFcfa(stats.insuranceBilledTotal) },
+            { label: 'Total encaissé', value: formatFcfa(stats.collectedTotal) }
+        ],
+        icon: 'pi pi-chart-line',
+        tone: 'indigo'
     },
     {
         key: 'employees',
         label: 'Employés (total)',
         value: stats.employeesTotal ?? 0,
-        icon: 'pi pi-briefcase'
+        icon: 'pi pi-briefcase',
+        tone: 'violet'
     },
     {
         key: 'payroll',
         label: 'Masse salariale',
         value: formatFcfa(stats.payrollTotal ?? (Number(stats.payrollFixed || 0) + Number(stats.payrollPercentage || 0))),
-        sub: [
-            `Fixe : ${formatFcfa(stats.payrollFixed)}`,
-            `% : ${formatFcfa(stats.payrollPercentage)}`
+        subStats: [
+            { label: 'Part fixe', value: formatFcfa(stats.payrollFixed) },
+            { label: 'Part variable', value: formatFcfa(stats.payrollPercentage) }
         ],
-        icon: 'pi pi-money-bill'
+        icon: 'pi pi-money-bill',
+        tone: 'orange'
     },
     {
         key: 'rooms',
         label: 'Salles de consultation',
         value: stats.consultRoomsCount ?? 0,
-        icon: 'pi pi-building'
+        icon: 'pi pi-building',
+        tone: 'cyan'
     },
     {
         key: 'consumables',
         label: 'Produits consommables',
         value: stats.consumablesCount ?? 0,
-        icon: 'pi pi-box'
+        icon: 'pi pi-box',
+        tone: 'orange'
     },
     {
         key: 'users',
         label: 'Utilisateurs',
         value: stats.usersTotal ?? 0,
-        sub: [
-            `Admin : ${stats.usersAdmin ?? 0}`,
-            `Réception : ${stats.usersReceptionist ?? 0}`,
-            `Médecin : ${stats.usersDoctor ?? 0}`
+        subStats: [
+            { label: 'Administrateurs', value: stats.usersAdmin ?? 0 },
+            { label: 'Réception', value: stats.usersReceptionist ?? 0 },
+            { label: 'Médecins', value: stats.usersDoctor ?? 0 }
         ],
-        icon: 'pi pi-id-card'
+        icon: 'pi pi-id-card',
+        tone: 'teal'
     }
 ];
 
@@ -151,6 +163,13 @@ const chartOptions = computed(() => {
     };
 });
 
+function formatItemSubStats(item) {
+    if (item.subStats?.length) {
+        return item.subStats.map(({ label, value }) => `${label} : ${value}`).join('\n');
+    }
+    return Array.isArray(item.sub) ? item.sub.join('\n') : item.sub;
+}
+
 function printSection() {
     printReport({
         title: 'Statistiques globales',
@@ -161,7 +180,7 @@ function printSection() {
                 items: items(props.stats).map((item) => ({
                     label: item.label,
                     value: item.value,
-                    sub: Array.isArray(item.sub) ? item.sub.join('\n') : item.sub
+                    sub: formatItemSubStats(item)
                 }))
             }
         ]

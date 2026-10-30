@@ -1,4 +1,4 @@
-FROM dunglas/frankenphp:1-php8.2-bookworm
+FROM dunglas/frankenphp:1.13.4-php8.2-bookworm
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     mariadb-client \
