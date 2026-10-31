@@ -44,6 +44,7 @@ const items = (stats) => [
         subStats: [
             { label: 'Factures normales', value: formatFcfa(stats.normalBilledTotal) },
             { label: 'Factures assurances', value: formatFcfa(stats.insuranceBilledTotal) },
+            { label: 'Factures services cabinets', value: formatFcfa(stats.servicesCabinet?.facture) },
             { label: 'Total encaissé', value: formatFcfa(stats.collectedTotal) }
         ],
         icon: 'pi pi-chart-line',

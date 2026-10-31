@@ -130,6 +130,7 @@ onMounted(() => {
                             :room-usage="adminRoomUsage"
                             :payment-balances="adminPaymentBalances"
                             :payment-frequency="adminPaymentFrequency"
+                            :services-cabinet="adminGlobalStats.servicesCabinet"
                             :loading="adminLoading"
                             :period-label="periodLabel"
                         />

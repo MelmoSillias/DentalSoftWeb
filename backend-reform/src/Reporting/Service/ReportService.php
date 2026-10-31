@@ -219,6 +219,10 @@ class ReportService
         return $this->remember($cacheKey, 120, function () use ($from, $to) {
             $fromDate = $from ? DateTimeImmutable::createFromFormat('Y-m-d', $from)?->setTime(0, 0) : null;
             $toDate   = $to   ? DateTimeImmutable::createFromFormat('Y-m-d', $to)?->setTime(23, 59, 59) : null;
+            $servicesCabinet = $this->cabinetServiceBilling->summarizePeriod(
+                $fromDate ?? new DateTimeImmutable('1900-01-01'),
+                $toDate ?? new DateTimeImmutable()
+            );
 
             $transactions = $this->transactionRepo->createQueryBuilder('t')
                 ->leftJoin('t.modeDePaiement', 'm')
@@ -258,6 +262,7 @@ class ReportService
                 'revenueTotal'      => $revenueTotal,
                 'expenseTotal'      => $expenseTotal,
                 'resultTotal'       => $revenueTotal - $expenseTotal,
+                'servicesCabinet'   => $servicesCabinet,
                 'employeesTotal'    => $this->employeRepo->count(['deletedAt' => null]),
                 'payrollFixed'      => array_sum(array_map(
                     static fn($e) => (float) ($e->getValeurSalaire() ?? 0),

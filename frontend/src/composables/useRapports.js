@@ -47,6 +47,7 @@ export function useRapports() {
         normalBilledTotal: 0,
         insuranceBilledTotal: 0,
         collectedTotal: 0,
+        servicesCabinet: { count: 0, facture: 0, encaisse: 0, reste: 0 },
         appointmentsTotal: 0,
         employeesTotal: 0,
         payrollFixed: 0,
@@ -210,6 +211,7 @@ export function useRapports() {
             revenueTotal: data.revenueTotal || 0,
             expenseTotal: data.expenseTotal || 0,
             resultTotal: data.resultTotal ?? (Number(data.revenueTotal || 0) - Number(data.expenseTotal || 0)),
+            servicesCabinet: data.servicesCabinet || { count: 0, facture: 0, encaisse: 0, reste: 0 },
             appointmentsTotal: data.appointmentsTotal || 0,
             employeesTotal: data.employeesTotal || 0,
             payrollFixed: data.payrollFixed || 0,
@@ -382,16 +384,19 @@ export function useRapports() {
         }, 0);
         const payrollFixed = Number(adminGlobalStats.value.payrollFixed || 0);
         const kpi = adminDoctorReports.value?.kpi || {};
-        const billedTotal = Number(kpi.totalApport || 0);
+        const servicesCabinet = adminGlobalStats.value.servicesCabinet || {};
+        const cabinetBilled = Number(servicesCabinet.facture || 0);
+        const cabinetCollected = Number(servicesCabinet.encaisse || 0);
+        const billedTotal = Number(kpi.totalApport || 0) + cabinetBilled;
         const insuranceBilledTotal = Number(kpi.totalPartAssurance || 0);
 
         adminGlobalStats.value = {
             ...adminGlobalStats.value,
             patientsNew: adminPeriodicPatients.value?.newPatients ?? 0,
             billedTotal,
-            normalBilledTotal: billedTotal - insuranceBilledTotal,
+            normalBilledTotal: Number(kpi.totalApport || 0) - insuranceBilledTotal,
             insuranceBilledTotal,
-            collectedTotal: Number(kpi.totalPaidCash || kpi.totalPaid || 0),
+            collectedTotal: Number(kpi.totalPaidCash || kpi.totalPaid || 0) + cabinetCollected,
             payrollPercentage,
             payrollTotal: payrollFixed + payrollPercentage
         };

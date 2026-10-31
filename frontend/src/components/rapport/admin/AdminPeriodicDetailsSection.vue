@@ -13,6 +13,7 @@ const props = defineProps({
     roomUsage: { type: Object, default: () => ({ usage: [], topRoom: '' }) },
     paymentBalances: { type: Array, default: () => [] },
     paymentFrequency: { type: Object, default: () => ({ frequency: [], topMode: '' }) },
+    servicesCabinet: { type: Object, default: () => ({ count: 0, facture: 0, encaisse: 0, reste: 0 }) },
     loading: { type: Boolean, default: false },
     periodLabel: { type: String, default: '' }
 });
@@ -59,6 +60,13 @@ const roomUsageItems = (roomUsage) =>
         value: `${row.count} (${row.percent}%)`,
         severity: 'info'
     }));
+
+const servicesCabinetItems = (services) => [
+    { label: 'Services réalisés', value: services.count ?? 0, severity: 'info' },
+    { label: 'Facturé', value: formatFcfa(services.facture), severity: 'warn' },
+    { label: 'Encaissé', value: formatFcfa(services.encaisse), severity: 'success' },
+    { label: 'Reste à encaisser', value: formatFcfa(services.reste), severity: 'danger' }
+];
 
 const pieOptions = computed(() => {
     const documentStyle = getComputedStyle(document.documentElement);
@@ -185,6 +193,11 @@ function printSection() {
                 items: consultationsItems(props.consultations)
             },
             {
+                title: 'Services cabinets',
+                items: servicesCabinetItems(props.servicesCabinet),
+                emptyLabel: 'Aucun service cabinet sur cette période.'
+            },
+            {
                 title: 'Rendez-vous',
                 items: appointmentsItems(props.appointments)
             },
@@ -300,5 +313,7 @@ function printSection() {
                 </template>
             </ValueListCard>
         </div>
+
+        <ValueListCard id="admin-periodic-cabinet-services" title="Services cabinets" :items="servicesCabinetItems(servicesCabinet)" :loading="loading" empty-label="Aucun service cabinet sur cette période." />
     </section>
 </template>
