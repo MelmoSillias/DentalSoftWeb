@@ -105,7 +105,7 @@ const adjustedTotal = computed(() => {
                     <span class="font-medium uppercase tracking-wide">{{ formatSalaryTypeLabel(context.employee?.typeSalaire || context.salaryType) }}</span>
                 </div>
                 <div class="flex justify-between text-sm">
-                    <span>Base chiffrée</span>
+                    <span>{{ (context.employee?.typeSalaire || context.salaryType) === 'pourcentage' ? 'Total encaissé médecin' : 'Base chiffrée' }}</span>
                     <span class="font-medium">{{ formatCurrency(context.baseAmount) }}</span>
                 </div>
                 <div class="flex justify-between text-sm font-semibold text-primary-600 dark:text-primary-300">

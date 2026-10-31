@@ -53,7 +53,7 @@ const salarySuffix = computed(() => (form.value.typeSalaire === 'pourcentage' ? 
 const primeSuffix = computed(() => (form.value.typePrime === 'actes' ? '%' : 'F CFA'));
 
 const salaryValueLabel = computed(() => {
-    if (form.value.typeSalaire === 'pourcentage') return 'Pourcentage sur facturation';
+    if (form.value.typeSalaire === 'pourcentage') return 'Pourcentage sur total encaissé';
     if (form.value.frequencePaiement === 'journalier') return 'Taux journalier';
     return 'Montant mensuel';
 });

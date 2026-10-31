@@ -8,6 +8,7 @@ use App\IdentityAccess\Entity\Employe;
 use App\IdentityAccess\Entity\SalaryPayment;
 use App\IdentityAccess\Repository\EmployeRepository;
 use App\IdentityAccess\Repository\SalaryPaymentRepository;
+use App\Reporting\Service\ReportService;
 use Doctrine\ORM\EntityManagerInterface;
 use InvalidArgumentException;
 
@@ -18,6 +19,7 @@ class PayrollService
         private EmployeRepository $employeRepo,
         private SalaryPaymentRepository $salaryPaymentRepo,
         private ModeDePaiementRepository $modeDePaiementRepo,
+        private ReportService $reportService,
     ) {
     }
 
@@ -453,7 +455,7 @@ class PayrollService
             $baseAmount = $salaryValue;
             $baseSalaryAmount = (float) ($salaryValue ?? 0);
         } elseif ($salaryType === 'pourcentage' && $employee->getType() === 'Medecin') {
-            $baseAmount = $this->computeMedecinBilledAmountForPeriod($employee, $periodStart, $periodEnd);
+            $baseAmount = $this->computeMedecinCollectedAmountForPeriod($employee, $periodStart, $periodEnd);
             $baseSalaryAmount = $baseAmount * ((float) ($salaryValue ?? 0) / 100);
         }
 
@@ -509,23 +511,20 @@ class PayrollService
         return $this->salaryPaymentRepo->sumPaidForMonthlyPeriod($employee, $month, $year);
     }
 
-    private function computeMedecinBilledAmountForPeriod(Employe $employee, \DateTimeImmutable $periodStart, \DateTimeImmutable $periodEnd): float
+    private function computeMedecinCollectedAmountForPeriod(Employe $employee, \DateTimeImmutable $periodStart, \DateTimeImmutable $periodEnd): float
     {
-        $result = $this->em->createQueryBuilder()
-            ->select('COALESCE(SUM(d.montant), 0)')
-            ->from('App\\Billing\\Entity\\Devis', 'd')
-            ->innerJoin('d.consultation', 'c')
-            ->andWhere('c.medecin = :employee')
-            ->andWhere('d.type = :factureType')
-            ->andWhere('d.date BETWEEN :periodStart AND :periodEnd')
-            ->setParameter('employee', $employee)
-            ->setParameter('factureType', 1)
-            ->setParameter('periodStart', $periodStart->setTime(0, 0, 0))
-            ->setParameter('periodEnd', $periodEnd->setTime(23, 59, 59))
-            ->getQuery()
-            ->getSingleScalarResult();
+        $report = $this->reportService->periodicDoctorReports(
+            $periodStart->setTime(0, 0, 0),
+            $periodEnd->setTime(23, 59, 59),
+        );
 
-        return round((float) $result, 2);
+        foreach ($report['doctors'] as $doctorStats) {
+            if ((int) ($doctorStats['id'] ?? 0) === (int) $employee->getId()) {
+                return round((float) ($doctorStats['revenue_total'] ?? 0), 2);
+            }
+        }
+
+        return 0.0;
     }
 
     private function computeMedecinActesAmountForPeriod(Employe $employee, \DateTimeImmutable $periodStart, \DateTimeImmutable $periodEnd): float
