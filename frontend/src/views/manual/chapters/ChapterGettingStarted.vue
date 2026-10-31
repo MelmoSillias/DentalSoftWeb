@@ -260,7 +260,7 @@ function goTo(id) {
                 </ManualStep>
                 <ManualStep>
                     Rémunération : la <span class="ui">Fréquence</span> (Mensuel ou Journalier), puis le <span class="ui">Type de salaire</span> : Non défini, Fixe, ou <span class="ui">Pourcentage</span> (médecin uniquement, 35 % proposé, 100 % au plus). Une prime peut s’ajouter : montant
-                    fixe, ou <span class="ui">% sur actes posés</span> (médecin uniquement, 10 % proposé).
+                    fixe, ou <span class="ui">% sur total encaissé</span> (médecin uniquement, 10 % proposé).
                 </ManualStep>
                 <ManualStep>Cochez les <span class="ui">Jours travaillés</span> (du lundi au samedi) et joignez les pièces du dossier si nécessaire.</ManualStep>
                 <ManualStep result="« Employe cree. »">Cliquez <span class="ui">Enregistrer</span>, puis <span class="ui">Confirmer</span> au message « Confirmer la creation ? ».</ManualStep>

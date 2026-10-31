@@ -39,7 +39,7 @@ const frequenceLabel = computed(() => {
 });
 
 const primeTypeLabel = computed(() => {
-    const map = { aucune: 'Aucune', fixe: 'Montant fixe', actes: '% actes posés' };
+    const map = { aucune: 'Aucune', fixe: 'Montant fixe', actes: '% total encaissé' };
     const type = props.context?.employee?.typePrime || props.context?.typePrime || 'aucune';
     return map[type] || type;
 });
@@ -123,7 +123,7 @@ const adjustedTotal = computed(() => {
                     </span>
                 </div>
                 <div v-if="context.employee?.typePrime === 'actes' || context.typePrime === 'actes'" class="flex justify-between text-sm">
-                    <span>Base actes</span>
+                    <span>Total encaissé médecin</span>
                     <span class="font-medium">{{ formatCurrency(context.primeBaseAmount) }}</span>
                 </div>
                 <div v-if="editablePrime" class="space-y-1">

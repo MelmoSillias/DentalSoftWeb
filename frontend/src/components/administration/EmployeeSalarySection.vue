@@ -30,7 +30,7 @@ const baseTypeSalaireOptions = [
 const basePrimeOptions = [
     { label: 'Aucune', value: 'aucune' },
     { label: 'Montant fixe', value: 'fixe' },
-    { label: '% sur actes posés', value: 'actes' }
+    { label: '% sur total encaissé', value: 'actes' }
 ];
 
 const isMedecin = computed(() => props.employeeType === 'Medecin');
@@ -145,7 +145,7 @@ watch(
                     <InputNumber v-model="form.valeurPrime" class="w-full" :min="0" :max="primeMax" :step="0.01" :suffix="` ${primeSuffix}`" :disabled="isPrimeDisabled" />
                 </div>
             </div>
-            <p v-if="form.typePrime === 'actes'" class="text-xs text-surface-500 mt-2">Calculée en pourcentage sur le montant des actes posés (médecins uniquement).</p>
+            <p v-if="form.typePrime === 'actes'" class="text-xs text-surface-500 mt-2">Calculée en pourcentage sur le total encaissé du médecin (médecins uniquement).</p>
             <p v-else-if="form.typePrime === 'fixe'" class="text-xs text-surface-500 mt-2">Montant par défaut, modifiable lors de chaque paiement.</p>
         </div>
     </div>

@@ -447,6 +447,13 @@ class PayrollService
         $frequence = $employee->getFrequencePaiement();
         $typePrime = $employee->getTypePrime();
         $valeurPrime = $employee->getValeurPrime();
+        $isDoctor = $employee->getType() === 'Medecin';
+        $usesCollectedRevenue = $isDoctor && (
+            $salaryType === 'pourcentage' || $typePrime === 'actes'
+        );
+        $collectedRevenue = $usesCollectedRevenue
+            ? $this->computeMedecinCollectedAmountForPeriod($employee, $periodStart, $periodEnd)
+            : null;
 
         $baseAmount = null;
         $baseSalaryAmount = 0.0;
@@ -454,8 +461,8 @@ class PayrollService
         if ($salaryType === 'fixe') {
             $baseAmount = $salaryValue;
             $baseSalaryAmount = (float) ($salaryValue ?? 0);
-        } elseif ($salaryType === 'pourcentage' && $employee->getType() === 'Medecin') {
-            $baseAmount = $this->computeMedecinCollectedAmountForPeriod($employee, $periodStart, $periodEnd);
+        } elseif ($salaryType === 'pourcentage' && $isDoctor) {
+            $baseAmount = $collectedRevenue;
             $baseSalaryAmount = $baseAmount * ((float) ($salaryValue ?? 0) / 100);
         }
 
@@ -464,8 +471,8 @@ class PayrollService
 
         if ($typePrime === 'fixe') {
             $primeAmount = (float) ($valeurPrime ?? 0);
-        } elseif ($typePrime === 'actes' && $employee->getType() === 'Medecin') {
-            $primeBaseAmount = $this->computeMedecinActesAmountForPeriod($employee, $periodStart, $periodEnd);
+        } elseif ($typePrime === 'actes' && $isDoctor) {
+            $primeBaseAmount = $collectedRevenue;
             $primeAmount = $primeBaseAmount * ((float) ($valeurPrime ?? 0) / 100);
         }
 
@@ -525,23 +532,6 @@ class PayrollService
         }
 
         return 0.0;
-    }
-
-    private function computeMedecinActesAmountForPeriod(Employe $employee, \DateTimeImmutable $periodStart, \DateTimeImmutable $periodEnd): float
-    {
-        $result = $this->em->createQueryBuilder()
-            ->select('COALESCE(SUM(a.prix * a.quantite), 0)')
-            ->from('App\\CareDelivery\\Entity\\ActeMedical', 'a')
-            ->innerJoin('a.consultation', 'c')
-            ->andWhere('c.medecin = :employee')
-            ->andWhere('c.CreatedAt BETWEEN :periodStart AND :periodEnd')
-            ->setParameter('employee', $employee)
-            ->setParameter('periodStart', $periodStart->setTime(0, 0, 0))
-            ->setParameter('periodEnd', $periodEnd->setTime(23, 59, 59))
-            ->getQuery()
-            ->getSingleScalarResult();
-
-        return round((float) $result, 2);
     }
 
     private function buildPeriodBounds(Employe $employee, int $month, int $year, ?string $day): array
