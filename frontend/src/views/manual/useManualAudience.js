@@ -4,7 +4,6 @@ const AUDIENCE_KEY = Symbol('manualAudience');
 
 /** Reader profiles of the manual. `accueil` covers ROLE_RECEPTION, ROLE_RECEPTIONNISTE and ROLE_SECRETAIRE. */
 export const AUDIENCES = [
-    { value: 'all', label: 'Tout le manuel' },
     { value: 'admin', label: 'Administrateur' },
     { value: 'accueil', label: 'Accueil' },
     { value: 'medecin', label: 'Médecin' }
@@ -21,10 +20,10 @@ export const ROLE_LABELS = {
  * @param {string[]} roles
  */
 export function audienceFromRoles(roles = []) {
-    if (roles.includes('ROLE_ADMIN')) return 'all';
+    if (roles.includes('ROLE_ADMIN')) return 'admin';
     if (roles.includes('ROLE_MEDECIN')) return 'medecin';
     if (roles.some((role) => ['ROLE_RECEPTION', 'ROLE_RECEPTIONNISTE', 'ROLE_SECRETAIRE'].includes(role))) return 'accueil';
-    return 'all';
+    return 'accueil';
 }
 
 function matches(audience, roles) {

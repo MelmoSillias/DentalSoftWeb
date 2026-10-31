@@ -13,10 +13,13 @@ import ChapterPreface from './chapters/ChapterPreface.vue';
 import ChapterScenarios from './chapters/ChapterScenarios.vue';
 import { visibleOutline } from './data/outline';
 import './manual.css';
-import { AUDIENCES, audienceFromRoles, provideManualAudience } from './useManualAudience';
+import { audienceFromRoles, provideManualAudience } from './useManualAudience';
 
 const auth = useAuthStore();
 const { audience, isVisible, label: audienceLabel } = provideManualAudience(audienceFromRoles(auth.user?.roles));
+watch(() => auth.user?.roles, (roles) => {
+    audience.value = audienceFromRoles(roles);
+}, { deep: true });
 
 const toc = computed(() => visibleOutline(isVisible));
 const activeId = ref(toc.value[0]?.id ?? '');
@@ -98,12 +101,8 @@ onBeforeUnmount(() => {
             <p class="m-nav__title">Sommaire</p>
 
             <div class="m-nav__audience">
-                <label id="manual-audience-label">Lire en tant que</label>
-                <div class="m-nav__chips" role="group" aria-labelledby="manual-audience-label">
-                    <button v-for="item in AUDIENCES" :key="item.value" type="button" :aria-pressed="audience === item.value" @click="audience = item.value">
-                        {{ item.label }}
-                    </button>
-                </div>
+                <span>Profil connecté</span>
+                <strong>{{ audienceLabel }}</strong>
             </div>
 
             <nav ref="navTree" class="m-nav__tree">

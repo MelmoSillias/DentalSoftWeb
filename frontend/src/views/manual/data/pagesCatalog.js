@@ -165,6 +165,8 @@ export const pageDocs = [
             ['Nouvelle consultation', 'Vérifie d’abord qu’aucune consultation n’est déjà ouverte pour ce patient.', 'Admin, accueil'],
             ['Modifier', 'Rouvre le formulaire « Modifier le patient », bouton Mettre à jour.', 'Tous'],
             ['Voir dossier médical', 'Ouvre le dossier du patient (menu d’actions de la ligne).', 'Tous'],
+            ['Voir activité', 'Ouvre une synthèse de l’activité du patient : rendez-vous, factures, paiements et services cabinet ; les consultations et fiches visibles dépendent du rôle.', 'Admin, accueil, médecin'],
+            ['Créer un devis', 'Ouvre le devis associé au patient ; les devis enregistrés dans les fiches médicales sont aussi consultables depuis son dossier.', 'Tous'],
             ['Nouveau rendez-vous, Service cabinet', 'Ouvre le dialogue correspondant avec ce patient.', 'Tous'],
             ['Supprimer (corbeille)', 'Après confirmation : « Patient déplacé dans la corbeille. » Il n’est pas effacé.', 'Tous'],
             ['Corbeille › Restaurer', '« Patient restauré avec succès. »', 'Tous'],
@@ -222,6 +224,8 @@ export const pageDocs = [
         ],
         exceptions: [
             'L’accueil voit la liste des consultations du patient, pas le contenu clinique des fiches.',
+            'Le panneau Devis du dossier regroupe les devis enregistrés dans les fiches médicales ; un devis est modifié depuis sa fiche source.',
+            'La boîte Activité affiche les consultations et fiches uniquement aux administrateurs et médecins.',
             'Le portail peut être activé ou désactivé depuis le même bloc.'
         ],
         warning: 'Le compte du portail est créé avec le mot de passe 123. Communiquez-le au patient et demandez-lui de le changer dès sa première connexion.',
@@ -424,12 +428,12 @@ export const pageDocs = [
         route: '/rapports',
         roles: 'Administrateur, accueil, médecin',
         audience: ['admin', 'accueil', 'medecin'],
-        purpose: 'Lecture de l’activité, en lecture seule. Le contenu dépend du rôle. Pour corriger un chiffre, il faut revenir à la source : caisse, fiche ou paie.',
+        purpose: 'Lecture de l’activité, en lecture seule. Les statistiques financières distinguent désormais les services cabinet des consultations et des actes. Le contenu dépend du rôle. Pour corriger un chiffre, il faut revenir à la source : caisse, fiche ou paie.',
         figure: { label: 'Rapports', caption: 'Onglets du rapport et choix de période.' },
         actions: [
             ['Période (administrateur, médecin)', 'Sélecteur de plage de dates et bouton Rafraîchir.', 'Admin, médecin'],
             ['Date (accueil)', 'Choix d’un jour.', 'Accueil'],
-            ['Onglets administrateur', 'Vue d\'ensemble, Activité, Finances (tableau croisé financier), Soins, Médecins.', 'Admin'],
+            ['Onglets administrateur', 'Vue d\'ensemble, Activité, Finances (tableau croisé financier), Soins, Médecins. Les montants des services cabinet sont présentés séparément dans les statistiques financières et périodiques.', 'Admin'],
             ['Onglets médecin', 'Synthèse, Activité, Actes, Profil : uniquement ses propres chiffres.', 'Médecin'],
             ['Onglets accueil', 'Stats du jour, Par médecin.', 'Accueil'],
             ['Imprimer', 'Sur les tableaux par médecin et les statistiques du jour.', 'Admin, accueil']
@@ -460,15 +464,15 @@ export const pageDocs = [
             ]
         },
         actions: [
-            ['Nouvel employe', 'Dialogue « Ajouter un employé » : identité, poste, contrat, rémunération, jours travaillés, documents.', 'Admin'],
+            ['Nouvel employe', 'Dialogue « Ajouter un employé » : identité, titre, adresse et coordonnées, poste, contrat, rémunération, jours travaillés, documents.', 'Admin'],
             ['Enregistrer', '« Confirmer la creation ? » puis « Employe cree. »', 'Admin'],
             ['Œil', 'Ouvre « Détails employé » ; Enregistrer met à jour (« Employe mis a jour. »).', 'Admin'],
-            ['Ajouter un paiement', 'Dialogue « Paiement de salaire » sur un mode de paiement du cabinet : « Paiement enregistre. »', 'Admin'],
+            ['Ajouter un paiement', 'Dialogue « Paiement de salaire » sur un mode de paiement du cabinet : montant versé, indemnités spéciales et retenue INPS ; « Paiement enregistre. »', 'Admin'],
             ['Imprimer le bulletin', 'Imprime le bulletin de la ligne de paie.', 'Admin'],
             ['Ajouter un conge', 'Dialogue « Nouveau conge » : type (Vacances par défaut), début, fin, puis Creer.', 'Admin']
         ],
         events: [
-            ['Médecin rémunéré au pourcentage', 'Le taux s’applique aux actes facturés. 35 % proposé, 100 % au plus.'],
+            ['Médecin rémunéré au pourcentage', 'Le calcul du salaire se base sur les montants encaissés des actes du médecin, selon la période de paie. Les services cabinet restent exclus.'],
             ['Période déjà soldée', '« Cette période est déjà entièrement réglée. » Aucun second versement.'],
             ['Aucun mode de paiement choisi', '« Sélectionnez un mode de règlement. »'],
             ['Contrat CDI', 'La durée du contrat est désactivée ; sinon 3 mois par défaut.']
@@ -476,7 +480,8 @@ export const pageDocs = [
         exceptions: [
             'Jours travaillés proposés : du lundi au samedi.',
             'Le type de poste est en lecture seule dans la fiche détaillée.',
-            'Supprimer un employé retire sa fiche RH ; les consultations déjà signées restent dans l’historique.'
+            'Supprimer un employé retire sa fiche RH ; les consultations déjà signées restent dans l’historique.',
+            'Le bulletin affiche le salaire calculé, les indemnités spéciales et les retenues INPS du paiement. Les champs d’adresse et de titre sont des informations de la fiche employé.'
         ],
         see: ['mr-employes', 'mr-comptes']
     },
